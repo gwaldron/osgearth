@@ -31,56 +31,78 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-static osg::Shader*
-s_createTextureFragShaderFunction( const TextureLayout& layout, int maxLayersToRender )
+namespace
 {
-    const TextureSlotVector& slots = layout.getTextureSlots();
-    const RenderOrderVector& order = layout.getRenderOrder();
-
-    std::stringstream buf;
-
-    buf << "#version 120 \n"
-        << "uniform float[] osgearth_imagelayer_opacity; \n"
-        << "uniform bool[]  osgearth_imagelayer_enabled; \n"
-        << "uniform float[] osgearth_imagelayer_range; \n"
-        << "uniform float   osgearth_imagelayer_attenuation; \n"
-        << "varying float   osgearth_range; \n";
-
-    buf << "uniform sampler2D ";
-    for( int i=0; i<order.size(); ++i )
-        buf << "tex"<< order[i] << (i+1 < order.size()? "," : ";");
-    buf << "\n";
-
-    buf << "vec4 osgearth_frag_texture(void) \n"
-        << "{ \n"
-        << "    vec3 color = vec3(1,1,1); \n"
-        << "    vec4 texel; \n"
-        << "    float dmin, dmax, atten_min, atten_max; \n";
-
-    for( int i=0; i<order.size(); ++i )
+    static osg::Shader*
+    s_createTextureVertexShader( int maxLayersToRender )
     {
-        int slot = order[i];
-        int q = 2 * i;
-        int r = 4 * slot;
+        std::stringstream buf;
 
-        buf << "    if (osgearth_imagelayer_enabled["<< i << "]) { \n"
-            << "        dmin = osgearth_range - osgearth_imagelayer_range["<< q << "]; \n"
-            << "        dmax = osgearth_range - osgearth_imagelayer_range["<< q+1 <<"]; \n"
-            << "        if (dmin >= 0 && dmax <= 0.0) { \n"
-            << "            atten_max = -clamp( dmax, -osgearth_imagelayer_attenuation, 0 ) / osgearth_imagelayer_attenuation; \n"
-            << "            atten_min =  clamp( dmin, 0, osgearth_imagelayer_attenuation ) / osgearth_imagelayer_attenuation; \n"
-            << "            texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot <<"].st); \n"
-            << "            color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "] * atten_max * atten_min); \n"
-            << "        } \n"
-            << "    } \n";
+        buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ) \n"
+            << "{ \n";
+
+        for(int i=0; i<maxLayersToRender; ++i )
+        {
+            buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
+        }
+            
+        buf << "} \n";
+
+        std::string str = buf.str();
+        return new osg::Shader( osg::Shader::VERTEX, str );
     }
 
-    buf << "    return vec4(color,1); \n"
-        << "} \n";
+    static osg::Shader*
+    s_createTextureFragShaderFunction( const TextureLayout& layout, int maxLayersToRender )
+    {
+        const TextureSlotVector& slots = layout.getTextureSlots();
+        const RenderOrderVector& order = layout.getRenderOrder();
 
-    std::string str = buf.str();
-    //OE_INFO << std::endl << str;
-    return new osg::Shader( osg::Shader::FRAGMENT, str );
+        std::stringstream buf;
+
+        buf << "#version 120 \n"
+            << "uniform float[] osgearth_imagelayer_opacity; \n"
+            << "uniform bool[]  osgearth_imagelayer_enabled; \n"
+            << "uniform float[] osgearth_imagelayer_range; \n"
+            << "uniform float   osgearth_imagelayer_attenuation; \n"
+            << "varying float   osgearth_range; \n";
+
+        buf << "uniform sampler2D ";
+        for( int i=0; i<order.size(); ++i )
+            buf << "tex"<< order[i] << (i+1 < order.size()? "," : ";");
+        buf << "\n";
+
+        buf << "vec4 osgearth_frag_texture(void) \n"
+            << "{ \n"
+            << "    vec3 color = vec3(1,1,1); \n"
+            << "    vec4 texel; \n"
+            << "    float dmin, dmax, atten_min, atten_max; \n";
+
+        for( int i=0; i<order.size(); ++i )
+        {
+            int slot = order[i];
+            int q = 2 * i;
+            int r = 4 * slot;
+
+            buf << "    if (osgearth_imagelayer_enabled["<< i << "]) { \n"
+                << "        dmin = osgearth_range - osgearth_imagelayer_range["<< q << "]; \n"
+                << "        dmax = osgearth_range - osgearth_imagelayer_range["<< q+1 <<"]; \n"
+                << "        if (dmin >= 0 && dmax <= 0.0) { \n"
+                << "            atten_max = -clamp( dmax, -osgearth_imagelayer_attenuation, 0 ) / osgearth_imagelayer_attenuation; \n"
+                << "            atten_min =  clamp( dmin, 0, osgearth_imagelayer_attenuation ) / osgearth_imagelayer_attenuation; \n"
+                << "            texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot <<"].st); \n"
+                << "            color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "] * atten_max * atten_min); \n"
+                << "        } \n"
+                << "    } \n";
+        }
+
+        buf << "    return vec4(color,1); \n"
+            << "} \n";
+
+        std::string str = buf.str();
+        //OE_INFO << std::endl << str;
+        return new osg::Shader( osg::Shader::FRAGMENT, str );
+    }
 }
 
 //------------------------------------------------------------------------
@@ -186,17 +208,19 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
                                                 const TextureLayout& layout ) const
 {
     osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout );
+    if ( tex )
+    {
+        tex->setImage( preparedImage.getImage() );
 
-    tex->setImage( preparedImage.getImage() );
-
-    // recalculate mipmapping filters:
-    int texWidth  = tex->getImage()->s();
-    int texHeight = tex->getImage()->t();
-    bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
-    if ( powerOfTwo )
-        tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-    else
-        tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+        // recalculate mipmapping filters:
+        int texWidth  = tex->getImage()->s();
+        int texHeight = tex->getImage()->t();
+        bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
+        if ( powerOfTwo )
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+        else
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    }
 }
 
 
@@ -245,9 +269,15 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
 
         VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( maxLayers > 0 )
+        {
             vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(layout, maxLayers) );
+            vp->setShader( "osgearth_vert_texture", s_createTextureVertexShader(maxLayers) );
+        }
         else
+        {
             vp->removeShader( "osgearth_frag_texture", osg::Shader::FRAGMENT );
+            vp->removeShader( "osgearth_vert_texture", osg::Shader::VERTEX );
+        }
     }
 
     else

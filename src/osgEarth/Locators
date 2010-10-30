@@ -49,9 +49,9 @@ namespace osgEarth
         const GeoExtent& getDataExtent() const;
 
         /** Clones the current locator, applying a new display (i.e. crop) extent. */
-        virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent );
+        virtual GeoLocator* cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent ) const;
 
-        virtual GeoLocator* getGeographicFromGeocentric( );
+        virtual GeoLocator* getGeographicFromGeocentric( ) const;
 
         virtual bool isEquivalentTo( const GeoLocator& rhs ) const;
         

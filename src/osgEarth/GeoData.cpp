@@ -414,7 +414,7 @@ _extent( GeoExtent::INVALID )
 }
 
 
-GeoImage::GeoImage(osg::Image* image, const GeoExtent& extent ) :
+GeoImage::GeoImage( osg::Image* image, const GeoExtent& extent ) :
 _image(image),
 _extent(extent)
 {

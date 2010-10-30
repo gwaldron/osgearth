@@ -21,16 +21,79 @@
 #define OSGEARTH_ENGINE_TRANSPARENT_LAYER 1
 
 #include "Common"
-#include <osgTerrain/Layer>
+#include <osgEarth/Common>
+#include <osgTerrain/Locator>
 #include <osgEarth/ImageLayer>
+#include <osg/Image>
 
-using namespace osgEarth;
-
-class TransparentLayer : public osgTerrain::ImageLayer
+class CustomColorLayer
 {
 public:
-    TransparentLayer(osg::Image* image, osgEarth::ImageLayer* mapLayer):
-      osgTerrain::ImageLayer(image),
+    CustomColorLayer() { }
+
+    CustomColorLayer(
+        const osgEarth::ImageLayer* imageLayer,
+        const osg::Image* image,
+        const osgTerrain::Locator* locator,
+        int lod )
+        : _layer(imageLayer), _image(image), _locator(locator), _lod(-1) { }
+
+    CustomColorLayer( const CustomColorLayer& rhs ) :
+        _layer( rhs._layer.get() ),
+        _image( rhs._image.get() ),
+        _locator( rhs._locator.get() ),
+        _lod( rhs._lod ) { }
+
+    osgEarth::UID getUID() const {
+        return _layer->getUID();
+    }
+
+    const osgTerrain::Locator* getLocator() const {
+        return _locator.get();
+    }
+
+    const osg::Image* getImage() const { 
+        return _image.get(); }
+
+    const osgEarth::ImageLayer* getMapLayer() const {
+        return _layer.get(); }
+
+    int getLevelOfDetail() const {
+        return _lod; }
+
+    osg::BoundingSphere computeBound() const {
+        osg::BoundingSphere bs;
+        osg::Vec3d v;
+        if (getLocator()->convertLocalToModel(osg::Vec3d(0.5,0.5,0.0), v)) {
+            bs.center() = v;
+        }
+        if (getLocator()->convertLocalToModel(osg::Vec3d(0.0,0.0,0.0), v)) {
+            bs.radius() = (bs.center() - v).length();
+        }
+        return bs;
+    }
+
+
+private:
+    osg::ref_ptr<const osgEarth::ImageLayer> _layer;
+    osg::ref_ptr<const osgTerrain::Locator>  _locator;
+    osg::ref_ptr<const osg::Image>           _image;
+    int                                      _lod;
+};
+
+class CustomColorLayerRef : public osg::Referenced
+{
+public:
+    CustomColorLayerRef( const CustomColorLayer& layer ) : _layer(layer) { }
+    CustomColorLayer _layer;
+};
+
+#if 0
+class CustomColorLayer : public osgTerrain::ImageLayer
+{
+public:
+    CustomColorLayer(const osg::Image* image, osgEarth::ImageLayer* mapLayer):
+      osgTerrain::ImageLayer( const_cast<osg::Image*>(image) ),
           _mapLayer(mapLayer),
           _lod(-1)
       {
@@ -66,8 +129,11 @@ public:
           return _mapLayer.get();
       }
 
+      const osgTerrain::Locator* getLocator() const { return _locator; }
+
       osg::ref_ptr<osgEarth::ImageLayer> _mapLayer;
       int _lod;
 };
+#endif
 
 #endif // OSGEARTH_ENGINE_TRANSPARENT_LAYER

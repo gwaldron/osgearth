@@ -960,12 +960,22 @@ void MultiPassTerrainTechnique::cleanSceneGraph()
 
 void MultiPassTerrainTechnique::updateTransparency()
 {	
-	for (unsigned int layerNum = 0; layerNum < _terrainTile->getNumColorLayers(); ++layerNum)
-	{
-		TransparentLayer* layer = dynamic_cast<TransparentLayer*>(_terrainTile->getColorLayer( layerNum ));
-		if (_passes.valid() && layer)
-		{
-			float opacity = layer->getOpacity();
+    if ( _passes.valid() )
+    {
+        ColorLayersByUID colorLayers;
+        static_cast<CustomTile*>( _terrainTile )->getCustomColorLayers( colorLayers );
+
+        int layerNum = 0;
+        for( ColorLayersByUID::const_iterator i = colorLayers.begin(); i != colorLayers.end(); ++i, ++layerNum )
+        {
+            const CustomColorLayer& colorLayer = i->second;
+
+	//for (unsigned int layerNum = 0; layerNum < _terrainTile->getNumColorLayers(); ++layerNum)
+	//{
+	//	CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(_terrainTile->getColorLayer( layerNum ));
+	//	if (_passes.valid() && layer)
+	//	{
+            float opacity = colorLayer.getMapLayer()->getOpacity();
 			osg::Geode* geode = static_cast<osg::Geode*>(_passes->getChild(layerNum));
 			if (geode)
 			{
@@ -973,7 +983,7 @@ void MultiPassTerrainTechnique::updateTransparency()
 				osg::Vec4Array* colors = static_cast<osg::Vec4Array*>(geometry->getColorArray());
 				(*colors)[0] = osg::Vec4(1.0f, 1.0f, 1.0f, opacity);
 
-				if (layer->getEnabled())
+				if (colorLayer.getMapLayer()->getEnabled())
 				{
 					geode->setNodeMask(0xffffffff);
 				}

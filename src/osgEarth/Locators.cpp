@@ -103,7 +103,7 @@ GeoLocator::getDataExtent() const {
 }
 
 GeoLocator*
-GeoLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent )
+GeoLocator::cloneAndCrop( const osgTerrain::Locator& prototype, const GeoExtent& displayExtent ) const
 {
     return new GeoLocator( prototype, _dataExtent, displayExtent );
 }
@@ -135,7 +135,7 @@ GeoLocator::cropLocal( osg::Vec3d& local ) const
 }
 
 GeoLocator* 
-GeoLocator::getGeographicFromGeocentric( )
+GeoLocator::getGeographicFromGeocentric( ) const
 {
     if (getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC)
     {

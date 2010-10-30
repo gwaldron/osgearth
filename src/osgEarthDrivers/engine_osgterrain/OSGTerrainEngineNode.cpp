@@ -336,53 +336,29 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
     if ( !layerAdded || !layerAdded->getTileSource() )
         return;
 
-#if 0
-    // allocate a task service for this layer if necessary
-    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
-    {
-        TaskService* ts = _taskServiceMgr->add(
-            layer->getUID(),
-            layer->getTerrainLayerOptions().loadingWeight().value() );
-
-        if ( ts )
-            ts->setName( layer->getName() );
-    }
-#endif
-
     // visit all existing terrain tiles and inform each one of the new image layer:
     CustomTileVector tiles;
     _terrain->getCustomTiles( tiles );
-    //TerrainTileList tiles;
-    //_terrain->getTerrainTiles( tiles );
 
     for( CustomTileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr )
     {
-        CustomTile* tile = itr->get(); // static_cast< CustomTile* >( itr->get() );
-
-        //Create a TileKey from the TileID
-        osgTerrain::TileID tileId = tile->getTileID();
-        TileKey key( TileKey::getLOD(tileId), tileId.x, tileId.y, _update_mapf->getProfile() );
+        CustomTile* tile = itr->get();
 
         GeoImage geoImage;
-
         bool needToUpdateImagery = false;
         int imageLOD = -1;
 
-        // establish the initial image for this tile.
-        //if (( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ) ||
-        //   (( _options.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) && key.getLevelOfDetail() == 1))
-
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD ||
-            key.getLevelOfDetail() == 1)
+            tile->getKey().getLevelOfDetail() == 1)
         {
             // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
-            geoImage = _tileFactory->createValidGeoImage( layerAdded, key );
-            imageLOD = key.getLevelOfDetail();
+            geoImage = _tileFactory->createValidGeoImage( layerAdded, tile->getKey() );
+            imageLOD = tile->getKey().getLevelOfDetail();
         }
         else
         {
             // in seq/pre mode, set up a placeholder and mark the tile as dirty.
-            geoImage = GeoImage(ImageUtils::createEmptyImage(), key.getExtent() );
+            geoImage = GeoImage(ImageUtils::createEmptyImage(), tile->getKey().getExtent() );
             needToUpdateImagery = true;
         }
 
@@ -394,7 +370,7 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             geoImage.getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
 
             //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<GeoLocator> img_locator = key.getProfile()->getSRS()->createLocator( 
+            osg::ref_ptr<GeoLocator> img_locator = tile->getKey().getProfile()->getSRS()->createLocator( 
                 img_min_lon, img_min_lat, img_max_lon, img_max_lat, 
                 !mapInfo.isGeocentric() );
             
@@ -404,14 +380,17 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
             }
 
-            int newLayerIndex = _update_mapf->imageLayers().size() - 1;
+            tile->setCustomColorLayer( CustomColorLayer(
+                layerAdded,
+                geoImage.getImage(),
+                img_locator.get(), imageLOD ) );
 
+#if 0
             // Create a layer wrapper that supports opacity.
             // TODO: review this; the Transparent layer holds a back-reference to the actual ImageLayer
-            TransparentLayer* img_layer = new TransparentLayer( 
+            CustomColorLayer* img_layer = new CustomColorLayer( 
                 geoImage.getImage(),
                 layerAdded );
-                //_update_mapf->imageLayerAt(newLayerIndex) );
 
             img_layer->setLevelOfDetail(imageLOD);
             img_layer->setLocator( img_locator.get());
@@ -419,36 +398,28 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             img_layer->setMagFilter( layerAdded->getImageLayerOptions().magFilter().value() );
 
             // update the tile.
-            {
-                Threading::ScopedWriteLock tileLock( tile->getTileLayersMutex() );
+            tile->setCustomColorLayer( img_layer->getUID(), img_layer );
+#endif
 
-                tile->setColorLayer( newLayerIndex, img_layer );
-
-                if (needToUpdateImagery)
-                {
-                    //TODO: review this.
-                    tile->updateImagery( layerAdded, *_update_mapf, _tileFactory.get());
-                }
-            }
+            // if necessary, tell the tile to queue up a new imagery request (since we
+            // just installed a placeholder)
+            if ( needToUpdateImagery )
+                tile->updateImagery( layerAdded, *_update_mapf, _tileFactory.get() );
         }
         else
         {
             // this can happen if there's no data in the new layer for the given tile.
             // we will rely on the driver to dump out a warning if this is an error.
-
-            //OE_INFO << LC << 
-            //    "Adding layer " << layer->getName()
-            //    << ": Could not create geoimage for tile " << key.str() << std::endl;
         }
 
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-            //tile->setDirty(true);
+        {
             tile->applyImmediateTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getUID() );
+        }
         else
-            //tile->applyImmediateTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
-            //tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
-            //tile->queueTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getLayerUID() );
+        {
             tile->applyImmediateTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getUID() );
+        }
     }
 
     updateTextureCombining();
@@ -466,15 +437,12 @@ OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved, unsigned int i
         CustomTile* tile = itr->get();
 
         // critical section
-        tile->removeColorLayer( index );
+        tile->removeCustomColorLayer( index );
 
-        if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
-            tile->applyImmediateTileUpdate( TileUpdate::REMOVE_IMAGE_LAYER, layerRemoved->getUID() );
-            //tile->setDirty( true );
-        else
-            //tile->applyImmediateTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
-            //tile->queueTileUpdate( TileUpdate::UPDATE_ALL_IMAGE_LAYERS );
-            tile->applyImmediateTileUpdate( TileUpdate::REMOVE_IMAGE_LAYER, layerRemoved->getUID() );
+        //if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+        //    tile->applyImmediateTileUpdate( TileUpdate::REMOVE_IMAGE_LAYER, layerRemoved->getUID() );
+        //else
+        //    tile->applyImmediateTileUpdate( TileUpdate::REMOVE_IMAGE_LAYER, layerRemoved->getUID() );
     }
     
     updateTextureCombining();
@@ -493,7 +461,7 @@ OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInd
     {
         CustomTile* tile = itr->get();
 
-        tile->moveColorLayer( oldIndex, newIndex );
+        //tile->moveColorLayer( oldIndex, newIndex );
 
         tile->applyImmediateTileUpdate( TileUpdate::MOVE_IMAGE_LAYER );
     }     

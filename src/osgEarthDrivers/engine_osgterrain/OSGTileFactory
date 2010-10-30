@@ -21,6 +21,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_TILE_FACTORY_H 1
 
 #include "OSGTerrainOptions"
+#include "TransparentLayer"
 
 #include <osgEarth/Map>
 #include <osgEarth/TileSource>
@@ -77,7 +78,7 @@ public:
         bool &validData);
 
 
-    osgTerrain::ImageLayer* createImageLayer(
+    CustomColorLayerRef* createImageLayer(
         const MapInfo& mapInfo,
         ImageLayer* layer,
         const TileKey& key,

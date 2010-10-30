@@ -539,7 +539,7 @@ namespace
         // if the texture array doesn't exist, create it anew.
         if ( !tex )
         {
-            tex = new SparseTexture2DArray(); //osg::Texture2DArray();
+            tex = new SparseTexture2DArray();
             tex->setInternalFormat( GL_RGBA );
             tex->setTextureWidth( 256 );
             tex->setTextureHeight( 256 );

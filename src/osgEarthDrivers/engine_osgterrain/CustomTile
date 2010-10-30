@@ -21,6 +21,7 @@
 
 #include "Common"
 #include "OSGTileFactory"
+#include "TransparentLayer"
 #include <osgEarth/TaskService>
 #include <osgEarth/Locators>
 #include <osgEarth/Profile>
@@ -80,8 +81,8 @@ struct Relative
     int elevLOD;
     typedef std::map<unsigned int, int> LayerIDtoLODMap;
     LayerIDtoLODMap imageLODs;
-    //osgTerrain::TileID tileID;
-    TileKey key;
+    osgTerrain::TileID tileID;
+    //TileKey key;
 
     enum Direction {
         PARENT =0,
@@ -91,8 +92,12 @@ struct Relative
         SOUTH  =4
     };
 
-    Relative() : key(0,0,0,0L) { }
+    Relative() { } // : key(0,0,0,0L) { }
 };
+
+//------------------------------------------------------------------------
+
+typedef std::map<UID, CustomColorLayer> ColorLayersByUID;
 
 //------------------------------------------------------------------------
 
@@ -187,14 +192,26 @@ public:
     float getVerticalScale() const;
     void setVerticalScale(float verticalScale);
 
+    // override from osgTerrain::TerrainTile
+    //void setCustomColorLayer( int index, osgTerrain::Layer* layer );
+    //void removeCustomColorLayer( int index );
+    //void moveColorLayer( int fromIndex, int toIndex );
 
-    //// we use our own tile image layer set so that we can track the UIDs.
-    //void addTileImageLayer( const TileImageLayer& layer );
-    //void removeTileImageLayer( UID layerUID );
-    //TileImageLayer& getTileImageLayer( UID layerUID ) const;
+    //void setCustomColorLayer( UID layerUID, osgTerrain::Layer* layer, bool writeLock =true );
+    void removeCustomColorLayer( UID layerUID, bool writeLock =true );
+    bool getCustomColorLayer( UID layerUID, CustomColorLayer& output, bool readLock =true ) const;
+    void getCustomColorLayers( ColorLayersByUID& out, bool readLock =true ) const;
+    void setCustomColorLayers( const ColorLayersByUID& in, bool writeLock =true );
 
-    void removeColorLayer( int index );
-    void moveColorLayer( int fromIndex, int toIndex );
+    //void setCustomColorLayer( UID layerUID, CustomTile* copyFromTile, bool writeLock =true );
+    void setCustomColorLayer( const CustomColorLayer& colorLayer, bool writeLock =true );
+
+    //void setCustomColorLayer(
+    //    ImageLayer* imageLayer,
+    //    const osg::Image* image,
+    //    const osgTerrain::Locator* locator,
+    //    int imageLOD,
+    //    bool writeLock =true );
 
 
 public: // OVERRIDES
@@ -255,11 +272,46 @@ private:
 
     float _verticalScale;
 
+    ColorLayersByUID _colorLayers;
+
 public:
     void adjustUpdateTraversalCount( int delta );
+
+    friend class CustomTileFrame;
 };
 
 class CustomTileVector : public std::vector< osg::ref_ptr<CustomTile> > { };
+
+// --------------------------------------------------------------------------
+
+class CustomTileFrame
+{
+public:
+    CustomTileFrame( CustomTile* tile )
+    {
+        Threading::ScopedReadLock sharedLock( tile->_tileLayersMutex );
+        _colorLayers = tile->_colorLayers;
+        _elevationLayer = tile->getElevationLayer();
+        _locator = tile->getLocator();
+        _sampleRatio = tile->getTerrain()->getSampleRatio();
+    }
+
+    ColorLayersByUID _colorLayers;
+    osg::ref_ptr< osgTerrain::Layer > _elevationLayer;
+    osg::ref_ptr< osgTerrain::Locator > _locator;
+    float _sampleRatio;
+
+    bool getCustomColorLayer( UID layerUID, CustomColorLayer& out ) const {
+        ColorLayersByUID::const_iterator i = _colorLayers.find( layerUID );
+        if ( i != _colorLayers.end() ) {
+            out = i->second;
+            return true;
+        }
+        return false;
+    }
+};
+
+// --------------------------------------------------------------------------
 
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_CUSTOM_TILE

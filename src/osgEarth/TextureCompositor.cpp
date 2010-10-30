@@ -166,6 +166,7 @@ _forceTech( false )
 void
 TextureCompositor::applyMapModelChange( const MapModelChange& change )
 {
+    Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
     _layout.applyMapModelChange( change );
 }
 
@@ -196,7 +197,18 @@ TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
                                     const GeoExtent& tileExtent ) const
 {
     if ( _impl )
+    {
+        Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
         _impl->applyLayerUpdate( stateSet, layerUID, preparedImage, tileExtent, _layout );
+    }
+}
+
+void
+TextureCompositor::applyLayerRemoval(osg::StateSet* stateSet,
+                                     UID layerUID ) const
+{
+    if ( _impl )
+        _impl->applyLayerRemoval( stateSet, layerUID );
 }
 
 bool
@@ -212,10 +224,27 @@ TextureCompositor::usesShaderComposition() const
 }
 
 void
-//TextureCompositor::updateMasterStateSet( osg::StateSet* stateSet, int numImageLayers ) const
 TextureCompositor::updateMasterStateSet( osg::StateSet* stateSet ) const
 {
+    Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
     _impl->updateMasterStateSet( stateSet, _layout );
+}
+
+void
+TextureCompositor::assignTexCoordArray(osg::Geometry* geom,
+                                       UID layerUID,
+                                       osg::Vec2Array* texCoords ) const
+{
+    if ( geom && texCoords )
+    {
+        int slot;
+        {            
+            Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
+            slot = _layout.getSlot( layerUID );
+        }
+        if ( slot >= 0 )
+            geom->setTexCoordArray( slot, texCoords );
+    }
 }
 
 void

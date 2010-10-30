@@ -85,6 +85,8 @@ namespace osgEarth
         virtual GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
 
         virtual void applyLayerUpdate( osg::StateSet* stateSet, UID layerUID, const GeoImage& preparedImage, const GeoExtent& tileExtent, const TextureLayout& layout ) const { }
+
+        virtual void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const { }
     };
 
     /**
@@ -146,6 +148,21 @@ namespace osgEarth
             const GeoExtent& tileExtent ) const;
 
         /**
+         * Updates a stateset's texture composition based on the information that a layer has been
+         * removed.
+         */
+        void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const;
+
+        /**
+         * Assigns a texture coordinate array to a geometry, putting it in the proper
+         * texture slot according to the compositor's layout.
+         */
+        void assignTexCoordArray(
+            osg::Geometry* geom,
+            UID layerUID,
+            osg::Vec2Array* texCoords ) const;
+
+        /**
          * Whether the texture composition technique uses a single, unit (0..1) texture coordinate
          * space (true), or a separate texture coordinate space per layer (false). This provides a
          * hint to whomever is generating the texture coordinates as to what they need to do to 
@@ -176,6 +193,7 @@ namespace osgEarth
         osg::ref_ptr<TextureCompositorTechnique> _impl;
 
         TextureLayout _layout;
+        Threading::ReadWriteMutex _layoutMutex;
     };
 }
 

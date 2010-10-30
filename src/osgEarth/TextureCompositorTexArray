@@ -29,9 +29,6 @@ namespace osgEarth
     class TextureCompositorTexArray : public TextureCompositorTechnique
     {
     public:
-        
-        //osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const;
-
         void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;
 
         bool requiresUnitTextureSpace() const { return true; }
@@ -42,13 +39,14 @@ namespace osgEarth
 
         GeoImage prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const;
 
-//        void applyLayerUpdate( osg::StateSet* stateSet, int layerNum, const GeoImage& preparedImage, const GeoExtent& tileExtent ) const;
         void applyLayerUpdate( 
             osg::StateSet* stateSet,
             UID layerUID, 
             const GeoImage& preparedImage,
             const GeoExtent& tileExtent,
             const TextureLayout& layout ) const;
+    
+        //void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const;
     };
 }
 

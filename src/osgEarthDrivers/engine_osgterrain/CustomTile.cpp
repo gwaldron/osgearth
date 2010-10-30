@@ -416,15 +416,24 @@ CustomTile::setVerticalScale(float verticalScale)
     }
 }
 
+#if 0
 void
-CustomTile::removeColorLayer( int index )
+CustomTile::setCustomColorLayer( int index, osgTerrain::Layer* layer )
+{
+    Threading::ScopedWriteLock exclusiveTileLock( _tileLayersMutex );
+
+    osgTerrain::TerrainTile::setCustomColorLayer( index, layer );
+}
+
+void
+CustomTile::removeCustomColorLayer( int index )
 {
     Threading::ScopedWriteLock exclusiveTileLock( _tileLayersMutex );
 
     if ( index >= 0 && index < _colorLayers.size() )
         _colorLayers.erase( _colorLayers.begin() + index );
     else
-        OE_WARN << LC << "Illegal: removeColorLayer index out of range" << std::endl;
+        OE_WARN << LC << "Illegal: removeCustomColorLayer index out of range" << std::endl;
 }
 
 void
@@ -441,6 +450,115 @@ CustomTile::moveColorLayer( int fromIndex, int toIndex )
     }
     else
         OE_WARN << LC << "Illegal: moveColorLayer index out of range" << std::endl;
+}
+#endif
+
+//void
+//CustomTile::setCustomColorLayer(ImageLayer* sourceLayer,
+//                                const osg::Image* image,
+//                                const osgTerrain::Locator* locator,
+//                                int imageLOD,
+//                                bool writeLock )
+//{
+//    CustomColorLayer* img_layer = new CustomColorLayer( image, sourceLayer );
+//
+//    img_layer->setName( sourceLayer->getName() );
+//    img_layer->setLevelOfDetail( imageLOD );
+//    img_layer->setLocator( const_cast<osgTerrain::Locator*>( locator ) ); //locator );
+//    img_layer->setMinFilter( sourceLayer->getImageLayerOptions().minFilter().value() );
+//    img_layer->setMagFilter( sourceLayer->getImageLayerOptions().magFilter().value() );
+//
+//    if ( writeLock )
+//    {
+//        Threading::ScopedWriteLock exclusiveLock( _tileLayersMutex );
+//        _colorLayers[sourceLayer->getUID()] = img_layer;
+//    }
+//    else
+//        _colorLayers[sourceLayer->getUID()] = img_layer;
+//}
+
+//void
+//CustomTile::setCustomColorLayer(UID layerUID,
+//                                CustomTile* copyFromTile,
+//                                bool writeLock )
+//{
+//    const CustomColorLayer* rhs = static_cast<const CustomColorLayer*>(
+//        copyFromTile->getCustomColorLayer(layerUID) );
+//
+//    setCustomColorLayer(
+//        rhs->getMapLayer(),
+//        rhs->getImage(),
+//        rhs->getLocator(),
+//        rhs->getLevelOfDetail(),
+//        writeLock );
+//}
+
+void
+CustomTile::setCustomColorLayer( const CustomColorLayer& layer, bool writeLock )
+{
+    if ( writeLock )
+    {
+        Threading::ScopedWriteLock exclusiveTileLock( _tileLayersMutex );
+        setCustomColorLayer( layer, false );
+    }
+    else
+       _colorLayers[layer.getUID()] = layer;
+}
+
+void
+CustomTile::removeCustomColorLayer( UID layerUID, bool writeLock )
+{
+    if ( writeLock )
+    {
+        Threading::ScopedWriteLock exclusiveTileLock( _tileLayersMutex );
+        removeCustomColorLayer( layerUID, false );
+    }
+    else
+        _colorLayers.erase( layerUID );
+}
+
+bool
+CustomTile::getCustomColorLayer( UID layerUID, CustomColorLayer& out, bool readLock ) const
+{
+    if ( readLock )
+    {
+        Threading::ScopedReadLock sharedTileLock( const_cast<CustomTile*>(this)->_tileLayersMutex );
+        return getCustomColorLayer( layerUID, out, false );
+    }
+    else
+    {
+        ColorLayersByUID::const_iterator i = _colorLayers.find( layerUID );
+        if ( i != _colorLayers.end() )
+        {
+            out = i->second;
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+CustomTile::getCustomColorLayers( ColorLayersByUID& out, bool readLock ) const
+{
+    if ( readLock )
+    {
+        Threading::ScopedReadLock sharedTileLock( const_cast<CustomTile*>(this)->_tileLayersMutex );
+        return getCustomColorLayers( out, false );
+    }
+    else
+        out = _colorLayers;
+}
+
+void
+CustomTile::setCustomColorLayers( const ColorLayersByUID& in, bool writeLock )
+{
+    if ( writeLock )
+    {
+        Threading::ScopedWriteLock exclusiveLock( _tileLayersMutex );
+        setCustomColorLayers( in, false );
+    }
+    else
+        _colorLayers = in;
 }
 
 osg::BoundingSphere
@@ -485,11 +603,9 @@ CustomTile::computeBound() const
     }
     else
     {
-        for(Layers::const_iterator itr = _colorLayers.begin();
-            itr != _colorLayers.end();
-            ++itr)
+        for(ColorLayersByUID::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i )
         {
-            if (itr->valid()) bs.expandBy((*itr)->computeBound(false));
+            bs.expandBy( i->second.computeBound() ); //(*i)->computeBound(false) );
         }
     }
 
@@ -596,11 +712,9 @@ CustomTile::installRequests( const MapFrame& mapf, int stamp )
     OSGTileFactory* tileFactory = terrain->getTileFactory();
 
     bool hasElevationLayer;
-    int numColorLayers;
     {
-        Threading::ScopedReadLock lock( _tileLayersMutex );
+        Threading::ScopedReadLock sharedLock( _tileLayersMutex );
         hasElevationLayer = this->getElevationLayer() != NULL;
-        numColorLayers = this->getNumColorLayers();
     }
 
     if ( hasElevationLayer )
@@ -608,25 +722,13 @@ CustomTile::installRequests( const MapFrame& mapf, int stamp )
         resetElevationRequests( mapf );     
     }
 
-    // safely loop through the map layers and update the imagery for each:
-    //ImageLayerVector imageLayers;
-    //map->getImageLayers( imageLayers );
-
+    // safely loop through the map layers and schedule imagery updates for each:
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
         updateImagery( i->get(), mapf, tileFactory );
     }
 
     _requestsInstalled = true;
-
-    //for( int layerIndex = 0; layerIndex < numColorLayers; layerIndex++ )
-    //{
-    //    if ( layerIndex < mapf.imageLayers().size() )
-    //    {
-    //        updateImagery( mapf.imageLayerAt(layerIndex)->getUID(), mapf, tileFactory );
-    //    }
-    //}
-    //_requestsInstalled = true;
 }
 
 void
@@ -691,14 +793,13 @@ CustomTile::updateImagery( ImageLayer* imageLayer, const MapFrame& mapf, OSGTile
         terrain->getImageryTaskService( imageLayer->getUID() ) ) );
 
     //If we already have a request for this layer, remove it from the list and use the new one
-    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); ++i )
+    for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); )
     {
         TileColorLayerRequest* r2 = static_cast<TileColorLayerRequest*>( i->get() );
         if ( r2->_layerUID == imageLayer->getUID() )
-        {
             i = _requests.erase( i );
-            //break;
-        }
+        else
+            ++i;
     }
 
     //Add the new imagery request
@@ -797,7 +898,7 @@ CustomTile::servicePendingElevationRequests( const MapFrame& mapf, int stamp, bo
             else if ( _family[Relative::PARENT].elevLOD > _elevationLOD )
             {
                 osg::ref_ptr<CustomTile> parentTile;
-                terrain->getCustomTile( _family[Relative::PARENT].key, parentTile, !tileTableLocked );
+                terrain->getCustomTile( _family[Relative::PARENT].tileID, parentTile, !tileTableLocked );
 
                 if ( _elevationLOD < _family[Relative::PARENT].elevLOD && parentTile.valid() )
                 {
@@ -887,66 +988,59 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
     const LoadingPolicy& lp = getCustomTerrain()->getLoadingPolicy();
 
     //Check each layer independently.
-    for (unsigned int i = 0; i < mapf.imageLayers().size(); ++i)
+    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
-        ImageLayer* imageLayer = mapf.imageLayerAt(i);
+        ImageLayer* imageLayer = i->get();
 
         bool checkForFinalImagery = false;
 
-        if (i < getNumColorLayers())
+        CustomColorLayer colorLayer;
+        if ( getCustomColorLayer( imageLayer->getUID(), colorLayer ) )
         {
-            TransparentLayer* layer = dynamic_cast<TransparentLayer*>(getColorLayer( i ));
-            if (layer)
+            if ( lp.mode() == LoadingPolicy::MODE_PREEMPTIVE )
             {
-                if ( lp.mode() == LoadingPolicy::MODE_PREEMPTIVE )
+                // in preemptive mode, always check for the final imagery - there are no intermediate
+                // placeholders.
+                checkForFinalImagery = true;
+            }
+            else if (lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && 
+                     readyForNewImagery(imageLayer, colorLayer.getLevelOfDetail()) )
+            {
+                // in sequential mode, we have to incrementally increase imagery resolution by
+                // creating placeholders based of parent tiles, one LOD at a time.
+                if ( colorLayer.getLevelOfDetail() + 1 < _key.getLevelOfDetail() )
                 {
-                    // in preemptive mode, always check for the final imagery - there are no intermediate
-                    // placeholders.
-                    checkForFinalImagery = true;
-                }
-                else if (
-                    lp.mode() == LoadingPolicy::MODE_SEQUENTIAL && 
-                    layer && 
-                    readyForNewImagery(imageLayer, layer->getLevelOfDetail()) )
-                {
-                    // in sequential mode, we have to incrementally increase imagery resolution by
-                    // creating placeholders based of parent tiles, one LOD at a time.
-                    if ( layer->getLevelOfDetail()+1 < _key.getLevelOfDetail() )
+                    if ( _family[Relative::PARENT].getImageLOD(colorLayer.getUID()) > colorLayer.getLevelOfDetail() )
                     {
-                        if ( _family[Relative::PARENT].getImageLOD(layer->getUID()) > layer->getLevelOfDetail() )
+                        osg::ref_ptr<CustomTile> parentTile;
+                        getCustomTerrain()->getCustomTile( _family[Relative::PARENT].tileID, parentTile, !tileTableLocked );
+
+                        // Set the color layer to the parent color layer as a placeholder.
+                        CustomColorLayer parentColorLayer;
+                        if ( parentTile->getCustomColorLayer( colorLayer.getUID(), parentColorLayer ) )
                         {
-                            osg::ref_ptr<CustomTile> parentTile;
-                            getCustomTerrain()->getCustomTile( _family[Relative::PARENT].key, parentTile, !tileTableLocked );
-
-                            //Get the parent color layer
-                            osg::ref_ptr<osgTerrain::Layer> parentColorLayer;
-                            {
-                                Threading::ScopedReadLock l2( parentTile->getTileLayersMutex() );
-                                if (i < parentTile->getNumColorLayers())
-                                {
-                                    parentColorLayer = parentTile->getColorLayer(i);
-                                }
-                            }
-
-                            //Set the parent color layer
-                            {
-                                Threading::ScopedWriteLock lock( getTileLayersMutex() );
-                                if (parentColorLayer.valid())
-                                {
-                                    setColorLayer(i, parentColorLayer.get());
-                                }
-                            }
-
-                            queueTileUpdate( TileUpdate::UPDATE_IMAGE_LAYER, i );
-                            //markTileForRegeneration();
+                            this->setCustomColorLayer( parentColorLayer );
                         }
+                        //CustomColorLayer parentColorLayer = parentTile->getCustomColorLayer( colorLayer->getUID() );
+                        //this->setCustomColorLayer( parentColorLayer );
+
+                        //osg::ref_ptr<const CustomColorLayer> parentColorLayer =
+                            //static_cast<const CustomColorLayer*>( parentTile->getCustomColorLayer( colorLayer->getUID() ) );
+
+                        // Set the parent color layer as a placeholder...
+                        //if ( parentColorLayer.valid() )
+                            //this->setCustomColorLayer( colorLayer->getUID(), parentTile.get() );
+                            //this->setCustomColorLayer( colorLayer->getUID(), parentColorLayer.get() );
+
+                        // ... and queue up an update request.
+                        queueTileUpdate( TileUpdate::UPDATE_IMAGE_LAYER, colorLayer.getUID() );
                     }
-                    else
-                    {
-                        // we've gone as far as we can with placeholders; time to check for the
-                        // final imagery tile.
-                        checkForFinalImagery = true;
-                    }
+                }
+                else
+                {
+                    // we've gone as far as we can with placeholders; time to check for the
+                    // final imagery tile.
+                    checkForFinalImagery = true;
                 }
             }
         }
@@ -973,26 +1067,8 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                         }
                         else // success..
                         {
-                            int index = -1;
-                            {
-                                // Lock the map data mutex, since we are querying the map model:
-                                //NO need for this due to MapFrame
-                                //Threading::ScopedReadLock mapDataLock( map->getMapDataMutex() );
-
-                                //See if we even care about the request
-                                index = mapf.indexOf( mapf.imageLayerByUID( r->_layerUID ) );
-
-                                //for (unsigned int j = 0; j < mapf.imageLayers().size(); ++j)
-                                //{
-                                //    if (mapf.imageLayers()[j]->getId() == r->_layerId)
-                                //    {
-                                //        index = j;
-                                //        break;
-                                //    }
-                                //}
-                            }
-
-                            if (index < 0)
+                            //See if we even care about the request
+                            if ( !mapf.imageLayerByUID( r->_layerUID ) )
                             {
                                 //The maplayer was probably deleted
                                 OE_DEBUG << "Layer uid=" << r->_layerUID << " no longer exists, ignoring TileColorLayerRequest " << std::endl;
@@ -1001,16 +1077,23 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                             }
                             else
                             {
-                                osg::ref_ptr<osgTerrain::ImageLayer> newImgLayer = static_cast<osgTerrain::ImageLayer*>( r->getResult() );
-                                if ( newImgLayer.valid() )
+                                CustomColorLayerRef* result = static_cast<CustomColorLayerRef*>( r->getResult() );
+                                if ( result )
                                 {
-                                    // update the color layer safely:
-                                    {
-                                        Threading::ScopedWriteLock layerLock( getTileLayersMutex() );
-                                        this->setColorLayer( index, newImgLayer.get() );
-                                    }
+                                    this->setCustomColorLayer( result->_layer );
 
-                                    queueTileUpdate( TileUpdate::UPDATE_IMAGE_LAYER, index );
+                                //osg::ref_ptr<CustomColorLayer> newImgLayer = static_cast<CustomColorLayer*>( r->getResult() );
+                                //if ( newImgLayer.valid() )
+                                //{
+                                //    //this->setCustomColorLayer( index, newImgLayer.get() );
+                                //    this->setCustomColorLayer(
+                                //        newImgLayer->getMapLayer(),
+                                //        newImgLayer->getImage(),
+                                //        newImgLayer->getLocator(),
+                                //        newImgLayer->getLevelOfDetail() );                                       
+                                //    //this->setCustomColorLayer( r->_layerUID, newImgLayer.get() );
+
+                                    queueTileUpdate( TileUpdate::UPDATE_IMAGE_LAYER, r->_layerUID );
 
                                     //OE_NOTICE << "Complete IR (" << _key.str() << ") layer=" << r->_layerId << std::endl;
 
@@ -1020,35 +1103,42 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                                 }
                                 else
                                 {  
-									if (r->_numTries > r->_maxTries)
-									{
-										osg::ref_ptr< TransparentLayer > oldLayer = dynamic_cast<TransparentLayer*>(this->getColorLayer(index));
-										if (oldLayer)
-										{
-											TransparentLayer* newLayer = new TransparentLayer(oldLayer->getImage(), oldLayer->getMapLayer());
-											newLayer->setLocator( oldLayer->getLocator() );
-											newLayer->setName( oldLayer->getName() );
-											newLayer->setLevelOfDetail(_key.getLevelOfDetail());
-											// update the color layer safely:
-											{
-												Threading::ScopedWriteLock layerLock( getTileLayersMutex() );
-												this->setColorLayer( index, newLayer );
-											}
+                                    if (r->_numTries > r->_maxTries)
+                                    {
+                                        CustomColorLayer oldLayer;
+                                        if ( this->getCustomColorLayer( r->_layerUID, oldLayer ) )
+                                        {
+                                            // apply the old color layer but with a new LOD.
+                                            this->setCustomColorLayer( CustomColorLayer(
+                                                oldLayer.getMapLayer(),
+                                                oldLayer.getImage(),
+                                                oldLayer.getLocator(),
+                                                _key.getLevelOfDetail() ) );
 
-											//static_cast<osgEarth::TransparentLayer*>(this->getColorLayer(index))->setLevelOfDetail( _key.getLevelOfDetail());										
-											itr = _requests.erase( itr );
-											increment = false;
-											OE_DEBUG << "Tried (" << _key.str() << ") (layer uid=" << r->_layerUID << "), too many times, moving on...." << std::endl;
-										}
-									}
-									else
-									{
-										OE_DEBUG << "IReq error (" << _key.str() << ") (layer uid=" << r->_layerUID << "), retrying" << std::endl;
+#if 0
+                                            CustomColorLayer* newLayer = new CustomColorLayer(oldLayer->getImage(), oldLayer->getMapLayer());
+                                            newLayer->setLocator( oldLayer->getLocator() );
+                                            newLayer->setName( oldLayer->getName() );
+                                            newLayer->setLevelOfDetail(_key.getLevelOfDetail());
 
-										//The color layer request failed, probably due to a server error. Reset it.
-										r->setState( TaskRequest::STATE_IDLE );
-										r->reset();
-									}
+                                            //this->setCustomColorLayer( index, newLayer );
+                                            this->setCustomColorLayer( r->_layerUID, newLayer );
+#endif
+
+                                            //static_cast<osgEarth::CustomColorLayer*>(this->getCustomColorLayer(index))->setLevelOfDetail( _key.getLevelOfDetail());										
+                                            itr = _requests.erase( itr );
+                                            increment = false;
+                                            OE_DEBUG << "Tried (" << _key.str() << ") (layer uid=" << r->_layerUID << "), too many times, moving on...." << std::endl;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        OE_DEBUG << "IReq error (" << _key.str() << ") (layer uid=" << r->_layerUID << "), retrying" << std::endl;
+
+                                        //The color layer request failed, probably due to a server error. Reset it.
+                                        r->setState( TaskRequest::STATE_IDLE );
+                                        r->reset();
+                                    }
                                 }
                             }
                         }
@@ -1095,7 +1185,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
 
                     // the tile needs rebuilding. This will kick off a TileGenRequest.
                     queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
-                    
+
                     // finalize the LOD marker for this tile, so other tiles can see where we are.
                     //setElevationLOD( _key.getLevelOfDetail() );
                     _elevationLOD = _key.getLevelOfDetail();
@@ -1105,7 +1195,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
     #endif
                     // this was the final elev request, so mark elevation as DONE.
                     _elevationLayerUpToDate = true;
-                    
+
                     // GW- just reset these and leave them alone and let cancelRequests() take care of cleanup later.
                     // done with our Elevation requests!
                     //_elevRequest = 0L;

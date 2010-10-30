@@ -37,6 +37,8 @@
 
 #include <queue>
 
+// --------------------------------------------------------------------------
+
 /**
  * A terrain technique that uses a single texture unit by compositing image layer textures
  * on the GPU.
@@ -110,13 +112,13 @@ private:
 
     virtual ~SinglePassTerrainTechnique();
 
-    OpenThreads::Mutex                  _writeBufferMutex;
+    OpenThreads::Mutex _compileMutex;
+    //OpenThreads::Mutex                  _writeBufferMutex;
     osg::ref_ptr<osg::MatrixTransform> _transform;
     osg::ref_ptr<osg::Geode> _backGeode;
     osg::Vec3d _centerModel;
     float _verticalScaleOverride;
     osg::ref_ptr<GeoLocator> _masterLocator;
-    int _numColorLayers;
 
     int  _initCount;
     bool _pendingFullUpdate;    
@@ -141,17 +143,18 @@ private:
     bool _optimizeTriangleOrientation;
 
     osg::ref_ptr<const TextureCompositor> _texCompositor;
+    bool _frontGeodeInstalled;
 
 private:
 
     osg::Vec3d computeCenterModel();
-    GeoImage createGeoImage( osgTerrain::Layer* imageLayer ) const;
-    osg::Geode* createGeometry();
-    osg::StateSet* createStateSet();
-    void prepareImageLayerUpdate( int layerIndex );
-    Threading::ReadWriteMutex& getMutex();
+    GeoImage createGeoImage( const CustomColorLayer& layer ) const; //const osgTerrain::Layer* imageLayer ) const;
+    osg::Geode* createGeometry( const CustomTileFrame& tilef );
+    osg::StateSet* createStateSet( const CustomTileFrame& tilef );
+    void prepareImageLayerUpdate( int layerIndex, const CustomTileFrame& tilef );
+    //Threading::ReadWriteMutex& getMutex();
     inline osg::Geode* getFrontGeode() { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
-    TransparentLayer* getLayerByUID( UID uid ) const;
+    //const CustomColorLayer* getLayerByUID( UID uid ) const;
     int getIndexOfColorLayerWithUID( UID uid ) const;
 
 };

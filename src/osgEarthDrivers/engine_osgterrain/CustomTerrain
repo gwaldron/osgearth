@@ -119,8 +119,8 @@ protected:
 
 	~CustomTerrain();
 
-    //typedef std::map< osgTerrain::TileID, osg::ref_ptr<CustomTile> > TileTable;
-    typedef std::map< TileKey, osg::ref_ptr<CustomTile> > TileTable;
+    typedef std::map< osgTerrain::TileID, osg::ref_ptr<CustomTile> > TileTable;
+    //typedef std::map< TileKey, osg::ref_ptr<CustomTile> > TileTable;
 
     typedef std::queue< osg::ref_ptr<CustomTile> > TileQueue;
     typedef std::list< osg::ref_ptr<CustomTile> > TileList;
@@ -139,7 +139,8 @@ public:
 
     void registerTile( CustomTile* newTile );
 
-    void getCustomTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile, bool lock =true );
+    //void getCustomTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile, bool lock =true );
+    void getCustomTile( const osgTerrain::TileID&, osg::ref_ptr<CustomTile>& out_tile, bool lock =true );
     void getCustomTiles( TileVector& out_tiles );
 
     const LoadingPolicy& getLoadingPolicy() const;

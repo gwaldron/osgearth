@@ -180,22 +180,40 @@ CustomTerrain::getRevision() const
 }
 
 void
-CustomTerrain::getCustomTile(const TileKey& key, //const osgTerrain::TileID& tileID,
+CustomTerrain::getCustomTile(const osgTerrain::TileID& tileID,
                              osg::ref_ptr<CustomTile>& out_tile,
                              bool lock )
 {
     if ( lock )
     {
         Threading::ScopedReadLock lock( _tilesMutex );
-        TileTable::iterator i = _tiles.find( key ); //tileID );
+        TileTable::iterator i = _tiles.find( tileID );
         out_tile = i != _tiles.end()? i->second.get() : 0L;
     }
     else
     {
-        TileTable::iterator i = _tiles.find( key ); //tileID );
+        TileTable::iterator i = _tiles.find( tileID );
         out_tile = i != _tiles.end()? i->second.get() : 0L;
     }
 }
+
+//void
+//CustomTerrain::getCustomTile(const TileKey& key, //const osgTerrain::TileID& tileID,
+//                             osg::ref_ptr<CustomTile>& out_tile,
+//                             bool lock )
+//{
+//    if ( lock )
+//    {
+//        Threading::ScopedReadLock lock( _tilesMutex );
+//        TileTable::iterator i = _tiles.find( key ); //tileID );
+//        out_tile = i != _tiles.end()? i->second.get() : 0L;
+//    }
+//    else
+//    {
+//        TileTable::iterator i = _tiles.find( key ); //tileID );
+//        out_tile = i != _tiles.end()? i->second.get() : 0L;
+//    }
+//}
 
 void
 CustomTerrain::getCustomTiles( TileVector& out )
@@ -213,6 +231,181 @@ CustomTerrain::getLoadingPolicy() const
     return _loadingPolicy;
 }
 
+// This method is called by CustomTerrain::traverse() in the UPDATE TRAVERSAL.
+void
+CustomTerrain::refreshFamily(const MapInfo& mapInfo,
+                             //const osgTerrain::TileID& tileId,
+                             const TileKey& key,
+                             Relative* family,
+                             bool tileTableLocked )
+{
+    osgTerrain::TileID tileId = key.getTileId();
+
+    // geocentric maps wrap around in the X dimension.
+    bool wrapX = mapInfo.isGeocentric();
+    unsigned int tileCountX, tileCountY;
+    mapInfo.getProfile()->getNumTiles( tileId.level, tileCountX, tileCountY );
+
+    // Relative::PARENT
+    {
+        family[Relative::PARENT].expected = true; // TODO: is this always correct?
+        family[Relative::PARENT].elevLOD = -1;
+        family[Relative::PARENT].imageLODs.clear();
+        family[Relative::PARENT].tileID = osgTerrain::TileID( tileId.level-1, tileId.x/2, tileId.y/2 );
+
+        osg::ref_ptr<CustomTile> parent;
+        getCustomTile( family[Relative::PARENT].tileID, parent, !tileTableLocked );
+        if ( parent.valid() )
+        {
+            family[Relative::PARENT].elevLOD = parent->getElevationLOD();
+
+            ColorLayersByUID relLayers;
+            parent->getCustomColorLayers( relLayers );
+
+            for( ColorLayersByUID::const_iterator i = relLayers.begin(); i != relLayers.end(); ++i )
+            {
+                family[Relative::PARENT].imageLODs[i->first] = i->second.getLevelOfDetail();
+            }
+
+            //family[Relative::PARENT].elevLOD = parent->getElevationLOD();
+            //for (unsigned int i = 0; i < parent->getNumColorLayers(); ++i)
+            //{
+            //    CustomColorLayer parentColorLayer;
+            //    if ( parent->getCustomColorLayer( i, parentColorLayer ) )
+            //    {
+            //        family[Relative::PARENT].imageLODs[parentColorLayer->getUID()] = parentColorLayer->getLevelOfDetail();
+            //    }
+            //    const CustomColorLayer* layer = dynamic_cast<const CustomColorLayer*>(parent->getCustomColorLayer(i));
+            //    if (layer)
+            //    {
+            //        family[Relative::PARENT].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
+            //    }
+            //}
+        }
+    }
+
+    // Relative::WEST
+    {
+        family[Relative::WEST].expected = tileId.x > 0 || wrapX;
+        family[Relative::WEST].elevLOD = -1;
+        family[Relative::WEST].imageLODs.clear();
+        family[Relative::WEST].tileID = osgTerrain::TileID( tileId.level, tileId.x > 0? tileId.x-1 : tileCountX-1, tileId.y );
+        osg::ref_ptr<CustomTile> west;
+        getCustomTile( family[Relative::WEST].tileID, west, !tileTableLocked );
+        if ( west.valid() )
+        {
+            family[Relative::WEST].elevLOD = west->getElevationLOD();
+
+            ColorLayersByUID relLayers;
+            west->getCustomColorLayers( relLayers );
+
+            for( ColorLayersByUID::const_iterator i = relLayers.begin(); i != relLayers.end(); ++i )
+            {
+                family[Relative::WEST].imageLODs[i->first] = i->second.getLevelOfDetail();
+            }
+            //for (unsigned int i = 0; i < west->getNumColorLayers(); ++i)
+            //{
+            //    CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(west->getCustomColorLayer(i));
+            //    if (layer)
+            //    {
+            //        family[Relative::WEST].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
+            //    }
+            //}
+        }
+    }
+
+    // Relative::NORTH
+    {
+        family[Relative::NORTH].expected = tileId.y < tileCountY-1;
+        family[Relative::NORTH].elevLOD = -1;
+        family[Relative::NORTH].imageLODs.clear();
+        family[Relative::NORTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y < tileCountY-1 ? tileId.y+1 : 0 );
+        osg::ref_ptr<CustomTile> north;
+        getCustomTile( family[Relative::NORTH].tileID, north, !tileTableLocked );
+        if ( north.valid() )
+        {
+            family[Relative::NORTH].elevLOD = north->getElevationLOD();
+
+            ColorLayersByUID relLayers;
+            north->getCustomColorLayers( relLayers );
+
+            for( ColorLayersByUID::const_iterator i = relLayers.begin(); i != relLayers.end(); ++i )
+            {
+                family[Relative::NORTH].imageLODs[i->first] = i->second.getLevelOfDetail();
+            }
+            //for (unsigned int i = 0; i < north->getNumColorLayers(); ++i)
+            //{
+            //    CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(north->getCustomColorLayer(i));
+            //    if (layer)
+            //    {
+            //        family[Relative::NORTH].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
+            //    }
+            //}
+        }
+    }
+
+    // Relative::EAST
+    {
+        family[Relative::EAST].expected = tileId.x < tileCountX-1 || wrapX;
+        family[Relative::EAST].elevLOD = -1;
+        family[Relative::EAST].imageLODs.clear();
+        family[Relative::EAST].tileID = osgTerrain::TileID( tileId.level, tileId.x < tileCountX-1 ? tileId.x+1 : 0, tileId.y );
+        osg::ref_ptr<CustomTile> east;
+        getCustomTile( family[Relative::EAST].tileID, east, !tileTableLocked );
+        if ( east.valid() )
+        {
+            family[Relative::EAST].elevLOD = east->getElevationLOD();
+
+            ColorLayersByUID relLayers;
+            east->getCustomColorLayers( relLayers );
+
+            for( ColorLayersByUID::const_iterator i = relLayers.begin(); i != relLayers.end(); ++i )
+            {
+                family[Relative::EAST].imageLODs[i->first] = i->second.getLevelOfDetail();
+            }
+            //for (unsigned int i = 0; i < east->getNumColorLayers(); ++i)
+            //{
+            //    CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(east->getCustomColorLayer(i));
+            //    if (layer)
+            //    {
+            //        family[Relative::EAST].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
+            //    }
+            //}
+        }
+    }
+
+    // Relative::SOUTH
+    {
+        family[Relative::SOUTH].expected = tileId.y > 0;
+        family[Relative::SOUTH].elevLOD = -1;
+        family[Relative::SOUTH].imageLODs.clear();
+        family[Relative::SOUTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y > 0 ? tileId.y-1 : tileCountY-1 );
+        osg::ref_ptr<CustomTile> south;
+        getCustomTile( family[Relative::SOUTH].tileID, south, !tileTableLocked );
+        if ( south.valid() )
+        {
+            family[Relative::SOUTH].elevLOD = south->getElevationLOD();
+
+            ColorLayersByUID relLayers;
+            south->getCustomColorLayers( relLayers );
+
+            for( ColorLayersByUID::const_iterator i = relLayers.begin(); i != relLayers.end(); ++i )
+            {
+                family[Relative::SOUTH].imageLODs[i->first] = i->second.getLevelOfDetail();
+            }
+            //for (unsigned int i = 0; i < south->getNumColorLayers(); ++i)
+            //{
+            //    CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(south->getCustomColorLayer(i));
+            //    if (layer)
+            //    {
+            //        family[Relative::SOUTH].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
+            //    }
+            //}
+        }
+    }
+}
+
+#if 0
 // This method is called by CustomTerrain::traverse() in the UPDATE TRAVERSAL.
 void
 CustomTerrain::refreshFamily(const MapInfo& mapInfo,
@@ -241,7 +434,7 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             family[Relative::PARENT].elevLOD = parent->getElevationLOD();
             for (unsigned int i = 0; i < parent->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(parent->getColorLayer(i));
+                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(parent->getCustomColorLayer(i));
                 if (layer)
                 {
                     family[Relative::PARENT].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
@@ -265,7 +458,7 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             //family[Relative::WEST].imageryLOD = Relative::WEST->getImageryLOD();
             for (unsigned int i = 0; i < west->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(west->getColorLayer(i));
+                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(west->getCustomColorLayer(i));
                 if (layer)
                 {
                     family[Relative::WEST].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
@@ -289,7 +482,7 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             //family[Relative::NORTH].imageryLOD = Relative::NORTH->getImageryLOD();
             for (unsigned int i = 0; i < north->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(north->getColorLayer(i));
+                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(north->getCustomColorLayer(i));
                 if (layer)
                 {
                     family[Relative::NORTH].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
@@ -313,7 +506,7 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             //family[Relative::EAST].imageryLOD = Relative::EAST->getImageryLOD();
             for (unsigned int i = 0; i < east->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(east->getColorLayer(i));
+                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(east->getCustomColorLayer(i));
                 if (layer)
                 {
                     family[Relative::EAST].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
@@ -337,7 +530,7 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             //family[Relative::SOUTH].imageryLOD = south->getImageryLOD();
             for (unsigned int i = 0; i < south->getNumColorLayers(); ++i)
             {
-                TransparentLayer* layer = dynamic_cast<TransparentLayer*>(south->getColorLayer(i));
+                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(south->getCustomColorLayer(i));
                 if (layer)
                 {
                     family[Relative::SOUTH].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
@@ -346,6 +539,7 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
         }
     }
 }
+#endif
 
 OSGTileFactory*
 CustomTerrain::getTileFactory() {
@@ -365,8 +559,8 @@ CustomTerrain::registerTile( CustomTile* newTile )
 {
     Threading::ScopedWriteLock lock( _tilesMutex );
     //Register the new tile immediately, but also add it to the queue so that
-    _tiles[ newTile->getKey() ] = newTile;
-    //_tiles[ newTile->getTileID() ] = newTile;
+    //_tiles[ newTile->getKey() ] = newTile;
+    _tiles[ newTile->getTileID() ] = newTile;
     _tilesToAdd.push( newTile );
     //OE_NOTICE << "Registered " << newTile->getKey()->str() << " Count=" << _tiles.size() << std::endl;
 }
@@ -439,7 +633,7 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                     }
 
                     // remove from the master tile table
-                    _tiles.erase( tile->getKey() );
+                    _tiles.erase( tile->getKey().getTileId() ); //getTileID() ); //getKey() );
 
                     i = _tilesToShutDown.erase( i );
                 }
@@ -498,6 +692,7 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
 
     else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
+#if 0
         // check each terrain tile for requests (if not in standard mode)
         if ( _loadingPolicy.mode() != LoadingPolicy::MODE_STANDARD )
         {
@@ -513,6 +708,7 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                 tile->servicePendingImageRequests( _cull_mapf, frameStamp );
             }
         }
+#endif
     } 
     
     else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )

@@ -103,7 +103,7 @@ namespace
 void
 CustomTerrain::releaseGLObjectsForTiles(osg::State* state)
 {
-    Threading::ScopedReadLock lock( _tilesMutex );
+    OpenThreads::ScopedLock<Mutex> lock( _tilesToReleaseMutex );
 
     while( _tilesToRelease.size() > 0 )
     {
@@ -153,7 +153,7 @@ _onDemandDelay( 2 )
     else
     {        
         // undo the setting in osgTerrain::Terrain
-        setNumChildrenRequiringUpdateTraversal( 0 );
+        setNumChildrenRequiringUpdateTraversal( 1 );
     }
 
     // register for events in order to support ON_DEMAND frame scheme
@@ -196,24 +196,6 @@ CustomTerrain::getCustomTile(const osgTerrain::TileID& tileID,
         out_tile = i != _tiles.end()? i->second.get() : 0L;
     }
 }
-
-//void
-//CustomTerrain::getCustomTile(const TileKey& key, //const osgTerrain::TileID& tileID,
-//                             osg::ref_ptr<CustomTile>& out_tile,
-//                             bool lock )
-//{
-//    if ( lock )
-//    {
-//        Threading::ScopedReadLock lock( _tilesMutex );
-//        TileTable::iterator i = _tiles.find( key ); //tileID );
-//        out_tile = i != _tiles.end()? i->second.get() : 0L;
-//    }
-//    else
-//    {
-//        TileTable::iterator i = _tiles.find( key ); //tileID );
-//        out_tile = i != _tiles.end()? i->second.get() : 0L;
-//    }
-//}
 
 void
 CustomTerrain::getCustomTiles( TileVector& out )
@@ -561,7 +543,7 @@ CustomTerrain::registerTile( CustomTile* newTile )
     //Register the new tile immediately, but also add it to the queue so that
     //_tiles[ newTile->getKey() ] = newTile;
     _tiles[ newTile->getTileID() ] = newTile;
-    _tilesToAdd.push( newTile );
+    //_tilesToAdd.push( newTile );
     //OE_NOTICE << "Registered " << newTile->getKey()->str() << " Count=" << _tiles.size() << std::endl;
 }
 
@@ -591,6 +573,7 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
             {
                 cam->setPostDrawCallback( new QuickReleaseGLCallback( this, cam->getPostDrawCallback() ) );
                 _quickReleaseCallbackInstalled = true;
+                OE_INFO << LC << "Quick release enabled" << std::endl;
             }
         }
 
@@ -598,28 +581,28 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
         // old, it is considered "expired" and subject to cancelation
         int stamp = nv.getFrameStamp()->getFrameNumber();
 
-        // make a thread-safe working copy of the tile list for processing
-        TileVector tiles;
-        getCustomTiles( tiles );
-
         // Collect any "dead" tiles and queue them for shutdown.
-        for( TileVector::iterator i = tiles.begin(); i != tiles.end(); )
         {
-            CustomTile* tile = i->get();
-            if ( tile->referenceCount() == 1 && tile->getHasBeenTraversed() )
+            Threading::ScopedWriteLock tileTableExclusiveLock( _tilesMutex );
+
+            for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); )
             {
-                _tilesToShutDown.push_back( tile );
-                i = tiles.erase( i );
+                CustomTile* tile = i->second.get();
+                if ( tile->getNumParents() == 0 && tile->getHasBeenTraversed() ) //tile->referenceCount() == 1 && tile->getHasBeenTraversed() )
+                {
+                    _tilesToShutDown.push_back( tile );
+                    i = _tiles.erase( i );
+                }
+                else
+                    ++i;
             }
-            else
-                ++i;
         }
 
         // Remove any dead tiles from the main tile table, while at the same time queuing 
         // any tiles that require quick-release. This criticial section requires an exclusive
         // lock on the main tile table.
         {
-            Threading::ScopedWriteLock tileTableExclusiveLock( _tilesMutex );
+            Threading::ScopedMutexLock tilesToReleaseExclusiveLock( _tilesToReleaseMutex );
 
             // Shut down any dead tiles once there tasks are complete.
             for( TileList::iterator i = _tilesToShutDown.begin(); i != _tilesToShutDown.end(); )
@@ -631,9 +614,6 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                     {
                         _tilesToRelease.push( tile );
                     }
-
-                    // remove from the master tile table
-                    _tiles.erase( tile->getKey().getTileId() ); //getTileID() ); //getKey() );
 
                     i = _tilesToShutDown.erase( i );
                 }
@@ -658,9 +638,9 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
         {
             Threading::ScopedReadLock tileTableReadLock( _tilesMutex );
 
-            for( TileVector::iterator i = tiles.begin(); i != tiles.end(); ++i )
+            for( TileTable::const_iterator i = _tiles.begin(); i != _tiles.end(); ++i )
             {
-                CustomTile* tile = i->get();
+                CustomTile* tile = i->second.get();
 
                 // update the neighbor list for each tile.
                 refreshFamily( _update_mapf.getMapInfo(), tile->getKey(), tile->getFamily(), true );
@@ -720,10 +700,17 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
         // In addition, once the tasks run out, we continue to delay on-demand rendering
         // for another full frame so that the event dispatchers can catch up.
 
-        int numTasks = getNumTasksRemaining();
-
-        if ( numTasks > 0 )
+        if ( _tilesToShutDown.size() > 0 )
+        {
             _onDemandDelay = 2;
+        }
+
+        if ( _onDemandDelay <= 0 )
+        {
+            int numTasks = getNumTasksRemaining();
+            if ( numTasks > 0 )
+                _onDemandDelay = 2;
+        }
 
         //OE_INFO << "Tasks = " << numTasks << std::endl;
 

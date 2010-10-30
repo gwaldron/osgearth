@@ -129,11 +129,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         return;
     }
 
-    // lock changes to the tile layers while we're compiling them
-    //Threading::ScopedReadLock sharedLock( getMutex() );
-    //Threading::ScopedWriteLock sharedLock( getMutex() ); // needs to be a write lock.
-
-    // serialize access to the compilation mechanism.
+    // serialize access to the compilation procedure.
     OpenThreads::ScopedLock<Mutex> exclusiveLock( _compileMutex );
 
     // make a frame to use during compilation.
@@ -144,9 +140,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
     // establish the master tile locator if this is the first compilation:
     if ( !_masterLocator.valid() || !_transform.valid() )
     {
-        //CustomTile* tile = static_cast<CustomTile*>( _terrainTile );
-        _masterLocator = static_cast<GeoLocator*>( tilef._locator.get() ); //.getLocator() ); //->getLocator() );
-
+        _masterLocator = static_cast<GeoLocator*>( tilef._locator.get() );
         _masterLocator->convertLocalToModel( osg::Vec3(.5,.5,0), _centerModel );
 
         _transform = new osg::MatrixTransform( osg::Matrix::translate(_centerModel) );
@@ -177,7 +171,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
 
     else if (partialUpdateOK && update.getAction() == TileUpdate::MOVE_IMAGE_LAYER )
     {
-        //nop.
+        //nop - layer re-ordering happens entirely in the texture compositor.
     }
 
     //TODO: we should not need to check supportsLayerUpdate here, but it is not working properly in
@@ -355,27 +349,11 @@ SinglePassTerrainTechnique::applyTileUpdates()
     return applied;
 }
 
-//Threading::ReadWriteMutex&
-//SinglePassTerrainTechnique::getMutex()
-//{
-//    return static_cast<CustomTile*>(_terrainTile)->getTileLayersMutex();
-//}
-
-//const CustomColorLayer*
-//SinglePassTerrainTechnique::getLayerByUID( UID uid ) const
-//{
-//    return static_cast<const CustomColorLayer*>(
-//        static_cast<CustomTile*>(_terrainTile)->getCustomColorLayer( uid, false ) );
-//}
-
 void
 SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const CustomTileFrame& tilef )
 {
     CustomColorLayer layer;
     if ( tilef.getCustomColorLayer( layerUID, layer ) )
-    //if ( static_cast<CustomTile*>(_terrainTile)->getCustomColorLayer( layerUID, layer, false ) ) // false => we already hold a read lock.
-    //const CustomColorLayer* layer = getLayerByUID( layerUID );
-    //if ( layer )
     {
         GeoImage geoImage = createGeoImage( layer );
         if ( geoImage.valid() )
@@ -393,21 +371,15 @@ SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const CustomT
 GeoImage
 SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer ) const
 {
-    //const osgTerrain::ImageLayer* imageLayer = dynamic_cast<const osgTerrain::ImageLayer*>( colorLayer );
-    //if ( imageLayer )
-    //{            
-        // record the proper texture offset/scale for this layer. this accounts for subregions that
-        // are used when referencing lower LODs.
-        osg::ref_ptr<const GeoLocator> layerLocator = dynamic_cast<const GeoLocator*>( colorLayer.getLocator() );
-        if ( layerLocator.valid() )
-        {
-            if ( layerLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
-                layerLocator = layerLocator->getGeographicFromGeocentric();
+    osg::ref_ptr<const GeoLocator> layerLocator = dynamic_cast<const GeoLocator*>( colorLayer.getLocator() );
+    if ( layerLocator.valid() )
+    {
+        if ( layerLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
+            layerLocator = layerLocator->getGeographicFromGeocentric();
 
-            const GeoExtent& imageExtent = layerLocator->getDataExtent();
-            return GeoImage( const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
-        }
-//    }
+        const GeoExtent& imageExtent = layerLocator->getDataExtent();
+        return GeoImage( const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
+    }
     return GeoImage::INVALID;
 }
 
@@ -429,46 +401,18 @@ SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
 
     osg::StateSet* stateSet = new osg::StateSet();
 
-    // populate the new stateset with all the existing color layers.
-    //ColorLayersByUID colorLayers;
-    //static_cast<CustomTile*>(_terrainTile)->getCustomColorLayers( colorLayers, false ); // false => we already hold the read-lock.
-
     for( ColorLayersByUID::const_iterator i = tilef._colorLayers.begin(); i != tilef._colorLayers.end(); ++i )
     {
         const CustomColorLayer& colorLayer = i->second;
-        //const CustomColorLayer* colorLayer = static_cast<const CustomColorLayer*>( i->second.get() );
-        //if ( colorLayer )
-        //{
-            GeoImage image = createGeoImage( colorLayer );
-            if ( image.valid() )
-            {
-                image = _texCompositor->prepareImage( image, _tileExtent );
-                _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileExtent );
-            }
-//        }
-    }
-
-    return stateSet;
-
-#if 0
-    // find each image layer and create a region entry for it
-    unsigned int numColorLayers = _terrainTile->getNumColorLayers();
-
-    GeoImageVector imageStack;
-    imageStack.reserve( numColorLayers );
-
-    for( unsigned int layerNum=0; layerNum < numColorLayers; ++layerNum )
-    {
-        GeoImage geoImage = createGeoImage( _terrainTile->getCustomColorLayer( layerNum ) );
-        if ( geoImage.valid() )
+        GeoImage image = createGeoImage( colorLayer );
+        if ( image.valid() )
         {
-            imageStack.push_back( geoImage );
+            image = _texCompositor->prepareImage( image, _tileExtent );
+            _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileExtent );
         }
     }
 
-    osg::StateSet* texStateSet = _texCompositor->createStateSet( imageStack, _tileExtent );
-    return texStateSet;
-#endif
+    return stateSet;
 }
 
 void
@@ -519,7 +463,6 @@ namespace
     
     struct RenderLayer {
         CustomColorLayer _layer;
-        //const osgTerrain::Layer* _layer;
         osg::ref_ptr<const GeoLocator> _locator;
         osg::Vec2Array* _texCoords;
         bool _ownsTexCoords;
@@ -615,10 +558,6 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
     else // if ( !_texCompositor->requiresUnitTextureSpace() )
     {
-        //CustomTile* tile = static_cast<CustomTile*>(_terrainTile);
-        //ColorLayersByUID colorLayers;
-        //tile->getCustomColorLayers( colorLayers, false ); // false => we already have a read lock on the tile.
-
         LocatorToTexCoordTable locatorToTexCoordTable;
         renderLayers.reserve( tilef._colorLayers.size() );
 
@@ -627,100 +566,39 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for( ColorLayersByUID::const_iterator i = tilef._colorLayers.begin(); i != tilef._colorLayers.end(); ++i )
         {
             const CustomColorLayer& colorLayer = i->second;
-            //const CustomColorLayer* colorLayer = static_cast<const CustomColorLayer*>( i->second.get() );
             RenderLayer r;
             r._layer = colorLayer;
-            //if ( r._layer )
-            //{
-                const GeoLocator* locator = dynamic_cast<const GeoLocator*>( r._layer.getLocator() );
-                if ( locator )
-                {
-                    r._texCoords = locatorToTexCoordTable.find( locator );
-                    if ( !r._texCoords )
-                    {
-                        r._texCoords = new osg::Vec2Array();
-                        r._texCoords->reserve( numVerticesInSurface );
-                        r._ownsTexCoords = true;
-                        locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords) );
-                    }
 
-                    r._locator = locator;
-                    if ( locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
-                    {
-                        const GeoLocator* geo = dynamic_cast<const GeoLocator*>(locator);
-                        if ( geo )
-                            r._locator = geo->getGeographicFromGeocentric();
-                    }
-
-                    _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords );
-                    //surface->setTexCoordArray( renderLayers.size(), r._texCoords );
-                    renderLayers.push_back( r );
-                }
-                else
-                {
-                    OE_WARN << LC << "Found a Locator, but it wasn't a GeoLocator." << std::endl;
-                }
-//            }
-        }
-    }
-
-#if 0
-    else
-    {
-        // for a multitexture space, make a tex coord array per layer, each with its own locator.
-        layerTexCoords.reserve( numColorLayers );
-        layerLocators.reserve( numColorLayers );
-
-        int k=0;
-        for( int i=0; i<numColorLayers; ++i )
-        {
-            osgTerrain::Layer* colorLayer = _terrainTile->getCustomColorLayer( i );
-            if (colorLayer)
+            const GeoLocator* locator = dynamic_cast<const GeoLocator*>( r._layer.getLocator() );
+            if ( locator )
             {
-                GeoLocator* locator = dynamic_cast<GeoLocator*>( colorLayer->getLocator() );
-                if ( locator )
+                r._texCoords = locatorToTexCoordTable.find( locator );
+                if ( !r._texCoords )
                 {
-                    osg::Vec2Array* texCoords = 0L;
-
-                    LocatorToTexCoordMap::iterator n = locatorToTexCoordMap::find( locator );
-                    if ( n == locatorToTexCoordMap.end() )
-                    {
-                        texCoords = new osg::Vec2Array();
-                        texCoords->reserve( numVerticesInSurface );
-                        locatorToTexCoordMap[locator] = texCoords;
-                    }
-                    else
-                    {
-                        texCoords = *n;
-                    }
-
-                    surface->setTexCoordArray( k++, texCoords );
+                    r._texCoords = new osg::Vec2Array();
+                    r._texCoords->reserve( numVerticesInSurface );
+                    r._ownsTexCoords = true;
+                    locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords) );
                 }
+
+                r._locator = locator;
+                if ( locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
+                {
+                    const GeoLocator* geo = dynamic_cast<const GeoLocator*>(locator);
+                    if ( geo )
+                        r._locator = geo->getGeographicFromGeocentric();
+                }
+
+                _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords );
+                //surface->setTexCoordArray( renderLayers.size(), r._texCoords );
+                renderLayers.push_back( r );
+            }
+            else
+            {
+                OE_WARN << LC << "Found a Locator, but it wasn't a GeoLocator." << std::endl;
             }
         }
     }
-#endif
-
-    //            if ( !isCube && locator && locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
-    //            {
-    //                GeoLocator* geo = dynamic_cast<GeoLocator*>(locator);
-    //                if ( geo )
-    //                    locator = geo->getGeographicFromGeocentric();
-    //            }
-
-    //            layerLocators.push_back( locator ? locator : masterTextureLocator.get() );
-    //            osg::Vec2Array* texCoords = new osg::Vec2Array();
-    //            texCoords->reserve( numVerticesInSurface );
-    //            layerTexCoords.push_back( texCoords );
-    //            surface->setTexCoordArray( i, texCoords ); //layerTexCoords.size()-1, texCoords );
-    //        }
-    //        else
-    //        {
-    //            layerLocators.push_back( 0L );
-    //            layerTexCoords.push_back( 0L );
-    //        }
-    //    }
-    //}
 
     // skirt texture coordinates, if applicable:
     osg::Vec2Array* skirtTexCoords = 0L;

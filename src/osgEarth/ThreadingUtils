@@ -31,6 +31,8 @@
 
 namespace osgEarth { namespace Threading
 {   
+    typedef OpenThreads::Mutex Mutex;
+    typedef OpenThreads::ScopedLock<OpenThreads::Mutex> ScopedMutexLock;
 
 #ifdef USE_CUSTOM_READ_WRITE_LOCK
 

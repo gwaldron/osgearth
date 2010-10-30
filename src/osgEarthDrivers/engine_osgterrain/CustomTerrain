@@ -131,8 +131,10 @@ protected:
     TileTable  _tiles;
     TileList   _tilesToShutDown;
     TileQueue  _tilesToRelease;
-    TileQueue  _tilesToAdd;
-    TileVector _tilesToServiceElevation;
+    //TileQueue  _tilesToAdd;
+    //TileVector _tilesToServiceElevation;
+
+    Threading::Mutex _tilesToReleaseMutex;
 
 public:
     void releaseGLObjectsForTiles(osg::State*);

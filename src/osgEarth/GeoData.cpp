@@ -687,19 +687,19 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     }
 
     // need to know this in order to choose the right interpolation algorithm
-    bool isSrcContiguous = src_extent.getSRS()->isContiguous();
+    const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
     ImageAccessor ra(result);
-    double dx = dest_extent.width() / (double)width;
-    double dy = dest_extent.height() / (double)height;
+    const double dx = dest_extent.width() / (double)width;
+    const double dy = dest_extent.height() / (double)height;
 
     // offset the sample points by 1/2 a pixel so we are sampling "pixel center".
     // (This is especially useful in the UnifiedCubeProfile since it nullifes the chances for
     // edge ambiguity.)
-    double xoff = 0.5 * dx;
-    double yoff = 0.5 * dy;
+    const double dest_x_base = dest_extent.xMin() + 0.5 * dx;
+    const double dest_y_base = dest_extent.yMin() + 0.5 * dy;
 
     unsigned int numPixels = width * height;
 
@@ -709,12 +709,14 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     double *srcPointsY = srcPointsX + numPixels;
 
     unsigned int pixel = 0;
-    for (unsigned int c = 0; c < width; ++c)
+    double fc = 0.0;
+    for (unsigned int c = 0; c < width; ++c, ++fc)
     {
-        double dest_x = dest_extent.xMin() + xoff + (double)c * dx;
-        for (unsigned int r = 0; r < height; ++r)
+        double dest_x = dest_x_base + fc * dx;
+        double fr = 0.0;
+        for (unsigned int r = 0; r < height; ++r, ++fr)
         {
-            double dest_y = dest_extent.yMin() + yoff + (double)r * dy;
+            double dest_y = dest_y_base + fr * dy;
 
             srcPointsX[pixel] = dest_x;
             srcPointsY[pixel] = dest_y;

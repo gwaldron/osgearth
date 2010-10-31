@@ -184,18 +184,27 @@ bool faceCoordsToLatLon(double x, double y, int face,
                         double& out_lat_deg, double& out_lon_deg)
 {
     double lat, lon;
+    const double l = x * osg::PI_4;
+    const double ty = tan(y * osg::PI_4);
     if (face < 4)
     {
-        const double l = x * osg::PI_4;
         lon = face * osg::PI_2 + l;
         lon = fmod(lon + osg::PI, 2.0 * osg::PI) - osg::PI;
-        lat = atan(cos(l) * tan(y * osg::PI_4));
+        lat = atan(cos(l) * ty);
     }
     else
     {
-        Vec3d geo = face2dc(face, Vec2d(x, y));
-        lon = atan2(geo.y(),geo.x());
-        lat = atan2(geo.z(), sqrt(geo.x() * geo.x() + geo.y() * geo.y()));
+        const double tx = tan(x * osg::PI_4);
+        lat = osg::PI_2 - atan(sqrt(tx * tx + ty * ty));
+        if (face == 5)
+        {
+            lon = atan2(tx, ty);
+            lat = -lat;
+        }
+        else
+        {
+            lon = atan2(tx, -ty);
+        }
     }
     out_lon_deg = RadiansToDegrees(lon);
     out_lat_deg = RadiansToDegrees(lat);

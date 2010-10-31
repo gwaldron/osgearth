@@ -248,21 +248,6 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             {
                 family[Relative::PARENT].imageLODs[i->first] = i->second.getLevelOfDetail();
             }
-
-            //family[Relative::PARENT].elevLOD = parent->getElevationLOD();
-            //for (unsigned int i = 0; i < parent->getNumColorLayers(); ++i)
-            //{
-            //    CustomColorLayer parentColorLayer;
-            //    if ( parent->getCustomColorLayer( i, parentColorLayer ) )
-            //    {
-            //        family[Relative::PARENT].imageLODs[parentColorLayer->getUID()] = parentColorLayer->getLevelOfDetail();
-            //    }
-            //    const CustomColorLayer* layer = dynamic_cast<const CustomColorLayer*>(parent->getCustomColorLayer(i));
-            //    if (layer)
-            //    {
-            //        family[Relative::PARENT].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-            //    }
-            //}
         }
     }
 
@@ -285,14 +270,6 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             {
                 family[Relative::WEST].imageLODs[i->first] = i->second.getLevelOfDetail();
             }
-            //for (unsigned int i = 0; i < west->getNumColorLayers(); ++i)
-            //{
-            //    CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(west->getCustomColorLayer(i));
-            //    if (layer)
-            //    {
-            //        family[Relative::WEST].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-            //    }
-            //}
         }
     }
 
@@ -315,14 +292,6 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             {
                 family[Relative::NORTH].imageLODs[i->first] = i->second.getLevelOfDetail();
             }
-            //for (unsigned int i = 0; i < north->getNumColorLayers(); ++i)
-            //{
-            //    CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(north->getCustomColorLayer(i));
-            //    if (layer)
-            //    {
-            //        family[Relative::NORTH].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-            //    }
-            //}
         }
     }
 
@@ -345,14 +314,6 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             {
                 family[Relative::EAST].imageLODs[i->first] = i->second.getLevelOfDetail();
             }
-            //for (unsigned int i = 0; i < east->getNumColorLayers(); ++i)
-            //{
-            //    CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(east->getCustomColorLayer(i));
-            //    if (layer)
-            //    {
-            //        family[Relative::EAST].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-            //    }
-            //}
         }
     }
 
@@ -375,153 +336,9 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
             {
                 family[Relative::SOUTH].imageLODs[i->first] = i->second.getLevelOfDetail();
             }
-            //for (unsigned int i = 0; i < south->getNumColorLayers(); ++i)
-            //{
-            //    CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(south->getCustomColorLayer(i));
-            //    if (layer)
-            //    {
-            //        family[Relative::SOUTH].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-            //    }
-            //}
         }
     }
 }
-
-#if 0
-// This method is called by CustomTerrain::traverse() in the UPDATE TRAVERSAL.
-void
-CustomTerrain::refreshFamily(const MapInfo& mapInfo,
-                             //const osgTerrain::TileID& tileId,
-                             const TileKey& key,
-                             Relative* family,
-                             bool tileTableLocked )
-{
-    // geocentric maps wrap around in the X dimension.
-    bool wrapX = mapInfo.isGeocentric();
-    unsigned int tileCountX, tileCountY;
-    //int tileLevel = key.getLevelOfDetail();
-    //mapInfo.getProfile()->getNumTiles( tileId.level, tilesX, tilesY );
-    mapInfo.getProfile()->getNumTiles( key.getLevelOfDetail(), tileCountX, tileCountY );
-
-    // Relative::PARENT
-    {
-        family[Relative::PARENT].expected = true; // TODO: is this always correct?
-        family[Relative::PARENT].elevLOD = -1;
-        family[Relative::PARENT].imageLODs.clear();
-        family[Relative::PARENT].key = key.createParentKey(); //.tileID = osgTerrain::TileID( level-1, x/2, y/2 ); //tileId.level-1, tileId.x/2, tileId.y/2 );
-
-        osg::ref_ptr<CustomTile> parent;
-        getCustomTile( family[Relative::PARENT].key, parent, !tileTableLocked );
-        if ( parent.valid() ) {
-            family[Relative::PARENT].elevLOD = parent->getElevationLOD();
-            for (unsigned int i = 0; i < parent->getNumColorLayers(); ++i)
-            {
-                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(parent->getCustomColorLayer(i));
-                if (layer)
-                {
-                    family[Relative::PARENT].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-                }
-            }
-        }
-    }
-
-    // Relative::WEST
-    {
-        family[Relative::WEST].expected = key.getTileX() > 0 || wrapX;
-        family[Relative::WEST].elevLOD = -1;
-        family[Relative::WEST].imageLODs.clear();
-        //family[Relative::WEST].imageryLOD = -1;
-        //family[Relative::WEST].tileID = osgTerrain::TileID( tileId.level, tileId.x > 0? tileId.x-1 : tileNumX-1, tileId.y );
-        family[Relative::WEST].key = key.createNeighborKey( TileKey::WEST ); // = osgTerrain::TileID( tileId.level, tileId.x > 0? tileId.x-1 : tileNumX-1, tileId.y );
-        osg::ref_ptr<CustomTile> west;
-        getCustomTile( family[Relative::WEST].key, west, !tileTableLocked );
-        if ( west.valid() ) {
-            family[Relative::WEST].elevLOD = west->getElevationLOD();
-            //family[Relative::WEST].imageryLOD = Relative::WEST->getImageryLOD();
-            for (unsigned int i = 0; i < west->getNumColorLayers(); ++i)
-            {
-                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(west->getCustomColorLayer(i));
-                if (layer)
-                {
-                    family[Relative::WEST].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-                }
-            }
-        }
-    }
-
-    // Relative::NORTH
-    {
-        family[Relative::NORTH].expected = key.getTileY() < tileCountY-1;
-        family[Relative::NORTH].elevLOD = -1;
-        //family[Relative::NORTH].imageryLOD = -1;
-        family[Relative::NORTH].imageLODs.clear();
-        family[Relative::NORTH].key = key.createNeighborKey( TileKey::NORTH ); // TileKey( tileLevel, tileX, tileY osgTerrain::TileID( tileId.level, tileId.x, tileId.y < tileNumY-1 ? tileId.y+1 : 0 );
-        //family[Relative::NORTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y < tileNumY-1 ? tileId.y+1 : 0 );
-        osg::ref_ptr<CustomTile> north;
-        getCustomTile( family[Relative::NORTH].key, north, !tileTableLocked );
-        if ( north.valid() ) {
-            family[Relative::NORTH].elevLOD = north->getElevationLOD();
-            //family[Relative::NORTH].imageryLOD = Relative::NORTH->getImageryLOD();
-            for (unsigned int i = 0; i < north->getNumColorLayers(); ++i)
-            {
-                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(north->getCustomColorLayer(i));
-                if (layer)
-                {
-                    family[Relative::NORTH].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-                }
-            }
-        }
-    }
-
-    // Relative::EAST
-    {
-        family[Relative::EAST].expected = key.getTileX() < tileCountX-1 || wrapX; // tileId.x < tilesX-1 || wrapX;
-        family[Relative::EAST].elevLOD = -1;
-        //family[Relative::EAST].imageryLOD = -1;
-        family[Relative::EAST].imageLODs.clear();
-        family[Relative::EAST].key = key.createNeighborKey( TileKey::EAST ); //osgTerrain::TileID( tileId.level, tileId.x < tileNumX-1 ? tileId.x+1 : 0, tileId.y );
-        //family[Relative::EAST].tileID = osgTerrain::TileID( tileId.level, tileId.x < tileNumX-1 ? tileId.x+1 : 0, tileId.y );
-        osg::ref_ptr<CustomTile> east;
-        getCustomTile( family[Relative::EAST].key, east, !tileTableLocked );
-        if ( east.valid() ) {
-            family[Relative::EAST].elevLOD = east->getElevationLOD();
-            //family[Relative::EAST].imageryLOD = Relative::EAST->getImageryLOD();
-            for (unsigned int i = 0; i < east->getNumColorLayers(); ++i)
-            {
-                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(east->getCustomColorLayer(i));
-                if (layer)
-                {
-                    family[Relative::EAST].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-                }
-            }
-        }
-    }
-
-    // Relative::SOUTH
-    {
-        family[Relative::SOUTH].expected = key.getTileY() > 0; //tileId.y > 0;
-        family[Relative::SOUTH].elevLOD = -1;
-        //family[Relative::SOUTH].imageryLOD = -1;
-        family[Relative::SOUTH].imageLODs.clear();
-        family[Relative::SOUTH].key = key.createNeighborKey( TileKey::SOUTH ); // = osgTerrain::TileID( tileId.level, tileId.x, tileId.y > 0 ? tileId.y-1 : tileNumY-1 );
-        //family[Relative::SOUTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y > 0 ? tileId.y-1 : tileNumY-1 );
-        osg::ref_ptr<CustomTile> south;
-        getCustomTile( family[Relative::SOUTH].key, south, !tileTableLocked );
-        if ( south.valid() ) {
-            family[Relative::SOUTH].elevLOD = south->getElevationLOD();
-            //family[Relative::SOUTH].imageryLOD = south->getImageryLOD();
-            for (unsigned int i = 0; i < south->getNumColorLayers(); ++i)
-            {
-                CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(south->getCustomColorLayer(i));
-                if (layer)
-                {
-                    family[Relative::SOUTH].imageLODs[layer->getUID()] = layer->getLevelOfDetail();
-                }
-            }
-        }
-    }
-}
-#endif
 
 OSGTileFactory*
 CustomTerrain::getTileFactory() {
@@ -539,12 +356,8 @@ CustomTerrain::addTerrainCallback( TerrainCallback* cb )
 void
 CustomTerrain::registerTile( CustomTile* newTile )
 {
-    Threading::ScopedWriteLock lock( _tilesMutex );
-    //Register the new tile immediately, but also add it to the queue so that
-    //_tiles[ newTile->getKey() ] = newTile;
+    Threading::ScopedWriteLock exclusiveTileTableLock( _tilesMutex );
     _tiles[ newTile->getTileID() ] = newTile;
-    //_tilesToAdd.push( newTile );
-    //OE_NOTICE << "Registered " << newTile->getKey()->str() << " Count=" << _tiles.size() << std::endl;
 }
 
 unsigned int
@@ -724,184 +537,6 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
 
     osgTerrain::Terrain::traverse( nv );
 }
-
-#if 0
-void
-CustomTerrain::traverse( osg::NodeVisitor &nv )
-{
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-        // if the terrain engine requested "quick release", install the quick release
-        // draw callback now.
-        if ( _quickReleaseGLObjects && !_quickReleaseCallbackInstalled )
-        {
-            osg::Camera* cam = findFirstParentOfType<osg::Camera>( this );
-            if ( cam )
-            {
-                cam->setPostDrawCallback( new QuickReleaseGLCallback( this, cam->getPostDrawCallback() ) );
-                _quickReleaseCallbackInstalled = true;
-            }
-        }
-
-        // this stamp keeps track of when requests are dispatched. If a request's stamp gets too
-        // old, it is considered "expired" and subject to cancelation
-        int stamp = nv.getFrameStamp()->getFrameNumber();
-
-
-        TerrainTileList updatedTiles;
-
-        // update the internal Tile table.
-        // TODO: update the use of locks here.
-
-        TileList tilesToShutDown;
-        {
-            Threading::ScopedWriteLock lock( _tilesMutex );
-
-            int oldSize = _tiles.size();
-
-            for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); )
-            {
-                if ( i->second.valid() && i->second->referenceCount() == 1 && i->second->getHasBeenTraversed() )
-                {
-                    //OE_NOTICE << "Tile (" << i->second->getKey()->str() << ") expired..." << std::endl;
-
-                    _tilesToShutDown.push_back( i->second.get() );
-                    TileTable::iterator j = i;
-                    ++i;
-                    _tiles.erase( j );
-                }
-                else
-                {
-                    ++i;
-                }
-            }
-            
-            //OE_NOTICE << "Shutting down " << _tilesToShutDown.size() << " tiles." << std::endl;
-
-            for( TileList::iterator i = _tilesToShutDown.begin(); i != _tilesToShutDown.end(); )
-            {
-                if ( i->get()->cancelRequests() )
-                {
-                    // if quick release is activated, queue up the tile for release.
-                    if ( _quickReleaseGLObjects && _quickReleaseCallbackInstalled )
-                    {
-                        _tilesToRelease.push( i->get() );
-                    }
-
-                    i = _tilesToShutDown.erase( i );
-                }
-                else
-                    ++i;
-            }
-
-            // Add any newly registered tiles to the table. If a tile is in the _tilesToAdd
-            // queue, we know it is already in the scene graph.
-            while( _tilesToAdd.size() > 0 )
-            {
-                //_tiles[ _tilesToAdd.front()->getTileID() ] = _tilesToAdd.front().get();
-                if ( _terrainCallbacks.size() > 0 )
-                    updatedTiles.push_back( _tilesToAdd.front().get() );
-                _tilesToAdd.pop();
-            }
-
-            //if ( _tiles.size() != oldSize )
-            //{
-            //    OE_NOTICE << "Tiles registered = " << _tiles.size() << std::endl;
-            //}
-        }
-
-        // update the frame stamp on the task services. This is necessary to support 
-        // automatic request cancelation for image requests.
-        {
-            ScopedLock<Mutex> lock( _taskServiceMutex );
-            for (TaskServiceMap::iterator i = _taskServices.begin(); i != _taskServices.end(); ++i)
-            {
-                i->second->setStamp( stamp );
-            }
-        }
-
-        // should probably find a way to not hold this mutex during the loop.. oh well
-        {
-            Threading::ScopedReadLock lock( _tilesMutex );
-
-            for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
-            {
-                if ( i->second.valid() )
-                {
-                    refreshFamily( _update_mapf.getMapInfo(), i->first, i->second->getFamily(), true );
-
-                    if ( i->second->getUseLayerRequests() )
-                    {                        
-                        i->second->servicePendingElevationRequests( _update_mapf, stamp, true );
-
-                        //if ( _updatedTiles.size() < 1 && stamp % 10 == 0 )
-                        {
-                            bool tileModified = i->second->serviceCompletedRequests( _update_mapf, true );
-                            if ( tileModified && _terrainCallbacks.size() > 0 )
-                            {
-                                updatedTiles.push_back( i->second.get() );
-                            }
-                        }
-                    }
-                }
-            }
-
-            // notify listeners of tile modifications.
-            if ( updatedTiles.size() > 0 )
-            {
-                for( TerrainCallbackList::iterator n = _terrainCallbacks.begin(); n != _terrainCallbacks.end(); ++n )
-                {
-                    n->get()->onTerrainTilesUpdated( updatedTiles );
-                }
-            }
-        }
-    }
-
-    else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-        // check each terrain tile for requests (if not in standard mode)
-        if ( _loadingPolicy.mode() != LoadingPolicy::MODE_STANDARD )
-        {
-            int frameStamp = nv.getFrameStamp()->getFrameNumber();
-
-            CustomTileVector tiles;
-            getCustomTiles( tiles );
-
-            for( CustomTileVector::iterator i = tiles.begin(); i != tiles.end(); ++i )
-            {
-                CustomTile* tile = i->get();
-                tile->servicePendingImageRequests( _cull_mapf, frameStamp );
-            }
-        }
-    } 
-    
-    else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
-    {
-        // in OSG's "ON_DEMAND" frame scheme, OSG runs the event visitor as part of the
-        // test to see if a frame is needed. In sequential/preemptive mode, we need to 
-        // check whether there are any pending tasks running. 
-
-        // In addition, once the tasks run out, we continue to delay on-demand rendering
-        // for another full frame so that the event dispatchers can catch up.
-
-        int numTasks = getNumTasksRemaining();
-
-        if ( numTasks > 0 )
-            _onDemandDelay = 2;
-
-        //OE_INFO << "Tasks = " << numTasks << std::endl;
-
-        if ( _onDemandDelay > 0 )
-        {
-            osgGA::EventVisitor* ev = dynamic_cast<osgGA::EventVisitor*>( &nv );
-            ev->getActionAdapter()->requestRedraw();
-            _onDemandDelay--;
-        }
-    }
-
-    osgTerrain::Terrain::traverse( nv );
-}
-#endif
 
 TaskService*
 CustomTerrain::createTaskService( const std::string& name, int id, int numThreads )

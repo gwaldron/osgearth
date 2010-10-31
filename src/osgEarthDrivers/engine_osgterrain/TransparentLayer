@@ -36,7 +36,7 @@ public:
         const osg::Image* image,
         const osgTerrain::Locator* locator,
         int lod )
-        : _layer(imageLayer), _image(image), _locator(locator), _lod(-1) { }
+        : _layer(imageLayer), _image(image), _locator(locator), _lod(lod) { }
 
     CustomColorLayer( const CustomColorLayer& rhs ) :
         _layer( rhs._layer.get() ),

@@ -933,6 +933,8 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                 // creating placeholders based of parent tiles, one LOD at a time.
                 if ( colorLayer.getLevelOfDetail() + 1 < _key.getLevelOfDetail() )
                 {
+                    // if the parent's image LOD is higher than ours, replace ours with the parent's
+                    // since it is a higher-resolution placeholder:
                     if ( _family[Relative::PARENT].getImageLOD(colorLayer.getUID()) > colorLayer.getLevelOfDetail() )
                     {
                         osg::ref_ptr<CustomTile> parentTile;
@@ -944,16 +946,6 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                         {
                             this->setCustomColorLayer( parentColorLayer );
                         }
-                        //CustomColorLayer parentColorLayer = parentTile->getCustomColorLayer( colorLayer->getUID() );
-                        //this->setCustomColorLayer( parentColorLayer );
-
-                        //osg::ref_ptr<const CustomColorLayer> parentColorLayer =
-                            //static_cast<const CustomColorLayer*>( parentTile->getCustomColorLayer( colorLayer->getUID() ) );
-
-                        // Set the parent color layer as a placeholder...
-                        //if ( parentColorLayer.valid() )
-                            //this->setCustomColorLayer( colorLayer->getUID(), parentTile.get() );
-                            //this->setCustomColorLayer( colorLayer->getUID(), parentColorLayer.get() );
 
                         // ... and queue up an update request.
                         queueTileUpdate( TileUpdate::UPDATE_IMAGE_LAYER, colorLayer.getUID() );
@@ -1005,17 +997,6 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                                 {
                                     this->setCustomColorLayer( result->_layer );
 
-                                //osg::ref_ptr<CustomColorLayer> newImgLayer = static_cast<CustomColorLayer*>( r->getResult() );
-                                //if ( newImgLayer.valid() )
-                                //{
-                                //    //this->setCustomColorLayer( index, newImgLayer.get() );
-                                //    this->setCustomColorLayer(
-                                //        newImgLayer->getMapLayer(),
-                                //        newImgLayer->getImage(),
-                                //        newImgLayer->getLocator(),
-                                //        newImgLayer->getLevelOfDetail() );                                       
-                                //    //this->setCustomColorLayer( r->_layerUID, newImgLayer.get() );
-
                                     queueTileUpdate( TileUpdate::UPDATE_IMAGE_LAYER, r->_layerUID );
 
                                     //OE_NOTICE << "Complete IR (" << _key.str() << ") layer=" << r->_layerId << std::endl;
@@ -1038,17 +1019,6 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                                                 oldLayer.getLocator(),
                                                 _key.getLevelOfDetail() ) );
 
-#if 0
-                                            CustomColorLayer* newLayer = new CustomColorLayer(oldLayer->getImage(), oldLayer->getMapLayer());
-                                            newLayer->setLocator( oldLayer->getLocator() );
-                                            newLayer->setName( oldLayer->getName() );
-                                            newLayer->setLevelOfDetail(_key.getLevelOfDetail());
-
-                                            //this->setCustomColorLayer( index, newLayer );
-                                            this->setCustomColorLayer( r->_layerUID, newLayer );
-#endif
-
-                                            //static_cast<osgEarth::CustomColorLayer*>(this->getCustomColorLayer(index))->setLevelOfDetail( _key.getLevelOfDetail());										
                                             itr = _requests.erase( itr );
                                             increment = false;
                                             OE_DEBUG << "Tried (" << _key.str() << ") (layer uid=" << r->_layerUID << "), too many times, moving on...." << std::endl;

@@ -129,12 +129,12 @@ TextureLayout::applyMapModelChange( const MapModelChange& change )
         }
     }
 
-    OE_INFO << LC << "Layout Slots: " << std::endl;
-    for( int i=0; i<_slots.size(); ++i )
-        OE_INFO << LC << "  Slot " << i << ": uid=" << _slots[i] << ", order=" << getOrder(_slots[i]) << std::endl;
-    OE_INFO << LC << "Layout Order: " << std::endl;
-    for( int i=0; i<_order.size(); ++i )
-        OE_INFO << LC << "  Ordr " << i << ": slot=" << _order[i] << std::endl;
+    //OE_INFO << LC << "Layout Slots: " << std::endl;
+    //for( int i=0; i<_slots.size(); ++i )
+    //    OE_INFO << LC << "  Slot " << i << ": uid=" << _slots[i] << ", order=" << getOrder(_slots[i]) << std::endl;
+    //OE_INFO << LC << "Layout Order: " << std::endl;
+    //for( int i=0; i<_order.size(); ++i )
+    //    OE_INFO << LC << "  Ordr " << i << ": slot=" << _order[i] << std::endl;
 }
 
 //---------------------------------------------------------------------------

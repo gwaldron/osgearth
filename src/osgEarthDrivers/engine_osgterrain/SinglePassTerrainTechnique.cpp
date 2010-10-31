@@ -688,28 +688,6 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                             }
                         }
                     }
-
-#if 0
-                    // the separate texture space requires separate transformed texcoords for each layer.
-                    for( int layerNum = 0; layerNum < numColorLayers; ++layerNum )
-                    {
-                        osg::Vec2Array* texCoords = layerTexCoords[layerNum].get();
-                        if ( texCoords )
-                        {
-                            osgTerrain::Locator* layerLocator = layerLocators[layerNum].get();
-                            if ( layerLocator != _masterLocator.get() )
-                            {
-                                osg::Vec3d color_ndc;
-                                osgTerrain::Locator::convertLocalCoordBetween( *masterTextureLocator.get(), ndc, *layerLocator, color_ndc );
-                                texCoords->push_back( osg::Vec2(color_ndc.x(), color_ndc.y()) );
-                            }
-                            else
-                            {
-                                texCoords->push_back( osg::Vec2(ndc.x(), ndc.y()) );
-                            }
-                        }
-                    }
-#endif
                 }
 
                 if (elevations.valid())

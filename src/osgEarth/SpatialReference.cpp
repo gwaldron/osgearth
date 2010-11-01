@@ -850,6 +850,35 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
     return false;
 }
 
+bool SpatialReference::transformExtentPoints(
+            const SpatialReference* to_srs,
+            double in_xmin, double in_ymin,
+            double in_xmax, double in_ymax,
+            double* x, double *y,
+            unsigned int numx, unsigned int numy,
+            void* context, bool ignore_errors ) const
+{
+    const double dx = (in_xmax - in_xmin) / (numx - 1);
+    const double dy = (in_ymax - in_ymin) / (numy - 1);
+
+    unsigned int pixel = 0;
+    double fc = 0.0;
+    for (unsigned int c = 0; c < numx; ++c, ++fc)
+    {
+        const double dest_x = in_xmin + fc * dx;
+        double fr = 0.0;
+        for (unsigned int r = 0; r < numy; ++r, ++fr)
+        {
+            const double dest_y = in_ymin + fr * dy;
+
+            x[pixel] = dest_x;
+            y[pixel] = dest_y;
+            pixel++;     
+        }
+    }
+    return transformPoints(to_srs, x, y, numx * numy, context, ignore_errors);
+}
+
 void
 SpatialReference::init()
 {

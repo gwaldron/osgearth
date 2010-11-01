@@ -99,6 +99,14 @@ namespace osgEarth
             double& in_out_xmax, double& in_out_ymax,
             void* context =0L ) const;
 
+        virtual bool transformExtentPoints(
+            const SpatialReference* to_srs,
+            double in_xmin, double in_ymin,
+            double in_xmax, double in_ymax,
+            double* x, double *y,
+            unsigned int numx, unsigned int numy,
+            void* context = 0L, bool ignore_errors = false ) const;
+        
         /** True is this is a geographic SRS (i.e. unprojected lat/long) */
         virtual bool isGeographic() const;
 

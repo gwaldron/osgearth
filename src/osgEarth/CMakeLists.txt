@@ -56,6 +56,7 @@ SET(LIB_PUBLIC_HEADERS
     Revisioning
     ShaderComposition
     ShaderUtils
+    SparseTexture2DArray
     SpatialReference
     StringUtils
     TaskService
@@ -118,6 +119,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Registry.cpp
     ShaderComposition.cpp
     ShaderUtils.cpp
+    SparseTexture2DArray.cpp
     SpatialReference.cpp
     TaskService.cpp
     TerrainLayer.cpp

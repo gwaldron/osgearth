@@ -114,13 +114,6 @@ namespace osgEarth
         void applyMapModelChange( const MapModelChange& change );
 
         /**
-         * Creates a stateset that contains all the texture attributes necessary to 
-         * composite the list of layer images such that they result in the specified
-         * output extent.
-         */
-        //osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const;
-
-        /**
          * Returns true if the compositor implementation supports the ability to update an individual
          * image layer (via prepareLayerUpdate and applyLayerUpdate).
          */
@@ -180,8 +173,12 @@ namespace osgEarth
          * Call this whenever the composition of the image layer stack changes in order to update
          * applicable global uniforms, texture attributes, and so forth.
          */
-        void updateMasterStateSet(
-            osg::StateSet* stateSet ) const; //int numImageLayers ) const;
+        void updateMasterStateSet( osg::StateSet* stateSet ) const;
+
+        /**
+         * Gets the rendering order of the layer with the specified UID.
+         */
+        int getRenderOrder( UID layerUID ) const;
 
     private:
         void init();

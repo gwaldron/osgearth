@@ -223,9 +223,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
     {
-        _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique() );
-        // not going to use it:
-        _texCompositor = 0L;
+        _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
         OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
     }
 
@@ -238,16 +236,16 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
             tech->setOptimizeTriangleOrientation( false );
 
         _terrain->setTerrainTechniquePrototype( tech );
-
-        // prime the texture compositor with any existing layers:
-        for( int i=0; i<_update_mapf->imageLayers().size(); ++i )
-        {
-            _texCompositor->applyMapModelChange( MapModelChange(
-                MapModelChange::ADD_IMAGE_LAYER,
-                _update_mapf->getRevision(),
-                _update_mapf->imageLayerAt(i),
-                i ) );
-        }
+    }
+    
+    // prime the texture compositor with any existing layers:
+    for( int i=0; i<_update_mapf->imageLayers().size(); ++i )
+    {
+        _texCompositor->applyMapModelChange( MapModelChange(
+            MapModelChange::ADD_IMAGE_LAYER,
+            _update_mapf->getRevision(),
+            _update_mapf->imageLayerAt(i),
+            i ) );
     }
 
     // install the shader program, if applicable:

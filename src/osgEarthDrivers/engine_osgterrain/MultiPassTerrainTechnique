@@ -20,6 +20,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_MULTIPASS_TERRAIN_TECHNIQUE 1
 
 #include "CustomTerrainTechnique"
+#include "TransparentLayer"
 
 #include <osg/MatrixTransform>
 #include <osg/Geode>
@@ -29,13 +30,14 @@
 #include <osgTerrain/TerrainTechnique>
 #include <osgTerrain/Locator>
 
-#include <osgEarth/Export>
+#include <osgEarth/TextureCompositor>
+
 
 class MultiPassTerrainTechnique : public osgTerrain::TerrainTechnique
 {
 public:
 
-    MultiPassTerrainTechnique();
+    MultiPassTerrainTechnique( TextureCompositor* texCompositor =0L );
 
     /** Copy constructor using CopyOp to manage deep vs shallow copy.*/
     MultiPassTerrainTechnique(const MultiPassTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
@@ -55,7 +57,7 @@ public:
 
 	virtual osg::Geometry* createGeometryPrototype(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel);
 
-	osg::Geode* createPass(unsigned int layerNum, osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry); 
+	osg::Geode* createPass(unsigned int order, const CustomColorLayer* layer, osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry); 
 
     virtual void update(osgUtil::UpdateVisitor* nv);
 
@@ -112,6 +114,8 @@ private:
     osg::ref_ptr<osg::Uniform>          _filterMatrixUniform;
 
     bool _terrainTileInitialized;
+
+    osg::ref_ptr<TextureCompositor> _texCompositor;
 };
 
 #endif //OSGEARTH_ENGINE_OSGTERRAIN_MULTIPASS_TERRAIN_TECHNIQUE

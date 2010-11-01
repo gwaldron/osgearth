@@ -181,13 +181,13 @@ TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent&
 bool
 TextureCompositor::supportsLayerUpdate() const
 {
-    return _impl ? _impl->supportsLayerUpdate() : false;
+    return _impl.valid() ? _impl->supportsLayerUpdate() : false;
 }
 
 GeoImage
 TextureCompositor::prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const
 {
-    return _impl ? _impl->prepareImage( image, tileExtent ) : GeoImage::INVALID;
+    return _impl.valid() ? _impl->prepareImage( image, tileExtent ) : GeoImage::INVALID;
 }
 
 void
@@ -196,7 +196,7 @@ TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
                                     const GeoImage& preparedImage,
                                     const GeoExtent& tileExtent ) const
 {
-    if ( _impl )
+    if ( _impl.valid() )
     {
         Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
         _impl->applyLayerUpdate( stateSet, layerUID, preparedImage, tileExtent, _layout );
@@ -207,27 +207,30 @@ void
 TextureCompositor::applyLayerRemoval(osg::StateSet* stateSet,
                                      UID layerUID ) const
 {
-    if ( _impl )
+    if ( _impl.valid() )
         _impl->applyLayerRemoval( stateSet, layerUID );
 }
 
 bool
 TextureCompositor::requiresUnitTextureSpace() const
 {
-    return _impl->requiresUnitTextureSpace();
+    return _impl.valid() ? _impl->requiresUnitTextureSpace() : false;
 }
 
 bool
 TextureCompositor::usesShaderComposition() const
 {
-    return _impl->usesShaderComposition();
+    return _impl.valid() ? _impl->usesShaderComposition() : false;
 }
 
 void
 TextureCompositor::updateMasterStateSet( osg::StateSet* stateSet ) const
 {
-    Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
-    _impl->updateMasterStateSet( stateSet, _layout );
+    if ( _impl.valid() )
+    {
+        Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
+        _impl->updateMasterStateSet( stateSet, _layout );
+    }
 }
 
 void
@@ -237,14 +240,28 @@ TextureCompositor::assignTexCoordArray(osg::Geometry* geom,
 {
     if ( geom && texCoords )
     {
-        int slot;
-        {            
-            Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
-            slot = _layout.getSlot( layerUID );
+        if ( _tech == TerrainOptions::COMPOSITING_MULTIPASS )
+        {
+            geom->setTexCoordArray( 0, texCoords );
         }
-        if ( slot >= 0 )
-            geom->setTexCoordArray( slot, texCoords );
+        else
+        {
+            int slot;
+            {            
+                Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
+                slot = _layout.getSlot( layerUID );
+            }
+            if ( slot >= 0 )
+                geom->setTexCoordArray( slot, texCoords );
+        }
     }
+}
+
+int
+TextureCompositor::getRenderOrder( UID layerUID ) const
+{
+    Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
+    return _layout.getOrder( layerUID );
 }
 
 void

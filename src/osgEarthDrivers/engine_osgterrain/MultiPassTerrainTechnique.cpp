@@ -38,8 +38,36 @@ using namespace osgEarth;
 
 #define NEW_COORD_CODE
 
-MultiPassTerrainTechnique::MultiPassTerrainTechnique() :
+//-------------------------------------------------------------------------
+
+namespace
+{
+    // userdata structure so we can look up passes by layer-UID in the graph.
+    struct LayerData : public osg::Referenced
+    {
+        LayerData( UID layerUID ) : _layerUID(layerUID) { }
+        UID _layerUID;
+    };
+
+    static osg::Geode*
+    s_findGeodeByUID( osg::Group* group, UID layerUID )
+    {
+        for( int i=0; i<group->getNumChildren(); ++i )
+        {
+            osg::Geode* geode = static_cast<osg::Geode*>( group->getChild(i) );
+            LayerData* d = static_cast<LayerData*>( geode->getUserData() );
+            if ( d && d->_layerUID == layerUID )
+                return geode;
+        }
+        return 0L;
+    }
+}
+
+//-------------------------------------------------------------------------
+
+MultiPassTerrainTechnique::MultiPassTerrainTechnique( TextureCompositor* texCompositor ) :
 osgTerrain::TerrainTechnique(),
+_texCompositor( texCompositor ),
 _terrainTileInitialized(false)
 {
     this->setThreadSafeRefUnref( true );
@@ -55,6 +83,7 @@ TerrainTechnique(mt,copyop)
     setFilterWidth(mt._filterWidth);
     setFilterMatrix(mt._filterMatrix);
     _terrainTileInitialized = mt._terrainTileInitialized;
+    _texCompositor = mt._texCompositor.get();
 }
 
 MultiPassTerrainTechnique::~MultiPassTerrainTechnique()
@@ -565,11 +594,15 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Lo
 	return geometry;
 }
 
-osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry)
+osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
+                                                  const CustomColorLayer* colorLayer,
+                                                  osgTerrain::Locator* masterLocator,
+                                                  const osg::Vec3d& centerModel,
+                                                  osg::Geometry* geometry)
 {
-	OE_DEBUG << "osgEarth::MultiPassTerrainTechnique createPass " << layerNum << std::endl;
+	OE_DEBUG << "osgEarth::MultiPassTerrainTechnique createPass " << order << std::endl;
     unsigned int binNumber = 1000;
-    binNumber += layerNum;
+    binNumber += order;
    
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
 
@@ -631,32 +664,44 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, osgTerr
     //float minHeight = 0.0;
     float scaleHeight = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() : 1.0f;
 
-    osgTerrain::Locator* colorLocator = NULL;
     osg::ref_ptr<osg::Vec2Array> texCoords;
 
-    osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(layerNum);
+    const osgTerrain::Locator* locator = colorLayer ? colorLayer->getLocator() : 0L;
+    if ( locator )
+    {
+        texCoords = new osg::Vec2Array;
+        texCoords->reserve(numVertices);
+        _texCompositor->assignTexCoordArray( geometry, colorLayer->getUID(), texCoords.get() );
+    }
+
+    const osgTerrain::Locator* colorLocator = locator ? locator : masterLocator;
+
+#if 0
+    //osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(layerNum);
     if (colorLayer)
     {
-            osgTerrain::Locator* locator = colorLayer->getLocator();
-            if (!locator)
-            {            
-                osgTerrain::SwitchLayer* switchLayer = dynamic_cast<osgTerrain::SwitchLayer*>(colorLayer);
-                if (switchLayer)
-                {
-                    if (switchLayer->getActiveLayer()>=0 &&
-                        static_cast<unsigned int>(switchLayer->getActiveLayer())<switchLayer->getNumLayers() &&
-                        switchLayer->getLayer(switchLayer->getActiveLayer()))
-                    {
-                        locator = switchLayer->getLayer(switchLayer->getActiveLayer())->getLocator();
-                    }
-                }
-            }            
+            const osgTerrain::Locator* locator = colorLayer->getLocator(); //colorLayer->getLocator();
+            //if (!locator)
+            //{            
+            //    osgTerrain::SwitchLayer* switchLayer = dynamic_cast<osgTerrain::SwitchLayer*>(colorLayer);
+            //    if (switchLayer)
+            //    {
+            //        if (switchLayer->getActiveLayer()>=0 &&
+            //            static_cast<unsigned int>(switchLayer->getActiveLayer())<switchLayer->getNumLayers() &&
+            //            switchLayer->getLayer(switchLayer->getActiveLayer()))
+            //        {
+            //            locator = switchLayer->getLayer(switchLayer->getActiveLayer())->getLocator();
+            //        }
+            //    }
+            //}            
             texCoords = new osg::Vec2Array;
             texCoords->reserve(numVertices);
 
-            colorLocator = locator ? locator : masterLocator;
-            geometry->setTexCoordArray(0, texCoords.get());
+            const osgTerrain::Locator* colorLocator = locator ? locator : masterLocator;
+            _texCompositor->assignTexCoordArray( geometry, colorLayer->getUID(), texCoords.get() );
+            //geometry->setTexCoordArray(0, texCoords.get()); // only one texture unit (multipass)
     }
+#endif
 
     // allocate and assign color
     osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array(1);
@@ -791,23 +836,25 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, osgTerr
 
     if (colorLayer)
     {
-        osg::Image* image = colorLayer->getImage();
+        const osg::Image* image = colorLayer->getImage();
         if (image)
         {
-            osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(colorLayer);
-            osgTerrain::ContourLayer* contourLayer = dynamic_cast<osgTerrain::ContourLayer*>(colorLayer);
-            if (imageLayer)
-            {
+            //osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(colorLayer);
+            //osgTerrain::ContourLayer* contourLayer = dynamic_cast<osgTerrain::ContourLayer*>(colorLayer);
+            //if (imageLayer)
+            //{
                 osg::StateSet* stateset = geode->getOrCreateStateSet();
 
                 osg::Texture2D* texture2D = new osg::Texture2D;
-                texture2D->setImage(image);
+                texture2D->setImage( const_cast<osg::Image*>( image ) );
                 texture2D->setMaxAnisotropy(16.0f);
                 texture2D->setResizeNonPowerOfTwoHint(false);
 
+                texture2D->setFilter(osg::Texture::MIN_FILTER, 
+                    colorLayer->getMapLayer()->getImageLayerOptions().minFilter().value() );
 
-                texture2D->setFilter(osg::Texture::MIN_FILTER, colorLayer->getMinFilter());
-                texture2D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());
+                texture2D->setFilter(osg::Texture::MAG_FILTER, 
+                    colorLayer->getMapLayer()->getImageLayerOptions().magFilter().value() );
 
                 texture2D->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
                 texture2D->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
@@ -822,19 +869,20 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int layerNum, osgTerr
 					OE_DEBUG<<"[osgEarth::MultiPassTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
 					texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
 				}
-            }
-            else if (contourLayer)
-            {
-                osg::StateSet* stateset = geode->getOrCreateStateSet();
-
-                osg::Texture1D* texture1D = new osg::Texture1D;
-                texture1D->setImage(image);
-                texture1D->setResizeNonPowerOfTwoHint(false);
-                texture1D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::NEAREST);
-                texture1D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());            
-                stateset->setTextureAttributeAndModes(0, texture1D, osg::StateAttribute::ON);
-            }
         }
+        //    }
+        //    else if (contourLayer)
+        //    {
+        //        osg::StateSet* stateset = geode->getOrCreateStateSet();
+
+        //        osg::Texture1D* texture1D = new osg::Texture1D;
+        //        texture1D->setImage(image);
+        //        texture1D->setResizeNonPowerOfTwoHint(false);
+        //        texture1D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::NEAREST);
+        //        texture1D->setFilter(osg::Texture::MAG_FILTER, colorLayer->getMagFilter());            
+        //        stateset->setTextureAttributeAndModes(0, texture1D, osg::StateAttribute::ON);
+        //    }
+        //}
     }
 
     //geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
@@ -848,32 +896,47 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
     _passes = new osg::Group;
     if (_transform.valid())
     {
+        _transform->removeChildren( 0, _transform->getNumChildren() );
         _transform->addChild(_passes);
     }
 
+    typedef std::map<int, osg::ref_ptr<osg::Geode> > OrderedGeodes;
+    OrderedGeodes order;
+
 	osg::ref_ptr<osg::Geometry> prototype = createGeometryPrototype( masterLocator, centerModel );
 
-	if (_terrainTile->getNumColorLayers() == 0)
-	{
-		osg::Geode* geode = createPass(0, masterLocator, centerModel, prototype);
+    // take a thread-safe snapshot of the layer stack:
+    CustomTileFrame tilef( static_cast<CustomTile*>( _terrainTile ) );
+
+    if ( tilef._colorLayers.size() == 0 )
+    {
+        // if there's no data, just make a placeholder pass
+		osg::Geode* geode = createPass(0, 0L, masterLocator, centerModel, prototype);
 		_passes->addChild( geode );
 	}
-
-	for (unsigned int layerNum = 0; layerNum < _terrainTile->getNumColorLayers(); ++layerNum)
+    else
     {
-        osgTerrain::Layer* layer = _terrainTile->getColorLayer( layerNum );
-		osg::Geode* geode = 0;
-		if (layer)
-		{
-			osg::ref_ptr<osg::Geometry> passGeom = new osg::Geometry(*prototype.get());
-			geode = createPass(layerNum, masterLocator, centerModel, passGeom.get());
-		}
-		else
-		{
-			geode = new osg::Geode();
-		}
+        int defaultLayerOrder = 0;
 
-		_passes->addChild(geode);
+        // create a pass for each layer, and then add them in the proper order:
+        for( ColorLayersByUID::const_iterator i = tilef._colorLayers.begin(); i != tilef._colorLayers.end(); ++i )
+        {
+            const CustomColorLayer& layer = i->second;
+            osg::Geometry* passGeom = new osg::Geometry( *prototype.get() );
+            int index = _texCompositor->getRenderOrder( layer.getUID() );
+            if ( index < 0 ) // true on first-time initialization
+                index = defaultLayerOrder++;
+            osg::Geode* geode = createPass( index, &layer, masterLocator, centerModel, passGeom );
+            order[index] = geode;
+
+            // record the UID in the geode for lookup later:
+            geode->setUserData( new LayerData( layer.getUID() ) );
+        }            
+
+        for( OrderedGeodes::const_iterator j = order.begin(); j != order.end(); ++j )
+        {
+            _passes->addChild( j->second.get() );
+        }
     }
 
     osg::StateSet* stateset = _transform->getOrCreateStateSet();
@@ -965,18 +1028,12 @@ void MultiPassTerrainTechnique::updateTransparency()
         ColorLayersByUID colorLayers;
         static_cast<CustomTile*>( _terrainTile )->getCustomColorLayers( colorLayers );
 
-        int layerNum = 0;
-        for( ColorLayersByUID::const_iterator i = colorLayers.begin(); i != colorLayers.end(); ++i, ++layerNum )
+        for( ColorLayersByUID::const_iterator i = colorLayers.begin(); i != colorLayers.end(); ++i )
         {
             const CustomColorLayer& colorLayer = i->second;
 
-	//for (unsigned int layerNum = 0; layerNum < _terrainTile->getNumColorLayers(); ++layerNum)
-	//{
-	//	CustomColorLayer* layer = dynamic_cast<CustomColorLayer*>(_terrainTile->getColorLayer( layerNum ));
-	//	if (_passes.valid() && layer)
-	//	{
             float opacity = colorLayer.getMapLayer()->getOpacity();
-			osg::Geode* geode = static_cast<osg::Geode*>(_passes->getChild(layerNum));
+            osg::Geode* geode = s_findGeodeByUID( _passes.get(), colorLayer.getUID() );
 			if (geode)
 			{
 				osg::Geometry* geometry = geode->getDrawable(0)->asGeometry();

@@ -28,6 +28,8 @@
 #include <ogr_api.h>
 #include <ogr_spatialref.h>
 
+#include "AutoBuffer"
+
 #define LC "[seamless::EULER] "
 
 namespace seamless
@@ -689,6 +691,80 @@ EulerSpatialReference::transformExtent(const SpatialReference* to_srs,
     return ok;
 }
 
+// This has been written to minimize the number of transcendental
+// function calls -- as well as other expensive operations -- in the
+// inner loop.
+bool EulerSpatialReference::transformExtentPoints(
+    const SpatialReference* to_srs,
+    double in_xmin, double in_ymin,
+    double in_xmax, double in_ymax,
+    double* x, double *y,
+    unsigned int numx, unsigned int numy,
+    void* context, bool ignore_errors ) const
+{
+    if ( !_initialized )
+        const_cast<EulerSpatialReference*>(this)->init();
+    int face;
+
+    // Punt if the extent covers more than one face (doesn't happen
+    // normally).
+    if (!(to_srs->isEquivalentTo(getGeographicSRS())
+          && cubeToFace(in_xmin, in_ymin, in_xmax, in_ymax, face)))
+        return SpatialReference::transformExtentPoints(
+            to_srs, in_xmin, in_ymin, in_xmax, in_ymax, x, y,
+            numx, numy, context, ignore_errors);
+    const double dx = (in_xmax - in_xmin) / (numx - 1);
+    const double dy = (in_ymax - in_ymin) / (numy - 1);
+    unsigned pixel = 0;
+    // Cache values for and tan(y)
+    AutoBuffer<double, 256> tany(numy);
+    // induction variables for column and row counters
+    double fc = 0.0, fr = 0.0;
+    for (unsigned r = 0; r < numy; ++r, ++fr)
+        tany[r] = tan((in_ymin + fr * dy) * osg::PI_4);
+    if (face < 4)
+    {
+        double lonBase = face * osg::PI_2;
+        for (unsigned c = 0; c < numx; ++c, ++fc)
+        {
+            const double l = (in_xmin + fc * dx) * osg::PI_4;
+            double lon = lonBase + l;
+            lon = fmod(lon + osg::PI, 2.0 * osg::PI) - osg::PI;
+            const double rlon = RadiansToDegrees(lon);
+            const double cosl = cos(l);
+            for (unsigned r = 0; r < numy; ++r)
+            {
+                const double lat = atan(cosl * tany[r]);
+                x[pixel] = rlon;
+                y[pixel] = RadiansToDegrees(lat);
+                pixel++;
+            }
+        }
+    }
+    else
+    {
+        // The pole faces are the same, except for a change of sign in
+        // the latitude and longitude calculations.
+        const double sgn = face == 4 ? -1.0 : 1.0;
+        for (unsigned c = 0; c < numx; ++c, ++fc)
+        {
+            const double l = (in_xmin + fc * dx) * osg::PI_4;
+            const double tx = tan(l);
+            const double tx2 = tx * tx;
+            for (unsigned r = 0; r < numy; ++r)
+            {
+                const double ty = tany[r];
+                const double lon = atan2(tx, sgn * ty);
+                const double lat = (atan(sqrt(tx2 + ty * ty)) - osg::PI_2)
+                    * sgn;
+                x[pixel] = RadiansToDegrees(lon);
+                y[pixel] = RadiansToDegrees(lat);
+                pixel++;
+            }
+        }
+    }
+    return true;
+}
 
 namespace
 {

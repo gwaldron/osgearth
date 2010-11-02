@@ -198,6 +198,14 @@ public:
         double& in_out_ymax,
         void* context) const;
 
+    virtual bool transformExtentPoints(
+        const SpatialReference* to_srs,
+        double in_xmin, double in_ymin,
+        double in_xmax, double in_ymax,
+        double* x, double *y,
+        unsigned int numx, unsigned int numy,
+        void* context = 0L, bool ignore_errors = false ) const;
+
 protected: // SpatialReference overrides
 
     void _init();

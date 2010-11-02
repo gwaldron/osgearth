@@ -19,6 +19,9 @@
 
 // Poor man's multi array adapter.
 
+#ifndef SEAMLESS_MULTIARRAY
+#define SEAMLESS_MULTIARRAY 1
+
 #include <algorithm>
 
 namespace seamless
@@ -196,3 +199,4 @@ public:
 };
 
 }
+#endif

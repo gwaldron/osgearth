@@ -687,47 +687,34 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     }
 
     // need to know this in order to choose the right interpolation algorithm
-    bool isSrcContiguous = src_extent.getSRS()->isContiguous();
+    const bool isSrcContiguous = src_extent.getSRS()->isContiguous();
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
     ImageAccessor ra(result);
-    double dx = dest_extent.width() / (double)width;
-    double dy = dest_extent.height() / (double)height;
+    const double dx = dest_extent.width() / (double)width;
+    const double dy = dest_extent.height() / (double)height;
 
     // offset the sample points by 1/2 a pixel so we are sampling "pixel center".
     // (This is especially useful in the UnifiedCubeProfile since it nullifes the chances for
     // edge ambiguity.)
-    double xoff = 0.5 * dx;
-    double yoff = 0.5 * dy;
 
     unsigned int numPixels = width * height;
 
     // Start by creating a sample grid over the destination
-    // extent. These will be the source coordinates.
+    // extent. These will be the source coordinates. Then, reproject
+    // the sample grid into the source coordinate system.
     double *srcPointsX = new double[numPixels * 2];
     double *srcPointsY = srcPointsX + numPixels;
-
-    unsigned int pixel = 0;
-    for (unsigned int c = 0; c < width; ++c)
-    {
-        double dest_x = dest_extent.xMin() + xoff + (double)c * dx;
-        for (unsigned int r = 0; r < height; ++r)
-        {
-            double dest_y = dest_extent.yMin() + yoff + (double)r * dy;
-
-            srcPointsX[pixel] = dest_x;
-            srcPointsY[pixel] = dest_y;
-            pixel++;            
-        }
-    }
-
-    // Next, reproject the sample grid into the source coordinate system:
-    dest_extent.getSRS()->transformPoints( src_extent.getSRS(), srcPointsX, srcPointsY, numPixels, 0L, true );
+    dest_extent.getSRS()->transformExtentPoints(
+        src_extent.getSRS(),
+        dest_extent.xMin() + .5 * dx, dest_extent.yMin() + .5 * dy,
+        dest_extent.xMax() - .5 * dx, dest_extent.yMax() - .5 * dy,
+        srcPointsX, srcPointsY, width, height, 0, true);
 
     // Next, go through the source-SRS sample grid, read the color at each point from the source image,
     // and write it to the corresponding pixel in the destination image.
-    pixel = 0;
+    int pixel = 0;
     ImageAccessor ia(image);
     double xfac = (image->s() - 1) / src_extent.width();
     double yfac = (image->t() - 1) / src_extent.height();

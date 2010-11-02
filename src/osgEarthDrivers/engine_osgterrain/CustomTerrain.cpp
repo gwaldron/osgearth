@@ -404,7 +404,7 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                 if ( tile->getNumParents() == 0 && tile->getHasBeenTraversed() ) //tile->referenceCount() == 1 && tile->getHasBeenTraversed() )
                 {
                     _tilesToShutDown.push_back( tile );
-                    i = _tiles.erase( i );
+                    _tiles.erase( i++ );
                 }
                 else
                     ++i;

@@ -58,7 +58,6 @@ public:
     
 private:
     osg::ref_ptr<PatchSet> _patchSet;
-    double _verticalScale;
     osgEarth::Drivers::SeamlessOptions _terrainOptions;
     osgEarth::MapFrame* _mapf;
 };

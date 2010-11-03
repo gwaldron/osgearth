@@ -38,7 +38,8 @@ namespace seamless
 class Geographic : public PatchSet
 {
 public:
-    Geographic(osgEarth::Map* map, int resolution = 64);
+    Geographic(osgEarth::Map* map,
+               const osgEarth::Drivers::SeamlessOptions& options);
     Geographic(const Geographic& rhs,
                const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
     META_Object(seamless, PatchSet);

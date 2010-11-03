@@ -133,21 +133,7 @@ _onDemandDelay( 2 )
     if ( _loadingPolicy.mode() != LoadingPolicy::MODE_STANDARD )
     {
         setNumChildrenRequiringUpdateTraversal( 1 );
-        const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
-        if ( env_numTaskServiceThreads )
-        {
-            _numLoadingThreads = ::atoi( env_numTaskServiceThreads );
-        }
-        else
-        if ( _loadingPolicy.numLoadingThreads().isSet() )
-        {
-            _numLoadingThreads = osg::maximum( 1, _loadingPolicy.numLoadingThreads().get() );
-        }
-        else
-        {
-            _numLoadingThreads = (int)osg::maximum( 1.0f, _loadingPolicy.numLoadingThreadsPerCore().get() * (float)GetNumberOfProcessors() );
-        }
-
+        _numLoadingThreads = computeLoadingThreads(_loadingPolicy);
         OE_INFO << LC << "Using a total of " << _numLoadingThreads << " loading threads " << std::endl;
     }
     else

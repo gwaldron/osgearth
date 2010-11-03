@@ -56,13 +56,13 @@ struct SeamlessMapProxy : public MapCallback
 };
 
 SeamlessEngineNode::SeamlessEngineNode()
-    : _verticalScale(1.0), _mapf(0)
+    : _mapf(0)
 {
 }
 
 SeamlessEngineNode::SeamlessEngineNode(const SeamlessEngineNode& rhs,
                        const osg::CopyOp& op)
-    : TerrainEngineNode(rhs, op), _verticalScale(rhs._verticalScale),
+    : TerrainEngineNode(rhs, op),
       _terrainOptions(rhs._terrainOptions), _mapf(0)
 {
     _patchSet = static_cast<PatchSet*>(op(rhs._patchSet.get()));
@@ -79,7 +79,6 @@ void SeamlessEngineNode::initialize(Map* map, const TerrainOptions& options)
     TerrainEngineNode::initialize(map, options);
     _mapf = new MapFrame(map, Map::TERRAIN_LAYERS, "seamless");
     _terrainOptions.merge(options);
-    _verticalScale = _terrainOptions.verticalScale().value();
     if (map->getProfile())
         onMapProfileEstablished(map->getProfile());
     map->addMapCallback(new SeamlessMapProxy(this));
@@ -94,16 +93,15 @@ void SeamlessEngineNode::onMapProfileEstablished(const Profile* mapProfile)
     Map* map = getMap();
     int resolution = _terrainOptions.resolution().value();
     if (map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC)
-        _patchSet = new Geographic(map, resolution);
+        _patchSet = new Geographic(map, _terrainOptions);
     else if (map->getMapOptions().coordSysType()
              == MapOptions::CSTYPE_PROJECTED)
-        _patchSet = new Projected(map, resolution);
+        _patchSet = new Projected(map, _terrainOptions);
     else
     {
         OSG_WARN << "map is not projected\n";
         return;
     }
-    _patchSet->setVerticalScale(_verticalScale);
     addChild(_patchSet
              ->createPatchSetGraph("bar.osgearth_engine_seamless_patch"));
 }

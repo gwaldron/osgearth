@@ -339,7 +339,8 @@ double distanceToSegment(const Vec3d& p,
     // end points is the shortest.
 
     // Normal to plane containing circle.
-    Vec3d norm = geo1 ^ geo2;
+    Vec3d cross12 = geo1 ^ geo2;
+    Vec3d norm = cross12;
     norm.normalize();
     // Project p into plane of circle
     Vec3d q = p - norm * (norm * p);
@@ -356,8 +357,11 @@ double distanceToSegment(const Vec3d& p,
     // Vec3d x = q * r / q.length();
     Vec3d cross1 = geo1 ^ qnorm;
     // if cross products are in different directions, qnorm can't lie
-    // between geo1 and geo2. Otherwise, compare angle cosines.
-    if (norm * cross1 >= 0.0 && qnorm * geo1 > geo2 * geo1)
+    // between geo1 and geo2. Otherwise, compare angle sines.
+    // XXX Obviously this depends on the points being less than or
+    // equal to 90 degrees apart, which is always true on a cube face
+    // edge. 
+    if (norm * cross1 >= 0.0 && cross1.length2() < cross12.length2())
     {
         return (p - qnorm * r).length();
     }

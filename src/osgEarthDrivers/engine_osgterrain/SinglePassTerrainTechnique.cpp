@@ -31,7 +31,12 @@
 #include <osg/Version>
 
 #include <sstream>
+
+#ifdef __APPLE__
+#include <ext/hash_map>
+#else
 #include <hash_map>
+#endif
 
 using namespace osgEarth;
 using namespace OpenThreads;

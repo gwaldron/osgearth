@@ -656,6 +656,36 @@ EulerSpatialReference::transformExtent(const SpatialReference* to_srs,
         numSamples += 2;
 
     }
+    // keep extent longitudes consistent. If the max latitude lies on
+    // the date line, its value should be 180, not -180. The poles are
+    // especially interesting...
+    if (face == 2 && face_xmax == 0.0)
+    {
+        lons[1] = 180.0;
+        lons[3] = 180.0;
+    }
+    else if ((face == 4 && face_ymax > 0.0)
+             || (face == 5 && face_ymax <= 0.0))
+    {
+        if (face_xmin == 0.0)
+        {
+            lons[0] = 180.0;
+            lons[2] = 180.0;
+        }
+        else if (face_xmax == 0.0)
+        {
+            lons[1] = -180.0;
+            lons[3] = -180.0;
+        }
+    }
+    if ((face == 4 || face == 5) && face_ymax == 0.0)
+    {
+        if  (face_xmax == 0.0)
+            lons[3] = -90;
+        else if (face_xmin == 0.0)
+            lons[2] = 90;
+            
+    }
     lonmin = *min_element(&lons[0], &lons[numSamples]);
     latmin = *min_element(&lats[0], &lats[numSamples]);
     lonmax = *max_element(&lons[0], &lons[numSamples]);
@@ -767,6 +797,40 @@ bool EulerSpatialReference::transformExtentPoints(
             }
         }
     }
+    const int numPixels = numx * numy;
+    // Fixups for boundary lieing on date line
+    if (face == 2 && in_xmax == 0.0)
+    {
+        for (int pixel = numx - 1; pixel < numPixels; pixel += numx)
+            x[pixel] = 180;
+    }
+    else if ((face == 4 && in_ymax > 0.0)
+             || (face == 5 && in_ymax <= 0.0))
+    {
+        double val;
+        int startPix = -1;
+        if (in_xmin == 0.0)
+        {
+            val = 180.0;
+            startPix = 0;
+        }
+        else if (in_xmax = 0.0)
+        {
+            val = -180.0;
+            startPix = numx - 1;
+        }
+        if (startPix > 0)
+            for (int pixel = startPix; pixel < numPixels; pixel += numx)
+                x[pixel] = val;
+    }
+    // pole case
+    if ((face == 4 || face == 5) && in_ymax == 0.0)
+    {
+        if (in_xmax == 0.0)
+            x[numPixels - 1] = -90.0;
+        else if (in_xmin == 0.0)
+            x[numx * (numy - 1)] = 90;
+    }
     return true;
 }
 
@@ -823,10 +887,10 @@ int EulerProfile::getFace(const TileKey& key)
     int shiftVal = key.getLevelOfDetail() - 2;
     int faceX = key.getTileX() >> shiftVal;
     int faceY = key.getTileY() >> shiftVal;
-    if (faceY == 0)
-        return 5;
-    else if (faceY == 2)
+    if (faceY == 1)
         return 4;
+    else if (faceY == 3)
+        return 5;
     else
         return faceX;
 }

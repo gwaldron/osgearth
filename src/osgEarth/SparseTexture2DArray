@@ -48,11 +48,11 @@ namespace osgEarth
     protected:
 
 #if OSG_VERSION_LESS_THAN(2,9,7)
-        bool isSafeToUnrefImageData(const State& state) const {
+        bool isSafeToUnrefImageData(const osg::State& state) const {
             return (_unrefImageDataAfterApply && areAllTextureObjectsLoaded());
         }
 #elif OSG_VERSION_LESS_THAN(2,9,10)
-        bool isSafeToUnrefImageData(const State& state) const {
+        bool isSafeToUnrefImageData(const osg::State& state) const {
             return (_unrefImageDataAfterApply && state.getMaxTexturePoolSize()==0 && areAllTextureObjectsLoaded());
         }
 #endif

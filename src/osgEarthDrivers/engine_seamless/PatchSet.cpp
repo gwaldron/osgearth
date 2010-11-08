@@ -31,11 +31,24 @@ namespace seamless
 using namespace osg;
 using namespace osgEarth;
 
-PatchSet::PatchSet(int resolution, PatchOptions* poptionsPrototype)
-    : _resolution(resolution), _maxLevel(16), _verticalScale(1.0f),
-      _patchOptionsPrototype(poptionsPrototype ? poptionsPrototype
-                             : new PatchOptions), _mapf(0)
+PatchSet::PatchSet()
+    : _maxLevel(16), _patchOptionsPrototype(new PatchOptions), _mapf(0),
+      _resolution(128), _verticalScale(1.0f)
 {
+    setPrecisionFactor(4);
+    initPrimitiveSets();
+
+}
+
+PatchSet::PatchSet(const Drivers::SeamlessOptions& options,
+                   PatchOptions* poptionsPrototype)
+    :  _maxLevel(16),
+       _patchOptionsPrototype(poptionsPrototype ? poptionsPrototype
+                              : new PatchOptions),
+       _mapf(0), _options(options)
+{
+    _resolution = options.resolution().value();
+    _verticalScale = options.verticalScale().value();
     setPrecisionFactor(4);
     initPrimitiveSets();
 }

@@ -31,13 +31,16 @@
 
 #include "Patch"
 #include "PatchGroup"
+#include "SeamlessOptions"
 
 namespace seamless
 {
 class PatchSet : public osg::Object
 {
 public:
-    PatchSet(int resolution = 128, PatchOptions* poptionsPrototype = 0);
+    PatchSet();
+    PatchSet(const osgEarth::Drivers::SeamlessOptions& options,
+             PatchOptions* poptionsPrototype = 0);
     PatchSet(const PatchSet& rhs,
              const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
     META_Object(seamless, PatchSet);
@@ -88,7 +91,7 @@ public:
 protected:
     virtual ~PatchSet();
     double _precisionFactor;
-    const int _resolution;
+    int _resolution;
     int _maxLevel;
     float _verticalScale;
     osg::ref_ptr<PatchOptions> _patchOptionsPrototype;
@@ -101,6 +104,7 @@ protected:
     osg::ref_ptr<osg::DrawElementsUShort> stripPset[4][4];
     osg::ref_ptr<osgEarth::Map> _map;
     osgEarth::MapFrame* _mapf;
+    osgEarth::Drivers::SeamlessOptions _options;
 };
 }
 #endif

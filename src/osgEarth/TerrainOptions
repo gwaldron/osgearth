@@ -104,6 +104,8 @@ namespace osgEarth
         optional<float> _numCompileThreadsPerCore;
     };
 
+    extern OSGEARTH_EXPORT int computeLoadingThreads(const LoadingPolicy& policy);
+    
     /**
      * Base class for the configuration for a terrain engine driver.
      */

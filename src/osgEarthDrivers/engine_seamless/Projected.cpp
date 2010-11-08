@@ -100,8 +100,9 @@ HeightField* resampleHeightField(HeightField* hf, unsigned newDim)
 }
 
 // Hard-wire the screen-space polygon size.
-Projected::Projected(Map* map, int resolution)
-    : PatchSet(resolution)
+Projected::Projected(Map* map,
+                     const osgEarth::Drivers::SeamlessOptions& options)
+    : PatchSet(options)
 {
     setPrecisionFactor(8);
     setMap(map);

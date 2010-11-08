@@ -28,8 +28,9 @@ using namespace osgEarth;
 
 typedef multi_array_ref<Vec3f, Vec3Array, 2> PatchArray;
 
-Geographic::Geographic(Map* map, int resolution)
-    : PatchSet(resolution, new GeographicOptions), _profile(new EulerProfile),
+Geographic::Geographic(Map* map,
+                       const osgEarth::Drivers::SeamlessOptions& options)
+    : PatchSet(options, new GeographicOptions), _profile(new EulerProfile),
       _eModel(new EllipsoidModel)
 {
     setPrecisionFactor(8);
@@ -52,8 +53,9 @@ Geographic::Geographic(Map* map, int resolution)
             setMaxLevel(maxLevel);
 
     }
-    _hfService = new TaskService("Height Field Service");
-    _imageService = new TaskService("Image Service");
+    int serviceThreads = computeLoadingThreads(_options.loadingPolicy().get());
+    _hfService = new TaskService("Height Field Service", serviceThreads);
+    _imageService = new TaskService("Image Service", serviceThreads);
 }
 
 Geographic::Geographic(const Geographic& rhs, const osg::CopyOp& copyop)

@@ -62,6 +62,24 @@ LoadingPolicy::getConfig() const
     return conf;
 }
 
+int osgEarth::computeLoadingThreads(const LoadingPolicy& policy)
+{
+    const char* env_numTaskServiceThreads = getenv("OSGEARTH_NUM_PREEMPTIVE_LOADING_THREADS");
+    if ( env_numTaskServiceThreads )
+    {
+        return ::atoi( env_numTaskServiceThreads );
+    }
+    else if ( policy.numLoadingThreads().isSet() )
+    {
+        return osg::maximum( 1, policy.numLoadingThreads().get() );
+    }
+    else
+    {
+        return (int)osg::maximum( 1.0f, policy.numLoadingThreadsPerCore().get()
+                                  * (float)OpenThreads::GetNumberOfProcessors() );
+    }
+}
+
 //----------------------------------------------------------------------------
 
 TerrainOptions::TerrainOptions( const ConfigOptions& options ) :

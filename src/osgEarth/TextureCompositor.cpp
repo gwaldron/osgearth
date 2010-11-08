@@ -19,10 +19,7 @@
 
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/TextureCompositorTexArray>
-#include <osgEarth/TextureCompositorTex3D>
-#include <osgEarth/TextureCompositorAtlas>
 #include <osgEarth/TextureCompositorMulti>
-#include <osgEarth/TextureCompositorSoftware>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -150,12 +147,8 @@ _forceTech( false )
         TerrainOptions::CompositingTechnique oldTech = _tech;
         std::string t( ::getenv( "OSGEARTH_COMPOSITOR_TECH" ) );
         if      ( t == "TEXTURE_ARRAY" )    _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
-        //else if ( t == "TEXTURE_3D" )       _tech = TECH_TEXTURE_3D;
-        //else if ( t == "TEXTURE_ATLAS" )    _tech = TerrainOptions::COMPOSITING_TEXTURE_ATLAS;
         else if ( t == "MULTITEXTURE_GPU" ) _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
-        //else if ( t == "MULTITEXTURE_FFP" ) _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         else if ( t == "MULTIPASS" )        _tech = TerrainOptions::COMPOSITING_MULTIPASS;
-        //else if ( t == "SOFTWARE" )         _tech = TECH_SOFTWARE;
         if ( oldTech != _tech )
             _forceTech = true;
     }
@@ -169,14 +162,6 @@ TextureCompositor::applyMapModelChange( const MapModelChange& change )
     Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
     _layout.applyMapModelChange( change );
 }
-
-#if 0
-osg::StateSet*
-TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent& tileExtent ) const
-{
-    return _impl ? _impl->createStateSet( stack, tileExtent ) : 0L;
-}
-#endif
 
 bool
 TextureCompositor::supportsLayerUpdate() const

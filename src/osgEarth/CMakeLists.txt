@@ -64,11 +64,8 @@ SET(LIB_PUBLIC_HEADERS
     TerrainOptions
     TerrainEngineNode
     TextureCompositor
-    TextureCompositorAtlas
     TextureCompositorMulti
     TextureCompositorTexArray
-    TextureCompositorTex3D
-    TextureCompositorSoftware
     TileFactory
     TileKey
     TileSource
@@ -126,11 +123,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TerrainOptions.cpp
     TerrainEngineNode.cpp
     TextureCompositor.cpp
-    TextureCompositorAtlas.cpp
     TextureCompositorMulti.cpp
     TextureCompositorTexArray.cpp
-    TextureCompositorTex3D.cpp
-    TextureCompositorSoftware.cpp
     TileFactory.cpp
     TileKey.cpp
     TileSource.cpp

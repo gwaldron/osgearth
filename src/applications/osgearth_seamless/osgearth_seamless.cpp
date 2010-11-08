@@ -36,6 +36,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthDrivers/tms/TMSOptions>
 #include <osgEarthDrivers/engine_seamless/PatchInfo>
+#include <osgEarthDrivers/engine_seamless/SeamlessOptions>
 #include <sstream>
 
 // Print info about terrain rendered using the seamless engine. Copied
@@ -181,7 +182,11 @@ int main(int argc, char** argv)
             tms.url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
             map->addElevationLayer( new osgEarth::ElevationLayer( "SRTM", tms ) );
         }
-        mapNode = new osgEarth::MapNode( map );
+
+        MapNodeOptions nodeOptions;
+        nodeOptions.setTerrainOptions( osgEarth::Drivers::SeamlessOptions() );
+
+        mapNode = new osgEarth::MapNode( map, nodeOptions );
     }
     else
     {

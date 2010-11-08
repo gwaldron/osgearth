@@ -57,7 +57,7 @@ s_createTextureFragShaderFunction( const TextureLayout& layout )
 
     const RenderOrderVector& order = layout.getRenderOrder();
 
-    for( int i = 0; i < order.size(); ++i )
+    for( unsigned int i = 0; i < order.size(); ++i )
     {
         int slot = order[i];
         int q = 2 * i;
@@ -126,9 +126,9 @@ namespace
         const TextureSlotVector& slots = layout.getTextureSlots();
 
         // null out any empty slots (to save memory, i guess)
-        for( int i=0; i<tex->getTextureDepth(); ++i )
+        for( int i=0; i < tex->getTextureDepth(); ++i )
         {
-            if ( i < slots.size() && slots[i] < 0 )
+            if ( i < (int)slots.size() && slots[i] < 0 )
                 tex->setImage( i, 0L );
         }
 
@@ -151,7 +151,7 @@ namespace
         else if ( region->getNumElements() < layout.getTextureSlots().size() * 4 )
         {            
             osg::Uniform* newRegion = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 4 );
-            for( int i=0; i<region->getNumElements(); ++i )
+            for( unsigned int i=0; i<region->getNumElements(); ++i )
             {
                 float value;
                 region->getElement( i, value );

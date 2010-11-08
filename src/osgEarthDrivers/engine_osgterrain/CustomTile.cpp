@@ -336,8 +336,10 @@ CustomTerrain*
 CustomTile::getCustomTerrain()
 {
     if ( !_CustomTerrain.valid() )
-        _CustomTerrain = static_cast<CustomTerrain*>(getTerrain());
-    return _CustomTerrain.get();
+        _CustomTerrain = getTerrain();
+    return static_cast<CustomTerrain*>( _CustomTerrain.get() );
+    //    _CustomTerrain = static_cast<CustomTerrain*>(getTerrain());
+    //return _CustomTerrain.get();
 }
 
 const CustomTerrain*

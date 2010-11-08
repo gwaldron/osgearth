@@ -410,8 +410,7 @@ TaskService*
 TaskServiceManager::getOrAdd( UID uid, float weight ) 
 {
     TaskService* service = get( uid );
-    if ( !service )
-        return add( uid, weight );
+    return service ? service : add( uid, weight );
 }
 
 void

@@ -21,8 +21,11 @@
 #define OSGEARTH_SPARSE_TEXTURE_2D_ARRAY_H 1
 
 #include <osgEarth/Common>
+
+// this class is only supported in newer OSG versions.
+#if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
+
 #include <osg/Texture2DArray>
-#include <osg/Version>
 
 namespace osgEarth
 {
@@ -66,5 +69,7 @@ namespace osgEarth
         void applyTexImage2DArray_subload( osg::State& state, osg::Image* image, GLsizei inwidth, GLsizei inheight, GLsizei indepth, GLint inInternalFormat, GLsizei& numMipmapLevels) const;
     };
 }
+
+#endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
 
 #endif // OSGEARTH_TILE_FACTORY_H

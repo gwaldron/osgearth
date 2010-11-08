@@ -21,6 +21,9 @@
 
 #include <osgEarth/TextureCompositor>
 
+// only in newer OSG versions.
+#if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
+
 namespace osgEarth
 {
     /**
@@ -45,9 +48,9 @@ namespace osgEarth
             const GeoImage& preparedImage,
             const GeoExtent& tileExtent,
             const TextureLayout& layout ) const;
-    
-        //void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const;
     };
 }
+
+#endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
 
 #endif // OSGEARTH_TEXTURE_COMPOSITOR_TEX_ARRAY_H

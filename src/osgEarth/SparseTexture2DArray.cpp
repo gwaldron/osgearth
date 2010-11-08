@@ -18,6 +18,9 @@
  */
 #include <osgEarth/SparseTexture2DArray>
 
+// this class is only supported in newer OSG versions.
+#if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
+
 using namespace osgEarth;
 
 int
@@ -400,3 +403,4 @@ SparseTexture2DArray::applyTexImage2DArray_subload(osg::State& state, osg::Image
     }
 }
 
+#endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )

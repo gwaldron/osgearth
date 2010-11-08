@@ -25,9 +25,9 @@
 #include <set>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
-#ifdef _DEBUG
-#  define TRACE_THREADS 1
-#endif
+//#ifdef _DEBUG
+//#  define TRACE_THREADS 1
+//#endif
 
 namespace osgEarth { namespace Threading
 {   

@@ -260,7 +260,7 @@ private:
     osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
     osg::ref_ptr<TaskRequest> _tileGenRequest;
 
-    osg::observer_ptr<CustomTerrain> _CustomTerrain;
+    osg::observer_ptr<osgTerrain::Terrain> _CustomTerrain; //CustomTerrain> _CustomTerrain;
 
     Relative _family[5];
     Threading::ReadWriteMutex _tileLayersMutex;

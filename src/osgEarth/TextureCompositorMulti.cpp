@@ -68,7 +68,7 @@ namespace
             << "varying float   osgearth_range; \n";
 
         buf << "uniform sampler2D ";
-        for( int i=0; i<order.size(); ++i )
+        for( unsigned int i=0; i<order.size(); ++i )
             buf << "tex"<< order[i] << (i+1 < order.size()? "," : ";");
         buf << "\n";
 
@@ -78,7 +78,7 @@ namespace
             << "    vec4 texel; \n"
             << "    float dmin, dmax, atten_min, atten_max; \n";
 
-        for( int i=0; i<order.size(); ++i )
+        for( unsigned int i=0; i<order.size(); ++i )
         {
             int slot = order[i];
             int q = 2 * i;

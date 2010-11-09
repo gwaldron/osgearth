@@ -239,7 +239,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     }
     
     // prime the texture compositor with any existing layers:
-    for( int i=0; i<_update_mapf->imageLayers().size(); ++i )
+    for( unsigned int i=0; i<_update_mapf->imageLayers().size(); ++i )
     {
         _texCompositor->applyMapModelChange( MapModelChange(
             MapModelChange::ADD_IMAGE_LAYER,

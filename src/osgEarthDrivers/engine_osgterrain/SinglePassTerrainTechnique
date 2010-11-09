@@ -106,7 +106,7 @@ public:
 
 protected:
 
-    void calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j );
+    void calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j );
 
 private:
 

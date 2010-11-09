@@ -16,8 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #include <osgEarth/TextureCompositorTexArray>
+
+// only in newer OSG versions.
+#if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
+
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
@@ -54,7 +57,7 @@ s_createTextureFragShaderFunction( const TextureLayout& layout )
 
     const RenderOrderVector& order = layout.getRenderOrder();
 
-    for( int i = 0; i < order.size(); ++i )
+    for( unsigned int i = 0; i < order.size(); ++i )
     {
         int slot = order[i];
         int q = 2 * i;
@@ -123,9 +126,9 @@ namespace
         const TextureSlotVector& slots = layout.getTextureSlots();
 
         // null out any empty slots (to save memory, i guess)
-        for( int i=0; i<tex->getTextureDepth(); ++i )
+        for( int i=0; i < tex->getTextureDepth(); ++i )
         {
-            if ( i < slots.size() && slots[i] < 0 )
+            if ( i < (int)slots.size() && slots[i] < 0 )
                 tex->setImage( i, 0L );
         }
 
@@ -148,7 +151,7 @@ namespace
         else if ( region->getNumElements() < layout.getTextureSlots().size() * 4 )
         {            
             osg::Uniform* newRegion = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 4 );
-            for( int i=0; i<region->getNumElements(); ++i )
+            for( unsigned int i=0; i<region->getNumElements(); ++i )
             {
                 float value;
                 region->getElement( i, value );
@@ -230,89 +233,13 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     }
 }
 
-#if 0
-osg::StateSet*
-TextureCompositorTexArray::createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const
-{
-    osg::StateSet* stateSet = new osg::StateSet();
-    if ( layerImages.size() < 1 )
-        return stateSet;
-
-    osg::Texture2DArray* texture = new osg::Texture2DArray();
-
-    int texWidth = 0, texHeight = 0;
-
-    // find each image layer and create a region entry for it
-    texture->setTextureDepth( layerImages.size() );
-    texture->setInternalFormat( GL_RGBA );
-
-    // this uniform will properly position the image within the tile (kind of like
-    // texture coordinate generation parameters).
-    osg::Uniform* texInfoArray = new osg::Uniform( osg::Uniform::FLOAT, "region", layerImages.size() * 4 );
-
-    int layerNum = 0, u = 0;
-    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i, ++layerNum )
-    {
-        const GeoImage& geoImage = *i;
-        GeoImage preparedImage = prepareLayerUpdate( geoImage, tileExtent );
-        osg::Image* image = preparedImage.getImage();
-
-        // add the layer image to the composite.
-        texture->setImage( layerNum, image );
-
-        // track the maximum texture size
-        // TODO: currently pointless since we are resizing all layers to 256 anyway...
-        if ( image->s() > texWidth )
-            texWidth = image->s();
-
-        if ( image->t() > texHeight )
-            texHeight = image->t();
-            
-        // record the proper texture offset/scale for this layer. this accounts for subregions that
-        // are used when referencing lower LODs.
-        const GeoExtent& layerExtent = preparedImage.getExtent();
-
-        float xoffset = (tileExtent.xMin() - layerExtent.xMin()) / layerExtent.width();
-        float yoffset = (tileExtent.yMin() - layerExtent.yMin()) / layerExtent.height();
-        float xscale  = tileExtent.width() / layerExtent.width();
-        float yscale  = tileExtent.height() / layerExtent.height();
-
-        texInfoArray->setElement( u++, xoffset );
-        texInfoArray->setElement( u++, yoffset );
-        texInfoArray->setElement( u++, xscale );
-        texInfoArray->setElement( u++, yscale );
-    }
-
-    texture->setTextureSize( texWidth, texHeight, layerImages.size() );
-
-    // configure the mipmapping 
-    texture->setMaxAnisotropy(16.0f);
-    texture->setResizeNonPowerOfTwoHint(false);
-    texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
-    if ( powerOfTwo )
-        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-    else
-        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-
-    // configure the wrapping
-    texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
-    texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
-    //texture->setWrap(osg::Texture::WRAP_R,osg::Texture::REPEAT);
-
-    // (note: do NOT call setTextureAttributeAndModes -- opengl error since TEXTURE_2D_ARRAY is not a valid mode)
-    //TODO: un-hard-code the texture unit, perhaps
-    stateSet->setTextureAttribute( 0, texture, osg::StateAttribute::ON ); 
-    stateSet->addUniform( texInfoArray );
-    stateSet->addUniform( new osg::Uniform("tex0", 0) );
-
-    return stateSet;
-}
-#endif
-
 void
 TextureCompositorTexArray::updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const
 {
     VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
     vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(layout) );
 }
+
+//------------------------------------------------------------------------
+
+#endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )

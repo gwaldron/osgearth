@@ -52,7 +52,7 @@ namespace
     static osg::Geode*
     s_findGeodeByUID( osg::Group* group, UID layerUID )
     {
-        for( int i=0; i<group->getNumChildren(); ++i )
+        for( unsigned int i=0; i<group->getNumChildren(); ++i )
         {
             osg::Geode* geode = static_cast<osg::Geode*>( group->getChild(i) );
             LayerData* d = static_cast<LayerData*>( geode->getUserData() );

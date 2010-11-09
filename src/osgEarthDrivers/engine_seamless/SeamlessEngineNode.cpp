@@ -99,7 +99,7 @@ void SeamlessEngineNode::onMapProfileEstablished(const Profile* mapProfile)
         _patchSet = new Projected(map, _terrainOptions);
     else
     {
-        OSG_WARN << "map is not projected\n";
+        OE_WARN << "map is not projected\n";
         return;
     }
     addChild(_patchSet

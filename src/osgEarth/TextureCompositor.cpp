@@ -19,10 +19,7 @@
 
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/TextureCompositorTexArray>
-#include <osgEarth/TextureCompositorTex3D>
-#include <osgEarth/TextureCompositorAtlas>
 #include <osgEarth/TextureCompositorMulti>
-#include <osgEarth/TextureCompositorSoftware>
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
@@ -80,7 +77,7 @@ TextureLayout::applyMapModelChange( const MapModelChange& change )
             {
                 *i = change.getImageLayer()->getUID();
                 
-                if ( change.getFirstIndex() >= _order.size() )
+                if ( change.getFirstIndex() >= (int)_order.size() )
                     _order.resize( change.getFirstIndex() + 1, -1 );
 
                 _order[change.getFirstIndex()] = (int)(i - _slots.begin());
@@ -150,12 +147,8 @@ _forceTech( false )
         TerrainOptions::CompositingTechnique oldTech = _tech;
         std::string t( ::getenv( "OSGEARTH_COMPOSITOR_TECH" ) );
         if      ( t == "TEXTURE_ARRAY" )    _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
-        //else if ( t == "TEXTURE_3D" )       _tech = TECH_TEXTURE_3D;
-        //else if ( t == "TEXTURE_ATLAS" )    _tech = TerrainOptions::COMPOSITING_TEXTURE_ATLAS;
         else if ( t == "MULTITEXTURE_GPU" ) _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
-        //else if ( t == "MULTITEXTURE_FFP" ) _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         else if ( t == "MULTIPASS" )        _tech = TerrainOptions::COMPOSITING_MULTIPASS;
-        //else if ( t == "SOFTWARE" )         _tech = TECH_SOFTWARE;
         if ( oldTech != _tech )
             _forceTech = true;
     }
@@ -169,14 +162,6 @@ TextureCompositor::applyMapModelChange( const MapModelChange& change )
     Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
     _layout.applyMapModelChange( change );
 }
-
-#if 0
-osg::StateSet*
-TextureCompositor::createStateSet( const GeoImageVector& stack, const GeoExtent& tileExtent ) const
-{
-    return _impl ? _impl->createStateSet( stack, tileExtent ) : 0L;
-}
-#endif
 
 bool
 TextureCompositor::supportsLayerUpdate() const
@@ -276,6 +261,8 @@ TextureCompositor::init()
 
     const Capabilities& caps = Registry::instance()->getCapabilities();
 
+#if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
+
     if (_tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY || 
         (isAuto && caps.supportsGLSL(1.30f) && caps.supportsTextureArrays()) )
     {
@@ -284,26 +271,11 @@ TextureCompositor::init()
         OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
     }
 
-#if 0
-    // check "forceTech" because it doesn't work yet:
-    else if ( _forceTech && ( _tech == TerrainOptions::COMPOSITING_TEXTURE_3D || (isAuto && caps.supportsTexture3D()) ) )
-    {
-        _tech = TerrainOptions::COMPOSITING_TEXTURE_3D;
-        _impl = new TextureCompositorTex3D();
-        OE_INFO << LC << "Compositing technique = TEXTURE 3D" << std::endl;
-    }
+    else
 
-    // check "forceTech" because the tile boundaries show
-    else if ( _forceTech && ( _tech == TerrainOptions::COMPOSITING_TEXTURE_ATLAS || (isAuto && caps.supportsGLSL()) ) )
-    {
-        _tech = TerrainOptions::COMPOSITING_TEXTURE_ATLAS;
-        _impl = new TextureCompositorAtlas();
-        OE_INFO << LC << "Compositing technique = TEXTURE ATLAS" << std::endl;
-    }
-#endif
+#endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
 
-    else if (
-        _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU ||
+    if (_tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU ||
         (isAuto && caps.supportsGLSL(1.20f) && caps.supportsMultiTexture()) ) 
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;

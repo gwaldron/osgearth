@@ -280,7 +280,7 @@ SinglePassTerrainTechnique::applyTileUpdates()
             {
                 // in "unit-texture-space" mode, we can take the shortcut of just updating
                 // the geometry VBOs. The texture coordinates never change.
-                for( int i=0; i<_backGeode->getNumDrawables(); ++i )
+                for( unsigned int i=0; i<_backGeode->getNumDrawables(); ++i )
                 {
                     osg::Geometry* backGeom = static_cast<osg::Geometry*>( _backGeode->getDrawable(i) );
                     osg::Vec3Array* backVerts = static_cast<osg::Vec3Array*>( backGeom->getVertexArray() );
@@ -324,7 +324,7 @@ SinglePassTerrainTechnique::applyTileUpdates()
                 // copy the drawables from the back buffer to the front buffer. By doing this,
                 // we don't touch the front geode's stateset (which contains the textures) and
                 // therefore they don't get re-applied.
-                for( int i=0; i<_backGeode->getNumDrawables(); ++i )
+                for( unsigned int i=0; i<_backGeode->getNumDrawables(); ++i )
                 {
                     frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
                 }
@@ -421,7 +421,7 @@ SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
 }
 
 void
-SinglePassTerrainTechnique::calculateSampling( int& out_rows, int& out_cols, double& out_i, double& out_j )
+SinglePassTerrainTechnique::calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j )
 {            
     osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
 
@@ -511,8 +511,8 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     skirt->setDataVariance( osg::Object::DYNAMIC );
     geode->addDrawable( skirt );
         
-    int numRows = 20;
-    int numColumns = 20;
+    unsigned int numRows = 20;
+    unsigned int numColumns = 20;
     
     if (elevationLayer)
     {
@@ -739,7 +739,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         skirtVerts->reserve( numVerticesInSkirt );
         
         // bottom:
-        for( int c=0; c<numColumns-1; ++c )
+        for( unsigned int c=0; c<numColumns-1; ++c )
         {
             int orig_i = indices[c];
             skirtVerts->push_back( (*surfaceVerts)[orig_i] );
@@ -759,7 +759,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         }
 
         // right:
-        for( int r=0; r<numRows-1; ++r )
+        for( unsigned int r=0; r<numRows-1; ++r )
         {
             int orig_i = indices[r*numColumns+(numColumns-1)];
             skirtVerts->push_back( (*surfaceVerts)[orig_i] );

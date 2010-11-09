@@ -106,8 +106,8 @@ namespace osgEarth
         /**
          * Gets or sets the default shader library.
          */
-        ShaderComponentFactory* getShaderFactory() const;
-        void setShaderFactory( ShaderComponentFactory* lib );
+        ShaderFactory* getShaderFactory() const;
+        void setShaderFactory( ShaderFactory* lib );
 
         /**
          * Gets a reference to the global task service manager.
@@ -149,7 +149,7 @@ namespace osgEarth
 
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
-        osg::ref_ptr<ShaderComponentFactory> _shaderLib;
+        osg::ref_ptr<ShaderFactory> _shaderLib;
 
         osg::ref_ptr<TaskServiceManager> _taskServiceManager;
 

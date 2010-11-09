@@ -588,7 +588,7 @@ OceanSurfaceNode::rebuildShaders()
 
     // place it in the virtual program so it gets incorporated:
     osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
-    vp->setFunction( "morph_ocean_verts", vertSource, osgEarth::LOCATION_PRE_VERTEX );
+    vp->setFunction( "morph_ocean_verts", vertSource, osgEarth::ShaderComp::LOCATION_PRE_VERTEX );
     getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     
     // set up the uniforms required by our component:

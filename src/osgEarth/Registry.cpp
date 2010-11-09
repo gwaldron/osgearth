@@ -53,7 +53,7 @@ _uidGen( 0 )
         addMimeTypeExtensionMapping( mimeType, builtinMimeTypeExtMappings[i+1] );
     }
 
-    _shaderLib = new ShaderComponentFactory();
+    _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
 }
 
@@ -232,14 +232,14 @@ Registry::initCapabilities()
         _caps = new Capabilities();
 }
 
-ShaderComponentFactory*
+ShaderFactory*
 Registry::getShaderFactory() const
 {
     return _shaderLib.get();
 }
 
 void
-Registry::setShaderFactory( ShaderComponentFactory* lib )
+Registry::setShaderFactory( ShaderFactory* lib )
 {
     if ( lib != 0L && lib != _shaderLib.get() )
         _shaderLib = lib;

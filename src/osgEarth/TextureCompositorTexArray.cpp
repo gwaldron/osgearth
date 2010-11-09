@@ -55,7 +55,7 @@ s_createTextureFragShaderFunction( const TextureLayout& layout )
         << "    float u, v, dmin, dmax, atten_min, atten_max; \n"
         << "    vec4 texel; \n";
 
-    const RenderOrderVector& order = layout.getRenderOrder();
+    const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
 
     for( unsigned int i = 0; i < order.size(); ++i )
     {
@@ -123,7 +123,7 @@ namespace
         if ( tex->getTextureDepth() < requiredDepth )
             tex->setTextureDepth( requiredDepth );
 
-        const TextureSlotVector& slots = layout.getTextureSlots();
+        const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
         // null out any empty slots (to save memory, i guess)
         for( int i=0; i < tex->getTextureDepth(); ++i )

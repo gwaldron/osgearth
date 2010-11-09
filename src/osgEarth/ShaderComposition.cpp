@@ -18,8 +18,6 @@
  */
 #include <osgEarth/ShaderComposition>
 
-using namespace osgEarth;
-
 #include <osgEarth/Registry>
 #include <osg/Shader>
 #include <osg/Program>
@@ -28,6 +26,9 @@ using namespace osgEarth;
 #include <sstream>
 
 #define LC "[VirtualProgram] "
+
+using namespace osgEarth;
+using namespace osgEarth::ShaderComp;
 
 //------------------------------------------------------------------------
 
@@ -44,8 +45,6 @@ namespace
         {
             osg::State::AttributeMap::const_iterator i = _attributeMap.find( attribute->getTypeMemberPair() );
             return i != _attributeMap.end() ? &(i->second.attributeVec) : 0L;
-            //const AttributeStack& as = _attributeMap[ attribute->getTypeMemberPair() ];
-            //return as.attributeVec; 
         }
 
         static const AttributeVec* GetAttributeVec( const osg::State& state, const osg::StateAttribute* attribute ) 
@@ -66,12 +65,7 @@ namespace
 VirtualProgram::VirtualProgram( unsigned int mask ) : 
 _mask( mask ) 
 {
-    // ensure all maps exist.
-    //_functions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_PRE_VERTEX, OrderedFunctionMap()) );
-    //_functions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_POST_VERTEX, OrderedFunctionMap()) );
-    //_functions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_PRE_FRAGMENT, OrderedFunctionMap()) );
-    //_functions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_POST_FRAGMENT, OrderedFunctionMap()) );
-
+    // because we sometimes update/change the attribute's members from within the apply() method
     this->setDataVariance( osg::Object::DYNAMIC );
 }
 
@@ -102,19 +96,10 @@ VirtualProgram::setShader( const std::string& shaderSemantic, osg::Shader * shad
     osg::ref_ptr< osg::Shader >  shaderNew     = shader;
     osg::ref_ptr< osg::Shader >& shaderCurrent = _shaderMap[ key ];
 
-#if 1 // Good for debugging of shader linking problems. 
-      // Don't do it - User could use the name for its own purposes 
     shaderNew->setName( shaderSemantic );
-#endif
 
-    if( shaderCurrent != shaderNew ) {
-#if 0
-       if( shaderCurrent.valid() )
-           Program::removeShader( shaderCurrent.get() );
-
-       if( shaderNew.valid() )
-           Program::addShader( shaderNew.get() );
-#endif
+    if( shaderCurrent != shaderNew )
+    {
        shaderCurrent = shaderNew;
     }
 
@@ -187,30 +172,25 @@ VirtualProgram::apply( osg::State & state ) const
         }
         else
         {
-            //if ( hasLocalFunctions() )
-            {
-                //OE_INFO << LC << "Detected local functions; injecting new main() code here" << std::endl;
+            ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-                ShaderComponentFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
-
-                // build a new set of accumulated functions, to support the creation of main()
-                const_cast<VirtualProgram*>(this)->refreshAccumulatedFunctions( state );
-                    
-                osg::Shader* vert_main = sf->createVertexShaderMain( _accumulatedFunctions );
-                const_cast<VirtualProgram*>(this)->setShader( "osgearth_vert_main", vert_main );
-                shaderMap[ ShaderSemantic("osgearth_vert_main", osg::Shader::VERTEX) ] = vert_main;
-
-                osg::Shader* frag_main = sf->createFragmentShaderMain( _accumulatedFunctions );
-                const_cast<VirtualProgram*>(this)->setShader( "osgearth_frag_main", frag_main );
-                shaderMap[ ShaderSemantic("osgearth_frag_main", osg::Shader::FRAGMENT) ] = frag_main;
+            // build a new set of accumulated functions, to support the creation of main()
+            const_cast<VirtualProgram*>(this)->refreshAccumulatedFunctions( state );
                 
-                // rebuild the shader list now that we've changed the shader map.
-                sl.clear();
-                for( ShaderMap::iterator i = shaderMap.begin(); i != shaderMap.end(); ++i )
-                    sl.push_back( i->second );
-            }
+            osg::Shader* vert_main = sf->createVertexShaderMain( _accumulatedFunctions );
+            const_cast<VirtualProgram*>(this)->setShader( "osgearth_vert_main", vert_main );
+            shaderMap[ ShaderSemantic("osgearth_vert_main", osg::Shader::VERTEX) ] = vert_main;
 
-            // if not, create one and add all the shaders to it:
+            osg::Shader* frag_main = sf->createFragmentShaderMain( _accumulatedFunctions );
+            const_cast<VirtualProgram*>(this)->setShader( "osgearth_frag_main", frag_main );
+            shaderMap[ ShaderSemantic("osgearth_frag_main", osg::Shader::FRAGMENT) ] = frag_main;
+            
+            // rebuild the shader list now that we've changed the shader map.
+            sl.clear();
+            for( ShaderMap::iterator i = shaderMap.begin(); i != shaderMap.end(); ++i )
+                sl.push_back( i->second );
+
+            // Create a new program and add all our shaders.
             program = new osg::Program();
 
 #if !MERGE_SHADERS
@@ -248,6 +228,7 @@ VirtualProgram::apply( osg::State & state ) const
                 program->addShader( new osg::Shader( osg::Shader::GEOMETRY, strGeometry ) );
             }
 #endif
+            // finally, cache the program so we only regenerate it when it changes.
             _programMap[ sl ] = program;
         }
 
@@ -260,16 +241,6 @@ VirtualProgram::apply( osg::State & state ) const
     }
 }
 
-bool
-VirtualProgram::hasLocalFunctions() const
-{
-    Threading::ScopedMutexLock lock( const_cast<VirtualProgram*>(this)->_functionsMutex );
-    for( FunctionLocationMap::const_iterator i = _functions.begin(); i != _functions.end(); ++i )
-        if ( i->second.size() > 0 )
-            return true;
-    return false;
-}
-
 void
 VirtualProgram::getFunctions( FunctionLocationMap& out ) const
 {
@@ -278,22 +249,14 @@ VirtualProgram::getFunctions( FunctionLocationMap& out ) const
 }
 
 void
-VirtualProgram::getAccumulatedFunctions( FunctionLocationMap& out ) const
-{
-    Threading::ScopedMutexLock lock( const_cast<VirtualProgram*>(this)->_functionsMutex );
-    out = _accumulatedFunctions;
-}
-
-void
 VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
 {
+    // This method searches the state's attribute stack and accumulates all 
+    // the user functions (including those in this program).
+
     Threading::ScopedMutexLock lock( _functionsMutex );
 
     _accumulatedFunctions.clear();
-    //_accumulatedFunctions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_PRE_VERTEX, OrderedFunctionMap()) );
-    //_accumulatedFunctions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_POST_VERTEX, OrderedFunctionMap()) );
-    //_accumulatedFunctions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_PRE_FRAGMENT, OrderedFunctionMap()) );
-    //_accumulatedFunctions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_POST_FRAGMENT, OrderedFunctionMap()) );
 
     const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
     for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
@@ -328,252 +291,8 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
 
 //----------------------------------------------------------------------------
 
-static char s_PerVertexLighting_VertexShaderSource[] = 
-"void osgearth_vert_lighting( in vec3 position, in vec3 normal )                 \n" //1
-"{                                                                          \n" //2
-"    float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) );\n" //3
-"    NdotL = max( 0.0, NdotL );                                             \n" //4
-"    float NdotHV = dot( normal, gl_LightSource[0].halfVector.xyz );        \n" //5
-"    NdotHV = max( 0.0, NdotHV );                                           \n" //6
-"                                                                           \n" //7
-"    gl_FrontColor = gl_FrontLightModelProduct.sceneColor +                 \n" //8
-"                    gl_FrontLightProduct[0].ambient +                      \n" //9
-"                    gl_FrontLightProduct[0].diffuse * NdotL;               \n" //10
-"                                                                           \n" //11
-"    gl_FrontSecondaryColor = vec4(0.0);                                    \n" //12
-"                                                                           \n" //13
-"    if ( NdotL * NdotHV > 0.0 )                                            \n" //14
-"        gl_FrontSecondaryColor = gl_FrontLightProduct[0].specular *        \n" //15
-"                                 pow( NdotHV, gl_FrontMaterial.shininess );\n" //16
-"                                                                           \n" //17
-"    gl_BackColor = gl_FrontColor;                                          \n" //18
-"    gl_BackSecondaryColor = gl_FrontSecondaryColor;                        \n" //19
-"}                                                                          \n";//5
-
-static char s_PerVertexLighting_FragmentShaderSource[] =
-"void osgearth_frag_lighting( inout vec4 color )                                 \n" //1
-"{                                                                          \n" //2
-"    color = color * gl_Color + gl_SecondaryColor;                          \n" //3
-"}                                                                         \n";//20
-
-//static char s_Main_FragmentShaderSource[] =
-//"vec4 osgearth_frag_texture( void );                                                      \n" //1
-//"void osgearth_frag_lighting( inout vec4 color );                                         \n" //2
-//"uniform bool osgearth_lighting_enabled; \n"
-//"                                                                           \n" //3
-//"void main ()                                                               \n" //4
-//"{                                                                          \n" //5
-//"    vec4 color = osgearth_frag_texture();                                                \n" //6
-//"    if ( osgearth_lighting_enabled ) \n"
-//"        osgearth_frag_lighting( color );                                                     \n" //7
-//"    gl_FragColor = color;                                                  \n" //8
-//"}                                                                          \n";//9
-
-static char s_SimpleTexture_FragmentShaderSource[] =
-"uniform sampler2D tex0;                                                    \n" //1
-"vec4 osgearth_frag_texture( void )                                         \n" //2
-"{                                                                          \n" //3
-"    return texture2D( tex0, gl_TexCoord[0].xy );                           \n" //4
-"}                                                                          \n";//4
-
-static char s_PerFragmentLighting_VertexShaderSource[] =
-"varying vec3 Normal;                                                       \n" //1
-"varying vec3 Position;                                                     \n" //2
-"                                                                           \n" //3
-"void osgearth_vert_lighting( in vec3 position, in vec3 normal )            \n" //4
-"{                                                                          \n" //5
-"    Normal = normal;                                                       \n" //6
-"    Position = position;                                                   \n" //7
-"}                                                                          \n";//8
-
-static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
-"varying vec3 Normal;                                                       \n" //1
-"varying vec3 Position; // not used for directional lighting                \n" //2
-"                                                                           \n" //3
-"void osgearth_frag_lighting( inout vec4 color )                            \n" //4
-"{                                                                          \n" //5
-"    vec3 n = normalize( Normal );                                          \n" //5
-"    float NdotL = dot( n, normalize(gl_LightSource[0].position.xyz) );     \n" //6
-"    NdotL = max( 0.0, NdotL );                                             \n" //7
-"    float NdotHV = dot( n, gl_LightSource[0].halfVector.xyz );             \n" //8
-"    NdotHV = max( 0.0, NdotHV );                                           \n" //9
-"                                                                           \n" //10
-"    color *= gl_FrontLightModelProduct.sceneColor +                        \n" //11
-"             gl_FrontLightProduct[0].ambient +                             \n" //12
-"             gl_FrontLightProduct[0].diffuse * NdotL;                      \n" //13
-"                                                                           \n" //14
-"    if ( NdotL * NdotHV > 0.0 )                                            \n" //15
-"        color += gl_FrontLightProduct[0].specular *                        \n" //16
-"                 pow( NdotHV, gl_FrontMaterial.shininess );                \n" //17
-"}                                                                          \n";//18
-
-
-//------------------------------------------------------------------------
-#if 0
-ShaderFactory::ShaderFactory()
-{
-    //for(int i=0; i<4; ++i)
-    //    _useInjectionPoint[i] = false;
-
-    // ensure all maps exist.
-    _functions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_PRE_VERTEX, OrderedFunctionMap()) );
-    _functions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_POST_VERTEX, OrderedFunctionMap()) );
-    _functions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_PRE_FRAGMENT, OrderedFunctionMap()) );
-    _functions.insert( std::pair<FunctionLocation,OrderedFunctionMap>(LOCATION_POST_FRAGMENT, OrderedFunctionMap()) );
-}
-
-void
-ShaderFactory::addFunction(const std::string& functionName,
-                           FunctionLocation location,
-                           float priority)
-{
-    OrderedFunctionMap& ofm = _functions[location];
-    ofm.insert( std::pair<float,std::string>( priority, functionName ) );
-}
-
 osg::Shader*
-ShaderFactory::createVertexShaderMain() const
-{
-    std::stringstream buf;
-    buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ); \n"
-        << "void osgearth_vert_lighting( in vec3 position, in vec3 normal ); \n"
-        << "uniform bool osgearth_lighting_enabled; \n"
-        << "varying float osgearth_range; \n";
-
-    const OrderedFunctionMap& preVert = _functions.find( LOCATION_PRE_VERTEX )->second;
-    for( OrderedFunctionMap::const_iterator i = preVert.begin(); i != preVert.end(); ++i )
-        buf << "void " << i->second << "( in vec3 position, in vec3 normal ); \n";
-
-    const OrderedFunctionMap& postVert = _functions.find( LOCATION_POST_VERTEX )->second;
-    for( OrderedFunctionMap::const_iterator i = postVert.begin(); i != postVert.end(); ++i )
-        buf << "void " << i->second << "( in vec3 position, in vec3 normal ); \n";
-
-    buf << "void main(void) \n"
-        << "{ \n"
-        << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
-        << "    vec3 position = position4.xyz / position4.w; \n"
-        << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
-        << "    osgearth_range = length (position4.xyz ); \n";
-
-    for( OrderedFunctionMap::const_iterator i = preVert.begin(); i != preVert.end(); ++i )
-        buf << "    " << i->second << "( position, normal ); \n";
-
-    buf << "    osgearth_vert_texture( position, normal ); \n"
-        << "    if ( osgearth_lighting_enabled ) \n"
-        << "        osgearth_vert_lighting( position, normal ); \n";
-    
-    for( OrderedFunctionMap::const_iterator i = postVert.begin(); i != postVert.end(); ++i )
-        buf << "    " << i->second << "(position, normal); \n";
-
-    buf << "} \n";
-
-    std::string str = buf.str();
-    return new osg::Shader( osg::Shader::VERTEX, str );
-}
-
-osg::Shader*
-ShaderFactory::createFragmentShaderMain() const
-{
-    const OrderedFunctionMap& preFrag = _functions.find( LOCATION_PRE_FRAGMENT )->second;
-    const OrderedFunctionMap& postFrag = _functions.find( LOCATION_POST_FRAGMENT )->second;
-
-    std::stringstream buf;
-    buf << "vec4 osgearth_frag_texture( void ); \n"
-        << "void osgearth_frag_lighting( inout vec4 color ); \n";
-
-    for( OrderedFunctionMap::const_iterator i = preFrag.begin(); i != preFrag.end(); ++i )
-        buf << "vec4 " << i->second << "(); \n";
-
-    for( OrderedFunctionMap::const_iterator i = postFrag.begin(); i != postFrag.end(); ++i )
-        buf << "void " << i->second << "( inout vec4 color ); \n";
-
-    buf << "uniform bool osgearth_lighting_enabled; \n"
-        << "void main(void) \n"
-        << "{ \n"
-        << "    vec4 color; \n";
-
-    for( OrderedFunctionMap::const_iterator i = preFrag.begin(); i != preFrag.end(); ++i )
-        buf << "    color = " << i->second << "(); \n";
-
-    buf << "    color = osgearth_frag_texture(); \n"
-        << "    if (osgearth_lighting_enabled) \n"
-        << "        osgearth_frag_lighting( color ); \n";
-
-    for( OrderedFunctionMap::const_iterator i = postFrag.begin(); i != postFrag.end(); ++i )
-        buf << "    " << i->second << "( color ); \n";
-
-    buf << "    gl_FragColor = color; \n"
-        << "} \n";  
-
-    std::string str = buf.str();
-    return new osg::Shader( osg::Shader::FRAGMENT, str );
-}
-
-osg::Shader*
-ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
-{
-    std::stringstream buf;
-
-    buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ) \n"
-        << "{ \n";
-
-    for(int i=0; i<numTexCoordSets; ++i )
-    {
-        buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
-    }
-        
-    buf << "} \n";
-
-    std::string str = buf.str();
-    return new osg::Shader( osg::Shader::VERTEX, str );
-}
-
-osg::Shader*
-ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
-{
-    std::stringstream buf;
-
-    buf << "#version 120 \n"
-        << "uniform sampler2D ";
-    for( int i=0; i<numTexImageUnits; ++i )
-        buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
-
-    buf << "vec4 osgearth_frag_texture(void) \n"
-        << "{ \n"
-        << "    vec3 color = vec3(1,1,1); \n"
-        << "    vec4 texel; \n";
-
-    for(int i=0; i<numTexImageUnits; ++i )
-    {
-        buf << "    texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-            << "    color = mix( color, texel.rgb, texel.a ); \n";
-    }
-        
-    buf << "    return vec4(color,1); \n"
-        << "} \n";
-
-    std::string str = buf.str();
-    return new osg::Shader( osg::Shader::FRAGMENT, str );
-}
-
-osg::Shader*
-ShaderFactory::createDefaultLightingVertexShader() const
-{
-    return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
-}
-
-osg::Shader*
-ShaderFactory::createDefaultLightingFragmentShader() const
-{
-    return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
-}
-#endif
-
-//------------------------------------------------------------------------
-
-osg::Shader*
-ShaderComponentFactory::createVertexShaderMain( const FunctionLocationMap& functions ) const
+ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) const
 {
     FunctionLocationMap::const_iterator i = functions.find( LOCATION_PRE_VERTEX );
     const OrderedFunctionMap* preVert = i != functions.end() ? &i->second : 0L;
@@ -621,8 +340,9 @@ ShaderComponentFactory::createVertexShaderMain( const FunctionLocationMap& funct
     return new osg::Shader( osg::Shader::VERTEX, str );
 }
 
+
 osg::Shader*
-ShaderComponentFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) const
+ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) const
 {
     FunctionLocationMap::const_iterator i = functions.find( LOCATION_PRE_FRAGMENT );
     const OrderedFunctionMap* preFrag = i != functions.end() ? &i->second : 0L;
@@ -666,8 +386,9 @@ ShaderComponentFactory::createFragmentShaderMain( const FunctionLocationMap& fun
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 
+
 osg::Shader*
-ShaderComponentFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
+ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
 {
     std::stringstream buf;
 
@@ -685,8 +406,9 @@ ShaderComponentFactory::createDefaultTextureVertexShader( int numTexCoordSets ) 
     return new osg::Shader( osg::Shader::VERTEX, str );
 }
 
+
 osg::Shader*
-ShaderComponentFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
+ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 {
     std::stringstream buf;
 
@@ -713,14 +435,84 @@ ShaderComponentFactory::createDefaultTextureFragmentShader( int numTexImageUnits
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 
+
 osg::Shader*
-ShaderComponentFactory::createDefaultLightingVertexShader() const
+ShaderFactory::createDefaultLightingVertexShader() const
 {
+    static char s_PerVertexLighting_VertexShaderSource[] = 
+        "void osgearth_vert_lighting( in vec3 position, in vec3 normal )            \n"
+        "{                                                                          \n"
+        "    float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) );\n"
+        "    NdotL = max( 0.0, NdotL );                                             \n"
+        "    float NdotHV = dot( normal, gl_LightSource[0].halfVector.xyz );        \n"
+        "    NdotHV = max( 0.0, NdotHV );                                           \n"
+        "                                                                           \n"
+        "    gl_FrontColor = gl_FrontLightModelProduct.sceneColor +                 \n"
+        "                    gl_FrontLightProduct[0].ambient +                      \n"
+        "                    gl_FrontLightProduct[0].diffuse * NdotL;               \n"
+        "                                                                           \n"
+        "    gl_FrontSecondaryColor = vec4(0.0);                                    \n"
+        "                                                                           \n"
+        "    if ( NdotL * NdotHV > 0.0 )                                            \n"
+        "        gl_FrontSecondaryColor = gl_FrontLightProduct[0].specular *        \n"
+        "                                 pow( NdotHV, gl_FrontMaterial.shininess );\n"
+        "                                                                           \n"
+        "    gl_BackColor = gl_FrontColor;                                          \n"
+        "    gl_BackSecondaryColor = gl_FrontSecondaryColor;                        \n"
+        "}                                                                          \n";
+
     return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
 }
 
+
 osg::Shader*
-ShaderComponentFactory::createDefaultLightingFragmentShader() const
+ShaderFactory::createDefaultLightingFragmentShader() const
 {
+    static char s_PerVertexLighting_FragmentShaderSource[] =
+        "void osgearth_frag_lighting( inout vec4 color )                            \n"
+        "{                                                                          \n"
+        "    color = color * gl_Color + gl_SecondaryColor;                          \n"
+        "}                                                                          \n";
+
     return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
 }
+
+//--------------------------------------------------------------------------
+
+#if 0
+// This is just a holding pen for various stuff
+
+static char s_PerFragmentLighting_VertexShaderSource[] =
+"varying vec3 Normal;                                                       \n" //1
+"varying vec3 Position;                                                     \n" //2
+"                                                                           \n" //3
+"void osgearth_vert_lighting( in vec3 position, in vec3 normal )            \n" //4
+"{                                                                          \n" //5
+"    Normal = normal;                                                       \n" //6
+"    Position = position;                                                   \n" //7
+"}                                                                          \n";//8
+
+static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
+"varying vec3 Normal;                                                       \n" //1
+"varying vec3 Position; // not used for directional lighting                \n" //2
+"                                                                           \n" //3
+"void osgearth_frag_lighting( inout vec4 color )                            \n" //4
+"{                                                                          \n" //5
+"    vec3 n = normalize( Normal );                                          \n" //5
+"    float NdotL = dot( n, normalize(gl_LightSource[0].position.xyz) );     \n" //6
+"    NdotL = max( 0.0, NdotL );                                             \n" //7
+"    float NdotHV = dot( n, gl_LightSource[0].halfVector.xyz );             \n" //8
+"    NdotHV = max( 0.0, NdotHV );                                           \n" //9
+"                                                                           \n" //10
+"    color *= gl_FrontLightModelProduct.sceneColor +                        \n" //11
+"             gl_FrontLightProduct[0].ambient +                             \n" //12
+"             gl_FrontLightProduct[0].diffuse * NdotL;                      \n" //13
+"                                                                           \n" //14
+"    if ( NdotL * NdotHV > 0.0 )                                            \n" //15
+"        color += gl_FrontLightProduct[0].specular *                        \n" //16
+"                 pow( NdotHV, gl_FrontMaterial.shininess );                \n" //17
+"}                                                                          \n";//18
+
+#endif
+
+//------------------------------------------------------------------------

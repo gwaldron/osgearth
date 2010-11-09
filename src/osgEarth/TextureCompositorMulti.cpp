@@ -55,8 +55,8 @@ namespace
     static osg::Shader*
     s_createTextureFragShaderFunction( const TextureLayout& layout, int maxLayersToRender )
     {
-        const TextureSlotVector& slots = layout.getTextureSlots();
-        const RenderOrderVector& order = layout.getRenderOrder();
+        const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
+        const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
 
         std::stringstream buf;
 

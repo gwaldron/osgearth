@@ -596,22 +596,7 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
     if ( _cull_mapf ) // ensures initialize() has been called
     {
-        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-        {
-#if 0
-            // detect and respond to changes in the system shader library.
-            // TODO: perhaps this should happen in the event traversal instead...
-            ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
-            if ( sf->outOfSyncWith( _shaderLibRev ) )
-            {
-                OE_INFO << LC << "Detected shader factory change; updating." << std::endl;
-                this->installShaders();
-                sf->sync( _shaderLibRev );
-            }
-#endif
-        }
-
-        else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
             // update the cull-thread map frame if necessary. (We don't need to sync the
             // update_mapf becuase that happens in response to a map callback.)
@@ -632,11 +617,13 @@ OSGTerrainEngineNode::installShaders()
 
     if ( _texCompositor.valid() && _texCompositor->usesShaderComposition() )
     {
-        const ShaderComponentFactory* sf = Registry::instance()->getShaderFactory();
+        const ShaderFactory* sf = Registry::instance()->getShaderFactory();
 
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
 
         VirtualProgram* vp = new VirtualProgram();
+
+        // note. this stuff should probably happen automatically in VirtualProgram. gw
 
         //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
         vp->setShader( "osgearth_vert_lighting", sf->createDefaultLightingVertexShader() );
@@ -673,7 +660,7 @@ OSGTerrainEngineNode::updateTextureCombining()
             }
 
             // first, update the default shader components based on the new layer count:
-            const ShaderComponentFactory* sf = Registry::instance()->getShaderFactory();
+            const ShaderFactory* sf = Registry::instance()->getShaderFactory();
             vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numImageLayers ) );
 
             // not this one, because the compositor always generates a new one.

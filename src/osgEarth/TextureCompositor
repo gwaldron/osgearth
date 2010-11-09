@@ -29,18 +29,19 @@
 
 namespace osgEarth
 {
-    // vector of texture slots, each slot containing the UID of the image layer in that slot
-    // or -1 if the slot is empty.
-    typedef std::vector<UID> TextureSlotVector;
-
-    // rendering order of texture slots- each element is an index into the TextureSlotVector.
-    typedef std::vector<int> RenderOrderVector;
-
     /**
      * Tracks the usage of texture slots and their rendering order for a map.
      */
     class OSGEARTH_EXPORT TextureLayout
     {        
+    public:
+        // vector of texture slots, each slot containing the UID of the image layer in that slot
+        // or -1 if the slot is empty.
+        typedef std::vector<UID> TextureSlotVector;
+
+        // rendering order of texture slots- each element is an index into the TextureSlotVector.
+        typedef std::vector<int> RenderOrderVector;
+
     public:
         TextureLayout();
 

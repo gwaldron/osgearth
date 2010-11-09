@@ -21,13 +21,26 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Revisioning>
+#include <osgEarth/ThreadingUtils>
 #include <string>
 #include <map>
 #include <osg/Shader>
 #include <osg/Program>
+#include <osg/StateAttribute>
 
 namespace osgEarth
-{
+{        
+    enum FunctionLocation {
+        LOCATION_PRE_VERTEX     =0,
+        LOCATION_POST_VERTEX    =1,
+        LOCATION_PRE_FRAGMENT   =2,
+        LOCATION_POST_FRAGMENT  =3
+    };
+
+    typedef std::multimap<float, std::string> OrderedFunctionMap; // duplicate keys allowed
+    typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
+
+#if 0
     /**
      * Library of shaders to use in the terrain engine. Stored in the registry.
      */
@@ -37,14 +50,14 @@ namespace osgEarth
         ShaderFactory();
 
     public:
-        enum InjectionPoint {
-            INJECT_PRE_VERTEX     =0,
-            INJECT_POST_VERTEX    =1,
-            INJECT_PRE_FRAGMENT   =2,
-            INJECT_POST_FRAGMENT  =3
-        };
+        //enum FunctionLocation {
+        //    LOCATION_PRE_VERTEX     =0,
+        //    LOCATION_POST_VERTEX    =1,
+        //    LOCATION_PRE_FRAGMENT   =2,
+        //    LOCATION_POST_FRAGMENT  =3
+        //};
 
-        void setUseInjectionPoint( InjectionPoint ip, bool value =true );
+        void addFunction( const std::string& functionName, FunctionLocation loc, float priority =1.0f );
 
     public:
         virtual osg::Shader* createVertexShaderMain() const;
@@ -57,7 +70,24 @@ namespace osgEarth
         virtual osg::Shader* createDefaultLightingFragmentShader() const;
 
     protected:
-        bool _useInjectionPoint[4];
+        typedef std::multimap<float, std::string> OrderedFunctionMap; // duplicate keys allowed
+        typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
+
+        FunctionLocationMap _functions;
+    };
+#endif
+
+    class OSGEARTH_EXPORT ShaderComponentFactory : public osg::Referenced
+    {
+    public:
+        osg::Shader* createVertexShaderMain( const FunctionLocationMap& functions =FunctionLocationMap() ) const;
+        osg::Shader* createFragmentShaderMain( const FunctionLocationMap& functions =FunctionLocationMap() ) const;
+        
+        osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
+        osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
+
+        osg::Shader* createDefaultLightingVertexShader() const;
+        osg::Shader* createDefaultLightingFragmentShader() const;
     };
 
     /**
@@ -69,6 +99,14 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT VirtualProgram : public osg::Program
     {
+    //public:
+    //    enum FunctionLocation {
+    //        LOCATION_PRE_VERTEX     =0,
+    //        LOCATION_POST_VERTEX    =1,
+    //        LOCATION_PRE_FRAGMENT   =2,
+    //        LOCATION_POST_FRAGMENT  =3
+    //    };
+
     public: 
         VirtualProgram( unsigned int mask = 0xFFFFFFFFUL );
 
@@ -100,6 +138,9 @@ namespace osgEarth
 
         void removeShader( const std::string& shaderSemantic, osg::Shader::Type type );
 
+        void setFunction( const std::string& name, const std::string& source, FunctionLocation loc, float priority =1.0f );
+
+
     protected:
         typedef std::vector< osg::ref_ptr< osg::Shader > >            ShaderList;
         typedef std::pair< std::string, osg::Shader::Type >           ShaderSemantic;
@@ -109,6 +150,18 @@ namespace osgEarth
         mutable ProgramMap                   _programMap;
         ShaderMap                            _shaderMap;
         unsigned int                         _mask;
+
+        FunctionLocationMap _functions;
+        FunctionLocationMap _accumulatedFunctions;
+
+        Threading::Mutex _functionsMutex;
+
+        bool hasLocalFunctions() const;
+        void refreshAccumulatedFunctions( const osg::State& state );
+
+    public:
+        void getFunctions( FunctionLocationMap& out ) const;
+        void getAccumulatedFunctions( FunctionLocationMap& out ) const;
     };
 } // namespace osgEarth
 

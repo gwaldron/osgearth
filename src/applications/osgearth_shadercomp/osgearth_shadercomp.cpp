@@ -60,14 +60,14 @@ int main(int argc, char** argv)
 
 static char s_hazeVertShader[] =
     "varying vec3 v_pos; \n"
-    "void osgearth_vert_postprocess(in vec3 position, in vec3 normal) \n"
+    "void setup_haze(in vec3 position, in vec3 normal) \n"
     "{ \n"
     "    v_pos = vec3(gl_ModelViewMatrix * gl_Vertex); \n"
     "} \n";
 
 static char s_hazeFragShader[] =
     "varying vec3 v_pos; \n"
-    "void osgearth_frag_postprocess(inout vec4 color) \n"
+    "void apply_haze(inout vec4 color) \n"
     "{ \n"
     "    float dist = clamp( length(v_pos)/10000000.0, 0, 0.75 ); \n"
     "    color = mix(color, vec4(0.5, 0.5, 0.5, 1.0), dist); \n"
@@ -77,13 +77,9 @@ static char s_hazeFragShader[] =
 osg::StateAttribute*
 createHaze()
 {
-    osgEarth::ShaderFactory* fact = osgEarth::Registry::instance()->getShaderFactory();
-    fact->setUseInjectionPoint( osgEarth::ShaderFactory::INJECT_POST_VERTEX );
-    fact->setUseInjectionPoint( osgEarth::ShaderFactory::INJECT_POST_FRAGMENT );
-
     osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
-    vp->setShader( "osgearth_vert_postprocess", new osg::Shader( osg::Shader::VERTEX, s_hazeVertShader ) );
-    vp->setShader( "osgearth_frag_postprocess", new osg::Shader( osg::Shader::FRAGMENT, s_hazeFragShader ) );
+    vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::LOCATION_POST_VERTEX );
+    vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::LOCATION_POST_FRAGMENT );
 
     return vp;
 }

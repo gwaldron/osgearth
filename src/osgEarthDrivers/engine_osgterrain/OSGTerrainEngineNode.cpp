@@ -598,6 +598,7 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
     {
         if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
         {
+#if 0
             // detect and respond to changes in the system shader library.
             // TODO: perhaps this should happen in the event traversal instead...
             ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
@@ -607,6 +608,7 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
                 this->installShaders();
                 sf->sync( _shaderLibRev );
             }
+#endif
         }
 
         else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
@@ -630,19 +632,19 @@ OSGTerrainEngineNode::installShaders()
 
     if ( _texCompositor.valid() && _texCompositor->usesShaderComposition() )
     {
-        const ShaderFactory* lib = Registry::instance()->getShaderFactory();
+        const ShaderComponentFactory* sf = Registry::instance()->getShaderFactory();
 
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
 
-        VirtualProgram* vp = new VirtualProgram();        
+        VirtualProgram* vp = new VirtualProgram();
 
-        vp->setShader( "osgearth_vert_main",     lib->createVertexShaderMain() );
-        vp->setShader( "osgearth_vert_lighting", lib->createDefaultLightingVertexShader() );
-        vp->setShader( "osgearth_vert_texture",  lib->createDefaultTextureVertexShader( numLayers ) );
+        //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
+        vp->setShader( "osgearth_vert_lighting", sf->createDefaultLightingVertexShader() );
+        vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numLayers ) );
 
-        vp->setShader( "osgearth_frag_main",     lib->createFragmentShaderMain() );
-        vp->setShader( "osgearth_frag_lighting", lib->createDefaultLightingFragmentShader() );
-        vp->setShader( "osgearth_frag_texture",  lib->createDefaultTextureFragmentShader( numLayers ) );
+        //vp->setShader( "osgearth_frag_main",     sf->createFragmentShaderMain() ); // happend in VirtualProgram now
+        vp->setShader( "osgearth_frag_lighting", sf->createDefaultLightingFragmentShader() );
+        vp->setShader( "osgearth_frag_texture",  sf->createDefaultTextureFragmentShader( numLayers ) );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -663,7 +665,6 @@ OSGTerrainEngineNode::updateTextureCombining()
             // installed in the VP on the engine-node's stateset in installShaders().
 
             VirtualProgram* vp = dynamic_cast<VirtualProgram*>( terrainStateSet->getAttribute(osg::StateAttribute::PROGRAM) );
-
             if ( !vp )
             {
                 // create and add it the first time around..
@@ -672,8 +673,8 @@ OSGTerrainEngineNode::updateTextureCombining()
             }
 
             // first, update the default shader components based on the new layer count:
-            const ShaderFactory* lib = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_texture",  lib->createDefaultTextureVertexShader( numImageLayers ) );
+            const ShaderComponentFactory* sf = Registry::instance()->getShaderFactory();
+            vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numImageLayers ) );
 
             // not this one, because the compositor always generates a new one.
             //vp->setShader( "osgearth_frag_texture",  lib.createDefaultTextureFragmentShader( numImageLayers ) );

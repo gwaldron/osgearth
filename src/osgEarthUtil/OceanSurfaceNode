@@ -165,13 +165,13 @@ namespace osgEarthUtil
 
 
 
-        virtual void traverse(osg::NodeVisitor& nv);
+        //virtual void traverse(osg::NodeVisitor& nv);
     private:
         void rebuildShaders();
 
-        osg::ref_ptr< osg::Program > _program;
-        osg::ref_ptr< osg::Shader > _vertShader;
-        osg::ref_ptr< osg::Shader > _fragShader;
+        //osg::ref_ptr< osg::Program > _program;
+        //osg::ref_ptr< osg::Shader > _vertShader;
+        //osg::ref_ptr< osg::Shader > _fragShader;
 
         float _currentElevation;
         float _maxRange;

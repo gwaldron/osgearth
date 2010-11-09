@@ -322,6 +322,12 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     {
         if ( Registry::instance()->getCapabilities().supportsGLSL() )
             _updateLightingUniformsHelper.cullTraverse( &nv );
+
+        //osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+        //if ( cv )
+        //{
+        //    cv->getState()->getAttribute
+        //}
     }
 
     else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )

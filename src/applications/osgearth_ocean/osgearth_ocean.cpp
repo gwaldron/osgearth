@@ -177,6 +177,13 @@ osg::Image* make3DImage(const ImageList& images)
 }
 
 
+int usage( const std::string& msg )
+{
+    OE_NOTICE
+        << msg << std::endl
+        << "USAGE: osgearth_ocean [--mask-unit <unit>] <earthfile>" << std::endl;
+    return -1;
+}
 
 
 int main(int argc, char** argv)
@@ -186,7 +193,6 @@ int main(int argc, char** argv)
     int maskUnit = -1;
     while(arguments.read("--mask-unit",maskUnit));    
 
-
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
@@ -194,6 +200,8 @@ int main(int argc, char** argv)
     osg::Group* group = new osg::Group;
 
     osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);   
+    if ( !loadedModel.valid() )
+        return usage( "Failed to load an earth file." );
 
     osgEarthUtil::OceanSurfaceNode* ocean = new osgEarthUtil::OceanSurfaceNode();
     ocean->setOceanMaskTextureUnit( maskUnit );

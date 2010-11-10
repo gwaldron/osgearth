@@ -172,7 +172,7 @@ namespace osgEarth
     private:
     
         void init();
-        void adjustUpdateTraversalCount( int delta );
+        //void adjustUpdateTraversalCount( int delta );
         void adjustEventTraversalCount( int delta );
     };
 

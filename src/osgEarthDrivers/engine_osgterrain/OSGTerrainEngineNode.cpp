@@ -212,8 +212,8 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
-    // install the proper layer composition technique:
-    _texCompositor = new TextureCompositor( _terrainOptions.compositingTechnique().value() );
+    //// install the proper layer composition technique:
+    //_texCompositor = new TextureCompositor( _terrainOptions.compositingTechnique().value() );
 
     if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
     {

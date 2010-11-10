@@ -47,6 +47,8 @@ namespace osgEarth
             const TextureLayout& layout ) const;
 
         void applyResourcePolicy( const ResourcePolicy& policy, TextureLayout& layout ) const;
+        
+        std::string getSamplerExpr( UID layerUID, const std::string& vec2expr, const TextureLayout& layout ) const;
 
     private:
         bool _useGPU;

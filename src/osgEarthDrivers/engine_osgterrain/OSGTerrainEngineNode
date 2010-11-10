@@ -53,7 +53,7 @@ protected: // implementation events from TerrainEngineNode
 
 public: // MapCallback adapter functions
     void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
-    void onMapModelChanged( const MapModelChange& change );
+    void onMapModelChanged( const MapModelChange& change ); // not virtual!
 
     UID getUID() const;
     OSGTileFactory* getTileFactory() const { return _tileFactory.get(); }
@@ -83,7 +83,7 @@ private:
     
 private:
     osg::ref_ptr<OSGTileFactory> _tileFactory;
-    osg::ref_ptr<TextureCompositor> _texCompositor;
+    //osg::ref_ptr<TextureCompositor> _texCompositor;
     class CustomTerrain* _terrain;
     UID _uid;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;

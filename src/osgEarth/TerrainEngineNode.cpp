@@ -19,7 +19,6 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderUtils>
 #include <osgDB/ReadFile>
 
 #define LC "[TerrainEngineNode] "
@@ -115,7 +114,7 @@ _map( rhs._map.get() )
 }
 
 void
-TerrainEngineNode::setMapInfo( const MapInfo& mapInfo )
+TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& options )
 {
     // set up the CSN values   
     mapInfo.getProfile()->getSRS()->populateCoordinateSystemNode( this );
@@ -123,6 +122,9 @@ TerrainEngineNode::setMapInfo( const MapInfo& mapInfo )
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
     if ( !mapInfo.isGeocentric() )
         this->setEllipsoidModel( NULL );
+    
+    // install the proper layer composition technique:
+    _texCompositor = new TextureCompositor( options.compositingTechnique().value() );
 }
 
 void
@@ -135,7 +137,6 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
         // manually trigger the map callbacks the first time:
         if ( _map->getProfile() )
             onMapInfoEstablished( MapInfo(_map.get()) );
-            //onMapProfileEstablished( map->getProfile() );
 
         // create a layer controller. This object affects the uniforms that control layer appearance properties
         _imageLayerController = new ImageLayerController( map );

@@ -54,8 +54,10 @@ namespace osgEarth
         /** Gets the index of the highest populated slot. */
         int getMaxUsedSlot() const;
 
+        /** Accesses a vector that maps layer UIDs to texture slots. */
         const TextureSlotVector& getTextureSlots() const { return _slots; }
 
+        /** Access a vector that specifies the rendering order of texture slots. */
         const RenderOrderVector& getRenderOrder() const { return _order; }
 
     public:
@@ -75,6 +77,8 @@ namespace osgEarth
 
     /**
      * Base interface for a particular texture composition implementation
+     *
+     * TODO: document these methods
      */
     class OSGEARTH_EXPORT TextureCompositorTechnique : public osg::Referenced
     {
@@ -94,6 +98,8 @@ namespace osgEarth
         virtual void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const { }
 
         virtual void applyResourcePolicy( const ResourcePolicy& rp, TextureLayout& layout ) const { }
+        
+        virtual std::string getSamplerExpr( UID layerUID, const std::string& vec2expr, const TextureLayout& layout ) const { return ""; }
     };
 
     //-----------------------------------------------------------------------
@@ -193,6 +199,13 @@ namespace osgEarth
          * Gets the rendering order of the layer with the specified UID.
          */
         int getRenderOrder( UID layerUID ) const;
+
+        /**
+         * Generates a texture sampling expression that you can use to access
+         * the texels in the specified layer. You need this when doing user shader
+         * composition and you need to access an image layer managed by osgEarth.
+         */
+        std::string getSamplerExpr( UID layerUID, const std::string& vec2expr ) const;
 
     private:
         void init();

@@ -19,16 +19,17 @@
 #ifndef OSGEARTHUTIL_OCEANSURFACENODE
 #define OSGEARTHUTIL_OCEANSURFACENODE
 
+#include <osgEarthUtil/Common>
 #include <osg/Group>
 #include <osg/observer_ptr>
 #include <osg/CoordinateSystemNode>
 #include <osg/Program>
 #include <osg/Texture3D>
 
-#include <osgEarthUtil/Common>
-
 namespace osgEarthUtil 
 {
+    using namespace osgEarth;
+
     /**
      * OceanSurfaceNode is a decorator node that animates the surface of the globe to simulate simple waves.
      * Note:  This only works with multitextured maps, not multipass.
@@ -162,12 +163,14 @@ namespace osgEarthUtil
 		 */
 		bool getAdjustToMSL() const;
 
+    public:
+        virtual void traverse( osg::NodeVisitor& nv );
 
-
-
-        //virtual void traverse(osg::NodeVisitor& nv);
     private:
         void rebuildShaders();
+
+        void shadersDirty(bool value);
+        bool _shadersDirty;
 
         //osg::ref_ptr< osg::Program > _program;
         //osg::ref_ptr< osg::Shader > _vertShader;
@@ -183,7 +186,7 @@ namespace osgEarthUtil
         bool _invertMask;
 		bool _adjustToMSL;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
-        osgEarth::optional<osg::Vec4f> _oceanColor;
+        optional<osg::Vec4f> _oceanColor;
         float _oceanAnimationPeriod;
         float _oceanSurfaceImageSizeRadians;
         osg::ref_ptr< osg::Image > _oceanSurfaceImage;

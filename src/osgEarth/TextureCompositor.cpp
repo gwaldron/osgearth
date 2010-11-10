@@ -268,6 +268,18 @@ TextureCompositor::getRenderOrder( UID layerUID ) const
     return _layout.getOrder( layerUID );
 }
 
+std::string
+TextureCompositor::getSamplerExpr( UID layerUID, const std::string& vec2expr ) const
+{
+    if ( _impl.valid() )
+    {
+        Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
+        return _impl->getSamplerExpr( layerUID, vec2expr, _layout );
+    }
+    else
+        return "vec4(0,0,0,0)";
+}
+
 void
 TextureCompositor::init()
 {        

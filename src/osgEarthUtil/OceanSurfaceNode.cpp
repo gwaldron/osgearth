@@ -18,15 +18,20 @@
 */
 
 #include <osgEarthUtil/OceanSurfaceNode>
+
 #include <osgEarth/FindNode>
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/MapNode>
+#include <osgEarth/FindNode>
 
 #include <osg/Texture3D>
 #include <osgDB/ReadFile>
 
 #include <sstream>
+
+#define LC "[OceanSurfaceNode] "
 
 using namespace osgEarth;
 using namespace osgEarthUtil;
@@ -155,7 +160,8 @@ char vert_shader_source[] =
 
 typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
 
-OceanSurfaceNode::OceanSurfaceNode():
+OceanSurfaceNode::OceanSurfaceNode() :
+_shadersDirty(false),
 _oceanMaskTextureUnit(-1),
 _oceanSurfaceTextureUnit(2),
 _waveHeight(100),
@@ -190,6 +196,16 @@ _oceanColor(osg::Vec4f(0,0,1,0))
     _oceanSurfaceTexture->setFilter(osg::Texture3D::MAG_FILTER,osg::Texture3D::LINEAR);
 }
 
+void
+OceanSurfaceNode::shadersDirty(bool value)
+{
+    if ( _shadersDirty != value )
+    {
+        _shadersDirty = value;
+        ADJUST_UPDATE_TRAV_COUNT( this, _shadersDirty ? 1 : -1 );
+    }
+}
+
 int
 OceanSurfaceNode::getOceanMaskTextureUnit() const
 {
@@ -202,7 +218,8 @@ OceanSurfaceNode::setOceanMaskTextureUnit(int unit)
     if (_oceanMaskTextureUnit != unit)
     {
         _oceanMaskTextureUnit = unit;
-        rebuildShaders();
+        shadersDirty( true );
+        //rebuildShaders();
     }
 }
 
@@ -231,7 +248,9 @@ OceanSurfaceNode::setOceanSurfaceTextureUnit(int unit)
         {
             getOrCreateStateSet()->setTextureAttributeAndModes(_oceanSurfaceTextureUnit, _oceanSurfaceTexture, osg::StateAttribute::ON);
         }
-        rebuildShaders();
+
+        shadersDirty( true );
+        //rebuildShaders();
     }
 }
 
@@ -247,7 +266,8 @@ OceanSurfaceNode::setAdjustToMSL(bool adjustToMSL)
 	if (_adjustToMSL != adjustToMSL)
 	{
 		_adjustToMSL = adjustToMSL;
-		rebuildShaders();
+        shadersDirty( true );
+        //rebuildShaders();
 	}
 }
 
@@ -265,6 +285,9 @@ OceanSurfaceNode::setOceanSurfaceImage(osg::Image* image)
         _oceanSurfaceImage = image;
         _oceanSurfaceTexture->setImage( _oceanSurfaceImage.get() );
         getOrCreateStateSet()->setTextureAttributeAndModes(_oceanSurfaceTextureUnit, _oceanSurfaceTexture.get(), osg::StateAttribute::ON);
+        
+        shadersDirty( true );
+        //rebuildShaders();
     }
 }
 
@@ -281,6 +304,7 @@ OceanSurfaceNode::setWaveHeight(float waveHeight)
     {
         _waveHeight = waveHeight;
         getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT)->set(_waveHeight);
+        //TODO: consider rebuildShaders() instead..
     }
 }
 
@@ -297,6 +321,7 @@ OceanSurfaceNode::setMaxRange(float maxRange)
     {
         _maxRange = maxRange;
         getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanMaxRange", osg::Uniform::FLOAT)->set(_maxRange);
+        //TODO: consider rebuildShaders() instead..
     }
 }
 
@@ -312,7 +337,8 @@ OceanSurfaceNode::setPeriod(float period)
     if (_period !=period)
     {
         _period = period;
-        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period);     
+        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period); 
+        //TODO: consider rebuildShaders() instead..    
     }
 }
 
@@ -329,6 +355,7 @@ OceanSurfaceNode::setEnabled(bool enabled)
     {
         _enabled = enabled;
         getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(_enabled);
+        //TODO: consider rebuildShaders() instead..
     }
 }
 
@@ -344,8 +371,10 @@ OceanSurfaceNode::setInvertMask(bool invertMask)
     if (_invertMask != invertMask)
     {
         _invertMask = invertMask;
+        // TODO: do we need a uniform if we're rebuilding shaders? probably not..
         getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanInvertMask", osg::Uniform::BOOL)->set(_invertMask);   
-        rebuildShaders();
+        shadersDirty( true );
+        //rebuildShaders();
     }
 }
 
@@ -355,7 +384,8 @@ OceanSurfaceNode::setModulationColor( const osg::Vec4f& color )
     if ( !_oceanColor.isSetTo( color ) )
     {
         _oceanColor = color;
-        rebuildShaders();
+        shadersDirty( true );
+        //rebuildShaders();
     }
 }
 
@@ -378,6 +408,7 @@ OceanSurfaceNode::setOceanAnimationPeriod(float oceanAnimationPeriod)
     {
         _oceanAnimationPeriod = oceanAnimationPeriod;
         getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanAnimationPeriod", osg::Uniform::FLOAT)->set(oceanAnimationPeriod); 
+        //TODO: consider rebuildShaders() instead..
     }
 }
 
@@ -393,8 +424,21 @@ OceanSurfaceNode::setOceanSurfaceImageSizeRadians(float size)
     if (_oceanSurfaceImageSizeRadians != size)
     {
         _oceanSurfaceImageSizeRadians = size;
-        rebuildShaders();
+        shadersDirty( true );
+        //rebuildShaders();
     }
+}
+
+void
+OceanSurfaceNode::traverse( osg::NodeVisitor& nv )
+{
+    if ( _shadersDirty && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        rebuildShaders();
+        shadersDirty( false );
+    }
+
+    osg::Group::traverse( nv );
 }
 
 #if 0
@@ -451,6 +495,27 @@ static std::string replaceAll(const std::string &input, const std::string &torep
 void
 OceanSurfaceNode::rebuildShaders()
 {
+    //// find the texture compositor in use.
+    //osg::ref_ptr<MapNode> mapNode = MapNode::findMapNode( this );
+    //if ( !mapNode.valid() ) {
+    //    OE_DEBUG << LC << "Map node observer was invalidated; abort" << std::endl;
+    //    return;
+    //}
+
+    // need the terrain engine so we can get at the compositor.
+    TerrainEngineNode* engine = osgEarth::findTopMostNodeOfType<TerrainEngineNode>( this );
+    if ( !engine ) {
+        OE_INFO << LC << "No terrain engine found in the map node; abort" << std::endl;
+        return;
+    }
+
+    // access the compositor because we are going to be sampling map layers.
+    TextureCompositor* tcomp = engine->getTextureCompositor();
+    if ( !tcomp ) {
+        OE_INFO << LC << "No texture compositor found in the terrain engine; abort" << std::endl;
+        return;
+    }
+
     std::stringstream buf;
 
     buf << "vec3 xyz_to_lat_lon_height(in vec3 xyz) \n"
@@ -511,14 +576,15 @@ OceanSurfaceNode::rebuildShaders()
         << "   vec4 vert = modelMatrix  * gl_Vertex;\n"           
         << "   vec3 vert3 = vec3(vert.x, vert.y, vert.z);\n"
         << "   vec3 latlon = xyz_to_lat_lon_height(vert3);\n"
-        << "   osgEarth_oceanAlpha = 1.0;\n"
+        << "   osgEarth_oceanAlpha = 1.0;\n";
 
-#if 0
-        << "   if (osgEarth_oceanMaskUnitValid) \n"
-        << "        osgEarth_oceanAlpha = 1.0 - texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoordOCEAN_MASK_UNIT.st).a; \n"
-#endif
+    if ( this->getOceanMaskTextureUnit() >= 0 )
+    {
+        buf << "    osgEarth_oceanAlpha = 1.0 - texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoord"
+            << getOceanMaskTextureUnit() << ".st).a; \n";
+    }
 
-        << "   if (osgEarth_oceanInvertMask) \n"
+    buf << "   if (osgEarth_oceanInvertMask) \n"
         << "        osgEarth_oceanAlpha = 1.0 - osgEarth_oceanAlpha; \n"
 
         << "   if (osgEarth_oceanMaxRange >= osgearth_range) \n"
@@ -546,15 +612,23 @@ OceanSurfaceNode::rebuildShaders()
         << "       float scale2 = cos(phi + phase2) * waveHeight;\n"
         << "       float scale3 = sin(theta + phase2) * cos(phi + phase1) * waveHeight *1.6;\n"
         << "       float scale = (scale1 + scale2 + scale3)/3.0;\n"
-        << "       //if (scale < 0) scale = 0.0;\n"
+        << "       //if (scale < 0) scale = 0.0;\n";
 
+    if ( this->getAdjustToMSL() )
+    {
+        buf << "        vec3 offset = n * -latlon.z; \n"
+            << "        vert += vec4( offset.xyz, 0 ); \n";
+    }
+
+#if 0
         //<< "   #if OCEAN_ADJUST_TO_MSL \n"
         << "       //Adjust the vert to 0 MSL\n"
         << "       vec3 offset = n * -latlon.z;\n"
         << "       vert += vec4(offset.x, offset.y, offset.z, 0);\n"
         //<< "   #endif\n"
+#endif
 
-        << "       //Apply the wave scale\n"
+    buf << "       //Apply the wave scale\n"
         << "       n = n * scale;\n"
         << "       vert += vec4(n.x, n.y,n.z,0);\n"
         << "      vert = osg_ViewMatrix * vert;\n"

@@ -34,6 +34,20 @@ using namespace osgEarth;
 namespace
 {
     static osg::Shader*
+    s_createTexture2DFunction()
+    {
+        std::stringstream buf;
+
+        buf << "vec4 osgearth_texture2D( in sampler2D sampler, in int slot, in vec2 texcoord ) \n"
+            << "{ \n"
+            << "    return texture2D( sampler, texcoord ); \n"
+            << "} \n";
+
+        std::string str = buf.str();
+        return new osg::Shader( osg::Shader::FRAGMENT, str );
+    }
+
+    static osg::Shader*
     s_createTextureVertexShader( int maxLayersToRender )
     {
         std::stringstream buf;
@@ -165,17 +179,6 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
     if ( tex )
     {
         tex->setImage( preparedImage.getImage() );
-
-#if 0
-        // recalculate mipmapping filters:
-        int texWidth  = tex->getImage()->s();
-        int texHeight = tex->getImage()->t();
-        bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
-        if ( powerOfTwo )
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-        else
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-#endif
     }
 }
 
@@ -202,11 +205,13 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
         {
             vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(layout, maxLayers) );
             vp->setShader( "osgearth_vert_texture", s_createTextureVertexShader(maxLayers) );
+            vp->setShader( "osgearth_texture2D", s_createTexture2DFunction() );
         }
         else
         {
             vp->removeShader( "osgearth_frag_texture", osg::Shader::FRAGMENT );
             vp->removeShader( "osgearth_vert_texture", osg::Shader::VERTEX );
+            vp->removeShader( "osgearth_texture2D", osg::Shader::FRAGMENT );
         }
     }
 
@@ -303,4 +308,23 @@ TextureCompositorMultiTexture::applyResourcePolicy(const ResourcePolicy& rp,
 {
     // multitexture mode maps slots to texture image units:
     layout.setReservedSlots( rp.getReservedTextureImageUnits() );
+}
+
+std::string
+TextureCompositorMultiTexture::getSamplerExpr(UID layerUID, const std::string& vec2expr,
+                                              const TextureLayout& layout ) const
+{
+    int slot = layout.getSlot( layerUID );
+    if ( slot >= 0 )
+    {
+        std::stringstream buf;
+        buf << "texture2D(tex" << slot << ", " << vec2expr << ")";
+        std::string str = buf.str();
+        return str;
+    }
+    else
+    {
+        OE_WARN << LC << "Illegal slot # in getSampleExpr (does not exist in texture layout)" << std::endl;
+        return "vec4(0,0,0,0)";
+    }
 }

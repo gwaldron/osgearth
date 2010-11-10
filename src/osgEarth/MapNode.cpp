@@ -181,8 +181,9 @@ MapNode::init()
     {
         // inform the terrain engine of the map information now so that it can properly
         // initialize it's CoordinateSystemNode. This is necessary in order to support
-        // manipulators.
-        _terrainEngine->setMapInfo( MapInfo(_map.get()) );
+        // manipulators and to set up the texture compositor prior to frame-loop 
+        // initialization.
+        _terrainEngine->preinitialize( MapInfo(_map.get()), terrainOptions );
 
         this->addChild( _terrainEngine.get() );
     }
@@ -220,7 +221,7 @@ MapNode::init()
     dirtyBound();
 
     // set the node up to initialize the terrain engine on the first update traversal.
-    adjustUpdateTraversalCount( 1 );
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 
     // register for event traversals so we can deal with blacklisted filenames
     adjustEventTraversalCount( 1 );
@@ -437,13 +438,13 @@ MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
     }
 }
 
-void
-MapNode::adjustUpdateTraversalCount( int delta )
-{
-    int oldCount = this->getNumChildrenRequiringUpdateTraversal();
-    if ( oldCount + delta >= 0 )
-        this->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + delta) );
-}
+//void
+//MapNode::adjustUpdateTraversalCount( int delta )
+//{
+//    int oldCount = this->getNumChildrenRequiringUpdateTraversal();
+//    if ( oldCount + delta >= 0 )
+//        this->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + delta) );
+//}
 
 void
 MapNode::adjustEventTraversalCount( int delta )
@@ -465,7 +466,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
         {
             _terrainEngine->initialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
             _terrainEngineInitialized = true;
-            adjustUpdateTraversalCount( -1 );
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
             dirtyBound();
         }
     }

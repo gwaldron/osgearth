@@ -35,8 +35,7 @@ using namespace OpenThreads;
 
 //---------------------------------------------------------------------------
 
-TextureLayout::TextureLayout() :
-_firstTextureSlot( 0 )
+TextureLayout::TextureLayout()
 {
     //nop
 }
@@ -73,14 +72,18 @@ TextureLayout::applyMapModelChange( const MapModelChange& change )
         bool found = false;
         for( TextureSlotVector::iterator i = _slots.begin(); i != _slots.end() && !found; ++i )
         {
-            if ( *i < 0 ) // negative UID means the slot is empty.
+            int slot = (int)(i - _slots.begin());
+
+            // negative UID means the slot is empty.
+            bool slotAvailable = (*i < 0) && (_reservedSlots.find(slot) == _reservedSlots.end());
+            if ( slotAvailable )
             {
                 *i = change.getImageLayer()->getUID();
                 
                 if ( change.getFirstIndex() >= (int)_order.size() )
                     _order.resize( change.getFirstIndex() + 1, -1 );
 
-                _order[change.getFirstIndex()] = (int)(i - _slots.begin());
+                _order[change.getFirstIndex()] = slot;
                 found = true;
                 break;
             }
@@ -134,6 +137,12 @@ TextureLayout::applyMapModelChange( const MapModelChange& change )
     //    OE_INFO << LC << "  Ordr " << i << ": slot=" << _order[i] << std::endl;
 }
 
+void
+TextureLayout::setReservedSlots( const std::set<int>& reservedSlots )
+{
+    _reservedSlots = reservedSlots;
+}
+
 //---------------------------------------------------------------------------
 
 TextureCompositor::TextureCompositor( const TerrainOptions::CompositingTechnique& tech ) :
@@ -161,6 +170,16 @@ TextureCompositor::applyMapModelChange( const MapModelChange& change )
 {
     Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
     _layout.applyMapModelChange( change );
+}
+
+void
+TextureCompositor::applyResourcePolicy( const ResourcePolicy& policy )
+{
+    if ( _impl.valid() )
+    {
+        Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
+        _impl->applyResourcePolicy( policy, _layout );
+    }
 }
 
 bool

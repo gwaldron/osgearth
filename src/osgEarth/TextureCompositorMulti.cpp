@@ -109,41 +109,6 @@ namespace
 
 namespace
 {
-#if 0
-    static void s_setTexture( const GeoImage& i, int texUnit, bool addUniform, osg::StateSet* stateSet )
-    {
-        osg::Texture2D* texture = new osg::Texture2D( i.getImage() );
-        int texWidth = i.getImage()->s();
-        int texHeight = i.getImage()->t();
-
-        // configure the mipmapping 
-        texture->setMaxAnisotropy(16.0f);
-        texture->setResizeNonPowerOfTwoHint(false);
-        texture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-        bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
-        if ( powerOfTwo )
-            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-        else
-            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-
-        // configure the wrapping
-        texture->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
-        texture->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
-
-        // populate the stateset
-        stateSet->setTextureAttributeAndModes( texUnit, texture, osg::StateAttribute::ON );
-
-        if ( addUniform )
-        {
-            std::stringstream buf;
-            buf << "tex" << texUnit;
-            std::string name = buf.str();
-            stateSet->addUniform( new osg::Uniform( name.c_str(), texUnit ) );
-            // NOTE: "tex"+texUnit doesn't work.
-        }
-    }
-#endif
-
     static osg::Texture2D*
     s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout )
     {
@@ -157,6 +122,12 @@ namespace
         if ( !tex )
         {
             tex = new osg::Texture2D();
+
+            // configure the mipmapping
+            tex->setMaxAnisotropy(16.0f);
+            tex->setResizeNonPowerOfTwoHint(false);
+            tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
 
             // configure the wrapping
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
@@ -183,23 +154,6 @@ _useGPU( useGPU )
     //nop
 }
 
-#if 0
-osg::StateSet*
-TextureCompositorMultiTexture::createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const
-{
-    osg::StateSet* stateSet = new osg::StateSet();
-    if ( layerImages.size() < 1 )
-        return stateSet;
-
-    for( GeoImageVector::const_iterator i = layerImages.begin(); i != layerImages.end(); ++i )
-    {
-        s_setTexture( *i, i-layerImages.begin(), _useGPU, stateSet );
-    }
-
-    return stateSet;
-}
-#endif
-
 void
 TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
                                                 UID layerUID,
@@ -212,6 +166,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
     {
         tex->setImage( preparedImage.getImage() );
 
+#if 0
         // recalculate mipmapping filters:
         int texWidth  = tex->getImage()->s();
         int texHeight = tex->getImage()->t();
@@ -220,34 +175,9 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
             tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
         else
             tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-    }
-}
-
-
-#if 0
-    osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(
-        stateSet->getTextureAttribute( layerNum, osg::StateAttribute::TEXTURE ) );
-
-    if ( texture )
-    {
-        texture->setImage( preparedImage.getImage() );
-
-        // recalculate mipmapping:
-        int texWidth  = texture->getImage()->s();
-        int texHeight = texture->getImage()->t();
-        bool powerOfTwo = texWidth > 0 && (texWidth & (texWidth - 1)) && texHeight > 0 && (texHeight & (texHeight - 1));
-        if ( powerOfTwo )
-            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-        else
-            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-    }
-    else
-    {
-        s_setTexture( preparedImage, layerNum, _useGPU, stateSet );
-    }
-}
 #endif
-
+    }
+}
 
 void 
 TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
@@ -365,4 +295,12 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
             }
         }
     }
+}
+
+void
+TextureCompositorMultiTexture::applyResourcePolicy(const ResourcePolicy& rp,
+                                                   TextureLayout& layout ) const
+{
+    // multitexture mode maps slots to texture image units:
+    layout.setReservedSlots( rp.getReservedTextureImageUnits() );
 }

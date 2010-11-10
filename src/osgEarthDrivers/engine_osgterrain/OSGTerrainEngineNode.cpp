@@ -197,12 +197,6 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     OE_INFO << LC << "Map profile established" << std::endl;
 
-    // set up the ellipsoid
-    //this->setCoordinateSystem( mapProfile->getSRS()->getInitString() );
-    //this->setFormat( mapProfile->getSRS()->getInitType() );
-    //if ( !mapProfile->getSRS()->isProjected() )
-    //    this->setEllipsoidModel( new osg::EllipsoidModel( *mapProfile->getSRS()->getEllipsoid() ) );
-
     // create a factory for creating actual tile data
     _tileFactory = new OSGTileFactory( _uid, *_cull_mapf, _terrainOptions );
 
@@ -282,6 +276,13 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     // we just added the root tiles, so mark the bound in need of recomputation.
     dirtyBound();
+}
+
+void
+OSGTerrainEngineNode::onResourcePolicyChanged()
+{
+    if ( _texCompositor.valid() )
+        _texCompositor->applyResourcePolicy( getResourcePolicy() );
 }
 
 void

@@ -28,7 +28,7 @@ using namespace osgEarth;
 LoadingPolicy::LoadingPolicy( const Config& conf ) :
 _mode( MODE_STANDARD ),
 _numLoadingThreads( 4 ),
-_numLoadingThreadsPerCore( 4 ),
+_numLoadingThreadsPerCore( 2 ),
 _numCompileThreads( 2 ),
 _numCompileThreadsPerCore( 0.5 )
 {

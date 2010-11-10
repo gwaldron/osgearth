@@ -42,13 +42,6 @@ namespace osgEarth
                 safeNode->onMapInfoEstablished( mapInfo );
         }
 
-        //void onMapProfileEstablished( const Profile* profile )
-        //{
-        //    osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
-        //    if ( safeNode.valid() )
-        //        safeNode->onMapProfileEstablished( profile );
-        //}
-
         void onMapModelChanged( const MapModelChange& change )
         {
             osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
@@ -109,12 +102,7 @@ TerrainEngineNode::TerrainEngineNode() :
 _verticalScale( 1.0f ),
 _elevationSamplingRatio( 1.0f )
 {
-    //if ( Registry::instance()->getCapabilities().supportsGLSL() )
-    //{
-    //    osg::NodeCallback* cb = new UpdateLightingUniformsCallback();
-    //    this->addCullCallback( cb );
-    //    this->addUpdateCallback( cb );
-    //}
+    //nop
 }
 
 TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op ) :
@@ -199,17 +187,12 @@ TerrainEngineNode::setElevationSamplingRatio( float value )
     onElevationSamplingRatioChanged();
 }
 
-//void
-//TerrainEngineNode::onMapProfileEstablished( const Profile* profile )
-//{
-//    // set up the CSN values   
-//    if ( _map.valid() )
-//        _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
-//    
-//    // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-//    if ( !_map->isGeocentric() )
-//        this->setEllipsoidModel( NULL );
-//}
+void
+TerrainEngineNode::setResourcePolicy( const ResourcePolicy& value )
+{
+    _resourcePolicy = value;
+    onResourcePolicyChanged();
+}
 
 void
 TerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
@@ -322,12 +305,6 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     {
         if ( Registry::instance()->getCapabilities().supportsGLSL() )
             _updateLightingUniformsHelper.cullTraverse( &nv );
-
-        //osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        //if ( cv )
-        //{
-        //    cv->getState()->getAttribute
-        //}
     }
 
     else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )

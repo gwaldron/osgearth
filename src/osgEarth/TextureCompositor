@@ -61,11 +61,17 @@ namespace osgEarth
     public:
         void applyMapModelChange( const MapModelChange& change );
 
+        void setReservedSlots( const std::set<int>& reservedSlots );
+
     protected:
         TextureSlotVector _slots;
         RenderOrderVector _order;
-        int _firstTextureSlot;
+        bool _textureImageUnitPerSlot;
+        ResourcePolicy _rp;
+        std::set<int> _reservedSlots;
     };
+
+    //-----------------------------------------------------------------------
 
     /**
      * Base interface for a particular texture composition implementation
@@ -73,8 +79,6 @@ namespace osgEarth
     class OSGEARTH_EXPORT TextureCompositorTechnique : public osg::Referenced
     {
     public:
-//        virtual osg::StateSet* createStateSet( const GeoImageVector& layerImages, const GeoExtent& tileExtent ) const =0;
-
         virtual bool requiresUnitTextureSpace() const =0;
 
         virtual bool usesShaderComposition() const =0;
@@ -88,7 +92,11 @@ namespace osgEarth
         virtual void applyLayerUpdate( osg::StateSet* stateSet, UID layerUID, const GeoImage& preparedImage, const GeoExtent& tileExtent, const TextureLayout& layout ) const { }
 
         virtual void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const { }
+
+        virtual void applyResourcePolicy( const ResourcePolicy& rp, TextureLayout& layout ) const { }
     };
+
+    //-----------------------------------------------------------------------
 
     /**
      * Utility class that composites texture data for use by a terrain engine.
@@ -113,6 +121,11 @@ namespace osgEarth
          * You should call this any time the map model change happens.
          */
         void applyMapModelChange( const MapModelChange& change );
+
+        /**
+         * Applies a new resource policy to the texture layout.
+         */
+        void applyResourcePolicy( const ResourcePolicy& policy );
 
         /**
          * Returns true if the compositor implementation supports the ability to update an individual

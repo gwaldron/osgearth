@@ -29,6 +29,10 @@
 
 namespace osgEarth
 {
+    class MapNodeCallback : public osg::Referenced
+    {
+    };
+
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
      * that renders data from a "Map" data model.

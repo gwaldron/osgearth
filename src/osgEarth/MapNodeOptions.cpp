@@ -26,6 +26,46 @@ std::string MapNodeOptions::OPTIONS_TAG = "__osgEarth::MapNodeOptions";
 
 //----------------------------------------------------------------------------
 
+ResourcePolicy::ResourcePolicy()
+{
+    //nop
+}
+
+bool
+ResourcePolicy::reserveTextureImageUnit( int& out_unit )
+{
+    //TODO
+    out_unit = -1;
+    return false;
+}
+
+bool
+ResourcePolicy::reserveTextureImageUnit( int unit )
+{
+    std::set<int>::const_iterator i = _reservedTUIs.find( unit );
+    if ( i != _reservedTUIs.end() ) {
+        _reservedTUIs.insert( unit );
+        return true;
+    }
+    return false;
+}
+
+void 
+ResourcePolicy::releaseTextureImageUnit( int unit )
+{
+    std::set<int>::iterator i = _reservedTUIs.find( unit );
+    if ( i != _reservedTUIs.end() )
+        _reservedTUIs.erase( i );
+}
+
+bool 
+ResourcePolicy::isTextureImageUnitReserved( int unit ) const
+{
+    return _reservedTUIs.find( unit ) != _reservedTUIs.end();
+}
+
+//----------------------------------------------------------------------------
+
 static TerrainOptions s_defaultTerrainOptions;
 
 //----------------------------------------------------------------------------

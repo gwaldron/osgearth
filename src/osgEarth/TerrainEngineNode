@@ -56,6 +56,11 @@ namespace osgEarth
         /** Gets the sampling ratio for elevation grid data. */
         float getElevationSamplingRatio() const { return _elevationSamplingRatio; }
 
+        void setResourcePolicy( const ResourcePolicy& rp );
+
+        const ResourcePolicy& getResourcePolicy() const { return _resourcePolicy; }
+
+
     protected:
         TerrainEngineNode();
 
@@ -68,6 +73,7 @@ namespace osgEarth
     protected: // implementation events
         virtual void onVerticalScaleChanged() { }
         virtual void onElevationSamplingRatioChanged() { }
+        virtual void onResourcePolicyChanged() { }
 
     protected:
         friend class TerrainEngineNodeFactory;
@@ -120,6 +126,8 @@ namespace osgEarth
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
         osg::ref_ptr<Map> _map;
+
+        ResourcePolicy _resourcePolicy;
     };
 
     /**

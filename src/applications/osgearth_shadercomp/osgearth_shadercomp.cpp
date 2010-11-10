@@ -16,6 +16,15 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+
+/**
+ * This sample demonstrates a simple use of osgEarth's shader composition framework.
+ *
+ * By default, osgEarth uses GL shaders to render the terrain. Shader composition is a
+ * mechanism by which you can inject custom shader code into osgEarth's shader program
+ * pipeline. This gets around the problem of having to duplicate shader code in order 
+ * to add functionality.
+ */
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
 #include <osgViewer/Viewer>
@@ -26,6 +35,14 @@
 
 osg::StateAttribute* createHaze();
 
+int usage( const std::string& msg )
+{    
+    OE_NOTICE
+        << msg << std::endl
+        << "USAGE: osgearth_shadercomp <earthfile>" << std::endl;
+
+    return -1;
+}
 
 int main(int argc, char** argv)
 {
@@ -36,8 +53,7 @@ int main(int argc, char** argv)
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
     {
-        OE_WARN << "Unable to load earth model." << std::endl;
-        return -1;
+        return usage( "Unable to load earth model." );
     }
 
     osg::Group* root = new osg::Group();
@@ -78,6 +94,7 @@ osg::StateAttribute*
 createHaze()
 {
     osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
+
     vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_POST_VERTEX );
     vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_POST_FRAGMENT );
 

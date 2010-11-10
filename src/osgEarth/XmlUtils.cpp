@@ -385,7 +385,16 @@ XmlDocument::load( std::istream& in )
 
     XmlDocument* doc = NULL;
     xmlDoc.Parse(xmlStr.c_str());    
-    if (!xmlDoc.Error() && xmlDoc.RootElement())
+
+    if ( xmlDoc.Error() )
+    {
+        std::stringstream buf;
+        buf << xmlDoc.ErrorDesc() << " (row " << xmlDoc.ErrorRow() << ", col " << xmlDoc.ErrorCol() << ")";
+        std::string str = buf.str();
+        OE_WARN << "Error in XML document: " << str << std::endl;
+    }
+
+    if ( !xmlDoc.Error() && xmlDoc.RootElement() )
     {
         doc = new XmlDocument();
         processNode( doc,  xmlDoc.RootElement() );

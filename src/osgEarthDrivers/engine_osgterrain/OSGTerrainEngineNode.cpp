@@ -384,22 +384,6 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 geoImage.getImage(),
                 img_locator.get(), imageLOD ) );
 
-#if 0
-            // Create a layer wrapper that supports opacity.
-            // TODO: review this; the Transparent layer holds a back-reference to the actual ImageLayer
-            CustomColorLayer* img_layer = new CustomColorLayer( 
-                geoImage.getImage(),
-                layerAdded );
-
-            img_layer->setLevelOfDetail(imageLOD);
-            img_layer->setLocator( img_locator.get());
-            img_layer->setMinFilter( layerAdded->getImageLayerOptions().minFilter().value() );
-            img_layer->setMagFilter( layerAdded->getImageLayerOptions().magFilter().value() );
-
-            // update the tile.
-            tile->setCustomColorLayer( img_layer->getUID(), img_layer );
-#endif
-
             // if necessary, tell the tile to queue up a new imagery request (since we
             // just installed a placeholder)
             if ( needToUpdateImagery )

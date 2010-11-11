@@ -640,10 +640,10 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
 
         float hx = rx + rw * ( (_value-_min)/(_max-_min) );
 
-        (*verts)[4].set( hx-3, vph - ry, 0 );
-        (*verts)[5].set( hx+3, vph - ry, 0 );
-        (*verts)[6].set( hx+3, vph - (ry + rh), 0 );
-        (*verts)[7].set( hx-3, vph - (ry + rh), 0 );
+        (*verts)[4].set( hx-4, vph - ry + 3, 0 );
+        (*verts)[5].set( hx+4, vph - ry + 3, 0 );
+        (*verts)[6].set( hx+4, vph - (ry + rh + 3), 0 );
+        (*verts)[7].set( hx-4, vph - (ry + rh + 3), 0 );
         g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 4, 4 ) );
 
         osg::Vec4Array* c = new osg::Vec4Array(1);

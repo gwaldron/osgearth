@@ -44,33 +44,14 @@ namespace osgEarthUtil
         OceanSurfaceNode();
 
         /**
-         *Gets the texture unit that the ocean mask is on
+         * Sets the image layer to use as an ocean mask.
          */
-        //int getOceanMaskTextureUnit() const;
-        //UID getOceanMaskLayerUID() const;
-
-        /**
-         *Sets the texture unit that the ocean mask is on.
-         *Setting this to -1 disables the ocean mask.
-         */
-        //void setOceanMaskTextureUnit(int unit);
-        //void setOceanMaskLayerUID( UID layerUID );
         void setOceanMaskImageLayer( const ImageLayer* layer );
 
+        /**
+         * Gets the image layer being used as an ocean mask.
+         */
         const ImageLayer* getOceanMaskImageLayer() const { return _maskLayer.get(); }
-
-#if 0
-        /**
-         *Gets the texture unit to use for the ocean surface detail
-         */
-        int getOceanSurfaceTextureUnit() const;
-
-        /**
-         *Sets the texture unit to use for the ocean surface detail
-         *Setting this to -1 disables the effect
-         */
-        void setOceanSurfaceTextureUnit( int unit);
-#endif
 
         /**
          *Gets the wave height
@@ -180,13 +161,7 @@ namespace osgEarthUtil
         void shadersDirty(bool value);
         bool _shadersDirty;
 
-        //osg::ref_ptr< osg::Program > _program;
-        //osg::ref_ptr< osg::Shader > _vertShader;
-        //osg::ref_ptr< osg::Shader > _fragShader;
-
-        float _currentElevation;
         float _maxRange;
-        //int _oceanMaskTextureUnit;
         UID _oceanMaskLayerUID;
         int _oceanSurfaceTextureUnit;
         bool _oceanSurfaceTextureApplied;

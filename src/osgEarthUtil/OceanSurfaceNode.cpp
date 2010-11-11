@@ -37,137 +37,13 @@
 using namespace osgEarth;
 using namespace osgEarthUtil;
 
-#if 0
-char vert_shader_source[] =
-//"in vec3 osgEarth_LatLon;\n"
-"varying vec2 texCoord0;\n"
-"varying vec2 texCoord1;\n"
-"varying vec3 texCoord2;\n"
-"varying vec2 texCoord3;\n"
-"uniform float osg_SimulationTime; \n"
-"uniform mat4 osg_ViewMatrixInverse;\n"
-"uniform mat4 osg_ViewMatrix;\n"
-"uniform float osgEarth_oceanHeight;\n"
-"uniform float osgEarth_oceanPeriod;\n"
-"uniform sampler2D osgEarth_oceanMaskUnit;\n"
-"uniform bool osgEarth_oceanMaskUnitValid;\n"
-"uniform bool osgEarth_oceanEnabled;\n"
-"uniform bool osgEarth_oceanInvertMask;\n"
-"uniform float osgEarth_oceanAnimationPeriod;\n"
-"uniform float osgEarth_oceanMaxRange;\n"
-"uniform float osgEarth_cameraElevation;\n"
-
-"varying vec2 oceanMaskTexCoord;\n"
-"varying float osgEarth_oceanAlpha;\n"
-"\n"
-"\n"
-"//Lighting\n"
-"uniform bool osgEarth_lightingEnabled; \n"
-"uniform bool osgEarth_lightsEnabled[8];\n"
-"\n"
-"\n"
-"void main (void)\n"
-"{\n"
-"  if (osgEarth_lightingEnabled)\n"
-"  {\n"
-"    vec4 ambient = vec4(0.0); \n"
-"    vec4 diffuse = vec4(0.0); \n"
-"    vec4 specular = vec4(0.0); \n"
-" \n"
-"    vec3 normal = fnormal(); \n"
-" \n"
-"    //Compute lighting\n"
-"    for (int i = 0; i < 8; i++)\n"
-"    {\n"
-"      if (osgEarth_lightsEnabled[i]) directionalLight(i, normal, ambient, diffuse, specular); \n"
-"    }\n"
-"     gl_FrontColor =gl_FrontLightModelProduct.sceneColor + \n"
-"                    ambient  * gl_FrontMaterial.ambient + \n"
-"                    diffuse  * gl_FrontMaterial.diffuse + \n"
-"                    specular * gl_FrontMaterial.specular; \n"
-"  }\n"
-"  else\n"
-"  {\n"
-"    gl_FrontColor = gl_Color;\n"
-"  }\n"
-" \n"
-"\n"
-"   mat4 modelMatrix = osg_ViewMatrixInverse * gl_ModelViewMatrix;\n"
-"   vec4 vert = modelMatrix  * gl_Vertex;\n"           
-"   vec3 vert3 = vec3(vert.x, vert.y, vert.z);\n"
-"   vec3 latlon = xyz_to_lat_lon_height(vert3);\n"
-"   osgEarth_oceanAlpha = 1.0;\n"
-"   if (osgEarth_oceanMaskUnitValid) osgEarth_oceanAlpha = 1.0 - texture2D( osgEarth_oceanMaskUnit, gl_MultiTexCoordOCEAN_MASK_UNIT.st).a;\n"
-"   if (osgEarth_oceanInvertMask) osgEarth_oceanAlpha = 1.0 - osgEarth_oceanAlpha;\n"
-"   if (osgEarth_oceanMaxRange >= osgEarth_cameraElevation)\n"
-"   {\n"
-"     //Invert so it's between 0 and 1\n"
-"     float s = mix(1.0, 0.0, osgEarth_cameraElevation / osgEarth_oceanMaxRange);\n"
-"     osgEarth_oceanAlpha *= s;\n"
-"   }\n"
-"   else {\n"
-"      osgEarth_oceanAlpha = 0.0;\n"
-"   }\n"
-
-"   if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0.0)\n"
-"   {\n"
-"     float PI_2 = 3.14158 * 2.0;\n"
-"     float period = PI_2/osgEarth_oceanPeriod;\n"
-"     float half_period = period / 2.0;\n"
-//"     vec3 latlon = osgEarth_LatLon;\n"
-"     vec3 n = normalize(vert3);\n"
-"     float theta = (mod(latlon.x, period) / period) * PI_2;\n"  
-"     float phi = (mod(latlon.y, half_period) / half_period) * PI_2;\n"
-"     float phase1 = osg_SimulationTime * 2.0;\n"
-"     float phase2 = osg_SimulationTime * 4.0;\n"
-"     float waveHeight = (osgEarth_oceanAlpha) * osgEarth_oceanHeight;\n"
-"     float scale1 = sin(theta + phase1) * waveHeight;\n"
-"     float scale2 = cos(phi + phase2) * waveHeight;\n"
-"     float scale3 = sin(theta + phase2) * cos(phi + phase1) * waveHeight *1.6;\n"
-"     float scale = (scale1 + scale2 + scale3)/3.0;\n"
-"     //if (scale < 0) scale = 0.0;\n"
-"   #if OCEAN_ADJUST_TO_MSL \n"
-"     //Adjust the vert to 0 MSL\n"
-"     vec3 offset = n * -latlon.z;\n"
-"     vert += vec4(offset.x, offset.y, offset.z, 0);\n"
-"   #endif\n"
-"     //Apply the wave scale\n"
-"     n = n * scale;\n"
-"     vert += vec4(n.x, n.y,n.z,0);\n"
-"     vert = osg_ViewMatrix * vert;\n"
-"     gl_Position = gl_ProjectionMatrix * vert;\n"
-"   }\n"
-"   else\n"
-"   {\n"
-"     gl_Position = ftransform();\n"
-"   }\n"
-"\n"
-"   float PI = 3.14158;\n"
-"   float textureSize = OCEAN_TEXTURE_SIZE;\n"
-"	texCoord0 = gl_MultiTexCoord0.st;\n"
-"	texCoord1 = gl_MultiTexCoord1.st;\n"
-"	texCoord2.xy = gl_MultiTexCoord1.st;\n"
-"	texCoord3 = gl_MultiTexCoord3.st;\n"
-"   #if OCEAN_SURFACE_UNIT >= 0\n"
-"   //Alter the z (r) coordinate based on the animation period\n"
-"   texCoordOCEAN_SURFACE_UNIT.x =  latlon.x / textureSize;\n"
-"   texCoordOCEAN_SURFACE_UNIT.y =  latlon.y / textureSize;\n"
-"   texCoordOCEAN_SURFACE_UNIT.z = fract(osg_SimulationTime/osgEarth_oceanAnimationPeriod);\n"
-"   #endif\n"
-
-"}\n";
-#endif
-
-
 typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
 
 OceanSurfaceNode::OceanSurfaceNode() :
 _shadersDirty(false),
-//_oceanMaskTextureUnit(-1),
 _oceanMaskLayerUID(-1),
 _oceanSurfaceTextureUnit(-1),
 _waveHeight(100),
-_currentElevation(FLT_MAX),
 _maxRange(800000),
 _period(1024),
 _enabled(true),
@@ -179,8 +55,7 @@ _oceanColor(osg::Vec4f(0,0,1,0)),
 _oceanSurfaceTextureApplied(false)
 {
     rebuildShaders();
-
-    //getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(_enabled);     
+ 
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period);   
     getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanAnimationPeriod", osg::Uniform::FLOAT)->set(_oceanAnimationPeriod); 
 
@@ -314,8 +189,6 @@ OceanSurfaceNode::setEnabled(bool enabled)
     {
         _enabled = enabled;
         shadersDirty(true);
-        //getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanEnabled", osg::Uniform::BOOL)->set(_enabled);
-        //TODO: consider rebuildShaders() instead..
     }
 }
 
@@ -600,140 +473,3 @@ OceanSurfaceNode::rebuildShaders()
     }
 }
 
-
-#if 0
-void
-OceanSurfaceNode::rebuildShaders()
-{
-    OE_DEBUG << "Rebuilding shaders..." << std::endl;
-    std::string vertShaderSource = std::string(fnormal_source) + 
-        std::string(directionalLight_source) + 
-        std::string(xyz_to_lat_lon_height_source) +
-        std::string(vert_shader_source);
-
-    {
-        unsigned int maskUnit = _oceanMaskTextureUnit >= 0 ? _oceanMaskTextureUnit : 0;        
-        std::stringstream ss;
-        ss << maskUnit;
-        vertShaderSource = replaceAll(vertShaderSource, "OCEAN_MASK_UNIT", ss.str());
-        
-        int surfaceUnit = _oceanSurfaceTextureUnit >= 0 ? _oceanSurfaceTextureUnit : 0;        
-        ss.str("");
-        ss << surfaceUnit;
-        vertShaderSource = replaceAll(vertShaderSource, "OCEAN_SURFACE_UNIT", ss.str());
-
-        ss.str("");
-        ss << _oceanSurfaceImageSizeRadians;
-        vertShaderSource = replaceAll(vertShaderSource, "OCEAN_TEXTURE_SIZE", ss.str());
-
-		ss.str("");
-        ss << _adjustToMSL;
-        vertShaderSource = replaceAll(vertShaderSource, "OCEAN_ADJUST_TO_MSL", ss.str());
-        
-        OE_DEBUG << "Shader " << vertShaderSource << std::endl;
-    }
-
-    _vertShader->setShaderSource( vertShaderSource );
-
-    unsigned int numUnits = 4;
-    std::stringstream ss;
-    for (unsigned int i = 0; i < numUnits; ++i)
-    {
-        //if (i != _oceanMaskTextureUnit)
-        if (i != _oceanSurfaceTextureUnit)
-        {
-            ss << "varying vec2 texCoord" << i << ";" << std::endl;
-            ss << "uniform sampler2D osgEarth_Layer" << i << "_unit;" << std::endl;
-        }
-        else
-        {
-            ss << "varying vec3 texCoord" << i << ";" << std::endl;
-            ss << "uniform sampler3D osgEarth_Layer" << i << "_unit;" << std::endl;
-        }
-    }
-
-    if ( _oceanColor.isSet() )
-    {
-        ss << "uniform bool osgEarth_oceanInvertMask;\n";
-    }
-
-    ss << "uniform bool osgEarth_oceanEnabled;\n";
-    ss << "varying float osgEarth_oceanAlpha;\n";
-
-    ss << "void main ( void ) " << std::endl
-        << "{" << std::endl;
-
-    if ( _oceanColor.isSet() )
-    {
-        for(unsigned int i=0; i < numUnits; ++i)
-        {
-            ss << "vec4 tex" << i << ";\n";
-            if (i == _oceanSurfaceTextureUnit)
-            {
-              ss << "tex" << i << " =  texture3D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");\n";
-              ss << "if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0) { " << std::endl
-                     << "  tex" << i << ".a *= osgEarth_oceanAlpha;" << std::endl
-                 << "}" << std::endl
-                 << " else { tex" << i << ".a = 0.0; }" << std::endl;
-            }
-            else
-            {
-              ss << "tex" << i << " =  texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");\n";
-            }
-
-            if ( i == _oceanMaskTextureUnit )
-            {
-                ss << "float maskAlpha = 1.0 - tex" << i << ".a;\n";
-                ss << "if(osgEarth_oceanInvertMask) maskAlpha = 1.0-maskAlpha;\n";                
-                ss << "tex" << i << " = vec4("
-                    << _oceanColor->r() << "," << _oceanColor->g() << ","
-                    << _oceanColor->b() << ",maskAlpha*" << _oceanColor->a() << ");\n";
-            }
-        }
-    }
-    else
-    {
-        for (unsigned int i = 0; i < numUnits; ++i)
-        {
-            ss << "vec4 tex" << i << " = vec4(0.0,0.0,0.0,0.0);\n";
-            if (i != _oceanMaskTextureUnit)
-            {
-                if (i == _oceanSurfaceTextureUnit)
-                {
-                  ss << "tex" << i << " = texture3D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");" << std::endl;
-                  ss << "if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0) { " << std::endl
-                     << "  tex" << i << ".a *= osgEarth_oceanAlpha;" << std::endl
-                     << "}" << std::endl
-                     << " else { tex" << i << ".a = 0.0; }" << std::endl;
-                }
-                else
-                {
-                  ss << "tex" << i << " = texture2D(osgEarth_Layer" << i << "_unit, texCoord" << i << ");" << std::endl;
-                }
-            }
-        }
-    }
-
-    ss << "//Interpolate the color between the first layer and second" << std::endl
-        << "vec3 c = mix(tex0.rgb, tex1.rgb, tex1.a);" << std::endl
-        //<< "if (osgEarth_oceanEnabled && osgEarth_oceanAlpha > 0){ " << std::endl
-        << "c = mix(c, tex2.rgb, tex2.a);" << std::endl
-        //<< "}" << std::endl
-        << "c = mix(c, tex3.rgb, tex3.a);" << std::endl
-        << "float a = tex0.a;" << std::endl
-        << "if (a < tex1.a) a = tex1.a;" << std::endl
-        << "if (a < tex2.a) a = tex2.a;" << std::endl
-        << "if (a < tex3.a) a = tex3.a;" << std::endl
-        << "gl_FragColor = gl_Color * vec4(c, a);" << std::endl;
-    ss << "}";
-
-
-    std::string fragShaderSource = ss.str();
-    //OE_NOTICE << "Fragment Shader " << std::endl << fragShaderSource << std::endl;
-    _fragShader->setShaderSource( fragShaderSource );  
-
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanMaskUnitValid", osg::Uniform::BOOL)->set(_oceanMaskTextureUnit > 0);
-    int unit = _oceanMaskTextureUnit >= 0 ? _oceanMaskTextureUnit : 0;
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanMaskUnit", osg::Uniform::BOOL)->set(unit);
-}
-#endif

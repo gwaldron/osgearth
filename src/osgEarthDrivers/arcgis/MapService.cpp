@@ -1,6 +1,7 @@
 #include "MapService.h"
 #include <osgEarth/HTTPClient>
 #include <osgEarth/JsonUtils>
+#include <osgEarth/Registry>
 #include <osg/Notify>
 #include <sstream>
 #include <limits.h>
@@ -235,12 +236,28 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
 
 	std::string ssStr;
 	ssStr = ss.str();
-    profile = Profile::create(
-        ssStr,
-        xmin, ymin, xmax, ymax,
-        "",
-        num_tiles_wide,
-        num_tiles_high);
+
+    osg::ref_ptr< SpatialReference > spatialReference = SpatialReference::create( ssStr );
+    if (spatialReference->isGeographic())
+    {
+        //If we have a geographic SRS, just use the geodetic profile
+        profile = Registry::instance()->getGlobalGeodeticProfile();
+    }
+    else if (spatialReference->isMercator())
+    {
+        //If we have a mercator SRS, just use the mercator profile
+        profile = Registry::instance()->getGlobalMercatorProfile();
+    }
+    else
+    {
+        //It's not geodetic or mercator, so try to use the full extent
+        profile = Profile::create(
+            spatialReference.get(),
+            xmin, ymin, xmax, ymax,
+            NULL,
+            num_tiles_wide,
+            num_tiles_high);
+    }    
 
 
 

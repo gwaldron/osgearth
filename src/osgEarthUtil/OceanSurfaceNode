@@ -20,6 +20,7 @@
 #define OSGEARTHUTIL_OCEANSURFACENODE
 
 #include <osgEarthUtil/Common>
+#include <osgEarth/ImageLayer>
 #include <osg/Group>
 #include <osg/observer_ptr>
 #include <osg/CoordinateSystemNode>
@@ -45,14 +46,20 @@ namespace osgEarthUtil
         /**
          *Gets the texture unit that the ocean mask is on
          */
-        int getOceanMaskTextureUnit() const;
+        //int getOceanMaskTextureUnit() const;
+        //UID getOceanMaskLayerUID() const;
 
         /**
          *Sets the texture unit that the ocean mask is on.
          *Setting this to -1 disables the ocean mask.
          */
-        void setOceanMaskTextureUnit(int unit);
+        //void setOceanMaskTextureUnit(int unit);
+        //void setOceanMaskLayerUID( UID layerUID );
+        void setOceanMaskImageLayer( const ImageLayer* layer );
 
+        const ImageLayer* getOceanMaskImageLayer() const { return _maskLayer.get(); }
+
+#if 0
         /**
          *Gets the texture unit to use for the ocean surface detail
          */
@@ -63,6 +70,7 @@ namespace osgEarthUtil
          *Setting this to -1 disables the effect
          */
         void setOceanSurfaceTextureUnit( int unit);
+#endif
 
         /**
          *Gets the wave height
@@ -178,8 +186,10 @@ namespace osgEarthUtil
 
         float _currentElevation;
         float _maxRange;
-        int _oceanMaskTextureUnit;
+        //int _oceanMaskTextureUnit;
+        UID _oceanMaskLayerUID;
         int _oceanSurfaceTextureUnit;
+        bool _oceanSurfaceTextureApplied;
         float _waveHeight;
         float _period;
         bool _enabled;
@@ -191,6 +201,7 @@ namespace osgEarthUtil
         float _oceanSurfaceImageSizeRadians;
         osg::ref_ptr< osg::Image > _oceanSurfaceImage;
         osg::ref_ptr< osg::Texture3D > _oceanSurfaceTexture;
+        osg::observer_ptr< const ImageLayer > _maskLayer;
     };
 }
 

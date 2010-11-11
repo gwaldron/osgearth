@@ -165,6 +165,65 @@ _forceTech( false )
     init();
 }
 
+bool
+TextureCompositor::reserveTextureImageUnit( int& out_unit )
+{
+    //todo: move this into the impls!!
+
+    out_unit = -1;
+
+    //TODO: this only supports GPU texturing....
+    int maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+
+    if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU )
+    {
+        Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
+
+        const TextureLayout::TextureSlotVector& slots = _layout.getTextureSlots();
+        for( int i=0; i<maxUnits; ++i )
+        {
+            if (( i < (int)slots.size() && slots[i] < 0 ) || i >= (int)slots.size() )
+            {
+                out_unit = i;
+                _reservedUnits.insert( i );
+                _layout.setReservedSlots( _reservedUnits ); // in multitexture, slots == units
+                return true;
+            }
+        }
+
+        // all taken, return false.
+        return false;
+    }
+    else // texture array or multipass... they area locked to unit 0
+    {
+        // search for an unused unit.
+        for( int i=1; i<maxUnits; ++i ) // start at 1 because unit 0 is always reserved
+        {
+            if ( _reservedUnits.find( i ) == _reservedUnits.end() )
+            {
+                out_unit = i;
+                _reservedUnits.insert( i );
+                return true;
+            }
+        }
+
+        // all taken, return false.
+        return false;
+    }
+}
+
+void
+TextureCompositor::releaseTextureImageUnit( int unit )
+{
+    _reservedUnits.erase( unit );
+
+    if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU )
+    {
+        Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
+        _layout.setReservedSlots( _reservedUnits );
+    }
+}
+
 void
 TextureCompositor::applyMapModelChange( const MapModelChange& change )
 {
@@ -268,16 +327,28 @@ TextureCompositor::getRenderOrder( UID layerUID ) const
     return _layout.getOrder( layerUID );
 }
 
-std::string
-TextureCompositor::getSamplerExpr( UID layerUID, const std::string& vec2expr ) const
+osg::Shader*
+TextureCompositor::createSamplerFunction(UID                layerUID, 
+                                         const std::string& functionName,
+                                         osg::Shader::Type  type ) const
 {
+    osg::Shader* result = 0L;
     if ( _impl.valid() )
     {
         Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
-        return _impl->getSamplerExpr( layerUID, vec2expr, _layout );
+        result = _impl->createSamplerFunction( layerUID, functionName, type, _layout );
     }
-    else
-        return "vec4(0,0,0,0)";
+
+    if ( !result )
+    {
+        std::string fname = !functionName.empty() ? functionName : "defaultSamplerFunction";
+        std::stringstream buf;
+        buf << "void " << functionName << "() { \n return vec4(0,0,0,0); \n } \n";
+        std::string str = buf.str();
+        result = new osg::Shader( type, str );
+    }
+
+    return result;
 }
 
 void

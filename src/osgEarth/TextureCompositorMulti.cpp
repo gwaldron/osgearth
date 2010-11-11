@@ -34,20 +34,6 @@ using namespace osgEarth;
 namespace
 {
     static osg::Shader*
-    s_createTexture2DFunction()
-    {
-        std::stringstream buf;
-
-        buf << "vec4 osgearth_texture2D( in sampler2D sampler, in int slot, in vec2 texcoord ) \n"
-            << "{ \n"
-            << "    return texture2D( sampler, texcoord ); \n"
-            << "} \n";
-
-        std::string str = buf.str();
-        return new osg::Shader( osg::Shader::FRAGMENT, str );
-    }
-
-    static osg::Shader*
     s_createTextureVertexShader( int maxLayersToRender )
     {
         std::stringstream buf;
@@ -205,13 +191,11 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
         {
             vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(layout, maxLayers) );
             vp->setShader( "osgearth_vert_texture", s_createTextureVertexShader(maxLayers) );
-            vp->setShader( "osgearth_texture2D", s_createTexture2DFunction() );
         }
         else
         {
             vp->removeShader( "osgearth_frag_texture", osg::Shader::FRAGMENT );
             vp->removeShader( "osgearth_vert_texture", osg::Shader::VERTEX );
-            vp->removeShader( "osgearth_texture2D", osg::Shader::FRAGMENT );
         }
     }
 
@@ -310,21 +294,32 @@ TextureCompositorMultiTexture::applyResourcePolicy(const ResourcePolicy& rp,
     layout.setReservedSlots( rp.getReservedTextureImageUnits() );
 }
 
-std::string
-TextureCompositorMultiTexture::getSamplerExpr(UID layerUID, const std::string& vec2expr,
-                                              const TextureLayout& layout ) const
+osg::Shader*
+TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
+                                                     const std::string& functionName,
+                                                     osg::Shader::Type type,
+                                                     const TextureLayout& layout ) const
 {
+    osg::Shader* result = 0L;
+
     int slot = layout.getSlot( layerUID );
     if ( slot >= 0 )
     {
         std::stringstream buf;
-        buf << "texture2D(tex" << slot << ", " << vec2expr << ")";
+
+        buf << "uniform sampler2D tex"<< slot << "; \n"
+            << "vec4 " << functionName << "() \n"
+            << "{ \n";
+
+        if ( type == osg::Shader::VERTEX )
+            buf << "    return texture2D(tex"<< slot << ", gl_MultiTexCoord"<< slot <<".st); \n";
+        else
+            buf << "    return texture2D(tex"<< slot << ", gl_TexCoord["<< slot << "].st); \n";
+
+        buf << "} \n";
+
         std::string str = buf.str();
-        return str;
+        result = new osg::Shader( type, str );
     }
-    else
-    {
-        OE_WARN << LC << "Illegal slot # in getSampleExpr (does not exist in texture layout)" << std::endl;
-        return "vec4(0,0,0,0)";
-    }
+    return result;
 }

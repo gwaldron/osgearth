@@ -49,7 +49,7 @@ namespace osgEarth
             const GeoExtent& tileExtent,
             const TextureLayout& layout ) const;
 
-        std::string getSamplerExpr( UID layerUID, const std::string& vec2expr, const TextureLayout& layout ) const;
+        osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const;
     };
 }
 

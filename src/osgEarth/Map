@@ -416,6 +416,7 @@ namespace osgEarth
         const ImageLayerVector& imageLayers() const { return _imageLayers; }
         ImageLayer* imageLayerAt( int index ) const { return _imageLayers[index].get(); }
         ImageLayer* imageLayerByUID( UID uid ) const;
+        ImageLayer* imageLayerByName( const std::string& name ) const;
 
         /** The elevation layer stack snapshot */
         const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }

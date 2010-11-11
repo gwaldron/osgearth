@@ -190,8 +190,10 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    int maskUnit = -1;
-    while(arguments.read("--mask-unit",maskUnit));    
+    std::string maskLayerName = "ocean";
+    while( arguments.read("--mask-layer", maskLayerName) );
+
+    bool invertMask = arguments.isOption("--invert-mask");
 
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
@@ -204,7 +206,18 @@ int main(int argc, char** argv)
         return usage( "Failed to load an earth file." );
 
     osgEarthUtil::OceanSurfaceNode* ocean = new osgEarthUtil::OceanSurfaceNode();
-    ocean->setOceanMaskTextureUnit( maskUnit );
+
+    if ( !maskLayerName.empty() )
+    {
+        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( loadedModel.get() );
+        if ( mapNode )
+        {
+            osgEarth::MapFrame mapf( mapNode->getMap() );
+            ocean->setOceanMaskImageLayer( mapf.imageLayerByName( maskLayerName ) );
+        }
+    }
+
+    ocean->setInvertMask( !invertMask );
 
     ImageList waterImages;
     waterImages.push_back( osgDB::readImageFile("../data/watersurface1.png") );

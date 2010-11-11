@@ -99,7 +99,8 @@ namespace osgEarth
 
         virtual void applyResourcePolicy( const ResourcePolicy& rp, TextureLayout& layout ) const { }
         
-        virtual std::string getSamplerExpr( UID layerUID, const std::string& vec2expr, const TextureLayout& layout ) const { return ""; }
+        virtual osg::Shader* createSamplerFunction( 
+            UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const { return 0L; }
     };
 
     //-----------------------------------------------------------------------
@@ -196,16 +197,29 @@ namespace osgEarth
         void updateMasterStateSet( osg::StateSet* stateSet ) const;
 
         /**
+         * Requests a texture image unit that is not in use, and marks is as reserved. You can release
+         * the reserved texture image unit by calling releaseTextureImageUnit().
+         */
+        bool reserveTextureImageUnit( int& out_unit );
+
+        /**
+         * Releases a reserved texture image unit previously returned by reserveTextureImageUnit.
+         */
+        void releaseTextureImageUnit( int unit );
+
+        /**
          * Gets the rendering order of the layer with the specified UID.
          */
         int getRenderOrder( UID layerUID ) const;
 
         /**
-         * Generates a texture sampling expression that you can use to access
-         * the texels in the specified layer. You need this when doing user shader
-         * composition and you need to access an image layer managed by osgEarth.
+         * Creates a shader component that implements texture sampling for the layer with 
+         * the specified layer UID. You can use this is a custom shader to sample texels from
+         * one of osgEarth's Map image layers.
+         *
+         *    vec4 function_name()
          */
-        std::string getSamplerExpr( UID layerUID, const std::string& vec2expr ) const;
+        osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type ) const;
 
     private:
         void init();
@@ -218,6 +232,8 @@ namespace osgEarth
 
         TextureLayout _layout;
         Threading::ReadWriteMutex _layoutMutex;
+
+        std::set<int> _reservedUnits;
     };
 }
 

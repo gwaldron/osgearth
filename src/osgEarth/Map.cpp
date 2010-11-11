@@ -1025,3 +1025,12 @@ MapFrame::imageLayerByUID( UID uid ) const
             return i->get();
     return 0L;
 }
+
+ImageLayer*
+MapFrame::imageLayerByName( const std::string& name ) const
+{
+    for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
+        if ( i->get()->getName() == name )
+            return i->get();
+    return 0L;
+}

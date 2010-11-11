@@ -243,23 +243,42 @@ TextureCompositorTexArray::updateMasterStateSet( osg::StateSet* stateSet, const 
     vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(layout) );
 }
 
-std::string
-TextureCompositorTexArray::getSamplerExpr(UID layerUID, const std::string& vec2expr,
-                                          const TextureLayout& layout ) const
+osg::Shader*
+TextureCompositorTexArray::createSamplerFunction(UID layerUID,
+                                                 const std::string& functionName,
+                                                 osg::Shader::Type type,
+                                                 const TextureLayout& layout ) const
 {
+    osg::Shader* result = 0L;
+
     int slot = layout.getSlot( layerUID );
     if ( slot >= 0 )
     {
+        int r = 4 * slot;
+
+        std::string texCoord = 
+            type == osg::Shader::VERTEX ? "gl_MultiTexCoord0" : 
+            "gl_TexCoord[0]";
+
         std::stringstream buf;
-        buf << "texture2DArray(tex0, vec3(" << vec2expr << "," << slot << "))";
+
+        buf << "#version 130 \n"
+            << "#extension GL_EXT_gpu_shader4 : enable \n"
+
+            << "uniform sampler2DArray tex0; \n"
+            << "uniform float[] region; \n"
+
+            << "vec4 " << functionName << "() \n"
+            << "{ \n"
+            << "    float u = region["<< r <<"] + (region["<< r+2 <<"] * "<< texCoord <<".s); \n"
+            << "    float v = region["<< r+1 <<"] + (region["<< r+3 <<"] * "<< texCoord <<".t); \n"
+            << "    return texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n"
+            << "} \n";
+
         std::string str = buf.str();
-        return str;
+        result = new osg::Shader( type, str );
     }
-    else
-    {
-        OE_WARN << LC << "Illegal slot # in getSampleExpr (does not exist in texture layout)" << std::endl;
-        return "vec4(0,0,0,0)";
-    }
+    return result;
 }
 
 //------------------------------------------------------------------------

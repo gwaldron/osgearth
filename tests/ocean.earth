@@ -19,6 +19,10 @@ Tests the use of an oceanmask, use with the osgearth_ocean example
     
     <options>
         <lighting>false</lighting>
+        <terrain>
+            <loading_policy mode="sequential" compile_threads="2"/>
+            <sample_ratio>0.0625</sample_ratio>
+        </terrain>
     </options>
 
 </map>

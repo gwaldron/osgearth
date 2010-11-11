@@ -181,7 +181,8 @@ int usage( const std::string& msg )
 {
     OE_NOTICE
         << msg << std::endl
-        << "USAGE: osgearth_ocean [--mask-unit <unit>] <earthfile>" << std::endl;
+        << "USAGE: osgearth_ocean [--mask-layer <layername>] [--invert-mask] <earthfile>" << std::endl
+        << "(note: <layername> defaults to \"ocean\")" << std::endl;
     return -1;
 }
 

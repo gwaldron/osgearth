@@ -5,15 +5,24 @@ Tests the use of an oceanmask, use with the osgearth_ocean example
 
 <map name="Ocean" type="geocentric" version="2">
     
-    <image name="arcgisonline esri imagery" driver="arcgis">
-        <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
-        <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
+    <image name="pelican nasa blue marble" driver="tms">
+        <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
     </image>
+  
+    <elevation name="pelican srtm" driver="tms">
+        <url>http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml</url>
+    </elevation>
 
-    <image name = "mask" driver="gdal">
-      <url>../data/ocean_mask.tif</url>
+    <image name="ocean" driver="gdal" enabled="false">
+        <url>../data/ocean_mask.tif</url>
     </image>   
     
-    <options lighting="false"/>
+    <options>
+        <lighting>false</lighting>
+        <terrain>
+            <loading_policy mode="sequential" compile_threads="2"/>
+            <sample_ratio>0.0625</sample_ratio>
+        </terrain>
+    </options>
 
 </map>

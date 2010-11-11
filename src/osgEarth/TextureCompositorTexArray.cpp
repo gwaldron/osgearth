@@ -33,57 +33,60 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
-static osg::Shader*
-s_createTextureFragShaderFunction( const TextureLayout& layout )
+namespace
 {
-    std::stringstream buf;
-
-    buf << "#version 130 \n"
-        << "#extension GL_EXT_gpu_shader4 : enable \n"
-
-        << "uniform sampler2DArray tex0; \n"
-        << "uniform float[] region; \n"
-        << "uniform float[] osgearth_imagelayer_opacity; \n"
-        << "uniform bool[]  osgearth_imagelayer_enabled; \n"
-        << "uniform float[] osgearth_imagelayer_range; \n"
-        << "uniform float   osgearth_imagelayer_attenuation; \n"
-        << "varying float osgearth_range; \n"
-
-        << "vec4 osgearth_frag_texture(void) \n"
-        << "{ \n"
-        << "    vec3 color = vec3(1,1,1); \n"
-        << "    float u, v, dmin, dmax, atten_min, atten_max; \n"
-        << "    vec4 texel; \n";
-
-    const RenderOrderVector& order = layout.getRenderOrder();
-
-    for( unsigned int i = 0; i < order.size(); ++i )
+    static osg::Shader*
+    s_createTextureFragShaderFunction( const TextureLayout& layout )
     {
-        int slot = order[i];
-        int q = 2 * i;
-        int r = 4 * slot;
+        std::stringstream buf;
 
-        buf << "    if (osgearth_imagelayer_enabled["<< i << "]) { \n"
-            << "        u = region["<< r <<"] + (region["<< r+2 <<"] * gl_TexCoord[0].s); \n"
-            << "        v = region["<< r+1 <<"] + (region["<< r+3 <<"] * gl_TexCoord[0].t); \n"
-            << "        dmin = osgearth_range - osgearth_imagelayer_range["<< q << "]; \n"
-            << "        dmax = osgearth_range - osgearth_imagelayer_range["<< q+1 <<"]; \n"
-            << "        if (dmin >= 0 && dmax <= 0.0) { \n"
-            << "            atten_max = -clamp( dmax, -osgearth_imagelayer_attenuation, 0 ) / osgearth_imagelayer_attenuation; \n"
-            << "            atten_min =  clamp( dmin, 0, osgearth_imagelayer_attenuation ) / osgearth_imagelayer_attenuation; \n"
-            << "            texel = texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n"
-            << "            color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"] * atten_max * atten_min); \n"
-            << "        } \n"
-            << "    } \n"
-            ;
+        buf << "#version 130 \n"
+            << "#extension GL_EXT_gpu_shader4 : enable \n"
+
+            << "uniform sampler2DArray tex0; \n"
+            << "uniform float[] region; \n"
+            << "uniform float[] osgearth_imagelayer_opacity; \n"
+            << "uniform bool[]  osgearth_imagelayer_enabled; \n"
+            << "uniform float[] osgearth_imagelayer_range; \n"
+            << "uniform float   osgearth_imagelayer_attenuation; \n"
+            << "varying float osgearth_range; \n"
+
+            << "vec4 osgearth_frag_texture(void) \n"
+            << "{ \n"
+            << "    vec3 color = vec3(1,1,1); \n"
+            << "    float u, v, dmin, dmax, atten_min, atten_max; \n"
+            << "    vec4 texel; \n";
+
+        const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
+
+        for( unsigned int i = 0; i < order.size(); ++i )
+        {
+            int slot = order[i];
+            int q = 2 * i;
+            int r = 4 * slot;
+
+            buf << "    if (osgearth_imagelayer_enabled["<< i << "]) { \n"
+                << "        u = region["<< r <<"] + (region["<< r+2 <<"] * gl_TexCoord[0].s); \n"
+                << "        v = region["<< r+1 <<"] + (region["<< r+3 <<"] * gl_TexCoord[0].t); \n"
+                << "        dmin = osgearth_range - osgearth_imagelayer_range["<< q << "]; \n"
+                << "        dmax = osgearth_range - osgearth_imagelayer_range["<< q+1 <<"]; \n"
+                << "        if (dmin >= 0 && dmax <= 0.0) { \n"
+                << "            atten_max = -clamp( dmax, -osgearth_imagelayer_attenuation, 0 ) / osgearth_imagelayer_attenuation; \n"
+                << "            atten_min =  clamp( dmin, 0, osgearth_imagelayer_attenuation ) / osgearth_imagelayer_attenuation; \n"
+                << "            texel = texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n"
+                << "            color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity["<< i <<"] * atten_max * atten_min); \n"
+                << "        } \n"
+                << "    } \n"
+                ;
+        }
+
+        buf << "    return vec4(color,1); \n"
+            << "} \n";
+
+        std::string str = buf.str();
+        //OE_INFO << std::endl << str;
+        return new osg::Shader( osg::Shader::FRAGMENT, str );
     }
-
-    buf << "    return vec4(color,1); \n"
-        << "} \n";
-
-    std::string str = buf.str();
-    //OE_INFO << std::endl << str;
-    return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 
 //------------------------------------------------------------------------
@@ -123,7 +126,7 @@ namespace
         if ( tex->getTextureDepth() < requiredDepth )
             tex->setTextureDepth( requiredDepth );
 
-        const TextureSlotVector& slots = layout.getTextureSlots();
+        const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
         // null out any empty slots (to save memory, i guess)
         for( int i=0; i < tex->getTextureDepth(); ++i )
@@ -238,6 +241,44 @@ TextureCompositorTexArray::updateMasterStateSet( osg::StateSet* stateSet, const 
 {
     VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
     vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(layout) );
+}
+
+osg::Shader*
+TextureCompositorTexArray::createSamplerFunction(UID layerUID,
+                                                 const std::string& functionName,
+                                                 osg::Shader::Type type,
+                                                 const TextureLayout& layout ) const
+{
+    osg::Shader* result = 0L;
+
+    int slot = layout.getSlot( layerUID );
+    if ( slot >= 0 )
+    {
+        int r = 4 * slot;
+
+        std::string texCoord = 
+            type == osg::Shader::VERTEX ? "gl_MultiTexCoord0" : 
+            "gl_TexCoord[0]";
+
+        std::stringstream buf;
+
+        buf << "#version 130 \n"
+            << "#extension GL_EXT_gpu_shader4 : enable \n"
+
+            << "uniform sampler2DArray tex0; \n"
+            << "uniform float[] region; \n"
+
+            << "vec4 " << functionName << "() \n"
+            << "{ \n"
+            << "    float u = region["<< r <<"] + (region["<< r+2 <<"] * "<< texCoord <<".s); \n"
+            << "    float v = region["<< r+1 <<"] + (region["<< r+3 <<"] * "<< texCoord <<".t); \n"
+            << "    return texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n"
+            << "} \n";
+
+        std::string str = buf.str();
+        result = new osg::Shader( type, str );
+    }
+    return result;
 }
 
 //------------------------------------------------------------------------

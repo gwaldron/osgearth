@@ -48,6 +48,8 @@ namespace osgEarth
             const GeoImage& preparedImage,
             const GeoExtent& tileExtent,
             const TextureLayout& layout ) const;
+
+        osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const;
     };
 }
 

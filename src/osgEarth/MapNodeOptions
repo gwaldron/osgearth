@@ -24,7 +24,9 @@
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Profile>
+#include <osgEarth/Revisioning>
 #include <osgEarth/TerrainOptions>
+#include <set>
 
 namespace osgEarth
 {

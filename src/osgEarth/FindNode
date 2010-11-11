@@ -92,6 +92,17 @@ namespace osgEarth
             result = findTopMostNodeOfType<T>( node );
         return result;
     }
+
+    /**
+     * Adjusts a node's update traversal count by a delta.
+     * Only safe to call from the UPDATE thread
+     */
+#define ADJUST_UPDATE_TRAV_COUNT( NODE, DELTA ) \
+    { \
+        int oldCount = NODE ->getNumChildrenRequiringUpdateTraversal(); \
+        if ( oldCount + DELTA >= 0 ) \
+            NODE ->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + DELTA ) ); \
+    }
 }
 
 #endif //OSGEARTH_FINDNODE

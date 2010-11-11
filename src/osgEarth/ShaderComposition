@@ -21,47 +21,87 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Revisioning>
+#include <osgEarth/ThreadingUtils>
 #include <string>
 #include <map>
 #include <osg/Shader>
 #include <osg/Program>
+#include <osg/StateAttribute>
 
 namespace osgEarth
-{
-    /**
-     * Library of shaders to use in the terrain engine. Stored in the registry.
-     */
-    class OSGEARTH_EXPORT ShaderFactory : public Revisioned<osg::Referenced>
+{        
+    namespace ShaderComp
     {
-    public:
-        ShaderFactory();
+        // User function injection points.
+        enum FunctionLocation
+        {
+            // call before lighting/texcoord calculations in the vertex shader.
+            LOCATION_PRE_VERTEX     =0,  
 
-    public:
-        enum InjectionPoint {
-            INJECT_PRE_VERTEX     =0,
-            INJECT_POST_VERTEX    =1,
-            INJECT_PRE_FRAGMENT   =2,
-            INJECT_POST_FRAGMENT  =3
+            // call after lighting/texcoord calculations in the vertex shader.
+            LOCATION_POST_VERTEX    =1,
+
+            // call before lighting/texture calculations in the fragment shader.
+            LOCATION_PRE_FRAGMENT   =2,
+
+            // call after lighting/texture calculations in the fragment shader.
+            LOCATION_POST_FRAGMENT  =3
         };
 
-        void setUseInjectionPoint( InjectionPoint ip, bool value =true );
+        // set of user functions, ordered by priority.
+        typedef std::multimap<float, std::string> OrderedFunctionMap; // duplicate keys allowed
 
+        // user function sets, categorized by function location.
+        typedef std::map<FunctionLocation, OrderedFunctionMap> FunctionLocationMap;
+    }
+
+    /**
+     * A factory class that generates shader functions for the osgEarth engine.
+     * The default ShaderFactory is stored in the osgEarth registry. You can replace it
+     * if you want to wholesale-replace osgEarth's default shader templates.
+     */
+    class OSGEARTH_EXPORT ShaderFactory : public osg::Referenced
+    {
     public:
-        virtual osg::Shader* createVertexShaderMain() const;
-        virtual osg::Shader* createFragmentShaderMain() const;
+        /** Creates a vertex shader main(). */
+        osg::Shader* createVertexShaderMain(
+            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
+
+        /** Creates a fragment shader main(). */
+        osg::Shader* createFragmentShaderMain( 
+            const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
         
-        virtual osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
-        virtual osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
+        /**
+         * Creates the function that sets up default texcoords in the vertex shader.
+         * The name/prototype is:
+         *    void osgearth_vert_texture( in vec3 position, in vec3 normal ); 
+         */
+        osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
 
-        virtual osg::Shader* createDefaultLightingVertexShader() const;
-        virtual osg::Shader* createDefaultLightingFragmentShader() const;
+        /**
+         * Creates the function that applies texture data in the fragment shader.
+         * The name/prototype is:
+         *    vec4 osgearth_frag_texture( void );
+         */
+        osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
 
-    protected:
-        bool _useInjectionPoint[4];
+        /**
+         * Creates the function that applies lighting calculations in the vertex shader.
+         * The name/prototype is:
+         *    void osgearth_vert_lighting( in vec3 position, in vec3 normal );
+         */
+        osg::Shader* createDefaultLightingVertexShader() const;
+
+        /**
+         * Creates the function that applies lighting coloring in the fragment shader.
+         * The name/prototype is:
+         *    void osgearth_frag_lighting( inout vec4 color ); 
+         */
+        osg::Shader* createDefaultLightingFragmentShader() const;
     };
 
     /**
-     * VirtualProgram enables basic GLSL shader composition within OSG.
+     * VirtualProgram enables basic GLSL shader composition within osgEarth.
      *
      * VirtualProgram has been adapted from the VirtualProgram shader composition work
      * originally done by Wojciech Lewandowski and found in OSG's osgvirtualprogram
@@ -69,6 +109,24 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT VirtualProgram : public osg::Program
     {
+    public:
+        /**
+         * Adds a shader function to the mix.
+         * Call this method (rather than setShader directly) to inject "user" functions into the
+         * shader program.
+         *
+         * name: name of the function. This should be the actual function name in the shader source.
+         * source: the shader source code.
+         * location: Function location relative to the built-ins.
+         * priority: Lets you control the order of functions that you inject at the same location.
+         */
+        void setFunction( 
+            const std::string& name,
+            const std::string& source, 
+            ShaderComp::FunctionLocation loc,
+            float priority =1.0f );
+
+
     public: 
         VirtualProgram( unsigned int mask = 0xFFFFFFFFUL );
 
@@ -100,6 +158,7 @@ namespace osgEarth
 
         void removeShader( const std::string& shaderSemantic, osg::Shader::Type type );
 
+
     protected:
         typedef std::vector< osg::ref_ptr< osg::Shader > >            ShaderList;
         typedef std::pair< std::string, osg::Shader::Type >           ShaderSemantic;
@@ -109,7 +168,19 @@ namespace osgEarth
         mutable ProgramMap                   _programMap;
         ShaderMap                            _shaderMap;
         unsigned int                         _mask;
+
+        ShaderComp::FunctionLocationMap _functions;
+        ShaderComp::FunctionLocationMap _accumulatedFunctions;
+
+        Threading::Mutex _functionsMutex;
+
+        bool hasLocalFunctions() const;
+        void refreshAccumulatedFunctions( const osg::State& state );
+
+    public:
+        void getFunctions( ShaderComp::FunctionLocationMap& out ) const;
     };
+
 } // namespace osgEarth
 
 #endif // OSGEARTH_SHADER_COMPOSITION_H

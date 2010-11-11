@@ -18,8 +18,7 @@
  */
 #include <osgEarth/ShaderComposition>
 
-using namespace osgEarth;
-
+#include <osgEarth/Registry>
 #include <osg/Shader>
 #include <osg/Program>
 #include <osg/State>
@@ -27,6 +26,9 @@ using namespace osgEarth;
 #include <sstream>
 
 #define LC "[VirtualProgram] "
+
+using namespace osgEarth;
+using namespace osgEarth::ShaderComp;
 
 //------------------------------------------------------------------------
 
@@ -39,15 +41,15 @@ namespace
         typedef std::pair<const osg::StateAttribute*,osg::StateAttribute::OverrideValue> AttributePair;
         typedef std::vector<AttributePair> AttributeVec;
 
-        AttributeVec& getAttributeVec( const osg::StateAttribute* attribute ) 
+        const AttributeVec* getAttributeVec( const osg::StateAttribute* attribute ) const
         {
-            AttributeStack& as = _attributeMap[ attribute->getTypeMemberPair() ];
-            return as.attributeVec; 
+            osg::State::AttributeMap::const_iterator i = _attributeMap.find( attribute->getTypeMemberPair() );
+            return i != _attributeMap.end() ? &(i->second.attributeVec) : 0L;
         }
 
-        static AttributeVec& GetAttributeVec( osg::State& state, const osg::StateAttribute* attribute ) 
+        static const AttributeVec* GetAttributeVec( const osg::State& state, const osg::StateAttribute* attribute ) 
         {
-            StateHack* sh = reinterpret_cast< StateHack* >( &state );
+            const StateHack* sh = reinterpret_cast< const StateHack* >( &state );
             return sh->getAttributeVec( attribute );
         }
     };
@@ -63,13 +65,15 @@ namespace
 VirtualProgram::VirtualProgram( unsigned int mask ) : 
 _mask( mask ) 
 {
-    //nop
+    // because we sometimes update/change the attribute's members from within the apply() method
+    this->setDataVariance( osg::Object::DYNAMIC );
 }
 
-VirtualProgram::VirtualProgram(const VirtualProgram& VirtualProgram, const osg::CopyOp& copyop ) :
-osg::Program( VirtualProgram, copyop ),
-_shaderMap( VirtualProgram._shaderMap ),
-_mask( VirtualProgram._mask )
+VirtualProgram::VirtualProgram(const VirtualProgram& rhs, const osg::CopyOp& copyop ) :
+osg::Program( rhs, copyop ),
+_shaderMap( rhs._shaderMap ),
+_mask( rhs._mask ),
+_functions( rhs._functions )
 {
     //nop
 }
@@ -92,23 +96,29 @@ VirtualProgram::setShader( const std::string& shaderSemantic, osg::Shader * shad
     osg::ref_ptr< osg::Shader >  shaderNew     = shader;
     osg::ref_ptr< osg::Shader >& shaderCurrent = _shaderMap[ key ];
 
-#if 1 // Good for debugging of shader linking problems. 
-      // Don't do it - User could use the name for its own purposes 
     shaderNew->setName( shaderSemantic );
-#endif
 
-    if( shaderCurrent != shaderNew ) {
-#if 0
-       if( shaderCurrent.valid() )
-           Program::removeShader( shaderCurrent.get() );
-
-       if( shaderNew.valid() )
-           Program::addShader( shaderNew.get() );
-#endif
+    if( shaderCurrent != shaderNew )
+    {
        shaderCurrent = shaderNew;
     }
 
     return shaderCurrent.get();
+}
+
+void
+VirtualProgram::setFunction(const std::string& functionName,
+                            const std::string& shaderSource,
+                            FunctionLocation location,
+                            float priority)
+{
+    Threading::ScopedMutexLock lock( _functionsMutex );
+
+    OrderedFunctionMap& ofm = _functions[location];
+    ofm.insert( std::pair<float,std::string>( priority, functionName ) );
+    osg::Shader::Type type = location == LOCATION_PRE_VERTEX || location == LOCATION_POST_VERTEX ?
+        osg::Shader::VERTEX : osg::Shader::FRAGMENT;
+    setShader( functionName, new osg::Shader( type, shaderSource ) );
 }
 
 void
@@ -123,67 +133,70 @@ VirtualProgram::apply( osg::State & state ) const
     if( _shaderMap.empty() ) // Virtual Program works as normal Program
         return Program::apply( state );
 
-    StateHack::AttributeVec* av = &StateHack::GetAttributeVec( state, this );
-    //osg::State::AttributeVec* av = &state.getAttributeVec(this);
-
-#if NOTIFICATION_MESSAGES
-    std::ostream &os  = osg::notify( osg::NOTICE );
-    os << "VirtualProgram cumulate Begin" << std::endl;
-#endif
-
+    // first, find and collect all the VirtualProgram attributes:
     ShaderMap shaderMap;
-    for( StateHack::AttributeVec::iterator i = av->begin(); i != av->end(); ++i )
+    const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
+    if ( av )
     {
-        const osg::StateAttribute* sa = i->first;
-        const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
-        if( vp && ( vp->_mask & _mask ) ) {
-
-#if NOTIFICATION_MESSAGES
-            if( vp->getName().empty() )
-                os << "VirtualProgram cumulate [ Unnamed VP ] apply" << std::endl;
-            else 
-                os << "VirtualProgram cumulate ["<< vp->getName() << "] apply" << std::endl;
-#endif
-
-            for( ShaderMap::const_iterator i = vp->_shaderMap.begin();
-                                           i != vp->_shaderMap.end(); ++i )
+        for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
+        {
+            const osg::StateAttribute* sa = i->first;
+            const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
+            if( vp && ( vp->_mask & _mask ) )
             {
-                                                    shaderMap[ i->first ] = i->second;
+                for( ShaderMap::const_iterator i = vp->_shaderMap.begin(); i != vp->_shaderMap.end(); ++i )
+                {
+                    shaderMap[ i->first ] = i->second;
+                }
             }
-
-        } else {
-#if NOTIFICATION_MESSAGES
-            os << "VirtualProgram cumulate ( not VP or mask not match ) ignored" << std::endl;
-#endif
-            continue; // ignore osg::Programs
         }
     }
 
-    for( ShaderMap::const_iterator i = this->_shaderMap.begin();
-                                   i != this->_shaderMap.end(); ++i )
-                                        shaderMap[ i->first ] = i->second;
+    // next add the local shader components to the map:
+    for( ShaderMap::const_iterator i = _shaderMap.begin(); i != _shaderMap.end(); ++i )
+        shaderMap[ i->first ] = i->second;
 
-#if NOTIFICATION_MESSAGES
-    os << "VirtualProgram cumulate End" << std::endl;
-#endif
-
-    if( shaderMap.size() ) {
-
+    if( shaderMap.size() )
+    {
+        // next, assemble a list of the shaders in the map so we can compare it:
         ShaderList sl;
         for( ShaderMap::iterator i = shaderMap.begin(); i != shaderMap.end(); ++i )
             sl.push_back( i->second );
 
-        osg::ref_ptr< osg::Program > & program = _programMap[ sl ];
+        // see if there's already a program associated with this list:
+        osg::Program* program = 0L;
+        ProgramMap::iterator p = _programMap.find( sl );
+        if ( p != _programMap.end() )
+        {
+            program = p->second.get();
+        }
+        else
+        {
+            ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
 
-        if( !program.valid() ) {
-            program = new osg::Program;
+            // build a new set of accumulated functions, to support the creation of main()
+            const_cast<VirtualProgram*>(this)->refreshAccumulatedFunctions( state );
+                
+            osg::Shader* vert_main = sf->createVertexShaderMain( _accumulatedFunctions );
+            const_cast<VirtualProgram*>(this)->setShader( "osgearth_vert_main", vert_main );
+            shaderMap[ ShaderSemantic("osgearth_vert_main", osg::Shader::VERTEX) ] = vert_main;
+
+            osg::Shader* frag_main = sf->createFragmentShaderMain( _accumulatedFunctions );
+            const_cast<VirtualProgram*>(this)->setShader( "osgearth_frag_main", frag_main );
+            shaderMap[ ShaderSemantic("osgearth_frag_main", osg::Shader::FRAGMENT) ] = frag_main;
+            
+            // rebuild the shader list now that we've changed the shader map.
+            sl.clear();
+            for( ShaderMap::iterator i = shaderMap.begin(); i != shaderMap.end(); ++i )
+                sl.push_back( i->second );
+
+            // Create a new program and add all our shaders.
+            program = new osg::Program();
+
 #if !MERGE_SHADERS
             for( ShaderList::iterator i = sl.begin(); i != sl.end(); ++i )
             {
                 program->addShader( i->get() );
-
-                //OE_INFO << "Shader \"" << i->get()->getName() << "\"" << std::endl
-                //    << i->get()->getShaderSource() << std::endl << std::endl;
             }
 #else
             std::string strFragment;
@@ -200,89 +213,274 @@ VirtualProgram::apply( osg::State & state ) const
                     strGeometry += i->get()->getShaderSource();
             }
 
-            if( strFragment.length() > 0 ) {
+            if( strFragment.length() > 0 )
+            {
                 program->addShader( new osg::Shader( osg::Shader::FRAGMENT, strFragment ) );
-#if NOTIFICATION_MESSAGES
-                os << "====VirtualProgram merged Fragment Shader:"  << std::endl << strFragment << "====" << std::endl;
-#endif
             }
 
-            if( strVertex.length() > 0  ) {
+            if( strVertex.length() > 0  )
+            {
                 program->addShader( new osg::Shader( osg::Shader::VERTEX, strVertex ) );
-#if NOTIFICATION_MESSAGES
-                os << "VirtualProgram merged Vertex Shader:"  << std::endl << strVertex << "====" << std::endl;
-#endif
             }
 
-            if( strGeometry.length() > 0  ) {
+            if( strGeometry.length() > 0  )
+            {
                 program->addShader( new osg::Shader( osg::Shader::GEOMETRY, strGeometry ) );
-#if NOTIFICATION_MESSAGES
-                os << "VirtualProgram merged Geometry Shader:"  << std::endl << strGeometry << "====" << std::endl;
-#endif
             }
 #endif
+            // finally, cache the program so we only regenerate it when it changes.
+            _programMap[ sl ] = program;
         }
 
-        state.applyAttribute( program.get() );
-    } else {
+        // finally, apply the program attribute.
+        state.applyAttribute( program );
+    }
+    else
+    {
         Program::apply( state );
     }
+}
 
-#if NOTIFICATION_MESSAGES
-    os << "VirtualProgram Apply" << std::endl;
-#endif
+void
+VirtualProgram::getFunctions( FunctionLocationMap& out ) const
+{
+    Threading::ScopedMutexLock lock( const_cast<VirtualProgram*>(this)->_functionsMutex );
+    out = _functions;
+}
 
+void
+VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
+{
+    // This method searches the state's attribute stack and accumulates all 
+    // the user functions (including those in this program).
+
+    Threading::ScopedMutexLock lock( _functionsMutex );
+
+    _accumulatedFunctions.clear();
+
+    const StateHack::AttributeVec* av = StateHack::GetAttributeVec( state, this );
+    for( StateHack::AttributeVec::const_iterator i = av->begin(); i != av->end(); ++i )
+    {
+        const osg::StateAttribute* sa = i->first;
+        const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
+        if( vp && ( vp->_mask & _mask ) )
+        {
+            FunctionLocationMap rhs;
+            vp->getFunctions( rhs );
+            for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
+            {
+                const OrderedFunctionMap& ofm = j->second;
+                for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+                {
+                    _accumulatedFunctions[j->first].insert( *k );
+                }
+            }
+        }
+    }
+
+    // add the local ones too:
+    for( FunctionLocationMap::const_iterator j = _functions.begin(); j != _functions.end(); ++j )
+    {
+        const OrderedFunctionMap& ofm = j->second;
+        for( OrderedFunctionMap::const_iterator k = ofm.begin(); k != ofm.end(); ++k )
+        {
+            _accumulatedFunctions[j->first].insert( *k );
+        }
+    } 
 }
 
 //----------------------------------------------------------------------------
 
-static char s_PerVertexLighting_VertexShaderSource[] = 
-"void osgearth_vert_lighting( in vec3 position, in vec3 normal )                 \n" //1
-"{                                                                          \n" //2
-"    float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) );\n" //3
-"    NdotL = max( 0.0, NdotL );                                             \n" //4
-"    float NdotHV = dot( normal, gl_LightSource[0].halfVector.xyz );        \n" //5
-"    NdotHV = max( 0.0, NdotHV );                                           \n" //6
-"                                                                           \n" //7
-"    gl_FrontColor = gl_FrontLightModelProduct.sceneColor +                 \n" //8
-"                    gl_FrontLightProduct[0].ambient +                      \n" //9
-"                    gl_FrontLightProduct[0].diffuse * NdotL;               \n" //10
-"                                                                           \n" //11
-"    gl_FrontSecondaryColor = vec4(0.0);                                    \n" //12
-"                                                                           \n" //13
-"    if ( NdotL * NdotHV > 0.0 )                                            \n" //14
-"        gl_FrontSecondaryColor = gl_FrontLightProduct[0].specular *        \n" //15
-"                                 pow( NdotHV, gl_FrontMaterial.shininess );\n" //16
-"                                                                           \n" //17
-"    gl_BackColor = gl_FrontColor;                                          \n" //18
-"    gl_BackSecondaryColor = gl_FrontSecondaryColor;                        \n" //19
-"}                                                                          \n";//5
+osg::Shader*
+ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) const
+{
+    FunctionLocationMap::const_iterator i = functions.find( LOCATION_PRE_VERTEX );
+    const OrderedFunctionMap* preVert = i != functions.end() ? &i->second : 0L;
 
-static char s_PerVertexLighting_FragmentShaderSource[] =
-"void osgearth_frag_lighting( inout vec4 color )                                 \n" //1
-"{                                                                          \n" //2
-"    color = color * gl_Color + gl_SecondaryColor;                          \n" //3
-"}                                                                         \n";//20
+    FunctionLocationMap::const_iterator j = functions.find( LOCATION_POST_VERTEX );
+    const OrderedFunctionMap* postVert = j != functions.end() ? &j->second : 0L;
 
-//static char s_Main_FragmentShaderSource[] =
-//"vec4 osgearth_frag_texture( void );                                                      \n" //1
-//"void osgearth_frag_lighting( inout vec4 color );                                         \n" //2
-//"uniform bool osgearth_lighting_enabled; \n"
-//"                                                                           \n" //3
-//"void main ()                                                               \n" //4
-//"{                                                                          \n" //5
-//"    vec4 color = osgearth_frag_texture();                                                \n" //6
-//"    if ( osgearth_lighting_enabled ) \n"
-//"        osgearth_frag_lighting( color );                                                     \n" //7
-//"    gl_FragColor = color;                                                  \n" //8
-//"}                                                                          \n";//9
+    std::stringstream buf;
+    buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ); \n"
+        << "void osgearth_vert_lighting( in vec3 position, in vec3 normal ); \n"
+        << "uniform bool osgearth_lighting_enabled; \n"
+        << "varying float osgearth_range; \n";
 
-static char s_SimpleTexture_FragmentShaderSource[] =
-"uniform sampler2D tex0;                                                    \n" //1
-"vec4 osgearth_frag_texture( void )                                         \n" //2
-"{                                                                          \n" //3
-"    return texture2D( tex0, gl_TexCoord[0].xy );                           \n" //4
-"}                                                                          \n";//4
+    if ( preVert )
+        for( OrderedFunctionMap::const_iterator i = preVert->begin(); i != preVert->end(); ++i )
+            buf << "void " << i->second << "( in vec3 position, in vec3 normal ); \n";
+
+    if ( postVert )
+        for( OrderedFunctionMap::const_iterator i = postVert->begin(); i != postVert->end(); ++i )
+            buf << "void " << i->second << "( in vec3 position, in vec3 normal ); \n";
+
+    buf << "void main(void) \n"
+        << "{ \n"
+        << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
+        << "    vec3 position = position4.xyz / position4.w; \n"
+        << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
+        << "    osgearth_range = length (position4.xyz ); \n";
+
+    if ( preVert )
+        for( OrderedFunctionMap::const_iterator i = preVert->begin(); i != preVert->end(); ++i )
+            buf << "    " << i->second << "( position, normal ); \n";
+
+    buf << "    osgearth_vert_texture( position, normal ); \n"
+        << "    if ( osgearth_lighting_enabled ) \n"
+        << "        osgearth_vert_lighting( position, normal ); \n";
+    
+    if ( postVert )
+        for( OrderedFunctionMap::const_iterator i = postVert->begin(); i != postVert->end(); ++i )
+            buf << "    " << i->second << "(position, normal); \n";
+
+    buf << "} \n";
+
+    std::string str = buf.str();
+    return new osg::Shader( osg::Shader::VERTEX, str );
+}
+
+
+osg::Shader*
+ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) const
+{
+    FunctionLocationMap::const_iterator i = functions.find( LOCATION_PRE_FRAGMENT );
+    const OrderedFunctionMap* preFrag = i != functions.end() ? &i->second : 0L;
+
+    FunctionLocationMap::const_iterator j = functions.find( LOCATION_POST_FRAGMENT );
+    const OrderedFunctionMap* postFrag = j != functions.end() ? &j->second : 0L;
+
+    std::stringstream buf;
+    buf << "vec4 osgearth_frag_texture( void ); \n"
+        << "void osgearth_frag_lighting( inout vec4 color ); \n";
+
+    if ( preFrag )
+        for( OrderedFunctionMap::const_iterator i = preFrag->begin(); i != preFrag->end(); ++i )
+            buf << "vec4 " << i->second << "(); \n";
+
+    if ( postFrag )
+        for( OrderedFunctionMap::const_iterator i = postFrag->begin(); i != postFrag->end(); ++i )
+            buf << "void " << i->second << "( inout vec4 color ); \n";
+
+    buf << "uniform bool osgearth_lighting_enabled; \n"
+        << "void main(void) \n"
+        << "{ \n"
+        << "    vec4 color; \n";
+
+    if ( preFrag )
+        for( OrderedFunctionMap::const_iterator i = preFrag->begin(); i != preFrag->end(); ++i )
+            buf << "    color = " << i->second << "(); \n";
+
+    buf << "    color = osgearth_frag_texture(); \n"
+        << "    if (osgearth_lighting_enabled) \n"
+        << "        osgearth_frag_lighting( color ); \n";
+
+    if ( postFrag )
+        for( OrderedFunctionMap::const_iterator i = postFrag->begin(); i != postFrag->end(); ++i )
+            buf << "    " << i->second << "( color ); \n";
+
+    buf << "    gl_FragColor = color; \n"
+        << "} \n";  
+
+    std::string str = buf.str();
+    return new osg::Shader( osg::Shader::FRAGMENT, str );
+}
+
+
+osg::Shader*
+ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
+{
+    std::stringstream buf;
+
+    buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ) \n"
+        << "{ \n";
+
+    for(int i=0; i<numTexCoordSets; ++i )
+    {
+        buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
+    }
+        
+    buf << "} \n";
+
+    std::string str = buf.str();
+    return new osg::Shader( osg::Shader::VERTEX, str );
+}
+
+
+osg::Shader*
+ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
+{
+    std::stringstream buf;
+
+    buf << "#version 120 \n"
+        << "uniform sampler2D ";
+    for( int i=0; i<numTexImageUnits; ++i )
+        buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
+
+    buf << "vec4 osgearth_frag_texture(void) \n"
+        << "{ \n"
+        << "    vec3 color = vec3(1,1,1); \n"
+        << "    vec4 texel; \n";
+
+    for(int i=0; i<numTexImageUnits; ++i )
+    {
+        buf << "    texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
+            << "    color = mix( color, texel.rgb, texel.a ); \n";
+    }
+        
+    buf << "    return vec4(color,1); \n"
+        << "} \n";
+
+    std::string str = buf.str();
+    return new osg::Shader( osg::Shader::FRAGMENT, str );
+}
+
+
+osg::Shader*
+ShaderFactory::createDefaultLightingVertexShader() const
+{
+    static char s_PerVertexLighting_VertexShaderSource[] = 
+        "void osgearth_vert_lighting( in vec3 position, in vec3 normal )            \n"
+        "{                                                                          \n"
+        "    float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) );\n"
+        "    NdotL = max( 0.0, NdotL );                                             \n"
+        "    float NdotHV = dot( normal, gl_LightSource[0].halfVector.xyz );        \n"
+        "    NdotHV = max( 0.0, NdotHV );                                           \n"
+        "                                                                           \n"
+        "    gl_FrontColor = gl_FrontLightModelProduct.sceneColor +                 \n"
+        "                    gl_FrontLightProduct[0].ambient +                      \n"
+        "                    gl_FrontLightProduct[0].diffuse * NdotL;               \n"
+        "                                                                           \n"
+        "    gl_FrontSecondaryColor = vec4(0.0);                                    \n"
+        "                                                                           \n"
+        "    if ( NdotL * NdotHV > 0.0 )                                            \n"
+        "        gl_FrontSecondaryColor = gl_FrontLightProduct[0].specular *        \n"
+        "                                 pow( NdotHV, gl_FrontMaterial.shininess );\n"
+        "                                                                           \n"
+        "    gl_BackColor = gl_FrontColor;                                          \n"
+        "    gl_BackSecondaryColor = gl_FrontSecondaryColor;                        \n"
+        "}                                                                          \n";
+
+    return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
+}
+
+
+osg::Shader*
+ShaderFactory::createDefaultLightingFragmentShader() const
+{
+    static char s_PerVertexLighting_FragmentShaderSource[] =
+        "void osgearth_frag_lighting( inout vec4 color )                            \n"
+        "{                                                                          \n"
+        "    color = color * gl_Color + gl_SecondaryColor;                          \n"
+        "}                                                                          \n";
+
+    return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
+}
+
+//--------------------------------------------------------------------------
+
+#if 0
+// This is just a holding pen for various stuff
 
 static char s_PerFragmentLighting_VertexShaderSource[] =
 "varying vec3 Normal;                                                       \n" //1
@@ -315,152 +513,6 @@ static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
 "                 pow( NdotHV, gl_FrontMaterial.shininess );                \n" //17
 "}                                                                          \n";//18
 
+#endif
 
 //------------------------------------------------------------------------
-
-ShaderFactory::ShaderFactory()
-{
-    for(int i=0; i<4; ++i)
-        _useInjectionPoint[i] = false;
-}
-
-void
-ShaderFactory::setUseInjectionPoint( ShaderFactory::InjectionPoint ip, bool value )
-{
-    if ( (int)ip >= 0 && (int)ip <= 3 )
-    {
-        _useInjectionPoint[(int)ip] = value;
-        dirty();
-    }
-}
-
-osg::Shader*
-ShaderFactory::createVertexShaderMain() const
-{
-    std::stringstream buf;
-    buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ); \n"
-        << "void osgearth_vert_lighting( in vec3 position, in vec3 normal ); \n"
-        << "uniform bool osgearth_lighting_enabled; \n"
-        << "varying float osgearth_range; \n";
-
-    if ( _useInjectionPoint[INJECT_PRE_VERTEX] )
-        buf << "void osgearth_vert_preprocess( in vec3 position, in vec3 normal ); \n";
-    if ( _useInjectionPoint[INJECT_POST_VERTEX] )
-        buf << "void osgearth_vert_postprocess( in vec3 position, in vec3 normal ); \n";
-
-    buf << "void main(void) \n"
-        << "{ \n"
-        << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
-        << "    vec3 position = position4.xyz / position4.w; \n"
-        << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
-        << "    osgearth_range = length(position4.xyz); \n";
-
-    if ( _useInjectionPoint[INJECT_PRE_VERTEX] )
-        buf << "    osgearth_vert_preprocess( position, normal ); \n";
-
-    buf << "    osgearth_vert_texture( position, normal ); \n"
-        << "    if ( osgearth_lighting_enabled ) \n"
-        << "        osgearth_vert_lighting( position, normal ); \n";
-    
-    if ( _useInjectionPoint[INJECT_POST_VERTEX] )
-        buf << "    osgearth_vert_postprocess( position, normal ); \n";
-
-    buf << "} \n";
-
-    std::string str = buf.str();
-    return new osg::Shader( osg::Shader::VERTEX, str );
-}
-
-osg::Shader*
-ShaderFactory::createFragmentShaderMain() const
-{
-    std::stringstream buf;
-    buf << "vec4 osgearth_frag_texture( void ); \n"
-        << "void osgearth_frag_lighting( inout vec4 color ); \n";
-
-    if ( _useInjectionPoint[INJECT_PRE_FRAGMENT] )
-        buf << "vec4 osgearth_frag_preprocess(); \n";
-    if ( _useInjectionPoint[INJECT_POST_FRAGMENT] )
-        buf << "void osgearth_frag_postprocess( inout vec4 color ); \n";
-
-    buf << "uniform bool osgearth_lighting_enabled; \n"
-        << "void main(void) \n"
-        << "{ \n"
-        << "    vec4 color; \n";
-
-    if ( _useInjectionPoint[INJECT_PRE_FRAGMENT] )
-        buf << "    color = osgearth_frag_preprocess(); \n";
-
-    buf << "    color = osgearth_frag_texture(); \n"
-        << "    if (osgearth_lighting_enabled) \n"
-        << "        osgearth_frag_lighting( color ); \n";
-
-    if ( _useInjectionPoint[INJECT_POST_FRAGMENT] )
-        buf << "    osgearth_frag_postprocess( color ); \n";
-
-    buf << "    gl_FragColor = color; \n"
-        << "} \n";  
-
-    std::string str = buf.str();
-    return new osg::Shader( osg::Shader::FRAGMENT, str );
-}
-
-osg::Shader*
-ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
-{
-    std::stringstream buf;
-
-    buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ) \n"
-        << "{ \n";
-
-    for(int i=0; i<numTexCoordSets; ++i )
-    {
-        buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
-    }
-        
-    buf << "} \n";
-
-    std::string str = buf.str();
-    return new osg::Shader( osg::Shader::VERTEX, str );
-}
-
-osg::Shader*
-ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
-{
-    std::stringstream buf;
-
-    buf << "#version 120 \n"
-        << "uniform sampler2D ";
-    for( int i=0; i<numTexImageUnits; ++i )
-        buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
-
-    buf << "vec4 osgearth_frag_texture(void) \n"
-        << "{ \n"
-        << "    vec3 color = vec3(1,1,1); \n"
-        << "    vec4 texel; \n";
-
-    for(int i=0; i<numTexImageUnits; ++i )
-    {
-        buf << "    texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-            << "    color = mix( color, texel.rgb, texel.a ); \n";
-    }
-        
-    buf << "    return vec4(color,1); \n"
-        << "} \n";
-
-    std::string str = buf.str();
-    return new osg::Shader( osg::Shader::FRAGMENT, str );
-}
-
-osg::Shader*
-ShaderFactory::createDefaultLightingVertexShader() const
-{
-    return new osg::Shader( osg::Shader::VERTEX, s_PerVertexLighting_VertexShaderSource );
-}
-
-osg::Shader*
-ShaderFactory::createDefaultLightingFragmentShader() const
-{
-    return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );
-}

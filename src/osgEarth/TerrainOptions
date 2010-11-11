@@ -25,6 +25,21 @@
 
 namespace osgEarth
 {
+    class OSGEARTH_EXPORT ResourcePolicy
+    {
+    public:
+        ResourcePolicy();
+
+        bool reserveTextureImageUnit( int& result );
+        bool reserveTextureImageUnit( int unit );
+        void releaseTextureImageUnit( int unit );
+        bool isTextureImageUnitReserved( int unit ) const;
+        const std::set<int>& getReservedTextureImageUnits() const { return _reservedTUIs; }
+
+    protected:
+        std::set<int> _reservedTUIs;
+    };
+
     /**
      * The LoadingPolicy configures how the terrain engine loads map data.
      */

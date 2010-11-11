@@ -197,12 +197,6 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     OE_INFO << LC << "Map profile established" << std::endl;
 
-    // set up the ellipsoid
-    //this->setCoordinateSystem( mapProfile->getSRS()->getInitString() );
-    //this->setFormat( mapProfile->getSRS()->getInitType() );
-    //if ( !mapProfile->getSRS()->isProjected() )
-    //    this->setEllipsoidModel( new osg::EllipsoidModel( *mapProfile->getSRS()->getEllipsoid() ) );
-
     // create a factory for creating actual tile data
     _tileFactory = new OSGTileFactory( _uid, *_cull_mapf, _terrainOptions );
 
@@ -218,8 +212,8 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
-    // install the proper layer composition technique:
-    _texCompositor = new TextureCompositor( _terrainOptions.compositingTechnique().value() );
+    //// install the proper layer composition technique:
+    //_texCompositor = new TextureCompositor( _terrainOptions.compositingTechnique().value() );
 
     if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
     {
@@ -282,6 +276,13 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     // we just added the root tiles, so mark the bound in need of recomputation.
     dirtyBound();
+}
+
+void
+OSGTerrainEngineNode::onResourcePolicyChanged()
+{
+    if ( _texCompositor.valid() )
+        _texCompositor->applyResourcePolicy( getResourcePolicy() );
 }
 
 void
@@ -382,22 +383,6 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
                 layerAdded,
                 geoImage.getImage(),
                 img_locator.get(), imageLOD ) );
-
-#if 0
-            // Create a layer wrapper that supports opacity.
-            // TODO: review this; the Transparent layer holds a back-reference to the actual ImageLayer
-            CustomColorLayer* img_layer = new CustomColorLayer( 
-                geoImage.getImage(),
-                layerAdded );
-
-            img_layer->setLevelOfDetail(imageLOD);
-            img_layer->setLocator( img_locator.get());
-            img_layer->setMinFilter( layerAdded->getImageLayerOptions().minFilter().value() );
-            img_layer->setMagFilter( layerAdded->getImageLayerOptions().magFilter().value() );
-
-            // update the tile.
-            tile->setCustomColorLayer( img_layer->getUID(), img_layer );
-#endif
 
             // if necessary, tell the tile to queue up a new imagery request (since we
             // just installed a placeholder)
@@ -596,20 +581,7 @@ OSGTerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
     if ( _cull_mapf ) // ensures initialize() has been called
     {
-        if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-        {
-            // detect and respond to changes in the system shader library.
-            // TODO: perhaps this should happen in the event traversal instead...
-            ShaderFactory* sf = osgEarth::Registry::instance()->getShaderFactory();
-            if ( sf->outOfSyncWith( _shaderLibRev ) )
-            {
-                OE_INFO << LC << "Detected shader factory change; updating." << std::endl;
-                this->installShaders();
-                sf->sync( _shaderLibRev );
-            }
-        }
-
-        else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
             // update the cull-thread map frame if necessary. (We don't need to sync the
             // update_mapf becuase that happens in response to a map callback.)
@@ -630,19 +602,21 @@ OSGTerrainEngineNode::installShaders()
 
     if ( _texCompositor.valid() && _texCompositor->usesShaderComposition() )
     {
-        const ShaderFactory* lib = Registry::instance()->getShaderFactory();
+        const ShaderFactory* sf = Registry::instance()->getShaderFactory();
 
         int numLayers = osg::maximum( 1, (int)_update_mapf->imageLayers().size() );
 
-        VirtualProgram* vp = new VirtualProgram();        
+        VirtualProgram* vp = new VirtualProgram();
 
-        vp->setShader( "osgearth_vert_main",     lib->createVertexShaderMain() );
-        vp->setShader( "osgearth_vert_lighting", lib->createDefaultLightingVertexShader() );
-        vp->setShader( "osgearth_vert_texture",  lib->createDefaultTextureVertexShader( numLayers ) );
+        // note. this stuff should probably happen automatically in VirtualProgram. gw
 
-        vp->setShader( "osgearth_frag_main",     lib->createFragmentShaderMain() );
-        vp->setShader( "osgearth_frag_lighting", lib->createDefaultLightingFragmentShader() );
-        vp->setShader( "osgearth_frag_texture",  lib->createDefaultTextureFragmentShader( numLayers ) );
+        //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
+        vp->setShader( "osgearth_vert_lighting", sf->createDefaultLightingVertexShader() );
+        vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numLayers ) );
+
+        //vp->setShader( "osgearth_frag_main",     sf->createFragmentShaderMain() ); // happend in VirtualProgram now
+        vp->setShader( "osgearth_frag_lighting", sf->createDefaultLightingFragmentShader() );
+        vp->setShader( "osgearth_frag_texture",  sf->createDefaultTextureFragmentShader( numLayers ) );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -663,7 +637,6 @@ OSGTerrainEngineNode::updateTextureCombining()
             // installed in the VP on the engine-node's stateset in installShaders().
 
             VirtualProgram* vp = dynamic_cast<VirtualProgram*>( terrainStateSet->getAttribute(osg::StateAttribute::PROGRAM) );
-
             if ( !vp )
             {
                 // create and add it the first time around..
@@ -672,8 +645,8 @@ OSGTerrainEngineNode::updateTextureCombining()
             }
 
             // first, update the default shader components based on the new layer count:
-            const ShaderFactory* lib = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_texture",  lib->createDefaultTextureVertexShader( numImageLayers ) );
+            const ShaderFactory* sf = Registry::instance()->getShaderFactory();
+            vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numImageLayers ) );
 
             // not this one, because the compositor always generates a new one.
             //vp->setShader( "osgearth_frag_texture",  lib.createDefaultTextureFragmentShader( numImageLayers ) );

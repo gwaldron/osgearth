@@ -19,7 +19,6 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
-#include <osgEarth/ShaderUtils>
 #include <osgDB/ReadFile>
 
 #define LC "[TerrainEngineNode] "
@@ -41,13 +40,6 @@ namespace osgEarth
             if ( safeNode.valid() )
                 safeNode->onMapInfoEstablished( mapInfo );
         }
-
-        //void onMapProfileEstablished( const Profile* profile )
-        //{
-        //    osg::ref_ptr<TerrainEngineNode> safeNode = _node.get();
-        //    if ( safeNode.valid() )
-        //        safeNode->onMapProfileEstablished( profile );
-        //}
 
         void onMapModelChanged( const MapModelChange& change )
         {
@@ -109,12 +101,7 @@ TerrainEngineNode::TerrainEngineNode() :
 _verticalScale( 1.0f ),
 _elevationSamplingRatio( 1.0f )
 {
-    //if ( Registry::instance()->getCapabilities().supportsGLSL() )
-    //{
-    //    osg::NodeCallback* cb = new UpdateLightingUniformsCallback();
-    //    this->addCullCallback( cb );
-    //    this->addUpdateCallback( cb );
-    //}
+    //nop
 }
 
 TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op ) :
@@ -127,7 +114,7 @@ _map( rhs._map.get() )
 }
 
 void
-TerrainEngineNode::setMapInfo( const MapInfo& mapInfo )
+TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& options )
 {
     // set up the CSN values   
     mapInfo.getProfile()->getSRS()->populateCoordinateSystemNode( this );
@@ -135,6 +122,9 @@ TerrainEngineNode::setMapInfo( const MapInfo& mapInfo )
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
     if ( !mapInfo.isGeocentric() )
         this->setEllipsoidModel( NULL );
+    
+    // install the proper layer composition technique:
+    _texCompositor = new TextureCompositor( options.compositingTechnique().value() );
 }
 
 void
@@ -147,7 +137,6 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
         // manually trigger the map callbacks the first time:
         if ( _map->getProfile() )
             onMapInfoEstablished( MapInfo(_map.get()) );
-            //onMapProfileEstablished( map->getProfile() );
 
         // create a layer controller. This object affects the uniforms that control layer appearance properties
         _imageLayerController = new ImageLayerController( map );
@@ -199,17 +188,12 @@ TerrainEngineNode::setElevationSamplingRatio( float value )
     onElevationSamplingRatioChanged();
 }
 
-//void
-//TerrainEngineNode::onMapProfileEstablished( const Profile* profile )
-//{
-//    // set up the CSN values   
-//    if ( _map.valid() )
-//        _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
-//    
-//    // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-//    if ( !_map->isGeocentric() )
-//        this->setEllipsoidModel( NULL );
-//}
+void
+TerrainEngineNode::setResourcePolicy( const ResourcePolicy& value )
+{
+    _resourcePolicy = value;
+    onResourcePolicyChanged();
+}
 
 void
 TerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )

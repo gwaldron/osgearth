@@ -18,55 +18,14 @@
 */
 #include <osgEarth/Notify>
 
-#include <osgUtil/Optimizer>
 #include <osgDB/ReadFile>
-#include <osgViewer/Viewer>
-
-#include <osg/Material>
-#include <osg/Geode>
-#include <osg/BlendFunc>
-#include <osg/Depth>
-#include <osg/Projection>
-#include <osg/AutoTransform>
-#include <osg/Geometry>
-#include <osg/Image>
-#include <osg/CullFace>
-#include <osg/Texture3D>
-#include <osg/Texture2D>
-
-#include <osgGA/TrackballManipulator>
-#include <osgGA/FlightManipulator>
-#include <osgGA/DriveManipulator>
-#include <osgGA/KeySwitchMatrixManipulator>
 #include <osgGA/StateSetManipulator>
-#include <osgGA/AnimationPathManipulator>
-#include <osgGA/TerrainManipulator>
-
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 
-#include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
-
+#include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/OceanSurfaceNode>
-
-
-
-#include <osgTerrain/TerrainTile>
-#include <osgTerrain/GeometryTechnique>
-
-#include <osgDB/WriteFile>
-
-#include <osgText/Text>
-
-#include <iostream>
-#include <sstream>
-
-using namespace osg;
-using namespace osgDB;
-using namespace osgTerrain;
-using namespace osgEarth;
-using namespace osgEarthUtil;
 
 class MyGraphicsContext {
     public:
@@ -108,7 +67,7 @@ class MyGraphicsContext {
 // An event handler that will print out the elevation at the clicked point
 struct MyEventHandler : public osgGA::GUIEventHandler 
 {
-    MyEventHandler( OceanSurfaceNode* ocean )
+    MyEventHandler( osgEarthUtil::OceanSurfaceNode* ocean )
         :_ocean(ocean) { }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
@@ -190,7 +149,7 @@ struct MyEventHandler : public osgGA::GUIEventHandler
         return false;
     }
 
-    osg::ref_ptr< OceanSurfaceNode > _ocean;
+    osg::ref_ptr< osgEarthUtil::OceanSurfaceNode > _ocean;
 };
 
 typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
@@ -218,50 +177,48 @@ osg::Image* make3DImage(const ImageList& images)
 }
 
 
+int usage( const std::string& msg )
+{
+    OE_NOTICE
+        << msg << std::endl
+        << "USAGE: osgearth_ocean [--mask-layer <layername>] [--invert-mask] <earthfile>" << std::endl
+        << "(note: <layername> defaults to \"ocean\")" << std::endl;
+    return -1;
+}
 
 
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    int maskUnit = -1;
-    while(arguments.read("--mask-unit",maskUnit));    
+    std::string maskLayerName = "ocean";
+    while( arguments.read("--mask-layer", maskLayerName) );
 
+    bool invertMask = arguments.isOption("--invert-mask");
 
     // construct the viewer.
     osgViewer::Viewer viewer(arguments);
-
-    {
-        osg::ref_ptr<osgGA::KeySwitchMatrixManipulator> keyswitchManipulator = new osgGA::KeySwitchMatrixManipulator;
-
-        keyswitchManipulator->addMatrixManipulator( '1', "Trackball", new osgGA::TrackballManipulator() );
-        keyswitchManipulator->addMatrixManipulator( '2', "Flight", new osgGA::FlightManipulator() );
-        keyswitchManipulator->addMatrixManipulator( '3', "Drive", new osgGA::DriveManipulator() );
-        keyswitchManipulator->addMatrixManipulator( '4', "Terrain", new osgGA::TerrainManipulator() );
-
-        std::string pathfile;
-        char keyForAnimationPath = '6';
-        while (arguments.read("-p",pathfile))
-        {
-            osgGA::AnimationPathManipulator* apm = new osgGA::AnimationPathManipulator(pathfile);
-            if (apm || !apm->valid()) 
-            {
-                unsigned int num = keyswitchManipulator->getNumMatrixManipulators();
-                keyswitchManipulator->addMatrixManipulator( keyForAnimationPath, "Path", apm );
-                keyswitchManipulator->selectMatrixManipulator(num);
-                ++keyForAnimationPath;
-            }
-        }
-
-        viewer.setCameraManipulator( keyswitchManipulator.get() );
-    }
+    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
 
     osg::Group* group = new osg::Group;
 
     osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);   
+    if ( !loadedModel.valid() )
+        return usage( "Failed to load an earth file." );
 
-    OceanSurfaceNode* ocean = new OceanSurfaceNode();
-    ocean->setOceanMaskTextureUnit( maskUnit );
+    osgEarthUtil::OceanSurfaceNode* ocean = new osgEarthUtil::OceanSurfaceNode();
+
+    if ( !maskLayerName.empty() )
+    {
+        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( loadedModel.get() );
+        if ( mapNode )
+        {
+            osgEarth::MapFrame mapf( mapNode->getMap() );
+            ocean->setOceanMaskImageLayer( mapf.imageLayerByName( maskLayerName ) );
+        }
+    }
+
+    ocean->setInvertMask( !invertMask );
 
     ImageList waterImages;
     waterImages.push_back( osgDB::readImageFile("../data/watersurface1.png") );
@@ -276,27 +233,14 @@ int main(int argc, char** argv)
     group->addChild( loadedModel );
 
     //Find the MapNode and add the ocean decorator to the terrain group
-    osgEarth::MapNode* mapNode = findTopMostNodeOfType<MapNode>(loadedModel.get());
+    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( loadedModel.get() );
     mapNode->addTerrainDecorator( ocean );
 
-
-    viewer.addEventHandler(new MyEventHandler(ocean));
-
-    loadedModel->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
-
-    // add the state manipulator
-    viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
-
-    // add the stats handler
-    viewer.addEventHandler(new osgViewer::StatsHandler);
-
-    // add the record camera path handler
-    viewer.addEventHandler(new osgViewer::RecordCameraPathHandler);
-
-
-    // set the scene to render
     viewer.setSceneData(group);
 
-    // run the viewers frame loop
+    viewer.addEventHandler(new MyEventHandler(ocean));
+    viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
+    viewer.addEventHandler(new osgViewer::StatsHandler);
+
     return viewer.run();
 }

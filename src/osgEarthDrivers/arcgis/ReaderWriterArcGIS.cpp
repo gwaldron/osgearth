@@ -86,6 +86,10 @@ public:
         {
             profile = Profile::create( _profileConf.get() );
         }
+        else if (overrideProfile)
+        {
+            profile = overrideProfile;
+        }
         //if ( !_profile_str.empty() )
         //{
         //    profile = Profile::create( _profile_str );

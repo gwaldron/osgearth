@@ -19,16 +19,18 @@
 #ifndef OSGEARTHUTIL_OCEANSURFACENODE
 #define OSGEARTHUTIL_OCEANSURFACENODE
 
+#include <osgEarthUtil/Common>
+#include <osgEarth/ImageLayer>
 #include <osg/Group>
 #include <osg/observer_ptr>
 #include <osg/CoordinateSystemNode>
 #include <osg/Program>
 #include <osg/Texture3D>
 
-#include <osgEarthUtil/Common>
-
 namespace osgEarthUtil 
 {
+    using namespace osgEarth;
+
     /**
      * OceanSurfaceNode is a decorator node that animates the surface of the globe to simulate simple waves.
      * Note:  This only works with multitextured maps, not multipass.
@@ -42,26 +44,14 @@ namespace osgEarthUtil
         OceanSurfaceNode();
 
         /**
-         *Gets the texture unit that the ocean mask is on
+         * Sets the image layer to use as an ocean mask.
          */
-        int getOceanMaskTextureUnit() const;
+        void setOceanMaskImageLayer( const ImageLayer* layer );
 
         /**
-         *Sets the texture unit that the ocean mask is on.
-         *Setting this to -1 disables the ocean mask.
+         * Gets the image layer being used as an ocean mask.
          */
-        void setOceanMaskTextureUnit(int unit);
-
-        /**
-         *Gets the texture unit to use for the ocean surface detail
-         */
-        int getOceanSurfaceTextureUnit() const;
-
-        /**
-         *Sets the texture unit to use for the ocean surface detail
-         *Setting this to -1 disables the effect
-         */
-        void setOceanSurfaceTextureUnit( int unit);
+        const ImageLayer* getOceanMaskImageLayer() const { return _maskLayer.get(); }
 
         /**
          *Gets the wave height
@@ -162,32 +152,31 @@ namespace osgEarthUtil
 		 */
 		bool getAdjustToMSL() const;
 
+    public:
+        virtual void traverse( osg::NodeVisitor& nv );
 
-
-
-        virtual void traverse(osg::NodeVisitor& nv);
     private:
         void rebuildShaders();
 
-        osg::ref_ptr< osg::Program > _program;
-        osg::ref_ptr< osg::Shader > _vertShader;
-        osg::ref_ptr< osg::Shader > _fragShader;
+        void shadersDirty(bool value);
+        bool _shadersDirty;
 
-        float _currentElevation;
         float _maxRange;
-        int _oceanMaskTextureUnit;
+        UID _oceanMaskLayerUID;
         int _oceanSurfaceTextureUnit;
+        bool _oceanSurfaceTextureApplied;
         float _waveHeight;
         float _period;
         bool _enabled;
         bool _invertMask;
 		bool _adjustToMSL;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
-        osgEarth::optional<osg::Vec4f> _oceanColor;
+        optional<osg::Vec4f> _oceanColor;
         float _oceanAnimationPeriod;
         float _oceanSurfaceImageSizeRadians;
         osg::ref_ptr< osg::Image > _oceanSurfaceImage;
         osg::ref_ptr< osg::Texture3D > _oceanSurfaceTexture;
+        osg::observer_ptr< const ImageLayer > _maskLayer;
     };
 }
 

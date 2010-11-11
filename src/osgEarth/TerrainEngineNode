@@ -21,6 +21,7 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/TextureCompositor>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -42,6 +43,9 @@ namespace osgEarth
         /** Gets the property set in use by this map engine. */
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
+        /** Accesses the compositor that controls the rendering of image layers */
+        TextureCompositor* getTextureCompositor() const { return _texCompositor.get(); }
+
     public: // Runtime properties
 
         /** Sets the scale factor to apply to elevation height values. Default is 1.0 */
@@ -56,6 +60,9 @@ namespace osgEarth
         /** Gets the sampling ratio for elevation grid data. */
         float getElevationSamplingRatio() const { return _elevationSamplingRatio; }
 
+        void setResourcePolicy( const ResourcePolicy& rp );
+        const ResourcePolicy& getResourcePolicy() const { return _resourcePolicy; }
+
     protected:
         TerrainEngineNode();
 
@@ -68,6 +75,7 @@ namespace osgEarth
     protected: // implementation events
         virtual void onVerticalScaleChanged() { }
         virtual void onElevationSamplingRatioChanged() { }
+        virtual void onResourcePolicyChanged() { }
 
     protected:
         friend class TerrainEngineNodeFactory;
@@ -83,9 +91,13 @@ namespace osgEarth
 
     protected:
         /** Attaches a map to the terrain engine and initialized it.*/
+        virtual void preinitialize( const MapInfo& mapInfo, const TerrainOptions& options );
         virtual void initialize( Map* map, const TerrainOptions& options );
-        virtual void setMapInfo( const MapInfo& mapInfo );
+        //virtual void setMapInfo( const MapInfo& mapInfo );
         friend class MapNode;
+
+        // allow subclasses direct access for convenience.
+        osg::ref_ptr<TextureCompositor> _texCompositor;
 
     private:
         friend struct MapNodeMapLayerController;
@@ -120,6 +132,8 @@ namespace osgEarth
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
         osg::ref_ptr<Map> _map;
+
+        ResourcePolicy _resourcePolicy;
     };
 
     /**

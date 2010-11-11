@@ -129,6 +129,36 @@ OSGTerrainEngineNode::~OSGTerrainEngineNode()
 }
 
 void
+OSGTerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& options )
+{
+    TerrainEngineNode::preinitialize( mapInfo, options );
+
+    // in standard mode, try to set the number of OSG DatabasePager threads to use.
+    if (options.loadingPolicy().isSet() &&
+        options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+    {
+        int numThreads = -1;
+
+        if ( options.loadingPolicy()->numLoadingThreads().isSet() )
+        {
+            numThreads = osg::maximum( 1, *options.loadingPolicy()->numLoadingThreads() );
+        }
+        else if ( options.loadingPolicy()->numLoadingThreadsPerCore().isSet() )
+        {
+            int numThreadsPerCore = *options.loadingPolicy()->numLoadingThreadsPerCore();
+            numThreads = osg::maximum( (int)1, (int)osg::round( 
+                numThreadsPerCore * (float)OpenThreads::GetNumberOfProcessors() ) );
+        }
+
+        if ( numThreads > 0 )
+        {
+            OE_INFO << LC << "Requesting " << numThreads << " database pager threads in STANDARD mode" << std::endl;
+            osg::DisplaySettings::instance()->setNumOfDatabaseThreadsHint( numThreads );
+        }
+    }
+}
+
+void
 OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions )
 {
     TerrainEngineNode::initialize( map, terrainOptions );

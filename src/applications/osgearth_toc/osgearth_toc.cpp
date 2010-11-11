@@ -21,6 +21,8 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 #include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
+#include <osgGA/StateSetManipulator>
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
@@ -49,7 +51,6 @@ int
 main( int argc, char** argv )
 {
     osg::ArgumentParser arguments( &argc,argv );
-    osgViewer::Viewer viewer( arguments );
 
     // load a graph from the command line
     osg::Node* node = osgDB::readNodeFiles( arguments );
@@ -68,21 +69,28 @@ main( int argc, char** argv )
     // a Map to hold inactive layers (layers that have been removed from the displayed Map)
     s_inactiveMap = new Map();
     s_inactiveMap->addMapCallback( new MyMapListener() );
+    
 
-    // install a proper manipulator
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
+    // configure the viewer.
+    osgViewer::Viewer viewer( arguments );
 
     osg::Group* root = new osg::Group();
 
     // install the control panel
     root->addChild( createControlPanel( &viewer ) );
-
     root->addChild( node );
 
     // update the control panel with the two Maps:
     updateControlPanel();
+    
+    viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );
+    viewer.addEventHandler( new osgViewer::StatsHandler() );
 
     viewer.setSceneData( root );
+
+    // install a proper manipulator
+    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
+
 
     while( !viewer.done() )
     {
@@ -156,8 +164,6 @@ createControlPanel( osgViewer::View* view )
 
     // the outer container:
     s_layerBox = new Grid();
-    //s_layerBox->setFrame( new RoundedFrame() );
-    //s_layerBox->getFrame()->setBackColor( 0,0,0,0.5 );
     s_layerBox->setBackColor(0,0,0,0.5);
     s_layerBox->setMargin( 10 );
     s_layerBox->setPadding( 10 );
@@ -242,9 +248,9 @@ updateControlPanel()
         LabelControl* inactiveLabel = new LabelControl( "Removed:", 18, osg::Vec4f(1,1,0,1) );
         s_layerBox->setControl( 1, row++, inactiveLabel );
 
-        for( int i=0; i<mapf2.imageLayers().size(); ++i )
+        for( unsigned int i=0; i<mapf2.imageLayers().size(); ++i )
         {
-            createLayerItem( row++, -1, -1, mapf2.imageLayers()[i], false );
+            createLayerItem( row++, -1, -1, mapf2.imageLayerAt(i), false );
         }
     }
 }

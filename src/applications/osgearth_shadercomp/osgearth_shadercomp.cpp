@@ -47,8 +47,6 @@ int usage( const std::string& msg )
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    osgViewer::Viewer viewer(arguments);
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
 
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
@@ -58,6 +56,9 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
+    
+    osgViewer::Viewer viewer(arguments);
+    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
     viewer.setSceneData( root );
 
     // inject the haze shader components:

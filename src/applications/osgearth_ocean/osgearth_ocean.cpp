@@ -235,10 +235,6 @@ int main(int argc, char** argv)
 
     bool invertMask = arguments.isOption("--invert-mask");
 
-    // construct the viewer.
-    osgViewer::Viewer viewer(arguments);
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
-
     osg::Group* group = new osg::Group;
 
     osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);   
@@ -274,9 +270,13 @@ int main(int argc, char** argv)
     mapNode->addTerrainDecorator( ocean );
 
     // assemble the rest of the scene graph and go
+    osgViewer::Viewer viewer(arguments);
+
     group->addChild( loadedModel );
     group->addChild( createMenu( &viewer ) );
     viewer.setSceneData(group);
+    
+    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
 
     viewer.addEventHandler(new MyEventHandler(ocean));
     viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );

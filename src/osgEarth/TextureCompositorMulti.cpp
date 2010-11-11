@@ -72,9 +72,9 @@ namespace
             buf << "tex"<< order[i] << (i+1 < order.size()? "," : ";");
         buf << "\n";
 
-        buf << "vec4 osgearth_frag_texture(void) \n"
+        buf << "void osgearth_frag_texture( inout vec4 color ) \n"
             << "{ \n"
-            << "    vec3 color = vec3(1,1,1); \n"
+            << "    vec3 color3 = color.rgb; \n"
             << "    vec4 texel; \n"
             << "    float dmin, dmax, atten_min, atten_max; \n";
 
@@ -91,12 +91,12 @@ namespace
                 << "            atten_max = -clamp( dmax, -osgearth_imagelayer_attenuation, 0 ) / osgearth_imagelayer_attenuation; \n"
                 << "            atten_min =  clamp( dmin, 0, osgearth_imagelayer_attenuation ) / osgearth_imagelayer_attenuation; \n"
                 << "            texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot <<"].st); \n"
-                << "            color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "] * atten_max * atten_min); \n"
+                << "            color3 = mix(color3, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "] * atten_max * atten_min); \n"
                 << "        } \n"
                 << "    } \n";
         }
 
-        buf << "    return vec4(color,1); \n"
+        buf << "    color = vec4(color3,color.a); \n"
             << "} \n";
 
         std::string str = buf.str();

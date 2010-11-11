@@ -128,7 +128,7 @@ TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& 
     _texCompositor = new TextureCompositor( options.compositingTechnique().value() );
 
     // enable backface culling
-    getOrCreateStateSet()->setAttribute( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+    getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
 }
 
 void

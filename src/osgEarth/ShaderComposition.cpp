@@ -103,6 +103,8 @@ VirtualProgram::setShader( const std::string& shaderSemantic, osg::Shader * shad
        shaderCurrent = shaderNew;
     }
 
+    OE_NOTICE << shader->getShaderSource() << std::endl;
+
     return shaderCurrent.get();
 }
 
@@ -351,12 +353,12 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
     const OrderedFunctionMap* postFrag = j != functions.end() ? &j->second : 0L;
 
     std::stringstream buf;
-    buf << "vec4 osgearth_frag_texture( void ); \n"
+    buf << "void osgearth_frag_texture( inout vec4 color ); \n"
         << "void osgearth_frag_lighting( inout vec4 color ); \n";
 
     if ( preFrag )
         for( OrderedFunctionMap::const_iterator i = preFrag->begin(); i != preFrag->end(); ++i )
-            buf << "vec4 " << i->second << "(); \n";
+            buf << "void " << i->second << "( inout vec4 color ); \n";
 
     if ( postFrag )
         for( OrderedFunctionMap::const_iterator i = postFrag->begin(); i != postFrag->end(); ++i )
@@ -365,13 +367,13 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
     buf << "uniform bool osgearth_lighting_enabled; \n"
         << "void main(void) \n"
         << "{ \n"
-        << "    vec4 color; \n";
+        << "    vec4 color = vec4(1,1,1,1); \n";
 
     if ( preFrag )
         for( OrderedFunctionMap::const_iterator i = preFrag->begin(); i != preFrag->end(); ++i )
-            buf << "    color = " << i->second << "(); \n";
+            buf << "    " << i->second << "( color ); \n";
 
-    buf << "    color = osgearth_frag_texture(); \n"
+    buf << "    osgearth_frag_texture( color ); \n"
         << "    if (osgearth_lighting_enabled) \n"
         << "        osgearth_frag_lighting( color ); \n";
 
@@ -417,18 +419,18 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
     for( int i=0; i<numTexImageUnits; ++i )
         buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
 
-    buf << "vec4 osgearth_frag_texture(void) \n"
+    buf << "void osgearth_frag_texture( inout vec4 color ) \n"
         << "{ \n"
-        << "    vec3 color = vec3(1,1,1); \n"
+        << "    vec3 color3 = color.rgb; \n"
         << "    vec4 texel; \n";
 
     for(int i=0; i<numTexImageUnits; ++i )
     {
         buf << "    texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-            << "    color = mix( color, texel.rgb, texel.a ); \n";
+            << "    color3 = mix( color3, texel.rgb, texel.a ); \n";
     }
         
-    buf << "    return vec4(color,1); \n"
+    buf << "    color = vec4(color3,color.a); \n"
         << "} \n";
 
     std::string str = buf.str();

@@ -380,7 +380,7 @@ OceanSurfaceNode::rebuildShaders()
             buf << "vec4 " << MASK_SAMPLER_FUNC << "(); \n";
         }
 
-        buf << "void morph_ocean_verts( in vec3 position, in vec3 normal ) \n"
+        buf << "void morph_ocean_verts() \n"
             << "{ \n"
             << "   mat4 modelMatrix = osg_ViewMatrixInverse * gl_ModelViewMatrix; \n"
             << "   vec4 vert = modelMatrix  * gl_Vertex; \n"           

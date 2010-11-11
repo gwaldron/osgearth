@@ -328,7 +328,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 
     if ( preVert )
         for( OrderedFunctionMap::const_iterator i = preVert->begin(); i != preVert->end(); ++i )
-            buf << "    " << i->second << "( position, normal ); \n";
+            buf << "    " << i->second << "(); \n";
 
     buf << "    osgearth_vert_setupTexturing(); \n"
         << "    if ( osgearth_lighting_enabled ) \n"

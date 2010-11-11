@@ -64,40 +64,40 @@ namespace osgEarth
     {
     public:
         /** Creates a vertex shader main(). */
-        osg::Shader* createVertexShaderMain(
+        virtual osg::Shader* createVertexShaderMain(
             const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
 
         /** Creates a fragment shader main(). */
-        osg::Shader* createFragmentShaderMain( 
+        virtual osg::Shader* createFragmentShaderMain( 
             const ShaderComp::FunctionLocationMap& functions =ShaderComp::FunctionLocationMap() ) const;
         
         /**
          * Creates the function that sets up default texcoords in the vertex shader.
          * The name/prototype is:
-         *    void osgearth_vert_texture( in vec3 position, in vec3 normal ); 
+         *    void osgearth_vert_setupTexturing(); 
          */
-        osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultTextureVertexShader( int numTexCoordSets ) const;
 
         /**
          * Creates the function that applies texture data in the fragment shader.
          * The name/prototype is:
-         *    vec4 osgearth_frag_texture( void );
+         *    osgearth_frag_applyTexturing( inout vec4 color );
          */
-        osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
+        virtual osg::Shader* createDefaultTextureFragmentShader( int numTexCoordSets ) const;
 
         /**
          * Creates the function that applies lighting calculations in the vertex shader.
          * The name/prototype is:
-         *    void osgearth_vert_lighting( in vec3 position, in vec3 normal );
+         *    void osgearth_vert_setupLighting();
          */
-        osg::Shader* createDefaultLightingVertexShader() const;
+        virtual osg::Shader* createDefaultLightingVertexShader() const;
 
         /**
          * Creates the function that applies lighting coloring in the fragment shader.
          * The name/prototype is:
-         *    void osgearth_frag_lighting( inout vec4 color ); 
+         *    void osgearth_frag_applyLighting( inout vec4 color ); 
          */
-        osg::Shader* createDefaultLightingFragmentShader() const;
+        virtual osg::Shader* createDefaultLightingFragmentShader() const;
     };
 
     /**

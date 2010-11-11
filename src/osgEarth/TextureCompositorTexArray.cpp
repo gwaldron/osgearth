@@ -51,7 +51,7 @@ namespace
             << "uniform float   osgearth_imagelayer_attenuation; \n"
             << "varying float osgearth_range; \n"
 
-            << "void osgearth_frag_texture( inout vec4 color ) \n"
+            << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
             << "{ \n"
             << "    vec3 color3 = color.rgb; \n"
             << "    float u, v, dmin, dmax, atten_min, atten_max; \n"
@@ -240,7 +240,7 @@ void
 TextureCompositorTexArray::updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const
 {
     VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
-    vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(layout) );
+    vp->setShader( "osgearth_frag_applyTexturing", s_createTextureFragShaderFunction(layout) );
 }
 
 osg::Shader*

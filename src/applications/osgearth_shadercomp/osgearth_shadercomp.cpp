@@ -77,7 +77,7 @@ int main(int argc, char** argv)
 
 static char s_hazeVertShader[] =
     "varying vec3 v_pos; \n"
-    "void setup_haze(in vec3 position, in vec3 normal) \n"
+    "void setup_haze() \n"
     "{ \n"
     "    v_pos = vec3(gl_ModelViewMatrix * gl_Vertex); \n"
     "} \n";

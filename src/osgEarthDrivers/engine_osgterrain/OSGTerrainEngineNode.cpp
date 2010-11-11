@@ -641,12 +641,12 @@ OSGTerrainEngineNode::installShaders()
         // note. this stuff should probably happen automatically in VirtualProgram. gw
 
         //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
-        vp->setShader( "osgearth_vert_lighting", sf->createDefaultLightingVertexShader() );
-        vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numLayers ) );
+        vp->setShader( "osgearth_vert_setupLighting", sf->createDefaultLightingVertexShader() );
+        vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numLayers ) );
 
         //vp->setShader( "osgearth_frag_main",     sf->createFragmentShaderMain() ); // happend in VirtualProgram now
-        vp->setShader( "osgearth_frag_lighting", sf->createDefaultLightingFragmentShader() );
-        vp->setShader( "osgearth_frag_texture",  sf->createDefaultTextureFragmentShader( numLayers ) );
+        vp->setShader( "osgearth_frag_applyLighting", sf->createDefaultLightingFragmentShader() );
+        vp->setShader( "osgearth_frag_applyTexturing",  sf->createDefaultTextureFragmentShader( numLayers ) );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -676,10 +676,10 @@ OSGTerrainEngineNode::updateTextureCombining()
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numImageLayers ) );
+            vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numImageLayers ) );
 
             // not this one, because the compositor always generates a new one.
-            //vp->setShader( "osgearth_frag_texture",  lib.createDefaultTextureFragmentShader( numImageLayers ) );
+            //vp->setShader( "osgearth_frag_applyTexturing",  lib.createDefaultTextureFragmentShader( numImageLayers ) );
         }
 
         // next, inform the compositor that it needs to update based on a new layer count:

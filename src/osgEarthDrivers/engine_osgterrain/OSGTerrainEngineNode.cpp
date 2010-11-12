@@ -129,6 +129,36 @@ OSGTerrainEngineNode::~OSGTerrainEngineNode()
 }
 
 void
+OSGTerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& options )
+{
+    TerrainEngineNode::preinitialize( mapInfo, options );
+
+    // in standard mode, try to set the number of OSG DatabasePager threads to use.
+    if (options.loadingPolicy().isSet() &&
+        options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+    {
+        int numThreads = -1;
+
+        if ( options.loadingPolicy()->numLoadingThreads().isSet() )
+        {
+            numThreads = osg::maximum( 1, *options.loadingPolicy()->numLoadingThreads() );
+        }
+        else if ( options.loadingPolicy()->numLoadingThreadsPerCore().isSet() )
+        {
+            int numThreadsPerCore = *options.loadingPolicy()->numLoadingThreadsPerCore();
+            numThreads = osg::maximum( (int)1, (int)osg::round( 
+                numThreadsPerCore * (float)OpenThreads::GetNumberOfProcessors() ) );
+        }
+
+        if ( numThreads > 0 )
+        {
+            OE_INFO << LC << "Requesting " << numThreads << " database pager threads in STANDARD mode" << std::endl;
+            osg::DisplaySettings::instance()->setNumOfDatabaseThreadsHint( numThreads );
+        }
+    }
+}
+
+void
 OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions )
 {
     TerrainEngineNode::initialize( map, terrainOptions );
@@ -611,12 +641,12 @@ OSGTerrainEngineNode::installShaders()
         // note. this stuff should probably happen automatically in VirtualProgram. gw
 
         //vp->setShader( "osgearth_vert_main",     sf->createVertexShaderMain() ); // happens in VirtualProgram now
-        vp->setShader( "osgearth_vert_lighting", sf->createDefaultLightingVertexShader() );
-        vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numLayers ) );
+        vp->setShader( "osgearth_vert_setupLighting", sf->createDefaultLightingVertexShader() );
+        vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numLayers ) );
 
         //vp->setShader( "osgearth_frag_main",     sf->createFragmentShaderMain() ); // happend in VirtualProgram now
-        vp->setShader( "osgearth_frag_lighting", sf->createDefaultLightingFragmentShader() );
-        vp->setShader( "osgearth_frag_texture",  sf->createDefaultTextureFragmentShader( numLayers ) );
+        vp->setShader( "osgearth_frag_applyLighting", sf->createDefaultLightingFragmentShader() );
+        vp->setShader( "osgearth_frag_applyTexturing",  sf->createDefaultTextureFragmentShader( numLayers ) );
 
         getOrCreateStateSet()->setAttributeAndModes( vp, osg::StateAttribute::ON );
     }
@@ -646,10 +676,10 @@ OSGTerrainEngineNode::updateTextureCombining()
 
             // first, update the default shader components based on the new layer count:
             const ShaderFactory* sf = Registry::instance()->getShaderFactory();
-            vp->setShader( "osgearth_vert_texture",  sf->createDefaultTextureVertexShader( numImageLayers ) );
+            vp->setShader( "osgearth_vert_setupTexturing",  sf->createDefaultTextureVertexShader( numImageLayers ) );
 
             // not this one, because the compositor always generates a new one.
-            //vp->setShader( "osgearth_frag_texture",  lib.createDefaultTextureFragmentShader( numImageLayers ) );
+            //vp->setShader( "osgearth_frag_applyTexturing",  lib.createDefaultTextureFragmentShader( numImageLayers ) );
         }
 
         // next, inform the compositor that it needs to update based on a new layer count:

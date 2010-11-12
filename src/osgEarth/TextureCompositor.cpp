@@ -363,20 +363,8 @@ TextureCompositor::init()
 
     const Capabilities& caps = Registry::instance()->getCapabilities();
 
-#if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
-
-    if (_tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY || 
-        (isAuto && caps.supportsGLSL(1.30f) && caps.supportsTextureArrays()) )
-    {
-        _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
-        _impl = new TextureCompositorTexArray();
-        OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
-    }
-
-    else
-
-#endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
-
+    // MULTITEXTURE_GPU is the current default.
+    
     if (_tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU ||
         (isAuto && caps.supportsGLSL(1.20f) && caps.supportsMultiTexture()) ) 
     {
@@ -385,15 +373,28 @@ TextureCompositor::init()
         OE_INFO << LC << "Compositing technique = MULTITEXTURE/GPU" << std::endl;
     }
 
-    // NOTE: uncomment this to "else if" when Software mode is ready
-    else if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
+#if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
+
+    else
+    if (_tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY || 
+        (isAuto && caps.supportsGLSL(1.30f) && caps.supportsTextureArrays()) )
+    {
+        _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
+        _impl = new TextureCompositorTexArray();
+        OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
+    }
+
+#endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
+
+    else
+    if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         _impl = new TextureCompositorMultiTexture( false );
         OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
     }
 
-    // Fallback of last resort. The Compositor is actually a NO-OP for multipass mode.
+    // Fallback of last resort. The implementation is actually a NO-OP for multipass mode.
     else
     {
         _tech = TerrainOptions::COMPOSITING_MULTIPASS;

@@ -20,6 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 #include <osgDB/ReadFile>
+#include <osg/CullFace>
 
 #define LC "[TerrainEngineNode] "
 
@@ -55,7 +56,7 @@ namespace osgEarth
 TerrainEngineNode::ImageLayerController::ImageLayerController( Map* map ) :
 _mapf( map, Map::IMAGE_LAYERS, "TerrainEngineNode.ImageLayerController" )
 {
-    //NOP
+    //nop
 }
 
 // this handler adjusts the uniform set when a terrain layer's "enabed" state changes
@@ -125,6 +126,9 @@ TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& 
     
     // install the proper layer composition technique:
     _texCompositor = new TextureCompositor( options.compositingTechnique().value() );
+
+    // enable backface culling
+    getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
 }
 
 void

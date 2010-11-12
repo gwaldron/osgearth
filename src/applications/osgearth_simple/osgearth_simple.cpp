@@ -132,7 +132,6 @@ int main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
        
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
-    osgViewer::Viewer viewer(arguments);
 
     // install the programmable manipulator.
     osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
@@ -146,6 +145,8 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
+
+    osgViewer::Viewer viewer(arguments);
 
     osgEarthUtil::Graticule* graticule = 0L;
 

@@ -26,6 +26,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/OceanSurfaceNode>
+#include <osgEarthUtil/Controls>
 
 class MyGraphicsContext {
     public:
@@ -62,7 +63,45 @@ class MyGraphicsContext {
         osg::ref_ptr<osg::GraphicsContext> _gc;
 };
 
+// build an on-screen menu
+static osg::Node* createMenu( osgViewer::View* view )
+{
+    using namespace osgEarthUtil::Controls;
 
+    ControlCanvas* canvas = new ControlCanvas( view );
+
+    Grid* grid = new Grid();
+    grid->setBackColor( 0, 0, 0, 0.5 );
+    grid->setMargin( 5 );
+    grid->setSpacing( 3 );
+    grid->setVertAlign( Control::ALIGN_BOTTOM );
+    int row = 0;
+
+    grid->setControl( 1, row++, new LabelControl( "Ocean Demo", 18.0f, osg::Vec4(1,1,0,1) ) );
+    grid->setControl( 1, row++, new LabelControl( "Zoom in to the coastline to see ocean effects.", 14.0f, osg::Vec4(.6,.6,.6,1) ) );
+
+    grid->setControl( 0, row  , new LabelControl( "e" ) );
+    grid->setControl( 1, row++, new LabelControl( "toggle ocean effects" ) );
+    grid->setControl( 0, row  , new LabelControl( "m" ) );
+    grid->setControl( 1, row++, new LabelControl( "toggle MSL adjustment" ) );
+    grid->setControl( 0, row  , new LabelControl( "h/H" ) );
+    grid->setControl( 1, row++, new LabelControl( "inc/dec wave height" ) );
+    grid->setControl( 0, row  , new LabelControl( "p/P" ) );
+    grid->setControl( 1, row++, new LabelControl( "inc/dec wave period" ) );
+    grid->setControl( 0, row  , new LabelControl( "c/C" ) );
+    grid->setControl( 1, row++, new LabelControl( "inc/dec ocean modulation color" ) );
+    grid->setControl( 0, row  , new LabelControl( "a/A" ) );
+    grid->setControl( 1, row++, new LabelControl( "inc/dec shimmer effect period" ) );
+    grid->setControl( 0, row  , new LabelControl( "j/J" ) );
+    grid->setControl( 1, row++, new LabelControl( "inc/dec surface image size" ) );
+    grid->setControl( 0, row  , new LabelControl( "i" ) );
+    grid->setControl( 1, row++, new LabelControl( "toggle ocean mask inversion" ) );
+    grid->setControl( 0, row  , new LabelControl( "w" ) );
+    grid->setControl( 1, row++, new LabelControl( "toggle wireframe mode" ) );
+
+    canvas->addControl( grid );
+    return canvas;
+}
 
 // An event handler that will print out the elevation at the clicked point
 struct MyEventHandler : public osgGA::GUIEventHandler 
@@ -196,10 +235,6 @@ int main(int argc, char** argv)
 
     bool invertMask = arguments.isOption("--invert-mask");
 
-    // construct the viewer.
-    osgViewer::Viewer viewer(arguments);
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
-
     osg::Group* group = new osg::Group;
 
     osg::ref_ptr<osg::Node> loadedModel = osgDB::readNodeFiles(arguments);   
@@ -220,23 +255,28 @@ int main(int argc, char** argv)
 
     ocean->setInvertMask( !invertMask );
 
+    // install some water-surface images for an interesting shimmering effect:
     ImageList waterImages;
     waterImages.push_back( osgDB::readImageFile("../data/watersurface1.png") );
     waterImages.push_back( osgDB::readImageFile("../data/watersurface2.png") );
     waterImages.push_back( osgDB::readImageFile("../data/watersurface3.png") );
     waterImages.push_back( osgDB::readImageFile("../data/watersurface4.png") );
 
-    osg::ref_ptr<osg::Image> waterImage = make3DImage(waterImages);
-    
+    osg::ref_ptr<osg::Image> waterImage = make3DImage(waterImages);    
     ocean->setOceanSurfaceImage( waterImage.get() );
 
-    group->addChild( loadedModel );
-
-    //Find the MapNode and add the ocean decorator to the terrain group
+    // Find the MapNode and add the ocean as a terrain decorator.
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( loadedModel.get() );
     mapNode->addTerrainDecorator( ocean );
 
+    // assemble the rest of the scene graph and go
+    osgViewer::Viewer viewer(arguments);
+
+    group->addChild( loadedModel );
+    group->addChild( createMenu( &viewer ) );
     viewer.setSceneData(group);
+    
+    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
 
     viewer.addEventHandler(new MyEventHandler(ocean));
     viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );

@@ -38,7 +38,7 @@ namespace
     {
         std::stringstream buf;
 
-        buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ) \n"
+        buf << "void osgearth_vert_setupTexturing() \n"
             << "{ \n";
 
         for(int i=0; i<maxLayersToRender; ++i )
@@ -72,9 +72,9 @@ namespace
             buf << "tex"<< order[i] << (i+1 < order.size()? "," : ";");
         buf << "\n";
 
-        buf << "vec4 osgearth_frag_texture(void) \n"
+        buf << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
             << "{ \n"
-            << "    vec3 color = vec3(1,1,1); \n"
+            << "    vec3 color3 = color.rgb; \n"
             << "    vec4 texel; \n"
             << "    float dmin, dmax, atten_min, atten_max; \n";
 
@@ -91,12 +91,12 @@ namespace
                 << "            atten_max = -clamp( dmax, -osgearth_imagelayer_attenuation, 0 ) / osgearth_imagelayer_attenuation; \n"
                 << "            atten_min =  clamp( dmin, 0, osgearth_imagelayer_attenuation ) / osgearth_imagelayer_attenuation; \n"
                 << "            texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot <<"].st); \n"
-                << "            color = mix(color, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "] * atten_max * atten_min); \n"
+                << "            color3 = mix(color3, texel.rgb, texel.a * osgearth_imagelayer_opacity[" << i << "] * atten_max * atten_min); \n"
                 << "        } \n"
                 << "    } \n";
         }
 
-        buf << "    return vec4(color,1); \n"
+        buf << "    color = vec4(color3,color.a); \n"
             << "} \n";
 
         std::string str = buf.str();
@@ -189,13 +189,13 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
         VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( maxLayers > 0 )
         {
-            vp->setShader( "osgearth_frag_texture", s_createTextureFragShaderFunction(layout, maxLayers) );
-            vp->setShader( "osgearth_vert_texture", s_createTextureVertexShader(maxLayers) );
+            vp->setShader( "osgearth_frag_applyTexturing", s_createTextureFragShaderFunction(layout, maxLayers) );
+            vp->setShader( "osgearth_vert_setupTexturing", s_createTextureVertexShader(maxLayers) );
         }
         else
         {
-            vp->removeShader( "osgearth_frag_texture", osg::Shader::FRAGMENT );
-            vp->removeShader( "osgearth_vert_texture", osg::Shader::VERTEX );
+            vp->removeShader( "osgearth_frag_applyTexturing", osg::Shader::FRAGMENT );
+            vp->removeShader( "osgearth_vert_setupTexturing", osg::Shader::VERTEX );
         }
     }
 

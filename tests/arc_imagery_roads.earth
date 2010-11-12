@@ -20,5 +20,9 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
     
     <options>
         <lighting>false</lighting>
+        <terrain>
+            <loading_policy mode="sequential"/>
+            <compositor>multitexture</compositor>
+        </terrain>
     </options>
 </map>

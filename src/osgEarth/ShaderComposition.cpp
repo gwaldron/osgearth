@@ -103,6 +103,8 @@ VirtualProgram::setShader( const std::string& shaderSemantic, osg::Shader * shad
        shaderCurrent = shaderNew;
     }
 
+    //OE_NOTICE << shader->getShaderSource() << std::endl;
+
     return shaderCurrent.get();
 }
 
@@ -301,38 +303,40 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
     const OrderedFunctionMap* postVert = j != functions.end() ? &j->second : 0L;
 
     std::stringstream buf;
-    buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ); \n"
-        << "void osgearth_vert_lighting( in vec3 position, in vec3 normal ); \n"
+    buf << "void osgearth_vert_setupTexturing(); \n"
+        << "void osgearth_vert_setupLighting(); \n"
         << "uniform bool osgearth_lighting_enabled; \n"
         << "varying float osgearth_range; \n";
 
     if ( preVert )
         for( OrderedFunctionMap::const_iterator i = preVert->begin(); i != preVert->end(); ++i )
-            buf << "void " << i->second << "( in vec3 position, in vec3 normal ); \n";
+            buf << "void " << i->second << "(); \n";
 
     if ( postVert )
         for( OrderedFunctionMap::const_iterator i = postVert->begin(); i != postVert->end(); ++i )
-            buf << "void " << i->second << "( in vec3 position, in vec3 normal ); \n";
+            buf << "void " << i->second << "(); \n";
 
     buf << "void main(void) \n"
         << "{ \n"
         << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+
         << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
+        << "    osgearth_range = length( position4.xyz ); \n"
+
         << "    vec3 position = position4.xyz / position4.w; \n"
-        << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
-        << "    osgearth_range = length (position4.xyz ); \n";
+        << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";
 
     if ( preVert )
         for( OrderedFunctionMap::const_iterator i = preVert->begin(); i != preVert->end(); ++i )
-            buf << "    " << i->second << "( position, normal ); \n";
+            buf << "    " << i->second << "(); \n";
 
-    buf << "    osgearth_vert_texture( position, normal ); \n"
+    buf << "    osgearth_vert_setupTexturing(); \n"
         << "    if ( osgearth_lighting_enabled ) \n"
-        << "        osgearth_vert_lighting( position, normal ); \n";
+        << "        osgearth_vert_setupLighting(); \n";
     
     if ( postVert )
         for( OrderedFunctionMap::const_iterator i = postVert->begin(); i != postVert->end(); ++i )
-            buf << "    " << i->second << "(position, normal); \n";
+            buf << "    " << i->second << "(); \n";
 
     buf << "} \n";
 
@@ -351,12 +355,12 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
     const OrderedFunctionMap* postFrag = j != functions.end() ? &j->second : 0L;
 
     std::stringstream buf;
-    buf << "vec4 osgearth_frag_texture( void ); \n"
-        << "void osgearth_frag_lighting( inout vec4 color ); \n";
+    buf << "void osgearth_frag_applyTexturing( inout vec4 color ); \n"
+        << "void osgearth_frag_applyLighting( inout vec4 color ); \n";
 
     if ( preFrag )
         for( OrderedFunctionMap::const_iterator i = preFrag->begin(); i != preFrag->end(); ++i )
-            buf << "vec4 " << i->second << "(); \n";
+            buf << "void " << i->second << "( inout vec4 color ); \n";
 
     if ( postFrag )
         for( OrderedFunctionMap::const_iterator i = postFrag->begin(); i != postFrag->end(); ++i )
@@ -365,15 +369,15 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
     buf << "uniform bool osgearth_lighting_enabled; \n"
         << "void main(void) \n"
         << "{ \n"
-        << "    vec4 color; \n";
+        << "    vec4 color = vec4(1,1,1,1); \n";
 
     if ( preFrag )
         for( OrderedFunctionMap::const_iterator i = preFrag->begin(); i != preFrag->end(); ++i )
-            buf << "    color = " << i->second << "(); \n";
+            buf << "    " << i->second << "( color ); \n";
 
-    buf << "    color = osgearth_frag_texture(); \n"
+    buf << "    osgearth_frag_applyTexturing( color ); \n"
         << "    if (osgearth_lighting_enabled) \n"
-        << "        osgearth_frag_lighting( color ); \n";
+        << "        osgearth_frag_applyLighting( color ); \n";
 
     if ( postFrag )
         for( OrderedFunctionMap::const_iterator i = postFrag->begin(); i != postFrag->end(); ++i )
@@ -392,7 +396,7 @@ ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
 {
     std::stringstream buf;
 
-    buf << "void osgearth_vert_texture( in vec3 position, in vec3 normal ) \n"
+    buf << "void osgearth_vert_setupTexturing() \n"
         << "{ \n";
 
     for(int i=0; i<numTexCoordSets; ++i )
@@ -417,18 +421,18 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
     for( int i=0; i<numTexImageUnits; ++i )
         buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
 
-    buf << "vec4 osgearth_frag_texture(void) \n"
+    buf << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
         << "{ \n"
-        << "    vec3 color = vec3(1,1,1); \n"
+        << "    vec3 color3 = color.rgb; \n"
         << "    vec4 texel; \n";
 
     for(int i=0; i<numTexImageUnits; ++i )
     {
         buf << "    texel = texture2D(tex" << i << ", gl_TexCoord["<< i <<"].st); \n"
-            << "    color = mix( color, texel.rgb, texel.a ); \n";
+            << "    color3 = mix( color3, texel.rgb, texel.a ); \n";
     }
         
-    buf << "    return vec4(color,1); \n"
+    buf << "    color = vec4(color3,color.a); \n"
         << "} \n";
 
     std::string str = buf.str();
@@ -440,8 +444,9 @@ osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
 {
     static char s_PerVertexLighting_VertexShaderSource[] = 
-        "void osgearth_vert_lighting( in vec3 position, in vec3 normal )            \n"
+        "void osgearth_vert_setupLighting()                                         \n"
         "{                                                                          \n"
+        "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal );                \n"
         "    float NdotL = dot( normal, normalize(gl_LightSource[0].position.xyz) );\n"
         "    NdotL = max( 0.0, NdotL );                                             \n"
         "    float NdotHV = dot( normal, gl_LightSource[0].halfVector.xyz );        \n"
@@ -469,7 +474,7 @@ osg::Shader*
 ShaderFactory::createDefaultLightingFragmentShader() const
 {
     static char s_PerVertexLighting_FragmentShaderSource[] =
-        "void osgearth_frag_lighting( inout vec4 color )                            \n"
+        "void osgearth_frag_applyLighting( inout vec4 color )                            \n"
         "{                                                                          \n"
         "    color = color * gl_Color + gl_SecondaryColor;                          \n"
         "}                                                                          \n";
@@ -483,35 +488,31 @@ ShaderFactory::createDefaultLightingFragmentShader() const
 // This is just a holding pen for various stuff
 
 static char s_PerFragmentLighting_VertexShaderSource[] =
-"varying vec3 Normal;                                                       \n" //1
-"varying vec3 Position;                                                     \n" //2
-"                                                                           \n" //3
-"void osgearth_vert_lighting( in vec3 position, in vec3 normal )            \n" //4
-"{                                                                          \n" //5
-"    Normal = normal;                                                       \n" //6
-"    Position = position;                                                   \n" //7
-"}                                                                          \n";//8
+    "varying vec3 Normal; \n"
+    "varying vec3 Position; \n"
+    "void osgearth_vert_setupLighting() \n"
+    "{ \n"
+    "    Normal = normal; \n"
+    "    Position = position; \n"
+    "} \n";
 
 static char s_PerFragmentDirectionalLighting_FragmentShaderSource[] =
-"varying vec3 Normal;                                                       \n" //1
-"varying vec3 Position; // not used for directional lighting                \n" //2
-"                                                                           \n" //3
-"void osgearth_frag_lighting( inout vec4 color )                            \n" //4
-"{                                                                          \n" //5
-"    vec3 n = normalize( Normal );                                          \n" //5
-"    float NdotL = dot( n, normalize(gl_LightSource[0].position.xyz) );     \n" //6
-"    NdotL = max( 0.0, NdotL );                                             \n" //7
-"    float NdotHV = dot( n, gl_LightSource[0].halfVector.xyz );             \n" //8
-"    NdotHV = max( 0.0, NdotHV );                                           \n" //9
-"                                                                           \n" //10
-"    color *= gl_FrontLightModelProduct.sceneColor +                        \n" //11
-"             gl_FrontLightProduct[0].ambient +                             \n" //12
-"             gl_FrontLightProduct[0].diffuse * NdotL;                      \n" //13
-"                                                                           \n" //14
-"    if ( NdotL * NdotHV > 0.0 )                                            \n" //15
-"        color += gl_FrontLightProduct[0].specular *                        \n" //16
-"                 pow( NdotHV, gl_FrontMaterial.shininess );                \n" //17
-"}                                                                          \n";//18
+    "varying vec3 Normal; \n"
+    "varying vec3 Position; \n"
+    "void osgearth_frag_applyLighting( inout vec4 color ) \n"
+    "{ \n"
+    "    vec3 n = normalize( Normal ); \n"
+    "    float NdotL = dot( n, normalize(gl_LightSource[0].position.xyz) ); \n"
+    "    NdotL = max( 0.0, NdotL ); \n"
+    "    float NdotHV = dot( n, gl_LightSource[0].halfVector.xyz ); \n"
+    "    NdotHV = max( 0.0, NdotHV ); \n"
+    "    color *= gl_FrontLightModelProduct.sceneColor + \n"
+    "             gl_FrontLightProduct[0].ambient + \n"
+    "             gl_FrontLightProduct[0].diffuse * NdotL; \n"
+    "    if ( NdotL * NdotHV > 0.0 ) \n"
+    "        color += gl_FrontLightProduct[0].specular * \n"
+    "                 pow( NdotHV, gl_FrontMaterial.shininess ); \n"
+    "} \n";
 
 #endif
 

@@ -125,7 +125,7 @@ TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& 
         this->setEllipsoidModel( NULL );
     
     // install the proper layer composition technique:
-    _texCompositor = new TextureCompositor( options.compositingTechnique().value() );
+    _texCompositor = new TextureCompositor( options ); //.compositingTechnique().value() );
 
     // enable backface culling
     getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );

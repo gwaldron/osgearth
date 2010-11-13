@@ -145,9 +145,10 @@ TextureLayout::setReservedSlots( const std::set<int>& reservedSlots )
 
 //---------------------------------------------------------------------------
 
-TextureCompositor::TextureCompositor( const TerrainOptions::CompositingTechnique& tech ) :
+TextureCompositor::TextureCompositor(const TerrainOptions& options) :
 osg::Referenced( true ),
-_tech( tech ),
+_options( options ),
+_tech( options.compositingTechnique().value() ),
 _forceTech( false )
 {
     // for debugging:
@@ -369,7 +370,7 @@ TextureCompositor::init()
         (isAuto && caps.supportsGLSL(1.20f) && caps.supportsMultiTexture()) ) 
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
-        _impl = new TextureCompositorMultiTexture( true );
+        _impl = new TextureCompositorMultiTexture( true, *_options.levelOfDetailBlending() );
         OE_INFO << LC << "Compositing technique = MULTITEXTURE/GPU" << std::endl;
     }
 
@@ -390,7 +391,7 @@ TextureCompositor::init()
     if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
-        _impl = new TextureCompositorMultiTexture( false );
+        _impl = new TextureCompositorMultiTexture( false, *_options.levelOfDetailBlending() );
         OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
     }
 

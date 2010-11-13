@@ -115,6 +115,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "lighting", _enableLighting );
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
+    conf.updateIfSet( "lod_blending", _lodBlending );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -141,6 +142,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "max_lod", _maxLOD );
     conf.getIfSet( "lighting", _enableLighting );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
+    conf.getIfSet( "lod_blending", _lodBlending );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );

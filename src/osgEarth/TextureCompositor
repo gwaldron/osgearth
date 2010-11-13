@@ -114,7 +114,9 @@ namespace osgEarth
         /**
          * Constructs a new compositor.
          */
-        TextureCompositor( const TerrainOptions::CompositingTechnique& tech =TerrainOptions::COMPOSITING_AUTO );
+        TextureCompositor( const TerrainOptions& options );
+            //const TerrainOptions::CompositingTechnique& tech =TerrainOptions::COMPOSITING_AUTO,
+            //bool lodBlending =false );
 
         /**
          * Gets the actual technique selected by the compositor. This might not be the same
@@ -226,6 +228,7 @@ namespace osgEarth
 
         OpenThreads::Mutex                       _initMutex;
         TerrainOptions::CompositingTechnique     _tech;
+        TerrainOptions                           _options;
         bool                                     _forceTech;
         osg::ref_ptr<osg::Program>               _program;
         osg::ref_ptr<TextureCompositorTechnique> _impl;

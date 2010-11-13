@@ -110,7 +110,7 @@ namespace
 namespace
 {
     static osg::Texture2D*
-    s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout )
+    s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout, bool lodBlending )
     {
         int slot = layout.getSlot( layerUID );
         if ( slot < 0 )
@@ -124,7 +124,10 @@ namespace
             tex = new osg::Texture2D();
 
             // configure the mipmapping
-            tex->setMaxAnisotropy(16.0f);
+
+            // only enable anisotropic filtering if we are NOT using mipmap blending.
+            tex->setMaxAnisotropy( lodBlending ? 1.0f : 16.0f );
+
             tex->setResizeNonPowerOfTwoHint(false);
             tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
             tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
@@ -148,11 +151,37 @@ namespace
 
 //------------------------------------------------------------------------
 
-TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU ) :
-_useGPU( useGPU )
+TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, bool lodBlending ) :
+_useGPU( useGPU ),
+_lodBlending( lodBlending )
 {
     //nop
 }
+
+#if 0
+GeoImage
+TextureCompositorMultiTexture::prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
+{
+    osg::ref_ptr<osg::Image> image = layerImage.getImage();
+
+    // Because all tex2darray layers must be identical in format, let's use RGBA.
+    if ( image->getPixelFormat() != GL_RGBA )
+        image = ImageUtils::convertToRGBA( image.get() );
+
+    // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
+    if ( image->s() != 256 || image->t() != 256 )
+        image = ImageUtils::resizeImage( image.get(), 256, 256 );
+
+    //Make sure that the internal texture format is always set to GL_RGBA
+    image->setInternalTextureFormat( GL_RGBA );
+    
+    // Failure to do this with a Texture2DArray will result in texture corruption if we are 
+    // updating layers (like in sequential mode).
+    image->setDataVariance( osg::Object::DYNAMIC );
+
+    return GeoImage( image.get(), layerImage.getExtent() );
+}
+#endif
 
 void
 TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
@@ -161,7 +190,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
                                                 const GeoExtent& tileExtent,
                                                 const TextureLayout& layout ) const
 {
-    osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout );
+    osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, _lodBlending );
     if ( tex )
     {
         tex->setImage( preparedImage.getImage() );

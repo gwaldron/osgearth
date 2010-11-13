@@ -37,6 +37,8 @@
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
 
+#include <osgUtil/IncrementalCompileOperation>
+
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
@@ -191,13 +193,14 @@ int main(int argc, char** argv)
     if ( graticule )
         viewer.addEventHandler(new NodeToggleHandler( graticule, 'g', "graticule"));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
+
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgViewer::ThreadingHandler());
+    viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
     viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
-    viewer.realize();
 
     return viewer.run();
 }

@@ -73,6 +73,17 @@ namespace osgEarth
             double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy);
 
         /**
+         * Creates an Image that "blends" two images into a new image in which "primary"
+         * occupies mipmap level 0, and "secondary" occupies all the other mipmap levels.
+         *
+         * WARNING: this method assumes that primary and seconday are the same exact size
+         * and the same exact format.
+         */
+        static osg::Image* createMipmapBlendedImage(
+            const osg::Image* primary,
+            const osg::Image* secondary );
+
+        /**
          * Creates and returns a copy of the input image after applying a
          * sharpening filter. Returns a new image, leaving the input image unaltered.
          */

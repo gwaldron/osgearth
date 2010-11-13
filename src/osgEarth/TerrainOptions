@@ -180,6 +180,12 @@ namespace osgEarth
         const optional<float>& attentuationDistance() const { return _attenuationDistance; }
 
         /**
+         * Level-of-detail blending
+         */
+        optional<bool>& levelOfDetailBlending() { return _lodBlending; }
+        const optional<bool>& levelOfDetailBlending() const { return _lodBlending; }
+
+        /**
          * Available techniques for compositing image layers at runtime.
          */
         enum CompositingTechnique
@@ -256,6 +262,7 @@ namespace osgEarth
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
         optional<float> _attenuationDistance;
+        optional<bool> _lodBlending;
 #if 0
         optional<osg::Texture::FilterMode> _contourMagFilter;
         optional<osg::Texture::FilterMode> _contourMinFilter;

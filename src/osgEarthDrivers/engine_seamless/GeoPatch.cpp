@@ -50,23 +50,20 @@ GeoPatch::GeoPatch(const TileKey& key)
         xMax = extent.xMax(), yMax = extent.yMax();
     euler::cubeToFace(xMin, yMin, xMax, yMax, _face);
     Vec2d faceCoords[4];
-    faceCoords[0][0] = xMin; faceCoords[0][1] = yMin;
-    faceCoords[1][0] = xMax; faceCoords[1][1] = yMin;
-    faceCoords[2][0] = xMax; faceCoords[2][1] = yMax;
-    faceCoords[3][0] = xMin; faceCoords[3][1] = yMax;
+    _faceCoords[0][0] = xMin; _faceCoords[0][1] = yMin;
+    _faceCoords[1][0] = xMax; _faceCoords[1][1] = yMin;
+    _faceCoords[2][0] = xMax; _faceCoords[2][1] = yMax;
+    _faceCoords[3][0] = xMin; _faceCoords[3][1] = yMax;
     for (int i = 0; i < 4; ++i)
-    {
-        _edgeLengths[i] = euler::arcLength(faceCoords[i],
-                                           faceCoords[(i + 1) % 4], _face);
-        _patchCosines[i] = euler::face2dc(_face, faceCoords[i]);
-    }
+        _edgeLengths[i] = euler::arcLength(_faceCoords[i],
+                                           _faceCoords[(i + 1) % 4], _face);
 }
 
 GeoPatch::GeoPatch(const GeoPatch& rhs, const CopyOp& copyop)
     : Patch(rhs, copyop), _face(rhs._face)
 {
     std::copy(&rhs._edgeLengths[0], &rhs._edgeLengths[4], &_edgeLengths[0]);
-    std::copy(&rhs._patchCosines[0], &rhs._patchCosines[4], &_patchCosines[0]);
+    std::copy(&rhs._faceCoords[0], &rhs._faceCoords[4], &_faceCoords[0]);
 }
 
 float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
@@ -79,8 +76,8 @@ float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
     Matrix worldMat;
     parent->computeLocalToWorldMatrix(worldMat, 0);
     Vec3d worldEye = Vec3d(eye) * worldMat;
-    double d = euler::distanceToSegment(worldEye, _patchCosines[edge],
-                                        _patchCosines[(edge + 1) % 4]);
+    double d = euler::distanceToSegment(worldEye, _faceCoords[edge],
+                                        _faceCoords[(edge + 1) % 4], _face);
     return _patchSet->getPrecisionFactor() * _edgeLengths[edge] / d;
 }
 

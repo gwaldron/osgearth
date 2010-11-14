@@ -47,6 +47,10 @@ const double sqrt33 = .5773502691896258; // sqrt(3) / 3
 
 namespace euler
 {
+bool lineLineIntersect(
+    const Vec3d& p1, const Vec3d& p2, const Vec3d& p3, const Vec3d& p4,
+    Vec3d& pa,Vec3d& pb, double& mua, double& mub);
+
 // Convert lat, lon to a unit vector on a sphere (direction cosine)
 
 inline Vec3d latLon2xyz(double lat_deg, double lon_deg)
@@ -140,28 +144,25 @@ bool latLonToFaceCoords(double lat_deg, double lon_deg,
 
 Vec3d face2qrs(const Vec2d& face)
 {
-    // Point is at intersection of two planes.
     double xang = face[0] * osg::PI_4;
     double yang = face[1] * osg::PI_4;
     double sx = sin(xang), cx = cos(xang);
-    double sy = sin(yang), cy = cos(yang);
-    // longitude (for equatorial faces)
-    Vec3d xnorm(cx, 0, -sx);
-    // "latitude"
-    Vec3d ynorm(0, cy, -sy);
-    Vec3d result = xnorm ^ ynorm;
-    // Assume that result is normalized "enough."
+    double ty = tan(yang);
+    // phi is a latitude measure, in the longitudinal plane
+    double tanPhi = cx * ty;
+    double radical = sqrt(1 + tanPhi * tanPhi);
+    double c = 1.0 / radical;
+    Vec3d result;
+    double b = tanPhi * c;      // b gets the right sign
+    result.x() = c * sx;
+    result.y() = b;
+    result.z() = c * cx;
     return result;
 }
 
-// Face 0 is centered at 0, 0 lat long or 0,0,0. faces 1-3 follow
-// around the equator in direction of increasing longitude
-// (east). Face 4 is the North Pole, Face 5 the South.
-
-Vec3d face2dc(int faceNum, const Vec2d& faceCoord)
+Vec3d qrs2xyz(const Vec3d& local, int face)
 {
-    Vec3d local = face2qrs(faceCoord);
-    switch (faceNum)
+    switch (face)
     {
     case 0:
         return Vec3d(local.z(), local.x(), local.y());
@@ -180,6 +181,16 @@ Vec3d face2dc(int faceNum, const Vec2d& faceCoord)
     default:
         return Vec3d(0,0,0);
     }
+}
+
+// Face 0 is centered at 0, 0 lat long or 0,0,0. faces 1-3 follow
+// around the equator in direction of increasing longitude
+// (east). Face 4 is the North Pole, Face 5 the South.
+
+Vec3d face2dc(int faceNum, const Vec2d& faceCoord)
+{
+    Vec3d local = face2qrs(faceCoord);
+    return qrs2xyz(local, faceNum);
 }
 
 bool faceCoordsToLatLon(double x, double y, int face,
@@ -324,24 +335,66 @@ bool faceToCube(double& in_out_x, double& in_out_y, int face)
 
 double arcLength(const Vec2d& coord1, const Vec2d& coord2, int face)
 {
-    Vec3d geo1 = face2dc(face, coord1);
-    Vec3d geo2 = face2dc(face, coord2);
-    Vec3d norm = geo1 ^ geo2;
-    return atan2(norm.length(), geo1 * geo2) * WGS_84_RADIUS_EQUATOR;
+    if (coord1.x() != coord2.x() && coord1.y() != coord2.y())
+    {
+        Vec3d geo1 = face2dc(face, coord1);
+        Vec3d geo2 = face2dc(face, coord2);
+        Vec3d norm = geo1 ^ geo2;
+        return atan2(norm.length(), geo1 * geo2) * WGS_84_RADIUS_EQUATOR;
+    }
+    double x1, y1, x2, y2;
+    if (coord1.x() == coord2.x())
+    {
+        x1 = coord1.x() * PI_4;  y1 = coord1.y() * PI_4;
+        x2 = coord2.x() * PI_4;  y2 = coord2.y() * PI_4;
+    }
+    else
+    {
+        x1 = coord1.y() * PI_4;  y1 = coord1.x() * PI_4;
+        x2 = coord2.y() * PI_4;  y2 = coord2.x() * PI_4;
+    }
+    double tanPhi1 = cos(x1) * tan(y1);
+    double tanPhi2 = cos(x2) * tan(y2);
+    // tan(phi2 - phi1) = (tan(phi2) - tan(hi1)) / (1 + tan(phi2) * tan(phi1))
+    return fabs(atan2(tanPhi2 - tanPhi1, 1 + tanPhi2 * tanPhi1))
+        * WGS_84_RADIUS_EQUATOR;
+
+}
+
+// For debugging
+// Find the point closest to P3 on the line segment from P1 to P2
+static osg::Vec3d closestPointOnLine(const osg::Vec3d &p1,
+                                     const osg::Vec3d& p2,
+                                     const osg::Vec3d& p3)
+{
+    Vec3d vec = p2 - p1;
+    double len2 = vec.length2();
+    if (equivalent(len2, 0))
+        return p1;
+    double u = ((p3 - p1) * vec) / len2;
+    if (u <= 0.0)
+        return p1;
+    else if (u >= 1.0)
+        return p2;
+    else
+        return p1 + vec * u;
+}
+
+double distanceToLine(const Vec3d& p1, const Vec3d& p2, const Vec3d& p3)
+{
+    Vec3d pt = closestPointOnLine(p1, p2, p3);
+    return (p3 - pt).length();
 }
 
 double distanceToSegment(const Vec3d& p,
-                         const Vec3d& geo1, const Vec3d& geo2)
+                         const Vec3d& geo1, const Vec3d& geo2,
+                         const Vec3d& norm)
 {
     // Find the distance to the closet point on the circle that
     // contains the segment. If that point lies on the segment, that's
     // the shortest distance; otherwise, the distance to one of the
     // end points is the shortest.
 
-    // Normal to plane containing circle.
-    Vec3d cross12 = geo1 ^ geo2;
-    Vec3d norm = cross12;
-    norm.normalize();
     // Project p into plane of circle
     Vec3d q = p - norm * (norm * p);
     // If q = (0, 0, 0) -- the center of the circle -- then all points
@@ -355,26 +408,94 @@ double distanceToSegment(const Vec3d& p,
     Vec3d qnorm = q / q.length();
 
     // Vec3d x = q * r / q.length();
-    Vec3d cross1 = geo1 ^ qnorm;
-    // if cross products are in different directions, qnorm can't lie
-    // between geo1 and geo2. Otherwise, compare angle sines.
-    // XXX Obviously this depends on the points being less than or
-    // equal to 90 degrees apart, which is always true on a cube face
-    // edge. 
-    if (norm * cross1 >= 0.0 && cross1.length2() < cross12.length2())
+    const Vec3d zero;
+    Vec3d end1, end2;
+    double mua, mub;
+    if (lineLineIntersect(zero, qnorm, geo1, geo2, end1, end2, mua, mub)
+        && mub >= 0.0 && mub <= 1.0)
     {
         return (p - qnorm * r).length();
     }
-    return minimum((p - geo1 * r).length(), (p - geo2 * r).length());
+    else
+    {
+        return minimum((p - geo1 * r).length(), (p - geo2 * r).length());
+    }
+}
+
+// The normal will point towards +s or +r
+
+Vec3d getNormalToSegment(const Vec2d& coord1, const Vec2d& coord2, int face)
+{
+    if (coord1.x() == coord2.x())
+    {
+        double xang = coord1.x() * PI_4;
+        double sx = sin(xang), cx = cos(xang);
+        Vec3d qrsNormal(cx, 0.0, -sx);
+        return qrs2xyz(qrsNormal, face);
+    }
+    else
+    {
+        double yang = coord1.y() * PI_4;
+        double sy = sin(yang), cy = cos(yang);
+        Vec3d qrsNormal(0.0, cy, -sy);
+        return qrs2xyz(qrsNormal, face);
+    }
 }
 
 double distanceToSegment(const Vec3d& p,
                          const Vec2d& coord1, const Vec2d& coord2, int face)
 {
+    Vec3d norm = getNormalToSegment(coord1, coord2, face);
     Vec3d geo1 = face2dc(face, coord1);
     Vec3d geo2 = face2dc(face, coord2);
-    return distanceToSegment(p, geo1, geo2);
+    return distanceToSegment(p, geo1, geo2, norm);
 }
+
+/*
+   Calculate the line segment PaPb that is the shortest route between
+   two lines P1P2 and P3P4. Calculate also the values of mua and mub where
+      Pa = P1 + mua (P2 - P1)
+      Pb = P3 + mub (P4 - P3)
+   Return FALSE if no solution exists.
+
+   Ripped off from http://local.wasp.uwa.edu.au/~pbourke/geometry/lineline3d/
+*/
+bool lineLineIntersect(
+   const Vec3d& p1, const Vec3d& p2, const Vec3d& p3, const Vec3d& p4,
+   Vec3d& pa,Vec3d& pb, double& mua, double& mub)
+{
+    Vec3d p13, p43, p21;
+    double d1343, d4321, d1321, d4343, d2121;
+    double numer, denom;
+
+    p13 = p1 - p3;
+    p43 = p4 - p3;
+    if (equivalent(p43.length2(), 0.0, 1e-11))
+        return false;
+    p21 = p2 - p1;
+    if (equivalent(p21.length2(), 0.0, 1e-11))
+        return false;
+
+    d1343 = p13.x() * p43.x() + p13.y() * p43.y() + p13.z() * p43.z();
+    d4321 = p43.x() * p21.x() + p43.y() * p21.y() + p43.z() * p21.z();
+    d1321 = p13.x() * p21.x() + p13.y() * p21.y() + p13.z() * p21.z();
+    d4343 = p43.x() * p43.x() + p43.y() * p43.y() + p43.z() * p43.z();
+    d2121 = p21.x() * p21.x() + p21.y() * p21.y() + p21.z() * p21.z();
+
+    denom = d2121 * d4343 - d4321 * d4321;
+    if (equivalent(denom, 0.0, 1e-11))
+        return false;
+    numer = d1343 * d4321 - d1321 * d4343;
+
+    mua = numer / denom;
+    mub = (d1343 + d4321 * (mua)) / d4343;
+
+    pa = p1 + p21 * mua;
+    pb = p3 + p43 * mub;
+
+    return true;
+}
+
 }
 
 using namespace euler;
@@ -901,6 +1022,5 @@ void EulerProfile::getIntersectingTiles(
 {
     OE_FATAL << "EulerProfile::getIntersectingTiles not implemented yet!\n";
 }
-
 
 }

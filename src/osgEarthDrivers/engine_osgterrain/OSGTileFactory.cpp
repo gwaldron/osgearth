@@ -620,6 +620,16 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
     return result;
 }
 
+namespace
+{
+struct GeoImageData
+{
+    GeoImageData() : _layerUID(-1) { }
+    GeoImage _image;
+    UID      _layerUID;
+};
+}
+
 osg::Node*
 OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain, 
                                     const TileKey& key, bool wrapInPagedLOD, 
@@ -628,12 +638,6 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     const MapInfo& mapInfo = mapf.getMapInfo();
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
 
-    struct GeoImageData
-    {
-        GeoImageData() : _layerUID(-1) { }
-        GeoImage _image;
-        UID      _layerUID;
-    };
     typedef std::vector<GeoImageData> GeoImageDataVector;
     GeoImageDataVector image_tiles;
     //GeoImageVector image_tiles;

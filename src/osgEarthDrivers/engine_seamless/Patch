@@ -73,6 +73,9 @@ public:
         _data = data;
         init();
     }
+    /** Dirty vertex data. A convenience method.
+     */
+    void dirtyVertexData();
     /** Get patch error. This is the maximum of the edge errors.
      *   @param eye The eyepoint in local coordinates.
      */

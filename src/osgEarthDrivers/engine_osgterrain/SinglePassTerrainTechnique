@@ -28,6 +28,7 @@
 #include <osg/Geometry>
 #include <osg/Texture2DArray>
 #include <osg/Version>
+#include <osg/Uniform>
 
 #include <osgTerrain/Locator>
 #include <osgEarth/Export>
@@ -116,6 +117,7 @@ private:
     //OpenThreads::Mutex                  _writeBufferMutex;
     osg::ref_ptr<osg::MatrixTransform> _transform;
     osg::ref_ptr<osg::Geode> _backGeode;
+    osg::ref_ptr<osg::Uniform> _imageLayerStampUniform;
     osg::Vec3d _centerModel;
     float _verticalScaleOverride;
     osg::ref_ptr<GeoLocator> _masterLocator;
@@ -156,6 +158,8 @@ private:
     inline osg::Geode* getFrontGeode() { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
     //const CustomColorLayer* getLayerByUID( UID uid ) const;
     int getIndexOfColorLayerWithUID( UID uid ) const;
+
+    
 
 };
 

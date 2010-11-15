@@ -98,7 +98,12 @@ public:
     * Returns true if all the data needed to contruct a tile from the specified tile key is
     * in a cache.
     */
-    bool isCached( Map* map, const TileKey& key );
+    bool isCached( const MapFrame& mapf, const TileKey& key ) const;
+
+    /**
+     * Returns true is data for all the key's child tiles is cached.
+     */
+    bool areChildrenCached( Map* map, const TileKey& parentKey ) const;
 
     /**
     * Gets a pagedLOD child URI given a tile key.

@@ -241,6 +241,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
 #endif
 }
 
+// from the UPDATE traversal thread:
 bool
 SinglePassTerrainTechnique::applyTileUpdates()
 {

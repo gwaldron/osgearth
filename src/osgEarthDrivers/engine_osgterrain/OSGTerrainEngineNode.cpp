@@ -154,6 +154,7 @@ OSGTerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOption
         {
             OE_INFO << LC << "Requesting " << numThreads << " database pager threads in STANDARD mode" << std::endl;
             osg::DisplaySettings::instance()->setNumOfDatabaseThreadsHint( numThreads );
+            //osg::DisplaySettings::instance()->setNumOfHttpDatabaseThreadsHint( numThreads );
         }
     }
 }

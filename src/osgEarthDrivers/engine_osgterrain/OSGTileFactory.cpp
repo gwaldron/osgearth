@@ -258,17 +258,32 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
 }
 
 bool
-OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
+OSGTileFactory::areChildrenCached( Map* map, const TileKey& parentKey ) const
+{      
+    MapFrame mapf( map );
+
+    //Split the key into it's 4 children and check to see if all 4 are cached.
+    for( unsigned int i=0; i<4; ++i )
+    {
+        if ( !isCached( mapf, parentKey.createChildKey(i) ) )
+            return false;
+    }
+
+    return true;
+}
+
+bool
+OSGTileFactory::isCached( const MapFrame& mapf, const osgEarth::TileKey& key ) const
 {
     //Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
-    const Profile* mapProfile = key.getProfile();
+    const Profile* mapProfile = mapf.getProfile(); // key.getProfile();
 
-    ImageLayerVector imageLayers;
-    map->getImageLayers( imageLayers );
+    //ImageLayerVector imageLayers;
+    //map->getImageLayers( imageLayers );
 
     //Check the imagery layers
-    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); i++ )
+    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
         ImageLayer* layer = i->get();
         osg::ref_ptr< Cache > cache = layer->getCache();
@@ -278,7 +293,7 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
 
         std::vector< TileKey > keys;
 
-        if ( map->getProfile()->isEquivalentTo( layer->getProfile() ) )
+        if ( mapProfile->isEquivalentTo( layer->getProfile() ) )
         {
             keys.push_back( key );
         }
@@ -300,10 +315,10 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
     }
 
     //Check the elevation layers
-    ElevationLayerVector elevLayers;
-    map->getElevationLayers( elevLayers );
+    //ElevationLayerVector elevLayers;
+    //map->getElevationLayers( elevLayers );
 
-    for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
+    for( ElevationLayerVector::const_iterator i =mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); ++i )
     {
         ElevationLayer* layer = i->get();
         osg::ref_ptr< Cache > cache = layer->getCache();
@@ -313,7 +328,7 @@ OSGTileFactory::isCached(Map* map, const osgEarth::TileKey& key)
 
         std::vector<TileKey> keys;
 
-        if ( map->getProfile()->isEquivalentTo( layer->getProfile() ) )
+        if ( mapProfile->isEquivalentTo( layer->getProfile() ) )
         {
             keys.push_back( key );
         }
@@ -622,13 +637,12 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
 
 namespace
 {
-    struct GeoImageData
-    {
-        GeoImageData() : _layerUID(-1) { }
-        GeoImage _image;
-        UID      _layerUID;
-    };
-    typedef std::vector<GeoImageData> GeoImageDataVector;
+struct GeoImageData
+{
+    GeoImageData() : _layerUID(-1) { }
+    GeoImage _image;
+    UID      _layerUID;
+};
 }
 
 osg::Node*
@@ -638,6 +652,8 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
 {
     const MapInfo& mapInfo = mapf.getMapInfo();
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
+
+    typedef std::vector<GeoImageData> GeoImageDataVector;
     GeoImageDataVector image_tiles;
     //GeoImageVector image_tiles;
 

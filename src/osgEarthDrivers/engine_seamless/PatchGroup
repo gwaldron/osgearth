@@ -33,6 +33,7 @@ namespace seamless
 {
 class Patch;
 class PatchSet;
+class PatchOptions;
 
 class PatchGroup : public osg::PagedLOD
 {
@@ -45,6 +46,9 @@ public:
     virtual void traverse(osg::NodeVisitor& nv);
     // patch extents come from the PatchOptions object stored with the node.
     void getPatchExtents(osg::Vec2d& lowerLeft, osg::Vec2d& upperRight) const;
+    void setOptions(PatchOptions* options);
+    PatchOptions* getOptions();
+    const PatchOptions* getOptions() const;
 protected:
     ~PatchGroup();
 };
@@ -85,5 +89,19 @@ protected:
     osgEarth::TileKey _tileKey;
 };
 
+inline void PatchGroup::setOptions(PatchOptions* options)
+{
+    setDatabaseOptions(options);
+}
+
+inline PatchOptions* PatchGroup::getOptions()
+{
+    return static_cast<PatchOptions*>(getDatabaseOptions());
+}
+
+inline const PatchOptions* PatchGroup::getOptions() const
+{
+    return static_cast<const PatchOptions*>(getDatabaseOptions());
+}
 }
 #endif

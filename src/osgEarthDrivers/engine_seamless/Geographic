@@ -64,21 +64,5 @@ protected:
     osg::ref_ptr<osgEarth::TaskService> _imageService;
 };
 
-class GeographicOptions : public PatchOptions
-{
-public:
-    GeographicOptions();
-    GeographicOptions(std::string& str);
-    GeographicOptions(const GeographicOptions& rhs,
-                      const osg::CopyOp& copyop = osg::CopyOp::SHALLOW_COPY);
-    virtual ~GeographicOptions();
-    META_Object(seamless, GeographicOptions);
-    void setGeographic(Geographic* geo) { _patchSet = geo; }
-    Geographic* getGeographic() const
-    {
-        return static_cast<Geographic*>(_patchSet.get());
-    }
-};
-
 }
 #endif

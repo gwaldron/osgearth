@@ -30,7 +30,7 @@ typedef multi_array_ref<Vec3f, Vec3Array, 2> PatchArray;
 
 Geographic::Geographic(Map* map,
                        const osgEarth::Drivers::SeamlessOptions& options)
-    : PatchSet(options, new GeographicOptions), _profile(new EulerProfile),
+    : PatchSet(options, new PatchOptions), _profile(new EulerProfile),
       _eModel(new EllipsoidModel)
 {
     setPrecisionFactor(8);
@@ -81,12 +81,12 @@ Node* Geographic::createPatchSetGraph(const std::string& filename)
     {
         double x = 0.0, y = 0.0;
         euler::faceToCube(x, y, face);
-        GeographicOptions* goptions = static_cast<GeographicOptions*>(
+        PatchOptions* poptions = static_cast<PatchOptions*>(
             osg::clone(getPatchOptionsPrototype()));
-        goptions->setGeographic(this);
-        goptions->setTileKey(_profile->createTileKey(x, y, 2));
+        poptions->setPatchSet(this);
+        poptions->setTileKey(_profile->createTileKey(x, y, 2));
         Node* node = createPatchGroup("foobar.osgearth_engine_seamless_patch",
-                                      goptions);
+                                      poptions);
         csn->addChild(node);
     }
     return csn;
@@ -441,8 +441,7 @@ public:
 Transform* Geographic::createPatch(const std::string& filename,
                                    PatchOptions* poptions)
 {
-    GeographicOptions* goptions = static_cast<GeographicOptions*>(poptions);
-    const TileKey patchKey = goptions->getTileKey();
+    const TileKey patchKey = poptions->getTileKey();
     // Dummy height field until data is available.
     const VerticalSpatialReference* vsrs
         = patchKey.getProfile()->getVerticalSRS();
@@ -559,32 +558,12 @@ Vec3d Geographic::toModel(double cubeX, double cubeY, double elevation)
 
 Node* Geographic::createChild(const PatchOptions* parentOptions, int childNum)
 {
-    const GeographicOptions* parentgopt
-        = static_cast<const GeographicOptions*>(parentOptions);
-    GeographicOptions* goptions = osg::clone(parentgopt);
-    goptions->setPatchLevel(parentgopt->getPatchLevel() + 1);
-    goptions->setTileKey(parentgopt->getTileKey().createChildKey(childNum));
-    return createPatchGroup("foobies.osgearth_engine_seamless_patch", goptions);
+    PatchOptions* poptions = static_cast<PatchOptions*>(
+        osg::clone(parentOptions));
+    poptions->setPatchLevel(parentOptions->getPatchLevel() + 1);
+    poptions->setTileKey(parentOptions->getTileKey().createChildKey(childNum));
+    return createPatchGroup("foobies.osgearth_engine_seamless_patch", poptions);
 
-}
-
-GeographicOptions::GeographicOptions()
-{
-}
-
-GeographicOptions::GeographicOptions(string& str)
-    : PatchOptions(str)
-{
-}
-
-GeographicOptions::GeographicOptions(const GeographicOptions& rhs,
-                                     const CopyOp& copyop)
-    : PatchOptions(rhs, copyop)
-{
-}
-
-GeographicOptions::~GeographicOptions()
-{
 }
 
 // A tile can be thought of lying between edges with integer
@@ -667,8 +646,7 @@ PatchGroup* findFaceRoot(GeoPatch* patch, NodePath& pathList)
     PatchGroup* parentPatch = dynamic_cast<PatchGroup*>(parent->getParent(0));
     if (!parentPatch)
         return 0;
-    GeographicOptions* parentOptions
-        = static_cast<GeographicOptions*>(parentPatch->getDatabaseOptions());
+    PatchOptions* parentOptions = parentPatch->getOptions();
     TileKey patchKey = parentOptions->getTileKey();
     int x = patchKey.getTileX() >> (patchKey.getLevelOfDetail() - 2);
     int y = patchKey.getTileY() >> (patchKey.getLevelOfDetail() - 2);
@@ -680,11 +658,10 @@ PatchGroup* findFaceRoot(GeoPatch* patch, NodePath& pathList)
         PatchGroup* pg = dynamic_cast<PatchGroup*>(*itr);
         if (pg)
         {
-            GeographicOptions* goptions
-                = static_cast<GeographicOptions*>(pg->getDatabaseOptions());
-            if (goptions)
+            PatchOptions* poptions = pg->getOptions();
+            if (poptions)
             {
-                TileKey key = goptions->getTileKey();
+                TileKey key = poptions->getTileKey();
                 if (key.getLevelOfDetail() == 2 && x == key.getTileX()
                     && y == key.getTileY())
                 return pg;
@@ -823,9 +800,8 @@ public:
         _tileMat = trans->getMatrix();
         const PatchGroup* pg
             = static_cast<const PatchGroup*>(trans->getParent(0));
-        const GeographicOptions* gopt
-            = static_cast<const GeographicOptions*>(pg->getDatabaseOptions());
-        _tileIndex = gopt->getTileKey();
+        const PatchOptions* popt = pg->getOptions();
+        _tileIndex = popt->getTileKey();
     }
 
     void apply(PagedLOD& node)
@@ -833,25 +809,24 @@ public:
         PatchGroup* pgrp = dynamic_cast<PatchGroup*>(&node);
         if (!pgrp)
             return;
-        const GeographicOptions* gopt
-            = static_cast<GeographicOptions*>(pgrp->getDatabaseOptions());
-        if (!gopt)
+        const PatchOptions* popt = pgrp->getOptions();
+        if (!popt)
             return;
-        KeyIndex idx = gopt->getTileKey();
+        KeyIndex idx = popt->getTileKey();
         if (idx == _tileIndex)
             return;
 
         if (containsTile(idx, _tileIndex) || isNeighborTile(idx, _tileIndex))
-            copyTileEdges(pgrp, gopt);
+            copyTileEdges(pgrp, popt);
         else if (adjoinsTile(idx, _tileIndex))
-            copyCorner(pgrp, gopt);
+            copyCorner(pgrp, popt);
         else
             return;
         if (node.getNumChildren() > 1)
             traverse(*node.getChild(1));
     }
 protected:
-    void copyTileEdges(PatchGroup* node, const GeographicOptions* gopt)
+    void copyTileEdges(PatchGroup* node, const PatchOptions* gopt)
     {
         // The tile to update
         MatrixTransform* trans
@@ -866,7 +841,7 @@ protected:
             tpatch->dirtyVertexData();
         }
     }
-    void copyCorner(PatchGroup* node, const GeographicOptions* gopt)
+    void copyCorner(PatchGroup* node, const PatchOptions* gopt)
     {
         // The tile to update
         MatrixTransform* trans

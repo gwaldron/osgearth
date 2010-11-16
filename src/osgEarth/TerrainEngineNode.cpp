@@ -248,6 +248,7 @@ TerrainEngineNode::updateImageUniforms()
 
     stateSet->removeUniform( "osgearth_imagelayer_opacity" );
     stateSet->removeUniform( "osgearth_imagelayer_enabled" );
+    stateSet->removeUniform( "osgearth_imagelayer_stamp" );
     stateSet->removeUniform( "osgearth_imagelayer_range" );    
     stateSet->removeUniform( "osgearth_imagelayer_attenuation" );
     
@@ -259,6 +260,7 @@ TerrainEngineNode::updateImageUniforms()
         _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", 128 ); //mapf.imageLayers().size() );
         _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_range", 2 * mapf.imageLayers().size() );
+        _imageLayerController->_layerStampUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_stamp", mapf.imageLayers().size() );
 
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
@@ -269,6 +271,7 @@ TerrainEngineNode::updateImageUniforms()
             _imageLayerController->_layerEnabledUniform->setElement( index, layer->getEnabled() );
             _imageLayerController->_layerRangeUniform->setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
             _imageLayerController->_layerRangeUniform->setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
+            _imageLayerController->_layerStampUniform->setElement( index, 0.0f );
         }
 
         // set the remainder of the layers to disabled 
@@ -278,6 +281,7 @@ TerrainEngineNode::updateImageUniforms()
         stateSet->addUniform( _imageLayerController->_layerOpacityUniform.get() );
         stateSet->addUniform( _imageLayerController->_layerEnabledUniform.get() );
         stateSet->addUniform( _imageLayerController->_layerRangeUniform.get() );
+        stateSet->addUniform( _imageLayerController->_layerStampUniform.get() );
     }
 
     stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set(

@@ -860,8 +860,11 @@ protected:
         KeyIndex idx(gopt->getTileKey());
         ShareResult shared = tilesShareEdges(idx, _tileIndex);
         if (shared.numEdges != 0)
+        {
             transferEdges(tpatch, trans->getMatrix(), idx,
                           _gpatch, _tileMat, _tileIndex, shared);
+            tpatch->dirtyVertexData();
+        }
     }
     void copyCorner(PatchGroup* node, const GeographicOptions* gopt)
     {
@@ -903,6 +906,7 @@ protected:
                 // tarray[patchDim - 1][patchDim - 1] = varray[0][0] * transferMat;
                 safeCopy(tarray[patchDim - 1][patchDim - 1], varray[0][0], transferMat);
         }
+        tpatch->dirtyVertexData();
     }
     GeoPatch* _gpatch;
     KeyIndex _tileIndex;

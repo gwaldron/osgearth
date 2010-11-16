@@ -265,10 +265,11 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
     {
         const osg::StateAttribute* sa = i->first;
         const VirtualProgram* vp = dynamic_cast< const VirtualProgram* >( sa );
-        if( vp && ( vp->_mask & _mask ) )
+        if( vp && vp != this && ( vp->_mask & _mask ) )
         {
             FunctionLocationMap rhs;
             vp->getFunctions( rhs );
+
             for( FunctionLocationMap::const_iterator j = rhs.begin(); j != rhs.end(); ++j )
             {
                 const OrderedFunctionMap& ofm = j->second;

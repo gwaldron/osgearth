@@ -126,12 +126,16 @@ namespace osgEarth
             // a uniform array holding the min and max visible range of each image layer
             osg::ref_ptr< osg::Uniform > _layerRangeUniform;
 
+            // a uniform array holding the last-update-time stamp of each image layer
+            osg::ref_ptr< osg::Uniform > _layerStampUniform;
+
         private:
             MapFrame _mapf;
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
         osg::ref_ptr<Map> _map;
+        osg::ref_ptr<osg::Uniform> _startFrameTimeUniform;
 
         ResourcePolicy _resourcePolicy;
     };

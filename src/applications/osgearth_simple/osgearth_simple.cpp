@@ -201,6 +201,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
     viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
+    //viewer.addEventHandler(new osgViewer::RecordCameraPathHandler());
 
     return viewer.run();
 }

@@ -164,7 +164,7 @@ namespace osgEarth
 
     public: // MapCallback proxy
 
-        void onModelLayerAdded( ModelLayer* );
+        void onModelLayerAdded( ModelLayer*, unsigned int );
         void onModelLayerRemoved( ModelLayer* );
         void onMaskLayerAdded( MaskLayer* );
         void onMaskLayerRemoved( MaskLayer* );

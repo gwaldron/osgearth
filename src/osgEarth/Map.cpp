@@ -40,7 +40,7 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
     case MapModelChange::ADD_MASK_LAYER:
         onMaskLayerAdded( change.getMaskLayer() ); break;
     case MapModelChange::ADD_MODEL_LAYER:
-        onModelLayerAdded( change.getModelLayer() ); break;
+				onModelLayerAdded( change.getModelLayer(), change.getFirstIndex() ); break;
     case MapModelChange::REMOVE_ELEVATION_LAYER:
         onElevationLayerRemoved( change.getElevationLayer(), change.getFirstIndex() ); break;
     case MapModelChange::REMOVE_IMAGE_LAYER:
@@ -263,6 +263,43 @@ Map::addImageLayer( ImageLayer* layer )
     }	
 }
 
+
+void
+Map::insertImageLayer( ImageLayer* layer, unsigned int index )
+{
+  if ( layer )
+  {
+	  //Set options for the map from the layer
+	 layer->setReferenceURI( _mapOptions.referenceURI().value() );
+
+    //propagate the cache to the layer:
+    if ( _mapOptions.cache().isSet() && _mapOptions.cache()->cacheOnly().isSetTo( true ) )
+	  {
+		  layer->setCacheOnly( true );
+		}
+
+		//Set the Cache for the MapLayer to our cache.
+		layer->setCache( this->getCache() );
+
+    int newRevision;
+
+		// Add the layer to our stack.
+    {
+      Threading::ScopedWriteLock lock( _mapDataMutex );
+
+			_imageLayers.insert( _imageLayers.begin() + index, layer );
+      newRevision = ++_dataModelRevision;
+    }
+
+    // a separate block b/c we don't need the mutex   
+    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+    {
+      i->get()->onMapModelChanged( MapModelChange(
+        MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
+    }	
+  }	
+}
+
 void
 Map::addElevationLayer( ElevationLayer* layer )
 {
@@ -469,10 +506,13 @@ Map::addModelLayer( ModelLayer* layer )
 {
     if ( layer )
     {
+				unsigned int index = -1;
+
         Revision newRevision;
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
             _modelLayers.push_back( layer );
+						index = _modelLayers.size() - 1;
             newRevision = ++_dataModelRevision;
         }
 
@@ -482,7 +522,30 @@ Map::addModelLayer( ModelLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::ADD_MODEL_LAYER, newRevision, layer) );
+								MapModelChange::ADD_MODEL_LAYER, newRevision, layer, index ) );
+        }
+    }
+}
+
+void
+Map::insertModelLayer( ModelLayer* layer, unsigned int index )
+{
+		if ( layer )
+    {
+        Revision newRevision;
+        {
+            Threading::ScopedWriteLock lock( _mapDataMutex );
+            _modelLayers.insert( _modelLayers.begin() + index, layer );
+            newRevision = ++_dataModelRevision;
+        }
+
+        layer->initialize( _mapOptions.referenceURI().get(), this ); //getReferenceURI(), this );        
+
+        // a seprate block b/c we don't need the mutex
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onMapModelChanged( MapModelChange(
+                MapModelChange::ADD_MODEL_LAYER, newRevision, layer, index) );
         }
     }
 }

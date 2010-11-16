@@ -93,7 +93,7 @@ namespace osgEarth
         virtual void onElevationLayerRemoved( ElevationLayer* layer, unsigned int index ) { }
         virtual void onElevationLayerMoved( ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
-        virtual void onModelLayerAdded( ModelLayer* layer ) { }
+        virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
         virtual void onModelLayerRemoved( ModelLayer* layer ) { }
 
         virtual void onMaskLayerAdded( MaskLayer* mask ) { }
@@ -179,6 +179,11 @@ namespace osgEarth
          */
         void addImageLayer( ImageLayer* layer );
 
+				/**
+				 * Adds an image layer to the map at the specified index.
+				 */
+				void insertImageLayer( ImageLayer* layer, unsigned int index );
+
         /**
          * Removes an image layer from the map.
          */
@@ -208,6 +213,11 @@ namespace osgEarth
          * Adds a new model layer to the map.
          */
         void addModelLayer( ModelLayer* layer );
+
+				/**
+				 * Adds a new model layer to the map at the specified index.
+				 */
+				void insertModelLayer( ModelLayer* layer, unsigned int index );
 
         /**
          * Removes a model layer from the map.

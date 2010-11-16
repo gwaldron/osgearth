@@ -33,8 +33,8 @@ struct MapNodeMapCallbackProxy : public MapCallback
 {
     MapNodeMapCallbackProxy(MapNode* node) : _node(node) { }
 
-    void onModelLayerAdded( ModelLayer* layer ) {
-        _node->onModelLayerAdded( layer );
+    void onModelLayerAdded( ModelLayer* layer, unsigned int index ) {
+        _node->onModelLayerAdded( layer, index );
     }
     void onModelLayerRemoved( ModelLayer* layer ) {
         _node->onModelLayerRemoved( layer );
@@ -193,9 +193,10 @@ MapNode::init()
     // install any pre-existing model layers:
     ModelLayerVector modelLayers;
     _map->getModelLayers( modelLayers );
-    for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++ )
+		int modelLayerIndex = 0;
+    for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++, modelLayerIndex++ )
     {
-        onModelLayerAdded( k->get() );
+        onModelLayerAdded( k->get(), modelLayerIndex );
     }
 
     // install any pre-existing mask layer:
@@ -274,7 +275,7 @@ MapNode::isGeocentric() const
 }
 
 void
-MapNode::onModelLayerAdded( ModelLayer* layer )
+MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
     osg::Node* node = layer->getOrCreateNode();
 
@@ -296,7 +297,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
             }
             else
             {
-               _models->addChild( node );
+							_models->insertChild( index, node );
             }
 
             ModelSource* ms = layer->getModelSource();

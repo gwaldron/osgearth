@@ -836,7 +836,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
             if ( mapInfo.isGeocentric() )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-            if ( _terrainOptions.levelOfDetailBlending() == true )
+            if ( _terrainOptions.lodBlending() == true )
             {
                 osg::ref_ptr<const osg::Image> finalImage = geo_image.getImage();
                 TileKey parentKey = key.createParentKey();

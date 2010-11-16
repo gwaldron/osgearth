@@ -53,7 +53,7 @@ namespace
     }
 
     static osg::Shader*
-    s_createTextureFragShaderFunction( const TextureLayout& layout, int maxLayersToRender, bool blending )
+    s_createTextureFragShaderFunction( const TextureLayout& layout, int maxLayersToRender, bool blending, float blendTime )
     {
         //if ( blending && !Registry::instance()->getCapabilities().supportsTexture2DLod() )
         //{
@@ -107,15 +107,13 @@ namespace
 
             if ( blending )
             {
-                buf << "            age = min( 1.0, osg_FrameTime - osgearth_slot_stamp[" << slot << "] ); \n"
-                    << "            if ( age < 1.0 ) { \n"
-                    << "                texel = texture2DLod(tex" << slot << ", gl_TexCoord["<< slot << "].st, 0); \n"
-                    << "                texel2 = texture2DLod(tex" << slot << ", gl_TexCoord["<< slot << "].st, 1); \n"
-                    << "                texel = mix(texel2, texel, age); \n"
-                    << "            } \n"
-                    << "            else { \n"
-                    << "                texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot << "].st ); \n"
-                    << "            } \n";
+                float invBlendTime = 1.0f/blendTime;
+
+                buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_slot_stamp[" << slot << "] ); \n"
+                    << "            if ( age < 1.0 ) \n"
+                    << "                texel = texture2DLod(tex" << slot << ", gl_TexCoord["<< slot << "].st, 1.0-age); \n"
+                    << "            else \n"
+                    << "                texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot << "].st ); \n";
             }
             else
             {
@@ -182,11 +180,17 @@ namespace
 
 //------------------------------------------------------------------------
 
-TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, bool lodBlending ) :
+TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options ) :
 _useGPU( useGPU ),
-_lodBlending( lodBlending )
+_lodBlending( *options.lodBlending() ),
+_lodTransitionTime( *options.lodTransitionTime() )
 {
-    //nop
+    // validate
+    if ( _lodBlending && _lodTransitionTime <= 0.0f )
+    {
+        _lodBlending = false;
+        OE_WARN << LC << "Disabling LOD blending because transition time <= 0.0" << std::endl;
+    }
 }
 
 void
@@ -201,9 +205,9 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
     {
         tex->setImage( preparedImage.getImage() );
 
-        int order = layout.getOrder( layerUID );
-        //if ( order > 0 )
+        if ( _lodBlending )
         {
+            // update the timestamp on the image layer to support blending.
             osg::Uniform* stamp = stateSet->getUniform( "osgearth_slot_stamp" );
             if ( !stamp || stamp->getNumElements() < layout.getMaxUsedSlot() + 1 )
             {
@@ -238,8 +242,13 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
         VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( maxLayers > 0 )
         {
-            vp->setShader( "osgearth_frag_applyTexturing", s_createTextureFragShaderFunction(layout, maxLayers, _lodBlending ) );
-            vp->setShader( "osgearth_vert_setupTexturing", s_createTextureVertexShader(maxLayers) );
+            vp->setShader( 
+                "osgearth_frag_applyTexturing",
+                s_createTextureFragShaderFunction(layout, maxLayers, _lodBlending, _lodTransitionTime ) );
+
+            vp->setShader( 
+                "osgearth_vert_setupTexturing", 
+                s_createTextureVertexShader(maxLayers) );
         }
         else
         {

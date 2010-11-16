@@ -31,7 +31,7 @@ namespace osgEarth
     class TextureCompositorMultiTexture : public TextureCompositorTechnique
     {
     public:
-        TextureCompositorMultiTexture( bool useGPU, bool lodBlending );
+        TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options );
 
         bool requiresUnitTextureSpace() const { return false; }
 
@@ -41,8 +41,6 @@ namespace osgEarth
 
         bool supportsLayerUpdate() const { return true; }
 
-        //GeoImage prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const;
-
         void applyLayerUpdate( 
             osg::StateSet* stateSet, UID layerUID,
             const GeoImage& preparedImage, const GeoExtent& tileExtent,
@@ -50,10 +48,15 @@ namespace osgEarth
 
         void applyResourcePolicy( const ResourcePolicy& policy, TextureLayout& layout ) const;
         
-        osg::Shader* createSamplerFunction(UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const;
+        osg::Shader* createSamplerFunction(
+            UID layerUID, 
+            const std::string& functionName,
+            osg::Shader::Type type,
+            const TextureLayout& layout ) const;
 
     private:
         bool _lodBlending;
+        float _lodTransitionTime;
         bool _useGPU;
     };
 }

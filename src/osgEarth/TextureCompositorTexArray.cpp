@@ -218,7 +218,11 @@ TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoEx
 
     // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
     if ( image->s() != 256 || image->t() != 256 )
-        image = ImageUtils::resizeImage( image.get(), 256, 256 );
+    {
+        osg::ref_ptr<osg::Image> newImage;
+        if ( ImageUtils::resizeImage( image.get(), 256, 256, newImage ) )
+            image = newImage.get();
+    }
 
     //Make sure that the internal texture format is always set to GL_RGBA
     image->setInternalTextureFormat( GL_RGBA );

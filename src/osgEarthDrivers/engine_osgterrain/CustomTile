@@ -192,26 +192,13 @@ public:
     float getVerticalScale() const;
     void setVerticalScale(float verticalScale);
 
-    // override from osgTerrain::TerrainTile
-    //void setCustomColorLayer( int index, osgTerrain::Layer* layer );
-    //void removeCustomColorLayer( int index );
-    //void moveColorLayer( int fromIndex, int toIndex );
-
-    //void setCustomColorLayer( UID layerUID, osgTerrain::Layer* layer, bool writeLock =true );
+    // we don't use the TerrainTile color layer list, we use our own
     void removeCustomColorLayer( UID layerUID, bool writeLock =true );
     bool getCustomColorLayer( UID layerUID, CustomColorLayer& output, bool readLock =true ) const;
     void getCustomColorLayers( ColorLayersByUID& out, bool readLock =true ) const;
     void setCustomColorLayers( const ColorLayersByUID& in, bool writeLock =true );
 
-    //void setCustomColorLayer( UID layerUID, CustomTile* copyFromTile, bool writeLock =true );
     void setCustomColorLayer( const CustomColorLayer& colorLayer, bool writeLock =true );
-
-    //void setCustomColorLayer(
-    //    ImageLayer* imageLayer,
-    //    const osg::Image* image,
-    //    const osgTerrain::Locator* locator,
-    //    int imageLOD,
-    //    bool writeLock =true );
 
 
 public: // OVERRIDES
@@ -231,8 +218,6 @@ protected:
 
 
 private:
-    // the actual data that this tile will render.
-    //TileImageLayerVector _imageStack;
 
     int  _terrainRevision;
     int  _tileRevision;
@@ -260,7 +245,7 @@ private:
     osg::ref_ptr<TaskRequest> _elevPlaceholderRequest;
     osg::ref_ptr<TaskRequest> _tileGenRequest;
 
-    osg::observer_ptr<osgTerrain::Terrain> _CustomTerrain; //CustomTerrain> _CustomTerrain;
+    osg::observer_ptr<osgTerrain::Terrain> _CustomTerrain;
 
     Relative _family[5];
     Threading::ReadWriteMutex _tileLayersMutex;

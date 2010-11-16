@@ -159,10 +159,14 @@ ImageUtils::copyAsSubImage( const osg::Image* src, osg::Image* dst, int dst_star
 }
 #endif
 
-osg::Image*
-ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned int new_t )
+bool
+ImageUtils::resizeImage(const osg::Image* input, 
+                        unsigned int out_s, unsigned int out_t, 
+                        osg::ref_ptr<osg::Image>& output,
+                        unsigned int mipmapLevel )
 {
-    osg::Image* output = NULL;
+    if ( !input && out_s == 0 && out_t == 0 )
+        return false;
 
     GLenum pf = input->getPixelFormat();
 
@@ -172,38 +176,57 @@ ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned i
     //    return 0L;
     //}
 
-    if ( new_s > 0 && new_t > 0 )
+    unsigned int in_s = input->s();
+    unsigned int in_t = input->t();
+
+    if ( !output.valid() )
     {
-        float s_ratio = (float)input->s()/(float)new_s;
-        float t_ratio = (float)input->t()/(float)new_t;
-
         output = new osg::Image();
-        output->allocateImage( new_s, new_t, 1, pf, input->getDataType(), input->getPacking() );
-        output->setInternalTextureFormat( input->getInternalTextureFormat() );
+        output->allocateImage( out_s, out_t, 1, pf, input->getDataType(), input->getPacking() );
+    }
+    output->setInternalTextureFormat( input->getInternalTextureFormat() );
 
-        unsigned int pixel_size_bytes = input->getRowSizeInBytes() / input->s();
+    if ( in_s == out_s && in_t == out_t && mipmapLevel == 0 )
+    {
+        memcpy( output->getMipmapData(mipmapLevel), input->data(), input->getTotalSizeInBytes() );
+    }
+    else
+    {       
+        float s_ratio = (float)in_s/(float)out_s;
+        float t_ratio = (float)in_t/(float)out_t;
+        unsigned int pixel_size_bytes = input->getRowSizeInBytes() / in_s;
 
-        for( int output_row=0; output_row < output->t(); output_row++ )
+        unsigned char* dataOffset = output->getMipmapData(mipmapLevel);
+        unsigned int   dataRowSizeBytes = output->getRowSizeInBytes() >> mipmapLevel;
+
+        for( int output_row=0; output_row < out_t; output_row++ )
         {
             // get an appropriate input row
-            float output_row_ratio = (float)output_row/(float)output->t();
-            int input_row = (unsigned int)( output_row_ratio * (float)input->t() );
-            if ( input_row >= input->t() ) input_row = input->t()-1;
+            float output_row_ratio = (float)output_row/(float)out_t;
+            int input_row = (unsigned int)( output_row_ratio * (float)in_t );
+            if ( input_row >= input->t() ) input_row = in_t-1;
             else if ( input_row < 0 ) input_row = 0;
 
-            for( int output_col = 0; output_col < output->s(); output_col++ )
+            for( int output_col = 0; output_col < out_s; output_col++ )
             {
-                float output_col_ratio = (float)output_col/(float)output->s();
-                int input_col = (unsigned int)( output_col_ratio * (float)input->s() );
-                if ( input_col >= input->s() ) input_col = input->s()-1;
+                float output_col_ratio = (float)output_col/(float)out_s;
+                int input_col = (unsigned int)( output_col_ratio * (float)in_s );
+                if ( input_col >= in_s ) input_col = in_s-1;
                 else if ( input_row < 0 ) input_row = 0;
-                
-                memcpy( output->data( output_col, output_row ), input->data( input_col, input_row ), pixel_size_bytes );
+
+                unsigned char* outaddr =
+                    dataOffset + 
+                    (output_col*output->getPixelSizeInBits())/8+output_row*dataRowSizeBytes;
+
+                memcpy(
+                    outaddr,
+                    input->data( input_col, input_row ),
+                    pixel_size_bytes );
             }
         }
     }
 
-    return output;
+    return true;
 }
 
 osg::Image*
@@ -216,6 +239,8 @@ ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Imag
     int pixelSizeBytes  = osg::Image::computeRowWidthInBytes( primary->s(), primary->getPixelFormat(), primary->getDataType(), primary->getPacking() ) / primary->s();
     int totalSizeBytes  = 0;
     std::vector< unsigned int > mipmapDataOffsets;
+
+    mipmapDataOffsets.reserve( numMipmapLevels-1 );
 
     for( int i=0; i<numMipmapLevels; ++i )
     {
@@ -231,8 +256,7 @@ ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Imag
 
     unsigned char* data = new unsigned char[totalSizeBytes];
 
-    osg::Image* result = new osg::Image();
-
+    osg::ref_ptr<osg::Image> result = new osg::Image();
     result->setImage(
         primary->s(), primary->t(), 1,
         primary->getInternalTextureFormat(), 
@@ -243,25 +267,26 @@ ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Imag
     result->setMipmapLevels( mipmapDataOffsets );
 
     // now, populate the image levels.
-    for( int i=0; i<numMipmapLevels; ++i )
+    int level_s = primary->s();
+    int level_t = primary->t();
+
+    for( int level=0; level<numMipmapLevels; ++level )
     {
-        int level_s = primary->s() >> i;
-        int level_t = primary->t() >> i;
-
-        osg::ref_ptr<osg::Image> level;
-
-        if ( secondary && i > 0 )
-            level = ImageUtils::resizeImage( secondary, level_s, level_t );
+        if ( secondary && level > 0 )
+            ImageUtils::resizeImage( secondary, level_s, level_t, result, level );
         else
-            level = ImageUtils::resizeImage( primary, level_s, level_t );
+            ImageUtils::resizeImage( primary, level_s, level_t, result, level );
 
-        memcpy(
-            result->getMipmapData( i ),
-            level->data(),
-            level->getTotalSizeInBytes() );
+        level_s >>= 1;
+        level_t >>= 1;
+
+        //memcpy(
+        //    result->getMipmapData( i ),
+        //    level->data(),
+        //    level->getTotalSizeInBytes() );
     }
 
-    return result;
+    return result.release();
 }
 
 osg::Image*

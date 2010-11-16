@@ -307,7 +307,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
     buf << "void osgearth_vert_setupTexturing(); \n"
         << "void osgearth_vert_setupLighting(); \n"
         << "uniform bool osgearth_lighting_enabled; \n"
-        << "varying float osgearth_range; \n";
+        << "varying float osgearth_CameraRange; \n";
 
     if ( preVert )
         for( OrderedFunctionMap::const_iterator i = preVert->begin(); i != preVert->end(); ++i )
@@ -322,7 +322,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
         << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
 
         << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
-        << "    osgearth_range = length( position4.xyz ); \n"
+        << "    osgearth_CameraRange = length( position4.xyz ); \n"
 
         << "    vec3 position = position4.xyz / position4.w; \n"
         << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";

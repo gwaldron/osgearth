@@ -62,10 +62,6 @@ _lastUpdate( TileUpdate::UPDATE_ALL ),
 _frontGeodeInstalled( false )
 {
     this->setThreadSafeRefUnref(true);
-
-    // create a texture compositor.
-    if ( !_texCompositor.valid() )
-        _texCompositor = new TextureCompositor();
 }
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& rhs, const osg::CopyOp& copyop):
@@ -245,6 +241,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
 #endif
 }
 
+// from the UPDATE traversal thread:
 bool
 SinglePassTerrainTechnique::applyTileUpdates()
 {

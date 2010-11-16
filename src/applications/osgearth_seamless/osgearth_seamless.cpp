@@ -22,6 +22,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/Geode>
 #include <osg/PagedLOD>
+#include <osg/PolygonMode>
 #include <osg/AutoTransform>
 #include <osg/MatrixTransform>
 #include <osgText/Text>
@@ -59,6 +60,10 @@ osg::MatrixTransform* createFlag()
     text->setPosition( osg::Vec3d( 0, 0, 125 ) );
     text->setDataVariance( osg::Object::DYNAMIC );
     g->addDrawable( text );
+    osg::StateSet* ss = g->getOrCreateStateSet();
+    ss->setAttribute(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK,
+                                          osg::PolygonMode::FILL),
+                     osg::StateAttribute::ON | osg::StateAttribute::PROTECTED);
     osg::AutoTransform* at = new osg::AutoTransform();
     at->setAutoScaleToScreen( true );
     at->addChild( g );

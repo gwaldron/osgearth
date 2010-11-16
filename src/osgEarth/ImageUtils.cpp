@@ -207,6 +207,64 @@ ImageUtils::resizeImage( const osg::Image* input, unsigned int new_s, unsigned i
 }
 
 osg::Image*
+ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Image* secondary )
+{
+    // ASSUMPTION: primary and secondary are the same size, same format.
+
+    // first, build the image that will hold all the mipmap levels.
+    int numMipmapLevels = osg::Image::computeNumberOfMipmapLevels( primary->s(), primary->t() );
+    int pixelSizeBytes  = osg::Image::computeRowWidthInBytes( primary->s(), primary->getPixelFormat(), primary->getDataType(), primary->getPacking() ) / primary->s();
+    int totalSizeBytes  = 0;
+    std::vector< unsigned int > mipmapDataOffsets;
+
+    for( int i=0; i<numMipmapLevels; ++i )
+    {
+        if ( i > 0 )
+            mipmapDataOffsets.push_back( totalSizeBytes );
+
+        int level_s = primary->s() >> i;
+        int level_t = primary->t() >> i;
+        int levelSizeBytes = level_s * level_t * pixelSizeBytes;
+
+        totalSizeBytes += levelSizeBytes;
+    }
+
+    unsigned char* data = new unsigned char[totalSizeBytes];
+
+    osg::Image* result = new osg::Image();
+
+    result->setImage(
+        primary->s(), primary->t(), 1,
+        primary->getInternalTextureFormat(), 
+        primary->getPixelFormat(), 
+        primary->getDataType(), 
+        data, osg::Image::USE_NEW_DELETE );
+
+    result->setMipmapLevels( mipmapDataOffsets );
+
+    // now, populate the image levels.
+    for( int i=0; i<numMipmapLevels; ++i )
+    {
+        int level_s = primary->s() >> i;
+        int level_t = primary->t() >> i;
+
+        osg::ref_ptr<osg::Image> level;
+
+        if ( secondary && i > 0 )
+            level = ImageUtils::resizeImage( secondary, level_s, level_t );
+        else
+            level = ImageUtils::resizeImage( primary, level_s, level_t );
+
+        memcpy(
+            result->getMipmapData( i ),
+            level->data(),
+            level->getTotalSizeInBytes() );
+    }
+
+    return result;
+}
+
+osg::Image*
 ImageUtils::cropImage(const osg::Image* image,
                       double src_minx, double src_miny, double src_maxx, double src_maxy,
                       double &dst_minx, double &dst_miny, double &dst_maxx, double &dst_maxy)

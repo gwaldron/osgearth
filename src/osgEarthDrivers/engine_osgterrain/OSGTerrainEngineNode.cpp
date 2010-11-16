@@ -154,6 +154,7 @@ OSGTerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOption
         {
             OE_INFO << LC << "Requesting " << numThreads << " database pager threads in STANDARD mode" << std::endl;
             osg::DisplaySettings::instance()->setNumOfDatabaseThreadsHint( numThreads );
+            //osg::DisplaySettings::instance()->setNumOfHttpDatabaseThreadsHint( numThreads );
         }
     }
 }
@@ -599,6 +600,12 @@ void
 OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 {
     TerrainEngineNode::validateTerrainOptions( options );
+
+    // LOD blending is currently only compatible with STANDARD loading policy
+    if ( options.levelOfDetailBlending() == true && options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+    {
+        options.levelOfDetailBlending() = false;
+    }
     
     //nop for now.
     //note: to validate plugin-specific features, we would create an OSGTerrainOptions

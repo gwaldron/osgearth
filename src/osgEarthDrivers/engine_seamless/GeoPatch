@@ -25,7 +25,7 @@
 #include "Patch"
 
 #include <osg/Vec3>
-#include <osg/Vec3d>
+#include <osg/Vec2d>
 
 #include <osgEarth/TileKey>
 
@@ -49,8 +49,7 @@ public:
 protected:
     int _face;
     double _edgeLengths[4];
-    // Direction cosines of patch vertex latitude and longitude
-    osg::Vec3d _patchCosines[4];
+    osg::Vec2d _faceCoords[4];
 };
 
 }

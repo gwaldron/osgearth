@@ -843,6 +843,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
             //osgTerrain::ContourLayer* contourLayer = dynamic_cast<osgTerrain::ContourLayer*>(colorLayer);
             //if (imageLayer)
             //{
+
                 osg::StateSet* stateset = geode->getOrCreateStateSet();
 
                 osg::Texture2D* texture2D = new osg::Texture2D;

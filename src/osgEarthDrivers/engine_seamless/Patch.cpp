@@ -87,6 +87,13 @@ Patch::Data::Data(const Patch::Data& rhs, const osg::CopyOp& copyop)
         vertexAttribList.push_back(Geometry::ArrayData(*itr, copyop));
 }
 
+void Patch::dirtyVertexData()
+{
+    Geometry::ArrayData& vdata = _data->vertexData;
+    if (vdata.array.valid())
+        vdata.array->dirty();
+}
+
 void Patch::Data::getGeometryAttributes(const Geometry* geom)
 {
     vertexData = geom->getVertexData();

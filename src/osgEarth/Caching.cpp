@@ -238,7 +238,6 @@ DiskCache::getImage( const TileKey& key,
 					 const std::string& layerName,
 					 const std::string& format)
 {
-    Threading::ScopedReadLock lock(s_mutex);
 	std::string filename = getFilename(key,layerName,format);
 
     //If the path doesn't contain a zip file, check to see that it actually exists on disk
@@ -247,7 +246,10 @@ DiskCache::getImage( const TileKey& key,
         if (!osgDB::fileExists(filename)) return 0;
     }
 
-    return osgDB::readImageFile( filename );
+    {
+        Threading::ScopedReadLock lock(s_mutex);
+        return osgDB::readImageFile( filename );
+    }
 }
 
 /**

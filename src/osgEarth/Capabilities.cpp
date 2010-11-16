@@ -103,7 +103,8 @@ _GLSLversion            ( 1.0f ),
 _supportsTextureArrays  ( false ),
 _supportsMultiTexture   ( false ),
 _supportsStencilWrap    ( true ),
-_supportsTwoSidedStencil( false )
+_supportsTwoSidedStencil( false ),
+_supportsTexture2DLod   ( false )
 {
     // create a graphics context so we can query OpenGL support:
     MyGraphicsContext mgc;
@@ -172,6 +173,9 @@ _supportsTwoSidedStencil( false )
 
         _supportsTwoSidedStencil = osg::isGLExtensionSupported( id, "GL_EXT_stencil_two_side" );
         OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
+
+        //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
+        //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
     }
 }
 

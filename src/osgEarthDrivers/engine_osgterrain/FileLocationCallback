@@ -39,6 +39,7 @@ public:
 
     virtual Location fileLocation(const std::string& filename, const osgDB::Options* options)
     {
+        Location result = REMOTE_FILE;
         //OE_NOTICE<<"fileLocation = "<<filename<<std::endl;
 
         unsigned int lod, x, y, id;
@@ -51,24 +52,13 @@ public:
             const osgEarth::Profile* profile = engine->getMap()->getProfile();
             osgEarth::TileKey mapKey( lod, x, y, profile );
 
-            //Split the key into it's 4 children and check to see if all 4 are cached.
-            std::vector< osgEarth::TileKey > keys;
-            for (unsigned int i = 0; i < 4; ++i) keys.push_back(mapKey.createChildKey(i));
-
-            for (unsigned int i = 0; i < keys.size(); ++i)
+            if ( engine->getTileFactory()->areChildrenCached( engine->getMap(), mapKey ) )
             {
-                if ( !engine->getTileFactory()->isCached(engine->getMap(), keys[i]))
-                {
-                    OE_DEBUG << "Returning REMOTE_FILE for " << mapKey.str() << std::endl;
-                    return REMOTE_FILE;
-                }
+                result = LOCAL_FILE;
             }
-
-            OE_DEBUG << "Returning LOCAL_FILE for " << mapKey.str() << std::endl;
-            return LOCAL_FILE;
         }
 
-        return REMOTE_FILE;
+        return result;
     }
 
     virtual bool useFileCache() const { return false; }

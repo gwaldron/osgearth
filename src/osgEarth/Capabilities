@@ -69,6 +69,9 @@ namespace osgEarth
         /** whether the GPU supports OpenGL the two-sided stenciling extension */
         bool supportsTwoSidedStencil() const { return _supportsTwoSidedStencil; }
 
+        /** whether the GPU support the texture2dLod() function */
+        bool supportsTexture2DLod() const { return _supportsTexture2DLod; }
+
     private:
         Capabilities();
 
@@ -85,6 +88,7 @@ namespace osgEarth
         bool _supportsMultiTexture;
         bool _supportsStencilWrap;
         bool _supportsTwoSidedStencil;
+        bool _supportsTexture2DLod;
 
     public:
         friend class Registry;

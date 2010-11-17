@@ -602,9 +602,9 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     TerrainEngineNode::validateTerrainOptions( options );
 
     // LOD blending is currently only compatible with STANDARD loading policy
-    if ( options.levelOfDetailBlending() == true && options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+    if ( options.lodBlending() == true && options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
     {
-        options.levelOfDetailBlending() = false;
+        options.lodBlending() = false;
     }
     
     //nop for now.

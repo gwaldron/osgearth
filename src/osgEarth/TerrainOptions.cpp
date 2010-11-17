@@ -91,11 +91,12 @@ _minTileRangeFactor( 6.0 ),
 _normalizeEdges( false ),
 _combineLayers( true ),
 _maxLOD( 23 ),
-//_layeringTechnique( LAYERING_COMPOSITE ),
 _compositingTech( COMPOSITING_AUTO ),
 _enableLighting( false ),
 _elevationInterpolation( INTERP_BILINEAR ),
-_attenuationDistance( 1000000 )
+_attenuationDistance( 1000000 ),
+_lodBlending( false ),
+_lodTransitionTimeSeconds( 0.5f )
 {
     fromConfig( _conf );
 }
@@ -116,6 +117,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "lighting", _enableLighting );
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
     conf.updateIfSet( "lod_blending", _lodBlending );
+    conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -143,6 +145,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "lighting", _enableLighting );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_blending", _lodBlending );
+    conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );

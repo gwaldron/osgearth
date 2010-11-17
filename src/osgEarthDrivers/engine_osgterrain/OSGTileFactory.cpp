@@ -836,7 +836,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
             if ( mapInfo.isGeocentric() )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-            if ( _terrainOptions.levelOfDetailBlending() == true )
+            if ( _terrainOptions.lodBlending() == true )
             {
                 osg::ref_ptr<const osg::Image> finalImage = geo_image.getImage();
                 TileKey parentKey = key.createParentKey();
@@ -855,26 +855,16 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
 
                             GeoImage cropped = parentGI.crop( key.getExtent() );
 
-                            osg::ref_ptr<osg::Image> parentImage = ImageUtils::resizeImage( 
+                            osg::ref_ptr<osg::Image> parentImage;                            
+                            ImageUtils::resizeImage( 
                                 cropped.getImage(),
-                                image_tiles[i]._image.getImage()->s(),
-                                image_tiles[i]._image.getImage()->t() );
-
-                            // busted?? yes. gw
-                            //GeoImage cropped = parentGI.crop(
-                            //    key.getExtent(),
-                            //    false,
-                            //    image_tiles[i]._image.getImage()->s(),
-                            //    image_tiles[i]._image.getImage()->t() );
-
-                            //parentImage = cropped.getImage();
+                                geo_image.getImage()->s(),
+                                geo_image.getImage()->t(),
+                                parentImage );
 
                             finalImage = ImageUtils::createMipmapBlendedImage(
                                 geo_image.getImage(),
                                 parentImage.get() );
-
-                            //GeoImage blend( s_createMipmapBlend( geo_image.getImage(), parentImage.get() ), geo_image.getExtent() );
-                            //finalImage = blend.takeImage();
                         }
                     }
                 }

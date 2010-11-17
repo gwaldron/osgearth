@@ -182,8 +182,14 @@ namespace osgEarth
         /**
          * Level-of-detail blending
          */
-        optional<bool>& levelOfDetailBlending() { return _lodBlending; }
-        const optional<bool>& levelOfDetailBlending() const { return _lodBlending; }
+        optional<bool>& lodBlending() { return _lodBlending; }
+        const optional<bool>& lodBlending() const { return _lodBlending; }
+
+        /**
+         * Transition time, in seconds, for tile image fade-in when LOD blending is enabled
+         */
+        optional<float>& lodTransitionTime() { return _lodTransitionTimeSeconds; }
+        const optional<float>& lodTransitionTime() const { return _lodTransitionTimeSeconds; }
 
         /**
          * Available techniques for compositing image layers at runtime.
@@ -257,12 +263,12 @@ namespace osgEarth
         optional<bool> _normalizeEdges;
         optional<bool> _combineLayers;
         optional<LoadingPolicy> _loadingPolicy;
-        //optional<LayeringTechnique> _layeringTechnique;
         optional<CompositingTechnique> _compositingTech;
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
+        optional<float> _lodTransitionTimeSeconds;
 #if 0
         optional<osg::Texture::FilterMode> _contourMagFilter;
         optional<osg::Texture::FilterMode> _contourMinFilter;

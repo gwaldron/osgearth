@@ -35,7 +35,7 @@
 #define LC "[OceanSurfaceNode] "
 
 using namespace osgEarth;
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 
 typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
 

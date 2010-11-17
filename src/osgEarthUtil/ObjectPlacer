@@ -25,7 +25,7 @@
 #include <osg/Matrix>
 #include <osgUtil/IntersectionVisitor>
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {
     /**
      * Convenience utilities for placing an object on an osgEarth terrain map
@@ -106,6 +106,7 @@ namespace osgEarthUtil
         bool clampGeocentric(osg::CoordinateSystemNode* csn, double lat_rad, double lon_rad, osg::Vec3d& out) const;
         bool clampProjected(osg::CoordinateSystemNode* csn, double x, double y, osg::Vec3d& out) const;
     };
-}
+
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTHUTIL_OBJECT_PLACER

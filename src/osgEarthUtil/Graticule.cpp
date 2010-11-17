@@ -36,7 +36,7 @@
 #include <iomanip>
 
 using namespace osgEarth;
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace OpenThreads;
@@ -495,7 +495,7 @@ Graticule::createTextLevel( unsigned int levelNum ) const
 
 /**************************************************************************/
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {
     // OSG Plugin for loading subsequent graticule levels
     class GraticuleFactory : public osgDB::ReaderWriter
@@ -554,5 +554,6 @@ namespace osgEarthUtil
         }
     };
     REGISTER_OSGPLUGIN(osgearthutil_graticule, GraticuleFactory)
-}
+
+} } // namespace osgEarth::Util
 

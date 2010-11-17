@@ -58,7 +58,7 @@ int main(int argc, char** argv)
     root->addChild( earthNode );
     
     osgViewer::Viewer viewer(arguments);
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
+    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
     viewer.setSceneData( root );
 
     // inject the haze shader components:

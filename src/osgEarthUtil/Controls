@@ -39,7 +39,7 @@
  * ControlSurface and add it to a View's scene. Then create and add Controls to that
  * surface.
  */
-namespace osgEarthUtil { namespace Controls
+namespace osgEarth { namespace Util { namespace Controls
 {
     using namespace osgEarth;
 
@@ -511,6 +511,6 @@ namespace osgEarthUtil { namespace Controls
     };
 
 
-} } // namespace osgEarthUtil::Controls
+} } } // namespace osgEarth::Util::Controls
 
 #endif // OSGEARTHUTIL_CONTROLS

@@ -25,7 +25,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
 
-using namespace osgEarthUtil::Controls;
+using namespace osgEarth::Util::Controls;
 
 
 void createControls( ControlCanvas* );
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
     root->addChild( cs );
 
     viewer.setSceneData( root );
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator );
+    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator );
 
     // create some controls.
     createControls( cs );

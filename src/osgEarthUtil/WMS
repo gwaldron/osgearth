@@ -35,7 +35,7 @@
 #include <string>
 #include <vector>
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {
     /**
     * A WMS Style
@@ -249,6 +249,7 @@ namespace osgEarthUtil
         WMSCapabilitiesReader(){}
         WMSCapabilitiesReader(const WMSCapabilitiesReader &cr){}
     };
-}
+
+} } // namespace osgEarth::Util
 
 #endif //OSGEARTHUTIL_WMS_H

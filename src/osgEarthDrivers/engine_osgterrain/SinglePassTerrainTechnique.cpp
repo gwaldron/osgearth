@@ -544,6 +544,15 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     surface->setNormalArray(normals.get());
     surface->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
+    // skirt texture coordinates, if applicable:
+    osg::Vec2Array* skirtTexCoords = 0L;
+    if ( createSkirt )
+    {
+        skirtTexCoords = new osg::Vec2Array();
+        skirtTexCoords->reserve( numVerticesInSkirt );
+        //skirt->setTexCoordArray( 0, skirtTexCoords );
+    }
+
     // allocate and assign texture coordinates
     osg::Vec2Array* unifiedSurfaceTexCoords = 0L;
 
@@ -556,6 +565,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         unifiedSurfaceTexCoords = new osg::Vec2Array();
         unifiedSurfaceTexCoords->reserve( numVerticesInSurface );
         surface->setTexCoordArray( 0, unifiedSurfaceTexCoords );
+        skirt->setTexCoordArray( 0, skirtTexCoords );
     }
 
     else // if ( !_texCompositor->requiresUnitTextureSpace() )
@@ -592,6 +602,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 }
 
                 _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords );
+                _texCompositor->assignTexCoordArray( skirt, colorLayer.getUID(), skirtTexCoords );
                 //surface->setTexCoordArray( renderLayers.size(), r._texCoords );
                 renderLayers.push_back( r );
             }
@@ -600,15 +611,6 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 OE_WARN << LC << "Found a Locator, but it wasn't a GeoLocator." << std::endl;
             }
         }
-    }
-
-    // skirt texture coordinates, if applicable:
-    osg::Vec2Array* skirtTexCoords = 0L;
-    if ( createSkirt )
-    {
-        skirtTexCoords = new osg::Vec2Array();
-        skirtTexCoords->reserve( numVerticesInSkirt );
-        skirt->setTexCoordArray( 0, skirtTexCoords );
     }
 
     float scaleHeight = 

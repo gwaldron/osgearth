@@ -306,7 +306,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
     std::stringstream buf;
     buf << "void osgearth_vert_setupTexturing(); \n"
         << "void osgearth_vert_setupLighting(); \n"
-        << "uniform bool osgearth_lighting_enabled; \n"
+        << "uniform bool osgearth_LightingEnabled; \n"
         << "varying float osgearth_CameraRange; \n";
 
     if ( preVert )
@@ -332,7 +332,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
             buf << "    " << i->second << "(); \n";
 
     buf << "    osgearth_vert_setupTexturing(); \n"
-        << "    if ( osgearth_lighting_enabled ) \n"
+        << "    if ( osgearth_LightingEnabled ) \n"
         << "        osgearth_vert_setupLighting(); \n";
     
     if ( postVert )
@@ -367,7 +367,7 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
         for( OrderedFunctionMap::const_iterator i = postFrag->begin(); i != postFrag->end(); ++i )
             buf << "void " << i->second << "( inout vec4 color ); \n";
 
-    buf << "uniform bool osgearth_lighting_enabled; \n"
+    buf << "uniform bool osgearth_LightingEnabled; \n"
         << "void main(void) \n"
         << "{ \n"
         << "    vec4 color = vec4(1,1,1,1); \n";
@@ -377,7 +377,7 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
             buf << "    " << i->second << "( color ); \n";
 
     buf << "    osgearth_frag_applyTexturing( color ); \n"
-        << "    if (osgearth_lighting_enabled) \n"
+        << "    if (osgearth_LightingEnabled) \n"
         << "        osgearth_frag_applyLighting( color ); \n";
 
     if ( postFrag )

@@ -19,6 +19,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
+#include <osgEarth/FindNode>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 
@@ -156,12 +157,6 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
 
         // then register the callback
         _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
-    }
-
-    // apply visual options.
-    if ( options.enableLighting().isSet() )
-    {
-        this->getOrCreateStateSet()->setMode( GL_LIGHTING, options.enableLighting() == true ? 1 : 0 );
     }
 }
 
@@ -306,14 +301,14 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         if ( Registry::instance()->getCapabilities().supportsGLSL() )
-            _updateLightingUniformsHelper.cullTraverse( &nv );
+            _updateLightingUniformsHelper.cullTraverse( this, &nv );
     }
 
-    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-        if ( Registry::instance()->getCapabilities().supportsGLSL() )
-            _updateLightingUniformsHelper.updateTraverse( this );
-    }
+    //else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    //{
+    //    if ( Registry::instance()->getCapabilities().supportsGLSL() )
+    //        _updateLightingUniformsHelper.updateTraverse( this );
+    //}
 
     osg::CoordinateSystemNode::traverse( nv );
 }

@@ -357,7 +357,7 @@ OceanSurfaceNode::rebuildShaders()
     {
         std::stringstream buf;
 
-        buf << std::setprecision(10);
+        buf << std::fixed;
 
         buf << "uniform float osg_SimulationTime; \n"
             << "uniform mat4  osg_ViewMatrixInverse;\n"

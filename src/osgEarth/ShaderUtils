@@ -31,10 +31,10 @@ namespace osgEarth
     class OSGEARTH_EXPORT UpdateLightingUniformsHelper
     {
     public:
-        UpdateLightingUniformsHelper();
+        UpdateLightingUniformsHelper( bool useUpdateTraversal =false );
         ~UpdateLightingUniformsHelper();
 
-        void cullTraverse( osg::NodeVisitor* nv );
+        void cullTraverse( osg::Node* node, osg::NodeVisitor* nv );
         void updateTraverse( osg::Node* node );
 
     protected:
@@ -43,6 +43,7 @@ namespace osgEarth
         bool  _lightingEnabled;
         bool  _dirty;
         bool  _applied;
+        bool  _useUpdateTrav;
 
         osg::ref_ptr<osg::Uniform> _lightingEnabledUniform;
         osg::ref_ptr<osg::Uniform> _lightEnabledUniform;

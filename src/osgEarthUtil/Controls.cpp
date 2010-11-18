@@ -28,8 +28,8 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
-using namespace osgEarthUtil;
-using namespace osgEarthUtil::Controls;
+using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
 
 #define LC "[Controls] "
 
@@ -1273,7 +1273,7 @@ Grid::draw( const ControlContext& cx, DrawableList& out )
 
 // ---------------------------------------------------------------------------
 
-namespace osgEarthUtil { namespace Controls
+namespace osgEarth { namespace Util { namespace Controls
 {
     // binds the update traversal to the update() method
     struct ControlUpdater : public osg::NodeCallback
@@ -1334,7 +1334,8 @@ namespace osgEarthUtil { namespace Controls
 
         ControlCanvas* _cs;
     };
-} }
+
+} } } // namespace osgEarth::Util::Controls
 
 // ---------------------------------------------------------------------------
 

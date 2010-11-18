@@ -6,7 +6,7 @@
 #include <osgEarth/SpatialReference>
 #include <osg/MatrixTransform>
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {
     /**
      * ObjectLocator - a revisioned object that generates a positional matrix for a node.
@@ -131,7 +131,8 @@ namespace osgEarthUtil
         osg::ref_ptr<ObjectLocator> _locator;
         osgEarth::Revision _matrixRevision;
     };
-}
+
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTH_UTIL_OBJECT_LOCATOR_H
 

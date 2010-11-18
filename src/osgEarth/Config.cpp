@@ -19,6 +19,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/XmlUtils>
 #include <sstream>
+#include <iomanip>
 
 using namespace osgEarth;
 
@@ -61,6 +62,7 @@ std::string
 Config::toString( int indent ) const
 {
     std::stringstream buf;
+    buf << std::fixed;
     for( int i=0; i<indent; i++ ) buf << "  ";
     buf << "{ " << (_key.empty()? "anonymous" : _key) << ": ";
     if ( !_defaultValue.empty() ) buf << _defaultValue;

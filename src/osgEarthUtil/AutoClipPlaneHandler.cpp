@@ -19,7 +19,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarth/FindNode>
 
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 using namespace osgEarth;
 
 AutoClipPlaneHandler::AutoClipPlaneHandler() :

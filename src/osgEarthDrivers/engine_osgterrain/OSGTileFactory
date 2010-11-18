@@ -134,6 +134,13 @@ public:
         const TileKey& key,
         GeoLocator*    locator );
 
+    bool createLodBlendedImage(
+        UID layerUID, 
+        const TileKey& key, 
+        const osg::Image* tileImage,
+        CustomTerrain* terrain,
+        osg::ref_ptr<osg::Image>& output);
+
 protected:
 
     //virtual ~MapEngine();

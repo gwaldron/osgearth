@@ -395,15 +395,19 @@ ImageUtils::createEmptyImage()
 }
 
 osg::Image*
-ImageUtils::convertToRGB(const osg::Image *image)
+ImageUtils::convertToRGB8(const osg::Image *image)
 {
 	if (image)
 	{
-		//If the image is already RGB, clone it and return
-		if (image->getPixelFormat() == GL_RGB)
+        if ( image->getInternalTextureFormat() == GL_RGB8 )
         {
-            return new osg::Image(*image);
+            return new osg::Image( *image );
         }
+		////If the image is already RGB, clone it and return
+		//if (image->getPixelFormat() == GL_RGB)
+  //      {
+  //          return new osg::Image(*image);
+  //      }
 
 		else if (image->getPixelFormat() == GL_RGBA)
 		{
@@ -434,20 +438,24 @@ ImageUtils::convertToRGB(const osg::Image *image)
 }
 
 osg::Image*
-ImageUtils::convertToRGBA(const osg::Image* image)
+ImageUtils::convertToRGBA8(const osg::Image* image)
 {
     if ( image )
     {
-        if ( image->getPixelFormat() == GL_RGBA )
+        if ( image->getInternalTextureFormat() == GL_RGBA8 )
         {
             return new osg::Image( *image );
         }
+        //if ( image->getPixelFormat() == GL_RGBA )
+        //{
+        //    return new osg::Image( *image );
+        //}
 
         else
         {
             osg::Image* result = new osg::Image();
             result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
-            result->setInternalTextureFormat( GL_RGBA );
+            result->setInternalTextureFormat( GL_RGBA8 );
             ImageAccessor ia(image);
             ImageAccessor ra(result);
             for( int r=0; r<image->r(); ++r )
@@ -691,7 +699,11 @@ inline ImageAccessor::AccessorFunc chooseAccessor(GLenum dataType)
     case GL_UNSIGNED_INT:
         return &Accessor<GLFormat, GLuint>::access;
     case GL_FLOAT:
-        return &Accessor<GLFormat, GLfloat>::access;
+        return &Accessor<GLFormat, GLfloat>::access;       
+    case GL_UNSIGNED_SHORT_5_5_5_1:
+        return &Accessor<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::access;
+    case GL_UNSIGNED_BYTE_3_3_2:
+        return &Accessor<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::access;
     default:
         return &Accessor<0, GLbyte>::access;
     }
@@ -729,13 +741,7 @@ ImageAccessor::ImageAccessor(const osg::Image* image_)
         break;        
     case GL_BGRA:
         accessor = chooseAccessor<GL_BGRA>(dataType);
-        break;        
-    case GL_UNSIGNED_SHORT_5_5_5_1:
-        accessor = &Accessor<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::access;
-        break;
-    case GL_UNSIGNED_BYTE_3_3_2:
-        accessor = &Accessor<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::access;
-        break;
+        break; 
     default:
         accessor = &Accessor<0, GLbyte>::access;
         break;

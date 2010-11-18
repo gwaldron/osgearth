@@ -62,7 +62,7 @@ namespace
             << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
             << "{ \n"
             << "    vec3 color3 = color.rgb; \n"
-            << "    float u, v, dmin, dmax, atten_min, atten_max; \n"
+            << "    float u, v, dmin, dmax, atten_min, atten_max, age; \n"
             << "    vec4 texel; \n";
 
         const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
@@ -107,7 +107,6 @@ namespace
             << "} \n";
 
         std::string str = buf.str();
-        OE_INFO << std::endl << str;
         return new osg::Shader( osg::Shader::FRAGMENT, str );
     }
 }
@@ -213,8 +212,8 @@ TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoEx
     osg::ref_ptr<osg::Image> image = layerImage.getImage();
 
     // Because all tex2darray layers must be identical in format, let's use RGBA.
-    if ( image->getPixelFormat() != GL_RGBA )
-        image = ImageUtils::convertToRGBA( image.get() );
+    if ( image->getPixelFormat() != GL_RGBA8 )
+        image = ImageUtils::convertToRGBA8( image.get() );
 
     // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
     if ( image->s() != 256 || image->t() != 256 )
@@ -225,7 +224,7 @@ TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoEx
     }
 
     //Make sure that the internal texture format is always set to GL_RGBA
-    image->setInternalTextureFormat( GL_RGBA );
+    image->setInternalTextureFormat( GL_RGBA8 );
     
     // Failure to do this with a Texture2DArray will result in texture corruption if we are 
     // updating layers (like in sequential mode).

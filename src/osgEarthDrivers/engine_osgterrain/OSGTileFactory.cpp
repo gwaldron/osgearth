@@ -836,52 +836,14 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
             if ( mapInfo.isGeocentric() )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-            if ( _terrainOptions.levelOfDetailBlending() == true )
+            if ( _terrainOptions.lodBlending() == true )
             {
-                osg::ref_ptr<const osg::Image> finalImage = geo_image.getImage();
-                TileKey parentKey = key.createParentKey();
-                if ( parentKey.valid() )
-                {
-                    osg::ref_ptr<CustomTile> parentTile;
-                    terrain->getCustomTile( parentKey.getTileId(), parentTile );
-                    if ( parentTile.valid() )
-                    {
-                        CustomColorLayer parentLayer;
-                        if ( parentTile->getCustomColorLayer( image_tiles[i]._layerUID, parentLayer ) )
-                        {
-                            GeoImage parentGI(
-                                const_cast<osg::Image*>( parentLayer.getImage() ),
-                                static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );
-
-                            GeoImage cropped = parentGI.crop( key.getExtent() );
-
-                            osg::ref_ptr<osg::Image> parentImage = ImageUtils::resizeImage( 
-                                cropped.getImage(),
-                                image_tiles[i]._image.getImage()->s(),
-                                image_tiles[i]._image.getImage()->t() );
-
-                            // busted?? yes. gw
-                            //GeoImage cropped = parentGI.crop(
-                            //    key.getExtent(),
-                            //    false,
-                            //    image_tiles[i]._image.getImage()->s(),
-                            //    image_tiles[i]._image.getImage()->t() );
-
-                            //parentImage = cropped.getImage();
-
-                            finalImage = ImageUtils::createMipmapBlendedImage(
-                                geo_image.getImage(),
-                                parentImage.get() );
-
-                            //GeoImage blend( s_createMipmapBlend( geo_image.getImage(), parentImage.get() ), geo_image.getExtent() );
-                            //finalImage = blend.takeImage();
-                        }
-                    }
-                }
+                osg::ref_ptr<osg::Image> blendedImage;
+                createLodBlendedImage( image_tiles[i]._layerUID, key, geo_image.getImage(), terrain, blendedImage );
 
                 tile->setCustomColorLayer( CustomColorLayer(
                     mapf.imageLayerAt(i),
-                    finalImage.get(),
+                    blendedImage.get(),
                     img_locator.get(),
                     key.getLevelOfDetail() ) );
             }
@@ -993,6 +955,46 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     return result;
 }
 
+bool
+OSGTileFactory::createLodBlendedImage(UID layerUID, const TileKey& key,
+                                      const osg::Image* tileImage,
+                                      CustomTerrain* terrain,
+                                      osg::ref_ptr<osg::Image>& output)
+{
+    TileKey parentKey = key.createParentKey();
+    if ( parentKey.valid() )
+    {
+        osg::ref_ptr<CustomTile> parentTile;
+        terrain->getCustomTile( parentKey.getTileId(), parentTile );
+        if ( parentTile.valid() )
+        {
+            CustomColorLayer parentLayer;
+            if ( parentTile->getCustomColorLayer( layerUID, parentLayer ) )
+            {
+                GeoImage parentGI(
+                    const_cast<osg::Image*>( parentLayer.getImage() ),
+                    static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );
+
+                GeoImage cropped = parentGI.crop( key.getExtent() );
+
+                osg::ref_ptr<osg::Image> parentImage;                            
+                ImageUtils::resizeImage( 
+                    cropped.getImage(),
+                    tileImage->s(),
+                    tileImage->t(),
+                    parentImage );
+
+                output = ImageUtils::createMipmapBlendedImage(
+                    tileImage,
+                    parentImage.get() );
+
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 CustomColorLayerRef*
 OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
                                  ImageLayer* layer,
@@ -1002,7 +1004,8 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
     GeoImage geoImage;
 
     //If the key is valid, try to get the image from the MapLayer
-    if (layer->isKeyValid( key ) )
+    bool keyValid = layer->isKeyValid( key );
+    if ( keyValid )
     {
         geoImage = layer->createImage(key, progress);
     }
@@ -1019,11 +1022,33 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
         if ( mapInfo.isGeocentric() )
             imgLocator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
+#if 0
         // since this method is only called in SEQ/PRE mode, we don't need to bother 
         // supporting LOD blending here.
 
-        CustomColorLayer result( layer, geoImage.getImage(), imgLocator.get(), key.getLevelOfDetail() );
-        return new CustomColorLayerRef( result );
+        if ( keyValid && _terrainOptions.lodBlending() == true )
+        {
+            osg::ref_ptr<osg::Image> blendedImage;
+            createLodBlendedImage( layer->getUID(), key, geoImage.getImage(), terrain, blendedImage );
+
+            return new CustomColorLayerRef( CustomColorLayer(
+                layer,
+                blendedImage.get(),
+                imgLocator.get(),
+                key.getLevelOfDetail() ) );
+        }
+        else
+#endif
+        {
+            return new CustomColorLayerRef( CustomColorLayer(
+                layer,
+                geoImage.getImage(),
+                imgLocator.get(),
+                key.getLevelOfDetail() ) );
+        }
+
+        //CustomColorLayer result( layer, geoImage.getImage(), imgLocator.get(), key.getLevelOfDetail() );
+        //return new CustomColorLayerRef( result );
     }
 
     return NULL;

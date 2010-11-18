@@ -26,7 +26,7 @@
 #include <osgDB/ReadFile>
 
 using namespace osgEarth;
-using namespace osgEarthUtil::Controls;
+using namespace osgEarth::Util::Controls;
 
 osg::Node* createControlPanel( osgViewer::View* );
 void updateControlPanel();
@@ -89,7 +89,7 @@ main( int argc, char** argv )
     viewer.setSceneData( root );
 
     // install a proper manipulator
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
+    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
 
     while( !viewer.done() )

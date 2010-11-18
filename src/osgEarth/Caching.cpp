@@ -339,7 +339,7 @@ DiskCache::setImage( const TileKey& key,
     if ((image->getPixelFormat() != GL_RGB) && writingJpeg)
     {
 		//Take a reference so the converted image will be deleted
-		osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB( image );
+		osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8( image );
 		if (rgb.valid())
 		{
 			osgDB::writeImageFile(*rgb.get(), filename);

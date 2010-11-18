@@ -26,7 +26,7 @@
 #include <osg/MatrixTransform>
 #include <osg/CoordinateSystemNode>
 
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 using namespace osgEarth;
 
 struct CachingReadCallback : public osgSim::DatabaseCacheReadCallback

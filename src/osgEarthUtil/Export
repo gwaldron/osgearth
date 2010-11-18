@@ -78,7 +78,7 @@
 #endif
 
 /**
-\namespace osgEarthUtil
+\namespace osgEarth::Util
 */
 
 #endif // OSGEARTHUTIL_EXPORT_H

@@ -52,7 +52,11 @@ namespace
 
 //------------------------------------------------------------------------
 
-UpdateLightingUniformsHelper::UpdateLightingUniformsHelper() :
+#undef LC
+#define LC "[UpdateLightingUniformHelper] "
+
+UpdateLightingUniformsHelper::UpdateLightingUniformsHelper( bool useUpdateTrav ) :
+_useUpdateTrav( useUpdateTrav ),
 _applied( false ),
 _dirty( true ),
 _lightingEnabled( true )
@@ -65,9 +69,16 @@ _lightingEnabled( true )
     for(int i=1; i<_maxLights; ++i )
         _lightEnabled[i] = 0;
 
-    _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_lighting_enabled" );
-    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::INT,  "osgearth_light_enabled", _maxLights );
-    //_numLightsUniform       = new osg::Uniform( osg::Uniform::INT,  "osgearth_num_lights" );
+    _lightingEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_LightingEnabled" );
+    _lightEnabledUniform    = new osg::Uniform( osg::Uniform::INT,  "osgearth_LightEnabled", _maxLights );
+
+    if ( !_useUpdateTrav )
+    {
+        // setting the data variance the DYNAMIC makes it safe to change the uniform values
+        // during the CULL traversal.
+        _lightingEnabledUniform->setDataVariance( osg::Object::DYNAMIC );
+        _lightEnabledUniform->setDataVariance( osg::Object::DYNAMIC );
+    }
 }
 
 UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
@@ -76,7 +87,7 @@ UpdateLightingUniformsHelper::~UpdateLightingUniformsHelper()
 }
 
 void
-UpdateLightingUniformsHelper::cullTraverse( osg::NodeVisitor* nv )
+UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* nv )
 {
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
     if ( cv )
@@ -98,10 +109,13 @@ UpdateLightingUniformsHelper::cullTraverse( osg::NodeVisitor* nv )
         bool lightingEnabled = 
             ( getModeValue(stateSetStack, GL_LIGHTING) & osg::StateAttribute::ON ) != 0;
 
-        if ( lightingEnabled != _lightingEnabled )
+        if ( lightingEnabled != _lightingEnabled || !_applied )
         {
             _lightingEnabled = lightingEnabled;
-            _dirty = true;
+            if ( _useUpdateTrav )
+                _dirty = true;
+            else
+                _lightingEnabledUniform->set( _lightingEnabled );
         }
 
         // Update the list of enabled lights:
@@ -110,12 +124,23 @@ UpdateLightingUniformsHelper::cullTraverse( osg::NodeVisitor* nv )
             bool enabled =
                 ( getModeValue( stateSetStack, GL_LIGHT0 + i ) & osg::StateAttribute::ON ) != 0;
 
-            if ( _lightEnabled[i] != enabled )
+            if ( _lightEnabled[i] != enabled || !_applied )
             {
                 _lightEnabled[i] = enabled;
-                _dirty = true;
+                if ( _useUpdateTrav )
+                    _dirty = true;
+                else
+                    _lightEnabledUniform->setElement( i, _lightEnabled[i] );
             }
-        }			
+        }	
+
+        // apply if necessary:
+        if ( !_applied && !_useUpdateTrav )
+        {
+            node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
+            node->getStateSet()->addUniform( _lightEnabledUniform.get() );
+            _applied = true;
+        }		
     }        
 }
 

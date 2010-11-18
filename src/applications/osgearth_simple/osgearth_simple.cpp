@@ -42,22 +42,23 @@
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
+using namespace osgEarth::Util;
 
 // some preset viewpoints.
-static osgEarthUtil::Viewpoint VPs[] = {
-    osgEarthUtil::Viewpoint( "Africa",        osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
-    osgEarthUtil::Viewpoint( "California",    osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
-    osgEarthUtil::Viewpoint( "Europe",        osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
-    osgEarthUtil::Viewpoint( "Washington DC", osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
-    osgEarthUtil::Viewpoint( "Australia",     osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 ),
-    osgEarthUtil::Viewpoint( "Boston",        osg::Vec3d( -71.096936, 42.332771, 0 ), 0.0, -90, 1e5 )
+static Viewpoint VPs[] = {
+    Viewpoint( "Africa",        osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
+    Viewpoint( "California",    osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
+    Viewpoint( "Europe",        osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
+    Viewpoint( "Washington DC", osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
+    Viewpoint( "Australia",     osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 ),
+    Viewpoint( "Boston",        osg::Vec3d( -71.096936, 42.332771, 0 ), 0.0, -90, 1e5 )
 };
 
 // a simple handler that demonstrates the "viewpoint" functionality in 
 // osgEarthUtil::EarthManipulator. Press a number key to fly to a viewpoint.
 struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
 {
-    FlyToViewpointHandler( osgEarthUtil::EarthManipulator* manip ) : _manip(manip) { }
+    FlyToViewpointHandler( EarthManipulator* manip ) : _manip(manip) { }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
     {
@@ -68,7 +69,7 @@ struct FlyToViewpointHandler : public osgGA::GUIEventHandler
         return false;
     }
 
-    osg::observer_ptr<osgEarthUtil::EarthManipulator> _manip;
+    osg::observer_ptr<EarthManipulator> _manip;
 };
 
 // a simple handler that toggles a node mask on/off
@@ -100,7 +101,7 @@ struct NodeToggleHandler : public osgGA::GUIEventHandler
 
 struct LockAzimuthHandler : public osgGA::GUIEventHandler
 {
-    LockAzimuthHandler(char key, osgEarthUtil::EarthManipulator* manip)
+    LockAzimuthHandler(char key, EarthManipulator* manip)
         : _key(key), _manip(manip)
     {
     }
@@ -125,7 +126,7 @@ struct LockAzimuthHandler : public osgGA::GUIEventHandler
     }
 
     char _key;
-    osg::ref_ptr<osgEarthUtil::EarthManipulator> _manip;
+    osg::ref_ptr<EarthManipulator> _manip;
     
 };
 
@@ -136,7 +137,7 @@ int main(int argc, char** argv)
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     // install the programmable manipulator.
-    osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
+    EarthManipulator* manip = new EarthManipulator();
 
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
@@ -150,7 +151,7 @@ int main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
 
-    osgEarthUtil::Graticule* graticule = 0L;
+    Graticule* graticule = 0L;
 
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
@@ -161,14 +162,14 @@ int main(int argc, char** argv)
         if ( mapNode->getMap()->isGeocentric() )
         {
             manip->setHomeViewpoint( 
-                osgEarthUtil::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
+                Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
 
             // add a handler that will automatically calculate good clipping planes
-            viewer.addEventHandler( new osgEarthUtil::AutoClipPlaneHandler() );
+            viewer.addEventHandler( new AutoClipPlaneHandler() );
         }
 
         // create a graticle, and start it in the OFF position
-        graticule = new osgEarthUtil::Graticule( mapNode->getMap() );
+        graticule = new Graticule( mapNode->getMap() );
         graticule->setNodeMask(0);
         root->addChild( graticule );
     }
@@ -178,11 +179,11 @@ int main(int argc, char** argv)
 
     // bind "double-click" to the zoom-to function in the EarthManipulator
     manip->getSettings()->bindMouseDoubleClick(
-        osgEarthUtil::EarthManipulator::ACTION_GOTO,
+        EarthManipulator::ACTION_GOTO,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
 
     manip->getSettings()->bindMouse(
-        osgEarthUtil::EarthManipulator::ACTION_EARTH_DRAG,
+        EarthManipulator::ACTION_EARTH_DRAG,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
     

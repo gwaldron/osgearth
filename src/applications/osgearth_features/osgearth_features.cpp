@@ -37,7 +37,7 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 
 //
 // NOTE: run this sample from the repo/tests directory.

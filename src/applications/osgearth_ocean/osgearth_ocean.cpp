@@ -66,7 +66,7 @@ class MyGraphicsContext {
 // build an on-screen menu
 static osg::Node* createMenu( osgViewer::View* view )
 {
-    using namespace osgEarthUtil::Controls;
+    using namespace osgEarth::Util::Controls;
 
     ControlCanvas* canvas = new ControlCanvas( view );
 
@@ -106,7 +106,7 @@ static osg::Node* createMenu( osgViewer::View* view )
 // An event handler that will print out the elevation at the clicked point
 struct MyEventHandler : public osgGA::GUIEventHandler 
 {
-    MyEventHandler( osgEarthUtil::OceanSurfaceNode* ocean )
+    MyEventHandler( osgEarth::Util::OceanSurfaceNode* ocean )
         :_ocean(ocean) { }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
@@ -188,7 +188,7 @@ struct MyEventHandler : public osgGA::GUIEventHandler
         return false;
     }
 
-    osg::ref_ptr< osgEarthUtil::OceanSurfaceNode > _ocean;
+    osg::ref_ptr< osgEarth::Util::OceanSurfaceNode > _ocean;
 };
 
 typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
@@ -241,7 +241,7 @@ int main(int argc, char** argv)
     if ( !loadedModel.valid() )
         return usage( "Failed to load an earth file." );
 
-    osgEarthUtil::OceanSurfaceNode* ocean = new osgEarthUtil::OceanSurfaceNode();
+    osgEarth::Util::OceanSurfaceNode* ocean = new osgEarth::Util::OceanSurfaceNode();
 
     if ( !maskLayerName.empty() )
     {
@@ -276,7 +276,7 @@ int main(int argc, char** argv)
     group->addChild( createMenu( &viewer ) );
     viewer.setSceneData(group);
     
-    viewer.setCameraManipulator( new osgEarthUtil::EarthManipulator() );
+    viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
     viewer.addEventHandler(new MyEventHandler(ocean));
     viewer.addEventHandler( new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()) );

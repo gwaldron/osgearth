@@ -23,7 +23,7 @@
 #include <osgEarth/MapNode>
 #include <osgGA/GUIEventHandler>
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {
     /**
      * An event handler that automatically calculates optimal near and
@@ -59,7 +59,8 @@ namespace osgEarthUtil
         double _nfrAtRadius, _nfrAtDoubleRadius, _rp;
         bool _autoFarPlaneClipping;
     };
-}
+
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTHUTIL_AUTOCLIPPLANEHANDLER_H
 

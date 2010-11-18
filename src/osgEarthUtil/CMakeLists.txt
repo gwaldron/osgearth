@@ -13,7 +13,6 @@ SET(LIB_PUBLIC_HEADERS
     Controls
     ClampCallback
     EarthManipulator
-    ElevationFadeCallback
     #ElevationManager
     Export
     Graticule
@@ -30,7 +29,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ClampCallback.cpp
     Controls.cpp
     EarthManipulator.cpp	
-    ElevationFadeCallback.cpp
     #ElevationManager.cpp
     Graticule.cpp
     ObjectPlacer.cpp

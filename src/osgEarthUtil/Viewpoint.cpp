@@ -19,7 +19,7 @@
 #include <osgEarthUtil/Viewpoint>
 #include <sstream>
 
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 using namespace osgEarth;
 
 

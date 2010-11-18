@@ -27,7 +27,7 @@
 #include <osg/Program>
 #include <osg/Texture3D>
 
-namespace osgEarthUtil 
+namespace osgEarth { namespace Util 
 {
     using namespace osgEarth;
 
@@ -178,6 +178,7 @@ namespace osgEarthUtil
         osg::ref_ptr< osg::Texture3D > _oceanSurfaceTexture;
         osg::observer_ptr< const ImageLayer > _maskLayer;
     };
-}
+
+} } // namespace osgEarth::Util
 
 #endif //OSGEARTHUTIL_OCEANSURFACENODE

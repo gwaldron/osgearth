@@ -38,7 +38,7 @@
 #include "WMSOptions"
 
 using namespace osgEarth;
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
 
 // All looping ImageSequences deriving from this class will by in sync due to

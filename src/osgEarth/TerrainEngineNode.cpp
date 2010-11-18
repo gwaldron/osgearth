@@ -19,6 +19,7 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
+#include <osgEarth/FindNode>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 
@@ -157,12 +158,6 @@ TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
         // then register the callback
         _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
     }
-
-    // apply visual options.
-    if ( options.enableLighting().isSet() )
-    {
-        this->getOrCreateStateSet()->setMode( GL_LIGHTING, options.enableLighting() == true ? 1 : 0 );
-    }
 }
 
 osg::BoundingSphere
@@ -246,21 +241,19 @@ TerrainEngineNode::updateImageUniforms()
     // get a copy of the image layer stack:
     MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
 
-    stateSet->removeUniform( "osgearth_imagelayer_opacity" );
-    stateSet->removeUniform( "osgearth_imagelayer_enabled" );
-    stateSet->removeUniform( "osgearth_imagelayer_stamp" );
-    stateSet->removeUniform( "osgearth_imagelayer_range" );    
-    stateSet->removeUniform( "osgearth_imagelayer_attenuation" );
+    stateSet->removeUniform( "osgearth_ImageLayerOpacity" );
+    stateSet->removeUniform( "osgearth_ImageLayerEnabled" );
+    stateSet->removeUniform( "osgearth_ImageLayerRange" );    
+    stateSet->removeUniform( "osgearth_ImageLayerAttenuation" );
     
     if ( mapf.imageLayers().size() > 0 )
     {
         // the "enabled" uniform is fixed size. this is handy to account for layers that are in flux...i.e., their source
         // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
         // "ghost" layers that used to exist at a given index, but no longer do.
-        _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_imagelayer_enabled", 128 ); //mapf.imageLayers().size() );
-        _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_opacity", mapf.imageLayers().size() );
-        _imageLayerController->_layerRangeUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_range", 2 * mapf.imageLayers().size() );
-        _imageLayerController->_layerStampUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_imagelayer_stamp", mapf.imageLayers().size() );
+        _imageLayerController->_layerEnabledUniform = new osg::Uniform( osg::Uniform::BOOL, "osgearth_ImageLayerEnabled", 128 ); //mapf.imageLayers().size() );
+        _imageLayerController->_layerOpacityUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_ImageLayerOpacity", mapf.imageLayers().size() );
+        _imageLayerController->_layerRangeUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_ImageLayerRange", 2 * mapf.imageLayers().size() );
 
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
@@ -271,7 +264,6 @@ TerrainEngineNode::updateImageUniforms()
             _imageLayerController->_layerEnabledUniform->setElement( index, layer->getEnabled() );
             _imageLayerController->_layerRangeUniform->setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
             _imageLayerController->_layerRangeUniform->setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
-            _imageLayerController->_layerStampUniform->setElement( index, 0.0f );
         }
 
         // set the remainder of the layers to disabled 
@@ -281,13 +273,9 @@ TerrainEngineNode::updateImageUniforms()
         stateSet->addUniform( _imageLayerController->_layerOpacityUniform.get() );
         stateSet->addUniform( _imageLayerController->_layerEnabledUniform.get() );
         stateSet->addUniform( _imageLayerController->_layerRangeUniform.get() );
-        stateSet->addUniform( _imageLayerController->_layerStampUniform.get() );
     }
 
-    stateSet->getOrCreateUniform( "osgearth_imagelayer_count", osg::Uniform::INT )->set(
-        (int)mapf.imageLayers().size() );
-
-    stateSet->getOrCreateUniform( "osgearth_imagelayer_attenuation", osg::Uniform::FLOAT )->set(
+    stateSet->getOrCreateUniform( "osgearth_ImageLayerAttenuation", osg::Uniform::FLOAT )->set(
         *getTerrainOptions().attentuationDistance() );
 }
 
@@ -313,14 +301,14 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         if ( Registry::instance()->getCapabilities().supportsGLSL() )
-            _updateLightingUniformsHelper.cullTraverse( &nv );
+            _updateLightingUniformsHelper.cullTraverse( this, &nv );
     }
 
-    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-        if ( Registry::instance()->getCapabilities().supportsGLSL() )
-            _updateLightingUniformsHelper.updateTraverse( this );
-    }
+    //else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    //{
+    //    if ( Registry::instance()->getCapabilities().supportsGLSL() )
+    //        _updateLightingUniformsHelper.updateTraverse( this );
+    //}
 
     osg::CoordinateSystemNode::traverse( nv );
 }

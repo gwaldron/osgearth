@@ -25,7 +25,7 @@
 #include <osgViewer/View>
 #include <iomanip>
 
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 using namespace osgEarth;
 
 /****************************************************************************/
@@ -536,14 +536,14 @@ EarthManipulator::getMyCoordinateFrame( const osg::Vec3d& position ) const
 
     //osg::NodePath csnPath;
     //bool hasPath = _csnPath.getNodePath( csnPath );
-    osg::ref_ptr<osg::CoordinateSystemNode> csn = _csn.get();
+    osg::ref_ptr<osg::CoordinateSystemNode> csnSafe = _csn.get();
 
-    if ( _csn.valid() )
+    if ( csnSafe.valid() )
     {
         osg::Vec3 local_position = position * osg::computeWorldToLocal( _csnPath );
 
         // get the coordinate frame in world coords.
-        coordinateFrame = csn->computeLocalCoordinateFrame( local_position ) * osg::computeLocalToWorld( _csnPath );
+        coordinateFrame = csnSafe->computeLocalCoordinateFrame( local_position ) * osg::computeLocalToWorld( _csnPath );
 
         // keep the position of the coordinate frame to reapply after rescale.
         osg::Vec3d pos = coordinateFrame.getTrans();
@@ -2213,6 +2213,10 @@ void
 EarthManipulator::drag(double dx, double dy, osg::View* theView)
 {
     using namespace osg;
+
+    osg::ref_ptr<osg::CoordinateSystemNode> csnSafe = _csn.get();
+    double radiusEquator = csnSafe.valid() ? csnSafe->getEllipsoidModel()->getRadiusEquator() : 6378137.0;
+
     osgViewer::View* view = dynamic_cast<osgViewer::View*>(theView);
     float x = _ga_t0->getX(), y = _ga_t0->getY();
     float local_x, local_y;
@@ -2236,12 +2240,15 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     }
     else if (_is_geocentric)
     {
-        const osg::Vec3d startWinPt = getWindowPoint(view, _ga_t1->getX(),
-                                                     _ga_t1->getY());
-        startDrag = calcTangentPoint(
-            zero, zero * viewMat, _csn->getEllipsoidModel()->getRadiusEquator(),
-            startWinPt);
-        worldStartDrag = startDrag * viewMatInv;
+        if ( csnSafe.valid() )
+        {
+            const osg::Vec3d startWinPt = getWindowPoint(view, _ga_t1->getX(),
+                                                         _ga_t1->getY());
+            startDrag = calcTangentPoint(
+                zero, zero * viewMat, radiusEquator,
+                startWinPt);
+            worldStartDrag = startDrag * viewMatInv;
+        }
     }
     else
         return;
@@ -2258,7 +2265,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         Vec3d earthOrigin = zero * viewMat;
         //endDrag = closestPtOnLine(zero, winpt, earthOrigin);
         endDrag = calcTangentPoint(
-            zero, earthOrigin, _csn->getEllipsoidModel()->getRadiusEquator(),
+            zero, earthOrigin, radiusEquator,
             winpt);
         worldEndDrag = endDrag * viewMatInv;
     }

@@ -29,7 +29,7 @@
 
 using namespace osg;
 using namespace osgEarth;
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 using namespace OpenThreads;
 
 ClampCallback::ClampCallback(osg::Node* terrainNode)

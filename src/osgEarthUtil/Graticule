@@ -23,7 +23,7 @@
 #include <osgEarth/Map>
 #include <vector>
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
@@ -84,6 +84,7 @@ namespace osgEarthUtil
 
         friend class GraticuleFactory;
     };
-}
+
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTHUTIL_GRATICLE

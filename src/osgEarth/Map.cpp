@@ -53,6 +53,8 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
         onElevationLayerMoved( change.getElevationLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
     case MapModelChange::MOVE_IMAGE_LAYER:
         onImageLayerMoved( change.getImageLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
+		case MapModelChange::MOVE_MODEL_LAYER:
+				onModelLayerMoved( change.getModelLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
     }
 }
 
@@ -287,7 +289,11 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
     {
       Threading::ScopedWriteLock lock( _mapDataMutex );
 
-			_imageLayers.insert( _imageLayers.begin() + index, layer );
+			if (index >= _imageLayers.size())
+				_imageLayers.push_back(layer);
+			else
+				_imageLayers.insert( _imageLayers.begin() + index, layer );
+
       newRevision = ++_dataModelRevision;
     }
 
@@ -573,6 +579,53 @@ Map::removeModelLayer( ModelLayer* layer )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::REMOVE_MODEL_LAYER, newRevision, layer) );
+        }
+    }
+}
+
+void
+Map::moveModelLayer( ModelLayer* layer, unsigned int newIndex )
+{
+    unsigned int oldIndex = 0;
+    unsigned int actualIndex = 0;
+    Revision newRevision;
+
+    if ( layer )
+    {
+        Threading::ScopedWriteLock lock( _mapDataMutex );
+
+        // preserve the layer with a ref:
+        osg::ref_ptr<ModelLayer> layerToMove = layer;
+
+        // find it:
+        ModelLayerVector::iterator i_oldIndex = _modelLayers.end();
+        for( ModelLayerVector::iterator i = _modelLayers.begin(); i != _modelLayers.end(); i++, actualIndex++ )
+        {
+            if ( i->get() == layer )
+            {
+                i_oldIndex = i;
+                oldIndex = actualIndex;
+                break;
+            }
+        }
+
+        if ( i_oldIndex == _modelLayers.end() )
+            return; // layer not found in list
+
+        // erase the old one and insert the new one.
+        _modelLayers.erase( i_oldIndex );
+        _modelLayers.insert( _modelLayers.begin() + newIndex, layerToMove.get() );
+
+        newRevision = ++_dataModelRevision;
+    }
+
+    // a separate block b/c we don't need the mutex
+    if ( layer )
+    {
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onMapModelChanged( MapModelChange(
+                MapModelChange::MOVE_MODEL_LAYER, newRevision, layer, oldIndex, newIndex) );
         }
     }
 }

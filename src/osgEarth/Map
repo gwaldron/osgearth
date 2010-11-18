@@ -51,6 +51,7 @@ namespace osgEarth
             MOVE_ELEVATION_LAYER,
             ADD_MODEL_LAYER,
             REMOVE_MODEL_LAYER,
+						MOVE_MODEL_LAYER,
             ADD_MASK_LAYER,
             REMOVE_MASK_LAYER,
             UNSPECIFIED
@@ -95,6 +96,7 @@ namespace osgEarth
 
         virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
         virtual void onModelLayerRemoved( ModelLayer* layer ) { }
+				virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
         virtual void onMaskLayerAdded( MaskLayer* mask ) { }
         virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
@@ -223,6 +225,11 @@ namespace osgEarth
          * Removes a model layer from the map.
          */
         void removeModelLayer( ModelLayer* layer );
+
+				/**
+         * Moves (re-orders) an image layer to another index position in its list.
+         */
+        void moveModelLayer( ModelLayer* layer, unsigned int newIndex );
         
         /**
          * Set a layer to use as a terrain mask. The map engine will draw

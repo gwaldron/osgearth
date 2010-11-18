@@ -383,9 +383,9 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j], cacheInLayerProfile, progress);
 				if (img.valid())
 				{
-					if (img->getPixelFormat() != GL_RGBA)
+                    if (img->getPixelFormat() != GL_RGBA || img->getDataType() != GL_UNSIGNED_BYTE || img->getInternalTextureFormat() != GL_RGBA8 )
 					{
-                        osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA(img);
+                        osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(img.get());
                         if (convertedImg.valid())
                         {
                             img = convertedImg;

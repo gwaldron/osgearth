@@ -188,13 +188,6 @@ TerrainEngineNode::setElevationSamplingRatio( float value )
 }
 
 void
-TerrainEngineNode::setResourcePolicy( const ResourcePolicy& value )
-{
-    _resourcePolicy = value;
-    onResourcePolicyChanged();
-}
-
-void
 TerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     // set up the CSN values   

@@ -226,34 +226,6 @@ namespace osgEarth
         void removeTerrainMaskLayer();
 
     public:
-
-        //TODO: move this elsewhere!
-
-        /**
-         * Gets the transfer function that is used to automatically determine the elevation based contour texture.
-         */
-        osg::TransferFunction1D* getContourTransferFunction(void) const;
-        
-        /// Sets the transfer function that is used to automatically determine the elevation based contour texture.
-        /**
-         * If a transfer function exists the class osgEarth::EarthTerrainTechnique creates for each tile a contour layer. A contour layer
-         * visualizes the elevation of a terrain by giving the elevation a dedicated color.
-         *
-         * The color is determined by using the transfer function. The transfer function stores for certain elevations a color. The more cells
-         * it has the smoother the color interpolation is. The color is determined by the elevation value only and is not influenced by an
-         * eventually set elevation (vertical) scaling by the map engine.
-         *
-         * Parameters for contour generation can be set in the map engine property class.
-         *
-         * @note The transfer function has to be set before the map is assigned to a map node.
-         *
-         * @remark The contour layer is created before any existing image layer.
-         *
-         * @sa osg::TransferFunction1D, osgEarth::MapEngineProperties, osgTerrain::ContourLayer
-         */
-        void setContourTransferFunction(osg::TransferFunction1D* transferFunction);
-
-    public:
         /**
          * Gets the user-provided options structure stored in this map.
          */

@@ -69,7 +69,6 @@ namespace osgEarth
         TextureSlotVector _slots;
         RenderOrderVector _order;
         bool _textureImageUnitPerSlot;
-        ResourcePolicy _rp;
         std::set<int> _reservedSlots;
     };
 
@@ -97,8 +96,6 @@ namespace osgEarth
 
         virtual void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const { }
 
-        virtual void applyResourcePolicy( const ResourcePolicy& rp, TextureLayout& layout ) const { }
-        
         virtual osg::Shader* createSamplerFunction( 
             UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const { return 0L; }
     };
@@ -115,8 +112,6 @@ namespace osgEarth
          * Constructs a new compositor.
          */
         TextureCompositor( const TerrainOptions& options );
-            //const TerrainOptions::CompositingTechnique& tech =TerrainOptions::COMPOSITING_AUTO,
-            //bool lodBlending =false );
 
         /**
          * Gets the actual technique selected by the compositor. This might not be the same
@@ -130,11 +125,6 @@ namespace osgEarth
          * You should call this any time the map model change happens.
          */
         void applyMapModelChange( const MapModelChange& change );
-
-        /**
-         * Applies a new resource policy to the texture layout.
-         */
-        void applyResourcePolicy( const ResourcePolicy& policy );
 
         /**
          * Returns true if the compositor implementation supports the ability to update an individual

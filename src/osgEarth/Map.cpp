@@ -564,16 +564,6 @@ Map::removeTerrainMaskLayer()
     }
 }
 
-osg::TransferFunction1D* Map::getContourTransferFunction(void) const
-{
-  return _contourTransferFunction;
-}
-        
-void Map::setContourTransferFunction(osg::TransferFunction1D* transferFunction)
-{
-  _contourTransferFunction = transferFunction;
-}
-
 void
 Map::calculateProfile()
 {

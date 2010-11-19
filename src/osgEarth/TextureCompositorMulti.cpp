@@ -344,14 +344,6 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
     }
 }
 
-void
-TextureCompositorMultiTexture::applyResourcePolicy(const ResourcePolicy& rp,
-                                                   TextureLayout& layout ) const
-{
-    // multitexture mode maps slots to texture image units:
-    layout.setReservedSlots( rp.getReservedTextureImageUnits() );
-}
-
 osg::Shader*
 TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
                                                      const std::string& functionName,

@@ -445,13 +445,16 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
     if ( _terrainEngine.valid() )
     {
         osg::Node* child = _terrainEngine.get();
-        for( osg::Group* g = child->getParent(0); g != this; child = g, g = g->getParent(0) )
+        for( osg::Group* g = child->getParent(0); g != _terrainEngineContainer.get(); )
         {
             if ( g == decorator )
             {
                 g->getParent(0)->replaceChild( g, child );
+                g->removeChild( child );
                 break;
             }
+            child = g;
+            g = g->getParent(0);
         }
         dirtyBound();
     }

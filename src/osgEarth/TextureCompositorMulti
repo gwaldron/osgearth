@@ -46,8 +46,6 @@ namespace osgEarth
             const GeoImage& preparedImage, const GeoExtent& tileExtent,
             const TextureLayout& layout ) const;
 
-        void applyResourcePolicy( const ResourcePolicy& policy, TextureLayout& layout ) const;
-        
         osg::Shader* createSamplerFunction(
             UID layerUID, 
             const std::string& functionName,

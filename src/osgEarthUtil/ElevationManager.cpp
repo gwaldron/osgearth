@@ -5,12 +5,14 @@
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 
-using namespace osgEarthUtil;
+#define LC "[ElevationManager] "
+
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace OpenThreads;
 
 ElevationManager::ElevationManager( Map* map ) :
-_map( map )
+_mapf( map, Map::ELEVATION_LAYERS )
 {
     postCTOR();
 }
@@ -18,29 +20,22 @@ _map( map )
 void
 ElevationManager::postCTOR()
 {
-    _lastMapRevision = -1;
     _tileSize = 0;
     _maxDataLevel = 0;
     _maxCacheSize = 100;
-    _technique = TECHNIQUE_GEOMETRIC;
+    _technique = TECHNIQUE_PARAMETRIC;
     _interpolation = INTERP_BILINEAR;
-
-    checkForMapUpdates();
 }
 
 void
-ElevationManager::checkForMapUpdates()
+ElevationManager::sync()
 {
-    int mapRev = _map->getDataModelRevision();
-    if ( _lastMapRevision != mapRev )
+    if ( _mapf.sync() || _tileSize == 0 || _maxDataLevel == 0 )
     {
-        Threading::ScopedReadLock lock( _map->getMapDataMutex() );
-
         _tileSize = 0;
         _maxDataLevel = 0;
 
-        const MapLayerList& hflayers = _map->getHeightFieldMapLayers();
-        for( MapLayerList::const_iterator i = hflayers.begin(); i != hflayers.end(); i++ )
+        for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
         {
             // we need the maximum tile size
             int layerTileSize = i->get()->getTileSize();
@@ -52,15 +47,7 @@ ElevationManager::checkForMapUpdates()
             if ( layerMaxDataLevel > _maxDataLevel )
                 _maxDataLevel = layerMaxDataLevel;
         }
-
-        _lastMapRevision = mapRev;
     }
-}
-
-Map*
-ElevationManager::getMap() const
-{
-    return _map.get();
 }
 
 ElevationManager::Technique
@@ -106,8 +93,17 @@ ElevationManager::getElevation(double x, double y,
                                double& out_elevation,
                                double& out_resolution)
 {
-    checkForMapUpdates();
+    sync();
+    return getElevationImpl(x, y, resolution, srs, out_elevation, out_resolution);
+}
 
+bool
+ElevationManager::getElevationImpl(double x, double y,
+                                   double resolution,
+                                   const SpatialReference* srs,
+                                   double& out_elevation,
+                                   double& out_resolution)
+{
     if ( _maxDataLevel == 0 || _tileSize == 0 )
     {
         // this means there are no heightfields.
@@ -117,7 +113,7 @@ ElevationManager::getElevation(double x, double y,
    
     // this is the ideal LOD for the requested resolution:
     unsigned int idealLevel = resolution > 0.0
-        ? _map->getProfile()->getLevelOfDetailForHorizResolution( resolution, _tileSize )
+        ? _mapf.getProfile()->getLevelOfDetailForHorizResolution( resolution, _tileSize )
         : _maxDataLevel;        
 
     // based on the heightfields available, this is the best we can theorically do:
@@ -125,29 +121,28 @@ ElevationManager::getElevation(double x, double y,
     
     // transform the input coords to map coords:
     double map_x = x, map_y = y;
-    if ( srs && !srs->isEquivalentTo( _map->getProfile()->getSRS() ) )
+    if ( srs && !srs->isEquivalentTo( _mapf.getProfile()->getSRS() ) )
     {
-        if ( !srs->transform( x, y, _map->getProfile()->getSRS(), map_x, map_y ) )
+        if ( !srs->transform( x, y, _mapf.getProfile()->getSRS(), map_x, map_y ) )
         {
-            OE_WARN << "ElevationManager: coord transform failed" << std::endl;
+            OE_WARN << LC << "Fail: coord transform failed" << std::endl;
             return false;
         }
     }
 
-    osg::ref_ptr<TileKey> key;
     osg::ref_ptr<osg::HeightField> hf;
     osg::ref_ptr<osgTerrain::TerrainTile> tile;
 
     // get the tilekey corresponding to the tile we need:
-    key = _map->getProfile()->createTileKey( map_x, map_y, bestAvailLevel );
+    TileKey key = _mapf.getProfile()->createTileKey( map_x, map_y, bestAvailLevel );
     if ( !key.valid() )
     {
-        OE_WARN << "ElevationManager: coords fall outside map" << std::endl;
+        OE_WARN << LC << "Fail: coords fall outside map" << std::endl;
         return false;
     }
 
     // now, see if we already have this tile loaded somewhere:
-    osgTerrain::TileID tileId = key->getTileId();
+    osgTerrain::TileID tileId = key.getTileId();
 
     if ( !tile.valid() )
     {
@@ -179,7 +174,7 @@ ElevationManager::getElevation(double x, double y,
 
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
-        hf = _map->createHeightField( key.get(), true, _interpolation);
+        hf = _mapf.createHeightField( key, true, _interpolation );
 
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )
@@ -188,16 +183,16 @@ ElevationManager::getElevation(double x, double y,
             return false;
         }
 
-        GeoLocator* locator = GeoLocator::createForKey( key.get(), _map.get() );
+        GeoLocator* locator = GeoLocator::createForKey( key, _mapf.getMapInfo() );
 
-        tile = new VersionedTile(key, locator);
+        tile = new osgTerrain::TerrainTile();
 
         osgTerrain::HeightFieldLayer* layer = new osgTerrain::HeightFieldLayer( hf.get() );
         layer->setLocator( locator );
 
         tile->setElevationLayer( layer );
         tile->setRequiresNormals( false );
-        tile->setTerrainTechnique( new EarthTerrainTechnique() );
+        tile->setTerrainTechnique( new osgTerrain::GeometryTechnique );
 
         // store it in the local tile cache.
         // TODO: limit the size of the cache with a parallel FIFO list.
@@ -222,7 +217,7 @@ ElevationManager::getElevation(double x, double y,
     // finally it's time to get a height value:
     if ( _technique == TECHNIQUE_PARAMETRIC )
     {
-        const GeoExtent& extent = key->getGeoExtent();
+        const GeoExtent& extent = key.getExtent();
         double xInterval = extent.width()  / (double)(hf->getNumColumns()-1);
         double yInterval = extent.height() / (double)(hf->getNumRows()-1);
         out_elevation = (double) HeightFieldUtils::getHeightAtLocation( hf.get(), map_x, map_y, extent.xMin(), extent.yMin(), xInterval, yInterval );
@@ -232,21 +227,23 @@ ElevationManager::getElevation(double x, double y,
     {
         osg::Vec3d start, end, zero;
 
-        if ( _map->getCoordinateSystemType() == Map::CSTYPE_GEOCENTRIC )
+        if ( _mapf.getMapInfo().isGeocentric() )
         {
-            _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+            const osg::EllipsoidModel* ellip = _mapf.getProfile()->getSRS()->getEllipsoid();
+
+            ellip->convertLatLongHeightToXYZ(
                 osg::DegreesToRadians( map_y ),
                 osg::DegreesToRadians( map_x ),
                 50000,
                 start.x(), start.y(), start.z() );
 
-            _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+            ellip->convertLatLongHeightToXYZ(
                 osg::DegreesToRadians( map_y ),
                 osg::DegreesToRadians( map_x ),
                 -50000,
                 end.x(), end.y(), end.z() );
 
-            _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+            ellip->convertLatLongHeightToXYZ(
                 osg::DegreesToRadians( map_y ),
                 osg::DegreesToRadians( map_x ),
                 0.0,
@@ -290,35 +287,39 @@ ElevationManager::getPlacementMatrix(double x, double y, double z,
                                      double& out_elevation,
                                      double& out_resolution)
 {
+    sync();
+
+    const SpatialReference* mapSRS = _mapf.getProfile()->getSRS();
+
     // transform the input coords to map coords:
     double map_x = x, map_y = y;
-    if ( srs && !srs->isEquivalentTo( _map->getProfile()->getSRS() ) )
+    if ( srs && !srs->isEquivalentTo( mapSRS ) )
     {
-        if ( !srs->transform( x, y, _map->getProfile()->getSRS(), map_x, map_y ) )
+        if ( !srs->transform( x, y, mapSRS, map_x, map_y ) )
         {
-            OE_WARN << "ElevationManager: coord transform failed" << std::endl;
+            OE_WARN << LC << "getPlacementMatrix: coord transform failed" << std::endl;
             return false;
         }
     }
 
     // get the elevation under those coordinates:
-    if ( !getElevation( map_x, map_y, resolution, _map->getProfile()->getSRS(), out_elevation, out_resolution) )
+    if ( !getElevationImpl( map_x, map_y, resolution, mapSRS, out_elevation, out_resolution) )
     {
-        OE_WARN << "ElevationManager::getElevation() failed" << std::endl;
+        OE_WARN << LC << "getPlacementMatrix: getElevation failed" << std::endl;
         return false;
     }
 
-    if ( _map->getCoordinateSystemType() == Map::CSTYPE_PROJECTED )
+    if ( _mapf.getMapInfo().isGeocentric() )
     {
-        out_matrix = osg::Matrixd::translate( x, y, out_elevation + z );
-    }
-    else
-    {
-        _map->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
+        mapSRS->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
             osg::DegreesToRadians( map_y ),
             osg::DegreesToRadians( map_x ),
             out_elevation + z,
             out_matrix );
+    }
+    else
+    {
+        out_matrix = osg::Matrixd::translate( x, y, out_elevation + z );
     }
 
     return true;

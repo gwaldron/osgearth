@@ -243,34 +243,6 @@ namespace osgEarth
         void removeTerrainMaskLayer();
 
     public:
-
-        //TODO: move this elsewhere!
-
-        /**
-         * Gets the transfer function that is used to automatically determine the elevation based contour texture.
-         */
-        osg::TransferFunction1D* getContourTransferFunction(void) const;
-        
-        /// Sets the transfer function that is used to automatically determine the elevation based contour texture.
-        /**
-         * If a transfer function exists the class osgEarth::EarthTerrainTechnique creates for each tile a contour layer. A contour layer
-         * visualizes the elevation of a terrain by giving the elevation a dedicated color.
-         *
-         * The color is determined by using the transfer function. The transfer function stores for certain elevations a color. The more cells
-         * it has the smoother the color interpolation is. The color is determined by the elevation value only and is not influenced by an
-         * eventually set elevation (vertical) scaling by the map engine.
-         *
-         * Parameters for contour generation can be set in the map engine property class.
-         *
-         * @note The transfer function has to be set before the map is assigned to a map node.
-         *
-         * @remark The contour layer is created before any existing image layer.
-         *
-         * @sa osg::TransferFunction1D, osgEarth::MapEngineProperties, osgTerrain::ContourLayer
-         */
-        void setContourTransferFunction(osg::TransferFunction1D* transferFunction);
-
-    public:
         /**
          * Gets the user-provided options structure stored in this map.
          */
@@ -324,8 +296,10 @@ namespace osgEarth
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.
+         * Returns true if new Map model data was available and a sync occurred;
+         * returns false if nothing changed.
          */    
-        void sync( class MapFrame& frame ) const;    
+        bool sync( class MapFrame& frame ) const;    
 
         enum ModelParts {
             IMAGE_LAYERS     = 1 << 0,
@@ -358,8 +332,6 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profile;
 		osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
-
-        osg::ref_ptr<osg::TransferFunction1D> _contourTransferFunction; ///< Storing the colour data for elevation levels
 
     private:
         void calculateProfile();
@@ -419,9 +391,10 @@ namespace osgEarth
         MapFrame( const MapFrame& frame, const std::string& name ="" );
 
         /**
-         * Synchronizes this frame with the source map model (only if necessary).
+         * Synchronizes this frame with the source map model (only if necessary). Returns
+         * true is new data was synced; false if nothing changed.
          */
-        void sync();
+        bool sync();
 
         /** Accesses the profile/rendering info about the source map. */
         const MapInfo& getMapInfo() const { return _mapInfo; }

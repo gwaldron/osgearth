@@ -25,21 +25,6 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT ResourcePolicy
-    {
-    public:
-        ResourcePolicy();
-
-        bool reserveTextureImageUnit( int& result );
-        bool reserveTextureImageUnit( int unit );
-        void releaseTextureImageUnit( int unit );
-        bool isTextureImageUnitReserved( int unit ) const;
-        const std::set<int>& getReservedTextureImageUnits() const { return _reservedTUIs; }
-
-    protected:
-        std::set<int> _reservedTUIs;
-    };
-
     /**
      * The LoadingPolicy configures how the terrain engine loads map data.
      */
@@ -220,30 +205,12 @@ namespace osgEarth
          */
         optional<bool>& enableLighting() { return _enableLighting; }
         const optional<bool>& enableLighting() const { return _enableLighting; }  
-
-
-#if 0
-    /** @name Contour related properties
-      *       Default settings:
-      *        - magnification filter: linear;
-      *        - minifying filter: linear.
-      * @{ */
-
-      /// Returns the magnification filter mode
-      optional<osg::Texture::FilterMode>& getContourMagFilter(void) {return _contourMagFilter;}
-      /// Returns the magnification filter mode
-      optional<osg::Texture::FilterMode> const& getContourMagFilter(void) const {return _contourMagFilter;}
-
-      /// Returns the minifying filter mode
-      optional<osg::Texture::FilterMode>& getContourMinFilter(void) {return _contourMinFilter;}
-      /// Returns the minifying filter mode
-      optional<osg::Texture::FilterMode> const& getContourMinFilter(void) const {return _contourMinFilter;}
-	  
-    /** @} */
-#endif
-
-	  optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation;}
-	  optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
+    
+        /**
+         * The interpolation method to use when sampling heightfields.
+         */
+        optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
+        optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
     
     public:
         virtual Config getConfig() const;

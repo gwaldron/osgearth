@@ -400,6 +400,7 @@ ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
     buf << "void osgearth_vert_setupTexturing() \n"
         << "{ \n";
 
+    //TODO: gl_TexCoord et.al. are depcrecated so we should replace them ...
     for(int i=0; i<numTexCoordSets; ++i )
     {
         buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";

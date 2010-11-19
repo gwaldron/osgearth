@@ -241,16 +241,6 @@ TextureCompositor::applyMapModelChange( const MapModelChange& change )
     _layout.applyMapModelChange( change );
 }
 
-void
-TextureCompositor::applyResourcePolicy( const ResourcePolicy& policy )
-{
-    if ( _impl.valid() )
-    {
-        Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
-        _impl->applyResourcePolicy( policy, _layout );
-    }
-}
-
 bool
 TextureCompositor::supportsLayerUpdate() const
 {

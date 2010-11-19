@@ -78,8 +78,10 @@ updateFlag( osg::MatrixTransform* xf, const osg::Matrix& mat, double elev )
 // An event handler that will print out the elevation at the clicked point
 struct QueryElevationHandler : public osgGA::GUIEventHandler 
 {
-    QueryElevationHandler( osgEarthUtil::ElevationManager* elevMan, osg::MatrixTransform* flag )
-        :_elevMan(elevMan), _flag(flag), _mouseDown(false) { }
+    QueryElevationHandler(osgEarth::Util::ElevationManager* elevMan, 
+                          const osgEarth::SpatialReference* mapSRS,
+                          osg::MatrixTransform* flag )
+        : _elevMan(elevMan), _mapSRS(mapSRS), _flag(flag), _mouseDown(false) { }
 
     void update( float x, float y, osgViewer::View* view )
     {
@@ -91,9 +93,8 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             osg::Vec3d point = first.getWorldIntersectPoint();
             
             // transform it to map coordinates:
-            const SpatialReference* srs = _elevMan->getMap()->getProfile()->getSRS();
             double lat_rad, lon_rad, height;
-            srs->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, height );
+            _mapSRS->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, height );
             
             // query the elevation at the map point:
             double lat_deg = osg::RadiansToDegrees( lat_rad );
@@ -131,8 +132,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     }
 
     bool _mouseDown;
-    osg::ref_ptr<osgEarthUtil::ElevationManager> _elevMan;
+    osg::ref_ptr<osgEarth::Util::ElevationManager> _elevMan;
     osg::ref_ptr<osg::MatrixTransform> _flag;
+    osg::ref_ptr<const SpatialReference> _mapSRS;
 };
 
 
@@ -143,7 +145,7 @@ int main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // install the programmable manipulator.
-    osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
+    osgEarth::Util::EarthManipulator* manip = new osgEarth::Util::EarthManipulator();
     viewer.setCameraManipulator( manip );
 
 	osgEarth::MapNode* mapNode = NULL;
@@ -152,20 +154,18 @@ int main(int argc, char** argv)
 	if (!loadedNode)
 	{
 		// load up a map with an elevation layer:
-		osgEarth::Map *map = new osgEarth::Map();
+		osgEarth::Map* map = new osgEarth::Map();
 
 		// Add some imagery
 		{
-			TMSOptions* tms = new TMSOptions();
-			tms->url() = "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml";
-			map->addMapLayer( new osgEarth::ImageMapLayer( "BLUEMARBLE", tms ) );
+			TMSOptions tms( "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
+            map->addImageLayer( new osgEarth::ImageLayer( "BLUEMARBLE", tms ) );
 		}
 
 		// Add some elevation
 		{
-			TMSOptions* tms = new TMSOptions();
-			tms->url() = "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml";
-			map->addMapLayer( new osgEarth::HeightFieldMapLayer( "SRTM", tms ) );
+			TMSOptions tms( "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
+            map->addElevationLayer( new osgEarth::ElevationLayer( "SRTM", tms ) );
 		}
 		mapNode = new osgEarth::MapNode( map );
 	}
@@ -188,12 +188,12 @@ int main(int argc, char** argv)
     viewer.setSceneData( root );
 
     // AN elevation manager that is tied to the map node:
-    osgEarthUtil::ElevationManager* elevMan = new osgEarthUtil::ElevationManager( mapNode->getMap() );
-    elevMan->setTechnique( osgEarthUtil::ElevationManager::TECHNIQUE_PARAMETRIC );
+    osgEarth::Util::ElevationManager* elevMan = new osgEarth::Util::ElevationManager( mapNode->getMap() );
+    elevMan->setTechnique( osgEarth::Util::ElevationManager::TECHNIQUE_PARAMETRIC );
     elevMan->setMaxTilesToCache( 10 );
 
     // An event handler that will respond to mouse clicks:
-    viewer.addEventHandler( new QueryElevationHandler( elevMan, flag ) );
+    viewer.addEventHandler( new QueryElevationHandler( elevMan, mapNode->getMap()->getProfile()->getSRS(), flag ) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

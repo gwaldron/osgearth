@@ -310,13 +310,6 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 }
 
 void
-OSGTerrainEngineNode::onResourcePolicyChanged()
-{
-    if ( _texCompositor.valid() )
-        _texCompositor->applyResourcePolicy( getResourcePolicy() );
-}
-
-void
 OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
     _update_mapf->sync();

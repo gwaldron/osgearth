@@ -108,7 +108,7 @@ struct TileColorLayerRequest : public TileLayerRequest
 
     void operator()( ProgressCallback* progress )
     {
-        osg::ref_ptr<ImageLayer> imageLayer = _mapf.imageLayerByUID( _layerUID );
+        osg::ref_ptr<ImageLayer> imageLayer = _mapf.getImageLayerByUID( _layerUID );
         if ( imageLayer.valid() )
         {
             _result = _tileFactory->createImageLayer( _mapf.getMapInfo(), imageLayer.get(), _key, progress );
@@ -985,7 +985,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                         else // success..
                         {
                             //See if we even care about the request
-                            if ( !mapf.imageLayerByUID( r->_layerUID ) )
+                            if ( !mapf.getImageLayerByUID( r->_layerUID ) )
                             {
                                 //The maplayer was probably deleted
                                 OE_DEBUG << "Layer uid=" << r->_layerUID << " no longer exists, ignoring TileColorLayerRequest " << std::endl;

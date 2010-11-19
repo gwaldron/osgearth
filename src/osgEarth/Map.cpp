@@ -106,6 +106,36 @@ Map::getNumImageLayers() const
     return _imageLayers.size();
 }
 
+ImageLayer*
+Map::getImageLayerByName( const std::string& name ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    for( ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
+        if ( i->get()->getName() == name )
+            return i->get();
+    return 0L;
+}
+
+ImageLayer*
+Map::getImageLayerByUID( UID layerUID ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    for( ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
+        if ( i->get()->getUID() == layerUID )
+            return i->get();
+    return 0L;
+}
+
+ImageLayer*
+Map::getImageLayerAt( int index ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    if ( index >= 0 && index < (int)_imageLayers.size() )
+        return _imageLayers[index].get();
+    else
+        return 0L;
+}
+
 int
 Map::getElevationLayers( ElevationLayerVector& out_list, bool validLayersOnly ) const
 {
@@ -124,6 +154,36 @@ Map::getNumElevationLayers() const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
     return _elevationLayers.size();
+}
+
+ElevationLayer*
+Map::getElevationLayerByName( const std::string& name ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    for( ElevationLayerVector::const_iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); ++i )
+        if ( i->get()->getName() == name )
+            return i->get();
+    return 0L;
+}
+
+ElevationLayer*
+Map::getElevationLayerByUID( UID layerUID ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    for( ElevationLayerVector::const_iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); ++i )
+        if ( i->get()->getUID() == layerUID )
+            return i->get();
+    return 0L;
+}
+
+ElevationLayer*
+Map::getElevationLayerAt( int index ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    if ( index >= 0 && index < (int)_elevationLayers.size() )
+        return _elevationLayers[index].get();
+    else
+        return 0L;
 }
 
 int
@@ -1127,7 +1187,7 @@ MapFrame::indexOf( ModelLayer* layer ) const
 }
 
 ImageLayer*
-MapFrame::imageLayerByUID( UID uid ) const
+MapFrame::getImageLayerByUID( UID uid ) const
 {
     for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
         if ( i->get()->getUID() == uid )
@@ -1136,7 +1196,7 @@ MapFrame::imageLayerByUID( UID uid ) const
 }
 
 ImageLayer*
-MapFrame::imageLayerByName( const std::string& name ) const
+MapFrame::getImageLayerByName( const std::string& name ) const
 {
     for(ImageLayerVector::const_iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i )
         if ( i->get()->getName() == name )

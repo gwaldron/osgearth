@@ -7,6 +7,9 @@ Demonstrates use of the "agglite" feature rasterization driver.
   
     <options>
         <lighting>false</lighting>
+        <terrain>
+            <lod_blending>true</lod_blending>
+        </terrain>
     </options>
 
     <image name="world" driver="gdal">

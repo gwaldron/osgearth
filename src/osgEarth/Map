@@ -142,6 +142,21 @@ namespace osgEarth
         int getNumImageLayers() const;
 
         /**
+         * Gets an image layer by name.
+         */
+        ImageLayer* getImageLayerByName( const std::string& name ) const;
+
+        /**
+         * Gets an image layer by its unique ID.
+         */
+        ImageLayer* getImageLayerByUID( UID layerUID ) const;
+
+        /**
+         * Gets an image layer at the specified index.
+         */
+        ImageLayer* getImageLayerAt( int index ) const;
+
+        /**
          * Copies references of the elevation layers into the output list.
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
@@ -152,6 +167,21 @@ namespace osgEarth
          * Gets the number of elevation layers in the map.
          */
         int getNumElevationLayers() const;
+
+        /**
+         * Gets an elevation layer by name.
+         */
+        ElevationLayer* getElevationLayerByName( const std::string& name ) const;
+
+        /**
+         * Gets an elevation layer by its unique ID.
+         */
+        ElevationLayer* getElevationLayerByUID( UID layerUID ) const;
+
+        /**
+         * Gets an elevation layer at the specified index.
+         */
+        ElevationLayer* getElevationLayerAt( int index ) const;
 
         /** 
          * Copies references of the model layers into the output list.
@@ -164,6 +194,21 @@ namespace osgEarth
          * Gets the number of model layers in the map.
          */
         int getNumModelLayers() const;
+
+        /**
+         * Gets a model layer by name.
+         */
+        ModelLayer* getModelLayerByName( const std::string& name ) const;
+
+        /**
+         * Gets a model layer by its unique ID.
+         */
+        ModelLayer* getModelLayerByUID( UID layerUID ) const;
+
+        /**
+         * Gets the model layer at the specified index.
+         */
+        ModelLayer* getModelLayerAt( int index ) const;
 
         /**
          * Gets the model layer to draw as a terrain mask.
@@ -181,10 +226,10 @@ namespace osgEarth
          */
         void addImageLayer( ImageLayer* layer );
 
-				/**
-				 * Adds an image layer to the map at the specified index.
-				 */
-				void insertImageLayer( ImageLayer* layer, unsigned int index );
+        /**
+        * Adds an image layer to the map at the specified index.
+        */
+        void insertImageLayer( ImageLayer* layer, unsigned int index );
 
         /**
          * Removes an image layer from the map.
@@ -216,21 +261,21 @@ namespace osgEarth
          */
         void addModelLayer( ModelLayer* layer );
 
-				/**
-				 * Adds a new model layer to the map at the specified index.
-				 */
-				void insertModelLayer( ModelLayer* layer, unsigned int index );
+        /**
+         * Adds a new model layer to the map at the specified index.
+         */
+        void insertModelLayer( ModelLayer* layer, unsigned int index );
 
         /**
          * Removes a model layer from the map.
          */
         void removeModelLayer( ModelLayer* layer );
 
-				/**
+        /**
          * Moves (re-orders) an image layer to another index position in its list.
          */
         void moveModelLayer( ModelLayer* layer, unsigned int newIndex );
-        
+
         /**
          * Set a layer to use as a terrain mask. The map engine will draw
          * this layer using the stencil buffer.
@@ -404,17 +449,19 @@ namespace osgEarth
 
         /** The image layer stack snapshot */
         const ImageLayerVector& imageLayers() const { return _imageLayers; }
-        ImageLayer* imageLayerAt( int index ) const { return _imageLayers[index].get(); }
-        ImageLayer* imageLayerByUID( UID uid ) const;
-        ImageLayer* imageLayerByName( const std::string& name ) const;
+        ImageLayer* getImageLayerAt( int index ) const { return _imageLayers[index].get(); }
+        ImageLayer* getImageLayerByUID( UID uid ) const;
+        ImageLayer* getImageLayerByName( const std::string& name ) const;
 
         /** The elevation layer stack snapshot */
         const ElevationLayerVector& elevationLayers() const { return _elevationLayers; }
-        ElevationLayer* elevationLayerAt( int index ) const { return _elevationLayers[index].get(); }
+        ElevationLayer* getElevationLayerAt( int index ) const { return _elevationLayers[index].get(); }
+        ElevationLayer* getElevationLayerByUID( UID uid ) const;
+        ElevationLayer* getElevationLayerByName( const std::string& name ) const;
 
         /** The model layer set snapshot */
         const ModelLayerVector& modelLayers() const { return _modelLayers; }
-        ModelLayer* modelLayerAt(int index) const { return _modelLayers[index].get(); }
+        ModelLayer* getModelLayerAt(int index) const { return _modelLayers[index].get(); }
 
         /** Gets the index of the layer in the layer stack snapshot. */
         int indexOf( ImageLayer* layer ) const;

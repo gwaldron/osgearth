@@ -840,7 +840,10 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
             if ( _terrainOptions.lodBlending() == true && key == image_tiles[i]._imageTileKey )
             {
                 osg::ref_ptr<osg::Image> blendedImage;
-                createLodBlendedImage( image_tiles[i]._layerUID, key, geo_image.getImage(), terrain, blendedImage );
+                if ( ! createLodBlendedImage( image_tiles[i]._layerUID, key, geo_image.getImage(), terrain, blendedImage ) )
+                {
+                    blendedImage = geo_image.getImage();
+                }
 
                 tile->setCustomColorLayer( CustomColorLayer(
                     mapf.getImageLayerAt(i),
@@ -972,24 +975,27 @@ OSGTileFactory::createLodBlendedImage(UID layerUID, const TileKey& key,
             CustomColorLayer parentLayer;
             if ( parentTile->getCustomColorLayer( layerUID, parentLayer ) )
             {
-                GeoImage parentGI(
-                    const_cast<osg::Image*>( parentLayer.getImage() ),
-                    static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );
+                if ( parentLayer.getImage() && parentLayer.getLocator() )
+                    {
+                    GeoImage parentGI(
+                        const_cast<osg::Image*>( parentLayer.getImage() ),
+                        static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );
 
-                GeoImage cropped = parentGI.crop( key.getExtent() );
+                    GeoImage cropped = parentGI.crop( key.getExtent() );
 
-                osg::ref_ptr<osg::Image> parentImage;                            
-                ImageUtils::resizeImage( 
-                    cropped.getImage(),
-                    tileImage->s(),
-                    tileImage->t(),
-                    parentImage );
+                    osg::ref_ptr<osg::Image> parentImage;                            
+                    ImageUtils::resizeImage( 
+                        cropped.getImage(),
+                        tileImage->s(),
+                        tileImage->t(),
+                        parentImage );
 
-                output = ImageUtils::createMipmapBlendedImage(
-                    tileImage,
-                    parentImage.get() );
+                    output = ImageUtils::createMipmapBlendedImage(
+                        tileImage,
+                        parentImage.get() );
 
-                return true;
+                    return true;
+                }
             }
         }
     }

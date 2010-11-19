@@ -749,10 +749,10 @@ namespace osgEarthUtil
         // The rotation that makes the camera look down on the focal
         // point on the earth. This is equivalent to a rotation by
         // latitude, longitude.
-		osg::Quat               _centerRotation;
+        osg::Quat               _centerRotation;
         double                  _distance;
-		double                  _offset_x;
-		double                  _offset_y;
+        double                  _offset_x;
+        double                  _offset_y;
         osg::Vec3d              _previousUp;
         osg::ref_ptr<Task>      _task;
         osg::Timer_t            _time_last_frame;
@@ -788,7 +788,6 @@ namespace osgEarthUtil
         double _homeViewpointDuration;
 
         Action _last_action;
-
         // to support updating the camera after the update traversal (e.g., for tethering)
         osg::observer_ptr<osg::Camera> _viewCamera;
         
@@ -803,6 +802,10 @@ namespace osgEarthUtil
         osg::observer_ptr<CameraPostUpdateCallback> _cameraUpdateCB;
 
         void updateCamera( osg::Camera* eventCamera );
+        // Support snappy transition when the pointer leaves and
+        // returns to earth during a drag
+        osg::Vec3d               _lastPointOnEarth;
+
     };
 }
 #endif // OSGEARTHUTIL_EARTHMANIPULATOR

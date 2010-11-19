@@ -279,8 +279,10 @@ namespace osgEarth
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.
+         * Returns true if new Map model data was available and a sync occurred;
+         * returns false if nothing changed.
          */    
-        void sync( class MapFrame& frame ) const;    
+        bool sync( class MapFrame& frame ) const;    
 
         enum ModelParts {
             IMAGE_LAYERS     = 1 << 0,
@@ -313,8 +315,6 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profile;
 		osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
-
-        osg::ref_ptr<osg::TransferFunction1D> _contourTransferFunction; ///< Storing the colour data for elevation levels
 
     private:
         void calculateProfile();
@@ -374,9 +374,10 @@ namespace osgEarth
         MapFrame( const MapFrame& frame, const std::string& name ="" );
 
         /**
-         * Synchronizes this frame with the source map model (only if necessary).
+         * Synchronizes this frame with the source map model (only if necessary). Returns
+         * true is new data was synced; false if nothing changed.
          */
-        void sync();
+        bool sync();
 
         /** Accesses the profile/rendering info about the source map. */
         const MapInfo& getMapInfo() const { return _mapInfo; }

@@ -877,13 +877,13 @@ Map::createHeightField( const TileKey& key,
     return s_createHeightField( key, _elevationLayers, getProfile(), fallback, interpolation, samplePolicy, progress );
 }
 
-void
+bool
 Map::sync( MapFrame& frame ) const
 {
+    bool result = false;
+
     if ( frame._mapDataModelRevision != _dataModelRevision || !frame._initialized )
     {
-        //OE_INFO << LC << "Syncing map frame \"" << frame._name << "\"" << std::endl;
-
         // hold the read lock while copying the layer lists.
         Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
 
@@ -928,7 +928,10 @@ Map::sync( MapFrame& frame ) const
         // sync the revision numbers.
         frame._initialized = true;
         frame._mapDataModelRevision = _dataModelRevision;
+            
+        result = true;
     }    
+    return result;
 }
 
 //------------------------------------------------------------------------
@@ -970,10 +973,10 @@ _initialized( src._initialized )
     //no sync required here; we copied the arrays etc
 }
 
-void
+bool
 MapFrame::sync()
 {
-    _map->sync( *this );
+    return _map->sync( *this );
 }
 
 osg::HeightField*

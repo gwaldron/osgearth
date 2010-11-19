@@ -23,6 +23,7 @@
 #include "tinyxml.h"
 #include <algorithm>
 #include <sstream>
+#include <iomanip>
 
 
 using namespace osgEarth;
@@ -407,6 +408,8 @@ XmlDocument::load( std::istream& in )
 static void
 storeNode( const XmlNode* node, int depth, std::ostream& out )
 {
+    out << std::fixed; // always use fixed notation
+
     for( int k=0; k<depth*INDENT; k++ ) out << " ";
 
     if ( node->isElement() )

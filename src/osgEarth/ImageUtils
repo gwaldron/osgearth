@@ -39,10 +39,22 @@ namespace osgEarth
         /**
          * Resizes an image using nearest-neighbor resampling. Returns a new image, leaving
          * the input image unaltered.
+         *
+         * Note. If the output parameter is NULL, this method will allocate a new image and
+         * resize into that new image. If the output parameter is non-NULL, this method will
+         * assume that the output image is already allocated to the proper size, and will
+         * do a resize+copy into that image. In the latter case, it is your responsibility
+         * to make sure the output image is allocated to the proper size and with the proper
+         * pixel configuration (it must match that of the input image).
+         *
+         * If the output parameter is non-NULL, then the mipmapLevel is also considered.
+         * This lets you resize directly into a particular mipmap level of the output image.
          */
-        static osg::Image* resizeImage(
+        static bool resizeImage(
             const osg::Image* input, 
-            unsigned int new_s, unsigned int new_t );
+            unsigned int new_s, unsigned int new_t,
+            osg::ref_ptr<osg::Image>& output,
+            unsigned int mipmapLevel =0 );
 
         /**
          * Crops the input image to the dimensions provided and returns a
@@ -100,14 +112,14 @@ namespace osgEarth
         static osg::Image* createEmptyImage();
 
 		/**
-		 *Converts the given image to RGB
+		 *Converts the given image to RGB8
 		 */
-		static osg::Image* convertToRGB(const osg::Image* image);
+		static osg::Image* convertToRGB8(const osg::Image* image);
 
 		/**
-		 *Converts the given image to RGBA
+		 *Converts the given image to RGBA8
 		 */
-		static osg::Image* convertToRGBA(const osg::Image* image);
+		static osg::Image* convertToRGBA8(const osg::Image* image);
 
 		/**
 		 *Compares the image data of two images and determines if they are equivalent

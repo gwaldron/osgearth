@@ -310,13 +310,6 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 }
 
 void
-OSGTerrainEngineNode::onResourcePolicyChanged()
-{
-    if ( _texCompositor.valid() )
-        _texCompositor->applyResourcePolicy( getResourcePolicy() );
-}
-
-void
 OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
     _update_mapf->sync();
@@ -602,9 +595,9 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     TerrainEngineNode::validateTerrainOptions( options );
 
     // LOD blending is currently only compatible with STANDARD loading policy
-    if ( options.levelOfDetailBlending() == true && options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+    if ( options.lodBlending() == true && options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
     {
-        options.levelOfDetailBlending() = false;
+        //options.lodBlending() = false;
     }
     
     //nop for now.

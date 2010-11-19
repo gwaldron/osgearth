@@ -139,7 +139,7 @@ _onDemandDelay( 2 )
     else
     {        
         // undo the setting in osgTerrain::Terrain
-        setNumChildrenRequiringUpdateTraversal( 1 );
+        setNumChildrenRequiringUpdateTraversal( 0 );
     }
 
     // register for events in order to support ON_DEMAND frame scheme
@@ -387,7 +387,7 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
             for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); )
             {
                 CustomTile* tile = i->second.get();
-                if ( tile->getNumParents() == 0 && tile->getHasBeenTraversed() ) //tile->referenceCount() == 1 && tile->getHasBeenTraversed() )
+                if ( tile->getNumParents() == 0 && tile->getHasBeenTraversed() )
                 {
                     _tilesToShutDown.push_back( tile );
                     _tiles.erase( i++ );

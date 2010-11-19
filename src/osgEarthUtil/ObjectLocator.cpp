@@ -1,7 +1,7 @@
 #include <osgEarthUtil/ObjectLocator>
 
 using namespace osgEarth;
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 
 #define LC "[ObjectLocator] "
 

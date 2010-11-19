@@ -33,12 +33,15 @@ struct MapNodeMapCallbackProxy : public MapCallback
 {
     MapNodeMapCallbackProxy(MapNode* node) : _node(node) { }
 
-    void onModelLayerAdded( ModelLayer* layer ) {
-        _node->onModelLayerAdded( layer );
+    void onModelLayerAdded( ModelLayer* layer, unsigned int index ) {
+        _node->onModelLayerAdded( layer, index );
     }
     void onModelLayerRemoved( ModelLayer* layer ) {
         _node->onModelLayerRemoved( layer );
     }
+		void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+				_node->onModelLayerMoved( layer, oldIndex, newIndex);
+		}
     void onMaskLayerAdded( MaskLayer* layer ) {
         _node->onMaskLayerAdded( layer );
     }
@@ -126,14 +129,8 @@ MapNode::init()
 
     // Since we have global uniforms in the stateset, mark it dynamic so it is immune to
     // multi-threaded overlap
+    // TODO: do we need this anymore? there are no more global uniforms in here.. gw
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
-
-    // Set the layer unit uniforms
-    // TODO: depcrecate
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer0_unit", osg::Uniform::INT)->set(0);
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer1_unit", osg::Uniform::INT)->set(1);
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer2_unit", osg::Uniform::INT)->set(2);
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_Layer3_unit", osg::Uniform::INT)->set(3);
 
     _maskLayerNode = 0L;
     _lastNumBlacklistedFilenames = 0;
@@ -177,6 +174,21 @@ MapNode::init()
     _terrainEngine = TerrainEngineNodeFactory::create( _map.get(), terrainOptions );
     _terrainEngineInitialized = false;
 
+    // the engine needs a container so we can set lighting state on the container and
+    // not on the terrain engine itself. Setting the dynamic variance will prevent
+    // an optimizer from collapsing the empty group node.
+    _terrainEngineContainer = new osg::Group();
+    _terrainEngineContainer->setDataVariance( osg::Object::DYNAMIC );
+    this->addChild( _terrainEngineContainer.get() );
+
+    // initialize terrain-level lighting:
+    if ( terrainOptions.enableLighting().isSet() )
+    {
+        _terrainEngineContainer->getOrCreateStateSet()->setMode( GL_LIGHTING, terrainOptions.enableLighting().value() ? 
+            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+            osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    }
+
     if ( _terrainEngine.valid() )
     {
         // inform the terrain engine of the map information now so that it can properly
@@ -185,7 +197,7 @@ MapNode::init()
         // initialization.
         _terrainEngine->preinitialize( MapInfo(_map.get()), terrainOptions );
 
-        this->addChild( _terrainEngine.get() );
+        _terrainEngineContainer->addChild( _terrainEngine.get() );
     }
     else
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
@@ -193,9 +205,10 @@ MapNode::init()
     // install any pre-existing model layers:
     ModelLayerVector modelLayers;
     _map->getModelLayers( modelLayers );
-    for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++ )
+		int modelLayerIndex = 0;
+    for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++, modelLayerIndex++ )
     {
-        onModelLayerAdded( k->get() );
+        onModelLayerAdded( k->get(), modelLayerIndex );
     }
 
     // install any pre-existing mask layer:
@@ -274,7 +287,7 @@ MapNode::isGeocentric() const
 }
 
 void
-MapNode::onModelLayerAdded( ModelLayer* layer )
+MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
     osg::Node* node = layer->getOrCreateNode();
 
@@ -296,7 +309,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer )
             }
             else
             {
-               _models->addChild( node );
+							_models->insertChild( index, node );
             }
 
             ModelSource* ms = layer->getModelSource();
@@ -335,6 +348,32 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
             }
             
             _modelLayerNodes.erase( i );
+        }
+        
+        dirtyBound();
+    }
+}
+
+void
+MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex )
+{
+		if ( layer )
+    {
+        // look up the node associated with this model layer.
+        ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
+        if ( i != _modelLayerNodes.end() )
+        {
+            osg::Node* node = i->second;
+            
+            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            {
+                // treat overlay node as a special case
+            }
+            else
+            {
+                _models->removeChild( node );
+								_models->insertChild( newIndex, node );
+            }
         }
         
         dirtyBound();
@@ -406,13 +445,16 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
     if ( _terrainEngine.valid() )
     {
         osg::Node* child = _terrainEngine.get();
-        for( osg::Group* g = child->getParent(0); g != this; child = g, g = g->getParent(0) )
+        for( osg::Group* g = child->getParent(0); g != _terrainEngineContainer.get(); )
         {
             if ( g == decorator )
             {
                 g->getParent(0)->replaceChild( g, child );
+                g->removeChild( child );
                 break;
             }
+            child = g;
+            g = g->getParent(0);
         }
         dirtyBound();
     }

@@ -162,10 +162,13 @@ namespace osgEarth
         osg::ref_ptr<TerrainEngineNode> _terrainEngine;
         bool _terrainEngineInitialized;
 
+        osg::ref_ptr<osg::Group> _terrainEngineContainer;
+
     public: // MapCallback proxy
 
-        void onModelLayerAdded( ModelLayer* );
+        void onModelLayerAdded( ModelLayer*, unsigned int );
         void onModelLayerRemoved( ModelLayer* );
+				void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
         void onMaskLayerAdded( MaskLayer* );
         void onMaskLayerRemoved( MaskLayer* );
 

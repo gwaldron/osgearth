@@ -20,6 +20,7 @@
 #define OSGEARTH_TEXTURE_COMPOSITOR_TEX_ARRAY_H 1
 
 #include <osgEarth/TextureCompositor>
+#include <osg/Version>
 
 // only in newer OSG versions.
 #if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
@@ -31,6 +32,9 @@ namespace osgEarth
      */
     class TextureCompositorTexArray : public TextureCompositorTechnique
     {
+    public:
+        TextureCompositorTexArray( const TerrainOptions& options );
+
     public:
         void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;
 
@@ -50,6 +54,10 @@ namespace osgEarth
             const TextureLayout& layout ) const;
 
         osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const;
+
+    private:
+        bool _lodBlending;
+        float _lodTransitionTime;
     };
 }
 

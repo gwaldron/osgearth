@@ -35,7 +35,7 @@
 #define LC "[OceanSurfaceNode] "
 
 using namespace osgEarth;
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 
 typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
 
@@ -56,10 +56,10 @@ _oceanSurfaceTextureApplied(false)
 {
     rebuildShaders();
  
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period);   
-    getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanAnimationPeriod", osg::Uniform::FLOAT)->set(_oceanAnimationPeriod); 
+    getOrCreateStateSet()->getOrCreateUniform("osgearth_OceanPeriod", osg::Uniform::FLOAT)->set(_period);   
+    getOrCreateStateSet()->getOrCreateUniform("osgearth_OceanAnimationPeriod", osg::Uniform::FLOAT)->set(_oceanAnimationPeriod); 
 
-    osg::Uniform* oceanHeightUniform = getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT);
+    osg::Uniform* oceanHeightUniform = getOrCreateStateSet()->getOrCreateUniform("osgearth_OceanHeight", osg::Uniform::FLOAT);
     oceanHeightUniform->set( _waveHeight);
     oceanHeightUniform->setDataVariance( osg::Object::DYNAMIC);
 
@@ -138,7 +138,7 @@ OceanSurfaceNode::setWaveHeight(float waveHeight)
     if (_waveHeight != waveHeight)
     {
         _waveHeight = waveHeight;
-        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanHeight", osg::Uniform::FLOAT)->set(_waveHeight);
+        getOrCreateStateSet()->getOrCreateUniform("osgearth_OceanHeight", osg::Uniform::FLOAT)->set(_waveHeight);
         //TODO: consider rebuildShaders() instead..
     }
 }
@@ -171,7 +171,7 @@ OceanSurfaceNode::setPeriod(float period)
     if (_period !=period)
     {
         _period = period;
-        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanPeriod", osg::Uniform::FLOAT)->set(_period); 
+        getOrCreateStateSet()->getOrCreateUniform("osgearth_OceanPeriod", osg::Uniform::FLOAT)->set(_period); 
         //TODO: consider rebuildShaders() instead..    
     }
 }
@@ -236,7 +236,7 @@ OceanSurfaceNode::setOceanAnimationPeriod(float oceanAnimationPeriod)
     if (_oceanAnimationPeriod != oceanAnimationPeriod)
     {
         _oceanAnimationPeriod = oceanAnimationPeriod;
-        getOrCreateStateSet()->getOrCreateUniform("osgEarth_oceanAnimationPeriod", osg::Uniform::FLOAT)->set(oceanAnimationPeriod); 
+        getOrCreateStateSet()->getOrCreateUniform("osgearth_OceanAnimationPeriod", osg::Uniform::FLOAT)->set(oceanAnimationPeriod); 
         //TODO: consider rebuildShaders() instead..
     }
 }
@@ -357,16 +357,16 @@ OceanSurfaceNode::rebuildShaders()
     {
         std::stringstream buf;
 
-        buf << std::setprecision(10);
+        buf << std::fixed;
 
         buf << "uniform float osg_SimulationTime; \n"
             << "uniform mat4  osg_ViewMatrixInverse;\n"
             << "uniform mat4  osg_ViewMatrix;\n"
-            << "uniform float osgEarth_oceanHeight;\n"
-            << "uniform float osgEarth_oceanPeriod;\n"
-            << "uniform float osgEarth_oceanAnimationPeriod;\n"
-            << "varying float osgEarth_oceanAlpha;\n"
-            << "varying float osgearth_range; \n"
+            << "uniform float osgearth_OceanHeight;\n"
+            << "uniform float osgearth_OceanPeriod;\n"
+            << "uniform float osgearth_OceanAnimationPeriod;\n"
+            << "varying float osgearth_OceanAlpha;\n"
+            << "varying float osgearth_CameraRange; \n"
 
             << "vec3 xyz_to_lat_lon_height(in vec3 xyz); \n";
 
@@ -380,43 +380,43 @@ OceanSurfaceNode::rebuildShaders()
             buf << "vec4 " << MASK_SAMPLER_FUNC << "(); \n";
         }
 
-        buf << "void morph_ocean_verts() \n"
+        buf << "void osgearth_ocean_morphSurface() \n"
             << "{ \n"
             << "   mat4 modelMatrix = osg_ViewMatrixInverse * gl_ModelViewMatrix; \n"
             << "   vec4 vert = modelMatrix  * gl_Vertex; \n"           
             << "   vec3 vert3 = vec3(vert.x, vert.y, vert.z); \n"
             << "   vec3 latlon = xyz_to_lat_lon_height(vert3); \n"
-            << "   osgEarth_oceanAlpha = 1.0; \n";
+            << "   osgearth_OceanAlpha = 1.0; \n";
 
         if ( maskSampler )
         {
-            buf << "    osgEarth_oceanAlpha = 1.0 - (" << MASK_SAMPLER_FUNC << "()).a; \n";
+            buf << "    osgearth_OceanAlpha = 1.0 - (" << MASK_SAMPLER_FUNC << "()).a; \n";
         }
 
         if ( _invertMask )
-            buf << "    osgEarth_oceanAlpha = 1.0 - osgEarth_oceanAlpha; \n";
+            buf << "    osgearth_OceanAlpha = 1.0 - osgearth_OceanAlpha; \n";
 
-        buf << "   if ( osgearth_range <= " << _maxRange << " ) \n"
+        buf << "   if ( osgearth_CameraRange <= " << _maxRange << " ) \n"
             << "   { \n"
-            << "       float s = mix(1.0, 0.0, osgearth_range / " << _maxRange << "); \n" //Invert so it's between 0 and 1
-            << "       osgEarth_oceanAlpha *= s; \n"
+            << "       float s = mix(1.0, 0.0, osgearth_CameraRange / " << _maxRange << "); \n" //Invert so it's between 0 and 1
+            << "       osgearth_OceanAlpha *= s; \n"
             << "   } \n"
             << "   else \n"
             << "   { \n"
-            << "        osgEarth_oceanAlpha = 0.0; \n"
+            << "        osgearth_OceanAlpha = 0.0; \n"
             << "   } \n"
 
-            << "   if (osgEarth_oceanAlpha > 0.0) \n"
+            << "   if (osgearth_OceanAlpha > 0.0) \n"
             << "   { \n"
             << "       float PI_2 = 3.14158 * 2.0; \n"
-            << "       float period = PI_2/osgEarth_oceanPeriod; \n"
+            << "       float period = PI_2/osgearth_OceanPeriod; \n"
             << "       float half_period = period / 2.0; \n"
             << "       vec3 n = normalize(vert3);\n"
             << "       float theta = (mod(latlon.x, period) / period) * PI_2; \n"  
             << "       float phi = (mod(latlon.y, half_period) / half_period) * PI_2; \n"
             << "       float phase1 = osg_SimulationTime * 2.0; \n"
             << "       float phase2 = osg_SimulationTime * 4.0; \n"
-            << "       float waveHeight = (osgEarth_oceanAlpha) * osgEarth_oceanHeight; \n"
+            << "       float waveHeight = (osgearth_OceanAlpha) * osgearth_OceanHeight; \n"
             << "       float scale1 = sin(theta + phase1) * waveHeight; \n"
             << "       float scale2 = cos(phi + phase2) * waveHeight; \n"
             << "       float scale3 = sin(theta + phase2) * cos(phi + phase1) * waveHeight * 1.6; \n"
@@ -441,14 +441,14 @@ OceanSurfaceNode::rebuildShaders()
         {
             buf << "   osgearth_oceanSurfaceTexCoord.x =  latlon.x / " << _oceanSurfaceImageSizeRadians << "; \n"
                 << "   osgearth_oceanSurfaceTexCoord.y =  latlon.y / " << _oceanSurfaceImageSizeRadians << "; \n"
-                << "   osgearth_oceanSurfaceTexCoord.z = fract(osg_SimulationTime/osgEarth_oceanAnimationPeriod); \n";
+                << "   osgearth_oceanSurfaceTexCoord.z = fract(osg_SimulationTime/osgearth_OceanAnimationPeriod); \n";
         }
 
         buf << "}\n";
 
         // add as a custom user function in the shader composition:
         std::string vertSource = buf.str();
-        vp->setFunction( "morph_ocean_verts", vertSource, osgEarth::ShaderComp::LOCATION_PRE_VERTEX );
+        vp->setFunction( "osgearth_ocean_morphSurface", vertSource, osgEarth::ShaderComp::LOCATION_PRE_VERTEX );
     }
     
     // now we need a fragment function that will apply the ocean surface texture.
@@ -460,12 +460,12 @@ OceanSurfaceNode::rebuildShaders()
 
         buf << "uniform sampler3D osgearth_oceanSurfaceTex; \n"
             << "varying vec3      osgearth_oceanSurfaceTexCoord; \n"
-            << "varying float     osgEarth_oceanAlpha; \n"
+            << "varying float     osgearth_OceanAlpha; \n"
 
             << "void osgearth_ocean_applySurfaceTex( inout vec4 color ) \n"
             << "{ \n"
             << "    vec4 texel = texture3D(osgearth_oceanSurfaceTex, osgearth_oceanSurfaceTexCoord); \n"
-            << "    color = vec4( mix( color.rgb, texel.rgb, texel.a * osgEarth_oceanAlpha ), color.a); \n"
+            << "    color = vec4( mix( color.rgb, texel.rgb, texel.a * osgearth_OceanAlpha ), color.a); \n"
             << "} \n";
 
         std::string str = buf.str();

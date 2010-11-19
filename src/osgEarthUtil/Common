@@ -25,9 +25,8 @@
 #include <osg/NodeVisitor>
 
 // common utilities
-namespace osgEarthUtil
-{
+namespace osgEarth { namespace Util {
     
-}
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTHUTIL_COMMON_H

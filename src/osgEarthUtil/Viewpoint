@@ -22,7 +22,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/SpatialReference>
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {
     /**
      * Viewpoint data object. Stores a view configuration as a focal point
@@ -183,6 +183,7 @@ namespace osgEarthUtil
         osg::ref_ptr<const osgEarth::SpatialReference> _srs;
         bool _is_valid;
     };
-}
+
+} } // namespace osgEarth::Util
 
 #endif // OSGEARTHUTIL_VIEWPOINT

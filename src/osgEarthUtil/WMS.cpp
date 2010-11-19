@@ -25,7 +25,7 @@
 #include <osgDB/FileUtils>
 
 using namespace osgEarth;
-using namespace osgEarthUtil;
+using namespace osgEarth::Util;
 using namespace std;
 
 static

@@ -81,9 +81,18 @@ TextureLayout::applyMapModelChange( const MapModelChange& change )
                 *i = change.getImageLayer()->getUID();
                 
                 if ( change.getFirstIndex() >= (int)_order.size() )
+								{
                     _order.resize( change.getFirstIndex() + 1, -1 );
+										_order[change.getFirstIndex()] = slot;
+								}
+								else
+								{
+										if (_order[change.getFirstIndex()] == -1)
+												_order[change.getFirstIndex()] = slot;
+										else
+												_order.insert(_order.begin() + change.getFirstIndex(), slot);
+								}
 
-                _order[change.getFirstIndex()] = slot;
                 found = true;
                 break;
             }
@@ -232,16 +241,6 @@ TextureCompositor::applyMapModelChange( const MapModelChange& change )
     _layout.applyMapModelChange( change );
 }
 
-void
-TextureCompositor::applyResourcePolicy( const ResourcePolicy& policy )
-{
-    if ( _impl.valid() )
-    {
-        Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
-        _impl->applyResourcePolicy( policy, _layout );
-    }
-}
-
 bool
 TextureCompositor::supportsLayerUpdate() const
 {
@@ -370,7 +369,7 @@ TextureCompositor::init()
         (isAuto && caps.supportsGLSL(1.20f) && caps.supportsMultiTexture()) ) 
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
-        _impl = new TextureCompositorMultiTexture( true, *_options.levelOfDetailBlending() );
+        _impl = new TextureCompositorMultiTexture( true, _options );
         OE_INFO << LC << "Compositing technique = MULTITEXTURE/GPU" << std::endl;
     }
 
@@ -381,7 +380,7 @@ TextureCompositor::init()
         (isAuto && caps.supportsGLSL(1.30f) && caps.supportsTextureArrays()) )
     {
         _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
-        _impl = new TextureCompositorTexArray();
+        _impl = new TextureCompositorTexArray( _options );
         OE_INFO << LC << "Compositing technique = TEXTURE ARRAY" << std::endl;
     }
 
@@ -391,7 +390,7 @@ TextureCompositor::init()
     if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
-        _impl = new TextureCompositorMultiTexture( false, *_options.levelOfDetailBlending() );
+        _impl = new TextureCompositorMultiTexture( false, _options );
         OE_INFO << LC << "Compositing technique = MULTITEXTURE/FFP" << std::endl;
     }
 

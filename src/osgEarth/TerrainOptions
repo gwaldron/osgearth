@@ -25,21 +25,6 @@
 
 namespace osgEarth
 {
-    class OSGEARTH_EXPORT ResourcePolicy
-    {
-    public:
-        ResourcePolicy();
-
-        bool reserveTextureImageUnit( int& result );
-        bool reserveTextureImageUnit( int unit );
-        void releaseTextureImageUnit( int unit );
-        bool isTextureImageUnitReserved( int unit ) const;
-        const std::set<int>& getReservedTextureImageUnits() const { return _reservedTUIs; }
-
-    protected:
-        std::set<int> _reservedTUIs;
-    };
-
     /**
      * The LoadingPolicy configures how the terrain engine loads map data.
      */
@@ -182,8 +167,14 @@ namespace osgEarth
         /**
          * Level-of-detail blending
          */
-        optional<bool>& levelOfDetailBlending() { return _lodBlending; }
-        const optional<bool>& levelOfDetailBlending() const { return _lodBlending; }
+        optional<bool>& lodBlending() { return _lodBlending; }
+        const optional<bool>& lodBlending() const { return _lodBlending; }
+
+        /**
+         * Transition time, in seconds, for tile image fade-in when LOD blending is enabled
+         */
+        optional<float>& lodTransitionTime() { return _lodTransitionTimeSeconds; }
+        const optional<float>& lodTransitionTime() const { return _lodTransitionTimeSeconds; }
 
         /**
          * Available techniques for compositing image layers at runtime.
@@ -214,30 +205,12 @@ namespace osgEarth
          */
         optional<bool>& enableLighting() { return _enableLighting; }
         const optional<bool>& enableLighting() const { return _enableLighting; }  
-
-
-#if 0
-    /** @name Contour related properties
-      *       Default settings:
-      *        - magnification filter: linear;
-      *        - minifying filter: linear.
-      * @{ */
-
-      /// Returns the magnification filter mode
-      optional<osg::Texture::FilterMode>& getContourMagFilter(void) {return _contourMagFilter;}
-      /// Returns the magnification filter mode
-      optional<osg::Texture::FilterMode> const& getContourMagFilter(void) const {return _contourMagFilter;}
-
-      /// Returns the minifying filter mode
-      optional<osg::Texture::FilterMode>& getContourMinFilter(void) {return _contourMinFilter;}
-      /// Returns the minifying filter mode
-      optional<osg::Texture::FilterMode> const& getContourMinFilter(void) const {return _contourMinFilter;}
-	  
-    /** @} */
-#endif
-
-	  optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation;}
-	  optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
+    
+        /**
+         * The interpolation method to use when sampling heightfields.
+         */
+        optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
+        optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
     
     public:
         virtual Config getConfig() const;
@@ -257,12 +230,12 @@ namespace osgEarth
         optional<bool> _normalizeEdges;
         optional<bool> _combineLayers;
         optional<LoadingPolicy> _loadingPolicy;
-        //optional<LayeringTechnique> _layeringTechnique;
         optional<CompositingTechnique> _compositingTech;
         optional<int> _maxLOD;
         optional<bool> _enableLighting;
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
+        optional<float> _lodTransitionTimeSeconds;
 #if 0
         optional<osg::Texture::FilterMode> _contourMagFilter;
         optional<osg::Texture::FilterMode> _contourMinFilter;

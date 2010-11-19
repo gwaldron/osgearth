@@ -29,7 +29,7 @@
 
 #include <osgEarthUtil/Common>
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {	
 
     /**
@@ -97,6 +97,7 @@ namespace osgEarthUtil
 
 
 	};
-}
+
+} } // namespace osgEarth::Util
 
 #endif //OSGEARTHUTIL_CLAMPCALLBACK

@@ -36,7 +36,7 @@ namespace osgGA {
 #include <osgGA/MatrixManipulator>
 #endif
 
-namespace osgEarthUtil
+namespace osgEarth { namespace Util
 {
     /** 
      * A programmable manipulator suitable for use with geospatial terrains.
@@ -807,5 +807,7 @@ namespace osgEarthUtil
         osg::Vec3d               _lastPointOnEarth;
 
     };
-}
+
+} } // namespace osgEarth::Util
+
 #endif // OSGEARTHUTIL_EARTHMANIPULATOR

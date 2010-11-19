@@ -163,7 +163,7 @@ int main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     // install the programmable manipulator.
-    osgEarthUtil::EarthManipulator* manip = new osgEarthUtil::EarthManipulator();
+    osgEarth::Util::EarthManipulator* manip = new osgEarth::Util::EarthManipulator();
     viewer.setCameraManipulator( manip );
 
     osgEarth::MapNode* mapNode = NULL;
@@ -208,10 +208,10 @@ int main(int argc, char** argv)
     if ( mapNode->getMap()->isGeocentric() )
     {
         manip->setHomeViewpoint( 
-            osgEarthUtil::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
+            osgEarth::Util::Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
 
         // add a handler that will automatically calculate good clipping planes
-        viewer.addEventHandler( new osgEarthUtil::AutoClipPlaneHandler() );
+        viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler() );
     }
     // A flag so we can see where we clicked
     osg::MatrixTransform* flag = createFlag();

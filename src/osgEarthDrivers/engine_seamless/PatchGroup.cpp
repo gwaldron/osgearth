@@ -50,8 +50,7 @@ PatchGroup::~PatchGroup()
 
 void PatchGroup::getPatchExtents(Vec2d& lowerLeft, Vec2d& upperRight) const
 {
-    const PatchOptions* poptions
-        = dynamic_cast<const PatchOptions*>(getDatabaseOptions());
+    const PatchOptions* poptions = getOptions();
     if (!poptions)
     {
         lowerLeft = Vec2d(0.0, 0.0);

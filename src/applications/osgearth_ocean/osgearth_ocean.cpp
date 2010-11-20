@@ -249,7 +249,7 @@ int main(int argc, char** argv)
         if ( mapNode )
         {
             osgEarth::MapFrame mapf( mapNode->getMap() );
-            ocean->setOceanMaskImageLayer( mapf.imageLayerByName( maskLayerName ) );
+            ocean->setOceanMaskImageLayer( mapf.getImageLayerByName( maskLayerName ) );
         }
     }
 

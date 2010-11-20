@@ -269,7 +269,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
         _texCompositor->applyMapModelChange( MapModelChange(
             MapModelChange::ADD_IMAGE_LAYER,
             _update_mapf->getRevision(),
-            _update_mapf->imageLayerAt(i),
+            _update_mapf->getImageLayerAt(i),
             i ) );
     }
 
@@ -375,7 +375,8 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             tile->getKey().getLevelOfDetail() == 1)
         {
             // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
-            geoImage = _tileFactory->createValidGeoImage( layerAdded, tile->getKey() );
+            TileKey geoImageKey = tile->getKey();
+            _tileFactory->createValidGeoImage( layerAdded, tile->getKey(), geoImage, geoImageKey );
             imageLOD = tile->getKey().getLevelOfDetail();
         }
         else

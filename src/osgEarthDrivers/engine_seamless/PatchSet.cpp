@@ -92,7 +92,7 @@ Node* PatchSet::createPatchGroup(const std::string& filename,
                                  PatchOptions* poptions)
 {
     PatchGroup* pgroup = new PatchGroup;
-    pgroup->setDatabaseOptions(poptions);
+    pgroup->setOptions(poptions);
     Transform* patch = createPatch(filename, poptions);
     BoundingSphere bsphere = patch->getBound();
     pgroup->setCenter(bsphere.center());

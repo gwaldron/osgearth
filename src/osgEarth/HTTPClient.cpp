@@ -21,6 +21,7 @@
 #include <curl/types.h>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
+#include <osgEarth/Version>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/Notify>
@@ -30,6 +31,8 @@
 #include <iterator>
 #include <iostream>
 #include <algorithm>
+
+#define LC "[HTTPClient] "
 
 using namespace osgEarth;
 
@@ -242,11 +245,15 @@ HTTPResponse::getMimeType() const {
 
 /****************************************************************************/
 
+#define QUOTE_(X) #X
+#define QUOTE(X) QUOTE_(X)
+#define USER_AGENT "osgearth" QUOTE(OSGEARTH_MAJOR_VERSION) "." QUOTE(OSGEARTH_MINOR_VERSION)
+
 typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> >    ThreadClientMap;        
 static OpenThreads::Mutex          _threadClientMapMutex;
 static ThreadClientMap             _threadClientMap;
 static optional<ProxySettings>     _proxySettings;
-static std::string                 _userAgent = "osgearth/1.4";
+static std::string                 _userAgent = USER_AGENT;
 
 HTTPClient& HTTPClient::getClient()
 {
@@ -276,7 +283,7 @@ HTTPClient::HTTPClient()
 		userAgent = std::string(userAgentEnv);        
     }
 
-	OE_DEBUG << "HTTPClient setting userAgent=" << userAgent << std::endl;
+	OE_DEBUG << LC << "HTTPClient setting userAgent=" << userAgent << std::endl;
 
     curl_easy_setopt( _curl_handle, CURLOPT_USERAGENT, userAgent.c_str() );
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEFUNCTION, osgEarth::StreamObjectReadCallback );
@@ -374,8 +381,8 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
     line = tempbuf;
     if ( line != bstr )
     {
-        OE_WARN
-            << "[osgEarth::HTTPClient] HTTPClient.decodeMultipartStream: protocol violation; "
+        OE_WARN << LC 
+            << "decodeMultipartStream: protocol violation; "
             << "expecting boundary; instead got: \"" 
             << line
             << "\"" << std::endl;
@@ -489,7 +496,7 @@ HTTPClient::readString(const std::string& filename,
 HTTPResponse
 HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
 {
-    OE_DEBUG << "[HTTPClient] doGet " << request.getURL() << std::endl;
+    OE_DEBUG << LC << "doGet " << request.getURL() << std::endl;
 
     const osgDB::AuthenticationMap* authenticationMap = (options && options->getAuthenticationMap()) ? 
             options->getAuthenticationMap() :
@@ -548,14 +555,14 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 		bufStr = buf.str();
         proxy_addr = bufStr;
     
-        OE_DEBUG << "[osgEarth::HTTPClient] setting proxy: " << proxy_addr << std::endl;
+        OE_DEBUG << LC << "setting proxy: " << proxy_addr << std::endl;
 		//curl_easy_setopt( _curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1 ); 
         curl_easy_setopt( _curl_handle, CURLOPT_PROXY, proxy_addr.c_str() );
 
 		//Setup the proxy authentication if setup
 		if (!proxy_auth.empty())
 		{
-			OE_DEBUG << "[osgEarth::HTTPClient] Setting up proxy authentication " << proxy_auth << std::endl;
+			OE_DEBUG << LC << "Setting up proxy authentication " << proxy_auth << std::endl;
 			curl_easy_setopt( _curl_handle, CURLOPT_PROXYUSERPWD, proxy_auth.c_str());
 		}
     }
@@ -625,12 +632,12 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 	{
 		long connect_code = 0L;
         curl_easy_getinfo( _curl_handle, CURLINFO_HTTP_CONNECTCODE, &connect_code );
-		OE_DEBUG << "[HTTPClient] proxy connect code " << connect_code << std::endl;
+		OE_DEBUG << LC << "proxy connect code " << connect_code << std::endl;
 	}
 	
     curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );     
 
-	OE_DEBUG << "[HTTPClient] got response, code = " << response_code << std::endl;
+	OE_DEBUG << LC << "got response, code = " << response_code << std::endl;
 
     HTTPResponse response( response_code );
    
@@ -641,8 +648,8 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         curl_easy_getinfo( _curl_handle, CURLINFO_CONTENT_TYPE, &content_type_cp );
         if ( content_type_cp == NULL )
         {
-            OE_NOTICE 
-                << "[osgEarth::HTTPClient] NULL Content-Type (protocol violation) " 
+            OE_NOTICE << LC
+                << "NULL Content-Type (protocol violation) " 
                 << "URL=" << request.getURL() << std::endl;
             return NULL;
         }
@@ -734,7 +741,7 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
     }
     else
     {
-        OE_WARN << "[osgEarth::HTTPClient] Error downloading file " << filename << std::endl;
+        OE_WARN << LC << "Error downloading file " << filename << std::endl;
         return false;
     } 
 }
@@ -757,7 +764,7 @@ HTTPClient::doReadImageFile(const std::string& filename,
 
             // try to look up a reader by mime-type first:
             std::string mimeType = response.getMimeType();
-            OE_DEBUG << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+            OE_DEBUG << LC << "Looking up extension for mime-type " << mimeType << std::endl;
             if ( !mimeType.empty() )
             {
                 reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
@@ -774,7 +781,7 @@ HTTPClient::doReadImageFile(const std::string& filename,
 
             if (!reader)
             {
-                OE_WARN << "HTTPClient: Can't find an OSG plugin to read "<<filename<<std::endl;
+                OE_WARN << LC << "Can't find an OSG plugin to read "<<filename<<std::endl;
                 result = RESULT_NO_READER;
             }
 
@@ -789,9 +796,9 @@ HTTPClient::doReadImageFile(const std::string& filename,
                 {
                     if ( !rr.message().empty() )
                     {
-                        OE_WARN << "HTTPClient: HTTP error: " << rr.message() << std::endl;
+                        OE_WARN << LC << "HTTP error: " << rr.message() << std::endl;
                     }
-                    OE_WARN << "HTTPClient: " << reader->className() << " failed to read image from " << filename << std::endl;
+                    OE_WARN << LC << reader->className() << " failed to read image from " << filename << std::endl;
                     result = RESULT_READER_ERROR;
                 }
             }
@@ -846,7 +853,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
             if (!reader)
             {
                 std::string mimeType = response.getMimeType();
-                OE_DEBUG << "HTTPClient: Looking up extension for mime-type " << mimeType << std::endl;
+                OE_DEBUG << LC << "Looking up extension for mime-type " << mimeType << std::endl;
                 if ( mimeType.length() > 0 )
                 {
                     reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
@@ -856,7 +863,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
             // if we still didn't get it, bad news
             if (!reader)
             {
-                OE_NOTICE<<"Error: No ReaderWriter for file "<<filename<<std::endl;
+                OE_NOTICE<<LC<<"Error: No ReaderWriter for file "<<filename<<std::endl;
                 result = RESULT_NO_READER;
             }
 
@@ -871,7 +878,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
                 {
                     if ( rr.error() )
                     {
-                        OE_WARN << "HTTP Reader Error: " << rr.message() << std::endl;
+                        OE_WARN << LC << "HTTP Reader Error: " << rr.message() << std::endl;
                     }
                     result = RESULT_READER_ERROR;
                 }

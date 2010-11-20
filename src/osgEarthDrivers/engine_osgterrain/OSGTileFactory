@@ -112,9 +112,11 @@ public:
 
 
 
-    GeoImage createValidGeoImage(
+    bool createValidGeoImage(
         ImageLayer* layer,
         const TileKey& key,
+        GeoImage& out_image,
+        TileKey&  out_actualTileKey,
         ProgressCallback* progress  = 0);
 
     osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;

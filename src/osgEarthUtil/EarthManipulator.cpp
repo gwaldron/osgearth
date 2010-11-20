@@ -344,7 +344,8 @@ _local_pitch( rhs._local_pitch  ),
 _has_pending_viewpoint( rhs._has_pending_viewpoint ),
 _homeViewpoint( rhs._homeViewpoint.get() ),
 _homeViewpointDuration( rhs._homeViewpointDuration ),
-_after_first_frame( rhs._after_first_frame )
+_after_first_frame( rhs._after_first_frame ),
+_lastPointOnEarth( rhs._lastPointOnEarth )
 {
 }
 
@@ -451,6 +452,7 @@ EarthManipulator::reinitialize()
     _local_azim = 0.0;
     _local_pitch = 0.0;
     _has_pending_viewpoint = false;
+    _lastPointOnEarth.set(0.0, 0.0, 0.0);
 }
 
 bool
@@ -989,6 +991,7 @@ EarthManipulator::resetMouse( osgGA::GUIActionAdapter& aa )
     _continuous = false;
     _single_axis_x = 1.0;
     _single_axis_y = 1.0;
+    _lastPointOnEarth.set(0.0, 0.0, 0.0);
 }
 
 // this method will automatically install or uninstall the camera post-update callback 
@@ -2213,8 +2216,11 @@ void
 EarthManipulator::drag(double dx, double dy, osg::View* theView)
 {
     using namespace osg;
+    const osg::Vec3d zero(0.0, 0.0, 0.0);
+    if (_last_action._type != ACTION_EARTH_DRAG)
+        _lastPointOnEarth = zero;
 
-    osg::ref_ptr<osg::CoordinateSystemNode> csnSafe = _csn.get();
+    ref_ptr<osg::CoordinateSystemNode> csnSafe = _csn.get();
     double radiusEquator = csnSafe.valid() ? csnSafe->getEllipsoidModel()->getRadiusEquator() : 6378137.0;
 
     osgViewer::View* view = dynamic_cast<osgViewer::View*>(theView);
@@ -2230,21 +2236,26 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
         return;
     osg::Vec3d worldStartDrag;
     // drag start in camera coordinate system.
-    osg::Vec3d startDrag;
-    const osg::Vec3d zero(0.0, 0.0, 0.0);
     bool onEarth;
     if ((onEarth = screenToWorld(_ga_t1->getX(), _ga_t1->getY(),
                                   view, worldStartDrag)))
     {
-        startDrag = worldStartDrag * viewMat;
+        if (_lastPointOnEarth == zero)
+            _lastPointOnEarth = worldStartDrag;
+        else
+            worldStartDrag = _lastPointOnEarth;
     }
     else if (_is_geocentric)
     {
-        if ( csnSafe.valid() )
+        if (_lastPointOnEarth != zero)
+        {
+            worldStartDrag =_lastPointOnEarth;
+        }
+        else if (csnSafe.valid())
         {
             const osg::Vec3d startWinPt = getWindowPoint(view, _ga_t1->getX(),
                                                          _ga_t1->getY());
-            startDrag = calcTangentPoint(
+            const osg::Vec3d startDrag = calcTangentPoint(
                 zero, zero * viewMat, radiusEquator,
                 startWinPt);
             worldStartDrag = startDrag * viewMatInv;
@@ -2256,18 +2267,27 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     // from origin through transformed pointer coordinates
     const osg::Vec3d winpt = getWindowPoint(view, x, y);
     // Find new point to which startDrag has been moved
-    osg::Vec3d endDrag;
     osg::Vec3d worldEndDrag;
     osg::Quat worldRot;
     bool endOnEarth = screenToWorld(x, y, view, worldEndDrag);
     if (! endOnEarth)
     {
         Vec3d earthOrigin = zero * viewMat;
-        //endDrag = closestPtOnLine(zero, winpt, earthOrigin);
-        endDrag = calcTangentPoint(
-            zero, earthOrigin, radiusEquator,
-            winpt);
+        const osg::Vec3d endDrag = calcTangentPoint(
+            zero, earthOrigin, radiusEquator, winpt);
         worldEndDrag = endDrag * viewMatInv;
+    }
+    if (onEarth != endOnEarth)
+    {
+        std::streamsize oldPrecision = osgEarth::notify(INFO).precision(10);
+        OE_INFO << (onEarth ? "leaving earth\n" : "entering earth\n");
+        OE_INFO << "start drag: " << worldStartDrag.x() << " "
+                << worldStartDrag.y() << " "
+                << worldStartDrag.z() << "\n";
+        OE_INFO << "end drag: " << worldEndDrag.x() << " "
+                << worldEndDrag.y() << " "
+                << worldEndDrag.z() << "\n";
+        osgEarth::notify(INFO).precision(oldPrecision);
     }
     if (_is_geocentric)
     {

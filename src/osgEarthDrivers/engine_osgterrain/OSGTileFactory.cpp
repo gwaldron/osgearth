@@ -191,28 +191,30 @@ OSGTileFactory::createSubTiles( const MapFrame& mapf, CustomTerrain* terrain, co
     return tile_parent;
 }
 
-GeoImage
+bool
 OSGTileFactory::createValidGeoImage(ImageLayer* layer,
                                     const TileKey& key,
+                                    GeoImage& out_image,
+                                    TileKey&  out_actualTileKey,
                                     ProgressCallback* progress)
 {
     //TODO:  Redo this to just grab images from the parent TerrainTiles
     //Try to create the image with the given key
-    TileKey image_key = key;
+    out_actualTileKey = key;
 
-    GeoImage geo_image;
-
-    while (image_key.valid())
+    while (out_actualTileKey.valid())
     {
-        if ( layer->isKeyValid(image_key) )
+        if ( layer->isKeyValid(out_actualTileKey) )
         {
-            geo_image = layer->createImage( image_key, progress );
-            if (geo_image.valid()) 
-                return geo_image;
+            out_image = layer->createImage( out_actualTileKey, progress );
+            if ( out_image.valid() )
+            {
+                return true;
+            }
         }
-        image_key = image_key.createParentKey();
+        out_actualTileKey = out_actualTileKey.createParentKey();
     }
-    return geo_image;
+    return false;
 }
 
 bool
@@ -637,12 +639,13 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
 
 namespace
 {
-struct GeoImageData
-{
-    GeoImageData() : _layerUID(-1) { }
-    GeoImage _image;
-    UID      _layerUID;
-};
+    struct GeoImageData
+    {
+        GeoImageData() : _layerUID(-1) , _imageTileKey(0,0,0,0L) { }
+        GeoImage _image;
+        UID      _layerUID;
+        TileKey  _imageTileKey;
+    };
 }
 
 osg::Node*
@@ -655,7 +658,6 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
 
     typedef std::vector<GeoImageData> GeoImageDataVector;
     GeoImageDataVector image_tiles;
-    //GeoImageVector image_tiles;
 
     // Collect the image layers
     bool empty_map = mapf.imageLayers().size() == 0 && mapf.elevationLayers().size() == 0;
@@ -665,13 +667,13 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     {
         ImageLayer* layer = i->get();
         GeoImageData imageData;
-        //GeoImage image;
 
         // Only try to create images if the key is valid
         if ( layer->isKeyValid( key ) )
         {
             imageData._image = layer->createImage( key );
             imageData._layerUID = layer->getUID();
+            imageData._imageTileKey = key;
         }
 
         // always push images, even it they are empty, so that the image_tiles vector is one-to-one
@@ -726,22 +728,19 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     {
         if (!image_tiles[i]._image.valid())
         {
-            GeoImage image;
-            if (mapf.imageLayers()[i]->isKeyValid(key))
+            if (mapf.getImageLayerAt(i)->isKeyValid(key))
             {
                 //If the key was valid and we have no image, then something possibly went wrong with the image creation such as a server being busy.
-                image = createValidGeoImage(mapf.imageLayers()[i].get(), key);
+                createValidGeoImage(mapf.getImageLayerAt(i), key, image_tiles[i]._image, image_tiles[i]._imageTileKey);
             }
 
             //If we still couldn't create an image, either something is really wrong or the key wasn't valid, so just create a transparent placeholder image
-            if (!image.valid())
+            if (!image_tiles[i]._image.valid())
             {
                 //If the image is not valid, create an empty texture as a placeholder
-                image = GeoImage(ImageUtils::createEmptyImage(), key.getExtent());
+                image_tiles[i]._image = GeoImage(ImageUtils::createEmptyImage(), key.getExtent());
+                image_tiles[i]._imageTileKey = key;
             }
-
-            //Assign the new image to the proper place in the list
-            image_tiles[i]._image = image;
         }
     }
 
@@ -836,13 +835,18 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
             if ( mapInfo.isGeocentric() )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
-            if ( _terrainOptions.lodBlending() == true )
+            // if blending is on, AND if actual new data was loaded (instead of just reusing a parent tile),
+            // create a custom blended image.
+            if ( _terrainOptions.lodBlending() == true && key == image_tiles[i]._imageTileKey )
             {
                 osg::ref_ptr<osg::Image> blendedImage;
-                createLodBlendedImage( image_tiles[i]._layerUID, key, geo_image.getImage(), terrain, blendedImage );
+                if ( ! createLodBlendedImage( image_tiles[i]._layerUID, key, geo_image.getImage(), terrain, blendedImage ) )
+                {
+                    blendedImage = geo_image.getImage();
+                }
 
                 tile->setCustomColorLayer( CustomColorLayer(
-                    mapf.imageLayerAt(i),
+                    mapf.getImageLayerAt(i),
                     blendedImage.get(),
                     img_locator.get(),
                     key.getLevelOfDetail() ) );
@@ -850,7 +854,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
             else
             {
                 tile->setCustomColorLayer( CustomColorLayer(
-                    mapf.imageLayerAt(i),
+                    mapf.getImageLayerAt(i),
                     geo_image.getImage(),
                     img_locator.get(),
                     key.getLevelOfDetail() ) );
@@ -971,24 +975,27 @@ OSGTileFactory::createLodBlendedImage(UID layerUID, const TileKey& key,
             CustomColorLayer parentLayer;
             if ( parentTile->getCustomColorLayer( layerUID, parentLayer ) )
             {
-                GeoImage parentGI(
-                    const_cast<osg::Image*>( parentLayer.getImage() ),
-                    static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );
+                if ( parentLayer.getImage() && parentLayer.getLocator() )
+                    {
+                    GeoImage parentGI(
+                        const_cast<osg::Image*>( parentLayer.getImage() ),
+                        static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );
 
-                GeoImage cropped = parentGI.crop( key.getExtent() );
+                    GeoImage cropped = parentGI.crop( key.getExtent() );
 
-                osg::ref_ptr<osg::Image> parentImage;                            
-                ImageUtils::resizeImage( 
-                    cropped.getImage(),
-                    tileImage->s(),
-                    tileImage->t(),
-                    parentImage );
+                    osg::ref_ptr<osg::Image> parentImage;                            
+                    ImageUtils::resizeImage( 
+                        cropped.getImage(),
+                        tileImage->s(),
+                        tileImage->t(),
+                        parentImage );
 
-                output = ImageUtils::createMipmapBlendedImage(
-                    tileImage,
-                    parentImage.get() );
+                    output = ImageUtils::createMipmapBlendedImage(
+                        tileImage,
+                        parentImage.get() );
 
-                return true;
+                    return true;
+                }
             }
         }
     }

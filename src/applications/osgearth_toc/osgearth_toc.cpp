@@ -250,7 +250,7 @@ updateControlPanel()
 
         for( unsigned int i=0; i<mapf2.imageLayers().size(); ++i )
         {
-            createLayerItem( row++, -1, -1, mapf2.imageLayerAt(i), false );
+            createLayerItem( row++, -1, -1, mapf2.getImageLayerAt(i), false );
         }
     }
 }

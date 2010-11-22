@@ -329,41 +329,41 @@ Map::addImageLayer( ImageLayer* layer )
 void
 Map::insertImageLayer( ImageLayer* layer, unsigned int index )
 {
-  if ( layer )
-  {
-	  //Set options for the map from the layer
-	 layer->setReferenceURI( _mapOptions.referenceURI().value() );
-
-    //propagate the cache to the layer:
-    if ( _mapOptions.cache().isSet() && _mapOptions.cache()->cacheOnly().isSetTo( true ) )
-	  {
-		  layer->setCacheOnly( true );
-		}
-
-		//Set the Cache for the MapLayer to our cache.
-		layer->setCache( this->getCache() );
-
-    int newRevision;
-
-		// Add the layer to our stack.
+    if ( layer )
     {
-      Threading::ScopedWriteLock lock( _mapDataMutex );
+        //Set options for the map from the layer
+        layer->setReferenceURI( _mapOptions.referenceURI().value() );
 
-			if (index >= _imageLayers.size())
-				_imageLayers.push_back(layer);
-			else
-				_imageLayers.insert( _imageLayers.begin() + index, layer );
+        //propagate the cache to the layer:
+        if ( _mapOptions.cache().isSet() && _mapOptions.cache()->cacheOnly().isSetTo( true ) )
+        {
+            layer->setCacheOnly( true );
+        }
 
-      newRevision = ++_dataModelRevision;
-    }
+        //Set the Cache for the MapLayer to our cache.
+        layer->setCache( this->getCache() );
 
-    // a separate block b/c we don't need the mutex   
-    for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
-    {
-      i->get()->onMapModelChanged( MapModelChange(
-        MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
+        int newRevision;
+
+        // Add the layer to our stack.
+        {
+            Threading::ScopedWriteLock lock( _mapDataMutex );
+
+            if (index >= _imageLayers.size())
+                _imageLayers.push_back(layer);
+            else
+                _imageLayers.insert( _imageLayers.begin() + index, layer );
+
+            newRevision = ++_dataModelRevision;
+        }
+
+        // a separate block b/c we don't need the mutex   
+        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        {
+            i->get()->onMapModelChanged( MapModelChange(
+                MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
+        }	
     }	
-  }	
 }
 
 void
@@ -572,7 +572,7 @@ Map::addModelLayer( ModelLayer* layer )
 {
     if ( layer )
     {
-				unsigned int index = -1;
+        unsigned int index = -1;
 
         Revision newRevision;
         {
@@ -596,7 +596,7 @@ Map::addModelLayer( ModelLayer* layer )
 void
 Map::insertModelLayer( ModelLayer* layer, unsigned int index )
 {
-		if ( layer )
+    if ( layer )
     {
         Revision newRevision;
         {

@@ -289,7 +289,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 	}
 
 	//OE_NOTICE << "[osgEarth::MapLayer::createImage] " << key.str() << std::endl;
-	if ( !getTileSource() && !_actualCacheOnly ) //_cacheOnly == false )
+	if ( !_actualCacheOnly && !getTileSource()  )
 	{
 		OE_WARN << LC << "Error:  MapLayer does not have a valid TileSource, cannot create image " << std::endl;
 		return GeoImage::INVALID;
@@ -536,21 +536,23 @@ ImageLayer::createImageWrapper(const TileKey& key,
                                bool cacheInLayerProfile,
                                ProgressCallback* progress )
 {
-	TileSource* source = getTileSource();
-
 	osg::ref_ptr<osg::Image> image;
 
     if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
     {
 		image = _cache->getImage( key, _cacheSpec );
+
+        if (image.valid())
+	    {
+            OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
+    	}
     }
+    
+    TileSource* source = 0L;
+    if ( !image.valid() && _actualCacheOnly == false )
+        source = getTileSource();
 
-	if (image.valid())
-	{
-        OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
-	}
-
-	if (source && !image.valid() && _actualCacheOnly == false )
+	if ( source )
 	{
         //Only try to get the image if it's not in the blacklist
         if (!source->getBlacklist()->contains( key.getTileId() ))

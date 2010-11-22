@@ -195,7 +195,20 @@ osg::HeightField*
 ElevationLayer::createHeightField(const osgEarth::TileKey& key,
                                   ProgressCallback* progress)
 {
+    const Profile* layerProfile = getProfile();
     const Profile* mapProfile = key.getProfile();
+
+	if ( !layerProfile )
+	{
+		OE_WARN << LC << "Could not get a valid profile for Layer \"" << getName() << "\"" << std::endl;
+        return 0L;
+	}
+
+	if ( !_actualCacheOnly && !getTileSource() )
+	{
+		OE_WARN << LC << "Error: ElevationLayer does not have a valid TileSource, cannot create heightfield " << std::endl;
+		return 0L;
+	}
 
 	osg::ref_ptr<osg::HeightField> result;
 
@@ -220,7 +233,13 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key,
 		}
 	}
 
-	if (!result.valid() && getTileSource() && getTileSource()->isOK() )
+    //in cache-only mode, if the cache fetch failed, bail out.
+    if ( !result.valid() && _actualCacheOnly )
+    {
+        return 0L;
+    }
+
+	if ( !result.valid() && getTileSource() && getTileSource()->isOK() )
     {
 		//If the profiles are equivalent, get the HF from the TileSource.
 		if (key.getProfile()->isEquivalentTo( getProfile() ))

@@ -204,11 +204,11 @@ TerrainLayer::getTileSource() const
     const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
 	//Only load the TileSource if it hasn't been loaded previously and we aren't running strictly off the cache.
-	if ( !_tileSource.valid() && opt.cacheOnly() == false )
+	if ( !_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
 	{
         OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
         //Double check pattern
-        if (!_tileSource.valid() && opt.cacheOnly() == false )
+        if (!_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
         {
             const_cast<TerrainLayer*>(this)->initTileSource();
         }
@@ -223,7 +223,7 @@ TerrainLayer::getProfile() const
     {
         const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
-        if ( opt.cacheOnly() == false && !_tileSource.valid() )
+        if ( _actualCacheOnly == false && !_tileSource.valid() )
         {
             // Call getTileSource to make sure the TileSource is initialized
             getTileSource();
@@ -298,7 +298,10 @@ TerrainLayer::initTileSource()
     //Set the cache format to the native format of the TileSource if it isn't already set.
     _actualCacheFormat = opt.cacheFormat().value();
     if ( _actualCacheFormat.empty() )
+    {
         _actualCacheFormat = suggestCacheFormat();
+        _cacheSpec = CacheSpec( _cacheSpec.cacheId(), _actualCacheFormat, _cacheSpec.name() );
+    }
 
     if ( _tileSource.valid() )
     {

@@ -39,7 +39,8 @@ using namespace osgEarth;
 //------------------------------------------------------------------------
 
 Cache::Cache( const CacheOptions& options ) :
-osg::Object( true )
+osg::Object( true ),
+_options(options)
 {
     //NOP
 }
@@ -84,8 +85,10 @@ Cache::setHeightField( const TileKey& key, const CacheSpec& spec, osg::HeightFie
 static Threading::ReadWriteMutex s_mutex;
 
 DiskCache::DiskCache( const DiskCacheOptions& options ) :
+Cache( options ),
 _options( options )
 {
+    setName( "tilecache" );
     _writeWorldFilesOverride = getenv("OSGEARTH_WRITE_WORLD_FILES") != 0L;
 }
 
@@ -324,6 +327,7 @@ DiskCache::loadProperties(const std::string&           cacheId,
 MemCache::MemCache():
 _maxNumTilesInCache(16)
 {
+    setName( "mem" );
 }
 
 MemCache::MemCache( const MemCache& rhs, const osg::CopyOp& op ) :
@@ -355,12 +359,14 @@ MemCache::setImage(const osgEarth::TileKey& key, const CacheSpec& spec, osg::Ima
   setObject( key, spec, image );
 }
 
-osg::HeightField* MemCache::getHeightField( const TileKey& key,const CacheSpec& spec )
+osg::HeightField*
+MemCache::getHeightField( const TileKey& key,const CacheSpec& spec )
 {
   return dynamic_cast<osg::HeightField*>( getObject( key, spec ) );
 }
 
-void MemCache::setHeightField( const TileKey& key, const CacheSpec& spec, osg::HeightField* hf)
+void
+MemCache::setHeightField( const TileKey& key, const CacheSpec& spec, osg::HeightField* hf)
 {
     setObject( key, spec, hf );
 }
@@ -381,7 +387,8 @@ MemCache::purge( const std::string& cacheId, int olderThan, bool async )
     return true;
 }
 
-osg::Referenced* MemCache::getObject( const TileKey& key, const CacheSpec& spec )
+osg::Referenced*
+MemCache::getObject( const TileKey& key, const CacheSpec& spec )
 {
   osg::Timer_t now = osg::Timer::instance()->tick();
 
@@ -405,7 +412,8 @@ osg::Referenced* MemCache::getObject( const TileKey& key, const CacheSpec& spec 
   return 0;
 }
 
-void MemCache::setObject( const TileKey& key, const CacheSpec& spec, osg::Referenced* referenced )
+void
+MemCache::setObject( const TileKey& key, const CacheSpec& spec, osg::Referenced* referenced )
 {
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
@@ -445,7 +453,7 @@ TMSCache::TMSCache( const TMSCacheOptions& options ) :
 DiskCache( options ),
 _options( options )
 {
-    //nop
+    setName( "tms" );
 }
 
 TMSCache::TMSCache( const TMSCache& rhs, const osg::CopyOp& op ) :

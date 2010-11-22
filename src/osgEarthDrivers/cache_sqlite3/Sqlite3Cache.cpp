@@ -999,6 +999,8 @@ public:
     Sqlite3Cache( const CacheOptions& options ) 
         : AsyncCache(), _db(0L), _options(options)
     {
+        setName( "sqlite3" );
+
         _nbRequest = 0;
 
         //_settings = dynamic_cast<const Sqlite3CacheOptions*>( options );

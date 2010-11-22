@@ -34,31 +34,72 @@
 
 using namespace osgEarth;
 
-#define LC "[osgearth_seed] "
+#define LC "[osgearth_cache] "
 
-int main(int argc, char** argv)
+int list( osg::ArgumentParser& args );
+int seed( osg::ArgumentParser& args );
+int purge( osg::ArgumentParser& args );
+int usage( const std::string& msg );
+int message( const std::string& msg );
+
+
+int
+main(int argc, char** argv)
 {
-    // use an ArgumentParser object to manage the program arguments.
     osg::ArgumentParser args(&argc,argv);
 
-    args.getApplicationUsage()->setApplicationName(args.getApplicationName());
-    args.getApplicationUsage()->setDescription(args.getApplicationName() + std::string(" is an application used to seed a cache for an osgEarth."));
-    args.getApplicationUsage()->setCommandLineUsage(args.getApplicationName()+ std::string(" [options] filename"));
-    args.getApplicationUsage()->addCommandLineOption("--min-level level","The minimum level to seed down to.");
-    args.getApplicationUsage()->addCommandLineOption("--max-level level","The maximum level to seed down to.");
-    args.getApplicationUsage()->addCommandLineOption("--bounds minx miny maxx maxy","The geospatial extents to seed.");
-    args.getApplicationUsage()->addCommandLineOption("-b","Shorthand for --bounds.");
-    args.getApplicationUsage()->addCommandLineOption("--cache-path","Use a different cache path than the one defined in the earth file");
-    args.getApplicationUsage()->addCommandLineOption("--cache-type","Override the cache type if you override the cache path (tms or disk).");
+    if ( args.read( "--seed") )
+        return seed( args );
+    else if ( args.read( "--list" ) )
+        return list( args );
+    else if ( args.read( "--purge" ) )
+        return purge( args );
+    else
+        return usage("");
+}
 
-    // if user request help write it out to cout.
-    if (args.read("-h") || args.read("--help") || args.argc() <= 1)
+int
+usage( const std::string& msg )
+{
+    if ( !msg.empty() )
     {
-        args.getApplicationUsage()->write(std::cout);
-        return 1;
+        std::cout << msg << std::endl;
     }
 
-    
+    std::cout
+        << std::endl
+        << "USAGE: osgearth_cache" << std::endl
+        << std::endl
+        << "    --list file.earth                   ; Lists info about the cache in a .earth file" << std::endl
+        << std::endl
+        << "    --seed file.earth                   ; Seeds the cache in a .earth file"  << std::endl
+        << "        [--min-level level]             ; Lowest LOD level to seed (default=0)" << std::endl
+        << "        [--max-level level]             ; Highest LOD level to seed (defaut=highest available)" << std::endl
+        << "        [--bounds xmin ymin xmax ymax]  ; Geospatial bounding box to seed" << std::endl
+        << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
+        << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
+        //<< std::endl
+        //<< "    --purge file.earth                  ; Purges cached data from the cache in a .earth file" << std::endl
+        //<< "        [--layer name]                  ; Named layer for which to purge the cache" << std::endl
+        //<< "        [--all]                         ; Purge all data from the cache" << std::endl
+        << std::endl;
+
+    return -1;
+}
+
+int message( const std::string& msg )
+{
+    if ( !msg.empty() )
+    {
+        std::cout << msg << std::endl << std::endl;
+    }
+    return 0;
+}
+
+
+int
+seed( osg::ArgumentParser& args )
+{    
     //Read the min level
     unsigned int minLevel = 0;
     while (args.read("--min-level", minLevel));
@@ -80,65 +121,77 @@ int main(int argc, char** argv)
     std::string cacheType;
     while (args.read("--cache-type", cacheType));
 
-    std::string filename;
-    //Find the input filename
-    for(int pos=1;pos<args.argc();++pos)
-    {
-        if (!args.isOption(pos))
-        {
-            filename = args[pos];
-        }
-    } 
+    //Read in the earth file.
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    if ( !node.valid() )
+        return usage( "Failed to read .earth file." );
 
-    //Make sure the user specified a file
-    if ( filename.empty() )
-    {
-        OE_WARN << LC << "Please specify a .earth file to seed." << std::endl;
-        return 1;
-    }
+    MapNode* mapNode = MapNode::findMapNode( node.get() );
+    if ( !mapNode )
+        return usage( "Input file was not a .earth file" );
 
-    // Register the Cache Override
-    if (!cachePath.empty())
-    {
-        osg::ref_ptr< Cache > cache;
-        if (cacheType == "disk")
-        {
-            OE_NOTICE << LC << "Creating DiskCache" << std::endl;
-            DiskCacheOptions options;
-            options.setPath( cachePath );
-            cache = new DiskCache( options );
-        }
-        else
-        {
-            OE_NOTICE << LC << "Creating TMSCache" << std::endl;
-            TMSCacheOptions options;
-            options.setPath( cachePath );
-            cache = new TMSCache( options );
-        }
-
-        OE_NOTICE <<"Override Cache Path: "<<cachePath<<std::endl;
-        Registry::instance()->setCacheOverride(cache.get());
-    }
-
-    //Load the map file
-    osg::ref_ptr<osg::Node> node = osgDB::readNodeFile( filename );
-    if ( node.valid() )
-    {
-        MapNode* mapNode = MapNode::findMapNode( node.get() );
-        if ( mapNode )
-        {
-            //Create the CacheSeed
-            CacheSeed seed;
-            seed.setMinLevel(minLevel);
-            seed.setMaxLevel(maxLevel);
-            seed.setBounds(bounds);
-            seed.seed( mapNode->getMap() );
-        }
-        else
-            OE_WARN << LC << "No osgEarth MapNode found in input file" << std::endl;
-    }
-    else
-        OE_WARN << LC << "Unable to load earth file from " << filename << std::endl;
+    CacheSeed seeder;
+    seeder.setMinLevel( minLevel );
+    seeder.setMaxLevel( maxLevel );
+    seeder.setBounds( bounds );
+    seeder.seed( mapNode->getMap() );
 
     return 0;
+}
+
+int
+list( osg::ArgumentParser& args )
+{
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    if ( !node.valid() )
+        return usage( "Failed to read .earth file." );
+
+    MapNode* mapNode = MapNode::findMapNode( node.get() );
+    if ( !mapNode )
+        return usage( "Input file was not a .earth file" );
+
+    Map* map = mapNode->getMap();
+    const Cache* cache = map->getCache();
+
+    if ( !cache )
+        return message( "Earth file does not contain a cache." );
+
+    std::cout 
+        << "Cache config = " << cache->getCacheOptions().getConfig().toString() << std::endl;
+
+    MapFrame mapf( mapNode->getMap() );
+
+    TerrainLayerVector layers;
+    std::copy( mapf.imageLayers().begin(), mapf.imageLayers().end(), std::back_inserter(layers) );
+    std::copy( mapf.elevationLayers().begin(), mapf.elevationLayers().end(), std::back_inserter(layers) );
+
+    for( TerrainLayerVector::const_iterator i =layers.begin(); i != layers.end(); ++i )
+    {
+        TerrainLayer* layer = i->get();
+        const CacheSpec& spec = layer->getCacheSpec();
+        std::cout
+            << "Layer = \"" << layer->getName() << "\", cacheId = " << spec.cacheId() << std::endl;
+    }
+
+    return 0;
+}
+
+int
+purge( osg::ArgumentParser& args )
+{
+    return usage( "Sorry, but purge is not yet implemented." );
+
+    osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
+    if ( !node.valid() )
+        return usage( "Failed to read .earth file." );
+
+    MapNode* mapNode = MapNode::findMapNode( node.get() );
+    if ( !mapNode )
+        return usage( "Input file was not a .earth file" );
+
+    Map* map = mapNode->getMap();
+    const Cache* cache = map->getCache();
+
+    if ( !cache )
+        return message( "Earth file does not contain a cache." );
 }

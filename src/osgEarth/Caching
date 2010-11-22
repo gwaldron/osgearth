@@ -263,11 +263,14 @@ namespace osgEarth
         int olderThanTimeStamp =0L,
         bool async =true ) { return false; }
 
+    const CacheOptions& getCacheOptions() const { return _options; }
+
   public:
       Cache( const CacheOptions& options =CacheOptions() );
       Cache( const Cache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
 
   protected:
+      CacheOptions _options;
       std::string _refURI;
   };
 

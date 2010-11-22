@@ -326,6 +326,11 @@ namespace osgEarth
 		 */
 		void setCache( Cache* cache );
 
+		/**
+		 * Gets the Cache for this Map
+		 */
+		Cache* getCache() const;
+
         /**
          * Gets the revision # of the map. The revision # changes every time
          * you add, remove, or move layers. You can use this to track changes
@@ -357,11 +362,6 @@ namespace osgEarth
     protected:
 
         ~Map() { }
-
-		/**
-		 * Gets the Cache for this Map
-		 */
-		Cache* getCache() const;
 
     private:
 

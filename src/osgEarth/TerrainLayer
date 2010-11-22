@@ -269,6 +269,8 @@ namespace osgEarth
         void setCacheOnly( bool value );
     };
 
+    typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;
+
 } // namespace TerrainLayer
 
 #endif // OSGEARTH_TERRAIN_LAYER_H

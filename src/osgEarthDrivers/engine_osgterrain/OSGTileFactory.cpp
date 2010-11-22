@@ -277,12 +277,7 @@ OSGTileFactory::areChildrenCached( Map* map, const TileKey& parentKey ) const
 bool
 OSGTileFactory::isCached( const MapFrame& mapf, const osgEarth::TileKey& key ) const
 {
-    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
-
-    const Profile* mapProfile = mapf.getProfile(); // key.getProfile();
-
-    //ImageLayerVector imageLayers;
-    //map->getImageLayers( imageLayers );
+    const Profile* mapProfile = mapf.getProfile();
 
     //Check the imagery layers
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
@@ -308,17 +303,13 @@ OSGTileFactory::isCached( const MapFrame& mapf, const osgEarth::TileKey& key ) c
         {
             if ( layer->isKeyValid( keys[j] ) )
             {
-                if ( !cache->isCached( keys[j], layer->getName(), layer->getCacheFormat() ) )
+                if ( !cache->isCached( keys[j], layer->getCacheSpec() ) )
                 {
                     return false;
                 }
             }
         }
     }
-
-    //Check the elevation layers
-    //ElevationLayerVector elevLayers;
-    //map->getElevationLayers( elevLayers );
 
     for( ElevationLayerVector::const_iterator i =mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); ++i )
     {
@@ -343,7 +334,7 @@ OSGTileFactory::isCached( const MapFrame& mapf, const osgEarth::TileKey& key ) c
         {
             if ( layer->isKeyValid( keys[j] ) )
             {
-                if ( !cache->isCached( keys[j], layer->getName(), layer->getCacheFormat() ) )
+                if ( !cache->isCached( keys[j], layer->getCacheSpec() ) )
                 {
                     return false;
                 }
@@ -360,21 +351,6 @@ OSGTileFactory::createEmptyHeightField( const TileKey& key, int numCols, int num
         key.getExtent(), numCols, numRows );
 
     return hf;
-
-    ////Get the bounds of the key
-    //double minx, miny, maxx, maxy;
-    //key.getExtent().getBounds(minx, miny, maxx, maxy);
-
-    //osg::HeightField *hf = new osg::HeightField();
-    //hf->allocate( numCols, numRows );
-    //for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
-    //    hf->getHeightList()[i] = 0.0;
-
-    //hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-    //hf->setXInterval( (maxx - minx)/(double)(hf->getNumColumns()-1) );
-    //hf->setYInterval( (maxy - miny)/(double)(hf->getNumRows()-1) );
-    //hf->setBorderWidth( 0 );
-    //return hf;
 }
 
 void
@@ -396,11 +372,6 @@ OSGTileFactory::addPlaceholderImageLayers(CustomTile* tile,
     ColorLayersByUID colorLayers;
     ancestorTile->getCustomColorLayers( colorLayers );
     tile->setCustomColorLayers( colorLayers );
-
-    //for( unsigned int j=0; j<ancestorTile->getNumColorLayers(); j++ )
-    //{
-    //    tile->setCustomColorLayer( j,  ancestorTile->getCustomColorLayer( j ) );
-    //}
 }
 
 

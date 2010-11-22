@@ -30,7 +30,6 @@
 #include <osgEarth/Caching>
 #include <osgEarth/Progress>
 #include <osgEarth/ThreadingUtils>
-//#include <osgEarth/RTree>
 
 #include <osg/Referenced>
 #include <osg/Object>
@@ -278,12 +277,7 @@ namespace osgEarth
         /**
          * Gets the list of areas with data for this TileSource
          */
-        const DataExtentList& getDataExtents() const { return _dataExtents; }        
-
-        /**
-         * Rebuilds the spatial index for the data extents
-         */
-        //void buildDataExtentsIndex();
+        const DataExtentList& getDataExtents() const { return _dataExtents; }
 
         /**
          * Whether or not the source has data for the given TileKey
@@ -301,7 +295,6 @@ namespace osgEarth
 		 * Initialize the TileSource.  The profile should be computed and set here using setProfile()
 		 */
 		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL) = 0;
-
    
     protected:
 

@@ -205,14 +205,15 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key,
         _cacheProfile = mapProfile;
         if ( _tileSource->isOK() )
         {
-            _cache->storeLayerProperties( getName(), _cacheProfile, _actualCacheFormat, _tileSource->getPixelsPerTile() );
+            _cache->storeProperties( _cacheSpec, _cacheProfile,  _tileSource->getPixelsPerTile() );
+            //_cache->storeLayerProperties( getName(), _cacheProfile, _actualCacheFormat, _tileSource->getPixelsPerTile() );
         }
     }
 
 	//See if we can get it from the cache.
 	if (_cache.valid() && _options.cacheEnabled() == true )
 	{
-		result = _cache->getHeightField( key, getName(), _actualCacheFormat );
+		result = _cache->getHeightField( key, _cacheSpec ); // key, getName(), _actualCacheFormat );
 		if (result.valid())
 		{
 			OE_DEBUG << LC << "MapLayer::createHeightField got tile " << key.str() << " from layer \"" << getName() << "\" from cache " << std::endl;
@@ -308,7 +309,7 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key,
         //Write the result to the cache.
         if (result.valid() && _cache.valid() && _options.cacheEnabled() == true )
         {
-            _cache->setHeightField( key, getName(), _actualCacheFormat, result.get() );
+            _cache->setHeightField( key, _cacheSpec, result.get() ); //key, getName(), _actualCacheFormat, result.get() );
         }
     }
 

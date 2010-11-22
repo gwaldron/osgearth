@@ -85,3 +85,28 @@ Config::toString( int indent ) const
 	bufStr = buf.str();
     return bufStr;
 }
+
+std::string
+Config::toHashString() const
+{
+    std::stringstream buf;
+    buf << std::fixed;
+    buf << "{" << (_key.empty()? "anonymous" : _key) << ":";
+    if ( !_defaultValue.empty() ) buf << _defaultValue;
+    if ( !_attrs.empty() ) {
+        buf << "[";
+        for( Properties::const_iterator a = _attrs.begin(); a != _attrs.end(); a++ )
+            buf << a->first << "=" << a->second << ",";
+        buf << "]";
+    }
+    if ( !_children.empty() ) {
+        for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); c++ )
+            buf << (*c).toHashString();
+    }
+
+    buf << "}";
+
+	std::string bufStr;
+	bufStr = buf.str();
+    return bufStr;
+}

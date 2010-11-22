@@ -315,7 +315,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     if (!_cacheProfile.valid() && _cache.valid() && _options.cacheEnabled() == true && _tileSource.valid())
     {
         _cacheProfile = cacheInMapProfile ? mapProfile : _profile.get();
-        _cache->storeLayerProperties( getName(), _cacheProfile, _actualCacheFormat, _tileSource->getPixelsPerTile() );
+        _cache->storeProperties( _cacheSpec, _cacheProfile, _tileSource->getPixelsPerTile() );
+        //_cache->storeLayerProperties( getName(), _cacheProfile, _actualCacheFormat, _tileSource->getPixelsPerTile() );
     }
 
 	if (cacheInMapProfile)
@@ -326,7 +327,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 	//If we are caching in the map profile, try to get the image immediately.
     if (cacheInMapProfile && _cache.valid() && _options.cacheEnabled() == true )
 	{
-        osg::ref_ptr<osg::Image> image = _cache->getImage( key, getName(), _actualCacheFormat );
+        osg::ref_ptr<osg::Image> image = _cache->getImage( key, _cacheSpec );
 		if (image.valid())
 		{
 			OE_DEBUG << LC << "Layer \"" << getName()<< "\" got tile " << key.str() << " from map cache " << std::endl;
@@ -523,7 +524,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     if (result.valid() && _cache.valid() && _options.cacheEnabled() == true && cacheInMapProfile)
 	{
 		OE_DEBUG << LC << "Layer \"" << getName() << "\" writing tile " << key.str() << " to cache " << std::endl;
-		_cache->setImage( key, getName(), _actualCacheFormat, result.getImage());
+		_cache->setImage( key, _cacheSpec, result.getImage());
 	}
 
     postProcess( result );
@@ -540,7 +541,9 @@ ImageLayer::createImageWrapper(const TileKey& key,
 	osg::ref_ptr<osg::Image> image;
 
     if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
-		image = _cache->getImage( key, getName(), _actualCacheFormat );
+    {
+		image = _cache->getImage( key, _cacheSpec );
+    }
 
 	if (image.valid())
 	{
@@ -609,7 +612,7 @@ ImageLayer::createImageWrapper(const TileKey& key,
 
         if (image.valid() && _cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
 		{
-			_cache->setImage( key, getName(), _actualCacheFormat, image);
+			_cache->setImage( key, _cacheSpec, image);
 		}
 	}
 	return image.release();

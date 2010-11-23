@@ -64,6 +64,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("optimize_line_sampling", _optimizeLineSampling);
             return conf;
         }
+
     protected:
         void mergeConfig( const Config& conf ) {
             FeatureTileSourceOptions::mergeConfig( conf );

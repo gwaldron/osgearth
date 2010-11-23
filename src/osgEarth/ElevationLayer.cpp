@@ -195,7 +195,20 @@ osg::HeightField*
 ElevationLayer::createHeightField(const osgEarth::TileKey& key,
                                   ProgressCallback* progress)
 {
+    const Profile* layerProfile = getProfile();
     const Profile* mapProfile = key.getProfile();
+
+	if ( !layerProfile )
+	{
+		OE_WARN << LC << "Could not get a valid profile for Layer \"" << getName() << "\"" << std::endl;
+        return 0L;
+	}
+
+	if ( !_actualCacheOnly && !getTileSource() )
+	{
+		OE_WARN << LC << "Error: ElevationLayer does not have a valid TileSource, cannot create heightfield " << std::endl;
+		return 0L;
+	}
 
 	osg::ref_ptr<osg::HeightField> result;
 
@@ -205,21 +218,28 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key,
         _cacheProfile = mapProfile;
         if ( _tileSource->isOK() )
         {
-            _cache->storeLayerProperties( getName(), _cacheProfile, _actualCacheFormat, _tileSource->getPixelsPerTile() );
+            _cache->storeProperties( _cacheSpec, _cacheProfile,  _tileSource->getPixelsPerTile() );
+            //_cache->storeLayerProperties( getName(), _cacheProfile, _actualCacheFormat, _tileSource->getPixelsPerTile() );
         }
     }
 
 	//See if we can get it from the cache.
 	if (_cache.valid() && _options.cacheEnabled() == true )
 	{
-		result = _cache->getHeightField( key, getName(), _actualCacheFormat );
+		result = _cache->getHeightField( key, _cacheSpec ); // key, getName(), _actualCacheFormat );
 		if (result.valid())
 		{
 			OE_DEBUG << LC << "MapLayer::createHeightField got tile " << key.str() << " from layer \"" << getName() << "\" from cache " << std::endl;
 		}
 	}
 
-	if (!result.valid() && getTileSource() && getTileSource()->isOK() )
+    //in cache-only mode, if the cache fetch failed, bail out.
+    if ( !result.valid() && _actualCacheOnly )
+    {
+        return 0L;
+    }
+
+	if ( !result.valid() && getTileSource() && getTileSource()->isOK() )
     {
 		//If the profiles are equivalent, get the HF from the TileSource.
 		if (key.getProfile()->isEquivalentTo( getProfile() ))
@@ -308,7 +328,7 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key,
         //Write the result to the cache.
         if (result.valid() && _cache.valid() && _options.cacheEnabled() == true )
         {
-            _cache->setHeightField( key, getName(), _actualCacheFormat, result.get() );
+            _cache->setHeightField( key, _cacheSpec, result.get() ); //key, getName(), _actualCacheFormat, result.get() );
         }
     }
 

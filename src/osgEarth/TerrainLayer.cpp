@@ -75,6 +75,7 @@ TerrainLayerOptions::getConfig() const
     Config conf = ConfigOptions::getConfig();
 
     conf.attr("name") = _name;
+    conf.updateIfSet( "cacheid", _cacheId );
     conf.updateIfSet( "min_level", _minLevel );
     conf.updateIfSet( "max_level", _maxLevel );
     conf.updateIfSet( "cache_enabled", _cacheEnabled );
@@ -92,6 +93,7 @@ void
 TerrainLayerOptions::fromConfig( const Config& conf )
 {
     _name = conf.value("name");
+    conf.getIfSet( "cacheid", _cacheId );
     conf.getIfSet( "min_level", _minLevel );
     conf.getIfSet( "max_level", _maxLevel );
     conf.getIfSet( "cache_enabled", _cacheEnabled );
@@ -121,12 +123,6 @@ TerrainLayer::TerrainLayer( TileSource* tileSource ) :
 _tileSource( tileSource )
 {
     init();
-
-    //// Try to get the profile from the TileSource immediately
-    //if ( _tileSource )
-    //{
-    //    _profile = _tileSource->getProfile();
-    //}
 }
 
 void
@@ -160,8 +156,27 @@ TerrainLayer::setCache(Cache* cache)
         // Read properties from the cache if not already set
         if (_cache.valid() && opt.cacheEnabled() == true )
         {
-            std::string format;
-            osg::ref_ptr< const Profile > profile = _cache->loadLayerProperties(_name, format, _tileSize);
+            // create the unique cache ID for the tile configuration.
+            std::string cacheId;
+
+            if ( opt.cacheId().isSet() && !opt.cacheId()->empty() )
+            {
+                // user expliticy set a cacheId in the terrain layer options.
+                cacheId = *opt.cacheId();
+            }
+            else
+            {
+                // system will generate a cacheId.
+                std::stringstream buf;
+                buf << std::fixed << std::setfill('0') << std::hex
+                    << osgEarth::hashString( opt.driver()->getConfig().toHashString() );
+                cacheId = buf.str();
+            }
+
+            // try to load the properties from the cache; if that is unsuccesful,
+            // create new properties.
+            osg::ref_ptr<const Profile> profile;
+            _cache->loadProperties( cacheId, _cacheSpec, profile, _tileSize );
 
             // Set the profile if it hasn't already been set
             if (!_profile.valid() && profile.valid())
@@ -172,11 +187,13 @@ TerrainLayer::setCache(Cache* cache)
             // Set the cache format if it hasn't been explicitly set
             _actualCacheFormat = opt.cacheFormat().value();
             if ( _actualCacheFormat.empty() )
-                _actualCacheFormat = format;
+                _actualCacheFormat = _cacheSpec.format();
 
             // check for a cache-only override.
             if ( _overrideCacheOnly.isSetTo( true ) )
                 _actualCacheOnly = true;
+
+            _cacheSpec = CacheSpec( cacheId, _actualCacheFormat, getName() );
         }
     }
 }
@@ -187,11 +204,11 @@ TerrainLayer::getTileSource() const
     const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
 	//Only load the TileSource if it hasn't been loaded previously and we aren't running strictly off the cache.
-	if ( !_tileSource.valid() && opt.cacheOnly() == false )
+	if ( !_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
 	{
         OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
         //Double check pattern
-        if (!_tileSource.valid() && opt.cacheOnly() == false )
+        if (!_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
         {
             const_cast<TerrainLayer*>(this)->initTileSource();
         }
@@ -206,7 +223,7 @@ TerrainLayer::getProfile() const
     {
         const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
-        if ( opt.cacheOnly() == false && !_tileSource.valid() )
+        if ( _actualCacheOnly == false && !_tileSource.valid() )
         {
             // Call getTileSource to make sure the TileSource is initialized
             getTileSource();
@@ -281,7 +298,10 @@ TerrainLayer::initTileSource()
     //Set the cache format to the native format of the TileSource if it isn't already set.
     _actualCacheFormat = opt.cacheFormat().value();
     if ( _actualCacheFormat.empty() )
+    {
         _actualCacheFormat = suggestCacheFormat();
+        _cacheSpec = CacheSpec( _cacheSpec.cacheId(), _actualCacheFormat, _cacheSpec.name() );
+    }
 
     if ( _tileSource.valid() )
     {

@@ -83,7 +83,7 @@ ModelSourceFactory::create( const ModelSourceOptions& options )
         modelSource = dynamic_cast<ModelSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
         if ( modelSource )
         {
-            modelSource->setName( options.getName() );
+            //modelSource->setName( options.getName() );
             OE_INFO << "Loaded ModelSource driver \"" << options.getDriver() << "\" OK" << std::endl;
         }
         else

@@ -106,6 +106,14 @@ namespace osgEarth
 		 */
         optional<bool>& cacheOnly() { return _cacheOnly; }
         const optional<bool>& cacheOnly() const { return _cacheOnly; }
+
+        /**
+         * Explicit cache ID to uniquely identify the cache that matched this
+         * layer's tile source properties. This is usually automatically
+         * generated but you can override it here.
+         */
+        optional<std::string>& cacheId() { return _cacheId; }
+        const optional<std::string>& cacheId() const { return _cacheId; }
         
         /**
          * The loading weight of this MapLayer (for threaded loading policies).
@@ -143,6 +151,7 @@ namespace osgEarth
 		optional<bool> _enabled;
 		optional<unsigned int> _reprojectedTileSize;
         optional<double> _edgeBufferRatio;
+        optional<std::string> _cacheId;
     };
 
     /**
@@ -196,8 +205,7 @@ namespace osgEarth
 		 */
 		unsigned int getMaxDataLevel() const;
 
-        const std::string& getCacheFormat() const {
-            return _actualCacheFormat; }
+        const std::string& getCacheFormat() const {  return _actualCacheFormat; }
 
     public: // methods
 
@@ -207,7 +215,7 @@ namespace osgEarth
 		bool isKeyValid(const TileKey& key) const;
 
 		/**
-		 * Gets the Cache to be used on this MapLayer.
+		 * Gets the Cache to be used on this TerrainLayer.
 		 */
         Cache* getCache() const { return _cache.get(); }
 
@@ -216,6 +224,11 @@ namespace osgEarth
          * TODO: is it legal to set this at any time?
 		 */
 		void setCache( Cache* cache );
+
+        /**
+         * Gets the key that this layer uses to access the cache
+         */
+        const CacheSpec& getCacheSpec() const { return _cacheSpec; }
 
     protected:
 
@@ -233,6 +246,7 @@ namespace osgEarth
         
         osg::ref_ptr<TileSource> _tileSource;
 		osg::ref_ptr<Cache>      _cache;
+        CacheSpec                _cacheSpec;
 
 		osg::ref_ptr< const Profile > _profile;
         osg::ref_ptr< const Profile > _cacheProfile;
@@ -254,6 +268,8 @@ namespace osgEarth
         void setReferenceURI( const std::string& uri );
         void setCacheOnly( bool value );
     };
+
+    typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;
 
 } // namespace TerrainLayer
 

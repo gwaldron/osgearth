@@ -187,7 +187,7 @@ TileSource::getImage( const TileKey& key,
     osg::ref_ptr<osg::Image> image = NULL;
 	if (_memCache.valid())
 	{
-		image = _memCache->getImage( key,"","");
+		image = _memCache->getImage( key, CacheSpec() );
 	}
 
 	if (!image.valid())
@@ -195,7 +195,7 @@ TileSource::getImage( const TileKey& key,
 		image = createImage( key, progress );
 		if (image.valid() && _memCache.valid())
 		{
-			_memCache->setImage( key, "", "",image.get() );
+			_memCache->setImage( key, CacheSpec(), image.get() );
 		}
 	}
 	return image.release();
@@ -203,13 +203,12 @@ TileSource::getImage( const TileKey& key,
 
 osg::HeightField*
 TileSource::getHeightField( const TileKey& key,
-                            ProgressCallback* progress
-                           )
+                            ProgressCallback* progress )
 {
     osg::ref_ptr<osg::HeightField> hf = NULL;
 	if (_memCache.valid())
 	{
-		hf = _memCache->getHeightField( key, "", "" );
+		hf = _memCache->getHeightField( key, CacheSpec() );
 	}
 
 	if (!hf.valid())
@@ -217,7 +216,7 @@ TileSource::getHeightField( const TileKey& key,
 		hf = createHeightField( key, progress );
 		if (hf.valid() && _memCache.valid())
 		{
-			_memCache->setHeightField( key, "", "", hf.get() );
+			_memCache->setHeightField( key, CacheSpec(), hf.get() );
 		}
 	}
 	return hf.release();
@@ -363,7 +362,7 @@ TileSourceFactory::create( const TileSourceOptions& options )
     std::string driver = options.getDriver();
     if ( driver.empty() )
     {
-        OE_WARN << "ILLEGAL- no driver set for tile source \"" << options.getName() << "\"" << std::endl;
+        OE_WARN << "ILLEGAL- no driver set for tile source" << std::endl;
         return 0L;
     }
 

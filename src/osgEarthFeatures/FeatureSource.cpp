@@ -200,7 +200,8 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
         featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
         if ( featureSource )
         {
-            featureSource->setName( options.getName() );
+            //featureSource->setName( options.getName() );
+            featureSource->setName( options.getDriver() );
         }
         else
         {

@@ -37,8 +37,6 @@
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
 
-#include <osgUtil/IncrementalCompileOperation>
-
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;

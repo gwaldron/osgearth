@@ -1066,15 +1066,13 @@ public: // Cache interface
     /**
      * Store the cache profile for the given profile.
      */
-    void storeLayerProperties(
-        const std::string& layerName, const Profile* profile,
-        const std::string& format, unsigned int tileSize)
+    virtual void storeProperties( const CacheSpec& spec, const Profile* profile, unsigned int tileSize ) 
     {
         if ( !_db ) return;
 
-        if ( layerName.empty() || profile == 0L || format.empty() )
+        if ( spec.cacheId().empty() || profile == 0L || spec.format().empty() )
         {
-            OE_WARN << "ILLEGAL: cannot cache a layer without a layer name" << std::endl;
+            OE_WARN << "ILLEGAL: cannot cache a layer without a layer id" << std::endl;
             return;
         }
 
@@ -1090,7 +1088,7 @@ public: // Cache interface
         //OE_INFO << "Storing metadata for layer \"" << layerName << "\"" << std::endl;
 
         MetadataRecord rec;
-        rec._layerName = layerName;
+        rec._layerName = spec.cacheId();
         rec._profile = profile;
         rec._tileSize = tileSize;
 
@@ -1107,10 +1105,11 @@ public: // Cache interface
     /**
      * Loads the cache profile for the given layer.
      */
-    const Profile* loadLayerProperties(
-        const std::string& layerName,
-        std::string& out_format,
-        unsigned int& out_tileSize )
+    virtual bool loadProperties( 
+        const std::string&           cacheId, 
+        CacheSpec&                   out_spec, 
+        osg::ref_ptr<const Profile>& out_profile,
+        unsigned int&                out_tileSize ) 
     {
         if ( !_db ) return 0L;
 
@@ -1124,14 +1123,14 @@ public: // Cache interface
         if ( !db )
             return 0L;
 
-        OE_DEBUG << LC << "Loading metadata for layer \"" << layerName << "\"" << std::endl;
+        OE_DEBUG << LC << "Loading metadata for layer \"" << cacheId << "\"" << std::endl;
 
         MetadataRecord rec;
-        if ( _metadata.load( layerName, db, rec ) )
+        if ( _metadata.load( cacheId, db, rec ) )
         {
-            out_format = rec._format;
+            out_spec = CacheSpec( rec._layerName, rec._format );
             out_tileSize = rec._tileSize;
-            return rec._profile.release();
+            out_profile = rec._profile;
         }
         return 0L;
     }

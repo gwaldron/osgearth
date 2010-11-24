@@ -1096,7 +1096,7 @@ public: // Cache interface
         rec._format = "osgb";
         rec._compressor = "zlib";
 #else
-        rec._format = format;
+        rec._format = spec.format();
 #endif
 
         _metadata.store( rec, db );

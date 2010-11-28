@@ -155,7 +155,7 @@ namespace osgEarth
 
         int _uidGen;
 
-        Capabilities* _caps;
+        osg::ref_ptr< Capabilities > _caps;
         void initCapabilities();
     };
 }

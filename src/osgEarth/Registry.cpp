@@ -217,7 +217,7 @@ Registry::getNumBlacklistedFilenames()
 const Capabilities&
 Registry::getCapabilities() const
 {
-    if ( !_caps )
+    if ( !_caps.valid() )
         const_cast<Registry*>(this)->initCapabilities();
 
     return *_caps;
@@ -228,7 +228,7 @@ void
 Registry::initCapabilities()
 {
     ScopedLock<Mutex> lock( s_initCapsMutex ); // double-check pattern (see getCapabilities)
-    if ( !_caps )
+    if ( !_caps.valid() )
         _caps = new Capabilities();
 }
 

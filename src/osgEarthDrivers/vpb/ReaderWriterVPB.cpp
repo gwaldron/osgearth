@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TileSource>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/FileUtils>
 
 #include <osg/Notify>
 #include <osg/io_utils>
@@ -145,6 +146,10 @@ public:
         _maxNumTilesInCache( 128 ),
         _profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() )
     {
+	}
+	
+	void initialize( const std::string& referenceURI)
+	{
         unsigned int numTilesWideAtLod0, numTilesHighAtLod0;
         _profile->getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
 
@@ -153,6 +158,12 @@ public:
 
         if ( !_url.empty() )
         {
+			//If the path doesn't contain a server address, get the full path to the file.
+			if (!osgDB::containsServerAddress(_url))
+			{
+				_url = osgEarth::getFullPath(referenceURI, _url);
+			}
+			
             osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
             //_rootNode = osgDB::readNodeFile( _url, localOptions.get() );
@@ -190,7 +201,9 @@ public:
                     double min_x, max_x, min_y, max_y;
                     ct.getRange(min_x, min_y, max_x, max_y);
 
-                    OE_DEBUG<<"VPB: range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<<std::endl;
+                    OE_DEBUG<<"VPB: range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<< ")" <<std::endl;
+					OE_DEBUG<<"VPB: range("<<osg::RadiansToDegrees(min_x)<<", "<<osg::RadiansToDegrees(min_y)<<", "
+						<<osg::RadiansToDegrees(max_x)<<", "<<osg::RadiansToDegrees(max_y)<< ")" <<std::endl;
 
                     srs = locator->getCoordinateSystem();
 
@@ -481,13 +494,16 @@ public:
     VPBSource( VPBDatabase* vpbDatabase, const VPBOptions& in_options ) : //const VPBOptions* in_options) :  
         TileSource(in_options),
         _vpbDatabase(vpbDatabase),
-        _options( in_options )
+        _options( in_options ),
+        _referenceUri()
     {
         //nop
     }
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
+		_referenceUri = referenceURI;
+		_vpbDatabase->initialize(referenceURI);
 		if ( overrideProfile)
 		{
 			setProfile( overrideProfile );
@@ -498,28 +514,61 @@ public:
 		}
     }
     
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
-    {
-        //TODO:  Make VPB driver use progress callback
-        osg::ref_ptr<osgTerrain::TerrainTile> tile = _vpbDatabase->getTerrainTile(key, progress);                
-        if (tile.valid())
-        {        
-            int layerNum = _options.layer().value();
+	osg::Image* createImage( const TileKey& key,
+		ProgressCallback* progress)
+	{
+		osg::Image * ret = NULL;
+		//TODO:  Make VPB driver use progress callback
+		osg::ref_ptr<osgTerrain::TerrainTile> tile = _vpbDatabase->getTerrainTile(key, progress);                
+		if (tile.valid())
+		{        
+			int layerNum = _options.layer().value();
+			const optional<std::string> & layerSetName = _options.layerSetName();
 
-            if (layerNum < tile->getNumColorLayers())
-            {
-                osgTerrain::Layer* layer = tile->getColorLayer(layerNum);
-                osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(layer);
-                if (imageLayer)
-                {
-                    return new osg::Image( *imageLayer->getImage() );
-                }
-            }
-        }
-        
-        return 0;
-    }
+			int numColorLayers = (int)tile->getNumColorLayers();
+			if(layerNum > numColorLayers)
+				layerNum = 0;
+			if (layerNum < numColorLayers)
+			{
+				osgTerrain::Layer* layer = tile->getColorLayer(layerNum);
+
+				osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(layer);
+				if (imageLayer)
+				{
+					OE_DEBUG<<"VPB: createImage(" << key.str() << " layerNum=" << layerNum << ") successful." <<std::endl;
+					ret = new osg::Image( *imageLayer->getImage() );
+				}
+				else
+				{
+					osgTerrain::SwitchLayer* switchLayer = dynamic_cast<osgTerrain::SwitchLayer*>(layer);
+					if (switchLayer && layerSetName.isSet())
+					{
+						for(unsigned int si=0; !imageLayer && si<switchLayer->getNumLayers(); ++si)
+						{
+							if(switchLayer->getSetName(si) == layerSetName.value())
+							{
+								imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(switchLayer->getLayer(si));
+							}
+						}
+					}
+					if(imageLayer)
+					{
+						OE_DEBUG<<"VPB: createImage(" << key.str() << " layerSet=" << layerSetName.value() << ") successful." <<std::endl;
+						ret = new osg::Image( *imageLayer->getImage() );
+					}
+				}
+			}
+			if(!ret)
+			{
+				OE_DEBUG<<"VPB: createImage(" << key.str() << " layerSet=" << layerSetName.value() << " layerNum=" << layerNum << "/" << numColorLayers << ") failed." <<std::endl;
+			}
+		}
+		else
+		{
+			OE_DEBUG<<"VPB: createImage(" << key.str() << ") database retrieval failed." <<std::endl;
+		}
+		return ret;
+	}
 
     osg::HeightField* createHeightField( const TileKey& key,
                                          ProgressCallback* progress
@@ -549,7 +598,7 @@ public:
 private:
     osg::ref_ptr<VPBDatabase> _vpbDatabase;
     const VPBOptions _options;
-    //unsigned int                                        layerNum;
+	std::string	_referenceUri;
 };
 
 

@@ -26,23 +26,6 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-static osg::Vec4f
-htmlColorToVec4f( const std::string& html )
-{
-    std::string t = html;
-    std::transform( t.begin(), t.end(), t.begin(), ::tolower );
-    osg::Vec4ub c(0,0,0,255);
-    if ( t.length() == 7 ) {
-        c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;
-        c.r() |= t[2]<='9' ? (t[2]-'0')    : (10+(t[2]-'a'));
-        c.g() |= t[3]<='9' ? (t[3]-'0')<<4 : (10+(t[3]-'a'))<<4;
-        c.g() |= t[4]<='9' ? (t[4]-'0')    : (10+(t[4]-'a'));
-        c.b() |= t[5]<='9' ? (t[5]-'0')<<4 : (10+(t[5]-'a'))<<4;
-        c.b() |= t[6]<='9' ? (t[6]-'0')    : (10+(t[6]-'a'));
-    }
-    return osg::Vec4f( ((float)c.r())/255.0f, ((float)c.g())/255.0f, ((float)c.b())/255.0f, 1.0f );
-}
-
 #define CSS_STROKE          "stroke"
 #define CSS_STROKE_WIDTH    "stroke-width"
 #define CSS_STROKE_OPACITY  "stroke-opacity"

@@ -58,7 +58,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = FeatureSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
-            conf.updateIfSet( "ogrDriver", _ogrDriver );
+            conf.updateIfSet( "ogr_driver", _ogrDriver );
             conf.updateIfSet( "build_spatial_index", _buildSpatialIndex );
             conf.updateIfSet( "geometry", _geometryConf );    
             conf.updateIfSet( "geometry_profile", _geometryProfileConf );
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
-            conf.getIfSet( "ogrDriver", _ogrDriver );
+            conf.getIfSet( "ogr_driver", _ogrDriver );
             conf.getIfSet( "build_spatial_index", _buildSpatialIndex );
             conf.getIfSet( "geometry", _geometryConf );
             conf.getIfSet( "geometry_profile", _geometryProfileConf );

@@ -1793,6 +1793,10 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
 bool
 EarthManipulator::handlePointAction( const Action& action, float mx, float my, osg::View* view )
 {
+    //Exit early if the action is null
+    if (action._type == ACTION_NULL)
+        return true;
+
     osg::Vec3d point;
     if ( screenToWorld( mx, my, view, point ))
     {

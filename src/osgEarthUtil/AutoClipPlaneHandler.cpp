@@ -22,7 +22,7 @@
 using namespace osgEarth::Util;
 using namespace osgEarth;
 
-AutoClipPlaneHandler::AutoClipPlaneHandler() :
+AutoClipPlaneHandler::AutoClipPlaneHandler( const Map* map ) :
 _geocentric(false),
 _frame(0),
 _nfrAtRadius( 0.00001 ),
@@ -31,6 +31,12 @@ _rp( -1 ),
 _autoFarPlaneClipping(true)
 {
     //NOP
+    if ( map )
+    {
+        _geocentric = map->isGeocentric();
+        if ( _geocentric )
+            _rp = map->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
+    }
 }
 
 bool 
@@ -38,55 +44,61 @@ AutoClipPlaneHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAction
 {
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME && _frame++ > 1 )
     {
-        osg::Camera* cam = aa.asView()->getCamera();
-
-        if ( !_mapNode.valid() )
-        {
-            osg::ref_ptr<MapNode> tempNode = osgEarth::findTopMostNodeOfType<MapNode>( cam );
-            if ( tempNode.valid() && tempNode->getMap()->getProfile() )
-            {
-                _geocentric = tempNode->getMap()->isGeocentric();
-                if ( _geocentric )
-                    _rp = tempNode->getMap()->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
-                else
-                    OE_INFO << "[AutoClipPlaneHandler] disabled for non-geocentric map" << std::endl;
-
-                _mapNode = tempNode.get();
-            }
-        }
-
-        if ( _mapNode.valid() && _geocentric )
-        {
-            cam->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-
-            osg::Vec3d eye, center, up;
-            cam->getViewMatrixAsLookAt( eye, center, up );
-
-            double d = eye.length();
-
-            if ( d > _rp )
-            {
-                double fovy, ar, znear, zfar, finalZfar;
-                cam->getProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
-
-                // far clip at the horizon:
-                zfar = sqrt( d*d - _rp*_rp );
-
-                if (_autoFarPlaneClipping)
-                {
-                    finalZfar = zfar;
-                }
-
-                double nfr = _nfrAtRadius + _nfrAtDoubleRadius * ((d-_rp)/d);
-                znear = osg::clampAbove( zfar * nfr, 1.0 );
-
-                cam->setProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
-
-                //OE_NOTICE << fixed
-                //    << "near=" << znear << ", far=" << zfar << std::endl;
-            }
-        }
+        frame( aa );
     }
     return false;
+}
+
+void
+AutoClipPlaneHandler::frame( osgGA::GUIActionAdapter& aa )
+{
+    osg::Camera* cam = aa.asView()->getCamera();
+
+    if ( _rp < 0 )
+    {
+        osg::ref_ptr<MapNode> tempNode = osgEarth::findTopMostNodeOfType<MapNode>( cam );
+        if ( tempNode.valid() && tempNode->getMap()->getProfile() )
+        {
+            _geocentric = tempNode->getMap()->isGeocentric();
+            if ( _geocentric )
+                _rp = tempNode->getMap()->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
+            else
+                OE_INFO << "[AutoClipPlaneHandler] disabled for non-geocentric map" << std::endl;
+
+            //_mapNode = tempNode.get();
+        }
+    }
+
+    if ( _rp > 0 && _geocentric ) // _mapNode.valid() && _geocentric )
+    {
+        cam->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+
+        osg::Vec3d eye, center, up;
+        cam->getViewMatrixAsLookAt( eye, center, up );
+
+        double d = eye.length();
+
+        if ( d > _rp )
+        {
+            double fovy, ar, znear, zfar, finalZfar;
+            cam->getProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
+
+            // far clip at the horizon:
+            zfar = sqrt( d*d - _rp*_rp );
+
+            if (_autoFarPlaneClipping)
+            {
+                finalZfar = zfar;
+            }
+
+            double nfr = _nfrAtRadius + _nfrAtDoubleRadius * ((d-_rp)/d);
+            znear = osg::clampAbove( zfar * nfr, 1.0 );
+
+            cam->setProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
+
+            //OE_NOTICE << fixed
+            //    << "near=" << znear << ", far=" << zfar << std::endl;
+        }
+    }
 }
 

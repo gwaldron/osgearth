@@ -36,19 +36,21 @@
 
 #define LC "[BuildTextOperator] "
 
-struct CullPlaneCallback : public osg::Drawable::CullCallback
+namespace
 {
-    osg::Vec3d _n;
+    struct CullPlaneCallback : public osg::Drawable::CullCallback
+    {
+        osg::Vec3d _n;
 
-    CullPlaneCallback( const osg::Vec3d& planeNormal ) : _n(planeNormal) {
-        _n.normalize();
-    }
+        CullPlaneCallback( const osg::Vec3d& planeNormal ) : _n(planeNormal) {
+            _n.normalize();
+        }
 
-    bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const {
-        return nv && nv->getEyePoint() * _n <= 0;
-    }
-};
-
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const {
+            return nv && nv->getEyePoint() * _n <= 0;
+        }
+    };
+}
 
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;

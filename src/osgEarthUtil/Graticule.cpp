@@ -17,18 +17,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/Graticule>
-#include <osgEarthFeatures/BufferFilter>
+#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ResampleFilter>
-#include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarth/Registry>
+#include <osgEarth/FindNode>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osg/MatrixTransform>
 #include <osg/Depth>
+#include <osg/Program>
+#include <osg/LineStipple>
+#include <osg/ClusterCullingCallback>
 #include <osgDB/FileNameUtils>
 #include <osgUtil/Optimizer>
 #include <osgText/Text>
@@ -42,7 +47,6 @@ using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 static Mutex s_graticuleMutex;
-static unsigned int s_graticuleIdGen = 0;
 typedef std::map<unsigned int, osg::ref_ptr<Graticule> > GraticuleRegistry;
 static GraticuleRegistry s_graticuleRegistry;
 
@@ -50,19 +54,43 @@ static GraticuleRegistry s_graticuleRegistry;
 #define TEXT_MARKER "t"
 #define GRID_MARKER "g"
 
-/**************************************************************************/
+//---------------------------------------------------------------------------
 
+namespace
+{
+    char s_vertexShader[] =
+        "varying vec3 Normal; \n"
+        "void main(void) \n"
+        "{ \n"
+        "    Normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    gl_FrontColor = gl_Color; \n"
+        "} \n";
+
+    char s_fragmentShader[] =
+        "varying vec3 Normal; \n"
+        "void main(void) \n"
+        "{ \n"
+        "    gl_FragColor = gl_Color; \n"
+        "} \n";
+}
+
+//---------------------------------------------------------------------------
 
 Graticule::Graticule( const Map* map ) :
 _map( map ),
-_autoLevels( true )
+_autoLevels( true ),
+_textColor( 1,1,0,1 )
 {
     // safely generate a unique ID for this graticule:
+    _id = Registry::instance()->createUID();
     {
         ScopedLock<Mutex> lock( s_graticuleMutex );
-        _id = s_graticuleIdGen++;
         s_graticuleRegistry[_id] = this;
     }
+
+    setLineColor( osg::Vec4f(1,1,1,0.7) );
+    setTextColor( osg::Vec4f(1,1,0,1) );
 
     if ( _map->isGeocentric() )
     {
@@ -72,7 +100,7 @@ _autoLevels( true )
         double d = 3.5*r;
         double lw=0.15;
         addLevel( FLT_MAX, x, y, lw );
-        for(int i=0; i<14; i++)
+        for(int i=0; i<9; i++)
         {
             x *= 2, y *= 2;
             lw *= 0.5;
@@ -115,6 +143,13 @@ _autoLevels( true )
         new osg::Depth( osg::Depth::ALWAYS ), 
         osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
     set->setMode( GL_LIGHTING, 0 );
+
+    //osg::Program* program = new osg::Program();
+    //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_vertexShader ) );
+    //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_fragmentShader ) );
+    //set->setAttributeAndModes( program, osg::StateAttribute::ON );
+
+    this->addEventCallback( new AutoClipPlaneCallback( _map.get() ) );
 }
 
 void
@@ -191,20 +226,25 @@ namespace
     struct CullPlaneCallback : public osg::NodeCallback
     {
         osg::Vec3d _n;
+        float _deviation;
 
-        CullPlaneCallback( const osg::Vec3d& planeNormal ) : _n(planeNormal) {
+        CullPlaneCallback( const osg::Vec3d& planeNormal, float deviation =0.0f ) 
+            : _n(planeNormal), _deviation(deviation)
+        {
             _n.normalize();
         }
 
         void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-            if ( !nv || nv->getEyePoint() * _n > 0 )
+            if ( !nv || nv->getEyePoint() * _n > _deviation )
                 traverse(node,nv); 
         }
-    };
-    
+    };    
 
     osg::Node*
-    createTextTransform( double x, double y, double value, const osg::EllipsoidModel* ell, float size, float rotation =0.0f )
+    createTextTransform(double x, double y, double value, 
+                        const osg::EllipsoidModel* ell, 
+                        float size, const osg::Vec4f& color,
+                        float rotation =0.0f )
     {    
         osg::Vec3d pos;
         if ( ell ) // is geocentric
@@ -226,8 +266,8 @@ namespace
         t->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
         t->setCharacterSize( size );
         t->setBackdropType( osgText::Text::OUTLINE );
-        t->setBackdropColor( osg::Vec4f(0,0,0,0) );
-        t->setColor( osg::Vec4f(1,1,1,1) );
+        t->setBackdropColor( osg::Vec4f(0,0,0,1) );
+        t->setColor( color );
 
         std::stringstream buf;
         buf << std::fixed << std::setprecision(3) << value;
@@ -258,6 +298,15 @@ namespace
 
         return xform;
     }
+}
+
+void
+Graticule::setLineColor( const osg::Vec4f& color )
+{
+    LineSymbol* symbol = new LineSymbol();
+    symbol->stroke()->color() = color;
+    _lineStyle = new Style();
+    _lineStyle->addSymbol( symbol );
 }
 
 osg::Node*
@@ -324,12 +373,39 @@ Graticule::createGridLevel( unsigned int levelNum ) const
 
             osg::ref_ptr<osg::Node> output;
             BuildGeometryFilter bg;
+            bg.setStyle( _lineStyle.get() );
             cx = bg.push( features, output, cx );
 
             if ( cx.isGeocentric() )
-            {                
-                osg::Vec3d normal = output->getBound().center();
-                output->setCullCallback( new CullPlaneCallback( normal ) );
+            {
+                // get the geocentric control point:
+                double cplon, cplat, cpx, cpy, cpz;
+                tex.getCentroid( cplon, cplat );
+                tex.getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+                    osg::DegreesToRadians( cplat ), osg::DegreesToRadians( cplon ), 0.0, cpx, cpy, cpz );
+                osg::Vec3 controlPoint(cpx, cpy, cpz);
+
+                // get the horizon point:
+                tex.getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+                    osg::DegreesToRadians( tex.yMin() ), osg::DegreesToRadians( tex.xMin() ), 0.0,
+                    cpx, cpy, cpz );
+                osg::Vec3 horizonPoint(cpx, cpy, cpz);
+
+                // the deviation is the dot product of the control vector and the vector from the
+                // control point to the horizon point.
+                osg::Vec3 controlPointNorm = controlPoint; controlPointNorm.normalize();
+                osg::Vec3 horizonVecNorm = horizonPoint - controlPoint; horizonVecNorm.normalize();                
+                float deviation = controlPointNorm * horizonVecNorm;
+
+                // construct the culling callback using the deviation.
+                osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
+                ccc->set( controlPoint, controlPointNorm, deviation, (controlPoint-horizonPoint).length() );
+
+                // need a new group, because never put a cluster culler on a matrixtransform (doesn't work)
+                osg::Group* me = new osg::Group();
+                me->setCullCallback( ccc );
+                me->addChild( output.get() );
+                output = me;
             }
 
             group->addChild( output.get() );
@@ -403,12 +479,13 @@ Graticule::createTextLevel( unsigned int levelNum ) const
             tex.getCentroid( cx, cy );
 
             // y value on the x-axis:
-            group->addChild( createTextTransform( 
+            group->addChild( createTextTransform(
                 cx,
                 tex.yMin() + offset,
                 tex.yMin(),
                 ell,
-                20.0f ) );
+                20.0f,
+                _textColor ) );
 
             // x value on the y-axis:
             group->addChild( createTextTransform(
@@ -417,6 +494,7 @@ Graticule::createTextLevel( unsigned int levelNum ) const
                 tex.xMin(),
                 ell, 
                 20.0f,
+                _textColor,
                 -90.0f ) );
         }
     }

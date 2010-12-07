@@ -46,6 +46,7 @@ _foreColor( osg::Vec4f(1,1,1,1) ),
 _activeColor( osg::Vec4f(.4,.4,.4,1) ),
 _visible( true ),
 _active( false ),
+_clicked( false ),
 _absorbEvents( false )
 {
     //nop
@@ -320,14 +321,30 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
             {
                 cx._active.push( this );
             }
+            _clicked = false;
         }
         else 
         {
-            if ( ea.getEventType() == osgGA::GUIEventAdapter::RELEASE )
+            if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
+            {
+                _clicked = true;
+            }
+            else if ( ea.getEventType() == osgGA::GUIEventAdapter::RELEASE )
             {
                 for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
                 {
                     i->get()->onClick( this, ea.getButtonMask() );
+                }
+                _clicked = false;
+            }
+            if ( _clicked )
+            {
+                if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
+                {
+                    for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
+                    {
+                        i->get()->onMouseDown( this, ea.getButtonMask() );
+                    }
                 }
             }
         }
@@ -1399,8 +1416,6 @@ bool
 ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
     bool handled = false;
-    if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
-        return handled;
 
     float invY = _context._vp->height() - ea.getY();
 

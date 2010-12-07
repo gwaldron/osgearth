@@ -60,6 +60,11 @@ struct MyClickHandler : public ControlEventHandler
         OE_NOTICE << "Thank you for clicking on " << typeid(control).name()
                   << std::endl;
     }
+    void onMouseDown( Control* control, int mouseButtonMask )
+    {
+        OE_NOTICE << "Clicking on " << typeid(control).name()
+                  << std::endl;
+    }
 };
 
 static LabelControl* s_sliderLabel;

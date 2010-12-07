@@ -89,6 +89,7 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         virtual void onClick( class Control* control, int mouseButtonMask ) { }
+        virtual void onMouseDown( class Control* control, int mouseButtonMask ) { }
         virtual void onValueChanged( class Control* control, float value ) { }
         virtual void onValueChanged( class Control* control, bool value ) { }
     };
@@ -213,6 +214,7 @@ namespace osgEarth { namespace Util { namespace Controls
         optional<osg::Vec4f> _backColor, _foreColor, _activeColor;
         osg::observer_ptr<Control> _parent;
         bool _active;
+        bool _clicked;
         bool _absorbEvents;
     };
 

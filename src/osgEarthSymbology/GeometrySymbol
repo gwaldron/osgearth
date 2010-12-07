@@ -45,6 +45,7 @@ namespace osgEarth { namespace Symbology
     public:
         Stroke();
         Stroke( float r, float g, float b, float a );
+        Stroke( const Config& conf ) { mergeConfig(conf); }
 
         osg::Vec4f& color() { return _color; }
         const osg::Vec4f& color() const { return _color; }
@@ -58,6 +59,25 @@ namespace osgEarth { namespace Symbology
         optional<float>& width() { return _width; }        
         const optional<float>& width() const { return _width; }
 
+    public:
+        virtual Config getConfig() const {
+            Config conf("stroke");
+            conf.add( "color", vec4fToHtmlColor(_color) );
+            conf.addIfSet("linecap", "butt", _lineCap, LINECAP_BUTT);
+            conf.addIfSet("linecap", "square", _lineCap, LINECAP_SQUARE);
+            conf.addIfSet("linecap", "round", _lineCap, LINECAP_ROUND);
+            conf.addIfSet("width", _width);
+            return conf;
+        }
+            
+        virtual void mergeConfig( const Config& conf ) {
+            _color = htmlColorToVec4f( conf.value("color") );
+            conf.getIfSet("linecap", "butt", _lineCap, LINECAP_BUTT);
+            conf.getIfSet("linecap", "square", _lineCap, LINECAP_SQUARE);
+            conf.getIfSet("linecap", "round", _lineCap, LINECAP_ROUND);
+            conf.getIfSet("width", _width);
+        }
+
     protected:
         osg::Vec4f              _color;
         optional<LineCapStyle>  _lineCap;
@@ -70,9 +90,20 @@ namespace osgEarth { namespace Symbology
     public:
         Fill();
         Fill( float r, float g, float b, float a );
+        Fill( const Config& conf ) { mergeConfig(conf); }
 
         osg::Vec4f& color() { return _color; }
         const osg::Vec4f& color() const { return _color; }
+
+    public:
+        virtual Config getConfig() const {
+            Config conf("fill");
+            conf.add("color", vec4fToHtmlColor(_color));
+            return conf;
+        }
+        virtual void mergeConfig( const Config& conf ) {
+            _color = htmlColorToVec4f(conf.value("color"));
+        }
 
     protected:
         osg::Vec4f _color;
@@ -82,9 +113,20 @@ namespace osgEarth { namespace Symbology
     {
     public:
         LineSymbol();
+        LineSymbol(const Config& conf) { mergeConfig(conf); }
 
         optional<Stroke>& stroke() { return _stroke; }
         const optional<Stroke>& stroke() const { return _stroke; }
+
+    public:
+        virtual Config getConfig() const {
+            Config conf( "line" );
+            conf.addObjIfSet("stroke", _stroke);
+            return conf;
+        }
+        virtual void mergeConfig( const Config& conf ) {
+            conf.getObjIfSet("stroke", _stroke);
+        }
 
     protected:
         optional<Stroke> _stroke;
@@ -94,12 +136,25 @@ namespace osgEarth { namespace Symbology
     {
     public:
         PointSymbol();
+        PointSymbol( const Config& conf ) { mergeConfig(conf); }
 
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }
 
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
+
+    public:
+        virtual Config getConfig() const {
+            Config conf( "point" );
+            conf.addObjIfSet( "fill", _fill );
+            conf.addIfSet( "size", _size );
+            return conf;
+        }
+        virtual void mergeConfig( const Config& conf ) {
+            conf.getObjIfSet( "fill", _fill );
+            conf.getIfSet( "size", _size );
+        }
 
     protected:
         optional<Fill> _fill;
@@ -110,9 +165,20 @@ namespace osgEarth { namespace Symbology
     {
     public:
         PolygonSymbol();
+        PolygonSymbol( const Config& conf ) { mergeConfig(conf); }
 
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }
+
+    public:
+        virtual Config getConfig() const {
+            Config conf( "polygon" );
+            conf.addObjIfSet( "fill", _fill );
+            return conf;
+        }
+        virtual void mergeConfig(const Config& conf ) {
+            conf.getObjIfSet( "fill", _fill );
+        }
 
     protected:
         optional<Fill> _fill;

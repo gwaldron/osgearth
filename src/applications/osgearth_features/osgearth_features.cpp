@@ -32,6 +32,7 @@
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
+#include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -45,6 +46,8 @@ using namespace osgEarth::Util;
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
+
+    bool useGeom = arguments.read("--geom");
 
     osgViewer::Viewer viewer(arguments);
 
@@ -67,18 +70,31 @@ int main(int argc, char** argv)
     Style* style = new Style;
 
     LineSymbol* ls = new LineSymbol;
-    ls->stroke()->color() = osg::Vec4f( 1,1,0,1 );
-    ls->stroke()->width() = 1.5f;
+    ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
+    ls->stroke()->width() = 1.0f;
     style->addSymbol(ls);
 
     // Now we'll choose the AGG-Lite driver to render the features. By the way, the
     // feature data is actually polygons, so we override that to treat it as lines.
     // We apply the feature driver and set the style as well.
-    AGGLiteOptions worldOpt;
-    worldOpt.featureOptions() = featureOpt;
-    worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
-    worldOpt.styles()->addStyle( style );
-    map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
+    if ( !useGeom )
+    {
+        AGGLiteOptions worldOpt;
+        worldOpt.featureOptions() = featureOpt;
+        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+        worldOpt.styles()->addStyle( style );
+        map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
+    }
+    else
+    {
+        FeatureGeomModelOptions worldOpt;
+        worldOpt.featureOptions() = featureOpt;
+        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+        worldOpt.styles()->addStyle( style );
+        worldOpt.enableLighting() = false;
+        worldOpt.depthTestEnabled() = false;
+        map->addModelLayer( new ModelLayer( "my features", worldOpt ) );
+    }
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNode* mapNode = new MapNode( map );
@@ -87,6 +103,8 @@ int main(int argc, char** argv)
     viewer.setSceneData( mapNode );
 
     viewer.setCameraManipulator( new EarthManipulator() );
+
+    viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

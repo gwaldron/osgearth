@@ -62,16 +62,25 @@ main(int argc, char** argv)
     {
         if ( mapNode->getMap()->isGeocentric() )
         {
+            // the AutoClipPlaneHandler will automatically adjust the near/far clipping
+            // planes based on your view of the horizon. This prevents near clipping issues
+            // when you are very close to the ground. If your app never brings a user very
+            // close to the ground, you may not need this.
             viewer.addEventHandler( new AutoClipPlaneHandler );
 
+            // the Graticule is a lat/long grid that overlays the terrain. It only works
+            // in a round-earth geocentric terrain.
             if ( useGraticule )
             {
-                // create a graticle, and start it in the OFF position
                 graticule = new Graticule( mapNode->getMap() );
                 root->addChild( graticule );
             }
         }
     }
+
+    // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
+    // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
+    viewer.getDatabasePager()->setDoPreCompile( true );
 
     viewer.setSceneData( root );
     viewer.setCameraManipulator( new EarthManipulator );

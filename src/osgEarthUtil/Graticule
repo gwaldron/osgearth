@@ -21,11 +21,13 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Map>
+#include <osgEarthSymbology/Style>
 #include <vector>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * Implements a map graticule. 
@@ -46,6 +48,16 @@ namespace osgEarth { namespace Util
          *      Map with which you will use this graticule
          */
         Graticule( const Map* map );
+
+        /**
+         * Sets the color of the grid lines
+         */
+        void setLineColor( const osg::Vec4f& value );
+
+        /**
+         * Sets the color of the text labels
+         */
+        void setTextColor( const osg::Vec4f& value ) { _textColor = value; }
 
         /**
          * Adds a new level to the profile. Levels are sorted by maxRange. Calling this method
@@ -78,6 +90,8 @@ namespace osgEarth { namespace Util
         bool _autoLevels;
         osg::observer_ptr<const Map> _map;
         std::vector<Level> _levels;
+        osg::Vec4f _textColor;
+        osg::ref_ptr<Style> _lineStyle;
 
         osg::Node* createGridLevel( unsigned int levelNum ) const;
         osg::Node* createTextLevel( unsigned int levelNum ) const;

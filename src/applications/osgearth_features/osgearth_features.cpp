@@ -70,7 +70,7 @@ int main(int argc, char** argv)
     Style* style = new Style;
 
     LineSymbol* ls = new LineSymbol;
-    ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
+    ls->stroke()->color() = osg::Vec4f( 1,1,0,0.1 ); // yellow
     ls->stroke()->width() = 1.0f;
     style->addSymbol(ls);
 

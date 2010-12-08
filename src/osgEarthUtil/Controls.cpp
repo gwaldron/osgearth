@@ -308,7 +308,7 @@ Control::draw(const ControlContext& cx, DrawableList& out )
 bool
 Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
 {
-    bool handled = false;
+    bool handled = false;    
 
     if ( _eventHandlers.size() > 0 )
     {    
@@ -938,7 +938,7 @@ Container::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa
     for( ControlList::const_reverse_iterator i = children().rbegin(); i != children().rend(); ++i )
     {
         Control* child = i->get();
-        if ( child->intersects( ea.getX(), cx._vp->height() - ea.getY() ) )
+        if (ea.getEventType() == osgGA::GUIEventAdapter::FRAME || child->intersects( ea.getX(), cx._vp->height() - ea.getY() ) )
             handled = child->handle( ea, aa, cx );
         if ( handled )
             break;
@@ -1399,8 +1399,16 @@ bool
 ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
     bool handled = false;
+    //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
+    {
+        for( ControlList::const_reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+        {
+            i->get()->handle(ea, aa, _context);
+        }
         return handled;
+    }
+
 
     float invY = _context._vp->height() - ea.getY();
 

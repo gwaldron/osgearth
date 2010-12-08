@@ -22,9 +22,12 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
 #include <osgGA/GUIEventHandler>
+#include <osgGA/EventVisitor>
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     /**
      * An event handler that automatically calculates optimal near and
      * far clip planes for a geocentric map node. Just add this to your
@@ -38,7 +41,7 @@ namespace osgEarth { namespace Util
         /**
          * Constructs a new clip plane handler.
          */
-        AutoClipPlaneHandler();
+        AutoClipPlaneHandler( const Map* map =0L );
         
         /**
          * Whether to automatically set the far clip to the horizon. default=true.
@@ -51,6 +54,8 @@ namespace osgEarth { namespace Util
 
         virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
+        void frame( osgGA::GUIActionAdapter& aa );
+
     private:
 
         osg::observer_ptr<osgEarth::MapNode> _mapNode;
@@ -58,6 +63,27 @@ namespace osgEarth { namespace Util
         int _frame;
         double _nfrAtRadius, _nfrAtDoubleRadius, _rp;
         bool _autoFarPlaneClipping;
+    };
+
+
+    class OSGEARTHUTIL_EXPORT AutoClipPlaneCallback : public osg::NodeCallback
+    {
+    public:
+        AutoClipPlaneCallback( const Map* map =0L )
+        {
+            _handler = new AutoClipPlaneHandler( map );
+        }
+
+        virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
+        {
+            osgGA::EventVisitor* ev = dynamic_cast<osgGA::EventVisitor*>( nv );
+            if ( ev ) {
+                _handler->frame( *ev->getActionAdapter() );
+            }
+            traverse( node, nv );
+        }
+
+        osg::ref_ptr<AutoClipPlaneHandler> _handler;
     };
 
 } } // namespace osgEarth::Util

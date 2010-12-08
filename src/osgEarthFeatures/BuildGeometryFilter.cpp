@@ -33,6 +33,22 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+namespace
+{
+    struct CullPlaneCallback : public osg::Drawable::CullCallback
+    {
+        osg::Vec3d _n;
+
+        CullPlaneCallback( const osg::Vec3d& planeNormal ) : _n(planeNormal) {
+            _n.normalize();
+        }
+
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const {
+            return nv && nv->getEyePoint() * _n <= 0;
+        }
+    };
+}
+
 
 BuildGeometryFilter::BuildGeometryFilter() :
 _style( new Style() ),
@@ -120,7 +136,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         //    << Geometry::toString( part->getType() ) << ", renderType = "
         //    << Geometry::toString( renderType ) << std::endl;
 
-        osg::Vec4f color = osg::Vec4(1,0,1,1);
+        osg::Vec4f color = osg::Vec4(1,1,1,1);
 
         switch( renderType )
         {

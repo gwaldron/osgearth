@@ -315,6 +315,10 @@ DiskCache::loadProperties(const std::string&           cacheId,
             out_tileSize = props._tile_size;
             return true;
 		}
+        else
+        {
+            OE_WARN << LC << "Failed to load cache metadata from " << path << std::endl;
+        }
 	}
 	return false;
 }

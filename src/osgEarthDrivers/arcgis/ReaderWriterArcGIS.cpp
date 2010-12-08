@@ -98,6 +98,7 @@ public:
         {
             profile = _map_service.getProfile();
 
+            /*
             if ( !_map_service.isTiled() )
             {
                 // expand the profile's extents so they form a square.
@@ -121,6 +122,7 @@ public:
                     profile = Profile::create( profile->getSRS(), oldEx.xMin()-d/2, oldEx.yMin(), oldEx.xMax()+d/2, oldEx.yMax(), 0L, tilesX, tilesY );    
                 }
             }
+            */
         }        
         else
         {

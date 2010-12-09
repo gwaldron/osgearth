@@ -117,6 +117,11 @@ _supportsTexture2DLod   ( false )
 
         OE_INFO << LC << "Detected hardware capabilities:" << std::endl;
 
+        _vendor = std::string( reinterpret_cast<const char*>(glGetString(GL_VENDOR)) );
+        OE_INFO << LC << "  Vendor = " << _vendor << std::endl;
+
+        _renderer = std::string( reinterpret_cast<const char*>(glGetString(GL_RENDERER)) );
+        OE_INFO << LC << "  Renderer = " << _renderer << std::endl;
 
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );
         OE_INFO << LC << "  Max FFP texture units = " << _maxFFPTextureUnits << std::endl;

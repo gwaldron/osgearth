@@ -50,6 +50,7 @@ SET(LIB_PUBLIC_HEADERS
     ModelLayer
     ModelSource
 	Notify
+	OSGUtils
     Profile
 	Progress
     Registry
@@ -111,6 +112,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	ModelLayer.cpp
 	ModelSource.cpp
 	Notify.cpp
+	OSGUtils.cpp
     Profile.cpp
 	Progress.cpp
     Registry.cpp

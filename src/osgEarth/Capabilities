@@ -89,6 +89,8 @@ namespace osgEarth
         bool _supportsStencilWrap;
         bool _supportsTwoSidedStencil;
         bool _supportsTexture2DLod;
+        std::string _vendor;
+        std::string _renderer;
 
     public:
         friend class Registry;

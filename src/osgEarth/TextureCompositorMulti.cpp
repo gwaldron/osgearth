@@ -20,6 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/ShaderUtils>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -202,12 +203,19 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
         if ( _lodBlending )
         {
             // update the timestamp on the image layer to support blending.
-            osg::Uniform* stamp = stateSet->getUniform( "osgearth_SlotStamp" );
-            if ( !stamp || stamp->getNumElements() < layout.getMaxUsedSlot() + 1 )
+            osg::ref_ptr<ArrayUniform> stamp = new ArrayUniform( stateSet, "osgearth_SlotStamp" );
+            if ( !stamp->isComplete() || stamp->getNumElements() < layout.getMaxUsedSlot() + 1 )
             {
-                stamp = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_SlotStamp", layout.getMaxUsedSlot()+1 );   
-                stateSet->addUniform( stamp );
+                stamp = new ArrayUniform( osg::Uniform::FLOAT, "osgearth_SlotStamp", layout.getMaxUsedSlot()+1 );
+                stamp->addTo( stateSet );
             }
+
+            //osg::Uniform* stamp = stateSet->getUniform( "osgearth_SlotStamp" );
+            //if ( !stamp || stamp->getNumElements() < layout.getMaxUsedSlot() + 1 )
+            //{
+            //    stamp = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_SlotStamp", layout.getMaxUsedSlot()+1 );   
+            //    stateSet->addUniform( stamp );
+            //}
 
             float now = (float)osg::Timer::instance()->delta_s( osg::Timer::instance()->getStartTick(), osg::Timer::instance()->tick() );
             stamp->setElement( layout.getSlot(layerUID), now );

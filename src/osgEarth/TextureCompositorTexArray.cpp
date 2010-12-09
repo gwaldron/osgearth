@@ -127,7 +127,8 @@ namespace
         if ( !tex )
         {
             tex = new SparseTexture2DArray();
-            tex->setInternalFormat( GL_RGBA );
+            tex->setSourceFormat( GL_RGBA );
+            tex->setInternalFormat( GL_RGBA8 );
             tex->setTextureWidth( 256 );
             tex->setTextureHeight( 256 );
             

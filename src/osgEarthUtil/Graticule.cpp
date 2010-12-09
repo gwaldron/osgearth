@@ -139,9 +139,9 @@ _textColor( 1,1,0,1 )
 
     osg::StateSet* set = this->getOrCreateStateSet();
     set->setRenderBinDetails( 9999, "RenderBin" );
-    set->setAttributeAndModes( 
-        new osg::Depth( osg::Depth::ALWAYS ), 
-        osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    //set->setAttributeAndModes( 
+    //    new osg::Depth( osg::Depth::ALWAYS ), 
+    //    osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
     set->setMode( GL_LIGHTING, 0 );
 
     //osg::Program* program = new osg::Program();
@@ -149,7 +149,7 @@ _textColor( 1,1,0,1 )
     //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_fragmentShader ) );
     //set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
-    this->addEventCallback( new AutoClipPlaneCallback( _map.get() ) );
+    //this->addEventCallback( new AutoClipPlaneCallback( _map.get() ) );
 }
 
 void

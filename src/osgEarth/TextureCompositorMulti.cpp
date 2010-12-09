@@ -34,14 +34,14 @@ using namespace osgEarth;
 namespace
 {
     static osg::Shader*
-    s_createTextureVertexShader( int maxLayersToRender )
+    s_createTextureVertexShader( int maxUnits )
     {
         std::stringstream buf;
 
         buf << "void osgearth_vert_setupTexturing() \n"
             << "{ \n";
 
-        for(int i=0; i<maxLayersToRender; ++i )
+        for(int i=0; i<maxUnits; ++i )
         {
             buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
         }
@@ -53,14 +53,8 @@ namespace
     }
 
     static osg::Shader*
-    s_createTextureFragShaderFunction( const TextureLayout& layout, int maxLayersToRender, bool blending, float blendTime )
+    s_createTextureFragShaderFunction( const TextureLayout& layout, int maxUnits, bool blending, float blendTime )
     {
-        //if ( blending && !Registry::instance()->getCapabilities().supportsTexture2DLod() )
-        //{
-        //    blending = false;
-        //    OE_WARN << LC << "Disabling blending." << std::endl;
-        //}
-
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
         const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
 
@@ -71,15 +65,15 @@ namespace
         if ( blending )
         {
             buf << "#extension GL_ARB_shader_texture_lod : enable \n"
-                << "uniform float[] osgearth_SlotStamp; \n"
-                << "uniform float   osg_FrameTime; \n";
+                << "uniform float osgearth_SlotStamp[" << maxUnits << "]; \n"
+                << "uniform float osg_FrameTime; \n";
         }
 
-        buf << "uniform float[] osgearth_ImageLayerOpacity; \n"
-            << "uniform bool[]  osgearth_ImageLayerEnabled; \n"
-            << "uniform float[] osgearth_ImageLayerRange; \n"
-            << "uniform float   osgearth_ImageLayerAttenuation; \n"
-            << "varying float   osgearth_CameraRange; \n";
+        buf << "uniform float osgearth_ImageLayerOpacity[" << maxUnits << "]; \n"
+            << "uniform bool  osgearth_ImageLayerEnabled[" << maxUnits << "]; \n"
+            << "uniform float osgearth_ImageLayerRange[" << 2*maxUnits << "]; \n"
+            << "uniform float osgearth_ImageLayerAttenuation; \n"
+            << "varying float osgearth_CameraRange; \n";
 
         buf << "uniform sampler2D ";
         for( unsigned int i=0; i<order.size(); ++i )
@@ -171,7 +165,7 @@ namespace
             std::stringstream buf;
             buf << "tex" << slot;
             std::string name = buf.str();
-            stateSet->addUniform( new osg::Uniform( name.c_str(), slot ) );
+            stateSet->getOrCreateUniform( name.c_str(), osg::Uniform::SAMPLER_2D )->set( slot );
         }
 
         return tex;
@@ -225,30 +219,30 @@ void
 TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
                                                     const TextureLayout& layout ) const
 {
-    int maxLayers = layout.getMaxUsedSlot() + 1;
+    int maxUnits = layout.getMaxUsedSlot() + 1;
 
     if ( _useGPU )
     {
         // Validate against the max number of GPU texture units:
-        if ( maxLayers > Registry::instance()->getCapabilities().getMaxGPUTextureUnits() )
+        if ( maxUnits > Registry::instance()->getCapabilities().getMaxGPUTextureUnits() )
         {
-            maxLayers = Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+            maxUnits = Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
             OE_WARN << LC
                 << "Warning! You have exceeded the number of texture units available on your GPU ("
-                << maxLayers << "). Consider using another compositing mode."
+                << maxUnits << "). Consider using another compositing mode."
                 << std::endl;
         }
 
         VirtualProgram* vp = static_cast<VirtualProgram*>( stateSet->getAttribute(osg::StateAttribute::PROGRAM) );
-        if ( maxLayers > 0 )
+        if ( maxUnits > 0 )
         {
             vp->setShader( 
                 "osgearth_frag_applyTexturing",
-                s_createTextureFragShaderFunction(layout, maxLayers, _lodBlending, _lodTransitionTime ) );
+                s_createTextureFragShaderFunction(layout, maxUnits, _lodBlending, _lodTransitionTime ) );
 
             vp->setShader( 
                 "osgearth_vert_setupTexturing", 
-                s_createTextureVertexShader(maxLayers) );
+                s_createTextureVertexShader(maxUnits) );
         }
         else
         {
@@ -260,22 +254,22 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
     else
     {
         // Validate against the maximum number of textures available in FFP mode.
-        if ( maxLayers > Registry::instance()->getCapabilities().getMaxFFPTextureUnits() )
+        if ( maxUnits > Registry::instance()->getCapabilities().getMaxFFPTextureUnits() )
         {
-            maxLayers = Registry::instance()->getCapabilities().getMaxFFPTextureUnits();
+            maxUnits = Registry::instance()->getCapabilities().getMaxFFPTextureUnits();
             OE_WARN << LC << 
                 "Warning! You have exceeded the number of texture units available in fixed-function pipeline "
-                "mode on your graphics hardware (" << maxLayers << "). Consider using another "
+                "mode on your graphics hardware (" << maxUnits << "). Consider using another "
                 "compositing mode." << std::endl;
         }
 
         // FFP multitexturing requires that we set up a series of TexCombine attributes:
-        if (maxLayers == 1)
+        if (maxUnits == 1)
         {
             osg::TexEnv* texenv = new osg::TexEnv(osg::TexEnv::MODULATE);
             stateSet->setTextureAttributeAndModes(0, texenv, osg::StateAttribute::ON);
         }
-        else if (maxLayers >= 2)
+        else if (maxUnits >= 2)
         {
             //Blend together the colors and accumulate the alpha values of textures 0 and 1 on unit 0
             {
@@ -302,7 +296,7 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
 
             //For textures 2 and beyond, blend them together with the previous
             //Add the alpha values of this unit and the previous unit
-            for (int unit = 1; unit < maxLayers-1; ++unit)
+            for (int unit = 1; unit < maxUnits-1; ++unit)
             {
                 osg::TexEnvCombine* texenv = new osg::TexEnvCombine;
                 texenv->setCombine_RGB(osg::TexEnvCombine::INTERPOLATE);
@@ -338,7 +332,7 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
 
                 texenv->setSource1_RGB(osg::TexEnvCombine::PRIMARY_COLOR);
                 texenv->setOperand1_RGB(osg::TexEnvCombine::SRC_COLOR);
-                stateSet->setTextureAttributeAndModes(maxLayers-1, texenv, osg::StateAttribute::ON);
+                stateSet->setTextureAttributeAndModes(maxUnits-1, texenv, osg::StateAttribute::ON);
             }
         }
     }

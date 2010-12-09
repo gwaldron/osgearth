@@ -29,18 +29,32 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Graticule>
+#include <osgEarthUtil/Controls>
 
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
-
-#include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
-#include <osgEarthDrivers/agglite/AGGLiteOptions>
-
-using namespace osgEarth::Drivers;
-using namespace osgEarth::Symbology;
-using namespace osgEarth::Features;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
+
+static osg::Node*
+createHelp( osgViewer::View* view )
+{
+    static char s_help[] = 
+        "left mouse: pan \n"
+        "middle mouse: tilt/slew \n"
+        "right mouse: zoom in/out continuous \n"
+        "double-click: zoom in \n"
+        "scroll wheel: zoom in/out \n"
+        "arrows: pan\n"
+        "1-6 : fly to preset viewpoints \n"
+        "shift-right-mouse: locked panning\n"
+        "u : toggle azimuth locking \n";
+
+    VBox* v = new VBox();
+    v->addControl( new LabelControl( "EarthManipulator", osg::Vec4f(1,1,0,1) ) );
+    v->addControl( new LabelControl( s_help ) );
+    ControlCanvas* cc = new ControlCanvas( view );
+    cc->addControl( v );
+    return cc;
+}
 
 // some preset viewpoints.
 static Viewpoint VPs[] = {
@@ -68,33 +82,6 @@ struct FlyToViewpointHandler : public osgGA::GUIEventHandler
     }
 
     osg::observer_ptr<EarthManipulator> _manip;
-};
-
-// a simple handler that toggles a node mask on/off
-struct NodeToggleHandler : public osgGA::GUIEventHandler 
-{
-    NodeToggleHandler( osg::Node* node, char key, const char* nodeName )
-        : _node(node), _key(key), _nodeName(nodeName) { }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key )
-        {
-            _node->setNodeMask( _node->getNodeMask() == 0 ? ~0 : 0 );
-        }
-        return false;
-    }
-
-    void getUsage(osg::ApplicationUsage& usage) const
-    {
-        using namespace std;
-        usage.addKeyboardMouseBinding(string(1, _key),
-                                      string("Toggle ") + _nodeName);
-    }
-    
-    osg::observer_ptr<osg::Node> _node;
-    char _key;
-    std::string _nodeName;
 };
 
 struct LockAzimuthHandler : public osgGA::GUIEventHandler
@@ -130,8 +117,7 @@ struct LockAzimuthHandler : public osgGA::GUIEventHandler
 
 int main(int argc, char** argv)
 {
-    osg::ArgumentParser arguments(&argc,argv);
-       
+    osg::ArgumentParser arguments(&argc,argv);       
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     // install the programmable manipulator.
@@ -144,12 +130,11 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    osg::Group* root = new osg::Group();
-    root->addChild( earthNode );
-
     osgViewer::Viewer viewer(arguments);
 
-    Graticule* graticule = 0L;
+    osg::Group* root = new osg::Group();
+    root->addChild( earthNode );
+    root->addChild( createHelp( &viewer ) );
 
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
@@ -165,33 +150,19 @@ int main(int argc, char** argv)
             // add a handler that will automatically calculate good clipping planes
             viewer.addEventHandler( new AutoClipPlaneHandler() );
         }
-
-        // create a graticle, and start it in the OFF position
-        graticule = new Graticule( mapNode->getMap() );
-        graticule->setNodeMask(0);
-        root->addChild( graticule );
     }
 
     viewer.setSceneData( root );
     viewer.setCameraManipulator( manip );
-
-    // bind "double-click" to the zoom-to function in the EarthManipulator
-    manip->getSettings()->bindMouseDoubleClick(
-        EarthManipulator::ACTION_GOTO,
-        osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
 
     manip->getSettings()->bindMouse(
         EarthManipulator::ACTION_EARTH_DRAG,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
     
-    // add our fly-to handler
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
-
-    // add a handler to toggle the graticle
-    if ( graticule )
-        viewer.addEventHandler(new NodeToggleHandler( graticule, 'g', "graticule"));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));
+
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

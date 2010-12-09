@@ -227,6 +227,10 @@ namespace osgEarth { namespace Util { namespace Controls
             float fontSize =18.0f,
             const osg::Vec4f& foreColor =osg::Vec4f(1,1,1,1) );
 
+        LabelControl(
+            const std::string& value,
+            const osg::Vec4f& foreColor );
+
         void setText( const std::string& value );
         const std::string& text() const { return _text; }
 

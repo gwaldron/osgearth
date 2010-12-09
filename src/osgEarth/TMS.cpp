@@ -425,7 +425,7 @@ TileMapReaderWriter::read(std::istream &in)
     osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
     if (!doc.valid())
     {
-        OE_WARN << LC << "Failed to load TileMap " << std::endl;
+        OE_DEBUG << LC << "Failed to load TileMap " << std::endl;
         return 0;
     }
    

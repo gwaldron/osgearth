@@ -99,7 +99,7 @@ namespace osgEarth
         /**
          * Accesses the group node that contains all the ModelLayers.
          */
-        osg::Group* getModelLayerGroup();
+        osg::Group* getModelLayerGroup() const;
 
         /**
          * Adds a node that decorates the terrain groups

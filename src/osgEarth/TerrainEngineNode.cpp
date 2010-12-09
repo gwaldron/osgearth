@@ -22,6 +22,7 @@
 #include <osgEarth/FindNode>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
+#include <osg/PolygonOffset>
 
 #define LC "[TerrainEngineNode] "
 
@@ -129,7 +130,11 @@ TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& 
     _texCompositor = new TextureCompositor( options ); //.compositingTechnique().value() );
 
     // enable backface culling
-    getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+    osg::StateSet* set = getOrCreateStateSet();
+    set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+
+    // poly offset so we can support things like graticules
+    set->setAttributeAndModes( new osg::PolygonOffset( 10, 10 ), osg::StateAttribute::ON );
 }
 
 void

@@ -345,7 +345,6 @@ struct LabelText : public osgText::Text
     const osg::Matrix& getATMatrix(int contextID) const { return _autoTransformCache[contextID]._matrix; }
 };
 
-
 LabelControl::LabelControl(const std::string& text,
                            float fontSize,
                            const osg::Vec4f& foreColor)
@@ -353,6 +352,16 @@ LabelControl::LabelControl(const std::string& text,
     setText( text );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
     setFontSize( fontSize );
+    setBackColor( osg::Vec4f(0,0,0,0) );
+    setForeColor( foreColor );
+}
+
+LabelControl::LabelControl(const std::string& text,
+                           const osg::Vec4f& foreColor)
+{
+    setText( text );
+    setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
+    setFontSize( 18.0f );
     setBackColor( osg::Vec4f(0,0,0,0) );
     setForeColor( foreColor );
 }

@@ -268,6 +268,12 @@ MapNode::getTerrainEngine() const
     return _terrainEngine.get();
 }
 
+osg::Group*
+MapNode::getModelLayerGroup() const
+{
+    return _models.get();
+}
+
 const MapNodeOptions&
 MapNode::getMapNodeOptions() const
 {

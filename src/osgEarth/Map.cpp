@@ -842,7 +842,7 @@ s_createHeightField(const TileKey& key,
                     ElevationSamplePolicy samplePolicy,
                     ProgressCallback* progress) 
 {
-	osg::HeightField *result = NULL;
+    osg::ref_ptr<osg::HeightField> result = NULL;
     int lowestLOD = key.getLevelOfDetail();
     bool hfInitialized = false;
 
@@ -1038,7 +1038,7 @@ s_createHeightField(const TileKey& key,
 		result->setBorderWidth( 0 );
 	}
 
-	return result;
+	return result.release();
 }
 
 

@@ -134,7 +134,7 @@ TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& 
     set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
 
     // poly offset so we can support things like graticules
-    set->setAttributeAndModes( new osg::PolygonOffset( 10, 10 ), osg::StateAttribute::ON );
+    set->setAttributeAndModes( new osg::PolygonOffset( 1, 1 ), osg::StateAttribute::ON );
 }
 
 void

@@ -35,7 +35,7 @@ namespace osgEarth { namespace Symbology
     public:
         Symbol();
 
-        virtual Config getConfig() const =0;
+        virtual Config getConfig() const { return Config(); }
     };
 
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;

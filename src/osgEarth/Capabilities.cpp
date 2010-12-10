@@ -23,6 +23,7 @@
 #include <osg/GLExtensions>
 #include <osg/GL2Extensions>
 #include <osg/Texture>
+#include <osgViewer/Version>
 
 using namespace osgEarth;
 
@@ -108,6 +109,9 @@ _supportsStencilWrap    ( true ),
 _supportsTwoSidedStencil( false ),
 _supportsTexture2DLod   ( false )
 {
+    // little hack to force the osgViewer library to link so we can create a graphics context
+    osgViewerGetVersion();
+
     // create a graphics context so we can query OpenGL support:
     MyGraphicsContext mgc;
 

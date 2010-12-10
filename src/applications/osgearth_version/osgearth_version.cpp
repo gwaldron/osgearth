@@ -21,7 +21,6 @@
 #include <osg/Notify>
 #include <osg/ArgumentParser>
 #include <osg/ApplicationUsage>
-
 #include <osgEarth/Version>
 #include <osgEarth/Registry>
 
@@ -81,8 +80,6 @@ int main( int argc, char** argv)
 
     if ( arguments.read("--caps") )
     {
-        static char env[] = "OSGEARTH_USE_PBUFFER_TEXT=1";
-        putenv( env );
         osgEarth::setNotifyLevel( osg::INFO );
         osgEarth::Registry::instance()->getCapabilities();
     }

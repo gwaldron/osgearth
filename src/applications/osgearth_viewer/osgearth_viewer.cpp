@@ -33,7 +33,10 @@ int
 usage( const std::string& msg )
 {
     OE_NOTICE << msg << std::endl;
-    OE_NOTICE << "USAGE: osgearth_viewer [--graticule] file.earth" << std::endl;
+    OE_NOTICE << "USAGE: osgearth_viewer [--graticule] [--autoclip] file.earth" << std::endl;
+    OE_NOTICE << "   --graticule     : displays a lat/long grid in geocentric mode" << std::endl;
+    OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
+        
     return -1;
 }
 
@@ -44,6 +47,7 @@ main(int argc, char** argv)
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     bool useGraticule = arguments.read( "--graticule" );
+    bool useAutoClip  = arguments.read( "--autoclip" );
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -66,7 +70,8 @@ main(int argc, char** argv)
             // planes based on your view of the horizon. This prevents near clipping issues
             // when you are very close to the ground. If your app never brings a user very
             // close to the ground, you may not need this.
-            viewer.addEventHandler( new AutoClipPlaneHandler );
+            if ( useAutoClip )
+                viewer.addEventHandler( new AutoClipPlaneHandler );
 
             // the Graticule is a lat/long grid that overlays the terrain. It only works
             // in a round-earth geocentric terrain.

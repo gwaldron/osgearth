@@ -38,6 +38,8 @@ namespace
     static osg::Shader*
     s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, float blendTime )
     {
+        int numSlots = layout.getMaxUsedSlot() + 1;
+
         std::stringstream buf;
 
         buf << "#version 130 \n"
@@ -47,16 +49,16 @@ namespace
         if ( blending )
         {
             buf << "#extension GL_ARB_shader_texture_lod : enable \n"
-                << "uniform float[] osgearth_SlotStamp; \n"
-                << "uniform float   osg_FrameTime; \n";
+                << "uniform float osgearth_SlotStamp[ " << numSlots << "]; \n"
+                << "uniform float osg_FrameTime; \n";
         }
 
         buf << "uniform sampler2DArray tex0; \n"
-            << "uniform float[] region; \n"
-            << "uniform float[] osgearth_ImageLayerOpacity; \n"
-            << "uniform bool[]  osgearth_ImageLayerEnabled; \n"
-            << "uniform float[] osgearth_ImageLayerRange; \n"
-            << "uniform float   osgearth_ImageLayerAttenuation; \n"
+            << "uniform float region[ " << 4*numSlots << "]; \n"
+            << "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
+            << "uniform bool  osgearth_ImageLayerEnabled[" << numSlots << "]; \n"
+            << "uniform float osgearth_ImageLayerRange[" << 2*numSlots << "]; \n"
+            << "uniform float osgearth_ImageLayerAttenuation; \n"
             << "varying float osgearth_CameraRange; \n"
 
             << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
@@ -125,7 +127,8 @@ namespace
         if ( !tex )
         {
             tex = new SparseTexture2DArray();
-            tex->setInternalFormat( GL_RGBA );
+            tex->setSourceFormat( GL_RGBA );
+            tex->setInternalFormat( GL_RGBA8 );
             tex->setTextureWidth( 256 );
             tex->setTextureHeight( 256 );
             
@@ -140,7 +143,7 @@ namespace
             tex->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
 
             stateSet->setTextureAttribute( 0, tex, osg::StateAttribute::ON );
-            stateSet->addUniform( new osg::Uniform("tex0", 0) );
+            stateSet->getOrCreateUniform( "tex0", osg::Uniform::SAMPLER_2D_ARRAY )->set( 0 );
         }
 
         // grow the texture array if necessary.

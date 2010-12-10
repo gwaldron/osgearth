@@ -500,11 +500,13 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
         if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
         {
             osg::ref_ptr<osg::HeightField> hf;
+
             if (hasElevation)
-            {
-                hf = _update_mapf->createHeightField( key, true, _terrainOptions.elevationInterpolation().value());
-            }
-            if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key );
+                _update_mapf->getHeightField( key, true, hf, _terrainOptions.elevationInterpolation().value());
+
+            if (!hf.valid()) 
+                hf = OSGTileFactory::createEmptyHeightField( key );
+
             heightFieldLayer->setHeightField( hf.get() );
             hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
 
@@ -528,8 +530,10 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
                 //Always load the first LOD so the children tiles can have something to use for placeholders
                 if (tile->getKey().getLevelOfDetail() == 1)
                 {
-                    osg::ref_ptr<osg::HeightField> hf = _update_mapf->createHeightField( key, true, _terrainOptions.elevationInterpolation().value());
-                    if (!hf.valid()) hf = OSGTileFactory::createEmptyHeightField( key );
+                    osg::ref_ptr<osg::HeightField> hf;
+                    _update_mapf->getHeightField( key, true, hf, _terrainOptions.elevationInterpolation().value());
+                    if (!hf.valid()) 
+                        hf = OSGTileFactory::createEmptyHeightField( key );
                     heightFieldLayer->setHeightField( hf.get() );
                     hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
                     tile->setElevationLOD(tile->getKey().getLevelOfDetail());

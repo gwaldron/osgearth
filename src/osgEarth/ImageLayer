@@ -182,9 +182,11 @@ namespace osgEarth
 
     protected:
 
-		osg::Image* createImageWrapper( const TileKey& key,
-                                        bool cacheInLayerProfile,
-                                        ProgressCallback* progress );
+        bool createImageWrapper(
+            const TileKey& key,
+            bool cacheInLayerProfile,
+            osg::ref_ptr<osg::Image>& out_image,
+            ProgressCallback* progress );
 
         virtual void initTileSource();
 

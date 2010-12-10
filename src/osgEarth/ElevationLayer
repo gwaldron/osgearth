@@ -106,7 +106,10 @@ namespace osgEarth
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
          */
-        osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress = 0);
+        bool getHeightField(
+            const TileKey& key, 
+            osg::ref_ptr<osg::HeightField>& out_hf,
+            ProgressCallback* progress =0L );
 
     protected:
         

@@ -331,7 +331,7 @@ DiskCache::loadProperties(const std::string&           cacheId,
 #define LC "[MemCache] "
 
 MemCache::MemCache():
-_maxNumTilesInCache(1)
+_maxNumTilesInCache(128)
 {
     setName( "mem" );
 }

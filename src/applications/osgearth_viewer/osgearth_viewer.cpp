@@ -26,6 +26,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Graticule>
+#include <osgEarthUtil/SkyNode>
 
 using namespace osgEarth::Util;
 
@@ -35,6 +36,7 @@ usage( const std::string& msg )
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << "USAGE: osgearth_viewer [--graticule] [--autoclip] file.earth" << std::endl;
     OE_NOTICE << "   --graticule     : displays a lat/long grid in geocentric mode" << std::endl;
+    OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
         
     return -1;
@@ -48,6 +50,7 @@ main(int argc, char** argv)
 
     bool useGraticule = arguments.read( "--graticule" );
     bool useAutoClip  = arguments.read( "--autoclip" );
+    bool useSky       = arguments.read( "--sky" );
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -79,6 +82,14 @@ main(int argc, char** argv)
             {
                 graticule = new Graticule( mapNode->getMap() );
                 root->addChild( graticule );
+            }
+
+            if ( useSky )
+            {
+                SkyNode* sky = new SkyNode( mapNode->getMap() );
+                sky->setSunPosition( osg::Vec3(0,-1,0) );
+                sky->attach( &viewer );
+                root->addChild( sky );
             }
         }
     }

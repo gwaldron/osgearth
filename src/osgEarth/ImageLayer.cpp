@@ -327,8 +327,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 	//If we are caching in the map profile, try to get the image immediately.
     if (cacheInMapProfile && _cache.valid() && _options.cacheEnabled() == true )
 	{
-        osg::ref_ptr<osg::Image> image = _cache->getImage( key, _cacheSpec );
-		if (image.valid())
+        osg::ref_ptr<osg::Image> image;
+        if ( _cache->getImage( key, _cacheSpec, image ) )
 		{
 			OE_DEBUG << LC << "Layer \"" << getName()<< "\" got tile " << key.str() << " from map cache " << std::endl;
             result = GeoImage( image.get(), key.getExtent() );
@@ -540,11 +540,10 @@ ImageLayer::createImageWrapper(const TileKey& key,
 
     if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
     {
-		image = _cache->getImage( key, _cacheSpec );
-
-        if (image.valid())
+		if ( _cache->getImage( key, _cacheSpec, image ) )
 	    {
             OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
+            return image.release();
     	}
     }
     

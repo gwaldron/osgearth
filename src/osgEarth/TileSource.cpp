@@ -184,10 +184,10 @@ TileSource::getImage( const TileKey& key,
                       ProgressCallback* progress )
 {
 	//Try to get it from the memcache fist
-    osg::ref_ptr<osg::Image> image = NULL;
+    osg::ref_ptr<osg::Image> image;
 	if (_memCache.valid())
 	{
-		image = _memCache->getImage( key, CacheSpec() );
+		_memCache->getImage( key, CacheSpec(), image );
 	}
 
 	if (!image.valid())
@@ -208,7 +208,7 @@ TileSource::getHeightField( const TileKey& key,
     osg::ref_ptr<osg::HeightField> hf = NULL;
 	if (_memCache.valid())
 	{
-		hf = _memCache->getHeightField( key, CacheSpec() );
+		_memCache->getHeightField( key, CacheSpec(), hf );
 	}
 
 	if (!hf.valid())

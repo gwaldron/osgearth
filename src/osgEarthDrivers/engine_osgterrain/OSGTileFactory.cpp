@@ -947,7 +947,7 @@ OSGTileFactory::createLodBlendedImage(UID layerUID, const TileKey& key,
             if ( parentTile->getCustomColorLayer( layerUID, parentLayer ) )
             {
                 if ( parentLayer.getImage() && parentLayer.getLocator() )
-                    {
+                {
                     GeoImage parentGI(
                         const_cast<osg::Image*>( parentLayer.getImage() ),
                         static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );

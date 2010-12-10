@@ -1059,8 +1059,8 @@ public: // Cache interface
         // this looks ineffecient, but usually when isCached() is called, getImage() will be
         // called soon thereafter. And this call will load it into the L2 cache so the subsequent
         // getImage call will not hit the DB again.
-        osg::ref_ptr<osg::Image> temp = const_cast<Sqlite3Cache*>(this)->getImage( key, spec );
-        return temp.valid();
+        osg::ref_ptr<osg::Image> temp;
+        return const_cast<Sqlite3Cache*>(this)->getImage( key, spec, temp );
     }
 
     /**
@@ -1138,9 +1138,9 @@ public: // Cache interface
     /**
      * Gets the cached image for the given TileKey
      */
-    osg::Image* getImage( const TileKey& key, const CacheSpec& spec )
+    bool getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Image>& out_image )
     {
-        if ( !_db ) return 0L;
+        if ( !_db ) return false;
 
         // wait if we are purging the db
         ScopedLock<Mutex> lock2( _pendingPurgeMutex );
@@ -1148,9 +1148,8 @@ public: // Cache interface
         // first try the L2 cache.
         if ( _L2cache.valid() )
         {
-            osg::Image* result = _L2cache->getImage( key, spec );
-            if ( result )
-                return result;
+            if ( _L2cache->getImage( key, spec, out_image ) )
+                return true;
         }
 
         // next check the deferred-write queue.
@@ -1179,7 +1178,9 @@ public: // Cache interface
             {
                 // todo: update the access time, or let it slide?
                 OE_DEBUG << LC << "Got key that is write-queued: " << key.str() << std::endl;
-                return i->second->_image.get();
+                out_image = i->second->_image.get();
+                return out_image.valid();
+                //return i->second->_image.get();
             }
 #endif
         }
@@ -1190,13 +1191,13 @@ public: // Cache interface
         {
             ImageRecord rec( key );
             if (!tt._table->load( key, rec, tt._db ))
-                return 0;
+                return false;
 
             // load it into the L2 cache
-            osg::Image* result = rec._image.release();
+            out_image = rec._image.release();
 
-            if ( result && _L2cache.valid() )
-                _L2cache->setImage( key, spec, result );
+            if ( out_image.valid() && _L2cache.valid() )
+                _L2cache->setImage( key, spec, out_image.get() );
 
 #ifdef UPDATE_ACCESS_TIMES
 
@@ -1227,13 +1228,13 @@ public: // Cache interface
 
 #endif // UPDATE_ACCESS_TIMES
 
-            return result;
+            return out_image.valid();
         }
         else
         {
             OE_DEBUG << LC << "What, no layer table?" << std::endl;
         }
-        return 0L;
+        return false;
     }
 
     /**

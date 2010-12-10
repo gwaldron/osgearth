@@ -226,8 +226,7 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key,
 	//See if we can get it from the cache.
 	if (_cache.valid() && _options.cacheEnabled() == true )
 	{
-		result = _cache->getHeightField( key, _cacheSpec ); // key, getName(), _actualCacheFormat );
-		if (result.valid())
+		if ( _cache->getHeightField( key, _cacheSpec, result ) )
 		{
 			OE_DEBUG << LC << "MapLayer::createHeightField got tile " << key.str() << " from layer \"" << getName() << "\" from cache " << std::endl;
 		}

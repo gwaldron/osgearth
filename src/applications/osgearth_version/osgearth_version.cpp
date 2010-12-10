@@ -23,6 +23,7 @@
 #include <osg/ApplicationUsage>
 
 #include <osgEarth/Version>
+#include <osgEarth/Registry>
 
 using namespace std;
 
@@ -31,6 +32,7 @@ int main( int argc, char** argv)
     osg::ArgumentParser arguments(&argc, argv);
     arguments.getApplicationUsage()->setCommandLineUsage(arguments.getApplicationName() + " [options]");
     arguments.getApplicationUsage()->addCommandLineOption("-h or --help",                   "Display this information");
+    arguments.getApplicationUsage()->addCommandLineOption("--caps",                         "Print out system capabilities");
     arguments.getApplicationUsage()->addCommandLineOption("--version-number",               "Print out version number only");
     arguments.getApplicationUsage()->addCommandLineOption("--major-number",                 "Print out major version number only");
     arguments.getApplicationUsage()->addCommandLineOption("--minor-number",                 "Print out minor version number only");
@@ -76,6 +78,14 @@ int main( int argc, char** argv)
     }    
 
     cout << osgEarthGetLibraryName() << " " << osgEarthGetVersion() << endl << endl;
+
+    if ( arguments.read("--caps") )
+    {
+        static char env[] = "OSGEARTH_USE_PBUFFER_TEXT=1";
+        putenv( env );
+        osgEarth::setNotifyLevel( osg::INFO );
+        osgEarth::Registry::instance()->getCapabilities();
+    }
 
     return 0;
 }

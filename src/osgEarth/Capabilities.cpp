@@ -54,9 +54,11 @@ struct MyGraphicsContext
             traits->pbuffer = true;
             OE_INFO << LC << "Activating pbuffer test for graphics capabilities" << std::endl;
             _gc = osg::GraphicsContext::createGraphicsContext(traits.get());
+            if ( !_gc.valid() )
+                OE_WARN << LC << "Failed to create pbuffer" << std::endl;
         }
 
-        if (!_gc)
+        if (!_gc.valid())
         {
             // fall back on a mapped window
             traits->pbuffer = false;
@@ -79,7 +81,7 @@ struct MyGraphicsContext
         }
         else
         {
-            OE_INFO << LC << "Failed to create graphic window too." << std::endl;
+            OE_WARN << LC << "Failed to create graphic window too." << std::endl;
         }
     }
 

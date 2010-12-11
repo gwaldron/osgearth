@@ -312,8 +312,8 @@ namespace
 GeoHeightField getGeoHeightField(MapFrame& mapf, const TileKey& key,
                                  int resolution)
 {
-    HeightField* hf = 0;
-    hf = mapf.createHeightField(key, true, INTERP_BILINEAR);
+    osg::ref_ptr<HeightField> hf;
+    mapf.getHeightField(key, true, hf, INTERP_BILINEAR);
     if  (!hf)
         hf = key.getProfile()->getVerticalSRS()
             ->createReferenceHeightField(key.getExtent(),

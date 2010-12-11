@@ -201,14 +201,18 @@ namespace osgEarth
 	    /**
     	 * Creates an image for the given TileKey
 		 */
-		virtual osg::Image* getImage( const TileKey& key,
-                                      ProgressCallback* progress = 0L );
+        virtual bool getImage(
+            const TileKey& key, 
+            osg::ref_ptr<osg::Image>& out_image, 
+            ProgressCallback* progress =0L );
 
         /**
          * Creates a heightfield for the given TileKey
          */
-        virtual osg::HeightField* getHeightField( const TileKey& key,
-                                                  ProgressCallback* progress = 0L );
+        virtual bool getHeightField(
+            const TileKey& key,
+            osg::ref_ptr<osg::HeightField>& out_heightfield,
+            ProgressCallback* progress = 0L );
 
     public:
 
@@ -301,13 +305,15 @@ namespace osgEarth
         ~TileSource();
 
 		/**
-		 * Creates an image for the given TileKey
+		 * Creates an image for the given TileKey.
+         * The returned object is new and is the responsibility of the caller.
 		 */
 		virtual osg::Image* createImage( const TileKey& key,
                                          ProgressCallback* progress  = 0) = 0;
 
         /**
          * Creates a heightfield for the given TileKey
+         * The returned object is new and is the responsibility of the caller.
          */
         virtual osg::HeightField* createHeightField( const TileKey& key, 
                                                      ProgressCallback* progress = 0);

@@ -658,7 +658,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     osg::ref_ptr<osg::HeightField> hf;
     if ( mapf.elevationLayers().size() > 0 )
     {
-        hf = mapf.createHeightField( key, false, _terrainOptions.elevationInterpolation().value());     
+        mapf.getHeightField( key, false, hf, _terrainOptions.elevationInterpolation().value());     
     }
 
     //If we are on the first LOD and we couldn't get a heightfield tile, just create an empty one.  Otherwise you can run into the situation
@@ -726,15 +726,14 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            hf = mapf.createHeightField( key, true, _terrainOptions.elevationInterpolation().value());
-            if (!hf.valid())
+            if ( mapf.getHeightField( key, true, hf, _terrainOptions.elevationInterpolation().value() ) )
             {
-                //We couldn't get any heightfield, so just create an empty one.
-                hf = createEmptyHeightField( key );
+                hasElevation = true;
             }
             else
             {
-                hasElevation = true;
+                //We couldn't get any heightfield, so just create an empty one.
+                hf = createEmptyHeightField( key );
             }
         }
     }
@@ -947,7 +946,7 @@ OSGTileFactory::createLodBlendedImage(UID layerUID, const TileKey& key,
             if ( parentTile->getCustomColorLayer( layerUID, parentLayer ) )
             {
                 if ( parentLayer.getImage() && parentLayer.getLocator() )
-                    {
+                {
                     GeoImage parentGI(
                         const_cast<osg::Image*>( parentLayer.getImage() ),
                         static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );
@@ -1042,8 +1041,8 @@ OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
 
     // try to create a heightfield at native res:
-    osg::ref_ptr<osg::HeightField> hf = mapf.createHeightField( key, !exactOnly, _terrainOptions.elevationInterpolation().value());
-    if ( !hf )
+    osg::ref_ptr<osg::HeightField> hf;
+    if ( !mapf.getHeightField( key, !exactOnly, hf, _terrainOptions.elevationInterpolation().value() ) )
     {
         if ( exactOnly )
             return NULL;

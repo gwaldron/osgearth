@@ -52,20 +52,19 @@ _refURI( rhs._refURI )
     //NOP
 }
 
-osg::HeightField*
-Cache::getHeightField( const TileKey& key, const CacheSpec& spec )
+bool
+Cache::getHeightField( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::HeightField>& out_hf )
 {
-	osg::HeightField* hf = 0;
-
 	//Try to get an image from the cache
-	osg::ref_ptr<osg::Image> image = getImage( key, spec );
-	if (image.valid())
+	osg::ref_ptr<osg::Image> image;
+    if ( getImage( key, spec, image ) )
 	{
 		OE_DEBUG << LC << "Read cached heightfield " << std::endl;
 		ImageToHeightFieldConverter conv;
-		hf = conv.convert(image.get());
+		out_hf = conv.convert(image.get());
+        return out_hf.valid();
 	}
-	return hf;
+    else return false;
 }
 
 void
@@ -147,21 +146,24 @@ DiskCache::getFilename(const osgEarth::TileKey& key, const CacheSpec& spec ) con
     return buf;
 }
 
-osg::Image*
-DiskCache::getImage( const TileKey& key, const CacheSpec& spec )
+bool
+DiskCache::getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Image>& out_image )
 {
 	std::string filename = getFilename(key, spec);
 
     //If the path doesn't contain a zip file, check to see that it actually exists on disk
     if (!osgEarth::isZipPath(filename))
     {
-        if (!osgDB::fileExists(filename)) return 0;
+        if (!osgDB::fileExists(filename)) 
+            return false;
     }
 
     {
         Threading::ScopedReadLock lock(s_mutex);
-        return osgDB::readImageFile( filename );
+        out_image = osgDB::readImageFile( filename );
     }
+
+    return out_image.valid();
 }
 
 /**
@@ -329,7 +331,7 @@ DiskCache::loadProperties(const std::string&           cacheId,
 #define LC "[MemCache] "
 
 MemCache::MemCache():
-_maxNumTilesInCache(16)
+_maxNumTilesInCache(128)
 {
     setName( "mem" );
 }
@@ -351,22 +353,34 @@ MemCache::setMaxNumTilesInCache(unsigned int max)
 	_maxNumTilesInCache = max;
 }
 
-osg::Image*
-MemCache::getImage(const osgEarth::TileKey& key, const CacheSpec& spec )
+bool
+MemCache::getImage(const osgEarth::TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Image>& out_image )
 {
-  return dynamic_cast<osg::Image*>( getObject( key, spec ) );
+    osg::ref_ptr<osg::Referenced> result;
+    if ( getObject(key, spec, result) )
+    {
+        out_image = dynamic_cast<osg::Image*>( result.get() );
+        return out_image.valid();
+    }
+    else return false;
 }
 
 void
 MemCache::setImage(const osgEarth::TileKey& key, const CacheSpec& spec, osg::Image* image)
 {
-  setObject( key, spec, image );
+    setObject( key, spec, image );
 }
 
-osg::HeightField*
-MemCache::getHeightField( const TileKey& key,const CacheSpec& spec )
+bool
+MemCache::getHeightField( const TileKey& key,const CacheSpec& spec, osg::ref_ptr<osg::HeightField>& out_hf )
 {
-  return dynamic_cast<osg::HeightField*>( getObject( key, spec ) );
+    osg::ref_ptr<osg::Referenced> result;
+    if ( getObject(key, spec, result) )
+    {
+        out_hf = dynamic_cast<osg::HeightField*>(result.get());
+        return out_hf.valid();
+    }
+    else return false;
 }
 
 void
@@ -391,8 +405,8 @@ MemCache::purge( const std::string& cacheId, int olderThan, bool async )
     return true;
 }
 
-osg::Referenced*
-MemCache::getObject( const TileKey& key, const CacheSpec& spec )
+bool
+MemCache::getObject( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Referenced>& output )
 {
   osg::Timer_t now = osg::Timer::instance()->tick();
 
@@ -411,9 +425,11 @@ MemCache::getObject( const TileKey& key, const CacheSpec& spec )
     _objects.push_front(entry);
     itr->second = _objects.begin();
     //OE_NOTICE<<"Getting from memcache "<< key.str() <<std::endl;
-    return itr->second->_object.get();
+    output = itr->second->_object.get();
+    return output.valid();
+    //return itr->second->_object.get();
   }
-  return 0;
+  return false;
 }
 
 void

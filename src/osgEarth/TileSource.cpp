@@ -179,47 +179,45 @@ TileSource::getPixelsPerTile() const
     return _options.tileSize().value();
 }
 
-osg::Image*
-TileSource::getImage( const TileKey& key,
-                      ProgressCallback* progress )
+bool
+TileSource::getImage( const TileKey& key, osg::ref_ptr<osg::Image>& out_image, ProgressCallback* progress )
 {
-	//Try to get it from the memcache fist
-    osg::ref_ptr<osg::Image> image = NULL;
-	if (_memCache.valid())
+	// Try to get it from the memcache fist
+    if (_memCache.valid())
 	{
-		image = _memCache->getImage( key, CacheSpec() );
+		if ( _memCache->getImage( key, CacheSpec(), out_image ) )
+            return true;
 	}
 
-	if (!image.valid())
-	{
-		image = createImage( key, progress );
-		if (image.valid() && _memCache.valid())
-		{
-			_memCache->setImage( key, CacheSpec(), image.get() );
-		}
-	}
-	return image.release();
+    out_image = createImage( key, progress );
+
+    if ( out_image.valid() && _memCache.valid() )
+    {
+        // cache it to the memory cache.
+        _memCache->setImage( key, CacheSpec(), out_image.get() );
+    }
+
+	return out_image.valid();
 }
 
-osg::HeightField*
-TileSource::getHeightField( const TileKey& key,
-                            ProgressCallback* progress )
+bool
+TileSource::getHeightField( const TileKey& key, osg::ref_ptr<osg::HeightField>& out_hf, ProgressCallback* progress )
 {
-    osg::ref_ptr<osg::HeightField> hf = NULL;
+    // Try to get it from the memcache first:
 	if (_memCache.valid())
 	{
-		hf = _memCache->getHeightField( key, CacheSpec() );
+		if ( _memCache->getHeightField( key, CacheSpec(), out_hf ) )
+            return true;
 	}
 
-	if (!hf.valid())
-	{
-		hf = createHeightField( key, progress );
-		if (hf.valid() && _memCache.valid())
-		{
-			_memCache->setHeightField( key, CacheSpec(), hf.get() );
-		}
-	}
-	return hf.release();
+    out_hf = createHeightField( key, progress );
+
+    if ( out_hf.valid() && _memCache.valid() )
+    {
+        _memCache->setHeightField( key, CacheSpec(), out_hf.get() );
+    }
+
+    return out_hf.valid();
 }
 
 osg::HeightField*

@@ -314,9 +314,10 @@ namespace osgEarth
          * @param samplePolicy
          *      See enum SamplePolicy in this class.
          */
-        osg::HeightField* createHeightField(
+        bool getHeightField(
             const TileKey& key,
             bool fallback,
+            osg::ref_ptr<osg::HeightField>& out_hf,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
             ElevationSamplePolicy samplePolicy =SAMPLE_FIRST_VALID,
             ProgressCallback* progress = 0) const;
@@ -475,9 +476,10 @@ namespace osgEarth
          * Equivalent to the Map::createHeightField() method, but operates on the elevation stack
          * snapshot in this MapFrame.
          */
-        osg::HeightField* createHeightField(
+        bool getHeightField(
             const TileKey& key,
             bool fallback,
+            osg::ref_ptr<osg::HeightField>& out_hf,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
             ElevationSamplePolicy samplePolicy   =SAMPLE_FIRST_VALID,
             ProgressCallback* progress = 0) const; 

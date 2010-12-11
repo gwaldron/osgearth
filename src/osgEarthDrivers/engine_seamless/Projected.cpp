@@ -144,7 +144,7 @@ Transform* Projected::createPatch(const std::string& filename,
     ref_ptr<HeightField> hf;
     GeoImage gimage;
     {
-        hf = _mapf->createHeightField(key, true, INTERP_BILINEAR);
+        _mapf->getHeightField(key, true, hf, INTERP_BILINEAR);
         const ImageLayerVector& layers = _mapf->imageLayers();
         if (!layers.empty())
             gimage = layers[0]->createImage(key);

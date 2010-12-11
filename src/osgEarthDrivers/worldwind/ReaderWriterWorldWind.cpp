@@ -18,6 +18,7 @@
 * GNU Lesser General Public License for more details.
 *
 */
+#include "WorldWindOptions"
 
 #include <iostream>
 #include <fstream>
@@ -45,36 +46,36 @@
 #undef remove
 #endif
 
+#define LC "[WorldWind BIL] "
+
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 class WorldWindSource : public TileSource
 {
-    int _maxLOD;
-    std::string _worldwind_cache;
 public:
     WorldWindSource( const TileSourceOptions& options ) : TileSource( options )
     {
-        const Config& conf = options.getConfig();
-        _maxLOD = options.getConfig().value( "max_lod", 11 );
-
-        _worldwind_cache = conf.value<std::string>( "worldwind_cache", "" );
-
+        _options = options;
     }
 
 public:
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-
         setProfile( Profile::create(
             "epsg:4326",
             -180.0, -90.0, 180.0, 90.0,
             "",
             18, 9 ) );
+
+        if ( !_options.elevationCachePath().isSet() )
+        {
+            OE_WARN << LC << "Elevation cache path is not set, but is required. No data will be available" << std::endl;
+        }
     }
 
     osg::HeightField* createHeightFieldFromBil(char* buf,int buflength)
     {
-
         osg::HeightField* hf = new osg::HeightField;
         //osg::notify(osg::NOTICE) << "Read heightfield image" << std::endl;
         hf->allocate(150, 150);
@@ -93,24 +94,23 @@ public:
     }
 
 public:
-    osg::Image* createImage( const TileKey& key ,
-        ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
     {
-        //NOP
+        // NYI - eventually, consolidate the "tileservice" plugin into this one //GW
         return NULL;
     }
 
 
-    osg::HeightField* createHeightField( const TileKey& key,
-        ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress)
     {
-        if ( _maxLOD <= key.getLevelOfDetail()) return NULL;
+        if ( *_options.maxLOD() <= key.getLevelOfDetail()) return NULL;
+        if ( !_options.elevationCachePath().isSet() ) return NULL;
 
         osg::HeightField *hf = NULL;
-        std::string cachefilepath = _worldwind_cache + "/" + createCachePath(key);
+        std::string cachefilepath = *_options.elevationCachePath() + "/" + createCachePath(key);
         std::string cachefilename = createCacheName(key) + ".bil";
         std::string fullcachefilename = cachefilepath + "/" + cachefilename;
-        OE_DEBUG << "Cached name " << fullcachefilename << std::endl;
+        OE_DEBUG << LC << "Cached name " << fullcachefilename << std::endl;
         if (osgDB::fileExists(fullcachefilename))
         {
             // read file
@@ -118,23 +118,27 @@ public:
             fin.open(fullcachefilename.c_str(), std::ios::in | std::ios::binary);
             if (!fin)
             {
-                OE_NOTICE << "Coud not open cache " << fullcachefilename << std::endl;
+                OE_WARN << LC << "Coud not open elevation cache " << fullcachefilename << ", maybe a permissions problem" << std::endl;
+                _options.elevationCachePath().unset();
                 return NULL;
             }
             int fullsize = 150*150*2;
             char *buf = new char[fullsize];
-            OE_DEBUG << "Loading from cache " << fullcachefilename << std::endl;
+            OE_DEBUG << LC << "Loading from cache " << fullcachefilename << std::endl;
             if ( !fin.read(buf, fullsize))
             {
-                OE_NOTICE << "Coud not read from cache " << fullcachefilename << std::endl;
+                OE_WARN << LC << "Coud not read from elevation cache " << fullcachefilename << ", file may be corrupt" << std::endl;
                 delete[] buf;
                 fin.close();
+                _options.elevationCachePath().unset();
                 return NULL;
             }
             hf = createHeightFieldFromBil((char*)buf,fullsize);
             delete[] buf;
             fin.close();
-        } else {
+        }
+        else // cached BIL file doesn't exist, try to download and cache it.
+        {
             // download file
             HTTPResponse out_response;
             std::string URI = createURI(key);
@@ -165,7 +169,8 @@ public:
 
             if ( !fout )
             {
-                OE_NOTICE << "Could not write zip file" << std::endl;
+                OE_WARN << LC << "Could not write zip file to " << tempname << std::endl;
+                _options.elevationCachePath().unset();
                 return NULL;
             }
             input_stream.seekg (0, std::ios::end);
@@ -288,7 +293,7 @@ public:
         int flippedy = ((9 * powf((int)2,(int)lod)) - 1) - y;
 
         std::stringstream buf;
-        buf << "http://worldwind25.arc.nasa.gov/wwelevation/wwelevation.aspx?T=srtm30pluszip"
+        buf << *_options.elevationURL() // "http://worldwind25.arc.nasa.gov/wwelevation/wwelevation.aspx?T=srtm30pluszip"
             << "&L=" << lod
             << "&X=" << x
             << "&Y=" << flippedy;
@@ -308,6 +313,7 @@ public:
     }
 
 private:
+    WorldWindOptions _options;
 };
 
 

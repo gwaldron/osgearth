@@ -21,6 +21,7 @@
 #include <osgEarth/FindNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osg/PagedLOD>
 
 using namespace osgEarth;
 

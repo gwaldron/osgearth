@@ -132,6 +132,7 @@ namespace osgEarth
             : DiskCacheOptions( options ),
               _invertY( false )
         {
+            setDriver("tms");
             fromConfig( _conf );
         }
 

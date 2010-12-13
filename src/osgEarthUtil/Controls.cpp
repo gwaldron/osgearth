@@ -1421,7 +1421,7 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
 
     float invY = _context._vp->height() - ea.getY();
 
-    for( ControlList::const_reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+    for( ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
     {
         Control* control = i->get();
         if ( control->intersects( ea.getX(), invY ) )

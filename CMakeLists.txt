@@ -29,6 +29,12 @@ SET(OpenThreads_SOURCE_DIR ${OSGEARTH_SOURCE_DIR})
 # Maybe this can be used override existing behavior if needed?
 SET(CMAKE_MODULE_PATH "${OSGEARTH_SOURCE_DIR}/CMakeModules;${CMAKE_MODULE_PATH}")
 
+# check if STLport is required
+OPTION(USE_STLPORT "Set to ON to build OSGEARTH with stlport instead of the default STL library." OFF)
+IF(USE_STLPORT)
+	INCLUDE_DIRECTORIES(${STLPORT_DIR}/stlport)
+	LINK_DIRECTORIES(${STLPORT_DIR}/lib)
+ENDIF()
 
 # Okay, here's the problem: On some platforms, linking against OpenThreads
 # is not enough and explicit linking to the underlying thread library
@@ -155,7 +161,6 @@ MAKE_DIRECTORY(${OUTPUT_LIBDIR})
 SET(LIBRARY_OUTPUT_PATH ${OUTPUT_LIBDIR})
 
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${OUTPUT_LIBDIR} )
-
 
 
 #SET(INSTALL_BINDIR VIRTUALPLANETBUILDER/bin)

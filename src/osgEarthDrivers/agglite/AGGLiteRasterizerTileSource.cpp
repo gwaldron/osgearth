@@ -42,6 +42,8 @@
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 
+#define LC "[AGGLite] "
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -96,7 +98,20 @@ public:
         // A processing context to use with the filters:
         FilterContext context;
         context.profile() = getFeatureSource()->getFeatureProfile();
-        const osgEarth::Symbology::LineSymbol* line = style->getSymbol<osgEarth::Symbology::LineSymbol>();
+
+        const LineSymbol* masterLine = style->getSymbol<LineSymbol>();
+        const PolygonSymbol* masterPoly = style->getSymbol<PolygonSymbol>();
+
+        bool embeddedStyles = getFeatureSource()->hasEmbeddedStyles();
+
+        // if only a line symbol exists, and there are polygons in the mix, draw them
+        // as outlines (line rings).
+        //OE_INFO << LC << "Line Symbol = " << (line == 0L ? "null" : line->getConfig().toString()) << std::endl;
+        //OE_INFO << LC << "Poly SYmbol = " << (poly == 0L ? "null" : poly->getConfig().toString()) << std::endl;
+
+        //bool convertPolysToRings = poly == 0L && line != 0L;
+        //if ( convertPolysToRings )
+        //    OE_INFO << LC << "No PolygonSymbol; will draw polygons to rings" << std::endl;
 
         // initialize:
         double xmin = imageExtent.xMin();
@@ -113,14 +128,33 @@ public:
         {
             Feature* feature = i->get();
             Geometry* geom = feature->getGeometry();
-            bool needsBuffering =
-                geom &&
-                ( geom->getComponentType() == Geometry::TYPE_LINESTRING || 
-                  geom->getComponentType() == Geometry::TYPE_RING);
 
-            if ( needsBuffering )
+            if ( geom )
             {
-                linesToBuffer.push_back( feature );
+                // check for an embedded style:
+                const LineSymbol* line = feature->style().isSet() ? 
+                    feature->style()->get()->getSymbol<LineSymbol>() : masterLine;
+                const PolygonSymbol* poly =
+                    feature->style().isSet() ? feature->style()->get()->getSymbol<PolygonSymbol>() : masterPoly;
+
+                // if we have polygons but only a LineSymbol, draw the poly as a line.
+                if ( geom->getComponentType() == Geometry::TYPE_POLYGON && !poly && line )
+                {
+                    Feature* outline = new Feature( *feature );
+                    geom = geom->cloneAs( Geometry::TYPE_RING );
+                    outline->setGeometry( geom );
+                    *i = outline;
+                    feature = outline;
+                }
+
+                bool needsBuffering =
+                    geom->getComponentType() == Geometry::TYPE_LINESTRING || 
+                    geom->getComponentType() == Geometry::TYPE_RING;
+
+                if ( needsBuffering )
+                {
+                    linesToBuffer.push_back( feature );
+                }
             }
         }
 
@@ -143,12 +177,12 @@ public:
             // now run the buffer operation on all lines:
             BufferFilter buffer;
             float lineWidth = 0.5;
-            if ( line )
+            if ( masterLine )
             {
-                buffer.capStyle() = line->stroke()->lineCap().value();
+                buffer.capStyle() = masterLine->stroke()->lineCap().value();
 
-                if ( line->stroke()->width().isSet() )
-                    lineWidth = line->stroke()->width().value();
+                if ( masterLine->stroke()->width().isSet() )
+                    lineWidth = masterLine->stroke()->width().value();
             }
 
             // "relative line size" means that the line width is expressed in (approx) pixels
@@ -187,24 +221,26 @@ public:
         cropPoly->push_back( osg::Vec3d( cropExtent.xMin(), cropExtent.yMax(), 0 ));
 
         double lineWidth = 1.0;
-        if (line)
-            lineWidth = (double)line->stroke()->width().value();
+        if ( masterLine )
+            lineWidth = (double)masterLine->stroke()->width().value();
 
         osg::Vec4 color = osg::Vec4(1, 1, 1, 1);
-        if (line) {
-            color = line->stroke()->color();
-        }
+        if ( masterLine )
+            color = masterLine->stroke()->color();
+
         // render the features
         for(FeatureList::iterator i = features.begin(); i != features.end(); i++)
         {
+            Feature* feature = i->get();
             bool first = bd->_pass == 0 && i == features.begin();
 
-            Geometry* geometry = i->get()->getGeometry();
+            Geometry* geometry = feature->getGeometry();
 
             osg::ref_ptr< Geometry > croppedGeometry;
             if ( ! geometry->crop( cropPoly.get(), croppedGeometry ) )
                 continue;
 
+            // set up a default color:
             osg::Vec4 c = color;
             unsigned int a = 127+(c.a()*255)/2; // scale alpha up
             agg::rgba8 fgColor( c.r()*255, c.g()*255, c.b()*255, a );
@@ -214,14 +250,31 @@ public:
             {
                 c = color;
                 Geometry* g = gi.next();
-                if (g->getType() == Geometry::TYPE_POLYGON) {
-                    const PolygonSymbol* symbol = style->getSymbol<PolygonSymbol>();
-                    if (symbol)
-                        c = symbol->fill()->color();
-                } else if (g->getType() == Geometry::TYPE_RING || g->getType() == Geometry::TYPE_LINESTRING) {
-                    const LineSymbol* symbol = style->getSymbol<LineSymbol>();
-                    if (symbol)
-                        c = symbol->stroke()->color();
+            
+                // check for an embedded style:
+                if ( getFeatureSource()->hasEmbeddedStyles() )
+                {
+                    const LineSymbol* line = feature->style().isSet() ? 
+                        feature->style()->get()->getSymbol<LineSymbol>() : masterLine;
+
+                    const PolygonSymbol* poly =
+                        feature->style().isSet() ? feature->style()->get()->getSymbol<PolygonSymbol>() : masterPoly;
+
+                    if (g->getType() == Geometry::TYPE_RING || g->getType() == Geometry::TYPE_LINESTRING)
+                    {
+                        if ( line )
+                            c = line->stroke()->color();
+                        else if ( poly )
+                            c = poly->fill()->color();
+                    }
+
+                    else if ( g->getType() == Geometry::TYPE_POLYGON )
+                    {
+                        if ( poly )
+                            c = poly->fill()->color();
+                        else if ( line )
+                            c = line->stroke()->color();
+                    }
                 }
 
                 a = 127+(c.a()*255)/2; // scale alpha up

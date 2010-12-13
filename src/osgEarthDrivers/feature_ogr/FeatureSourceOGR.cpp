@@ -250,15 +250,10 @@ protected:
 
 private:
     std::string _absUrl;
-    //std::string _ogrDriver;
     OGRDataSourceH _dsHandle;
     OGRLayerH _layerHandle;
     OGRSFDriverH _ogrDriverHandle;
-    //bool _supportsRandomRead;
-    //bool _ready;
-    //bool _buildSpatialIndex;
     osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
-    //optional<ProfileOptions> _geometryProfileConf;
     const OGRFeatureOptions _options;
 };
 
@@ -285,5 +280,5 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_feature_ogr2, OGRFeatureSourceFactory)
+REGISTER_OSGPLUGIN(osgearth_feature_ogr, OGRFeatureSourceFactory)
 

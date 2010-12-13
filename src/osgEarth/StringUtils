@@ -144,6 +144,42 @@ namespace osgEarth
         return ssStr;
     }
 
+    static osg::Vec4f
+    htmlColorToVec4f( const std::string& html )
+    {
+        std::string t = html;
+        std::transform( t.begin(), t.end(), t.begin(), ::tolower );
+        osg::Vec4ub c(0,0,0,255);
+        if ( t.length() >= 7 ) {
+            c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;
+            c.r() |= t[2]<='9' ? (t[2]-'0')    : (10+(t[2]-'a'));
+            c.g() |= t[3]<='9' ? (t[3]-'0')<<4 : (10+(t[3]-'a'))<<4;
+            c.g() |= t[4]<='9' ? (t[4]-'0')    : (10+(t[4]-'a'));
+            c.b() |= t[5]<='9' ? (t[5]-'0')<<4 : (10+(t[5]-'a'))<<4;
+            c.b() |= t[6]<='9' ? (t[6]-'0')    : (10+(t[6]-'a'));
+            if ( t.length() == 9 ) {
+                c.a() = 0;
+                c.a() |= t[7]<='9' ? (t[7]-'0')<<4 : (10+(t[7]-'a'))<<4;
+                c.a() |= t[8]<='9' ? (t[8]-'0')    : (10+(t[8]-'a'));
+            }
+        }
+        return osg::Vec4f( ((float)c.r())/255.0f, ((float)c.g())/255.0f, ((float)c.b())/255.0f, ((float)c.a())/255.0f );
+    }
+
+    static std::string
+    vec4fToHtmlColor( const osg::Vec4f& c )
+    {
+        std::stringstream buf;
+        buf << "#";
+        buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.r()*255.0f);
+        buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.g()*255.0f);
+        buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.b()*255.0f);
+        if ( c.a() < 1.0f )
+            buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.a()*255.0f);
+        std::string ssStr = buf.str();
+        return ssStr;
+    }
+
     /** MurmurHash 2.0 (http://sites.google.com/site/murmurhash/) */
     static unsigned int
     hashString( const std::string& input )

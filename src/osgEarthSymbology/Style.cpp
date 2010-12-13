@@ -19,6 +19,8 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/CssUtils>
 #include <osgEarthSymbology/SLD>
+#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarthSymbology/Text>
 #include <osgEarth/HTTPClient>
 #include <algorithm>
 
@@ -83,6 +85,25 @@ Style::mergeConfig( const Config& conf )
     {
         _origData = conf.value();
     }
+    else
+    {
+        Config symbolConf = conf.child( "symbols" );
+        if ( !symbolConf.empty() )
+        {
+            for( ConfigSet::const_iterator i = symbolConf.children().begin(); i != symbolConf.children().end(); ++i )
+            {
+                const Config& c = *i;
+                if ( c.key() == "text" )
+                    _symbols.push_back( new TextSymbol(c) );
+                else if ( c.key() == "point" )
+                    _symbols.push_back( new PointSymbol(c) );
+                else if ( c.key() == "line" )
+                    _symbols.push_back( new LineSymbol(c) );
+                else if ( c.key() == "polygon" )
+                    _symbols.push_back( new PolygonSymbol(c) );
+            }
+        }
+    }
 
     const ConfigSet& children = conf.children( "style" );
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
@@ -99,11 +120,22 @@ Style::getConfig() const
     Config conf( "style" );
     conf.attr("name") = _name;
     conf.addIfSet( "url", _url );
+    
     if ( _origType == "text/css" )
     {
         conf.attr("type") = _origType;
         conf.value() = _origData;            
     }
+    else
+    {
+        Config symbolsConf( "symbols" );
+        for( SymbolList::const_iterator i = _symbols.begin(); i != _symbols.end(); ++i )
+        {
+            symbolsConf.addChild( i->get()->getConfig() );
+        }
+        conf.addChild( symbolsConf );
+    }
+
     return conf;
 }
 

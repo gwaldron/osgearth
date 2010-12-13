@@ -29,7 +29,7 @@ namespace osgEarth
      * The osgEarth::Registry stores a singleton Capabilities object that you can 
      * use to determine what your system supports.
      */
-    class OSGEARTH_EXPORT Capabilities
+    class OSGEARTH_EXPORT Capabilities : public osg::Referenced
     {
     public:
         /** maximum # of texture units exposed in the fixed-function pipeline */
@@ -89,6 +89,8 @@ namespace osgEarth
         bool _supportsStencilWrap;
         bool _supportsTwoSidedStencil;
         bool _supportsTexture2DLod;
+        std::string _vendor;
+        std::string _renderer;
 
     public:
         friend class Registry;

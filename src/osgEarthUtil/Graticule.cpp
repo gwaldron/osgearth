@@ -17,18 +17,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/Graticule>
-#include <osgEarthFeatures/BufferFilter>
+#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ResampleFilter>
-#include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarth/Registry>
+#include <osgEarth/FindNode>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osg/MatrixTransform>
 #include <osg/Depth>
+#include <osg/Program>
+#include <osg/LineStipple>
+#include <osg/ClusterCullingCallback>
 #include <osgDB/FileNameUtils>
 #include <osgUtil/Optimizer>
 #include <osgText/Text>
@@ -42,7 +47,6 @@ using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 static Mutex s_graticuleMutex;
-static unsigned int s_graticuleIdGen = 0;
 typedef std::map<unsigned int, osg::ref_ptr<Graticule> > GraticuleRegistry;
 static GraticuleRegistry s_graticuleRegistry;
 
@@ -50,19 +54,43 @@ static GraticuleRegistry s_graticuleRegistry;
 #define TEXT_MARKER "t"
 #define GRID_MARKER "g"
 
-/**************************************************************************/
+//---------------------------------------------------------------------------
 
+namespace
+{
+    char s_vertexShader[] =
+        "varying vec3 Normal; \n"
+        "void main(void) \n"
+        "{ \n"
+        "    Normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    gl_FrontColor = gl_Color; \n"
+        "} \n";
+
+    char s_fragmentShader[] =
+        "varying vec3 Normal; \n"
+        "void main(void) \n"
+        "{ \n"
+        "    gl_FragColor = gl_Color; \n"
+        "} \n";
+}
+
+//---------------------------------------------------------------------------
 
 Graticule::Graticule( const Map* map ) :
 _map( map ),
-_autoLevels( true )
+_autoLevels( true ),
+_textColor( 1,1,0,1 )
 {
     // safely generate a unique ID for this graticule:
+    _id = Registry::instance()->createUID();
     {
         ScopedLock<Mutex> lock( s_graticuleMutex );
-        _id = s_graticuleIdGen++;
         s_graticuleRegistry[_id] = this;
     }
+
+    setLineColor( osg::Vec4f(1,1,1,0.7) );
+    setTextColor( osg::Vec4f(1,1,0,1) );
 
     if ( _map->isGeocentric() )
     {
@@ -72,7 +100,7 @@ _autoLevels( true )
         double d = 3.5*r;
         double lw=0.15;
         addLevel( FLT_MAX, x, y, lw );
-        for(int i=0; i<4; i++)
+        for(int i=0; i<9; i++)
         {
             x *= 2, y *= 2;
             lw *= 0.5;
@@ -91,12 +119,7 @@ _autoLevels( true )
         proxy->setCenterMode( osg::ProxyNode::USER_DEFINED_CENTER );
         proxy->setCenter( osg::Vec3(0,0,0) );
         proxy->setRadius( 1e10 );
-
-        StencilVolumeNode* sv = new StencilVolumeNode();
-        sv->addVolumes( proxy );
-        sv->addChild( osgEarth::Symbology::StencilVolumeNode::createFullScreenQuad( osg::Vec4f(1,1,1,0.5) ) ); 
-        //createColorNode( osg::Vec4f(1,1,1,0.5) ) );
-        this->addChild( sv );
+        this->addChild( proxy );
     }
 
     // Prime the text:
@@ -110,15 +133,23 @@ _autoLevels( true )
         proxy->setCenterMode( osg::ProxyNode::USER_DEFINED_CENTER );
         proxy->setCenter( osg::Vec3(0,0,0) );
         proxy->setRadius( 1e10 );
-        osg::StateSet* set = proxy->getOrCreateStateSet();
-        set->setRenderBinDetails( 999, "RenderBin" );
-        set->setAttributeAndModes( 
-            new osg::Depth( osg::Depth::ALWAYS ), 
-            osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
-        set->setMode( GL_LIGHTING, 0 );
 
         this->addChild( proxy );
     }
+
+    osg::StateSet* set = this->getOrCreateStateSet();
+    set->setRenderBinDetails( 9999, "RenderBin" );
+    set->setAttributeAndModes( 
+        new osg::Depth( osg::Depth::ALWAYS ), 
+        osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
+    set->setMode( GL_LIGHTING, 0 );
+
+    //osg::Program* program = new osg::Program();
+    //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_vertexShader ) );
+    //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_fragmentShader ) );
+    //set->setAttributeAndModes( program, osg::StateAttribute::ON );
+
+    this->addEventCallback( new AutoClipPlaneCallback( _map.get() ) );
 }
 
 void
@@ -161,84 +192,122 @@ Graticule::getLevel( unsigned int level, Graticule::Level& out_level ) const
     }
 }
 
-static Geometry*
-createCellGeometry( const GeoExtent& tex, double lw, const GeoExtent& profEx, bool isGeocentric )
-{            
-    Polygon* geom = 0L;
+namespace
+{
+    Geometry*
+    createCellGeometry( const GeoExtent& tex, double lw, const GeoExtent& profEx, bool isGeocentric )
+    {            
+        LineString* geom = 0L;
 
-    if ( isGeocentric )
-    {
         if ( tex.yMin() == profEx.yMin() )
         {
-            geom = new Polygon(3);
-            geom->push_back( osg::Vec3d( tex.xMin()+lw/2, tex.yMin()+lw, 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw, tex.yMax(), 0 ) );
+            geom = new LineString(2);
             geom->push_back( osg::Vec3d( tex.xMin(), tex.yMax(), 0 ) );
-        }
-        else if ( tex.yMax() == profEx.yMax() )
-        {
-            geom = new Polygon(5);
             geom->push_back( osg::Vec3d( tex.xMin(), tex.yMin(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMax(), tex.yMin(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMax(), tex.yMin()+lw, 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw, tex.yMin()+lw, 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw/2, tex.yMax()-lw, 0 ) );            
         }
         else
         {
-            geom = new Polygon(6);
+            geom = new LineString(3);
+            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMax(), 0 ) );
             geom->push_back( osg::Vec3d( tex.xMin(), tex.yMin(), 0 ) );
             geom->push_back( osg::Vec3d( tex.xMax(), tex.yMin(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMax(), tex.yMin()+lw, 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw, tex.yMin()+lw, 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw, tex.yMax(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMax(), 0 ) );
         }
+
+        return geom;
     }
-    else
+
+    struct HardCodeCellBoundCB : public osg::Node::ComputeBoundingSphereCallback
     {
-        if ( tex.yMin() == profEx.yMin() )
+        HardCodeCellBoundCB( const osg::BoundingSphere& bs ) : _bs(bs) { }
+        virtual osg::BoundingSphere computeBound(const osg::Node&) const { return _bs; }
+        osg::BoundingSphere _bs;
+    };
+
+    struct CullPlaneCallback : public osg::NodeCallback
+    {
+        osg::Vec3d _n;
+        float _deviation;
+
+        CullPlaneCallback( const osg::Vec3d& planeNormal, float deviation =0.0f ) 
+            : _n(planeNormal), _deviation(deviation)
         {
-            geom = new Polygon(4);
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMin(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw, tex.yMin(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw, tex.yMax(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMax(), 0 ) );
+            _n.normalize();
+        }
+
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            if ( !nv || nv->getEyePoint() * _n > _deviation )
+                traverse(node,nv); 
+        }
+    };    
+
+    osg::Node*
+    createTextTransform(double x, double y, double value, 
+                        const osg::EllipsoidModel* ell, 
+                        float size, const osg::Vec4f& color,
+                        float rotation =0.0f )
+    {    
+        osg::Vec3d pos;
+        if ( ell ) // is geocentric
+        {
+            ell->convertLatLongHeightToXYZ(
+                osg::DegreesToRadians( y ),
+                osg::DegreesToRadians( x ),
+                0,
+                pos.x(), pos.y(), pos.z() );
         }
         else
         {
-            geom = new Polygon(6);
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMin(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMax(), tex.yMin(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMax(), tex.yMin()+lw, 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw, tex.yMin()+lw, 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin()+lw, tex.yMax(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMax(), 0 ) );
+            pos.set( x, y, 0 );
         }
-    }
 
-    return geom;
+        osgText::Text* t = new osgText::Text();
+        t->setFont( "fonts/arial.ttf" );
+        t->setAlignment( osgText::Text::CENTER_BOTTOM );
+        t->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
+        t->setCharacterSize( size );
+        t->setBackdropType( osgText::Text::OUTLINE );
+        t->setBackdropColor( osg::Vec4f(0,0,0,1) );
+        t->setColor( color );
+
+        std::stringstream buf;
+        buf << std::fixed << std::setprecision(3) << value;
+        std::string bufStr = buf.str();
+        t->setText( bufStr );
+
+        if ( rotation != 0.0f ) 
+        {
+            osg::Quat rot;
+            rot.makeRotate( osg::DegreesToRadians(rotation), 0, 0, 1 );
+            t->setRotation( rot );
+        }
+
+        osg::Geode* geode = new osg::Geode();
+        geode->addDrawable( t );
+
+        osg::Matrixd L2W;
+        ell->computeLocalToWorldTransformFromXYZ(
+            pos.x(), pos.y(), pos.z(), L2W );
+
+        osg::MatrixTransform* xform = new osg::MatrixTransform();
+        xform->setMatrix( L2W );
+        xform->addChild( geode );     
+
+        // Note: the Transform already includes the rotation, so all we need to cluster cull
+        // is the local up vector.
+        xform->setCullCallback( new CullPlaneCallback( osg::Vec3d(0,0,1) ) );
+
+        return xform;
+    }
 }
 
-struct HardCodeCellBoundCB : public osg::Node::ComputeBoundingSphereCallback {
-    HardCodeCellBoundCB( const osg::BoundingSphere& bs ) : _bs(bs) { }
-    virtual osg::BoundingSphere computeBound(const osg::Node&) const { return _bs; }
-    osg::BoundingSphere _bs;
-};
-
-struct CullPlaneCallback : public osg::NodeCallback
+void
+Graticule::setLineColor( const osg::Vec4f& color )
 {
-    osg::Vec3d _n;
-
-    CullPlaneCallback( const osg::Vec3d& planeNormal ) : _n(planeNormal) {
-        _n.normalize();
-    }
-
-    void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-        if ( !nv || nv->getEyePoint() * _n > 0 )
-            traverse(node,nv); 
-    }
-};
+    LineSymbol* symbol = new LineSymbol();
+    symbol->stroke()->color() = color;
+    _lineStyle = new Style();
+    _lineStyle->addSymbol( symbol );
+}
 
 osg::Node*
 Graticule::createGridLevel( unsigned int levelNum ) const
@@ -294,39 +363,52 @@ Graticule::createGridLevel( unsigned int levelNum ) const
                 // long segments follow the curvature of the earth.
                 ResampleFilter resample;
                 resample.maxLength() = tex.width() / 10.0;
-                resample.perturbationThreshold() = level._lineWidth/1000.0;
                 cx = resample.push( features, cx );
             }
 
             TransformFilter xform( mapProfile->getSRS() );
             xform.setMakeGeocentric( _map->isGeocentric() );
+            xform.setLocalizeCoordinates( true );
             cx = xform.push( features, cx );
 
-            Bounds bounds = feature->getGeometry()->getBounds();
-            double exDist = bounds.radius()/2.0;
+            osg::ref_ptr<osg::Node> output;
+            BuildGeometryFilter bg;
+            bg.setStyle( _lineStyle.get() );
+            cx = bg.push( features, output, cx );
 
-            osg::Node* cellVolume = createVolume(
-                feature->getGeometry(),
-                -exDist,
-                exDist*2,
-                cx );
-
-            osg::Node* child = cellVolume;
-
-            if ( cx.hasReferenceFrame() )
+            if ( cx.isGeocentric() )
             {
-                osg::MatrixTransform* xform = new osg::MatrixTransform( cx.inverseReferenceFrame() );
-                xform->addChild( child );
+                // get the geocentric control point:
+                double cplon, cplat, cpx, cpy, cpz;
+                tex.getCentroid( cplon, cplat );
+                tex.getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+                    osg::DegreesToRadians( cplat ), osg::DegreesToRadians( cplon ), 0.0, cpx, cpy, cpz );
+                osg::Vec3 controlPoint(cpx, cpy, cpz);
 
-                // the transform matrix here does NOT include a rotation, so we need to get the normal
-                // for the cull plane callback.
-                osg::Vec3d normal = xform->getBound().center();
-                xform->setCullCallback( new CullPlaneCallback( normal ) );
+                // get the horizon point:
+                tex.getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+                    osg::DegreesToRadians( tex.yMin() ), osg::DegreesToRadians( tex.xMin() ), 0.0,
+                    cpx, cpy, cpz );
+                osg::Vec3 horizonPoint(cpx, cpy, cpz);
 
-                child = xform;
+                // the deviation is the dot product of the control vector and the vector from the
+                // control point to the horizon point.
+                osg::Vec3 controlPointNorm = controlPoint; controlPointNorm.normalize();
+                osg::Vec3 horizonVecNorm = horizonPoint - controlPoint; horizonVecNorm.normalize();                
+                float deviation = controlPointNorm * horizonVecNorm;
+
+                // construct the culling callback using the deviation.
+                osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
+                ccc->set( controlPoint, controlPointNorm, deviation, (controlPoint-horizonPoint).length() );
+
+                // need a new group, because never put a cluster culler on a matrixtransform (doesn't work)
+                osg::Group* me = new osg::Group();
+                me->setCullCallback( ccc );
+                me->addChild( output.get() );
+                output = me;
             }
 
-            group->addChild( child );
+            group->addChild( output.get() );
         }
     }
 
@@ -336,7 +418,7 @@ Graticule::createGridLevel( unsigned int levelNum ) const
 
     osg::Node* result = group;
 
-    if ( levelNum+1 < getNumLevels() )
+    if ( levelNum < getNumLevels() )
     {
         Graticule::Level nextLevel;
         if ( getLevel( levelNum+1, nextLevel ) )
@@ -353,60 +435,6 @@ Graticule::createGridLevel( unsigned int levelNum ) const
     }
 
     return result;
-}
-
-static osg::Node*
-createTextTransform( double x, double y, double value, const osg::EllipsoidModel* ell, float size, float rotation =0.0f )
-{    
-    osg::Vec3d pos;
-    if ( ell ) // is geocentric
-    {
-        ell->convertLatLongHeightToXYZ(
-            osg::DegreesToRadians( y ),
-            osg::DegreesToRadians( x ),
-            0,
-            pos.x(), pos.y(), pos.z() );
-    }
-    else
-    {
-        pos.set( x, y, 0 );
-    }
-
-    osgText::Text* t = new osgText::Text();
-    t->setFont( "fonts/arial.ttf" );
-    t->setAlignment( osgText::Text::CENTER_BOTTOM );
-    t->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
-    t->setCharacterSize( size );
-    t->setColor( osg::Vec4f(1,1,1,1) );
-
-    std::stringstream buf;
-    buf << std::fixed << std::setprecision(3) << value;
-    std::string bufStr = buf.str();
-    t->setText( bufStr );
-
-    if ( rotation != 0.0f ) 
-    {
-        osg::Quat rot;
-        rot.makeRotate( osg::DegreesToRadians(rotation), 0, 0, 1 );
-        t->setRotation( rot );
-    }
-
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( t );
-
-    osg::Matrixd L2W;
-    ell->computeLocalToWorldTransformFromXYZ(
-        pos.x(), pos.y(), pos.z(), L2W );
-
-    osg::MatrixTransform* xform = new osg::MatrixTransform();
-    xform->setMatrix( L2W );
-    xform->addChild( geode );     
-
-    // Note: the Transform already includes the rotation, so all we need to cluster cull
-    // is the local up vector.
-    xform->setCullCallback( new CullPlaneCallback( osg::Vec3d(0,0,1) ) );
-
-    return xform;
 }
 
 osg::Node*
@@ -451,12 +479,13 @@ Graticule::createTextLevel( unsigned int levelNum ) const
             tex.getCentroid( cx, cy );
 
             // y value on the x-axis:
-            group->addChild( createTextTransform( 
+            group->addChild( createTextTransform(
                 cx,
                 tex.yMin() + offset,
                 tex.yMin(),
                 ell,
-                20.0f ) );
+                20.0f,
+                _textColor ) );
 
             // x value on the y-axis:
             group->addChild( createTextTransform(
@@ -465,6 +494,7 @@ Graticule::createTextLevel( unsigned int levelNum ) const
                 tex.xMin(),
                 ell, 
                 20.0f,
+                _textColor,
                 -90.0f ) );
         }
     }

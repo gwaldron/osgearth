@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_SYMBOL_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarth/Config>
 #include <osg/Referenced>
 #include <vector>
 
@@ -33,6 +34,8 @@ namespace osgEarth { namespace Symbology
     {
     public:
         Symbol();
+
+        virtual Config getConfig() const { return Config(); }
     };
 
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;

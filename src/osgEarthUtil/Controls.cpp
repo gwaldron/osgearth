@@ -308,7 +308,7 @@ Control::draw(const ControlContext& cx, DrawableList& out )
 bool
 Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx )
 {
-    bool handled = false;
+    bool handled = false;    
 
     if ( _eventHandlers.size() > 0 )
     {    
@@ -345,7 +345,6 @@ struct LabelText : public osgText::Text
     const osg::Matrix& getATMatrix(int contextID) const { return _autoTransformCache[contextID]._matrix; }
 };
 
-
 LabelControl::LabelControl(const std::string& text,
                            float fontSize,
                            const osg::Vec4f& foreColor)
@@ -353,6 +352,16 @@ LabelControl::LabelControl(const std::string& text,
     setText( text );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
     setFontSize( fontSize );
+    setBackColor( osg::Vec4f(0,0,0,0) );
+    setForeColor( foreColor );
+}
+
+LabelControl::LabelControl(const std::string& text,
+                           const osg::Vec4f& foreColor)
+{
+    setText( text );
+    setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
+    setFontSize( 18.0f );
     setBackColor( osg::Vec4f(0,0,0,0) );
     setForeColor( foreColor );
 }
@@ -938,7 +947,7 @@ Container::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa
     for( ControlList::const_reverse_iterator i = children().rbegin(); i != children().rend(); ++i )
     {
         Control* child = i->get();
-        if ( child->intersects( ea.getX(), cx._vp->height() - ea.getY() ) )
+        if (ea.getEventType() == osgGA::GUIEventAdapter::FRAME || child->intersects( ea.getX(), cx._vp->height() - ea.getY() ) )
             handled = child->handle( ea, aa, cx );
         if ( handled )
             break;
@@ -1399,8 +1408,16 @@ bool
 ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
     bool handled = false;
+    //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
+    {
+        for( ControlList::const_reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+        {
+            i->get()->handle(ea, aa, _context);
+        }
         return handled;
+    }
+
 
     float invY = _context._vp->height() - ea.getY();
 

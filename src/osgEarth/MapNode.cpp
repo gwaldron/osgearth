@@ -21,6 +21,7 @@
 #include <osgEarth/FindNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osg/PagedLOD>
 
 using namespace osgEarth;
 
@@ -266,6 +267,12 @@ TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
     return _terrainEngine.get();
+}
+
+osg::Group*
+MapNode::getModelLayerGroup() const
+{
+    return _models.get();
 }
 
 const MapNodeOptions&

@@ -1059,22 +1059,20 @@ public: // Cache interface
         // this looks ineffecient, but usually when isCached() is called, getImage() will be
         // called soon thereafter. And this call will load it into the L2 cache so the subsequent
         // getImage call will not hit the DB again.
-        osg::ref_ptr<osg::Image> temp = const_cast<Sqlite3Cache*>(this)->getImage( key, spec );
-        return temp.valid();
+        osg::ref_ptr<osg::Image> temp;
+        return const_cast<Sqlite3Cache*>(this)->getImage( key, spec, temp );
     }
 
     /**
      * Store the cache profile for the given profile.
      */
-    void storeLayerProperties(
-        const std::string& layerName, const Profile* profile,
-        const std::string& format, unsigned int tileSize)
+    virtual void storeProperties( const CacheSpec& spec, const Profile* profile, unsigned int tileSize ) 
     {
         if ( !_db ) return;
 
-        if ( layerName.empty() || profile == 0L || format.empty() )
+        if ( spec.cacheId().empty() || profile == 0L || spec.format().empty() )
         {
-            OE_WARN << "ILLEGAL: cannot cache a layer without a layer name" << std::endl;
+            OE_WARN << "ILLEGAL: cannot cache a layer without a layer id" << std::endl;
             return;
         }
 
@@ -1090,7 +1088,7 @@ public: // Cache interface
         //OE_INFO << "Storing metadata for layer \"" << layerName << "\"" << std::endl;
 
         MetadataRecord rec;
-        rec._layerName = layerName;
+        rec._layerName = spec.cacheId();
         rec._profile = profile;
         rec._tileSize = tileSize;
 
@@ -1098,7 +1096,7 @@ public: // Cache interface
         rec._format = "osgb";
         rec._compressor = "zlib";
 #else
-        rec._format = format;
+        rec._format = spec.format();
 #endif
 
         _metadata.store( rec, db );
@@ -1107,10 +1105,11 @@ public: // Cache interface
     /**
      * Loads the cache profile for the given layer.
      */
-    const Profile* loadLayerProperties(
-        const std::string& layerName,
-        std::string& out_format,
-        unsigned int& out_tileSize )
+    virtual bool loadProperties( 
+        const std::string&           cacheId, 
+        CacheSpec&                   out_spec, 
+        osg::ref_ptr<const Profile>& out_profile,
+        unsigned int&                out_tileSize ) 
     {
         if ( !_db ) return 0L;
 
@@ -1124,14 +1123,14 @@ public: // Cache interface
         if ( !db )
             return 0L;
 
-        OE_DEBUG << LC << "Loading metadata for layer \"" << layerName << "\"" << std::endl;
+        OE_DEBUG << LC << "Loading metadata for layer \"" << cacheId << "\"" << std::endl;
 
         MetadataRecord rec;
-        if ( _metadata.load( layerName, db, rec ) )
+        if ( _metadata.load( cacheId, db, rec ) )
         {
-            out_format = rec._format;
+            out_spec = CacheSpec( rec._layerName, rec._format );
             out_tileSize = rec._tileSize;
-            return rec._profile.release();
+            out_profile = rec._profile;
         }
         return 0L;
     }
@@ -1139,9 +1138,9 @@ public: // Cache interface
     /**
      * Gets the cached image for the given TileKey
      */
-    osg::Image* getImage( const TileKey& key, const CacheSpec& spec )
+    bool getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Image>& out_image )
     {
-        if ( !_db ) return 0L;
+        if ( !_db ) return false;
 
         // wait if we are purging the db
         ScopedLock<Mutex> lock2( _pendingPurgeMutex );
@@ -1149,9 +1148,8 @@ public: // Cache interface
         // first try the L2 cache.
         if ( _L2cache.valid() )
         {
-            osg::Image* result = _L2cache->getImage( key, spec );
-            if ( result )
-                return result;
+            if ( _L2cache->getImage( key, spec, out_image ) )
+                return true;
         }
 
         // next check the deferred-write queue.
@@ -1180,7 +1178,9 @@ public: // Cache interface
             {
                 // todo: update the access time, or let it slide?
                 OE_DEBUG << LC << "Got key that is write-queued: " << key.str() << std::endl;
-                return i->second->_image.get();
+                out_image = i->second->_image.get();
+                return out_image.valid();
+                //return i->second->_image.get();
             }
 #endif
         }
@@ -1191,13 +1191,13 @@ public: // Cache interface
         {
             ImageRecord rec( key );
             if (!tt._table->load( key, rec, tt._db ))
-                return 0;
+                return false;
 
             // load it into the L2 cache
-            osg::Image* result = rec._image.release();
+            out_image = rec._image.release();
 
-            if ( result && _L2cache.valid() )
-                _L2cache->setImage( key, spec, result );
+            if ( out_image.valid() && _L2cache.valid() )
+                _L2cache->setImage( key, spec, out_image.get() );
 
 #ifdef UPDATE_ACCESS_TIMES
 
@@ -1228,13 +1228,13 @@ public: // Cache interface
 
 #endif // UPDATE_ACCESS_TIMES
 
-            return result;
+            return out_image.valid();
         }
         else
         {
             OE_DEBUG << LC << "What, no layer table?" << std::endl;
         }
-        return 0L;
+        return false;
     }
 
     /**

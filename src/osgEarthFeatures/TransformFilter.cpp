@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/TransformFilter>
+#include <osg/ClusterCullingCallback>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -87,18 +88,21 @@ TransformFilter::push( Feature* input, const FilterContext& context )
     return true;
 }
 
-static void
-localizeGeometry( Feature* input, const osg::Matrixd& refFrame )
+namespace
 {
-    if ( input && input->getGeometry() )
+    void
+    localizeGeometry( Feature* input, const osg::Matrixd& refFrame )
     {
-        GeometryIterator iter( input->getGeometry() );
-        while( iter.hasMore() )
+        if ( input && input->getGeometry() )
         {
-            Geometry* geom = iter.next();
-            for( int i=0; i<geom->size(); i++ )
+            GeometryIterator iter( input->getGeometry() );
+            while( iter.hasMore() )
             {
-                (*geom)[i] = (*geom)[i] * refFrame;
+                Geometry* geom = iter.next();
+                for( int i=0; i<geom->size(); i++ )
+                {
+                    (*geom)[i] = (*geom)[i] * refFrame;
+                }
             }
         }
     }
@@ -107,7 +111,7 @@ localizeGeometry( Feature* input, const osg::Matrixd& refFrame )
 FilterContext
 TransformFilter::push( FeatureList& input, const FilterContext& incx )
 {
-    _bbox = osg::BoundingBoxd(); // reset the extent:
+    _bbox = osg::BoundingBoxd();
 
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )

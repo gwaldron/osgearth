@@ -28,6 +28,8 @@ _driverOptions( options ),
 _enabled(true)
 {
     mergeConfig( options.getConfig() );
+
+    //OE_NOTICE << _driverOptions.getConfig().toString() << std::endl;
 }
 
 ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
@@ -70,7 +72,11 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
         if ( _modelSource->getOptions().depthTestEnabled() == false )            
         {
             if ( _node )
-                _node->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
+            {
+                osg::StateSet* ss = _node->getOrCreateStateSet();
+                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
+                ss->setRenderBinDetails( 99999, "RenderBin" );
+            }
         }
     }
     return _node.get();

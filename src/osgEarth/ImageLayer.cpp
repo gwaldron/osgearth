@@ -327,8 +327,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 	//If we are caching in the map profile, try to get the image immediately.
     if (cacheInMapProfile && _cache.valid() && _options.cacheEnabled() == true )
 	{
-        osg::ref_ptr<osg::Image> image = _cache->getImage( key, _cacheSpec );
-		if (image.valid())
+        osg::ref_ptr<osg::Image> image;
+        if ( _cache->getImage( key, _cacheSpec, image ) )
 		{
 			OE_DEBUG << LC << "Layer \"" << getName()<< "\" got tile " << key.str() << " from map cache " << std::endl;
             result = GeoImage( image.get(), key.getExtent() );
@@ -341,8 +341,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     if ( mapProfile->isEquivalentTo( layerProfile ) )
     {
 		OE_DEBUG << "Key and source profiles are equivalent, requesting single tile" << std::endl;
-        osg::ref_ptr<osg::Image> image = createImageWrapper( key, cacheInLayerProfile, progress );
-        if ( image )
+        osg::ref_ptr<osg::Image> image;
+        if ( createImageWrapper( key, cacheInLayerProfile, image, progress ) )
         {
             result = GeoImage( image.get(), key.getExtent() );
         }
@@ -381,8 +381,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 
 				OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
-				osg::ref_ptr<osg::Image> img = createImageWrapper(intersectingTiles[j], cacheInLayerProfile, progress);
-				if (img.valid())
+				osg::ref_ptr<osg::Image> img;
+                if ( createImageWrapper(intersectingTiles[j], cacheInLayerProfile, img, progress) )
 				{
                     if (img->getPixelFormat() != GL_RGBA || img->getDataType() != GL_UNSIGNED_BYTE || img->getInternalTextureFormat() != GL_RGBA8 )
 					{
@@ -531,36 +531,46 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     return result;
 }
 
-osg::Image*
+bool
 ImageLayer::createImageWrapper(const TileKey& key,
                                bool cacheInLayerProfile,
+                               osg::ref_ptr<osg::Image>& out_image,
                                ProgressCallback* progress )
 {
 	osg::ref_ptr<osg::Image> image;
 
     if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
     {
-		image = _cache->getImage( key, _cacheSpec );
-
-        if (image.valid())
+		if ( _cache->getImage( key, _cacheSpec, out_image ) )
 	    {
             OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
+            return true;
     	}
     }
     
-    TileSource* source = 0L;
-    if ( !image.valid() && _actualCacheOnly == false )
-        source = getTileSource();
+    //TileSource* source = 0L;
 
-	if ( source )
+    //if ( _actualCacheOnly == false )
+    //    source = getTileSource();
+
+	if ( !_actualCacheOnly )
 	{
+        TileSource* source = getTileSource();
+        if ( !source )
+            return false;
+        
+        // just in case the output image had data in it...unlikely
+        if ( out_image.valid() )
+            out_image = 0L;
+
         //Only try to get the image if it's not in the blacklist
         if (!source->getBlacklist()->contains( key.getTileId() ))
         {
             //Only try to get data if the source actually has data
             if (source->hasData( key ) )
             {
-                image = source->getImage( key, progress );
+                source->getImage( key, image, progress );
+
                 //If the image is not valid and the progress was not cancelled, blacklist
                 if (!image.valid() && (!progress || !progress->isCanceled()))
                 {
@@ -585,7 +595,7 @@ ImageLayer::createImageWrapper(const TileKey& key,
 			if (ImageUtils::areEquivalent(image.get(), _noDataImage.get()))
 			{
 				OE_DEBUG << LC << "Found nodata for " << key.str() << std::endl;
-				image = 0;
+				image = 0L;
 			}
 		}
 
@@ -614,8 +624,10 @@ ImageLayer::createImageWrapper(const TileKey& key,
 
         if (image.valid() && _cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
 		{
-			_cache->setImage( key, _cacheSpec, image);
+			_cache->setImage( key, _cacheSpec, image.get() );
 		}
 	}
-	return image.release();
+
+    out_image = image.get();
+    return out_image.valid();
 }

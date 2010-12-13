@@ -24,7 +24,8 @@ SET(TARGET_COMMON_LIBRARIES
 SET(TARGET_DEFAULT_PREFIX "application_")
 SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")
 
-ADD_SUBDIRECTORY(osgearth_simple)
+ADD_SUBDIRECTORY(osgearth_viewer)
+ADD_SUBDIRECTORY(osgearth_manip)
 ADD_SUBDIRECTORY(osgearth_seed)
 ADD_SUBDIRECTORY(osgearth_clouds)
 ADD_SUBDIRECTORY(osgearth_ocean)

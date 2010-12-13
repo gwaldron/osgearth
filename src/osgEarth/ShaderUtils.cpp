@@ -164,3 +164,58 @@ UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
         }
     }
 }
+
+//------------------------------------------------------------------------
+
+ArrayUniform::ArrayUniform( osg::Uniform::Type type, const std::string& name, int size )
+{
+    _uniform = new osg::Uniform( type, name, size );
+    _uniformAlt = new osg::Uniform( type, name + "[0]", size );
+}
+
+ArrayUniform::ArrayUniform( osg::StateSet* stateSet, const std::string& name )
+{
+    _uniform = stateSet->getUniform( name );
+    _uniformAlt = stateSet->getUniform( name + "[0]" );
+}
+
+void 
+ArrayUniform::setElement( int index, int value )
+{
+    _uniform->setElement( index, value );
+    _uniformAlt->setElement( index, value );
+}
+
+void 
+ArrayUniform::setElement( int index, bool value )
+{
+    _uniform->setElement( index, value );
+    _uniformAlt->setElement( index, value );
+}
+
+void 
+ArrayUniform::setElement( int index, float value )
+{
+    _uniform->setElement( index, value );
+    _uniformAlt->setElement( index, value );
+}
+
+void 
+ArrayUniform::addTo( osg::StateSet* stateSet )
+{
+    if ( stateSet )
+    {
+        stateSet->addUniform( _uniform.get() );
+        stateSet->addUniform( _uniformAlt.get() );
+    }
+}
+
+void 
+ArrayUniform::removeFrom( osg::StateSet* stateSet )
+{
+    if ( stateSet )
+    {
+        stateSet->removeUniform( _uniform->getName() );
+        stateSet->removeUniform( _uniformAlt->getName() );
+    }
+}

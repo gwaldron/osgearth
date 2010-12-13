@@ -25,6 +25,7 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/CoordinateSystemNode>
+#include <osg/PagedLOD>
 #include <osgSim/OverlayNode>
 
 namespace osgEarth

@@ -57,6 +57,7 @@ namespace osgEarth { namespace Drivers
 
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
+            conf.getIfSet( "token", _token);
         }
 
     private:

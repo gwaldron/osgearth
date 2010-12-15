@@ -129,7 +129,8 @@ bool
 MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* options )
 {
     url = _url;
-    std::string json_url = url + std::string("?f=pjson");  // request the data in JSON format
+    std::string sep = url.find( "?" ) == std::string::npos ? "?" : "&";
+    std::string json_url = url + sep + std::string("f=pjson");  // request the data in JSON format
 
     HTTPResponse response = HTTPClient::get( json_url, options );
     if ( !response.isOK() )

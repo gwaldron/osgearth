@@ -69,8 +69,20 @@ public:
         if ( _format.empty() )
             _format = "png";
 
+        std::string url = _options.url().value();
+        //Add the token if necessary
+        if (_options.token().isSet())
+        {
+            std::string token = _options.token().value();
+            if (!token.empty())
+            {
+                std::string sep = url.find( "?" ) == std::string::npos ? "?" : "&";
+                url = url + sep + "token=" + token;
+            }
+        }
+
         // read metadata from the server
-        if ( !_map_service.init( _options.url().value() ) ) //, getOptions()) )
+        if ( !_map_service.init( url ) ) //, getOptions()) )
         {
             OE_WARN << "[osgearth] [ArcGIS] map service initialization failed: "
                 << _map_service.getError() << std::endl;

@@ -311,12 +311,14 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
         {
             if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
             {
+                OE_INFO << LC << "Installing overlay node" << std::endl;
+                addTerrainDecorator( node->asGroup() );
               // treat overlay node as a special case
-                installOverlayNode( static_cast<osgSim::OverlayNode*>( node ) );
+                //installOverlayNode( static_cast<osgSim::OverlayNode*>( node ) );
             }
             else
             {
-							_models->insertChild( index, node );
+                _models->insertChild( index, node );
             }
 
             ModelSource* ms = layer->getModelSource();

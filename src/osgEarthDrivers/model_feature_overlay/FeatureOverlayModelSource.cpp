@@ -102,7 +102,7 @@ public:
 
     osg::Node* createNode( ProgressCallback* progress )
     {
-        osg::Node* node = new FeatureSymbolizerGraph(new FactoryOverlaySymbolizer(this, _options));
+        FeatureSymbolizerGraph* node = new FeatureSymbolizerGraph(new FactoryOverlaySymbolizer(this, _options));
         //const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>( _options.get() );
         
         // build an overlay node around the geometry
@@ -114,6 +114,10 @@ public:
         overlayNode->setOverlayTextureUnit( _options.textureUnit().value() );
         overlayNode->setContinuousUpdate( false );
         overlayNode->setOverlaySubgraph( node );
+
+        // not a normal symbology node...need to pre-compile
+        node->compile();
+
         return overlayNode;
     }
 

@@ -79,19 +79,19 @@ TextureLayout::applyMapModelChange( const MapModelChange& change )
             if ( slotAvailable )
             {
                 *i = change.getImageLayer()->getUID();
-                
+
                 if ( change.getFirstIndex() >= (int)_order.size() )
-								{
+                {
                     _order.resize( change.getFirstIndex() + 1, -1 );
-										_order[change.getFirstIndex()] = slot;
-								}
-								else
-								{
-										if (_order[change.getFirstIndex()] == -1)
-												_order[change.getFirstIndex()] = slot;
-										else
-												_order.insert(_order.begin() + change.getFirstIndex(), slot);
-								}
+                    _order[change.getFirstIndex()] = slot;
+                }
+                else
+                {
+                    if (_order[change.getFirstIndex()] == -1)
+                        _order[change.getFirstIndex()] = slot;
+                    else
+                        _order.insert(_order.begin() + change.getFirstIndex(), slot);
+                }
 
                 found = true;
                 break;

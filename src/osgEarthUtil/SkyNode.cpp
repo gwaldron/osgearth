@@ -100,7 +100,9 @@ namespace
 
                 // Build a new projection matrix with a modified far plane
                 osg::ref_ptr<osg::RefMatrixd> projectionMatrix = new osg::RefMatrix;
-                projectionMatrix->makeFrustum( left, right, bottom, top, zNear, distance);
+                //projectionMatrix->makeFrustum( left, right, bottom, top, zNear, distance);
+                //OE_INFO << "zNear=" << zNear << ", zFar=" << zFar << std::endl;
+                projectionMatrix->makeFrustum( left, right, bottom, top, zNear, distance );
                 renderInfo.getState()->applyProjectionMatrix( projectionMatrix.get());
 
                 // Draw the drawable
@@ -399,10 +401,12 @@ SkyNode::makeAtmosphere()
     // configure the state set:
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     set->setMode( GL_CULL_FACE, osg::StateAttribute::ON );
-    set->setMode( GL_DEPTH, osg::StateAttribute::OFF );
+    //set->setMode( GL_DEPTH, osg::StateAttribute::OFF );
     set->setMode( GL_DEPTH_TEST, osg::StateAttribute::ON );
     set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-    set->setBinNumber( 65 ); // todo, what?
+    //set->setBinNumber( 65 ); // todo, what?
+    set->setBinNumber( -4 );
+    set->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
     osg::BlendFunc* blend = new osg::BlendFunc( GL_ONE, GL_ONE );
     set->setAttributeAndModes( blend, osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::FrontFace( osg::FrontFace::CLOCKWISE ), osg::StateAttribute::ON );
@@ -452,8 +456,17 @@ SkyNode::makeAtmosphere()
     set->getOrCreateUniform( "atmos_nSamples",        osg::Uniform::INT )->set( Samples );
     set->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
     set->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
-  
-    this->addChild( geode );
+    
+    //geode->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
+    AddCallbackToDrawablesVisitor visitor( _innerRadius );
+    geode->accept( visitor );
+    //this->addChild( geode );
+
+    // add an intermediate group for the clip plane callback (won't work on the geode itself)
+    osg::Group* g = new osg::Group;
+    g->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
+    g->addChild( geode );
+    this->addChild( g );
 }
 
 void
@@ -495,9 +508,12 @@ SkyNode::makeSun()
     _sunXform->setMatrix( osg::Matrix::translate( _sunDistance * _lightPos.x(), _sunDistance * _lightPos.y(), _sunDistance * _lightPos.z() ) );
     _sunXform->addChild( sun );
     
-    _sunXform->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
     AddCallbackToDrawablesVisitor visitor( _sunDistance );
     _sunXform->accept( visitor );
 
-    this->addChild( _sunXform );
+    // add an intermediate group for the clip plane callback (won't work on the node itself)
+    osg::Group* g = new osg::Group;
+    g->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
+    g->addChild( _sunXform );
+    this->addChild( g );
 }

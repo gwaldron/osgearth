@@ -34,6 +34,16 @@ namespace osgEarth
     };
 
     /**
+     * A class that "decorates" the terrain engine node within a map node.
+     */
+    class TerrainDecorator : public osg::Group
+    {
+    public:
+        virtual void onInstall( TerrainEngineNode* engine ) { }
+        virtual void onUninstall( TerrainEngineNode* engine ) { }
+    };
+
+    /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
      * that renders data from a "Map" data model.
      */

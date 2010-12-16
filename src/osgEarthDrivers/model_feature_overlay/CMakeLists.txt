@@ -1,6 +1,6 @@
 SET(TARGET_SRC FeatureOverlayModelSource.cpp)
 SET(TARGET_H FeatureOverlayModelOptions)
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures)
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthUtil)
 SETUP_PLUGIN(osgearth_model_feature_overlay)
 
 # to install public driver includes:

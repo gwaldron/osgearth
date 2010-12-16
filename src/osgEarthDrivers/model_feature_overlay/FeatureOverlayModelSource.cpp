@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/FeatureSymbolizer>
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthUtil/OverlayDecorator>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgSim/OverlayNode>
@@ -35,6 +36,7 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
+using namespace osgEarth::Util;
 
 
 class FactoryOverlaySymbolizer : public SymbolizerFactory
@@ -103,8 +105,7 @@ public:
     osg::Node* createNode( ProgressCallback* progress )
     {
         FeatureSymbolizerGraph* node = new FeatureSymbolizerGraph(new FactoryOverlaySymbolizer(this, _options));
-        //const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>( _options.get() );
-        
+#if 0        
         // build an overlay node around the geometry
         osgSim::OverlayNode* overlayNode = new osgSim::OverlayNode();
         overlayNode->setName( this->getName() );
@@ -114,6 +115,10 @@ public:
         overlayNode->setOverlayTextureUnit( _options.textureUnit().value() );
         overlayNode->setContinuousUpdate( false );
         overlayNode->setOverlaySubgraph( node );
+#endif
+
+        OverlayDecorator* overlayNode = new OverlayDecorator( _map.get() );
+        overlayNode->setOverlayGraph( node );
 
         // not a normal symbology node...need to pre-compile
         node->compile();

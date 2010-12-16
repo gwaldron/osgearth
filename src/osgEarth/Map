@@ -391,7 +391,7 @@ namespace osgEarth
     class MapInfo
     {
     public:
-        MapInfo( Map* map )
+        MapInfo( const Map* map )
             : _profile( map->getProfile() ),
               _isGeocentric( map->isGeocentric() ),
               _isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ) { }

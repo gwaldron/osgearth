@@ -309,7 +309,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
         }
         else
         {
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+            if ( dynamic_cast<TerrainDecorator*>(node) || dynamic_cast<osgSim::OverlayNode*>(node) )
             {
                 OE_INFO << LC << "Installing overlay node" << std::endl;
                 addTerrainDecorator( node->asGroup() );
@@ -445,6 +445,10 @@ MapNode::addTerrainDecorator(osg::Group* decorator)
         decorator->addChild( _terrainEngine.get() );
         _terrainEngine->getParent(0)->replaceChild( _terrainEngine.get(), decorator );
         dirtyBound();
+
+        TerrainDecorator* td = dynamic_cast<TerrainDecorator*>( decorator );
+        if ( td )
+            td->onInstall( _terrainEngine.get() );
     }
 }
 
@@ -453,6 +457,10 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
 {
     if ( _terrainEngine.valid() )
     {
+        TerrainDecorator* td = dynamic_cast<TerrainDecorator*>( decorator );
+        if ( td )
+            td->onUninstall( _terrainEngine.get() );
+
         osg::Node* child = _terrainEngine.get();
         for( osg::Group* g = child->getParent(0); g != _terrainEngineContainer.get(); )
         {

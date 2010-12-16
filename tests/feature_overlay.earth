@@ -1,0 +1,43 @@
+<!--
+osgEarth Sample
+Demonstrates use of the "feature_overlay" feature draping driver.
+-->
+
+<map name="Geometry Rasterizer Demo" type="round" version="2">
+  
+    <options>
+        <lighting>false</lighting>
+        <terrain>
+            <compositor>multipass</compositor>
+            <lod_blending>false</lod_blending>
+        </terrain>
+    </options>
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="world_boundaries" driver="feature_overlay">
+
+        <!-- Configure the OGR feature driver to read the shapefile. -->             
+        <features name="world" driver="ogr">
+            <url>../data/world.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        
+        <!-- Treat the geometry as lines. -->
+        <geometry_type>line</geometry_type>
+                
+        <styles>
+            <style type="text/css">
+                world {
+                   stroke: #ffff00;
+                   stroke-opacity: 1.0;
+                   stroke-width: 1.5;
+                }            
+            </style>
+        </styles>
+        
+    </model>
+  
+</map>

@@ -1,0 +1,89 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_OVERLAY_NODE
+#define OSGEARTHUTIL_OVERLAY_NODE
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/Map>
+#include <osgEarth/MapNode>
+#include <osg/Camera>
+#include <osg/Texture2D>
+#include <osg/TexGenNode>
+#include <osg/TexMat>
+
+namespace osgEarth { namespace Util 
+{
+    using namespace osgEarth;
+
+    /**
+     * Projects an overlay scene graph onto the main model. You can apply this
+     * using MapNode::addTerrainDecorator.
+     */
+    class OSGEARTHUTIL_EXPORT OverlayDecorator : public TerrainDecorator
+    {
+    public:
+        OverlayDecorator( const Map* map );
+
+        /**
+         * Sets the scene graph to be sampled an overlaid on the terrain.
+         */
+        void setOverlayGraph( osg::Node* node );
+
+        /**
+         * Explicity sets the texture unit to use. Note! When you add this class
+         * to a MapNode, it will automatically allocate a free texture unit; so you
+         * usually do NOT need to call this method.
+         */
+        void setTextureUnit( int unit );
+
+        /**
+         * Sets the size (resolution in both directions) of the overlay texture. By
+         * default, this defaults to 2048 or your hardware's maximum supported
+         * texture size, whichever is greater.
+         */
+        void setTextureSize( int texSize );
+
+
+    public: // TerrainDecorator
+        virtual void onInstall( TerrainEngineNode* engine );
+        virtual void onUninstall( TerrainEngineNode* engine );
+
+    public: // osg::Node
+        void traverse( osg::NodeVisitor& nv );
+
+    private:
+        void updateRTTCamera( osg::NodeVisitor& cv );
+        void reinit();
+
+    private:
+        osg::ref_ptr<osg::Node>       _overlayGraph;
+        osg::ref_ptr<osg::Camera>     _rttCamera;
+        osg::ref_ptr<osg::Texture2D>  _projTexture;
+        osg::ref_ptr<osg::TexGenNode> _texGenNode;
+        optional<int>                 _textureUnit;
+        optional<int>                 _textureSize;
+        bool                          _reservedTextureUnit;
+        MapInfo _mapInfo;
+        osg::Matrixd _rttViewMatrix, _rttProjMatrix;
+        osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif //OSGEARTHUTIL_OVERLAY_NODE

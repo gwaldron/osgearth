@@ -27,13 +27,15 @@ Demonstrates use of the "feature_overlay" feature draping driver.
         
         <!-- Treat the geometry as lines. -->
         <geometry_type>line</geometry_type>
+        
+        <texture_size>2048</texture_size>
                 
         <styles>
             <style type="text/css">
                 world {
                    stroke: #ffff00;
                    stroke-opacity: 1.0;
-                   stroke-width: 1.5;
+                   stroke-width: 3.0;
                 }            
             </style>
         </styles>

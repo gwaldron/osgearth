@@ -201,8 +201,8 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
 
         // calculate the approximate extent viewed from the camera if it's pointing
         // at the ground. This is the minimum acceptable RTT extent.
-        double vfov, ar, znear, zfar;
-        cv->getProjectionMatrix()->getPerspective( vfov, ar, znear, zfar );
+        double vfov, camAR, znear, zfar;
+        cv->getProjectionMatrix()->getPerspective( vfov, camAR, znear, zfar );
         double eMin = haeAdj * tan( osg::DegreesToRadians(0.5*vfov) );
 
         // calculate the deviation between the RTT camera's look-vector and the main camera's
@@ -225,7 +225,10 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
 
         //OE_INFO << "dev=" << deviation << ", ext=" << eIdeal << std::endl;
 
-        _rttProjMatrix = osg::Matrix::ortho( -eIdeal, eIdeal, -eIdeal, eIdeal, 1.0, eyeLen );
+        // adjust the projection matrix for the viewport's aspect ratio:
+        double hf = camAR > 1.0 ? camAR : 1.0;
+        double vf = camAR > 1.0 ? 1.0 : 1.0/camAR;
+        _rttProjMatrix = osg::Matrix::ortho( -eIdeal*hf, eIdeal*hf, -eIdeal*vf, eIdeal*vf, 1.0, eyeLen );
 
         // projector matrices are the same as for the RTT camera. Tim was right.
         _projectorViewMatrix = _rttViewMatrix;

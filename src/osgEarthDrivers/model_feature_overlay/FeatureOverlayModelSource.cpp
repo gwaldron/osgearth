@@ -119,6 +119,10 @@ public:
 
         OverlayDecorator* overlayNode = new OverlayDecorator( _map.get() );
         overlayNode->setOverlayGraph( node );
+        if ( _options.textureSize().isSet() )
+            overlayNode->setTextureSize( *_options.textureSize() );
+        //if ( _options.textureUnit().isSet() )
+        //    overlayNode->setTextureUnit( *_options.textureUnit() );
 
         // not a normal symbology node...need to pre-compile
         node->compile();

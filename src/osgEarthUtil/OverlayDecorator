@@ -22,10 +22,11 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/ShaderComposition>
 #include <osg/Camera>
 #include <osg/Texture2D>
 #include <osg/TexGenNode>
-#include <osg/TexMat>
+#include <osg/Uniform>
 
 namespace osgEarth { namespace Util 
 {
@@ -66,20 +67,33 @@ namespace osgEarth { namespace Util
 
     public: // osg::Node
         void traverse( osg::NodeVisitor& nv );
+        
+    public: //osg::Group overrides
+        virtual bool addChild( Node *child );
+        virtual bool insertChild( unsigned int index, Node *child );
+        virtual bool removeChildren(unsigned int pos,unsigned int numChildrenToRemove);
+        virtual bool replaceChild( Node *origChild, Node* newChild );
+        virtual bool setChild( unsigned  int i, Node* node );
+        virtual osg::BoundingSphere computeBound() const;
 
     private:
         void updateRTTCamera( osg::NodeVisitor& cv );
         void reinit();
+        void initShaders( osg::StateSet* set );
 
     private:
+        osg::ref_ptr<osg::Group>      _subgraphContainer;
         osg::ref_ptr<osg::Node>       _overlayGraph;
         osg::ref_ptr<osg::Camera>     _rttCamera;
         osg::ref_ptr<osg::Texture2D>  _projTexture;
         osg::ref_ptr<osg::TexGenNode> _texGenNode;
+        osg::ref_ptr<osg::Uniform>    _texGenUniform;
+        osg::ref_ptr<osgEarth::VirtualProgram> _vp;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
         bool                          _reservedTextureUnit;
-        MapInfo _mapInfo;
+        bool                          _useShaders;
+        MapInfo                       _mapInfo;
         osg::Matrixd _rttViewMatrix, _rttProjMatrix;
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
     };

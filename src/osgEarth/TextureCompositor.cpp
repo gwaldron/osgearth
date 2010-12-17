@@ -100,6 +100,10 @@ TextureLayout::applyMapModelChange( const MapModelChange& change )
 
         if ( !found )
         {
+            // put the UID in the next available slot (that's not reserved).
+            while( _reservedSlots.find(_slots.size()) != _reservedSlots.end() )
+                _slots.push_back( -1 );
+
             _slots.push_back( change.getImageLayer()->getUID() );
             _order.push_back( _slots.size() - 1 );
         }

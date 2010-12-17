@@ -27,7 +27,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
-//---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
 
@@ -35,12 +34,16 @@ OverlayDecorator::OverlayDecorator( const Map* map ) :
 _textureUnit( 1 ),
 _textureSize( 1024 ),
 _mapInfo( map ),
-_reservedTextureUnit( false )
+_reservedTextureUnit( false ),
+_useShaders( false )
 {
     // force an update traversal:
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 
-    reinit();
+    // points to children of this group. We will override the traverse to route through
+    // this container. That way we can assign a stateset to the children without 
+    // actually modifying them
+    _subgraphContainer = new osg::Group();
 }
 
 void
@@ -74,6 +77,7 @@ OverlayDecorator::reinit()
     _texGenNode = new osg::TexGenNode();
     _texGenNode->setTextureUnit( *_textureUnit );
     
+    // attach the overlay graph to the RTT camera.
     if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != _rttCamera.get() ))
     {
         if ( _rttCamera->getNumChildren() > 0 )
@@ -81,6 +85,27 @@ OverlayDecorator::reinit()
         else
             _rttCamera->addChild( _overlayGraph.get() );
     }
+
+    // assemble the subgraph stateset:
+    osg::StateSet* set = new osg::StateSet();
+
+    // set up the subgraph to receive the projected texture:
+    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
+    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
+    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
+    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
+    set->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
+
+    // decalling:
+    osg::TexEnv* env = new osg::TexEnv();
+    env->setMode( osg::TexEnv::DECAL );
+    set->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
+    
+    // set up the shaders
+    if ( _useShaders )
+        initShaders( set );
+
+    _subgraphContainer->setStateSet( set );
 }
 
 void
@@ -116,7 +141,9 @@ OverlayDecorator::setTextureUnit( int texUnit )
 void
 OverlayDecorator::onInstall( TerrainEngineNode* engine )
 {
-    if ( !_textureUnit.isSet() )
+    _useShaders = engine->getTextureCompositor()->usesShaderComposition();
+
+    if ( !_textureUnit.isSet() && _useShaders )
     {
         int texUnit;
         if ( engine->getTextureCompositor()->reserveTextureImageUnit( texUnit ) )
@@ -135,19 +162,8 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
         OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
     }
 
+    // rebuild dynamic elements.
     reinit();
-
-    // set up the child to receive the projected texture:
-    osg::StateSet* set = getChild(0)->getOrCreateStateSet();
-    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
-    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
-    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
-    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
-    set->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
-
-    osg::TexEnv* env = new osg::TexEnv();
-    env->setMode( osg::TexEnv::DECAL );
-    set->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
 }
 
 void
@@ -159,8 +175,47 @@ OverlayDecorator::onUninstall( TerrainEngineNode* engine )
         _textureUnit.unset();
         _reservedTextureUnit = false;
     }
+}
 
-    //TODO: remove the proj-tex state attributes from the child
+void
+OverlayDecorator::initShaders( osg::StateSet* set )
+{
+    VirtualProgram* vp = new VirtualProgram();
+    set->setAttributeAndModes( vp, osg::StateAttribute::ON );
+
+    // sampler for projected texture:
+    set->getOrCreateUniform( "osgearth_overlay_ProjTex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
+
+    // the texture projection matrix uniform.
+    _texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
+
+    std::stringstream buf;
+
+    // vertex shader
+    buf << "#version 110 \n"
+        << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
+        << "uniform mat4 osg_ViewMatrixInverse; \n"
+
+        << "void osgearth_overlay_vertex(void) \n"
+        << "{ \n"
+        << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
+        << "} \n";
+
+    std::string vertexSource = buf.str();
+    vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_POST_VERTEX );
+
+    buf.str("");
+    buf << "#version 110 \n"
+        << "uniform sampler2D osgearth_overlay_ProjTex; \n"
+
+        << "void osgearth_overlay_fragment( inout vec4 color ) \n"
+        << "{ \n"
+        << "    vec4 texel = texture2DProj(osgearth_overlay_ProjTex, gl_TexCoord["<< *_textureUnit << "]); \n"
+        << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
+        << "} \n";
+
+    std::string fragmentSource = buf.str();
+    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_POST_FRAGMENT );
 }
 
 void
@@ -177,6 +232,10 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
         osg::Matrix MVPT = MVP * osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
         _texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR );
         _texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
+        
+        // uniform update:
+        if ( _useShaders )
+            _texGenUniform->set( MVPT );
     }
 
     else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
@@ -246,5 +305,43 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
 
     _texGenNode->accept( nv );
 
-    TerrainDecorator::traverse( nv );
+    _subgraphContainer->accept( nv );
+
+    //TerrainDecorator::traverse( nv );
+}
+
+
+/** Override all the osg::Group methods: */
+
+bool 
+OverlayDecorator::addChild( Node *child ) {
+    if ( !child ) return false;
+    dirtyBound();
+    return _subgraphContainer->addChild( child );
+}
+bool 
+OverlayDecorator::insertChild( unsigned int index, Node *child ) {
+    if ( !child ) return false;
+    dirtyBound();
+    return _subgraphContainer->insertChild( index, child );
+}
+bool 
+OverlayDecorator::removeChildren(unsigned int pos,unsigned int numChildrenToRemove) {
+    dirtyBound();
+    return _subgraphContainer->removeChildren( pos, numChildrenToRemove );
+}
+bool 
+OverlayDecorator::replaceChild( Node *origChild, Node* newChild ) {
+    dirtyBound();
+    return _subgraphContainer->replaceChild( origChild, newChild );
+}
+bool 
+OverlayDecorator::setChild( unsigned  int i, Node* node ) {
+    dirtyBound();
+    return _subgraphContainer->setChild( i, node );
+}
+
+osg::BoundingSphere
+OverlayDecorator::computeBound() const {
+    return _subgraphContainer->computeBound();
 }

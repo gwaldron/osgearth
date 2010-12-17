@@ -342,6 +342,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
     buf << "} \n";
 
     std::string str = buf.str();
+    //OE_INFO << str << std::endl;
     return new osg::Shader( osg::Shader::VERTEX, str );
 }
 
@@ -388,6 +389,7 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
         << "} \n";  
 
     std::string str = buf.str();
+    //OE_INFO << str;
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 

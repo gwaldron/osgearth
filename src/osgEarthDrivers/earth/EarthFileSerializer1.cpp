@@ -114,7 +114,14 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     ConfigSet models = conf.children( "model" );
     for( ConfigSet::const_iterator i = models.begin(); i != models.end(); i++ )
     {
-        map->addModelLayer( new ModelLayer( i->value("name"), ModelSourceOptions(*i) ) );
+        const Config& layerDriverConf = *i;
+
+        ModelLayerOptions layerOpt( layerDriverConf );
+        layerOpt.name() = layerDriverConf.value( "name" );
+        layerOpt.driver() = ModelSourceOptions( layerDriverConf );
+
+        map->addModelLayer( new ModelLayer(layerOpt) );
+        //map->addModelLayer( new ModelLayer( i->value("name"), ModelSourceOptions(*i) ) );
     }
 
     // Mask layer:

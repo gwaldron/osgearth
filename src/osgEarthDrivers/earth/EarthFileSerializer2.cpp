@@ -89,7 +89,13 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     for( ConfigSet::const_iterator i = models.begin(); i != models.end(); i++ )
     {
         const Config& layerDriverConf = *i;
-        map->addModelLayer( new ModelLayer( layerDriverConf.value("name"), ModelSourceOptions(*i) ) );
+
+        ModelLayerOptions layerOpt( layerDriverConf );
+        layerOpt.name() = layerDriverConf.value( "name" );
+        layerOpt.driver() = ModelSourceOptions( layerDriverConf );
+
+        map->addModelLayer( new ModelLayer(layerOpt) );
+        //map->addModelLayer( new ModelLayer( layerDriverConf.value("name"), ModelSourceOptions(*i) ) );
     }
 
     // Mask layer:
@@ -142,9 +148,10 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     for( ModelLayerVector::const_iterator i = mapf.modelLayers().begin(); i != mapf.modelLayers().end(); ++i )
     {
         ModelLayer* layer = i->get();
-        Config layerConf = layer->getDriverConfig();
+        Config layerConf = layer->getModelLayerOptions().getConfig(); //layer->getDriverConfig();
         layerConf.attr("name") = layer->getName();
-        layerConf.attr("driver") = layer->getDriverConfig().value("driver");
+        //layerConf.attr("driver") = layer->getDriverConfig().value("driver");
+        layerConf.attr("driver") = layer->getModelLayerOptions().driver()->getDriver();
         mapConf.add( "model", layerConf );
     }
 

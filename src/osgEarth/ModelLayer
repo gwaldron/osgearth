@@ -31,9 +31,55 @@ namespace osgEarth
 {
     class Map;
 
+    class OSGEARTH_EXPORT ModelLayerOptions : public ConfigOptions
+    {
+    public:        
+        ModelLayerOptions( const ConfigOptions& options =ConfigOptions() );
+
+        ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions );
+
+        /**
+         * The readable name of the layer.
+         */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
+
+        /**
+         * Options for the underlying model source driver.
+         */
+        optional<ModelSourceOptions>& driver() { return _driver; }
+        const optional<ModelSourceOptions>& driver() const { return _driver; }
+
+        optional<bool>& lightingEnabled() { return _lighting; }
+        const optional<bool>& lightingEnabled() const { return _lighting; }
+
+        optional<bool>& enabled() { return _enabled; }
+        const optional<bool>& enabled() const { return _enabled; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    private:
+        void fromConfig( const Config& conf );
+        void setDefaults();
+
+        optional<std::string> _name;
+        optional<bool> _overlay;
+        optional<ModelSourceOptions> _driver;
+        optional<bool> _enabled;
+        optional<bool> _lighting;
+    };
+
+
     class OSGEARTH_EXPORT ModelLayer : public Layer
     {
     public:
+        /**
+         * Constructs a new model layer.
+         */
+        ModelLayer( const ModelLayerOptions& options );
+
         /**
          * Constructs a new model layer with a user-provided driver options.
          */
@@ -42,18 +88,23 @@ namespace osgEarth
         /**
          * Constructs a new model layer with a user-provided model source.
          */
-        ModelLayer( const std::string& name, ModelSource* source );
+        ModelLayer(const ModelLayerOptions& options, ModelSource* source );
 
     public:
         /** 
          * Gets the name of this model layer
          */
-        const std::string& getName() const { return _name; }
+        const std::string& getName() const { return _options.name().value(); }
 
         /**
-         * Gets the name of the driver to use to create model data.
+         * Gets the initialization options for this layer.
          */
-        const std::string& getDriver() const { return _driver; }
+        const ModelLayerOptions& getModelLayerOptions() const { return _options; }
+
+        ///**
+        // * Gets the name of the driver to use to create model data.
+        // */
+        //const std::string& getDriver() const { return _driver; }
 
         /**
          * Gets the reference URI (for resolving relative paths)
@@ -63,7 +114,7 @@ namespace osgEarth
         /**
          * Gets the driver configuration object. 
          */
-        const Config& getDriverConfig() const { return _driverConf; }
+        //const Config& getDriverConfig() const { return _driverConf; }
 
         /**
          * Access the underlying model source.
@@ -87,17 +138,18 @@ namespace osgEarth
 
         void initialize( const std::string& referenceURI, const Map* map );
 
-        virtual Config getConfig() const;
+        //virtual Config getConfig() const;
 
     private:
-        void mergeConfig( const Config& conf );
+        //void mergeConfig( const Config& conf );
 
         std::string _referenceURI;
-        std::string _name;
-        std::string _driver;
-        Config _driverConf;
+        //std::string _name;
+        //std::string _driver;
+        //Config _driverConf;
         osg::ref_ptr<ModelSource> _modelSource;
-        const ModelSourceOptions _driverOptions;
+        //const ModelSourceOptions _driverOptions;
+        const ModelLayerOptions _options;
 
         osg::ref_ptr< osg::Node > _node;
 

@@ -21,21 +21,80 @@
 #include <osg/Depth>
 
 using namespace osgEarth;
+//------------------------------------------------------------------------
 
-ModelLayer::ModelLayer( const std::string& name, const ModelSourceOptions& options ) :
-_name( name ),
-_driverOptions( options ),
-_enabled(true)
+ModelLayerOptions::ModelLayerOptions( const ConfigOptions& options ) :
+ConfigOptions( options )
 {
-    mergeConfig( options.getConfig() );
-
-    //OE_NOTICE << _driverOptions.getConfig().toString() << std::endl;
+    setDefaults();
+    fromConfig( _conf ); 
 }
 
-ModelLayer::ModelLayer( const std::string& name, ModelSource* source ) :
-_name( name ),
-_modelSource( source ),
-_enabled(true)
+ModelLayerOptions::ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions ) :
+ConfigOptions()
+{
+    setDefaults();
+    fromConfig( _conf );
+    _name = name;
+    _driver = driverOptions;
+}
+
+void
+ModelLayerOptions::setDefaults()
+{
+    _overlay.init( false );
+    _enabled.init( true );
+    _lighting.init( true );
+}
+
+Config
+ModelLayerOptions::getConfig() const
+{
+    Config conf = ConfigOptions::getConfig();
+
+    conf.updateIfSet( "name", _name );
+    conf.updateIfSet( "overlay", _overlay );
+    conf.updateIfSet( "enabled", _enabled );
+    conf.updateIfSet( "lighting", _lighting );
+
+    return conf;
+}
+
+void
+ModelLayerOptions::fromConfig( const Config& conf )
+{
+    conf.getIfSet( "name", _name );
+    conf.getIfSet( "overlay", _overlay );
+    conf.getIfSet( "enabled", _enabled );
+    conf.getIfSet( "lighting", _lighting );
+}
+
+void
+ModelLayerOptions::mergeConfig( const Config& conf )
+{
+    ConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
+//------------------------------------------------------------------------
+
+ModelLayer::ModelLayer( const ModelLayerOptions& options ) :
+_options( options ),
+_enabled( true )
+{
+    // NOP
+}
+
+ModelLayer::ModelLayer( const std::string& name, const ModelSourceOptions& options ) :
+_options( ModelLayerOptions( name, options ) ),
+_enabled( true )
+{
+//    mergeConfig( options.getConfig() );
+}
+
+ModelLayer::ModelLayer( const ModelLayerOptions& options, ModelSource* source ) :
+_options( options ),
+_modelSource( source )
 {
     //NOP
 }
@@ -45,9 +104,9 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 {
     _referenceURI = referenceURI;
 
-    if ( !_modelSource.valid() )
+    if ( !_modelSource.valid() && _options.driver().isSet() )
     {
-        _modelSource = ModelSourceFactory::create( _driverOptions );
+        _modelSource = ModelSourceFactory::create( *_options.driver() );
     }
 
     if ( _modelSource.valid() )
@@ -63,11 +122,11 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
     {
         _node = _modelSource->createNode( progress );
 
-        if ( _enabled.isSet() )
-            setEnabled( _enabled.value() );
+        if ( _options.enabled().isSet() )
+            setEnabled( *_options.enabled() );
 
-        if ( _lighting.isSet() )
-            setLightingEnabled( _lighting.value() );
+        if ( _options.lightingEnabled().isSet() )
+            setLightingEnabled( *_options.lightingEnabled() );
 
         if ( _modelSource->getOptions().depthTestEnabled() == false )            
         {
@@ -75,32 +134,32 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
             {
                 osg::StateSet* ss = _node->getOrCreateStateSet();
                 ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
-                ss->setRenderBinDetails( 99999, "RenderBin" );
+                ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
             }
         }
     }
     return _node.get();
 }
 
-Config
-ModelLayer::getConfig() const
-{
-    Config conf = _driverOptions.getConfig();
-
-    conf.key() = "model";
-    conf.attr("name") = _name;
-    conf.updateIfSet( "enabled", _enabled );
-    conf.updateIfSet( "lighting", _lighting );
-
-    return conf;
-}
-
-void
-ModelLayer::mergeConfig(const osgEarth::Config &conf)
-{
-    conf.getIfSet( "enabled", _enabled );
-    conf.getIfSet( "lighting", _lighting );
-}
+//Config
+//ModelLayer::getConfig() const
+//{
+//    Config conf = _driverOptions.getConfig();
+//
+//    conf.key() = "model";
+//    conf.attr("name") = _name;
+//    conf.updateIfSet( "enabled", _enabled );
+//    conf.updateIfSet( "lighting", _lighting );
+//
+//    return conf;
+//}
+//
+//void
+//ModelLayer::mergeConfig(const osgEarth::Config &conf)
+//{
+//    conf.getIfSet( "enabled", _enabled );
+//    conf.getIfSet( "lighting", _lighting );
+//}
 
 bool
 ModelLayer::getEnabled() const

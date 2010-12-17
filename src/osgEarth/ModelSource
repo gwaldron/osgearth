@@ -68,6 +68,7 @@ namespace osgEarth
         optional<float> _minRange, _maxRange;
         optional<int> _renderOrder;
         optional<bool> _depthTestEnabled;
+        optional<bool> _overlay;
     };
 
     /**

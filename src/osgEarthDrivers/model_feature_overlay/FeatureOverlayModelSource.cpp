@@ -62,7 +62,6 @@ public:
         // A processing context to use with the filters:
         FilterContext contextFilter;
         contextFilter.profile() = _model->getFeatureSource()->getFeatureProfile();
-        //const FeatureOverlayModelOptions* options = dynamic_cast<const FeatureOverlayModelOptions*>(context->getModelSource()->getFeatureModelOptions());
 
         FeatureList featureList;
         for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
@@ -117,7 +116,7 @@ public:
         overlayNode->setOverlaySubgraph( node );
 #endif
 
-        OverlayDecorator* overlayNode = new OverlayDecorator( _map.get() );
+        OverlayDecorator* overlayNode = new OverlayDecorator();
         overlayNode->setOverlayGraph( node );
         if ( _options.textureSize().isSet() )
             overlayNode->setTextureSize( *_options.textureSize() );

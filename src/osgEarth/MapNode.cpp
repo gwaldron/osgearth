@@ -196,7 +196,7 @@ MapNode::init()
         // initialize it's CoordinateSystemNode. This is necessary in order to support
         // manipulators and to set up the texture compositor prior to frame-loop 
         // initialization.
-        _terrainEngine->preinitialize( MapInfo(_map.get()), terrainOptions );
+        _terrainEngine->preInitialize( _map.get(), terrainOptions );
 
         _terrainEngineContainer->addChild( _terrainEngine.get() );
     }
@@ -206,7 +206,7 @@ MapNode::init()
     // install any pre-existing model layers:
     ModelLayerVector modelLayers;
     _map->getModelLayers( modelLayers );
-		int modelLayerIndex = 0;
+    int modelLayerIndex = 0;
     for( ModelLayerVector::const_iterator k = modelLayers.begin(); k != modelLayers.end(); k++, modelLayerIndex++ )
     {
         onModelLayerAdded( k->get(), modelLayerIndex );
@@ -497,14 +497,6 @@ MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
     }
 }
 
-//void
-//MapNode::adjustUpdateTraversalCount( int delta )
-//{
-//    int oldCount = this->getNumChildrenRequiringUpdateTraversal();
-//    if ( oldCount + delta >= 0 )
-//        this->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + delta) );
-//}
-
 void
 MapNode::adjustEventTraversalCount( int delta )
 {
@@ -523,7 +515,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
         // not traversing the scene graph.
         if ( !_terrainEngineInitialized && _terrainEngine.valid() )
         {
-            _terrainEngine->initialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
+            _terrainEngine->postInitialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
             _terrainEngineInitialized = true;
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
             dirtyBound();

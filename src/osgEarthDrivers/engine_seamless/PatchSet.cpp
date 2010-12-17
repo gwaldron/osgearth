@@ -78,7 +78,7 @@ PatchSet::~PatchSet()
     delete _mapf;
 }
 
-void PatchSet::setMap(Map* map)
+void PatchSet::setMap(const Map* map)
 {
     _map = map;
     if (map)

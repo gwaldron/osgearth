@@ -39,7 +39,7 @@ namespace seamless
 class Projected : public PatchSet
 {
 public:
-    Projected(osgEarth::Map* map,
+    Projected(const osgEarth::Map* map,
               const osgEarth::Drivers::SeamlessOptions& options);
     virtual osg::Transform* createPatch(const std::string& filename,
                                         PatchOptions* poptions);

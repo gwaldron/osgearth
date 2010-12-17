@@ -42,8 +42,8 @@ public:
     ~OSGTerrainEngineNode();
 
 public: // TerrainEngineNode overrides    
-    virtual void preinitialize( const MapInfo& mapInfo, const TerrainOptions& options );
-    virtual void initialize( Map* map, const TerrainOptions& options );
+    virtual void preInitialize( const Map* map, const TerrainOptions& options );
+    virtual void postInitialize( const Map* map, const TerrainOptions& options );
     virtual void validateTerrainOptions( TerrainOptions& options );
     virtual const TerrainOptions& getTerrainOptions() const { return _terrainOptions; }
     virtual void traverse( osg::NodeVisitor& );

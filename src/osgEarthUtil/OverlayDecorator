@@ -39,7 +39,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT OverlayDecorator : public TerrainDecorator
     {
     public:
-        OverlayDecorator( const Map* map );
+        OverlayDecorator();
 
         /**
          * Sets the scene graph to be sampled an overlaid on the terrain.
@@ -55,11 +55,10 @@ namespace osgEarth { namespace Util
 
         /**
          * Sets the size (resolution in both directions) of the overlay texture. By
-         * default, this defaults to 2048 or your hardware's maximum supported
-         * texture size, whichever is greater.
+         * default, this defaults to 4096 or your hardware's maximum supported
+         * texture size, whichever is less.
          */
         void setTextureSize( int texSize );
-
 
     public: // TerrainDecorator
         virtual void onInstall( TerrainEngineNode* engine );
@@ -93,7 +92,7 @@ namespace osgEarth { namespace Util
         optional<int>                 _textureSize;
         bool                          _reservedTextureUnit;
         bool                          _useShaders;
-        MapInfo                       _mapInfo;
+        double                        _earthRadiusMajor;
         osg::Matrixd _rttViewMatrix, _rttProjMatrix;
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
     };

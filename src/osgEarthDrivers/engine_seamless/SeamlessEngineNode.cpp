@@ -74,9 +74,9 @@ SeamlessEngineNode::~SeamlessEngineNode()
     delete _mapf;
 }
 
-void SeamlessEngineNode::initialize(Map* map, const TerrainOptions& options)
+void SeamlessEngineNode::preInitialize(const Map* map, const TerrainOptions& options)
 {
-    TerrainEngineNode::initialize(map, options);
+    TerrainEngineNode::preInitialize(map, options);
     _mapf = new MapFrame(map, Map::TERRAIN_LAYERS, "seamless");
     _terrainOptions.merge(options);
     if (map->getProfile())
@@ -90,7 +90,7 @@ void SeamlessEngineNode::validateTerrainOptions(TerrainOptions& options)
 
 void SeamlessEngineNode::onMapProfileEstablished(const Profile* mapProfile)
 {
-    Map* map = getMap();
+    const Map* map = getMap();
     int resolution = _terrainOptions.resolution().value();
     if (map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC)
         _patchSet = new Geographic(map, _terrainOptions);

@@ -55,7 +55,7 @@ namespace osgEarth
 
 //------------------------------------------------------------------------
 
-TerrainEngineNode::ImageLayerController::ImageLayerController( Map* map ) :
+TerrainEngineNode::ImageLayerController::ImageLayerController( const Map* map ) :
 _mapf( map, Map::IMAGE_LAYERS, "TerrainEngineNode.ImageLayerController" )
 {
     //nop
@@ -117,17 +117,19 @@ _map( rhs._map.get() )
 }
 
 void
-TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& options )
+TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
+    _map = map;
+
     // set up the CSN values   
-    mapInfo.getProfile()->getSRS()->populateCoordinateSystemNode( this );
+    _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
     
     // OSG's CSN likes a NULL ellipsoid to represent projected mode.
-    if ( !mapInfo.isGeocentric() )
+    if ( !_map->isGeocentric() )
         this->setEllipsoidModel( NULL );
     
     // install the proper layer composition technique:
-    _texCompositor = new TextureCompositor( options ); //.compositingTechnique().value() );
+    _texCompositor = new TextureCompositor( options );
 
     // enable backface culling
     osg::StateSet* set = getOrCreateStateSet();
@@ -135,18 +137,16 @@ TerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& 
 }
 
 void
-TerrainEngineNode::initialize( Map* map, const TerrainOptions& options )
+TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
 {
-    _map = map;
-
-    if ( _map.valid() )
+    if ( _map.valid() ) // i think this is always true [gw]
     {
         // manually trigger the map callbacks the first time:
         if ( _map->getProfile() )
             onMapInfoEstablished( MapInfo(_map.get()) );
 
         // create a layer controller. This object affects the uniforms that control layer appearance properties
-        _imageLayerController = new ImageLayerController( map );
+        _imageLayerController = new ImageLayerController( _map.get() );
 
         // register the layer Controller it with all pre-existing image layers:
         MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::initialize" );

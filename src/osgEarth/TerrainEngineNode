@@ -38,7 +38,7 @@ namespace osgEarth
     {
     public:
         /** Gets the map that this engine is rendering. */
-        Map* getMap() const { return _map.get(); }
+        const Map* getMap() const { return _map.get(); }
 
         /** Gets the property set in use by this map engine. */
         virtual const TerrainOptions& getTerrainOptions() const =0;
@@ -87,9 +87,8 @@ namespace osgEarth
 
     protected:
         /** Attaches a map to the terrain engine and initialized it.*/
-        virtual void preinitialize( const MapInfo& mapInfo, const TerrainOptions& options );
-        virtual void initialize( Map* map, const TerrainOptions& options );
-        //virtual void setMapInfo( const MapInfo& mapInfo );
+        virtual void preInitialize( const Map* map, const TerrainOptions& options );
+        virtual void postInitialize( const Map* map, const TerrainOptions& options );
         friend class MapNode;
 
         // allow subclasses direct access for convenience.
@@ -107,7 +106,7 @@ namespace osgEarth
         
         struct ImageLayerController : public ImageLayerCallback
         {
-            ImageLayerController( Map* map );
+            ImageLayerController( const Map* map );
 
             void onEnabledChanged( TerrainLayer* layer );
             void onOpacityChanged( ImageLayer* layer );
@@ -130,7 +129,7 @@ namespace osgEarth
         };
 
         osg::ref_ptr<ImageLayerController> _imageLayerController;
-        osg::ref_ptr<Map> _map;
+        osg::ref_ptr<const Map> _map;
         osg::ref_ptr<osg::Uniform> _startFrameTimeUniform;
     };
 

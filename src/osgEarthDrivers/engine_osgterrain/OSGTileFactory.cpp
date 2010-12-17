@@ -260,7 +260,7 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
 }
 
 bool
-OSGTileFactory::areChildrenCached( Map* map, const TileKey& parentKey ) const
+OSGTileFactory::areChildrenCached( const Map* map, const TileKey& parentKey ) const
 {      
     MapFrame mapf( map );
 

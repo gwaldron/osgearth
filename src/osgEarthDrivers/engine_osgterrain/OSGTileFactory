@@ -103,7 +103,7 @@ public:
     /**
      * Returns true is data for all the key's child tiles is cached.
      */
-    bool areChildrenCached( Map* map, const TileKey& parentKey ) const;
+    bool areChildrenCached( const Map* map, const TileKey& parentKey ) const;
 
     /**
     * Gets a pagedLOD child URI given a tile key.

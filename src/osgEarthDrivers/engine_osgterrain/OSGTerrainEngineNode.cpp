@@ -129,9 +129,9 @@ OSGTerrainEngineNode::~OSGTerrainEngineNode()
 }
 
 void
-OSGTerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOptions& options )
+OSGTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
-    TerrainEngineNode::preinitialize( mapInfo, options );
+    TerrainEngineNode::preInitialize( map, options );
 
     // in standard mode, try to set the number of OSG DatabasePager threads to use.
     if (options.loadingPolicy().isSet() &&
@@ -160,9 +160,9 @@ OSGTerrainEngineNode::preinitialize( const MapInfo& mapInfo, const TerrainOption
 }
 
 void
-OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions )
+OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options )
 {
-    TerrainEngineNode::initialize( map, terrainOptions );
+    TerrainEngineNode::postInitialize( map, options );
 
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
@@ -171,7 +171,7 @@ OSGTerrainEngineNode::initialize( Map* map, const TerrainOptions& terrainOptions
     _cull_mapf   = new MapFrame( map, Map::TERRAIN_LAYERS, "osgterrain-cull" );
 
     // merge in the custom options:
-    _terrainOptions.merge( terrainOptions );
+    _terrainOptions.merge( options );
 
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )

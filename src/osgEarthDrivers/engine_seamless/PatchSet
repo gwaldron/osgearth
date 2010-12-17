@@ -67,8 +67,8 @@ public:
     int getMaxLevel() const { return _maxLevel; }
     void setVerticalScale(float  scale) { _verticalScale = scale; }
     float getVerticalScale() const { return _verticalScale; }
-    void setMap(osgEarth::Map* map);
-    osgEarth::Map* getMap() const { return _map.get(); }
+    void setMap(const osgEarth::Map* map);
+    const osgEarth::Map* getMap() const { return _map.get(); }
     osgEarth::MapFrame& getMapFrame() const { return *_mapf; }
     virtual osg::Node* createPatchGroup(const std::string& filename,
                                         PatchOptions* poptions);
@@ -102,7 +102,7 @@ protected:
     osg::ref_ptr<osg::DrawElementsUShort> makeDualStrip();
     osg::ref_ptr<osg::DrawElementsUShort> trilePset[2][4];
     osg::ref_ptr<osg::DrawElementsUShort> stripPset[4][4];
-    osg::ref_ptr<osgEarth::Map> _map;
+    osg::ref_ptr<const osgEarth::Map> _map;
     osgEarth::MapFrame* _mapf;
     osgEarth::Drivers::SeamlessOptions _options;
 };

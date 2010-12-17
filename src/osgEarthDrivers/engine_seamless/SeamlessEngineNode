@@ -36,7 +36,7 @@ public:
     META_Node(osgEarth,SeamlessEngineNode);
     ~SeamlessEngineNode();
     // TerrainEngineNode overrides
-    virtual void initialize(osgEarth::Map* map,
+    virtual void preInitialize(const osgEarth::Map* map,
                             const osgEarth::TerrainOptions& options);
     virtual void validateTerrainOptions(osgEarth::TerrainOptions& options);
     virtual const osgEarth::TerrainOptions& getTerrainOptions() const

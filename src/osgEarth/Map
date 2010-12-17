@@ -219,7 +219,7 @@ namespace osgEarth
          * Adds a map layer callback to this map. This will be notified whenever layers are
          * added, removed, or re-ordered.
          */
-        void addMapCallback( MapCallback* callback );
+        void addMapCallback( MapCallback* callback ) const;
 
         /**
          * Adds an image layer to the map.
@@ -422,14 +422,14 @@ namespace osgEarth
         /**
          * Constructs a new map frame.
          */
-        MapFrame( Map* map, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
+        MapFrame( const Map* map, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
 
         /**
          * Constructs a map frame that only makes a copy of "valid" data items.
          * Warning: if you ask to copyValidDataOnly, the indexOf() methods may not return
          * values that correspond to the source data model!
          */
-        MapFrame( Map* map, bool copyValidDataOnly, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
+        MapFrame( const Map* map, bool copyValidDataOnly, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
 
         /**
          * A copy constructor with a new name (no sync happens)
@@ -486,7 +486,7 @@ namespace osgEarth
 
     private:
         bool _initialized;
-        osg::ref_ptr<Map> _map;
+        osg::ref_ptr<const Map> _map;
         std::string _name;
         MapInfo _mapInfo;
         Map::ModelParts _parts;

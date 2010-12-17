@@ -280,10 +280,10 @@ Map::setCache( Cache* cache )
 }
 
 void 
-Map::addMapCallback( MapCallback* cb )
+Map::addMapCallback( MapCallback* cb ) const
 {
     if ( cb )
-        _mapCallbacks.push_back( cb );
+        const_cast<Map*>(this)->_mapCallbacks.push_back( cb );
 }
 
 void
@@ -1119,7 +1119,7 @@ Map::sync( MapFrame& frame ) const
 
 //------------------------------------------------------------------------
 
-MapFrame::MapFrame( Map* map, Map::ModelParts parts, const std::string& name ) :
+MapFrame::MapFrame( const Map* map, Map::ModelParts parts, const std::string& name ) :
 _map( map ),
 _parts( parts ),
 _name( name ),
@@ -1130,7 +1130,7 @@ _initialized( false )
     sync();
 }
 
-MapFrame::MapFrame( Map* map, bool copyValidDataOnly, Map::ModelParts parts, const std::string& name ) :
+MapFrame::MapFrame( const Map* map, bool copyValidDataOnly, Map::ModelParts parts, const std::string& name ) :
 _map( map ),
 _parts( parts ),
 _copyValidDataOnly( copyValidDataOnly ),

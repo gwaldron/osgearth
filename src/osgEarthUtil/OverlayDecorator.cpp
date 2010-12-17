@@ -30,12 +30,12 @@ using namespace osgEarth::Util;
 
 //---------------------------------------------------------------------------
 
-OverlayDecorator::OverlayDecorator( const Map* map ) :
+OverlayDecorator::OverlayDecorator() :
 _textureUnit( 1 ),
 _textureSize( 1024 ),
-_mapInfo( map ),
 _reservedTextureUnit( false ),
-_useShaders( false )
+_useShaders( false ),
+_earthRadiusMajor( 6384000.0 )
 {
     // force an update traversal:
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
@@ -141,6 +141,11 @@ OverlayDecorator::setTextureUnit( int texUnit )
 void
 OverlayDecorator::onInstall( TerrainEngineNode* engine )
 {
+    // establish the earth's major axis:
+    MapInfo info(engine->getMap());
+    _earthRadiusMajor = info.getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+
+    // see whether we want shader support:
     _useShaders = engine->getTextureCompositor()->usesShaderComposition();
 
     if ( !_textureUnit.isSet() && _useShaders )
@@ -157,7 +162,7 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     if ( !_textureSize.isSet() )
     {
         int maxSize = Registry::instance()->getCapabilities().getMaxTextureSize();
-        _textureSize = osg::minimum( 1024, maxSize );
+        _textureSize = osg::minimum( 4096, maxSize );
 
         OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
     }
@@ -243,9 +248,6 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
         osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
         if ( !cv ) return;
 
-        double re = _mapInfo.getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
-        double rp = _mapInfo.getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
-
         osg::Vec3 eye = cv->getEyePoint();
         double eyeLen = eye.length();
 
@@ -254,9 +256,9 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
 
         // calculate the approximate distance from the eye to the horizon. This is out maximum
         // possible RTT extent:
-        double hae = eyeLen - re; // height above "max spheroid"
+        double hae = eyeLen - _earthRadiusMajor; // height above "max spheroid" (TODO: limit hae to a minimum value)
         double haeAdj = hae*1.5;    // wiggle room, since the ellipsoid is different from the spheroid.
-        double eMax = sqrt( haeAdj*haeAdj + 2.0*re*haeAdj ); // distance to the horizon
+        double eMax = sqrt( haeAdj*haeAdj + 2.0 * _earthRadiusMajor * haeAdj ); // distance to the horizon
 
         // calculate the approximate extent viewed from the camera if it's pointing
         // at the ground. This is the minimum acceptable RTT extent.

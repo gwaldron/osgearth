@@ -28,7 +28,7 @@ using namespace osgEarth;
 
 typedef multi_array_ref<Vec3f, Vec3Array, 2> PatchArray;
 
-Geographic::Geographic(Map* map,
+Geographic::Geographic(const Map* map,
                        const osgEarth::Drivers::SeamlessOptions& options)
     : PatchSet(options, new PatchOptions), _profile(new EulerProfile),
       _eModel(new EllipsoidModel)
@@ -343,7 +343,7 @@ struct HeightFieldRequest : public TaskRequest
     }
     void operator()(ProgressCallback* progress)
     {
-        Map* map = _gpatchset->getMap();
+        const Map* map = _gpatchset->getMap();
         int resolution = _gpatchset->getResolution();
         GeoHeightField hf;
         if (crossesDateLine(_key))

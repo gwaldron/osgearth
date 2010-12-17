@@ -19,7 +19,6 @@ SET(LIB_PUBLIC_HEADERS
     ObjectPlacer
     ObjectLocator
     OceanSurfaceNode
-    OverlayDecorator
     SkyNode
     Viewpoint
     WMS
@@ -36,7 +35,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ObjectPlacer.cpp
     ObjectLocator.cpp
     OceanSurfaceNode.cpp
-    OverlayDecorator.cpp
     SkyNode.cpp
     Viewpoint.cpp
     WMS.cpp

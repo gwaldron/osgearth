@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include <osgEarthUtil/OverlayDecorator>
+#include <osgEarth/OverlayDecorator>
 #include <osgEarth/FindNode>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
@@ -26,7 +26,6 @@
 #define LC "[OverlayDecorator] "
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 //---------------------------------------------------------------------------
 
@@ -89,23 +88,67 @@ OverlayDecorator::reinit()
     // assemble the subgraph stateset:
     osg::StateSet* set = new osg::StateSet();
 
-    // set up the subgraph to receive the projected texture:
-    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
-    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
-    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
-    set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
-    set->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
+    if ( _overlayGraph.valid() )
+    {
+        // set up the subgraph to receive the projected texture:
+        set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
+        set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
+        set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
+        set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
+        set->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
 
-    // decalling:
-    osg::TexEnv* env = new osg::TexEnv();
-    env->setMode( osg::TexEnv::DECAL );
-    set->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
-    
-    // set up the shaders
-    if ( _useShaders )
-        initShaders( set );
+        // decalling:
+        osg::TexEnv* env = new osg::TexEnv();
+        env->setMode( osg::TexEnv::DECAL );
+        set->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
+        
+        // set up the shaders
+        if ( _useShaders )
+            initShaders( set );
+    }
 
     _subgraphContainer->setStateSet( set );
+}
+
+void
+OverlayDecorator::initShaders( osg::StateSet* set )
+{
+    VirtualProgram* vp = new VirtualProgram();
+    set->setAttributeAndModes( vp, osg::StateAttribute::ON );
+
+    // sampler for projected texture:
+    set->getOrCreateUniform( "osgearth_overlay_ProjTex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
+
+    // the texture projection matrix uniform.
+    _texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
+
+    std::stringstream buf;
+
+    // vertex shader
+    buf << "#version 110 \n"
+        << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
+        << "uniform mat4 osg_ViewMatrixInverse; \n"
+
+        << "void osgearth_overlay_vertex(void) \n"
+        << "{ \n"
+        << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
+        << "} \n";
+
+    std::string vertexSource = buf.str();
+    vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+
+    buf.str("");
+    buf << "#version 110 \n"
+        << "uniform sampler2D osgearth_overlay_ProjTex; \n"
+
+        << "void osgearth_overlay_fragment( inout vec4 color ) \n"
+        << "{ \n"
+        << "    vec4 texel = texture2DProj(osgearth_overlay_ProjTex, gl_TexCoord["<< *_textureUnit << "]); \n"
+        << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
+        << "} \n";
+
+    std::string fragmentSource = buf.str();
+    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 }
 
 void
@@ -180,47 +223,6 @@ OverlayDecorator::onUninstall( TerrainEngineNode* engine )
         _textureUnit.unset();
         _reservedTextureUnit = false;
     }
-}
-
-void
-OverlayDecorator::initShaders( osg::StateSet* set )
-{
-    VirtualProgram* vp = new VirtualProgram();
-    set->setAttributeAndModes( vp, osg::StateAttribute::ON );
-
-    // sampler for projected texture:
-    set->getOrCreateUniform( "osgearth_overlay_ProjTex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
-
-    // the texture projection matrix uniform.
-    _texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
-
-    std::stringstream buf;
-
-    // vertex shader
-    buf << "#version 110 \n"
-        << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
-        << "uniform mat4 osg_ViewMatrixInverse; \n"
-
-        << "void osgearth_overlay_vertex(void) \n"
-        << "{ \n"
-        << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
-        << "} \n";
-
-    std::string vertexSource = buf.str();
-    vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
-
-    buf.str("");
-    buf << "#version 110 \n"
-        << "uniform sampler2D osgearth_overlay_ProjTex; \n"
-
-        << "void osgearth_overlay_fragment( inout vec4 color ) \n"
-        << "{ \n"
-        << "    vec4 texel = texture2DProj(osgearth_overlay_ProjTex, gl_TexCoord["<< *_textureUnit << "]); \n"
-        << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
-        << "} \n";
-
-    std::string fragmentSource = buf.str();
-    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 }
 
 void
@@ -300,16 +302,16 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
 void
 OverlayDecorator::traverse( osg::NodeVisitor& nv )
 {
-    // update the RTT camera if necessary:
-    updateRTTCamera( nv );
+    if ( _overlayGraph.valid() )
+    {
+        updateRTTCamera( nv );
     
-    _rttCamera->accept( nv );
+        _rttCamera->accept( nv );
 
-    _texGenNode->accept( nv );
+        _texGenNode->accept( nv );
+    }
 
     _subgraphContainer->accept( nv );
-
-    //TerrainDecorator::traverse( nv );
 }
 
 

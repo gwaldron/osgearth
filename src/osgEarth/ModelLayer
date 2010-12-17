@@ -56,6 +56,9 @@ namespace osgEarth
         optional<bool>& enabled() { return _enabled; }
         const optional<bool>& enabled() const { return _enabled; }
 
+        optional<bool>& overlay() { return _overlay; }
+        const optional<bool>& overlay() const { return _overlay; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );

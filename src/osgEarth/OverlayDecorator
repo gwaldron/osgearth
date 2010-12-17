@@ -16,27 +16,24 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTHUTIL_OVERLAY_NODE
-#define OSGEARTHUTIL_OVERLAY_NODE
+#ifndef OSGEARTH_OVERLAY_DECORATOR
+#define OSGEARTH_OVERLAY_DECORATOR
 
-#include <osgEarthUtil/Common>
-#include <osgEarth/Map>
-#include <osgEarth/MapNode>
+#include <osgEarth/Common>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/TerrainEngineNode>
 #include <osg/Camera>
 #include <osg/Texture2D>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
 
-namespace osgEarth { namespace Util 
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Projects an overlay scene graph onto the main model. You can apply this
      * using MapNode::addTerrainDecorator.
      */
-    class OSGEARTHUTIL_EXPORT OverlayDecorator : public TerrainDecorator
+    class OSGEARTH_EXPORT OverlayDecorator : public TerrainDecorator
     {
     public:
         OverlayDecorator();
@@ -98,6 +95,6 @@ namespace osgEarth { namespace Util
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
     };
 
-} } // namespace osgEarth::Util
+} // namespace osgEarth
 
-#endif //OSGEARTHUTIL_OVERLAY_NODE
+#endif //OSGEARTH_OVERLAY_DECORATOR

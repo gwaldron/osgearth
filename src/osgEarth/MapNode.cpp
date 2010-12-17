@@ -21,6 +21,7 @@
 #include <osgEarth/FindNode>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/OverlayDecorator>
 #include <osg/PagedLOD>
 
 using namespace osgEarth;
@@ -161,11 +162,6 @@ MapNode::init()
     // TODO: not sure why we call this here
     _map->setGlobalOptions( local_options.get() );
 
-    // make a group for the model layers:
-    _models = new osg::Group();
-    _models->setName( "osgEarth::MapNode.modelsGroup" );
-    addChild( _models.get() );
-
     // overlays:
     _pendingOverlayAutoSetTextureUnit = true;
 
@@ -202,6 +198,19 @@ MapNode::init()
     }
     else
         OE_WARN << "FAILED to create a terrain engine for this map" << std::endl;
+
+    // make a group for the model layers:
+    _models = new osg::Group();
+    _models->setName( "osgEarth::MapNode.modelsGroup" );
+    addChild( _models.get() );
+
+    // make a group for overlay model layers:
+    _overlayModels = new osg::Group();
+    _overlayModels->setName( "osgEarth::MapNode.overlayModelsGroup" );
+
+    // a decorator for overlay models:
+    _overlayDecorator = new OverlayDecorator();
+    addTerrainDecorator( _overlayDecorator.get() );
 
     // install any pre-existing model layers:
     ModelLayerVector modelLayers;
@@ -313,12 +322,23 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             {
                 OE_INFO << LC << "Installing overlay node" << std::endl;
                 addTerrainDecorator( node->asGroup() );
-              // treat overlay node as a special case
-                //installOverlayNode( static_cast<osgSim::OverlayNode*>( node ) );
             }
             else
             {
-                _models->insertChild( index, node );
+                if ( layer->getModelLayerOptions().overlay() == true )
+                {
+                    _overlayModels->addChild( node ); // todo: index?
+
+                    // if this is the first overlay, activate the decorator:
+                    if ( _overlayModels->getNumChildren() == 1 )
+                    {
+                        _overlayDecorator->setOverlayGraph( _overlayModels.get() );
+                    }
+                }
+                else
+                {
+                    _models->insertChild( index, node );
+                }
             }
 
             ModelSource* ms = layer->getModelSource();
@@ -345,15 +365,25 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
         if ( i != _modelLayerNodes.end() )
         {
             osg::Node* node = i->second;
-            
-            if ( dynamic_cast<osgSim::OverlayNode*>( node ) )
+
+            if ( dynamic_cast<TerrainDecorator*>( node ) || dynamic_cast<osgSim::OverlayNode*>( node ) )
             {
-                // treat overlay node as a special case
-                uninstallOverlayNode( static_cast<osgSim::OverlayNode*>(node) );
+                removeTerrainDecorator( node->asGroup() );
             }
             else
             {
-                _models->removeChild( node );
+                if ( layer->getModelLayerOptions().overlay() == true )
+                {
+                    _overlayModels->removeChild( node );
+                    if ( _overlayModels->getNumChildren() == 0 )
+                    {
+                        _overlayDecorator->setOverlayGraph( 0L );
+                    }
+                }
+                else
+                {
+                    _models->removeChild( node );
+                }
             }
             
             _modelLayerNodes.erase( i );
@@ -381,7 +411,7 @@ MapNode::onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned i
             else
             {
                 _models->removeChild( node );
-								_models->insertChild( newIndex, node );
+                _models->insertChild( newIndex, node );
             }
         }
         

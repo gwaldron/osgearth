@@ -125,12 +125,9 @@ public:
     osg::Node*
     compileGeometries( FeatureList& features, const Style* style )
     {
-        //const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
-        //    _model->getFeatureModelOptions() );
-
         // A processing context to use with the filters:
-        FilterContext contextFilter;
-        contextFilter.profile() = _modelSource->getFeatureSource()->getFeatureProfile();
+        FilterContext cx;
+        cx.profile() = _modelSource->getFeatureSource()->getFeatureProfile();
 
         // Transform them into the map's SRS:
         TransformFilter xform( _modelSource->getMap()->getProfile()->getSRS() );
@@ -138,43 +135,34 @@ public:
         xform.setLocalizeCoordinates( true );
 
         // Apply the height offset if necessary:
-        xform.setHeightOffset( _options.heightOffset().value() );
-        contextFilter = xform.push( features, contextFilter );
+        if ( _options.heightOffset().isSet() )
+            xform.setHeightOffset( _options.heightOffset().value() );
 
-        // Assemble the geometries into a list:
-        GeometryList geometryList;
-        for (FeatureList::iterator it = features.begin(); it != features.end(); ++it)
-        {
-            Feature* feature = it->get();
-            if ( feature )
-            {
-                Geometry* geometry = feature->getGeometry();
-                if ( geometry )
-                    geometryList.push_back(geometry);
-            }
-        }
+        cx = xform.push( features, cx );
 
-        // build the geometry.
-        GeometrySymbolizer::GeometrySymbolizerOperator geometryOperator;
-        osg::Node* result = geometryOperator( geometryList, style );
-        
-        // install the localization transform if necessary.
-        if ( contextFilter.hasReferenceFrame() )
+        // Build geometry:
+        BuildGeometryFilter build;
+        if ( _options.geometryTypeOverride().isSet() )
+            build.geomTypeOverride() = *_options.geometryTypeOverride();
+
+        osg::ref_ptr<osg::Node> result;
+        build.setStyle( style );
+        cx = build.push( features, result, cx );
+
+        // Localize it.
+        if ( cx.hasReferenceFrame() )
         {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( contextFilter.inverseReferenceFrame() );
+            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( cx.inverseReferenceFrame() );
             delocalizer->addChild( result );
             result = delocalizer;
         }
 
-        return result;
+        return result.release();
     }
 
     osg::Node*
     compileTextAnnotations( FeatureList& features, const Style* style )
     {
-        //const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
-        //    _model->getFeatureModelOptions() );
-
         // A processing context to use with the filters:
         FilterContext contextFilter;
         contextFilter.profile() = _modelSource->getFeatureSource()->getFeatureProfile();

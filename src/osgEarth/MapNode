@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/MapNodeOptions>
+#include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/CoordinateSystemNode>
 #include <osgSim/OverlayNode>
@@ -31,16 +32,6 @@ namespace osgEarth
 {
     class MapNodeCallback : public osg::Referenced
     {
-    };
-
-    /**
-     * A class that "decorates" the terrain engine node within a map node.
-     */
-    class TerrainDecorator : public osg::Group
-    {
-    public:
-        virtual void onInstall( TerrainEngineNode* engine ) { }
-        virtual void onUninstall( TerrainEngineNode* engine ) { }
     };
 
     /**
@@ -157,6 +148,8 @@ namespace osgEarth
         unsigned int _id;
         osg::ref_ptr<Map> _map;
         osg::ref_ptr< osg::Group > _models;
+        osg::ref_ptr< osg::Group > _overlayModels;
+        osg::ref_ptr< OverlayDecorator > _overlayDecorator;
         MapNodeOptions _mapNodeOptions;
 
         // keep track of nodes created by model layers

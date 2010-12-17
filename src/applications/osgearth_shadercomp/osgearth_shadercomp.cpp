@@ -96,8 +96,8 @@ createHaze()
 {
     osgEarth::VirtualProgram* vp = new osgEarth::VirtualProgram();
 
-    vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_POST_VERTEX );
-    vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_POST_FRAGMENT );
+    vp->setFunction( "setup_haze", s_hazeVertShader, osgEarth::ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
+    vp->setFunction( "apply_haze", s_hazeFragShader, osgEarth::ShaderComp::LOCATION_FRAGMENT_POST_LIGHTING );
 
     return vp;
 }

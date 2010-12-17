@@ -42,9 +42,10 @@ namespace osgEarth { namespace Util
         OverlayDecorator();
 
         /**
-         * Sets the scene graph to be sampled an overlaid on the terrain.
+         * The scene graph to be sampled an overlaid on the terrain.
          */
         void setOverlayGraph( osg::Node* node );
+        osg::Node* getOverlayGraph() const { return _overlayGraph.get(); }
 
         /**
          * Explicity sets the texture unit to use. Note! When you add this class

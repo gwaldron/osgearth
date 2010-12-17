@@ -27,6 +27,7 @@
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthUtil/OverlayDecorator>
 #include <osg/Notify>
+#include <osg/CullFace>
 #include <osgDB/FileNameUtils>
 #include <osgSim/OverlayNode>
 
@@ -83,6 +84,9 @@ public:
         osg::ref_ptr<osg::Node> result;
         build.setStyle(style);
         contextFilter = build.push( featureList, result, contextFilter );
+
+        //result->getOrCreateStateSet()->setAttributeAndModes(
+        //    new osg::CullFace(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
         if ( out_newNode ) *out_newNode = result.get();
         return result.release();

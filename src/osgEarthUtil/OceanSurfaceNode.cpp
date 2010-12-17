@@ -448,7 +448,7 @@ OceanSurfaceNode::rebuildShaders()
 
         // add as a custom user function in the shader composition:
         std::string vertSource = buf.str();
-        vp->setFunction( "osgearth_ocean_morphSurface", vertSource, osgEarth::ShaderComp::LOCATION_PRE_VERTEX );
+        vp->setFunction( "osgearth_ocean_morphSurface", vertSource, osgEarth::ShaderComp::LOCATION_VERTEX_PRE_TEXTURING );
     }
     
     // now we need a fragment function that will apply the ocean surface texture.
@@ -469,7 +469,7 @@ OceanSurfaceNode::rebuildShaders()
             << "} \n";
 
         std::string str = buf.str();
-        vp->setFunction( "osgearth_ocean_applySurfaceTex", str, osgEarth::ShaderComp::LOCATION_POST_FRAGMENT );
+        vp->setFunction( "osgearth_ocean_applySurfaceTex", str, osgEarth::ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
     }
 }
 

@@ -207,7 +207,7 @@ OverlayDecorator::initShaders( osg::StateSet* set )
         << "} \n";
 
     std::string vertexSource = buf.str();
-    vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_POST_VERTEX );
+    vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
     buf.str("");
     buf << "#version 110 \n"
@@ -220,7 +220,7 @@ OverlayDecorator::initShaders( osg::StateSet* set )
         << "} \n";
 
     std::string fragmentSource = buf.str();
-    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_POST_FRAGMENT );
+    vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 }
 
 void

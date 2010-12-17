@@ -118,7 +118,7 @@ VirtualProgram::setFunction(const std::string& functionName,
 
     OrderedFunctionMap& ofm = _functions[location];
     ofm.insert( std::pair<float,std::string>( priority, functionName ) );
-    osg::Shader::Type type = location == LOCATION_PRE_VERTEX || location == LOCATION_POST_VERTEX ?
+    osg::Shader::Type type = (int)location <= (int)LOCATION_VERTEX_POST_LIGHTING ?
         osg::Shader::VERTEX : osg::Shader::FRAGMENT;
     setShader( functionName, new osg::Shader( type, shaderSource ) );
 }
@@ -297,11 +297,14 @@ VirtualProgram::refreshAccumulatedFunctions( const osg::State& state )
 osg::Shader*
 ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) const
 {
-    FunctionLocationMap::const_iterator i = functions.find( LOCATION_PRE_VERTEX );
-    const OrderedFunctionMap* preVert = i != functions.end() ? &i->second : 0L;
+    FunctionLocationMap::const_iterator i = functions.find( LOCATION_VERTEX_PRE_TEXTURING );
+    const OrderedFunctionMap* preTexture = i != functions.end() ? &i->second : 0L;
 
-    FunctionLocationMap::const_iterator j = functions.find( LOCATION_POST_VERTEX );
-    const OrderedFunctionMap* postVert = j != functions.end() ? &j->second : 0L;
+    FunctionLocationMap::const_iterator j = functions.find( LOCATION_VERTEX_PRE_LIGHTING );
+    const OrderedFunctionMap* preLighting = j != functions.end() ? &j->second : 0L;
+
+    FunctionLocationMap::const_iterator k = functions.find( LOCATION_VERTEX_POST_LIGHTING );
+    const OrderedFunctionMap* postLighting = k != functions.end() ? &k->second : 0L;
 
     std::stringstream buf;
     buf << "void osgearth_vert_setupTexturing(); \n"
@@ -309,12 +312,16 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
         << "uniform bool osgearth_LightingEnabled; \n"
         << "varying float osgearth_CameraRange; \n";
 
-    if ( preVert )
-        for( OrderedFunctionMap::const_iterator i = preVert->begin(); i != preVert->end(); ++i )
+    if ( preTexture )
+        for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
             buf << "void " << i->second << "(); \n";
 
-    if ( postVert )
-        for( OrderedFunctionMap::const_iterator i = postVert->begin(); i != postVert->end(); ++i )
+    if ( preLighting )
+        for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
+            buf << "void " << i->second << "(); \n";
+
+    if ( postLighting )
+        for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
             buf << "void " << i->second << "(); \n";
 
     buf << "void main(void) \n"
@@ -327,16 +334,21 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
         << "    vec3 position = position4.xyz / position4.w; \n"
         << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";
 
-    if ( preVert )
-        for( OrderedFunctionMap::const_iterator i = preVert->begin(); i != preVert->end(); ++i )
+    if ( preTexture )
+        for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
             buf << "    " << i->second << "(); \n";
 
-    buf << "    osgearth_vert_setupTexturing(); \n"
-        << "    if ( osgearth_LightingEnabled ) \n"
+    buf << "    osgearth_vert_setupTexturing(); \n";
+    
+    if ( preLighting )
+        for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
+            buf << "    " << i->second << "(); \n";
+
+    buf << "    if ( osgearth_LightingEnabled ) \n"
         << "        osgearth_vert_setupLighting(); \n";
     
-    if ( postVert )
-        for( OrderedFunctionMap::const_iterator i = postVert->begin(); i != postVert->end(); ++i )
+    if ( postLighting )
+        for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
             buf << "    " << i->second << "(); \n";
 
     buf << "} \n";
@@ -350,22 +362,29 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 osg::Shader*
 ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) const
 {
-    FunctionLocationMap::const_iterator i = functions.find( LOCATION_PRE_FRAGMENT );
-    const OrderedFunctionMap* preFrag = i != functions.end() ? &i->second : 0L;
+    FunctionLocationMap::const_iterator i = functions.find( LOCATION_FRAGMENT_PRE_TEXTURING );
+    const OrderedFunctionMap* preTexture = i != functions.end() ? &i->second : 0L;
 
-    FunctionLocationMap::const_iterator j = functions.find( LOCATION_POST_FRAGMENT );
-    const OrderedFunctionMap* postFrag = j != functions.end() ? &j->second : 0L;
+    FunctionLocationMap::const_iterator j = functions.find( LOCATION_FRAGMENT_PRE_LIGHTING );
+    const OrderedFunctionMap* preLighting = j != functions.end() ? &j->second : 0L;
+
+    FunctionLocationMap::const_iterator k = functions.find( LOCATION_FRAGMENT_POST_LIGHTING );
+    const OrderedFunctionMap* postLighting = k != functions.end() ? &k->second : 0L;
 
     std::stringstream buf;
     buf << "void osgearth_frag_applyTexturing( inout vec4 color ); \n"
         << "void osgearth_frag_applyLighting( inout vec4 color ); \n";
 
-    if ( preFrag )
-        for( OrderedFunctionMap::const_iterator i = preFrag->begin(); i != preFrag->end(); ++i )
+    if ( preTexture )
+        for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
             buf << "void " << i->second << "( inout vec4 color ); \n";
 
-    if ( postFrag )
-        for( OrderedFunctionMap::const_iterator i = postFrag->begin(); i != postFrag->end(); ++i )
+    if ( preLighting )
+        for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
+            buf << "void " << i->second << "( inout vec4 color ); \n";
+
+    if ( postLighting )
+        for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
             buf << "void " << i->second << "( inout vec4 color ); \n";
 
     buf << "uniform bool osgearth_LightingEnabled; \n"
@@ -373,16 +392,21 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
         << "{ \n"
         << "    vec4 color = vec4(1,1,1,1); \n";
 
-    if ( preFrag )
-        for( OrderedFunctionMap::const_iterator i = preFrag->begin(); i != preFrag->end(); ++i )
+    if ( preTexture )
+        for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
             buf << "    " << i->second << "( color ); \n";
 
-    buf << "    osgearth_frag_applyTexturing( color ); \n"
-        << "    if (osgearth_LightingEnabled) \n"
+    buf << "    osgearth_frag_applyTexturing( color ); \n";
+
+    if ( preLighting )
+        for( OrderedFunctionMap::const_iterator i = preLighting->begin(); i != preLighting->end(); ++i )
+            buf << "    " << i->second << "( color ); \n";
+    
+    buf << "    if (osgearth_LightingEnabled) \n"
         << "        osgearth_frag_applyLighting( color ); \n";
 
-    if ( postFrag )
-        for( OrderedFunctionMap::const_iterator i = postFrag->begin(); i != postFrag->end(); ++i )
+    if ( postLighting )
+        for( OrderedFunctionMap::const_iterator i = postLighting->begin(); i != postLighting->end(); ++i )
             buf << "    " << i->second << "( color ); \n";
 
     buf << "    gl_FragColor = color; \n"

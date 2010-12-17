@@ -35,17 +35,12 @@ namespace osgEarth
         // User function injection points.
         enum FunctionLocation
         {
-            // call before lighting/texcoord calculations in the vertex shader.
-            LOCATION_PRE_VERTEX     =0,  
-
-            // call after lighting/texcoord calculations in the vertex shader.
-            LOCATION_POST_VERTEX    =1,
-
-            // call before lighting/texture calculations in the fragment shader.
-            LOCATION_PRE_FRAGMENT   =2,
-
-            // call after lighting/texture calculations in the fragment shader.
-            LOCATION_POST_FRAGMENT  =3
+            LOCATION_VERTEX_PRE_TEXTURING   =0,
+            LOCATION_VERTEX_PRE_LIGHTING    =1,
+            LOCATION_VERTEX_POST_LIGHTING   =2,
+            LOCATION_FRAGMENT_PRE_TEXTURING =3,
+            LOCATION_FRAGMENT_PRE_LIGHTING  =4,
+            LOCATION_FRAGMENT_POST_LIGHTING =5
         };
 
         // set of user functions, ordered by priority.

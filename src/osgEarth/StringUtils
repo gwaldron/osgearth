@@ -94,8 +94,8 @@ namespace osgEarth
             return trim( _token );
         }
     protected:
-        size_t _offset;
         const std::string _string;
+        size_t _offset;
         std::string _token;
         std::string _delimiters;
     };

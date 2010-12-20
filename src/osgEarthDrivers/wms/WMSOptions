@@ -72,8 +72,8 @@ namespace osgEarth { namespace Drivers
     public:
         WMSOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
             _wmsVersion( "1.1.1" ),
-            _transparent( true ),
             _elevationUnit( "m" ),
+            _transparent( true ),
             _secondsPerFrame( 1.0 )
         {
             setDriver( "wms" );

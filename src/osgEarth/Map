@@ -58,7 +58,7 @@ namespace osgEarth
         };
 
         MapModelChange( ActionType action, Revision mapModeRev, Layer* layer, int firstIndex =-1, int secondIndex =-1 ) 
-            : _action(action), _modelRevision(mapModeRev), _layer(layer), _firstIndex(firstIndex), _secondIndex(secondIndex) { }
+            : _action(action), _layer(layer), _modelRevision(mapModeRev), _firstIndex(firstIndex), _secondIndex(secondIndex) { }
 
         const ActionType& getAction() const { return _action; }
         const Revision& getRevision() const { return _modelRevision; }

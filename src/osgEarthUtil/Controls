@@ -51,13 +51,13 @@ namespace osgEarth { namespace Util { namespace Controls
     struct Gutter
     {
         Gutter()
-            : _top(0), _right(0), _bottom(0), _left(0) { }
+            : _top(0), _right(0), _left(0), _bottom(0) { }
         Gutter( float top, float right, float bottom, float left )
-            : _top(top), _right(right), _bottom(bottom), _left(left) { }
+            : _top(top), _right(right), _left(left), _bottom(bottom) { }
         Gutter( float y, float x )
-            : _top(y), _right(x), _bottom(y), _left(x) { }
+            : _top(y), _right(x), _left(x), _bottom(y) { }
         Gutter( float all )
-            : _top(all), _right(all), _bottom(all), _left(all) { }
+            : _top(all), _right(all), _left(all), _bottom(all) { }
         bool operator !=( const Gutter& rhs ) const {
             return top() != rhs.top() || right() != rhs.right() || bottom() != rhs.bottom() || left() != rhs.left(); }
 

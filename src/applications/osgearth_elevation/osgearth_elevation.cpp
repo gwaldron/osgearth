@@ -81,7 +81,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     QueryElevationHandler(osgEarth::Util::ElevationManager* elevMan, 
                           const osgEarth::SpatialReference* mapSRS,
                           osg::MatrixTransform* flag )
-        : _elevMan(elevMan), _mapSRS(mapSRS), _flag(flag), _mouseDown(false) { }
+        : _mouseDown(false), _elevMan(elevMan), _flag(flag), _mapSRS(mapSRS) { }
 
     void update( float x, float y, osgViewer::View* view )
     {

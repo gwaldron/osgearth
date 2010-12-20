@@ -189,6 +189,8 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         }
         
         osg::Geometry* osgGeom = new osg::Geometry();
+        osgGeom->setUseVertexBufferObjects( true );
+        osgGeom->setUseDisplayList( false );
 
         osg::Vec4Array* colors = new osg::Vec4Array(1);
         (*colors)[0] = color;
@@ -200,7 +202,12 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             Polygon* poly = static_cast<Polygon*>(part);
             int totalPoints = poly->getTotalPointCount();
             osg::Vec3Array* allPoints = new osg::Vec3Array( totalPoints );
-            int offset = 0;
+
+            std::copy( part->begin(), part->end(), allPoints->begin() );
+            osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
+
+            int offset = part->size();
+
             for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
             {
                 Geometry* hole = h->get();

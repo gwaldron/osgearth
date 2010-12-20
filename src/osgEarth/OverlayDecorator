@@ -23,6 +23,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/Camera>
+#include <osg/CoordinateSystemNode>
 #include <osg/Texture2D>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
@@ -76,7 +77,8 @@ namespace osgEarth
     private:
         void updateRTTCamera( osg::NodeVisitor& cv );
         void reinit();
-        void initShaders( osg::StateSet* set );
+        void initSubgraphShaders( osg::StateSet* set );
+        void initRTTShaders( osg::StateSet* set );
 
     private:
         osg::ref_ptr<osg::Group>      _subgraphContainer;
@@ -85,14 +87,17 @@ namespace osgEarth
         osg::ref_ptr<osg::Texture2D>  _projTexture;
         osg::ref_ptr<osg::TexGenNode> _texGenNode;
         osg::ref_ptr<osg::Uniform>    _texGenUniform;
+        osg::ref_ptr<osg::Uniform>    _warpUniform;
         osg::ref_ptr<osgEarth::VirtualProgram> _vp;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
         bool                          _reservedTextureUnit;
         bool                          _useShaders;
         double                        _earthRadiusMajor;
+        double                        _warp;
         osg::Matrixd _rttViewMatrix, _rttProjMatrix;
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
+        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
     };
 
 } // namespace osgEarth

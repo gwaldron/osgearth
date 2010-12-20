@@ -22,6 +22,7 @@
 #include <osgEarth/TextureCompositor>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
+#include <iomanip>
 
 #define LC "[OverlayDecorator] "
 
@@ -57,9 +58,10 @@ OverlayDecorator::reinit()
     _projTexture->setTextureSize( *_textureSize, *_textureSize );
     _projTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
     _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP );
-    _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP );
-    _projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP );
+    _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
+    _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
+    _projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_BORDER );
+    _projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
     // set up the RTT camera:
     _rttCamera = new osg::Camera();
@@ -69,7 +71,7 @@ OverlayDecorator::reinit()
     _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
     _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get() );
+    _rttCamera->attach( osg::Camera::COLOR_BUFFER0, _projTexture.get() );
     _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
     // texture coordinate generator:
@@ -86,32 +88,84 @@ OverlayDecorator::reinit()
     }
 
     // assemble the subgraph stateset:
-    osg::StateSet* set = new osg::StateSet();
+    osg::StateSet* subgraphSet = new osg::StateSet();
+    _subgraphContainer->setStateSet( subgraphSet );
 
     if ( _overlayGraph.valid() )
     {
         // set up the subgraph to receive the projected texture:
-        set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
-        set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
-        set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
-        set->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
-        set->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
+        subgraphSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
+        subgraphSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
+        subgraphSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
+        subgraphSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
+        subgraphSet->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
 
         // decalling:
         osg::TexEnv* env = new osg::TexEnv();
         env->setMode( osg::TexEnv::DECAL );
-        set->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
+        subgraphSet->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
         
         // set up the shaders
         if ( _useShaders )
-            initShaders( set );
-    }
+        {            
+            initSubgraphShaders( subgraphSet );
+            initRTTShaders( _rttCamera->getOrCreateStateSet() );
 
-    _subgraphContainer->setStateSet( set );
+            _warpUniform = new osg::Uniform( osg::Uniform::FLOAT, "warp" );
+            _warpUniform->set( 1.0f );
+            subgraphSet->addUniform( _warpUniform.get() );
+            _rttCamera->getOrCreateStateSet()->addUniform( _warpUniform.get() );
+        }
+    }
 }
 
 void
-OverlayDecorator::initShaders( osg::StateSet* set )
+OverlayDecorator::initRTTShaders( osg::StateSet* set )
+{
+    //TODO: convert this to VP so the overlay graph can use shadercomp too.
+    osg::Program* program = new osg::Program();
+    set->setAttributeAndModes( program, osg::StateAttribute::ON );
+
+    std::stringstream buf;
+    buf << "#version 110 \n"
+        << "uniform float warp; \n"
+
+        << "vec4 warpVertex( in vec4 src ) \n"
+        << "{ \n"
+#if 0
+        << "    float xa = abs(src.x); \n"
+        << "    float ya = abs(src.y); \n"
+        << "    float wa = abs(src.w); \n"
+
+        << "    float xt = xa/wa; \n"
+        << "    float yt = ya/wa; \n"
+
+        << "    float m = 1.0+warp; \n"
+
+        << "    float xtp = 1.0 - pow(1.0-xt, m); \n"
+        << "    float ytp = 1.0 - pow(1.0-yt, m); \n"
+
+        << "    float xr = src.x < 0.0 ? -xtp*src.w : xtp*src.w; \n"
+        << "    float yr = src.y < 0.0 ? -ytp*src.w : ytp*src.w; \n"
+
+        << "    return vec4( xr, yr, src.z, src.w ); \n"
+#endif
+        << "    return src; \n"
+        << "} \n"
+
+        << "void main() \n"
+        << "{ \n"
+        << "    gl_Position = warpVertex( gl_ModelViewProjectionMatrix * gl_Vertex ); \n"
+        //<< "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        << "    gl_FrontColor = gl_Color; \n"
+        << "} \n";
+
+    std::string vertSource = buf.str();
+    program->addShader( new osg::Shader( osg::Shader::VERTEX, vertSource ) );
+}
+
+void
+OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
 {
     VirtualProgram* vp = new VirtualProgram();
     set->setAttributeAndModes( vp, osg::StateAttribute::ON );
@@ -124,7 +178,7 @@ OverlayDecorator::initShaders( osg::StateSet* set )
 
     std::stringstream buf;
 
-    // vertex shader
+    // vertex shader - subgraph
     buf << "#version 110 \n"
         << "uniform mat4 osgearth_overlay_TexGenMatrix; \n"
         << "uniform mat4 osg_ViewMatrixInverse; \n"
@@ -137,13 +191,48 @@ OverlayDecorator::initShaders( osg::StateSet* set )
     std::string vertexSource = buf.str();
     vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
+    // fragment shader - subgraph
     buf.str("");
     buf << "#version 110 \n"
         << "uniform sampler2D osgearth_overlay_ProjTex; \n"
 
+        << "uniform float warp; \n"
+
+        << "vec2 warpTexCoord( in vec2 src ) \n"
+        << "{ \n"
+#if 0
+        << "    float xn = (2.0*src.x)-1.0; \n"
+        << "    float yn = (2.0*src.y)-1.0; \n"
+
+        << "    float xa = abs(xn); \n"
+        << "    float ya = abs(yn); \n"
+        << "    float wa = 1.0; \n"
+
+        << "    float xt = xa/wa; \n"
+        << "    float yt = ya/wa; \n"
+
+        << "    float m = 1.0+warp; \n"
+
+        << "    float xtp = 1.0 - pow(1.0-xt, m); \n"
+        << "    float ytp = 1.0 - pow(1.0-yt, m); \n"
+
+        << "    float xr = xn < 0.0 ? -xtp*wa : xtp*wa; \n"
+        << "    float yr = yn < 0.0 ? -ytp*wa : ytp*wa; \n"
+
+        << "    xr = 0.5*(xr+1.0); \n"
+        << "    yr = 0.5*(yr+1.0); \n"
+
+        << "    return vec2( xr, yr ); \n"
+#endif
+        << "    return src; \n"
+        << "} \n"
+
         << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
-        << "    vec4 texel = texture2DProj(osgearth_overlay_ProjTex, gl_TexCoord["<< *_textureUnit << "]); \n"
+        << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n"
+        << "    texCoord = warpTexCoord( texCoord ); \n"
+        //<< "    vec4 texel = texture2DProj(osgearth_overlay_ProjTex, texCoord); \n"
+        << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
@@ -187,6 +276,7 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     // establish the earth's major axis:
     MapInfo info(engine->getMap());
     _earthRadiusMajor = info.getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+    _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
 
     // see whether we want shader support:
     _useShaders = engine->getTextureCompositor()->usesShaderComposition();
@@ -205,7 +295,7 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     if ( !_textureSize.isSet() )
     {
         int maxSize = Registry::instance()->getCapabilities().getMaxTextureSize();
-        _textureSize = osg::minimum( 4096, maxSize );
+        _textureSize.init( osg::minimum( 4096, maxSize ) );
 
         OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
     }
@@ -242,7 +332,10 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
         
         // uniform update:
         if ( _useShaders )
+        {
             _texGenUniform->set( MVPT );
+            _warpUniform->set( static_cast<float>(_warp) );
+        }
     }
 
     else if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
@@ -256,21 +349,24 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
         // point the RTT camera straight down from the eyepoint:
         _rttViewMatrix = osg::Matrixd::lookAt( eye, osg::Vec3(0,0,0), osg::Vec3(0,0,1) );
 
-        // calculate the approximate distance from the eye to the horizon. This is out maximum
+        // find our HAE (not including terrain)
+        double hae, lat, lon;
+        _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hae );
+        hae = osg::maximum( hae, 100.0 );        
+
+        // calculate the approximate distance from the eye to the horizon. This is our maximum
         // possible RTT extent:
-        double hae = eyeLen - _earthRadiusMajor; // height above "max spheroid" (TODO: limit hae to a minimum value)
-        double haeAdj = hae*1.5;    // wiggle room, since the ellipsoid is different from the spheroid.
-        double eMax = sqrt( haeAdj*haeAdj + 2.0 * _earthRadiusMajor * haeAdj ); // distance to the horizon
+        double radius = eyeLen-hae;
+        double horizonDistance = sqrt( 2.0 * radius * hae ); // distance to the horizon
 
         // calculate the approximate extent viewed from the camera if it's pointing
         // at the ground. This is the minimum acceptable RTT extent.
         double vfov, camAR, znear, zfar;
         cv->getProjectionMatrix()->getPerspective( vfov, camAR, znear, zfar );
-        double eMin = haeAdj * tan( osg::DegreesToRadians(0.5*vfov) );
+        double eMin = hae * tan( osg::DegreesToRadians(0.5*vfov) );
 
-        // calculate the deviation between the RTT camera's look-vector and the main camera's
-        // look-vector (cross product). This gives us a [0..1] multiplier that will vary the
-        // RTT extent as the camera's pitch varies from [-90..0].
+        // figure out the maximum view distance, based on the camera's pitch and the
+        // camera's VFOV.
         osg::Vec3 from, to, up;
         
         const osg::Matrix& mvMatrix = *cv->getModelViewMatrix();
@@ -282,16 +378,51 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
         osg::Vec3 rttLookVec = to-from;
         rttLookVec.normalize();
 
-        double deviation = (rttLookVec ^ camLookVec).length();
-        double t = deviation; // (deviation*deviation); // interpolation factor
-        double eIdeal = eMin + t * (eMax-eMin); 
+        //double deviation = (rttLookVec ^ camLookVec).length();
 
-        //OE_INFO << "dev=" << deviation << ", ext=" << eIdeal << std::endl;
+        double pitchUp = osg::RadiansToDegrees( acos( rttLookVec * camLookVec ));
+        double maxAngle = osg::minimum(89.0, pitchUp + 0.5*vfov);
+        double maxVisibleDistance = hae * tan( osg::DegreesToRadians(maxAngle) );
+
+        // get the maximum RTT extent.
+        double eMax = osg::minimum( maxVisibleDistance, horizonDistance );
+
+        // calculation the warping factor (a work in progress.)
+        double ratio = eMin/eMax;
+        double wg1 = _warp = (1.0+ratio)/(1.0-ratio);
+        double wg2 = _warp = (1.0-ratio)/(1.0+ratio);
+        _warp = ratio;
+        //_warp = deviation;
+        _warp = pitchUp > 65.0 ? osg::clampBetween( wg2, 0.001, 0.9 ) : 0.0;
+        //_warp = 1000.0/ratio;
+
+        // accounts for the curvature of the earth, somewhat.. 
+        // TODO: need a better approach here..
+        eMax += hae*0.12;
 
         // adjust the projection matrix for the viewport's aspect ratio:
         double hf = camAR > 1.0 ? camAR : 1.0;
         double vf = camAR > 1.0 ? 1.0 : 1.0/camAR;
-        _rttProjMatrix = osg::Matrix::ortho( -eIdeal*hf, eIdeal*hf, -eIdeal*vf, eIdeal*vf, 1.0, eyeLen );
+        double xfov = eMax*hf;
+        double yfov = eMax*vf;
+        _rttProjMatrix = osg::Matrix::ortho( -xfov, xfov, -yfov, yfov, 1.0, eyeLen );
+
+#if 0
+        OE_INFO << LC
+            << std::fixed
+            << ", hae=" << hae 
+            << ", pitch=" << pitchUp
+            << ", vfov=" << vfov 
+            << ", horizon=" << horizonDistance 
+            << ", mvd=" << maxVisibleDistance
+            << ", maxangle= " << maxAngle
+            << ", eMin=" << eMin 
+            << ", eMax=" << eMax
+            //<< ", dev=" << deviation 
+            << ", ratio=" << ratio 
+            << ", warp=" << _warp
+            << ", wg2=" << wg2 << std::endl;
+#endif
 
         // projector matrices are the same as for the RTT camera. Tim was right.
         _projectorViewMatrix = _rttViewMatrix;

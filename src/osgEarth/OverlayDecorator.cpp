@@ -24,6 +24,7 @@
 #include <osg/TexEnv>
 #include <osg/ComputeBoundsVisitor>
 #include <osgShadow/ConvexPolyhedron>
+#include <osgUtil/LineSegmentIntersector>
 #include <iomanip>
 
 #define LC "[OverlayDecorator] "
@@ -39,7 +40,7 @@ _reservedTextureUnit( false ),
 _useShaders( false ),
 _useWarping( true ),
 _warp( 1.0f ),
-_visualizeWarp( true )
+_visualizeWarp( false )
 {
     // force an update traversal:
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
@@ -387,12 +388,26 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hae );
     hae = osg::maximum( hae, 100.0 );
 
+    osg::Vec3d worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
+    osg::Vec3d lookVector = cv->getLookVectorLocal();
+    double haeWeight = osg::absolute(worldUp * lookVector);
+
     // radius of the earth under the eyepoint
     double radius = eyeLen - hae; 
 
     // approximate distance to the visible horizon
     double horizonDistance = sqrt( 2.0 * radius * hae ); 
 
+    // unit look-vector of the eye:
+    osg::Vec3d from, to, up;
+    const osg::Matrix& mvMatrix = *cv->getModelViewMatrix();
+    mvMatrix.getLookAt( from, to, up, eyeLen);
+    osg::Vec3 camLookVec = to-from;
+    camLookVec.normalize();
+
+    // unit look-vector of the RTT camera:
+    osg::Vec3d rttLookVec = -worldUp;
+    
     // calculate the distance to the horizon, projected into the RTT camera plane.
     // This is the maximum limit of eMax since there is no point in drawing overlay
     // data beyond the visible horizon.
@@ -402,13 +417,17 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     // cull the subgraph here, since we need its clip planes.
     _subgraphContainer->accept( *cv );
     cv->computeNearPlane();
-    double znear = cv->getCalculatedNearPlane();
-    double zfar = cv->getCalculatedFarPlane();
 
-    // clamp the projection matrix to the clip planes in the subgraph.
+    // clamp the projection matrix to optimized clip planes.
     osg::Matrixd projMatrix = *cv->getProjectionMatrix();
-    cv->clampProjectionMatrixImplementation( projMatrix, znear, zfar );
-
+    double fovy, aspectRatio, zfar, znear;
+    cv->getProjectionMatrix()->getPerspective( fovy, aspectRatio, znear, zfar );
+    double maxDistance = (1.0 - haeWeight)  * horizonDistance  + haeWeight * hae;
+    maxDistance *= 1.5;
+    if (zfar - znear >= maxDistance)
+        zfar = znear + maxDistance;
+    projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
+   
     // contruct the polyhedron representing the viewing frustum.
     osgShadow::ConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum( true, true );
@@ -424,7 +443,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     const osg::BoundingSphere& bs = _subgraphContainer->getBound();
     //visiblePH.setToBoundingBox( osg::BoundingBox( -bs.radius(), -bs.radius(), -bs.radius(), bs.radius(), bs.radius(), bs.radius() ) );
 
-    // get the bounds of the model.    
+    // get the bounds of the model. 
     osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
     _subgraphContainer->accept(cbbv);
     visiblePH.setToBoundingBox(cbbv.getBoundingBox());
@@ -443,19 +462,13 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     }
 #endif
 
-    // the RTT camera look-vector:
-    osg::Vec3d from, to, up;
-    _rttViewMatrix.getLookAt(from,to,up,eyeLen);
-    osg::Vec3 rttLookVec = to-from;
-    rttLookVec.normalize();
-
     // calculate the extents for our orthographic RTT camera (clamping it to the
     // visible horizon)
     std::vector<osg::Vec3d> verts;
     visiblePH.getPoints( verts );
 
     double eMin, eMax;
-    getMinMaxExtentInSilhouette( from, rttLookVec, verts, eMin, eMax );
+    getMinMaxExtentInSilhouette( from, rttLookVec, verts, eMin, eMax ); //rttLookVec, verts, eMin, eMax );
     eMax = osg::minimum( eMax, horizonDistanceInRTTPlane ); 
 
     _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, /*1.0*/ -eyeLen, eyeLen );
@@ -464,11 +477,6 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     {
         // calculate the warping paramaters. This uses shaders to warp the verts and
         // tex coords to favor data closer to the camera when necessary.
-
-        const osg::Matrix& mvMatrix = *cv->getModelViewMatrix();
-        mvMatrix.getLookAt( from, to, up, eyeLen);
-        osg::Vec3 camLookVec = to-from;
-        camLookVec.normalize();
 
     #define WARP_LIMIT 3.0
 

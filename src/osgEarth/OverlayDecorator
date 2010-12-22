@@ -27,6 +27,7 @@
 #include <osg/Texture2D>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
+#include <osgUtil/CullVisitor>
 
 namespace osgEarth
 {
@@ -75,7 +76,8 @@ namespace osgEarth
         virtual osg::BoundingSphere computeBound() const;
 
     private:
-        void updateRTTCamera( osg::NodeVisitor& cv );
+        void updateRTTCamera( osg::NodeVisitor& nv );
+        void cull( osgUtil::CullVisitor* cv );
         void reinit();
         void initSubgraphShaders( osg::StateSet* set );
         void initRTTShaders( osg::StateSet* set );
@@ -88,16 +90,18 @@ namespace osgEarth
         osg::ref_ptr<osg::TexGenNode> _texGenNode;
         osg::ref_ptr<osg::Uniform>    _texGenUniform;
         osg::ref_ptr<osg::Uniform>    _warpUniform;
-        osg::ref_ptr<osgEarth::VirtualProgram> _vp;
+        osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
         bool                          _reservedTextureUnit;
         bool                          _useShaders;
-        double                        _earthRadiusMajor;
+        bool                          _useWarping;
         double                        _warp;
+
         osg::Matrixd _rttViewMatrix, _rttProjMatrix;
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
+        osg::ref_ptr<osgEarth::VirtualProgram> _vp;
     };
 
 } // namespace osgEarth

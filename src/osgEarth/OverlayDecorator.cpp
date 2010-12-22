@@ -38,7 +38,8 @@ _textureSize( 1024 ),
 _reservedTextureUnit( false ),
 _useShaders( false ),
 _useWarping( true ),
-_warp( 1.0f )
+_warp( 1.0f ),
+_visualizeWarp( true )
 {
     // force an update traversal:
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
@@ -133,6 +134,7 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
     buf << "#version 110 \n"
         << "uniform float warp; \n"
 
+        // because the built-in pow() is busted
         << "float mypow( in float x, in float y ) \n"
         << "{ \n"
         << "    return x/(x+y-y*x); \n"
@@ -197,6 +199,7 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
         << "uniform sampler2D osgearth_overlay_ProjTex; \n"
         << "uniform float warp; \n"
 
+        // because the built-in pow() is busted
         << "float mypow( in float x, in float y ) \n"
         << "{ \n"
         << "    return x/(x+y-y*x); \n"
@@ -222,9 +225,12 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
 
         << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
-        << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n"
-        << "    texCoord = warpTexCoord( texCoord ); \n"
-        << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"
+        << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n";
+
+    if ( !_visualizeWarp )
+        buf  << "    texCoord = warpTexCoord( texCoord ); \n";
+
+    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
@@ -470,6 +476,9 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         double haeStrength = 1.0 - osg::clampBetween( hae/radius, 0.0, 1.0 );
 
         _warp = 1.0 + devStrength * haeStrength * WARP_LIMIT;
+
+        if ( _visualizeWarp )
+            _warp = 4.0;
 
         //OE_INFO << LC << std::fixed
         //    << "hae=" << hae

@@ -96,7 +96,7 @@ namespace osgEarth
         bool                          _reservedTextureUnit;
         bool                          _useShaders;
         bool                          _useWarping;
-        double                        _warp;
+        float                         _warp;
 
         osg::Matrixd _rttViewMatrix, _rttProjMatrix;
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;

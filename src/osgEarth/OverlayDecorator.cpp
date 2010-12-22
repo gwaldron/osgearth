@@ -37,7 +37,8 @@ _textureUnit( 1 ),
 _textureSize( 1024 ),
 _reservedTextureUnit( false ),
 _useShaders( false ),
-_useWarping( true )
+_useWarping( true ),
+_warp( 1.0f )
 {
     // force an update traversal:
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
@@ -132,6 +133,11 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
     buf << "#version 110 \n"
         << "uniform float warp; \n"
 
+        << "float mypow( in float x, in float y ) \n"
+        << "{ \n"
+        << "    return x/(x+y-y*x); \n"
+        << "} \n"
+
         << "vec4 warpVertex( in vec4 src ) \n"
         << "{ \n"
         //      normalize to [-1..1], then take the absolute values since we
@@ -140,7 +146,7 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
         << "    vec2 sign = vec2( src.x > 0.0 ? 1.0 : -1.0, src.y > 0.0 ? 1.0 : -1.0 ); \n"
 
         //      apply the deformation using a "deceleration" curve:
-        << "    vec2 srcp = vec2( 1.0-pow(1.0-srct.x,warp), 1.0-pow(1.0-srct.y,warp) ); \n"
+        << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
 
         //      re-apply the sign. no need to un-normalize, just use w=1 instead
         << "    return vec4( sign.x*srcp.x, sign.y*srcp.y, src.z/src.w, 1.0 ); \n"
@@ -149,6 +155,7 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
         << "void main() \n"
         << "{ \n"
         << "    gl_Position = warpVertex( gl_ModelViewProjectionMatrix * gl_Vertex ); \n"
+        //<< "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
         << "    gl_FrontColor = gl_Color; \n"
         << "} \n";
 
@@ -188,8 +195,12 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
     buf.str("");
     buf << "#version 110 \n"
         << "uniform sampler2D osgearth_overlay_ProjTex; \n"
-
         << "uniform float warp; \n"
+
+        << "float mypow( in float x, in float y ) \n"
+        << "{ \n"
+        << "    return x/(x+y-y*x); \n"
+        << "} \n"
 
         << "vec2 warpTexCoord( in vec2 src ) \n"
         << "{ \n"
@@ -202,7 +213,7 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
         << "    vec2 sign = vec2( srcn.x > 0.0 ? 1.0 : -1.0, srcn.y > 0.0 ? 1.0 : -1.0 ); \n"
 
         //      apply the deformation using a deceleration curve:
-        << "    vec2 srcp = vec2( 1.0-pow(1.0-srct.x,warp), 1.0-pow(1.0-srct.y,warp) ); \n"
+        << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
 
         //      reapply the sign, and scale back to [0..1]:
         << "    vec2 srcr = vec2( sign.x*srcp.x, sign.y*srcp.y ); \n"
@@ -313,7 +324,7 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
     {
         _texGenUniform->set( MVPT );
         if ( _useWarping )
-            _warpUniform->set( static_cast<float>(_warp) );
+            _warpUniform->set( _warp );
     }
 }
 
@@ -405,24 +416,26 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     osgShadow::ConvexPolyhedron visiblePH;
 
     const osg::BoundingSphere& bs = _subgraphContainer->getBound();
-    visiblePH.setToBoundingBox( osg::BoundingBox( -bs.radius(), -bs.radius(), -bs.radius(), bs.radius(), bs.radius(), bs.radius() ) );
+    //visiblePH.setToBoundingBox( osg::BoundingBox( -bs.radius(), -bs.radius(), -bs.radius(), bs.radius(), bs.radius(), bs.radius() ) );
 
-    //// get the bounds of the model.    
-    //osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
-    //_subgraphContainer->accept(cbbv);
-    //visiblePH.setToBoundingBox(cbbv.getBoundingBox());
+    // get the bounds of the model.    
+    osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
+    _subgraphContainer->accept(cbbv);
+    visiblePH.setToBoundingBox(cbbv.getBoundingBox());
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
     // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
     // minimal without clipping at the geometry level, but that would probably be too expensive.)
     visiblePH.cut( frustumPH );
 
+#if 0
     // dumps a copy of the PH to disk...handy
-    //if ( s_frame++ % 100 == 0 )
-    //{
-    //    visiblePH.dumpGeometry();
-    //    OE_INFO << "DUMP" << std::endl;
-    //}
+    if ( s_frame++ % 100 == 0 )
+    {
+        visiblePH.dumpGeometry();
+        OE_INFO << "DUMP" << std::endl;
+    }
+#endif
 
     // the RTT camera look-vector:
     osg::Vec3d from, to, up;
@@ -439,7 +452,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     getMinMaxExtentInSilhouette( from, rttLookVec, verts, eMin, eMax );
     eMax = osg::minimum( eMax, horizonDistanceInRTTPlane ); 
 
-    _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, 1.0, eyeLen );
+    _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, /*1.0*/ -eyeLen, eyeLen );
 
     if ( _useWarping )
     {
@@ -462,13 +475,25 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         //    << "hae=" << hae
         //    << ", eMin=" << eMin
         //    << ", eMax=" << eMax
-        //    << ", ratio=" << ratio
-        //    << ", dev=" << devStrength
-        //    << ", has=" << haeStrength
+        //    //<< ", ratio=" << ratio
+        //    //<< ", dev=" << devStrength
+        //    //<< ", has=" << haeStrength
         //    << ", warp=" << _warp
         //    << std::endl;
     }
 
+#if 0
+    if ( s_frame++ % 100 == 0 )
+    {
+        osgShadow::ConvexPolyhedron rttPH;
+        rttPH.setToUnitFrustum( true, true );
+        osg::Matrixd MVP = _rttViewMatrix * _rttProjMatrix;
+        osg::Matrixd inverseMVP;
+        inverseMVP.invert(MVP);
+        rttPH.transform( inverseMVP, MVP );
+        rttPH.dumpGeometry();
+    }
+#endif
 
     // projector matrices are the same as for the RTT camera. Tim was right.
     _projectorViewMatrix = _rttViewMatrix;
@@ -491,6 +516,8 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             
             // note: texgennode doesn't need a cull, and subgraphContainer
             // is traversed in cull().
+            //_texGenNode->accept( nv );
+            //_subgraphContainer->accept( nv );
         }
 
         else

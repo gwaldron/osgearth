@@ -23,6 +23,7 @@ on the map using the overlay technique.
             <url>../data/world.shp</url>
             <ogr_driver>ESRI Shapefile</ogr_driver>
             <buffer distance="-0.05"/>
+            <resample min_length="0" max_length="0.1"/>
         </features>
         
         <!-- Define a feature style class for each category: -->

@@ -641,14 +641,16 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 
     #define WARP_LIMIT 3.0
 
-        double devStrength = 1.0 - ( camLookVec * rttLookVec ); // eye pitch relative to rtt pitch
-        double haeStrength = 1.0 - osg::clampBetween( hae/radius, 0.0, 1.0 );
+        double pitchStrength = ( camLookVec * rttLookVec ); // eye pitch relative to rtt pitch
+        double devStrength = 1.0 - (pitchStrength*pitchStrength);
+        double haeStrength = 1.0 - osg::clampBetween( hae/1e6, 0.0, 1.0 );
 
         _warp = 1.0 + devStrength * haeStrength * WARP_LIMIT;
 
         if ( _visualizeWarp )
             _warp = 4.0;
 
+#if 0
         OE_INFO << LC << std::fixed
             << "hae=" << hae
             << ", eMin=" << eMin
@@ -658,6 +660,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
             //<< ", has=" << haeStrength
             << ", warp=" << _warp
             << std::endl;
+#endif
     }
 
 #if 0

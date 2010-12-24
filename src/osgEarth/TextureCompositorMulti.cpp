@@ -76,10 +76,13 @@ namespace
             << "uniform float osgearth_ImageLayerAttenuation; \n"
             << "varying float osgearth_CameraRange; \n";
 
-        buf << "uniform sampler2D ";
-        for( unsigned int i=0; i<order.size(); ++i )
-            buf << "tex"<< order[i] << (i+1 < order.size()? "," : ";");
-        buf << "\n";
+        if ( order.size() > 0 )
+        {
+            buf << "uniform sampler2D ";
+            for( unsigned int i=0; i<order.size(); ++i )
+                buf << "tex"<< order[i] << (i+1 < order.size()? "," : ";");
+            buf << "\n";
+        }
 
         buf << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
             << "{ \n"

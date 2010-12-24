@@ -106,8 +106,8 @@ public:
 
         // if only a line symbol exists, and there are polygons in the mix, draw them
         // as outlines (line rings).
-        //OE_INFO << LC << "Line Symbol = " << (line == 0L ? "null" : line->getConfig().toString()) << std::endl;
-        //OE_INFO << LC << "Poly SYmbol = " << (poly == 0L ? "null" : poly->getConfig().toString()) << std::endl;
+        //OE_INFO << LC << "Line Symbol = " << (masterLine == 0L ? "null" : masterLine->getConfig().toString()) << std::endl;
+        //OE_INFO << LC << "Poly SYmbol = " << (masterPoly == 0L ? "null" : masterPoly->getConfig().toString()) << std::endl;
 
         //bool convertPolysToRings = poly == 0L && line != 0L;
         //if ( convertPolysToRings )
@@ -138,13 +138,24 @@ public:
                     feature->style().isSet() ? feature->style()->get()->getSymbol<PolygonSymbol>() : masterPoly;
 
                 // if we have polygons but only a LineSymbol, draw the poly as a line.
-                if ( geom->getComponentType() == Geometry::TYPE_POLYGON && !poly && line )
+                if ( geom->getComponentType() == Geometry::TYPE_POLYGON )
                 {
-                    Feature* outline = new Feature( *feature );
-                    geom = geom->cloneAs( Geometry::TYPE_RING );
-                    outline->setGeometry( geom );
-                    *i = outline;
-                    feature = outline;
+                    if ( !poly && line )
+                    {
+                        Feature* outline = new Feature( *feature );
+                        geom = geom->cloneAs( Geometry::TYPE_RING );
+                        outline->setGeometry( geom );
+                        *i = outline;
+                        feature = outline;
+                    }
+                    //TODO: fix to enable outlined polys. doesn't work, not sure why -gw
+                    //else if ( poly && line )
+                    //{
+                    //    Feature* outline = new Feature();
+                    //    geom = geom->cloneAs( Geometry::TYPE_LINESTRING );
+                    //    outline->setGeometry( geom );
+                    //    features.push_back( outline );
+                    //}
                 }
 
                 bool needsBuffering =
@@ -251,30 +262,26 @@ public:
                 c = color;
                 Geometry* g = gi.next();
             
-                // check for an embedded style:
-                if ( getFeatureSource()->hasEmbeddedStyles() )
+                const LineSymbol* line = feature->style().isSet() ? 
+                    feature->style()->get()->getSymbol<LineSymbol>() : masterLine;
+
+                const PolygonSymbol* poly =
+                    feature->style().isSet() ? feature->style()->get()->getSymbol<PolygonSymbol>() : masterPoly;
+
+                if (g->getType() == Geometry::TYPE_RING || g->getType() == Geometry::TYPE_LINESTRING)
                 {
-                    const LineSymbol* line = feature->style().isSet() ? 
-                        feature->style()->get()->getSymbol<LineSymbol>() : masterLine;
+                    if ( line )
+                        c = line->stroke()->color();
+                    else if ( poly )
+                        c = poly->fill()->color();
+                }
 
-                    const PolygonSymbol* poly =
-                        feature->style().isSet() ? feature->style()->get()->getSymbol<PolygonSymbol>() : masterPoly;
-
-                    if (g->getType() == Geometry::TYPE_RING || g->getType() == Geometry::TYPE_LINESTRING)
-                    {
-                        if ( line )
-                            c = line->stroke()->color();
-                        else if ( poly )
-                            c = poly->fill()->color();
-                    }
-
-                    else if ( g->getType() == Geometry::TYPE_POLYGON )
-                    {
-                        if ( poly )
-                            c = poly->fill()->color();
-                        else if ( line )
-                            c = line->stroke()->color();
-                    }
+                else if ( g->getType() == Geometry::TYPE_POLYGON )
+                {
+                    if ( poly )
+                        c = poly->fill()->color();
+                    else if ( line )
+                        c = line->stroke()->color();
                 }
 
                 a = 127+(c.a()*255)/2; // scale alpha up

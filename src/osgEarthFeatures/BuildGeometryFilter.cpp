@@ -136,7 +136,13 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         //    << Geometry::toString( part->getType() ) << ", renderType = "
         //    << Geometry::toString( renderType ) << std::endl;
 
+        const Style* myStyle = input->style().isSet() ? input->style()->get() : _style.get();
+
         osg::Vec4f color = osg::Vec4(1,1,1,1);
+        bool tessellatePolys = true;
+
+        bool setWidth = input->style().isSet(); // otherwise it will be set globally, we assume
+        float width = 1.0f;
 
         switch( renderType )
         {
@@ -144,7 +150,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasPoints = true;
                 primMode = osg::PrimitiveSet::POINTS;
-                const PointSymbol* point = _style->getSymbol<PointSymbol>();
+                const PointSymbol* point = myStyle->getSymbol<PointSymbol>();
                 if (point)
                 {
                     color = point->fill()->color();
@@ -156,10 +162,11 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasLines = true;
                 primMode = osg::PrimitiveSet::LINE_STRIP;
-                const LineSymbol* lineSymbol = _style->getSymbol<LineSymbol>();
+                const LineSymbol* lineSymbol = myStyle->getSymbol<LineSymbol>();
                 if (lineSymbol)
                 {
                     color = lineSymbol->stroke()->color();
+                    width = lineSymbol->stroke()->width().isSet() ? *lineSymbol->stroke()->width() : 1.0f;
                 }
             }
             break;
@@ -168,10 +175,11 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasLines = true;
                 primMode = osg::PrimitiveSet::LINE_LOOP;
-                const LineSymbol* lineSymbol = _style->getSymbol<LineSymbol>();
+                const LineSymbol* lineSymbol = myStyle->getSymbol<LineSymbol>();
                 if (lineSymbol)
                 {
                     color = lineSymbol->stroke()->color();
+                    width = lineSymbol->stroke()->width().isSet() ? *lineSymbol->stroke()->width() : 1.0f;
                 }
             }
             break;
@@ -179,10 +187,21 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         case Geometry::TYPE_POLYGON:
             {
                 primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-                const PolygonSymbol* poly = _style->getSymbol<PolygonSymbol>();
+                const PolygonSymbol* poly = myStyle->getSymbol<PolygonSymbol>();
                 if (poly)
                 {
                     color = poly->fill()->color();
+                }
+                else
+                {
+                    // if we have a line symbol and no polygon symbol, draw as an outline.
+                    const LineSymbol* line = myStyle->getSymbol<LineSymbol>();
+                    if ( line )
+                    {
+                        color = line->stroke()->color();
+                        width = line->stroke()->width().isSet() ? *line->stroke()->width() : 1.0f;
+                        tessellatePolys = false;
+                    }
                 }
             }
             break;
@@ -223,11 +242,17 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
         }
 
+        if ( setWidth && width != 1.0f )
+        {
+            osgGeom->getOrCreateStateSet()->setAttributeAndModes(
+                new osg::LineWidth( width ), osg::StateAttribute::ON );
+        }
+
         // tessellate all polygon geometries. Tessellating each geometry separately
         // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
         // using TESS_TYPE_DRAWABLE.
 
-        if ( renderType == Geometry::TYPE_POLYGON )
+        if ( renderType == Geometry::TYPE_POLYGON && tessellatePolys )
         {
             osgUtil::Tessellator tess;
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );

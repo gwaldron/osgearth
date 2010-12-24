@@ -74,10 +74,6 @@ public:
         FeatureSymbolizerContext* context,
         osg::Node** out_newNode)
     {
-        //const FeatureGeomModelOptions options( _modelSource->getOptions() );
-        //const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
-        //    _model->getFeatureModelOptions() );
-
         // break the features out into separate lists for geometries and text annotations:
         FeatureList geomFeatureList, textAnnoList;
 

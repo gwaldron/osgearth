@@ -98,6 +98,8 @@ namespace osgEarth
         bool                          _useWarping;
         float                         _warp;
         bool                          _visualizeWarp;
+        bool                          _isGeocentric;
+        double                        _maxProjectedMapExtent;
 
         osg::Matrixd _rttViewMatrix, _rttProjMatrix;
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;

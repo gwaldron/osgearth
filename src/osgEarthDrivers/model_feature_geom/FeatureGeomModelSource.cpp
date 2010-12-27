@@ -219,8 +219,15 @@ public:
 
     osg::Node* createNode( ProgressCallback* progress )
     {
-        //OE_NOTICE << _options.getConfig().toString() << std::endl;
-        return new FeatureSymbolizerGraph( new FactoryGeomSymbolizer(this, _options) );
+        if ( _features.valid() && _features->getFeatureProfile() )
+        {
+            //OE_NOTICE << _options.getConfig().toString() << std::endl;
+            return new FeatureSymbolizerGraph( new FactoryGeomSymbolizer(this, _options) );
+        }
+        else
+        {
+            return 0L;
+        }
     }
 
 private:

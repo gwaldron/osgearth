@@ -416,9 +416,19 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
 {
     // establish the earth's major axis:
     MapInfo info(engine->getMap());
+    _isGeocentric = info.isGeocentric();
     _ellipsoid = info.getProfile()->getSRS()->getEllipsoid();
 
+    // the maximum extent (for projected maps only)
+    if ( !_isGeocentric )
+    {
+        const GeoExtent& extent = info.getProfile()->getExtent();
+        _maxProjectedMapExtent = osg::maximum( extent.width(), extent.height() );
+    }
+
     // see whether we want shader support:
+    // TODO: this is not stricty correct; you might still want to use shader overlays
+    // in multipass mode.
     _useShaders = engine->getTextureCompositor()->usesShaderComposition();
 
     if ( !_textureUnit.isSet() && _useShaders )
@@ -483,26 +493,61 @@ void
 OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 {
     osg::Vec3 eye = cv->getEyePoint();
-    double eyeLen = eye.length();
 
-    // point the RTT camera straight down from the eyepoint:
-    _rttViewMatrix = osg::Matrixd::lookAt( eye, osg::Vec3(0,0,0), osg::Vec3(0,0,1) );
+    double eyeLen;
+    osg::Vec3d worldUp;
 
-    // find our HAE (not including terrain), and clamp it to some arbitrary value.
-    double hae, lat, lon;
-    _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hae );
-    hae = osg::maximum( hae, 100.0 );
+    // height above sea level
+    double hasl;
 
-    // create a "weighting" that weights hae against the camera's pitch.
-    osg::Vec3d worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
-    osg::Vec3d lookVector = cv->getLookVectorLocal();
-    double haeWeight = osg::absolute(worldUp * lookVector);
-
-    // radius of the earth under the eyepoint
-    double radius = eyeLen - hae; 
+    // weight of the HASL value when calculating extent compensation
+    double haslWeight;
 
     // approximate distance to the visible horizon
-    double horizonDistance = sqrt( 2.0 * radius * hae ); 
+    double horizonDistance; 
+
+    // distance to the horizon, projected into the RTT camera's tangent plane.
+    double horizonDistanceInRTTPlane;
+
+    if ( _isGeocentric )
+    {
+        double lat, lon;
+        _ellipsoid->convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), lat, lon, hasl );
+        hasl = osg::maximum( hasl, 100.0 );
+
+        worldUp = _ellipsoid->computeLocalUpVector(eye.x(), eye.y(), eye.z());
+
+        eyeLen = eye.length();
+
+        // radius of the earth under the eyepoint
+        double radius = eyeLen - hasl; 
+        horizonDistance = sqrt( 2.0 * radius * hasl ); 
+    
+        // calculate the distance to the horizon, projected into the RTT camera plane.
+        // This is the maximum limit of eMax since there is no point in drawing overlay
+        // data beyond the visible horizon.
+        double pitchAngleOfHorizon_rad = acos( horizonDistance/eyeLen );
+        horizonDistanceInRTTPlane = horizonDistance * sin( pitchAngleOfHorizon_rad );
+
+        _rttViewMatrix = osg::Matrixd::lookAt( eye, osg::Vec3(0,0,0), osg::Vec3(0,0,1) );
+    }
+    else // projected map
+    {
+        hasl = eye.z();
+        hasl = osg::maximum( hasl, 100.0 );
+        worldUp.set( 0.0, 0.0, 1.0 );
+        eyeLen = hasl * 2.0;
+
+        // there is no maximum horizon distance in a projected map
+        horizonDistance = DBL_MAX;
+        horizonDistanceInRTTPlane = DBL_MAX;
+
+        _rttViewMatrix = osg::Matrixd::lookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
+    }
+
+    // create a "weighting" that weights HASL against the camera's pitch.
+    osg::Vec3d lookVector = cv->getLookVectorLocal();
+    haslWeight = osg::absolute(worldUp * lookVector);
 
     // unit look-vector of the eye:
     osg::Vec3d from, to, up;
@@ -513,15 +558,10 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 
     // unit look-vector of the RTT camera:
     osg::Vec3d rttLookVec = -worldUp;
-    
-    // calculate the distance to the horizon, projected into the RTT camera plane.
-    // This is the maximum limit of eMax since there is no point in drawing overlay
-    // data beyond the visible horizon.
-    double pitchAngleOfHorizon_rad = acos( horizonDistance/eyeLen );
-    double horizonDistanceInRTTPlane = horizonDistance * sin( pitchAngleOfHorizon_rad );
 
     // the minimum and maximum extents of the overlay ortho projector:
-    double eMin, eMax;
+    double eMin = 0.1;
+    double eMax = DBL_MAX;
 
     // cull the subgraph here. This doubles as the subgraph's official cull traversal
     // and a gathering of its clip planes.
@@ -559,6 +599,9 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         eMax = osg::minimum( eMax, horizonDistanceInRTTPlane ); 
     }
 
+    if ( !_isGeocentric )
+        eyeLen = zfar;
+
 #if 0
     if ( s_frame++ % 100 == 0 )
     {
@@ -582,7 +625,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         //osg::Matrixd projMatrix = *cv->getProjectionMatrix();
         double fovy, aspectRatio, zfar, znear;
         cv->getProjectionMatrix()->getPerspective( fovy, aspectRatio, znear, zfar );
-        double maxDistance = (1.0 - haeWeight)  * horizonDistance  + haeWeight * hae;
+        double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
         maxDistance *= 1.5;
         if (zfar - znear >= maxDistance)
             zfar = znear + maxDistance;
@@ -633,7 +676,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         //eMax = osg::minimum( eMax, horizonDistanceInRTTPlane ); // already done in first pass -gw
     }
 
-    _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, /*1.0*/ -eyeLen, eyeLen );
+    _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
 
     if ( _useWarping )
     {
@@ -644,18 +687,19 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 
         double pitchStrength = ( camLookVec * rttLookVec ); // eye pitch relative to rtt pitch
         double devStrength = 1.0 - (pitchStrength*pitchStrength);
-        double haeStrength = 1.0 - osg::clampBetween( hae/1e6, 0.0, 1.0 );
+        double haslStrength = 1.0 - osg::clampBetween( hasl/1e6, 0.0, 1.0 );
 
-        _warp = 1.0 + devStrength * haeStrength * WARP_LIMIT;
+        _warp = 1.0 + devStrength * haslStrength * WARP_LIMIT;
 
         if ( _visualizeWarp )
             _warp = 4.0;
 
 #if 0
         OE_INFO << LC << std::fixed
-            << "hae=" << hae
+            << "hasl=" << hasl
             << ", eMin=" << eMin
             << ", eMax=" << eMax
+            << ", eyeLen=" << eyeLen
             //<< ", ratio=" << ratio
             //<< ", dev=" << devStrength
             //<< ", has=" << haeStrength

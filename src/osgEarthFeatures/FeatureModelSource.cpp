@@ -333,7 +333,7 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
 
                         createdNode->setCullCallback( ccc );
 
-                        OE_NOTICE
+                        OE_DEBUG
                             << "Cell: " << mapCellExtent.toString()
                             << ": centroid = " << cx << "," << cy
                             << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()

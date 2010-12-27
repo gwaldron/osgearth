@@ -139,14 +139,15 @@ _supportsTexture2DLod   ( false )
         OE_INFO << LC << "  Max GPU texture coordinate sets = " << _maxGPUTextureCoordSets << std::endl;
 
         // Use the texture-proxy method to determine the maximum texture size 
-        for( int s = 16; s < 65536; s *= 2 )
+        glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
+        for( int s = _maxTextureSize; s > 2; s >> 1 )
         {
             glTexImage2D( GL_PROXY_TEXTURE_2D, 0, GL_RGBA8, s, s, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L );
             GLint width = 0;
             glGetTexLevelParameteriv( GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width );
-            if ( width == 0 )
+            if ( width == s )
             {
-                _maxTextureSize = s/2;
+                _maxTextureSize = s;
                 break;
             }
         }

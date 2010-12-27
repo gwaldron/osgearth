@@ -25,6 +25,8 @@
 #include <osgViewer/View>
 #include <iomanip>
 
+#define LC "[EarthManip] "
+
 using namespace osgEarth::Util;
 using namespace osgEarth;
 
@@ -162,7 +164,8 @@ _max_y_offset( 0.0 ),
 _min_distance( 0.001 ),
 _max_distance( DBL_MAX ),
 _lock_azim_while_panning( true ),
-_tether_mode( TETHER_CENTER )
+_tether_mode( TETHER_CENTER ),
+_arc_viewpoints( false )
 {
 }
 
@@ -180,7 +183,8 @@ _max_y_offset( rhs._max_y_offset ),
 _min_distance( rhs._min_distance ),
 _max_distance( rhs._max_distance ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),
-_tether_mode( rhs._tether_mode )
+_tether_mode( rhs._tether_mode ),
+_arc_viewpoints( rhs._arc_viewpoints )
 {
     //NOP
 }
@@ -314,6 +318,11 @@ EarthManipulator::Settings::setMinMaxDistance( double min_distance, double max_d
 	_max_distance = max_distance;
 }
 
+void
+EarthManipulator::Settings::setArcViewpointTransitions( bool value )
+{
+    _arc_viewpoints = value;
+}
 
 /************************************************************************/
 
@@ -345,7 +354,8 @@ _has_pending_viewpoint( rhs._has_pending_viewpoint ),
 _homeViewpoint( rhs._homeViewpoint.get() ),
 _homeViewpointDuration( rhs._homeViewpointDuration ),
 _after_first_frame( rhs._after_first_frame ),
-_lastPointOnEarth( rhs._lastPointOnEarth )
+_lastPointOnEarth( rhs._lastPointOnEarth ),
+_range_plus( rhs._range_plus )
 {
 }
 
@@ -453,6 +463,7 @@ EarthManipulator::reinitialize()
     _local_pitch = 0.0;
     _has_pending_viewpoint = false;
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
+    _range_plus = 0.0;
 }
 
 bool
@@ -711,17 +722,36 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         // calculate an acceleration factor based on the Z differential
         double h0 = _start_viewpoint.getRange() * sin( osg::DegreesToRadians(-_start_viewpoint.getPitch()) );
         double h1 = vp.getRange() * sin( osg::DegreesToRadians( -vp.getPitch() ) );
-        double dh = (h1 - h0)/100000.0;
-        _set_viewpoint_accel = fabs(dh) <= 1.0? 0.0 : dh > 0.0? log10( dh ) : -log10( -dh );
+        double dh = (h1 - h0);
+        double dh2 = (h1 - h0)/100000.0;
+        _set_viewpoint_accel = fabs(dh2) <= 1.0? 0.0 : dh2 > 0.0? log10( dh2 ) : -log10( -dh2 );
         if ( fabs( _set_viewpoint_accel ) < 1.0 ) _set_viewpoint_accel = 0.0;
 
-        // set up a range arc
-        //double dist = _is_geocentric? _delta_focal_point.length() * 55000.0 : _delta_focal_point.length();
-        //double h_delta = fabs(h1-h0);
-        //if ( dist > h_delta )
-        //    _range_plus = 0.5*(dist-h_delta);
-        //else
-        _range_plus = 0.0;
+        if ( _settings->getArcViewpointTransitions() )
+        {
+            // calculate the total distance the focal point will travel and derive an arc height:
+            double de;
+            if ( _is_geocentric && (vp.getSRS() == 0L || vp.getSRS()->isGeographic()) )
+            {
+                osg::Vec3d startFP = _start_viewpoint.getFocalPoint();
+                double x0,y0,z0, x1,y1,z1;
+                _cached_srs->getEllipsoid()->convertLatLongHeightToXYZ(
+                    osg::DegreesToRadians( _start_viewpoint.y() ), osg::DegreesToRadians( _start_viewpoint.x() ), 0.0, x0, y0, z0 );
+                _cached_srs->getEllipsoid()->convertLatLongHeightToXYZ(
+                    osg::DegreesToRadians( vp.y() ), osg::DegreesToRadians( vp.x() ), 0.0, x1, y1, z1 );
+                de = (osg::Vec3d(x0,y0,z0) - osg::Vec3d(x1,y1,z1)).length();
+            }
+            else
+            {
+                de = _delta_focal_point.length();
+            }
+         
+            //double h2 = osg::maximum( de - fabs(dh), 0.0 );
+            //double h2 = de;
+            //h2 -= fabs(dh);
+            //h2 = osg::maximum( 0.0, h2 );
+            _range_plus = osg::maximum( de - fabs(dh), 0.0 );
+        }
         
         // don't use _time_s_now; that's the time of the last event
         _time_s_set_viewpoint = osg::Timer::instance()->time_s();

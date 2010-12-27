@@ -159,6 +159,8 @@ int main(int argc, char** argv)
         EarthManipulator::ACTION_EARTH_DRAG,
         osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON,
         osgGA::GUIEventAdapter::MODKEY_SHIFT );
+
+    manip->getSettings()->setArcViewpointTransitions( true );
     
     viewer.addEventHandler(new FlyToViewpointHandler( manip ));
     viewer.addEventHandler(new LockAzimuthHandler('u', manip));

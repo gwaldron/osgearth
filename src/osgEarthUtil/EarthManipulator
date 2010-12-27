@@ -440,6 +440,10 @@ namespace osgEarth { namespace Util
 			*/
 			void setTetherMode( TetherMode tether_mode ) { _tether_mode = tether_mode; }
 
+            /** Whether a setViewpoint transition whould "arc" */
+            void setArcViewpointTransitions( bool value );
+            bool getArcViewpointTransitions() const { return _arc_viewpoints; }
+
         private:
 
             friend class EarthManipulator;
@@ -473,6 +477,7 @@ namespace osgEarth { namespace Util
 			double _max_distance;
 
 			TetherMode _tether_mode;
+            bool _arc_viewpoints;
         };
 
     public:

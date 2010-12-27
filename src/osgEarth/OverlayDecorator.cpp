@@ -547,7 +547,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     viewPT.transform( osg::Matrix::inverse(viewMVP), viewMVP );
 
     osg::BoundingBox viewbbox;
-    _overlayGraph->accept( CoarsePolytopeIntersector( viewPT, viewbbox ) );
+    CoarsePolytopeIntersector cpi( viewPT, viewbbox );
+    _overlayGraph->accept( cpi );
 
     //TODO: sometimes this viewbbox goes invalid even though there's clearly goemetry
     //      in view. Happens when you zoom in really close. Need to investigate -gw

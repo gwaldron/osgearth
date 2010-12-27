@@ -53,7 +53,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Uniform> _lightPosUniform;
         osg::ref_ptr<osg::MatrixTransform> _sunXform;
 
-        void makeAtmosphere();
+        void makeAtmosphere( const osg::EllipsoidModel* );
         void makeSun();
     };
 

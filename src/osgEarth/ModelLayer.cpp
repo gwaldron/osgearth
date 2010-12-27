@@ -89,7 +89,7 @@ ModelLayer::ModelLayer( const std::string& name, const ModelSourceOptions& optio
 _options( ModelLayerOptions( name, options ) ),
 _enabled( true )
 {
-//    mergeConfig( options.getConfig() );
+    //NOP
 }
 
 ModelLayer::ModelLayer( const ModelLayerOptions& options, ModelSource* source ) :
@@ -140,26 +140,6 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
     }
     return _node.get();
 }
-
-//Config
-//ModelLayer::getConfig() const
-//{
-//    Config conf = _driverOptions.getConfig();
-//
-//    conf.key() = "model";
-//    conf.attr("name") = _name;
-//    conf.updateIfSet( "enabled", _enabled );
-//    conf.updateIfSet( "lighting", _lighting );
-//
-//    return conf;
-//}
-//
-//void
-//ModelLayer::mergeConfig(const osgEarth::Config &conf)
-//{
-//    conf.getIfSet( "enabled", _enabled );
-//    conf.getIfSet( "lighting", _lighting );
-//}
 
 bool
 ModelLayer::getEnabled() const

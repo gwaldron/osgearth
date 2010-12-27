@@ -182,7 +182,8 @@ _reservedTextureUnit( false ),
 _useShaders( false ),
 _useWarping( true ),
 _warp( 1.0f ),
-_visualizeWarp( false )
+_visualizeWarp( false ),
+_mipmapping( true )
 {
     // force an update traversal:
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
@@ -203,7 +204,7 @@ OverlayDecorator::reinit()
 
     _projTexture = new osg::Texture2D( image );
     _projTexture->setTextureSize( *_textureSize, *_textureSize );
-    _projTexture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR );
     _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
     _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
     _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
@@ -218,7 +219,7 @@ OverlayDecorator::reinit()
     _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
     _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
     _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    _rttCamera->attach( osg::Camera::COLOR_BUFFER0, _projTexture.get() );
+    _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
     _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
     // texture coordinate generator:
@@ -236,7 +237,6 @@ OverlayDecorator::reinit()
 
     // assemble the subgraph stateset:
     _subgraphStateSet = new osg::StateSet();
-    //osg::StateSet* subgraphSet = new osg::StateSet();
     _subgraphContainer->setStateSet( _subgraphStateSet.get() );
 
     if ( _overlayGraph.valid() )
@@ -407,6 +407,16 @@ OverlayDecorator::setTextureUnit( int texUnit )
     if ( texUnit != _textureUnit.value() )
     {
         _textureUnit = texUnit;
+        reinit();
+    }
+}
+
+void
+OverlayDecorator::setMipmapping( bool value )
+{
+    if ( value != _mipmapping )
+    {
+        _mipmapping = value;
         reinit();
     }
 }

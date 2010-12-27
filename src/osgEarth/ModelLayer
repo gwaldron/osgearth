@@ -50,12 +50,22 @@ namespace osgEarth
         optional<ModelSourceOptions>& driver() { return _driver; }
         const optional<ModelSourceOptions>& driver() const { return _driver; }
 
+        /**
+         * Whether to enable OpenGL lighting on the model node.
+         */
         optional<bool>& lightingEnabled() { return _lighting; }
         const optional<bool>& lightingEnabled() const { return _lighting; }
 
+        /**
+         * Whether this layer will be drawn.
+         */
         optional<bool>& enabled() { return _enabled; }
         const optional<bool>& enabled() const { return _enabled; }
 
+        /**
+         * Whether to drape the model geometry over the terrain as a projected overlay.
+         * Defaults to false
+         */
         optional<bool>& overlay() { return _overlay; }
         const optional<bool>& overlay() const { return _overlay; }
 

@@ -32,20 +32,42 @@ using namespace osgEarth;
 
 /****************************************************************************/
 
-static void
-getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
+
+namespace
 {
-    osg::Matrixd rot(q);
-    p = asin(rot(1,2));
-    if( osg::equivalent(osg::absolute(p), osg::PI_2) )
-    {
-        r = 0.0;
-        h = atan2( rot(0,1), rot(0,0) );
+    // a reasonable approximation of cosine interpolation
+    double
+    smoothStepInterp( double t ) {
+        return (t*t)*(3.0-2.0*t);
     }
-    else
+
+    // rough approximation of pow(x,y)
+    double
+    powFast( double x, double y ) {
+        return x/(x+y-y*x);
+    }
+
+    // accel/decel curve (a < 0 => decel)
+    double
+    accelerationInterp( double t, double a ) {
+        return a == 0.0? t : a > 0.0? powFast( t, a ) : 1.0 - powFast(1.0-t, -a);
+    }
+    
+    void
+    s_getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
     {
-        r = atan2( rot(0,2), rot(2,2) );
-        h = atan2( rot(1,0), rot(1,1) );
+        osg::Matrixd rot(q);
+        p = asin(rot(1,2));
+        if( osg::equivalent(osg::absolute(p), osg::PI_2) )
+        {
+            r = 0.0;
+            h = atan2( rot(0,1), rot(0,0) );
+        }
+        else
+        {
+            r = atan2( rot(0,2), rot(2,2) );
+            h = atan2( rot(1,0), rot(1,1) );
+        }
     }
 }
 
@@ -165,8 +187,12 @@ _min_distance( 0.001 ),
 _max_distance( DBL_MAX ),
 _lock_azim_while_panning( true ),
 _tether_mode( TETHER_CENTER ),
-_arc_viewpoints( false )
+_arc_viewpoints( false ),
+_auto_vp_duration( false ),
+_min_vp_duration_s( 3.0 ),
+_max_vp_duration_s( 8.0 )
 {
+    //NOP
 }
 
 EarthManipulator::Settings::Settings( const EarthManipulator::Settings& rhs ) :
@@ -184,7 +210,10 @@ _min_distance( rhs._min_distance ),
 _max_distance( rhs._max_distance ),
 _lock_azim_while_panning( rhs._lock_azim_while_panning ),
 _tether_mode( rhs._tether_mode ),
-_arc_viewpoints( rhs._arc_viewpoints )
+_arc_viewpoints( rhs._arc_viewpoints ),
+_auto_vp_duration( rhs._auto_vp_duration ),
+_min_vp_duration_s( rhs._min_vp_duration_s ),
+_max_vp_duration_s( rhs._max_vp_duration_s )
 {
     //NOP
 }
@@ -322,6 +351,19 @@ void
 EarthManipulator::Settings::setArcViewpointTransitions( bool value )
 {
     _arc_viewpoints = value;
+}
+
+void
+EarthManipulator::Settings::setAutoViewpointDurationEnabled( bool value )
+{
+    _auto_vp_duration = value;
+}
+
+void
+EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, double maxSeconds )
+{
+    _min_vp_duration_s = osg::clampAbove( minSeconds, 0.0 );
+    _max_vp_duration_s = osg::clampAbove( maxSeconds, _min_vp_duration_s );
 }
 
 /************************************************************************/
@@ -724,27 +766,26 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         double h1 = vp.getRange() * sin( osg::DegreesToRadians( -vp.getPitch() ) );
         double dh = (h1 - h0);
 
-        _arc_height = 0.0;
-
-        if ( _settings->getArcViewpointTransitions() )
+        // calculate the total distance the focal point will travel and derive an arc height:
+        double de;
+        if ( _is_geocentric && (vp.getSRS() == 0L || vp.getSRS()->isGeographic()) )
         {
-            // calculate the total distance the focal point will travel and derive an arc height:
-            double de;
-            if ( _is_geocentric && (vp.getSRS() == 0L || vp.getSRS()->isGeographic()) )
-            {
-                osg::Vec3d startFP = _start_viewpoint.getFocalPoint();
-                double x0,y0,z0, x1,y1,z1;
-                _cached_srs->getEllipsoid()->convertLatLongHeightToXYZ(
-                    osg::DegreesToRadians( _start_viewpoint.y() ), osg::DegreesToRadians( _start_viewpoint.x() ), 0.0, x0, y0, z0 );
-                _cached_srs->getEllipsoid()->convertLatLongHeightToXYZ(
-                    osg::DegreesToRadians( vp.y() ), osg::DegreesToRadians( vp.x() ), 0.0, x1, y1, z1 );
-                de = (osg::Vec3d(x0,y0,z0) - osg::Vec3d(x1,y1,z1)).length();
-            }
-            else
-            {
-                de = _delta_focal_point.length();
-            }
-         
+            osg::Vec3d startFP = _start_viewpoint.getFocalPoint();
+            double x0,y0,z0, x1,y1,z1;
+            _cached_srs->getEllipsoid()->convertLatLongHeightToXYZ(
+                osg::DegreesToRadians( _start_viewpoint.y() ), osg::DegreesToRadians( _start_viewpoint.x() ), 0.0, x0, y0, z0 );
+            _cached_srs->getEllipsoid()->convertLatLongHeightToXYZ(
+                osg::DegreesToRadians( vp.y() ), osg::DegreesToRadians( vp.x() ), 0.0, x1, y1, z1 );
+            de = (osg::Vec3d(x0,y0,z0) - osg::Vec3d(x1,y1,z1)).length();
+        }
+        else
+        {
+            de = _delta_focal_point.length();
+        }
+
+        _arc_height = 0.0;
+        if ( _settings->getArcViewpointTransitions() )
+        {         
             _arc_height = osg::maximum( de - fabs(dh), 0.0 );
         }
 
@@ -752,10 +793,10 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         if ( _arc_height > 0.0 )
         {
             // if we're arcing, we need seperate coefficients for the up and down stages
-            double h_avg = 2.0*(h0+h1);
-            double dh2_up = fabs(h_avg - h0)/100000.0;
+            double h_apex = 2.0*(h0+h1) + _arc_height;
+            double dh2_up = fabs(h_apex - h0)/100000.0;
             _set_viewpoint_accel = log10( dh2_up );
-            double dh2_down = fabs(h_avg - h1)/100000.0;
+            double dh2_down = fabs(h_apex - h1)/100000.0;
             _set_viewpoint_accel_2 = -log10( dh2_down );
         }
         else
@@ -764,6 +805,16 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
             double dh2 = (h1 - h0)/100000.0;
             _set_viewpoint_accel = fabs(dh2) <= 1.0? 0.0 : dh2 > 0.0? log10( dh2 ) : -log10( -dh2 );
             if ( fabs( _set_viewpoint_accel ) < 1.0 ) _set_viewpoint_accel = 0.0;
+        }
+        
+        if ( _settings->getAutoViewpointDurationEnabled() )
+        {
+            double maxDistance = _cached_srs->getEllipsoid()->getRadiusEquator();
+            double ratio = osg::clampBetween( de/maxDistance, 0.0, 1.0 );
+            ratio = accelerationInterp( ratio, -4.5 );
+            double minDur, maxDur;
+            _settings->getAutoViewpointDurationLimits( minDur, maxDur );
+            duration_s = minDur + ratio*(maxDur-minDur);
         }
         
         // don't use _time_s_now; that's the time of the last event
@@ -863,27 +914,6 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
     }
 }
 
-namespace
-{
-    // a reasonable approximation of cosine interpolation
-    double
-    smoothStepInterp( double t ) {
-        return (t*t)*(3.0-2.0*t);
-    }
-
-    // rough approximation of pow(x,y)
-    double
-    powFast( double x, double y ) {
-        return x/(x+y-y*x);
-    }
-
-    // accel/decel curve (a < 0 => decel)
-    double
-    accelerationInterp( double t, double a ) {
-        return a == 0.0? t : a > 0.0? powFast( t, a ) : 1.0 - powFast(1.0-t, -a);
-    }
-}
-
 void
 EarthManipulator::updateSetViewpoint()
 {
@@ -909,6 +939,9 @@ EarthManipulator::updateSetViewpoint()
             t2 = accelerationInterp( t2, _set_viewpoint_accel_2 );
             tp = 0.5+(0.5*t2);
         }
+
+        // the more smoothsteps you do, the more pronounced the fade-in/out effect        
+        tp = smoothStepInterp( tp );
         tp = smoothStepInterp( tp );
     }
     else if ( t > 0.0 )
@@ -2114,7 +2147,7 @@ void
 EarthManipulator::recalculateLocalPitchAndAzimuth()
 {
 	double r;
-	getHPRFromQuat( _rotation, _local_azim, _local_pitch, r);
+	s_getHPRFromQuat( _rotation, _local_azim, _local_pitch, r);
 	_local_pitch -= osg::PI_2;
 	//OE_NOTICE << "Azim=" << osg::RadiansToDegrees(_local_azim) << " Pitch=" << osg::RadiansToDegrees(_local_pitch) << std::endl;
 }

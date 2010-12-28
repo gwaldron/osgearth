@@ -444,6 +444,16 @@ namespace osgEarth { namespace Util
             void setArcViewpointTransitions( bool value );
             bool getArcViewpointTransitions() const { return _arc_viewpoints; }
 
+            /** Activates auto-duration for transitioned viewpoints. */
+            void setAutoViewpointDurationEnabled( bool value );
+            bool getAutoViewpointDurationEnabled() const { return _auto_vp_duration; }
+
+            void setAutoViewpointDurationLimits( double minSeconds, double maxSeconds );
+            void getAutoViewpointDurationLimits( double& out_minSeconds, double& out_maxSeconds ) const {
+                out_minSeconds = _min_vp_duration_s;
+                out_maxSeconds = _max_vp_duration_s;
+            }
+
         private:
 
             friend class EarthManipulator;
@@ -478,6 +488,8 @@ namespace osgEarth { namespace Util
 
 			TetherMode _tether_mode;
             bool _arc_viewpoints;
+            bool _auto_vp_duration;
+            double _min_vp_duration_s, _max_vp_duration_s;
         };
 
     public:

@@ -170,7 +170,7 @@ namespace osgEarth { namespace Features
 		/**
 		 * Initialize the FeatureSource.  The profile should be computed and set here using setProfile()
 		 */
-		virtual void initialize( const std::string& referenceURI ) =0; //, const Profile* overrideProfile = NULL) =0;
+		virtual void initialize( const std::string& referenceURI ) =0;
 
     protected:
 

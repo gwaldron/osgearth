@@ -355,7 +355,7 @@ _homeViewpoint( rhs._homeViewpoint.get() ),
 _homeViewpointDuration( rhs._homeViewpointDuration ),
 _after_first_frame( rhs._after_first_frame ),
 _lastPointOnEarth( rhs._lastPointOnEarth ),
-_range_plus( rhs._range_plus )
+_arc_height( rhs._arc_height )
 {
 }
 
@@ -463,7 +463,7 @@ EarthManipulator::reinitialize()
     _local_pitch = 0.0;
     _has_pending_viewpoint = false;
     _lastPointOnEarth.set(0.0, 0.0, 0.0);
-    _range_plus = 0.0;
+    _arc_height = 0.0;
 }
 
 bool
@@ -723,9 +723,8 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
         double h0 = _start_viewpoint.getRange() * sin( osg::DegreesToRadians(-_start_viewpoint.getPitch()) );
         double h1 = vp.getRange() * sin( osg::DegreesToRadians( -vp.getPitch() ) );
         double dh = (h1 - h0);
-        double dh2 = (h1 - h0)/100000.0;
-        _set_viewpoint_accel = fabs(dh2) <= 1.0? 0.0 : dh2 > 0.0? log10( dh2 ) : -log10( -dh2 );
-        if ( fabs( _set_viewpoint_accel ) < 1.0 ) _set_viewpoint_accel = 0.0;
+
+        _arc_height = 0.0;
 
         if ( _settings->getArcViewpointTransitions() )
         {
@@ -746,11 +745,25 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
                 de = _delta_focal_point.length();
             }
          
-            //double h2 = osg::maximum( de - fabs(dh), 0.0 );
-            //double h2 = de;
-            //h2 -= fabs(dh);
-            //h2 = osg::maximum( 0.0, h2 );
-            _range_plus = osg::maximum( de - fabs(dh), 0.0 );
+            _arc_height = osg::maximum( de - fabs(dh), 0.0 );
+        }
+
+        // calculate acceleration coefficients
+        if ( _arc_height > 0.0 )
+        {
+            // if we're arcing, we need seperate coefficients for the up and down stages
+            double h_avg = 2.0*(h0+h1);
+            double dh2_up = fabs(h_avg - h0)/100000.0;
+            _set_viewpoint_accel = log10( dh2_up );
+            double dh2_down = fabs(h_avg - h1)/100000.0;
+            _set_viewpoint_accel_2 = -log10( dh2_down );
+        }
+        else
+        {
+            // on arc => simple unidirectional acceleration:
+            double dh2 = (h1 - h0)/100000.0;
+            _set_viewpoint_accel = fabs(dh2) <= 1.0? 0.0 : dh2 > 0.0? log10( dh2 ) : -log10( -dh2 );
+            if ( fabs( _set_viewpoint_accel ) < 1.0 ) _set_viewpoint_accel = 0.0;
         }
         
         // don't use _time_s_now; that's the time of the last event
@@ -766,7 +779,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 //            << ", dh=" << dh
 //            //<< ", h_delta=" << h_delta
 //            << ", accel = " << _set_viewpoint_accel
-//            << ", rangeplus = " << _range_plus
+//            << ", archeight = " << _arc_height
 ////            << ", dist = " << dist
 //            << std::endl;
 
@@ -850,25 +863,30 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
     }
 }
 
-// a reasonable approximation of cosine interpolation
-static double
-smoothStepInterp( double t ) {
-    return (t*t)*(3.0-2.0*t);
-}
+namespace
+{
+    // a reasonable approximation of cosine interpolation
+    double
+    smoothStepInterp( double t ) {
+        return (t*t)*(3.0-2.0*t);
+    }
 
-static double
-accelerationInterp( double t, double a ) {
-    return a == 0.0? t : a > 0.0? ::pow( t, a ) : 1.0 - ::pow(1.0-t, -a);
-}
+    // rough approximation of pow(x,y)
+    double
+    powFast( double x, double y ) {
+        return x/(x+y-y*x);
+    }
 
+    // accel/decel curve (a < 0 => decel)
+    double
+    accelerationInterp( double t, double a ) {
+        return a == 0.0? t : a > 0.0? powFast( t, a ) : 1.0 - powFast(1.0-t, -a);
+    }
+}
 
 void
 EarthManipulator::updateSetViewpoint()
 {
-    // intiialize the start time:
-    //if ( _time_s_set_viewpoint == 0.0 )
-    //    _time_s_set_viewpoint = _time_s_now;
-
     double t = ( _time_s_now - _time_s_set_viewpoint ) / _set_viewpoint_duration_s;
     double tp = t;
 
@@ -876,6 +894,22 @@ EarthManipulator::updateSetViewpoint()
     {
         t = tp = 1.0;
         _setting_viewpoint = false;
+    }
+    else if ( _arc_height > 0.0 )
+    {
+        if ( tp <= 0.5 )
+        {
+            double t2 = 2.0*tp;
+            t2 = accelerationInterp( t2, _set_viewpoint_accel );
+            tp = 0.5*t2;
+        }
+        else
+        {
+            double t2 = 2.0*(tp-0.5);
+            t2 = accelerationInterp( t2, _set_viewpoint_accel_2 );
+            tp = 0.5+(0.5*t2);
+        }
+        tp = smoothStepInterp( tp );
     }
     else if ( t > 0.0 )
     {
@@ -887,21 +921,19 @@ EarthManipulator::updateSetViewpoint()
         _start_viewpoint.getFocalPoint() + _delta_focal_point * tp,
         _start_viewpoint.getHeading() + _delta_heading * tp,
         _start_viewpoint.getPitch() + _delta_pitch * tp,
-        _start_viewpoint.getRange() + _delta_range * tp + (sin(osg::PI*tp)*_range_plus),
+        _start_viewpoint.getRange() + _delta_range * tp + (sin(osg::PI*tp)*_arc_height),
         _start_viewpoint.getSRS() );
 
-    //OE_NOTICE
-    //    << "t=" << t 
-    //    << ", tp=" << tp
-    //    << ", tsv=" << _time_s_set_viewpoint
-    //    << ", now=" << _time_s_now
-    //    << ", x=" << new_vp.x()
-    //    << ", y=" << new_vp.y()
-    //    << ", z=" << new_vp.z()
-    //    << ", p=" << new_vp.getPitch()
-    //    << ", h=" << new_vp.getHeading()
-    //    << ", r=" << new_vp.getRange()
-    //    << std::endl;
+#if 0
+    OE_INFO
+        << "t=" << t 
+        << ", tp=" << tp
+        << ", tsv=" << _time_s_set_viewpoint
+        << ", now=" << _time_s_now
+        << ", accel=" << _set_viewpoint_accel
+        << ", accel2=" << _set_viewpoint_accel_2
+        << std::endl;
+#endif
 
     setViewpoint( new_vp );
 }

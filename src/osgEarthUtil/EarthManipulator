@@ -779,11 +779,12 @@ namespace osgEarth { namespace Util
 
         bool                    _setting_viewpoint;
         Viewpoint               _start_viewpoint;
-        double                  _delta_heading, _delta_pitch, _delta_range, _range_plus;
+        double                  _delta_heading, _delta_pitch, _delta_range, _arc_height;
         osg::Vec3d              _delta_focal_point;
         double                  _time_s_set_viewpoint;
         double                  _set_viewpoint_duration_s;
         double                  _set_viewpoint_accel;
+        double                  _set_viewpoint_accel_2;
 
         bool                    _after_first_frame;
 

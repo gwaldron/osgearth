@@ -42,9 +42,13 @@ namespace osgEarth { namespace Util
         /** Attached this sky node to a view (placing a sky light). */
         void attach( osg::View* view, int lightNum =0 );
 
-        /** Sets the sun's position as a unit vector. Later we'll replace this with
-            something more interesting, like lat/long or time of day. */
+        /** Sets the sun's position as a unit vector. */
         void setSunPosition( const osg::Vec3& pos );
+
+        /**
+           Sets the sun's position as a latitude and longitude
+           */         
+        void setSunPosition( double latitudeRad, double longitudeRad );
 
     private:
         float _innerRadius, _outerRadius, _sunDistance;
@@ -52,6 +56,8 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Light> _light;
         osg::ref_ptr<osg::Uniform> _lightPosUniform;
         osg::ref_ptr<osg::MatrixTransform> _sunXform;
+
+        osg::ref_ptr< const osg::EllipsoidModel > _ellipsoidModel;
 
         void makeAtmosphere( const osg::EllipsoidModel* );
         void makeSun();

@@ -426,11 +426,11 @@ namespace
 SkyNode::SkyNode( Map* map ) :
 _lightPos( osg::Vec3f(0.0f, 1.0f, 0.0f) )
 {
-    const osg::EllipsoidModel* e = map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
-    _innerRadius = e->getRadiusPolar();
+    _ellipsoidModel =  map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
+    _innerRadius = _ellipsoidModel->getRadiusPolar();
     _outerRadius = _innerRadius * 1.025f;
 
-    makeAtmosphere( e );
+    makeAtmosphere( _ellipsoidModel );
     makeSun();
 }
 
@@ -464,6 +464,18 @@ SkyNode::setSunPosition( const osg::Vec3& pos )
 
     if ( _sunXform.valid() )
         _sunXform->setMatrix( osg::Matrix::translate( _sunDistance * _lightPos.x(), _sunDistance * _lightPos.y(), _sunDistance * _lightPos.z() ) );
+}
+
+void
+SkyNode::setSunPosition( double latitudeRad, double longitudeRad )
+{
+    if (_ellipsoidModel.valid())
+    {
+        double x, y, z;
+        _ellipsoidModel->convertLatLongHeightToXYZ(latitudeRad, longitudeRad, 0, x, y, z);
+        osg::Vec3d up  = _ellipsoidModel->computeLocalUpVector(x, y, z);
+        setSunPosition( up );
+    }
 }
 
 void

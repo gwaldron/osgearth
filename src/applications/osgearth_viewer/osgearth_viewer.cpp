@@ -42,6 +42,30 @@ usage( const std::string& msg )
     return -1;
 }
 
+struct AnimateSunCallback : public osg::NodeCallback
+{
+    AnimateSunCallback():
+_longitude(-180),
+_rate(10)
+    {
+    }
+
+    void operator()( osg::Node* node, osg::NodeVisitor* nv )
+    {
+        SkyNode* skyNode = static_cast<SkyNode*>(node);
+        osg::Timer_t curr_time = osg::Timer::instance()->tick();
+
+        double elapsedTime = osg::Timer::instance()->delta_s(_lastUpdate, curr_time);
+        _longitude += _rate * elapsedTime;
+        skyNode->setSunPosition(0, osg::DegreesToRadians(_longitude));
+        _lastUpdate = curr_time;
+    }
+
+    double _longitude;
+    osg::Timer_t _lastUpdate;
+    double _rate; //Rate in degrees per second
+};
+
 int
 main(int argc, char** argv)
 {
@@ -51,6 +75,7 @@ main(int argc, char** argv)
     bool useGraticule = arguments.read( "--graticule" );
     bool useAutoClip  = arguments.read( "--autoclip" );
     bool useSky       = arguments.read( "--sky" );
+    bool animateSky   = arguments.read( "--animateSky");
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -90,6 +115,10 @@ main(int argc, char** argv)
                 sky->setSunPosition( osg::Vec3(0,-1,0) );
                 sky->attach( &viewer );
                 root->addChild( sky );
+                if (animateSky)
+                {
+                    sky->setUpdateCallback( new AnimateSunCallback());
+                }
             }
         }
     }

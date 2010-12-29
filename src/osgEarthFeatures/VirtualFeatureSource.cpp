@@ -16,9 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthUtil/FeatureSourceMultiplexer>
+#include <osgEarthFeatures/VirtualFeatureSource>
 
-#define LC "[FeatureSourceMultiplexer] "
+#define LC "[VirtualFeatureSource] "
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -109,6 +109,7 @@ void
 VirtualFeatureSource::add( FeatureSource* source, FeaturePredicate* predicate )
 {
     _sources.push_back( FeatureSourceMapping(source, predicate) );
+    dirty();
 }
 
 FeatureCursor* 
@@ -135,11 +136,3 @@ VirtualFeatureSource::createFeatureProfile()
         return 0L;
 }
 
-//------------------------------------------------------------------------
-
-#if 0
-FeatureSourceMultiplexer::FeatureSourceMultiplexer()
-{
-    //NOP
-}
-#endif

@@ -16,15 +16,15 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHUTIL_FEATURE_SOURCE_MULTIPLEXER
-#define OSGEARTHUTIL_FEATURE_SOURCE_MULTIPLEXER
+#ifndef OSGEARTH_FEATURES_VIRTUAL_FEATURE_SOURCE
+#define OSGEARTH_FEATURES_VIRTUAL_FEATURE_SOURCE
 
 #include <osgEarthUtil/Common>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/Layer>
 #include <vector>
 
-namespace osgEarth { namespace Util
+namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Features;
@@ -34,11 +34,12 @@ namespace osgEarth { namespace Util
      * Predicate that tells the multiplexer whether to accept or reject a 
      * feature for a given renderer.
      */
-    struct OSGEARTHUTIL_EXPORT FeaturePredicate : public osg::Referenced
+    struct OSGEARTHFEATURES_EXPORT FeaturePredicate : public osg::Referenced
     {
         virtual bool acceptFeature( Feature* f ) const =0;
     };
 
+    // internal class
     struct FeatureSourceMapping
     {
         FeatureSourceMapping(FeatureSource* fs, FeaturePredicate* fp) : _source(fs), _predicate(fp) { }
@@ -48,7 +49,7 @@ namespace osgEarth { namespace Util
     typedef std::vector<FeatureSourceMapping> FeatureSourceMappingVector;
 
 
-    class OSGEARTHUTIL_EXPORT VirtualFeatureSource : public FeatureSource
+    class OSGEARTHFEATURES_EXPORT VirtualFeatureSource : public FeatureSource
     {
     public:
         /** Construct a new virtual feature source */
@@ -69,26 +70,6 @@ namespace osgEarth { namespace Util
         FeatureSourceMappingVector _sources;
     };
 
-#if 0
-    /**
-     * Multiplexes one or more FeatureSource's into one or more map layers and
-     * labeling groups.
-     */
-    class OSGEARTHUTIL_EXPORT FeatureSourceMultiplexer
-    {
-    public:
-        FeatureSourceMultiplexer();
+} } // namespace osgEarth::Features
 
-        /**
-         * Creates a feature source that pulls features from an original data
-         * source as long as they satisfy the predicate.
-         */
-        VirtualFeatureSource* createVirtualFeatureSource( const std::string& name );
-
-        void add( VirtualFeatureSource* vfs, FeatureSource* src, FeaturePredicate* predicate );
-    };
-#endif
-
-} } // namespace osgEarth::Util
-
-#endif // OSGEARTHUTIL_FEATURE_SOURCE_MULTIPLEXER
+#endif // OSGEARTH_FEATURES_VIRTUAL_FEATURE_SOURCE

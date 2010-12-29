@@ -41,8 +41,8 @@ namespace osgEarth { namespace Features
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        osg::ref_ptr<GriddingPolicy>& gridding() { return _gridding; }
-        const osg::ref_ptr<GriddingPolicy>& gridding() const { return _gridding; }
+        optional<GriddingPolicy>& gridding() { return _gridding; }
+        const optional<GriddingPolicy>& gridding() const { return _gridding; }
 
         optional<Symbology::StyleCatalog>& styles() { return _styles; }
         const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Features
 
         optional<FeatureSourceOptions> _featureOptions;
         optional<Symbology::StyleCatalog> _styles;
-        osg::ref_ptr<GriddingPolicy> _gridding;
+        optional<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
 
@@ -102,6 +102,9 @@ namespace osgEarth { namespace Features
 
 
     public: // properties:
+
+        /** Sets a feature source. */
+        void setFeatureSource( FeatureSource* source );
 
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }

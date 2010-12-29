@@ -32,13 +32,12 @@ using namespace osgEarth::Features;
 #define PROP_CLUSTER_CULLING   "cluster_culling"
 
 GriddingPolicy::GriddingPolicy( const Config& conf ) :
-Configurable(),
 _cellSize( DBL_MAX ),
 _cullingTechnique( GriddingPolicy::CULL_BY_CENTROID ),
 _spatializeGroups( true ),
 _clusterCulling( false )
 {
-    mergeConfig( conf );
+    fromConfig( conf );
 }
 
 Config
@@ -62,7 +61,7 @@ GriddingPolicy::getConfig() const
 }
 
 void
-GriddingPolicy::mergeConfig( const Config& conf )
+GriddingPolicy::fromConfig( const Config& conf )
 {
     conf.getIfSet( PROP_CELL_SIZE, _cellSize );
 
@@ -84,14 +83,14 @@ GriddingPolicy::mergeConfig( const Config& conf )
 /***************************************************************************/
 
 FeatureGridder::FeatureGridder(const Bounds& inputBounds,
-                               const GriddingPolicy* policy ) :
+                               const GriddingPolicy& policy ) :
 _inputBounds( inputBounds ),
-_policy( policy ? new GriddingPolicy( *policy ) : new GriddingPolicy() )
+_policy( policy )
 {
-    if ( _policy.valid() && _policy->cellSize().isSet() && _policy->cellSize().value() > 0.0 )
+    if ( _policy.enabled() ) //_policy.cellSize().isSet() && *_policy.cellSize() > 0.0 )
     {
-        _cellsX = (int)::ceil(_inputBounds.width() / _policy->cellSize().value() );
-        _cellsY = (int)::ceil(_inputBounds.height() / _policy->cellSize().value() );
+        _cellsX = (int)::ceil(_inputBounds.width() / *_policy.cellSize() );
+        _cellsY = (int)::ceil(_inputBounds.height() / *_policy.cellSize() );
     }
     else
     {
@@ -135,10 +134,10 @@ FeatureGridder::getCellBounds( int i, Bounds& output ) const
         int x = i % _cellsX;
         int y = i / _cellsX;
 
-        double xmin = _inputBounds.xMin() + _policy->cellSize().value()  * (double)x;
-        double ymin = _inputBounds.yMin() + _policy->cellSize().value() * (double)y;
-        double xmax = osg::clampBelow( _inputBounds.xMin() + _policy->cellSize().value() * (double)(x+1), _inputBounds.xMax() );
-        double ymax = osg::clampBelow( _inputBounds.yMin() + _policy->cellSize().value() * (double)(y+1), _inputBounds.yMax() );
+        double xmin = _inputBounds.xMin() + _policy.cellSize().value()  * (double)x;
+        double ymin = _inputBounds.yMin() + _policy.cellSize().value() * (double)y;
+        double xmax = osg::clampBelow( _inputBounds.xMin() + *_policy.cellSize() * (double)(x+1), _inputBounds.xMax() );
+        double ymax = osg::clampBelow( _inputBounds.yMin() + *_policy.cellSize() * (double)(y+1), _inputBounds.yMax() );
 
         output = Bounds( xmin, ymin, xmax, ymax );
         return true;
@@ -155,7 +154,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
     Bounds b;
     if ( getCellBounds( i, b ) )
     {
-        if ( _policy->cullingTechnique() == GriddingPolicy::CULL_BY_CENTROID )
+        if ( _policy.cullingTechnique() == GriddingPolicy::CULL_BY_CENTROID )
         {
             for( FeatureList::iterator f_i = features.begin(); f_i != features.end();  )
             {

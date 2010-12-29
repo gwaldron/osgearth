@@ -222,10 +222,10 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
     const GeoExtent& extent = context->getModelSource()->getFeatureSource()->getFeatureProfile()->getExtent();
     const FeatureModelSourceOptions& options = context->getModelSource()->getFeatureModelOptions();
 
-    osg::ref_ptr<GriddingPolicy> gridding = options.gridding().valid() ? options.gridding().get() : new GriddingPolicy();
+    //osg::ref_ptr<GriddingPolicy> gridding = options.gridding().valid() ? options.gridding().get() : new GriddingPolicy();
 
     // next set up a gridder/cropper:
-    FeatureGridder gridder( extent.bounds(), gridding );
+    FeatureGridder gridder( extent.bounds(), *options.gridding() );
 
     if ( gridder.getNumCells() > 1 )
     {
@@ -298,7 +298,7 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
                 // if the method created a node, apply a cluter culler to it if neceesary:
                 if ( createdNode )
                 {
-                    if ( context->getModelSource()->getMap()->isGeocentric() && gridding->clusterCulling() == true )
+                    if ( context->getModelSource()->getMap()->isGeocentric() && options.gridding()->clusterCulling() == true )
                     {
                         const SpatialReference* mapSRS = context->getModelSource()->getMap()->getProfile()->getSRS()->getGeographicSRS();
                         GeoExtent cellExtent( extent.getSRS(), cellBounds );
@@ -347,7 +347,7 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
     }
 
     // run the SpatializeGroups optimization pass on the result
-    if ( options.gridding().valid() && options.gridding()->spatializeGroups() == true )
+    if ( styleGroup && options.gridding()->spatializeGroups() == true )
     {
         OE_NOTICE << context->getModelSource()->getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;

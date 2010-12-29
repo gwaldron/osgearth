@@ -130,6 +130,8 @@ TerrainLayer::init()
 {
     // Warning: don't access getTerrainLayerOptions() here, since it's a virtual function.
 
+    _tileSourceInitialized = false;
+
     _tileSize          = 256;
     _actualCacheFormat = "";
     _actualCacheOnly   = false;
@@ -203,16 +205,25 @@ TerrainLayer::getTileSource() const
 {
     const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
-	//Only load the TileSource if it hasn't been loaded previously and we aren't running strictly off the cache.
-	if ( !_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
-	{
+    if ( (_tileSource.valid() && !_tileSourceInitialized) || (!_tileSource.valid() && _actualCacheOnly == false) )
+    {
         OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
-        //Double check pattern
-        if (!_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
+        // double-check pattern
+        if ( (_tileSource.valid() && !_tileSourceInitialized) || (!_tileSource.valid() && _actualCacheOnly == false) )
         {
             const_cast<TerrainLayer*>(this)->initTileSource();
         }
-	}
+    }
+	////Only load the TileSource if it hasn't been loaded previously and we aren't running strictly off the cache.
+	//if ( !_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
+	//{
+ //       OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
+ //       //Double check pattern
+ //       if (!_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
+ //       {
+ //           const_cast<TerrainLayer*>(this)->initTileSource();
+ //       }
+	//}
     return _tileSource.get();
 }
 
@@ -264,38 +275,41 @@ TerrainLayer::initTileSource()
 
     const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
-    osg::ref_ptr<TileSource> tileSource;
-
-    if ( opt.driver().isSet() )
+    // instantiate it from driver options if it has not already been created:
+    if ( !_tileSource.valid() )
     {
-        tileSource = TileSourceFactory::create( opt.driver().value() );
+        if ( opt.driver().isSet() )
+        {
+            _tileSource = TileSourceFactory::create( opt.driver().value() );
+        }
     }
 
-	//Get the override profile if it is set.
+    // next check for an override-profile. The profile usually comes from the
+    // TileSource itself, but you have the option of overriding:
 	osg::ref_ptr<const Profile> overrideProfile;
 	if ( opt.profile().isSet() )
 	{
 		overrideProfile = Profile::create( opt.profile().value() );
 	}
 
-	if ( tileSource.valid() )
+    // Initialize the profile with the context information:
+	if ( _tileSource.valid() )
 	{
-		// Initialize the TileSource
-		tileSource->initialize( _referenceURI, overrideProfile.get() );
+		_tileSource->initialize( _referenceURI, overrideProfile.get() );
 
-		if ( tileSource->isOK() )
+		if ( _tileSource->isOK() )
 		{
-			_tileSize = tileSource->getPixelsPerTile();
+			_tileSize = _tileSource->getPixelsPerTile();
 		}
 		else
 		{
 	        OE_WARN << "Could not initialize TileSource for layer " << getName() << std::endl;
-            tileSource = NULL;
+            _tileSource = NULL;
 		}
 	}
-	_tileSource = tileSource;
+	//_tileSource = tileSource;
     
-    //Set the cache format to the native format of the TileSource if it isn't already set.
+    // Set the cache format to the native format of the TileSource if it isn't already set.
     _actualCacheFormat = opt.cacheFormat().value();
     if ( _actualCacheFormat.empty() )
     {
@@ -303,11 +317,14 @@ TerrainLayer::initTileSource()
         _cacheSpec = CacheSpec( _cacheSpec.cacheId(), _actualCacheFormat, _cacheSpec.name() );
     }
 
+    // Set the profile from the TileSource if possible:
     if ( _tileSource.valid() )
     {
-        // Set the profile from the TileSource
         _profile = _tileSource->getProfile();
     }
+    
+    // Otherwise, force cache-only mode (since there is no tilesource). The layer will try to 
+    // establish a profile from the metadata in the cache instead.
     else if (_cache.valid())
     {
         OE_NOTICE << "Could not initialize TileSource " << _name << " but cache is valid.  Setting layer to cache_only." << std::endl;
@@ -317,6 +334,8 @@ TerrainLayer::initTileSource()
     // check for a cache-only override.
     if ( _overrideCacheOnly.isSetTo( true ) )
         _actualCacheOnly = true;
+
+    _tileSourceInitialized = true;
 }
 
 bool

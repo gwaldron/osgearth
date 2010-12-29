@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Config>
 #include <osgEarth/Progress>
+#include <osgEarth/Revisioning>
 #include <osg/Referenced>
 
 namespace osgEarth
@@ -74,7 +75,7 @@ namespace osgEarth
     /**
      * A ModelSource is a plugin object that generates OSG nodes.
      */
-    class OSGEARTH_EXPORT ModelSource : public virtual osg::Object
+    class OSGEARTH_EXPORT ModelSource : public virtual Revisioned<osg::Object>
     {
     public:        
         ModelSource( const ModelSourceOptions& options =ModelSourceOptions() );

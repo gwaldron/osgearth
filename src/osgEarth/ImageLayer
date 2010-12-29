@@ -43,7 +43,7 @@ namespace osgEarth
          * Constructs new image layer options, giving a name to the layer and specifying
          * driver options to use.
          */         
-        ImageLayerOptions( const std::string& name, const TileSourceOptions& driverOpt );
+        ImageLayerOptions( const std::string& name, const TileSourceOptions& driverOpt =TileSourceOptions() );
 
 
     public: // properties

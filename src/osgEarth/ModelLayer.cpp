@@ -118,26 +118,42 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 osg::Node*
 ModelLayer::getOrCreateNode( ProgressCallback* progress )
 {
-    if (!_node.valid() && _modelSource.valid())
+    if ( !_nodeContainer.valid() )
+        _nodeContainer = new osg::Group();
+
+    if ( _modelSource.valid() )
     {
-        _node = _modelSource->createNode( progress );
-
-        if ( _options.enabled().isSet() )
-            setEnabled( *_options.enabled() );
-
-        if ( _options.lightingEnabled().isSet() )
-            setLightingEnabled( *_options.lightingEnabled() );
-
-        if ( _modelSource->getOptions().depthTestEnabled() == false )            
+        // if the model source has changed, regenerate the node.
+        if ( _node.valid() && !_modelSource->inSyncWith(_modelSourceRev) )
         {
-            if ( _node )
+            _nodeContainer->removeChild( _node.get() );
+            _node = 0L;
+        }
+
+        if ( !_node.valid() )
+        {
+            _node = _modelSource->createNode( progress );
+
+            if ( _options.enabled().isSet() )
+                setEnabled( *_options.enabled() );
+
+            if ( _options.lightingEnabled().isSet() )
+                setLightingEnabled( *_options.lightingEnabled() );
+
+            if ( _modelSource->getOptions().depthTestEnabled() == false )            
             {
-                osg::StateSet* ss = _node->getOrCreateStateSet();
-                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
-                ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
+                if ( _node )
+                {
+                    osg::StateSet* ss = _node->getOrCreateStateSet();
+                    ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
+                    ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
+                }
             }
+
+            _modelSource->sync( _modelSourceRev );
         }
     }
+
     return _node.get();
 }
 

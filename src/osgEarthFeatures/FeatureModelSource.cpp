@@ -103,6 +103,19 @@ _options( options )
     }
 }
 
+void
+FeatureModelSource::setFeatureSource( FeatureSource* source )
+{
+    if ( !_features.valid() )
+    {
+        _features = source;
+    }
+    else
+    {
+        OE_WARN << LC << "Illegal: cannot set a feature source after one is already set" << std::endl;
+    }
+}
+
 void 
 FeatureModelSource::initialize( const std::string& referenceURI, const osgEarth::Map* map )
 {
@@ -114,7 +127,7 @@ FeatureModelSource::initialize( const std::string& referenceURI, const osgEarth:
     }
     else
     {
-        OE_WARN << LC << "No FeatureSource provided; nothing will be rendered (" << getName() << ")" << std::endl;
+        OE_WARN << LC << "No FeatureSource; nothing will be rendered (" << getName() << ")" << std::endl;
     }
 
     _map = map;
@@ -185,7 +198,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     }
 
     // run the SpatializeGroups optimization pass on the result
-    if ( _options.gridding().valid() && _options.gridding()->spatializeGroups() == true )
+    if ( _options.gridding()->spatializeGroups() == true )
     {
         OE_NOTICE << getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;
@@ -220,12 +233,12 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
     // first we need the overall extent of the layer:
     const GeoExtent& extent = getFeatureSource()->getFeatureProfile()->getExtent();
 
-    osg::ref_ptr<GriddingPolicy> gridding = 
-        _options.gridding().valid() ? _options.gridding().get() :
-        new GriddingPolicy();
+    //GriddingPolicy gridding = _options.gridding();
+    //    _options.gridding().valid() ? _options.gridding().get() :
+    //    new GriddingPolicy();
 
     // next set up a gridder/cropper:
-    FeatureGridder gridder( extent.bounds(), gridding );
+    FeatureGridder gridder( extent.bounds(), *_options.gridding() );
 
     if ( gridder.getNumCells() > 1 )
     {
@@ -298,7 +311,7 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
                 // if the method created a node, apply a cluter culler to it if neceesary:
                 if ( createdNode )
                 {
-                    if ( _map->isGeocentric() && gridding->clusterCulling() == true )
+                    if ( _map->isGeocentric() && _options.gridding()->clusterCulling() == true )
                     {
                         const SpatialReference* mapSRS = _map->getProfile()->getSRS()->getGeographicSRS();
                         GeoExtent cellExtent( extent.getSRS(), cellBounds );

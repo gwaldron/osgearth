@@ -28,6 +28,7 @@ SET(LIB_PUBLIC_HEADERS
     ScaleFilter
 	BuildTextOperator
     TransformFilter
+    VirtualFeatureSource
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
@@ -47,6 +48,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ScaleFilter.cpp
 	BuildTextOperator.cpp
     TransformFilter.cpp
+    VirtualFeatureSource.cpp
 )
 
 

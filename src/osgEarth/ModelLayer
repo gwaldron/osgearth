@@ -36,7 +36,7 @@ namespace osgEarth
     public:        
         ModelLayerOptions( const ConfigOptions& options =ConfigOptions() );
 
-        ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions );
+        ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions =ModelSourceOptions() );
 
         /**
          * The readable name of the layer.
@@ -164,10 +164,13 @@ namespace osgEarth
         //const ModelSourceOptions _driverOptions;
         const ModelLayerOptions _options;
 
+        osg::ref_ptr< osg::Group > _nodeContainer;
         osg::ref_ptr< osg::Node > _node;
 
         optional<bool> _enabled;
         optional<bool> _lighting;
+
+        Revision _modelSourceRev;
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;

@@ -22,6 +22,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/Layer>
+#include <vector>
 
 namespace osgEarth { namespace Util
 {
@@ -29,33 +30,46 @@ namespace osgEarth { namespace Util
     using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
 
-    class FeaturePredicate : public osg::Referenced
+    /**
+     * Predicate that tells the multiplexer whether to accept or reject a 
+     * feature for a given renderer.
+     */
+    struct OSGEARTHUTIL_EXPORT FeaturePredicate : public osg::Referenced
     {
-    public:
         virtual bool acceptFeature( Feature* f ) const =0;
     };
+
+    struct FeatureSourceMapping
+    {
+        FeatureSourceMapping(FeatureSource* fs, FeaturePredicate* fp) : _source(fs), _predicate(fp) { }
+        osg::ref_ptr<FeatureSource>      _source;
+        osg::ref_ptr<FeaturePredicate>   _predicate;
+    };
+    typedef std::vector<FeatureSourceMapping> FeatureSourceMappingVector;
+
 
     class OSGEARTHUTIL_EXPORT VirtualFeatureSource : public FeatureSource
     {
     public:
+        /** Construct a new virtual feature source */
         VirtualFeatureSource() { }
 
+        /**
+         * Adds a feature source/predicate mapping. This FeatureSource will draw
+         * from "source" and filter based on the predicate.
+         */
         void add( FeatureSource* source, FeaturePredicate* predicate );
 
     public: // FeatureSource
         virtual FeatureCursor* createFeatureCursor( const Query& query );
 		virtual void initialize( const std::string& referenceURI );
-        virtual FeatureProfile* createFeatureProfile();
+        virtual const FeatureProfile* createFeatureProfile();
 
     protected:
-        struct Source {
-            osg::ref_ptr<FeatureSource>      _source;
-            osg::ref_ptr<FeaturePredicate>   _predicate;
-        };
-        typedef std::vector<Source> Sources;
-        Sources _sources;
+        FeatureSourceMappingVector _sources;
     };
 
+#if 0
     /**
      * Multiplexes one or more FeatureSource's into one or more map layers and
      * labeling groups.
@@ -72,14 +86,8 @@ namespace osgEarth { namespace Util
         VirtualFeatureSource* createVirtualFeatureSource( const std::string& name );
 
         void add( VirtualFeatureSource* vfs, FeatureSource* src, FeaturePredicate* predicate );
-
-    protected:
-        struct Route {
-            osg::ref_ptr<FeatureSource>      _source;
-            osg::ref_ptr<FeaturePredicate>   _predicate;
-        };
-        typedef std::vector<Route> Routes;
     };
+#endif
 
 } } // namespace osgEarth::Util
 

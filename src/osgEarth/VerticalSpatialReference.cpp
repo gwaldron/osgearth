@@ -32,6 +32,15 @@ using namespace osgEarth;
 VerticalSpatialReference*
 VerticalSpatialReference::create( const std::string& initString )
 {
+    static OpenThreads::Mutex s_mutex;
+    OpenThreads::ScopedLock<OpenThreads::Mutex> exclusiveLock(s_mutex);
+
+    if ( !_geoidRegistry )
+    {
+        // initialize the registry the first time through.
+        registerGeoid( new EGM96Geoid() );
+    }
+
     std::string s = toLower( initString );
 
     GeoidRegistry::const_iterator i = (*_geoidRegistry).find( s );

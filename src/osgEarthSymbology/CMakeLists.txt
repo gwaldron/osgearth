@@ -26,6 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometryRasterizer
     MarkerSymbolizer
     MarkerSymbol
+    MeshSubdivider
     ModelSymbolizer
     Query
     Registry
@@ -52,6 +53,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryRasterizer.cpp
     MarkerSymbolizer.cpp
     MarkerSymbol.cpp
+    MeshSubdivider.cpp
     ModelSymbolizer.cpp
     Query.cpp
     Registry.cpp

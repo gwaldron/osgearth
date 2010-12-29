@@ -1,0 +1,48 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_MESH_SUBDIVIDER
+#define OSGEARTHSYMBOLOGY_MESH_SUBDIVIDER
+
+#include <osgEarthSymbology/Common>
+#include <osg/Geometry>
+
+namespace osgEarth { namespace Symbology
+{
+    class OSGEARTHSYMBOLOGY_EXPORT MeshSubdivider
+    {
+    public:
+        MeshSubdivider(
+            const osg::Matrixd& refMatrix   =osg::Matrixd::identity(),
+            const osg::Matrixd& invRefMatrx =osg::Matrixd::identity() );
+
+        void run(double granurality, osg::Geometry* geom);
+
+        void run(
+            double granularity_radians,
+            osg::ref_ptr<osg::Vec3Array> in_out_verts,
+            osg::ref_ptr<osg::DrawElementsUInt> in_out_indicies );
+
+    protected:
+        osg::Matrixd _refMatrix, _invRefMatrix;
+        bool _useRefs;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_MESH_SUBDIVIDER

@@ -15,6 +15,7 @@ SET(LIB_PUBLIC_HEADERS
     EarthManipulator
     ElevationManager
     Export
+    FeatureSourceMultiplexer
     Graticule
     ObjectPlacer
     ObjectLocator
@@ -31,6 +32,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Controls.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
+    FeatureSourceMultiplexer.cpp
     Graticule.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp

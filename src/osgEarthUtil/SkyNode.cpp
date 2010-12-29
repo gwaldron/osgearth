@@ -159,7 +159,7 @@ namespace
         osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
         el->reserve( latSegments * lonSegments * 6 );
 
-        for( int y = 0; y < latSegments; ++y )
+        for( int y = 0; y <= latSegments; ++y )
         {
             double lat = -90.0 + segmentSize * (double)y;
             for( int x = 0; x < lonSegments; ++x )
@@ -169,10 +169,10 @@ namespace
                 ellipsoid->convertLatLongHeightToXYZ( osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), hae, gx, gy, gz );
                 verts->push_back( osg::Vec3(gx, gy, gz) );
 
-                if ( y < latSegments-1 )
+                if ( y < latSegments )
                 {
                     int x_plus_1 = x < lonSegments-1 ? x+1 : 0;
-                    int y_plus_1 = y+1; //y < latSegments-1 ? y+1 : 0;
+                    int y_plus_1 = y+1;
                     el->push_back( y*lonSegments + x );
                     el->push_back( y*lonSegments + x_plus_1 );
                     el->push_back( y_plus_1*lonSegments + x );

@@ -23,6 +23,7 @@ SET(LIB_PUBLIC_HEADERS
 	CacheSeed
 	Capabilities
     Common
+    CompositeTileSource
     Config
     Cube
     ElevationLayer
@@ -86,6 +87,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Caching.cpp
     CacheSeed.cpp
 	Capabilities.cpp
+    CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
     EGM.cpp

@@ -96,6 +96,12 @@ namespace osgEarth
             const osg::Image* secondary );
 
         /**
+         * Blends the "src" image into the "dest" image, based on the "a" value.
+         * The two images must be the same.
+         */
+        static bool mix( osg::Image* dest, const osg::Image* src, float a );
+
+        /**
          * Creates and returns a copy of the input image after applying a
          * sharpening filter. Returns a new image, leaving the input image unaltered.
          */
@@ -139,29 +145,54 @@ namespace osgEarth
         static bool setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& color);
     };
 
-// An accessor for images that bypasses expensive computations and
-// runtime branching in osg::Image::getColor().
-class OSGEARTH_EXPORT ImageAccessor
-{
- public:
-    ImageAccessor(const osg::Image* image_);
-    // The equivalent of Image::getColor().
-    osg::Vec4 operator()(int s, int t, int r = 0) const
+    /**
+     * Reads color data out of an image, regardles of its internal pixel format.
+     */
+    class OSGEARTH_EXPORT ImageColorReader
     {
-        return (*accessor)(this, s, t, r);
-    }
-    const osg::Image* image;
-    unsigned colMult;
-    unsigned rowMult;
-    unsigned imageSize;
-    const unsigned char* data(int s, int t, int r) const
+    public:
+        ImageColorReader(const osg::Image* image);
+
+        osg::Vec4 operator()(int s, int t, int r = 0) const
+        {
+            return (*_reader)(this, s, t, r);
+        }
+        const osg::Image* _image;
+        unsigned _colMult;
+        unsigned _rowMult;
+        unsigned _imageSize;
+        const unsigned char* data(int s, int t, int r) const {
+            return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+        }
+        typedef osg::Vec4 (*ReaderFunc)(const ImageColorReader* ia, int s, int t, int r);
+        ReaderFunc _reader;
+    };
+    
+    /**
+     * Writes color data to an image, regardles of its internal pixel format.
+     */
+    class OSGEARTH_EXPORT ImageColorWriter
     {
-        return image->data() + s * colMult + t * rowMult + r * imageSize;
-    }
-    typedef osg::Vec4 (*AccessorFunc)(const ImageAccessor* ia, int s,
-                                      int t, int r);
-    AccessorFunc accessor;
-};
+    public:
+        ImageColorWriter(osg::Image* _image);
+
+        void write(int s, int t, int r, const osg::Vec4& c)
+        {
+            (*_writer)(this, s, t, r, c );
+        }
+
+        osg::Image* _image;
+        unsigned _colMult;
+        unsigned _rowMult;
+        unsigned _imageSize;
+
+        unsigned char* data(int s, int t, int r) const {
+            return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+        }
+
+        typedef void (*WriterFunc)(const ImageColorWriter* iw, int s, int t, int r, const osg::Vec4& c);
+        WriterFunc _writer;
+    };
 }
 
 #endif //OSGEARTH_IMAGEUTILS_H

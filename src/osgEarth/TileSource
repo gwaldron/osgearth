@@ -121,6 +121,8 @@ namespace osgEarth
         optional<std::string> _blacklistFilename;
     };
 
+    typedef std::vector<TileSourceOptions> TileSourceOptionsVector;
+
     /**
      * A collection of tiles that should be considered blacklisted
      */
@@ -286,7 +288,7 @@ namespace osgEarth
         /**
          * Whether or not the source has data for the given TileKey
          */
-        virtual bool hasData(const TileKey& key);        
+        virtual bool hasData(const TileKey& key) const;
 
 
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
@@ -349,7 +351,7 @@ namespace osgEarth
     };
 
     
-    typedef std::vector< osg::ref_ptr<TileSource> > TileSourceList;
+    typedef std::vector< osg::ref_ptr<TileSource> > TileSourceVector;
 
     //--------------------------------------------------------------------
 

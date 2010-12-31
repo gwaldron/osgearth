@@ -281,7 +281,7 @@ TileSource::getMinDataLevel() const
 }
 
 bool
-TileSource::hasData(const osgEarth::TileKey& key)
+TileSource::hasData(const osgEarth::TileKey& key) const
 {
     //If no data extents are provided, just return true
     if (_dataExtents.size() == 0) return true;

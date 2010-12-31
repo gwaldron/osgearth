@@ -160,6 +160,9 @@ namespace
      * triangle set, subdivides them according to the granularity threshold, and
      * replaces the data in the Geometry object with the new vertex and primitive
      * data.
+     *
+     * The subdivision algorithm is adapted from http://bit.ly/dTIagq
+     * (c) Copyright 2010 Patrick Cozzi and Deron Ohlarik, MIT License.
      */
     template<typename ITYPE>
     void subdivide(

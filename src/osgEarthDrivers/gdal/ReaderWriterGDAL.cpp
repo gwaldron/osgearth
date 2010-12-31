@@ -457,11 +457,11 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                                             psDatasetProperties[i].nBlockYSize);
         }
         isProxy = true;
-        OE_DEBUG << "GDAL: Using GDALProxyPoolDatasetH" << std::endl;
+        OE_DEBUG << LC << "Using GDALProxyPoolDatasetH" << std::endl;
 
 #else // !GDAL_VERSION_1_6_OR_NEWER
 
-        OE_DEBUG << "GDAL: Using GDALDataset, no proxy support enabled" << std::endl;
+        OE_DEBUG << LC << "Using GDALDataset, no proxy support enabled" << std::endl;
         //Just open the dataset
         GDALDatasetH hDS = (GDALDatasetH)GDALOpen(dsFileName, GA_ReadOnly);
         isProxy = false;
@@ -660,7 +660,7 @@ public:
 
         if ( !_options.url().isSet() || _options.url()->empty() )
         {
-            OE_WARN << "GDAL: No URL or directory specified " << std::endl;
+            OE_WARN << LC << "No URL or directory specified " << std::endl;
             return;
         }
 
@@ -684,20 +684,20 @@ public:
         tokenize( _options.extensions().value(), exts, ";");
         for (unsigned int i = 0; i < exts.size(); ++i)
         {
-            OE_DEBUG << "GDAL: Using Extension: " << exts[i] << std::endl;
+            OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
         }
         std::vector<std::string> files;
         getFiles(path, exts, files);
 
-        OE_INFO << "GDAL: Driver found " << files.size() << " files:" << std::endl;
+        OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
         for (unsigned int i = 0; i < files.size(); ++i)
         {
-            OE_INFO << "GDAL: " << files[i] << std::endl;
+            OE_INFO << LC << "" << files[i] << std::endl;
         }
 
         if (files.empty())
         {
-            OE_WARN << "GDAL: Could not find any valid files " << std::endl;
+            OE_WARN << LC << "Could not find any valid files " << std::endl;
             return;
         }
 
@@ -718,7 +718,7 @@ public:
             _srcDS = (GDALDataset*)GDALOpen( files[0].c_str(), GA_ReadOnly );
             if ( !_srcDS )
             {
-                OE_WARN << "GDAL: Failed to open dataset " << files[0] << std::endl;
+                OE_WARN << LC << "Failed to open dataset " << files[0] << std::endl;
                 return;
             }
         }
@@ -755,7 +755,7 @@ public:
 
             if ( !src_srs.valid() )
             {
-                OE_WARN << "GDAL: Dataset has no spatial reference information: " << path << std::endl;
+                OE_WARN << LC << "Dataset has no spatial reference information: " << path << std::endl;
                 return;
             }
         }
@@ -856,7 +856,7 @@ public:
             pixelToGeo(_warpedDS->GetRasterXSize(), 0.0, _extentsMax.x(), _extentsMax.y());
         }
 
-        OE_INFO << "GDAL: Geo extents: " << _extentsMin.x() << ", " << _extentsMin.y() << " => " << _extentsMax.x() << ", " << _extentsMax.y() << std::endl;
+        OE_INFO << LC << "Geo extents: " << _extentsMin.x() << ", " << _extentsMin.y() << " => " << _extentsMax.x() << ", " << _extentsMax.y() << std::endl;
 
         if ( !profile )
         {
@@ -865,7 +865,7 @@ public:
                 //_warpedDS->GetProjectionRef(),
                 _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
 
-            OE_INFO << "GDAL: " << path << " is projected, SRS = " 
+            OE_INFO << LC << "" << path << " is projected, SRS = " 
                 << warpedSRSWKT << std::endl;
                 //<< _warpedDS->GetProjectionRef() << std::endl;
         }
@@ -876,7 +876,7 @@ public:
 
 		double maxResolution = osg::minimum(resolutionX, resolutionY);
 
-        OE_INFO << "GDAL: Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
+        OE_INFO << LC << "Resolution= " << resolutionX << "x" << resolutionY << " max=" << maxResolution << std::endl;
 
         if (_options.maxDataLevel().isSet())
         {
@@ -900,7 +900,7 @@ public:
                 }
             }
 
-            OE_INFO << "GDAL: Max Data Level: " << _maxDataLevel << std::endl;
+            OE_INFO << LC << "Max Data Level: " << _maxDataLevel << std::endl;
         }
 
         // record the data extent in profile space:
@@ -911,7 +911,7 @@ public:
 
         getDataExtents().push_back( DataExtent(profile_extent, 0, _maxDataLevel) );
         
-        OE_INFO << "GDAL: Data Extents: " << profile_extent.toString() << std::endl;
+        OE_INFO << LC << "Data Extents: " << profile_extent.toString() << std::endl;
 
 		//Set the profile
 		setProfile( profile );
@@ -943,7 +943,7 @@ public:
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
-            OE_DEBUG << "GDAL: " << getName() << ": Reached maximum data resolution key=" 
+            OE_DEBUG << LC << "" << getName() << ": Reached maximum data resolution key=" 
                 << key.getLevelOfDetail() << " max=" << _maxDataLevel <<  std::endl;
             return NULL;
         }
@@ -1002,7 +1002,7 @@ public:
                 off_y = 0;
             }
 
-            OE_DEBUG << "GDAL: ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
+            OE_DEBUG << LC << "ReadWindow " << width << "x" << height << " DestWindow " << target_width << "x" << target_height << std::endl;
 
             //Return if parameters are out of range.
             if (width <= 0 || height <= 0 || target_width <= 0 || target_height <= 0)
@@ -1219,7 +1219,7 @@ public:
             else
             {
                 OE_WARN 
-                    << "GDAL: Could not find red, green and blue bands or gray bands in "
+                    << LC << "Could not find red, green and blue bands or gray bands in "
                     << _options.url().value()
                     << ".  Cannot create image. " << std::endl;
 

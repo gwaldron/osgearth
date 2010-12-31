@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthSymbology/Text>
+#include <osgEarthSymbology/MeshSubdivider>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
@@ -28,6 +29,7 @@
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
+#include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -52,6 +54,7 @@ namespace
 
 BuildGeometryFilter::BuildGeometryFilter() :
 _style( new Style() ),
+_maxAngle_deg( 10.0 ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN )
 {
     reset();
@@ -208,13 +211,15 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         }
         
         osg::Geometry* osgGeom = new osg::Geometry();
+
         osgGeom->setUseVertexBufferObjects( true );
         osgGeom->setUseDisplayList( false );
 
-        osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0] = color;
-        osgGeom->setColorArray( colors );
-        osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+        if ( setWidth && width != 1.0f )
+        {
+            osgGeom->getOrCreateStateSet()->setAttributeAndModes(
+                new osg::LineWidth( width ), osg::StateAttribute::ON );
+        }
         
         if ( renderType == Geometry::TYPE_POLYGON && part->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(part)->getHoles().size() > 0 )
         {
@@ -242,12 +247,6 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
         }
 
-        if ( setWidth && width != 1.0f )
-        {
-            osgGeom->getOrCreateStateSet()->setAttributeAndModes(
-                new osg::LineWidth( width ), osg::StateAttribute::ON );
-        }
-
         // tessellate all polygon geometries. Tessellating each geometry separately
         // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
         // using TESS_TYPE_DRAWABLE.
@@ -258,7 +257,24 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
             tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
             tess.retessellatePolygons( *osgGeom );
+
+            // apply the triangle subdivision if necessary:
+            if ( context.isGeocentric() )
+            {
+                double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+
+                MeshSubdivider ms( context.referenceFrame(), context.inverseReferenceFrame() );
+                //ms.setMaxElementsPerEBO( INT_MAX );
+                ms.run( threshold, *osgGeom );
+            }
         }
+
+        // set the color array. We have to do this last, otherwise it screws up any modifications
+        // make by the MeshSubdivider. No idea why. gw
+        osg::Vec4Array* colors = new osg::Vec4Array(1);
+        (*colors)[0] = color;
+        osgGeom->setColorArray( colors );
+        osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         // add the part to the geode.
         _geode->addDrawable( osgGeom );

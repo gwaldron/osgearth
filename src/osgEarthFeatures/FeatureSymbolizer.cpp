@@ -24,6 +24,8 @@
 #include <osg/ClusterCullingCallback>
 #include <osgUtil/Optimizer>
 
+#define LC "[FeatureSymbolizer] "
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -349,7 +351,7 @@ osg::Group* GridFeatureSymbolizer::gridAndCreateNodeForStyle(
     // run the SpatializeGroups optimization pass on the result
     if ( styleGroup && options.gridding()->spatializeGroups() == true )
     {
-        OE_NOTICE << context->getModelSource()->getName() << ": running spatial optimization" << std::endl;
+        //OE_INFO << LC << context->getModelSource()->getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;
         optimizer.optimize( styleGroup, osgUtil::Optimizer::SPATIALIZE_GROUPS );
     }

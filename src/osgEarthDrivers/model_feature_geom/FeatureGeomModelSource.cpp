@@ -47,8 +47,6 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
-#define PROP_HEIGHT_OFFSET "height_offset"
-
 class FeatureGeomModelSource;
 
 //------------------------------------------------------------------------
@@ -138,8 +136,14 @@ public:
 
         // Build geometry:
         BuildGeometryFilter build;
+
+        // apply a type change:
         if ( _options.geometryTypeOverride().isSet() )
             build.geomTypeOverride() = *_options.geometryTypeOverride();
+
+        // subdivide geocentric geometry as required:
+        if ( _options.maxTriangleSize().isSet() )
+            build.maxTriangleSize() = *_options.maxTriangleSize();
 
         osg::ref_ptr<osg::Node> result;
         build.setStyle( style );

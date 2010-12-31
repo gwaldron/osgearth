@@ -50,6 +50,10 @@ namespace osgEarth { namespace Features
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
 
+        /** Maximum span of a generated triangle, in degrees. For geocentric maps only */
+        optional<double>& maxTriangleSize() { return _maxTriangleSize_deg; }
+        const optional<double>& maxTriangleSize() const { return _maxTriangleSize_deg; }
+
         optional<bool>& enableLighting() { return _lit; }
         const optional<bool>& enableLighting() const { return _lit; }
 
@@ -77,6 +81,7 @@ namespace osgEarth { namespace Features
         optional<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
+        optional<double> _maxTriangleSize_deg;
 
         osg::ref_ptr<FeatureSource> _featureSource;
     };

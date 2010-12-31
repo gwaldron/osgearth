@@ -50,6 +50,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "styles", _styles );
     conf.getObjIfSet( "gridding", _gridding );
     conf.getIfSet( "lighting", _lit );
+    conf.getIfSet( "max_triangle_size", _maxTriangleSize_deg );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -69,6 +70,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "gridding", _gridding );
     conf.updateObjIfSet( "styles", _styles );
     conf.updateIfSet( "lighting", _lit );
+    conf.updateIfSet( "max_triangle_size", _maxTriangleSize_deg );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
@@ -200,7 +202,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     // run the SpatializeGroups optimization pass on the result
     if ( _options.gridding()->spatializeGroups() == true )
     {
-        OE_NOTICE << getName() << ": running spatial optimization" << std::endl;
+        OE_INFO << LC << getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;
         optimizer.optimize( group, osgUtil::Optimizer::SPATIALIZE_GROUPS );
     }
@@ -216,7 +218,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
     osg::Timer_t end = osg::Timer::instance()->tick();
 
-    OE_INFO << "Layer " << getName() << ", time to compile styles = " << 
+    OE_INFO << LC << "Layer " << getName() << ", time to compile styles = " << 
         osg::Timer::instance()->delta_s( start, end ) << "s" << std::endl;
 
     return group;

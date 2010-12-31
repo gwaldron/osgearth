@@ -5,7 +5,7 @@ This one demonstrates how to read feature data from a shapefile and "drape" it
 on the map using the overlay technique.
 -->
 
-<map name="Feature Stencil Demo" type="geocentric" version="2">
+<map name="Feature Overlay Demo" type="geocentric" version="2">
     
     <options lighting="false"/>
 
@@ -14,19 +14,12 @@ on the map using the overlay technique.
     </image>
     
     <overlay name="countries" driver="feature_geom">
-
-        <!-- Configure the OGR feature driver to read the shapefile.
-             Applying a slight negative buffer will "erode" the
-             shapes, highlighting the borders between countries. -->
                           
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
-            <ogr_driver>ESRI Shapefile</ogr_driver>
             <buffer distance="-0.05"/>
-            <resample min_length="0" max_length="0.1"/>
+            <resample min_length="0" max_length="0.5"/>
         </features>
-        
-        <!-- Define a feature style class for each category: -->
         
         <styles>
         
@@ -36,19 +29,19 @@ on the map using the overlay technique.
                    fill-opacity: 0.4;
                 }       
                 p2 {
-                   fill: #fad155;
+                   fill: #80ffff;
                    fill-opacity: 0.4;
                 }   
                 p3 {
-                   fill: #f2a82f;
+                   fill: #ff80ff;
                    fill-opacity: 0.4;
                 }       
                 p4 {
-                   fill: #b3520d;
+                   fill: #ff8080;
                    fill-opacity: 0.4;
                 }     
                 p5 {
-                   fill: #6a0000;
+                   fill: #80ff80;
                    fill-opacity: 0.4;
                 }                                      
             </style>

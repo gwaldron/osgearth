@@ -153,8 +153,11 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
         osg::Image* result = new osg::Image( *images[0].get() );
         for( int i=1; i<images.size(); ++i )
         {
-            float opacity = 1.0f; // todo: this should be the layer opacity....
-            ImageUtils::mix( result, images[i].get(), opacity );
+            if ( images[i].valid() )
+            {
+                float opacity = 1.0f; // todo: this should be the layer opacity....
+                ImageUtils::mix( result, images[i].get(), opacity );
+            }
         }
         return result;
     }

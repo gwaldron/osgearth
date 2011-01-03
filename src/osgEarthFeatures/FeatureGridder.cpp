@@ -103,13 +103,13 @@ _policy( policy )
 
 #ifndef OSGEARTH_HAVE_GEOS
 
-    if ( _policy.valid() && _policy->cullingTechnique().isSet() && _policy->cullingTechnique() == GriddingPolicy::CULL_BY_CROPPING )
+    if ( _policy.cullingTechnique().isSetTo( GriddingPolicy::CULL_BY_CROPPING ) )
     {
         OE_WARN 
             << "Warning: Gridding policy 'cull by cropping' requires GEOS. Falling back on 'cull by centroid'." 
             << std::endl;
 
-        _policy->cullingTechnique() = GriddingPolicy::CULL_BY_CENTROID;
+        _policy.cullingTechnique() = GriddingPolicy::CULL_BY_CENTROID;
     }
 
 #endif // !OSGEARTH_HAVE_GEOS
@@ -227,90 +227,3 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
     return success;
 }
 
-
-
-//bool
-//FeatureGridder::getCell( int i, FeatureList& output ) const
-//{
-//    bool success = true;
-//
-//#ifdef OSGEARTH_HAVE_GEOS
-//
-//    if ( i >= 0 && i < (_cellsX*_cellsY) )
-//    {
-//        int x = i % _cellsX;
-//        int y = i / _cellsX;
-//
-//        double xmin = _inputBounds.xMin() + _cellWidth  * (double)x;
-//        double ymin = _inputBounds.yMin() + _cellHeight * (double)y;
-//        double xmax = osg::clampBelow( _inputBounds.xMin() + _cellWidth  * (double)(x+1), _inputBounds.xMax() );
-//        double ymax = osg::clampBelow( _inputBounds.yMin() + _cellHeight * (double)(y+1), _inputBounds.yMax() );
-//
-//        Bounds cx( xmin, ymin, xmax, ymax );
-//
-//        geom::GeometryFactory* f = new geom::GeometryFactory();
-//
-//        // create the intersection polygon:
-//        osg::ref_ptr<Polygon> poly = new Polygon( 4 );
-//        poly->push_back( osg::Vec3d( xmin, ymin, 0 ) );
-//        poly->push_back( osg::Vec3d( xmax, ymin, 0 ) );
-//        poly->push_back( osg::Vec3d( xmax, ymax, 0 ) );
-//        poly->push_back( osg::Vec3d( xmin, ymax, 0 ) );
-//        geom::Geometry* cropGeom = GEOSUtils::importGeometry( poly.get() );
-//
-//        // intersect it with each feature:
-//        int count =0;
-//        FeatureList::const_iterator f_i = _input.begin();
-//        std::list<void*>::const_iterator g_i = _geosGeoms.begin();
-//        for( ; f_i != _input.end(); ++f_i, ++g_i )
-//        {
-//            Feature* feature = f_i->get();
-//            geom::Geometry* inGeom = static_cast<geom::Geometry*>( *g_i );
-//            Geometry* featureGeom = 0L;
-//            if ( inGeom )
-//            {            
-//                geom::Geometry* outGeom = 0L;
-//                try {
-//                    outGeom = overlay::OverlayOp::overlayOp(
-//                        inGeom, cropGeom,
-//                        overlay::OverlayOp::opINTERSECTION );
-//                }
-//                catch( ... ) {
-//                    outGeom = 0L;
-//                    OE_NOTICE << "Feature gridder, GEOS overlay op exception, skipping feature" << std::endl;
-//                }
-//                    
-//                if ( outGeom )
-//                {
-//                    featureGeom = GEOSUtils::exportGeometry( outGeom );
-//                    f->destroyGeometry( outGeom );
-//                    if ( featureGeom && featureGeom->isValid() )
-//                    {
-//                        Feature* newFeature = osg::clone<Feature>( feature, osg::CopyOp::DEEP_COPY_ALL );
-//                        newFeature->setGeometry( featureGeom );
-//                        output.push_back( newFeature );
-//                        count++;
-//                    }
-//                }
-//            }
-//        }
-//
-//        // clean up
-//        f->destroyGeometry( cropGeom );
-//        delete f;
-//
-//        OE_NOTICE
-//            << "Grid cell " << i << ": " << count << " features; bounds="
-//            << xmin << "," << ymin << " => " << xmax << "," << ymax
-//            << std::endl;
-//    }
-//
-//#else // OSGEARTH_HAVE_GEOS
-//
-//    output = _input;
-//
-//#endif // OSGEARTH_HAVE_GEOS
-//
-//    return success;
-//}
-//

@@ -1,0 +1,333 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#include <osgEarth/CompositeTileSource>
+#include <osgEarth/ImageUtils>
+#include <osgDB/FileNameUtils>
+
+#define LC "[CompositeTileSource] "
+
+using namespace osgEarth;
+
+//------------------------------------------------------------------------
+
+CompositeTileSourceOptions::CompositeTileSourceOptions( const TileSourceOptions& options ) :
+TileSourceOptions( options )
+{
+    setDriver( "composite" );
+    fromConfig( _conf );
+}
+
+void
+CompositeTileSourceOptions::add( const TileSourceOptions& options )
+{
+    Component c;
+    c._tileSourceOptions = options;
+    _components.push_back( c );
+}
+
+void
+CompositeTileSourceOptions::add( TileSource* source )
+{
+    Component c;
+    c._tileSourceInstance = source;
+    _components.push_back( c );
+}
+
+void
+CompositeTileSourceOptions::add( const ImageLayerOptions& options )
+{
+    Component c;
+    c._imageLayerOptions = options;
+    _components.push_back( c );
+}
+
+void
+CompositeTileSourceOptions::add( TileSource* source, const ImageLayerOptions& options )
+{
+    Component c;
+    c._tileSourceInstance = source;
+    c._imageLayerOptions = options;
+}
+
+Config 
+CompositeTileSourceOptions::getConfig() const
+{
+    Config conf = TileSourceOptions::getConfig();
+
+    for( ComponentVector::const_iterator i = _components.begin(); i != _components.end(); ++i )
+    {
+        if ( i->_imageLayerOptions.isSet() )
+            conf.add( "image", i->_imageLayerOptions->getConfig() );
+        else if ( i->_tileSourceOptions.isSet() )
+            conf.add( "image", i->_tileSourceOptions->getConfig() );
+    }
+
+    return conf;
+}
+
+void 
+CompositeTileSourceOptions::mergeConfig( const Config& conf )
+{
+    TileSourceOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
+void 
+CompositeTileSourceOptions::fromConfig( const Config& conf )
+{
+    const ConfigSet& children = conf.children("image");
+    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+    {
+        add( ImageLayerOptions( *i ) );
+    }
+}
+
+//------------------------------------------------------------------------
+
+CompositeTileSource::CompositeTileSource( const TileSourceOptions& options ) :
+_options( options ),
+_initialized( false )
+{
+    for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin(); 
+        i != _options._components.end(); )
+
+    {
+        if ( i->_imageLayerOptions.isSet() )
+        {
+            if ( i->_imageLayerOptions->driver().isSet() )
+                i->_tileSourceOptions = i->_imageLayerOptions->driver().value();
+
+            _tileProcessor->init( i->_imageLayerOptions.value() );
+        }
+
+        if ( i->_tileSourceOptions.isSet() )
+        {
+            if ( !i->_tileSourceInstance->valid() )
+                i->_tileSourceInstance = TileSourceFactory::create( i->_tileSourceOptions.value() );
+            
+            if ( !i->_tileSourceInstance->valid() )
+                OE_WARN << LC << "Could not find a TileSource for driver [" << i->_tileSourceOptions->getDriver() << "]" << std::endl;
+        }
+
+        if ( !i->_tileSourceInstance->valid() )
+        {
+            OE_WARN << LC << "A component has no valid TileSource ... removing." << std::endl;
+            i = _options._components.erase( i );
+        }
+        else
+        {
+            ++i;
+        }
+    }
+}
+
+namespace
+{
+    // some helper types.
+    typedef std::pair< osg::ref_ptr<osg::Image>, float> ImageOpacityPair;
+    typedef std::vector<ImageOpacityPair> ImageMixVector;
+}
+
+osg::Image*
+CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress )
+{
+    int tileSize = getPixelsPerTile();
+
+    ImageMixVector images;
+    images.reserve( _options._components.size() );
+
+    //std::vector< osg::ref_ptr<osg::Image> > images;
+    //images.reserve( _options._components.size() );
+
+    for(CompositeTileSourceOptions::ComponentVector::const_iterator i = _options._components.begin();
+        i != _options._components.end();
+        ++i )
+    {
+        TileSource* source = i->_tileSourceInstance->get();
+        if ( source )
+        {
+            if ( !source->getBlacklist()->contains( key.getTileId() ) )
+            {
+                //Only try to get data if the source actually has data
+                if ( source->hasData( key ) )
+                {
+                    ImageOpacityPair imagePair( 0L, 1.0f );
+
+                    source->getImage( key, imagePair.first, progress );
+
+                    //If the image is not valid and the progress was not cancelled, blacklist
+                    if (!imagePair.first.valid() && (!progress || !progress->isCanceled()))
+                    {
+                        //Add the tile to the blacklist
+                        OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
+                        source->getBlacklist()->add( key.getTileId() );
+                    }
+
+                    if ( imagePair.first.valid() )
+                    {
+                        if ( _tileProcessor.isSet() )
+                        {
+                            // apply image processing:
+                            _tileProcessor->process( imagePair.first );
+                        
+                            // check for opacity:
+                            imagePair.second = i->_imageLayerOptions.isSet() ? i->_imageLayerOptions->opacity().value() : 1.0f;
+                        }
+
+                        images.push_back( imagePair );
+                    }
+                }
+                else
+                {
+                    OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
+                }
+            }
+            else
+            {
+                OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
+            }
+        }
+    }
+
+#if 0
+    for( TileSourceVector::iterator i = _sources.begin(); i != _sources.end(); ++i )
+    {
+        TileSource* source = i->get();
+
+        if ( !source->getBlacklist()->contains( key.getTileId() ) )
+        {
+            //Only try to get data if the source actually has data
+            if ( source->hasData( key ) )
+            {
+                osg::ref_ptr<osg::Image> image;
+                source->getImage( key, image, progress );
+
+                //If the image is not valid and the progress was not cancelled, blacklist
+                if (!image.valid() && (!progress || !progress->isCanceled()))
+                {
+                    //Add the tile to the blacklist
+                    OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
+                    source->getBlacklist()->add( key.getTileId() );
+                }
+
+                if ( image.valid() )
+                    images.push_back( image.get() );
+            }
+            else
+            {
+                OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
+            }
+        }
+        else
+        {
+            OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
+        }
+    }
+#endif
+
+    if ( images.size() == 0 )
+    {
+        return 0L;
+    }
+    else if ( images.size() == 1 )
+    {
+        return images[0].first.get();
+    }
+    else
+    {
+        osg::Image* result = new osg::Image( *images[0].first.get() );
+        for( int i=1; i<images.size(); ++i )
+        {
+            ImageOpacityPair& pair = images[i];
+            if ( pair.first.valid() )
+            {
+                ImageUtils::mix( result, pair.first.get(), pair.second );
+            }
+        }
+        return result;
+    }
+}
+
+void
+CompositeTileSource::initialize( const std::string& referenceURI, const Profile* overrideProfile )
+{
+    osg::ref_ptr<const Profile> profile = overrideProfile;
+
+    for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin();
+        i != _options._components.end();
+        ++i)
+    {
+        TileSource* source = i->_tileSourceInstance.get();
+        if ( source )
+        {
+            osg::ref_ptr<const Profile> localOverrideProfile = overrideProfile;
+
+            const TileSourceOptions& opt = source->getOptions();
+            if ( opt.profile().isSet() )
+                localOverrideProfile = Profile::create( opt.profile().value() );
+
+            source->initialize( referenceURI, localOverrideProfile.get() );
+
+            if ( !profile.valid() )
+            {
+                // assume the profile of the first source to be the overall profile.
+                profile = source->getProfile();
+            }
+            else if ( !profile->isEquivalentTo( source->getProfile() ) )
+            {
+                // if sub-sources have different profiles, print a warning because this is
+                // not supported!
+                OE_WARN << LC << "Components with differing profiles are not supported. " 
+                    << "Visual anomalies may result." << std::endl;
+            }
+
+        }
+    }
+
+    setProfile( profile.get() );
+
+    _initialized = true;
+}
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    struct CompositeTileSourceDriver : public TileSourceDriver
+    {
+        CompositeTileSourceDriver()
+        {
+            supportsExtension( "osgearth_composite", "Composite tile source driver" );
+        }
+
+        virtual const char* className()
+        {
+            return "CompositeTileSourceDriver";
+        }
+
+        virtual ReadResult readObject(const std::string& file_name, const Options* options) const
+        {
+            if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
+                return ReadResult::FILE_NOT_HANDLED;
+
+            return new CompositeTileSource( getTileSourceOptions(options) );
+        }
+    };
+}
+REGISTER_OSGPLUGIN(osgearth_composite, CompositeTileSourceDriver)

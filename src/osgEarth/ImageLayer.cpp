@@ -120,6 +120,86 @@ ImageLayerOptions::getConfig() const
 
     return conf;
 }
+//------------------------------------------------------------------------
+
+ImageLayerTileProcessor::ImageLayerTileProcessor( const ImageLayerOptions& options )
+{
+    init( options );
+}
+
+void
+ImageLayerTileProcessor::init( const ImageLayerOptions& options )
+{
+    _options = options;
+
+    _chromaKey.set(
+        _options.transparentColor()->r() / 255.0f,
+        _options.transparentColor()->g() / 255.0f,
+        _options.transparentColor()->b() / 255.0f,
+        1.0 );
+
+    if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
+    {
+        //OE_INFO << "Setting nodata image to \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
+        _noDataImage = osgDB::readImageFile( _options.noDataImageFilename().value() );
+        if ( !_noDataImage.valid() )
+        {
+            OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
+        }
+    }
+}
+
+void
+ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
+{
+    if ( !image.valid() )
+        return;
+
+    // Check to see if the image is the nodata image
+    if ( _noDataImage.valid() )
+    {
+        if (ImageUtils::areEquivalent(image.get(), _noDataImage.get()))
+        {
+            //OE_DEBUG << LC << "Found nodata" << std::endl;
+            image = 0L;
+            return;
+        }
+    }
+
+    // Apply a transparent color mask if one is specified
+    if ( _options.transparentColor().isSet() && ImageUtils::hasAlphaChannel(image.get()) )
+    {
+        //TODO - in order to convert this image to RGBA8, we need to upgrade the
+        // caching system to return (const Image*) data. Each TileSource currently has
+        // a MemCache to support mosaicing, but does not return const references and
+        // therefore allows the caller to alter cached data. We need to fix that
+        // before doign anything like this. -gw
+
+        if ( !ImageUtils::hasAlphaChannel(image.get()) )
+        {
+            // if the image doesn't have an alpha channel, we must convert it to
+            // a format that does before continuing.
+            image = ImageUtils::convertToRGBA8( image.get() );
+        }
+    
+        struct ApplyChromaKey : public ImageUtils::PixelVisitor
+        {
+            osg::Vec4f _chromaKey;
+            ApplyChromaKey( const osg::Vec4f& chromaKey ) : _chromaKey(chromaKey) { }
+
+            bool operator()( osg::Vec4f& pixel ) {
+                if ( ImageUtils::areRGBEquivalent( pixel, _chromaKey ) ) {
+                    pixel.a() = 0.0f;
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        ApplyChromaKey visitor(_chromaKey);
+        visitor.accept( image.get() );
+    }
+}
 
 //------------------------------------------------------------------------
 
@@ -147,11 +227,11 @@ _options( options )
 void
 ImageLayer::init()
 {
-    _prevGamma = 1.0f;
+//    _prevGamma = 1.0f;
 
     // intialize the runtime actuals from the initialization options:
     _actualOpacity = _options.opacity().value();
-    _actualGamma   = _options.gamma().value();
+    //_actualGamma   = _options.gamma().value();
 
     //TODO: probably should graduate this to the superclass.
     _actualEnabled = _options.enabled().value();
@@ -211,6 +291,9 @@ ImageLayer::initTileSource()
     // call superclass first.
     TerrainLayer::initTileSource();
 
+    _tileProcessor.init( _options );
+
+#if 0
     if ( _tileSource.valid() && _tileSource->isOK() )
     {
         if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
@@ -223,6 +306,7 @@ ImageLayer::initTileSource()
             }
         }
     }
+#endif
 }
 
 void
@@ -537,8 +621,6 @@ ImageLayer::createImageWrapper(const TileKey& key,
                                osg::ref_ptr<osg::Image>& out_image,
                                ProgressCallback* progress )
 {
-	osg::ref_ptr<osg::Image> image;
-
     if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
     {
 		if ( _cache->getImage( key, _cacheSpec, out_image ) )
@@ -547,11 +629,8 @@ ImageLayer::createImageWrapper(const TileKey& key,
             return true;
     	}
     }
-    
-    //TileSource* source = 0L;
 
-    //if ( _actualCacheOnly == false )
-    //    source = getTileSource();
+    osg::ref_ptr<osg::Image> image;
 
 	if ( !_actualCacheOnly )
 	{
@@ -589,39 +668,10 @@ ImageLayer::createImageWrapper(const TileKey& key,
             OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
         }
 
-		//Check to see if the image is the nodata image
-		if (image.valid() && _noDataImage.valid() )
-		{
-			if (ImageUtils::areEquivalent(image.get(), _noDataImage.get()))
-			{
-				OE_DEBUG << LC << "Found nodata for " << key.str() << std::endl;
-				image = 0L;
-			}
-		}
+        // Post-process the tile:
+        _tileProcessor.process( image );
 
-		//Apply a transparent color mask if one is specified
-        if (image.valid() && _options.transparentColor().isSet() )
-		{
-            const osg::Vec4ub& chroma = _options.transparentColor().get();
-
-			for (unsigned int row = 0; row < image->t(); ++row)
-			{
-				for (unsigned int col = 0; col < image->s(); ++col)
-				{
-					unsigned char r = image->data(col, row)[0];
-					unsigned char g = image->data(col, row)[1];
-					unsigned char b = image->data(col, row)[2];
-
-					if (r == chroma.r() &&
-						g == chroma.g() &&
-						b == chroma.b())
-					{
-						image->data(col,row)[3] = 0;
-					}
-				}
-			}
-		}
-
+        // Cache is necessary:
         if (image.valid() && _cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
 		{
 			_cache->setImage( key, _cacheSpec, image.get() );

@@ -691,7 +691,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
-    ImageAccessor ra(result);
+    ImageUtils::PixelReader ra(result);
     const double dx = dest_extent.width() / (double)width;
     const double dy = dest_extent.height() / (double)height;
 
@@ -715,7 +715,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     // Next, go through the source-SRS sample grid, read the color at each point from the source image,
     // and write it to the corresponding pixel in the destination image.
     int pixel = 0;
-    ImageAccessor ia(image);
+    ImageUtils::PixelReader ia(image);
     double xfac = (image->s() - 1) / src_extent.width();
     double yfac = (image->t() - 1) / src_extent.height();
     for (unsigned int c = 0; c < width; ++c)

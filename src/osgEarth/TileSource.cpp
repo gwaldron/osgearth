@@ -189,7 +189,7 @@ TileSource::getImage( const TileKey& key, osg::ref_ptr<osg::Image>& out_image, P
             return true;
 	}
 
-    out_image = createImage( key, progress );
+    out_image = createImage(key, progress);
 
     if ( out_image.valid() && _memCache.valid() )
     {
@@ -197,7 +197,7 @@ TileSource::getImage( const TileKey& key, osg::ref_ptr<osg::Image>& out_image, P
         _memCache->setImage( key, CacheSpec(), out_image.get() );
     }
 
-	return out_image.valid();
+    return out_image.valid();
 }
 
 bool
@@ -281,7 +281,7 @@ TileSource::getMinDataLevel() const
 }
 
 bool
-TileSource::hasData(const osgEarth::TileKey& key)
+TileSource::hasData(const osgEarth::TileKey& key) const
 {
     //If no data extents are provided, just return true
     if (_dataExtents.size() == 0) return true;

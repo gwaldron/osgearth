@@ -103,6 +103,9 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getObjIfSet( "profile", _profile );
+
+    if ( conf.hasValue("driver") )
+        driver() = TileSourceOptions(conf);
 }
 
 void

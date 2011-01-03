@@ -20,23 +20,37 @@
 #define OSGEARTH_COMPOSITE_TILE_SOURCE_H 1
 
 #include <osgEarth/TileSource>
+#include <osgEarth/ImageLayer>
 
 namespace osgEarth
-{   
+{
     /**
-     * Serializable configuration for a CompositeTileSource.
+     * Use this class to configure a CompositeTileSource.
      */
     class CompositeTileSourceOptions : public TileSourceOptions
     {
     public:
         CompositeTileSourceOptions( const TileSourceOptions& options =TileSourceOptions() );
 
-        void addTileSource( const TileSourceOptions& options );
-        void addTileSource( TileSource* source );
+        /** Add a tile source by using its configuration options */
+        void add( const TileSourceOptions& options );
 
-        const TileSourceOptionsVector& getTileSourceOptionsVector() const { return _optionsVector; }
-        const TileSourceVector& getTileSources() const { return _sources; }
+        /** Add an existing TileSource instance (note: not serializable) */
+        void add( TileSource* source );
 
+        /** Add a component described by an image layer configuration. */
+        void add( const ImageLayerOptions& options );
+
+        /** Add a component consisting of a TileSource instance and an imagelayer configuration. (not serializable) */
+        void add( TileSource* source, const ImageLayerOptions& options );
+
+        ///** Gets the collection of TileSource options configs */
+        //const TileSourceOptionsVector& getTileSourceOptionsVector() const { return _optionsVector; }
+
+        ///** Gets the collection of TileSource instances */
+        //const TileSourceVector& getTileSources() const { return _sources; }
+
+    public:
         virtual Config getConfig() const;
 
     protected:
@@ -45,13 +59,25 @@ namespace osgEarth
     private:
         void fromConfig( const Config& conf );
 
-        TileSourceOptionsVector _optionsVector;
-        TileSourceVector        _sources;
+        //TileSourceOptionsVector _optionsVector;
+        //TileSourceVector        _sources;
+
+        struct Component {
+            optional<TileSourceOptions>         _tileSourceOptions;
+            optional<osg::ref_ptr<TileSource> > _tileSourceInstance;
+            optional<ImageLayerOptions>         _imageLayerOptions;
+        };
+
+        typedef std::vector<Component> ComponentVector;
+        ComponentVector _components;
+
+        friend class CompositeTileSource;
     };
 
+    //--------------------------------------------------------------------
 
     /**
-     * A "virtual" TileSource that contains one or more other TileSource's and 
+     * A "virtual" TileSource that contains one or more other TileSources and 
      * composites them into a single TileSource for a layer to use.
      */
     class OSGEARTH_EXPORT CompositeTileSource : public TileSource
@@ -59,12 +85,6 @@ namespace osgEarth
     public:
         /** Constructs a new composite tile source */
         CompositeTileSource( const TileSourceOptions& options =TileSourceOptions() );
-
-        /**
-         * Adds a tile source to the top of the stack. You can only add new tile sources
-         * up until this object is initialized (i.e., once is is attached to a map layer).
-         */
-        //void addTileSource( TileSource* source );
 
     public: // TileSource overrides
         
@@ -76,8 +96,11 @@ namespace osgEarth
 
     protected:
         CompositeTileSourceOptions _options;
-        TileSourceVector _sources;
+        //TileSourceVector _sources;
+        optional<ImageLayerTileProcessor> _tileProcessor;
         bool _initialized;
+
+        CompositeTileSourceOptions::ComponentVector _components;
     };
 }
 

@@ -132,6 +132,27 @@ namespace osgEarth
     //--------------------------------------------------------------------
 
     /**
+     * Internal utility class for post-processing image tiles that come from 
+     * a TileSource
+     */
+    class ImageLayerTileProcessor 
+    {
+    public:
+        ImageLayerTileProcessor( const ImageLayerOptions& options =ImageLayerOptions() );
+
+        void init( const ImageLayerOptions& options );
+
+        void process( osg::ref_ptr<osg::Image>& image ) const;
+
+    private:
+        ImageLayerOptions _options;
+        osg::Vec4f _chromaKey;
+        osg::ref_ptr<const osg::Image> _noDataImage;
+    };
+
+    //--------------------------------------------------------------------
+
+    /**
      * A map terrain layer containing bitmap image data.
      */
     class OSGEARTH_EXPORT ImageLayer : public TerrainLayer
@@ -194,9 +215,11 @@ namespace osgEarth
         ImageLayerOptions _options;
         float _actualOpacity;
         float _actualGamma;
-        float _prevGamma;
-        unsigned char _gammaLUT[256];
-        osg::ref_ptr<osg::Image> _noDataImage;
+        //float _prevGamma;
+        //unsigned char _gammaLUT[256];
+        //osg::ref_ptr<osg::Image> _noDataImage;
+
+        ImageLayerTileProcessor _tileProcessor;
 
         ImageLayerCallbackList _callbacks;
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );

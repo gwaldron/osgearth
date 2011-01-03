@@ -136,62 +136,114 @@ namespace osgEarth
          * Gets the color of an image at the specified pixel. Works for packed pixel
          * formats as well as standard formats (osg::Image::getColor only works for
          * standard formats)
+         * DEPRECATED
          */
         static osg::Vec4 getColor(const osg::Image* image, int s, int t, int r =0);		
 
         /**
          * Sets the color of a pixel in an image.
+         * DEPRECATED
          */
         static bool setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& color);
-    };
 
-    /**
-     * Reads color data out of an image, regardles of its internal pixel format.
-     */
-    class OSGEARTH_EXPORT ImageColorReader
-    {
-    public:
-        ImageColorReader(const osg::Image* image);
+        /**
+         * Whether two colors are roughly equivalent.
+         */
+        static bool areRGBEquivalent( const osg::Vec4& lhs, const osg::Vec4& rhs, float epsilon =0.01f ) {
+            return
+                fabs(lhs.r() - rhs.r()) < epsilon &&
+                fabs(lhs.g() - rhs.g()) < epsilon &&
+                fabs(lhs.b() - rhs.b()) < epsilon;
+        }
+                   
 
-        osg::Vec4 operator()(int s, int t, int r = 0) const
+        /**
+         * Checks whether the image has an alpha component 
+         */
+        static bool hasAlphaChannel( const osg::Image* image );
+
+
+        /**
+         * Reads color data out of an image, regardles of its internal pixel format.
+         */
+        class OSGEARTH_EXPORT PixelReader
         {
-            return (*_reader)(this, s, t, r);
-        }
-        const osg::Image* _image;
-        unsigned _colMult;
-        unsigned _rowMult;
-        unsigned _imageSize;
-        const unsigned char* data(int s, int t, int r) const {
-            return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
-        }
-        typedef osg::Vec4 (*ReaderFunc)(const ImageColorReader* ia, int s, int t, int r);
-        ReaderFunc _reader;
-    };
-    
-    /**
-     * Writes color data to an image, regardles of its internal pixel format.
-     */
-    class OSGEARTH_EXPORT ImageColorWriter
-    {
-    public:
-        ImageColorWriter(osg::Image* _image);
+        public:
+            PixelReader(const osg::Image* image);
 
-        void write(int s, int t, int r, const osg::Vec4& c)
+            osg::Vec4 operator()(int s, int t, int r = 0) const
+            {
+                return (*_reader)(this, s, t, r);
+            }
+            const osg::Image* _image;
+            unsigned _colMult;
+            unsigned _rowMult;
+            unsigned _imageSize;
+            const unsigned char* data(int s, int t, int r) const {
+                return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+            }
+            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r);
+            ReaderFunc _reader;
+        };
+        
+        /**
+         * Writes color data to an image, regardles of its internal pixel format.
+         */
+        class OSGEARTH_EXPORT PixelWriter
         {
-            (*_writer)(this, s, t, r, c );
-        }
+        public:
+            PixelWriter(osg::Image* _image);
 
-        osg::Image* _image;
-        unsigned _colMult;
-        unsigned _rowMult;
-        unsigned _imageSize;
+            void operator()(int s, int t, int r, const osg::Vec4& c)
+            {
+                (*_writer)(this, s, t, r, c );
+            }
 
-        unsigned char* data(int s, int t, int r) const {
-            return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
-        }
+            osg::Image* _image;
+            unsigned _colMult;
+            unsigned _rowMult;
+            unsigned _imageSize;
 
-        typedef void (*WriterFunc)(const ImageColorWriter* iw, int s, int t, int r, const osg::Vec4& c);
-        WriterFunc _writer;
+            unsigned char* data(int s, int t, int r) const {
+                return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+            }
+
+            typedef void (*WriterFunc)(const PixelWriter* iw, int s, int t, int r, const osg::Vec4& c);
+            WriterFunc _writer;
+        };
+
+        struct PixelVisitor
+        {
+            virtual bool operator()(osg::Vec4f& in_out_pixel) =0;
+
+            void accept( osg::Image* image ) {
+                PixelReader _reader( image );
+                PixelWriter _writer( image );
+                for( int r=0; r<image->r(); ++r ) {
+                    for( int t=0; t<image->t(); ++t ) {
+                        for( int s=0; s<image->s(); ++s ) {
+                            osg::Vec4f pixel = _reader(s,t,r);
+                            if ( operator()(pixel) )
+                                _writer(s,t,r,pixel);
+                        }
+                    }
+                }
+            }
+
+            void accept( const osg::Image* src, osg::Image* dest ) {
+                PixelReader _reader( src );
+                PixelWriter _writer( dest );
+                for( int r=0; r<src->r(); ++r ) {
+                    for( int t=0; t<src->t(); ++t ) {
+                        for( int s=0; s<src->s(); ++s ) {
+                            osg::Vec4f pixel = _reader(s,t,r);
+                            if ( operator()(pixel) )
+                                _writer(s,t,r,pixel);
+                        }
+                    }
+                }
+            }
+        };
     };
 }
 

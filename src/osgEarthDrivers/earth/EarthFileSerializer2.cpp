@@ -60,7 +60,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 
         ImageLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value("name");
-        layerOpt.driver() = TileSourceOptions( layerDriverConf );
+        //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
         map->addImageLayer( new ImageLayer(layerOpt) );
     }
@@ -78,7 +78,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 
             ElevationLayerOptions layerOpt( layerDriverConf );
             layerOpt.name() = layerDriverConf.value( "name" );
-            layerOpt.driver() = TileSourceOptions( layerDriverConf );
+            //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
             map->addElevationLayer( new ElevationLayer(layerOpt) );
         }

@@ -303,22 +303,51 @@ Ring::cloneAs( const Geometry::Type& newType ) const
 }
 
 Ring::Orientation 
-Ring::getOrientation() const {
-    return getSignedArea() >= 0.0 ? Ring::ORIENTATION_CCW : Ring::ORIENTATION_CW;
-}
-
-double 
-Ring::getSignedArea() const
+Ring::getOrientation() const
 {
-    const_cast<Ring*>(this)->open();
-    double sum = 0.0;
-    for( const_iterator i = begin(); i != end(); ++i )
-    {
-        const osg::Vec3d& p0 = *i;
-        const osg::Vec3d& p1 = i != end()-1? *(i+1) : front(); //*begin();
-        sum += p0.x()*p1.y() - p1.x()*p0.y();
+    // adjust for a non-open ring:
+    int n = size();
+    while( n > 0 && front() == back() )
+        n--;
+
+    if ( n < 3 )
+        return Ring::ORIENTATION_DEGENERATE;
+
+    // copy the open vec:
+    std::vector<osg::Vec3d> v;
+    v.reserve( n );
+    std::copy( begin(), begin()+n, std::back_inserter(v) );
+
+    int rmin = 0;
+    double xmin = v[0].x();
+    double ymin = v[0].y();
+    v[0].z() = 0;
+    for( int i=1; i<n; ++i ) {
+        double x = v[i].x();
+        double y = v[i].y();
+        v[i].z() = 0;
+        if ( y > ymin )
+            continue;
+        if ( y == ymin ) {
+            if (x  < xmin )
+                continue;
+        }
+        rmin = i;
+        xmin = x;
+        ymin = y;
     }
-    return 0.5 * sum;
+
+    int rmin_less_1 = rmin-1 >= 0 ? rmin-1 : n-1;
+    int rmin_plus_1 = rmin+1 < n ? rmin+1 : 0;
+
+    osg::Vec3 in = v[rmin] - v[rmin_less_1]; in.normalize();
+    osg::Vec3 out = v[rmin_plus_1] - v[rmin]; out.normalize();
+    osg::Vec3 cross = in ^ out;
+
+    return
+        cross.z() < 0.0 ? Ring::ORIENTATION_CW :
+        cross.z() > 0.0 ? Ring::ORIENTATION_CCW :
+        Ring::ORIENTATION_DEGENERATE;
 }
 
 // ensures that the first and last points are not idential.
@@ -333,7 +362,9 @@ Ring::open()
 void 
 Ring::rewind( Orientation orientation )
 {
-    if ( getOrientation() != orientation )
+    open();
+    Orientation current = getOrientation();
+    if ( current != orientation && current != ORIENTATION_DEGENERATE && orientation != ORIENTATION_DEGENERATE )
     {
         std::reverse( begin(), end() );
     }

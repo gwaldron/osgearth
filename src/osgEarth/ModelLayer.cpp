@@ -89,7 +89,7 @@ ModelLayer::ModelLayer( const std::string& name, const ModelSourceOptions& optio
 _options( ModelLayerOptions( name, options ) ),
 _enabled( true )
 {
-//    mergeConfig( options.getConfig() );
+    //NOP
 }
 
 ModelLayer::ModelLayer( const ModelLayerOptions& options, ModelSource* source ) :
@@ -97,6 +97,12 @@ _options( options ),
 _modelSource( source )
 {
     //NOP
+}
+
+ModelLayer::ModelLayer(const std::string& name, osg::Node* node):
+_options(ModelLayerOptions( name )),
+_node(node)
+{
 }
 
 void
@@ -118,48 +124,40 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 osg::Node*
 ModelLayer::getOrCreateNode( ProgressCallback* progress )
 {
-    if (!_node.valid() && _modelSource.valid())
+    if ( _modelSource.valid() )
     {
-        _node = _modelSource->createNode( progress );
-
-        if ( _options.enabled().isSet() )
-            setEnabled( *_options.enabled() );
-
-        if ( _options.lightingEnabled().isSet() )
-            setLightingEnabled( *_options.lightingEnabled() );
-
-        if ( _modelSource->getOptions().depthTestEnabled() == false )            
+        // if the model source has changed, regenerate the node.
+        if ( _node.valid() && !_modelSource->inSyncWith(_modelSourceRev) )
         {
-            if ( _node )
+            _node = 0L;
+        }
+
+        if ( !_node.valid() )
+        {
+            _node = _modelSource->createNode( progress );
+
+            if ( _enabled.isSet() )
+                setEnabled( _enabled.get() );
+
+            if ( _lighting.isSet() )
+                setLightingEnabled( _lighting.get() );
+
+            if ( _modelSource->getOptions().depthTestEnabled() == false )            
             {
-                osg::StateSet* ss = _node->getOrCreateStateSet();
-                ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
-                ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
+                if ( _node )
+                {
+                    osg::StateSet* ss = _node->getOrCreateStateSet();
+                    ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS ) );
+                    ss->setRenderBinDetails( 99999, "RenderBin" ); //TODO: configure this bin ...
+                }
             }
+
+            _modelSource->sync( _modelSourceRev );
         }
     }
+
     return _node.get();
 }
-
-//Config
-//ModelLayer::getConfig() const
-//{
-//    Config conf = _driverOptions.getConfig();
-//
-//    conf.key() = "model";
-//    conf.attr("name") = _name;
-//    conf.updateIfSet( "enabled", _enabled );
-//    conf.updateIfSet( "lighting", _lighting );
-//
-//    return conf;
-//}
-//
-//void
-//ModelLayer::mergeConfig(const osgEarth::Config &conf)
-//{
-//    conf.getIfSet( "enabled", _enabled );
-//    conf.getIfSet( "lighting", _lighting );
-//}
 
 bool
 ModelLayer::getEnabled() const
@@ -180,5 +178,46 @@ ModelLayer::setLightingEnabled( bool value )
 {
     _lighting = value;
     if ( _node.valid() )
-        _node->getOrCreateStateSet()->setMode( GL_LIGHTING, value ? 1 : 0 );
+        _node->getOrCreateStateSet()->setMode( GL_LIGHTING, value ? osg::StateAttribute::ON : osg::StateAttribute::OFF );
+}
+
+bool
+ModelLayer::getOverlay() const
+{
+    return _overlay.get();
+}
+
+void
+ModelLayer::setOverlay(bool overlay)
+{
+    if (_overlay != overlay)
+    {
+        _overlay = overlay;
+        fireCallback( &ModelLayerCallback::onOverlayChanged );
+    }
+}
+
+void
+ModelLayer::addCallback( ModelLayerCallback* cb )
+{
+    _callbacks.push_back( cb );
+}
+
+void
+ModelLayer::removeCallback( ModelLayerCallback* cb )
+{
+    ModelLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
+    if ( i != _callbacks.end() ) 
+        _callbacks.erase( i );
+}
+
+
+void
+ModelLayer::fireCallback( ModelLayerCallbackMethodPtr method )
+{
+    for( ModelLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
+    {
+        ModelLayerCallback* cb = i->get();
+        (cb->*method)( this );
+    }
 }

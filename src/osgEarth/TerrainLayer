@@ -253,6 +253,8 @@ namespace osgEarth
 
         optional<bool> _overrideCacheOnly;
 
+        bool _tileSourceInitialized;
+
     private:
         std::string _name;
         bool _cacheOnlyEnv;

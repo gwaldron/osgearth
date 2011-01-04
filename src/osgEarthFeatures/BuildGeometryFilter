@@ -39,17 +39,31 @@ namespace osgEarth { namespace Features
     public:
         BuildGeometryFilter();
 
+        /** The style to apply to feature geometry */
         const Symbology::Style* getStyle() { return _style.get(); }
         void setStyle(const Symbology::Style* s) { _style = s; }
 
+        /** Override and change the geometry type of incoming features. */
         optional<Symbology::Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
+        /**
+         * For geocentric data, sets the granularity of triangles created by the filter. This
+         * is the maximum angle (in degrees) between the vectors representing two geocentric
+         * points comprising a triangle edge. Since large polygons won't naturally conform to the
+         * ellipsoid very well, this setting lets you specify a minimum triangle size so that they
+         * will break down and conform better.
+         */
+        optional<double>& maxTriangleSize() { return _maxAngle_deg; }
+        const optional<double>& maxTriangleSize() const { return _maxAngle_deg; }
+
+        /** Pushes a list of features through the filter. */
         FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
 
     protected:
         osg::ref_ptr<osg::Geode> _geode;
         osg::ref_ptr<const Symbology::Style> _style;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
+        optional<double> _maxAngle_deg;
         bool _hasPoints;
         bool _hasLines;
         void reset();
@@ -61,7 +75,7 @@ namespace osgEarth { namespace Features
 
 
     OSGEARTHFEATURES_EXPORT osg::Geode*
-    createVolume(Symbology::Geometry*            geom,
+    createVolume(Symbology::Geometry* geom,
                  double               offset,
                  double               height,
                  const FilterContext& context );

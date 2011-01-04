@@ -140,6 +140,88 @@ namespace
 
         double radius_;
     };
+
+    osg::Geometry*
+    s_makeEllipsoidGeometry( const osg::EllipsoidModel* ellipsoid, double outerRadius )
+    {
+        double hae = outerRadius - ellipsoid->getRadiusEquator();
+
+        osg::Geometry* geom = new osg::Geometry();
+
+        int latSegments = 100;
+        int lonSegments = 2 * latSegments;
+
+        double segmentSize = 180.0/(double)latSegments; // degrees
+
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        verts->reserve( latSegments * lonSegments );
+
+        osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
+        el->reserve( latSegments * lonSegments * 6 );
+
+        for( int y = 0; y <= latSegments; ++y )
+        {
+            double lat = -90.0 + segmentSize * (double)y;
+            for( int x = 0; x < lonSegments; ++x )
+            {
+                double lon = -180.0 + segmentSize * (double)x;
+                double gx, gy, gz;
+                ellipsoid->convertLatLongHeightToXYZ( osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), hae, gx, gy, gz );
+                verts->push_back( osg::Vec3(gx, gy, gz) );
+
+                if ( y < latSegments )
+                {
+                    int x_plus_1 = x < lonSegments-1 ? x+1 : 0;
+                    int y_plus_1 = y+1;
+                    el->push_back( y*lonSegments + x );
+                    el->push_back( y*lonSegments + x_plus_1 );
+                    el->push_back( y_plus_1*lonSegments + x );
+                    el->push_back( y*lonSegments + x_plus_1 );
+                    el->push_back( y_plus_1*lonSegments + x_plus_1 );
+                    el->push_back( y_plus_1*lonSegments + x );
+                }
+            }
+        }
+
+        geom->setVertexArray( verts );
+        geom->addPrimitiveSet( el );
+
+        return geom;
+    }
+
+    osg::Geometry*
+    s_makeDiscGeometry( double radius )
+    {
+        int segments = 48;
+        float deltaAngle = 360.0/(float)segments;
+
+        osg::Geometry* geom = new osg::Geometry();
+
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        verts->reserve( 1 + segments );
+        geom->setVertexArray( verts );
+
+        osg::DrawElementsUShort* el = new osg::DrawElementsUShort( GL_TRIANGLES );
+        el->reserve( 1 + 2*segments );
+        geom->addPrimitiveSet( el );
+
+        verts->push_back( osg::Vec3(0,0,0) ); // center point
+
+        for( int i=0; i<segments; ++i )
+        {
+            double angle = osg::DegreesToRadians( deltaAngle * (float)i );
+            double x = radius * cos( angle );
+            double y = radius * sin( angle );
+            verts->push_back( osg::Vec3(x, y, 0.0) );
+
+            int i_plus_1 = i < segments-1? i+1 : 0;
+            el->push_back( 0 );
+            el->push_back( 1 + i_plus_1 );
+            el->push_back( 1 + i );
+        }
+
+        return geom;
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -344,10 +426,11 @@ namespace
 SkyNode::SkyNode( Map* map ) :
 _lightPos( osg::Vec3f(0.0f, 1.0f, 0.0f) )
 {
-    _innerRadius = map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid()->getRadiusPolar();
+    _ellipsoidModel =  map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
+    _innerRadius = _ellipsoidModel->getRadiusPolar();
     _outerRadius = _innerRadius * 1.025f;
 
-    makeAtmosphere();
+    makeAtmosphere( _ellipsoidModel );
     makeSun();
 }
 
@@ -384,14 +467,22 @@ SkyNode::setSunPosition( const osg::Vec3& pos )
 }
 
 void
-SkyNode::makeAtmosphere()
+SkyNode::setSunPosition( double latitudeRad, double longitudeRad )
+{
+    if (_ellipsoidModel.valid())
+    {
+        double x, y, z;
+        _ellipsoidModel->convertLatLongHeightToXYZ(latitudeRad, longitudeRad, 0, x, y, z);
+        osg::Vec3d up  = _ellipsoidModel->computeLocalUpVector(x, y, z);
+        setSunPosition( up );
+    }
+}
+
+void
+SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
 {
     // create some skeleton geometry to shade:
-    osg::Sphere* sphere = new osg::Sphere( osg::Vec3(0,0,0), _outerRadius );
-
-    osg::ref_ptr<osg::TessellationHints> hints = new osg::TessellationHints;
-    hints->setDetailRatio(5.0f);    
-    osg::Drawable* drawable = new osg::ShapeDrawable( sphere, hints.get() );
+    osg::Geometry* drawable = s_makeEllipsoidGeometry( em, _outerRadius );
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( drawable );
@@ -401,7 +492,6 @@ SkyNode::makeAtmosphere()
     // configure the state set:
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     set->setMode( GL_CULL_FACE, osg::StateAttribute::ON );
-    //set->setMode( GL_DEPTH, osg::StateAttribute::OFF );
     set->setMode( GL_DEPTH_TEST, osg::StateAttribute::ON );
     set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     //set->setBinNumber( 65 ); // todo, what?
@@ -479,7 +569,7 @@ SkyNode::makeSun()
     float sunRadius = _innerRadius * 100.0f;
     _sunDistance = _innerRadius * 12000.0f;
 
-    sun->addDrawable(new osg::ShapeDrawable(new osg::Cylinder(osg::Vec3(0,0,0), sunRadius*40.0f, 0.0)));
+    sun->addDrawable( s_makeDiscGeometry( sunRadius*40.0f ) );
 
     osg::StateSet* set = sun->getOrCreateStateSet();
 

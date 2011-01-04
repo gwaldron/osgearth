@@ -50,6 +50,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "styles", _styles );
     conf.getObjIfSet( "gridding", _gridding );
     conf.getIfSet( "lighting", _lit );
+    conf.getIfSet( "max_triangle_size", _maxTriangleSize_deg );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -69,6 +70,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "gridding", _gridding );
     conf.updateObjIfSet( "styles", _styles );
     conf.updateIfSet( "lighting", _lit );
+    conf.updateIfSet( "max_triangle_size", _maxTriangleSize_deg );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )
@@ -103,6 +105,19 @@ _options( options )
     }
 }
 
+void
+FeatureModelSource::setFeatureSource( FeatureSource* source )
+{
+    if ( !_features.valid() )
+    {
+        _features = source;
+    }
+    else
+    {
+        OE_WARN << LC << "Illegal: cannot set a feature source after one is already set" << std::endl;
+    }
+}
+
 void 
 FeatureModelSource::initialize( const std::string& referenceURI, const osgEarth::Map* map )
 {
@@ -114,7 +129,7 @@ FeatureModelSource::initialize( const std::string& referenceURI, const osgEarth:
     }
     else
     {
-        OE_WARN << LC << "No FeatureSource provided; nothing will be rendered (" << getName() << ")" << std::endl;
+        OE_WARN << LC << "No FeatureSource; nothing will be rendered (" << getName() << ")" << std::endl;
     }
 
     _map = map;
@@ -185,9 +200,9 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     }
 
     // run the SpatializeGroups optimization pass on the result
-    if ( _options.gridding().valid() && _options.gridding()->spatializeGroups() == true )
+    if ( _options.gridding()->spatializeGroups() == true )
     {
-        OE_NOTICE << getName() << ": running spatial optimization" << std::endl;
+        OE_INFO << LC << getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;
         optimizer.optimize( group, osgUtil::Optimizer::SPATIALIZE_GROUPS );
     }
@@ -203,7 +218,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
     osg::Timer_t end = osg::Timer::instance()->tick();
 
-    OE_INFO << "Layer " << getName() << ", time to compile styles = " << 
+    OE_INFO << LC << "Layer " << getName() << ", time to compile styles = " << 
         osg::Timer::instance()->delta_s( start, end ) << "s" << std::endl;
 
     return group;
@@ -220,12 +235,12 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
     // first we need the overall extent of the layer:
     const GeoExtent& extent = getFeatureSource()->getFeatureProfile()->getExtent();
 
-    osg::ref_ptr<GriddingPolicy> gridding = 
-        _options.gridding().valid() ? _options.gridding().get() :
-        new GriddingPolicy();
+    //GriddingPolicy gridding = _options.gridding();
+    //    _options.gridding().valid() ? _options.gridding().get() :
+    //    new GriddingPolicy();
 
     // next set up a gridder/cropper:
-    FeatureGridder gridder( extent.bounds(), gridding );
+    FeatureGridder gridder( extent.bounds(), *_options.gridding() );
 
     if ( gridder.getNumCells() > 1 )
     {
@@ -298,7 +313,7 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
                 // if the method created a node, apply a cluter culler to it if neceesary:
                 if ( createdNode )
                 {
-                    if ( _map->isGeocentric() && gridding->clusterCulling() == true )
+                    if ( _map->isGeocentric() && _options.gridding()->clusterCulling() == true )
                     {
                         const SpatialReference* mapSRS = _map->getProfile()->getSRS()->getGeographicSRS();
                         GeoExtent cellExtent( extent.getSRS(), cellBounds );
@@ -333,7 +348,7 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
 
                         createdNode->setCullCallback( ccc );
 
-                        OE_NOTICE
+                        OE_DEBUG
                             << "Cell: " << mapCellExtent.toString()
                             << ": centroid = " << cx << "," << cy
                             << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()

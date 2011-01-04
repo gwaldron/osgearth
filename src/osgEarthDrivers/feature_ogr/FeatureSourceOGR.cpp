@@ -88,7 +88,7 @@ public:
 
     /** Called once at startup to create the profile for this feature set. Successful profile
         creation implies that the datasource opened succesfully. */
-    FeatureProfile* createFeatureProfile()
+    const FeatureProfile* createFeatureProfile()
     {
         FeatureProfile* result = 0L;
 

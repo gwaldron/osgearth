@@ -170,7 +170,8 @@ namespace osgEarth { namespace Symbology
     public:
         enum Orientation {
             ORIENTATION_CCW,
-            ORIENTATION_CW
+            ORIENTATION_CW,
+            ORIENTATION_DEGENERATE
         };
 
     public:
@@ -183,11 +184,12 @@ namespace osgEarth { namespace Symbology
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
 
+        // gets the ring's orientation
         Orientation getOrientation() const;
 
         // gets the signed area of a part that is known to be open. A positive
         // area means it's would CCW; negative means it's would CW.
-        double getSignedArea() const;
+        //double getSignedArea() const;
 
         // ensures that the first and last points are not idential.
         void open();

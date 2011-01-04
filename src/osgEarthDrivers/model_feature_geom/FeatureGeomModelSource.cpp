@@ -47,8 +47,6 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
-#define PROP_HEIGHT_OFFSET "height_offset"
-
 class FeatureGeomModelSource;
 
 //------------------------------------------------------------------------
@@ -74,10 +72,6 @@ public:
         FeatureSymbolizerContext* context,
         osg::Node** out_newNode)
     {
-        //const FeatureGeomModelOptions options( _modelSource->getOptions() );
-        //const FeatureGeomModelOptions* options = static_cast<const FeatureGeomModelOptions*>(
-        //    _model->getFeatureModelOptions() );
-
         // break the features out into separate lists for geometries and text annotations:
         FeatureList geomFeatureList, textAnnoList;
 
@@ -142,8 +136,14 @@ public:
 
         // Build geometry:
         BuildGeometryFilter build;
+
+        // apply a type change:
         if ( _options.geometryTypeOverride().isSet() )
             build.geomTypeOverride() = *_options.geometryTypeOverride();
+
+        // subdivide geocentric geometry as required:
+        if ( _options.maxTriangleSize().isSet() )
+            build.maxTriangleSize() = *_options.maxTriangleSize();
 
         osg::ref_ptr<osg::Node> result;
         build.setStyle( style );
@@ -223,8 +223,15 @@ public:
 
     osg::Node* createNode( ProgressCallback* progress )
     {
-        //OE_NOTICE << _options.getConfig().toString() << std::endl;
-        return new FeatureSymbolizerGraph( new FactoryGeomSymbolizer(this, _options) );
+        if ( _features.valid() && _features->getFeatureProfile() )
+        {
+            //OE_NOTICE << _options.getConfig().toString() << std::endl;
+            return new FeatureSymbolizerGraph( new FactoryGeomSymbolizer(this, _options) );
+        }
+        else
+        {
+            return 0L;
+        }
     }
 
 private:

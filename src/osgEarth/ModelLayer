@@ -36,7 +36,7 @@ namespace osgEarth
     public:        
         ModelLayerOptions( const ConfigOptions& options =ConfigOptions() );
 
-        ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions );
+        ModelLayerOptions( const std::string& name, const ModelSourceOptions& driverOptions =ModelSourceOptions() );
 
         /**
          * The readable name of the layer.
@@ -50,12 +50,22 @@ namespace osgEarth
         optional<ModelSourceOptions>& driver() { return _driver; }
         const optional<ModelSourceOptions>& driver() const { return _driver; }
 
+        /**
+         * Whether to enable OpenGL lighting on the model node.
+         */
         optional<bool>& lightingEnabled() { return _lighting; }
         const optional<bool>& lightingEnabled() const { return _lighting; }
 
+        /**
+         * Whether this layer will be drawn.
+         */
         optional<bool>& enabled() { return _enabled; }
         const optional<bool>& enabled() const { return _enabled; }
 
+        /**
+         * Whether to drape the model geometry over the terrain as a projected overlay.
+         * Defaults to false
+         */
         optional<bool>& overlay() { return _overlay; }
         const optional<bool>& overlay() const { return _overlay; }
 
@@ -73,6 +83,18 @@ namespace osgEarth
         optional<bool> _enabled;
         optional<bool> _lighting;
     };
+
+    /**
+    * Callback for receiving notification of property changes on a ModelLayer.
+    */
+    struct ModelLayerCallback : public osg::Referenced
+    {
+        virtual void onOverlayChanged( class ModelLayer* layer ) { }
+    };
+
+    typedef void (ModelLayerCallback::*ModelLayerCallbackMethodPtr)(ModelLayer* layer);
+
+    typedef std::list< osg::ref_ptr<ModelLayerCallback> > ModelLayerCallbackList;
 
 
     class OSGEARTH_EXPORT ModelLayer : public Layer
@@ -92,6 +114,11 @@ namespace osgEarth
          * Constructs a new model layer with a user-provided model source.
          */
         ModelLayer(const ModelLayerOptions& options, ModelSource* source );
+
+        /**
+         * Constructs a new model layer with a user provided name and an existing node
+         */
+        ModelLayer(const std::string& name, osg::Node* node);
 
     public:
         /** 
@@ -133,6 +160,9 @@ namespace osgEarth
         bool getEnabled() const;
         void setEnabled(bool enabled);
 
+        bool getOverlay() const;
+        void setOverlay( bool overlay );
+
         // whether to apply lighting to the model layer's root node
         void setLightingEnabled( bool value );
         const optional<bool>& lightingEnabled() const { return _enabled; }
@@ -140,6 +170,13 @@ namespace osgEarth
     public:
 
         void initialize( const std::string& referenceURI, const Map* map );
+
+        /** Adds a property notification callback to this layer */
+        void addCallback( ModelLayerCallback* cb );
+
+        /** Removes a property notification callback from this layer */
+        void removeCallback( ModelLayerCallback* cb );
+
 
         //virtual Config getConfig() const;
 
@@ -158,6 +195,13 @@ namespace osgEarth
 
         optional<bool> _enabled;
         optional<bool> _lighting;
+        optional<bool>  _overlay;
+
+        Revision _modelSourceRev;
+
+        ModelLayerCallbackList _callbacks;
+        virtual void fireCallback( ModelLayerCallbackMethodPtr method );
+
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;

@@ -23,9 +23,11 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TerrainEngineNode>
 #include <osg/Camera>
+#include <osg/CoordinateSystemNode>
 #include <osg/Texture2D>
 #include <osg/TexGenNode>
 #include <osg/Uniform>
+#include <osgUtil/CullVisitor>
 
 namespace osgEarth
 {
@@ -50,13 +52,24 @@ namespace osgEarth
          * usually do NOT need to call this method.
          */
         void setTextureUnit( int unit );
+        int getTextureUnit() const { return *_textureUnit; }
 
         /**
-         * Sets the size (resolution in both directions) of the overlay texture. By
+         * The size (resolution in both directions) of the overlay texture. By
          * default, this defaults to 4096 or your hardware's maximum supported
          * texture size, whichever is less.
          */
         void setTextureSize( int texSize );
+        int getTextureSize() const { return *_textureSize; }
+
+        /**
+         * Whether mipmapping is enabled on the projected overlay texture. Mapmapping
+         * will improve the visual appearance, but will use more memory, and may affect
+         * performance for overlays that are dynamic.
+         */
+        void setMipmapping( bool value );
+        bool getMipmapping() const { return _mipmapping; }
+
 
     public: // TerrainDecorator
         virtual void onInstall( TerrainEngineNode* engine );
@@ -74,9 +87,11 @@ namespace osgEarth
         virtual osg::BoundingSphere computeBound() const;
 
     private:
-        void updateRTTCamera( osg::NodeVisitor& cv );
+        void updateRTTCamera( osg::NodeVisitor& nv );
+        void cull( osgUtil::CullVisitor* cv );
         void reinit();
-        void initShaders( osg::StateSet* set );
+        void initSubgraphShaders( osg::StateSet* set );
+        void initRTTShaders( osg::StateSet* set );
 
     private:
         osg::ref_ptr<osg::Group>      _subgraphContainer;
@@ -85,14 +100,23 @@ namespace osgEarth
         osg::ref_ptr<osg::Texture2D>  _projTexture;
         osg::ref_ptr<osg::TexGenNode> _texGenNode;
         osg::ref_ptr<osg::Uniform>    _texGenUniform;
-        osg::ref_ptr<osgEarth::VirtualProgram> _vp;
+        osg::ref_ptr<osg::Uniform>    _warpUniform;
+        osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
         bool                          _reservedTextureUnit;
         bool                          _useShaders;
-        double                        _earthRadiusMajor;
+        bool                          _useWarping;
+        float                         _warp;
+        bool                          _visualizeWarp;
+        bool                          _isGeocentric;
+        double                        _maxProjectedMapExtent;
+        bool                          _mipmapping;
+
         osg::Matrixd _rttViewMatrix, _rttProjMatrix;
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
+        osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
+        osg::ref_ptr<osgEarth::VirtualProgram> _vp;
     };
 
 } // namespace osgEarth

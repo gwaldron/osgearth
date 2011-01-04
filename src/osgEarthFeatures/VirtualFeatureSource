@@ -1,0 +1,75 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_VIRTUAL_FEATURE_SOURCE
+#define OSGEARTH_FEATURES_VIRTUAL_FEATURE_SOURCE
+
+#include <osgEarthUtil/Common>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/Layer>
+#include <vector>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Predicate that tells the multiplexer whether to accept or reject a 
+     * feature for a given renderer.
+     */
+    struct OSGEARTHFEATURES_EXPORT FeaturePredicate : public osg::Referenced
+    {
+        virtual bool acceptFeature( Feature* f ) const =0;
+    };
+
+    // internal class
+    struct FeatureSourceMapping
+    {
+        FeatureSourceMapping(FeatureSource* fs, FeaturePredicate* fp) : _source(fs), _predicate(fp) { }
+        osg::ref_ptr<FeatureSource>      _source;
+        osg::ref_ptr<FeaturePredicate>   _predicate;
+    };
+    typedef std::vector<FeatureSourceMapping> FeatureSourceMappingVector;
+
+
+    class OSGEARTHFEATURES_EXPORT VirtualFeatureSource : public FeatureSource
+    {
+    public:
+        /** Construct a new virtual feature source */
+        VirtualFeatureSource() { }
+
+        /**
+         * Adds a feature source/predicate mapping. This FeatureSource will draw
+         * from "source" and filter based on the predicate.
+         */
+        void add( FeatureSource* source, FeaturePredicate* predicate );
+
+    public: // FeatureSource
+        virtual FeatureCursor* createFeatureCursor( const Query& query );
+		virtual void initialize( const std::string& referenceURI );
+        virtual const FeatureProfile* createFeatureProfile();
+
+    protected:
+        FeatureSourceMappingVector _sources;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTH_FEATURES_VIRTUAL_FEATURE_SOURCE

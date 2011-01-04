@@ -1,0 +1,82 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to read feature data from a shapefile and "drape" it
+on the map using the overlay technique.
+-->
+
+<map name="Feature Overlay Demo" type="geocentric" version="2">
+    
+    <options lighting="false"/>
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <overlay name="countries" driver="feature_geom">
+                          
+        <features name="states" driver="ogr">
+            <url>../data/world.shp</url>
+            <buffer distance="-0.05"/>
+            <resample min_length="0" max_length="0.5"/>
+        </features>
+        
+        <styles>
+        
+            <style type="text/css">
+                p1 {
+                   fill: #ffff80;
+                   fill-opacity: 0.4;
+                }       
+                p2 {
+                   fill: #80ffff;
+                   fill-opacity: 0.4;
+                }   
+                p3 {
+                   fill: #ff80ff;
+                   fill-opacity: 0.4;
+                }       
+                p4 {
+                   fill: #ff8080;
+                   fill-opacity: 0.4;
+                }     
+                p5 {
+                   fill: #80ff80;
+                   fill-opacity: 0.4;
+                }                                      
+            </style>
+        
+            <selector name="p1">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
+                </query>
+            </selector>
+        
+            <selector name="p2">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector name="p3">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector name="p4">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
+                </query>
+            </selector>
+            
+            <selector name="p5">
+                <query>
+                    <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
+                </query>
+            </selector>
+            
+        </styles>
+        
+    </overlay>
+</map>

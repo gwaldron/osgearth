@@ -104,7 +104,7 @@ namespace osgEarth
         static GeoidRegistry* _geoidRegistry;
     };
 
-
+#if 0
     /** Proxy class for automatic registration of geoids */
     template<class T>
     struct  GeoidRegisterProxy {
@@ -112,6 +112,7 @@ namespace osgEarth
             VerticalSpatialReference::registerGeoid( new T );
         }
     };
+#endif
 
 }
 

@@ -41,14 +41,18 @@ namespace osgEarth { namespace Features
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        osg::ref_ptr<GriddingPolicy>& gridding() { return _gridding; }
-        const osg::ref_ptr<GriddingPolicy>& gridding() const { return _gridding; }
+        optional<GriddingPolicy>& gridding() { return _gridding; }
+        const optional<GriddingPolicy>& gridding() const { return _gridding; }
 
         optional<Symbology::StyleCatalog>& styles() { return _styles; }
         const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
 
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
+
+        /** Maximum span of a generated triangle, in degrees. For geocentric maps only */
+        optional<double>& maxTriangleSize() { return _maxTriangleSize_deg; }
+        const optional<double>& maxTriangleSize() const { return _maxTriangleSize_deg; }
 
         optional<bool>& enableLighting() { return _lit; }
         const optional<bool>& enableLighting() const { return _lit; }
@@ -74,9 +78,10 @@ namespace osgEarth { namespace Features
 
         optional<FeatureSourceOptions> _featureOptions;
         optional<Symbology::StyleCatalog> _styles;
-        osg::ref_ptr<GriddingPolicy> _gridding;
+        optional<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
+        optional<double> _maxTriangleSize_deg;
 
         osg::ref_ptr<FeatureSource> _featureSource;
     };
@@ -102,6 +107,9 @@ namespace osgEarth { namespace Features
 
 
     public: // properties:
+
+        /** Sets a feature source. */
+        void setFeatureSource( FeatureSource* source );
 
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }

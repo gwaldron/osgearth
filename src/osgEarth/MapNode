@@ -34,6 +34,7 @@ namespace osgEarth
     {
     };
 
+
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
      * that renders data from a "Map" data model.
@@ -171,11 +172,16 @@ namespace osgEarth
 
         void onModelLayerAdded( ModelLayer*, unsigned int );
         void onModelLayerRemoved( ModelLayer* );
-				void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
+		void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
         void onMaskLayerAdded( MaskLayer* );
         void onMaskLayerRemoved( MaskLayer* );
 
+    public:
+        void onModelLayerOverlayChanged( ModelLayer* layer );
+
     private:
+
+        osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
     
         void init();
         //void adjustUpdateTraversalCount( int delta );

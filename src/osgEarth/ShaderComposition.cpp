@@ -444,10 +444,14 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 {
     std::stringstream buf;
 
-    buf << "#version 120 \n"
-        << "uniform sampler2D ";
-    for( int i=0; i<numTexImageUnits; ++i )
-        buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
+    buf << "#version 120 \n";
+
+    if ( numTexImageUnits > 0 )
+    {
+        buf << "uniform sampler2D ";
+        for( int i=0; i<numTexImageUnits; ++i )
+            buf << "tex" << i << (i+1 < numTexImageUnits? "," : "; \n");
+    }
 
     buf << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
         << "{ \n"

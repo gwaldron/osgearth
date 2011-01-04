@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthSymbology/Text>
+#include <osgEarthSymbology/MeshSubdivider>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
@@ -28,6 +29,7 @@
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
+#include <osgUtil/MeshOptimizers>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -52,6 +54,7 @@ namespace
 
 BuildGeometryFilter::BuildGeometryFilter() :
 _style( new Style() ),
+_maxAngle_deg( 10.0 ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN )
 {
     reset();
@@ -136,7 +139,13 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         //    << Geometry::toString( part->getType() ) << ", renderType = "
         //    << Geometry::toString( renderType ) << std::endl;
 
+        const Style* myStyle = input->style().isSet() ? input->style()->get() : _style.get();
+
         osg::Vec4f color = osg::Vec4(1,1,1,1);
+        bool tessellatePolys = true;
+
+        bool setWidth = input->style().isSet(); // otherwise it will be set globally, we assume
+        float width = 1.0f;
 
         switch( renderType )
         {
@@ -144,7 +153,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasPoints = true;
                 primMode = osg::PrimitiveSet::POINTS;
-                const PointSymbol* point = _style->getSymbol<PointSymbol>();
+                const PointSymbol* point = myStyle->getSymbol<PointSymbol>();
                 if (point)
                 {
                     color = point->fill()->color();
@@ -156,10 +165,11 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasLines = true;
                 primMode = osg::PrimitiveSet::LINE_STRIP;
-                const LineSymbol* lineSymbol = _style->getSymbol<LineSymbol>();
+                const LineSymbol* lineSymbol = myStyle->getSymbol<LineSymbol>();
                 if (lineSymbol)
                 {
                     color = lineSymbol->stroke()->color();
+                    width = lineSymbol->stroke()->width().isSet() ? *lineSymbol->stroke()->width() : 1.0f;
                 }
             }
             break;
@@ -168,10 +178,11 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasLines = true;
                 primMode = osg::PrimitiveSet::LINE_LOOP;
-                const LineSymbol* lineSymbol = _style->getSymbol<LineSymbol>();
+                const LineSymbol* lineSymbol = myStyle->getSymbol<LineSymbol>();
                 if (lineSymbol)
                 {
                     color = lineSymbol->stroke()->color();
+                    width = lineSymbol->stroke()->width().isSet() ? *lineSymbol->stroke()->width() : 1.0f;
                 }
             }
             break;
@@ -179,10 +190,21 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         case Geometry::TYPE_POLYGON:
             {
                 primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-                const PolygonSymbol* poly = _style->getSymbol<PolygonSymbol>();
+                const PolygonSymbol* poly = myStyle->getSymbol<PolygonSymbol>();
                 if (poly)
                 {
                     color = poly->fill()->color();
+                }
+                else
+                {
+                    // if we have a line symbol and no polygon symbol, draw as an outline.
+                    const LineSymbol* line = myStyle->getSymbol<LineSymbol>();
+                    if ( line )
+                    {
+                        color = line->stroke()->color();
+                        width = line->stroke()->width().isSet() ? *line->stroke()->width() : 1.0f;
+                        tessellatePolys = false;
+                    }
                 }
             }
             break;
@@ -190,17 +212,26 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         
         osg::Geometry* osgGeom = new osg::Geometry();
 
-        osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0] = color;
-        osgGeom->setColorArray( colors );
-        osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+        osgGeom->setUseVertexBufferObjects( true );
+        osgGeom->setUseDisplayList( false );
+
+        if ( setWidth && width != 1.0f )
+        {
+            osgGeom->getOrCreateStateSet()->setAttributeAndModes(
+                new osg::LineWidth( width ), osg::StateAttribute::ON );
+        }
         
         if ( renderType == Geometry::TYPE_POLYGON && part->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(part)->getHoles().size() > 0 )
         {
             Polygon* poly = static_cast<Polygon*>(part);
             int totalPoints = poly->getTotalPointCount();
             osg::Vec3Array* allPoints = new osg::Vec3Array( totalPoints );
-            int offset = 0;
+
+            std::copy( part->begin(), part->end(), allPoints->begin() );
+            osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
+
+            int offset = part->size();
+
             for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
             {
                 Geometry* hole = h->get();
@@ -220,13 +251,30 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
         // using TESS_TYPE_DRAWABLE.
 
-        if ( renderType == Geometry::TYPE_POLYGON )
+        if ( renderType == Geometry::TYPE_POLYGON && tessellatePolys )
         {
             osgUtil::Tessellator tess;
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
             tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
             tess.retessellatePolygons( *osgGeom );
+
+            // apply the triangle subdivision if necessary:
+            if ( context.isGeocentric() )
+            {
+                double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+
+                MeshSubdivider ms( context.referenceFrame(), context.inverseReferenceFrame() );
+                //ms.setMaxElementsPerEBO( INT_MAX );
+                ms.run( threshold, *osgGeom );
+            }
         }
+
+        // set the color array. We have to do this last, otherwise it screws up any modifications
+        // make by the MeshSubdivider. No idea why. gw
+        osg::Vec4Array* colors = new osg::Vec4Array(1);
+        (*colors)[0] = color;
+        osgGeom->setColorArray( colors );
+        osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         // add the part to the geode.
         _geode->addDrawable( osgGeom );

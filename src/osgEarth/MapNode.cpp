@@ -54,6 +54,21 @@ struct MapNodeMapCallbackProxy : public MapCallback
     osg::observer_ptr<MapNode> _node;
 };
 
+class MapModelLayerCallback : public ModelLayerCallback
+{
+public:
+    MapModelLayerCallback(MapNode* mapNode):
+      _mapNode(mapNode)
+      {            
+      }
+
+      virtual void onOverlayChanged(ModelLayer* layer)
+      {
+          _mapNode->onModelLayerOverlayChanged( layer );
+      }
+      osg::ref_ptr< MapNode > _mapNode;
+};
+
 //---------------------------------------------------------------------------
 
 class RemoveBlacklistedFilenamesVisitor : public osg::NodeVisitor
@@ -134,6 +149,8 @@ MapNode::init()
     // TODO: do we need this anymore? there are no more global uniforms in here.. gw
     getOrCreateStateSet()->setDataVariance(osg::Object::DYNAMIC);
 
+    _modelLayerCallback = new MapModelLayerCallback(this);
+
     _maskLayerNode = 0L;
     _lastNumBlacklistedFilenames = 0;
 
@@ -210,6 +227,7 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
+    _overlayDecorator->setOverlayGraph( _overlayModels.get() );
     addTerrainDecorator( _overlayDecorator.get() );
 
     // install any pre-existing model layers:
@@ -307,6 +325,8 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
     osg::Node* node = layer->getOrCreateNode();
 
+    layer->addCallback(_modelLayerCallback.get() );
+
     if ( node )
     {
         if ( _modelLayerNodes.find( layer ) != _modelLayerNodes.end() )
@@ -328,12 +348,6 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
                 if ( layer->getModelLayerOptions().overlay() == true )
                 {
                     _overlayModels->addChild( node ); // todo: index?
-
-                    // if this is the first overlay, activate the decorator:
-                    if ( _overlayModels->getNumChildren() == 1 )
-                    {
-                        _overlayDecorator->setOverlayGraph( _overlayModels.get() );
-                    }
                 }
                 else
                 {
@@ -360,6 +374,8 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
 {
     if ( layer )
     {
+        layer->removeCallback( _modelLayerCallback.get() );
+
         // look up the node associated with this model layer.
         ModelLayerNodeMap::iterator i = _modelLayerNodes.find( layer );
         if ( i != _modelLayerNodes.end() )
@@ -375,10 +391,6 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
                 if ( layer->getModelLayerOptions().overlay() == true )
                 {
                     _overlayModels->removeChild( node );
-                    if ( _overlayModels->getNumChildren() == 0 )
-                    {
-                        _overlayDecorator->setOverlayGraph( 0L );
-                    }
                 }
                 else
                 {
@@ -567,3 +579,19 @@ MapNode::traverse( osg::NodeVisitor& nv )
     osg::Group::traverse( nv );
 }
 
+void
+MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
+{
+    OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
+    osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
+    osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
+
+    osg::ref_ptr< osg::Node > node = layer->getOrCreateNode();
+    if (node.valid())
+    {
+        //Remove it from the original parent and add it to the new parent
+        origParent->removeChild( node );
+        newParent->addChild( node );
+    }
+
+}

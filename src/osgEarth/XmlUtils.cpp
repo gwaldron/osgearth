@@ -373,8 +373,6 @@ XmlDocument::load( std::istream& in )
     buffer << in.rdbuf();
     std::string xmlStr(buffer.str()); 
 
-    //Delete the buffer
-    delete[] buffer;    
     removeDocType( xmlStr );
     //OE_NOTICE << xmlStr;
 

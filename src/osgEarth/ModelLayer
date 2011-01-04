@@ -84,6 +84,18 @@ namespace osgEarth
         optional<bool> _lighting;
     };
 
+    /**
+    * Callback for receiving notification of property changes on a ModelLayer.
+    */
+    struct ModelLayerCallback : public osg::Referenced
+    {
+        virtual void onOverlayChanged( class ModelLayer* layer ) { }
+    };
+
+    typedef void (ModelLayerCallback::*ModelLayerCallbackMethodPtr)(ModelLayer* layer);
+
+    typedef std::list< osg::ref_ptr<ModelLayerCallback> > ModelLayerCallbackList;
+
 
     class OSGEARTH_EXPORT ModelLayer : public Layer
     {
@@ -102,6 +114,11 @@ namespace osgEarth
          * Constructs a new model layer with a user-provided model source.
          */
         ModelLayer(const ModelLayerOptions& options, ModelSource* source );
+
+        /**
+         * Constructs a new model layer with a user provided name and an existing node
+         */
+        ModelLayer(const std::string& name, osg::Node* node);
 
     public:
         /** 
@@ -143,6 +160,9 @@ namespace osgEarth
         bool getEnabled() const;
         void setEnabled(bool enabled);
 
+        bool getOverlay() const;
+        void setOverlay( bool overlay );
+
         // whether to apply lighting to the model layer's root node
         void setLightingEnabled( bool value );
         const optional<bool>& lightingEnabled() const { return _enabled; }
@@ -150,6 +170,13 @@ namespace osgEarth
     public:
 
         void initialize( const std::string& referenceURI, const Map* map );
+
+        /** Adds a property notification callback to this layer */
+        void addCallback( ModelLayerCallback* cb );
+
+        /** Removes a property notification callback from this layer */
+        void removeCallback( ModelLayerCallback* cb );
+
 
         //virtual Config getConfig() const;
 
@@ -164,13 +191,17 @@ namespace osgEarth
         //const ModelSourceOptions _driverOptions;
         const ModelLayerOptions _options;
 
-        osg::ref_ptr< osg::Group > _nodeContainer;
         osg::ref_ptr< osg::Node > _node;
 
         optional<bool> _enabled;
         optional<bool> _lighting;
+        optional<bool>  _overlay;
 
         Revision _modelSourceRev;
+
+        ModelLayerCallbackList _callbacks;
+        virtual void fireCallback( ModelLayerCallbackMethodPtr method );
+
     };
 
     typedef std::vector< osg::ref_ptr<ModelLayer> > ModelLayerVector;

@@ -1290,7 +1290,7 @@ public: // Cache interface
      */
     bool purge( const std::string& layerName, int olderThanUTC, bool async )
     {
-        if ( !_db ) false;
+        if ( !_db ) return false;
 
         // purge the L2 cache first:
         if ( async == true && _options.asyncWrites() == true )
@@ -1384,7 +1384,7 @@ public: // Cache interface
      */
     bool updateAccessTimeSync( const std::string& layerName, const TileKey& key, int newTimestamp )
     {
-        if ( !_db ) false;
+        if ( !_db ) return false;
 
         ThreadTable tt = getTable(layerName);
         if ( tt._table )
@@ -1399,7 +1399,7 @@ public: // Cache interface
      */
     bool updateAccessTimeSyncPool( const std::string& layerName, const std::string& keys, int newTimestamp )
     {
-        if ( !_db ) false;
+        if ( !_db ) return false;
 
         ThreadTable tt = getTable(layerName);
         if ( tt._table )

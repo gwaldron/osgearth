@@ -99,6 +99,12 @@ _modelSource( source )
     //NOP
 }
 
+ModelLayer::ModelLayer(const std::string& name, osg::Node* node):
+_options(ModelLayerOptions( name )),
+_node(node)
+{
+}
+
 void
 ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 {
@@ -118,15 +124,11 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 osg::Node*
 ModelLayer::getOrCreateNode( ProgressCallback* progress )
 {
-    if ( !_nodeContainer.valid() )
-        _nodeContainer = new osg::Group();
-
     if ( _modelSource.valid() )
     {
         // if the model source has changed, regenerate the node.
         if ( _node.valid() && !_modelSource->inSyncWith(_modelSourceRev) )
         {
-            _nodeContainer->removeChild( _node.get() );
             _node = 0L;
         }
 
@@ -134,11 +136,11 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
         {
             _node = _modelSource->createNode( progress );
 
-            if ( _options.enabled().isSet() )
-                setEnabled( *_options.enabled() );
+            if ( _enabled.isSet() )
+                setEnabled( _enabled.get() );
 
-            if ( _options.lightingEnabled().isSet() )
-                setLightingEnabled( *_options.lightingEnabled() );
+            if ( _lighting.isSet() )
+                setLightingEnabled( _lighting.get() );
 
             if ( _modelSource->getOptions().depthTestEnabled() == false )            
             {
@@ -176,5 +178,46 @@ ModelLayer::setLightingEnabled( bool value )
 {
     _lighting = value;
     if ( _node.valid() )
-        _node->getOrCreateStateSet()->setMode( GL_LIGHTING, value ? 1 : 0 );
+        _node->getOrCreateStateSet()->setMode( GL_LIGHTING, value ? osg::StateAttribute::ON : osg::StateAttribute::OFF );
+}
+
+bool
+ModelLayer::getOverlay() const
+{
+    return _overlay.get();
+}
+
+void
+ModelLayer::setOverlay(bool overlay)
+{
+    if (_overlay != overlay)
+    {
+        _overlay = overlay;
+        fireCallback( &ModelLayerCallback::onOverlayChanged );
+    }
+}
+
+void
+ModelLayer::addCallback( ModelLayerCallback* cb )
+{
+    _callbacks.push_back( cb );
+}
+
+void
+ModelLayer::removeCallback( ModelLayerCallback* cb )
+{
+    ModelLayerCallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb );
+    if ( i != _callbacks.end() ) 
+        _callbacks.erase( i );
+}
+
+
+void
+ModelLayer::fireCallback( ModelLayerCallbackMethodPtr method )
+{
+    for( ModelLayerCallbackList::const_iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
+    {
+        ModelLayerCallback* cb = i->get();
+        (cb->*method)( this );
+    }
 }

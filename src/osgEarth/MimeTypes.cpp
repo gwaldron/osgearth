@@ -45,6 +45,7 @@ const char* builtinMimeTypeExtMappings[] =
     "image/gif","gif",
     "image/ief","ief",
     "image/jpeg","jpg",
+    "image/jpg","jpg",
     "image/jutvision","jut",
     "image/naplps","nap",
     "image/naplps","naplps",

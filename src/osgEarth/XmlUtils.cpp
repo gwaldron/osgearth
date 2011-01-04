@@ -369,18 +369,10 @@ XmlDocument::load( std::istream& in )
     TiXmlDocument xmlDoc;
 
     //Read the entire document into a string
-    in.seekg(0, std::ios::end);
-    int length   = in.tellg();
-    in.seekg(0, std::ios::beg);
-    char *buffer = new char[length+1];
-    in.read(buffer, length);
-    //Null terminate the string
-    buffer[length] = '\0';    
+    std::stringstream buffer;
+    buffer << in.rdbuf();
+    std::string xmlStr(buffer.str()); 
 
-    std::string xmlStr(buffer);
-
-    //Delete the buffer
-    delete[] buffer;    
     removeDocType( xmlStr );
     //OE_NOTICE << xmlStr;
 

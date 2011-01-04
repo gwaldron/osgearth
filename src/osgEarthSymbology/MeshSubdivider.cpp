@@ -18,6 +18,7 @@
  */
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osg/TriangleFunctor>
+#include <climits>
 #include <queue>
 #include <map>
 
@@ -56,7 +57,7 @@ namespace
 
         ITYPE record( const osg::Vec3& v )
         {
-            VertMap::iterator i = _vertMap.find(v);
+            typename VertMap::iterator i = _vertMap.find(v);
             if ( i == _vertMap.end() )
             {
                 ITYPE index = _verts->size();
@@ -125,7 +126,7 @@ namespace
 
         ETYPE* ebo = 0L;
 
-        for( TriangleVector<ITYPE>::const_iterator i = tris.begin(); i != tris.end(); ++i )
+        for( typename TriangleVector<ITYPE>::const_iterator i = tris.begin(); i != tris.end(); ++i )
         {
             if ( numElementsInCurrentEBO+2 >= maxElementsPerEBO )
             {
@@ -220,7 +221,7 @@ namespace
                 {
                     Edge<ITYPE> edge( osg::minimum(tri._i0, tri._i1), osg::maximum(tri._i0, tri._i1) );
                     
-                    EdgeMap<ITYPE>::iterator ei = edges.find(edge);
+                    typename EdgeMap<ITYPE>::iterator ei = edges.find(edge);
                     ITYPE i;
                     if ( ei == edges.end() )
                     {
@@ -240,7 +241,7 @@ namespace
                 {
                     Edge<ITYPE> edge( osg::minimum(tri._i1, tri._i2), osg::maximum(tri._i1,tri._i2) );
 
-                    EdgeMap<ITYPE>::iterator ei = edges.find(edge);
+                    typename EdgeMap<ITYPE>::iterator ei = edges.find(edge);
                     ITYPE i;
                     if ( ei == edges.end() )
                     {
@@ -260,7 +261,7 @@ namespace
                 {
                     Edge<ITYPE> edge( osg::minimum(tri._i2, tri._i0), osg::maximum(tri._i2,tri._i0) );
 
-                    EdgeMap<ITYPE>::iterator ei = edges.find(edge);
+                    typename EdgeMap<ITYPE>::iterator ei = edges.find(edge);
                     ITYPE i;
                     if ( ei == edges.end() )
                     {

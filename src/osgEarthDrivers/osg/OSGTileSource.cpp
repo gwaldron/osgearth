@@ -58,8 +58,8 @@ class OSGTileSource : public TileSource
 public:
     OSGTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
-      _options( options ),
-      _maxDataLevel( 21 )
+      _maxDataLevel( 21 ),
+      _options( options )
     {
         //nop
     }

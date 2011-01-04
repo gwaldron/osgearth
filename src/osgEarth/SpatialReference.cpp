@@ -214,7 +214,7 @@ SpatialReference::createFromHandle( void* ogrHandle, bool xferOwnership )
 }
 
 
-static std::string&
+LIKELY_UNUSED_FUNCTION static std::string&
 replaceIn( std::string& s, const std::string& sub, const std::string& other)
 {
     if ( sub.empty() ) return s;
@@ -275,18 +275,17 @@ SpatialReference::validate()
 
 /****************************************************************************/
 
-
 SpatialReference::SpatialReference(void* handle, 
                                    const std::string& init_type,
                                    const std::string& init_str,
                                    const std::string& name ) :
 osg::Referenced( true ),
+_initialized( false ),
 _handle( handle ),
-_init_type( init_type ),
-_init_str( init_str ),
 _owns_handle( true ),
 _name( name ),
-_initialized( false )
+_init_type( init_type ),
+_init_str( init_str )
 {
     _init_str_lc = init_str;
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
@@ -294,9 +293,9 @@ _initialized( false )
 
 SpatialReference::SpatialReference(void* handle, bool ownsHandle) :
 osg::Referenced( true ),
+_initialized( false ),
 _handle( handle ),
-_owns_handle( ownsHandle ),
-_initialized( false )
+_owns_handle( ownsHandle )
 {
     //nop
 }

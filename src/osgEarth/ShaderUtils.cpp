@@ -56,10 +56,10 @@ namespace
 #define LC "[UpdateLightingUniformHelper] "
 
 UpdateLightingUniformsHelper::UpdateLightingUniformsHelper( bool useUpdateTrav ) :
-_useUpdateTrav( useUpdateTrav ),
-_applied( false ),
+_lightingEnabled( true ),
 _dirty( true ),
-_lightingEnabled( true )
+_applied( false ),
+_useUpdateTrav( useUpdateTrav )
 {
     _maxLights = Registry::instance()->getCapabilities().getMaxLights();
 

@@ -946,8 +946,8 @@ GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS,
 
         if ( elevation != NO_DATA_VALUE )
         {
-            const VerticalSpatialReference* fromVSRS = _vsrs.get();
-            const VerticalSpatialReference* toVSRS   = outputVSRS;
+            //const VerticalSpatialReference* fromVSRS = _vsrs.get();
+            //const VerticalSpatialReference* toVSRS   = outputVSRS;
 
             if ( VerticalSpatialReference::canTransform( _vsrs.get(), outputVSRS ) )
             {
@@ -1052,9 +1052,9 @@ GeoHeightField::takeHeightField()
 #define LC "[Geoid] "
 
 Geoid::Geoid() :
-_valid( false ),
+_hf( GeoHeightField::INVALID ),
 _units( Units::METERS ),
-_hf( GeoHeightField::INVALID )
+_valid( false )
 {
     //nop
 }

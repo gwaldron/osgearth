@@ -174,8 +174,9 @@ static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
 //------------------------------------------------------------------------
 
 EarthManipulator::Settings::Settings() :
-_throwing( false ),
 _single_axis_rotation( false ),
+_throwing( false ),
+_lock_azim_while_panning( true ),
 _mouse_sens( 1.0 ),
 _keyboard_sens( 1.0 ),
 _scroll_sens( 1.0 ),
@@ -185,7 +186,6 @@ _max_x_offset( 0.0 ),
 _max_y_offset( 0.0 ),
 _min_distance( 0.001 ),
 _max_distance( DBL_MAX ),
-_lock_azim_while_panning( true ),
 _tether_mode( TETHER_CENTER ),
 _arc_viewpoints( false ),
 _auto_vp_duration( false ),
@@ -197,8 +197,9 @@ _max_vp_duration_s( 8.0 )
 
 EarthManipulator::Settings::Settings( const EarthManipulator::Settings& rhs ) :
 _bindings( rhs._bindings ),
-_throwing( rhs._throwing ),
 _single_axis_rotation( rhs._single_axis_rotation ),
+_throwing( rhs._throwing ),
+_lock_azim_while_panning( rhs._lock_azim_while_panning ),
 _mouse_sens( rhs._mouse_sens ),
 _keyboard_sens( rhs._keyboard_sens ),
 _scroll_sens( rhs._scroll_sens ),
@@ -208,7 +209,6 @@ _max_x_offset( rhs._max_x_offset ),
 _max_y_offset( rhs._max_y_offset ),
 _min_distance( rhs._min_distance ),
 _max_distance( rhs._max_distance ),
-_lock_azim_while_panning( rhs._lock_azim_while_panning ),
 _tether_mode( rhs._tether_mode ),
 _arc_viewpoints( rhs._arc_viewpoints ),
 _auto_vp_duration( rhs._auto_vp_duration ),
@@ -377,15 +377,15 @@ _last_action( ACTION_NULL )
 }
 
 EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
+_thrown( rhs._thrown ),
 _distance( rhs._distance ),
 _offset_x( rhs._offset_x ),
 _offset_y( rhs._offset_y ),
-_thrown( rhs._thrown ),
 _continuous( rhs._continuous ),
-_settings( new Settings( *rhs._settings.get() ) ),
 _task( new Task() ),
-_last_action( rhs._last_action ),
+_settings( new Settings( *rhs._settings.get() ) ),
 _srs_lookup_failed( rhs._srs_lookup_failed ),
+_last_action( rhs._last_action ),
 _setting_viewpoint( rhs._setting_viewpoint ),
 _delta_t( rhs._delta_t ),
 _t_factor( rhs._t_factor ),
@@ -1392,6 +1392,8 @@ EarthManipulator::serviceTask()
     {
         switch( _task->_type )
         {
+			case TASK_NONE:
+				break;
             case TASK_PAN:
                 pan( _delta_t * _task->_dx, _delta_t * _task->_dy );
                 break;

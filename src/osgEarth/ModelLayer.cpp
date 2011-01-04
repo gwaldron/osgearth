@@ -93,8 +93,8 @@ _enabled( true )
 }
 
 ModelLayer::ModelLayer( const ModelLayerOptions& options, ModelSource* source ) :
-_options( options ),
-_modelSource( source )
+_modelSource( source ),
+_options( options )
 {
     //NOP
 }

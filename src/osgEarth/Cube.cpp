@@ -359,7 +359,7 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
             {
                 OE_NOTICE << LC << "Couldn't convert to face coords " << std::endl;
             }
-            if (face != _face)
+            if ((unsigned)face != _face)
             {
                 OE_NOTICE << LC
                     << "Face should be " << _face << " but is " << face

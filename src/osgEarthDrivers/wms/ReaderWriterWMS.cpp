@@ -336,7 +336,7 @@ public:
     {
         osg::ref_ptr<osg::Image> image;
 
-        for( int r=0; r<_timesVec.size(); ++r )
+        for( unsigned r=0; r<_timesVec.size(); ++r )
         {
             std::string extraAttrs = "TIME=" + _timesVec[r];
             HTTPResponse response;
@@ -406,7 +406,7 @@ public:
         seq->setLength( _options.secondsPerFrame().value() * (double)_timesVec.size() );
         seq->play();
 
-        for( int r=0; r<_timesVec.size(); ++r )
+        for( unsigned r=0; r<_timesVec.size(); ++r )
         {
             std::string extraAttrs = "TIME=" + _timesVec[r];
 

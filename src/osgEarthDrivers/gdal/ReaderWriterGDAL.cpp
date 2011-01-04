@@ -633,9 +633,9 @@ class GDALTileSource : public TileSource
 public:
     GDALTileSource( const TileSourceOptions& options ) :
       TileSource( options ),
-      _options(options),
       _srcDS(NULL),
       _warpedDS(NULL),
+      _options(options),
       _maxDataLevel(30)
     {
         //nop

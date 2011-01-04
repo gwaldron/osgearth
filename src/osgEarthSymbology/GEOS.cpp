@@ -124,30 +124,35 @@ import( const Symbology::Geometry* input, const geom::GeometryFactory* f )
                 break;
 
             case Symbology::Geometry::TYPE_POLYGON:
-                const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
-                seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
-                geom::LinearRing* shell = 0L;
-                if ( seq )
-                    shell = f->createLinearRing( seq );
+				{
+					//const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
+					seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
+					geom::LinearRing* shell = 0L;
+					if ( seq )
+						shell = f->createLinearRing( seq );
 
-                if ( shell )
-                {
-                    const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
-                    std::vector<geom::Geometry*>* holes = poly->getHoles().size() > 0 ? new std::vector<geom::Geometry*>() : 0L;
-                    for( Symbology::RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
-                    {
-                        geom::Geometry* hole = import( r->get(), f );
-                        if ( hole ) holes->push_back( hole );
-                    }
-                    if ( holes && holes->size() == 0 )
-                    {
-                        delete holes;
-                        holes = 0L;
-                    }
-                    output = f->createPolygon( shell, holes );
-                }
-                
+					if ( shell )
+					{
+						const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
+						std::vector<geom::Geometry*>* holes = poly->getHoles().size() > 0 ? new std::vector<geom::Geometry*>() : 0L;
+						for( Symbology::RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
+						{
+							geom::Geometry* hole = import( r->get(), f );
+							if ( hole ) holes->push_back( hole );
+						}
+						if ( holes && holes->size() == 0 )
+						{
+							delete holes;
+							holes = 0L;
+						}
+						output = f->createPolygon( shell, holes );
+					}
+				}
                 break;
+			case Symbology::Geometry::TYPE_MULTI:
+				break;
+			case Symbology::Geometry::TYPE_UNKNOWN:
+				break;
             }
         }
         catch( util::IllegalArgumentException )
@@ -190,19 +195,19 @@ exportPolygon( const geom::Polygon* input )
     {
         const geom::CoordinateSequence* s = outerRing->getCoordinates();
         output = new Symbology::Polygon( s->getSize() );
-        for( int j=0; j<s->getSize(); j++ ) 
+        for( unsigned j=0; j<s->getSize(); j++ ) 
         {
             const geom::Coordinate& c = s->getAt( j );
             output->push_back( osg::Vec3d( c.x, c.y, 0 ) ); 
         }
         output->rewind( Symbology::Ring::ORIENTATION_CCW );
 
-        for( int k=0; k < input->getNumInteriorRing(); k++ )
+        for( unsigned k=0; k < input->getNumInteriorRing(); k++ )
         {
             const geom::LineString* inner = input->getInteriorRingN( k );
             const geom::CoordinateSequence* s = inner->getCoordinates();
             Symbology::Ring* hole = new Symbology::Ring( s->getSize() );
-            for( int m = 0; m<s->getSize(); m++ )
+            for( unsigned m = 0; m<s->getSize(); m++ )
             {
                 const geom::Coordinate& c = s->getAt( m );
                 hole->push_back( osg::Vec3d( c.x, c.y, 0 ) );
@@ -235,7 +240,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     {
         const geom::MultiPoint* mp = static_cast<const geom::MultiPoint*>( input );
         Symbology::PointSet* part = new Symbology::PointSet( mp->getNumPoints() );
-        for( int i=0; i < mp->getNumPoints(); i++ )
+        for( unsigned i=0; i < mp->getNumPoints(); i++ )
         {
             geom::Point* p = (geom::Point*)( mp->getGeometryN(i) );
             part->push_back( osg::Vec3d( p->getX(), p->getY(), 0 ) );
@@ -246,7 +251,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     {
         const geom::LineString* line = static_cast<const geom::LineString*>( input );
         Symbology::LineString* part = new Symbology::LineString( line->getNumPoints() );
-        for( int i=0; i<line->getNumPoints(); i++ )
+        for( unsigned i=0; i<line->getNumPoints(); i++ )
         {
             const geom::Coordinate& c = line->getCoordinateN(i);
             part->push_back( osg::Vec3d( c.x, c.y, 0 ) );
@@ -256,7 +261,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     else if ( dynamic_cast<const geom::MultiLineString*>( input ) )
     {
         const geom::MultiLineString* m = static_cast<const geom::MultiLineString*>( input );
-        for( int i=0; i<m->getNumGeometries(); i++ ) 
+        for( unsigned i=0; i<m->getNumGeometries(); i++ ) 
         {
             Symbology::Geometry* part = exportGeometry( m->getGeometryN(i) );
             if ( part ) parts.push_back( part );
@@ -272,7 +277,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     {
         //OE_NOTICE << "Multipolygon" << std::endl;
         const geom::MultiPolygon* mpoly = static_cast<const geom::MultiPolygon*>( input );
-        for( int i=0; i<mpoly->getNumGeometries(); i++ )
+        for( unsigned i=0; i<mpoly->getNumGeometries(); i++ )
         {
             Symbology::Geometry* part = exportPolygon( static_cast<const geom::Polygon*>( mpoly->getGeometryN(i) ) );
             if ( part ) parts.push_back( part );

@@ -83,8 +83,8 @@ FeatureTileSourceOptions::fromConfig( const Config& conf )
 
 FeatureTileSource::FeatureTileSource( const TileSourceOptions& options ) :
 TileSource( options ),
-_initialized( false ),
-_options( options.getConfig() )
+_options( options.getConfig() ),
+_initialized( false )
 {
     if ( _options.featureSource().valid() )
     {
@@ -212,7 +212,7 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style* style,
                                                   const GeoExtent& imageExtent,
                                                   osg::Image* out_image)
 {
-    osg::Group* styleGroup = 0L;
+    //osg::Group* styleGroup = 0L;
 
     // first we need the overall extent of the layer:
     const GeoExtent& featuresExtent = getFeatureSource()->getFeatureProfile()->getExtent();

@@ -39,12 +39,12 @@ Control::Control() :
 _x(0), _y(0), _width(1), _height(1),
 _margin( Gutter(0) ),
 _padding( Gutter(2) ),
-_halign( ALIGN_NONE ),
+_visible( true ),
 _valign( ALIGN_NONE ),
+_halign( ALIGN_NONE ),
 _backColor( osg::Vec4f(0,0,0,0) ),
 _foreColor( osg::Vec4f(1,1,1,1) ),
 _activeColor( osg::Vec4f(.4,.4,.4,1) ),
-_visible( true ),
 _active( false ),
 _absorbEvents( false )
 {
@@ -412,7 +412,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             t->setFont( _font.get() );
 
         osg::BoundingBox bbox = t->getTextBB();
-        if ( cx._viewContextID != ~0 )
+        if ( cx._viewContextID != ~0u )
         {
             //the Text's autoTransformCache matrix puts some mojo on the bounding box
             osg::Matrix m = t->getATMatrix( cx._viewContextID );
@@ -636,7 +636,7 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
         float rh = osg::round( _renderSize.y() - padding().y() );
 
         float vph = cx._vp->height(); // - padding().bottom();
-        float hy = vph - (_renderPos.y() + 0.5 * _renderSize.y());
+        //float hy = vph - (_renderPos.y() + 0.5 * _renderSize.y());
 
         osg::Vec3Array* verts = new osg::Vec3Array(8);
         g->setVertexArray( verts );
@@ -1164,12 +1164,12 @@ Grid::cell(int col, int row)
 void
 Grid::expandToInclude( int col, int row )
 {
-    while( _rows.size() <= row )
+    while( (int)_rows.size() <= row )
         _rows.push_back( Row() );
 
     for( RowVector::iterator i = _rows.begin(); i != _rows.end(); ++i ) {
         Row& row = *i;
-        while( row.size() <= col )
+        while( (int)row.size() <= col )
             row.push_back( 0L );
     }
 }

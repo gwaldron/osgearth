@@ -134,8 +134,8 @@ void TileService::getMatchingPatterns(const std::string &layers, const std::stri
             osgDB::equalCaseInsensitive(i->getFormat(),format) &&
             osgDB::equalCaseInsensitive(i->getStyles(), styles) &&
             osgDB::equalCaseInsensitive(i->getSRS(), srs) &&
-            (i->getImageWidth() == imageWidth) &&
-            (i->getImageHeight() == imageHeight))
+            (i->getImageWidth() == (int)imageWidth) &&
+            (i->getImageHeight() == (int)imageHeight))
         {
             out_patterns.push_back(*i);
         }

@@ -22,18 +22,18 @@ using namespace osgEarth::Symbology;
 
 Stroke::Stroke() :
 _color( 1, 1, 1, 1 ),
-_width( 1.0f ),
+_lineCap( LINECAP_DEFAULT ),
 _lineJoin( LINEJOIN_DEFAULT ),
-_lineCap( LINECAP_DEFAULT )
+_width( 1.0f )
 {
     //nop
 }
 
 Stroke::Stroke( float r, float g, float b, float a ) :
 _color( r, g, b, a ),
-_width( 1.0f ),
+_lineCap( LINECAP_DEFAULT ),
 _lineJoin( LINEJOIN_DEFAULT ),
-_lineCap( LINECAP_DEFAULT )
+_width( 1.0f )
 {
     //nop
 }

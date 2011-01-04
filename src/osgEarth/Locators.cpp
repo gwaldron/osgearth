@@ -25,36 +25,36 @@
 using namespace osgEarth;
 
 GeoLocator::GeoLocator() :
-_x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0),
-_inverseCalculated(false)
+_inverseCalculated(false),
+_x0(0.0), _y0(0.0), 
+_x1(1.0), _y1(1.0)
 {
     this->setThreadSafeRefUnref(true);
 }
 
 GeoLocator::GeoLocator( const GeoExtent& dataExtent ) :
+_inverseCalculated(false),
 _dataExtent( dataExtent ),
-_x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0),
-_inverseCalculated(false)
+_x0(0.0), _y0(0.0), 
+_x1(1.0), _y1(1.0)
 {
     this->setThreadSafeRefUnref(true);
 }
 
 GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :
 osgTerrain::Locator( prototype ),
+_inverseCalculated(false),
 _dataExtent( dataExtent ),
-_x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0),
-_inverseCalculated(false)
+_x0(0.0), _y0(0.0), 
+_x1(1.0), _y1(1.0)
 {
     //nop
 }
 
 GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent, const GeoExtent& displayExtent ) :
 osgTerrain::Locator( prototype ),
-_dataExtent( dataExtent ),
-_inverseCalculated(false)
+_inverseCalculated(false),
+_dataExtent( dataExtent )
 {
     // assume they are the same SRS
     _x0 = osg::clampBetween( (displayExtent.xMin()-dataExtent.xMin())/dataExtent.width(), 0.0, 1.0 );
@@ -155,7 +155,7 @@ GeoLocator::getGeographicFromGeocentric( ) const
 #define MERC_MAX_LAT  85.084059050110383
 #define MERC_MIN_LAT -85.084059050110383
 
-static double
+LIKELY_UNUSED_FUNCTION static double
 lonToU(double lon) {
     return (lon + 180.0) / 360.0;
 }

@@ -24,9 +24,15 @@
 #include <string>
 #include <algorithm>
 
+#ifdef __GNUC__
+#define LIKELY_UNUSED_FUNCTION __attribute__ ((unused))
+#else
+#define LIKELY_UNUSED_FUNCTION
+#endif
+
 namespace osgEarth
 {
-    static std::string&
+    LIKELY_UNUSED_FUNCTION static std::string&
     replaceIn( std::string& s, const std::string& sub, const std::string& other)
     {
         if ( sub.empty() ) return s;
@@ -43,7 +49,7 @@ namespace osgEarth
 
     // by Rodrigo C F Dias
     // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
-    static
+    LIKELY_UNUSED_FUNCTION static
     std::string trim( const std::string& in )
     {
         std::string whitespace (" \t\f\v\n\r");
@@ -58,7 +64,7 @@ namespace osgEarth
         return str;
     }
 
-    static
+    LIKELY_UNUSED_FUNCTION static
     bool startsWith( const std::string& ref, const std::string& pattern )
     {
         return ref.find( pattern ) == 0;
@@ -69,9 +75,9 @@ namespace osgEarth
     {
     public:
         StringTokenizer(const std::string& s)
-            : _string(s), _offset(0), _delimiters(" \t\n\r") { }
+            : _offset(0), _string(s), _delimiters(" \t\n\r") { }
         StringTokenizer(const std::string& s, const std::string& delimiters)
-            : _string(s), _offset(0), _delimiters(delimiters) { }
+            : _offset(0), _string(s), _delimiters(delimiters) { }
         bool nextToken() {
             return nextToken( _delimiters ); }
         bool nextToken(const std::string& delimiters) {
@@ -94,13 +100,13 @@ namespace osgEarth
             return trim( _token );
         }
     protected:
-        const std::string _string;
         size_t _offset;
+        const std::string _string;
         std::string _token;
         std::string _delimiters;
     };
 
-    static
+    LIKELY_UNUSED_FUNCTION static
     void split( const std::string& input, const std::string& delims, std::vector<std::string>& output, bool allowEmpties =true )
     {
         StringTokenizer t(input, delims);
@@ -110,7 +116,7 @@ namespace osgEarth
     }
 
     /** Returns a lower-case version of the input string. */
-    static std::string
+    LIKELY_UNUSED_FUNCTION static std::string
     toLower( const std::string& input )
     {
         std::string output = input;
@@ -118,7 +124,7 @@ namespace osgEarth
         return output;
     }
 
-    static osg::Vec4ub
+    LIKELY_UNUSED_FUNCTION static osg::Vec4ub
     stringToColor(const std::string& str, osg::Vec4ub default_value)
     {
         osg::Vec4ub color = default_value;
@@ -134,7 +140,7 @@ namespace osgEarth
         return color;
     }
 
-    static std::string
+    LIKELY_UNUSED_FUNCTION static std::string
     colorToString( const osg::Vec4ub& c )
     {
         std::stringstream ss;
@@ -144,7 +150,7 @@ namespace osgEarth
         return ssStr;
     }
 
-    static osg::Vec4f
+    LIKELY_UNUSED_FUNCTION static osg::Vec4f
     htmlColorToVec4f( const std::string& html )
     {
         std::string t = html;
@@ -166,7 +172,7 @@ namespace osgEarth
         return osg::Vec4f( ((float)c.r())/255.0f, ((float)c.g())/255.0f, ((float)c.b())/255.0f, ((float)c.a())/255.0f );
     }
 
-    static std::string
+    LIKELY_UNUSED_FUNCTION static std::string
     vec4fToHtmlColor( const osg::Vec4f& c )
     {
         std::stringstream buf;
@@ -181,7 +187,7 @@ namespace osgEarth
     }
 
     /** MurmurHash 2.0 (http://sites.google.com/site/murmurhash/) */
-    static unsigned int
+    LIKELY_UNUSED_FUNCTION static unsigned int
     hashString( const std::string& input )
     {
 	    const unsigned int m = 0x5bd1e995;

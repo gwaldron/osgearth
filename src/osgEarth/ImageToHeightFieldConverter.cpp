@@ -38,8 +38,8 @@ isNoData( float f )
 
 
 ImageToHeightFieldConverter::ImageToHeightFieldConverter()
-: _nodata_value( 0.0f ),
-_replace_nodata( false )
+: _replace_nodata( false ),
+_nodata_value( 0.0f )
 {
   //NOP
 }

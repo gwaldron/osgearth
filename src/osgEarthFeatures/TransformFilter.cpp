@@ -25,8 +25,8 @@ using namespace osgEarth::Symbology;
 
 TransformFilter::TransformFilter() :
 _makeGeocentric( false ),
-_localize( false ),
-_heightOffset( 0.0 )
+_heightOffset( 0.0 ),
+_localize( false )
 {
     // nop
 }
@@ -34,8 +34,8 @@ _heightOffset( 0.0 )
 TransformFilter::TransformFilter(const SpatialReference* outputSRS ) :
 _outputSRS( outputSRS ),
 _makeGeocentric( false ),
-_localize( false ),
-_heightOffset( 0.0 )
+_heightOffset( 0.0 ),
+_localize( false )
 {
     //NOP
 }
@@ -53,7 +53,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
         while( iter.hasMore() )
         {
             Geometry* geom = iter.next();
-            bool success = context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom, false );
+            /*bool success = */context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom, false );
             
             // todo: handle errors
             // if ( !success ) return false;
@@ -61,7 +61,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
             if ( _makeGeocentric && _outputSRS->isGeographic() )
             {
                 const osg::EllipsoidModel* em = context.profile()->getSRS()->getEllipsoid();
-                for( int i=0; i<geom->size(); i++ )
+                for( unsigned i=0; i<geom->size(); i++ )
                 {
                     double x, y, z;
                     em->convertLatLongHeightToXYZ(
@@ -75,7 +75,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
             }
             else
             {
-                for( int i=0; i<geom->size(); i++ )
+                for( unsigned i=0; i<geom->size(); i++ )
                 {
                     if ( _heightOffset != 0.0 )
                         (*geom)[i].z() += _heightOffset;
@@ -99,7 +99,7 @@ namespace
             while( iter.hasMore() )
             {
                 Geometry* geom = iter.next();
-                for( int i=0; i<geom->size(); i++ )
+                for( unsigned i=0; i<geom->size(); i++ )
                 {
                     (*geom)[i] = (*geom)[i] * refFrame;
                 }

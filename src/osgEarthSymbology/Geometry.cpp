@@ -73,7 +73,6 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
     if ( newType == getType() )
         return static_cast<Geometry*>( clone() );
 
-    Geometry* result = 0L;
     switch( newType )
     {
     case TYPE_POINTSET:
@@ -84,6 +83,9 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
         return new Ring( (const osg::Vec3dArray*)this );
     case TYPE_POLYGON:
         return new Polygon( (const osg::Vec3dArray*)this );
+	case TYPE_MULTI:
+	case TYPE_UNKNOWN:
+		return 0L;
     }
     return 0L;
 }
@@ -100,15 +102,19 @@ Geometry*
 Geometry::create( Type type, const osg::Vec3dArray* toCopy )
 {
     Geometry* output = 0L;
-    switch( type ) {
-        case TYPE_POINTSET:
-            output = new PointSet( toCopy ); break;
-        case TYPE_LINESTRING:
-            output = new LineString( toCopy ); break;
-        case TYPE_RING:
-            output = new Ring( toCopy ); break;
-        case TYPE_POLYGON:
-            output = new Polygon( toCopy ); break;
+    switch( type ) 
+	{
+	case TYPE_POINTSET:
+		output = new PointSet( toCopy ); break;
+	case TYPE_LINESTRING:
+		output = new LineString( toCopy ); break;
+	case TYPE_RING:
+		output = new Ring( toCopy ); break;
+	case TYPE_POLYGON:
+		output = new Polygon( toCopy ); break;
+	case TYPE_MULTI:
+	case TYPE_UNKNOWN:
+		output = 0L; break;
     }
     return output;
 }
@@ -467,9 +473,9 @@ MultiGeometry::isValid() const
 //----------------------------------------------------------------------------
 
 GeometryIterator::GeometryIterator( Geometry* geom ) :
+_next( 0L ),
 _traverseMulti( true ),
-_traversePolyHoles( true ),
-_next( 0L )
+_traversePolyHoles( true )
 {
     if ( geom )
     {
@@ -525,9 +531,9 @@ GeometryIterator::fetchNext()
 //----------------------------------------------------------------------------
 
 ConstGeometryIterator::ConstGeometryIterator( const Geometry* geom ) :
+_next( 0L ),
 _traverseMulti( true ),
-_traversePolyHoles( true ),
-_next( 0L )
+_traversePolyHoles( true )
 {
     if ( geom )
     {

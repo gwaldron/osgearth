@@ -902,7 +902,7 @@ namespace
 
                     if (hf.valid())
                     {
-                        if ( hf_key.getLevelOfDetail() < lowestLOD )
+                        if ( hf_key.getLevelOfDetail() < (unsigned)lowestLOD )
                             lowestLOD = hf_key.getLevelOfDetail();
 
                         heightFields.push_back( GeoHeightField(
@@ -920,7 +920,7 @@ namespace
 
 	    else if (heightFields.size() == 1)
 	    {
-            if ( lowestLOD == key.getLevelOfDetail() )
+            if ( (unsigned)lowestLOD == key.getLevelOfDetail() )
             {
 		        //If we only have on heightfield, just return it.
 		        out_result = heightFields[0].takeHeightField();
@@ -1118,40 +1118,39 @@ Map::sync( MapFrame& frame ) const
 }
 
 //------------------------------------------------------------------------
-
 MapFrame::MapFrame( const Map* map, Map::ModelParts parts, const std::string& name ) :
+_initialized( false ),
 _map( map ),
-_parts( parts ),
 _name( name ),
-_copyValidDataOnly( false ),
 _mapInfo( map ),
-_initialized( false )
+_parts( parts ),
+_copyValidDataOnly( false )
 {
     sync();
 }
 
 MapFrame::MapFrame( const Map* map, bool copyValidDataOnly, Map::ModelParts parts, const std::string& name ) :
+_initialized( false ),
 _map( map ),
-_parts( parts ),
-_copyValidDataOnly( copyValidDataOnly ),
 _name( name ),
 _mapInfo( map ),
-_initialized( false )
+_parts( parts ),
+_copyValidDataOnly( copyValidDataOnly )
 {
     sync();
 }
 
 MapFrame::MapFrame( const MapFrame& src, const std::string& name ) :
-_name( name ),
+_initialized( src._initialized ),
 _map( src._map.get() ),
+_name( name ),
+_mapInfo( src._mapInfo ), // src._map.get() ),
 _parts( src._parts ),
 _copyValidDataOnly( src._copyValidDataOnly ),
-_mapInfo( src._mapInfo ), // src._map.get() ),
+_mapDataModelRevision( src._mapDataModelRevision ),
 _imageLayers( src._imageLayers ),
 _elevationLayers( src._elevationLayers ),
-_modelLayers( src._modelLayers ),
-_mapDataModelRevision( src._mapDataModelRevision ),
-_initialized( src._initialized )
+_modelLayers( src._modelLayers )
 {
     //no sync required here; we copied the arrays etc
 }

@@ -56,7 +56,7 @@ namespace
     static osg::Shader*
     s_createTextureFragShaderFunction( const TextureLayout& layout, int maxUnits, bool blending, float blendTime )
     {
-        const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
+        //const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
         const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
 
         std::stringstream buf;
@@ -94,7 +94,7 @@ namespace
         {
             int slot = order[i];
             int q = 2 * i;
-            int r = 4 * slot;
+            //int r = 4 * slot;
 
             buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
                 << "        dmin = osgearth_CameraRange - osgearth_ImageLayerRange["<< q << "]; \n"
@@ -179,9 +179,9 @@ namespace
 //------------------------------------------------------------------------
 
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options ) :
-_useGPU( useGPU ),
 _lodBlending( *options.lodBlending() ),
-_lodTransitionTime( *options.lodTransitionTime() )
+_lodTransitionTime( *options.lodTransitionTime() ),
+_useGPU( useGPU )
 {
     // validate
     if ( _lodBlending && _lodTransitionTime <= 0.0f )

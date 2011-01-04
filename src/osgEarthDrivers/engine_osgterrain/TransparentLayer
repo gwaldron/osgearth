@@ -36,12 +36,12 @@ public:
         const osg::Image* image,
         const osgTerrain::Locator* locator,
         int lod )
-        : _layer(imageLayer), _image(image), _locator(locator), _lod(lod) { }
+        : _layer(imageLayer), _locator(locator), _image(image), _lod(lod) { }
 
     CustomColorLayer( const CustomColorLayer& rhs ) :
         _layer( rhs._layer.get() ),
-        _image( rhs._image.get() ),
         _locator( rhs._locator.get() ),
+        _image( rhs._image.get() ),
         _lod( rhs._lod ) { }
 
     osgEarth::UID getUID() const {

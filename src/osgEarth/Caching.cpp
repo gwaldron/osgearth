@@ -93,9 +93,9 @@ _options( options )
 
 DiskCache::DiskCache( const DiskCache& rhs, const osg::CopyOp& op ) :
 Cache( rhs, op ),
-_options( rhs._options ),
 _layerPropertiesCache( rhs._layerPropertiesCache ),
-_writeWorldFilesOverride( rhs._writeWorldFilesOverride )
+_writeWorldFilesOverride( rhs._writeWorldFilesOverride ),
+_options( rhs._options )
 {
     //NOP
 }
@@ -408,7 +408,7 @@ MemCache::purge( const std::string& cacheId, int olderThan, bool async )
 bool
 MemCache::getObject( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Referenced>& output )
 {
-  osg::Timer_t now = osg::Timer::instance()->tick();
+  //osg::Timer_t now = osg::Timer::instance()->tick();
 
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 

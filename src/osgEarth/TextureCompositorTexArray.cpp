@@ -280,7 +280,7 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     {
         // update the timestamp on the image layer to support blending.
         osg::Uniform* stamp = stateSet->getUniform( "osgearth_SlotStamp" );
-        if ( !stamp || stamp->getNumElements() < layout.getMaxUsedSlot() + 1 )
+        if ( !stamp || stamp->getNumElements() < (unsigned)layout.getMaxUsedSlot() + 1 )
         {
             stamp = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_SlotStamp", layout.getMaxUsedSlot()+1 );   
             stateSet->addUniform( stamp );

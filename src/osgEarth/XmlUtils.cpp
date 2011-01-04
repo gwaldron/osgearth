@@ -266,7 +266,7 @@ XmlDocument::~XmlDocument()
 }
 
 
-static XmlAttributes
+LIKELY_UNUSED_FUNCTION static XmlAttributes
 getAttributes( const char** attrs )
 {
     XmlAttributes map;

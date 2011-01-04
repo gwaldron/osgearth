@@ -45,13 +45,13 @@ using namespace OpenThreads;
 // --------------------------------------------------------------------------
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
-_texCompositor( compositor ),
 _verticalScaleOverride(1.0f),
+_initCount(0),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
-_initCount(0),
-_optimizeTriangleOrientation(true),
 _lastUpdate( TileUpdate::UPDATE_ALL ),
+_optimizeTriangleOrientation(true),
+_texCompositor( compositor ),
 _frontGeodeInstalled( false )
 {
     this->setThreadSafeRefUnref(true);
@@ -59,13 +59,13 @@ _frontGeodeInstalled( false )
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& rhs, const osg::CopyOp& copyop):
 CustomTerrainTechnique( rhs, copyop ),
-_texCompositor( rhs._texCompositor.get() ),
 _verticalScaleOverride( rhs._verticalScaleOverride ),
-_optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
+_initCount( 0 ),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate( false ),
-_initCount( 0 ),
 _lastUpdate( rhs._lastUpdate ),
+_optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
+_texCompositor( rhs._texCompositor.get() ),
 _frontGeodeInstalled( rhs._frontGeodeInstalled )
 {
     //NOP

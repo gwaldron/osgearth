@@ -65,8 +65,8 @@ namespace
     {
         CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
             : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-              _original( polytope ),
-              _bbox(out_bbox)
+              _bbox(out_bbox),
+              _original( polytope )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );
@@ -497,7 +497,7 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
     }
 }
 
-static int s_frame = 1;
+//static int s_frame = 1;
 
 void
 OverlayDecorator::cull( osgUtil::CullVisitor* cv )
@@ -653,7 +653,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         // intersect the viewing frustum:
         osgShadow::ConvexPolyhedron visiblePH;
 
-        const osg::BoundingSphere& bs = _subgraphContainer->getBound();
+        //const osg::BoundingSphere& bs = _subgraphContainer->getBound();
         //visiblePH.setToBoundingBox( osg::BoundingBox( -bs.radius(), -bs.radius(), -bs.radius(), bs.radius(), bs.radius(), bs.radius() ) );
 
         // get the bounds of the model. 

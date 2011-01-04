@@ -195,8 +195,8 @@ ImageUtils::resizeImage(const osg::Image* input,
     }
     else
     {       
-        float s_ratio = (float)in_s/(float)out_s;
-        float t_ratio = (float)in_t/(float)out_t;
+        //float s_ratio = (float)in_s/(float)out_s;
+        //float t_ratio = (float)in_t/(float)out_t;
         unsigned int pixel_size_bytes = input->getRowSizeInBytes() / in_s;
 
         unsigned char* dataOffset = output->getMipmapData(mipmapLevel);
@@ -214,7 +214,7 @@ ImageUtils::resizeImage(const osg::Image* input,
             {
                 float output_col_ratio = (float)output_col/(float)out_s;
                 int input_col = (unsigned int)( output_col_ratio * (float)in_s );
-                if ( input_col >= in_s ) input_col = in_s-1;
+                if ( input_col >= (int)in_s ) input_col = in_s-1;
                 else if ( input_row < 0 ) input_row = 0;
 
                 unsigned char* outaddr =
@@ -309,7 +309,7 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
                 osg::Vec4f destColor = dest_reader( s, t, r );
 
                 float sa = src->getPixelSizeInBits() == 32 ? a * srcColor.a() : a;
-                float da = dest->getPixelSizeInBits() == 32 ? destColor.a() : 1.0f;
+                //float da = dest->getPixelSizeInBits() == 32 ? destColor.a() : 1.0f;
 
                 dest_writer( s, t, r, osg::Vec4(
                     destColor.r()*(1.0f-sa) + srcColor.r()*sa,
@@ -865,7 +865,7 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
         {
-            GLubyte* ptr = (GLubyte*)iw->data(s, t, r);
+            //GLubyte* ptr = (GLubyte*)iw->data(s, t, r);
             OE_WARN << LC << "Target GL_UNSIGNED_BYTE_3_3_2 not yet implemented" << std::endl;
         }
     };

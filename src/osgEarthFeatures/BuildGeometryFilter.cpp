@@ -54,8 +54,8 @@ namespace
 
 BuildGeometryFilter::BuildGeometryFilter() :
 _style( new Style() ),
-_maxAngle_deg( 10.0 ),
-_geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN )
+_geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
+_maxAngle_deg( 10.0 )
 {
     reset();
 }
@@ -208,6 +208,9 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
                 }
             }
             break;
+        case Geometry::TYPE_MULTI:
+		case Geometry::TYPE_UNKNOWN:
+			break;
         }
         
         osg::Geometry* osgGeom = new osg::Geometry();
@@ -432,7 +435,7 @@ osgEarth::Features::createVolume(Geometry*            geom,
     }
 
 
-    bool made_geom = true;
+    //bool made_geom = true;
     const SpatialReference* srs = context.profile()->getSRS();
 
     // total up all the points so we can pre-allocate the vertex arrays.

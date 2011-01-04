@@ -294,7 +294,7 @@ void
 TerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 {
     // make sure all the requested properties are compatible, and fall back as necessary.
-    const Capabilities& caps = Registry::instance()->getCapabilities();
+    //const Capabilities& caps = Registry::instance()->getCapabilities();
 
     // warn against mixing multipass technique with preemptive/sequential mode:
     if (options.compositingTechnique() == TerrainOptions::COMPOSITING_MULTIPASS &&

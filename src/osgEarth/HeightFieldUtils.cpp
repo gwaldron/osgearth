@@ -42,7 +42,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
         if (rowMin == rowMax)
         {
-            if (rowMin < hf->getNumRows()-2)
+            if (rowMin < (int)hf->getNumRows()-2)
             {
                 rowMax = rowMin + 1;
             }
@@ -54,7 +54,7 @@ HeightFieldUtils::getHeightAtPixel(const osg::HeightField* hf, double c, double 
 
          if (colMin == colMax)
          {
-            if (colMin < hf->getNumColumns()-2)
+            if (colMin < (int)hf->getNumColumns()-2)
             {
                 colMax = colMin + 1;
             }
@@ -274,7 +274,7 @@ HeightFieldUtils::resizeHeightField(osg::HeightField* input, int newColumns, int
     if ( newColumns <= 1 && newRows <= 1 )
         return 0L;
 
-    if ( newColumns == input->getNumColumns() && newRows == input->getNumRows() )
+    if ( newColumns == (int)input->getNumColumns() && newRows == (int)input->getNumRows() )
         return new osg::HeightField( *input, osg::CopyOp::DEEP_COPY_ALL );
 
     double spanX = (input->getNumColumns()-1) * input->getXInterval();

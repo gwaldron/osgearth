@@ -105,6 +105,14 @@ osg::Node* GeometrySymbolizer::GeometrySymbolizerOperator::operator()(const Geom
                 }
             }
             break;
+            case Geometry::TYPE_MULTI:
+			{
+			}
+			break;
+			case Geometry::TYPE_UNKNOWN:
+			{
+			}
+			break;
             }
 
             osg::Material* material = new osg::Material;

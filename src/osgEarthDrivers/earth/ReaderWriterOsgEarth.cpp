@@ -96,7 +96,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ((fileName.length() > 7) && (fileName.substr(0, 7) == "server:"))
                 return readNode(fileName.substr(7), options);
 
-            osg::Node* node = 0;
+            //osg::Node* node = 0;
 
             if ( fileName == "__globe.earth" )
             {

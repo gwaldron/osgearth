@@ -36,12 +36,12 @@ FeatureCursorOGR::FeatureCursorOGR(OGRDataSourceH dsHandle,
 _dsHandle( dsHandle ),
 _layerHandle( layerHandle ),
 _resultSetHandle( 0L ),
-_profile( profile ),
+_spatialFilter( 0L ),
 _query( query ),
-_filters( filters ),
 _chunkSize( 500 ),
 _nextHandleToQueue( 0L ),
-_spatialFilter( 0L )
+_profile( profile ),
+_filters( filters )
 {
     //_resultSetHandle = _layerHandle;
     {
@@ -60,7 +60,7 @@ _spatialFilter( 0L )
             // if the expression is just a where clause, expand it into a complete SQL expression.
             std::string temp = expr;
             std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
-            bool complete = temp.find( "select" ) == 0;
+            //bool complete = temp.find( "select" ) == 0;
             if ( temp.find( "select" ) != 0 )
             {
                 std::stringstream buf;

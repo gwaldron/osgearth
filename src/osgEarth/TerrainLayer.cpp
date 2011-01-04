@@ -34,14 +34,14 @@ using namespace OpenThreads;
 
 TerrainLayerOptions::TerrainLayerOptions( const ConfigOptions& options ) :
 ConfigOptions( options ),
-_enabled( true ),
-_exactCropping( false ),
-_reprojectedTileSize( 256 ),
+_minLevel( 0 ),
+_maxLevel( 99 ),
 _cacheEnabled( true ),
 _cacheOnly( false ),
 _loadingWeight( 1.0f ),
-_minLevel( 0 ),
-_maxLevel( 99 )
+_exactCropping( false ),
+_enabled( true ),
+_reprojectedTileSize( 256 )
 {
     setDefaults();
     fromConfig( _conf ); 
@@ -206,7 +206,7 @@ TerrainLayer::setCache(Cache* cache)
 TileSource* 
 TerrainLayer::getTileSource() const
 {
-    const TerrainLayerOptions& opt = getTerrainLayerOptions();
+    //const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
     if ( (_tileSource.valid() && !_tileSourceInitialized) || (!_tileSource.valid() && _actualCacheOnly == false) )
     {
@@ -235,7 +235,7 @@ TerrainLayer::getProfile() const
 {
     if ( !_profile.valid() )
     {
-        const TerrainLayerOptions& opt = getTerrainLayerOptions();
+        //const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
         if ( _actualCacheOnly == false && !_tileSource.valid() )
         {

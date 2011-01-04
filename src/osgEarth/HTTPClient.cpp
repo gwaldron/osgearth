@@ -118,8 +118,8 @@ HTTPRequest::HTTPRequest( const std::string& url )
 }
 
 HTTPRequest::HTTPRequest( const HTTPRequest& rhs ) :
-_url( rhs._url ),
-_parameters( rhs._parameters )
+_parameters( rhs._parameters ),
+_url( rhs._url )
 {
     //nop
 }
@@ -188,8 +188,8 @@ HTTPResponse::HTTPResponse( long _code )
 }
 
 HTTPResponse::HTTPResponse( const HTTPResponse& rhs ) :
-_response_code( rhs._response_code ),
 _parts( rhs._parts ),
+_response_code( rhs._response_code ),
 _mimeType( rhs._mimeType ),
 _cancelled( rhs._cancelled )
 {

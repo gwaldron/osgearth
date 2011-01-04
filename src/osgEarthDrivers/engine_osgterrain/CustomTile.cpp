@@ -140,8 +140,8 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 {
     TileElevationPlaceholderLayerRequest( const TileKey& key, const MapFrame& mapf, OSGTileFactory* tileFactory, GeoLocator* keyLocator )
         : TileLayerRequest( key, mapf, tileFactory ),
-          _keyLocator(keyLocator),
-          _parentKey( key.createParentKey() )
+          _parentKey( key.createParentKey() ),
+          _keyLocator(keyLocator)
     {
         //nop
     }
@@ -205,22 +205,22 @@ struct TileGenRequest : public TaskRequest
 /*****************************************************************************/
 
 CustomTile::CustomTile( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects ) :
-_key( key ),
-_keyLocator( keyLocator ),
-_useLayerRequests( false ),       // always set this to false here; use setUseLayerRequests() to enable
 _terrainRevision( -1 ),
 _tileRevision( 0 ),
+_useLayerRequests( false ),       // always set this to false here; use setUseLayerRequests() to enable
 _requestsInstalled( false ),
+_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _elevationLOD( key.getLevelOfDetail() ),
 _hasBeenTraversed(false),
 _useTileGenRequest( true ),
 //_tileGenNeeded( false ),
-_verticalScale(1.0f),
-_quickReleaseGLObjects( quickReleaseGLObjects )
+_quickReleaseGLObjects( quickReleaseGLObjects ),
+_key( key ),
+_keyLocator( keyLocator ),
+_verticalScale(1.0f)
 {
     this->setThreadSafeRefUnref( true );
 
@@ -312,7 +312,7 @@ void
 CustomTile::setElevationLOD( int lod )
 {
     _elevationLOD = lod;
-    _elevationLayerUpToDate = _elevationLOD == _key.getLevelOfDetail();
+    _elevationLayerUpToDate = _elevationLOD == (int)_key.getLevelOfDetail();
 
     //Should probably just reset the placeholder requests
     //if (_elevPlaceholderRequest.valid()) _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
@@ -544,7 +544,7 @@ CustomTile::readyForNewElevation()
 {
     bool ready = true;
 
-    if ( _elevationLOD == _key.getLevelOfDetail() )
+    if ( _elevationLOD == (int)_key.getLevelOfDetail() )
     {
         ready = false;
     }
@@ -564,7 +564,7 @@ CustomTile::readyForNewElevation()
         }
 
         // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
-        if ( ready && _elevationLOD+1 < _key.getLevelOfDetail() && _elevationLOD == _family[Relative::PARENT].elevLOD )
+        if ( ready && _elevationLOD+1 < (int)_key.getLevelOfDetail() && _elevationLOD == _family[Relative::PARENT].elevLOD )
         {
             ready = false;
         }
@@ -592,7 +592,7 @@ CustomTile::readyForNewImagery(ImageLayer* layer, int currentLOD)
 {
     bool ready = true;
 
-    if ( currentLOD == _key.getLevelOfDetail() )
+    if ( currentLOD == (int)_key.getLevelOfDetail() )
     {
         ready = false;
     }
@@ -615,7 +615,7 @@ CustomTile::readyForNewImagery(ImageLayer* layer, int currentLOD)
 
         // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
         if (ready &&
-            currentLOD + 1 < _key.getLevelOfDetail() && 
+            currentLOD + 1 < (int)_key.getLevelOfDetail() && 
             currentLOD == _family[Relative::PARENT].getImageLOD( layer->getUID() ) )
         {
             ready = false;
@@ -810,7 +810,7 @@ CustomTile::servicePendingElevationRequests( const MapFrame& mapf, int stamp, bo
         // otherwise, see if it is legal yet to start a new request:
         else if ( readyForNewElevation() )
         {
-            if ( _elevationLOD + 1 == _key.getLevelOfDetail() )
+            if ( _elevationLOD + 1 == (int)_key.getLevelOfDetail() )
             {
                 _elevRequest->setStamp( stamp );
                 _elevRequest->setProgressCallback( new ProgressCallback() );
@@ -933,7 +933,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
             {
                 // in sequential mode, we have to incrementally increase imagery resolution by
                 // creating placeholders based of parent tiles, one LOD at a time.
-                if ( colorLayer.getLevelOfDetail() + 1 < _key.getLevelOfDetail() )
+                if ( colorLayer.getLevelOfDetail() + 1 < (int)_key.getLevelOfDetail() )
                 {
                     // if the parent's image LOD is higher than ours, replace ours with the parent's
                     // since it is a higher-resolution placeholder:

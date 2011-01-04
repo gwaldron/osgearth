@@ -54,11 +54,17 @@ static GraticuleRegistry s_graticuleRegistry;
 #define TEXT_MARKER "t"
 #define GRID_MARKER "g"
 
+#ifdef __GNUC__
+#define LIKELY_UNUSED_VARIABLE __attribute__ ((unused))
+#else
+#define LIKELY_UNUSED_VARIABLE
+#endif
+
 //---------------------------------------------------------------------------
 
 namespace
 {
-    char s_vertexShader[] =
+    LIKELY_UNUSED_VARIABLE char s_vertexShader[] =
         "varying vec3 Normal; \n"
         "void main(void) \n"
         "{ \n"
@@ -67,7 +73,7 @@ namespace
         "    gl_FrontColor = gl_Color; \n"
         "} \n";
 
-    char s_fragmentShader[] =
+    LIKELY_UNUSED_VARIABLE char s_fragmentShader[] =
         "varying vec3 Normal; \n"
         "void main(void) \n"
         "{ \n"
@@ -78,8 +84,8 @@ namespace
 //---------------------------------------------------------------------------
 
 Graticule::Graticule( const Map* map ) :
-_map( map ),
 _autoLevels( true ),
+_map( map ),
 _textColor( 1,1,0,1 )
 {
     // safely generate a unique ID for this graticule:
@@ -343,8 +349,8 @@ Graticule::createGridLevel( unsigned int levelNum ) const
                 pex.xMin() + tw * (double)(x+1),
                 pex.yMin() + th * (double)(y+1) );
 
-            double ox = level._lineWidth;
-            double oy = level._lineWidth;
+            //double ox = level._lineWidth;
+            //double oy = level._lineWidth;
 
             Geometry* geom = createCellGeometry( tex, level._lineWidth, pex, _map->isGeocentric() );
 

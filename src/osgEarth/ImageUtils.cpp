@@ -112,7 +112,8 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
     // check for fast bytewise copy:
     if (src->getPacking() == dst->getPacking() &&
         src->getDataType() == dst->getDataType() &&
-        src->getPixelFormat() == dst->getPixelFormat() )
+        src->getPixelFormat() == dst->getPixelFormat() &&
+        src->getInternalTextureFormat() == dst->getInternalTextureFormat() )
     {
         for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
         {
@@ -131,10 +132,8 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
         for( int src_t=0, dst_t=dst_start_row; src_t < src->t(); src_t++, dst_t++ )
         {
             for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
-            {
-                //TODO: port to PixelReader/Writer
-                //setColor( dst, dst_s, dst_t, dst_img, getColor(src, src_s, src_t) );                
-                write(dst_s, dst_t, 0, read(dst_s, src_t, 0) );
+            {           
+                write(dst_s, dst_t, 0, read(src_s, src_t, 0) );
             }
         }
     }
@@ -921,6 +920,7 @@ _image(image)
         _reader = &ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>::read;
         break;
     default:
+        OE_WARN << "[PixelReader] No reader found for pixel format " << std::hex << image->getPixelFormat() << std::endl; 
         _reader = &ColorReader<0, GLbyte>::read;
         break;
     }
@@ -990,6 +990,7 @@ _image(image)
         _writer = chooseWriter<GL_BGRA>(dataType);
         break; 
     default:
+        OE_WARN << "[PixelWriter] No writer found for pixel format " << std::hex << image->getPixelFormat() << std::endl; 
         _writer = chooseWriter<0>(dataType);
         break;
     }

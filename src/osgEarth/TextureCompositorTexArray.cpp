@@ -212,28 +212,35 @@ _lodTransitionTime( *options.lodTransitionTime() )
 GeoImage
 TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
 {
-    osg::ref_ptr<osg::Image> image = layerImage.getImage();
+    osg::ref_ptr<const osg::Image> image = layerImage.getImage();
 
-    // Because all tex2darray layers must be identical in format, let's use RGBA.
-    if ( image->getPixelFormat() != GL_RGBA8 )
-        image = ImageUtils::convertToRGBA8( image.get() );
-
-    // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
-    if ( image->s() != 256 || image->t() != 256 )
+    if (image->getPixelFormat() != GL_RGBA ||
+        image->getInternalTextureFormat() != GL_RGBA8 ||
+        image->s() != 256 ||
+        image->t() != 256 )
     {
-        osg::ref_ptr<osg::Image> newImage;
-        if ( ImageUtils::resizeImage( image.get(), 256, 256, newImage ) )
-            image = newImage.get();
-    }
+        // Because all tex2darray layers must be identical in format, let's use RGBA.
+        osg::ref_ptr<osg::Image> newImage = ImageUtils::convertToRGBA8( image.get() );
+        
+        // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
+        if ( image->s() != 256 || image->t() != 256 )
+        {
+            osg::ref_ptr<osg::Image> resizedImage;
+            if ( ImageUtils::resizeImage( newImage.get(), 256, 256, resizedImage ) )
+                newImage = resizedImage.get();
+        }
 
-    //Make sure that the internal texture format is always set to GL_RGBA
-    image->setInternalTextureFormat( GL_RGBA8 );
+        return GeoImage( newImage.get(), layerImage.getExtent() );
+    }
+    else
+    {
+        return layerImage;
+    }
     
+    // NOTE: moved this into TileSource::getImage.
     // Failure to do this with a Texture2DArray will result in texture corruption if we are 
     // updating layers (like in sequential mode).
-    image->setDataVariance( osg::Object::DYNAMIC );
-
-    return GeoImage( image.get(), layerImage.getExtent() );
+    //image->setDataVariance( osg::Object::DYNAMIC );
 }
 
 void
@@ -253,7 +260,7 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     // assign the new image at the proper position in the texture array. We have to 
     // dirty() the image because otherwise the texture2d array implementation will not
     // recognize it as new data.
-    osg::Image* image = preparedImage.getImage();
+    osg::Image* image = const_cast<osg::Image*>( preparedImage.getImage() );
     image->dirty();
     texture->setImage( slot, image );
     

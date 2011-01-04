@@ -44,12 +44,6 @@ namespace osgEarth
         /** Add a component consisting of a TileSource instance and an imagelayer configuration. (not serializable) */
         void add( TileSource* source, const ImageLayerOptions& options );
 
-        ///** Gets the collection of TileSource options configs */
-        //const TileSourceOptionsVector& getTileSourceOptionsVector() const { return _optionsVector; }
-
-        ///** Gets the collection of TileSource instances */
-        //const TileSourceVector& getTileSources() const { return _sources; }
-
     public:
         virtual Config getConfig() const;
 
@@ -58,9 +52,6 @@ namespace osgEarth
 
     private:
         void fromConfig( const Config& conf );
-
-        //TileSourceOptionsVector _optionsVector;
-        //TileSourceVector        _sources;
 
         struct Component {
             optional<TileSourceOptions>         _tileSourceOptions;
@@ -96,9 +87,9 @@ namespace osgEarth
 
     protected:
         CompositeTileSourceOptions _options;
-        //TileSourceVector _sources;
-        optional<ImageLayerTileProcessor> _tileProcessor;
         bool _initialized;
+        
+        osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
 
         CompositeTileSourceOptions::ComponentVector _components;
     };

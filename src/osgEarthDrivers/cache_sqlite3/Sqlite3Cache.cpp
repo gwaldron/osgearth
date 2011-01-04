@@ -93,7 +93,7 @@ public:
     virtual void setImageSync(
         const TileKey& key,
         const CacheSpec& spec,
-        osg::Image* image ) =0;
+        const osg::Image* image ) =0;
 };
 
 
@@ -300,7 +300,7 @@ struct ImageRecord
     TileKey _key;
     int _created;
     int _accessed;
-    osg::ref_ptr<osg::Image> _image;
+    osg::ref_ptr<const osg::Image> _image;
 };
 
 #ifdef INSERT_POOL
@@ -938,7 +938,7 @@ struct AsyncPurge : public TaskRequest {
 };
 
 struct AsyncInsert : public TaskRequest {
-    AsyncInsert( const TileKey& key, const CacheSpec& spec, osg::Image* image, AsyncCache* cache )
+    AsyncInsert( const TileKey& key, const CacheSpec& spec, const osg::Image* image, AsyncCache* cache )
         : _key(key), _cacheSpec(spec), _image(image), _cache(cache) { }
 
     void operator()( ProgressCallback* progress ) {
@@ -949,7 +949,7 @@ struct AsyncInsert : public TaskRequest {
 
     CacheSpec _cacheSpec;
     TileKey _key;
-    osg::ref_ptr<osg::Image> _image;
+    osg::ref_ptr<const osg::Image> _image;
     osg::observer_ptr<AsyncCache> _cache;
 };
 
@@ -1059,7 +1059,7 @@ public: // Cache interface
         // this looks ineffecient, but usually when isCached() is called, getImage() will be
         // called soon thereafter. And this call will load it into the L2 cache so the subsequent
         // getImage call will not hit the DB again.
-        osg::ref_ptr<osg::Image> temp;
+        osg::ref_ptr<const osg::Image> temp;
         return const_cast<Sqlite3Cache*>(this)->getImage( key, spec, temp );
     }
 
@@ -1138,7 +1138,7 @@ public: // Cache interface
     /**
      * Gets the cached image for the given TileKey
      */
-    bool getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Image>& out_image )
+    bool getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::Image>& out_image )
     {
         if ( !_db ) return false;
 
@@ -1240,7 +1240,7 @@ public: // Cache interface
     /**
      * Sets the cached image for the given TileKey
      */
-    void setImage( const TileKey& key, const CacheSpec& spec, osg::Image* image )
+    void setImage( const TileKey& key, const CacheSpec& spec, const osg::Image* image )
     {        
         if ( !_db ) return;
 
@@ -1452,7 +1452,7 @@ private:
         //OE_INFO << LC << "Pending writes: " << std::dec << _writeService->getNumRequests() << std::endl;
     }
 
-    void setImageSync( const TileKey& key, const CacheSpec& spec, osg::Image* image )
+    void setImageSync( const TileKey& key, const CacheSpec& spec, const osg::Image* image )
     {
         if (_options.maxSize().value() > 0 && _nbRequest > MAX_REQUEST_TO_RUN_PURGE) {
             int t = (int)::time(0L);

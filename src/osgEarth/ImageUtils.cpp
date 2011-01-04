@@ -19,6 +19,7 @@
 
 #include <osgEarth/ImageUtils>
 #include <osg/Notify>
+#include <osg/Texture>
 #include <string.h>
 #include <memory.h>
 
@@ -124,43 +125,22 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
     // otherwise loop through an convert pixel-by-pixel.
     else
     {
+        PixelReader read(src);
+        PixelWriter write(dst);
+
         for( int src_t=0, dst_t=dst_start_row; src_t < src->t(); src_t++, dst_t++ )
         {
             for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
             {
                 //TODO: port to PixelReader/Writer
-                setColor( dst, dst_s, dst_t, dst_img, getColor(src, src_s, src_t) );                
+                //setColor( dst, dst_s, dst_t, dst_img, getColor(src, src_s, src_t) );                
+                write(dst_s, dst_t, 0, read(dst_s, src_t, 0) );
             }
         }
     }
 
     return true;
-}
-
-#if 0
-bool
-ImageUtils::copyAsSubImage( const osg::Image* src, osg::Image* dst, int dst_start_col, int dst_start_row )
-{
-    if (!src || !dst || 
-        src->getPacking() != dst->getPacking() || 
-        src->getDataType() != dst->getDataType() || 
-        src->getPixelFormat() != dst->getPixelFormat() ||
-        dst_start_col + src->s() > dst->s() ||
-        dst_start_row + src->t() > dst->t() )
-    {
-        return false;
-    }
-
-    for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
-    {
-        const void* src_data = src->data( 0, src_row, 0 );
-        void* dst_data = dst->data( dst_start_col, dst_row, 0 );
-        memcpy( dst_data, src_data, src->getRowSizeInBytes() );
-    }
-
-    return true;
-}
-#endif
+}  
 
 bool
 ImageUtils::resizeImage(const osg::Image* input, 
@@ -170,6 +150,12 @@ ImageUtils::resizeImage(const osg::Image* input,
 {
     if ( !input && out_s == 0 && out_t == 0 )
         return false;
+
+    if ( input->isCompressed() )
+    {
+        OE_WARN << LC << "resizeImage: cannot resize compressed images" << std::endl;
+        return false;
+    }
 
     GLenum pf = input->getPixelFormat();
 
@@ -293,32 +279,30 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
     if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() )
         return false;
 
-    a = osg::clampBetween( a, 0.0f, 1.0f );
-
-    PixelReader src_reader( src );
-    PixelReader dest_reader( dest );
-    PixelWriter dest_writer( dest );
-
-    for( int r=0; r<dest->r(); ++r )
+    struct MixImage
     {
-        for( int s=0; s<dest->s(); ++s )
+        float _a;
+        bool _srcHasAlpha, _destHasAlpha;
+
+        bool operator()( const osg::Vec4f& src, osg::Vec4f& dest )
         {
-            for( int t=0; t<dest->t(); ++t )
-            {
-                osg::Vec4f srcColor  = src_reader( s, t, r );
-                osg::Vec4f destColor = dest_reader( s, t, r );
-
-                float sa = src->getPixelSizeInBits() == 32 ? a * srcColor.a() : a;
-                float da = dest->getPixelSizeInBits() == 32 ? destColor.a() : 1.0f;
-
-                dest_writer( s, t, r, osg::Vec4(
-                    destColor.r()*(1.0f-sa) + srcColor.r()*sa,
-                    destColor.g()*(1.0f-sa) + srcColor.g()*sa,
-                    destColor.b()*(1.0f-sa) + srcColor.b()*sa,
-                    destColor.a() ) );
-            }
+            float sa = _srcHasAlpha ? _a * src.a() : _a;
+            float da = _destHasAlpha ? dest.a() : 1.0f;
+            dest.set(
+                dest.r()*(1.0f-sa) + src.r()*sa,
+                dest.g()*(1.0f-sa) + src.g()*sa,
+                dest.b()*(1.0f-sa) + src.b()*sa,
+                dest.a() );
+            return true;
         }
-    }
+    };
+
+    PixelFunctor<MixImage> mixer;
+    mixer._a = osg::clampBetween( a, 0.0f, 1.0f );
+    mixer._srcHasAlpha = src->getPixelSizeInBits() == 32;
+    mixer._destHasAlpha = src->getPixelSizeInBits() == 32;
+
+    mixer.accept( src, dest );
 
     return true;
 }
@@ -437,34 +421,16 @@ ImageUtils::convertToRGB8(const osg::Image *image)
         {
             return new osg::Image( *image );
         }
-		////If the image is already RGB, clone it and return
-		//if (image->getPixelFormat() == GL_RGB)
-  //      {
-  //          return new osg::Image(*image);
-  //      }
 
-		else if (image->getPixelFormat() == GL_RGBA)
-		{
-			osg::Image* result = new osg::Image();
+        else
+        {
+            osg::Image* result = new osg::Image();
 			result->allocateImage(image->s(), image->t(), image->r(), GL_RGB, GL_UNSIGNED_BYTE);
-            result->setInternalTextureFormat( GL_RGB );
+            result->setInternalTextureFormat( GL_RGB8 );
 
-			for (int s = 0; s < image->s(); ++s)
-			{
-				for (int t = 0; t < image->t(); ++t)
-				{
-					result->data(s,t)[0] = image->data(s, t)[0];
-					result->data(s,t)[1] = image->data(s, t)[1];
-					result->data(s,t)[2] = image->data(s, t)[2];
-				}
-			}
+            PixelFunctor<CopyImage>().accept( image, result );
 
 			return result;
-		}
-		else
-		{
-			//TODO:  Handle other cases
-            OE_WARN << LC << "convertToRGB: pixelFormat " << std::hex << image->getPixelFormat() << " not yet supported " << std::endl;
 		}
 	}
 
@@ -480,10 +446,6 @@ ImageUtils::convertToRGBA8(const osg::Image* image)
         {
             return new osg::Image( *image );
         }
-        //if ( image->getPixelFormat() == GL_RGBA )
-        //{
-        //    return new osg::Image( *image );
-        //}
 
         else
         {
@@ -491,37 +453,8 @@ ImageUtils::convertToRGBA8(const osg::Image* image)
             result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
             result->setInternalTextureFormat( GL_RGBA8 );
 
-            struct CopyImage : public PixelVisitor {
-                bool operator()(osg::Vec4f& pixel) { return true; }
-            };
+            PixelFunctor<CopyImage>().accept( image, result );
 
-            CopyImage().accept( image, result );
-
-#if 0
-            PixelReader reader(image);
-            //PixelReader ra(result);
-            PixelWriter writer(result);
-            for( int r=0; r<image->r(); ++r )
-            {
-                for( int s=0; s<image->s(); ++s )
-                {
-                    for( int t=0; t<image->t(); ++t )
-                    {
-                        writer( s, t, r, reader(s, t, r) );
-                        //osg::Vec4f color = reader( s, t, r );
-                        //writer( s, t, r, color );
-
-                        //GLubyte* data
-                        //    = const_cast<GLubyte*>(ra.data( s, t, r ));
-                        //*data++ = (unsigned char)(color.r()*255.0f);
-                        //*data++ = (unsigned char)(color.g()*255.0f);
-                        //*data++ = (unsigned char)(color.b()*255.0f);
-                        //*data++ = (unsigned char)(color.a()*255.0f);
-                    }
-                }
-            }
-#endif
-             
             return result;
         }
 
@@ -869,6 +802,58 @@ namespace
             OE_WARN << LC << "Target GL_UNSIGNED_BYTE_3_3_2 not yet implemented" << std::endl;
         }
     };
+
+    template<>
+    struct ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>
+    {
+        static osg::Vec4 read(const ImageUtils::PixelReader* pr, int s, int t, int r )
+        {
+            static const int BLOCK_BYTES = 8;
+
+            unsigned int blocksPerRow = pr->_image->s()/4;
+            unsigned int bs = s/4, bt = t/4;
+            unsigned int blockStart = (bt*blocksPerRow+bs) * BLOCK_BYTES;
+
+            const GLushort* p = (const GLushort*)(pr->data() + blockStart);
+
+            GLushort c0p = *p++;
+            osg::Vec4f c0(
+                (float)(c0p >> 11)/31.0f,
+                (float)((c0p & 0x07E0) >> 5)/63.0f,
+                (float)((c0p & 0x001F))/31.0f,
+                1.0f );
+
+            GLushort c1p = *p++;
+            osg::Vec4f c1(
+                (float)(c1p >> 11)/31.0f,
+                (float)((c1p & 0x07E0) >> 5)/63.0f,
+                (float)((c1p & 0x001F))/31.0f,
+                1.0f );
+
+            static const float one_third  = 1.0f/3.0f;
+            static const float two_thirds = 2.0f/3.0f;
+
+            osg::Vec4f c2, c3;
+            if ( c0p > c1p )
+            {
+                c2 = c0*two_thirds + c1*one_third;
+                c3 = c0*one_third  + c1*two_thirds;
+            }
+            else
+            {
+                c2 = c0*0.5 + c1*0.5;
+                c3.set(0,0,0,0);
+            }
+
+            unsigned int table = *(unsigned int*)p;
+            int ls = s-4*bs, lt = t-4*bt; //int ls = s % 4, lt = t % 4;
+            int x = ls + (4 * lt);
+
+            unsigned int index = (table >> (2*x)) & 0x00000003;
+
+            return index==0? c0 : index==1? c1 : index==2? c2 : c3;
+        }
+    };
 }
 
 template<int GLFormat>
@@ -932,6 +917,9 @@ _image(image)
     case GL_BGRA:
         _reader = chooseReader<GL_BGRA>(dataType);
         break; 
+    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
+        _reader = &ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>::read;
+        break;
     default:
         _reader = &ColorReader<0, GLbyte>::read;
         break;

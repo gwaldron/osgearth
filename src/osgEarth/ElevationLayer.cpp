@@ -70,6 +70,32 @@ ElevationLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
+namespace
+{
+    struct ElevationLayerPreCacheOperation : public TileSource::HeightFieldOperation
+    {
+        osg::ref_ptr<CompositeValidValueOperator> ops;
+
+        ElevationLayerPreCacheOperation( TileSource* source )
+        {
+		    ops = new CompositeValidValueOperator;
+		    ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
+		    ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
+        }
+
+        void operator()( osg::ref_ptr<osg::HeightField>& hf )
+        {
+		    //Modify the heightfield data so that is contains a standard value for NO_DATA
+		    ReplaceInvalidDataOperator op;
+		    op.setReplaceWith(NO_DATA_VALUE);
+		    op.setValidDataOperator(ops.get());
+		    op( hf.get() );
+        }
+    };
+}
+
+//------------------------------------------------------------------------
+
 ElevationLayer::ElevationLayer( const ElevationLayerOptions& options ) :
 TerrainLayer(),
 _options( options )
@@ -144,10 +170,21 @@ ElevationLayer::fireCallback( ElevationLayerCallbackMethodPtr method )
     }
 }
 
+void
+ElevationLayer::initTileSource()
+{
+    // call superclass first.
+    TerrainLayer::initTileSource();
+
+    if ( getTileSource() )
+        _preCacheOp = new ElevationLayerPreCacheOperation( getTileSource() );
+}
+
 GeoHeightField
 ElevationLayer::createGeoHeightField(const TileKey& key, ProgressCallback* progress)
 {
-    osg::ref_ptr<osg::HeightField> hf;
+    osg::HeightField* hf = 0L;
+    //osg::ref_ptr<osg::HeightField> hf;
 
     TileSource* source = getTileSource();
 
@@ -157,10 +194,10 @@ ElevationLayer::createGeoHeightField(const TileKey& key, ProgressCallback* progr
         //Only try to get data if the source actually has data
         if (source->hasData( key ) )
         {
-            source->getHeightField( key, hf, progress );
+            hf = source->createHeightField( key, _preCacheOp.get(), progress );
 
             //Blacklist the tile if we can't get it and it wasn't cancelled
-            if (!hf.valid() && (!progress || !progress->isCanceled()))
+            if ( !hf && (!progress || !progress->isCanceled()))
             {
                 source->getBlacklist()->add(key.getTileId());
             }
@@ -174,42 +211,31 @@ ElevationLayer::createGeoHeightField(const TileKey& key, ProgressCallback* progr
     {
         OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted " << std::endl;
     }
-	if (hf.valid())
-	{
-		//Modify the heightfield data so that is contains a standard value for NO_DATA
-		osg::ref_ptr<CompositeValidValueOperator> ops = new CompositeValidValueOperator;
-		ops->getOperators().push_back(new osgTerrain::NoDataValue(source->getNoDataValue()));
-		ops->getOperators().push_back(new osgTerrain::ValidRange(source->getNoDataMinValue(), source->getNoDataMaxValue()));
 
-		ReplaceInvalidDataOperator o;
-		o.setReplaceWith(NO_DATA_VALUE);
-		o.setValidDataOperator(ops.get());
-		o(hf);
-
-        return GeoHeightField(hf.get(), key.getExtent(), getProfile()->getVerticalSRS() );
-	}
-    return GeoHeightField::INVALID;
+    return hf ?
+        GeoHeightField( hf, key.getExtent(), getProfile()->getVerticalSRS() ) :
+        GeoHeightField::INVALID;
 }
 
-
-bool
-ElevationLayer::getHeightField(const osgEarth::TileKey& key,
-                               osg::ref_ptr<osg::HeightField>& out_hf,
-                               ProgressCallback* progress)
+osg::HeightField*
+ElevationLayer::createHeightField(const osgEarth::TileKey& key, ProgressCallback* progress )
 {
+    osg::HeightField* result = 0L;
+    //osg::ref_ptr<osg::HeightField> result;
+
     const Profile* layerProfile = getProfile();
     const Profile* mapProfile = key.getProfile();
 
 	if ( !layerProfile )
 	{
 		OE_WARN << LC << "Could not get a valid profile for Layer \"" << getName() << "\"" << std::endl;
-        return false;
+        return 0L;
 	}
 
 	if ( !_actualCacheOnly && !getTileSource() )
 	{
 		OE_WARN << LC << "Error: ElevationLayer does not have a valid TileSource, cannot create heightfield " << std::endl;
-		return false;
+		return 0L;
 	}
 
     //Write the layer properties if they haven't been written yet.  Heightfields are always stored in the map profile.
@@ -225,19 +251,23 @@ ElevationLayer::getHeightField(const osgEarth::TileKey& key,
 	//See if we can get it from the cache.
 	if (_cache.valid() && _options.cacheEnabled() == true )
 	{
-		if ( _cache->getHeightField( key, _cacheSpec, out_hf ) )
+        osg::ref_ptr<const osg::HeightField> cachedHF;
+		if ( _cache->getHeightField( key, _cacheSpec, cachedHF ) )
 		{
-			OE_DEBUG << LC << "MapLayer::createHeightField got tile " << key.str() << " from layer \"" << getName() << "\" from cache " << std::endl;
+			OE_DEBUG << LC << "ElevationLayer::createHeightField got tile " << key.str() << " from layer \"" << getName() << "\" from cache " << std::endl;
+
+            // make a copy:
+            result = new osg::HeightField( *cachedHF.get() );
 		}
 	}
 
     //in cache-only mode, if the cache fetch failed, bail out.
-    if ( !out_hf.valid() && _actualCacheOnly )
+    if ( result == 0L && _actualCacheOnly )
     {
-        return false;
+        return 0L;
     }
 
-	if ( !out_hf.valid() && getTileSource() && getTileSource()->isOK() )
+	if ( result == 0L && getTileSource() && getTileSource()->isOK() )
     {
 		//If the profiles are equivalent, get the HF from the TileSource.
 		if (key.getProfile()->isEquivalentTo( getProfile() ))
@@ -247,10 +277,11 @@ ElevationLayer::getHeightField(const osgEarth::TileKey& key,
 				GeoHeightField hf = createGeoHeightField( key, progress );
 				if (hf.valid())
 				{
-					out_hf = hf.takeHeightField();
+					result = hf.takeHeightField();
 				}
 			}
 		}
+
 		else
 		{
 			//Collect the heightfields for each of the intersecting tiles.
@@ -289,8 +320,8 @@ ElevationLayer::getHeightField(const osgEarth::TileKey& key,
                         height = itr->getHeightField()->getNumRows();
 				}
 
-				out_hf = new osg::HeightField;
-				out_hf->allocate(width, height);
+                result = new osg::HeightField();
+				result->allocate(width, height);
 
 				//Go ahead and set up the heightfield so we don't have to worry about it later
 				double minx, miny, maxx, maxy;
@@ -317,32 +348,32 @@ ElevationLayer::getHeightField(const osgEarth::TileKey& key,
 								break;
 							}
 						}
-						out_hf->setHeight( c, r, elevation );                
+						result->setHeight( c, r, elevation );                
 					}
 				}
 			}
 		}
     
         //Write the result to the cache.
-        if (out_hf.valid() && _cache.valid() && _options.cacheEnabled() == true )
+        if (result && _cache.valid() && _options.cacheEnabled() == true )
         {
-            _cache->setHeightField( key, _cacheSpec, out_hf.get() ); //key, getName(), _actualCacheFormat, result.get() );
+            _cache->setHeightField( key, _cacheSpec, result );
         }
     }
 
 	//Initialize the HF values for osgTerrain
-	if (out_hf.valid())
+	if ( result )
 	{	
 		//Go ahead and set up the heightfield so we don't have to worry about it later
 		double minx, miny, maxx, maxy;
 		key.getExtent().getBounds(minx, miny, maxx, maxy);
-		out_hf->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
-		double dx = (maxx - minx)/(double)(out_hf->getNumColumns()-1);
-		double dy = (maxy - miny)/(double)(out_hf->getNumRows()-1);
-		out_hf->setXInterval( dx );
-		out_hf->setYInterval( dy );
-		out_hf->setBorderWidth( 0 );
+		result->setOrigin( osg::Vec3d( minx, miny, 0.0 ) );
+		double dx = (maxx - minx)/(double)(result->getNumColumns()-1);
+		double dy = (maxy - miny)/(double)(result->getNumRows()-1);
+		result->setXInterval( dx );
+		result->setYInterval( dy );
+		result->setBorderWidth( 0 );
 	}
 	
-    return out_hf.valid();
+    return result;
 }

@@ -53,10 +53,10 @@ _refURI( rhs._refURI )
 }
 
 bool
-Cache::getHeightField( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::HeightField>& out_hf )
+Cache::getHeightField( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::HeightField>& out_hf )
 {
 	//Try to get an image from the cache
-	osg::ref_ptr<osg::Image> image;
+	osg::ref_ptr<const osg::Image> image;
     if ( getImage( key, spec, image ) )
 	{
 		OE_DEBUG << LC << "Read cached heightfield " << std::endl;
@@ -68,7 +68,7 @@ Cache::getHeightField( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<o
 }
 
 void
-Cache::setHeightField( const TileKey& key, const CacheSpec& spec, osg::HeightField* hf)
+Cache::setHeightField( const TileKey& key, const CacheSpec& spec, const osg::HeightField* hf)
 {
 	ImageToHeightFieldConverter conv;
 	//Take a reference to the returned image so it gets deleted properly
@@ -147,7 +147,7 @@ DiskCache::getFilename(const osgEarth::TileKey& key, const CacheSpec& spec ) con
 }
 
 bool
-DiskCache::getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Image>& out_image )
+DiskCache::getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::Image>& out_image )
 {
 	std::string filename = getFilename(key, spec);
 
@@ -170,7 +170,7 @@ DiskCache::getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg
 * Sets the cached image for the given TileKey
 */
 void 
-DiskCache::setImage( const TileKey& key, const CacheSpec& spec, osg::Image* image)
+DiskCache::setImage( const TileKey& key, const CacheSpec& spec, const osg::Image* image)
 {
 	std::string filename = getFilename( key, spec );
     std::string path = osgDB::getFilePath(filename);
@@ -354,37 +354,37 @@ MemCache::setMaxNumTilesInCache(unsigned int max)
 }
 
 bool
-MemCache::getImage(const osgEarth::TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Image>& out_image )
+MemCache::getImage(const osgEarth::TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::Image>& out_image )
 {
-    osg::ref_ptr<osg::Referenced> result;
+    osg::ref_ptr<const osg::Object> result;
     if ( getObject(key, spec, result) )
     {
-        out_image = dynamic_cast<osg::Image*>( result.get() );
+        out_image = dynamic_cast<const osg::Image*>( result.get() );
         return out_image.valid();
     }
     else return false;
 }
 
 void
-MemCache::setImage(const osgEarth::TileKey& key, const CacheSpec& spec, osg::Image* image)
+MemCache::setImage(const osgEarth::TileKey& key, const CacheSpec& spec, const osg::Image* image)
 {
     setObject( key, spec, image );
 }
 
 bool
-MemCache::getHeightField( const TileKey& key,const CacheSpec& spec, osg::ref_ptr<osg::HeightField>& out_hf )
+MemCache::getHeightField( const TileKey& key,const CacheSpec& spec, osg::ref_ptr<const osg::HeightField>& out_hf )
 {
-    osg::ref_ptr<osg::Referenced> result;
+    osg::ref_ptr<const osg::Object> result;
     if ( getObject(key, spec, result) )
     {
-        out_hf = dynamic_cast<osg::HeightField*>(result.get());
+        out_hf = dynamic_cast<const osg::HeightField*>(result.get());
         return out_hf.valid();
     }
     else return false;
 }
 
 void
-MemCache::setHeightField( const TileKey& key, const CacheSpec& spec, osg::HeightField* hf)
+MemCache::setHeightField( const TileKey& key, const CacheSpec& spec, const osg::HeightField* hf)
 {
     setObject( key, spec, hf );
 }
@@ -406,7 +406,7 @@ MemCache::purge( const std::string& cacheId, int olderThan, bool async )
 }
 
 bool
-MemCache::getObject( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg::Referenced>& output )
+MemCache::getObject( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::Object>& output )
 {
   osg::Timer_t now = osg::Timer::instance()->tick();
 
@@ -433,14 +433,15 @@ MemCache::getObject( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<osg
 }
 
 void
-MemCache::setObject( const TileKey& key, const CacheSpec& spec, osg::Referenced* referenced )
+MemCache::setObject( const TileKey& key, const CacheSpec& spec, const osg::Object* referenced )
 {
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
   std::string id = key.str() + spec.cacheId();
 
   CachedObject entry;
-  entry._object = referenced;
+  entry._object = referenced->clone( osg::CopyOp::DEEP_COPY_ALL );
+  //entry._object = referenced;
   entry._key = id;
   _objects.push_front(entry);
 

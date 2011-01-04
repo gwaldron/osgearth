@@ -179,45 +179,57 @@ TileSource::getPixelsPerTile() const
     return _options.tileSize().value();
 }
 
-bool
-TileSource::getImage( const TileKey& key, osg::ref_ptr<osg::Image>& out_image, ProgressCallback* progress )
+osg::Image*
+TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCallback* progress)
 {
 	// Try to get it from the memcache fist
     if (_memCache.valid())
 	{
-		if ( _memCache->getImage( key, CacheSpec(), out_image ) )
-            return true;
+        osg::ref_ptr<const osg::Image> cachedImage;
+		if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
+        {
+            return new osg::Image( *cachedImage.get() );
+        }
 	}
 
-    out_image = createImage(key, progress);
+    osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
 
-    if ( out_image.valid() && _memCache.valid() )
+    if ( prepOp )
+        (*prepOp)( newImage );
+
+    if ( newImage.valid() && _memCache.valid() )
     {
         // cache it to the memory cache.
-        _memCache->setImage( key, CacheSpec(), out_image.get() );
+        _memCache->setImage( key, CacheSpec(), newImage.get() );
     }
 
-    return out_image.valid();
+    return newImage.valid() ? new osg::Image( *newImage.get() ) : 0L;
 }
 
-bool
-TileSource::getHeightField( const TileKey& key, osg::ref_ptr<osg::HeightField>& out_hf, ProgressCallback* progress )
+osg::HeightField*
+TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, ProgressCallback* progress )
 {
     // Try to get it from the memcache first:
 	if (_memCache.valid())
 	{
-		if ( _memCache->getHeightField( key, CacheSpec(), out_hf ) )
-            return true;
+        osg::ref_ptr<const osg::HeightField> cachedHF;
+		if ( _memCache->getHeightField( key, CacheSpec(), cachedHF ) )
+        {
+            return new osg::HeightField( *cachedHF.get() );
+        }
 	}
 
-    out_hf = createHeightField( key, progress );
+    osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
 
-    if ( out_hf.valid() && _memCache.valid() )
+    if ( prepOp )
+        (*prepOp)( newHF );
+
+    if ( newHF.valid() && _memCache.valid() )
     {
-        _memCache->setHeightField( key, CacheSpec(), out_hf.get() );
+        _memCache->setHeightField( key, CacheSpec(), newHF.get() );
     }
 
-    return out_hf.valid();
+    return newHF.valid() ? new osg::HeightField( *newHF.get() ) : 0L;
 }
 
 osg::HeightField*

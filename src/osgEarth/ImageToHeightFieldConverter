@@ -46,20 +46,20 @@ namespace osgEarth
     /**
     * Converts an image to a heightfield.
     */
-    osg::HeightField* convert(osg::Image* image ); 
-    osg::HeightField* convert(osg::Image* image, float scaleFactor ); 
+    osg::HeightField* convert(const osg::Image* image ); 
+    osg::HeightField* convert(const osg::Image* image, float scaleFactor ); 
 
     /**
     * Converts a heightfield to an image.
     */
-    osg::Image* convert(osg::HeightField* hf, int pixelSize = 32);
+    osg::Image* convert(const osg::HeightField* hf, int pixelSize = 32);
 
   private:
-    osg::HeightField* convert16(osg::Image* image ) const; 
-    osg::HeightField* convert32(osg::Image* image ) const; 
+    osg::HeightField* convert16(const osg::Image* image ) const; 
+    osg::HeightField* convert32(const osg::Image* image ) const; 
 
-    osg::Image* convert16(osg::HeightField* hf ) const;
-    osg::Image* convert32(osg::HeightField* hf ) const;
+    osg::Image* convert16(const osg::HeightField* hf ) const;
+    osg::Image* convert32(const osg::HeightField* hf ) const;
 
     bool  _replace_nodata;
     float _nodata_value;

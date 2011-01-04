@@ -120,6 +120,22 @@ ImageLayerOptions::getConfig() const
 
     return conf;
 }
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    struct ImageLayerPreCacheOperation : public TileSource::ImageOperation
+    {
+        void operator()( osg::ref_ptr<osg::Image>& image )
+        {
+            _processor.process( image );
+        }
+
+        ImageLayerTileProcessor _processor;
+    };
+}
+
 //------------------------------------------------------------------------
 
 ImageLayerTileProcessor::ImageLayerTileProcessor( const ImageLayerOptions& options )
@@ -166,6 +182,12 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
         }
     }
 
+    //TEST
+    if ( image->isCompressed() )
+    {
+        image = ImageUtils::convertToRGB8(image.get());
+    }
+
     // Apply a transparent color mask if one is specified
     if ( _options.transparentColor().isSet() && ImageUtils::hasAlphaChannel(image.get()) )
     {
@@ -182,23 +204,26 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
             image = ImageUtils::convertToRGBA8( image.get() );
         }
     
-        struct ApplyChromaKey : public ImageUtils::PixelVisitor
+        struct ApplyChromaKey
         {
             osg::Vec4f _chromaKey;
-            ApplyChromaKey( const osg::Vec4f& chromaKey ) : _chromaKey(chromaKey) { }
 
             bool operator()( osg::Vec4f& pixel ) {
-                if ( ImageUtils::areRGBEquivalent( pixel, _chromaKey ) ) {
-                    pixel.a() = 0.0f;
-                    return true;
-                }
-                return false;
+                bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
+                if ( equiv ) pixel.a() = 0.0f;
+                return equiv;
             }
         };
 
-        ApplyChromaKey visitor(_chromaKey);
-        visitor.accept( image.get() );
+        ImageUtils::PixelFunctor<ApplyChromaKey> applyChroma;
+        applyChroma._chromaKey = _chromaKey;
+        applyChroma.accept( image.get() );
     }
+
+    // protected against multi threaded access. This is a requirement in sequential/preemptive mode, 
+    // for example. This used to be in TextureCompositorTexArray::prepareImage.
+    // TODO: review whether this affects performance.    
+    image->setDataVariance( osg::Object::DYNAMIC );
 }
 
 //------------------------------------------------------------------------
@@ -291,22 +316,9 @@ ImageLayer::initTileSource()
     // call superclass first.
     TerrainLayer::initTileSource();
 
-    _tileProcessor.init( _options );
-
-#if 0
-    if ( _tileSource.valid() && _tileSource->isOK() )
-    {
-        if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
-        {
-            OE_INFO << "Setting nodata image to \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
-            _noDataImage = osgDB::readImageFile( _options.noDataImageFilename().value() );
-            if ( !_noDataImage.valid() )
-            {
-                OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
-            }
-        }
-    }
-#endif
+    ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();
+    op->_processor.init( _options );
+    _preCacheOp = op;
 }
 
 void
@@ -400,7 +412,6 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     {
         _cacheProfile = cacheInMapProfile ? mapProfile : _profile.get();
         _cache->storeProperties( _cacheSpec, _cacheProfile, _tileSource->getPixelsPerTile() );
-        //_cache->storeLayerProperties( getName(), _cacheProfile, _actualCacheFormat, _tileSource->getPixelsPerTile() );
     }
 
 	if (cacheInMapProfile)
@@ -411,11 +422,12 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 	//If we are caching in the map profile, try to get the image immediately.
     if (cacheInMapProfile && _cache.valid() && _options.cacheEnabled() == true )
 	{
-        osg::ref_ptr<osg::Image> image;
-        if ( _cache->getImage( key, _cacheSpec, image ) )
+        osg::ref_ptr<const osg::Image> cachedImage;
+        if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
 		{
 			OE_DEBUG << LC << "Layer \"" << getName()<< "\" got tile " << key.str() << " from map cache " << std::endl;
-            result = GeoImage( image.get(), key.getExtent() );
+
+            result = GeoImage( new osg::Image( *cachedImage.get() ), key.getExtent() );
             postProcess( result );
             return result;
 		}
@@ -425,12 +437,12 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     if ( mapProfile->isEquivalentTo( layerProfile ) )
     {
 		OE_DEBUG << "Key and source profiles are equivalent, requesting single tile" << std::endl;
-        osg::ref_ptr<osg::Image> image;
-        if ( createImageWrapper( key, cacheInLayerProfile, image, progress ) )
-        {
-            result = GeoImage( image.get(), key.getExtent() );
-        }
+        osg::ref_ptr<const osg::Image> image;
+        osg::Image* im = createImageWrapper( key, cacheInLayerProfile, progress );
+        if ( im )
+            result = GeoImage( im, key.getExtent() );
     }
+
     // Otherwise, we need to process the tiles.
     else
     {
@@ -455,9 +467,9 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 			double dst_minx, dst_miny, dst_maxx, dst_maxy;
 			key.getExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
 
-
 			osg::ref_ptr<ImageMosaic> mi = new ImageMosaic;
 			std::vector<TileKey> missingTiles;
+
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
 				double minX, minY, maxX, maxY;
@@ -466,8 +478,10 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 				OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
 				osg::ref_ptr<osg::Image> img;
-                if ( createImageWrapper(intersectingTiles[j], cacheInLayerProfile, img, progress) )
-				{
+                img = createImageWrapper( intersectingTiles[j], cacheInLayerProfile, progress );
+
+                if ( img.valid() )
+                {
                     if (img->getPixelFormat() != GL_RGBA || img->getDataType() != GL_UNSIGNED_BYTE || img->getInternalTextureFormat() != GL_RGBA8 )
 					{
                         osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(img.get());
@@ -483,6 +497,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 					missingTiles.push_back(intersectingTiles[j]);
 				}
 			}
+
 			if (mi->getImages().empty())
 			{
 				OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
@@ -490,7 +505,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 			}
 			else if (missingTiles.size() > 0)
 			{
-                osg::ref_ptr<osg::Image> validImage = mi->getImages()[0].getImage();
+                osg::ref_ptr<const osg::Image> validImage = mi->getImages()[0].getImage();
                 unsigned int tileWidth = validImage->s();
                 unsigned int tileHeight = validImage->t();
                 unsigned int tileDepth = validImage->r();
@@ -615,32 +630,32 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     return result;
 }
 
-bool
+osg::Image*
 ImageLayer::createImageWrapper(const TileKey& key,
                                bool cacheInLayerProfile,
-                               osg::ref_ptr<osg::Image>& out_image,
+                               //osg::ref_ptr<const osg::Image>& out_image,
                                ProgressCallback* progress )
 {
+    osg::Image* result = 0L;
+
     if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
     {
-		if ( _cache->getImage( key, _cacheSpec, out_image ) )
+        osg::ref_ptr<const osg::Image> cachedImage;
+		if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
 	    {
             OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
-            return true;
+            return new osg::Image( *cachedImage.get() );
+            //return true;
     	}
     }
 
-    osg::ref_ptr<osg::Image> image;
+    //osg::ref_ptr<const osg::Image> image;
 
 	if ( !_actualCacheOnly )
 	{
         TileSource* source = getTileSource();
         if ( !source )
             return false;
-        
-        // just in case the output image had data in it...unlikely
-        if ( out_image.valid() )
-            out_image = 0L;
 
         //Only try to get the image if it's not in the blacklist
         if (!source->getBlacklist()->contains( key.getTileId() ))
@@ -648,10 +663,10 @@ ImageLayer::createImageWrapper(const TileKey& key,
             //Only try to get data if the source actually has data
             if (source->hasData( key ) )
             {
-                source->getImage( key, image, progress );
+                result = source->createImage( key, _preCacheOp.get(), progress );
 
                 //If the image is not valid and the progress was not cancelled, blacklist
-                if (!image.valid() && (!progress || !progress->isCanceled()))
+                if ( result == 0L && (!progress || !progress->isCanceled()))
                 {
                     //Add the tile to the blacklist
                     OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
@@ -668,16 +683,13 @@ ImageLayer::createImageWrapper(const TileKey& key,
             OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
         }
 
-        // Post-process the tile:
-        _tileProcessor.process( image );
 
         // Cache is necessary:
-        if (image.valid() && _cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
+        if ( result && _cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
 		{
-			_cache->setImage( key, _cacheSpec, image.get() );
+			_cache->setImage( key, _cacheSpec, result );
 		}
 	}
 
-    out_image = image.get();
-    return out_image.valid();
+    return result;
 }

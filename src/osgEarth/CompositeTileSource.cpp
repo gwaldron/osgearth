@@ -100,6 +100,26 @@ CompositeTileSourceOptions::fromConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
+namespace
+{
+    // some helper types.
+    typedef std::pair< osg::ref_ptr<osg::Image>, float> ImageOpacityPair;
+    typedef std::vector<ImageOpacityPair> ImageMixVector;
+
+    // same op that occurs in ImageLayer.cpp ... maybe consilidate
+    struct ImageLayerPreCacheOperation : public TileSource::ImageOperation
+    {
+        void operator()( osg::ref_ptr<osg::Image>& image )
+        {
+            _processor.process( image );
+        }
+
+        ImageLayerTileProcessor _processor;
+    };
+}
+
+//-----------------------------------------------------------------------
+
 CompositeTileSource::CompositeTileSource( const TileSourceOptions& options ) :
 _options( options ),
 _initialized( false )
@@ -113,7 +133,9 @@ _initialized( false )
             if ( i->_imageLayerOptions->driver().isSet() )
                 i->_tileSourceOptions = i->_imageLayerOptions->driver().value();
 
-            _tileProcessor->init( i->_imageLayerOptions.value() );
+            ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();
+            op->_processor.init( i->_imageLayerOptions.value() );
+            _preCacheOp = op;
         }
 
         if ( i->_tileSourceOptions.isSet() )
@@ -137,13 +159,6 @@ _initialized( false )
     }
 }
 
-namespace
-{
-    // some helper types.
-    typedef std::pair< osg::ref_ptr<osg::Image>, float> ImageOpacityPair;
-    typedef std::vector<ImageOpacityPair> ImageMixVector;
-}
-
 osg::Image*
 CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress )
 {
@@ -152,13 +167,17 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
     ImageMixVector images;
     images.reserve( _options._components.size() );
 
-    //std::vector< osg::ref_ptr<osg::Image> > images;
-    //images.reserve( _options._components.size() );
-
     for(CompositeTileSourceOptions::ComponentVector::const_iterator i = _options._components.begin();
         i != _options._components.end();
         ++i )
     {
+        // check that this source is within the level bounds:
+        if (i->_imageLayerOptions->minLevel().value() > key.getLevelOfDetail() ||
+            i->_imageLayerOptions->maxLevel().value() < key.getLevelOfDetail() )
+        {
+            continue;
+        }
+
         TileSource* source = i->_tileSourceInstance->get();
         if ( source )
         {
@@ -167,9 +186,9 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
                 //Only try to get data if the source actually has data
                 if ( source->hasData( key ) )
                 {
-                    ImageOpacityPair imagePair( 0L, 1.0f );
-
-                    source->getImage( key, imagePair.first, progress );
+                    ImageOpacityPair imagePair(
+                        source->createImage( key, _preCacheOp.get(), progress ),
+                        1.0f );
 
                     //If the image is not valid and the progress was not cancelled, blacklist
                     if (!imagePair.first.valid() && (!progress || !progress->isCanceled()))
@@ -181,14 +200,8 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
 
                     if ( imagePair.first.valid() )
                     {
-                        if ( _tileProcessor.isSet() )
-                        {
-                            // apply image processing:
-                            _tileProcessor->process( imagePair.first );
-                        
-                            // check for opacity:
-                            imagePair.second = i->_imageLayerOptions.isSet() ? i->_imageLayerOptions->opacity().value() : 1.0f;
-                        }
+                        // check for opacity:
+                        imagePair.second = i->_imageLayerOptions.isSet() ? i->_imageLayerOptions->opacity().value() : 1.0f;
 
                         images.push_back( imagePair );
                     }
@@ -205,49 +218,13 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
         }
     }
 
-#if 0
-    for( TileSourceVector::iterator i = _sources.begin(); i != _sources.end(); ++i )
-    {
-        TileSource* source = i->get();
-
-        if ( !source->getBlacklist()->contains( key.getTileId() ) )
-        {
-            //Only try to get data if the source actually has data
-            if ( source->hasData( key ) )
-            {
-                osg::ref_ptr<osg::Image> image;
-                source->getImage( key, image, progress );
-
-                //If the image is not valid and the progress was not cancelled, blacklist
-                if (!image.valid() && (!progress || !progress->isCanceled()))
-                {
-                    //Add the tile to the blacklist
-                    OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
-                    source->getBlacklist()->add( key.getTileId() );
-                }
-
-                if ( image.valid() )
-                    images.push_back( image.get() );
-            }
-            else
-            {
-                OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
-            }
-        }
-        else
-        {
-            OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
-        }
-    }
-#endif
-
     if ( images.size() == 0 )
     {
         return 0L;
     }
     else if ( images.size() == 1 )
     {
-        return images[0].first.get();
+        return images[0].first.release();
     }
     else
     {

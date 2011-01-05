@@ -102,6 +102,7 @@ namespace osgEarth
         osg::ref_ptr<osg::Uniform>    _texGenUniform;
         osg::ref_ptr<osg::Uniform>    _warpUniform;
         osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
+        optional<int>                 _explicitTextureUnit;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
         bool                          _reservedTextureUnit;
@@ -117,6 +118,7 @@ namespace osgEarth
         osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<osgEarth::VirtualProgram> _vp;
+        osg::ref_ptr<TerrainEngineNode> _engine;
     };
 
 } // namespace osgEarth

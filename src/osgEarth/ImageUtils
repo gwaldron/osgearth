@@ -244,12 +244,12 @@ namespace osgEarth
                     for( int t=0; t<image->t(); ++t ) {
                         for( int s=0; s<image->s(); ++s ) {
                             osg::Vec4f pixel = _reader(s,t,r);
-                            if ( operator()(pixel) )
+                            if ( (*this)(pixel) )
                                 _writer(s,t,r,pixel);
                         }
                     }
                 }
-            }
+            }          
 
             /**
              * Traverse an image, and call this method on the superclass:
@@ -268,7 +268,7 @@ namespace osgEarth
                         for( int s=0; s<src->s(); ++s ) {
                             const osg::Vec4f pixelSrc = _readerSrc(s,t,r);
                             osg::Vec4f pixelDest = _readerDest(s,t,r);
-                            if ( operator()(pixelSrc, pixelDest) )
+                            if ( (*this)(pixelSrc, pixelDest) )
                                 _writerDest(s,t,r,pixelDest);
                         }
                     }

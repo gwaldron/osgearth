@@ -227,13 +227,7 @@ ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Imag
     return result.release();
 }
 
-bool
-ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
-{
-    if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() )
-        return false;
-
-    struct MixImage
+struct MixImage
     {
         float _a;
         bool _srcHasAlpha, _destHasAlpha;
@@ -251,6 +245,13 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
         }
     };
 
+
+bool
+ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
+{
+    if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() )
+        return false;
+    
     PixelVisitor<MixImage> mixer;
     mixer._a = osg::clampBetween( a, 0.0f, 1.0f );
     mixer._srcHasAlpha = src->getPixelSizeInBits() == 32;

@@ -165,6 +165,16 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options )
     }
 }
 
+struct ApplyChromaKey
+{
+  osg::Vec4f _chromaKey;
+  bool operator()( osg::Vec4f& pixel ) {
+    bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
+    if ( equiv ) pixel.a() = 0.0f;
+    return equiv;
+  }
+};
+
 void
 ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 {
@@ -201,18 +211,7 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
             // if the image doesn't have an alpha channel, we must convert it to
             // a format that does before continuing.
             image = ImageUtils::convertToRGBA8( image.get() );
-        }
-    
-        struct ApplyChromaKey
-        {
-            osg::Vec4f _chromaKey;
-
-            bool operator()( osg::Vec4f& pixel ) {
-                bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
-                if ( equiv ) pixel.a() = 0.0f;
-                return equiv;
-            }
-        };
+        }           
 
         ImageUtils::PixelVisitor<ApplyChromaKey> applyChroma;
         applyChroma._chromaKey = _chromaKey;

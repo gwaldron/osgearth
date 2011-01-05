@@ -106,9 +106,8 @@ namespace osgEarth
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
          */
-        bool getHeightField(
-            const TileKey& key, 
-            osg::ref_ptr<osg::HeightField>& out_hf,
+        osg::HeightField* createHeightField(
+            const TileKey& key,
             ProgressCallback* progress =0L );
 
     protected:
@@ -117,12 +116,16 @@ namespace osgEarth
         
         virtual std::string suggestCacheFormat() const;
 
+        virtual void initTileSource();
+
     private:
         ElevationLayerOptions _options;
 
         ElevationLayerCallbackList _callbacks;
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ElevationLayerCallbackMethodPtr method );
+
+        osg::ref_ptr<TileSource::HeightFieldOperation> _preCacheOp;
 
         void init();
     };

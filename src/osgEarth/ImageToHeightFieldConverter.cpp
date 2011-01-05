@@ -51,7 +51,7 @@ ImageToHeightFieldConverter::setRemoveNoDataValues( bool which, float f )
   _replace_nodata = which;
 }
 
-osg::HeightField* ImageToHeightFieldConverter::convert(osg::Image* image ) {
+osg::HeightField* ImageToHeightFieldConverter::convert(const osg::Image* image ) {
   if ( !image ) {
     return NULL;
   }
@@ -100,7 +100,7 @@ osg::HeightField* ImageToHeightFieldConverter::convert(osg::Image* image ) {
   return hf;
 }
 
-osg::HeightField* ImageToHeightFieldConverter::convert16(osg::Image* image ) const {
+osg::HeightField* ImageToHeightFieldConverter::convert16(const osg::Image* image ) const {
   if ( !image ) {
     return NULL;
   }
@@ -117,7 +117,7 @@ osg::HeightField* ImageToHeightFieldConverter::convert16(osg::Image* image ) con
   return hf;
 }
 
-osg::HeightField* ImageToHeightFieldConverter::convert32(osg::Image* image ) const {
+osg::HeightField* ImageToHeightFieldConverter::convert32(const osg::Image* image ) const {
   if ( !image ) {
     return NULL;
   }
@@ -132,7 +132,7 @@ osg::HeightField* ImageToHeightFieldConverter::convert32(osg::Image* image ) con
 
 
 osg::HeightField*
-ImageToHeightFieldConverter::convert(osg::Image* image, float scaleFactor)
+ImageToHeightFieldConverter::convert(const osg::Image* image, float scaleFactor)
 {
   if ( !image ) {
     return NULL;
@@ -150,7 +150,7 @@ ImageToHeightFieldConverter::convert(osg::Image* image, float scaleFactor)
 }
 
 osg::Image*
-ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixelSize)
+ImageToHeightFieldConverter::convert(const osg::HeightField* hf, int pixelSize)
 {
   if ( pixelSize == 32 ) {
     return convert32( hf );
@@ -159,7 +159,7 @@ ImageToHeightFieldConverter::convert(osg::HeightField* hf, int pixelSize)
   return convert16( hf );
 }
 
-osg::Image* ImageToHeightFieldConverter::convert16(osg::HeightField* hf ) const {
+osg::Image* ImageToHeightFieldConverter::convert16(const osg::HeightField* hf ) const {
   if ( !hf ) {
     return NULL;
   }
@@ -167,7 +167,7 @@ osg::Image* ImageToHeightFieldConverter::convert16(osg::HeightField* hf ) const 
   osg::Image* image = new osg::Image();
   image->allocateImage(hf->getNumColumns(), hf->getNumRows(), 1, GL_LUMINANCE, GL_SHORT);
 
-  osg::FloatArray* floats = hf->getFloatArray();
+  const osg::FloatArray* floats = hf->getFloatArray();
 
   for( unsigned int i = 0; i < floats->size(); ++i  ) {
     *(short*)image->data(i) = (short)floats->at( i );
@@ -176,7 +176,7 @@ osg::Image* ImageToHeightFieldConverter::convert16(osg::HeightField* hf ) const 
   return image;
 }
 
-osg::Image* ImageToHeightFieldConverter::convert32(osg::HeightField* hf) const {
+osg::Image* ImageToHeightFieldConverter::convert32(const osg::HeightField* hf) const {
   if ( !hf ) {
     return NULL;
   }

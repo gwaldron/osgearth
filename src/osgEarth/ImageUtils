@@ -162,7 +162,6 @@ namespace osgEarth
          */
         static bool hasAlphaChannel( const osg::Image* image );
 
-
         /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
@@ -179,7 +178,7 @@ namespace osgEarth
             unsigned _colMult;
             unsigned _rowMult;
             unsigned _imageSize;
-            const unsigned char* data(int s, int t, int r) const {
+            const unsigned char* data(int s=0, int t=0, int r=0) const {
                 return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
             }
             typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r);
@@ -204,7 +203,7 @@ namespace osgEarth
             unsigned _rowMult;
             unsigned _imageSize;
 
-            unsigned char* data(int s, int t, int r) const {
+            unsigned char* data(int s=0, int t=0, int r=0) const {
                 return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
             }
 
@@ -212,10 +211,9 @@ namespace osgEarth
             WriterFunc _writer;
         };
 
-        struct PixelVisitor
+        template<typename T>
+        struct PixelFunctor : public T
         {
-            virtual bool operator()(osg::Vec4f& in_out_pixel) =0;
-
             void accept( osg::Image* image ) {
                 PixelReader _reader( image );
                 PixelWriter _writer( image );
@@ -231,17 +229,26 @@ namespace osgEarth
             }
 
             void accept( const osg::Image* src, osg::Image* dest ) {
-                PixelReader _reader( src );
-                PixelWriter _writer( dest );
+                PixelReader _readerSrc( src );
+                PixelReader _readerDest( dest );
+                PixelWriter _writerDest( dest );
                 for( int r=0; r<src->r(); ++r ) {
                     for( int t=0; t<src->t(); ++t ) {
                         for( int s=0; s<src->s(); ++s ) {
-                            osg::Vec4f pixel = _reader(s,t,r);
-                            if ( operator()(pixel) )
-                                _writer(s,t,r,pixel);
+                            const osg::Vec4f pixelSrc = _readerSrc(s,t,r);
+                            osg::Vec4f pixelDest = _readerDest(s,t,r);
+                            if ( operator()(pixelSrc, pixelDest) )
+                                _writerDest(s,t,r,pixelDest);
                         }
                     }
                 }
+            }
+        };
+
+        struct CopyImage {
+            bool operator()( const osg::Vec4f& src, osg::Vec4f& dest ) {
+                dest = src;
+                return true;
             }
         };
     };

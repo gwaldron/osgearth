@@ -203,10 +203,9 @@ namespace osgEarth
 
     protected:
 
-        bool createImageWrapper(
+        osg::Image* createImageWrapper(
             const TileKey& key,
             bool cacheInLayerProfile,
-            osg::ref_ptr<osg::Image>& out_image,
             ProgressCallback* progress );
 
         virtual void initTileSource();
@@ -219,7 +218,7 @@ namespace osgEarth
         //unsigned char _gammaLUT[256];
         //osg::ref_ptr<osg::Image> _noDataImage;
 
-        ImageLayerTileProcessor _tileProcessor;
+        osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
 
         ImageLayerCallbackList _callbacks;
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );

@@ -201,7 +201,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
     osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, _lodBlending );
     if ( tex )
     {
-        tex->setImage( preparedImage.getImage() );
+        tex->setImage( const_cast<osg::Image*>(preparedImage.getImage()) );
 
         if ( _lodBlending )
         {

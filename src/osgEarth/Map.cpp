@@ -862,13 +862,15 @@ namespace
             ElevationLayer* layer = i->get();
             if (layer->getProfile() && layer->getEnabled() )
             {
-                osg::ref_ptr< osg::HeightField > hf;
-                layer->getHeightField( key, hf, progress );
-                layerValidMap[ layer ] = hf.valid();
-                if (hf.valid())
+                osg::HeightField* hf = layer->createHeightField( key, progress );
+                //osg::ref_ptr< osg::HeightField > hf;
+                //layer->getHeightField( key, hf, progress );
+                layerValidMap[ layer ] = (hf != 0L); //hf.valid();
+                if ( hf )
+                //if (hf.valid())
                 {
                     numValidHeightFields++;
-                    GeoHeightField ghf( hf.get(), key.getExtent(), layer->getProfile()->getVerticalSRS() );
+                    GeoHeightField ghf( hf, key.getExtent(), layer->getProfile()->getVerticalSRS() );
                     heightFields.push_back( ghf );
                 }
             }
@@ -894,7 +896,8 @@ namespace
                     osg::ref_ptr< osg::HeightField > hf;
                     while (hf_key.valid())
                     {
-                        if ( layer->getHeightField( hf_key, hf, progress ) )
+                        hf = layer->createHeightField( hf_key, progress );
+                        if ( hf.valid() )
                             break;
 
                         hf_key = hf_key.createParentKey();

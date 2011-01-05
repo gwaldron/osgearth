@@ -18,6 +18,7 @@
  */
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osg/TriangleFunctor>
+#include <climits>
 #include <queue>
 #include <map>
 #include <limits.h>

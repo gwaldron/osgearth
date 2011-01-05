@@ -162,8 +162,6 @@ _initialized( false )
 osg::Image*
 CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress )
 {
-    int tileSize = getPixelsPerTile();
-
     ImageMixVector images;
     images.reserve( _options._components.size() );
 
@@ -229,7 +227,7 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
     else
     {
         osg::Image* result = new osg::Image( *images[0].first.get() );
-        for( int i=1; i<images.size(); ++i )
+        for( unsigned int i=1; i<images.size(); ++i )
         {
             ImageOpacityPair& pair = images[i];
             if ( pair.first.valid() )

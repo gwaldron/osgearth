@@ -58,12 +58,12 @@ TileKey::TileKey( unsigned int lod, unsigned int tile_x, unsigned int tile_y, co
 }
 
 TileKey::TileKey( const TileKey& rhs ) :
+_key( rhs._key ),
 _lod(rhs._lod),
 _x(rhs._x),
 _y(rhs._y),
 _profile( rhs._profile.get() ),
-_extent( rhs._extent ),
-_key( rhs._key )
+_extent( rhs._extent )
 {
     //NOP
 }
@@ -174,7 +174,7 @@ TileKey::createNeighborKey( TileKey::Direction dir ) const
         dir == NORTH ? _y+1 < ty ? _y+1 : 0 :
         _y;        
 
-    return TileKey( _lod, _x, _y, _profile.get() );
+    return TileKey( _lod, x, y, _profile.get() );
 }
 
 bool TileKey::isGeodetic() const

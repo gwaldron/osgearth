@@ -141,8 +141,6 @@ ImageUtils::resizeImage(const osg::Image* input,
         PixelReader read( input );
         PixelWriter write( output.get() );
 
-        float s_ratio = (float)in_s/(float)out_s;
-        float t_ratio = (float)in_t/(float)out_t;
         unsigned int pixel_size_bytes = input->getRowSizeInBytes() / in_s;
 
         unsigned char* dataOffset = output->getMipmapData(mipmapLevel);
@@ -763,7 +761,7 @@ namespace
     {
         static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
         {
-            GLubyte* ptr = (GLubyte*)iw->data(s, t, r);
+            //GLubyte* ptr = (GLubyte*)iw->data(s, t, r);
             OE_WARN << LC << "Target GL_UNSIGNED_BYTE_3_3_2 not yet implemented" << std::endl;
         }
     };

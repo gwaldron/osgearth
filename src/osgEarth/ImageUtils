@@ -170,8 +170,13 @@ namespace osgEarth
         public:
             PixelReader(const osg::Image* image);
 
-            osg::Vec4 operator()(int s, int t, int r = 0) const
-            {
+            static bool supports( GLenum pixelFormat, GLenum dataType );
+
+            static bool supports( const osg::Image* image ) {
+                return image && supports(image->getPixelFormat(), image->getDataType() );
+            }
+
+            osg::Vec4 operator()(int s, int t, int r = 0) const {
                 return (*_reader)(this, s, t, r);
             }
             const osg::Image* _image;
@@ -193,8 +198,13 @@ namespace osgEarth
         public:
             PixelWriter(osg::Image* _image);
 
-            void operator()(int s, int t, int r, const osg::Vec4& c)
-            {
+            static bool supports( GLenum pixelFormat, GLenum dataType );
+
+            static bool supports( const osg::Image* image ) {
+                return image && supports(image->getPixelFormat(), image->getDataType() );
+            }
+
+            void operator()(int s, int t, int r, const osg::Vec4& c) {
                 (*_writer)(this, s, t, r, c );
             }
 

@@ -224,7 +224,6 @@ namespace osgEarth
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );
         virtual void fireCallback( ImageLayerCallbackMethodPtr method );
 
-        void postProcess( GeoImage& img );
         void init();
     };
 

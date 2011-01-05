@@ -182,7 +182,6 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
         }
     }
 
-    //TEST
     if ( image->isCompressed() )
     {
         image = ImageUtils::convertToRGB8(image.get());
@@ -321,55 +320,6 @@ ImageLayer::initTileSource()
     _preCacheOp = op;
 }
 
-void
-ImageLayer::postProcess( GeoImage& input )
-{
-    //TODO: dump this and move it to the TextureCompositor (ideally to a shader).
-    //TODO: this is not thread-safe; more than one thread might initialize the gamma LUT at the
-    //      same time
-
-#if 0
-    if ( input.valid() && _actualGamma != 1.0f )
-    {
-        double g = _actualGamma;
-        if ( g != _prevGamma )
-        {
-            double gc = g > 0.0 ? 1.0/g : 1.0/5.0;
-            OE_DEBUG << LC << "Layer \"" << getName() << "\", building gamma LUT, gamma = " << g << std::endl;
-            for(unsigned int i = 0; i < 256; i++)
-            {
-                _gammaLUT[i] = (unsigned char)(pow(double(i) / 255.0, gc) * 255.0);
-            }            
-            _prevGamma = g;
-        }
-
-        osg::Image* im = input.getImage();
-        unsigned int p = input.getImage()->getTotalSizeInBytes();
-        unsigned char* d = input.getImage()->data();
-        if ( im->getPixelFormat() == GL_RGBA )
-        {
-            for(unsigned int i=0; i<p; i+=4, d+=4)
-            {
-                *d = _gammaLUT[*d];
-                *(d+1) = _gammaLUT[*(d+1)];
-                *(d+2) = _gammaLUT[*(d+2)];
-            }
-        }
-        else if ( im->getPixelFormat() == GL_RGB )
-        {
-            for(unsigned int i=0; i<p; ++i, ++d)
-            {
-                *d = _gammaLUT[*d];
-            }
-        }
-        else
-        {
-            OE_DEBUG << LC << "Gamma not applied (image not RGB or RGBA)" << std::endl;
-        }
-    }
-#endif
-}
-
 GeoImage
 ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 {
@@ -427,8 +377,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		{
 			OE_DEBUG << LC << "Layer \"" << getName()<< "\" got tile " << key.str() << " from map cache " << std::endl;
 
-            result = GeoImage( new osg::Image( *cachedImage.get() ), key.getExtent() );
-            postProcess( result );
+            //result = GeoImage( new osg::Image( *cachedImage.get() ), key.getExtent() );
+            result = GeoImage( osg::clone(cachedImage.get(), osg::CopyOp::DEEP_COPY_ALL), key.getExtent() );
             return result;
 		}
 	}
@@ -626,14 +576,12 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		_cache->setImage( key, _cacheSpec, result.getImage());
 	}
 
-    postProcess( result );
     return result;
 }
 
 osg::Image*
 ImageLayer::createImageWrapper(const TileKey& key,
                                bool cacheInLayerProfile,
-                               //osg::ref_ptr<const osg::Image>& out_image,
                                ProgressCallback* progress )
 {
     osg::Image* result = 0L;
@@ -644,12 +592,10 @@ ImageLayer::createImageWrapper(const TileKey& key,
 		if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
 	    {
             OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
-            return new osg::Image( *cachedImage.get() );
+            return osg::clone(cachedImage.get(), osg::CopyOp::DEEP_COPY_ALL);
             //return true;
     	}
     }
-
-    //osg::ref_ptr<const osg::Image> image;
 
 	if ( !_actualCacheOnly )
 	{
@@ -682,7 +628,6 @@ ImageLayer::createImageWrapper(const TileKey& key,
         {
             OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
         }
-
 
         // Cache is necessary:
         if ( result && _cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )

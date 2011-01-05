@@ -33,7 +33,7 @@ public:
 
     CustomColorLayer(
         const osgEarth::ImageLayer* imageLayer,
-        const osg::Image* image,
+        osg::Image* image,
         const osgTerrain::Locator* locator,
         int lod )
         : _layer(imageLayer), _image(image), _locator(locator), _lod(lod) { }
@@ -52,7 +52,7 @@ public:
         return _locator.get();
     }
 
-    const osg::Image* getImage() const { 
+    osg::Image* getImage() const { 
         return _image.get(); }
 
     const osgEarth::ImageLayer* getMapLayer() const {
@@ -77,7 +77,7 @@ public:
 private:
     osg::ref_ptr<const osgEarth::ImageLayer> _layer;
     osg::ref_ptr<const osgTerrain::Locator>  _locator;
-    osg::ref_ptr<const osg::Image>           _image;
+    osg::ref_ptr<osg::Image>                 _image;
     int                                      _lod;
 };
 

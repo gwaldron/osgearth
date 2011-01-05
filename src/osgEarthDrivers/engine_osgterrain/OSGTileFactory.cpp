@@ -1034,9 +1034,6 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
 osgTerrain::HeightFieldLayer* 
 OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key, bool exactOnly )
 {
-    //NOTE: took this out since we're now using a MapFrame
-    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
-
     const MapInfo& mapInfo = mapf.getMapInfo();
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
 

@@ -260,7 +260,7 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     // assign the new image at the proper position in the texture array. We have to 
     // dirty() the image because otherwise the texture2d array implementation will not
     // recognize it as new data.
-    osg::Image* image = const_cast<osg::Image*>( preparedImage.getImage() );
+    osg::Image* image = preparedImage.getImage();
     image->dirty();
     texture->setImage( slot, image );
     

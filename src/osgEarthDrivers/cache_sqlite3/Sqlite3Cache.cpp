@@ -90,6 +90,7 @@ sqlite3* openDatabase( const std::string& path, bool serialized )
 struct AsyncCache : public Cache
 {
 public:
+    AsyncCache(const CacheOptions& options =CacheOptions()): Cache(options) { }
     virtual void setImageSync(
         const TileKey& key,
         const CacheSpec& spec,
@@ -997,7 +998,7 @@ class Sqlite3Cache : public AsyncCache
 {
 public:
     Sqlite3Cache( const CacheOptions& options ) 
-        : AsyncCache(), _db(0L), _options(options)
+      : AsyncCache(options), _db(0L), _options(options)
     {
         setName( "sqlite3" );
 

@@ -188,7 +188,7 @@ TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCall
         osg::ref_ptr<const osg::Image> cachedImage;
 		if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
         {
-            return osg::clone(cachedImage.get(), osg::CopyOp::DEEP_COPY_ALL);
+            return ImageUtils::cloneImage(cachedImage.get());
         }
 	}
 
@@ -203,7 +203,7 @@ TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCall
         _memCache->setImage( key, CacheSpec(), newImage.get() );
     }
 
-    return newImage.valid() ? osg::clone(newImage.get(), osg::CopyOp::DEEP_COPY_ALL) : 0L;
+    return newImage.release();
 }
 
 osg::HeightField*

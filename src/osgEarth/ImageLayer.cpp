@@ -214,7 +214,7 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
             }
         };
 
-        ImageUtils::PixelFunctor<ApplyChromaKey> applyChroma;
+        ImageUtils::PixelVisitor<ApplyChromaKey> applyChroma;
         applyChroma._chromaKey = _chromaKey;
         applyChroma.accept( image.get() );
     }
@@ -377,8 +377,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		{
 			OE_DEBUG << LC << "Layer \"" << getName()<< "\" got tile " << key.str() << " from map cache " << std::endl;
 
-            //result = GeoImage( new osg::Image( *cachedImage.get() ), key.getExtent() );
-            result = GeoImage( osg::clone(cachedImage.get(), osg::CopyOp::DEEP_COPY_ALL), key.getExtent() );
+            result = GeoImage( ImageUtils::cloneImage(cachedImage.get()), key.getExtent() );
             return result;
 		}
 	}
@@ -592,8 +591,7 @@ ImageLayer::createImageWrapper(const TileKey& key,
 		if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
 	    {
             OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
-            return osg::clone(cachedImage.get(), osg::CopyOp::DEEP_COPY_ALL);
-            //return true;
+            return ImageUtils::cloneImage(cachedImage.get());
     	}
     }
 

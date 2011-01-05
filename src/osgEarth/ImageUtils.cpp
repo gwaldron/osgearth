@@ -27,76 +27,21 @@
 
 using namespace osgEarth;
 
-namespace osgEarth
+osg::Image*
+ImageUtils::cloneImage( const osg::Image* input )
 {
-    static const float r10= 1.0f/1023.0f;
-    static const float r8 = 1.0f/255.0f;
-    static const float r6 = 1.0f/63.0f;
-    static const float r5 = 1.0f/31.0f;
-    static const float r4 = 1.0f/15.0f;
-    static const float r3 = 1.0f/7.0f;
-    static const float r2 = 1.0f/3.0f;
-}
+    // Why not just call image->clone()? Because, the osg::Image copy constructor does not
+    // clear out the underlying BufferData/BufferObject's GL handles. This can cause 
+    // exepected results if you are cloning an image that has already been used in GL.
+    // Calling clone->dirty() might work, but we are not sure.
 
-
-// todo: add support for other data types as needed.
-osg::Vec4
-ImageUtils::getColor(const osg::Image* image, int s, int t, int r)
-{
-    switch( image->getDataType() )
-    {
-    case( GL_UNSIGNED_SHORT_5_5_5_1 ):
-        {
-            unsigned short p = *(unsigned short*)image->data( s, t, r );
-            //internal format GL_RGB5_A1 is implied
-            return osg::Vec4( r5*(float)(p>>11), r5*(float)((p&0x7c0)>>6), r5*((p&0x3e)>>1), (float)(p&0x1) );
-        }         
-    case( GL_UNSIGNED_BYTE_3_3_2 ):
-        {
-            unsigned char p = *(unsigned char*)image->data( s, t, r );
-            // internal format GL_R3_G3_B2 is implied
-            return osg::Vec4( r3*(float)(p>>5), r3*(float)((p&0x28)>>2), r2*(float)(p&0x3), 1.0f );
-        }
-    }
-
-    // default: let osg::Image handle the usual types
-    return image->getColor( s, t, r );
-}
-
-bool
-ImageUtils::setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& color)
-{
-    if ( image->getDataType() == GL_UNSIGNED_BYTE )
-    {
-        unsigned char* p = image->data(s, t, r);
-        *p++ = (char)(color.r() * 255.0f);
-        *p++ = (char)(color.g() * 255.0f);
-        *p++ = (char)(color.b() * 255.0f);
-        if ( image->getPixelFormat() == GL_RGBA )
-            *p++ = (char)(color.a() * 255.0f);
-        return true;
-    }
-    else 
-    if ( image->getDataType() == GL_UNSIGNED_SHORT_5_5_5_1 )
-    {
-        unsigned short
-            r = (unsigned short)(color.r()*255),
-            g = (unsigned short)(color.g()*255),
-            b = (unsigned short)(color.b()*255),
-            a = color.a() < 0.15 ? 0 : 1;
-
-        unsigned short* p = (unsigned short*)image->data(s, t, r);
-        *p = (((r) & (0xf8)) << 8) | (((g) & (0xf8)) << 3) | (((b) & (0xF8)) >> 2) | a;
-        return true;
-    }
-    else
-    if ( image->getDataType() == GL_UNSIGNED_BYTE_3_3_2 )
-    {
-        //TODO
-        OE_WARN << LC << "setColor(GL_UNSIGNED_BYTE_3_3_2) not yet implemented!" << std::endl;
-    }
-
-    return false;
+    osg::Image* clone = new osg::Image();
+    clone->allocateImage( input->s(), input->t(), input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
+    clone->setInternalTextureFormat( input->getInternalTextureFormat() );
+    if ( input->isMipmap() )
+        clone->setMipmapLevels( input->getMipmapLevels() );
+    memcpy( clone->data(), input->data(), input->getTotalSizeInBytesIncludingMipmaps() );
+    return clone;
 }
 
 bool
@@ -306,7 +251,7 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
         }
     };
 
-    PixelFunctor<MixImage> mixer;
+    PixelVisitor<MixImage> mixer;
     mixer._a = osg::clampBetween( a, 0.0f, 1.0f );
     mixer._srcHasAlpha = src->getPixelSizeInBits() == 32;
     mixer._destHasAlpha = src->getPixelSizeInBits() == 32;
@@ -382,7 +327,7 @@ osg::Image*
 ImageUtils::sharpenImage( const osg::Image* input )
 {
     int filter[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };
-    osg::Image* output = osg::clone(input, osg::CopyOp::DEEP_COPY_ALL); //new osg::Image( *input );
+    osg::Image* output = ImageUtils::cloneImage(input);
     for( int t=1; t<input->t()-1; t++ )
     {
         for( int s=1; s<input->s()-1; s++ )
@@ -428,7 +373,7 @@ ImageUtils::convertToRGB8(const osg::Image *image)
 	{
         if ( image->getInternalTextureFormat() == GL_RGB8 )
         {
-            return osg::clone(image, osg::CopyOp::DEEP_COPY_ALL);
+            return cloneImage(image);
         }
 
         else
@@ -437,7 +382,7 @@ ImageUtils::convertToRGB8(const osg::Image *image)
 			result->allocateImage(image->s(), image->t(), image->r(), GL_RGB, GL_UNSIGNED_BYTE);
             result->setInternalTextureFormat( GL_RGB8 );
 
-            PixelFunctor<CopyImage>().accept( image, result );
+            PixelVisitor<CopyImage>().accept( image, result );
 
 			return result;
 		}
@@ -453,7 +398,7 @@ ImageUtils::convertToRGBA8(const osg::Image* image)
     {
         if ( image->getInternalTextureFormat() == GL_RGBA8 )
         {
-            return osg::clone( image, osg::CopyOp::DEEP_COPY_ALL);
+            return cloneImage(image);
         }
 
         else
@@ -462,7 +407,7 @@ ImageUtils::convertToRGBA8(const osg::Image* image)
             result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
             result->setInternalTextureFormat( GL_RGBA8 );
 
-            PixelFunctor<CopyImage>().accept( image, result );
+            PixelVisitor<CopyImage>().accept( image, result );
 
             return result;
         }
@@ -513,6 +458,14 @@ ImageUtils::hasAlphaChannel(const osg::Image* image)
 
 namespace
 {
+    //static const float r10= 1.0f/1023.0f;
+    //static const float r8 = 1.0f/255.0f;
+    //static const float r6 = 1.0f/63.0f;
+    static const float r5 = 1.0f/31.0f;
+    //static const float r4 = 1.0f/15.0f;
+    static const float r3 = 1.0f/7.0f;
+    static const float r2 = 1.0f/3.0f;
+
     // The scale factors to convert from an image data type to a
     // float. This is copied from OSG; I think the factors for the signed
     // types are wrong, but need to investigate further.

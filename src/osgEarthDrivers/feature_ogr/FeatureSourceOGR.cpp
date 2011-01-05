@@ -32,6 +32,8 @@
 #include <list>
 #include <ogr_api.h>
 
+#define LC "[OGR FeatureSource] "
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
@@ -154,8 +156,7 @@ public:
                     // assuming we successfully opened the layer, build a spatial index if requested.
                     if ( _options.buildSpatialIndex() == true )
                     {
-                        OE_NOTICE <<
-                            "OGR: Building spatial index for " << getName() << " ..." << std::flush;
+                        OE_INFO << LC << "Building spatial index for " << getName() << " ..." << std::flush;
 
                         std::stringstream buf;
                         const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
@@ -164,19 +165,19 @@ public:
 					    bufStr = buf.str();
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
 
-                        OE_NOTICE <<  "OGR: ...done." << std::endl;
+                        OE_INFO << LC << "...done." << std::endl;
                     }
                 }
 	        }
             else
             {
-                OE_WARN << "OGR: failed to open dataset at " << _absUrl << std::endl;
+                OE_INFO << LC << "failed to open dataset at " << _absUrl << std::endl;
             }
         }
         else
         {
-            OE_WARN 
-                << "OGR: Feature Source: no valid source data available" << std::endl;
+            OE_INFO << LC 
+                << "Feature Source: no valid source data available" << std::endl;
         }
 
         return result;

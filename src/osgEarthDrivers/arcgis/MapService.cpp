@@ -36,8 +36,8 @@ TileInfo::TileInfo()
 }
 
 TileInfo::TileInfo( int _tile_size, const std::string& _format, int _min_level, int _max_level, int _num_tiles_wide, int _num_tiles_high ) :
-tile_size( _tile_size ),
 format( _format ),
+tile_size( _tile_size ),
 min_level( _min_level ),
 max_level( _max_level ),
 is_valid( true ),
@@ -48,8 +48,8 @@ num_tiles_high(_num_tiles_high)
 }
 
 TileInfo::TileInfo( const TileInfo& rhs ) :
-tile_size( rhs.tile_size ),
 format( rhs.format ),
+tile_size( rhs.tile_size ),
 min_level( rhs.min_level ),
 max_level( rhs.max_level ),
 is_valid( rhs.is_valid ),
@@ -162,7 +162,7 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
     if ( j_layers.empty() )
         return setError( "Map service contains no layers" );
 
-    for( int i=0; i<j_layers.size(); i++ )
+    for( unsigned int i=0; i<j_layers.size(); i++ )
     {
         Json::Value layer = j_layers[i];
         int id = i; // layer.get("id", -1).asInt();
@@ -207,7 +207,7 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
         
         min_level = INT_MAX;
         max_level = 0;
-        for( int i=0; i<j_levels.size(); i++ )
+        for( unsigned int i=0; i<j_levels.size(); i++ )
         {
             int level = j_levels[i].get( "level", -1 ).asInt();
             if ( level >= 0 && level < min_level )

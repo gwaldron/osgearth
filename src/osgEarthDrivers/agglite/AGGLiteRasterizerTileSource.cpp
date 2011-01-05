@@ -102,7 +102,7 @@ public:
         const LineSymbol* masterLine = style->getSymbol<LineSymbol>();
         const PolygonSymbol* masterPoly = style->getSymbol<PolygonSymbol>();
 
-        bool embeddedStyles = getFeatureSource()->hasEmbeddedStyles();
+        //bool embeddedStyles = getFeatureSource()->hasEmbeddedStyles();
 
         // if only a line symbol exists, and there are polygons in the mix, draw them
         // as outlines (line rings).
@@ -116,8 +116,8 @@ public:
         // initialize:
         double xmin = imageExtent.xMin();
         double ymin = imageExtent.yMin();
-        double s = (double)image->s();
-        double t = (double)image->t();
+        //double s = (double)image->s();
+        //double t = (double)image->t();
         double xf = (double)image->s() / imageExtent.width();
         double yf = (double)image->t() / imageExtent.height();
 
@@ -243,7 +243,7 @@ public:
         for(FeatureList::iterator i = features.begin(); i != features.end(); i++)
         {
             Feature* feature = i->get();
-            bool first = bd->_pass == 0 && i == features.begin();
+            //bool first = bd->_pass == 0 && i == features.begin();
 
             Geometry* geometry = feature->getGeometry();
 
@@ -294,9 +294,9 @@ public:
                     double x0 = xf*(p0.x()-xmin);
                     double y0 = yf*(p0.y()-ymin);
 
-                    const osg::Vec3d& p1 = p+1 != g->end()? *(p+1) : g->front();
-                    double x1 = xf*(p1.x()-xmin);
-                    double y1 = yf*(p1.y()-ymin);
+                    //const osg::Vec3d& p1 = p+1 != g->end()? *(p+1) : g->front();
+                    //double x1 = xf*(p1.x()-xmin);
+                    //double y1 = yf*(p1.y()-ymin);
 
                     if ( p == g->begin() )
                         ras.move_to_d( x0, y0 );

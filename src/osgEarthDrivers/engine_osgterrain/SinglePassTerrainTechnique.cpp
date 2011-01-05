@@ -45,13 +45,13 @@ using namespace OpenThreads;
 // --------------------------------------------------------------------------
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
-_texCompositor( compositor ),
 _verticalScaleOverride(1.0f),
+_initCount(0),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
-_initCount(0),
-_optimizeTriangleOrientation(true),
 _lastUpdate( TileUpdate::UPDATE_ALL ),
+_optimizeTriangleOrientation(true),
+_texCompositor( compositor ),
 _frontGeodeInstalled( false )
 {
     this->setThreadSafeRefUnref(true);

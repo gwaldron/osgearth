@@ -116,15 +116,15 @@ CustomTerrain::CustomTerrain(const MapFrame& update_mapf,
                              const MapFrame& cull_mapf, 
                              OSGTileFactory* tileFactory,
                              bool            quickReleaseGLObjects ) :
+_revision(0),
+_tileFactory( tileFactory ),
+_numLoadingThreads( 0 ),
+_onDemandDelay( 2 ),
+_registeredWithReleaseGLCallback( false ),
 _update_mapf( update_mapf ),
 _cull_mapf( cull_mapf ),
-_tileFactory( tileFactory ),
-_revision(0),
-_numLoadingThreads( 0 ),
-_registeredWithReleaseGLCallback( false ),
 _quickReleaseGLObjects( quickReleaseGLObjects ),
-_quickReleaseCallbackInstalled( false ),
-_onDemandDelay( 2 )
+_quickReleaseCallbackInstalled( false )
 {
     this->setThreadSafeRefUnref( true );
 
@@ -261,10 +261,10 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
 
     // Relative::NORTH
     {
-        family[Relative::NORTH].expected = tileId.y < tileCountY-1;
+        family[Relative::NORTH].expected = tileId.y < (int)tileCountY-1;
         family[Relative::NORTH].elevLOD = -1;
         family[Relative::NORTH].imageLODs.clear();
-        family[Relative::NORTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y < tileCountY-1 ? tileId.y+1 : 0 );
+        family[Relative::NORTH].tileID = osgTerrain::TileID( tileId.level, tileId.x, tileId.y < (int)tileCountY-1 ? tileId.y+1 : 0 );
         osg::ref_ptr<CustomTile> north;
         getCustomTile( family[Relative::NORTH].tileID, north, !tileTableLocked );
         if ( north.valid() )
@@ -283,10 +283,10 @@ CustomTerrain::refreshFamily(const MapInfo& mapInfo,
 
     // Relative::EAST
     {
-        family[Relative::EAST].expected = tileId.x < tileCountX-1 || wrapX;
+        family[Relative::EAST].expected = tileId.x < (int)tileCountX-1 || wrapX;
         family[Relative::EAST].elevLOD = -1;
         family[Relative::EAST].imageLODs.clear();
-        family[Relative::EAST].tileID = osgTerrain::TileID( tileId.level, tileId.x < tileCountX-1 ? tileId.x+1 : 0, tileId.y );
+        family[Relative::EAST].tileID = osgTerrain::TileID( tileId.level, tileId.x < (int)tileCountX-1 ? tileId.x+1 : 0, tileId.y );
         osg::ref_ptr<CustomTile> east;
         getCustomTile( family[Relative::EAST].tileID, east, !tileTableLocked );
         if ( east.valid() )
@@ -446,9 +446,8 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
 
                 if ( tile->getUseLayerRequests() ) // i.e., sequential or preemptive mode
                 {
-                    tile->servicePendingElevationRequests( _update_mapf, stamp, true );
-
-                    bool tileModified = tile->serviceCompletedRequests( _update_mapf, true );
+                    tile->servicePendingElevationRequests( _update_mapf, stamp, true );                   
+                    tile->serviceCompletedRequests( _update_mapf, true );
                     //if ( tileModified && _terrainCallbacks.size() > 0 )
                     //{
                     //    updatedTiles.push_back( tile );

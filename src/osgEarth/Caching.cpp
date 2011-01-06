@@ -368,7 +368,7 @@ MemCache::getImage(const osgEarth::TileKey& key, const CacheSpec& spec, osg::ref
 void
 MemCache::setImage(const osgEarth::TileKey& key, const CacheSpec& spec, const osg::Image* image)
 {
-    setObject( key, spec, image );
+    setObject( key, spec, ImageUtils::cloneImage(image) );
 }
 
 bool
@@ -386,7 +386,7 @@ MemCache::getHeightField( const TileKey& key,const CacheSpec& spec, osg::ref_ptr
 void
 MemCache::setHeightField( const TileKey& key, const CacheSpec& spec, const osg::HeightField* hf)
 {
-    setObject( key, spec, hf );
+    setObject( key, spec, new osg::HeightField(*hf) );
 }
 
 bool
@@ -438,8 +438,8 @@ MemCache::setObject( const TileKey& key, const CacheSpec& spec, const osg::Objec
   std::string id = key.str() + spec.cacheId();
 
   CachedObject entry;
-  entry._object = referenced->clone( osg::CopyOp::DEEP_COPY_ALL );
-  //entry._object = referenced;
+  //entry._object = referenced->clone( osg::CopyOp::DEEP_COPY_ALL );
+  entry._object = referenced;
   entry._key = id;
   _objects.push_front(entry);
 

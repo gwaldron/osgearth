@@ -172,16 +172,18 @@ namespace osgEarth
             }
 
             /** Reads a color from the image */
-            osg::Vec4 operator()(int s, int t, int r = 0) const {
-                return (*_reader)(this, s, t, r);
+            osg::Vec4 operator()(int s, int t, int r=0, int m=0) const {
+                return (*_reader)(this, s, t, r, m);
             }
 
             // internals:
-            const unsigned char* data(int s=0, int t=0, int r=0) const {
-                return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+            const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
+                return m == 0 ?
+                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
+                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m) ;
             }
 
-            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r);
+            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r, int m);
             ReaderFunc _reader;
             const osg::Image* _image;
             unsigned _colMult;
@@ -206,8 +208,8 @@ namespace osgEarth
             }
 
             /** Writes a color to a pixel. */
-            void operator()(int s, int t, int r, const osg::Vec4& c) {
-                (*_writer)(this, s, t, r, c );
+            void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
+                (*_writer)(this, c, s, t, r, m );
             }
 
             // internals:
@@ -216,11 +218,13 @@ namespace osgEarth
             unsigned _rowMult;
             unsigned _imageSize;
 
-            unsigned char* data(int s=0, int t=0, int r=0) const {
-                return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+            unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
+                return m == 0 ?
+                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
+                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m);
             }
 
-            typedef void (*WriterFunc)(const PixelWriter* iw, int s, int t, int r, const osg::Vec4& c);
+            typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4& c, int s, int t, int r, int m);
             WriterFunc _writer;
         };
 
@@ -245,7 +249,7 @@ namespace osgEarth
                         for( int s=0; s<image->s(); ++s ) {
                             osg::Vec4f pixel = _reader(s,t,r);
                             if ( (*this)(pixel) )
-                                _writer(s,t,r,pixel);
+                                _writer(pixel,s,t,r);
                         }
                     }
                 }
@@ -269,7 +273,7 @@ namespace osgEarth
                             const osg::Vec4f pixelSrc = _readerSrc(s,t,r);
                             osg::Vec4f pixelDest = _readerDest(s,t,r);
                             if ( (*this)(pixelSrc, pixelDest) )
-                                _writerDest(s,t,r,pixelDest);
+                                _writerDest(pixelDest,s,t,r);
                         }
                     }
                 }

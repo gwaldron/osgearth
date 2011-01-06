@@ -35,12 +35,17 @@ ImageUtils::cloneImage( const osg::Image* input )
     // exepected results if you are cloning an image that has already been used in GL.
     // Calling clone->dirty() might work, but we are not sure.
 
+#if 0
+    osg::Image* clone = new osg::Image( *input );
+    clone->dirty();
+#else
     osg::Image* clone = new osg::Image();
     clone->allocateImage( input->s(), input->t(), input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
     clone->setInternalTextureFormat( input->getInternalTextureFormat() );
     if ( input->isMipmap() )
         clone->setMipmapLevels( input->getMipmapLevels() );
     memcpy( clone->data(), input->data(), input->getTotalSizeInBytesIncludingMipmaps() );
+#endif
     return clone;
 }
 
@@ -78,7 +83,7 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
         {
             for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
             {           
-                write(dst_s, dst_t, 0, read(src_s, src_t, 0) );
+                write( read(src_s, src_t), dst_s, dst_t );
             }
         }
     }
@@ -134,7 +139,7 @@ ImageUtils::resizeImage(const osg::Image* input,
 
     if ( in_s == out_s && in_t == out_t && mipmapLevel == 0 && input->getInternalTextureFormat() == output->getInternalTextureFormat() )
     {
-        memcpy( output->getMipmapData(mipmapLevel), input->data(), input->getTotalSizeInBytes() );
+        memcpy( output->data(), input->data(), input->getTotalSizeInBytes() );
     }
     else
     {       
@@ -163,8 +168,8 @@ ImageUtils::resizeImage(const osg::Image* input,
                 if ( input_col >= in_s ) input_col = in_s-1;
                 else if ( input_row < 0 ) input_row = 0;
 
-                osg::Vec4 color = read( input_col, input_row, 0 );
-                write( output_col, output_row, 0, color );
+                osg::Vec4 color = read( input_col, input_row ); // read pixel from mip level 0
+                write( color, output_col, output_row, 0, mipmapLevel ); // write to target mip level
             }
         }
     }
@@ -514,9 +519,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_DEPTH_COMPONENT, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float l = float(*ptr) * GLTypeTraits<T>::scale();
             return osg::Vec4(l, l, l, 1.0f);
         }
@@ -525,9 +530,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_DEPTH_COMPONENT, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             (*ptr) = (GLubyte)(c.r() / GLTypeTraits<T>::scale());
         }
     };
@@ -535,9 +540,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_LUMINANCE, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float l = float(*ptr) * GLTypeTraits<T>::scale();
             return osg::Vec4(l, l, l, 1.0f);
         }
@@ -546,9 +551,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_LUMINANCE, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             (*ptr) = (GLubyte)(c.r() / GLTypeTraits<T>::scale());
         }
     };
@@ -556,9 +561,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_ALPHA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float a = float(*ptr) * GLTypeTraits<T>::scale();
             return osg::Vec4(1.0f, 1.0f, 1.0f, a);
         }
@@ -567,9 +572,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_ALPHA, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             (*ptr) = (GLubyte)(c.a() / GLTypeTraits<T>::scale());
         }
     };
@@ -577,9 +582,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_LUMINANCE_ALPHA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float l = float(*ptr++) * GLTypeTraits<T>::scale();
             float a = float(*ptr) * GLTypeTraits<T>::scale();
             return osg::Vec4(l, l, l, a);
@@ -589,9 +594,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_LUMINANCE_ALPHA, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
             *ptr   = (GLubyte)( c.a() / GLTypeTraits<T>::scale() );
         }
@@ -600,9 +605,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_RGB, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float d = float(*ptr++) * GLTypeTraits<T>::scale();
             float g = float(*ptr++) * GLTypeTraits<T>::scale();
             float b = float(*ptr) * GLTypeTraits<T>::scale();
@@ -613,9 +618,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_RGB, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
@@ -625,9 +630,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_RGBA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float d = float(*ptr++) * GLTypeTraits<T>::scale();
             float g = float(*ptr++) * GLTypeTraits<T>::scale();
             float b = float(*ptr++) * GLTypeTraits<T>::scale();
@@ -639,9 +644,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_RGBA, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
@@ -652,9 +657,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_BGR, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float b = float(*ptr) * GLTypeTraits<T>::scale();
             float g = float(*ptr++) * GLTypeTraits<T>::scale();
             float d = float(*ptr++) * GLTypeTraits<T>::scale();
@@ -665,9 +670,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_BGR, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
@@ -677,9 +682,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_BGRA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float b = float(*ptr++) * GLTypeTraits<T>::scale();
             float g = float(*ptr++) * GLTypeTraits<T>::scale();
             float d = float(*ptr++) * GLTypeTraits<T>::scale();
@@ -691,9 +696,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_BGRA, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
@@ -704,7 +709,7 @@ namespace
     template<typename T>
     struct ColorReader<0, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
             return osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f);
         }
@@ -713,7 +718,7 @@ namespace
     template<typename T>
     struct ColorWriter<0, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
             //nop
         }
@@ -722,9 +727,9 @@ namespace
     template<>
     struct ColorReader<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            GLushort p = *(const GLushort*)ia->data( s, t, r );
+            GLushort p = *(const GLushort*)ia->data(s, t, r, m);
             //internal format GL_RGB5_A1 is implied
             return osg::Vec4( r5*(float)(p>>11), r5*(float)((p&0x7c0)>>6), r5*((p&0x3e)>>1), (float)(p&0x1));
         }
@@ -733,7 +738,7 @@ namespace
     template<>
     struct ColorWriter<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
             GLushort
                 red = (unsigned short)(c.r()*255),
@@ -741,7 +746,7 @@ namespace
                 b = (unsigned short)(c.b()*255),
                 a = c.a() < 0.15 ? 0 : 1;
 
-            GLushort* ptr = (GLushort*)iw->data(s, t, r);
+            GLushort* ptr = (GLushort*)iw->data(s, t, r, m);
             *ptr = (((red) & (0xf8)) << 8) | (((g) & (0xf8)) << 3) | (((b) & (0xF8)) >> 2) | a;
         }
     };
@@ -749,9 +754,9 @@ namespace
     template<>
     struct ColorReader<GL_UNSIGNED_BYTE_3_3_2, GLubyte>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-              GLubyte p = *(const GLubyte*)ia->data( s, t, r );
+              GLubyte p = *(const GLubyte*)ia->data(s,t,r,m);
             // internal format GL_R3_G3_B2 is implied
             return osg::Vec4( r3*(float)(p>>5), r3*(float)((p&0x28)>>2), r2*(float)(p&0x3), 1.0f );
         }
@@ -760,9 +765,9 @@ namespace
     template<>
     struct ColorWriter<GL_UNSIGNED_BYTE_3_3_2, GLubyte>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            GLubyte* ptr = (GLubyte*)iw->data(s, t, r);
+            GLubyte* ptr = (GLubyte*)iw->data(s,t,r,m);
             OE_WARN << LC << "Target GL_UNSIGNED_BYTE_3_3_2 not yet implemented" << std::endl;
         }
     };
@@ -770,7 +775,7 @@ namespace
     template<>
     struct ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* pr, int s, int t, int r )
+        static osg::Vec4 read(const ImageUtils::PixelReader* pr, int s, int t, int r, int m)
         {
             static const int BLOCK_BYTES = 8;
 

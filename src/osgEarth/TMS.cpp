@@ -296,7 +296,7 @@ TileMap::generateTileSets(unsigned int numLevels)
     _tileSets.clear();
 
     double width = (_maxX - _minX);
-    //double height = (_maxY - _minY);
+//    double height = (_maxY - _minY);
 
     for (unsigned int i = 0; i < numLevels; ++i)
     {

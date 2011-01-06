@@ -90,6 +90,7 @@ sqlite3* openDatabase( const std::string& path, bool serialized )
 struct AsyncCache : public Cache
 {
 public:
+    AsyncCache(const CacheOptions& options =CacheOptions()): Cache(options) { }
     virtual void setImageSync(
         const TileKey& key,
         const CacheSpec& spec,
@@ -997,7 +998,7 @@ class Sqlite3Cache : public AsyncCache
 {
 public:
     Sqlite3Cache( const CacheOptions& options ) 
-        : AsyncCache(), _options(options), _db(0L)
+      : AsyncCache(options), _options(options),  _db(0L)
     {
         setName( "sqlite3" );
 
@@ -1321,7 +1322,7 @@ public: // Cache interface
             sqlite3_int64 limit = _options.maxSize().value() * 1024 * 1024;
             std::map<std::string, std::pair<sqlite3_int64,int> > layers;
             sqlite3_int64 totalSize = 0;
-            for (unsigned i = 0; i < _layersList.size(); ++i) {
+            for (unsigned int i = 0; i < _layersList.size(); ++i) {
                 ThreadTable tt = getTable( _layersList[i] );
                 if ( tt._table ) {
                     sqlite3_int64 size = tt._table->getTableSize(tt._db);
@@ -1333,7 +1334,7 @@ public: // Cache interface
             OE_INFO << LC << "SQlite cache size " << totalSize/(1024*1024) << " MB" << std::endl;
             if (totalSize > 1.2 * limit) {
                 sqlite3_int64 diff = totalSize - limit;
-                for (unsigned i = 0; i < _layersList.size(); ++i) {
+                for (unsigned int i = 0; i < _layersList.size(); ++i) {
                     float ratio = layers[_layersList[i] ].first * 1.0 / (float)(totalSize);
                     int sizeToRemove = (int)floor(ratio * diff);
                     if (sizeToRemove > 0) {

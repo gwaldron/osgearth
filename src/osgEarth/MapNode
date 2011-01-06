@@ -30,11 +30,6 @@
 
 namespace osgEarth
 {
-    class MapNodeCallback : public osg::Referenced
-    {
-    };
-
-
     /**
      * OSG Node that forms the root of an osgEarth map. This node is a "view" component
      * that renders data from a "Map" data model.
@@ -186,6 +181,8 @@ namespace osgEarth
         void init();
         //void adjustUpdateTraversalCount( int delta );
         void adjustEventTraversalCount( int delta );
+
+        void updateOverlayGraph();
     };
 
 } // namespace osgEarth

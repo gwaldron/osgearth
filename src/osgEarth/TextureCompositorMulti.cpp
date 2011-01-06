@@ -213,13 +213,6 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
                 stamp->addTo( stateSet );
             }
 
-            //osg::Uniform* stamp = stateSet->getUniform( "osgearth_SlotStamp" );
-            //if ( !stamp || stamp->getNumElements() < layout.getMaxUsedSlot() + 1 )
-            //{
-            //    stamp = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_SlotStamp", layout.getMaxUsedSlot()+1 );   
-            //    stateSet->addUniform( stamp );
-            //}
-
             float now = (float)osg::Timer::instance()->delta_s( osg::Timer::instance()->getStartTick(), osg::Timer::instance()->tick() );
             stamp->setElement( layout.getSlot(layerUID), now );
         }

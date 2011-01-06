@@ -31,7 +31,7 @@
 #include <osgGA/CameraManipulator>
 namespace osgGA {
     typedef CameraManipulator MatrixManipulator;
-};
+}
 #else
 #include <osgGA/MatrixManipulator>
 #endif

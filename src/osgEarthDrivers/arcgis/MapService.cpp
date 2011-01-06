@@ -162,7 +162,7 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
     if ( j_layers.empty() )
         return setError( "Map service contains no layers" );
 
-    for( unsigned i=0; i<j_layers.size(); i++ )
+    for( unsigned int i=0; i<j_layers.size(); i++ )
     {
         Json::Value layer = j_layers[i];
         int id = i; // layer.get("id", -1).asInt();
@@ -207,7 +207,7 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
         
         min_level = INT_MAX;
         max_level = 0;
-        for( unsigned i=0; i<j_levels.size(); i++ )
+        for( unsigned int i=0; i<j_levels.size(); i++ )
         {
             int level = j_levels[i].get( "level", -1 ).asInt();
             if ( level >= 0 && level < min_level )

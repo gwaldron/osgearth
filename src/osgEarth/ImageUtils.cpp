@@ -27,76 +27,26 @@
 
 using namespace osgEarth;
 
-namespace osgEarth
+osg::Image*
+ImageUtils::cloneImage( const osg::Image* input )
 {
-    static const float r10= 1.0f/1023.0f;
-    static const float r8 = 1.0f/255.0f;
-    static const float r6 = 1.0f/63.0f;
-    static const float r5 = 1.0f/31.0f;
-    static const float r4 = 1.0f/15.0f;
-    static const float r3 = 1.0f/7.0f;
-    static const float r2 = 1.0f/3.0f;
-}
+    // Why not just call image->clone()? Because, the osg::Image copy constructor does not
+    // clear out the underlying BufferData/BufferObject's GL handles. This can cause 
+    // exepected results if you are cloning an image that has already been used in GL.
+    // Calling clone->dirty() might work, but we are not sure.
 
-
-// todo: add support for other data types as needed.
-osg::Vec4
-ImageUtils::getColor(const osg::Image* image, int s, int t, int r)
-{
-    switch( image->getDataType() )
-    {
-    case( GL_UNSIGNED_SHORT_5_5_5_1 ):
-        {
-            unsigned short p = *(unsigned short*)image->data( s, t, r );
-            //internal format GL_RGB5_A1 is implied
-            return osg::Vec4( r5*(float)(p>>11), r5*(float)((p&0x7c0)>>6), r5*((p&0x3e)>>1), (float)(p&0x1) );
-        }         
-    case( GL_UNSIGNED_BYTE_3_3_2 ):
-        {
-            unsigned char p = *(unsigned char*)image->data( s, t, r );
-            // internal format GL_R3_G3_B2 is implied
-            return osg::Vec4( r3*(float)(p>>5), r3*(float)((p&0x28)>>2), r2*(float)(p&0x3), 1.0f );
-        }
-    }
-
-    // default: let osg::Image handle the usual types
-    return image->getColor( s, t, r );
-}
-
-bool
-ImageUtils::setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& color)
-{
-    if ( image->getDataType() == GL_UNSIGNED_BYTE )
-    {
-        unsigned char* p = image->data(s, t, r);
-        *p++ = (char)(color.r() * 255.0f);
-        *p++ = (char)(color.g() * 255.0f);
-        *p++ = (char)(color.b() * 255.0f);
-        if ( image->getPixelFormat() == GL_RGBA )
-            *p++ = (char)(color.a() * 255.0f);
-        return true;
-    }
-    else 
-    if ( image->getDataType() == GL_UNSIGNED_SHORT_5_5_5_1 )
-    {
-        unsigned short
-            r = (unsigned short)(color.r()*255),
-            g = (unsigned short)(color.g()*255),
-            b = (unsigned short)(color.b()*255),
-            a = color.a() < 0.15 ? 0 : 1;
-
-        unsigned short* p = (unsigned short*)image->data(s, t, r);
-        *p = (((r) & (0xf8)) << 8) | (((g) & (0xf8)) << 3) | (((b) & (0xF8)) >> 2) | a;
-        return true;
-    }
-    else
-    if ( image->getDataType() == GL_UNSIGNED_BYTE_3_3_2 )
-    {
-        //TODO
-        OE_WARN << LC << "setColor(GL_UNSIGNED_BYTE_3_3_2) not yet implemented!" << std::endl;
-    }
-
-    return false;
+#if 0
+    osg::Image* clone = new osg::Image( *input );
+    clone->dirty();
+#else
+    osg::Image* clone = new osg::Image();
+    clone->allocateImage( input->s(), input->t(), input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
+    clone->setInternalTextureFormat( input->getInternalTextureFormat() );
+    if ( input->isMipmap() )
+        clone->setMipmapLevels( input->getMipmapLevels() );
+    memcpy( clone->data(), input->data(), input->getTotalSizeInBytesIncludingMipmaps() );
+#endif
+    return clone;
 }
 
 bool
@@ -112,7 +62,8 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
     // check for fast bytewise copy:
     if (src->getPacking() == dst->getPacking() &&
         src->getDataType() == dst->getDataType() &&
-        src->getPixelFormat() == dst->getPixelFormat() )
+        src->getPixelFormat() == dst->getPixelFormat() &&
+        src->getInternalTextureFormat() == dst->getInternalTextureFormat() )
     {
         for( int src_row=0, dst_row=dst_start_row; src_row < src->t(); src_row++, dst_row++ )
         {
@@ -131,10 +82,8 @@ ImageUtils::copyAsSubImage(const osg::Image* src, osg::Image* dst, int dst_start
         for( int src_t=0, dst_t=dst_start_row; src_t < src->t(); src_t++, dst_t++ )
         {
             for( int src_s=0, dst_s=dst_start_col; src_s < src->s(); src_s++, dst_s++ )
-            {
-                //TODO: port to PixelReader/Writer
-                //setColor( dst, dst_s, dst_t, dst_img, getColor(src, src_s, src_t) );                
-                write(dst_s, dst_t, 0, read(dst_s, src_t, 0) );
+            {           
+                write( read(src_s, src_t), dst_s, dst_t );
             }
         }
     }
@@ -151,19 +100,17 @@ ImageUtils::resizeImage(const osg::Image* input,
     if ( !input && out_s == 0 && out_t == 0 )
         return false;
 
-    if ( input->isCompressed() )
+    if ( !PixelReader::supports(input) )
     {
-        OE_WARN << LC << "resizeImage: cannot resize compressed images" << std::endl;
+        OE_WARN << LC << "resizeImage: unsupported format" << std::endl;
         return false;
     }
 
-    GLenum pf = input->getPixelFormat();
-
-    //if ( pf != GL_RGBA && pf != GL_RGB && pf != GL_LUMINANCE && pf != GL_RED && pf != GL_LUMINANCE_ALPHA )
-    //{
-    //    OE_WARN << LC << "resizeImage: unsupported pixel format " << std::hex << pf << std::endl;
-    //    return 0L;
-    //}
+    if ( output.valid() && !PixelWriter::supports(output.get()) )
+    {
+        OE_WARN << LC << "resizeImage: pre-allocated output image is in an unsupported format" << std::endl;
+        return false;
+    }
 
     unsigned int in_s = input->s();
     unsigned int in_t = input->t();
@@ -171,18 +118,34 @@ ImageUtils::resizeImage(const osg::Image* input,
     if ( !output.valid() )
     {
         output = new osg::Image();
-        output->allocateImage( out_s, out_t, 1, pf, input->getDataType(), input->getPacking() );
-    }
-    output->setInternalTextureFormat( input->getInternalTextureFormat() );
 
-    if ( in_s == out_s && in_t == out_t && mipmapLevel == 0 )
+        if ( PixelWriter::supports(input) )
+        {
+            output->allocateImage( out_s, out_t, 1, input->getPixelFormat(), input->getDataType(), input->getPacking() );
+            output->setInternalTextureFormat( input->getInternalTextureFormat() );
+        }
+        else
+        {
+            // for unsupported write formats, convert to RGBA8 automatically.
+            output->allocateImage( out_s, out_t, 1, GL_RGBA, GL_UNSIGNED_BYTE );
+            output->setInternalTextureFormat( GL_RGBA8 );
+        }
+    }
+    else
     {
-        memcpy( output->getMipmapData(mipmapLevel), input->data(), input->getTotalSizeInBytes() );
+        // make sure they match up
+        output->setInternalTextureFormat( input->getInternalTextureFormat() );
+    }
+
+    if ( in_s == out_s && in_t == out_t && mipmapLevel == 0 && input->getInternalTextureFormat() == output->getInternalTextureFormat() )
+    {
+        memcpy( output->data(), input->data(), input->getTotalSizeInBytes() );
     }
     else
     {       
-        //float s_ratio = (float)in_s/(float)out_s;
-        //float t_ratio = (float)in_t/(float)out_t;
+        PixelReader read( input );
+        PixelWriter write( output.get() );
+
         unsigned int pixel_size_bytes = input->getRowSizeInBytes() / in_s;
 
         unsigned char* dataOffset = output->getMipmapData(mipmapLevel);
@@ -203,14 +166,8 @@ ImageUtils::resizeImage(const osg::Image* input,
                 if ( input_col >= (int)in_s ) input_col = in_s-1;
                 else if ( input_row < 0 ) input_row = 0;
 
-                unsigned char* outaddr =
-                    dataOffset + 
-                    (output_col*output->getPixelSizeInBits())/8+output_row*dataRowSizeBytes;
-
-                memcpy(
-                    outaddr,
-                    input->data( input_col, input_row ),
-                    pixel_size_bytes );
+                osg::Vec4 color = read( input_col, input_row ); // read pixel from mip level 0
+                write( color, output_col, output_row, 0, mipmapLevel ); // write to target mip level
             }
         }
     }
@@ -273,12 +230,8 @@ ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Imag
     return result.release();
 }
 
-bool
-ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
+namespace
 {
-    if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() )
-        return false;
-
     struct MixImage
     {
         float _a;
@@ -296,8 +249,15 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
             return true;
         }
     };
+}
 
-    PixelFunctor<MixImage> mixer;
+bool
+ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
+{
+    if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() )
+        return false;
+    
+    PixelVisitor<MixImage> mixer;
     mixer._a = osg::clampBetween( a, 0.0f, 1.0f );
     mixer._srcHasAlpha = src->getPixelSizeInBits() == 32;
     mixer._destHasAlpha = src->getPixelSizeInBits() == 32;
@@ -373,7 +333,7 @@ osg::Image*
 ImageUtils::sharpenImage( const osg::Image* input )
 {
     int filter[9] = { 0, -1, 0, -1, 5, -1, 0, -1, 0 };
-    osg::Image* output = new osg::Image( *input );
+    osg::Image* output = ImageUtils::cloneImage(input);
     for( int t=1; t<input->t()-1; t++ )
     {
         for( int s=1; s<input->s()-1; s++ )
@@ -419,7 +379,7 @@ ImageUtils::convertToRGB8(const osg::Image *image)
 	{
         if ( image->getInternalTextureFormat() == GL_RGB8 )
         {
-            return new osg::Image( *image );
+            return cloneImage(image);
         }
 
         else
@@ -428,7 +388,7 @@ ImageUtils::convertToRGB8(const osg::Image *image)
 			result->allocateImage(image->s(), image->t(), image->r(), GL_RGB, GL_UNSIGNED_BYTE);
             result->setInternalTextureFormat( GL_RGB8 );
 
-            PixelFunctor<CopyImage>().accept( image, result );
+            PixelVisitor<CopyImage>().accept( image, result );
 
 			return result;
 		}
@@ -444,7 +404,7 @@ ImageUtils::convertToRGBA8(const osg::Image* image)
     {
         if ( image->getInternalTextureFormat() == GL_RGBA8 )
         {
-            return new osg::Image( *image );
+            return cloneImage(image);
         }
 
         else
@@ -453,7 +413,7 @@ ImageUtils::convertToRGBA8(const osg::Image* image)
             result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
             result->setInternalTextureFormat( GL_RGBA8 );
 
-            PixelFunctor<CopyImage>().accept( image, result );
+            PixelVisitor<CopyImage>().accept( image, result );
 
             return result;
         }
@@ -500,8 +460,18 @@ ImageUtils::hasAlphaChannel(const osg::Image* image)
         image->getPixelFormat() == GL_LUMINANCE_ALPHA );
 }
 
+//------------------------------------------------------------------------
+
 namespace
 {
+    //static const float r10= 1.0f/1023.0f;
+    //static const float r8 = 1.0f/255.0f;
+    //static const float r6 = 1.0f/63.0f;
+    static const float r5 = 1.0f/31.0f;
+    //static const float r4 = 1.0f/15.0f;
+    static const float r3 = 1.0f/7.0f;
+    static const float r2 = 1.0f/3.0f;
+
     // The scale factors to convert from an image data type to a
     // float. This is copied from OSG; I think the factors for the signed
     // types are wrong, but need to investigate further.
@@ -550,9 +520,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_DEPTH_COMPONENT, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float l = float(*ptr) * GLTypeTraits<T>::scale();
             return osg::Vec4(l, l, l, 1.0f);
         }
@@ -561,9 +531,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_DEPTH_COMPONENT, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             (*ptr) = (GLubyte)(c.r() / GLTypeTraits<T>::scale());
         }
     };
@@ -571,9 +541,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_LUMINANCE, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float l = float(*ptr) * GLTypeTraits<T>::scale();
             return osg::Vec4(l, l, l, 1.0f);
         }
@@ -582,9 +552,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_LUMINANCE, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             (*ptr) = (GLubyte)(c.r() / GLTypeTraits<T>::scale());
         }
     };
@@ -592,9 +562,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_ALPHA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float a = float(*ptr) * GLTypeTraits<T>::scale();
             return osg::Vec4(1.0f, 1.0f, 1.0f, a);
         }
@@ -603,9 +573,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_ALPHA, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             (*ptr) = (GLubyte)(c.a() / GLTypeTraits<T>::scale());
         }
     };
@@ -613,9 +583,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_LUMINANCE_ALPHA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float l = float(*ptr++) * GLTypeTraits<T>::scale();
             float a = float(*ptr) * GLTypeTraits<T>::scale();
             return osg::Vec4(l, l, l, a);
@@ -625,9 +595,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_LUMINANCE_ALPHA, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
             *ptr   = (GLubyte)( c.a() / GLTypeTraits<T>::scale() );
         }
@@ -636,9 +606,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_RGB, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float d = float(*ptr++) * GLTypeTraits<T>::scale();
             float g = float(*ptr++) * GLTypeTraits<T>::scale();
             float b = float(*ptr) * GLTypeTraits<T>::scale();
@@ -649,9 +619,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_RGB, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
@@ -661,9 +631,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_RGBA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float d = float(*ptr++) * GLTypeTraits<T>::scale();
             float g = float(*ptr++) * GLTypeTraits<T>::scale();
             float b = float(*ptr++) * GLTypeTraits<T>::scale();
@@ -675,9 +645,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_RGBA, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m)
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
@@ -688,9 +658,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_BGR, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float b = float(*ptr) * GLTypeTraits<T>::scale();
             float g = float(*ptr++) * GLTypeTraits<T>::scale();
             float d = float(*ptr++) * GLTypeTraits<T>::scale();
@@ -701,9 +671,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_BGR, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
@@ -713,9 +683,9 @@ namespace
     template<typename T>
     struct ColorReader<GL_BGRA, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            const T* ptr = (const T*)ia->data(s, t, r);
+            const T* ptr = (const T*)ia->data(s, t, r, m);
             float b = float(*ptr++) * GLTypeTraits<T>::scale();
             float g = float(*ptr++) * GLTypeTraits<T>::scale();
             float d = float(*ptr++) * GLTypeTraits<T>::scale();
@@ -727,9 +697,9 @@ namespace
     template<typename T>
     struct ColorWriter<GL_BGRA, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            T* ptr = (T*)iw->data(s, t, r);
+            T* ptr = (T*)iw->data(s, t, r, m);
             *ptr++ = (GLubyte)( c.b() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.g() / GLTypeTraits<T>::scale() );
             *ptr++ = (GLubyte)( c.r() / GLTypeTraits<T>::scale() );
@@ -740,7 +710,7 @@ namespace
     template<typename T>
     struct ColorReader<0, T>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
             return osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f);
         }
@@ -749,7 +719,7 @@ namespace
     template<typename T>
     struct ColorWriter<0, T>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
             //nop
         }
@@ -758,9 +728,9 @@ namespace
     template<>
     struct ColorReader<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-            GLushort p = *(const GLushort*)ia->data( s, t, r );
+            GLushort p = *(const GLushort*)ia->data(s, t, r, m);
             //internal format GL_RGB5_A1 is implied
             return osg::Vec4( r5*(float)(p>>11), r5*(float)((p&0x7c0)>>6), r5*((p&0x3e)>>1), (float)(p&0x1));
         }
@@ -769,7 +739,7 @@ namespace
     template<>
     struct ColorWriter<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
             GLushort
                 red = (unsigned short)(c.r()*255),
@@ -777,7 +747,7 @@ namespace
                 b = (unsigned short)(c.b()*255),
                 a = c.a() < 0.15 ? 0 : 1;
 
-            GLushort* ptr = (GLushort*)iw->data(s, t, r);
+            GLushort* ptr = (GLushort*)iw->data(s, t, r, m);
             *ptr = (((red) & (0xf8)) << 8) | (((g) & (0xf8)) << 3) | (((b) & (0xF8)) >> 2) | a;
         }
     };
@@ -785,9 +755,9 @@ namespace
     template<>
     struct ColorReader<GL_UNSIGNED_BYTE_3_3_2, GLubyte>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r)
+        static osg::Vec4 read(const ImageUtils::PixelReader* ia, int s, int t, int r, int m)
         {
-              GLubyte p = *(const GLubyte*)ia->data( s, t, r );
+              GLubyte p = *(const GLubyte*)ia->data(s,t,r,m);
             // internal format GL_R3_G3_B2 is implied
             return osg::Vec4( r3*(float)(p>>5), r3*(float)((p&0x28)>>2), r2*(float)(p&0x3), 1.0f );
         }
@@ -796,9 +766,9 @@ namespace
     template<>
     struct ColorWriter<GL_UNSIGNED_BYTE_3_3_2, GLubyte>
     {
-        static void write(const ImageUtils::PixelWriter* iw, int s, int t, int r, const osg::Vec4f& c )
+        static void write(const ImageUtils::PixelWriter* iw, const osg::Vec4f& c, int s, int t, int r, int m )
         {
-            //GLubyte* ptr = (GLubyte*)iw->data(s, t, r);
+            GLubyte* ptr = (GLubyte*)iw->data(s,t,r,m);
             OE_WARN << LC << "Target GL_UNSIGNED_BYTE_3_3_2 not yet implemented" << std::endl;
         }
     };
@@ -806,7 +776,7 @@ namespace
     template<>
     struct ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>
     {
-        static osg::Vec4 read(const ImageUtils::PixelReader* pr, int s, int t, int r )
+        static osg::Vec4 read(const ImageUtils::PixelReader* pr, int s, int t, int r, int m)
         {
             static const int BLOCK_BYTES = 8;
 
@@ -854,33 +824,73 @@ namespace
             return index==0? c0 : index==1? c1 : index==2? c2 : c3;
         }
     };
-}
 
-template<int GLFormat>
-inline ImageUtils::PixelReader::ReaderFunc chooseReader(GLenum dataType)
-{
-    switch (dataType)
+    template<int GLFormat>
+    inline ImageUtils::PixelReader::ReaderFunc
+    chooseReader(GLenum dataType)
     {
-    case GL_BYTE:
-        return &ColorReader<GLFormat, GLbyte>::read;
-    case GL_UNSIGNED_BYTE:
-        return &ColorReader<GLFormat, GLubyte>::read;
-    case GL_SHORT:
-        return &ColorReader<GLFormat, GLshort>::read;
-    case GL_UNSIGNED_SHORT:
-        return &ColorReader<GLFormat, GLushort>::read;
-    case GL_INT:
-        return &ColorReader<GLFormat, GLint>::read;
-    case GL_UNSIGNED_INT:
-        return &ColorReader<GLFormat, GLuint>::read;
-    case GL_FLOAT:
-        return &ColorReader<GLFormat, GLfloat>::read;       
-    case GL_UNSIGNED_SHORT_5_5_5_1:
-        return &ColorReader<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::read;
-    case GL_UNSIGNED_BYTE_3_3_2:
-        return &ColorReader<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::read;
-    default:
-        return &ColorReader<0, GLbyte>::read;
+        switch (dataType)
+        {
+        case GL_BYTE:
+            return &ColorReader<GLFormat, GLbyte>::read;
+        case GL_UNSIGNED_BYTE:
+            return &ColorReader<GLFormat, GLubyte>::read;
+        case GL_SHORT:
+            return &ColorReader<GLFormat, GLshort>::read;
+        case GL_UNSIGNED_SHORT:
+            return &ColorReader<GLFormat, GLushort>::read;
+        case GL_INT:
+            return &ColorReader<GLFormat, GLint>::read;
+        case GL_UNSIGNED_INT:
+            return &ColorReader<GLFormat, GLuint>::read;
+        case GL_FLOAT:
+            return &ColorReader<GLFormat, GLfloat>::read;       
+        case GL_UNSIGNED_SHORT_5_5_5_1:
+            return &ColorReader<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::read;
+        case GL_UNSIGNED_BYTE_3_3_2:
+            return &ColorReader<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::read;
+        default:
+            return &ColorReader<0, GLbyte>::read;
+        }
+    }
+
+    inline ImageUtils::PixelReader::ReaderFunc
+    getReader( GLenum pixelFormat, GLenum dataType )
+    {
+        switch( pixelFormat )
+        {
+        case GL_DEPTH_COMPONENT:
+            return chooseReader<GL_DEPTH_COMPONENT>(dataType);
+            break;
+        case GL_LUMINANCE:
+            return chooseReader<GL_LUMINANCE>(dataType);
+            break;        
+        case GL_ALPHA:
+            return chooseReader<GL_ALPHA>(dataType);
+            break;        
+        case GL_LUMINANCE_ALPHA:
+            return chooseReader<GL_LUMINANCE_ALPHA>(dataType);
+            break;        
+        case GL_RGB:
+            return chooseReader<GL_RGB>(dataType);
+            break;        
+        case GL_RGBA:
+            return chooseReader<GL_RGBA>(dataType);
+            break;        
+        case GL_BGR:
+            return chooseReader<GL_BGR>(dataType);
+            break;        
+        case GL_BGRA:
+            return chooseReader<GL_BGRA>(dataType);
+            break; 
+        case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
+            return &ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>::read;
+            break;
+        default:
+            OE_WARN << "[PixelReader] No reader found for pixel format " << std::hex << pixelFormat << std::endl; 
+            return &ColorReader<0, GLbyte>::read;
+            break;
+        }
     }
 }
     
@@ -891,67 +901,80 @@ _image(image)
     _rowMult = _image->getRowSizeInBytes();
     _imageSize = _image->getImageSizeInBytes();
     GLenum dataType = _image->getDataType();
-    switch(image->getPixelFormat())
-    {
-    case GL_DEPTH_COMPONENT:
-        _reader = chooseReader<GL_DEPTH_COMPONENT>(dataType);
-        break;
-    case GL_LUMINANCE:
-        _reader = chooseReader<GL_LUMINANCE>(dataType);
-        break;        
-    case GL_ALPHA:
-        _reader = chooseReader<GL_ALPHA>(dataType);
-        break;        
-    case GL_LUMINANCE_ALPHA:
-        _reader = chooseReader<GL_LUMINANCE_ALPHA>(dataType);
-        break;        
-    case GL_RGB:
-        _reader = chooseReader<GL_RGB>(dataType);
-        break;        
-    case GL_RGBA:
-        _reader = chooseReader<GL_RGBA>(dataType);
-        break;        
-    case GL_BGR:
-        _reader = chooseReader<GL_BGR>(dataType);
-        break;        
-    case GL_BGRA:
-        _reader = chooseReader<GL_BGRA>(dataType);
-        break; 
-    case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-        _reader = &ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>::read;
-        break;
-    default:
-        _reader = &ColorReader<0, GLbyte>::read;
-        break;
-    }
+    _reader = getReader( _image->getPixelFormat(), dataType );
 }
 
-
-template<int GLFormat>
-inline ImageUtils::PixelWriter::WriterFunc chooseWriter(GLenum dataType)
+bool
+ImageUtils::PixelReader::supports( GLenum pixelFormat, GLenum dataType )
 {
-    switch (dataType)
+    return getReader(pixelFormat, dataType) != 0L;
+}
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    template<int GLFormat>
+    inline ImageUtils::PixelWriter::WriterFunc chooseWriter(GLenum dataType)
     {
-    case GL_BYTE:
-        return &ColorWriter<GLFormat, GLbyte>::write;
-    case GL_UNSIGNED_BYTE:
-        return &ColorWriter<GLFormat, GLubyte>::write;
-    case GL_SHORT:
-        return &ColorWriter<GLFormat, GLshort>::write;
-    case GL_UNSIGNED_SHORT:
-        return &ColorWriter<GLFormat, GLushort>::write;
-    case GL_INT:
-        return &ColorWriter<GLFormat, GLint>::write;
-    case GL_UNSIGNED_INT:
-        return &ColorWriter<GLFormat, GLuint>::write;
-    case GL_FLOAT:
-        return &ColorWriter<GLFormat, GLfloat>::write;       
-    case GL_UNSIGNED_SHORT_5_5_5_1:
-        return &ColorWriter<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::write;
-    case GL_UNSIGNED_BYTE_3_3_2:
-        return &ColorWriter<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::write;
-    default:
-        return &ColorWriter<0, GLbyte>::write;
+        switch (dataType)
+        {
+        case GL_BYTE:
+            return &ColorWriter<GLFormat, GLbyte>::write;
+        case GL_UNSIGNED_BYTE:
+            return &ColorWriter<GLFormat, GLubyte>::write;
+        case GL_SHORT:
+            return &ColorWriter<GLFormat, GLshort>::write;
+        case GL_UNSIGNED_SHORT:
+            return &ColorWriter<GLFormat, GLushort>::write;
+        case GL_INT:
+            return &ColorWriter<GLFormat, GLint>::write;
+        case GL_UNSIGNED_INT:
+            return &ColorWriter<GLFormat, GLuint>::write;
+        case GL_FLOAT:
+            return &ColorWriter<GLFormat, GLfloat>::write;       
+        case GL_UNSIGNED_SHORT_5_5_5_1:
+            return &ColorWriter<GL_UNSIGNED_SHORT_5_5_5_1, GLushort>::write;
+        case GL_UNSIGNED_BYTE_3_3_2:
+            return &ColorWriter<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::write;
+        default:
+            return &ColorWriter<0, GLbyte>::write;
+        }
+    }
+
+    inline ImageUtils::PixelWriter::WriterFunc getWriter(GLenum pixelFormat, GLenum dataType)
+    {
+        switch( pixelFormat )
+        {
+        case GL_DEPTH_COMPONENT:
+            return chooseWriter<GL_DEPTH_COMPONENT>(dataType);
+            break;
+        case GL_LUMINANCE:
+            return chooseWriter<GL_LUMINANCE>(dataType);
+            break;        
+        case GL_ALPHA:
+            return chooseWriter<GL_ALPHA>(dataType);
+            break;        
+        case GL_LUMINANCE_ALPHA:
+            return chooseWriter<GL_LUMINANCE_ALPHA>(dataType);
+            break;        
+        case GL_RGB:
+            return chooseWriter<GL_RGB>(dataType);
+            break;        
+        case GL_RGBA:
+            return chooseWriter<GL_RGBA>(dataType);
+            break;        
+        case GL_BGR:
+            return chooseWriter<GL_BGR>(dataType);
+            break;        
+        case GL_BGRA:
+            return chooseWriter<GL_BGRA>(dataType);
+            break; 
+        default:
+            OE_WARN << "[PixelWriter] No writer found for pixel format " << std::hex << pixelFormat << std::endl; 
+            return chooseWriter<0>(dataType);
+            break;
+        }
     }
 }
     
@@ -962,35 +985,11 @@ _image(image)
     _rowMult = _image->getRowSizeInBytes();
     _imageSize = _image->getImageSizeInBytes();
     GLenum dataType = _image->getDataType();
+    _writer = getWriter( _image->getPixelFormat(), dataType );
+}
 
-    switch(image->getPixelFormat())
-    {
-    case GL_DEPTH_COMPONENT:
-        _writer = chooseWriter<GL_DEPTH_COMPONENT>(dataType);
-        break;
-    case GL_LUMINANCE:
-        _writer = chooseWriter<GL_LUMINANCE>(dataType);
-        break;        
-    case GL_ALPHA:
-        _writer = chooseWriter<GL_ALPHA>(dataType);
-        break;        
-    case GL_LUMINANCE_ALPHA:
-        _writer = chooseWriter<GL_LUMINANCE_ALPHA>(dataType);
-        break;        
-    case GL_RGB:
-        _writer = chooseWriter<GL_RGB>(dataType);
-        break;        
-    case GL_RGBA:
-        _writer = chooseWriter<GL_RGBA>(dataType);
-        break;        
-    case GL_BGR:
-        _writer = chooseWriter<GL_BGR>(dataType);
-        break;        
-    case GL_BGRA:
-        _writer = chooseWriter<GL_BGRA>(dataType);
-        break; 
-    default:
-        _writer = chooseWriter<0>(dataType);
-        break;
-    }
+bool
+ImageUtils::PixelWriter::supports( GLenum pixelFormat, GLenum dataType )
+{
+    return getWriter(pixelFormat, dataType) != 0L;
 }

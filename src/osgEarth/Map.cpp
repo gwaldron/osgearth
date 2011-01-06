@@ -844,7 +844,7 @@ namespace
                      osg::ref_ptr<osg::HeightField>& out_result,
                      ProgressCallback* progress) 
     {
-        int lowestLOD = key.getLevelOfDetail();
+        unsigned int lowestLOD = key.getLevelOfDetail();
         bool hfInitialized = false;
 
         typedef std::map< TerrainLayer*, bool > LayerValidMap;

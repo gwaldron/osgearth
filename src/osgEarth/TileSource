@@ -336,15 +336,13 @@ namespace osgEarth
 		 * Creates an image for the given TileKey.
          * The returned object is new and is the responsibility of the caller.
 		 */
-		virtual osg::Image* createImage( const TileKey& key,
-                                         ProgressCallback* progress  = 0) = 0;
+		virtual osg::Image* createImage( const TileKey& key, ProgressCallback* progress ) = 0;
 
         /**
          * Creates a heightfield for the given TileKey
          * The returned object is new and is the responsibility of the caller.
          */
-        virtual osg::HeightField* createHeightField( const TileKey& key, 
-                                                     ProgressCallback* progress = 0);
+        virtual osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress );
 
         /**
          * Mutable list of the data areas 

@@ -68,7 +68,7 @@ OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* engineNode)
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
     getEngineNodeCache()[engineNode->_uid] = engineNode;
-    OE_INFO << LC << "Registered engine " << engineNode->_uid << std::endl;
+    OE_DEBUG << LC << "Registered engine " << engineNode->_uid << std::endl;
 }
 
 void
@@ -79,7 +79,7 @@ OSGTerrainEngineNode::unregisterEngine( UID uid )
     if (k != getEngineNodeCache().end())
     {
         getEngineNodeCache().erase(k);
-        OE_INFO << LC << "Unregistered engine " << uid << std::endl;
+        OE_DEBUG << LC << "Unregistered engine " << uid << std::endl;
     }
 }
 

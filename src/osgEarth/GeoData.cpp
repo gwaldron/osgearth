@@ -946,9 +946,6 @@ GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS,
 
         if ( elevation != NO_DATA_VALUE )
         {
-            //const VerticalSpatialReference* fromVSRS = _vsrs.get();
-            //const VerticalSpatialReference* toVSRS   = outputVSRS;
-
             if ( VerticalSpatialReference::canTransform( _vsrs.get(), outputVSRS ) )
             {
                 // need geodetic coordinates for a VSRS transformation:

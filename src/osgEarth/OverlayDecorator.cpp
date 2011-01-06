@@ -197,49 +197,81 @@ _mipmapping( true )
 void
 OverlayDecorator::reinit()
 {
-    // need to pre-allocate the image here, otherwise the RTT images won't have an alpha channel:
-    osg::Image* image = new osg::Image();
-    image->allocateImage( *_textureSize, *_textureSize, 1, GL_RGBA, GL_UNSIGNED_BYTE );
-    image->setInternalTextureFormat( GL_RGBA8 );    
+    if ( !_engine.valid() ) return;
 
-    _projTexture = new osg::Texture2D( image );
-    _projTexture->setTextureSize( *_textureSize, *_textureSize );
-    _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR );
-    _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-    _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
-    _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
-    _projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_BORDER );
-    _projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
-
-    // set up the RTT camera:
-    _rttCamera = new osg::Camera();
-    _rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
-    _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
-    _rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
-    _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-    _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
-    _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
-    _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
-    _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-
-    // texture coordinate generator:
-    _texGenNode = new osg::TexGenNode();
-    _texGenNode->setTextureUnit( *_textureUnit );
-    
-    // attach the overlay graph to the RTT camera.
-    if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != _rttCamera.get() ))
+    if ( _overlayGraph.valid() )
     {
-        if ( _rttCamera->getNumChildren() > 0 )
-            _rttCamera->replaceChild( 0, _overlayGraph.get() );
-        else
-            _rttCamera->addChild( _overlayGraph.get() );
+        // apply the user-request texture unit, it applicable:
+        if ( _explicitTextureUnit.isSet() )
+        {
+            if ( !_textureUnit.isSet() || *_textureUnit != *_explicitTextureUnit )
+            {
+                _textureUnit = *_explicitTextureUnit;
+            }
+        }
+
+        // otherwise, automatically allocate a texture unit if necessary:
+        else if ( !_textureUnit.isSet() && _useShaders )
+        {
+            int texUnit;
+            if ( _engine->getTextureCompositor()->reserveTextureImageUnit( texUnit ) )
+            {
+                _textureUnit = texUnit;
+                OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
+            }
+            else
+            {
+                OE_WARN << LC << "Uh oh, no texture image units available." << std::endl;
+            }
+        }
+
+        if ( _textureUnit.isSet() )
+        {
+            // need to pre-allocate the image here, otherwise the RTT images won't have an alpha channel:
+            osg::Image* image = new osg::Image();
+            image->allocateImage( *_textureSize, *_textureSize, 1, GL_RGBA, GL_UNSIGNED_BYTE );
+            image->setInternalTextureFormat( GL_RGBA8 );    
+
+            _projTexture = new osg::Texture2D( image );
+            _projTexture->setTextureSize( *_textureSize, *_textureSize );
+            _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR );
+            _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+            _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
+            _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
+            _projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_BORDER );
+            _projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
+
+            // set up the RTT camera:
+            _rttCamera = new osg::Camera();
+            _rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
+            _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
+            _rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
+            _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+            _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
+            _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+            _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
+            _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
+            // texture coordinate generator:
+            _texGenNode = new osg::TexGenNode();
+            _texGenNode->setTextureUnit( *_textureUnit );
+            
+            // attach the overlay graph to the RTT camera.
+            if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != _rttCamera.get() ))
+            {
+                if ( _rttCamera->getNumChildren() > 0 )
+                    _rttCamera->replaceChild( 0, _overlayGraph.get() );
+                else
+                    _rttCamera->addChild( _overlayGraph.get() );
+            }
+        }
     }
 
     // assemble the subgraph stateset:
     _subgraphStateSet = new osg::StateSet();
     _subgraphContainer->setStateSet( _subgraphStateSet.get() );
 
-    if ( _overlayGraph.valid() )
+    if ( _overlayGraph.valid() && _textureUnit.isSet() )
     {
         // set up the subgraph to receive the projected texture:
         _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
@@ -403,9 +435,9 @@ OverlayDecorator::setTextureSize( int texSize )
 void
 OverlayDecorator::setTextureUnit( int texUnit )
 {
-    if ( texUnit != _textureUnit.value() )
+    if ( texUnit != _explicitTextureUnit.value() )
     {
-        _textureUnit = texUnit;
+        _explicitTextureUnit = texUnit;
         reinit();
     }
 }
@@ -423,6 +455,8 @@ OverlayDecorator::setMipmapping( bool value )
 void
 OverlayDecorator::onInstall( TerrainEngineNode* engine )
 {
+    _engine = engine;
+
     // establish the earth's major axis:
     MapInfo info(engine->getMap());
     _isGeocentric = info.isGeocentric();
@@ -437,19 +471,8 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
 
     // see whether we want shader support:
     // TODO: this is not stricty correct; you might still want to use shader overlays
-    // in multipass mode.
+    // in multipass mode, AND you might want FFP overlays in multitexture-FFP mode.
     _useShaders = engine->getTextureCompositor()->usesShaderComposition();
-
-    if ( !_textureUnit.isSet() && _useShaders )
-    {
-        int texUnit;
-        if ( engine->getTextureCompositor()->reserveTextureImageUnit( texUnit ) )
-        {
-            _textureUnit = texUnit;
-            _reservedTextureUnit = true;
-            OE_INFO << LC << "Reserved texture image unit " << *_textureUnit << std::endl;
-        }
-    }
 
     if ( !_textureSize.isSet() )
     {
@@ -468,10 +491,12 @@ OverlayDecorator::onUninstall( TerrainEngineNode* engine )
 {
     if ( _reservedTextureUnit )
     {
-        engine->getTextureCompositor()->releaseTextureImageUnit( *_textureUnit );
+        _engine->getTextureCompositor()->releaseTextureImageUnit( *_textureUnit );
         _textureUnit.unset();
         _reservedTextureUnit = false;
     }
+
+    _engine = 0L;
 }
 
 void
@@ -738,7 +763,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 void
 OverlayDecorator::traverse( osg::NodeVisitor& nv )
 {
-    if ( _overlayGraph.valid() )
+    if ( _overlayGraph.valid() && _textureUnit.isSet() )
     {
         if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {

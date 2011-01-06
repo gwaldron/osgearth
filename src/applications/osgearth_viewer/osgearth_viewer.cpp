@@ -37,6 +37,7 @@ usage( const std::string& msg )
     OE_NOTICE << "USAGE: osgearth_viewer [--graticule] [--autoclip] file.earth" << std::endl;
     OE_NOTICE << "   --graticule     : displays a lat/long grid in geocentric mode" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
+    OE_NOTICE << "   --animateSky    : animates the sun across the sky" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
         
     return -1;
@@ -44,11 +45,7 @@ usage( const std::string& msg )
 
 struct AnimateSunCallback : public osg::NodeCallback
 {
-    AnimateSunCallback():
-_longitude(-180),
-_rate(10)
-    {
-    }
+    AnimateSunCallback(): _longitude(-180), _rate(10) { }
 
     void operator()( osg::Node* node, osg::NodeVisitor* nv )
     {
@@ -128,7 +125,10 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setDoPreCompile( true );
 
     viewer.setSceneData( root );
-    viewer.setCameraManipulator( new EarthManipulator );
+
+    EarthManipulator* manip = new EarthManipulator();
+    manip->getSettings()->setMinMaxDistance( 250.0, DBL_MAX );
+    viewer.setCameraManipulator( manip );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

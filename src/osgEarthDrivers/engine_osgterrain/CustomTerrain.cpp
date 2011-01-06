@@ -446,9 +446,8 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
 
                 if ( tile->getUseLayerRequests() ) // i.e., sequential or preemptive mode
                 {
-                    tile->servicePendingElevationRequests( _update_mapf, stamp, true );
-
-                    /*bool tileModified = */tile->serviceCompletedRequests( _update_mapf, true );
+                    tile->servicePendingElevationRequests( _update_mapf, stamp, true );                   
+                    tile->serviceCompletedRequests( _update_mapf, true );
                     //if ( tileModified && _terrainCallbacks.size() > 0 )
                     //{
                     //    updatedTiles.push_back( tile );

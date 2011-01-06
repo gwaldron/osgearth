@@ -29,6 +29,15 @@ namespace osgEarth
     {
     public:
         /**
+         * Clones an image.
+         *
+         * Use this instead of the osg::Image copy construtor, which keeps the referenced to
+         * its underlying BufferObject around. Calling dirty() on the new clone appears to
+         * help, but just call this method instead to be sure.
+         */
+        static osg::Image* cloneImage( const osg::Image* image );
+
+        /**
          * Copys a portion of one image into another.
          */
         static bool copyAsSubImage(
@@ -44,8 +53,7 @@ namespace osgEarth
          * resize into that new image. If the output parameter is non-NULL, this method will
          * assume that the output image is already allocated to the proper size, and will
          * do a resize+copy into that image. In the latter case, it is your responsibility
-         * to make sure the output image is allocated to the proper size and with the proper
-         * pixel configuration (it must match that of the input image).
+         * to make sure the output image is allocated to the proper size.
          *
          * If the output parameter is non-NULL, then the mipmapLevel is also considered.
          * This lets you resize directly into a particular mipmap level of the output image.
@@ -133,20 +141,6 @@ namespace osgEarth
 		static bool areEquivalent(const osg::Image *lhs, const osg::Image *rhs);
 
         /**
-         * Gets the color of an image at the specified pixel. Works for packed pixel
-         * formats as well as standard formats (osg::Image::getColor only works for
-         * standard formats)
-         * DEPRECATED
-         */
-        static osg::Vec4 getColor(const osg::Image* image, int s, int t, int r =0);		
-
-        /**
-         * Sets the color of a pixel in an image.
-         * DEPRECATED
-         */
-        static bool setColor(osg::Image* image, int s, int t, int r, const osg::Vec4& color);
-
-        /**
          * Whether two colors are roughly equivalent.
          */
         static bool areRGBEquivalent( const osg::Vec4& lhs, const osg::Vec4& rhs, float epsilon =0.01f ) {
@@ -155,7 +149,6 @@ namespace osgEarth
                 fabs(lhs.g() - rhs.g()) < epsilon &&
                 fabs(lhs.b() - rhs.b()) < epsilon;
         }
-                   
 
         /**
          * Checks whether the image has an alpha component 
@@ -170,19 +163,32 @@ namespace osgEarth
         public:
             PixelReader(const osg::Image* image);
 
-            osg::Vec4 operator()(int s, int t, int r = 0) const
-            {
-                return (*_reader)(this, s, t, r);
+            /** Whether PixelReader supports a given format/datatype combiniation. */
+            static bool supports( GLenum pixelFormat, GLenum dataType );
+
+            /** Whether PixelReader can read from the specified image. */
+            static bool supports( const osg::Image* image ) {
+                return image && supports(image->getPixelFormat(), image->getDataType() );
             }
+
+            /** Reads a color from the image */
+            osg::Vec4 operator()(int s, int t, int r=0, int m=0) const {
+                return (*_reader)(this, s, t, r, m);
+            }
+
+            // internals:
+            const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
+                return m == 0 ?
+                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
+                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m) ;
+            }
+
+            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r, int m);
+            ReaderFunc _reader;
             const osg::Image* _image;
             unsigned _colMult;
             unsigned _rowMult;
             unsigned _imageSize;
-            const unsigned char* data(int s=0, int t=0, int r=0) const {
-                return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
-            }
-            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r);
-            ReaderFunc _reader;
         };
         
         /**
@@ -191,29 +197,50 @@ namespace osgEarth
         class OSGEARTH_EXPORT PixelWriter
         {
         public:
-            PixelWriter(osg::Image* _image);
+            PixelWriter(osg::Image* image);
 
-            void operator()(int s, int t, int r, const osg::Vec4& c)
-            {
-                (*_writer)(this, s, t, r, c );
+            /** Whether PixelWriter can write to an image with the given format/datatype combo. */
+            static bool supports( GLenum pixelFormat, GLenum dataType );
+
+            /** Whether PixelWriter can write to non-const version of an image. */
+            static bool supports( const osg::Image* image ) {
+                return image && supports(image->getPixelFormat(), image->getDataType() );
             }
 
+            /** Writes a color to a pixel. */
+            void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
+                (*_writer)(this, c, s, t, r, m );
+            }
+
+            // internals:
             osg::Image* _image;
             unsigned _colMult;
             unsigned _rowMult;
             unsigned _imageSize;
 
-            unsigned char* data(int s=0, int t=0, int r=0) const {
-                return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+            unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
+                return m == 0 ?
+                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
+                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m);
             }
 
-            typedef void (*WriterFunc)(const PixelWriter* iw, int s, int t, int r, const osg::Vec4& c);
+            typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4& c, int s, int t, int r, int m);
             WriterFunc _writer;
         };
 
+        /**
+         * Functor that visits every pixel in an image
+         */
         template<typename T>
-        struct PixelFunctor : public T
+        struct PixelVisitor : public T
         {
+            /**
+             * Traverse an image, and call this method on the superclass:
+             *
+             *   bool operator(const osg::Vec4& pixel);
+             *
+             * If that method returns true, write the value back at the same location.
+             */
             void accept( osg::Image* image ) {
                 PixelReader _reader( image );
                 PixelWriter _writer( image );
@@ -221,13 +248,21 @@ namespace osgEarth
                     for( int t=0; t<image->t(); ++t ) {
                         for( int s=0; s<image->s(); ++s ) {
                             osg::Vec4f pixel = _reader(s,t,r);
-                            if ( operator()(pixel) )
-                                _writer(s,t,r,pixel);
+                            if ( (*this)(pixel) )
+                                _writer(pixel,s,t,r);
                         }
                     }
                 }
-            }
+            }          
 
+            /**
+             * Traverse an image, and call this method on the superclass:
+             *
+             *   bool operator(const osg::Vec4& srcPixel, osg::Vec4& destPixel);
+             *
+             * If that method returns true, write destPixel back at the same location
+             * in the destination image.
+             */
             void accept( const osg::Image* src, osg::Image* dest ) {
                 PixelReader _readerSrc( src );
                 PixelReader _readerDest( dest );
@@ -237,14 +272,20 @@ namespace osgEarth
                         for( int s=0; s<src->s(); ++s ) {
                             const osg::Vec4f pixelSrc = _readerSrc(s,t,r);
                             osg::Vec4f pixelDest = _readerDest(s,t,r);
-                            if ( operator()(pixelSrc, pixelDest) )
-                                _writerDest(s,t,r,pixelDest);
+                            if ( (*this)(pixelSrc, pixelDest) )
+                                _writerDest(pixelDest,s,t,r);
                         }
                     }
                 }
             }
         };
 
+        /**
+         * Simple functor to copy pixels from one image to another.
+         *
+         * Usage:
+         *    PixelVisitor<CopyImage>().accept( fromImage, toImage );
+         */
         struct CopyImage {
             bool operator()( const osg::Vec4f& src, osg::Vec4f& dest ) {
                 dest = src;

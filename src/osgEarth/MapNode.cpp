@@ -30,44 +30,46 @@ using namespace osgEarth;
 
 //---------------------------------------------------------------------------
 
-// adapter that lets MapNode listen to Map events
-struct MapNodeMapCallbackProxy : public MapCallback
+namespace 
 {
-    MapNodeMapCallbackProxy(MapNode* node) : _node(node) { }
+    // adapter that lets MapNode listen to Map events
+    struct MapNodeMapCallbackProxy : public MapCallback
+    {
+        MapNodeMapCallbackProxy(MapNode* node) : _node(node) { }
 
-    void onModelLayerAdded( ModelLayer* layer, unsigned int index ) {
-        _node->onModelLayerAdded( layer, index );
-    }
-    void onModelLayerRemoved( ModelLayer* layer ) {
-        _node->onModelLayerRemoved( layer );
-    }
-		void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
-				_node->onModelLayerMoved( layer, oldIndex, newIndex);
-		}
-    void onMaskLayerAdded( MaskLayer* layer ) {
-        _node->onMaskLayerAdded( layer );
-    }
-    void onMaskLayerRemoved( MaskLayer* layer ) {
-        _node->onMaskLayerRemoved( layer );
-    }
+        void onModelLayerAdded( ModelLayer* layer, unsigned int index ) {
+            _node->onModelLayerAdded( layer, index );
+        }
+        void onModelLayerRemoved( ModelLayer* layer ) {
+            _node->onModelLayerRemoved( layer );
+        }
+        void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
+            _node->onModelLayerMoved( layer, oldIndex, newIndex);
+        }
+        void onMaskLayerAdded( MaskLayer* layer ) {
+            _node->onMaskLayerAdded( layer );
+        }
+        void onMaskLayerRemoved( MaskLayer* layer ) {
+            _node->onMaskLayerRemoved( layer );
+        }
 
-    osg::observer_ptr<MapNode> _node;
-};
+        osg::observer_ptr<MapNode> _node;
+    };
 
-class MapModelLayerCallback : public ModelLayerCallback
-{
-public:
-    MapModelLayerCallback(MapNode* mapNode):
-      _mapNode(mapNode)
-      {            
-      }
+    // converys overlay property changes to the OverlayDecorator in MapNode.
+    class MapModelLayerCallback : public ModelLayerCallback
+    {
+    public:
+        MapModelLayerCallback(MapNode* mapNode) : _node(mapNode) { }
 
-      virtual void onOverlayChanged(ModelLayer* layer)
-      {
-          _mapNode->onModelLayerOverlayChanged( layer );
-      }
-      osg::ref_ptr< MapNode > _mapNode;
-};
+        virtual void onOverlayChanged(ModelLayer* layer)
+        {
+            _node->onModelLayerOverlayChanged( layer );
+        }
+
+        osg::observer_ptr<MapNode> _node;
+    };
+}
 
 //---------------------------------------------------------------------------
 
@@ -227,7 +229,7 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
-    _overlayDecorator->setOverlayGraph( _overlayModels.get() );
+    //_overlayDecorator->setOverlayGraph( _overlayModels.get() );
     addTerrainDecorator( _overlayDecorator.get() );
 
     // install any pre-existing model layers:
@@ -348,6 +350,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
                 if ( layer->getModelLayerOptions().overlay() == true )
                 {
                     _overlayModels->addChild( node ); // todo: index?
+                    updateOverlayGraph();
                 }
                 else
                 {
@@ -391,6 +394,7 @@ MapNode::onModelLayerRemoved( ModelLayer* layer )
                 if ( layer->getModelLayerOptions().overlay() == true )
                 {
                     _overlayModels->removeChild( node );
+                    updateOverlayGraph();
                 }
                 else
                 {
@@ -594,4 +598,18 @@ MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
         newParent->addChild( node );
     }
 
+    updateOverlayGraph();
+}
+
+void
+MapNode::updateOverlayGraph()
+{
+    if ( _overlayModels->getNumChildren() > 0 && _overlayDecorator->getOverlayGraph() != _overlayModels.get() )
+    {
+        _overlayDecorator->setOverlayGraph( _overlayModels.get() );
+    }
+    else if ( _overlayModels->getNumChildren() == 0 && _overlayDecorator->getOverlayGraph() == _overlayModels.get() )
+    {
+        _overlayDecorator->setOverlayGraph( 0L );
+    }
 }

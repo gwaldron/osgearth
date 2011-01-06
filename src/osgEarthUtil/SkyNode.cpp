@@ -26,6 +26,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/BlendFunc>
 #include <osg/FrontFace>
+#include <osg/CullFace>
 #include <osg/Program>
 #include <osg/Shape>
 #include <osg/Depth>
@@ -72,7 +73,7 @@ namespace
     struct OverrideNearFarValuesCallback : public osg::Drawable::DrawCallback
     {
         OverrideNearFarValuesCallback(double radius)
-            : radius_(radius) {}
+            : _radius(radius) {}
 
         virtual void drawImplementation(osg::RenderInfo& renderInfo,
             const osg::Drawable* drawable) const
@@ -87,8 +88,8 @@ namespace
                 // Get the max distance we need the far plane to be at,
                 // which is the distance between the eye and the origin
                 // plus the distant from the origin to the object (star sphere
-                // radius, sun distance etc).
-                double distance = eye.length() + radius_;
+                // radius, sun distance etc), and then some.
+                double distance = eye.length() + _radius*2;
 
                 // Save old values.
                 osg::ref_ptr<osg::RefMatrixd> oldProjectionMatrix = new osg::RefMatrix;
@@ -117,28 +118,28 @@ namespace
             }
         }
 
-        double radius_;
+        double _radius;
     };
 
     struct AddCallbackToDrawablesVisitor : public osg::NodeVisitor
     {
         AddCallbackToDrawablesVisitor(double radius)
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-            radius_(radius) {}
+            _radius(radius) {}
 
         virtual void apply(osg::Geode& node)
         {
             for (unsigned int i = 0; i < node.getNumDrawables(); i++)
             {
-                node.getDrawable(i)->setDrawCallback(
-                    new OverrideNearFarValuesCallback(radius_));
+                node.getDrawable(i)->setDrawCallback( new OverrideNearFarValuesCallback(_radius) );
+
                 // Do not use display lists otherwise the callback will only
                 // be called once on initial compile.
                 node.getDrawable(i)->setUseDisplayList(false);
             }
         }
 
-        double radius_;
+        double _radius;
     };
 
     osg::Geometry*
@@ -147,6 +148,9 @@ namespace
         double hae = outerRadius - ellipsoid->getRadiusEquator();
 
         osg::Geometry* geom = new osg::Geometry();
+
+        //geom->setUseVertexBufferObjects( true );
+        geom->setUseDisplayList( false );
 
         int latSegments = 100;
         int lonSegments = 2 * latSegments;
@@ -196,6 +200,9 @@ namespace
         float deltaAngle = 360.0/(float)segments;
 
         osg::Geometry* geom = new osg::Geometry();
+
+        //geom->setUseVertexBufferObjects( true );
+        geom->setUseDisplayList( false );
 
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( 1 + segments );
@@ -375,6 +382,11 @@ namespace
         
     static char s_atmosphereFragmentSource[] =
         "#version 110 \n"
+        
+        "float fastpow( in float x, in float y ) \n"
+        "{ \n"
+        "    return x/(x+y-y*x); \n"
+        "} \n"
 
         "uniform vec3 atmos_v3LightPos; \n"							
         "uniform float atmos_g; \n"				
@@ -387,9 +399,9 @@ namespace
         "void main(void) \n"			
         "{ \n"				
         "    float fCos = dot(atmos_v3LightPos, atmos_v3Direction) / length(atmos_v3Direction); \n"
-        "    //float fRayleighPhase = 0.75 * (1.0 + fCos*fCos); \n"
-        "    float fMiePhase = 1.5 * ((1.0 - atmos_g2) / (2.0 + atmos_g2)) * (1.0 + fCos*fCos) / pow(1.0 + atmos_g2 - 2.0*atmos_g*fCos, 1.5); \n"
-        "    vec3 f4Color = gl_TexCoord[1].xyz + fMiePhase * gl_TexCoord[0].xyz; \n"
+        "    float fRayleighPhase = 1.0; \n" // 0.75 * (1.0 + fCos*fCos); \n"
+        "    float fMiePhase = 1.5 * ((1.0 - atmos_g2) / (2.0 + atmos_g2)) * (1.0 + fCos*fCos) / fastpow(1.0 + atmos_g2 - 2.0*atmos_g*fCos, 1.5); \n"
+        "    vec3 f4Color = fRayleighPhase * gl_TexCoord[1].xyz + fMiePhase * gl_TexCoord[0].xyz; \n"
         "    vec3 color = 1.0 - exp(f4Color * -fExposure); \n"
         "    gl_FragColor.rgb = color.rgb*atmos_fWeather; \n"
         "    gl_FragColor.a = (color.r+color.g+color.b) * 2.0; \n"
@@ -402,20 +414,26 @@ namespace
         "void main() \n"
         "{ \n"
         "    vec3 v3Pos = gl_Vertex.xyz; \n"
-        "    gl_Position = ftransform(); \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n" //ftransform(); \n"
         "    atmos_v3Direction = vec3(0.0,0.0,1.0) - v3Pos; \n"
         "    atmos_v3Direction = atmos_v3Direction/length(atmos_v3Direction); \n"
         "} \n";
 
     static char s_sunFragmentSource[] =
         "#version 110 \n"
+        
+        "float fastpow( in float x, in float y ) \n"
+        "{ \n"
+        "    return x/(x+y-y*x); \n"
+        "} \n"
+
         "uniform float sunAlpha; \n"
         "varying vec3 atmos_v3Direction; \n"
 
         "void main( void ) \n"
         "{ \n"
         "   float fCos = -atmos_v3Direction[2]; \n"         
-        "   float fMiePhase = 0.050387596899224826 * (1.0 + fCos*fCos) / pow(1.9024999999999999 - -1.8999999999999999*fCos, 1.5); \n"
+        "   float fMiePhase = 0.050387596899224826 * (1.0 + fCos*fCos) / fastpow(1.9024999999999999 - -1.8999999999999999*fCos, 1.5); \n"
         "   gl_FragColor.rgb = fMiePhase*vec3(.3,.3,.2); \n"
         "   gl_FragColor.a = sunAlpha*gl_FragColor.r; \n"
         "} \n";
@@ -497,8 +515,8 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     //set->setBinNumber( 65 ); // todo, what?
     set->setBinNumber( -4 );
     set->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
-    osg::BlendFunc* blend = new osg::BlendFunc( GL_ONE, GL_ONE );
-    set->setAttributeAndModes( blend, osg::StateAttribute::ON );
+    //osg::BlendFunc* blend = ;
+    set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::FrontFace( osg::FrontFace::CLOCKWISE ), osg::StateAttribute::ON );
 
     // next, create and add the shaders:
@@ -569,7 +587,7 @@ SkyNode::makeSun()
     float sunRadius = _innerRadius * 100.0f;
     _sunDistance = _innerRadius * 12000.0f;
 
-    sun->addDrawable( s_makeDiscGeometry( sunRadius*40.0f ) );
+    sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); //40.0f ) );
 
     osg::StateSet* set = sun->getOrCreateStateSet();
 
@@ -582,7 +600,7 @@ SkyNode::makeSun()
     set->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
     set->setMode( GL_BLEND, osg::StateAttribute::ON );
     set->setRenderBinDetails( -5, "RenderBin" );
-    set->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 1.0, 1.0), osg::StateAttribute::ON );
+    set->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 1.0, 1.0, false), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
 
     // create shaders

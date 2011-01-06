@@ -223,7 +223,6 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
     //Threading::ScopedReadLock lock( map->getMapDataMutex() );
 
     bool more_levels = false;
-    //int max_level = 0;
 
     ImageLayerVector imageLayers;
     map->getImageLayers( imageLayers );
@@ -232,7 +231,7 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
     {
         const ImageLayerOptions& opt = i->get()->getImageLayerOptions();
 
-        if ( !opt.maxLevel().isSet() || key.getLevelOfDetail() < (unsigned)*opt.maxLevel() )
+        if ( !opt.maxLevel().isSet() || key.getLevelOfDetail() < (unsigned int)*opt.maxLevel() )
         {
             more_levels = true;
             break;
@@ -247,7 +246,7 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
         {
             const ElevationLayerOptions& opt = j->get()->getElevationLayerOptions();
 
-            if ( !opt.maxLevel().isSet() || key.getLevelOfDetail() < (unsigned)*opt.maxLevel() )
+            if ( !opt.maxLevel().isSet() || key.getLevelOfDetail() < (unsigned int)*opt.maxLevel() )
             //if ( !j->get()->maxLevel().isSet() || key.getLevelOfDetail() < j->get()->maxLevel().get() )
             {
                 more_levels = true;
@@ -576,7 +575,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
     plod->setCenter( bs.center() );
     plod->addChild( tile, min_range, max_range );
 
-    if ( key.getLevelOfDetail() < (unsigned)getTerrainOptions().maxLOD().get() )
+    if ( key.getLevelOfDetail() < (unsigned int)getTerrainOptions().maxLOD().get() )
     {
         plod->setFileName( 1, createURI( _engineId, key ) ); //map->getId(), key ) );
         plod->setRange( 1, 0.0, min_range );
@@ -901,7 +900,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
 
         //Only add the next tile if it hasn't been blacklisted
         bool isBlacklisted = osgEarth::Registry::instance()->isBlacklisted( filename );
-        if (!isBlacklisted && key.getLevelOfDetail() < (unsigned)this->getTerrainOptions().maxLOD().value() && validData )
+        if (!isBlacklisted && key.getLevelOfDetail() < (unsigned int)getTerrainOptions().maxLOD().value() && validData )
         {
             plod->setFileName( 1, filename  );
             plod->setRange( 1, 0.0, min_range );
@@ -1034,9 +1033,6 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
 osgTerrain::HeightFieldLayer* 
 OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key, bool exactOnly )
 {
-    //NOTE: took this out since we're now using a MapFrame
-    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
-
     const MapInfo& mapInfo = mapf.getMapInfo();
     bool isPlateCarre = !mapInfo.isGeocentric() && mapInfo.isGeographicSRS();
 

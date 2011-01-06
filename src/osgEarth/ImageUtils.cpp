@@ -163,7 +163,7 @@ ImageUtils::resizeImage(const osg::Image* input,
             {
                 float output_col_ratio = (float)output_col/(float)out_s;
                 int input_col = (unsigned int)( output_col_ratio * (float)in_s );
-                if ( input_col >= in_s ) input_col = in_s-1;
+                if ( input_col >= (int)in_s ) input_col = in_s-1;
                 else if ( input_row < 0 ) input_row = 0;
 
                 osg::Vec4 color = read( input_col, input_row ); // read pixel from mip level 0
@@ -458,6 +458,37 @@ ImageUtils::hasAlphaChannel(const osg::Image* image)
         image->getPixelFormat() == GL_RGBA ||
         image->getPixelFormat() == GL_BGRA ||
         image->getPixelFormat() == GL_LUMINANCE_ALPHA );
+}
+
+bool
+ImageUtils::isCompressed(const osg::Image *image)
+{
+    //Later versions of OSG have an Image::isCompressed function but earlier versions like 2.8.3 do not.  This is a workaround so that 
+    //we can tell if an image is compressed on all versions of OSG.
+    switch(image->getPixelFormat())
+    {
+        case(GL_COMPRESSED_ALPHA_ARB):
+        case(GL_COMPRESSED_INTENSITY_ARB):
+        case(GL_COMPRESSED_LUMINANCE_ALPHA_ARB):
+        case(GL_COMPRESSED_LUMINANCE_ARB):
+        case(GL_COMPRESSED_RGBA_ARB):
+        case(GL_COMPRESSED_RGB_ARB):
+        case(GL_COMPRESSED_RGB_S3TC_DXT1_EXT):
+        case(GL_COMPRESSED_RGBA_S3TC_DXT1_EXT):
+        case(GL_COMPRESSED_RGBA_S3TC_DXT3_EXT):
+        case(GL_COMPRESSED_RGBA_S3TC_DXT5_EXT):
+        case(GL_COMPRESSED_SIGNED_RED_RGTC1_EXT):
+        case(GL_COMPRESSED_RED_RGTC1_EXT):
+        case(GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT):
+        case(GL_COMPRESSED_RED_GREEN_RGTC2_EXT):
+        case(GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG): 
+        case(GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG):
+        case(GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG):
+        case(GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG):
+            return true;
+        default:
+            return false;
+    }
 }
 
 //------------------------------------------------------------------------

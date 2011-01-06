@@ -22,6 +22,22 @@
 
 #include <osgEarth/Common>
 #include <osg/Image>
+#include <osg/GL>
+
+//These formats were not added to OSG until after 2.8.3 so we need to define them to use them.
+#ifndef GL_EXT_texture_compression_rgtc
+  #define GL_COMPRESSED_RED_RGTC1_EXT                0x8DBB
+  #define GL_COMPRESSED_SIGNED_RED_RGTC1_EXT         0x8DBC
+  #define GL_COMPRESSED_RED_GREEN_RGTC2_EXT          0x8DBD
+  #define GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT   0x8DBE
+#endif
+
+#ifndef GL_IMG_texture_compression_pvrtc
+    #define GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG      0x8C00
+    #define GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG      0x8C01
+    #define GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG     0x8C02
+    #define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG     0x8C03
+#endif
 
 namespace osgEarth
 {
@@ -154,6 +170,11 @@ namespace osgEarth
          * Checks whether the image has an alpha component 
          */
         static bool hasAlphaChannel( const osg::Image* image );
+
+        /**
+         * Checks whether the given image is compressed
+         */
+        static bool isCompressed( const osg::Image* image );
 
         /**
          * Reads color data out of an image, regardles of its internal pixel format.

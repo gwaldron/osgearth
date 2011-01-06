@@ -147,8 +147,6 @@ import( const Symbology::Geometry* input, const geom::GeometryFactory* f )
                 }
                 
                 break;
-              default:
-                break;
             }
         }
         catch( util::IllegalArgumentException )

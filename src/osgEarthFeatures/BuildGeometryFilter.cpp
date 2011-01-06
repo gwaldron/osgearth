@@ -29,7 +29,9 @@
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
-#include <osgUtil/MeshOptimizers>
+
+#include <osg/Version>
+
 
 using namespace osgEarth;
 using namespace osgEarth::Features;

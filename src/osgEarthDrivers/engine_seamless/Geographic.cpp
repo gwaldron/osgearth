@@ -343,7 +343,6 @@ struct HeightFieldRequest : public TaskRequest
     }
     void operator()(ProgressCallback* progress)
     {
-        const Map* map = _gpatchset->getMap();
         int resolution = _gpatchset->getResolution();
         GeoHeightField hf;
         if (crossesDateLine(_key))
@@ -662,8 +661,9 @@ PatchGroup* findFaceRoot(GeoPatch* patch, NodePath& pathList)
             if (poptions)
             {
                 TileKey key = poptions->getTileKey();
-                if (key.getLevelOfDetail() == 2 && x == key.getTileX()
-                    && y == key.getTileY())
+                if (key.getLevelOfDetail() == 2 
+					&& x == (int)key.getTileX()
+                    && y == (int)key.getTileY())
                 return pg;
             }
         }
@@ -716,29 +716,31 @@ ShareResult tilesShareEdges(const KeyIndex& tile1, const KeyIndex& tile2)
     int xleft = (tile1.x + 1) << lodDiff;
     int y = tile1.y << lodDiff;
     int ybottom = (tile1.y + 1) << lodDiff;
-    if (tile2.x >= x && tile2.x + 1 <= xleft
-        && tile2.y >= y && tile2.y + 1 <= ybottom)
+    if (   (int)tile2.x >= x 
+		&& (int)tile2.x + 1 <= xleft
+        && (int)tile2.y >= y 
+        && (int)tile2.y + 1 <= ybottom)
     {
         // tile1 contains tile2; do they share edges?
-        if (x == tile2.x)
+        if (x == (int)tile2.x)
         {
             result.tile1[0] = 3;
             result.tile2[0] = 3;
             result.numEdges = 1;
         }
-        else if (xleft == tile2.x + 1)
+        else if (xleft == (int)tile2.x + 1)
         {
             result.tile1[0] = 1;
             result.tile2[0] = 1;
             result.numEdges = 1;
         }
-        if (y == tile2.y)
+        if (y == (int)tile2.y)
         {
             result.tile1[result.numEdges] = 2;
             result.tile2[result.numEdges] = 2;
             result.numEdges++;
         }
-        else if (ybottom == tile2.y + 1)
+        else if (ybottom == (int)tile2.y + 1)
         {
             result.tile1[result.numEdges] = 0;
             result.tile2[result.numEdges] = 0;
@@ -748,25 +750,25 @@ ShareResult tilesShareEdges(const KeyIndex& tile1, const KeyIndex& tile2)
     else
     {
         // Tiles can share 1 edge.
-        if (x == tile2.x + 1)
+        if (x == (int)tile2.x + 1)
         {
             result.tile1[0] = 3;
             result.tile2[0] = 1;
             result.numEdges = 1;
         }
-        else if (xleft == tile2.x)
+        else if (xleft == (int)tile2.x)
         {
             result.tile1[0] = 1;
             result.tile2[0] = 3;
             result.numEdges = 1;
         }
-        else if (y == tile2.y + 1)
+        else if (y == (int)tile2.y + 1)
         {
             result.tile1[0] = 2;
             result.tile2[0] = 0;
             result.numEdges = 1;
         }
-        else if (ybottom == tile2.y)
+        else if (ybottom == (int)tile2.y)
         {
             result.tile1[0] = 0;
             result.tile2[0] = 2;
@@ -894,7 +896,6 @@ void transferEdges(
     const ShareResult& shared)
 {
     int resolution = toPatch->getPatchSet()->getResolution();
-    int patchDim = resolution + 1;
     int lodDiff = fromIdx.lod - toIdx.lod;
     int detailMult = 1 << lodDiff;
     Matrixd transferMat = fromMat * Matrixd::inverse(toMat);

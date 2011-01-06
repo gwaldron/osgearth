@@ -141,7 +141,7 @@ public:
     typedef Reference<ElementType, Store, N> super_type;
     typedef typename super_type::simple_reference simple_reference;
     multi_array_ref(Store& store, unsigned dimension, int base = 0)
-        : _store(store), super_type(base)
+        : super_type(base), _store(store)
     {
         std::fill_n(&_shape[0], N, dimension);
         std::fill_n(&_indexBase[0], N, 0);
@@ -153,7 +153,7 @@ public:
     }
 
     multi_array_ref(Store& store, int *strides, int *shape, int base)
-        : _store(store), super_type(base)
+        : super_type(base), _store(store)
     {
         std::copy(&shape[0], &shape[N], &_shape[0]);
         std::fill_n(&_indexBase[0], N, 0);

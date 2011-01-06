@@ -24,10 +24,10 @@ using namespace osgEarth;
 
 
 Viewpoint::Viewpoint() :
-_is_valid( false ),
 _heading_deg(0.0),
 _pitch_deg(0.0),
-_range(1.0)
+_range(1.0),
+_is_valid( false )
 {
     //NOP
 }

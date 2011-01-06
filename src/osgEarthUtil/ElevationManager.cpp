@@ -200,7 +200,7 @@ ElevationManager::getElevationImpl(double x, double y,
         _tileCacheFIFO.push_back( tileId );
 
         // prune the cache. this is a terrible pruning method.
-        if ( _tileCache.size() > _maxCacheSize )
+        if ( _tileCache.size() > (size_t)_maxCacheSize )
         {
             osgTerrain::TileID id = _tileCacheFIFO.front();
             _tileCacheFIFO.pop_front();

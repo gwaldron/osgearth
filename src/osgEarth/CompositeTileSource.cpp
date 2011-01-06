@@ -122,7 +122,8 @@ namespace
 
 CompositeTileSource::CompositeTileSource( const TileSourceOptions& options ) :
 _options( options ),
-_initialized( false )
+_initialized( false ),
+_dynamic( false )
 {
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin(); 
         i != _options._components.end(); )
@@ -271,7 +272,8 @@ CompositeTileSource::initialize( const std::string& referenceURI, const Profile*
                 OE_WARN << LC << "Components with differing profiles are not supported. " 
                     << "Visual anomalies may result." << std::endl;
             }
-
+            
+            _dynamic = _dynamic || source->isDynamic();
         }
     }
 

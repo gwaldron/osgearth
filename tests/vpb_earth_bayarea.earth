@@ -15,5 +15,9 @@ This example pulls imagery and dems from an online VirtualPlanetBuilder generate
     <heightfield name="dem" driver="vpb">
         <url>http://www.openscenegraph.org/data/earth_bayarea/earth.ive</url>
     </heightfield>
+    
+    <options>
+        <lighting>false</lighting>
+    </options>
 
 </map>

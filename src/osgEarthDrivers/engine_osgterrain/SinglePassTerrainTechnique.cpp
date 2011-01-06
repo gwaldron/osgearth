@@ -1023,7 +1023,14 @@ SinglePassTerrainTechnique::traverse(osg::NodeVisitor& nv)
         if (_terrainTile->getDirty()) _terrainTile->init();
 #endif
 
-        _terrainTile->osg::Group::traverse( nv );        
+        _terrainTile->osg::Group::traverse( nv );    
+
+        // traverse the actual geometry in the tile. this is especially 
+        // important for geometry with ImageSequences and other things
+        // that require an update traversal.
+        if ( _transform.valid() )
+            _transform->accept( nv );
+
         return;
     }
 

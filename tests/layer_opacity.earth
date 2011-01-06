@@ -18,12 +18,8 @@ Look for hi-res insets over the cities of Boston and New York.
         <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
     </image>
     
-    <image name="boston_inset" driver="gdal" opacity="0.2">
+    <image name="boston_inset" driver="gdal" opacity="0.3">
         <url>../data/boston-inset-wgs84.tif</url>
     </image>
-    
-    <image name="nyc_inset" driver="gdal" opacity="0.5">
-        <url>../data/nyc-inset-wgs84.tif</url>
-    </image>
-	
+        
 </map>

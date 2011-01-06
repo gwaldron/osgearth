@@ -7,15 +7,19 @@ Please note that usage of Yahoo! map data is subject to Yahoo!'s terms of servic
 
 <map name="Yahoo Levels" type="geocentric" version="2">
 
-    <!-- this level will be visible at lower resolutions -->
-    <image name="yahoo_sat" driver="yahoo">
-        <dataset>satellite</dataset>
-        <max_level>5</max_level>
-    </image> 
+    <image name="yahoo" driver="composite">
+    
+        <!-- this level will be visible at lower resolutions -->
+        <image name="yahoo_sat" driver="yahoo">
+            <dataset>satellite</dataset>
+            <max_level>5</max_level>
+        </image> 
 
-    <!-- this level will be visible at higher resolutions -->
-    <image name="yahoo_maps" driver="yahoo">
-        <min_level>6</min_level>
-    </image> 
+        <!-- this level will be visible at higher resolutions -->
+        <image name="yahoo_maps" driver="yahoo">
+            <min_level>6</min_level>
+        </image> 
+        
+    </image>
    
 </map>

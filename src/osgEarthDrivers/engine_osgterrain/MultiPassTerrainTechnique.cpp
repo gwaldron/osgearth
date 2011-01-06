@@ -945,7 +945,14 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
 
 void MultiPassTerrainTechnique::update(osgUtil::UpdateVisitor* uv)
 {
-    if (_terrainTile) _terrainTile->osg::Group::traverse(*uv);
+    if (_terrainTile) 
+        _terrainTile->osg::Group::traverse(*uv);
+    
+    // traverse the actual geometry in the tile. this is especially 
+    // important for geometry with ImageSequences and other things
+    // that require an update traversal.
+    if ( _transform.valid() )
+        _transform->accept( *uv );
 }
 
 

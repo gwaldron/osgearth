@@ -27,6 +27,7 @@ lo-res heightfield underlay.
      </heightfield>
 
     <options>
+        <lighting>false</lighting>
         <terrain>
             <vertical_scale>1.5</vertical_scale>
         </terrain>

@@ -35,10 +35,14 @@ namespace osgEarth { namespace Drivers
         optional<bool>& convertLuminanceToRGBA() { return _lum2rgba; }
         const optional<bool>& convertLuminanceToRGBA() const { return _lum2rgba; }
 
+        optional<bool>& addAlpha() { return _addAlpha; }
+        const optional<bool>& addAlpha() const { return _addAlpha; }
+
     public:
         OSGOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
             TileSourceOptions( opt ),
-            _lum2rgba( false )
+            _lum2rgba( false ),
+            _addAlpha( false )
         {
             setDriver( "osg" );
             fromConfig( _conf );
@@ -49,6 +53,7 @@ namespace osgEarth { namespace Drivers
             Config conf = TileSourceOptions::getConfig();
             conf.updateIfSet("url", _url );
             conf.updateIfSet("luminance_to_rgba", _lum2rgba);
+            conf.updateIfSet("add_alpha", _addAlpha);
             return conf;
         }
 
@@ -62,10 +67,12 @@ namespace osgEarth { namespace Drivers
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
             conf.getIfSet( "luminance_to_rgba", _lum2rgba );
+            conf.getIfSet("add_alpha", _addAlpha);
         }
 
         optional<std::string> _url;
         optional<bool> _lum2rgba;
+        optional<bool> _addAlpha;
     };
 
 } } // namespace osgEarth::Drivers

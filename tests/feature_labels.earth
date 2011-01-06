@@ -27,9 +27,9 @@ This shows how to label point features with an attribute.
                    text-halo: #000000;
                    text-font: arial.ttf;
                    text-size: 18;
-				   text-rotate-to-screen: true;
+                   text-rotate-to-screen: true;
                    text-remove-duplicate-labels: true;
-				   text-content: [cntry_name];
+                   text-content: [cntry_name];
                 }     
             </style>
         </styles>

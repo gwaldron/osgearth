@@ -17,4 +17,8 @@ Zoom in to the city of Boston (east coast of the US) to see the inset.
 	    <url>../data/boston-inset-wgs84.tif</url>
     </image>
 	
+    <options>
+        <lighting>false</lighting>
+    </options>
+    
 </map>

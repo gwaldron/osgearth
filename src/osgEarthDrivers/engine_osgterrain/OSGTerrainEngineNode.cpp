@@ -176,13 +176,14 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // handle an already-established map profile:
     if ( _update_mapf->getProfile() )
     {
+        // NOTE: this will initialize the map with the startup layers
         onMapInfoEstablished( MapInfo(map) );
-        //onMapProfileEstablished( _update_mapf->getProfile() );
     }
 
     // populate the terrain with whatever data is in the map to begin with:
     if ( _terrain )
     {
+#if 0
         _update_mapf->sync();
 
         unsigned int index = 0;
@@ -196,12 +197,15 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
         {
             addImageLayer( j->get() );
         }
+#endif
 
         // update the terrain revision in threaded mode
         if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
         {
             _terrain->updateTaskServiceThreads( *_update_mapf );
         }
+
+        updateTextureCombining();
     }
 
     // install a layer callback for processing further map actions:

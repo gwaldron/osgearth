@@ -244,6 +244,15 @@ public:
 		setProfile( result.get() );
     }
 
+    /* override */
+    bool isDynamic() const
+    {
+        // return TRUE if we are reading WMS-T.
+        return _timesVec.size() > 1;
+    }
+
+public:
+
     // fetch a tile from the WMS service and report any exceptions.
     osgDB::ReaderWriter* fetchTileAndReader( 
         const TileKey&     key, 

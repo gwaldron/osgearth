@@ -32,6 +32,7 @@
 #include <osg/Depth>
 
 #include <sstream>
+#include <time.h>
 
 #define LC "[SkyNode] "
 
@@ -229,6 +230,73 @@ namespace
 
         return geom;
     }
+}
+
+//---------------------------------------------------------------------------
+
+// Astronomical Math
+// http://www.stjarnhimlen.se/comp/ppcomp.html
+namespace
+{
+    static const double TWO_PI = 2*osg::PI;
+
+    double getTimeScale( int year, int month, int date, double hoursUT )
+    {
+        int a = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
+        return (double)a + hoursUT/24.0;
+    }
+
+    struct OrbitalData
+    {
+        double _N; // longitude of the ascending node
+        double _i; // inclination to the ecliptic (plane of the Earth's orbit)
+        double _w; // argument of perihelion
+        double _a; // semi-major axis, or mean distance from Sun
+        double _e; // eccentricity (0=circle, 0-1=ellipse, 1=parabola)
+        double _M; // mean anomaly (0 at perihelion; increases uniformly with time)
+        double _ecl; // obliquity of the ecliptic
+    };
+
+    struct Sun : public OrbitalData
+    {
+        Sun( double d )
+        {
+            _N = osg::DegreesToRadians( 0.0 );
+            _i = osg::DegreesToRadians( 0.0 );
+            _w = osg::DegreesToRadians( 282.9404 + 4.70935E-5 * d );
+            _a = 1.0;
+            _e = 0.016709 - 1.151E-9 * d;
+            _M = osg::DegreesToRadians( 356.0470 + 0.9856002585 * d );
+            while( _M < 0.0 ) _M += TWO_PI;
+            while( _M > TWO_PI ) _M -= TWO_PI;
+
+            _ecl = osg::DegreesToRadians( 23.4393 - 3.563E-7 * d );
+        }
+
+        osg::Vec3d getPosition() const
+        {
+            double E = _M + _e * sin(_M) * ( 1.0 + _e * cos(_M) );
+            
+            double xv = cos(E) - _e;
+            double yv = sqrt(1.0 - _e*_e) * sin(E);
+            double v = atan2( yv, xv );
+            double r = sqrt( xv*xv + yv*yv );
+
+            double lonSun = v + _w;
+            
+            double xs = r * cos(lonSun);
+            double ys = r * sin(lonSun);
+
+            double xe = xs;
+            double ye = ys * cos(_ecl);
+            double ze = ys * sin(_ecl);
+
+            //double RA = atan2( ye, xe );
+            //double Dec = atan2( ze, sqrt(xe*xe + ye*ye) );
+
+            return osg::Vec3d(xe, ye, ze);
+        }
+    };
 }
 
 //---------------------------------------------------------------------------
@@ -493,6 +561,18 @@ SkyNode::setSunPosition( double latitudeRad, double longitudeRad )
         _ellipsoidModel->convertLatLongHeightToXYZ(latitudeRad, longitudeRad, 0, x, y, z);
         osg::Vec3d up  = _ellipsoidModel->computeLocalUpVector(x, y, z);
         setSunPosition( up );
+    }
+}
+
+void
+SkyNode::setDateTime( int year, int month, int date, double hoursUTC )
+{
+    if ( _ellipsoidModel.valid() )
+    {
+        Sun sun( getTimeScale(year, month, date, hoursUTC) );
+        osg::Vec3d pos = sun.getPosition();
+        pos.normalize();
+        setSunPosition( pos );
     }
 }
 

@@ -45,17 +45,22 @@ usage( const std::string& msg )
 
 struct AnimateSunCallback : public osg::NodeCallback
 {
-    AnimateSunCallback(): _longitude(-180), _rate(10) { }
+    AnimateSunCallback(): _longitude(-180), _rate(10) {
+        osg::Timer::instance()->setStartTick();
+    }
 
     void operator()( osg::Node* node, osg::NodeVisitor* nv )
     {
         SkyNode* skyNode = static_cast<SkyNode*>(node);
         osg::Timer_t curr_time = osg::Timer::instance()->tick();
 
-        double elapsedTime = osg::Timer::instance()->delta_s(_lastUpdate, curr_time);
-        _longitude += _rate * elapsedTime;
-        skyNode->setSunPosition(0, osg::DegreesToRadians(_longitude));
-        _lastUpdate = curr_time;
+        double hours = fmod( osg::Timer::instance()->time_s(), 24.0 );
+        skyNode->setDateTime( 2011, 1, 5, hours );
+
+        //double elapsedTime = osg::Timer::instance()->delta_s(_lastUpdate, curr_time);
+        //_longitude += _rate * elapsedTime;
+        //skyNode->setSunPosition(0, osg::DegreesToRadians(_longitude));
+        //_lastUpdate = curr_time;
     }
 
     double _longitude;
@@ -110,6 +115,7 @@ main(int argc, char** argv)
             {
                 SkyNode* sky = new SkyNode( mapNode->getMap() );
                 sky->setSunPosition( osg::Vec3(0,-1,0) );
+                sky->setDateTime( 2011, 1, 5, 12.0 );
                 sky->attach( &viewer );
                 root->addChild( sky );
                 if (animateSky)

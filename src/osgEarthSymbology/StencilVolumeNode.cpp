@@ -84,12 +84,12 @@ StencilVolumeNode::createFullScreenQuad( const osg::Vec4f& color )
 
 StencilVolumeNode::StencilVolumeNode( bool preRenderChildrenToDepthBuffer, bool inverted ) :
 osgEarth::MaskNode(),
-_preRenderChildrenToDepthBuffer( preRenderChildrenToDepthBuffer ),
-_inverted( inverted ),
 _stencilGroup1( 0L ),
 _stencilGroup2( 0L ),
 _depthPass( 0L ),
-_renderPass( 0L )
+_renderPass( 0L ),
+_inverted( inverted ),
+_preRenderChildrenToDepthBuffer( preRenderChildrenToDepthBuffer )
 {
     init();
 }

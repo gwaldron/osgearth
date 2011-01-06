@@ -31,7 +31,7 @@ using namespace osgEarth;
 
 struct CachingReadCallback : public osgSim::DatabaseCacheReadCallback
 {
-    CachingReadCallback(int maxReads) : _maxReads(maxReads), _reads(0) { }
+    CachingReadCallback(int maxReads) : _reads(0), _maxReads(maxReads) { }
     void reset() { _reads = 0; }
     virtual osg::Node* readNodeFile(const std::string& filename) {
         if ( _reads < _maxReads ) {
@@ -47,8 +47,8 @@ struct CachingReadCallback : public osgSim::DatabaseCacheReadCallback
 };
 
 ObjectPlacer::ObjectPlacer( osg::Node* terrain, int traversalMask, bool clamp, int maxLevel ) :
-_clamp( clamp ),
-_traversalMask( traversalMask )
+_traversalMask( traversalMask ),
+_clamp( clamp )
 {
     _mapNode = findTopMostNodeOfType<osgEarth::MapNode>( terrain );
     _csn = findTopMostNodeOfType<osg::CoordinateSystemNode>( terrain );

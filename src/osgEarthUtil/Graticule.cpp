@@ -78,8 +78,8 @@ namespace
 //---------------------------------------------------------------------------
 
 Graticule::Graticule( const Map* map ) :
-_map( map ),
 _autoLevels( true ),
+_map( map ),
 _textColor( 1,1,0,1 )
 {
     // safely generate a unique ID for this graticule:
@@ -342,9 +342,6 @@ Graticule::createGridLevel( unsigned int levelNum ) const
                 pex.yMin() + th * (double)y,
                 pex.xMin() + tw * (double)(x+1),
                 pex.yMin() + th * (double)(y+1) );
-
-            double ox = level._lineWidth;
-            double oy = level._lineWidth;
 
             Geometry* geom = createCellGeometry( tex, level._lineWidth, pex, _map->isGeocentric() );
 

@@ -57,7 +57,6 @@ struct GeometryUtils
         }
         else if ( numParts > 0 )
         {
-            Symbology::Polygon* poly = 0L;
             for( int p = 0; p < numParts; p++ )
             {
                 OGRGeometryH partRef = OGR_G_GetGeometryRef( geomHandle, p );

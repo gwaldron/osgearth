@@ -72,8 +72,7 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
 {
     if ( newType == getType() )
         return static_cast<Geometry*>( clone() );
-
-    Geometry* result = 0L;
+    
     switch( newType )
     {
     case TYPE_POINTSET:
@@ -84,6 +83,8 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
         return new Ring( (const osg::Vec3dArray*)this );
     case TYPE_POLYGON:
         return new Polygon( (const osg::Vec3dArray*)this );
+    default:
+        break;
     }
     return 0L;
 }
@@ -109,6 +110,8 @@ Geometry::create( Type type, const osg::Vec3dArray* toCopy )
             output = new Ring( toCopy ); break;
         case TYPE_POLYGON:
             output = new Polygon( toCopy ); break;
+        default:
+            break;
     }
     return output;
 }
@@ -467,9 +470,9 @@ MultiGeometry::isValid() const
 //----------------------------------------------------------------------------
 
 GeometryIterator::GeometryIterator( Geometry* geom ) :
+_next( 0L ),
 _traverseMulti( true ),
-_traversePolyHoles( true ),
-_next( 0L )
+_traversePolyHoles( true )
 {
     if ( geom )
     {
@@ -525,9 +528,9 @@ GeometryIterator::fetchNext()
 //----------------------------------------------------------------------------
 
 ConstGeometryIterator::ConstGeometryIterator( const Geometry* geom ) :
+_next( 0L ),
 _traverseMulti( true ),
-_traversePolyHoles( true ),
-_next( 0L )
+_traversePolyHoles( true )
 {
     if ( geom )
     {

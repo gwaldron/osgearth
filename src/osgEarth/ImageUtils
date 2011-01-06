@@ -22,7 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osg/Image>
-
+#include <osg/GL>
 
 //These formats were not added to OSG until after 2.8.3 so we need to define them to use them.
 #ifndef GL_EXT_texture_compression_rgtc

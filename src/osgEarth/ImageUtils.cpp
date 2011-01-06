@@ -20,7 +20,6 @@
 #include <osgEarth/ImageUtils>
 #include <osg/Notify>
 #include <osg/Texture>
-#include <osg/GL>
 #include <string.h>
 #include <memory.h>
 
@@ -164,7 +163,7 @@ ImageUtils::resizeImage(const osg::Image* input,
             {
                 float output_col_ratio = (float)output_col/(float)out_s;
                 int input_col = (unsigned int)( output_col_ratio * (float)in_s );
-                if ( input_col >= in_s ) input_col = in_s-1;
+                if ( input_col >= (int)in_s ) input_col = in_s-1;
                 else if ( input_row < 0 ) input_row = 0;
 
                 osg::Vec4 color = read( input_col, input_row ); // read pixel from mip level 0

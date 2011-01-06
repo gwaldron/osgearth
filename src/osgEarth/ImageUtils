@@ -156,6 +156,11 @@ namespace osgEarth
         static bool hasAlphaChannel( const osg::Image* image );
 
         /**
+         * Checks whether the given image is compressed
+         */
+        static bool isCompressed( const osg::Image* image );
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader

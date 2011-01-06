@@ -192,7 +192,7 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
         }
     }
 
-    if ( image->isCompressed() )
+    if ( ImageUtils::isCompressed(image) )
     {
         image = ImageUtils::convertToRGB8(image.get());
     }

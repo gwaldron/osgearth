@@ -260,8 +260,6 @@ private:
     ColorLayersByUID _colorLayers;
 
 public:
-    void adjustUpdateTraversalCount( int delta );
-
     friend class CustomTileFrame;
 };
 

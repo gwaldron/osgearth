@@ -41,18 +41,18 @@ typedef std::vector< osg::ref_ptr< osg::Image > > ImageList;
 
 OceanSurfaceNode::OceanSurfaceNode() :
 _shadersDirty(false),
+_maxRange(800000),
 _oceanMaskLayerUID(-1),
 _oceanSurfaceTextureUnit(-1),
+_oceanSurfaceTextureApplied(false),
 _waveHeight(100),
-_maxRange(800000),
 _period(1024),
 _enabled(true),
 _invertMask(false),
 _adjustToMSL(true),
-_oceanAnimationPeriod(6.0),
-_oceanSurfaceImageSizeRadians(osg::PI/500.0),
 _oceanColor(osg::Vec4f(0,0,1,0)),
-_oceanSurfaceTextureApplied(false)
+_oceanAnimationPeriod(6.0),
+_oceanSurfaceImageSizeRadians(osg::PI/500.0)
 {
     rebuildShaders();
  

@@ -38,7 +38,6 @@ double
 GeoMath::bearing(double lat1Rad, double lon1Rad,
                  double lat2Rad, double lon2Rad)
 {
-    double dLat = (lat2Rad-lat1Rad);
     double dLon = (lon2Rad-lon1Rad); 
     double y = sin(dLon) * cos(lat2Rad);
     double x = cos(lat1Rad)*sin(lat2Rad) - sin(lat1Rad)*cos(lat2Rad)*cos(dLon);
@@ -51,7 +50,6 @@ GeoMath::midpoint(double lat1Rad, double lon1Rad,
                   double lat2Rad, double lon2Rad,
                   double &out_latRad, double &out_lonRad)
 {     
-    double dLat = (lat2Rad-lat1Rad);
     double dLon = (lon2Rad-lon1Rad); 
 
     double cosLat1 = cos(lat1Rad);

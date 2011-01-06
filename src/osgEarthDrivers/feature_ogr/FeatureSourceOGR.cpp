@@ -49,10 +49,10 @@ class OGRFeatureSource : public FeatureSource
 {
 public:
     OGRFeatureSource( const FeatureSourceOptions& options ) : FeatureSource( options ),
-      _options( options ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
-      _ogrDriverHandle( 0L )
+      _ogrDriverHandle( 0L ),
+      _options( options )
     {
 
         _geometry = 

@@ -34,14 +34,15 @@ using namespace OpenThreads;
 
 TerrainLayerOptions::TerrainLayerOptions( const ConfigOptions& options ) :
 ConfigOptions( options ),
-_enabled( true ),
-_exactCropping( false ),
-_reprojectedTileSize( 256 ),
+_minLevel( 0 ),
+_maxLevel( 99 ),
 _cacheEnabled( true ),
 _cacheOnly( false ),
 _loadingWeight( 1.0f ),
-_minLevel( 0 ),
-_maxLevel( 99 )
+_exactCropping( false ),
+_enabled( true ),
+_reprojectedTileSize( 256 )
+
 {
     setDefaults();
     fromConfig( _conf ); 
@@ -206,8 +207,6 @@ TerrainLayer::setCache(Cache* cache)
 TileSource* 
 TerrainLayer::getTileSource() const
 {
-    const TerrainLayerOptions& opt = getTerrainLayerOptions();
-
     if ( (_tileSource.valid() && !_tileSourceInitialized) || (!_tileSource.valid() && _actualCacheOnly == false) )
     {
         OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
@@ -217,16 +216,7 @@ TerrainLayer::getTileSource() const
             const_cast<TerrainLayer*>(this)->initTileSource();
         }
     }
-	////Only load the TileSource if it hasn't been loaded previously and we aren't running strictly off the cache.
-	//if ( !_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
-	//{
- //       OpenThreads::ScopedLock< OpenThreads::Mutex > lock(const_cast<TerrainLayer*>(this)->_initTileSourceMutex );
- //       //Double check pattern
- //       if (!_tileSource.valid() && _actualCacheOnly == false ) //opt.cacheOnly() == false )
- //       {
- //           const_cast<TerrainLayer*>(this)->initTileSource();
- //       }
-	//}
+
     return _tileSource.get();
 }
 
@@ -235,7 +225,7 @@ TerrainLayer::getProfile() const
 {
     if ( !_profile.valid() )
     {
-        const TerrainLayerOptions& opt = getTerrainLayerOptions();
+        //const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
         if ( _actualCacheOnly == false && !_tileSource.valid() )
         {
@@ -261,6 +251,13 @@ TerrainLayer::getMaxDataLevel() const
 		return ts->getMaxDataLevel();
 	}
 	return 20;
+}
+
+bool
+TerrainLayer::isDynamic() const
+{
+    TileSource* ts = getTileSource();
+    return ts ? ts->isDynamic() : false;
 }
 
 //TODO: move this to ImageLayer/ElevationLayer

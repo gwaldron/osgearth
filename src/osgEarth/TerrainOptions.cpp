@@ -84,19 +84,19 @@ int osgEarth::computeLoadingThreads(const LoadingPolicy& policy)
 
 TerrainOptions::TerrainOptions( const ConfigOptions& options ) :
 DriverConfigOptions( options ),
-_loadingPolicy( LoadingPolicy() ),
 _verticalScale( 1.0f ),
 _heightFieldSampleRatio( 1.0f ),
 _minTileRangeFactor( 6.0 ),
 _normalizeEdges( false ),
 _combineLayers( true ),
-_maxLOD( 23 ),
+_loadingPolicy( LoadingPolicy() ),
 _compositingTech( COMPOSITING_AUTO ),
+_maxLOD( 23 ),
 _enableLighting( false ),
-_elevationInterpolation( INTERP_BILINEAR ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
-_lodTransitionTimeSeconds( 0.5f )
+_lodTransitionTimeSeconds( 0.5f ),
+_elevationInterpolation( INTERP_BILINEAR )
 {
     fromConfig( _conf );
 }

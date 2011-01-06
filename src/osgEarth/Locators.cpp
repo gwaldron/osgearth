@@ -25,28 +25,28 @@
 using namespace osgEarth;
 
 GeoLocator::GeoLocator() :
+_inverseCalculated(false),
 _x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0),
-_inverseCalculated(false)
+_y0(0.0), _y1(1.0)
 {
     this->setThreadSafeRefUnref(true);
 }
 
 GeoLocator::GeoLocator( const GeoExtent& dataExtent ) :
+_inverseCalculated(false),
 _dataExtent( dataExtent ),
 _x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0),
-_inverseCalculated(false)
+_y0(0.0), _y1(1.0)
 {
     this->setThreadSafeRefUnref(true);
 }
 
 GeoLocator::GeoLocator( const osgTerrain::Locator& prototype, const GeoExtent& dataExtent ) :
 osgTerrain::Locator( prototype ),
+_inverseCalculated(false),
 _dataExtent( dataExtent ),
 _x0(0.0), _x1(1.0),
-_y0(0.0), _y1(1.0),
-_inverseCalculated(false)
+_y0(0.0), _y1(1.0)
 {
     //nop
 }

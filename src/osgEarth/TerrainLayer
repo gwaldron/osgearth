@@ -128,7 +128,7 @@ namespace osgEarth
          * overlap the incoming tile.
          */
         optional<double>& edgeBufferRatio() { return _edgeBufferRatio;}
-        const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio;}
+        const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio; }
 
     public:
         virtual Config getConfig() const;
@@ -165,6 +165,9 @@ namespace osgEarth
     typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(TerrainLayer* layer);
 
 
+    /**
+     * A layer that comprises the terrain skin (image or elevation layer)
+     */
     class OSGEARTH_EXPORT TerrainLayer : public Layer
     {
     protected:
@@ -204,6 +207,11 @@ namespace osgEarth
 		 * Gets the maximum data level of this MapLayer
 		 */
 		unsigned int getMaxDataLevel() const;
+
+        /**
+         * Whether the layer represents dynamic data, i.e. tile data that can change.
+         */
+        bool isDynamic() const;
 
         const std::string& getCacheFormat() const {  return _actualCacheFormat; }
 

@@ -65,8 +65,8 @@ namespace
     {
         CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
             : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-              _original( polytope ),
-              _bbox(out_bbox)
+              _bbox(out_bbox),
+              _original( polytope )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );

@@ -140,7 +140,7 @@ _supportsTexture2DLod   ( false )
 
         // Use the texture-proxy method to determine the maximum texture size 
         glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
-        for( int s = _maxTextureSize; s > 2; s >> 1 )
+        for( int s = _maxTextureSize; s > 2; s >>= 1 )
         {
             glTexImage2D( GL_PROXY_TEXTURE_2D, 0, GL_RGBA8, s, s, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L );
             GLint width = 0;

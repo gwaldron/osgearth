@@ -122,7 +122,8 @@ namespace
 
 CompositeTileSource::CompositeTileSource( const TileSourceOptions& options ) :
 _options( options ),
-_initialized( false )
+_initialized( false ),
+_dynamic( false )
 {
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin(); 
         i != _options._components.end(); )
@@ -162,8 +163,6 @@ _initialized( false )
 osg::Image*
 CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress )
 {
-    int tileSize = getPixelsPerTile();
-
     ImageMixVector images;
     images.reserve( _options._components.size() );
 
@@ -229,7 +228,7 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
     else
     {
         osg::Image* result = new osg::Image( *images[0].first.get() );
-        for( int i=1; i<images.size(); ++i )
+        for( unsigned int i=1; i<images.size(); ++i )
         {
             ImageOpacityPair& pair = images[i];
             if ( pair.first.valid() )
@@ -273,7 +272,8 @@ CompositeTileSource::initialize( const std::string& referenceURI, const Profile*
                 OE_WARN << LC << "Components with differing profiles are not supported. " 
                     << "Visual anomalies may result." << std::endl;
             }
-
+            
+            _dynamic = _dynamic || source->isDynamic();
         }
     }
 

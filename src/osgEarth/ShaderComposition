@@ -53,7 +53,7 @@ namespace osgEarth
     /**
      * A factory class that generates shader functions for the osgEarth engine.
      * The default ShaderFactory is stored in the osgEarth registry. You can replace it
-     * if you want to wholesale-replace osgEarth's default shader templates.
+     * if you want to replace osgEarth's default shader templates.
      */
     class OSGEARTH_EXPORT ShaderFactory : public osg::Referenced
     {
@@ -106,7 +106,7 @@ namespace osgEarth
     {
     public:
         /**
-         * Adds a shader function to the mix.
+         * Adds a shader function to the program.
          * Call this method (rather than setShader directly) to inject "user" functions into the
          * shader program.
          *
@@ -120,7 +120,6 @@ namespace osgEarth
             const std::string& source, 
             ShaderComp::FunctionLocation loc,
             float priority =1.0f );
-
 
     public: 
         VirtualProgram( unsigned int mask = 0xFFFFFFFFUL );

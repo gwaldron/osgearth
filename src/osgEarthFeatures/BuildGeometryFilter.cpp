@@ -29,7 +29,9 @@
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
-#include <osgUtil/MeshOptimizers>
+
+#include <osg/Version>
+
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -54,8 +56,8 @@ namespace
 
 BuildGeometryFilter::BuildGeometryFilter() :
 _style( new Style() ),
-_maxAngle_deg( 10.0 ),
-_geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN )
+_geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
+_maxAngle_deg( 10.0 )
 {
     reset();
 }
@@ -432,7 +434,6 @@ osgEarth::Features::createVolume(Geometry*            geom,
     }
 
 
-    bool made_geom = true;
     const SpatialReference* srs = context.profile()->getSRS();
 
     // total up all the points so we can pre-allocate the vertex arrays.

@@ -140,8 +140,8 @@ struct TileElevationPlaceholderLayerRequest : public TileLayerRequest
 {
     TileElevationPlaceholderLayerRequest( const TileKey& key, const MapFrame& mapf, OSGTileFactory* tileFactory, GeoLocator* keyLocator )
         : TileLayerRequest( key, mapf, tileFactory ),
-          _keyLocator(keyLocator),
-          _parentKey( key.createParentKey() )
+          _parentKey( key.createParentKey() ),
+          _keyLocator(keyLocator)
     {
         //nop
     }
@@ -205,22 +205,22 @@ struct TileGenRequest : public TaskRequest
 /*****************************************************************************/
 
 CustomTile::CustomTile( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects ) :
-_key( key ),
-_keyLocator( keyLocator ),
-_useLayerRequests( false ),       // always set this to false here; use setUseLayerRequests() to enable
 _terrainRevision( -1 ),
 _tileRevision( 0 ),
+_useLayerRequests( false ),       // always set this to false here; use setUseLayerRequests() to enable
 _requestsInstalled( false ),
+_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerDirty( false ),
 _colorLayersDirty( false ),
-_usePerLayerUpdates( false ),     // only matters when _useLayerRequests==true
 _elevationLayerUpToDate( true ),
 _elevationLOD( key.getLevelOfDetail() ),
 _hasBeenTraversed(false),
 _useTileGenRequest( true ),
 //_tileGenNeeded( false ),
-_verticalScale(1.0f),
-_quickReleaseGLObjects( quickReleaseGLObjects )
+_quickReleaseGLObjects( quickReleaseGLObjects ),
+_key( key ),
+_keyLocator( keyLocator ),
+_verticalScale(1.0f)
 {
     this->setThreadSafeRefUnref( true );
 
@@ -232,31 +232,12 @@ _quickReleaseGLObjects( quickReleaseGLObjects )
     // initially bump the update requirement so that this tile will receive an update
     // traversal the first time through. It is on the first update traversal that we
     // know the tile is in the scene graph and that it can be registered with the terrain.
-    adjustUpdateTraversalCount( 1 );
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 }
 
 CustomTile::~CustomTile()
 {
     //OE_NOTICE << "Destroying CustomTile " << this->getKey()->str() << std::endl;
-}
-
-void
-CustomTile::adjustUpdateTraversalCount( int delta )
-{
-    // NOTE: it is only safe to call this method from the UPDATE or EVENT thread.
-
-    int oldCount = this->getNumChildrenRequiringUpdateTraversal();
-    if ( oldCount + delta >= 0 )
-    {
-        this->setNumChildrenRequiringUpdateTraversal(
-            (unsigned int)(oldCount + delta) );
-    }
-    else
-    {
-        OE_NOTICE << "WARNING, tile (" 
-            << _key.str() << ") tried to set a negative NCRUT"
-            << std::endl;
-    }
 }
 
 bool
@@ -312,7 +293,7 @@ void
 CustomTile::setElevationLOD( int lod )
 {
     _elevationLOD = lod;
-    _elevationLayerUpToDate = _elevationLOD == _key.getLevelOfDetail();
+    _elevationLayerUpToDate = _elevationLOD == (int)_key.getLevelOfDetail();
 
     //Should probably just reset the placeholder requests
     //if (_elevPlaceholderRequest.valid()) _elevPlaceholderRequest->setState( TaskRequest::STATE_IDLE );
@@ -427,7 +408,20 @@ CustomTile::setCustomColorLayer( const CustomColorLayer& layer, bool writeLock )
         setCustomColorLayer( layer, false );
     }
     else
+    {
+        int delta = 0;
+        ColorLayersByUID::const_iterator i = _colorLayers.find(layer.getUID());
+        if ( i != _colorLayers.end() && i->second.getMapLayer()->isDynamic() )
+            --delta;
+        
        _colorLayers[layer.getUID()] = layer;
+       
+        if ( layer.getMapLayer()->isDynamic() )
+            ++delta;
+
+        if ( delta != 0 )
+            ADJUST_UPDATE_TRAV_COUNT( this, delta );
+    }
 }
 
 void
@@ -439,7 +433,16 @@ CustomTile::removeCustomColorLayer( UID layerUID, bool writeLock )
         removeCustomColorLayer( layerUID, false );
     }
     else
-        _colorLayers.erase( layerUID );
+    {
+        ColorLayersByUID::const_iterator i = _colorLayers.find(layerUID);
+        if ( i != _colorLayers.end() )
+        {
+            if ( i->second.getMapLayer()->isDynamic() )
+                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+
+            _colorLayers.erase( i );
+        }
+    }
 }
 
 bool
@@ -483,7 +486,21 @@ CustomTile::setCustomColorLayers( const ColorLayersByUID& in, bool writeLock )
         setCustomColorLayers( in, false );
     }
     else
+    {
+        int delta = 0;
+        for( ColorLayersByUID::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i )
+            if ( i->second.getMapLayer()->isDynamic() )
+                --delta;
+
         _colorLayers = in;
+
+        for( ColorLayersByUID::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i )
+            if ( i->second.getMapLayer()->isDynamic() )
+                ++delta;
+
+        if ( delta != 0 )
+            ADJUST_UPDATE_TRAV_COUNT( this, delta );
+    }
 }
 
 osg::BoundingSphere
@@ -544,7 +561,7 @@ CustomTile::readyForNewElevation()
 {
     bool ready = true;
 
-    if ( _elevationLOD == _key.getLevelOfDetail() )
+    if ( _elevationLOD == (int)_key.getLevelOfDetail() )
     {
         ready = false;
     }
@@ -564,7 +581,7 @@ CustomTile::readyForNewElevation()
         }
 
         // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
-        if ( ready && _elevationLOD+1 < _key.getLevelOfDetail() && _elevationLOD == _family[Relative::PARENT].elevLOD )
+        if ( ready && _elevationLOD+1 < (int)_key.getLevelOfDetail() && _elevationLOD == _family[Relative::PARENT].elevLOD )
         {
             ready = false;
         }
@@ -592,7 +609,7 @@ CustomTile::readyForNewImagery(ImageLayer* layer, int currentLOD)
 {
     bool ready = true;
 
-    if ( currentLOD == _key.getLevelOfDetail() )
+    if ( currentLOD == (int)_key.getLevelOfDetail() )
     {
         ready = false;
     }
@@ -615,7 +632,7 @@ CustomTile::readyForNewImagery(ImageLayer* layer, int currentLOD)
 
         // if the next LOD is not the final, but our placeholder is up to date, we're not ready.
         if (ready &&
-            currentLOD + 1 < _key.getLevelOfDetail() && 
+            currentLOD + 1 < (int)_key.getLevelOfDetail() && 
             currentLOD == _family[Relative::PARENT].getImageLOD( layer->getUID() ) )
         {
             ready = false;
@@ -933,7 +950,7 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
             {
                 // in sequential mode, we have to incrementally increase imagery resolution by
                 // creating placeholders based of parent tiles, one LOD at a time.
-                if ( colorLayer.getLevelOfDetail() + 1 < _key.getLevelOfDetail() )
+                if ( colorLayer.getLevelOfDetail() + 1 < (int)_key.getLevelOfDetail() )
                 {
                     // if the parent's image LOD is higher than ours, replace ours with the parent's
                     // since it is a higher-resolution placeholder:
@@ -1172,11 +1189,12 @@ CustomTile::traverse( osg::NodeVisitor& nv )
                 // we constructed this tile with an update traversal count of 1 so it would get
                 // here and we could register the tile. Now we can decrement it back to normal.
                 // this MUST be called from the UPDATE traversal.
-                adjustUpdateTraversalCount( -1 );                
+                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+                //adjustUpdateTraversalCount( -1 );
             }
         }
     }
-   
+
     osgTerrain::TerrainTile::traverse( nv );
 }
 

@@ -67,8 +67,8 @@ namespace
 
 MultiPassTerrainTechnique::MultiPassTerrainTechnique( TextureCompositor* texCompositor ) :
 osgTerrain::TerrainTechnique(),
-_texCompositor( texCompositor ),
-_terrainTileInitialized(false)
+_terrainTileInitialized(false),
+_texCompositor( texCompositor )
 {
     this->setThreadSafeRefUnref( true );
     setFilterBias(0);
@@ -608,10 +608,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
 
     //Create a new geode to store the geometry
     osg::Geode* geode = new osg::Geode;
-
-	// allocate and assign vertices
-	osg::Vec3Array* vertices = (osg::Vec3Array*)geometry->getVertexArray();
-    
+   
     //Set up the pass 
     geode->getOrCreateStateSet()->setRenderBinDetails(binNumber, "RenderBin");
     geode->addDrawable(geometry);
@@ -765,7 +762,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
     
     // populate primitive sets
 //    bool optimizeOrientations = elevations!=0;
-    bool swapOrientation = !(masterLocator->orientationOpenGL());    
+//    bool swapOrientation = !(masterLocator->orientationOpenGL());    
 
     if (createSkirt)
     {
@@ -948,7 +945,14 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
 
 void MultiPassTerrainTechnique::update(osgUtil::UpdateVisitor* uv)
 {
-    if (_terrainTile) _terrainTile->osg::Group::traverse(*uv);
+    if (_terrainTile) 
+        _terrainTile->osg::Group::traverse(*uv);
+    
+    // traverse the actual geometry in the tile. this is especially 
+    // important for geometry with ImageSequences and other things
+    // that require an update traversal.
+    if ( _transform.valid() )
+        _transform->accept( *uv );
 }
 
 

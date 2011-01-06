@@ -195,7 +195,6 @@ namespace osgEarth
     * Gets the cached image for the given TileKey
     */
     virtual bool getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::Image>& out_image ) =0;
-    //virtual osg::Image* getImage( const TileKey& key, const CacheSpec& spec ) =0;
 
     /**
     * Sets the cached image for the given TileKey
@@ -206,7 +205,6 @@ namespace osgEarth
     * Gets the cached heightfield for the given TileKey
     */
     virtual bool getHeightField( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::HeightField>& out_hf );
-    //virtual osg::HeightField* getHeightField( const TileKey& key, const CacheSpec& spec);
 
     /**
     * Sets the cached heightfield for the given TileKey
@@ -308,7 +306,6 @@ namespace osgEarth
      * Gets the cached image for the given TileKey
      */
     virtual bool getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::Image>& out_image );
-    //virtual osg::Image* getImage( const TileKey& key, const CacheSpec& spec );
 
     /**
      * Sets the cached image for the given TileKey
@@ -319,7 +316,6 @@ namespace osgEarth
      * Gets the cached heightfield for the given TileKey
      */
     virtual bool getHeightField( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::HeightField>& out_hf );
-    //virtual osg::HeightField* getHeightField( const TileKey& key, const CacheSpec& spec );
 
     /**
      * Sets the cached heightfield for the given TileKey
@@ -388,7 +384,6 @@ namespace osgEarth
     * Gets the cached image for the given TileKey
     */
     virtual bool getImage( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::Image>& out_image );
-    //virtual osg::Image* getImage( const TileKey& key, const CacheSpec& spec );
 
     /**
     * Sets the cached image for the given TileKey

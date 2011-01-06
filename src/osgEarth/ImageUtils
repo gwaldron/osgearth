@@ -22,6 +22,22 @@
 
 #include <osgEarth/Common>
 #include <osg/Image>
+#include <osg/GL>
+
+//These formats were not added to OSG until after 2.8.3 so we need to define them to use them.
+#ifndef GL_EXT_texture_compression_rgtc
+  #define GL_COMPRESSED_RED_RGTC1_EXT                0x8DBB
+  #define GL_COMPRESSED_SIGNED_RED_RGTC1_EXT         0x8DBC
+  #define GL_COMPRESSED_RED_GREEN_RGTC2_EXT          0x8DBD
+  #define GL_COMPRESSED_SIGNED_RED_GREEN_RGTC2_EXT   0x8DBE
+#endif
+
+#ifndef GL_IMG_texture_compression_pvrtc
+    #define GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG      0x8C00
+    #define GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG      0x8C01
+    #define GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG     0x8C02
+    #define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG     0x8C03
+#endif
 
 namespace osgEarth
 {
@@ -156,6 +172,11 @@ namespace osgEarth
         static bool hasAlphaChannel( const osg::Image* image );
 
         /**
+         * Checks whether the given image is compressed
+         */
+        static bool isCompressed( const osg::Image* image );
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader
@@ -172,16 +193,18 @@ namespace osgEarth
             }
 
             /** Reads a color from the image */
-            osg::Vec4 operator()(int s, int t, int r = 0) const {
-                return (*_reader)(this, s, t, r);
+            osg::Vec4 operator()(int s, int t, int r=0, int m=0) const {
+                return (*_reader)(this, s, t, r, m);
             }
 
             // internals:
-            const unsigned char* data(int s=0, int t=0, int r=0) const {
-                return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+            const unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
+                return m == 0 ?
+                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
+                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m) ;
             }
 
-            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r);
+            typedef osg::Vec4 (*ReaderFunc)(const PixelReader* ia, int s, int t, int r, int m);
             ReaderFunc _reader;
             const osg::Image* _image;
             unsigned _colMult;
@@ -206,8 +229,8 @@ namespace osgEarth
             }
 
             /** Writes a color to a pixel. */
-            void operator()(int s, int t, int r, const osg::Vec4& c) {
-                (*_writer)(this, s, t, r, c );
+            void operator()(const osg::Vec4& c, int s, int t, int r=0, int m=0) {
+                (*_writer)(this, c, s, t, r, m );
             }
 
             // internals:
@@ -216,11 +239,13 @@ namespace osgEarth
             unsigned _rowMult;
             unsigned _imageSize;
 
-            unsigned char* data(int s=0, int t=0, int r=0) const {
-                return _image->data() + s * _colMult + t * _rowMult + r * _imageSize;
+            unsigned char* data(int s=0, int t=0, int r=0, int m=0) const {
+                return m == 0 ?
+                    _image->data() + s*_colMult + t*_rowMult + r*_imageSize :
+                    _image->getMipmapData(m) + s*_colMult + t*(_rowMult >> m) + r*(_imageSize>>m);
             }
 
-            typedef void (*WriterFunc)(const PixelWriter* iw, int s, int t, int r, const osg::Vec4& c);
+            typedef void (*WriterFunc)(const PixelWriter* iw, const osg::Vec4& c, int s, int t, int r, int m);
             WriterFunc _writer;
         };
 
@@ -244,12 +269,12 @@ namespace osgEarth
                     for( int t=0; t<image->t(); ++t ) {
                         for( int s=0; s<image->s(); ++s ) {
                             osg::Vec4f pixel = _reader(s,t,r);
-                            if ( operator()(pixel) )
-                                _writer(s,t,r,pixel);
+                            if ( (*this)(pixel) )
+                                _writer(pixel,s,t,r);
                         }
                     }
                 }
-            }
+            }          
 
             /**
              * Traverse an image, and call this method on the superclass:
@@ -268,8 +293,8 @@ namespace osgEarth
                         for( int s=0; s<src->s(); ++s ) {
                             const osg::Vec4f pixelSrc = _readerSrc(s,t,r);
                             osg::Vec4f pixelDest = _readerDest(s,t,r);
-                            if ( operator()(pixelSrc, pixelDest) )
-                                _writerDest(s,t,r,pixelDest);
+                            if ( (*this)(pixelSrc, pixelDest) )
+                                _writerDest(pixelDest,s,t,r);
                         }
                     }
                 }

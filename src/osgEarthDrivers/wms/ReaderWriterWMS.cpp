@@ -244,6 +244,15 @@ public:
 		setProfile( result.get() );
     }
 
+    /* override */
+    bool isDynamic() const
+    {
+        // return TRUE if we are reading WMS-T.
+        return _timesVec.size() > 1;
+    }
+
+public:
+
     // fetch a tile from the WMS service and report any exceptions.
     osgDB::ReaderWriter* fetchTileAndReader( 
         const TileKey&     key, 
@@ -336,7 +345,7 @@ public:
     {
         osg::ref_ptr<osg::Image> image;
 
-        for( int r=0; r<_timesVec.size(); ++r )
+        for( unsigned int r=0; r<_timesVec.size(); ++r )
         {
             std::string extraAttrs = "TIME=" + _timesVec[r];
             HTTPResponse response;
@@ -406,7 +415,7 @@ public:
         seq->setLength( _options.secondsPerFrame().value() * (double)_timesVec.size() );
         seq->play();
 
-        for( int r=0; r<_timesVec.size(); ++r )
+        for( unsigned int r=0; r<_timesVec.size(); ++r )
         {
             std::string extraAttrs = "TIME=" + _timesVec[r];
 

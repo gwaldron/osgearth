@@ -35,8 +35,10 @@ namespace osgEarth
     class OSGEARTH_EXPORT ElevationLayerOptions : public TerrainLayerOptions
     {
     public:
+        /** Constructs new elevation layer options. */
         ElevationLayerOptions( const ConfigOptions& options =ConfigOptions() );
 
+        /** Constructs new elevation layer options, given the underlying driver options. */
         ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
 
     public:

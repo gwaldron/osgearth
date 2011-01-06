@@ -45,15 +45,19 @@ namespace osgEarth
 
     public: // properties
 
+        /** minimum camera range at which the data is visible */
         optional<float>& minRange() { return _minRange; }
         const optional<float>& minRange() const { return _minRange; }
 
+        /** maximum camera range at which the data is visible */
         optional<float>& maxRange() { return _maxRange; }
         const optional<float>& maxRange() const { return _maxRange; }
 
+        /** render bin order */
         optional<int>& renderOrder() { return _renderOrder; }
         const optional<int>& renderOrder() const { return _renderOrder; }
 
+        /** whether to read the depth buffer when rendering */
         optional<bool>& depthTestEnabled() { return _depthTestEnabled; }
         const optional<bool>& depthTestEnabled() const { return _depthTestEnabled; }
 

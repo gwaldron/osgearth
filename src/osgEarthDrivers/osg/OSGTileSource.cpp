@@ -20,6 +20,7 @@
 
 #include <osgEarth/HTTPClient>
 #include <osgEarth/FileUtils>
+#include <osgEarth/ImageUtils>
 #include <osgDB/FileNameUtils>
 
 #include <cstring>
@@ -29,27 +30,21 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
+struct CopyAndSetAlpha
+{
+    bool operator()( const osg::Vec4& in, osg::Vec4& out ) {
+        out = in;
+        out.a() = 0.3333*(in.r() + in.g() + in.b());
+        return true;
+    }
+};
+
 static
 osg::Image* makeRGBA(osg::Image* image)
 {
-    osg::Image* result = new osg::Image;
-    result->allocateImage(image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE);
-
-    if (image->getPixelFormat() == GL_LUMINANCE)
-    {
-        for (int r = 0; r < image->t(); ++r)
-        {
-            for (int c = 0; c < image->s(); ++c)
-            {
-                unsigned char val = *image->data(c, r);
-                result->data(c,r)[0] = val;
-                result->data(c,r)[1] = val;
-                result->data(c,r)[2] = val;
-                result->data(c,r)[3] = val;
-            }
-        }
-    }
-
+    osg::Image* result = new osg::Image();
+    result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
+    ImageUtils::PixelVisitor<CopyAndSetAlpha>().accept( image, result );
     return result;
 }
 
@@ -57,9 +52,9 @@ class OSGTileSource : public TileSource
 {
 public:
     OSGTileSource( const TileSourceOptions& options ) :
-      TileSource( options ),
-      _options( options ),
-      _maxDataLevel( 21 )
+      TileSource( options ),      
+      _maxDataLevel( 21 ),
+      _options( options )
     {
         //nop
     }
@@ -87,6 +82,10 @@ public:
             //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
 
             if ( _options.convertLuminanceToRGBA() == true && _image->getPixelFormat() == GL_LUMINANCE )
+            {
+                _image = makeRGBA( _image.get() );
+            }
+            else if ( _options.addAlpha() == true && !ImageUtils::hasAlphaChannel( _image.get() ) )
             {
                 _image = makeRGBA( _image.get() );
             }

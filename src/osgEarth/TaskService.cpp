@@ -308,7 +308,7 @@ TaskService::adjustThreadCount()
     {
         OE_DEBUG << LC << "Adding " << diff << " threads to TaskService " << std::endl;
         //We need to add some threads
-        for (unsigned int i = 0; i < diff; ++i)
+        for (int i = 0; i < diff; ++i)
         {
             TaskThread* thread = new TaskThread( _queue.get() );
             _threads.push_back( thread );
@@ -362,8 +362,8 @@ TaskService::removeFinishedThreads()
 //------------------------------------------------------------------------
 
 TaskServiceManager::TaskServiceManager( int numThreads ) :
-_targetNumThreads( numThreads ),
-_numThreads( 0 )
+_numThreads( 0 ),
+_targetNumThreads( numThreads )
 {
     //nop
 }

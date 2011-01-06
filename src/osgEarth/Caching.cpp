@@ -93,9 +93,9 @@ _options( options )
 
 DiskCache::DiskCache( const DiskCache& rhs, const osg::CopyOp& op ) :
 Cache( rhs, op ),
-_options( rhs._options ),
 _layerPropertiesCache( rhs._layerPropertiesCache ),
-_writeWorldFilesOverride( rhs._writeWorldFilesOverride )
+_writeWorldFilesOverride( rhs._writeWorldFilesOverride ),
+_options( rhs._options )
 {
     //NOP
 }
@@ -368,7 +368,7 @@ MemCache::getImage(const osgEarth::TileKey& key, const CacheSpec& spec, osg::ref
 void
 MemCache::setImage(const osgEarth::TileKey& key, const CacheSpec& spec, const osg::Image* image)
 {
-    setObject( key, spec, image );
+    setObject( key, spec, ImageUtils::cloneImage(image) );
 }
 
 bool
@@ -386,7 +386,7 @@ MemCache::getHeightField( const TileKey& key,const CacheSpec& spec, osg::ref_ptr
 void
 MemCache::setHeightField( const TileKey& key, const CacheSpec& spec, const osg::HeightField* hf)
 {
-    setObject( key, spec, hf );
+    setObject( key, spec, new osg::HeightField(*hf) );
 }
 
 bool
@@ -408,8 +408,6 @@ MemCache::purge( const std::string& cacheId, int olderThan, bool async )
 bool
 MemCache::getObject( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<const osg::Object>& output )
 {
-  osg::Timer_t now = osg::Timer::instance()->tick();
-
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
   //OE_NOTICE << "List contains: " << _images.size() << std::endl;
@@ -440,8 +438,8 @@ MemCache::setObject( const TileKey& key, const CacheSpec& spec, const osg::Objec
   std::string id = key.str() + spec.cacheId();
 
   CachedObject entry;
-  entry._object = referenced->clone( osg::CopyOp::DEEP_COPY_ALL );
-  //entry._object = referenced;
+  //entry._object = referenced->clone( osg::CopyOp::DEEP_COPY_ALL );
+  entry._object = referenced;
   entry._key = id;
   _objects.push_front(entry);
 

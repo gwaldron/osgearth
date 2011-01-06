@@ -126,6 +126,9 @@ namespace osgEarth
         ValidDataOperatorList _operators;
     };
 
+    /**
+     * Visitor that replaces "invalid" data values with a known value.
+     */
     struct OSGEARTH_EXPORT ReplaceInvalidDataOperator : public osg::Referenced
     {
         ReplaceInvalidDataOperator();
@@ -142,6 +145,9 @@ namespace osgEarth
         float _replaceWith;
     };
 
+    /**
+     * Visitor that replaces "invalid" data values with a default value.
+     */
     struct OSGEARTH_EXPORT FillNoDataOperator : public osg::Referenced
     {
         FillNoDataOperator();

@@ -72,7 +72,7 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::Vec2f offset() const { return osg::Vec2f( _left, _top ); }
 
     private:
-        float _top, _right, _left, _bottom;
+        float _top, _right, _bottom, _left;
     };
 
     // internal state class

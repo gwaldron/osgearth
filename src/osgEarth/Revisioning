@@ -24,6 +24,9 @@
 
 namespace osgEarth
 {
+    /**
+     * A tracking revision. See "class Revisioned" below for details.
+     */
     struct Revision // header-only; no export
     {
         Revision() : _value(-1) { }
@@ -36,6 +39,12 @@ namespace osgEarth
         int _value;
     };
 
+    /**
+     * Base class for a revisioned object. A Revisioned object is one that keeps track
+     * of its state with a version number. Other objects can then hold a Revision object
+     * (see above) and use it to see if they are up to date with this object, thereby
+     * enabling passive data model synchronization.
+     */
     template<typename T> class Revisioned : public T // header-only; no export
     {
     public:
@@ -51,19 +60,19 @@ namespace osgEarth
         }
 
         /** Returns true if the external object is at a different revision that this object. */
-        bool outOfSyncWith( int externalRevision) const {
+        bool outOfSyncWith( const Revision& externalRevision) const {
             return !inSyncWith( externalRevision );
         }
 
         /** Returns true if the external object is at the same revision as this object. */
-        virtual bool inSyncWith( int externalRevision ) const {
+        virtual bool inSyncWith( const Revision& externalRevision ) const {
             return _alwaysDirty ? false : _revision == externalRevision;
         }
 
     protected:
         Revisioned() : _revision(0), _alwaysDirty(false) { }
 
-        /** Marks this object as always being dirty (i.e. inSync() will always return false) */
+        /** Marks this object as always being dirty (i.e. inSyncWith() will always return false) */
         void setAlwaysDirty( bool value ) {
             _alwaysDirty = value;
         }

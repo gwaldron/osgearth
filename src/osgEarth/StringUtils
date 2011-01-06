@@ -26,6 +26,7 @@
 
 namespace osgEarth
 {
+    /** Replaces all the instances of "sub" with "other" in "s". */
     static std::string&
     replaceIn( std::string& s, const std::string& sub, const std::string& other)
     {
@@ -41,8 +42,11 @@ namespace osgEarth
         return s;
     }
 
-    // by Rodrigo C F Dias
-    // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
+    /**
+     * Trims whitespace from the ends of a string.
+     * by Rodrigo C F Dias
+     * http://www.codeproject.com/KB/stl/stdstringtrim.aspx
+     */
     static
     std::string trim( const std::string& in )
     {
@@ -58,13 +62,19 @@ namespace osgEarth
         return str;
     }
 
+    /**
+     * True is "ref" starts with "pattern"
+     */
     static
     bool startsWith( const std::string& ref, const std::string& pattern )
     {
         return ref.find( pattern ) == 0;
     }
 
-    // http://stackoverflow.com/questions/53849/how-do-i-tokenize-a-string-in-c
+    /**
+     * Tokenizes a string.
+     * http://stackoverflow.com/questions/53849/how-do-i-tokenize-a-string-in-c
+     */
     class StringTokenizer 
     {
     public:
@@ -94,12 +104,15 @@ namespace osgEarth
             return trim( _token );
         }
     protected:
-        size_t _offset;
         const std::string _string;
+        size_t _offset;
         std::string _token;
         std::string _delimiters;
     };
 
+    /**
+     * Splits "input" into one or more strings in "output" based on the delimiting character(s) in "delims".
+     */
     static
     void split( const std::string& input, const std::string& delims, std::vector<std::string>& output, bool allowEmpties =true )
     {
@@ -118,6 +131,7 @@ namespace osgEarth
         return output;
     }
 
+    /** Parses a color string in the form "255 255 255 255" (r g b a [0..255]) into an OSG color. */
     static osg::Vec4ub
     stringToColor(const std::string& str, osg::Vec4ub default_value)
     {
@@ -134,6 +148,7 @@ namespace osgEarth
         return color;
     }
 
+    /** Creates a string in the form "255 255 255 255" (r g b a [0..255]) from a color */
     static std::string
     colorToString( const osg::Vec4ub& c )
     {
@@ -144,6 +159,7 @@ namespace osgEarth
         return ssStr;
     }
 
+    /** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
     static osg::Vec4f
     htmlColorToVec4f( const std::string& html )
     {
@@ -166,6 +182,7 @@ namespace osgEarth
         return osg::Vec4f( ((float)c.r())/255.0f, ((float)c.g())/255.0f, ((float)c.b())/255.0f, ((float)c.a())/255.0f );
     }
 
+    /** Makes an HTML color ("#rrggbb" or "#rrggbbaa") from an OSG color. */
     static std::string
     vec4fToHtmlColor( const osg::Vec4f& c )
     {

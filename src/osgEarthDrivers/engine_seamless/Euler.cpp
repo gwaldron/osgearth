@@ -935,7 +935,7 @@ bool EulerSpatialReference::transformExtentPoints(
             val = 180.0;
             startPix = 0;
         }
-        else if (in_xmax = 0.0)
+        else if (in_xmax == 0.0)
         {
             val = -180.0;
             startPix = numx - 1;

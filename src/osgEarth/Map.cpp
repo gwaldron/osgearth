@@ -40,7 +40,7 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
     case MapModelChange::ADD_MASK_LAYER:
         onMaskLayerAdded( change.getMaskLayer() ); break;
     case MapModelChange::ADD_MODEL_LAYER:
-				onModelLayerAdded( change.getModelLayer(), change.getFirstIndex() ); break;
+        onModelLayerAdded( change.getModelLayer(), change.getFirstIndex() ); break;
     case MapModelChange::REMOVE_ELEVATION_LAYER:
         onElevationLayerRemoved( change.getElevationLayer(), change.getFirstIndex() ); break;
     case MapModelChange::REMOVE_IMAGE_LAYER:
@@ -53,8 +53,9 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
         onElevationLayerMoved( change.getElevationLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
     case MapModelChange::MOVE_IMAGE_LAYER:
         onImageLayerMoved( change.getImageLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
-		case MapModelChange::MOVE_MODEL_LAYER:
-				onModelLayerMoved( change.getModelLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
+    case MapModelChange::MOVE_MODEL_LAYER:
+        onModelLayerMoved( change.getModelLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
+    default: break;
     }
 }
 

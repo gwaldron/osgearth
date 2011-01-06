@@ -69,9 +69,9 @@ namespace osgEarth
     {
     public:
         StringTokenizer(const std::string& s)
-            : _string(s), _offset(0), _delimiters(" \t\n\r") { }
+            : _offset(0), _string(s), _delimiters(" \t\n\r") { }
         StringTokenizer(const std::string& s, const std::string& delimiters)
-            : _string(s), _offset(0), _delimiters(delimiters) { }
+            : _offset(0), _string(s), _delimiters(delimiters) { }
         bool nextToken() {
             return nextToken( _delimiters ); }
         bool nextToken(const std::string& delimiters) {

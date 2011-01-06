@@ -38,8 +38,8 @@ Registry::Registry() :
 osg::Referenced(true),
 _gdal_registered( false ),
 _numGdalMutexGets( 0 ),
-_caps( 0L ),
-_uidGen( 0 )
+_uidGen( 0 ),
+_caps( 0L )
 {
     OGRRegisterAll();
     GDALAllRegister();

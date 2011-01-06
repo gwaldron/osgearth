@@ -94,9 +94,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             // osgDB::readNodeFile("server:http://myserver/myearth.earth").  This should only be
             // necessary for the first level as the other files will have a tilekey prepended to them.
             if ((fileName.length() > 7) && (fileName.substr(0, 7) == "server:"))
-                return readNode(fileName.substr(7), options);
-
-            osg::Node* node = 0;
+                return readNode(fileName.substr(7), options);            
 
             if ( fileName == "__globe.earth" )
             {

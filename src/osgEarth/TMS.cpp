@@ -59,14 +59,14 @@ _order(0)
 }
 
 TileMap::TileMap():
-_minLevel(0),
-_maxLevel(0),
 _originX(0),
 _originY(0),
 _minX(0.0),
 _minY(0.0),
 _maxX(0.0),
 _maxY(0.0),
+_minLevel(0),
+_maxLevel(0),
 _numTilesHigh(-1),
 _numTilesWide(-1)
 {
@@ -296,7 +296,7 @@ TileMap::generateTileSets(unsigned int numLevels)
     _tileSets.clear();
 
     double width = (_maxX - _minX);
-    double height = (_maxY - _minY);
+//    double height = (_maxY - _minY);
 
     for (unsigned int i = 0; i < numLevels; ++i)
     {
@@ -521,7 +521,7 @@ TileMapReaderWriter::read(std::istream &in)
             double minY = as<double>(e_data_extent->getAttr( ATTR_MINY ), 0.0);
             double maxX = as<double>(e_data_extent->getAttr( ATTR_MAXX ), 0.0);
             double maxY = as<double>(e_data_extent->getAttr( ATTR_MAXY ), 0.0);
-            unsigned int minLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MIN_LEVEL ), 0);
+            //unsigned int minLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MIN_LEVEL ), 0);
             unsigned int maxLevel = as<unsigned int>(e_data_extent->getAttr( ATTR_MAX_LEVEL ), 0);            
 
             //OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;

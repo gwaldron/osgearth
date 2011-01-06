@@ -146,8 +146,6 @@ ImageUtils::resizeImage(const osg::Image* input,
         PixelReader read( input );
         PixelWriter write( output.get() );
 
-        float s_ratio = (float)in_s/(float)out_s;
-        float t_ratio = (float)in_t/(float)out_t;
         unsigned int pixel_size_bytes = input->getRowSizeInBytes() / in_s;
 
         unsigned char* dataOffset = output->getMipmapData(mipmapLevel);
@@ -232,12 +230,8 @@ ImageUtils::createMipmapBlendedImage( const osg::Image* primary, const osg::Imag
     return result.release();
 }
 
-bool
-ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
+namespace
 {
-    if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() )
-        return false;
-
     struct MixImage
     {
         float _a;
@@ -255,7 +249,14 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
             return true;
         }
     };
+}
 
+bool
+ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
+{
+    if (!dest || !src || dest->s() != src->s() || dest->t() != src->t() )
+        return false;
+    
     PixelVisitor<MixImage> mixer;
     mixer._a = osg::clampBetween( a, 0.0f, 1.0f );
     mixer._srcHasAlpha = src->getPixelSizeInBits() == 32;

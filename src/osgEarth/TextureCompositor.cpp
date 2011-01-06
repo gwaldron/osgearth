@@ -160,8 +160,8 @@ TextureLayout::setReservedSlots( const std::set<int>& reservedSlots )
 
 TextureCompositor::TextureCompositor(const TerrainOptions& options) :
 osg::Referenced( true ),
-_options( options ),
 _tech( options.compositingTechnique().value() ),
+_options( options ),
 _forceTech( false )
 {
     // for debugging:

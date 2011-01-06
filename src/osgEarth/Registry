@@ -28,16 +28,7 @@
 #include <osgEarth/ShaderComposition>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
-
 #include <osg/Referenced>
-
-/*#define GDAL_SCOPED_LOCK \
-    osg::Timer_t gdal_start = osg::Timer::instance()->tick();\
-    OE_NOTICE << "Waiting for lock..." << std::endl; \
-    OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() );\
-    osg::Timer_t gdal_end = osg::Timer::instance()->tick();\
-    OE_NOTICE << "Got lock in " << osg::Timer::instance()->delta_m(gdal_start,gdal_end) << "ms" << std::endl; \
-*/
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
@@ -53,18 +44,25 @@ namespace osgEarth
     class OSGEARTH_EXPORT Registry : public osg::Referenced
     {
     public:
+        /** Access the global Registry singleton. */
         static Registry* instance(bool erase = false);
 
+        /** Gets a well-known named profile instance. */
         const Profile* getNamedProfile( const std::string& name ) const;
 
+        /** Gets the global-geodetic builtin profile */
         const Profile* getGlobalGeodeticProfile() const;
 
+        /** Gets the global-meractor builtin profile */
         const Profile* getGlobalMercatorProfile() const;
 
+        /** Gets the unified cube builtin profile */
         const Profile* getCubeProfile() const;
 
+        /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
         OpenThreads::ReentrantMutex& getGDALMutex();
 
+        /** Global override of map caching settings. */
 		Cache* getCacheOverride() const;
 		void setCacheOverride( Cache* cacheOverride );
 
@@ -79,22 +77,22 @@ namespace osgEarth
         osgDB::ReaderWriter* getReaderWriterForMimeType(const std::string& mimeType);
 
         /**
-        *Gets whether the given filename is blacklisted
-        */
+         * Whether the given filename is blacklisted
+         */
         bool isBlacklisted(const std::string &filename);
 
         /**
-        *Blacklist the given filename
-        */
+         * Blacklist the given filename
+         */
         void blacklist(const std::string &filename);
 
         /**
-         *Gets the number of blacklisted filenames
+         * Gets the number of blacklisted filenames
          */
         unsigned int getNumBlacklistedFilenames();
 
         /**
-         * The system wide default VSRS
+         * The system wide default vertical spatial reference system.
          */
         const VerticalSpatialReference* getDefaultVSRS() const;
 
@@ -104,7 +102,9 @@ namespace osgEarth
         const Capabilities& getCapabilities() const;
 
         /**
-         * Gets or sets the default shader library.
+         * Gets or sets the default shader factory. You can replace the default
+         * shader factory if you want to alter any of osgEarth's baseline shaders
+         * (advanced usage).
          */
         ShaderFactory* getShaderFactory() const;
         void setShaderFactory( ShaderFactory* lib );
@@ -116,7 +116,7 @@ namespace osgEarth
             return _taskServiceManager; }
 
         /**
-         * Generates a GUID unique to this instance. 
+         * Generates an instance-wide global unique ID.
          */
         UID createUID();
 

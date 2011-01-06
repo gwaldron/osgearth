@@ -195,7 +195,11 @@ namespace osgEarth
     {
     public:
         DataExtent(const GeoExtent& extent, unsigned int minLevel, unsigned int maxLevel);
+
+        /** The minimum LOD of the extent */
         unsigned int getMinLevel() const;
+
+        /** The maximum LOD of the extent */
         unsigned int getMaxLevel() const;
 
     private:
@@ -284,7 +288,7 @@ namespace osgEarth
             unsigned int height = 0) const;
 
         /**
-         * TODO: needs docs
+         * Adds a one-pixel transparent border around an image.
          */
         GeoImage addTransparentBorder(
             bool leftBorder=true, 
@@ -360,7 +364,7 @@ namespace osgEarth
             float& out_elevation ) const;
         
         /**
-         * Subsamples the heightfield, returning a new heightfield corresponding ///and Takes the source heightfield and its extent, and takes a subsample that corresponds to 
+         * Subsamples the heightfield, returning a new heightfield corresponding to
          * the destEx extent. The destEx must be a smaller, inset area of sourceEx.
          */
         GeoHeightField createSubSample( const GeoExtent& destEx, ElevationInterpolation interpolation) const;

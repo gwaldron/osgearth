@@ -49,14 +49,6 @@ namespace osgEarth
     // application-wide unique ID.
     typedef int UID;
 
-    // general-purpose name/value pair set.
-    struct Properties : public std::map<std::string,std::string> {
-        std::string get( const std::string& key ) const {
-            std::map<std::string,std::string>::const_iterator i = find(key);
-            return i != end()? i->second : std::string();
-        }
-    };
-
     // converts a string to primitive using serialization
     template<typename T> inline T
     as( const std::string& str, T default_value )

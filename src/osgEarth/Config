@@ -43,6 +43,14 @@ namespace osgEarth
         virtual void mergeConfig( const Config& conf ) =0;
     };
 
+    // general-purpose name/value pair set.
+    struct Properties : public std::map<std::string,std::string> {
+        std::string get( const std::string& key ) const {
+            std::map<std::string,std::string>::const_iterator i = find(key);
+            return i != end()? i->second : std::string();
+        }
+    };
+
     /**
      * Config is a general-purpose container for serializable data. You store an object's members
      * to Config, and then translate the Config to a particular format (like XML or JSON). Likewise,

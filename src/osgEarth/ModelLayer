@@ -31,6 +31,9 @@ namespace osgEarth
 {
     class Map;
 
+    /**
+     * Configuration options for a ModelLayer.
+     */
     class OSGEARTH_EXPORT ModelLayerOptions : public ConfigOptions
     {
     public:        
@@ -131,20 +134,10 @@ namespace osgEarth
          */
         const ModelLayerOptions& getModelLayerOptions() const { return _options; }
 
-        ///**
-        // * Gets the name of the driver to use to create model data.
-        // */
-        //const std::string& getDriver() const { return _driver; }
-
         /**
          * Gets the reference URI (for resolving relative paths)
          */
         const std::string& getReferenceURI() const { return _referenceURI; }
-
-        /**
-         * Gets the driver configuration object. 
-         */
-        //const Config& getDriverConfig() const { return _driverConf; }
 
         /**
          * Access the underlying model source.
@@ -157,9 +150,11 @@ namespace osgEarth
 
     public: // properties
 
+        /** Whether this layer is rendered. */
         bool getEnabled() const;
         void setEnabled(bool enabled);
 
+        /** Whether this layer is drawn as normal geometry or as a draped overlay. */
         bool getOverlay() const;
         void setOverlay( bool overlay );
 
@@ -169,26 +164,20 @@ namespace osgEarth
 
     public:
 
-        void initialize( const std::string& referenceURI, const Map* map );
-
         /** Adds a property notification callback to this layer */
         void addCallback( ModelLayerCallback* cb );
 
         /** Removes a property notification callback from this layer */
         void removeCallback( ModelLayerCallback* cb );
 
+    public:
 
-        //virtual Config getConfig() const;
+        // internal function
+        void initialize( const std::string& referenceURI, const Map* map );
 
     private:
-        //void mergeConfig( const Config& conf );
-
         std::string _referenceURI;
-        //std::string _name;
-        //std::string _driver;
-        //Config _driverConf;
         osg::ref_ptr<ModelSource> _modelSource;
-        //const ModelSourceOptions _driverOptions;
         const ModelLayerOptions _options;
 
         osg::ref_ptr< osg::Node > _node;
@@ -208,4 +197,3 @@ namespace osgEarth
 }
 
 #endif // OSGEARTH_MODEL_LAYER_H
-

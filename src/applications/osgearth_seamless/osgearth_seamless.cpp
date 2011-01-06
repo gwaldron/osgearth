@@ -93,7 +93,7 @@ struct QueryTileHandler : public osgGA::GUIEventHandler
 {
     QueryTileHandler(osg::MatrixTransform* flag,
                      const osgEarth::SpatialReference* srs)
-        : _flag(flag), _mouseDown(false), _srs(srs) { }
+        : _mouseDown(false), _flag(flag), _srs(srs) { }
 
     void update( float x, float y, osgViewer::View* view )
     {

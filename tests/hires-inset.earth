@@ -15,13 +15,16 @@ Look for hi-res insets over the cities of Boston and New York.
         <url>http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml</url>
     </image>
     
-    <image name="boston_inset" driver="gdal">
-        <url>../data/boston-inset-wgs84.tif</url>
-        <tile_size>256</tile_size>
+    <image name "hires insets" driver="composite">
+    
+        <image name="boston_inset" driver="gdal">
+            <url>../data/boston-inset-wgs84.tif</url>
+        </image>
+        
+        <image name="nyc_inset" driver="gdal">
+            <url>../data/nyc-inset-wgs84.tif</url>
+        </image>
+        
     </image>
     
-    <image name="nyc_inset" driver="gdal">
-        <url>../data/nyc-inset-wgs84.tif</url>
-        <tile_size>256</tile_size>
-    </image>
 </map>

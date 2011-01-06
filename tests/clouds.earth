@@ -6,8 +6,7 @@ e.g.: osgviewer tiff.earth clouds.earth
 -->
 
 <map name="Clouds" type="geocentric" version="2">     
-    
-    
+        
     <options>
         <!-- create an ellipsoid that's slightly larger than the earth -->
         <profile>
@@ -18,6 +17,7 @@ e.g.: osgviewer tiff.earth clouds.earth
             <!-- don't want a terrain skirt on the clouds -->
             <skirt_ratio>0</skirt_ratio>
             <sample_ratio>0.5</sample_ratio>
+            <compositor>multipass</compositor>
         </terrain>
     </options>
     

@@ -20,6 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osg/Notify>
 #include <osg/Texture>
+#include <osg/GL>
 #include <string.h>
 #include <memory.h>
 

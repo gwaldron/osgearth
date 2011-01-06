@@ -105,6 +105,9 @@ osg::Node* GeometrySymbolizer::GeometrySymbolizerOperator::operator()(const Geom
                 }
             }
             break;
+            
+            default:
+            break;
             }
 
             osg::Material* material = new osg::Material;

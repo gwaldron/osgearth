@@ -319,8 +319,8 @@ namespace
 
 MeshSubdivider::MeshSubdivider(const osg::Matrixd& world2local,
                                const osg::Matrixd& local2world ) :
-_world2local(world2local),
 _local2world(local2world),
+_world2local(world2local),
 _maxElementsPerEBO( INT_MAX )
 {
     if ( !_world2local.isIdentity() && _local2world.isIdentity() )

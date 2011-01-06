@@ -143,9 +143,9 @@ public:
     VPBDatabase( const VPBOptions& in_options ) :
         _options( in_options ),
         //_directory_structure( FLAT_TASK_DIRECTORIES ),
-        _maxNumTilesInCache( 128 ),
-        _profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() )
-    {
+        _profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() ),
+        _maxNumTilesInCache( 128 )
+        {
 	}
 	
 	void initialize( const std::string& referenceURI)
@@ -332,7 +332,7 @@ public:
         unsigned int tile_x, tile_y;
         key.getTileXY( tile_x, tile_y );
         
-        int max_x = (2 << level) - 1;
+        //int max_x = (2 << level) - 1;
         int max_y = (1 << level) - 1;
         
         tile_y = max_y - tile_y;

@@ -194,7 +194,6 @@ createVolume(osgEarth::Symbology::Geometry* geom,
     }
 
 
-    bool made_geom = true;
     const SpatialReference* srs = context.profile()->getSRS();
 
     // total up all the points so we can pre-allocate the vertex arrays.
@@ -493,9 +492,13 @@ public:
                 if ( !styleNodeAlreadyCreated )
                 {
                     if ( _options.mask() == true )
+					{
                         OE_INFO << LC << "Creating MASK LAYER for feature group" << std::endl;
+					}
                     else
+					{
                         OE_INFO << LC << "Creating new style group for '" << style->getName() << "'" << std::endl;
+					}
 
                     styleNode = new osgEarth::Symbology::StencilVolumeNode( _options.mask().value(), _options.inverted().value() );
                     if ( _options.mask() == false )
@@ -539,8 +542,8 @@ class FeatureStencilModelSource : public FeatureModelSource
 public:
     FeatureStencilModelSource( const ModelSourceOptions& options, int renderBinStart ) :
         FeatureModelSource( options ),
-        _options( options ),
-        _renderBinStart( renderBinStart )
+        _renderBinStart( renderBinStart ),
+        _options( options )
     {
         // make sure we have stencil bits. Note, this only works before
         // a viewer gets created. You may need to allocate stencil bits

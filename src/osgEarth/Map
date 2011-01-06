@@ -51,7 +51,7 @@ namespace osgEarth
             MOVE_ELEVATION_LAYER,
             ADD_MODEL_LAYER,
             REMOVE_MODEL_LAYER,
-						MOVE_MODEL_LAYER,
+            MOVE_MODEL_LAYER,
             ADD_MASK_LAYER,
             REMOVE_MASK_LAYER,
             UNSPECIFIED
@@ -82,7 +82,7 @@ namespace osgEarth
      */
     struct OSGEARTH_EXPORT MapCallback : public osg::Referenced
     {
-        virtual void onMapInfoEstablished( const MapInfo& mapInfo ) { } //onMapProfileEstablished( const Profile* profile ) { }
+        virtual void onMapInfoEstablished( const MapInfo& mapInfo ) { } 
 
         virtual void onMapModelChanged( const MapModelChange& change );
 
@@ -96,7 +96,7 @@ namespace osgEarth
 
         virtual void onModelLayerAdded( ModelLayer* layer, unsigned int index ) { }
         virtual void onModelLayerRemoved( ModelLayer* layer ) { }
-				virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
+        virtual void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) { }
 
         virtual void onMaskLayerAdded( MaskLayer* mask ) { }
         virtual void onMaskLayerRemoved( MaskLayer* mask ) { }
@@ -323,7 +323,7 @@ namespace osgEarth
             ProgressCallback* progress = 0) const;
 
 		/**
-		 * Sets the Cache for this Map
+		 * Sets the Cache for this Map. Set to NULL for no cache.
 		 */
 		void setCache( Cache* cache );
 

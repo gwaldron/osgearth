@@ -61,7 +61,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
             if ( _makeGeocentric && _outputSRS->isGeographic() )
             {
                 const osg::EllipsoidModel* em = context.profile()->getSRS()->getEllipsoid();
-                for( unsigned i=0; i<geom->size(); i++ )
+                for( unsigned int i=0; i<geom->size(); i++ )
                 {
                     double x, y, z;
                     em->convertLatLongHeightToXYZ(
@@ -75,7 +75,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
             }
             else
             {
-                for( unsigned i=0; i<geom->size(); i++ )
+                for( unsigned int i=0; i<geom->size(); i++ )
                 {
                     if ( _heightOffset != 0.0 )
                         (*geom)[i].z() += _heightOffset;
@@ -99,7 +99,7 @@ namespace
             while( iter.hasMore() )
             {
                 Geometry* geom = iter.next();
-                for( unsigned i=0; i<geom->size(); i++ )
+                for( unsigned int i=0; i<geom->size(); i++ )
                 {
                     (*geom)[i] = (*geom)[i] * refFrame;
                 }

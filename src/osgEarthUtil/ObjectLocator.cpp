@@ -204,8 +204,8 @@ ObjectLocatorNode::ObjectLocatorNode()
 
 ObjectLocatorNode::ObjectLocatorNode( const ObjectLocatorNode& rhs, const osg::CopyOp& op ) :
 osg::MatrixTransform( rhs, op ),
-_matrixRevision( rhs._matrixRevision ),
-_locator( rhs._locator.get() )
+_locator( rhs._locator.get() ),
+_matrixRevision( rhs._matrixRevision )
 {
     setLocator( _locator.get() ); // to update the trav count
 }

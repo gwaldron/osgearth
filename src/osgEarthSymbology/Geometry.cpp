@@ -72,7 +72,7 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
 {
     if ( newType == getType() )
         return static_cast<Geometry*>( clone() );
-
+    
     switch( newType )
     {
     case TYPE_POINTSET:
@@ -83,9 +83,8 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
         return new Ring( (const osg::Vec3dArray*)this );
     case TYPE_POLYGON:
         return new Polygon( (const osg::Vec3dArray*)this );
-	case TYPE_MULTI:
-	case TYPE_UNKNOWN:
-		return 0L;
+    default:
+        break;
     }
     return 0L;
 }
@@ -102,19 +101,17 @@ Geometry*
 Geometry::create( Type type, const osg::Vec3dArray* toCopy )
 {
     Geometry* output = 0L;
-    switch( type ) 
-	{
-	case TYPE_POINTSET:
-		output = new PointSet( toCopy ); break;
-	case TYPE_LINESTRING:
-		output = new LineString( toCopy ); break;
-	case TYPE_RING:
-		output = new Ring( toCopy ); break;
-	case TYPE_POLYGON:
-		output = new Polygon( toCopy ); break;
-	case TYPE_MULTI:
-	case TYPE_UNKNOWN:
-		output = 0L; break;
+    switch( type ) {
+        case TYPE_POINTSET:
+            output = new PointSet( toCopy ); break;
+        case TYPE_LINESTRING:
+            output = new LineString( toCopy ); break;
+        case TYPE_RING:
+            output = new Ring( toCopy ); break;
+        case TYPE_POLYGON:
+            output = new Polygon( toCopy ); break;
+        default:
+            break;
     }
     return output;
 }

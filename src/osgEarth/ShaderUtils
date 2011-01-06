@@ -52,8 +52,8 @@ namespace osgEarth
 
     /**
      * Helper class for dealing with array uniforms. Array uniform naming works
-     * differently on different drivers, so this class helps mitigate those
-     * differences.
+     * differently on different drivers (ATI vs NVIDIA), so this class helps mitigate
+     * those differences.
      */
     class OSGEARTH_EXPORT ArrayUniform : public osg::Referenced
     {

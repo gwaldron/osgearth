@@ -144,8 +144,7 @@ MarkerSymbolizer::compile(MarkerSymbolizerState* state,
                             interval = 1.0;
 
 
-                        osg::Group* group = new osg::Group;
-                        //float globalDist = 0;
+                        osg::Group* group = new osg::Group;                        
                         float currentDist = 0;
 
                         // start to put one first node
@@ -156,7 +155,7 @@ MarkerSymbolizer::compile(MarkerSymbolizerState* state,
                             group->addChild(tr);
                         }
 
-                        for ( unsigned i = 0; i < part->size(); ++i)
+                        for ( unsigned int i = 0; i < part->size(); ++i)
                         {
                             osg::Vec3d start = (*part)[i];
                             osg::Vec3d end;
@@ -270,6 +269,9 @@ MarkerSymbolizer::compile(MarkerSymbolizerState* state,
             {
 			}
 			break;
+
+            default:
+                break;
 
             }
         }

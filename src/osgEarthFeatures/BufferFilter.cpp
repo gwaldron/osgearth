@@ -66,8 +66,6 @@ _capStyle( rhs._capStyle )
 bool
 BufferFilter::push( Feature* input, const FilterContext& context )
 {
-    //bool ok = false;
-
     if ( !input || !input->getGeometry() )
         return true;
 

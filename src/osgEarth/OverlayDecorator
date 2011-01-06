@@ -32,8 +32,13 @@
 namespace osgEarth
 {
     /**
-     * Projects an overlay scene graph onto the main model. You can apply this
-     * using MapNode::addTerrainDecorator.
+     * Projects an overlay scene graph onto the main model.
+     *
+     * The OverlayDecorator is automatically installed in the MapNode and is used
+     * to display ModelLayer's whose "overlay" property is set to true.
+     *
+     * This class is similar in scope to osgSim::OverlayNode, but is optimized
+     * for use with osgEarth and geocentric terrains.
      */
     class OSGEARTH_EXPORT OverlayDecorator : public TerrainDecorator
     {

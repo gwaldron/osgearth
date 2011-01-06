@@ -377,27 +377,27 @@ _last_action( ACTION_NULL )
 }
 
 EarthManipulator::EarthManipulator( const EarthManipulator& rhs ) :
+_srs_lookup_failed( rhs._srs_lookup_failed ),
+_time_s_last_frame( rhs._time_s_last_frame  ),
+_delta_t( rhs._delta_t ),
+_t_factor( rhs._t_factor ),
 _thrown( rhs._thrown ),
 _distance( rhs._distance ),
 _offset_x( rhs._offset_x ),
 _offset_y( rhs._offset_y ),
-_continuous( rhs._continuous ),
 _task( new Task() ),
-_settings( new Settings( *rhs._settings.get() ) ),
-_srs_lookup_failed( rhs._srs_lookup_failed ),
-_last_action( rhs._last_action ),
-_setting_viewpoint( rhs._setting_viewpoint ),
-_delta_t( rhs._delta_t ),
-_t_factor( rhs._t_factor ),
-_time_s_last_frame( rhs._time_s_last_frame  ),
-_local_azim( rhs._local_azim ),
 _local_pitch( rhs._local_pitch  ),
+_local_azim( rhs._local_azim ),
+_continuous( rhs._continuous ),
 _has_pending_viewpoint( rhs._has_pending_viewpoint ),
+_setting_viewpoint( rhs._setting_viewpoint ),
+_arc_height( rhs._arc_height ),
+_after_first_frame( rhs._after_first_frame ),
+_settings( new Settings( *rhs._settings.get() ) ),
 _homeViewpoint( rhs._homeViewpoint.get() ),
 _homeViewpointDuration( rhs._homeViewpointDuration ),
-_after_first_frame( rhs._after_first_frame ),
-_lastPointOnEarth( rhs._lastPointOnEarth ),
-_arc_height( rhs._arc_height )
+_last_action( rhs._last_action ),
+_lastPointOnEarth( rhs._lastPointOnEarth )
 {
 }
 
@@ -1302,6 +1302,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 aa.requestRedraw();
             handled = true;
             break;
+		default:
+			break;
     }
 
     if ( handled && action._type != ACTION_NULL )
@@ -1403,6 +1405,7 @@ EarthManipulator::serviceTask()
             case TASK_ZOOM:
                 zoom( _delta_t * _task->_dx, _delta_t * _task->_dy );
                 break;
+            default: break;
         }
 
         _task->_duration_s -= _delta_t;
@@ -1884,6 +1887,8 @@ EarthManipulator::handleMovementAction( const ActionType& type, double dx, doubl
     case ACTION_EARTH_DRAG:
         drag( dx, dy, view );
         break;
+	default:
+		break;
     }
 }
 
@@ -1900,25 +1905,29 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
         switch( action._type )
         {
             case ACTION_GOTO:
-                Viewpoint here = getViewpoint();
+				{
+					Viewpoint here = getViewpoint();
 
-                if ( getSRS() && _is_geocentric )
-                {
-                    double lat_r, lon_r, h;
-                    getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
-                        point.x(), point.y(), point.z(),
-                        lat_r, lon_r, h );
-                    point.set( osg::RadiansToDegrees(lon_r), osg::RadiansToDegrees(lat_r), h );
-                }
-                here.setFocalPoint( point );
+					if ( getSRS() && _is_geocentric )
+					{
+						double lat_r, lon_r, h;
+						getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
+							point.x(), point.y(), point.z(),
+							lat_r, lon_r, h );
+						point.set( osg::RadiansToDegrees(lon_r), osg::RadiansToDegrees(lat_r), h );
+					}
+					here.setFocalPoint( point );
 
-                double duration_s = action.getDoubleOption(OPTION_DURATION, 1.0);
-                double range_factor = action.getDoubleOption(OPTION_GOTO_RANGE_FACTOR, 1.0);
+					double duration_s = action.getDoubleOption(OPTION_DURATION, 1.0);
+					double range_factor = action.getDoubleOption(OPTION_GOTO_RANGE_FACTOR, 1.0);
 
-                here.setRange( here.getRange() * range_factor );
+					here.setRange( here.getRange() * range_factor );
 
-                setViewpoint( here, duration_s );
+					setViewpoint( here, duration_s );
+				}
                 break;
+			default:
+				break;
         }
     }
     return true;
@@ -1999,6 +2008,7 @@ EarthManipulator::handleKeyboardAction( const Action& action, double duration )
     case DIR_RIGHT: dx = -1; break;
     case DIR_UP:    dy = -1; break;
     case DIR_DOWN:  dy =  1; break;
+	default: break;
     }
 
     dx *= _settings->getKeyboardSensitivity();
@@ -2022,6 +2032,7 @@ EarthManipulator::handleScrollAction( const Action& action, double duration )
     case DIR_RIGHT: dx = -1; break;
     case DIR_UP:    dy = -1; break;
     case DIR_DOWN:  dy =  1; break;
+	default: break;
     }
 
     dx *= scrollFactor * _settings->getScrollSensitivity();

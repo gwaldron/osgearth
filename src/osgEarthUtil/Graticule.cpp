@@ -349,9 +349,6 @@ Graticule::createGridLevel( unsigned int levelNum ) const
                 pex.xMin() + tw * (double)(x+1),
                 pex.yMin() + th * (double)(y+1) );
 
-            //double ox = level._lineWidth;
-            //double oy = level._lineWidth;
-
             Geometry* geom = createCellGeometry( tex, level._lineWidth, pex, _map->isGeocentric() );
 
             Feature* feature = new Feature();

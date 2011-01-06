@@ -145,7 +145,7 @@ public:
         //_directory_structure( FLAT_TASK_DIRECTORIES ),
         _profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() ),
         _maxNumTilesInCache( 128 )
-    {
+	{
 	}
 	
 	void initialize( const std::string& referenceURI)

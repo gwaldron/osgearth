@@ -22,6 +22,9 @@
 
 namespace osgEarth 
 {
+    /**
+     * Visitor that located a node by its type
+     */
     template<typename T>
     class FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
     {

@@ -211,9 +211,7 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style* style,
                                                   osg::Referenced* data,
                                                   const GeoExtent& imageExtent,
                                                   osg::Image* out_image)
-{
-    //osg::Group* styleGroup = 0L;
-
+{   
     // first we need the overall extent of the layer:
     const GeoExtent& featuresExtent = getFeatureSource()->getFeatureProfile()->getExtent();
     

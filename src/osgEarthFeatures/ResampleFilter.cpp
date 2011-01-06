@@ -64,7 +64,6 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
         Geometry* part = i.next();
 
         if ( part->size() < 2 ) continue;
-        //int partSize0 = part->size();
 
         // copy the original part to a linked list. use a std::list since insert/erase
         // will not invalidate iterators.

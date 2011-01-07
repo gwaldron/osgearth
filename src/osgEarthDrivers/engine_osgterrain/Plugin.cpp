@@ -83,7 +83,7 @@ public:
             std::string tileDef = osgDB::getNameLessExtension(uri);
 
             unsigned int lod, x, y, id;
-            sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &id);
+            sscanf(tileDef.c_str(), "%d_%d_%d.%d", (int*)&lod, (int*)&x, (int*)&y, (int*)&id);
 
             //Get the Map from the cache.  It is important that we use a ref_ptr here
             //to prevent the Map from being deleted while it is is still in use.

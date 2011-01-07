@@ -159,4 +159,4 @@ namespace osgEarth
                                        double &out_latRad, double &out_lonRad,
                                        double radius = osg::WGS_84_RADIUS_EQUATOR);
     };
-};
+} // namespace osgEarth

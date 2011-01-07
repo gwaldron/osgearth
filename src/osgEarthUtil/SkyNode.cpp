@@ -304,7 +304,7 @@ namespace
             double zeta = d2r(23.4392); // zeta
 
             // latitude of the sun on the ecliptic plane:
-            double omega = d2r(0.0);
+//            double omega = d2r(0.0);
 
             // latitude of the sun with respect to the equatorial plane (solar declination):
             double sun_lat = asin( sin(sun_lon)*sin(zeta) );

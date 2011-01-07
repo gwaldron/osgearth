@@ -43,7 +43,7 @@ public:
         //OE_NOTICE<<"fileLocation = "<<filename<<std::endl;
 
         unsigned int lod, x, y, id;
-        sscanf(filename.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &id);
+        sscanf(filename.c_str(), "%d_%d_%d.%d", (int*)&lod, (int*)&x, (int*)&y, (int*)&id);
 
         osg::ref_ptr<OSGTerrainEngineNode> engine = OSGTerrainEngineNode::getEngineByUID( (UID)id );
 

@@ -505,7 +505,7 @@ osgEarth::Features::createVolume(Geometry*            geom,
             (*top_verts)[top_vert_ptr++] = extrude_vec;
             (*bottom_verts)[bottom_vert_ptr++] = *m;
              
-            part_len += wall_vert_ptr > wall_part_ptr?
+            part_len += wall_vert_ptr > (int)wall_part_ptr?
                 (extrude_vec - (*verts)[wall_vert_ptr-2]).length() :
                 0.0;
 
@@ -521,7 +521,7 @@ osgEarth::Features::createVolume(Geometry*            geom,
         // close the wall if it's a ring/poly:
         if ( part->getType() == Geometry::TYPE_RING || part->getType() == Geometry::TYPE_POLYGON )
         {
-            part_len += wall_vert_ptr > wall_part_ptr?
+            part_len += wall_vert_ptr > (int)wall_part_ptr?
                 ((*verts)[wall_part_ptr] - (*verts)[wall_vert_ptr-2]).length() :
                 0.0;
 

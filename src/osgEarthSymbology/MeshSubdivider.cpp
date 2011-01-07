@@ -186,7 +186,7 @@ namespace
         osg::TriangleFunctor<TriangleData<ITYPE> > data;
         geom.accept( data );
 
-        int numTrisIn = data._tris.size();
+//        int numTrisIn = data._tris.size();
 
         TriangleVector<ITYPE> done;
         done.reserve(2.0 * data._tris.size());

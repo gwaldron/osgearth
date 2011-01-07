@@ -30,8 +30,10 @@
 #include <osg/Program>
 #include <osg/Shape>
 #include <osg/Depth>
+#include <osg/Quat>
 
 #include <sstream>
+#include <time.h>
 
 #define LC "[SkyNode] "
 
@@ -229,6 +231,109 @@ namespace
 
         return geom;
     }
+}
+
+//---------------------------------------------------------------------------
+
+// Astronomical Math
+// http://www.stjarnhimlen.se/comp/ppcomp.html
+namespace
+{
+#define d2r(X) osg::DegreesToRadians(X)
+#define r2d(X) osg::RadiansToDegrees(X)
+#define nrad(X) { while( X > TWO_PI ) X -= TWO_PI; while( X < 0.0 ) X += TWO_PI; }
+#define nrad2(X) { while( X <= -osg::PI ) X += TWO_PI; while( X > osg::PI ) X -= TWO_PI; }
+
+    static const double TWO_PI = (2.0*osg::PI);
+    static const double JD2000 = 2451545.0;
+
+    //double getTimeScale( int year, int month, int date, double hoursUT )
+    //{
+    //    int a = 367*year - 7 * ( year + (month+9)/12 ) / 4 + 275*month/9 + date - 730530;
+    //    return (double)a + hoursUT/24.0;
+    //}
+
+    double getJulianDate( int year, int month, int date )
+    {
+        if ( month <= 2 )
+        {
+            month += 12;
+            year -= 1;
+        }
+
+        int A = int(year/100);
+        int B = 2-A+(A/4);
+        int C = int(365.25*(year+4716));
+        int D = int(30.6001*(month+1));
+        return B + C + D + date - 1524.5;
+    }
+
+    struct Sun
+    {
+        Sun() { }
+
+        // https://www.cfa.harvard.edu/~wsoon/JuanRamirez09-d/Chang09-OptimalTiltAngleforSolarCollector.pdf
+        osg::Vec3d getPosition(int year, int month, int date, double hoursUTC ) const
+        {
+            double JD = getJulianDate(year, month, date);
+            double JD1 = (JD - JD2000);                         // julian time since JD2000 epoch
+            double JC = JD1/36525.0;                            // julian century
+
+            double mu = 282.937348 + 0.00004707624*JD1 + 0.0004569*(JC*JC);
+
+            double epsilon = 280.466457 + 0.985647358*JD1 + 0.000304*(JC*JC);
+
+            // orbit eccentricity:
+            double E = 0.01670862 - 0.00004204 * JC;
+
+            // mean anomaly of the perihelion
+            double M = epsilon - mu;
+
+            // perihelion anomaly:
+            double v =
+                M + 
+                360.0*E*sin(d2r(M))/osg::PI + 
+                900.0*(E*E)*sin(d2r(2*M))/4*osg::PI - 
+                180.0*(E*E*E)*sin(d2r(M))/4.0*osg::PI;
+
+            // longitude of the sun in ecliptic coordinates:
+            double sun_lon = d2r(v - 360.0 + mu); // lambda
+            nrad2(sun_lon);
+
+            // angle between the ecliptic plane and the equatorial plane
+            double zeta = d2r(23.4392); // zeta
+
+            // latitude of the sun on the ecliptic plane:
+            double omega = d2r(0.0);
+
+            // latitude of the sun with respect to the equatorial plane (solar declination):
+            double sun_lat = asin( sin(sun_lon)*sin(zeta) );
+            nrad2(sun_lat);
+
+            double time_r = hoursUTC/24.0; // 0..1
+            nrad(sun_lon); // clamp to 0..TWO_PI
+            double sun_r = sun_lon/TWO_PI; // convert to 0..1
+
+            double diff_r = sun_r - time_r;
+            double diff_lon = TWO_PI * diff_r;
+            double app_sun_lon = sun_lon - diff_lon + osg::PI;
+            nrad2(app_sun_lon);
+
+#if 0
+            OE_INFO
+                << "sun lat = " << r2d(sun_lat) 
+                << ", sun lon = " << r2d(sun_lon)
+                << ", time delta_lon = " << r2d(diff_lon)
+                << ", app sun lon = " << r2d(app_sun_lon)
+                << std::endl;
+#endif
+
+            return osg::Vec3d(
+                cos(sun_lat) * cos(-app_sun_lon),
+                cos(sun_lat) * sin(-app_sun_lon),
+                sin(sun_lat) );
+        }
+    };
 }
 
 //---------------------------------------------------------------------------
@@ -493,6 +598,18 @@ SkyNode::setSunPosition( double latitudeRad, double longitudeRad )
         _ellipsoidModel->convertLatLongHeightToXYZ(latitudeRad, longitudeRad, 0, x, y, z);
         osg::Vec3d up  = _ellipsoidModel->computeLocalUpVector(x, y, z);
         setSunPosition( up );
+    }
+}
+
+void
+SkyNode::setDateTime( int year, int month, int date, double hoursUTC )
+{
+    if ( _ellipsoidModel.valid() )
+    {
+        Sun sun;
+        osg::Vec3d pos = sun.getPosition( year, month, date, hoursUTC );
+        pos.normalize();
+        setSunPosition( pos );
     }
 }
 

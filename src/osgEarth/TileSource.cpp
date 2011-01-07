@@ -383,7 +383,7 @@ TileSourceFactory::create( const TileSourceOptions& options )
     result = dynamic_cast<TileSource*>( osgDB::readObjectFile( driverExt, rwopt.get() ) );
     if ( !result )
     {
-        OE_WARN << "WARNING: Failed to load terrain engine driver for \"" << driver << "\"" << std::endl;
+        OE_WARN << "WARNING: Failed to load TileSource driver for \"" << driver << "\"" << std::endl;
     }
 
     return result;

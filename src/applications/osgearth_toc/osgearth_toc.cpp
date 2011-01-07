@@ -34,7 +34,7 @@ void updateControlPanel();
 static osg::ref_ptr<Map> s_activeMap;
 static osg::ref_ptr<Map> s_inactiveMap;
 static Grid* s_layerBox;
-static bool s_updateRequired = false;
+static bool s_updateRequired = true;
 
 //------------------------------------------------------------------------
 

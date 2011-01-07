@@ -219,12 +219,6 @@ namespace osgEarth
             ImageOperation* op =0L,
             ProgressCallback* progress =0L );
 
-        //virtual bool getImage(
-        //    const TileKey& key, 
-        //    osg::ref_ptr<const osg::Image>& out_image, 
-        //    ImageOperation* prepOp =0L,
-        //    ProgressCallback* progress =0L );
-
         /**
          * Creates a heightfield for the given TileKey
          */
@@ -232,12 +226,6 @@ namespace osgEarth
             const TileKey& key,
             HeightFieldOperation* prepOp =0L,
             ProgressCallback* progress = 0L );
-
-        //virtual bool getHeightField(
-        //    const TileKey& key,
-        //    osg::ref_ptr<const osg::HeightField>& out_heightfield,
-        //    HeightFieldOperation* prepOp =0L,
-        //    ProgressCallback* progress = 0L );
 
     public:
 
@@ -312,6 +300,12 @@ namespace osgEarth
          * Whether or not the source has data for the given TileKey
          */
         virtual bool hasData(const TileKey& key) const;
+
+        /**
+         * Whether this TileSource produces tiles whose data can change after
+         * it's been created.
+         */
+        virtual bool isDynamic() const { return false; }
 
 
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate

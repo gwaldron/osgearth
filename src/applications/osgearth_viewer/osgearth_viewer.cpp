@@ -45,22 +45,13 @@ usage( const std::string& msg )
 
 struct AnimateSunCallback : public osg::NodeCallback
 {
-    AnimateSunCallback(): _longitude(-180), _rate(10) { }
-
     void operator()( osg::Node* node, osg::NodeVisitor* nv )
     {
         SkyNode* skyNode = static_cast<SkyNode*>(node);
-        osg::Timer_t curr_time = osg::Timer::instance()->tick();
-
-        double elapsedTime = osg::Timer::instance()->delta_s(_lastUpdate, curr_time);
-        _longitude += _rate * elapsedTime;
-        skyNode->setSunPosition(0, osg::DegreesToRadians(_longitude));
-        _lastUpdate = curr_time;
+        double hours = fmod( osg::Timer::instance()->time_s(), 24.0 );
+        skyNode->setDateTime( 2011, 6, 6, hours );
+        OE_INFO << "TIME: " << hours << std::endl;
     }
-
-    double _longitude;
-    osg::Timer_t _lastUpdate;
-    double _rate; //Rate in degrees per second
 };
 
 int
@@ -71,8 +62,8 @@ main(int argc, char** argv)
 
     bool useGraticule = arguments.read( "--graticule" );
     bool useAutoClip  = arguments.read( "--autoclip" );
-    bool useSky       = arguments.read( "--sky" );
     bool animateSky   = arguments.read( "--animateSky");
+    bool useSky       = arguments.read( "--sky" ) || animateSky;
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -109,7 +100,8 @@ main(int argc, char** argv)
             if ( useSky )
             {
                 SkyNode* sky = new SkyNode( mapNode->getMap() );
-                sky->setSunPosition( osg::Vec3(0,-1,0) );
+                sky->setDateTime( 2011, 1, 6, 17.0 );
+                //sky->setSunPosition( osg::Vec3(0,-1,0) );
                 sky->attach( &viewer );
                 root->addChild( sky );
                 if (animateSky)
@@ -127,7 +119,6 @@ main(int argc, char** argv)
     viewer.setSceneData( root );
 
     EarthManipulator* manip = new EarthManipulator();
-    manip->getSettings()->setMinMaxDistance( 250.0, DBL_MAX );
     viewer.setCameraManipulator( manip );
 
     // add some stock OSG handlers:

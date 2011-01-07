@@ -232,31 +232,12 @@ _verticalScale(1.0f)
     // initially bump the update requirement so that this tile will receive an update
     // traversal the first time through. It is on the first update traversal that we
     // know the tile is in the scene graph and that it can be registered with the terrain.
-    adjustUpdateTraversalCount( 1 );
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 }
 
 CustomTile::~CustomTile()
 {
     //OE_NOTICE << "Destroying CustomTile " << this->getKey()->str() << std::endl;
-}
-
-void
-CustomTile::adjustUpdateTraversalCount( int delta )
-{
-    // NOTE: it is only safe to call this method from the UPDATE or EVENT thread.
-
-    int oldCount = this->getNumChildrenRequiringUpdateTraversal();
-    if ( oldCount + delta >= 0 )
-    {
-        this->setNumChildrenRequiringUpdateTraversal(
-            (unsigned int)(oldCount + delta) );
-    }
-    else
-    {
-        OE_NOTICE << "WARNING, tile (" 
-            << _key.str() << ") tried to set a negative NCRUT"
-            << std::endl;
-    }
 }
 
 bool
@@ -427,7 +408,20 @@ CustomTile::setCustomColorLayer( const CustomColorLayer& layer, bool writeLock )
         setCustomColorLayer( layer, false );
     }
     else
+    {
+        int delta = 0;
+        ColorLayersByUID::const_iterator i = _colorLayers.find(layer.getUID());
+        if ( i != _colorLayers.end() && i->second.getMapLayer()->isDynamic() )
+            --delta;
+        
        _colorLayers[layer.getUID()] = layer;
+       
+        if ( layer.getMapLayer()->isDynamic() )
+            ++delta;
+
+        if ( delta != 0 )
+            ADJUST_UPDATE_TRAV_COUNT( this, delta );
+    }
 }
 
 void
@@ -439,7 +433,16 @@ CustomTile::removeCustomColorLayer( UID layerUID, bool writeLock )
         removeCustomColorLayer( layerUID, false );
     }
     else
-        _colorLayers.erase( layerUID );
+    {
+        ColorLayersByUID::const_iterator i = _colorLayers.find(layerUID);
+        if ( i != _colorLayers.end() )
+        {
+            if ( i->second.getMapLayer()->isDynamic() )
+                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+
+            _colorLayers.erase( i );
+        }
+    }
 }
 
 bool
@@ -483,7 +486,21 @@ CustomTile::setCustomColorLayers( const ColorLayersByUID& in, bool writeLock )
         setCustomColorLayers( in, false );
     }
     else
+    {
+        int delta = 0;
+        for( ColorLayersByUID::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i )
+            if ( i->second.getMapLayer()->isDynamic() )
+                --delta;
+
         _colorLayers = in;
+
+        for( ColorLayersByUID::const_iterator i = _colorLayers.begin(); i != _colorLayers.end(); ++i )
+            if ( i->second.getMapLayer()->isDynamic() )
+                ++delta;
+
+        if ( delta != 0 )
+            ADJUST_UPDATE_TRAV_COUNT( this, delta );
+    }
 }
 
 osg::BoundingSphere
@@ -1172,11 +1189,12 @@ CustomTile::traverse( osg::NodeVisitor& nv )
                 // we constructed this tile with an update traversal count of 1 so it would get
                 // here and we could register the tile. Now we can decrement it back to normal.
                 // this MUST be called from the UPDATE traversal.
-                adjustUpdateTraversalCount( -1 );                
+                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+                //adjustUpdateTraversalCount( -1 );
             }
         }
     }
-   
+
     osgTerrain::TerrainTile::traverse( nv );
 }
 

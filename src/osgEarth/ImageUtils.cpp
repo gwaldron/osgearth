@@ -20,6 +20,7 @@
 #include <osgEarth/ImageUtils>
 #include <osg/Notify>
 #include <osg/Texture>
+#include <osg/ImageSequence>
 #include <string.h>
 #include <memory.h>
 
@@ -35,18 +36,33 @@ ImageUtils::cloneImage( const osg::Image* input )
     // exepected results if you are cloning an image that has already been used in GL.
     // Calling clone->dirty() might work, but we are not sure.
 
+    if ( !input ) return 0L;
+
+    if ( input->className() == "Image" )
+    {
 #if 0
-    osg::Image* clone = new osg::Image( *input );
-    clone->dirty();
+        osg::Image* clone = new osg::Image( *input );
+        clone->dirty();
+        return clone;
 #else
-    osg::Image* clone = new osg::Image();
-    clone->allocateImage( input->s(), input->t(), input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
-    clone->setInternalTextureFormat( input->getInternalTextureFormat() );
-    if ( input->isMipmap() )
-        clone->setMipmapLevels( input->getMipmapLevels() );
-    memcpy( clone->data(), input->data(), input->getTotalSizeInBytesIncludingMipmaps() );
+        osg::Image* clone = new osg::Image();
+        clone->allocateImage( input->s(), input->t(), input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
+        clone->setInternalTextureFormat( input->getInternalTextureFormat() );
+        if ( input->isMipmap() )
+            clone->setMipmapLevels( input->getMipmapLevels() );
+        memcpy( clone->data(), input->data(), input->getTotalSizeInBytesIncludingMipmaps() );
+        return clone;
 #endif
-    return clone;
+    }
+
+    else
+    {
+        // handles Image subclasses.
+        osg::Image* clone = osg::clone( input, osg::CopyOp::DEEP_COPY_ALL );
+        clone->dirty();
+        return clone;
+    }
+
 }
 
 bool

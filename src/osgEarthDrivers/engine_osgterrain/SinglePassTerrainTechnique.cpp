@@ -460,6 +460,7 @@ namespace
         CustomColorLayer _layer;
         osg::ref_ptr<const GeoLocator> _locator;
         osg::Vec2Array* _texCoords;
+        osg::Vec2Array* _skirtTexCoords;
         bool _ownsTexCoords;
         RenderLayer() : _texCoords(0L), _ownsTexCoords(false) { }
     };
@@ -538,13 +539,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     surface->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 
     // skirt texture coordinates, if applicable:
-    osg::Vec2Array* skirtTexCoords = 0L;
-    if ( createSkirt )
-    {
-        skirtTexCoords = new osg::Vec2Array();
-        skirtTexCoords->reserve( numVerticesInSkirt );
-        //skirt->setTexCoordArray( 0, skirtTexCoords );
-    }
+    osg::Vec2Array* unifiedSkirtTexCoords = 0L;
 
     // allocate and assign texture coordinates
     osg::Vec2Array* unifiedSurfaceTexCoords = 0L;
@@ -558,7 +553,12 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         unifiedSurfaceTexCoords = new osg::Vec2Array();
         unifiedSurfaceTexCoords->reserve( numVerticesInSurface );
         surface->setTexCoordArray( 0, unifiedSurfaceTexCoords );
-        skirt->setTexCoordArray( 0, skirtTexCoords );
+        if (createSkirt)
+        {
+            unifiedSkirtTexCoords = new osg::Vec2Array();
+            unifiedSkirtTexCoords->reserve( numVerticesInSkirt );        
+            skirt->setTexCoordArray( 0, unifiedSkirtTexCoords );
+        }
     }
 
     else // if ( !_texCompositor->requiresUnitTextureSpace() )
@@ -586,6 +586,9 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                     locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords) );
                 }
 
+                r._skirtTexCoords = new osg::Vec2Array();
+                r._skirtTexCoords->reserve( numVerticesInSkirt );
+
                 r._locator = locator;
                 if ( locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
                 {
@@ -595,7 +598,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 }
 
                 _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords );
-                _texCompositor->assignTexCoordArray( skirt, colorLayer.getUID(), skirtTexCoords );
+                _texCompositor->assignTexCoordArray( skirt, colorLayer.getUID(), r._skirtTexCoords );
                 //surface->setTexCoordArray( renderLayers.size(), r._texCoords );
                 renderLayers.push_back( r );
             }
@@ -723,13 +726,12 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         createSkirt = false;
     
     // New separated skirts.
-    // TODO: this only generates texture coordinates based on the first texture layer.
     if ( createSkirt )
     {        
         // build the verts first:
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
         skirtVerts->reserve( numVerticesInSkirt );
-        
+
         // bottom:
         for( unsigned int c=0; c<numColumns-1; ++c )
         {
@@ -739,14 +741,17 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
             if ( _texCompositor->requiresUnitTextureSpace() )
             {
-                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
             }
             else if ( renderLayers.size() > 0 )
             {
-                const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
-                skirtTexCoords->push_back( tc );
-                skirtTexCoords->push_back( tc );
+                for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                {
+                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                    renderLayers[i]._skirtTexCoords->push_back( tc );
+                    renderLayers[i]._skirtTexCoords->push_back( tc );
+                }
             }
         }
 
@@ -759,14 +764,17 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
             if ( _texCompositor->requiresUnitTextureSpace() )
             {
-                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
             }
             else if ( renderLayers.size() > 0 )
             {
-                const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
-                skirtTexCoords->push_back( tc );
-                skirtTexCoords->push_back( tc );
+                for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                {
+                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                    renderLayers[i]._skirtTexCoords->push_back( tc );
+                    renderLayers[i]._skirtTexCoords->push_back( tc );
+                }
             }
         }
 
@@ -779,14 +787,17 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
             if ( _texCompositor->requiresUnitTextureSpace() )
             {
-                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
             }
             else if ( renderLayers.size() > 0 )
             {
-                const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
-                skirtTexCoords->push_back( tc );
-                skirtTexCoords->push_back( tc );
+                for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                {
+                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                    renderLayers[i]._skirtTexCoords->push_back( tc );
+                    renderLayers[i]._skirtTexCoords->push_back( tc );
+                }
             }
         }
 
@@ -799,14 +810,17 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
             if ( _texCompositor->requiresUnitTextureSpace() )
             {
-                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                skirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
             }
             else if ( renderLayers.size() > 0 )
             {
-                const osg::Vec2& tc = (*renderLayers.begin()->_texCoords)[orig_i];
-                skirtTexCoords->push_back( tc );
-                skirtTexCoords->push_back( tc );
+                for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                {
+                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                    renderLayers[i]._skirtTexCoords->push_back( tc );
+                    renderLayers[i]._skirtTexCoords->push_back( tc );
+                }
             }
         }
 
@@ -1009,7 +1023,14 @@ SinglePassTerrainTechnique::traverse(osg::NodeVisitor& nv)
         if (_terrainTile->getDirty()) _terrainTile->init();
 #endif
 
-        _terrainTile->osg::Group::traverse( nv );        
+        _terrainTile->osg::Group::traverse( nv );    
+
+        // traverse the actual geometry in the tile. this is especially 
+        // important for geometry with ImageSequences and other things
+        // that require an update traversal.
+        if ( _transform.valid() )
+            _transform->accept( nv );
+
         return;
     }
 

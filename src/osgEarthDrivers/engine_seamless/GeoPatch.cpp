@@ -49,7 +49,6 @@ GeoPatch::GeoPatch(const TileKey& key)
     double xMin = extent.xMin(), yMin = extent.yMin(),
         xMax = extent.xMax(), yMax = extent.yMax();
     euler::cubeToFace(xMin, yMin, xMax, yMax, _face);
-    Vec2d faceCoords[4];
     _faceCoords[0][0] = xMin; _faceCoords[0][1] = yMin;
     _faceCoords[1][0] = xMax; _faceCoords[1][1] = yMin;
     _faceCoords[2][0] = xMax; _faceCoords[2][1] = yMax;
@@ -70,7 +69,6 @@ float GeoPatch::getEdgeError(const osg::Vec3& eye, int edge)
 {
     // Hack to get back to face parameters and world coordinates.
     Transform* parent = static_cast<Transform*>(getParent(0));
-    PatchGroup* pgroup = static_cast<PatchGroup*>(parent->getParent(0));
     Matrix worldMat;
     parent->computeLocalToWorldMatrix(worldMat, 0);
     Vec3d worldEye = Vec3d(eye) * worldMat;

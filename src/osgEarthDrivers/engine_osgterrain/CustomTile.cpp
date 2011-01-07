@@ -434,7 +434,7 @@ CustomTile::removeCustomColorLayer( UID layerUID, bool writeLock )
     }
     else
     {
-        ColorLayersByUID::const_iterator i = _colorLayers.find(layerUID);
+        ColorLayersByUID::iterator i = _colorLayers.find(layerUID);
         if ( i != _colorLayers.end() )
         {
             if ( i->second.getMapLayer()->isDynamic() )

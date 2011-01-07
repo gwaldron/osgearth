@@ -60,6 +60,8 @@ public:
             else
                 return ReadResult(new SeamlessEngineNode);
         }
+        else
+			return ReadResult::FILE_NOT_HANDLED;
     }
     
     virtual ReadResult

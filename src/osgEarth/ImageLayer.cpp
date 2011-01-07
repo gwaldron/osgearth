@@ -148,11 +148,8 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options )
 {
     _options = options;
 
-    _chromaKey.set(
-        _options.transparentColor()->r() / 255.0f,
-        _options.transparentColor()->g() / 255.0f,
-        _options.transparentColor()->b() / 255.0f,
-        1.0 );
+    const osg::Vec4ub& ck= *_options.transparentColor();
+    _chromaKey.set( ck.r() / 255.0f, ck.g() / 255.0f, ck.b() / 255.0f, 1.0 );
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
@@ -167,12 +164,12 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options )
 
 struct ApplyChromaKey
 {
-  osg::Vec4f _chromaKey;
-  bool operator()( osg::Vec4f& pixel ) {
-    bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
-    if ( equiv ) pixel.a() = 0.0f;
-    return equiv;
-  }
+    osg::Vec4f _chromaKey;
+    bool operator()( osg::Vec4f& pixel ) {
+        bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
+        if ( equiv ) pixel.a() = 0.0f;
+        return equiv;
+    }
 };
 
 void

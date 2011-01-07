@@ -553,7 +553,7 @@ namespace
 
 SkyNode::SkyNode( Map* map ) :
 _lightPos( osg::Vec3f(0.0f, 1.0f, 0.0f) ),
-_ambientBrightness( 0.2f )
+_ambientBrightness( 0.4f )
 {
     _ellipsoidModel =  map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
     _innerRadius = _ellipsoidModel->getRadiusPolar();

@@ -194,18 +194,12 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 
     if ( ImageUtils::isCompressed(image) )
     {
-        image = ImageUtils::convertToRGB8(image.get());
+        image = ImageUtils::convertToRGBA8( image.get() );
     }
 
     // Apply a transparent color mask if one is specified
-    if ( _options.transparentColor().isSet() && ImageUtils::hasAlphaChannel(image.get()) )
+    if ( _options.transparentColor().isSet() ) //&& ImageUtils::hasAlphaChannel(image.get()) )
     {
-        //TODO - in order to convert this image to RGBA8, we need to upgrade the
-        // caching system to return (const Image*) data. Each TileSource currently has
-        // a MemCache to support mosaicing, but does not return const references and
-        // therefore allows the caller to alter cached data. We need to fix that
-        // before doign anything like this. -gw
-
         if ( !ImageUtils::hasAlphaChannel(image.get()) )
         {
             // if the image doesn't have an alpha channel, we must convert it to

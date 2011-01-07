@@ -51,9 +51,14 @@ namespace osgEarth { namespace Util
         /** Sets the sun's position based on a julian date. */
         void setDateTime( int year, int month, int date, double hoursUTC );
 
+        /** The minimum brightness for non-sunlit areas. */
+        void setAmbientBrigtness( float value );
+        float getAmbientBrightness() const { return _ambientBrightness; }
+
     private:
         float _innerRadius, _outerRadius, _sunDistance;
         osg::Vec3f _lightPos;
+        float _ambientBrightness;
         osg::ref_ptr<osg::Light> _light;
         osg::ref_ptr<osg::Uniform> _lightPosUniform;
         osg::ref_ptr<osg::MatrixTransform> _sunXform;

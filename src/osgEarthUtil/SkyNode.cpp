@@ -365,6 +365,8 @@ namespace
         "uniform float atmos_fSamples; \n"				
 
         "varying vec3 atmos_v3Direction; \n"
+        "varying vec3 atmos_mieColor; \n"
+        "varying vec3 atmos_rayleighColor; \n"
 
         "vec3 vVec; \n"
         "float atmos_fCameraHeight;    // The camera's current height \n"		
@@ -421,8 +423,8 @@ namespace
 
         "    // Finally, scale the Mie and Rayleigh colors and set up the varying \n"			
         "    // variables for the pixel shader \n"	
-        "    gl_TexCoord[0].xyz   = v3FrontColor * atmos_fKmESun; \n"				
-        "    gl_TexCoord[1].xyz = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"							
+        "    atmos_mieColor      = v3FrontColor * atmos_fKmESun; \n"				
+        "    atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"						
         "    atmos_v3Direction = vVec  - v3Pos; \n"			
         "} \n"		
 
@@ -465,8 +467,8 @@ namespace
 
         "  // Finally, scale the Mie and Rayleigh colors and set up the varying \n"
         "  // variables for the pixel shader \n"					
-        "  gl_TexCoord[0].xyz  = v3FrontColor * atmos_fKmESun; \n"			
-        "  gl_TexCoord[1].xyz  = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"						
+        "  atmos_mieColor      = v3FrontColor * atmos_fKmESun; \n"			
+        "  atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"				
         "  atmos_v3Direction = vVec - v3Pos; \n"				
         "} \n"
 
@@ -478,10 +480,10 @@ namespace
         "  atmos_fCameraHeight2 = atmos_fCameraHeight*atmos_fCameraHeight; \n"
         "  gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
         "  if(atmos_fCameraHeight >= atmos_fOuterRadius) { \n"
-        "    SkyFromSpace(); \n"
+        "      SkyFromSpace(); \n"
         "  } \n"
         "  else { \n"
-        "    SkyFromAtmosphere(); \n"
+        "      SkyFromAtmosphere(); \n"
         "  } \n"
         "} \n";
         
@@ -499,6 +501,9 @@ namespace
         "uniform float atmos_fWeather; \n"
 
         "varying vec3 atmos_v3Direction; \n"	
+        "varying vec3 atmos_mieColor; \n"
+        "varying vec3 atmos_rayleighColor; \n"
+
         "const float fExposure = 4.0; \n"
 
         "void main(void) \n"			
@@ -506,7 +511,7 @@ namespace
         "    float fCos = dot(atmos_v3LightPos, atmos_v3Direction) / length(atmos_v3Direction); \n"
         "    float fRayleighPhase = 1.0; \n" // 0.75 * (1.0 + fCos*fCos); \n"
         "    float fMiePhase = 1.5 * ((1.0 - atmos_g2) / (2.0 + atmos_g2)) * (1.0 + fCos*fCos) / fastpow(1.0 + atmos_g2 - 2.0*atmos_g*fCos, 1.5); \n"
-        "    vec3 f4Color = fRayleighPhase * gl_TexCoord[1].xyz + fMiePhase * gl_TexCoord[0].xyz; \n"
+        "    vec3 f4Color = fRayleighPhase * atmos_rayleighColor + fMiePhase * atmos_mieColor; \n"
         "    vec3 color = 1.0 - exp(f4Color * -fExposure); \n"
         "    gl_FragColor.rgb = color.rgb*atmos_fWeather; \n"
         "    gl_FragColor.a = (color.r+color.g+color.b) * 2.0; \n"
@@ -519,7 +524,7 @@ namespace
         "void main() \n"
         "{ \n"
         "    vec3 v3Pos = gl_Vertex.xyz; \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n" //ftransform(); \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
         "    atmos_v3Direction = vec3(0.0,0.0,1.0) - v3Pos; \n"
         "    atmos_v3Direction = atmos_v3Direction/length(atmos_v3Direction); \n"
         "} \n";
@@ -547,7 +552,8 @@ namespace
 //---------------------------------------------------------------------------
 
 SkyNode::SkyNode( Map* map ) :
-_lightPos( osg::Vec3f(0.0f, 1.0f, 0.0f) )
+_lightPos( osg::Vec3f(0.0f, 1.0f, 0.0f) ),
+_ambientBrightness( 0.4f )
 {
     _ellipsoidModel =  map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
     _innerRadius = _ellipsoidModel->getRadiusPolar();
@@ -565,13 +571,21 @@ SkyNode::attach( osg::View* view, int lightNum )
     _light = new osg::Light( lightNum );
     _light->setLightNum(0);
     _light->setPosition( osg::Vec4( _lightPos, 0 ) );
-    _light->setAmbient( osg::Vec4(.2,.2,.2,1) );
+    _light->setAmbient( osg::Vec4(_ambientBrightness,_ambientBrightness,_ambientBrightness,1.0) );
     _light->setDiffuse( osg::Vec4(1,1,1,1) );
     _light->setSpecular( osg::Vec4(0,0,0,1) );
 
     view->setLightingMode( osg::View::SKY_LIGHT );
     view->setLight( _light.get() );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
+}
+
+void
+SkyNode::setAmbientBrigtness( float value )
+{
+    _ambientBrightness = osg::clampBetween( value, 0.0f, 1.0f );
+    if ( _light.valid() )
+        _light->setAmbient( osg::Vec4(_ambientBrightness,_ambientBrightness,_ambientBrightness,1.0f) );
 }
 
 void

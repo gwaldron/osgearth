@@ -148,11 +148,8 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options )
 {
     _options = options;
 
-    _chromaKey.set(
-        _options.transparentColor()->r() / 255.0f,
-        _options.transparentColor()->g() / 255.0f,
-        _options.transparentColor()->b() / 255.0f,
-        1.0 );
+    const osg::Vec4ub& ck= *_options.transparentColor();
+    _chromaKey.set( ck.r() / 255.0f, ck.g() / 255.0f, ck.b() / 255.0f, 1.0 );
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
@@ -167,12 +164,12 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options )
 
 struct ApplyChromaKey
 {
-  osg::Vec4f _chromaKey;
-  bool operator()( osg::Vec4f& pixel ) {
-    bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
-    if ( equiv ) pixel.a() = 0.0f;
-    return equiv;
-  }
+    osg::Vec4f _chromaKey;
+    bool operator()( osg::Vec4f& pixel ) {
+        bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
+        if ( equiv ) pixel.a() = 0.0f;
+        return equiv;
+    }
 };
 
 void
@@ -194,18 +191,12 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 
     if ( ImageUtils::isCompressed(image) )
     {
-        image = ImageUtils::convertToRGB8(image.get());
+        image = ImageUtils::convertToRGBA8( image.get() );
     }
 
     // Apply a transparent color mask if one is specified
-    if ( _options.transparentColor().isSet() && ImageUtils::hasAlphaChannel(image.get()) )
+    if ( _options.transparentColor().isSet() ) //&& ImageUtils::hasAlphaChannel(image.get()) )
     {
-        //TODO - in order to convert this image to RGBA8, we need to upgrade the
-        // caching system to return (const Image*) data. Each TileSource currently has
-        // a MemCache to support mosaicing, but does not return const references and
-        // therefore allows the caller to alter cached data. We need to fix that
-        // before doign anything like this. -gw
-
         if ( !ImageUtils::hasAlphaChannel(image.get()) )
         {
             // if the image doesn't have an alpha channel, we must convert it to

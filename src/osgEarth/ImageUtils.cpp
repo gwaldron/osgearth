@@ -853,7 +853,7 @@ namespace
             else
             {
                 c2 = c0*0.5 + c1*0.5;
-                c3.set(0,0,0,0);
+                c3.set(0,0,0,1);
             }
 
             unsigned int table = *(unsigned int*)p;

@@ -2377,6 +2377,8 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
             zero, earthOrigin, radiusEquator, winpt);
         worldEndDrag = endDrag * viewMatInv;
     }
+
+#if 0
     if (onEarth != endOnEarth)
     {
         std::streamsize oldPrecision = osgEarth::notify(INFO).precision(10);
@@ -2389,6 +2391,8 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
                 << worldEndDrag.z() << "\n";
         osgEarth::notify(INFO).precision(oldPrecision);
     }
+#endif
+
     if (_is_geocentric)
     {
         worldRot.makeRotate(worldStartDrag, worldEndDrag);

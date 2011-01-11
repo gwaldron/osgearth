@@ -20,6 +20,7 @@
 #include <string>
 
 #include <osg/Notify>
+#include <osg/Switch>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
@@ -34,6 +35,44 @@
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
+namespace
+{
+class SwitchHandler : public osgGA::GUIEventHandler
+{
+public:
+    SwitchHandler(char key = 0)
+        : _key(key) {}
+
+    bool handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& /*aa*/, osg::Object* object, osg::NodeVisitor* /*nv*/)
+    {
+        osg::Switch* sw = dynamic_cast<osg::Switch*>(object);
+        if (!sw)
+            return false;
+        if (ea.getHandled())
+            return false;
+        switch(ea.getEventType())
+        {
+        case osgGA::GUIEventAdapter::KEYDOWN:
+            if (ea.getKey() == _key)
+            {
+                for (unsigned i = 0; i < sw->getNumChildren(); ++i)
+                {
+                    bool state = sw->getValue(i);
+                    sw->setValue(i, !state);
+                }
+                return true;
+            }
+            break;
+        default:
+            break;
+        }
+        return false;
+    }
+protected:
+    char _key;
+};
+}
+
 static osg::Node*
 createHelp( osgViewer::View* view )
 {
@@ -46,14 +85,18 @@ createHelp( osgViewer::View* view )
         "arrows: pan\n"
         "1-6 : fly to preset viewpoints \n"
         "shift-right-mouse: locked panning\n"
-        "u : toggle azimuth locking \n";
+        "u : toggle azimuth locking\n"
+        "h : toggle this help\n";
 
     VBox* v = new VBox();
     v->addControl( new LabelControl( "EarthManipulator", osg::Vec4f(1,1,0,1) ) );
     v->addControl( new LabelControl( s_help ) );
     ControlCanvas* cc = new ControlCanvas( view );
     cc->addControl( v );
-    return cc;
+    osg::Switch* sw = new osg::Switch;
+    sw->addChild(cc);
+    sw->setEventCallback(new SwitchHandler('h'));
+    return sw;
 }
 
 // some preset viewpoints.

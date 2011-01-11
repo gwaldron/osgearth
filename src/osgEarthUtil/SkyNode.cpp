@@ -551,7 +551,33 @@ namespace
 
 //---------------------------------------------------------------------------
 
-SkyNode::SkyNode( Map* map ) :
+namespace
+{
+    static const char starvertGLSL[] = 
+        "#version 110					      \n"
+        "uniform float starAlpha;			      \n"
+        "uniform float pointSize;			      \n"
+        "varying vec4 starColor;			      \n"
+        "void main()					      \n"
+        "{						      \n"
+        "    starColor = gl_Color - 1.0 + starAlpha;	      \n"
+        "    gl_PointSize = pointSize;			      \n"
+        "    gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;  \n"
+        "    gl_Position = ftransform();		      \n"
+        "}						      \n";
+
+    static const char starfragGLSL[] = 
+        "#version 110					      \n"
+        "varying vec4 starColor;			      \n"
+        "void main( void )				      \n"
+        "{						      \n"
+        "    gl_FragColor = starColor;			      \n"
+        "}						      \n";
+}
+
+//---------------------------------------------------------------------------
+
+SkyNode::SkyNode( Map* map, const std::string& starFile ) :
 _lightPos( osg::Vec3f(0.0f, 1.0f, 0.0f) ),
 _ambientBrightness( 0.4f )
 {
@@ -560,6 +586,7 @@ _ambientBrightness( 0.4f )
     _outerRadius = _innerRadius * 1.025f;
 
     makeAtmosphere( _ellipsoidModel );
+    makeStars(starFile);
     makeSun();
 }
 
@@ -755,4 +782,142 @@ SkyNode::makeSun()
     g->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
     g->addChild( _sunXform );
     this->addChild( g );
+}
+
+SkyNode::StarData::StarData(std::stringstream &ss)
+{
+  std::getline( ss, name, ',' );
+  std::string buff;
+  std::getline( ss, buff, ',' );
+  std::stringstream(buff) >> right_ascension;
+  std::getline( ss, buff, ',' );
+  std::stringstream(buff) >> declination;
+  std::getline( ss, buff, '\n' );
+  std::stringstream(buff) >> magnitude;
+}
+
+void
+SkyNode::makeStars(const std::string& starFile)
+{
+  _starRadius = 20000.0 * (_sunDistance > 0.0 ? _sunDistance : _outerRadius);
+
+  std::vector<StarData> stars;
+  if( starFile.empty() || parseStarFile(starFile, stars) == false )
+  {
+    if( !starFile.empty() )
+      OE_WARN << "Warning: Unable to use star field defined in file \"" << starFile << "\"." << std::endl;
+
+    return;
+  }
+
+  osg::Node* starNode = buildStarGeometry(stars);
+
+  AddCallbackToDrawablesVisitor visitor(_starRadius);
+  starNode->accept(visitor);
+  starNode->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0, 1.0),osg::StateAttribute::ON);
+
+  osg::Group* g = new osg::Group();
+  g->setCullCallback(new DoNotIncludeInNearFarComputationCallback);
+  g->addChild(starNode);
+  this->addChild(g);
+}
+
+osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
+{
+  osg::ref_ptr<osg::Vec3Array> coords = new osg::Vec3Array;
+  osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array;
+
+  std::vector<StarData>::const_iterator p;
+  for( p = stars.begin(); p != stars.end(); p++ )
+  {
+    osg::Vec3 v = osg::Vec3(0,_starRadius,0) * 
+      osg::Matrix::rotate( p->declination, 1, 0, 0 ) * 
+      osg::Matrix::rotate( p->right_ascension, 0, 0, 1 );
+
+
+    coords->push_back( v );
+
+    double c = 1.0 - (p->magnitude/8.0);
+    colors->push_back(osg::Vec4 (c,c,c,1.0));
+  }
+
+  osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry;
+  geometry->setVertexArray( coords.get() );
+  geometry->setColorArray( colors.get() );
+  geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+  geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
+
+  osg::ref_ptr<osg::StateSet> sset = new osg::StateSet;
+
+  for( int i= 0; i < 8; i++ )
+    sset->setTextureMode( i, GL_TEXTURE_2D, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
+  sset->setMode(  GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
+  sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
+  
+  osg::ref_ptr<osg::Program> program = new osg::Program;
+
+  program->addShader( new osg::Shader(osg::Shader::VERTEX, starvertGLSL ));
+  /*
+  osg::ref_ptr<osg::Shader> vertexShader = new osg::Shader(osg::Shader::VERTEX);
+  vertexShader->loadShaderSourceFromFile("./stars.vert");
+  program->addShader( vertexShader.get() );
+  */
+
+  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, starfragGLSL ));
+  /*
+  osg::ref_ptr<osg::Shader> fragmentShader = new osg::Shader(osg::Shader::FRAGMENT);
+  fragmentShader->loadShaderSourceFromFile("./stars.frag");
+  program->addShader( fragmentShader.get() );
+  */
+
+  sset->setAttributeAndModes( program.get(), osg::StateAttribute::ON );
+
+  _starAlpha = new osg::Uniform( "starAlpha", 1.0f );
+  _starPointSize = new osg::Uniform( "pointSize", 2.4f );
+
+  sset->addUniform( _starAlpha.get() );
+  sset->addUniform( _starPointSize.get() );
+
+  sset->setRenderBinDetails(-10, "RenderBin");
+  sset->setMode( GL_DEPTH, osg::StateAttribute::OFF );
+  sset->setMode( GL_DEPTH_TEST, osg::StateAttribute::ON );
+  geometry->setStateSet( sset.get() );
+
+  osg::Geode* starGeode = new osg::Geode;
+  starGeode->addDrawable( geometry.get() );
+
+  return starGeode;
+}
+
+bool SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars)
+{
+  out_stars.clear();
+
+  std::fstream in(starFile.c_str());
+  if (!in)
+  {
+    OE_WARN <<  "Warning: Unable to open file star file \"" << starFile << "\"" << std::endl;
+    return false ;
+  }
+
+  while (!in.eof())
+  {
+    std::string line;
+
+    std::getline(in, line);
+    if (in.eof())
+      break;
+
+    if (line.empty() || line[0] == '#') 
+      continue;
+
+    std::stringstream ss(line);
+    out_stars.push_back(StarData(ss));
+  }
+
+  in.close();
+
+  return true;
 }

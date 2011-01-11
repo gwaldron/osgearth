@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/StarData>
 
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/FindNode>
@@ -553,7 +554,7 @@ namespace
 
 namespace
 {
-    static const char starvertGLSL[] = 
+    static const char s_starvertGLSL[] = 
         "#version 110					      \n"
         "uniform float starAlpha;			      \n"
         "uniform float pointSize;			      \n"
@@ -566,7 +567,7 @@ namespace
         "    gl_Position = ftransform();		      \n"
         "}						      \n";
 
-    static const char starfragGLSL[] = 
+    static const char s_starfragGLSL[] = 
         "#version 110					      \n"
         "varying vec4 starColor;			      \n"
         "void main( void )				      \n"
@@ -802,12 +803,13 @@ SkyNode::makeStars(const std::string& starFile)
   _starRadius = 20000.0 * (_sunDistance > 0.0 ? _sunDistance : _outerRadius);
 
   std::vector<StarData> stars;
+
   if( starFile.empty() || parseStarFile(starFile, stars) == false )
   {
     if( !starFile.empty() )
-      OE_WARN << "Warning: Unable to use star field defined in file \"" << starFile << "\"." << std::endl;
+      OE_WARN << "Warning: Unable to use star field defined in file \"" << starFile << "\", using default star data." << std::endl;
 
-    return;
+    getDefaultStars(stars);
   }
 
   osg::Node* starNode = buildStarGeometry(stars);
@@ -858,14 +860,14 @@ osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   
   osg::ref_ptr<osg::Program> program = new osg::Program;
 
-  program->addShader( new osg::Shader(osg::Shader::VERTEX, starvertGLSL ));
+  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_starvertGLSL ));
   /*
   osg::ref_ptr<osg::Shader> vertexShader = new osg::Shader(osg::Shader::VERTEX);
   vertexShader->loadShaderSourceFromFile("./stars.vert");
   program->addShader( vertexShader.get() );
   */
 
-  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, starfragGLSL ));
+  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_starfragGLSL ));
   /*
   osg::ref_ptr<osg::Shader> fragmentShader = new osg::Shader(osg::Shader::FRAGMENT);
   fragmentShader->loadShaderSourceFromFile("./stars.frag");
@@ -889,6 +891,17 @@ osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   starGeode->addDrawable( geometry.get() );
 
   return starGeode;
+}
+
+void SkyNode::getDefaultStars(std::vector<StarData>& out_stars)
+{
+  out_stars.clear();
+
+  for(const char **sptr = s_defaultStarData; *sptr; sptr++)
+  {
+    std::stringstream ss(*sptr);
+    out_stars.push_back(StarData(ss));
+  }
 }
 
 bool SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars)

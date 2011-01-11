@@ -25,6 +25,8 @@
 
 #include <cstring>
 
+#define LC "[OSG Driver] "
+
 #define LOG2(X) (::log((double)(X))/::log(2.0))
 
 using namespace osgEarth;
@@ -40,10 +42,11 @@ struct CopyAndSetAlpha
 };
 
 static
-osg::Image* makeRGBA(osg::Image* image)
+osg::Image* makeRGBAandComputeAlpha(osg::Image* image)
 {
     osg::Image* result = new osg::Image();
     result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
+    result->setInternalTextureFormat( GL_RGBA8 );
     ImageUtils::PixelVisitor<CopyAndSetAlpha>().accept( image, result );
     return result;
 }
@@ -61,35 +64,63 @@ public:
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-        setProfile( overrideProfile );
-
-        _url = _options.url().value();
-        if ( !_url.empty() )
+        if ( !overrideProfile )
         {
-            _url = osgEarth::getFullPath( referenceURI, _url );
-            HTTPClient::readImageFile( _url, _image ); //, getOptions() );
+            OE_WARN << LC << "An explicit profile definition is required by the OSG driver." << std::endl;
+            return;
         }
 
-        if ( !_image.valid() )
-            OE_WARN << "[osgEarth::OSG driver] Cannot load data from [" << _url << "]" << std::endl;
+        setProfile( overrideProfile );
+
+        osg::ref_ptr<osg::Image> image;
+
+        std::string url = _options.url().value();
+        if ( !url.empty() )
+        {
+            url = osgEarth::getFullPath( referenceURI, url );
+            HTTPClient::ResultCode code = HTTPClient::readImageFile( url, image );
+            if ( code != HTTPClient::RESULT_OK )
+            {
+                OE_WARN << LC << "Failed to load data from \"" << url << "\", because: " << 
+                    HTTPClient::getResultCodeString(code) << std::endl;
+            }
+        }
+
+        if ( !image.valid() )
+            OE_WARN << LC << "Faild to load data from \"" << url << "\"" << std::endl;
 
         // calculate and store the maximum LOD for which to return data
-        if ( _image.valid() )
+        if ( image.valid() )
         {
-            int minSpan = osg::minimum( _image->s(), _image->t() );
+            int minSpan = osg::minimum( image->s(), image->t() );
             int tileSize = _options.tileSize().value();
             _maxDataLevel = LOG2((minSpan/tileSize)+1);
             //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
 
-            if ( _options.convertLuminanceToRGBA() == true && _image->getPixelFormat() == GL_LUMINANCE )
+            
+            getDataExtents().push_back( DataExtent(overrideProfile->getExtent(), 0, _maxDataLevel) );
+
+            bool computeAlpha =
+                (_options.convertLuminanceToRGBA() == true && image->getPixelFormat() == GL_LUMINANCE) ||
+                (_options.addAlpha() == true && !ImageUtils::hasAlphaChannel( image.get() ) );
+
+            if ( computeAlpha )
             {
-                _image = makeRGBA( _image.get() );
+                image = makeRGBAandComputeAlpha( image.get() );
             }
-            else if ( _options.addAlpha() == true && !ImageUtils::hasAlphaChannel( _image.get() ) )
+            else if ( ImageUtils::hasAlphaChannel( image.get() ))
             {
-                _image = makeRGBA( _image.get() );
+                image = ImageUtils::convertToRGBA8( image.get() );
             }
+            else
+            {
+                image = ImageUtils::convertToRGB8( image.get() );
+            }
+
+            _image = GeoImage( image.get(), getProfile()->getExtent() );
         }
+
+        _extension = osgDB::getFileExtension( url );
     }
     
     //override
@@ -101,43 +132,23 @@ public:
     osg::Image*
     createImage( const TileKey& key, ProgressCallback* progress )
     {
-        if ( !_image.valid() || !getProfile() || key.getLevelOfDetail() > getMaxDataLevel() )
+        if ( !_image.valid() || key.getLevelOfDetail() > getMaxDataLevel() )
             return NULL;
 
-        const GeoExtent& imageEx = getProfile()->getExtent();
-        const GeoExtent& keyEx = key.getExtent();
-
-        double x0r = (keyEx.xMin()-imageEx.xMin())/imageEx.width();
-        double x1r = (keyEx.xMax()-imageEx.xMin())/imageEx.width();
-        double y0r = (keyEx.yMin()-imageEx.yMin())/imageEx.height();
-        double y1r = (keyEx.yMax()-imageEx.yMin())/imageEx.height();
-
-        // first crop out the image part we want:
-        int crop_x = (int)( x0r*(float)_image->s() );
-        int crop_y = (int)( y0r*(float)_image->t() );
-        int crop_s = (int)( (x1r-x0r)*(float)_image->s() );
-        int crop_t = (int)( (y1r-y0r)*(float)_image->t() );
-
-        osg::Image* newImage = new osg::Image();
-        newImage->setAllocationMode( osg::Image::USE_NEW_DELETE );
-        newImage->allocateImage( crop_s, crop_t, 1, _image->getPixelFormat(), _image->getDataType(), _image->getPacking() );
-        newImage->setInternalTextureFormat( _image->getInternalTextureFormat());
-        for( int row=crop_y; row<crop_y+crop_t; row++ )
-            memcpy( newImage->data(0, row-crop_y), _image->data(crop_x, row), crop_s * _image->getPixelSizeInBits() / 8 );
-
-        return newImage;
+        GeoImage cropped = _image.crop( key.getExtent(), true, getPixelsPerTile(), getPixelsPerTile() );
+        return cropped.valid() ? cropped.takeImage() : 0L;
     }
 
     std::string
     getExtension() const 
     {
-        return osgDB::getFileExtension( _url );
+        return _extension;
     }
 
 private:
-    std::string _url;
+    std::string _extension;
     int _maxDataLevel;
-    osg::ref_ptr<osg::Image> _image;
+    GeoImage _image;
     const OSGOptions _options;
 };
 

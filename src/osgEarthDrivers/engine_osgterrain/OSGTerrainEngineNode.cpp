@@ -52,7 +52,8 @@ struct OSGTerrainEngineNodeMapCallbackProxy : public MapCallback
 //---------------------------------------------------------------------------
 
 //static
-static OpenThreads::ReentrantMutex s_engineNodeCacheMutex;
+//static OpenThreads::ReentrantMutex s_engineNodeCacheMutex;
+static Threading::ReadWriteMutex s_engineNodeCacheMutex;
 //Caches the MapNodes that have been created
 typedef std::map<UID, osg::observer_ptr<OSGTerrainEngineNode> > EngineNodeCache;
 
@@ -66,7 +67,7 @@ EngineNodeCache& getEngineNodeCache()
 void
 OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* engineNode)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    Threading::ScopedWriteLock exclusiveLock( s_engineNodeCacheMutex );
     getEngineNodeCache()[engineNode->_uid] = engineNode;
     OE_DEBUG << LC << "Registered engine " << engineNode->_uid << std::endl;
 }
@@ -74,7 +75,7 @@ OSGTerrainEngineNode::registerEngine(OSGTerrainEngineNode* engineNode)
 void
 OSGTerrainEngineNode::unregisterEngine( UID uid )
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    Threading::ScopedWriteLock exclusiveLock( s_engineNodeCacheMutex );
     EngineNodeCache::iterator k = getEngineNodeCache().find( uid );
     if (k != getEngineNodeCache().end())
     {
@@ -86,7 +87,7 @@ OSGTerrainEngineNode::unregisterEngine( UID uid )
 OSGTerrainEngineNode*
 OSGTerrainEngineNode::getEngineByUID( UID uid )
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(s_engineNodeCacheMutex);
+    Threading::ScopedReadLock sharedLock( s_engineNodeCacheMutex );
     EngineNodeCache::const_iterator k = getEngineNodeCache().find( uid );
     if (k != getEngineNodeCache().end()) return k->second.get();
     return 0;
@@ -210,6 +211,9 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 
     // install a layer callback for processing further map actions:
     map->addMapCallback( new OSGTerrainEngineNodeMapCallbackProxy(this) );
+
+    // create a tile data loader.
+    _tileDataLoader = new TileDataLoader( map, _terrain );
 
     // register me.
     registerEngine( this );

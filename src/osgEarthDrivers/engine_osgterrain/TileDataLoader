@@ -1,0 +1,102 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ENGINE_TILE_DATA_LOADER
+#define OSGEARTH_ENGINE_TILE_DATA_LOADER 1
+
+#include <osgEarth/Map>
+#include <osgEarth/TaskService>
+#include "CustomTile"
+#include "OSGTileFactory"
+
+using namespace osgEarth;
+
+struct ExpiringProgressCallback : public ProgressCallback
+{
+    ExpiringProgressCallback( TaskService* service ) : _service(service) { }
+    bool reportProgress(double current, double total);
+    int _stamp;
+    osg::Timer_t _timestamp;
+    TaskService* _service;
+};
+
+/** A Tile job loads data for one key and makes a tile out of it. */
+struct TileJob : public osg::Referenced
+{
+    TileJob(const TileKey& key, const MapFrame& mapf, OSGTileFactory* factory, TaskService* service);
+
+    void start( ProgressCallback* progress );
+    bool isCompleted() const;
+    bool isSuccessful() const;
+    double runTime() const;
+    void populateTile( CustomTile* tile );
+
+    TileKey _key;
+    const MapFrame& _mapf;
+    TaskRequestList _requests;
+    osg::ref_ptr<OSGTileFactory> _factory;
+    osg::ref_ptr<TaskService> _service;
+    osg::Timer_t _startTime;
+};
+
+/** A Tile Group Job loads the 4 subtiles of the specified key and puts them in a group. */
+struct TileGroupJob : public osg::Referenced
+{
+    TileGroupJob(const TileKey& key, const Map* map, OSGTileFactory* factory, TaskService* service );
+
+    void start();
+    bool isCompleted() const;
+    bool isSuccessful() const;
+    double runTime() const;
+
+    MapFrame _mapf;
+    osg::ref_ptr<TileJob> _tileJobs[4];
+    osg::ref_ptr<ExpiringProgressCallback> _progress;
+    osg::Timer_t _startTime;
+};
+
+/** A Ticket matchs up a tile group job with a timestamp. */
+struct TileLoaderTicket {
+    osg::ref_ptr<TileGroupJob> _job;
+    double                     _timestamp;
+};
+typedef std::map<TileKey, TileLoaderTicket> TileLoaderTickets;
+
+
+class TileDataLoader : public osg::Referenced
+{
+public:
+    TileDataLoader( const Map* map, CustomTerrain* terrain );
+
+    void setStamp( int stamp );
+
+    osgDB::ReaderWriter::ReadResult loadSubTileGroup( const TileKey& key );
+
+private:
+    const Map* _map;
+    TileLoaderTickets _tickets;
+    Threading::ReadWriteMutex _ticketsMutex;
+    osg::ref_ptr<TaskService> _service;
+    Threading::Mutex _serviceStampMutex;
+    CustomTerrain* _terrain;
+    int _stamp;
+
+    osg::Node* prepareTile( CustomTile* tile, UID engineID );
+};
+
+#endif // OSGEARTH_ENGINE_TILE_DATA_LOADER

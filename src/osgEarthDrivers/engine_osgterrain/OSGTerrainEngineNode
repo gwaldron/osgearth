@@ -27,6 +27,7 @@
 
 #include "OSGTerrainOptions"
 #include "OSGTileFactory"
+#include "TileDataLoader"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -40,6 +41,9 @@ public:
     OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Node(osgEarth,OSGTerrainEngineNode);
     ~OSGTerrainEngineNode();
+
+public:
+    TileDataLoader* getTileDataLoader() const { return _tileDataLoader.get(); }
 
 public: // TerrainEngineNode overrides    
     virtual void preInitialize( const Map* map, const TerrainOptions& options );
@@ -81,12 +85,12 @@ private:
     
 private:
     osg::ref_ptr<OSGTileFactory> _tileFactory;
-    //osg::ref_ptr<TextureCompositor> _texCompositor;
     class CustomTerrain* _terrain;
     UID _uid;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
     Revision _shaderLibRev;
     osg::ref_ptr<TaskServiceManager> _taskServiceMgr;
+    osg::ref_ptr<TileDataLoader> _tileDataLoader;
 
     // store a separate map frame for each of the traversal threads
     MapFrame* _update_mapf; // map frame for the main/update traversal thread

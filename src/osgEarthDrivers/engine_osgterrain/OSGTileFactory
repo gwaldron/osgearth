@@ -110,7 +110,10 @@ public:
     */
     std::string createURI( unsigned int id, const TileKey& key );
 
-
+    /**
+     * Wraps a tile in a paged LOD and setup up all its parameters
+     */
+    osg::Node* prepareTile( CustomTile* tile, CustomTerrain* terrain, const MapInfo& mapInfo, bool wrapInPagedLOD );
 
     bool createValidGeoImage(
         ImageLayer* layer,

@@ -25,9 +25,11 @@
 #include <OpenThreads/Condition>
 #include <OpenThreads/ReentrantMutex>
 #include <osg/Referenced>
+#include <osg/Timer>
 #include <queue>
 #include <list>
 #include <string>
+#include <map>
 
 namespace osgEarth
 {
@@ -69,6 +71,9 @@ namespace osgEarth
         const std::string& getName() const { return _name; }
         void setName( const std::string& name ) { _name = name; }
         void reset() { _result = 0L; }
+        osg::Timer_t startTime() const { return _startTime; }
+        osg::Timer_t endTime() const { return _endTime; }
+        double runTime() const { return osg::Timer::instance()->delta_s(_startTime,_endTime); }
     protected:
         float _priority;
         volatile State _state;
@@ -76,9 +81,13 @@ namespace osgEarth
         osg::ref_ptr<osg::Referenced> _result;
         osg::ref_ptr< ProgressCallback > _progress;
         std::string _name;
+        osg::Timer_t _startTime;
+        osg::Timer_t _endTime;
     };
 
     typedef std::list< osg::ref_ptr<TaskRequest> > TaskRequestList;
+
+    typedef std::multimap< float, osg::ref_ptr<TaskRequest> > TaskRequestPriorityMap;
 
     class TaskRequestQueue : public osg::Referenced
     {
@@ -97,7 +106,8 @@ namespace osgEarth
         unsigned int getNumRequests() const;
 
     private:
-        TaskRequestList _requests;
+        TaskRequestPriorityMap _requests;
+        //TaskRequestList _requests;
         OpenThreads::Mutex _mutex;
         OpenThreads::Condition _cond;
         volatile bool _done;

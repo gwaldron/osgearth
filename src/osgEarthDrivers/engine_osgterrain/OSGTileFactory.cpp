@@ -585,7 +585,7 @@ OSGTileFactory::createPlaceholderTile(const MapFrame& mapf,
         plod->setRange( 0, 0, FLT_MAX );
     }
 
-#if USE_FILELOCATIONCALLBACK
+#if 0 //USE_FILELOCATIONCALLBACK
     osgDB::Options* options = new osgDB::Options;
     options->setFileLocationCallback( new FileLocationCallback);
     plod->setDatabaseOptions( options );
@@ -928,6 +928,86 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     return result;
 }
 
+osg::Node*
+OSGTileFactory::prepareTile( CustomTile* tile, CustomTerrain* terrain, const MapInfo& mapInfo, bool wrapInPagedLOD )
+{
+    tile->setTerrainTechnique( osg::clone(terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
+    tile->setVerticalScale( _terrainOptions.verticalScale().value() );
+    //tile->setLocator( locator.get() );
+    tile->setRequiresNormals( true );
+    tile->setDataVariance(osg::Object::DYNAMIC);
+
+    osg::BoundingSphere bs = tile->getBound();
+    double max_range = 1e10;
+    double radius = bs.radius();
+    double min_range = radius * _terrainOptions.minTileRangeFactor().get();
+
+    // a skirt hides cracks when transitioning between LODs:
+    //hf->setSkirtHeight(radius * _terrainOptions.heightFieldSkirtRatio().get() );
+
+    // for now, cluster culling does not work for CUBE rendering
+    if ( mapInfo.isGeocentric() && !mapInfo.isCube() )
+    {
+        //TODO:  Work on cluster culling computation for cube faces
+        osg::ClusterCullingCallback* ccc = createClusterCullingCallback(tile, tile->getLocator()->getEllipsoidModel() );
+        tile->setCullCallback( ccc );
+    }
+
+    // Wait until now, when the tile is fully baked, to assign the terrain to the tile.
+    // Placeholder tiles might try to locate this tile as an ancestor, and access its layers
+    // and locators...so they must be intact before making this tile available via setTerrain.
+    //
+    // If there's already a placeholder tile registered, this will be ignored. If there isn't,
+    // this will register the new tile.
+    tile->setTerrain( terrain );
+    terrain->registerTile( tile );
+
+    // Set the tile's revision to the current terrain revision
+    tile->setTerrainRevision( static_cast<CustomTerrain*>(terrain)->getRevision() );
+
+    tile->setTerrainRevision( terrain->getRevision() );
+
+    osg::Node* result = 0L;
+
+    if (wrapInPagedLOD)
+    {
+        // create a PLOD so we can keep subdividing:
+        osg::PagedLOD* plod = new osg::PagedLOD();
+        plod->setCenter( bs.center() );
+        plod->addChild( tile, min_range, max_range );
+
+        std::string filename = createURI( _engineId, tile->getKey() );
+
+        //Only add the next tile if it hasn't been blacklisted
+        bool isBlacklisted = osgEarth::Registry::instance()->isBlacklisted( filename );
+        if (!isBlacklisted && tile->getKey().getLevelOfDetail() < (unsigned int)getTerrainOptions().maxLOD().value() ) //&& validData )
+        {
+            plod->setFileName( 1, filename );
+            plod->setRange( 1, 0.0, min_range );
+        }
+        else
+        {
+            plod->setRange( 0, 0, FLT_MAX );
+        }
+
+#if USE_FILELOCATIONCALLBACK
+        osgDB::Options* options = new osgDB::Options;
+        options->setFileLocationCallback( new FileLocationCallback() );
+        plod->setDatabaseOptions( options );
+#endif
+        result = plod;
+
+        if ( tile->getUseLayerRequests() )
+            result->addCullCallback( new PopulateTileDataCallback( _cull_thread_mapf ) );
+    }
+    else
+    {
+        result = tile;
+    }
+
+    return result;
+}
+
 bool
 OSGTileFactory::createLodBlendedImage(UID layerUID, const TileKey& key,
                                       const osg::Image* tileImage,
@@ -977,6 +1057,9 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
                                  const TileKey& key,
                                  ProgressCallback* progress)
 {
+    if ( !layer )
+        return 0L;
+
     GeoImage geoImage;
 
     //If the key is valid, try to get the image from the MapLayer

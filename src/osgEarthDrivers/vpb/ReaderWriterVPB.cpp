@@ -21,6 +21,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/FileUtils>
+#include <osgEarth/ThreadingUtils>
 
 #include <osg/Notify>
 #include <osg/io_utils>
@@ -352,15 +353,26 @@ public:
 
         std::string filename = createTileName(level, tile_x, tile_y);
         
+        bool foundInBlacklist = false;
         {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
-            if (_blacklistedFilenames.count(filename)==1)
-            {
-                OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
-                insertTile(tileID, 0);
-                return 0;
-            }
+            Threading::ScopedReadLock sharedLock( _blacklistMutex );
+            foundInBlacklist = _blacklistedFilenames.count(filename) == 1;
         }
+        if ( foundInBlacklist )
+        {
+            OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
+            insertTile(tileID, 0);
+            return 0;
+        }
+
+        //    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+        //    if (_blacklistedFilenames.count(filename)==1)
+        //    {
+        //        OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
+        //        insertTile(tileID, 0);
+        //        return 0;
+        //    }
+        //}
         
 
         osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
@@ -411,8 +423,12 @@ public:
             if ( ! HTTPClient::isRecoverable( result ) )
             {
                 //OE_INFO<<"Black listing : "<< filename<< " (" << result << ")" << std::endl;
-                OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
-                _blacklistedFilenames.insert(filename);
+
+                //OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+                //_blacklistedFilenames.insert(filename);
+
+                Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
+                _blacklistedFilenames.insert( filename );
             }
         }
         
@@ -421,7 +437,8 @@ public:
     
     void insertTile(const osgTerrain::TileID& tileID, osgTerrain::TerrainTile* tile)
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_tileMapMutex);
+        Threading::ScopedWriteLock exclusiveLock( _tileMapMutex );
+        //OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_tileMapMutex);
 
         if ( _tileMap.find(tileID) == _tileMap.end() )
         {
@@ -452,13 +469,17 @@ public:
 
     osgTerrain::TerrainTile* findTile(const osgTerrain::TileID& tileID, bool insertBlankTileIfNotFound = false)
     {
+        // read with a shared lock
         {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_tileMapMutex);
+            Threading::ScopedReadLock sharedLock( _tileMapMutex );
+            //OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_tileMapMutex);
             TileMap::iterator itr = _tileMap.find(tileID);
             if (itr != _tileMap.end()) return itr->second.get();
         }
 
-        if (insertBlankTileIfNotFound) insertTile(tileID, 0);
+        // upgrade lock and write:
+        if (insertBlankTileIfNotFound) 
+            insertTile(tileID, 0);
 
         return 0;
     }
@@ -477,14 +498,16 @@ public:
     
     typedef std::map<osgTerrain::TileID, osg::ref_ptr<osgTerrain::TerrainTile> > TileMap;
     TileMap _tileMap;
-    OpenThreads::Mutex _tileMapMutex;
+    Threading::ReadWriteMutex _tileMapMutex;
+    //OpenThreads::Mutex _tileMapMutex;
     
     typedef std::list<osgTerrain::TileID> TileIDList;
     TileIDList _tileFIFO;
     
     typedef std::set<std::string> StringSet;
     StringSet _blacklistedFilenames;
-    OpenThreads::Mutex _blacklistMutex;
+    Threading::ReadWriteMutex _blacklistMutex;
+    //OpenThreads::Mutex _blacklistMutex;
     
 };
 
@@ -514,8 +537,7 @@ public:
 		}
     }
     
-	osg::Image* createImage( const TileKey& key,
-		ProgressCallback* progress)
+	osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
 	{
 		osg::Image * ret = NULL;
 		//TODO:  Make VPB driver use progress callback

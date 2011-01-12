@@ -150,7 +150,6 @@ FeatureTileSource::setFeatureSource( FeatureSource* source )
 osg::Image*
 FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
 {
-    OE_NOTICE << "FeatureTileSource::createImage " << key.str() << ": " << key.getProfile()->toString() << std::endl;
     if ( !_features.valid() || !_features->getFeatureProfile() )
         return 0L;
 

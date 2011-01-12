@@ -20,6 +20,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/TileSource>
 #include <OpenThreads/ScopedLock>
+#include <iterator>
 
 using namespace osgEarth;
 using namespace OpenThreads;

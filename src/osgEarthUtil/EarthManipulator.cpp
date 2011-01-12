@@ -25,6 +25,8 @@
 #include <osgViewer/View>
 #include <iomanip>
 
+#include <osg/io_utils>
+
 #define LC "[EarthManip] "
 
 using namespace osgEarth::Util;
@@ -2382,13 +2384,20 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
     osg::Vec3d worldEndDrag;
     osg::Quat worldRot;
     bool endOnEarth = screenToWorld(x, y, view, worldEndDrag);
-    if (! endOnEarth)
+    if (endOnEarth)
+    {
+        // OE_WARN << "end drag: " << worldEndDrag << "\n";
+    }
+    else
     {
         Vec3d earthOrigin = zero * viewMat;
         const osg::Vec3d endDrag = calcTangentPoint(
             zero, earthOrigin, radiusEquator, winpt);
         worldEndDrag = endDrag * viewMatInv;
+        OE_INFO << "tangent: " << worldEndDrag << "\n";
     }
+
+#if 0
     if (onEarth != endOnEarth)
     {
         std::streamsize oldPrecision = osgEarth::notify(INFO).precision(10);
@@ -2401,32 +2410,48 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
                 << worldEndDrag.z() << "\n";
         osgEarth::notify(INFO).precision(oldPrecision);
     }
+#endif
+
     if (_is_geocentric)
     {
         worldRot.makeRotate(worldStartDrag, worldEndDrag);
         // Move the camera by the inverse rotation
         Quat cameraRot = worldRot.conj();
-        Vec3d center = cameraRot * _center;
-        Quat centerRotation = _centerRotation * cameraRot;
-        Matrixd Me = Matrixd::rotate(centerRotation);
-        Me.setTrans(center);
+        // Derive manipulator parameters from the camera matrix. We
+        // can't use _center, _centerRotation, and _rotation directly
+        // from the manipulator because they may have been updated
+        // already this frame while the camera view matrix,
+        // used to do the terrain intersection, has not. This happens
+        // when several mouse movement events arrive in a frame. there
+        // will be bad stuttering artifacts if we use the updated
+        // manipulator parameters.
+        Matrixd Mmanip = Matrixd::translate(_offset_x, _offset_y, -_distance)
+            * viewMatInv;
+        Vec3d center = Mmanip.getTrans();
+        Quat centerRotation = makeCenterRotation(center);
+        Matrixd Mrotation = (Mmanip * Matrixd::translate(center * -1)
+                             * Matrixd::rotate(centerRotation.inverse()));
+        Matrixd Me = Matrixd::rotate(centerRotation)
+            * Matrixd::translate(center) * Matrixd::rotate(cameraRot);
         // In order for the Viewpoint settings to make sense, the
-        // inverse camera matrix must have an x axis parallel to the
+        // inverse camera matrix must not have a roll component, which
+        // implies that its x axis remains parallel to the
         // z = 0 plane. The strategy for doing that is different if
         // the azimuth is locked.
-        // Actually, the part of the camera rotation defined by
+        // Additionally, the part of the camera rotation defined by
         // _centerRotation must be oriented with the local frame of
         // _center on the ellipsoid. For the purposes of the drag
         // motion this is nearly identical to the frame obtained by
         // the trackball motion, so we just fix it up at the end.
         if (_settings->getLockAzimuthWhilePanning())
         {
-            // The camera now needs to be rotated that _centerRotation
+            // The camera needs to be rotated that _centerRotation
             // is a rotation only around the global Z axis and the
             // camera frame X axis. We don't change _rotation, so that
             // azimuth and pitch will stay constant, but the drag must
-            // still look correct, so the rotation must be around the
-            // point that was dragged i.e., worldEndDrag.
+            // still be correct i.e.,  the point dragged must remain
+            // under the cursor. Therefore the rotation must be around the
+            // point that was dragged, worldEndDrag.
             //
             // Rotate Me so that its x axis is parallel to the z=0
             // plane. 
@@ -2506,7 +2531,7 @@ EarthManipulator::drag(double dx, double dy, osg::View* theView)
             // component, but it's useful for debugging.
             Matrixd headMat
                 = (Matrixd::translate(-_offset_x, -_offset_y, _distance)
-		   * Matrixd::rotate(_rotation));
+		   * Mrotation);
             headMat = headMat * Matrixd::inverse(m);
             _rotation = headMat.getRotate();
             recalculateLocalPitchAndAzimuth();

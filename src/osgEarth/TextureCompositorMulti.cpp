@@ -201,7 +201,18 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
     osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, _lodBlending );
     if ( tex )
     {
-        tex->setImage( const_cast<osg::Image*>(preparedImage.getImage()) );
+        osg::Image* image = preparedImage.getImage();
+        tex->setImage( image );
+
+        if (ImageUtils::isPowerOfTwo( image ))
+        {
+            if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
+                tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+        }
+        else if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR )
+        {
+            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+        }
 
         if ( _lodBlending )
         {

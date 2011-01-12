@@ -75,13 +75,20 @@ namespace osgEarth
         optional<ProfileOptions>& profile() { return _profileOptions; }
         const optional<ProfileOptions>& profile() const { return _profileOptions; }
 
+        optional<bool>& enableL2Cache() { return _enableL2Cache; }
+        const optional<bool>& enableL2Cache() const { return _enableL2Cache; }
+
     public:
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() )
             : DriverConfigOptions( options ),
               _tileSize( 256 ),
               _noDataValue( (float)SHRT_MIN ),
               _noDataMinValue( -FLT_MAX ),
-              _noDataMaxValue( FLT_MAX ) { fromConfig( _conf ); }
+              _noDataMaxValue( FLT_MAX ),
+              _enableL2Cache( true )
+        { 
+            fromConfig( _conf );
+        }
 
     public:
         virtual Config getConfig() const {
@@ -91,6 +98,7 @@ namespace osgEarth
             conf.updateIfSet( "nodata_min", _noDataMinValue );
             conf.updateIfSet( "nodata_max", _noDataMaxValue );
             conf.updateIfSet( "blacklist_filename", _blacklistFilename);
+            conf.updateIfSet( "enable_l2_cache", _enableL2Cache );
             conf.updateObjIfSet( "profile", _profileOptions );
             return conf;
         }
@@ -108,6 +116,7 @@ namespace osgEarth
             conf.getIfSet( "nodata_min", _noDataMinValue );
             conf.getIfSet( "nodata_max", _noDataMaxValue );
             conf.getIfSet( "blacklist_filename", _blacklistFilename);
+            conf.getIfSet( "enable_l2_cache", _enableL2Cache );
             conf.getObjIfSet( "profile", _profileOptions );
 
             // special handling of default tile size:
@@ -121,6 +130,7 @@ namespace osgEarth
         optional<float> _noDataValue, _noDataMinValue, _noDataMaxValue;
         optional<ProfileOptions> _profileOptions;
         optional<std::string> _blacklistFilename;
+        optional<bool> _enableL2Cache;
     };
 
     typedef std::vector<TileSourceOptions> TileSourceOptionsVector;

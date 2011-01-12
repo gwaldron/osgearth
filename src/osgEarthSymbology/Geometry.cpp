@@ -19,6 +19,7 @@
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GEOS>
 #include <algorithm>
+#include <iterator>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;

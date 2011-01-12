@@ -31,6 +31,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <iterator>
 
 using namespace osgEarth;
 

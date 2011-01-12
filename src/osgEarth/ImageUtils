@@ -141,6 +141,17 @@ namespace osgEarth
          */
         static osg::Image* createEmptyImage();
 
+        /**
+         * Returns true if it is possible to convert the image to the specified 
+         * format/datatype specification.
+         */
+        static bool canConvert(const osg::Image* image, GLenum pixelFormat, GLenum dataType);
+
+        /**
+         * Converts an image to the specified format.
+         */
+        static osg::Image* convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType);
+
 		/**
 		 *Converts the given image to RGB8
 		 */

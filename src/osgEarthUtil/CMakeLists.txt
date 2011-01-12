@@ -20,6 +20,7 @@ SET(LIB_PUBLIC_HEADERS
     ObjectLocator
     OceanSurfaceNode
     SkyNode
+    StarData
     Viewpoint
     WMS
 )

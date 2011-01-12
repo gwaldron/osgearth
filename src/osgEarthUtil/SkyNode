@@ -37,7 +37,7 @@ namespace osgEarth { namespace Util
     {
     public:
         /** Creates a new sky node based on the provided map. */        
-        SkyNode( Map* map );
+        SkyNode( Map* map, const std::string& starFile="" );
 
         /** Attached this sky node to a view (placing a sky light). */
         void attach( osg::View* view, int lightNum =0 );
@@ -56,17 +56,35 @@ namespace osgEarth { namespace Util
         float getAmbientBrightness() const { return _ambientBrightness; }
 
     private:
-        float _innerRadius, _outerRadius, _sunDistance;
+        struct StarData
+        {
+            std::string name;
+            double right_ascension;
+            double declination;
+            double magnitude;
+            
+            StarData() { }
+            StarData( std::stringstream &ss );
+        };
+
+        float _innerRadius, _outerRadius, _sunDistance, _starRadius;
         osg::Vec3f _lightPos;
         float _ambientBrightness;
         osg::ref_ptr<osg::Light> _light;
         osg::ref_ptr<osg::Uniform> _lightPosUniform;
         osg::ref_ptr<osg::MatrixTransform> _sunXform;
+        osg::ref_ptr<osg::Uniform> _starAlpha;
+        osg::ref_ptr<osg::Uniform> _starPointSize;
 
         osg::ref_ptr< const osg::EllipsoidModel > _ellipsoidModel;
 
         void makeAtmosphere( const osg::EllipsoidModel* );
         void makeSun();
+
+        void makeStars(const std::string& starFile);
+        osg::Geode* buildStarGeometry(const std::vector<StarData>& stars);
+        void getDefaultStars(std::vector<StarData>& out_stars);
+        bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
     };
 
 } } // namespace osgEarth::Util

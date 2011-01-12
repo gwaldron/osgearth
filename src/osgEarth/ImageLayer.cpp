@@ -189,13 +189,13 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
         }
     }
 
-    if ( ImageUtils::isCompressed(image) )
+    if ( ImageUtils::isCompressed(image.get()) && ImageUtils::canConvert(image.get(), GL_RGBA, GL_UNSIGNED_BYTE) )
     {
         image = ImageUtils::convertToRGBA8( image.get() );
     }
 
     // Apply a transparent color mask if one is specified
-    if ( _options.transparentColor().isSet() ) //&& ImageUtils::hasAlphaChannel(image.get()) )
+    if ( _options.transparentColor().isSet() )
     {
         if ( !ImageUtils::hasAlphaChannel(image.get()) )
         {

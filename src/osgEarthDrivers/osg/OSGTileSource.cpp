@@ -97,6 +97,9 @@ public:
             _maxDataLevel = LOG2((minSpan/tileSize)+1);
             //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
 
+            
+            getDataExtents().push_back( DataExtent(overrideProfile->getExtent(), 0, _maxDataLevel) );
+
             bool computeAlpha =
                 (_options.convertLuminanceToRGBA() == true && image->getPixelFormat() == GL_LUMINANCE) ||
                 (_options.addAlpha() == true && !ImageUtils::hasAlphaChannel( image.get() ) );

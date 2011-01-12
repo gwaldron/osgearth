@@ -171,9 +171,15 @@ public:
 
         if ( linesToBuffer.size() > 0 )
         {
+            //We are buffering in the features native extent, so we need to use the transform extent to get the proper "resolution" for the image
+            GeoExtent transformedExtent = imageExtent.transform(context.profile()->getSRS());
+
+            double trans_xf = (double)image->s() / transformedExtent.width();
+            double trans_yf = (double)image->t() / transformedExtent.height();
+
             // resolution of the image (pixel extents):
-            double xres = 1.0/xf;
-            double yres = 1.0/yf;
+            double xres = 1.0/trans_xf;
+            double yres = 1.0/trans_yf;
 
             // downsample the line data so that it is no higher resolution than to image to which
             // we intend to rasterize it. If you don't do this, you run the risk of the buffer 

@@ -24,6 +24,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometrySymbol
     GEOS
     GeometryRasterizer
+    LineFunctor
     MarkerSymbolizer
     MarkerSymbol
     MeshSubdivider

@@ -71,67 +71,17 @@ _terrainTileInitialized(false),
 _texCompositor( texCompositor )
 {
     this->setThreadSafeRefUnref( true );
-    setFilterBias(0);
-    setFilterWidth(0.1);
-    setFilterMatrixAs(GAUSSIAN);   
 }
 
 MultiPassTerrainTechnique::MultiPassTerrainTechnique(const MultiPassTerrainTechnique& mt,const osg::CopyOp& copyop) :
 TerrainTechnique(mt,copyop)
 {
-    setFilterBias(mt._filterBias);
-    setFilterWidth(mt._filterWidth);
-    setFilterMatrix(mt._filterMatrix);
     _terrainTileInitialized = mt._terrainTileInitialized;
     _texCompositor = mt._texCompositor.get();
 }
 
 MultiPassTerrainTechnique::~MultiPassTerrainTechnique()
 {
-}
-
-void MultiPassTerrainTechnique::setFilterBias(float filterBias)
-{
-    _filterBias = filterBias;
-    if (!_filterBiasUniform) _filterBiasUniform = new osg::Uniform("filterBias",_filterBias);
-    else _filterBiasUniform->set(filterBias);
-}
-
-void MultiPassTerrainTechnique::setFilterWidth(float filterWidth)
-{
-    _filterWidth = filterWidth;
-    if (!_filterWidthUniform) _filterWidthUniform = new osg::Uniform("filterWidth",_filterWidth);
-    else _filterWidthUniform->set(filterWidth);
-}
-
-void MultiPassTerrainTechnique::setFilterMatrix(const osg::Matrix3& matrix)
-{
-    _filterMatrix = matrix; 
-    if (!_filterMatrixUniform) _filterMatrixUniform = new osg::Uniform("filterMatrix",_filterMatrix);
-    else _filterMatrixUniform->set(_filterMatrix);
-}
-
-void MultiPassTerrainTechnique::setFilterMatrixAs(FilterType filterType)
-{
-    switch(filterType)
-    {
-        case(SMOOTH):
-            setFilterMatrix(osg::Matrix3(0.0, 0.5/2.5, 0.0,
-                                         0.5/2.5, 0.5/2.5, 0.5/2.5,
-                                         0.0, 0.5/2.5, 0.0));
-            break;
-        case(GAUSSIAN):
-            setFilterMatrix(osg::Matrix3(0.0, 1.0/8.0, 0.0,
-                                         1.0/8.0, 4.0/8.0, 1.0/8.0,
-                                         0.0, 1.0/8.0, 0.0));
-            break;
-        case(SHARPEN):
-            setFilterMatrix(osg::Matrix3(0.0, -1.0, 0.0,
-                                         -1.0, 5.0, -1.0,
-                                         0.0, -1.0, 0.0));
-            break;
-
-    };
 }
 
 void
@@ -942,37 +892,32 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
     stateset->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
 }
 
-
-void MultiPassTerrainTechnique::update(osgUtil::UpdateVisitor* uv)
-{
-    if (_terrainTile) 
-        _terrainTile->osg::Group::traverse(*uv);
-    
-    // traverse the actual geometry in the tile. this is especially 
-    // important for geometry with ImageSequences and other things
-    // that require an update traversal.
-    if ( _transform.valid() )
-        _transform->accept( *uv );
-}
-
-
-void MultiPassTerrainTechnique::cull(osgUtil::CullVisitor* cv)
-{
-#if 0
-    if (buffer._terrainTile) buffer._terrainTile->osg::Group::traverse(*cv);
-#else
-    if (_transform.valid())
-    {
-        _transform->accept(*cv);
-    }
-#endif    
-}
-
-
 void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
 {
     if (!_terrainTile) return;
 
+    // initialize the terrain tile on startup
+    if (_terrainTile->getDirty() && !_terrainTileInitialized) 
+    {
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)
+        _terrainTile->init(~0x0, true);
+#else
+        _terrainTile->init();
+#endif
+        _terrainTileInitialized = true;
+    }
+    
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+        updateTransparency();
+    }
+
+
+    // traverse the dynamically-generated geometry.
+    if (_transform.valid()) 
+        _transform->accept(nv);
+
+#if 0
     // if app traversal update the frame count.
     if (nv.getVisitorType()==osg::NodeVisitor::UPDATE_VISITOR)
     {
@@ -986,26 +931,13 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
             _terrainTileInitialized = true;
         }
 
-        osgUtil::UpdateVisitor* uv = dynamic_cast<osgUtil::UpdateVisitor*>(&nv);
-        if (uv)
-        {
-            update(uv);
-        }        
-        
+        if (_terrainTile)
+            _terrainTile->osg::Group::traverse( nv );
     }
     else if (nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR)
-    {
-        osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-        if (cv)
-        {
-            cull(cv);
-        }
-		
+    {		
 		updateTransparency();
     }
-
-    //_terrainTile->setDirty(true);
-
 
     if (_terrainTile->getDirty() && !_terrainTileInitialized) 
     {
@@ -1018,12 +950,10 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
         _terrainTileInitialized = true;
     }
 
-    if (_transform.valid()) _transform->accept(nv);
-}
-
-
-void MultiPassTerrainTechnique::cleanSceneGraph()
-{
+    // traverse the dynamically-generated geometry.
+    if (_transform.valid()) 
+        _transform->accept(nv);
+#endif
 }
 
 void MultiPassTerrainTechnique::updateTransparency()
@@ -1043,7 +973,11 @@ void MultiPassTerrainTechnique::updateTransparency()
 			{
 				osg::Geometry* geometry = geode->getDrawable(0)->asGeometry();
 				osg::Vec4Array* colors = static_cast<osg::Vec4Array*>(geometry->getColorArray());
-				(*colors)[0] = osg::Vec4(1.0f, 1.0f, 1.0f, opacity);
+                if ( (*colors)[0].a() != opacity )
+                {
+				    (*colors)[0] = osg::Vec4(1.0f, 1.0f, 1.0f, opacity);
+                    colors->dirty();
+                }
 
 				if (colorLayer.getMapLayer()->getEnabled())
 				{

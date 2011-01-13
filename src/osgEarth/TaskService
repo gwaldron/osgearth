@@ -21,9 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/HTTPClient>
-#include <OpenThreads/Thread>
-#include <OpenThreads/Condition>
-#include <OpenThreads/ReentrantMutex>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
 #include <osg/Timer>
 #include <queue>
@@ -74,6 +72,10 @@ namespace osgEarth
         osg::Timer_t startTime() const { return _startTime; }
         osg::Timer_t endTime() const { return _endTime; }
         double runTime() const { return osg::Timer::instance()->delta_s(_startTime,_endTime); }
+
+        void setCompletedEvent( Threading::Event* value ) { _completedEvent = value; }
+        Threading::Event* getCompletedEvent() const { return _completedEvent; }
+
     protected:
         float _priority;
         volatile State _state;
@@ -83,6 +85,7 @@ namespace osgEarth
         std::string _name;
         osg::Timer_t _startTime;
         osg::Timer_t _endTime;
+        Threading::Event* _completedEvent;
     };
 
     typedef std::list< osg::ref_ptr<TaskRequest> > TaskRequestList;
@@ -107,11 +110,9 @@ namespace osgEarth
 
     private:
         TaskRequestPriorityMap _requests;
-        //TaskRequestList _requests;
         OpenThreads::Mutex _mutex;
         OpenThreads::Condition _cond;
         volatile bool _done;
-        //osg::ref_ptr< osg::RefBlock > _block;
 
         int _stamp;
     };

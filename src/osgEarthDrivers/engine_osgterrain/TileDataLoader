@@ -38,7 +38,10 @@ struct ExpiringProgressCallback : public ProgressCallback
 /** A Tile job loads data for one key and makes a tile out of it. */
 struct TileJob : public osg::Referenced
 {
-    TileJob(const TileKey& key, const MapFrame& mapf, OSGTileFactory* factory, TaskService* service);
+    TileJob(
+        const TileKey& key, const MapFrame& mapf,
+        OSGTileFactory* factory, TaskService* service,
+        Threading::Event& completionEvent);
 
     void start( ProgressCallback* progress );
     bool isCompleted() const;
@@ -52,6 +55,7 @@ struct TileJob : public osg::Referenced
     osg::ref_ptr<OSGTileFactory> _factory;
     osg::ref_ptr<TaskService> _service;
     osg::Timer_t _startTime;
+    Threading::Event& _completionEvent;
 };
 
 /** A Tile Group Job loads the 4 subtiles of the specified key and puts them in a group. */
@@ -68,6 +72,7 @@ struct TileGroupJob : public osg::Referenced
     osg::ref_ptr<TileJob> _tileJobs[4];
     osg::ref_ptr<ExpiringProgressCallback> _progress;
     osg::Timer_t _startTime;
+    Threading::Event _completionEvent;
 };
 
 /** A Ticket matchs up a tile group job with a timestamp. */

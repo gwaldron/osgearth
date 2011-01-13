@@ -204,6 +204,10 @@ TaskThread::run()
             
             _request->setState( TaskRequest::STATE_COMPLETED );
 
+            // signal the completion of a request.
+            if ( _request->getCompletedEvent() )
+                _request->getCompletedEvent()->set();
+
             // Release the request
             _request = 0;
         }
@@ -283,8 +287,8 @@ TaskService::setStamp( int stamp )
     //Remove finished threads every 60 frames
     if (stamp - _lastRemoveFinishedThreadsStamp > 60)
     {
-      removeFinishedThreads();
-      _lastRemoveFinishedThreadsStamp = stamp;
+        removeFinishedThreads();
+        _lastRemoveFinishedThreadsStamp = stamp;
     }
 }
 

@@ -24,8 +24,16 @@
 
 //#define TEST_RUN_SYNC 1
 #define TEST_BLOCK_ON_REQUESTS 1
+//#define TEST_SPIN_WAIT 1
 
 using namespace osgEarth;
+
+//++++++++++++++ TODO +++++++++++++++++
+
+//  -- get rid of expired jobs ..
+//  -- fix cancelation (stamp should be updated every frame)
+
+
 
 //------------------------------------------------------------------------
 
@@ -84,11 +92,13 @@ namespace
 //------------------------------------------------------------------------
 
 TileJob::TileJob(const TileKey& key, const MapFrame& mapf,
-                 OSGTileFactory* factory, TaskService* service) :
+                 OSGTileFactory* factory, TaskService* service,
+                 Threading::Event& completionEvent ) :
 _key(key),
 _mapf(mapf),
 _factory(factory),
-_service(service)
+_service(service),
+_completionEvent(completionEvent)
 {
     //NOP    
 }
@@ -106,6 +116,7 @@ TileJob::start( ProgressCallback* progress )
         r->setName(buf.str());
         r->setProgressCallback( progress );
         r->setPriority( -(float)_key.getLevelOfDetail() );
+        r->setCompletedEvent( &_completionEvent );
         _requests.push_back( r );
 #ifdef TEST_RUN_SYNC
         (*r)(0L);
@@ -123,6 +134,7 @@ TileJob::start( ProgressCallback* progress )
         r->setName(buf.str());
         r->setProgressCallback( progress );
         r->setPriority( -(float)_key.getLevelOfDetail() );
+        r->setCompletedEvent( &_completionEvent );
         _requests.push_back( r );
 #ifdef TEST_RUN_SYNC
         (*r)(0L);
@@ -190,7 +202,8 @@ TileJob::populateTile( CustomTile* tile )
 
 //------------------------------------------------------------------------
 
-TileGroupJob::TileGroupJob(const TileKey& parentKey, const Map* map, OSGTileFactory* factory, TaskService* service) :
+TileGroupJob::TileGroupJob(const TileKey& parentKey, const Map* map,
+                           OSGTileFactory* factory, TaskService* service ) :
 _mapf(map)
 {
     _progress = new ExpiringProgressCallback( service );
@@ -200,7 +213,7 @@ _mapf(map)
     for( unsigned i=0; i<4; ++i )
     {
         TileKey childKey = parentKey.createChildKey( i );
-        _tileJobs[i] = new TileJob( childKey, _mapf, factory, service );
+        _tileJobs[i] = new TileJob( childKey, _mapf, factory, service, _completionEvent );
     }
 }
 
@@ -283,10 +296,15 @@ TileDataLoader::loadSubTileGroup( const TileKey& key )
         while( !job->isCompleted() )
         {
             job->_progress->_timestamp = osg::Timer::instance()->tick();
-            OpenThreads::Thread::CurrentThread()->YieldCurrentThread();
+#ifdef TEST_SPIN_WAIT
+            Threading::Thread::CurrentThread()->YieldCurrentThread();
+#else // TEST_SPIN_WAIT
+            job->_completionEvent.waitAndReset();
+#endif // TEST_SPIN_WAIT
         }
-#endif
+#endif // TEST_BLOCK_ON_REQUESTS
 
+#if 0
         // if there's a request, but it's not done, return immediately and indiciate
         // that an asynchronous request is in process and to check again later.
         if ( !job->isCompleted() )
@@ -297,6 +315,7 @@ TileDataLoader::loadSubTileGroup( const TileKey& key )
             //return osgDB::ReaderWriter::ReadResult::FILE_REQUESTED;
             return osgDB::ReaderWriter::ReadResult::FILE_NOT_FOUND;
         }
+#endif
         
         // TODO: need logic to periodically remove old Tickets that were canceled
         // due to expiration...

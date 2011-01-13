@@ -36,7 +36,8 @@ using namespace osgEarth::Symbology;
 FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& options ) :
 ModelSourceOptions( options ),
 _geomTypeOverride( Geometry::TYPE_UNKNOWN ),
-_lit( true )
+_lit( true ),
+_maxGranularity_deg( 5.0 )
 {
     fromConfig( _conf );
 }
@@ -50,7 +51,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "styles", _styles );
     conf.getObjIfSet( "gridding", _gridding );
     conf.getIfSet( "lighting", _lit );
-    conf.getIfSet( "max_triangle_size", _maxTriangleSize_deg );
+    conf.getIfSet( "max_granularity", _maxGranularity_deg );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -70,7 +71,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "gridding", _gridding );
     conf.updateObjIfSet( "styles", _styles );
     conf.updateIfSet( "lighting", _lit );
-    conf.updateIfSet( "max_triangle_size", _maxTriangleSize_deg );
+    conf.updateIfSet( "max_granularity", _maxGranularity_deg );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )

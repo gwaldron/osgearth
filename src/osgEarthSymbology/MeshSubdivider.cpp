@@ -18,6 +18,7 @@
  */
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/LineFunctor>
+#include <osgEarth/GeoMath>
 #include <osg/TriangleFunctor>
 #include <climits>
 #include <queue>
@@ -32,6 +33,78 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
+    // convert geocenric coords to spherical geodetic coords in radians.
+    void
+    geocentricToGeodetic( const osg::Vec3d& g, osg::Vec2d& out_geod )
+    {
+        double r = g.length();
+        out_geod.set( atan2(g.y(),g.x()), acos(g.z()/r) );
+    }
+
+    // calculate the lat/long midpoint, taking care to use the shortest
+    // global distance.
+    void
+    geodeticMidpoint( const osg::Vec2d& g0, const osg::Vec2d& g1, osg::Vec2d& out_mid )
+    {
+        if ( fabs(g0.x()-g1.x()) < osg::PI )
+            out_mid.set( 0.5*(g0.x()+g1.x()), 0.5*(g0.y()+g1.y()) );
+        else if ( g1.x() > g0.x() )
+            out_mid.set( 0.5*((g0.x()+2*osg::PI)+g1.x()), 0.5*(g0.y()+g1.y()) );
+        else
+           out_mid.set( 0.5*(g0.x()+(g1.x()+2*osg::PI)), 0.5*(g0.y()+g1.y()) );
+    }
+
+    // finds the midpoint between two geocentric coordinates. We have to convert
+    // back to geographic in order to get the correct interpolation. Spherical
+    // conversion is good enough
+    osg::Vec3d
+    geocentricMidpoint( const osg::Vec3d& v0, const osg::Vec3d& v1 )
+    {
+        // geocentric to spherical:
+        osg::Vec2d g0, g1;
+        geocentricToGeodetic(v0, g0);
+        geocentricToGeodetic(v1, g1);
+
+        osg::Vec2d mid;
+        geodeticMidpoint(g0, g1, mid);
+
+        double size = 0.5*(v0.length() + v1.length());
+
+        // spherical to geocentric:
+        double sin_lat = sin(mid.y());
+        return osg::Vec3d( cos(mid.x())*sin_lat, sin(mid.x())*sin_lat, cos(mid.y()) ) * size;
+    }
+
+    // the approximate surface-distance between two geocentric points (spherical)
+    double
+    geocentricSurfaceDistance( const osg::Vec3d& v0, const osg::Vec3d& v1 )
+    {
+        osg::Vec2d g0, g1;
+        geocentricToGeodetic(v0, g0);
+        geocentricToGeodetic(v1, g1);
+        return GeoMath::distance( v0.y(), v0.x(), v1.y(), v1.x() );
+    }    
+
+    // returns the geocentric bisection vector
+    osg::Vec3d
+    bisector( const osg::Vec3d& v0, const osg::Vec3d& v1 )
+    {
+        osg::Vec3d f = (v0+v1)*0.5;
+        f.normalize();
+        return f * 0.5*(v0.length() + v1.length());
+    }    
+
+    // the angle between two 3d vectors
+    double
+    angleBetween( const osg::Vec3d& v0, const osg::Vec3d& v1 )
+    {
+        osg::Vec3d v0n = v0; v0n.normalize();
+        osg::Vec3d v1n = v1; v1n.normalize();
+        return fabs( acos( v0n * v1n ) );
+    }
+
+    //--------------------------------------------------------------------
+
     template<typename ITYPE>
     struct Triangle {
         Triangle() { }
@@ -229,6 +302,9 @@ namespace
         }
     }
 
+    static const osg::Vec3d s_pole(0,0,1);
+    static const double s_maxLatAdjustment(0.75);
+
     /**
      * Collects all the line segments from the geometry, coalesces them into a single
      * line set, subdivides it according to the granularity threshold, and replaces
@@ -236,14 +312,12 @@ namespace
      */
     template<typename ITYPE>
     void subdivideLines(
-        double maxEdgeLen,
+        double granularity,
         osg::Geometry& geom,
         const osg::Matrixd& W2L, // world=>local xform
         const osg::Matrixd& L2W, // local=>world xform
         unsigned int maxElementsPerEBO )
-    {    
-        double threshold = maxEdgeLen * maxEdgeLen;
-
+    {
         // collect all the line segments in the geometry.
         LineFunctor<LineData<ITYPE> > data;
         geom.accept( data );
@@ -259,14 +333,14 @@ namespace
             Line<ITYPE> line = data._lines.front();
             data._lines.pop();
 
-            osg::Vec3d v0 = (*data._verts)[line._i0];
-            osg::Vec3d v1 = (*data._verts)[line._i1];
+            osg::Vec3d v0_w = (*data._verts)[line._i0] * L2W;
+            osg::Vec3d v1_w = (*data._verts)[line._i1] * L2W;
 
-            double len2 = (v1-v0).length2();
+            double g0 = angleBetween(v0_w, v1_w);
 
-            if ( len2 > threshold )
+            if ( g0 > granularity )
             {
-                data._verts->push_back( s_bisector(v0*L2W, v1*L2W) * W2L );
+                data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
                 ITYPE i = data._verts->size()-1;
 
                 data._lines.push( Line<ITYPE>( line._i0, i ) );
@@ -299,23 +373,6 @@ namespace
 
     //----------------------------------------------------------------------
 
-    double
-    s_angleBetween( const osg::Vec3d& v0, const osg::Vec3d& v1 )
-    {
-        osg::Vec3d v0n = v0; v0n.normalize();
-        osg::Vec3d v1n = v1; v1n.normalize();
-        return acos( v0n * v1n );
-    }
-
-    // returns the geocentric bisection vector
-    osg::Vec3d
-    s_bisector( const osg::Vec3d& v0, const osg::Vec3d& v1 )
-    {
-        osg::Vec3d f = (v0+v1)*0.5;
-        f.normalize();
-        return f * 0.5*(v0.length() + v1.length());
-    }    
-
     /**
      * Collects all the triangles from the geometry, coalesces them into a single
      * triangle set, subdivides them according to the granularity threshold, and
@@ -327,14 +384,12 @@ namespace
      */
     template<typename ITYPE>
     void subdivideTriangles(
-        double maxEdgeLen,
+        double granularity,
         osg::Geometry& geom,
         const osg::Matrixd& W2L, // world=>local xform
         const osg::Matrixd& L2W, // local=>world xform
         unsigned int maxElementsPerEBO )
     {
-        double threshold = maxEdgeLen * maxEdgeLen;
-
         // collect all the triangled in the geometry.
         osg::TriangleFunctor<TriangleData<ITYPE> > data;
         geom.accept( data );
@@ -353,16 +408,16 @@ namespace
             Triangle<ITYPE> tri = data._tris.front();
             data._tris.pop();
 
-            osg::Vec3d v0 = (*data._verts)[tri._i0];
-            osg::Vec3d v1 = (*data._verts)[tri._i1];
-            osg::Vec3d v2 = (*data._verts)[tri._i2];
+            osg::Vec3d v0_w = (*data._verts)[tri._i0] * L2W;
+            osg::Vec3d v1_w = (*data._verts)[tri._i1] * L2W;
+            osg::Vec3d v2_w = (*data._verts)[tri._i2] * L2W;
 
-            double g0 = (v1-v0).length2();
-            double g1 = (v2-v1).length2();
-            double g2 = (v0-v2).length2();
+            double g0 = angleBetween(v0_w, v1_w);
+            double g1 = angleBetween(v1_w, v2_w);
+            double g2 = angleBetween(v2_w, v0_w);
             double max = osg::maximum( g0, osg::maximum(g1, g2) );
 
-            if ( max > threshold )
+            if ( max > granularity )
             {
                 if ( g0 == max )
                 {
@@ -372,7 +427,7 @@ namespace
                     ITYPE i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( s_bisector(v0*L2W, v1*L2W) * W2L );
+                        data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -392,7 +447,7 @@ namespace
                     ITYPE i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( s_bisector(v1*L2W, v2*L2W) * W2L );
+                        data._verts->push_back( geocentricMidpoint(v1_w, v2_w) * W2L );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -412,7 +467,7 @@ namespace
                     ITYPE i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( s_bisector(v2*L2W, v0*L2W) * W2L );
+                        data._verts->push_back( geocentricMidpoint(v2_w, v0_w) * W2L );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -458,7 +513,7 @@ namespace
         const osg::Matrixd& L2W, // local=>world xform
         unsigned int maxElementsPerEBO )
     {
-        double maxEdgeLen = (2.0 * 6378100.0 * sin(0.5 * granularity));
+        //double maxEdgeLen = (2.0 * 6378100.0 * sin(0.5 * granularity));
 
         GLenum mode = geom.getPrimitiveSet(0)->getMode();
 
@@ -468,11 +523,11 @@ namespace
         }
         else if ( mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP )
         {
-            subdivideLines<ITYPE>( maxEdgeLen, geom, W2L, L2W, maxElementsPerEBO );
+            subdivideLines<ITYPE>( granularity, geom, W2L, L2W, maxElementsPerEBO );
         }
         else
         {
-            subdivideTriangles<ITYPE>( maxEdgeLen, geom, W2L, L2W, maxElementsPerEBO );
+            subdivideTriangles<ITYPE>( granularity, geom, W2L, L2W, maxElementsPerEBO );
         }
     }
 }

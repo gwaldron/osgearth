@@ -28,6 +28,7 @@ using namespace osgEarth::Symbology;
 #  include <geos/geom/Geometry.h>
 #  include <geos/geom/GeometryFactory.h>
 #  include <geos/operation/buffer/BufferOp.h>
+#  include <geos/operation/buffer/BufferBuilder.h> 
 #  include <geos/operation/overlay/OverlayOp.h>
 using namespace geos;
 using namespace geos::operation;
@@ -149,8 +150,21 @@ Geometry::buffer(double distance,
             ? params._cornerSegs
             : 8;//buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS;
 
-        geom::Geometry* outGeom = buffer::BufferOp::bufferOp(
-            inGeom, distance, geosQuadSegs, geosEndCap );
+        geom::Geometry* outGeom = NULL;
+
+        buffer::BufferParameters geosBufferParams;
+        geosBufferParams.setQuadrantSegments( geosQuadSegs );
+        geosBufferParams.setEndCapStyle( geosEndCap );
+        buffer::BufferBuilder bufBuilder( geosBufferParams );
+
+        if (params._singleSided)
+        {
+            outGeom = bufBuilder.bufferLineSingleSided(inGeom, distance, params._leftSide );
+        }
+        else
+        {
+            outGeom = bufBuilder.buffer(inGeom, distance );
+        }
 
         if ( outGeom )
         {

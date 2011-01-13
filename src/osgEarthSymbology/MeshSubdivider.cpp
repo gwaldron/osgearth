@@ -20,6 +20,7 @@
 #include <osgEarthSymbology/LineFunctor>
 #include <osgEarth/GeoMath>
 #include <osg/TriangleFunctor>
+#include <osgUtil/MeshOptimizers>
 #include <climits>
 #include <queue>
 #include <map>
@@ -105,36 +106,34 @@ namespace
 
     //--------------------------------------------------------------------
 
-    template<typename ITYPE>
-    struct Triangle {
+    struct Triangle
+    {
         Triangle() { }
-        Triangle(ITYPE i0, ITYPE i1, ITYPE i2) : _i0(i0), _i1(i1), _i2(i2) { }
-        ITYPE _i0, _i1, _i2;
+        Triangle(GLuint i0, GLuint i1, GLuint i2) : _i0(i0), _i1(i1), _i2(i2) { }
+        GLuint _i0, _i1, _i2;
     };
 
-    template<typename ITYPE> struct TriangleQueue : public std::queue<Triangle<ITYPE> > { };
+    typedef std::queue<Triangle> TriangleQueue;
+    typedef std::vector<Triangle> TriangleVector;
 
-    template<typename ITYPE> struct TriangleVector : public std::vector<Triangle<ITYPE> > { };
-
-    template<typename ITYPE>
     struct TriangleData
     {
-        typedef std::map<osg::Vec3,ITYPE> VertMap;
+        typedef std::map<osg::Vec3,GLuint> VertMap;
         VertMap _vertMap;
         osg::Vec3Array* _verts;
-        TriangleQueue<ITYPE> _tris;
+        TriangleQueue _tris;
         
         TriangleData()
         {
             _verts = new osg::Vec3Array();
         }
 
-        ITYPE record( const osg::Vec3& v )
+        GLuint record( const osg::Vec3& v )
         {
-            typename VertMap::iterator i = _vertMap.find(v);
+            VertMap::iterator i = _vertMap.find(v);
             if ( i == _vertMap.end() )
             {
-                ITYPE index = _verts->size();
+                GLuint index = _verts->size();
                 _verts->push_back(v);
                 _vertMap[v] = index;
                 return index;
@@ -147,16 +146,15 @@ namespace
         
         void operator()( const osg::Vec3& v0, const osg::Vec3& v1, const osg::Vec3& v2, bool temp )
         {
-            _tris.push( Triangle<ITYPE>(record(v0), record(v1), record(v2)) );
+            _tris.push( Triangle(record(v0), record(v1), record(v2)) );
         }
     };      
 
-    template<typename ITYPE> 
     struct Edge
     {
         Edge() { }
-        Edge( ITYPE i0, ITYPE i1 ) : _i0(i0), _i1(i1) { }
-        ITYPE _i0, _i1;
+        Edge( GLuint i0, GLuint i1 ) : _i0(i0), _i1(i1) { }
+        GLuint _i0, _i1;
         bool operator < (const Edge& rhs) const {
             return
                 _i0 < rhs._i0 ? true :
@@ -168,14 +166,13 @@ namespace
         bool operator == (const Edge& rhs) const { return _i0==rhs._i0 && _i1==rhs._i1; }
     };
 
-    template<typename ITYPE>
-    struct EdgeMap : public std::map<Edge<ITYPE>,ITYPE> { };          
+    typedef std::map<Edge,GLuint> EdgeMap;
     
     /**
      * Populates the geometry object with a collection of index elements primitives.
      */
-    template<typename ETYPE, typename ITYPE, typename VTYPE>
-    void populateTriangles( osg::Geometry& geom, const TriangleVector<ITYPE>& tris, unsigned int maxElementsPerEBO )
+    template<typename ETYPE, typename VTYPE>
+    void populateTriangles( osg::Geometry& geom, const TriangleVector& tris, unsigned int maxElementsPerEBO )
     {
         unsigned int totalTris = tris.size();
         unsigned int totalTrisWritten = 0;
@@ -183,7 +180,7 @@ namespace
 
         ETYPE* ebo = 0L;
 
-        for( typename TriangleVector<ITYPE>::const_iterator i = tris.begin(); i != tris.end(); ++i )
+        for( TriangleVector::const_iterator i = tris.begin(); i != tris.end(); ++i )
         {
             if ( numElementsInCurrentEBO+2 >= maxElementsPerEBO )
             {
@@ -215,36 +212,34 @@ namespace
 
     //----------------------------------------------------------------------
 
-    template<typename ITYPE>
-    struct Line {
+    struct Line
+    {
         Line() { }
-        Line(ITYPE i0, ITYPE i1) : _i0(i0), _i1(i1) { }
-        ITYPE _i0, _i1;
+        Line(GLuint i0, GLuint i1) : _i0(i0), _i1(i1) { }
+        GLuint _i0, _i1;
     };
 
-    template<typename ITYPE> struct LineQueue : public std::queue<Line<ITYPE> > { };
+    typedef std::queue<Line> LineQueue;
+    typedef std::vector<Line> LineVector;
 
-    template<typename ITYPE> struct LineVector : public std::vector<Line<ITYPE> > { };
-
-    template<typename ITYPE>
     struct LineData
     {
-        typedef std::map<osg::Vec3,ITYPE> VertMap;
+        typedef std::map<osg::Vec3,GLuint> VertMap;
         VertMap _vertMap;
         osg::Vec3Array* _verts;
-        LineQueue<ITYPE> _lines;
+        LineQueue _lines;
         
         LineData()
         {
             _verts = new osg::Vec3Array();
         }
 
-        ITYPE record( const osg::Vec3& v )
+        GLuint record( const osg::Vec3& v )
         {
-            typename VertMap::iterator i = _vertMap.find(v);
+            VertMap::iterator i = _vertMap.find(v);
             if ( i == _vertMap.end() )
             {
-                ITYPE index = _verts->size();
+                GLuint index = _verts->size();
                 _verts->push_back(v);
                 _vertMap[v] = index;
                 return index;
@@ -257,15 +252,15 @@ namespace
         
         void operator()( const osg::Vec3& v0, const osg::Vec3& v1, bool temp )
         {
-            _lines.push( Line<ITYPE>( record(v0), record(v1) ) );
+            _lines.push( Line( record(v0), record(v1) ) );
         }
     };       
     
     /**
      * Populates the geometry object with a collection of index elements primitives.
      */
-    template<typename ETYPE, typename ITYPE, typename VTYPE>
-    void populateLines( osg::Geometry& geom, const LineVector<ITYPE>& lines, unsigned int maxElementsPerEBO )
+    template<typename ETYPE, typename VTYPE>
+    void populateLines( osg::Geometry& geom, const LineVector& lines, unsigned int maxElementsPerEBO )
     {
         unsigned int totalLines = lines.size();
         unsigned int totalLinesWritten = 0;
@@ -273,7 +268,7 @@ namespace
 
         ETYPE* ebo = 0L;
 
-        for( typename LineVector<ITYPE>::const_iterator i = lines.begin(); i != lines.end(); ++i )
+        for( LineVector::const_iterator i = lines.begin(); i != lines.end(); ++i )
         {
             if ( numElementsInCurrentEBO+2 >= maxElementsPerEBO )
             {
@@ -310,7 +305,6 @@ namespace
      * line set, subdivides it according to the granularity threshold, and replaces
      * the data in the Geometry object with the new vertex and primitive data.
      */
-    template<typename ITYPE>
     void subdivideLines(
         double granularity,
         osg::Geometry& geom,
@@ -319,18 +313,18 @@ namespace
         unsigned int maxElementsPerEBO )
     {
         // collect all the line segments in the geometry.
-        LineFunctor<LineData<ITYPE> > data;
+        LineFunctor<LineData> data;
         geom.accept( data );
     
         int numLinesIn = data._lines.size();
 
-        LineVector<ITYPE> done;
+        LineVector done;
         done.reserve( 2 * data._lines.size() );
 
         // Subdivide lines until we run out.
         while( data._lines.size() > 0 )
         {
-            Line<ITYPE> line = data._lines.front();
+            Line line = data._lines.front();
             data._lines.pop();
 
             osg::Vec3d v0_w = (*data._verts)[line._i0] * L2W;
@@ -341,10 +335,10 @@ namespace
             if ( g0 > granularity )
             {
                 data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
-                ITYPE i = data._verts->size()-1;
+                GLuint i = data._verts->size()-1;
 
-                data._lines.push( Line<ITYPE>( line._i0, i ) );
-                data._lines.push( Line<ITYPE>( i, line._i1 ) );
+                data._lines.push( Line( line._i0, i ) );
+                data._lines.push( Line( i, line._i1 ) );
             }
             else
             {
@@ -362,11 +356,11 @@ namespace
             geom.setVertexArray( data._verts );
 
             if ( data._verts->size() < 256 )
-                populateLines<osg::DrawElementsUByte,ITYPE,GLubyte>( geom, done, maxElementsPerEBO );
+                populateLines<osg::DrawElementsUByte,GLubyte>( geom, done, maxElementsPerEBO );
             else if ( data._verts->size() < 65536 )
-                populateLines<osg::DrawElementsUShort,ITYPE,GLushort>( geom, done, maxElementsPerEBO );
+                populateLines<osg::DrawElementsUShort,GLushort>( geom, done, maxElementsPerEBO );
             else
-                populateLines<osg::DrawElementsUInt,ITYPE,GLuint>( geom, done, maxElementsPerEBO );
+                populateLines<osg::DrawElementsUInt,GLuint>( geom, done, maxElementsPerEBO );
         }
     }
 
@@ -382,7 +376,6 @@ namespace
      * The subdivision algorithm is adapted from http://bit.ly/dTIagq
      * (c) Copyright 2010 Patrick Cozzi and Deron Ohlarik, MIT License.
      */
-    template<typename ITYPE>
     void subdivideTriangles(
         double granularity,
         osg::Geometry& geom,
@@ -391,21 +384,21 @@ namespace
         unsigned int maxElementsPerEBO )
     {
         // collect all the triangled in the geometry.
-        osg::TriangleFunctor<TriangleData<ITYPE> > data;
+        osg::TriangleFunctor<TriangleData> data;
         geom.accept( data );
 
         int numTrisIn = data._tris.size();
 
-        TriangleVector<ITYPE> done;
+        TriangleVector done;
         done.reserve(2.0 * data._tris.size());
 
         // Used to make sure shared edges are not split more than once.
-        EdgeMap<ITYPE> edges;
+        EdgeMap edges;
 
         // Subdivide triangles until we run out
         while( data._tris.size() > 0 )
         {
-            Triangle<ITYPE> tri = data._tris.front();
+            Triangle tri = data._tris.front();
             data._tris.pop();
 
             osg::Vec3d v0_w = (*data._verts)[tri._i0] * L2W;
@@ -421,10 +414,10 @@ namespace
             {
                 if ( g0 == max )
                 {
-                    Edge<ITYPE> edge( osg::minimum(tri._i0, tri._i1), osg::maximum(tri._i0, tri._i1) );
+                    Edge edge( osg::minimum(tri._i0, tri._i1), osg::maximum(tri._i0, tri._i1) );
                     
-                    typename EdgeMap<ITYPE>::iterator ei = edges.find(edge);
-                    ITYPE i;
+                    EdgeMap::iterator ei = edges.find(edge);
+                    GLuint i;
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
@@ -436,15 +429,15 @@ namespace
                         i = ei->second;
                     }
 
-                    data._tris.push( Triangle<ITYPE>(tri._i0, i, tri._i2) );
-                    data._tris.push( Triangle<ITYPE>(i, tri._i1, tri._i2) );
+                    data._tris.push( Triangle(tri._i0, i, tri._i2) );
+                    data._tris.push( Triangle(i, tri._i1, tri._i2) );
                 }
                 else if ( g1 == max )
                 {
-                    Edge<ITYPE> edge( osg::minimum(tri._i1, tri._i2), osg::maximum(tri._i1,tri._i2) );
+                    Edge edge( osg::minimum(tri._i1, tri._i2), osg::maximum(tri._i1,tri._i2) );
 
-                    typename EdgeMap<ITYPE>::iterator ei = edges.find(edge);
-                    ITYPE i;
+                    EdgeMap::iterator ei = edges.find(edge);
+                    GLuint i;
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v1_w, v2_w) * W2L );
@@ -456,15 +449,15 @@ namespace
                         i = ei->second;
                     }
 
-                    data._tris.push( Triangle<ITYPE>(tri._i1, i, tri._i0) );
-                    data._tris.push( Triangle<ITYPE>(i, tri._i2, tri._i0) );
+                    data._tris.push( Triangle(tri._i1, i, tri._i0) );
+                    data._tris.push( Triangle(i, tri._i2, tri._i0) );
                 }
                 else if ( g2 == max )
                 {
-                    Edge<ITYPE> edge( osg::minimum(tri._i2, tri._i0), osg::maximum(tri._i2,tri._i0) );
+                    Edge edge( osg::minimum(tri._i2, tri._i0), osg::maximum(tri._i2,tri._i0) );
 
-                    typename EdgeMap<ITYPE>::iterator ei = edges.find(edge);
-                    ITYPE i;
+                    EdgeMap::iterator ei = edges.find(edge);
+                    GLuint i;
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v2_w, v0_w) * W2L );
@@ -476,8 +469,8 @@ namespace
                         i = ei->second;
                     }
 
-                    data._tris.push( Triangle<ITYPE>(tri._i2, i, tri._i1) );
-                    data._tris.push( Triangle<ITYPE>(i, tri._i0, tri._i1) );
+                    data._tris.push( Triangle(tri._i2, i, tri._i1) );
+                    data._tris.push( Triangle(i, tri._i0, tri._i1) );
                 }
             }
             else
@@ -497,15 +490,14 @@ namespace
             geom.setVertexArray( data._verts );
 
             if ( data._verts->size() < 256 )
-                populateTriangles<osg::DrawElementsUByte,ITYPE,GLubyte>( geom, done, maxElementsPerEBO );
+                populateTriangles<osg::DrawElementsUByte,GLubyte>( geom, done, maxElementsPerEBO );
             else if ( data._verts->size() < 65536 )
-                populateTriangles<osg::DrawElementsUShort,ITYPE,GLushort>( geom, done, maxElementsPerEBO );
+                populateTriangles<osg::DrawElementsUShort,GLushort>( geom, done, maxElementsPerEBO );
             else
-                populateTriangles<osg::DrawElementsUInt,ITYPE,GLuint>( geom, done, maxElementsPerEBO );
+                populateTriangles<osg::DrawElementsUInt,GLuint>( geom, done, maxElementsPerEBO );
         }
     }
 
-    template<typename ITYPE>
     void subdivide(
         double granularity,
         osg::Geometry& geom,
@@ -513,22 +505,25 @@ namespace
         const osg::Matrixd& L2W, // local=>world xform
         unsigned int maxElementsPerEBO )
     {
-        //double maxEdgeLen = (2.0 * 6378100.0 * sin(0.5 * granularity));
-
         GLenum mode = geom.getPrimitiveSet(0)->getMode();
 
         if ( mode == GL_POINTS )
-        {
             return;
-        }
-        else if ( mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP )
+
+        if ( mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP )
         {
-            subdivideLines<ITYPE>( granularity, geom, W2L, L2W, maxElementsPerEBO );
+            subdivideLines( granularity, geom, W2L, L2W, maxElementsPerEBO );
         }
         else
         {
-            subdivideTriangles<ITYPE>( granularity, geom, W2L, L2W, maxElementsPerEBO );
+            subdivideTriangles( granularity, geom, W2L, L2W, maxElementsPerEBO );
+
+            //osgUtil::VertexCacheVisitor cacheOptimizer;
+            //cacheOptimizer.optimizeVertices( geom );
         }
+        
+        //osgUtil::VertexAccessOrderVisitor orderOptimizer;
+        //orderOptimizer.optimizeOrder( geom );
     }
 }
 
@@ -552,5 +547,5 @@ MeshSubdivider::run(double granularity, osg::Geometry& geom)
     if ( geom.getNumPrimitiveSets() < 1 )
         return;
 
-    subdivide<GLuint>( granularity, geom, _world2local, _local2world, _maxElementsPerEBO );
+    subdivide( granularity, geom, _world2local, _local2world, _maxElementsPerEBO );
 }

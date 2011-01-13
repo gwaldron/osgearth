@@ -1,0 +1,298 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_H
+#define OSGEARTHSYMBOLOGY_GEOMETRY_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osg/PrimitiveSet>
+#include <osg/Vec2>
+#include <osg/Vec3>
+#include <osg/Vec4>
+
+namespace osgEarth { namespace Symbology 
+{
+    /**
+     * This is basically the same thing as osg::TriangleFunctor, but for lines.
+     */
+    template<class T>
+    class LineFunctor : public osg::PrimitiveFunctor, public T
+    {
+    public:
+
+        LineFunctor()
+        {
+            _vertexArraySize=0;
+            _vertexArrayPtr=0;
+            _modeCache=0;
+            _treatVertexDataAsTemporary=false;
+        }
+
+        virtual ~LineFunctor() {}
+
+        void setTreatVertexDataAsTemporary(bool treatVertexDataAsTemporary) { _treatVertexDataAsTemporary=treatVertexDataAsTemporary; }
+        bool getTreatVertexDataAsTemporary() const { return _treatVertexDataAsTemporary; }
+
+
+        virtual void setVertexArray(unsigned int count,const osg::Vec3* vertices)
+        {
+            _vertexArraySize = count;
+            _vertexArrayPtr = vertices;
+        }
+
+        virtual void setVertexArray(unsigned int,const osg::Vec2*) { }
+        virtual void setVertexArray(unsigned int,const osg::Vec4*) { }
+        virtual void setVertexArray(unsigned int,const osg::Vec2d*) { }
+        virtual void setVertexArray(unsigned int,const osg::Vec3d*) { }
+        virtual void setVertexArray(unsigned int,const osg::Vec4d*) { }
+
+        virtual void drawArrays(GLenum mode,GLint first,GLsizei count)
+        {
+            if (_vertexArrayPtr==0 || count==0) return;
+
+            switch(mode)
+            {            
+            case(GL_LINES):
+                {
+                    const osg::Vec3* vlast = &_vertexArrayPtr[first+count];
+                    for(const osg::Vec3* vptr = &_vertexArrayPtr[first]; vptr<vlast; vptr+=2)
+                        this->operator()( *(vptr), *(vptr+1), _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_LINE_STRIP):
+                {
+                    const osg::Vec3* vlast = &_vertexArrayPtr[first+count-1];
+                    for(const osg::Vec3* vptr = &_vertexArrayPtr[first]; vptr<vlast; vptr++)
+                        this->operator()( *(vptr), *(vptr+1), _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_LINE_LOOP):
+                {
+                    const osg::Vec3* vlast = &_vertexArrayPtr[first+count-1];
+                    const osg::Vec3* vptr;
+                    for(vptr = &_vertexArrayPtr[first]; vptr<vlast; vptr++)
+                        this->operator()( *(vptr), *(vptr+1), _treatVertexDataAsTemporary );
+                    if ( count >= 2 )
+                        this->operator()( *vptr, _vertexArrayPtr[first], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_TRIANGLES):
+            case(GL_TRIANGLE_STRIP):
+            case(GL_QUADS):
+            case(GL_QUAD_STRIP):
+            case(GL_POLYGON):
+            case(GL_TRIANGLE_FAN):
+            case(GL_POINTS):
+            default:
+                // can't be converted into to line segments.
+                break;
+            }
+        }
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLubyte* indicies)
+        {
+            if (indicies==0 || count==0) return;
+
+            typedef const GLubyte* IndexPointer;
+
+            switch(mode)
+            {
+            case(GL_LINES):
+                {
+                    IndexPointer ilast = &indicies[count];
+                    for(IndexPointer iptr=indicies; iptr<ilast; iptr+=2)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_LINE_STRIP):
+                {
+                    IndexPointer ilast = &indicies[count-1];
+                    for(IndexPointer iptr=indicies; iptr<ilast; iptr++)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_LINE_LOOP):
+                {
+                    IndexPointer ilast = &indicies[count-1];
+                    IndexPointer iptr;
+                    for(iptr=indicies; iptr<ilast; iptr++)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                    if (count >= 2)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[indicies[0]], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_TRIANGLES):
+            case(GL_TRIANGLE_STRIP):
+            case(GL_QUADS):
+            case(GL_QUAD_STRIP):
+            case(GL_POLYGON):
+            case(GL_TRIANGLE_FAN):
+            case(GL_POINTS):
+            default:
+                // can't be converted into to lines.
+                break;
+            }
+        }    
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLushort* indicies)
+        {
+            if (indicies==0 || count==0) return;
+
+            typedef const GLushort* IndexPointer;
+
+            switch(mode)
+            {
+            case(GL_LINES):
+                {
+                    IndexPointer ilast = &indicies[count];
+                    for(IndexPointer iptr=indicies; iptr<ilast; iptr+=2)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_LINE_STRIP):
+                {
+                    IndexPointer ilast = &indicies[count-1];
+                    for(IndexPointer iptr=indicies; iptr<ilast; iptr++)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_LINE_LOOP):
+                {
+                    IndexPointer ilast = &indicies[count-1];
+                    IndexPointer iptr;
+                    for(iptr=indicies; iptr<ilast; iptr++)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                    if (count >= 2)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[indicies[0]], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_TRIANGLES):
+            case(GL_TRIANGLE_STRIP):
+            case(GL_QUADS):
+            case(GL_QUAD_STRIP):
+            case(GL_POLYGON):
+            case(GL_TRIANGLE_FAN):
+            case(GL_POINTS):
+            default:
+                // can't be converted into to lines.
+                break;
+            }
+        }    
+
+        virtual void drawElements(GLenum mode,GLsizei count,const GLuint* indicies)
+        {
+            if (indicies==0 || count==0) return;
+
+            typedef const GLuint* IndexPointer;
+
+            switch(mode)
+            {
+            case(GL_LINES):
+                {
+                    IndexPointer ilast = &indicies[count];
+                    for(IndexPointer iptr=indicies; iptr<ilast; iptr+=2)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_LINE_STRIP):
+                {
+                    IndexPointer ilast = &indicies[count-1];
+                    for(IndexPointer iptr=indicies; iptr<ilast; iptr++)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_LINE_LOOP):
+                {
+                    IndexPointer ilast = &indicies[count-1];
+                    IndexPointer iptr;
+                    for(iptr=indicies; iptr<ilast; iptr++)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[*(iptr+1)], _treatVertexDataAsTemporary );
+                    if (count >= 2)
+                        this->operator()( _vertexArrayPtr[*iptr], _vertexArrayPtr[indicies[0]], _treatVertexDataAsTemporary );
+                }
+                break;
+
+            case(GL_TRIANGLES):
+            case(GL_TRIANGLE_STRIP):
+            case(GL_QUADS):
+            case(GL_QUAD_STRIP):
+            case(GL_POLYGON):
+            case(GL_TRIANGLE_FAN):
+            case(GL_POINTS):
+            default:
+                // can't be converted into to lines.
+                break;
+            }
+        }
+
+
+
+        /** Note:
+        * begin(..),vertex(..) & end() are convenience methods for adapting
+        * non vertex array primitives to vertex array based primitives.
+        * This is done to simplify the implementation of primitive functor
+        * subclasses - users only need override drawArray and drawElements.
+        */
+        virtual void begin(GLenum mode)
+        {
+            _modeCache = mode;
+            _vertexCache.clear();
+        }
+
+        virtual void vertex(const osg::Vec2& vert) { _vertexCache.push_back(osg::Vec3(vert[0],vert[1],0.0f)); }
+        virtual void vertex(const osg::Vec3& vert) { _vertexCache.push_back(vert); }
+        virtual void vertex(const osg::Vec4& vert) { _vertexCache.push_back(osg::Vec3(vert[0],vert[1],vert[2])/vert[3]); }
+        virtual void vertex(float x,float y) { _vertexCache.push_back(osg::Vec3(x,y,0.0f)); }
+        virtual void vertex(float x,float y,float z) { _vertexCache.push_back(osg::Vec3(x,y,z)); }
+        virtual void vertex(float x,float y,float z,float w) { _vertexCache.push_back(osg::Vec3(x,y,z)/w); }
+        virtual void end()
+        {
+            if (!_vertexCache.empty())
+            {
+                setVertexArray(_vertexCache.size(),&_vertexCache.front());
+                _treatVertexDataAsTemporary = true;
+                drawArrays(_modeCache,0,_vertexCache.size());
+            }
+        }
+
+    protected:
+
+
+        unsigned int        _vertexArraySize;
+        const osg::Vec3*         _vertexArrayPtr;
+
+        GLenum              _modeCache;
+        std::vector<osg::Vec3>   _vertexCache;
+        bool                _treatVertexDataAsTemporary;
+    };
+} } // namespace osgEarth::Symbology
+
+
+#endif // OSGEARTHSYMBOLOGY_GEOMETRY_H
+

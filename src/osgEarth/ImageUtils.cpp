@@ -382,54 +382,50 @@ ImageUtils::createEmptyImage()
     return image;
 }
 
+bool
+ImageUtils::canConvert( const osg::Image* image, GLenum pixelFormat, GLenum dataType )
+{
+    if ( !image ) return false;
+    return PixelReader::supports( image ) && PixelWriter::supports(pixelFormat, dataType);
+}
+
+osg::Image*
+ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType)
+{
+    if ( !image )
+        return 0L;
+    
+    if ( image->getPixelFormat() == pixelFormat && image->getDataType() == dataType )
+        return cloneImage(image);
+
+    if ( !canConvert(image, pixelFormat, dataType) )
+        return 0L;
+
+    osg::Image* result = new osg::Image();
+    result->allocateImage(image->s(), image->t(), image->r(), pixelFormat, dataType);
+
+    if ( pixelFormat == GL_RGB && dataType == GL_UNSIGNED_BYTE )
+        result->setInternalTextureFormat( GL_RGB8 );
+    else if ( pixelFormat == GL_RGBA && dataType == GL_UNSIGNED_BYTE )
+        result->setInternalTextureFormat( GL_RGBA8 );
+    else
+        result->setInternalTextureFormat( pixelFormat );
+
+    PixelVisitor<CopyImage>().accept( image, result );
+
+    return result;
+}
+
 osg::Image*
 ImageUtils::convertToRGB8(const osg::Image *image)
 {
-	if (image)
-	{
-        if ( image->getInternalTextureFormat() == GL_RGB8 )
-        {
-            return cloneImage(image);
-        }
-
-        else
-        {
-            osg::Image* result = new osg::Image();
-			result->allocateImage(image->s(), image->t(), image->r(), GL_RGB, GL_UNSIGNED_BYTE);
-            result->setInternalTextureFormat( GL_RGB8 );
-
-            PixelVisitor<CopyImage>().accept( image, result );
-
-			return result;
-		}
-	}
-
-	return NULL;
+    return convert( image, GL_RGB, GL_UNSIGNED_BYTE );
 }
 
 osg::Image*
 ImageUtils::convertToRGBA8(const osg::Image* image)
 {
-    if ( image )
-    {
-        if ( image->getInternalTextureFormat() == GL_RGBA8 )
-        {
-            return cloneImage(image);
-        }
-
-        else
-        {
-            osg::Image* result = new osg::Image();
-            result->allocateImage( image->s(), image->t(), image->r(), GL_RGBA, GL_UNSIGNED_BYTE );
-            result->setInternalTextureFormat( GL_RGBA8 );
-
-            PixelVisitor<CopyImage>().accept( image, result );
-
-            return result;
-        }
-
-    }
-    return 0L;
+    return convert( image, GL_RGBA, GL_UNSIGNED_BYTE );
 }
 
 bool 
@@ -452,13 +448,12 @@ ImageUtils::areEquivalent(const osg::Image *lhs, const osg::Image *rhs)
 		{
             if ( *ptr1++ != *ptr2++ )
                 return false;
-			//if (lhs->data()[i] != rhs->data()[i])
-			//{
-			//	return false;
-			//}
 		}
+
+        return true;
 	}
-	return true;
+
+	return false;
 }
 
 bool

@@ -29,6 +29,7 @@
 #include <osg/FrontFace>
 #include <osg/CullFace>
 #include <osg/Program>
+#include <osg/Point>
 #include <osg/Shape>
 #include <osg/Depth>
 #include <osg/Quat>
@@ -311,12 +312,16 @@ namespace
             double sun_lat = asin( sin(sun_lon)*sin(zeta) );
             nrad2(sun_lat);
 
+            // finally, adjust for the time of day (rotation of the earth)
             double time_r = hoursUTC/24.0; // 0..1
             nrad(sun_lon); // clamp to 0..TWO_PI
             double sun_r = sun_lon/TWO_PI; // convert to 0..1
 
+            // rotational difference between UTC and current time
             double diff_r = sun_r - time_r;
             double diff_lon = TWO_PI * diff_r;
+
+            // apparent sun longitude.
             double app_sun_lon = sun_lon - diff_lon + osg::PI;
             nrad2(app_sun_lon);
 
@@ -826,8 +831,13 @@ SkyNode::makeStars(const std::string& starFile)
 
 osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 {
-  osg::ref_ptr<osg::Vec3Array> coords = new osg::Vec3Array;
-  osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array;
+  osg::Vec3Array* coords = new osg::Vec3Array();
+  coords->reserve( stars.size() );
+
+  osg::Vec4Array* colors = new osg::Vec4Array();
+  colors->reserve( stars.size() );
+
+  double minMag = DBL_MAX, maxMag = DBL_MIN;
 
   std::vector<StarData>::const_iterator p;
   for( p = stars.begin(); p != stars.end(); p++ )
@@ -836,48 +846,36 @@ osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
       osg::Matrix::rotate( p->declination, 1, 0, 0 ) * 
       osg::Matrix::rotate( p->right_ascension, 0, 0, 1 );
 
-
     coords->push_back( v );
 
-    double c = 1.0 - (p->magnitude/8.0);
-    colors->push_back(osg::Vec4 (c,c,c,1.0));
+    if ( p->magnitude < minMag ) minMag = p->magnitude;
+    if ( p->magnitude > maxMag ) maxMag = p->magnitude;
+  }
+
+  for( p = stars.begin(); p != stars.end(); p++ )
+  {
+      double c = 0.25 + 0.75 * ( (p->magnitude-minMag) / (maxMag-minMag) );
+      colors->push_back( osg::Vec4(c,c,c,1.0) );
   }
 
   osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry;
-  geometry->setVertexArray( coords.get() );
-  geometry->setColorArray( colors.get() );
+  geometry->setVertexArray( coords );
+  geometry->setColorArray( colors );
   geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
   geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
 
-  osg::ref_ptr<osg::StateSet> sset = new osg::StateSet;
+  osg::StateSet* sset = new osg::StateSet;
 
-  for( int i= 0; i < 8; i++ )
-    sset->setTextureMode( i, GL_TEXTURE_2D, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-
-  sset->setMode(  GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-
+  sset->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
   sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
   
-  osg::ref_ptr<osg::Program> program = new osg::Program;
-
+  osg::Program* program = new osg::Program;
   program->addShader( new osg::Shader(osg::Shader::VERTEX, s_starvertGLSL ));
-  /*
-  osg::ref_ptr<osg::Shader> vertexShader = new osg::Shader(osg::Shader::VERTEX);
-  vertexShader->loadShaderSourceFromFile("./stars.vert");
-  program->addShader( vertexShader.get() );
-  */
-
   program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_starfragGLSL ));
-  /*
-  osg::ref_ptr<osg::Shader> fragmentShader = new osg::Shader(osg::Shader::FRAGMENT);
-  fragmentShader->loadShaderSourceFromFile("./stars.frag");
-  program->addShader( fragmentShader.get() );
-  */
-
-  sset->setAttributeAndModes( program.get(), osg::StateAttribute::ON );
+  sset->setAttributeAndModes( program, osg::StateAttribute::ON );
 
   _starAlpha = new osg::Uniform( "starAlpha", 1.0f );
-  _starPointSize = new osg::Uniform( "pointSize", 2.4f );
+  _starPointSize = new osg::Uniform( "pointSize", 3.2f );
 
   sset->addUniform( _starAlpha.get() );
   sset->addUniform( _starPointSize.get() );
@@ -885,7 +883,9 @@ osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   sset->setRenderBinDetails(-10, "RenderBin");
   sset->setMode( GL_DEPTH, osg::StateAttribute::OFF );
   sset->setMode( GL_DEPTH_TEST, osg::StateAttribute::ON );
-  geometry->setStateSet( sset.get() );
+  sset->setMode( GL_BLEND, 1 );
+  sset->setAttributeAndModes( new osg::Point(3.2f), 1 );
+  geometry->setStateSet( sset );
 
   osg::Geode* starGeode = new osg::Geode;
   starGeode->addDrawable( geometry.get() );

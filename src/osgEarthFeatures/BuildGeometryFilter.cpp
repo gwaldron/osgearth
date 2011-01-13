@@ -263,15 +263,24 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
             tess.retessellatePolygons( *osgGeom );
 
-            // apply the triangle subdivision if necessary:
-            if ( context.isGeocentric() )
-            {
-                double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+            //// apply the triangle subdivision if necessary:
+            //if ( context.isGeocentric() )
+            //{
+            //    double threshold = osg::DegreesToRadians( *_maxAngle_deg );
 
-                MeshSubdivider ms( context.referenceFrame(), context.inverseReferenceFrame() );
-                //ms.setMaxElementsPerEBO( INT_MAX );
-                ms.run( threshold, *osgGeom );
-            }
+            //    MeshSubdivider ms( context.referenceFrame(), context.inverseReferenceFrame() );
+            //    //ms.setMaxElementsPerEBO( INT_MAX );
+            //    ms.run( threshold, *osgGeom );
+            //}
+        }
+
+        if ( context.isGeocentric() )
+        {
+            double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+
+            MeshSubdivider ms( context.referenceFrame(), context.inverseReferenceFrame() );
+            //ms.setMaxElementsPerEBO( INT_MAX );
+            ms.run( threshold, *osgGeom );
         }
 
         // set the color array. We have to do this last, otherwise it screws up any modifications

@@ -29,6 +29,8 @@
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
 
+#define LC "[TileSource] "
+
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
@@ -141,7 +143,14 @@ _options( options )
 {
     this->setThreadSafeRefUnref( true );
 
-    _memCache = new MemCache();
+    if ( *options.enableL2Cache() )
+    {
+        _memCache = new MemCache();
+    }
+    else
+    {
+        OE_INFO << LC << "L2 Cache disabled" << std::endl;
+    }
 
     if (_options.blacklistFilename().isSet())
     {

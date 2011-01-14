@@ -1,0 +1,80 @@
+<!--
+osgEarth Sample
+
+Combines a model overlay with inline geometry to display a map 10 degree graticule.
+-->
+
+<map name="Graticule" type="geocentric" version="2">
+
+    <options>
+        <lighting>false</lighting>
+    </options>
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="graticule 10deg" driver="feature_geom" overlay="true">
+        
+        <!-- The maximum angle between verts - limits the tessellation granularity. -->
+        <max_granularity>2.5</max_granularity>
+        
+        <!-- Appearance details -->
+        <styles>
+            <style type="text/css">
+                default {
+                   stroke: #ffffff;
+                   stroke-opacity: 0.5;
+                   stroke-width: 3.5;
+                }                    
+            </style>
+        </styles>
+
+	    <!-- Define an inline geometry in WKT format.
+		     See: http://en.wikipedia.org/wiki/Well-known_text#Geometric_objects -->
+	    <features driver="ogr">
+			<geometry>
+                MULTILINESTRING(
+                    (-180   0, -90   0, 0   0, 90   0, 180   0),
+                    (-180  10, -90  10, 0  10, 90  10, 180  10), 
+                    (-180  20, -90  20, 0  20, 90  20, 180  20), 
+                    (-180  30, -90  30, 0  30, 90  30, 180  30), 
+                    (-180  40, -90  40, 0  40, 90  40, 180  40), 
+                    (-180  50, -90  50, 0  50, 90  50, 180  50), 
+                    (-180  60, -90  60, 0  60, 90  60, 180  60), 
+                    (-180  70, -90  70, 0  70, 90  70, 180  70), 
+                    (-180  80, -90  80, 0  80, 90  80, 180  80), 
+                    (-180 -10, -90 -10, 0 -10, 90 -10, 180 -10), 
+                    (-180 -20, -90 -20, 0 -20, 90 -20, 180 -20), 
+                    (-180 -30, -90 -30, 0 -30, 90 -30, 180 -30), 
+                    (-180 -40, -90 -40, 0 -40, 90 -40, 180 -40), 
+                    (-180 -50, -90 -50, 0 -50, 90 -50, 180 -50), 
+                    (-180 -60, -90 -60, 0 -60, 90 -60, 180 -60), 
+                    (-180 -70, -90 -70, 0 -70, 90 -70, 180 -70), 
+                    (-180 -80, -90 -80, 0 -80, 90 -80, 180 -80),
+                    
+                    (   0  80,   0 -80), (  180  80,  180 -80),
+                    (  10  80,  10 -80), (  -10  80,  -10 -80),
+                    (  20  80,  20 -80), (  -20  80,  -20 -80),
+                    (  30  80,  30 -80), (  -30  80,  -30 -80),
+                    (  40  80,  40 -80), (  -40  80,  -40 -80),
+                    (  50  80,  50 -80), (  -50  80,  -50 -80),
+                    (  60  80,  60 -80), (  -60  80,  -60 -80),
+                    (  70  80,  70 -80), (  -70  80,  -70 -80),
+                    (  80  80,  80 -80), (  -80  80,  -80 -80),
+                    (  90  80,  90 -80), (  -90  80,  -90 -80),
+                    ( 100  80, 100 -80), ( -100  80, -100 -80),
+                    ( 110  80, 110 -80), ( -110  80, -110 -80),
+                    ( 120  80, 120 -80), ( -120  80, -120 -80),
+                    ( 130  80, 130 -80), ( -130  80, -130 -80),
+                    ( 140  80, 140 -80), ( -140  80, -140 -80),
+                    ( 150  80, 150 -80), ( -150  80, -150 -80),
+                    ( 160  80, 160 -80), ( -160  80, -160 -80),
+                    ( 170  80, 170 -80), ( -170  80, -170 -80)
+                )                
+			</geometry>
+		</features>
+        
+    </model>
+  
+</map>

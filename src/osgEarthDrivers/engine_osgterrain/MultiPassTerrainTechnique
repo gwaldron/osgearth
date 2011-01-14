@@ -43,6 +43,7 @@ public:
     MultiPassTerrainTechnique(const MultiPassTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
     
     META_Object(osgEarth, MultiPassTerrainTechnique);
+
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)        
     virtual void init(int dirtyMask, bool assumeMultiThreaded);
 #else
@@ -59,33 +60,8 @@ public:
 
 	osg::Geode* createPass(unsigned int order, const CustomColorLayer* layer, osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel, osg::Geometry* geometry); 
 
-    virtual void update(osgUtil::UpdateVisitor* nv);
-
-    virtual void cull(osgUtil::CullVisitor* nv);
-
     /** Traverse the terain subgraph.*/
     virtual void traverse(osg::NodeVisitor& nv);
-
-    virtual void cleanSceneGraph();
-
-    void setFilterBias(float filterBias);
-    float getFilterBias() const { return _filterBias; }
-    
-    void setFilterWidth(float filterWidth);
-    float getFilterWidth() const { return _filterWidth; }
-
-    void setFilterMatrix(const osg::Matrix3& matrix);
-    osg::Matrix3& getFilterMatrix() { return _filterMatrix; }
-    const osg::Matrix3& getFilterMatrix() const { return _filterMatrix; }
-    
-    enum FilterType
-    {
-        GAUSSIAN,
-        SMOOTH,
-        SHARPEN
-    };
-    
-    void setFilterMatrixAs(FilterType filterType);
 
     /** If State is non-zero, this function releases any associated OpenGL objects for
     * the specified graphics context. Otherwise, releases OpenGL objects
@@ -100,22 +76,10 @@ private:
 
     virtual ~MultiPassTerrainTechnique();
 
-    osg::ref_ptr<osg::MatrixTransform> _transform;
-    osg::ref_ptr<osg::Group>           _passes;
-    
-
-   
-            
-    float                               _filterBias;
-    osg::ref_ptr<osg::Uniform>          _filterBiasUniform;
-    float                               _filterWidth;
-    osg::ref_ptr<osg::Uniform>          _filterWidthUniform;
-    osg::Matrix3                        _filterMatrix;
-    osg::ref_ptr<osg::Uniform>          _filterMatrixUniform;
-
-    bool _terrainTileInitialized;
-
-    osg::ref_ptr<TextureCompositor> _texCompositor;
+    osg::ref_ptr<osg::MatrixTransform>  _transform;
+    osg::ref_ptr<osg::Group>            _passes;            
+    bool                                _terrainTileInitialized;
+    osg::ref_ptr<TextureCompositor>     _texCompositor;
 };
 
 #endif //OSGEARTH_ENGINE_OSGTERRAIN_MULTIPASS_TERRAIN_TECHNIQUE

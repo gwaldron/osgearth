@@ -142,8 +142,8 @@ public:
             build.geomTypeOverride() = *_options.geometryTypeOverride();
 
         // subdivide geocentric geometry as required:
-        if ( _options.maxTriangleSize().isSet() )
-            build.maxTriangleSize() = *_options.maxTriangleSize();
+        if ( _options.maxGranularity().isSet() )
+            build.maxGranularity() = *_options.maxGranularity();
 
         osg::ref_ptr<osg::Node> result;
         build.setStyle( style );

@@ -57,7 +57,7 @@ namespace
 BuildGeometryFilter::BuildGeometryFilter() :
 _style( new Style() ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
-_maxAngle_deg( 10.0 )
+_maxAngle_deg( 5.0 )
 {
     reset();
 }
@@ -262,16 +262,6 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
             tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
             tess.retessellatePolygons( *osgGeom );
-
-            //// apply the triangle subdivision if necessary:
-            //if ( context.isGeocentric() )
-            //{
-            //    double threshold = osg::DegreesToRadians( *_maxAngle_deg );
-
-            //    MeshSubdivider ms( context.referenceFrame(), context.inverseReferenceFrame() );
-            //    //ms.setMaxElementsPerEBO( INT_MAX );
-            //    ms.run( threshold, *osgGeom );
-            //}
         }
 
         if ( context.isGeocentric() )

@@ -923,8 +923,7 @@ namespace
             return &ColorReader<GL_COMPRESSED_RGB_S3TC_DXT1_EXT, GLubyte>::read;
             break;
         default:
-            OE_WARN << "[PixelReader] No reader found for pixel format " << std::hex << pixelFormat << std::endl; 
-            return &ColorReader<0, GLbyte>::read;
+            return 0L;
             break;
         }
     }
@@ -938,6 +937,11 @@ _image(image)
     _imageSize = _image->getImageSizeInBytes();
     GLenum dataType = _image->getDataType();
     _reader = getReader( _image->getPixelFormat(), dataType );
+    if ( !_reader )
+    {
+        OE_WARN << "[PixelReader] No reader found for pixel format " << std::hex << _image->getPixelFormat() << std::endl; 
+        _reader = &ColorReader<0,GLbyte>::read;
+    }
 }
 
 bool
@@ -974,7 +978,7 @@ namespace
         case GL_UNSIGNED_BYTE_3_3_2:
             return &ColorWriter<GL_UNSIGNED_BYTE_3_3_2, GLubyte>::write;
         default:
-            return &ColorWriter<0, GLbyte>::write;
+            return 0L;
         }
     }
 
@@ -1007,8 +1011,7 @@ namespace
             return chooseWriter<GL_BGRA>(dataType);
             break; 
         default:
-            OE_WARN << "[PixelWriter] No writer found for pixel format " << std::hex << pixelFormat << std::endl; 
-            return chooseWriter<0>(dataType);
+            return 0L;
             break;
         }
     }
@@ -1022,6 +1025,11 @@ _image(image)
     _imageSize = _image->getImageSizeInBytes();
     GLenum dataType = _image->getDataType();
     _writer = getWriter( _image->getPixelFormat(), dataType );
+    if ( !_writer )
+    {
+        OE_WARN << "[PixelWriter] No writer found for pixel format " << std::hex << _image->getPixelFormat() << std::endl; 
+        _writer = &ColorWriter<0, GLbyte>::write;
+    }
 }
 
 bool

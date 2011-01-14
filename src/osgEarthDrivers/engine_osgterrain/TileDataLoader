@@ -26,22 +26,21 @@
 
 using namespace osgEarth;
 
-struct ExpiringProgressCallback : public ProgressCallback
-{
-    ExpiringProgressCallback( TaskService* service ) : _service(service) { }
-    bool reportProgress(double current, double total);
-    int _stamp;
-    osg::Timer_t _timestamp;
-    TaskService* _service;
-};
+//struct ExpiringProgressCallback : public ProgressCallback
+//{
+//    ExpiringProgressCallback( TaskService* service ) : _service(service) { }
+//    bool reportProgress(double current, double total);
+//    int _stamp;
+//    osg::Timer_t _timestamp;
+//    TaskService* _service;
+//};
 
 /** A Tile job loads data for one key and makes a tile out of it. */
 struct TileJob : public osg::Referenced
 {
     TileJob(
         const TileKey& key, const MapFrame& mapf,
-        OSGTileFactory* factory, TaskService* service,
-        Threading::Event& completionEvent);
+        OSGTileFactory* factory, TaskService* service);
 
     void start( ProgressCallback* progress );
     bool isCompleted() const;
@@ -55,7 +54,6 @@ struct TileJob : public osg::Referenced
     osg::ref_ptr<OSGTileFactory> _factory;
     osg::ref_ptr<TaskService> _service;
     osg::Timer_t _startTime;
-    Threading::Event& _completionEvent;
 };
 
 /** A Tile Group Job loads the 4 subtiles of the specified key and puts them in a group. */
@@ -70,7 +68,7 @@ struct TileGroupJob : public osg::Referenced
 
     MapFrame _mapf;
     osg::ref_ptr<TileJob> _tileJobs[4];
-    osg::ref_ptr<ExpiringProgressCallback> _progress;
+    osg::ref_ptr<ProgressCallback> _progress;
     osg::Timer_t _startTime;
     Threading::Event _completionEvent;
 };

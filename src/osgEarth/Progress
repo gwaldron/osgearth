@@ -44,7 +44,13 @@ namespace osgEarth
         * @param returns
         *        Returns true if the current task should be cancelled, false otherwise.
         */
-        virtual bool reportProgress(double current, double total);
+        virtual bool reportProgress(double current, double total) { return false; }
+
+        // called when the process starts
+        virtual void onStarted() { }
+
+        // called when the process completed 
+        virtual void onCompleted() { }
 
         void cancel() { _canceled = true; }
         bool isCanceled() const { return _canceled; }

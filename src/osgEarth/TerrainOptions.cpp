@@ -38,7 +38,9 @@ _numCompileThreadsPerCore( 0.5 )
 void
 LoadingPolicy::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "mode", "standard", _mode, MODE_STANDARD );
+    conf.getIfSet( "mode", "standard", _mode, MODE_SERIAL );
+    conf.getIfSet( "mode", "serial", _mode, MODE_SERIAL );
+    conf.getIfSet( "mode", "parallel", _mode, MODE_PARALLEL );
     conf.getIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
     conf.getIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
     conf.getIfSet( "loading_threads", _numLoadingThreads );
@@ -52,7 +54,8 @@ Config
 LoadingPolicy::getConfig() const
 {
     Config conf( "loading_policy" );
-    conf.addIfSet( "mode", "standard", _mode, MODE_STANDARD );
+    conf.addIfSet( "mode", "standard", _mode, MODE_STANDARD ); // aka MODE_SERIAL
+    conf.addIfSet( "mode", "parallel", _mode, MODE_PARALLEL );
     conf.addIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
     conf.addIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
     conf.addIfSet( "loading_threads", _numLoadingThreads );

@@ -843,6 +843,7 @@ namespace
                      ElevationInterpolation interpolation,
                      ElevationSamplePolicy samplePolicy,
                      osg::ref_ptr<osg::HeightField>& out_result,
+                     bool* out_isFallback,
                      ProgressCallback* progress) 
     {
         unsigned int lowestLOD = key.getLevelOfDetail();
@@ -856,6 +857,8 @@ namespace
 
         unsigned int numValidHeightFields = 0;
 
+        if ( out_isFallback )
+            *out_isFallback = false;
         
         //First pass:  Try to get the exact LOD requested for each enabled heightfield
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
@@ -883,8 +886,11 @@ namespace
             return false;
         }
 
-        //Second pass:  We were either asked to fallback or we might have some heightfields at the requested LOD and some that are NULL
-        //              Fall back on parent tiles to fill in the missing data if possible.
+        if ( out_isFallback )
+            *out_isFallback = true;
+
+        //Second pass:  We were either asked to fallback or we might have some heightfields at the requested
+        //              LOD and some that are NULL. Fall back on parent tiles to fill in the missing data if possible.
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
         {
             ElevationLayer* layer = i->get();
@@ -1056,12 +1062,18 @@ bool
 Map::getHeightField(const TileKey& key,
                     bool fallback,
                     osg::ref_ptr<osg::HeightField>& out_result,
+                    bool* out_isFallback,
                     ElevationInterpolation interpolation,
                     ElevationSamplePolicy samplePolicy,
                     ProgressCallback* progress) const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
-    return s_getHeightField( key, _elevationLayers, getProfile(), fallback, interpolation, samplePolicy, out_result, progress );
+
+    return s_getHeightField(
+        key, _elevationLayers, getProfile(), fallback, 
+        interpolation, samplePolicy, 
+        out_result, out_isFallback,
+        progress );
 }
 
 bool
@@ -1170,11 +1182,12 @@ bool
 MapFrame::getHeightField(const TileKey& key,
                             bool fallback,
                             osg::ref_ptr<osg::HeightField>& out_hf,
+                            bool* out_isFallback,
                             ElevationInterpolation interpolation,
                             ElevationSamplePolicy samplePolicy,
                             ProgressCallback* progress) const
 {
-    return s_getHeightField( key, _elevationLayers, _mapInfo.getProfile(), fallback, interpolation, samplePolicy, out_hf, progress );
+    return s_getHeightField( key, _elevationLayers, _mapInfo.getProfile(), fallback, interpolation, samplePolicy, out_hf, out_isFallback, progress );
 }
 
 int

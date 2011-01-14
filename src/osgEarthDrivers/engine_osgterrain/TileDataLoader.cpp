@@ -33,20 +33,18 @@ using namespace osgEarth;
 //  -- get rid of expired jobs ..
 //  -- fix cancelation (stamp should be updated every frame)
 
-
-
 //------------------------------------------------------------------------
 
-bool
-ExpiringProgressCallback::reportProgress(double current, double total)
+struct SignalingProgressCallback : public ProgressCallback
 {
-    if ( _canceled ) return _canceled;
-    osg::Timer_t now = osg::Timer::instance()->tick();
-    _canceled = osg::Timer::instance()->delta_s( _timestamp, now ) > 0.25;
-    //_canceled = _service->getStamp() - _stamp > 2;
-    if ( _canceled ) OE_INFO << "Task cancelling..." << std::endl;
-    return _canceled;
-}
+    SignalingProgressCallback( Threading::Event* ev ) : _ev(ev) { }
+
+    void onCompleted() {
+        _ev->set();
+    }
+
+    Threading::Event* _ev;
+};
 
 //------------------------------------------------------------------------
 
@@ -59,7 +57,7 @@ namespace
         
         void operator()( ProgressCallback* progress )
         {
-            _result = _factory->createImageLayer( 
+            _result = _factory->createImageLayer(
                 _mapf.getMapInfo(), 
                 _mapf.getImageLayerByUID( _layerUID ),
                 _key, 
@@ -92,13 +90,11 @@ namespace
 //------------------------------------------------------------------------
 
 TileJob::TileJob(const TileKey& key, const MapFrame& mapf,
-                 OSGTileFactory* factory, TaskService* service,
-                 Threading::Event& completionEvent ) :
+                 OSGTileFactory* factory, TaskService* service ) :
 _key(key),
 _mapf(mapf),
 _factory(factory),
-_service(service),
-_completionEvent(completionEvent)
+_service(service)
 {
     //NOP    
 }
@@ -116,7 +112,6 @@ TileJob::start( ProgressCallback* progress )
         r->setName(buf.str());
         r->setProgressCallback( progress );
         r->setPriority( -(float)_key.getLevelOfDetail() );
-        r->setCompletedEvent( &_completionEvent );
         _requests.push_back( r );
 #ifdef TEST_RUN_SYNC
         (*r)(0L);
@@ -134,7 +129,6 @@ TileJob::start( ProgressCallback* progress )
         r->setName(buf.str());
         r->setProgressCallback( progress );
         r->setPriority( -(float)_key.getLevelOfDetail() );
-        r->setCompletedEvent( &_completionEvent );
         _requests.push_back( r );
 #ifdef TEST_RUN_SYNC
         (*r)(0L);
@@ -206,14 +200,10 @@ TileGroupJob::TileGroupJob(const TileKey& parentKey, const Map* map,
                            OSGTileFactory* factory, TaskService* service ) :
 _mapf(map)
 {
-    _progress = new ExpiringProgressCallback( service );
-    _progress->_stamp = service->getStamp();
-    _progress->_timestamp = osg::Timer::instance()->tick();
-
     for( unsigned i=0; i<4; ++i )
     {
         TileKey childKey = parentKey.createChildKey( i );
-        _tileJobs[i] = new TileJob( childKey, _mapf, factory, service, _completionEvent );
+        _tileJobs[i] = new TileJob( childKey, _mapf, factory, service );
     }
 }
 
@@ -222,8 +212,11 @@ TileGroupJob::start()
 {
     _startTime = osg::Timer::instance()->tick();
 
+    // make a progress that will signal our event when a request completes.
+    ProgressCallback* progress = new SignalingProgressCallback( &_completionEvent );
+
     for( unsigned i=0; i<4; ++i )
-        _tileJobs[i]->start( _progress.get() );
+        _tileJobs[i]->start( progress );
 }
 
 double
@@ -292,34 +285,11 @@ TileDataLoader::loadSubTileGroup( const TileKey& key )
     {
         osg::ref_ptr<TileGroupJob> job = ticket->_job.get();
 
-#if TEST_BLOCK_ON_REQUESTS
+        // sit around and wait for the entire job to complete
         while( !job->isCompleted() )
         {
-            job->_progress->_timestamp = osg::Timer::instance()->tick();
-#ifdef TEST_SPIN_WAIT
-            Threading::Thread::CurrentThread()->YieldCurrentThread();
-#else // TEST_SPIN_WAIT
             job->_completionEvent.waitAndReset();
-#endif // TEST_SPIN_WAIT
         }
-#endif // TEST_BLOCK_ON_REQUESTS
-
-#if 0
-        // if there's a request, but it's not done, return immediately and indiciate
-        // that an asynchronous request is in process and to check again later.
-        if ( !job->isCompleted() )
-        {
-            // update the timestamp to set our job know we are still interested.
-            job->_progress->_timestamp = osg::Timer::instance()->tick();
-
-            //return osgDB::ReaderWriter::ReadResult::FILE_REQUESTED;
-            return osgDB::ReaderWriter::ReadResult::FILE_NOT_FOUND;
-        }
-#endif
-        
-        // TODO: need logic to periodically remove old Tickets that were canceled
-        // due to expiration...
-
 
         // remove its ticket from the lookup table.
         {
@@ -349,7 +319,6 @@ TileDataLoader::loadSubTileGroup( const TileKey& key )
             s_time += job->runTime();
             s_count++;
             OE_INFO << LC << "Average tile time = " << s_time/(double)s_count << " s." << std::endl;
-            //OE_INFO << LC << "Completed tile for key " << key.str() << ", runtime = " << job->runTime() << " s." << std::endl;
 
             return osgDB::ReaderWriter::ReadResult( result );
         }
@@ -373,12 +342,7 @@ TileDataLoader::loadSubTileGroup( const TileKey& key )
         }
         ticket._job->start();
         
-#ifdef TEST_BLOCK_ON_REQUESTS
         return loadSubTileGroup(key);
-#else
-        //return osgDB::ReaderWriter::ReadResult::FILE_REQUESTED;
-        return osgDB::ReaderWriter::ReadResult::FILE_NOT_FOUND;
-#endif
     }
 }
 

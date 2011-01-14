@@ -26,6 +26,8 @@
 #include <osgDB/Registry>
 #include <string>
 
+#define LC "[osgterrain_engine Plugin] "
+
 using namespace osgEarth::Drivers;
 
 class OSGTerrainEnginePlugin : public osgDB::ReaderWriter
@@ -50,7 +52,7 @@ public:
     {
         if ( "osgearth_engine_osgterrain" == osgDB::getFileExtension( uri ) )
         {
-            if ( "earth" ==  osgDB::getNameLessExtension( osgDB::getFileExtension( uri ) ) )
+            if ( "earth" == osgDB::getNameLessExtension( osgDB::getFileExtension( uri ) ) )
             {
                 return readNode( uri, options );
             }
@@ -68,94 +70,67 @@ public:
 
     virtual ReadResult readNode(const std::string& uri, const Options* options) const
     {
-        if ("osgearth_osgterrain_tile" == osgDB::getFileExtension(uri) )
+        static int s_tileCount = 0;
+        static double s_tileTime = 0.0;
+        static osg::Timer_t s_startTime;
+
+        if ( "osgearth_osgterrain_tile" == osgDB::getFileExtension(uri) )
         {
-            return readNodeUsingTileDataLoader(uri, options);
-        }
-        else if ( "osgearth_osgterrain_tile" == osgDB::getFileExtension( uri ) )
-        {
-            return readNodeUsingTileFactory(uri, options);
-        }
-        else
-        {
-            return ReadResult::FILE_NOT_HANDLED;
-        }
-    }
+            if ( s_tileCount == 0 )
+                s_startTime = osg::Timer::instance()->tick();
 
-    virtual ReadResult readNodeUsingTileFactory(const std::string& uri, const Options* options) const
-    {
-        //See if the filename starts with server: and strip it off.  This will trick OSG into passing in the filename to our plugin
-        //instead of using the CURL plugin if the filename contains a URL.  So, if you want to read a URL, you can use the following format
-        //osgDB::readNodeFile("server:http://myserver/myearth.earth").  This should only be necessary for the first level as the other files will have
-        //a tilekey prepended to them.
-        if ((uri.length() > 7) && (uri.substr(0, 7) == "server:"))
-        {
-            return readNode(uri.substr(7), options);
-        }
+            // See if the filename starts with server: and strip it off.  This will trick OSG
+            // into passing in the filename to our plugin instead of using the CURL plugin if
+            // the filename contains a URL.  So, if you want to read a URL, you can use the
+            // following format: osgDB::readNodeFile("server:http://myserver/myearth.earth").
+            // This should only be necessary for the first level as the other files will have
+            // a tilekey prepended to them.
+            if ((uri.length() > 7) && (uri.substr(0, 7) == "server:"))
+                return readNode(uri.substr(7), options);
 
-        osg::Node* node = 0;
+            // parse the tile key and engine ID:
+            std::string tileDef = osgDB::getNameLessExtension(uri);
+            unsigned int lod, x, y, engineID;
+            sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &engineID);
 
-        std::string tileDef = osgDB::getNameLessExtension(uri);
-
-        unsigned int lod, x, y, id;
-        sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &id);
-
-        //Get the Map from the cache.  It is important that we use a ref_ptr here
-        //to prevent the Map from being deleted while it is is still in use.
-        //osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
-        osg::ref_ptr<OSGTerrainEngineNode> engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)id );
-
-        if ( engineNode.valid() )
-        {
-            const Profile* profile = engineNode->getMap()->getProfile();
-            TileKey key( lod, x, y, profile );
-
-            bool populateLayers = engineNode->getTileFactory()->getTerrainOptions().loadingPolicy()->mode() 
-                == LoadingPolicy::MODE_STANDARD;
-
-            // create a map frame so we can safely create tiles from this dbpager thread
-            MapFrame mapf( engineNode->getMap(), Map::TERRAIN_LAYERS, "dbpager::earth plugin" );
-
-            node = engineNode->getTileFactory()->createSubTiles(
-                mapf,
-                engineNode->getTerrain(),
-                key,
-                populateLayers );
-
-            //Blacklist the tile if we couldn't load it
-            if (!node)
+            // find the appropriate engine:
+            OSGTerrainEngineNode* engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)engineID );
+            if ( engineNode )
             {
-                OE_DEBUG << "Blacklisting " << uri << std::endl;
-                osgEarth::Registry::instance()->blacklist(uri);
+                osg::Timer_t start = osg::Timer::instance()->tick();
+
+                // assemble the key and create the node:
+                const Profile* profile = engineNode->getMap()->getProfile();
+                TileKey key( lod, x, y, profile );
+                osg::Node* node = engineNode->createNode( key );
+                
+                // Blacklist the tile if we couldn't load it
+                if ( !node )
+                {
+                    OE_DEBUG << LC << "Blacklisting " << uri << std::endl;
+                    osgEarth::Registry::instance()->blacklist( uri );
+                }
+                else
+                {
+                    osg::Timer_t end = osg::Timer::instance()->tick();
+                    s_tileTime += osg::Timer::instance()->delta_s( start, end );
+                    double elapsed = osg::Timer::instance()->delta_s( s_startTime, end );
+                    s_tileCount++;
+                    if ( s_tileCount % 10 == 0 )
+                        OE_INFO << LC << "Average = " << s_tileTime / (double)s_tileCount << " s," 
+                        << ", TPS = " << (double)s_tileCount/elapsed << std::endl;
+                }
+
+                return ReadResult( node, ReadResult::FILE_LOADED );
+            }
+            else
+            {
+                return ReadResult::FILE_NOT_FOUND;
             }
         }
         else
         {
-            OE_NOTICE << "Error: Could not find Map with id=" << id << std::endl;
-        }
-
-        return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;
-    }
-
-
-    //-----------------------------------------------------------------------
-
-    virtual ReadResult readNodeUsingTileDataLoader(const std::string& uri, const Options* options) const
-    {
-        std::string tileDef = osgDB::getNameLessExtension(uri);
-        unsigned int lod, x, y, engineID;
-        sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &engineID);
-
-        OSGTerrainEngineNode* engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)engineID );
-        if ( engineNode )
-        {
-            const Profile* profile = engineNode->getMap()->getProfile();
-            TileKey key( lod, x, y, profile );
-            return engineNode->getTileDataLoader()->loadSubTileGroup( key );
-        }
-        else
-        {
-            return ReadResult::FILE_NOT_FOUND;
+            return ReadResult::FILE_NOT_HANDLED;
         }
     }
 };

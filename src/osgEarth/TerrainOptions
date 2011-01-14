@@ -33,8 +33,11 @@ namespace osgEarth
     public:
         /** Tile loading modes. */
         enum Mode {
-            /** Load tiles using the standard OSG database pager mechanism. The default. */
-            MODE_STANDARD,
+            /** Load tiles one LOD at a tile, serially */ 
+            MODE_SERIAL,
+
+            /** Load tiles one LOD at a tile, in parallel */
+            MODE_PARALLEL,
 
             /** Load tiles using a task service thread pool, enforcing sequential display
                 of tile LODs. */
@@ -42,7 +45,10 @@ namespace osgEarth
 
             /** Load tiles using a task service thread pool, but prioritize loading of the
                 highest visible LOD for imagery (elevation data is always sequential). */
-            MODE_PREEMPTIVE
+            MODE_PREEMPTIVE,
+
+            /** Load tiles using the standard OSG database pager mechanism. The default. */
+            MODE_STANDARD = MODE_SERIAL
         };
 
     public:

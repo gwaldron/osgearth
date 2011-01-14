@@ -318,6 +318,7 @@ namespace osgEarth
             const TileKey& key,
             bool fallback,
             osg::ref_ptr<osg::HeightField>& out_hf,
+            bool* out_isFallback =0L,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
             ElevationSamplePolicy samplePolicy =SAMPLE_FIRST_VALID,
             ProgressCallback* progress = 0) const;
@@ -480,6 +481,7 @@ namespace osgEarth
             const TileKey& key,
             bool fallback,
             osg::ref_ptr<osg::HeightField>& out_hf,
+            bool* out_isFallback =0L,
             ElevationInterpolation interpolation =INTERP_AVERAGE,
             ElevationSamplePolicy samplePolicy   =SAMPLE_FIRST_VALID,
             ProgressCallback* progress = 0) const; 

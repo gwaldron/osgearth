@@ -8,10 +8,13 @@ SET(TARGET_SRC
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp
     QuadTileNode.cpp
+    ParallelKeyNodeFactory.cpp
     Plugin.cpp
+    SerialKeyNodeFactory.cpp
+    SinglePassTerrainTechnique.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
     TileDataLoader.cpp
-    SinglePassTerrainTechnique.cpp
+    TileBuilder.cpp
 )
 
 SET(TARGET_H
@@ -20,15 +23,19 @@ SET(TARGET_H
     CustomTile
     CustomTerrainTechnique
     FileLocationCallback
+    KeyNodeFactory
     MultiPassTerrainTechnique
+    ParallelKeyNodeFactory
     OSGTerrainEngineNode
     OSGTerrainOptions
     OSGTileFactory
     QuadTileNode
+    SerialKeyNodeFactory
+    SinglePassTerrainTechnique
     TerrainTileEdgeNormalizerUpdateCallback
     TileDataLoader
+    TileBuilder
     TransparentLayer
-    SinglePassTerrainTechnique
 )
 
 SETUP_PLUGIN(osgearth_engine_osgterrain)

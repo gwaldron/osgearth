@@ -21,12 +21,15 @@
 #include "CustomTerrain"
 #include "MultiPassTerrainTechnique"
 #include "TransparentLayer"
+#include "TileBuilder"
+#include "ParallelKeyNodeFactory"
 
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
+#include <osg/PagedLOD>
 
 #define LC "[OSGTerrainEngine] "
 
@@ -235,6 +238,14 @@ void
 OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     OE_INFO << LC << "Map profile established" << std::endl;
+    
+    LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
+    OE_INFO << LC << "Loading policy mode = " <<
+        ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "PREEMPTIVE" :
+          mode == LoadingPolicy::MODE_SEQUENTIAL ? "SEQUENTIAL" :
+          mode == LoadingPolicy::MODE_PARALLEL   ? "PARALLEL" :
+          "SERIAL/STANDARD" )
+        << std::endl;
 
     // create a factory for creating actual tile data
     _tileFactory = new OSGTileFactory( _uid, *_cull_mapf, _terrainOptions );
@@ -293,28 +304,84 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     _pendingTerrainCallbacks.clear();
 #endif
 
+    // calculate a good thread pool size.
+    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+    if ( _terrainOptions.loadingPolicy().isSet() )
+    {
+        if ( _terrainOptions.loadingPolicy()->numLoadingThreads().isSet() )
+            num = *_terrainOptions.loadingPolicy()->numLoadingThreads();
+        else if ( _terrainOptions.loadingPolicy()->numLoadingThreadsPerCore().isSet() )
+            num = *_terrainOptions.loadingPolicy()->numLoadingThreadsPerCore() * OpenThreads::GetNumberOfProcessors();
+    }
+    _tileService = new TaskService( "TileBuilder", num );
+
+    // initialize the tile builder
+    _tileBuilder = new TileBuilder( getMap(), _terrainOptions, _tileService.get() );
+
+    // initialize a key node factory.
+    switch( *_terrainOptions.loadingPolicy()->mode() )
+    {
+    case LoadingPolicy::MODE_SERIAL:
+        _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, _terrain, _uid );
+        break;
+    case LoadingPolicy::MODE_PARALLEL:
+        _keyNodeFactory = new ParallelKeyNodeFactory( _tileBuilder.get(), _terrainOptions, _terrain, _uid );
+        break;
+    default:
+        break;
+    }
+
+    if ( _keyNodeFactory.valid() )
+    {
+        OE_INFO << LC << "Thread pool size = " << num << std::endl;
+    }
+
     // collect the tile keys comprising the root tiles of the terrain.
     std::vector< TileKey > keys;
     _update_mapf->getProfile()->getRootKeys( keys );
 
-    for (unsigned int i = 0; i < keys.size(); ++i)
+    for( unsigned i=0; i<keys.size(); ++i )
     {
-        // always load the root tiles completely; no deferring. -gw
-        bool loadNow = true; //!_terrainOptions.getPreemptiveLOD();
-
-        osg::Node* node = _tileFactory->createSubTiles( *_update_mapf, _terrain, keys[i], loadNow );
-        if (node)
-        {
-            _terrain->addChild(node);
-        }
+        osg::Node* node = _keyNodeFactory->createNode( keys[i] );
+        if ( node )
+            _terrain->addChild( node );
         else
-        {
             OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
-        }
     }
 
     // we just added the root tiles, so mark the bound in need of recomputation.
     dirtyBound();
+}
+
+void
+OSGTerrainEngineNode::createURI(const TileKey& key, std::string& out_uri )
+{
+    std::stringstream ss;
+    ss << key.str() << "." << _uid << ".osgearth_osgterrain_tile";
+    out_uri = ss.str();
+}
+
+osg::Node*
+OSGTerrainEngineNode::createNode( const TileKey& key )
+{
+    LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
+
+    if ( mode == LoadingPolicy::MODE_SERIAL || mode == LoadingPolicy::MODE_PARALLEL )
+    {
+        return _keyNodeFactory->createNode( key );
+    }
+    else
+    {
+        // sequential or preemptive mode only.
+
+        //bool populateLayers = engineNode->getTileFactory()->getTerrainOptions().loadingPolicy()->mode() 
+        //    == LoadingPolicy::MODE_STANDARD;
+
+        // create a map frame so we can safely create tiles from this dbpager thread
+        MapFrame mapf( getMap(), Map::TERRAIN_LAYERS, "dbpager::earth plugin" );
+
+        return getTileFactory()->createSubTiles( mapf, _terrain, key, false );
+    }
 }
 
 void
@@ -510,7 +577,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
             osg::ref_ptr<osg::HeightField> hf;
 
             if (hasElevation)
-                _update_mapf->getHeightField( key, true, hf, _terrainOptions.elevationInterpolation().value());
+                _update_mapf->getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value());
 
             if (!hf.valid()) 
                 hf = OSGTileFactory::createEmptyHeightField( key );
@@ -539,7 +606,7 @@ OSGTerrainEngineNode::updateElevation(CustomTile* tile)
                 if (tile->getKey().getLevelOfDetail() == 1)
                 {
                     osg::ref_ptr<osg::HeightField> hf;
-                    _update_mapf->getHeightField( key, true, hf, _terrainOptions.elevationInterpolation().value());
+                    _update_mapf->getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value());
                     if (!hf.valid()) 
                         hf = OSGTileFactory::createEmptyHeightField( key );
                     heightFieldLayer->setHeightField( hf.get() );

@@ -192,6 +192,9 @@ TaskThread::run()
 
             else if ( !_request->wasCanceled() )
             {
+                if ( _request->getProgressCallback() )
+                    _request->getProgressCallback()->onStarted();
+
                 _request->setState( TaskRequest::STATE_IN_PROGRESS );
                 _request->run();
 
@@ -205,8 +208,8 @@ TaskThread::run()
             _request->setState( TaskRequest::STATE_COMPLETED );
 
             // signal the completion of a request.
-            if ( _request->getCompletedEvent() )
-                _request->getCompletedEvent()->set();
+            if ( _request->getProgressCallback() )
+                _request->getProgressCallback()->onCompleted();
 
             // Release the request
             _request = 0;

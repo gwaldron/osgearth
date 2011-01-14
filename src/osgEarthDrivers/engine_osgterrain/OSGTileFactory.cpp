@@ -91,12 +91,6 @@ _cull_thread_mapf( cull_thread_mapf ),
 _terrainOptions( props )
 {
     LoadingPolicy::Mode mode = _terrainOptions.loadingPolicy()->mode().value();
-
-    OE_INFO << LC << "Loading policy mode = " <<
-        ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "PREEMPTIVE" :
-        mode == LoadingPolicy::MODE_SEQUENTIAL ? "SEQUENTIAL" :
-        "STANDARD" )
-        << std::endl;
 }
 
 const OSGTerrainOptions& 
@@ -618,6 +612,7 @@ namespace
     };
 }
 
+
 osg::Node*
 OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain, 
                                     const TileKey& key, bool wrapInPagedLOD, 
@@ -657,7 +652,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
     osg::ref_ptr<osg::HeightField> hf;
     if ( mapf.elevationLayers().size() > 0 )
     {
-        mapf.getHeightField( key, false, hf, _terrainOptions.elevationInterpolation().value());     
+        mapf.getHeightField( key, false, hf, 0L, _terrainOptions.elevationInterpolation().value());     
     }
 
     //If we are on the first LOD and we couldn't get a heightfield tile, just create an empty one.  Otherwise you can run into the situation
@@ -725,7 +720,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            if ( mapf.getHeightField( key, true, hf, _terrainOptions.elevationInterpolation().value() ) )
+            if ( mapf.getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value() ) )
             {
                 hasElevation = true;
             }
@@ -1121,7 +1116,7 @@ OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key
 
     // try to create a heightfield at native res:
     osg::ref_ptr<osg::HeightField> hf;
-    if ( !mapf.getHeightField( key, !exactOnly, hf, _terrainOptions.elevationInterpolation().value() ) )
+    if ( !mapf.getHeightField( key, !exactOnly, hf, 0L, _terrainOptions.elevationInterpolation().value() ) )
     {
         if ( exactOnly )
             return NULL;

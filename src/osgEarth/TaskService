@@ -170,7 +170,7 @@ namespace osgEarth
     };
 
     /**
-     * Managed a pool of TaskService objects, automatically allocating
+     * Manages a pool of TaskService objects, automatically allocating
      * threads among them based on a weighting metric.
      */
     class OSGEARTH_EXPORT TaskServiceManager : public osg::Referenced

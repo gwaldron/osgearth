@@ -215,9 +215,6 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // install a layer callback for processing further map actions:
     map->addMapCallback( new OSGTerrainEngineNodeMapCallbackProxy(this) );
 
-    // create a tile data loader.
-    _tileDataLoader = new TileDataLoader( map, _terrain );
-
     // register me.
     registerEngine( this );
 
@@ -319,7 +316,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     _tileBuilder = new TileBuilder( getMap(), _terrainOptions, _tileService.get() );
 
     // initialize a key node factory.
-    switch( *_terrainOptions.loadingPolicy()->mode() )
+    switch( mode )
     {
     case LoadingPolicy::MODE_SERIAL:
         _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, _terrain, _uid );
@@ -342,7 +339,12 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     for( unsigned i=0; i<keys.size(); ++i )
     {
-        osg::Node* node = _keyNodeFactory->createNode( keys[i] );
+        osg::Node* node;
+        if ( mode == LoadingPolicy::MODE_SERIAL || mode == LoadingPolicy::MODE_PARALLEL )
+            node = _keyNodeFactory->createNode( keys[i] );
+        else
+            node = _tileFactory->createSubTiles( *_update_mapf, _terrain, keys[i], true );
+
         if ( node )
             _terrain->addChild( node );
         else
@@ -421,7 +423,8 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     }
 
     // update the terrain revision in threaded mode
-    if ( _terrainOptions.loadingPolicy()->mode() != LoadingPolicy::MODE_STANDARD )
+    if (_terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL ||
+        _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_PREEMPTIVE)
     {
         getTerrain()->incrementRevision();
         getTerrain()->updateTaskServiceThreads( *_update_mapf );
@@ -675,9 +678,11 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     TerrainEngineNode::validateTerrainOptions( options );
 
     // LOD blending is currently only compatible with STANDARD loading policy
-    if ( options.lodBlending() == true && options.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
+    if (options.lodBlending() == true && 
+        ( options.loadingPolicy()->mode() == LoadingPolicy::MODE_PREEMPTIVE ||
+          options.loadingPolicy()->mode() == LoadingPolicy::MODE_SEQUENTIAL) )
     {
-        //options.lodBlending() = false;
+        options.lodBlending() = false;
     }
     
     //nop for now.

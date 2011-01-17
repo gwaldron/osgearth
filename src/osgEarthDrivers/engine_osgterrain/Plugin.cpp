@@ -44,8 +44,7 @@ public:
     {
         return
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_osgterrain" ) ||
-            osgDB::equalCaseInsensitive( extension, "osgearth_osgterrain_tile" ) ||
-            osgDB::equalCaseInsensitive( extension, "test_osgearth_engine_osgterrain" );
+            osgDB::equalCaseInsensitive( extension, "osgearth_osgterrain_tile" );
     }
 
     virtual ReadResult readObject(const std::string& uri, const Options* options) const
@@ -110,6 +109,7 @@ public:
                     OE_DEBUG << LC << "Blacklisting " << uri << std::endl;
                     osgEarth::Registry::instance()->blacklist( uri );
                 }
+#if 0
                 else
                 {
                     osg::Timer_t end = osg::Timer::instance()->tick();
@@ -120,6 +120,7 @@ public:
                         OE_INFO << LC << "Average = " << s_tileTime / (double)s_tileCount << " s," 
                         << ", TPS = " << (double)s_tileCount/elapsed << std::endl;
                 }
+#endif
 
                 return ReadResult( node, ReadResult::FILE_LOADED );
             }

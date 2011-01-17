@@ -52,23 +52,6 @@ struct SourceRepo
 
 //------------------------------------------------------------------------
 
-template<typename T>
-struct Job : public TaskRequest, T
-{
-    Job( Threading::MultiEvent* ev =0L ) : _ev(ev) { }
-
-    void operator()( ProgressCallback* pc ) 
-    {
-        execute();
-        if ( _ev )
-            _ev->notify();
-    }
-
-    Threading::MultiEvent* _ev;
-};
-
-//------------------------------------------------------------------------
-
 struct BuildColorLayer
 {
     void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo, SourceRepo& repo )
@@ -263,7 +246,7 @@ TileBuilder::createTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile,
             ++jobCount;
 
         // A thread job monitoring event:
-        Threading::MultiEvent fetchMonitor( jobCount );
+        Threading::MultiEvent semaphore( jobCount );
 
         // Start the image layer jobs:
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
@@ -271,7 +254,7 @@ TileBuilder::createTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile,
             ImageLayer* layer = i->get();
             if ( layer->isKeyValid(key) )
             {
-                Job<BuildColorLayer>* j = new Job<BuildColorLayer>( &fetchMonitor );
+                ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
                 j->init( key, layer, mapInfo, repo );
                 j->setPriority( -(float)key.getLevelOfDetail() );
                 _service->add( j );
@@ -282,7 +265,7 @@ TileBuilder::createTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile,
         // empty one while we're waiting for the images to load.
         if ( numElevLayers > 0 )
         {
-            Job<BuildElevLayer>* ej = new Job<BuildElevLayer>( &fetchMonitor );
+            ParallelTask<BuildElevLayer>* ej = new ParallelTask<BuildElevLayer>( &semaphore );
             ej->init( key, mapf, _terrainOptions, repo );
             ej->setPriority( -(float)key.getLevelOfDetail() );
             _service->add( ej );
@@ -295,7 +278,7 @@ TileBuilder::createTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile,
         }
 
         // Wait for all the jobs to finish.
-        fetchMonitor.wait();
+        semaphore.wait();
     }
     
     // Fetch the image data serially:

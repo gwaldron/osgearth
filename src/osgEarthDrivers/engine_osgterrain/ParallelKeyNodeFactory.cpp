@@ -29,32 +29,23 @@ using namespace OpenThreads;
 
 namespace
 {
-    struct TileBuildRequest : public TaskRequest
+    struct BuildTile
     {
-        TileBuildRequest( const TileKey& key, TileBuilder* builder ) 
-            : _key(key), _builder(builder) { }
+        void init( const TileKey& key, TileBuilder* builder ) 
+        {
+            _key = key;
+            _builder = builder;
+        }
 
-        void operator()( ProgressCallback* pc )
+        void execute()
         {
             _builder->createTile( _key, _tile, _hasRealData );
         }
 
         osg::ref_ptr<TileBuilder> _builder;
-        const TileKey _key;
+        TileKey _key;
         osg::ref_ptr<CustomTile> _tile;
         bool _hasRealData;
-    };
-
-    struct SignalProgress : public ProgressCallback
-    {
-        SignalProgress( Threading::MultiEvent* ev ) : _ev( ev ) { }
-
-        void onCompleted() {
-            if ( _ev )
-                _ev->notify();
-        }
-
-        Threading::MultiEvent* _ev;
     };
 }
 
@@ -74,17 +65,18 @@ ParallelKeyNodeFactory::createNode( const TileKey& key )
 {
     // An event for synchronizing the completion of all requests:
     Threading::MultiEvent semaphore(4);
-    osg::ref_ptr<ProgressCallback> prog = new SignalProgress( &semaphore );
+    //osg::ref_ptr<ProgressCallback> prog = new SignalProgress( &semaphore );
 
     // Build all four subtiles in parallel:
-    osg::ref_ptr<TileBuildRequest> _requests[4];
+    osg::ref_ptr< ParallelTask<BuildTile> > jobs[4];
     for( unsigned i = 0; i < 4; ++i )
     {
         TileKey child = key.createChildKey( i );
-        _requests[i] = new TileBuildRequest( child, _builder );
-        _requests[i]->setProgressCallback( prog.get() );
-        _requests[i]->setPriority( -(float)child.getLevelOfDetail() ); // lower LODs get higher priority
-        _builder->getTaskService()->add( _requests[i].get() );
+        jobs[i] = new ParallelTask<BuildTile>( &semaphore );
+        jobs[i]->init( child, _builder );
+        //jobs[i]->setProgressCallback( prog.get() );
+        jobs[i]->setPriority( -(float)child.getLevelOfDetail() ); // lower LODs get higher priority
+        _builder->getTaskService()->add( jobs[i].get() ); //_requests[i].get() );
     }
 
     // Wait for all requests to complete:
@@ -95,10 +87,10 @@ ParallelKeyNodeFactory::createNode( const TileKey& key )
 
     for( unsigned i = 0; i < 4; ++i )
     {
-        CustomTile* tile = _requests[i]->_tile.get();
+        CustomTile* tile = jobs[i]->_tile.get();
         if ( tile )
         {
-            addTile( tile, _requests[i]->_hasRealData, root );
+            addTile( tile, jobs[i]->_hasRealData, root );
         }
     }
 

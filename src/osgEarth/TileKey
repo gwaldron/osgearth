@@ -37,7 +37,12 @@ namespace osgEarth
      */
     class OSGEARTH_EXPORT TileKey
     {
-    public:        
+    public:     
+        /**
+         * Constructs an invalid TileKey.
+         */
+        TileKey() { }
+
         /**
          * Creates a new TileKey with the given tile xy at the specified level of detail
          * 

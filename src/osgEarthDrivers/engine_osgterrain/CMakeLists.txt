@@ -7,13 +7,11 @@ SET(TARGET_SRC
     MultiPassTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp
-    QuadTileNode.cpp
     ParallelKeyNodeFactory.cpp
     Plugin.cpp
     SerialKeyNodeFactory.cpp
     SinglePassTerrainTechnique.cpp
     TerrainTileEdgeNormalizerUpdateCallback.cpp
-    TileDataLoader.cpp
     TileBuilder.cpp
 )
 
@@ -29,11 +27,9 @@ SET(TARGET_H
     OSGTerrainEngineNode
     OSGTerrainOptions
     OSGTileFactory
-    QuadTileNode
     SerialKeyNodeFactory
     SinglePassTerrainTechnique
     TerrainTileEdgeNormalizerUpdateCallback
-    TileDataLoader
     TileBuilder
     TransparentLayer
 )

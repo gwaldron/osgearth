@@ -27,7 +27,6 @@
 
 #include "OSGTerrainOptions"
 #include "OSGTileFactory"
-#include "TileDataLoader"
 #include "KeyNodeFactory"
 #include "TileBuilder"
 
@@ -45,8 +44,6 @@ public:
     ~OSGTerrainEngineNode();
 
 public:
-    TileDataLoader* getTileDataLoader() const { return _tileDataLoader.get(); }
-
     osg::Node* createNode(const TileKey& key);
 
 public: // TerrainEngineNode overrides    
@@ -96,7 +93,6 @@ private:
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
     Revision _shaderLibRev;
     osg::ref_ptr<TaskServiceManager> _taskServiceMgr;
-    osg::ref_ptr<TileDataLoader> _tileDataLoader;
 
     // store a separate map frame for each of the traversal threads
     MapFrame* _update_mapf; // map frame for the main/update traversal thread

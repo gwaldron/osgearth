@@ -91,6 +91,31 @@ namespace osgEarth
     typedef std::list< osg::ref_ptr<TaskRequest> > TaskRequestList;
 
     typedef std::multimap< float, osg::ref_ptr<TaskRequest> > TaskRequestPriorityMap;
+    
+    /**
+     * Convenience template for creating a task that synchronized with an event.
+     * Initialze multiple ParallelTask's with a common MultiEvent (semaphore) to
+     * run them in parallel and wait for them all to complete.
+     */
+    template<typename T>
+    struct ParallelTask : public TaskRequest, T
+    {
+        ParallelTask() : _mev(0L), _sev(0L) { }
+        ParallelTask( Threading::MultiEvent* ev ) : _mev(ev), _sev(0L) { }
+        ParallelTask( Threading::Event* ev ) : _sev(ev), _mev(0L) { }
+
+        void operator()( ProgressCallback* pc ) 
+        {
+            execute();
+            if ( _mev )
+                _mev->notify();
+            else if ( _sev )
+                _sev->set();
+        }
+
+        Threading::MultiEvent* _mev;
+        Threading::Event*      _sev;
+    };
 
     class TaskRequestQueue : public osg::Referenced
     {

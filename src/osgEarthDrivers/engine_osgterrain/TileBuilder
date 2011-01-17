@@ -39,6 +39,7 @@
 
         void createTile(
             const TileKey& key,
+            bool parallelize,
             osg::ref_ptr<CustomTile>& out_tile,
             bool& out_hasRealData );
 
@@ -48,7 +49,6 @@
         const Map* _map;
         TaskService* _service;
         const OSGTerrainOptions& _terrainOptions;
-        bool _useService;
     };
 //}
 

@@ -207,14 +207,13 @@ struct AssembleTile
 TileBuilder::TileBuilder(const Map* map, const OSGTerrainOptions& terrainOptions, TaskService* service) :
 _map( map ),
 _terrainOptions( terrainOptions ),
-_service( service ),
-_useService( true )
+_service( service )
 {
     //nop
 }
 
 void
-TileBuilder::createTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData )
+TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData )
 {
     MapFrame mapf( _map, Map::TERRAIN_LAYERS );
 
@@ -235,7 +234,7 @@ TileBuilder::createTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile,
 
     // If we need more than one layer, fetch them in parallel.
     // TODO: change the test based on isKeyValid total.
-    if ( _useService && (numImageLayers + numElevLayers > 1) )
+    if ( parallelize && (numImageLayers + numElevLayers > 1) )
     {
         // count the valid layers.
         int jobCount = 0;

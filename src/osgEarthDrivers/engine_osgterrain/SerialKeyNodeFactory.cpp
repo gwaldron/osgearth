@@ -101,7 +101,7 @@ SerialKeyNodeFactory::createNode( const TileKey& key )
     for( unsigned i = 0; i < 4; ++i )
     {
         TileKey child = key.createChildKey( i );
-        _builder->createTile( child, tiles[i], realData[i] );
+        _builder->createTile( child, false, tiles[i], realData[i] );
     }
 
     // Now postprocess them and assemble into a tile group.

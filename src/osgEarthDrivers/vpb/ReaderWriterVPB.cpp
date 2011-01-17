@@ -145,12 +145,18 @@ public:
         _options( in_options ),
         //_directory_structure( FLAT_TASK_DIRECTORIES ),
         _profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() ),
-        _maxNumTilesInCache( 128 )
-        {
+        _maxNumTilesInCache( 128 ),
+        _initialized( false )
+    {
 	}
 	
 	void initialize( const std::string& referenceURI)
 	{
+        if ( _initialized )
+            return;
+        else
+            _initialized = true;
+
         unsigned int numTilesWideAtLod0, numTilesHighAtLod0;
         _profile->getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
 
@@ -508,6 +514,8 @@ public:
     StringSet _blacklistedFilenames;
     Threading::ReadWriteMutex _blacklistMutex;
     //OpenThreads::Mutex _blacklistMutex;
+
+    bool _initialized;
     
 };
 
@@ -525,16 +533,18 @@ public:
 
     void initialize( const std::string& referenceURI, const Profile* overrideProfile)
     {
-		_referenceUri = referenceURI;
-		_vpbDatabase->initialize(referenceURI);
-		if ( overrideProfile)
-		{
-			setProfile( overrideProfile );
-		}
-		else
-		{
-			setProfile(_vpbDatabase->_profile.get());
-		}
+	    _referenceUri = referenceURI;
+
+	    _vpbDatabase->initialize(referenceURI);
+
+	    if ( overrideProfile)
+	    {
+		    setProfile( overrideProfile );
+	    }
+	    else
+	    {
+		    setProfile(_vpbDatabase->_profile.get());
+	    }
     }
     
 	osg::Image* createImage( const TileKey& key, ProgressCallback* progress)

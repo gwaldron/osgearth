@@ -39,7 +39,7 @@ namespace
 
         void execute()
         {
-            _builder->createTile( _key, _tile, _hasRealData );
+            _builder->createTile( _key, true, _tile, _hasRealData );
         }
 
         osg::ref_ptr<TileBuilder> _builder;

@@ -204,6 +204,12 @@ TerrainLayer::setCache(Cache* cache)
     }
 }
 
+void
+TerrainLayer::setTargetProfileHint( const Profile* profile )
+{
+    _targetProfileHint = profile;
+}
+
 TileSource* 
 TerrainLayer::getTileSource() const
 {

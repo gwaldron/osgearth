@@ -140,13 +140,17 @@ namespace
 
 ImageLayerTileProcessor::ImageLayerTileProcessor( const ImageLayerOptions& options )
 {
-    init( options );
+    init( options, false );
 }
 
 void
-ImageLayerTileProcessor::init( const ImageLayerOptions& options )
+ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTargetProfile )
 {
     _options = options;
+    _layerInTargetProfile = layerInTargetProfile;
+
+    if ( _layerInTargetProfile )
+        OE_DEBUG << LC << "Good, the layer and map have the same profile." << std::endl;
 
     const osg::Vec4ub& ck= *_options.transparentColor();
     _chromaKey.set( ck.r() / 255.0f, ck.g() / 255.0f, ck.b() / 255.0f, 1.0 );
@@ -189,7 +193,12 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
         }
     }
 
-    if ( ImageUtils::isCompressed(image.get()) && ImageUtils::canConvert(image.get(), GL_RGBA, GL_UNSIGNED_BYTE) )
+    // If this is a compressed image, uncompress it IF the image is not already in the
+    // target profile...becuase if it's not in the target profile, we will have to do
+    // some mosaicing...and we can't mosaic a compressed image.
+    if (!_layerInTargetProfile &&
+        ImageUtils::isCompressed(image.get()) &&
+        ImageUtils::canConvert(image.get(), GL_RGBA, GL_UNSIGNED_BYTE) )
     {
         image = ImageUtils::convertToRGBA8( image.get() );
     }
@@ -197,7 +206,7 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
     // Apply a transparent color mask if one is specified
     if ( _options.transparentColor().isSet() )
     {
-        if ( !ImageUtils::hasAlphaChannel(image.get()) )
+        if ( !ImageUtils::hasAlphaChannel(image.get()) && ImageUtils::canConvert(image.get(), GL_RGBA, GL_UNSIGNED_BYTE) )
         {
             // if the image doesn't have an alpha channel, we must convert it to
             // a format that does before continuing.
@@ -300,13 +309,36 @@ ImageLayer::setGamma( float value )
 }
 
 void
+ImageLayer::setTargetProfileHint( const Profile* profile )
+{
+    TerrainLayer::setTargetProfileHint( profile );
+
+    // if we've already constructed the pre-cache operation, reinitialize it.
+    if ( _preCacheOp.valid() )
+        initPreCacheOp();
+}
+
+void
 ImageLayer::initTileSource()
 {
     // call superclass first.
     TerrainLayer::initTileSource();
 
-    ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();
-    op->_processor.init( _options );
+    // install the pre-caching image processor operation.
+    initPreCacheOp();
+}
+
+void
+ImageLayer::initPreCacheOp()
+{
+    bool layerInTargetProfile = 
+        _targetProfileHint.valid() &&
+        getProfile() &&
+        _targetProfileHint->isEquivalentTo( getProfile() );
+
+    ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();    
+    op->_processor.init( _options, layerInTargetProfile );
+
     _preCacheOp = op;
 }
 

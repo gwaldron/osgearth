@@ -140,7 +140,7 @@ namespace osgEarth
     public:
         ImageLayerTileProcessor( const ImageLayerOptions& options =ImageLayerOptions() );
 
-        void init( const ImageLayerOptions& options );
+        void init( const ImageLayerOptions& options, bool layerInTargetProfile );
 
         void process( osg::ref_ptr<osg::Image>& image ) const;
 
@@ -148,6 +148,7 @@ namespace osgEarth
         ImageLayerOptions _options;
         osg::Vec4f _chromaKey;
         osg::ref_ptr<const osg::Image> _noDataImage;
+        bool _layerInTargetProfile;
     };
 
     //--------------------------------------------------------------------
@@ -186,6 +187,9 @@ namespace osgEarth
         /** Removes a property notification callback from this layer */
         void removeCallback( ImageLayerCallback* cb );
 
+        /** Override: see TerrainLayer */
+        virtual void setTargetProfileHint( const Profile* profile );
+
     public: // runtime properties
 
         void setOpacity( float opacity );
@@ -209,7 +213,6 @@ namespace osgEarth
             ProgressCallback* progress );
 
         virtual void initTileSource();
-
     private:
         ImageLayerOptions _options;
         float _actualOpacity;
@@ -219,6 +222,8 @@ namespace osgEarth
         //osg::ref_ptr<osg::Image> _noDataImage;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
+        
+        void initPreCacheOp();
 
         ImageLayerCallbackList _callbacks;
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );

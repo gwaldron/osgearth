@@ -237,6 +237,14 @@ namespace osgEarth
          * Gets the key that this layer uses to access the cache
          */
         const CacheSpec& getCacheSpec() const { return _cacheSpec; }
+        
+        /**
+         * Gives the terrain layer a hint as to what the target profile of 
+         * images will be. This is optional, but it may allow the layer to enable
+         * certain optimizations since it has more information as to how the
+         * data will be used.
+         */
+        virtual void setTargetProfileHint( const Profile* profile );
 
     protected:
 
@@ -262,6 +270,8 @@ namespace osgEarth
         optional<bool> _overrideCacheOnly;
 
         bool _tileSourceInitialized;
+
+        osg::ref_ptr<const Profile> _targetProfileHint;
 
     private:
         std::string _name;

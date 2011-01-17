@@ -96,6 +96,12 @@ CompositeTileSourceOptions::fromConfig( const Config& conf )
     {
         add( ImageLayerOptions( *i ) );
     }
+
+    if (conf.children("elevation").size() > 0 || conf.children("heightfield").size() > 0 ||
+        conf.children("model").size() > 0 || conf.children("overlay").size() > 0 )
+    {
+        OE_WARN << LC << "Illegal - composite driver only supports image layers" << std::endl;
+    }
 }
 
 //------------------------------------------------------------------------
@@ -135,7 +141,7 @@ _dynamic( false )
                 i->_tileSourceOptions = i->_imageLayerOptions->driver().value();
 
             ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();
-            op->_processor.init( i->_imageLayerOptions.value() );
+            op->_processor.init( i->_imageLayerOptions.value(), true );
             _preCacheOp = op;
         }
 

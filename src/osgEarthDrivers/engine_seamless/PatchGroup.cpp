@@ -48,6 +48,19 @@ PatchGroup::~PatchGroup()
 {
 }
 
+// Work around for an interface change in osgDB::DatabasePager
+struct NodePathProxy
+{
+    NodePathProxy(Group* group_, NodeVisitor& nv_)
+        : group(group_), nv(nv_)
+    {
+    }
+    operator Group* () { return group; }
+    operator NodePath& () { return nv.getNodePath(); }
+    Group* group;
+    NodeVisitor& nv;
+};
+
 void PatchGroup::getPatchExtents(Vec2d& lowerLeft, Vec2d& upperRight) const
 {
     const PatchOptions* poptions = getOptions();
@@ -157,12 +170,12 @@ void PatchGroup::traverse(NodeVisitor& nv)
 
                 if (_databasePath.empty())
                 {
-                    nv.getDatabaseRequestHandler()->requestNodeFile(_perRangeDataList[numChildren]._filename,this,priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                    nv.getDatabaseRequestHandler()->requestNodeFile(_perRangeDataList[numChildren]._filename,NodePathProxy(this, nv),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
                 }
                 else
                 {
                     // prepend the databasePath to the child's filename.
-                    nv.getDatabaseRequestHandler()->requestNodeFile(_databasePath+_perRangeDataList[numChildren]._filename,this,priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
+                    nv.getDatabaseRequestHandler()->requestNodeFile(_databasePath+_perRangeDataList[numChildren]._filename,NodePathProxy(this, nv),priority,nv.getFrameStamp(), _perRangeDataList[numChildren]._databaseRequest, _databaseOptions.get());
                 }
             }
 

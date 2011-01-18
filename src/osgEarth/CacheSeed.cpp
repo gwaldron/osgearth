@@ -200,4 +200,3 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
         mapf.getHeightField( key, false, hf );
     }
 }
-

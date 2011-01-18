@@ -224,24 +224,20 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
     // LOD key.
     out_hasRealData = false;
 
-    // check for the special case of an empty map:
-    unsigned numImageLayers = mapf.imageLayers().size();
-    unsigned numElevLayers = mapf.elevationLayers().size();
-
     const MapInfo& mapInfo = mapf.getMapInfo();
-
-    bool emptyMap = (numImageLayers + numElevLayers) == 0;
 
     // If we need more than one layer, fetch them in parallel.
     // TODO: change the test based on isKeyValid total.
-    if ( parallelize && (numImageLayers + numElevLayers > 1) )
+    if ( parallelize && (mapf.imageLayers().size() + mapf.elevationLayers().size() > 1) )
     {
         // count the valid layers.
         int jobCount = 0;
-        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
-            jobCount += i->get()->isKeyValid(key);
 
-        if ( numElevLayers > 0 )
+        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+            if ( i->get()->isKeyValid( key ) )
+                ++jobCount;
+
+        if ( mapf.elevationLayers().size() > 0 )
             ++jobCount;
 
         // A thread job monitoring event:
@@ -262,7 +258,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
 
         // If we have elevation layers, start an elevation job as well. Otherwise just create an
         // empty one while we're waiting for the images to load.
-        if ( numElevLayers > 0 )
+        if ( mapf.elevationLayers().size() > 0 )
         {
             ParallelTask<BuildElevLayer>* ej = new ParallelTask<BuildElevLayer>( &semaphore );
             ej->init( key, mapf, _terrainOptions, repo );
@@ -314,6 +310,26 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
         osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
         hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
         repo._elevLayer = CustomElevLayer( hfLayer, true );
+    }
+
+    // Now, if there are any color layers that did not get built, create them with an empty
+    // image so the shaders have something to draw.
+    osg::ref_ptr<osg::Image> emptyImage;
+    osgTerrain::Locator* locator = repo._elevLayer.getHFLayer()->getLocator();
+
+    for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+    {
+        if ( !i->get()->isKeyValid(key) )
+        {
+            if ( !emptyImage.valid() )
+                emptyImage = ImageUtils::createEmptyImage();
+
+            repo.add( CustomColorLayer(
+                i->get(), emptyImage.get(),
+                locator,
+                key.getLevelOfDetail(),
+                true ) );
+        }
     }
 
     // Ready to create the actual tile.

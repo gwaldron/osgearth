@@ -38,6 +38,8 @@
 
 #include "VPBOptions"
 
+#define LC "[VPB] "
+
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
@@ -152,10 +154,10 @@ public:
 	
 	void initialize( const std::string& referenceURI)
 	{
+        Threading::ScopedMutexLock lock( _initializeMutex );
+
         if ( _initialized )
             return;
-        else
-            _initialized = true;
 
         unsigned int numTilesWideAtLod0, numTilesHighAtLod0;
         _profile->getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
@@ -186,14 +188,14 @@ public:
                     _baseNameToUse = osgDB::getStrippedName(_url);
                 _extension = osgDB::getFileExtension(_url);
                 
-                OE_INFO<<"VPB: Loaded root "<<_url<<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
+                OE_INFO << LC << "Loaded root "<<_url<<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
                 
                 std::string srs = _profile->getSRS()->getInitString(); //.srs();
                 
                 osg::CoordinateSystemNode* csn = dynamic_cast<osg::CoordinateSystemNode*>(_rootNode.get());
                 if (csn)
                 {
-                    OE_INFO<<"VPB: CordinateSystemNode found, coordinate system is : "<<csn->getCoordinateSystem()<<std::endl;
+                    OE_INFO << LC << "CSN found: "<<csn->getCoordinateSystem()<<std::endl;
                     
                     srs = csn->getCoordinateSystem();
                 }
@@ -208,15 +210,15 @@ public:
                     double min_x, max_x, min_y, max_y;
                     ct.getRange(min_x, min_y, max_x, max_y);
 
-                    OE_DEBUG<<"VPB: range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<< ")" <<std::endl;
-					OE_DEBUG<<"VPB: range("<<osg::RadiansToDegrees(min_x)<<", "<<osg::RadiansToDegrees(min_y)<<", "
+                    OE_DEBUG << LC << "range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<< ")" <<std::endl;
+					OE_DEBUG << LC << "range("<<osg::RadiansToDegrees(min_x)<<", "<<osg::RadiansToDegrees(min_y)<<", "
 						<<osg::RadiansToDegrees(max_x)<<", "<<osg::RadiansToDegrees(max_y)<< ")" <<std::endl;
 
                     srs = locator->getCoordinateSystem();
 
                     double aspectRatio = (max_x-min_x)/(max_y-min_y);
                     
-                    OE_DEBUG<<"VPB: aspectRatio = "<<aspectRatio<<std::endl;
+                    OE_DEBUG << LC << "aspectRatio = "<<aspectRatio<<std::endl;
 
                     if (aspectRatio>1.0)
                     {
@@ -229,8 +231,8 @@ public:
                         numTilesHighAtLod0 = static_cast<unsigned int>(floor(1.0/aspectRatio+0.499999));
                     }
                     
-                    OE_DEBUG<<"VPB: computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    OE_DEBUG<<"VPB: computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+                    OE_DEBUG << LC << "computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                    OE_DEBUG << LC << "computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                     
                     //if ( _options.valid() )
                     {
@@ -241,8 +243,8 @@ public:
                             numTilesHighAtLod0 = _options.numTilesHighAtLod0().value();
                     }
 
-                    OE_DEBUG<<"VPB: final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    OE_DEBUG<<"VPB: final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+                    OE_DEBUG << LC << "final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                    OE_DEBUG << LC << "final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                    
                     _profile = osgEarth::Profile::create( 
                         srs,
@@ -258,7 +260,7 @@ public:
             }
             else
             {
-                OE_WARN << "VPB: " << HTTPClient::getResultCodeString(rc) << ": " << _url << std::endl;
+                OE_WARN << LC << HTTPClient::getResultCodeString(rc) << ": " << _url << std::endl;
                 _url = "";
             }
         }
@@ -266,7 +268,8 @@ public:
         {
             OE_WARN<<"VPB: No data referenced "<<std::endl;
         }
-
+        
+        _initialized = true;
     }
     
     std::string createTileName( int level, int tile_x, int tile_y )
@@ -333,7 +336,7 @@ public:
 		return bufStr;
     }
     
-    osgTerrain::TerrainTile* getTerrainTile( const TileKey& key, ProgressCallback* progress )
+    void getTerrainTile( const TileKey& key, ProgressCallback* progress, osg::ref_ptr<osgTerrain::TerrainTile>& out_tile )
     {
         int level = key.getLevelOfDetail();
         unsigned int tile_x, tile_y;
@@ -346,16 +349,9 @@ public:
 
         osgTerrain::TileID tileID(level, tile_x, tile_y);
 
-        osg::ref_ptr<osgTerrain::TerrainTile> tile = findTile(tileID, false);
-        if (tile.valid()) return tile.get();
-        
-        //OE_INFO<<"Max_x = "<<max_x<<std::endl;
-        //OE_INFO<<"Max_y = "<<max_y<<std::endl;
-
-        //OE_INFO<<"base_name = "<<base_name<<" psl="<<primary_split_level<<" ssl="<<secondary_split_level<<std::endl;
-        //OE_INFO<<"level = "<<level<<", x = "<<tile_x<<", tile_y = "<<tile_y<<std::endl;
-        //OE_INFO<<"tile_name "<<createTileName(level, tile_x, tile_y)<<std::endl;
-        //OE_INFO<<"thread "<<OpenThreads::Thread::CurrentThread()<<std::endl;
+        findTile(tileID, false, out_tile);
+        if (out_tile.valid()) 
+            return;
 
         std::string filename = createTileName(level, tile_x, tile_y);
         
@@ -366,9 +362,9 @@ public:
         }
         if ( foundInBlacklist )
         {
-            OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
+            OE_DEBUG << LC << "file has been found in black list : "<<filename<<std::endl;
             insertTile(tileID, 0);
-            return 0;
+            return; //return 0;
         }
 
         //    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
@@ -390,7 +386,7 @@ public:
         HTTPClient::ResultCode result = HTTPClient::readNodeFile( filename, node, localOptions.get(), progress );
         if ( result == HTTPClient::RESULT_OK && node.valid() )
         {
-            //OE_INFO<<"Loaded model "<<filename<<std::endl;
+            //OE_INFO << LC << "Loaded model "<<filename<<std::endl;
             CollectTiles ct;
             node->accept(ct);
 
@@ -418,6 +414,9 @@ public:
                     
                     tile->setTileID(local_tileID);
                     insertTile(local_tileID, tile);
+
+                    if ( local_tileID == tileID )
+                        out_tile = tile;
                 }
 
             }
@@ -428,23 +427,18 @@ public:
             // in the case of an "unrecoverable" error, black-list the URL for this tile.
             if ( ! HTTPClient::isRecoverable( result ) )
             {
-                //OE_INFO<<"Black listing : "<< filename<< " (" << result << ")" << std::endl;
-
-                //OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
-                //_blacklistedFilenames.insert(filename);
-
                 Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
                 _blacklistedFilenames.insert( filename );
             }
         }
         
-        return findTile(tileID, false);
+        //TODO: just return it instead...
+        //findTile(tileID, false, out_tile);
     }
     
     void insertTile(const osgTerrain::TileID& tileID, osgTerrain::TerrainTile* tile)
     {
         Threading::ScopedWriteLock exclusiveLock( _tileMapMutex );
-        //OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_tileMapMutex);
 
         if ( _tileMap.find(tileID) == _tileMap.end() )
         {
@@ -458,36 +452,36 @@ public:
                 _tileFIFO.pop_front();
                 _tileMap.erase(tileToRemove);
 
-                OE_DEBUG<<"VPB: Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+                OE_DEBUG << LC << "Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
             }
 
-            OE_DEBUG<<"VPB: insertTile ("
+            OE_DEBUG << LC << "insertTile ("
                 << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
                 << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
         }
         else
         {
-            OE_DEBUG<<"VPB: insertTile ("
+            OE_DEBUG << LC << "insertTile ("
                 << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
                 << " ...already in cache!"<<std::endl;
         }
     }
 
-    osgTerrain::TerrainTile* findTile(const osgTerrain::TileID& tileID, bool insertBlankTileIfNotFound = false)
+    void findTile(const osgTerrain::TileID& tileID, bool insertBlankTileIfNotFound, osg::ref_ptr<osgTerrain::TerrainTile>& out_tile)
     {
         // read with a shared lock
         {
             Threading::ScopedReadLock sharedLock( _tileMapMutex );
-            //OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_tileMapMutex);
             TileMap::iterator itr = _tileMap.find(tileID);
-            if (itr != _tileMap.end()) return itr->second.get();
+            if (itr != _tileMap.end())
+                out_tile = itr->second.get();
         }
 
         // upgrade lock and write:
         if (insertBlankTileIfNotFound) 
             insertTile(tileID, 0);
 
-        return 0;
+        //return 0;
     }
 
     const VPBOptions _options;
@@ -505,7 +499,6 @@ public:
     typedef std::map<osgTerrain::TileID, osg::ref_ptr<osgTerrain::TerrainTile> > TileMap;
     TileMap _tileMap;
     Threading::ReadWriteMutex _tileMapMutex;
-    //OpenThreads::Mutex _tileMapMutex;
     
     typedef std::list<osgTerrain::TileID> TileIDList;
     TileIDList _tileFIFO;
@@ -513,16 +506,16 @@ public:
     typedef std::set<std::string> StringSet;
     StringSet _blacklistedFilenames;
     Threading::ReadWriteMutex _blacklistMutex;
-    //OpenThreads::Mutex _blacklistMutex;
 
     bool _initialized;
+    Threading::Mutex _initializeMutex;
     
 };
 
 class VPBSource : public TileSource
 {
 public:
-    VPBSource( VPBDatabase* vpbDatabase, const VPBOptions& in_options ) : //const VPBOptions* in_options) :  
+    VPBSource( VPBDatabase* vpbDatabase, const VPBOptions& in_options ) : 
         TileSource(in_options),
         _vpbDatabase(vpbDatabase),
         _options( in_options ),
@@ -551,7 +544,8 @@ public:
 	{
 		osg::Image * ret = NULL;
 		//TODO:  Make VPB driver use progress callback
-		osg::ref_ptr<osgTerrain::TerrainTile> tile = _vpbDatabase->getTerrainTile(key, progress);                
+		osg::ref_ptr<osgTerrain::TerrainTile> tile;
+        _vpbDatabase->getTerrainTile(key, progress, tile);
 		if (tile.valid())
 		{        
 			int layerNum = _options.layer().value();
@@ -567,7 +561,7 @@ public:
 				osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(layer);
 				if (imageLayer)
 				{
-					OE_DEBUG<<"VPB: createImage(" << key.str() << " layerNum=" << layerNum << ") successful." <<std::endl;
+					OE_DEBUG << LC << "createImage(" << key.str() << " layerNum=" << layerNum << ") successful." <<std::endl;
 					ret = new osg::Image( *imageLayer->getImage() );
 				}
 				else
@@ -585,19 +579,19 @@ public:
 					}
 					if(imageLayer)
 					{
-						OE_DEBUG<<"VPB: createImage(" << key.str() << " layerSet=" << layerSetName.value() << ") successful." <<std::endl;
+						OE_DEBUG << LC << "createImage(" << key.str() << " layerSet=" << layerSetName.value() << ") successful." <<std::endl;
 						ret = new osg::Image( *imageLayer->getImage() );
 					}
 				}
 			}
 			if(!ret)
 			{
-				OE_DEBUG<<"VPB: createImage(" << key.str() << " layerSet=" << layerSetName.value() << " layerNum=" << layerNum << "/" << numColorLayers << ") failed." <<std::endl;
+				OE_DEBUG << LC << "createImage(" << key.str() << " layerSet=" << layerSetName.value() << " layerNum=" << layerNum << "/" << numColorLayers << ") failed." <<std::endl;
 			}
 		}
 		else
 		{
-			OE_DEBUG<<"VPB: createImage(" << key.str() << ") database retrieval failed." <<std::endl;
+			OE_DEBUG << LC << "createImage(" << key.str() << ") database retrieval failed." <<std::endl;
 		}
 		return ret;
 	}
@@ -606,7 +600,8 @@ public:
                                          ProgressCallback* progress
                                          )
     {
-        osg::ref_ptr<osgTerrain::TerrainTile> tile = _vpbDatabase->getTerrainTile(key, progress);                
+        osg::ref_ptr<osgTerrain::TerrainTile> tile;
+        _vpbDatabase->getTerrainTile(key, progress, tile);
         if (tile.valid())
         {        
             osgTerrain::Layer* elevationLayer = tile->getElevationLayer();

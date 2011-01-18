@@ -65,7 +65,6 @@ ParallelKeyNodeFactory::createNode( const TileKey& key )
 {
     // An event for synchronizing the completion of all requests:
     Threading::MultiEvent semaphore(4);
-    //osg::ref_ptr<ProgressCallback> prog = new SignalProgress( &semaphore );
 
     // Build all four subtiles in parallel:
     osg::ref_ptr< ParallelTask<BuildTile> > jobs[4];
@@ -74,9 +73,8 @@ ParallelKeyNodeFactory::createNode( const TileKey& key )
         TileKey child = key.createChildKey( i );
         jobs[i] = new ParallelTask<BuildTile>( &semaphore );
         jobs[i]->init( child, _builder );
-        //jobs[i]->setProgressCallback( prog.get() );
         jobs[i]->setPriority( -(float)child.getLevelOfDetail() ); // lower LODs get higher priority
-        _builder->getTaskService()->add( jobs[i].get() ); //_requests[i].get() );
+        _builder->getTaskService()->add( jobs[i].get() );
     }
 
     // Wait for all requests to complete:

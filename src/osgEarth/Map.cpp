@@ -306,6 +306,10 @@ Map::addImageLayer( ImageLayer* layer )
 		//Set the Cache for the MapLayer to our cache.
 		layer->setCache( this->getCache() );
 
+        // Tell the layer the map profile, if possible:
+        if ( _profile.valid() )
+            layer->setTargetProfileHint( _profile.get() );
+
         int newRevision;
 
         // Add the layer to our stack.
@@ -344,6 +348,10 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
 
         //Set the Cache for the MapLayer to our cache.
         layer->setCache( this->getCache() );
+
+        // Tell the layer the map profile, if possible:
+        if ( _profile.valid() )
+            layer->setTargetProfileHint( _profile.get() );
 
         int newRevision;
 
@@ -385,6 +393,10 @@ Map::addElevationLayer( ElevationLayer* layer )
 
 		//Set the Cache for the MapLayer to our cache.
 		layer->setCache( this->getCache() );
+        
+        // Tell the layer the map profile, if possible:
+        if ( _profile.valid() )
+            layer->setTargetProfileHint( _profile.get() );
 
         int newRevision;
 
@@ -745,92 +757,111 @@ Map::removeTerrainMaskLayer()
 void
 Map::calculateProfile()
 {
-    if ( _profile.valid() )
-        return;
-
-    osg::ref_ptr<const Profile> userProfile;
-    if ( _mapOptions.profile().isSet() )
+    if ( !_profile.valid() )
     {
-        userProfile = Profile::create( _mapOptions.profile().value() );
-    }
-
-    if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC )
-    {
-        if ( userProfile.valid() )
+        osg::ref_ptr<const Profile> userProfile;
+        if ( _mapOptions.profile().isSet() )
         {
-            if ( userProfile->isOK() && userProfile->getSRS()->isGeographic() )
+            userProfile = Profile::create( _mapOptions.profile().value() );
+        }
+
+        if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC )
+        {
+            if ( userProfile.valid() )
+            {
+                if ( userProfile->isOK() && userProfile->getSRS()->isGeographic() )
+                {
+                    _profile = userProfile.get();
+                }
+                else
+                {
+                    OE_WARN << LC 
+                        << "Map is geocentric, but the configured profile does not "
+                        << "have a geographic SRS. Falling back on default.."
+                        << std::endl;
+                }
+            }
+
+            if ( !_profile.valid() )
+            {
+                // by default, set a geocentric map to use global-geodetic WGS84.
+                _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+            }
+        }
+
+        else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE )
+        {
+            //If the map type is a Geocentric Cube, set the profile to the cube profile.
+            _profile = osgEarth::Registry::instance()->getCubeProfile();
+        }
+
+        else // CSTYPE_PROJECTED
+        {
+            if ( userProfile.valid() )
             {
                 _profile = userProfile.get();
             }
-            else
-            {
-                OE_WARN << LC 
-                    << "Map is geocentric, but the configured profile does not "
-                    << "have a geographic SRS. Falling back on default.."
-                    << std::endl;
-            }
         }
 
+        // At this point, if we don't have a profile we need to search tile sources until we find one.
         if ( !_profile.valid() )
         {
-            // by default, set a geocentric map to use global-geodetic WGS84.
-            _profile = osgEarth::Registry::instance()->getGlobalGeodeticProfile();
-        }
-    }
+            Threading::ScopedReadLock lock( _mapDataMutex );
 
-    else if ( _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE )
-    {
-        //If the map type is a Geocentric Cube, set the profile to the cube profile.
-        _profile = osgEarth::Registry::instance()->getCubeProfile();
-    }
-
-    else // CSTYPE_PROJECTED
-    {
-        if ( userProfile.valid() )
-        {
-            _profile = userProfile.get();
-        }
-    }
-
-    // At this point, if we don't have a profile we need to search tile sources until we find one.
-    if ( !_profile.valid() )
-    {
-        Threading::ScopedReadLock lock( _mapDataMutex );
-
-        for( ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end() && !_profile.valid(); i++ )
-        {
-            ImageLayer* layer = i->get();
-            if ( layer->getTileSource() )
+            for( ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end() && !_profile.valid(); i++ )
             {
-                _profile = layer->getTileSource()->getProfile();
+                ImageLayer* layer = i->get();
+                if ( layer->getTileSource() )
+                {
+                    _profile = layer->getTileSource()->getProfile();
+                }
+            }
+
+            for( ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end() && !_profile.valid(); i++ )
+            {
+                ElevationLayer* layer = i->get();
+                if ( layer->getTileSource() )
+                {
+                    _profile = layer->getTileSource()->getProfile();
+                }
             }
         }
 
-        for( ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end() && !_profile.valid(); i++ )
+        // finally, fire an event if the profile has been set.
+        if ( _profile.valid() )
         {
-            ElevationLayer* layer = i->get();
-            if ( layer->getTileSource() )
+            OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
+
+            for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
             {
-                _profile = layer->getTileSource()->getProfile();
+                i->get()->onMapInfoEstablished( MapInfo(this) );
             }
+        }
+
+        else
+        {
+            OE_WARN << LC << "Warning, not yet able to establish a map profile!" << std::endl;
         }
     }
 
-    // finally, fire an event if the profile has been set.
     if ( _profile.valid() )
     {
-        OE_INFO << LC << "Map profile is: " << _profile->toString() << std::endl;
-
-        for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
+        // tell all the loaded layers what the profile is, as a hint
         {
-            i->get()->onMapInfoEstablished( MapInfo(this) );
-            //i->get()->onMapProfileEstablished( _profile.get() );
-        }
-    }
+            Threading::ScopedWriteLock lock( _mapDataMutex );
 
-    else
-    {
-        OE_WARN << LC << "Warning, not yet able to establish a map profile!" << std::endl;
+            for( ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); i++ )
+            {
+                ImageLayer* layer = i->get();
+                layer->setTargetProfileHint( _profile.get() );
+            }
+
+            for( ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); i++ )
+            {
+                ElevationLayer* layer = i->get();
+                layer->setTargetProfileHint( _profile.get() );
+            }
+        }
     }
 }
 

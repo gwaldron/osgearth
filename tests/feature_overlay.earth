@@ -22,7 +22,6 @@ Demonstrates use of the "feature_overlay" feature draping driver.
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
-            <resample min_length="0" max_length="0.1"/>
         </features>
         
         <!-- Treat the geometry as lines. -->

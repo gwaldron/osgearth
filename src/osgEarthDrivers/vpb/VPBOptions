@@ -67,8 +67,8 @@ namespace osgEarth { namespace Drivers
 
     public:
         VPBOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
-            _primarySplitLevel( -1 ),
-            _secondarySplitLevel( -1 ),
+            _primarySplitLevel( INT_MAX ),
+            _secondarySplitLevel( INT_MAX ),
             _layer( 0 ),
             _widthLod0( 1 ),
             _heightLod0( 1 ),

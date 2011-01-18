@@ -47,14 +47,14 @@ namespace osgEarth { namespace Features
         optional<Symbology::Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
         /**
-         * For geocentric data, sets the granularity of triangles created by the filter. This
+         * For geocentric data, sets the granularity of edges created by the filter. This
          * is the maximum angle (in degrees) between the vectors representing two geocentric
-         * points comprising a triangle edge. Since large polygons won't naturally conform to the
-         * ellipsoid very well, this setting lets you specify a minimum triangle size so that they
+         * points comprising an edge. Since large polygons won't naturally conform to the
+         * ellipsoid very well, this setting lets you specify a minimum edge size so that they
          * will break down and conform better.
          */
-        optional<double>& maxTriangleSize() { return _maxAngle_deg; }
-        const optional<double>& maxTriangleSize() const { return _maxAngle_deg; }
+        optional<double>& maxGranularity() { return _maxAngle_deg; }
+        const optional<double>& maxGranularity() const { return _maxAngle_deg; }
 
         /** Pushes a list of features through the filter. */
         FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );

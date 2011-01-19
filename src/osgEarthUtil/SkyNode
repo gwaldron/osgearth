@@ -73,6 +73,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Light> _light;
         osg::ref_ptr<osg::Uniform> _lightPosUniform;
         osg::ref_ptr<osg::MatrixTransform> _sunXform;
+        osg::ref_ptr<osg::MatrixTransform> _starsXform;
         osg::ref_ptr<osg::Uniform> _starAlpha;
         osg::ref_ptr<osg::Uniform> _starPointSize;
 

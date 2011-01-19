@@ -212,7 +212,7 @@ _lodTransitionTime( *options.lodTransitionTime() )
 GeoImage
 TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
 {
-    osg::ref_ptr<const osg::Image> image = layerImage.getImage();
+    const osg::Image* image = layerImage.getImage();
 
     if (image->getPixelFormat() != GL_RGBA ||
         image->getInternalTextureFormat() != GL_RGBA8 ||
@@ -220,7 +220,7 @@ TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoEx
         image->t() != 256 )
     {
         // Because all tex2darray layers must be identical in format, let's use RGBA.
-        osg::ref_ptr<osg::Image> newImage = ImageUtils::convertToRGBA8( image.get() );
+        osg::ref_ptr<osg::Image> newImage = ImageUtils::convertToRGBA8( image );
         
         // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
         if ( image->s() != 256 || image->t() != 256 )
@@ -240,7 +240,7 @@ TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoEx
     // NOTE: moved this into TileSource::getImage.
     // Failure to do this with a Texture2DArray will result in texture corruption if we are 
     // updating layers (like in sequential mode).
-    //image->setDataVariance( osg::Object::DYNAMIC );
+    //const_cast<osg::Image*>(image.get())->setDataVariance( osg::Object::DYNAMIC );
 }
 
 void

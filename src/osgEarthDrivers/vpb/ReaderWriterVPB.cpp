@@ -69,11 +69,11 @@ public:
         osgTerrain::TerrainTile* terrainTile = dynamic_cast<osgTerrain::TerrainTile*>(&group);
         if (terrainTile)
         {
-            OE_DEBUG<<"VPB: Found terrain tile TileID("<<
-				TileKey::getLOD(terrainTile->getTileID())<<", "<<
-                terrainTile->getTileID().x<<", "<<
-                terrainTile->getTileID().y<<")"<<std::endl;
-            
+    //        OE_DEBUG<<"VPB: Found terrain tile TileID("<<
+				//TileKey::getLOD(terrainTile->getTileID())<<", "<<
+    //            terrainTile->getTileID().x<<", "<<
+    //            terrainTile->getTileID().y<<")"<<std::endl;
+           
             _terrainTiles.push_back(terrainTile);
         }
         else
@@ -201,15 +201,15 @@ public:
                     double min_x, max_x, min_y, max_y;
                     ct.getRange(min_x, min_y, max_x, max_y);
 
-                    OE_DEBUG<<"VPB: range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<< ")" <<std::endl;
-					OE_DEBUG<<"VPB: range("<<osg::RadiansToDegrees(min_x)<<", "<<osg::RadiansToDegrees(min_y)<<", "
-						<<osg::RadiansToDegrees(max_x)<<", "<<osg::RadiansToDegrees(max_y)<< ")" <<std::endl;
+                    //OE_DEBUG<<"VPB: range("<<min_x<<", "<<min_y<<", "<<max_x<<", "<<max_y<< ")" <<std::endl;
+					//OE_DEBUG<<"VPB: range("<<osg::RadiansToDegrees(min_x)<<", "<<osg::RadiansToDegrees(min_y)<<", "
+					//	<<osg::RadiansToDegrees(max_x)<<", "<<osg::RadiansToDegrees(max_y)<< ")" <<std::endl;
 
                     srs = locator->getCoordinateSystem();
 
                     double aspectRatio = (max_x-min_x)/(max_y-min_y);
                     
-                    OE_DEBUG<<"VPB: aspectRatio = "<<aspectRatio<<std::endl;
+                    //OE_DEBUG<<"VPB: aspectRatio = "<<aspectRatio<<std::endl;
 
                     if (aspectRatio>1.0)
                     {
@@ -222,8 +222,8 @@ public:
                         numTilesHighAtLod0 = static_cast<unsigned int>(floor(1.0/aspectRatio+0.499999));
                     }
                     
-                    OE_DEBUG<<"VPB: computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    OE_DEBUG<<"VPB: computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+                    //OE_DEBUG<<"VPB: computed numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                    //OE_DEBUG<<"VPB: computed numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                     
                     //if ( _options.valid() )
                     {
@@ -234,8 +234,8 @@ public:
                             numTilesHighAtLod0 = _options.numTilesHighAtLod0().value();
                     }
 
-                    OE_DEBUG<<"VPB: final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
-                    OE_DEBUG<<"VPB: final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
+                    //OE_DEBUG<<"VPB: final numTilesWideAtLod0 = "<<numTilesWideAtLod0<<std::endl;
+                    //OE_DEBUG<<"VPB: final numTilesHightAtLod0 = "<<numTilesHighAtLod0<<std::endl;
                    
                     _profile = osgEarth::Profile::create( 
                         srs,
@@ -321,7 +321,7 @@ public:
         
 		std::string bufStr;
 		bufStr = buf.str();
-        OE_DEBUG<<"VPB: VPBDatabase::createTileName(), buf.str()=="<< bufStr <<std::endl;
+        //OE_DEBUG<<"VPB: VPBDatabase::createTileName(), buf.str()=="<< bufStr <<std::endl;
         
 		return bufStr;
     }
@@ -356,7 +356,7 @@ public:
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
             if (_blacklistedFilenames.count(filename)==1)
             {
-                OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
+                //OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
                 insertTile(tileID, 0);
                 return 0;
             }
@@ -435,18 +435,18 @@ public:
                 _tileFIFO.pop_front();
                 _tileMap.erase(tileToRemove);
 
-                OE_DEBUG<<"VPB: Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
+                //OE_DEBUG<<"VPB: Pruned tileID ("<<TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<")"<<std::endl;
             }
 
-            OE_DEBUG<<"VPB: insertTile ("
-                << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
-                << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
+            //OE_DEBUG<<"VPB: insertTile ("
+            //    << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
+            //    << " tileFIFO.size()=="<<_tileFIFO.size()<<std::endl;
         }
         else
         {
-            OE_DEBUG<<"VPB: insertTile ("
-                << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
-                << " ...already in cache!"<<std::endl;
+            //OE_DEBUG<<"VPB: insertTile ("
+            //    << TileKey::getLOD(tileID)<<", "<<tileID.x<<", "<<tileID.y<<") " 
+            //    << " ...already in cache!"<<std::endl;
         }
     }
 
@@ -535,7 +535,7 @@ public:
 				osgTerrain::ImageLayer* imageLayer = dynamic_cast<osgTerrain::ImageLayer*>(layer);
 				if (imageLayer)
 				{
-					OE_DEBUG<<"VPB: createImage(" << key.str() << " layerNum=" << layerNum << ") successful." <<std::endl;
+					//OE_DEBUG<<"VPB: createImage(" << key.str() << " layerNum=" << layerNum << ") successful." <<std::endl;
 					ret = new osg::Image( *imageLayer->getImage() );
 				}
 				else
@@ -553,19 +553,19 @@ public:
 					}
 					if(imageLayer)
 					{
-						OE_DEBUG<<"VPB: createImage(" << key.str() << " layerSet=" << layerSetName.value() << ") successful." <<std::endl;
+						//OE_DEBUG<<"VPB: createImage(" << key.str() << " layerSet=" << layerSetName.value() << ") successful." <<std::endl;
 						ret = new osg::Image( *imageLayer->getImage() );
 					}
 				}
 			}
 			if(!ret)
 			{
-				OE_DEBUG<<"VPB: createImage(" << key.str() << " layerSet=" << layerSetName.value() << " layerNum=" << layerNum << "/" << numColorLayers << ") failed." <<std::endl;
+				//OE_DEBUG<<"VPB: createImage(" << key.str() << " layerSet=" << layerSetName.value() << " layerNum=" << layerNum << "/" << numColorLayers << ") failed." <<std::endl;
 			}
 		}
 		else
 		{
-			OE_DEBUG<<"VPB: createImage(" << key.str() << ") database retrieval failed." <<std::endl;
+			//OE_DEBUG<<"VPB: createImage(" << key.str() << ") database retrieval failed." <<std::endl;
 		}
 		return ret;
 	}

@@ -50,5 +50,6 @@ namespace osgEarth
 #define OE_NOTICE OE_NOTIFY(osg::NOTICE,"[osgEarth]  ")
 #define OE_INFO OE_NOTIFY(osg::INFO,"[osgEarth]  ")
 #define OE_DEBUG OE_NOTIFY(osg::DEBUG_INFO,"[osgEarth]  ")
+#define OE_NULL if(false) osgEarth::notify(osg::ALWAYS)
 
 #endif // OSGEARTH_NOTIFY_H

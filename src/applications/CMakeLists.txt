@@ -35,6 +35,7 @@ ADD_SUBDIRECTORY(osgearth_features)
 ADD_SUBDIRECTORY(osgearth_version)
 ADD_SUBDIRECTORY(osgearth_controls)
 ADD_SUBDIRECTORY(osgearth_shadercomp)
+ADD_SUBDIRECTORY(osgearth_tilesource)
 
 #ADD_SUBDIRECTORY(osgearth_symbology)
 IF(NOT (${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.10"))

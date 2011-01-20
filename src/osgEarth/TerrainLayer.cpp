@@ -232,7 +232,7 @@ TerrainLayer::getProfile() const
     {
         //const TerrainLayerOptions& opt = getTerrainLayerOptions();
 
-        if ( _actualCacheOnly == false && !_tileSource.valid() )
+        if ( _actualCacheOnly == false && !_tileSourceInitialized ) //!_tileSource.valid() )
         {
             // Call getTileSource to make sure the TileSource is initialized
             getTileSource();

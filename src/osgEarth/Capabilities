@@ -72,6 +72,9 @@ namespace osgEarth
         /** whether the GPU support the texture2dLod() function */
         bool supportsTexture2DLod() const { return _supportsTexture2DLod; }
 
+        /** whether the GPU properly supports updating an existing texture with a new mipmapped image */
+        bool supportsMipmappedTextureUpdates() const { return _supportsMipmappedTextureUpdates; }
+
     private:
         Capabilities();
 
@@ -89,6 +92,7 @@ namespace osgEarth
         bool _supportsStencilWrap;
         bool _supportsTwoSidedStencil;
         bool _supportsTexture2DLod;
+        bool _supportsMipmappedTextureUpdates;
         std::string _vendor;
         std::string _renderer;
 

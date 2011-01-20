@@ -32,6 +32,10 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
 
+/**
+ * This sample demonstrated how to create a custom TileSource.
+ */
+
 static osg::Vec4 colors[4] = {
     osg::Vec4(1,0,0,1),
     osg::Vec4(0,1,0,1),

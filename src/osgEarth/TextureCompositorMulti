@@ -56,7 +56,7 @@ namespace osgEarth
         bool _lodBlending;
         float _lodTransitionTime;
         bool _useGPU;
-        bool _enableMipmappedTextureUpdates;
+        bool _enableMipmappingOnUpdatedTextures;
     };
 }
 

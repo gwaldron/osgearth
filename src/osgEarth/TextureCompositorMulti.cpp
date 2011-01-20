@@ -202,6 +202,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
     if ( tex )
     {
         osg::Image* image = preparedImage.getImage();
+        image->dirty(); // required for ensure the texture recognizes the image as new data
         tex->setImage( image );
 
         if (ImageUtils::isPowerOfTwo( image ))

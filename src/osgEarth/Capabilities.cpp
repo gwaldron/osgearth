@@ -110,12 +110,18 @@ _supportsMultiTexture   ( false ),
 _supportsStencilWrap    ( true ),
 _supportsTwoSidedStencil( false ),
 _supportsTexture2DLod   ( false ),
+_supportsMipmappedTextureUpdates( false ),
 _supportsQuadBufferStereo( false )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
 
-    // first create a opengl context with quad buffer stereo enabled
+    // check the environment in order to disable ATI workarounds
+    bool enableATIworkarounds = true;
+    if ( ::getenv( "OSGEARTH_DISABLE_ATI_WORKAROUNDS" ) != 0L )
+        enableATIworkarounds = false;
+
+	// first create a opengl context with quad buffer stereo enabled
 	MyGraphicsContext * mgc = new MyGraphicsContext(true);
 	_supportsQuadBufferStereo = mgc->valid();
 	if(!_supportsQuadBufferStereo)
@@ -201,6 +207,10 @@ _supportsQuadBufferStereo( false )
 
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
+
+        bool isATI = _vendor.length() >= 4 && ::strncmp(_vendor.c_str(), "ATI ", 4) == 0;
+
+        _supportsMipmappedTextureUpdates = isATI && enableATIworkarounds ? false : true;
     }
 
     // delete the final object of the graphics context

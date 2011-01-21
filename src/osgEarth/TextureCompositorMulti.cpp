@@ -189,6 +189,8 @@ _useGPU( useGPU )
         _lodBlending = false;
         OE_WARN << LC << "Disabling LOD blending because transition time <= 0.0" << std::endl;
     }
+
+    _enableMipmappingOnUpdatedTextures = Registry::instance()->getCapabilities().supportsMipmappedTextureUpdates();
 }
 
 void
@@ -205,7 +207,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
         image->dirty(); // required for ensure the texture recognizes the image as new data
         tex->setImage( image );
 
-        if (ImageUtils::isPowerOfTwo( image ))
+        if (_enableMipmappingOnUpdatedTextures && ImageUtils::isPowerOfTwo( image ))
         {
             if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
                 tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
@@ -215,7 +217,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
             tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
         }
 
-        if ( _lodBlending )
+        if ( _enableMipmappingOnUpdatedTextures && _lodBlending )
         {
             // update the timestamp on the image layer to support blending.
             osg::ref_ptr<ArrayUniform> stamp = new ArrayUniform( stateSet, "osgearth_SlotStamp" );

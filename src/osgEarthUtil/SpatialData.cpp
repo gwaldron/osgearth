@@ -115,7 +115,7 @@ _depth( depth ),
 _boundaryPoints( 10 )
 {
     generateBoundaries();
-    generateBoundaryGeometry();
+    //generateBoundaryGeometry();
 
     // Disable culling so we can do our own custom culling.
     this->setCullingActive( false );
@@ -301,7 +301,7 @@ GeoCell::insertObject( GeoObject* object )
             object->getNode()->dirtyBound();
             adjustCount( +1 );
 
-            OE_INFO << LC << "Inserted object " << object->getNode()->getName() << " at " << location << std::endl;
+            OE_DEBUG << LC << "Inserted object " << object->getNode()->getName() << " at " << location << std::endl;
 
             return true;
         }

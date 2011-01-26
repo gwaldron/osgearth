@@ -1,0 +1,150 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_SPATIAL_DATA
+#define OSGEARTHUTIL_SPATIAL_DATA
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/GeoData>
+#include <osg/observer_ptr>
+#include <osg/Geode>
+#include <osg/Plane>
+#include <osg/LOD>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    class GeoObject;
+
+    /**
+     * A group corresponding to a specific geospatial cell.
+     */
+    class OSGEARTHUTIL_EXPORT GeoCell : public osg::LOD
+    {
+    public:
+        GeoCell(
+            const GeoExtent& extent,
+            float    maxRange,
+            unsigned maxOjbects,
+            unsigned splitDim,
+            float    splitRangeFactor,
+            unsigned depth );
+
+        /** Adds an object to this geocell graph. */
+        virtual bool insertObject( GeoObject* object );
+
+        /** Removes an object from this geocell graph. */
+        bool removeObject( GeoObject* object );
+
+        /** Re-index an object withing the geocell graph based on a new position. */
+        bool reindexObject( GeoObject* object );
+
+        /** The number of rows and columns into which this cell will split */
+        unsigned getSplitDimension() const { return _splitDim; }
+
+        /** The maximum number of objects this cell can hold before splitting */
+        unsigned getMaxObjects() const { return _maxObjects; }
+
+        /** Child cells have a maximum LOD range of this cell's max range times this factor. */
+        float getSplitRangeFactor() const { return _splitRangeFactor; }
+
+        /** the extent of this cell */
+        const GeoExtent& getExtent() const { return _extent; }
+
+        void setDrawBoundaries() { generateBoundaryGeometry(); }
+
+    public: // osg::LOD overrides
+
+        virtual osg::BoundingSphere computeBound() const;
+
+        virtual void traverse( osg::NodeVisitor& nv );
+
+    protected:
+        GeoExtent _extent;
+        unsigned  _splitDim;
+        unsigned  _maxObjects;
+        float     _maxRange;
+        float     _splitRangeFactor;
+        unsigned  _count;       // # of objects in this cell (including all children)
+        unsigned  _depth;
+
+        void split();
+        void merge();
+        void adjustCount( int delta );
+        bool intersects( const class osg::Polytope& tope ) const;
+        bool reindex( GeoObject* object );
+        void generateBoundaries();
+        void generateBoundaryGeometry();
+
+        std::vector<osg::Vec3d> _boundaryPoints;
+
+        std::vector< osg::ref_ptr<GeoObject> > _objects;
+
+        osg::ref_ptr<osg::Geode> _clusterGeode;
+        osg::ref_ptr<osg::Geode> _boundaryGeode;
+        osg::Vec4Array* _boundaryColor;
+    };
+
+    class OSGEARTHUTIL_EXPORT GeoGraph : public GeoCell
+    {
+    public:
+        GeoGraph(
+            const GeoExtent& extent,
+            float            maxRange,
+            unsigned         maxOjbects       =500,            
+            unsigned         splitDim         =2,
+            float            splitRangeFactor =0.5f,
+            unsigned         rootWidth        =2,
+            unsigned         rootHeight       =2 );
+
+
+        bool insertObject( GeoObject* object );
+
+    private:
+        unsigned _rootWidth, _rootHeight;
+    };
+
+    /**
+     * Base class for an object indexed by a GeoCell hierarchy.
+     */
+    class OSGEARTHUTIL_EXPORT GeoObject : public osg::Referenced
+    {
+    public:
+        /**
+         * Outputs the location (for spatial indexing), which must be in the same
+         * SRS as the GeoGraph.
+         */
+        virtual bool getLocation( osg::Vec3d& output ) const =0;
+
+        /** Gets the node to render for this object. */
+        virtual osg::Node* getNode() const =0;
+
+    public:
+        GeoCell* getGeoCell() const { return _cell.get(); }
+        void setGeoCell( GeoCell* cell ) { _cell = cell; }
+
+    protected:
+        GeoObject();
+        osg::observer_ptr<GeoCell> _cell;
+        friend class GeoCell;
+    };    
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_SPATIAL_DATA

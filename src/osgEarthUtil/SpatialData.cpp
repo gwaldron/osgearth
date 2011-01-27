@@ -21,6 +21,8 @@
 #include <osg/PolygonOffset>
 #include <osg/Polytope>
 #include <osg/Geometry>
+#include <osg/Depth>
+#include <osgText/Text>
 
 #define LC "[GeoGraph] "
 
@@ -36,6 +38,61 @@ namespace
         unsigned col = (unsigned)((double)xdim * ((point.x() - cellExtent.xMin()) / cellExtent.width()));
         unsigned row = (unsigned)((double)ydim * ((point.y() - cellExtent.yMin()) / cellExtent.height()));
         return row*xdim + col;
+    }
+
+    static osgText::Font* s_font = 0L;
+
+    osg::Geode* makeClusterGeode( const GeoExtent& cellExtent, unsigned num )
+    {
+        osgText::Text* t = new osgText::Text();
+
+        double clat, clon;
+        cellExtent.getCentroid( clon, clat );
+        osg::Vec3d xyz;        
+        cellExtent.getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+            osg::DegreesToRadians( clat ), osg::DegreesToRadians( clon ), 0, xyz.x(), xyz.y(), xyz.z() );
+        t->setPosition( xyz );
+        
+        std::stringstream buf;
+        buf << num;
+        t->setText( buf.str() );
+        t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
+        t->setCharacterSize( 22.0f );
+        t->setAutoRotateToScreen( true );
+
+        if ( !s_font )
+            s_font = osgText::readFontFile( "arialbd.ttf" );
+        t->setFont( s_font );
+
+        t->setBackdropType( osgText::Text::OUTLINE );
+        t->setColor( osg::Vec4(1,1,1,1) );
+        t->setBackdropColor( osg::Vec4(0,0,0,1) );
+
+        osg::Geode* geode = new osg::Geode();
+        geode->addDrawable( t );
+
+        osg::StateSet* s = geode->getOrCreateStateSet();
+        s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS) );
+
+        t->setDataVariance( osg::Object::DYNAMIC );
+
+        return geode;
+    }
+
+    GeoObjectCollection::iterator
+    findObject( GeoObjectCollection& objects, GeoObject* object )
+    {
+        float key = object->getPriority();
+        GeoObjectCollection::iterator first = objects.find(key);
+        if ( first == objects.end() )
+            return objects.end();
+
+        GeoObjectCollection::iterator last = objects.upper_bound(key);
+        for( ; first != last; ++first )
+            if ( first->second.get() == object )
+                return first;
+
+        return objects.end();
     }
 }
 
@@ -80,7 +137,7 @@ GeoCell( extent, maxRange, maxObjects, splitDim, splitRangeFactor, 0 )
                     _splitRangeFactor,
                     1 );
 
-                this->addChild( child, 0, FLT_MAX );
+                this->addChild( child, 0, maxRange ); //FLT_MAX );
             }
         }                    
     }
@@ -107,17 +164,19 @@ GeoCell::GeoCell(const GeoExtent& extent, float maxRange, unsigned maxObjects,
                  unsigned splitDim, float splitRangeFactor, unsigned depth ) :
 _extent( extent ),
 _maxRange( maxRange ),
-_splitDim( splitDim ),
 _maxObjects( maxObjects ),
+_splitDim( splitDim ),
 _splitRangeFactor( splitRangeFactor ),
-_count( 0 ),
 _depth( depth ),
-_boundaryPoints( 10 )
+_minObjects( (maxObjects/10)*8 ), // 80%
+_count( 0 ),
+_boundaryPoints( 10 ),
+_frameStamp( 0 )
 {
     generateBoundaries();
     //generateBoundaryGeometry();
 
-    // Disable culling so we can do our own custom culling.
+    // Disable OSG's culling so we can do our own custom culling.
     this->setCullingActive( false );
 }
 
@@ -194,8 +253,8 @@ GeoCell::generateBoundaryGeometry()
     el->push_back( 9 ); el->push_back( 7 ); el->push_back( 6 ); el->push_back( 8 );
     el->push_back( 3 ); el->push_back( 9 ); el->push_back( 8 ); el->push_back( 2 );
     el->push_back( 5 ); el->push_back( 3 ); el->push_back( 2 ); el->push_back( 4 );
-    el->push_back( 2 ); el->push_back( 8 ); el->push_back( 6 ); el->push_back( 4 );
-    el->push_back( 9 ); el->push_back( 3 ); el->push_back( 5 ); el->push_back( 7 );
+    //el->push_back( 2 ); el->push_back( 8 ); el->push_back( 6 ); el->push_back( 4 ); //top
+    //el->push_back( 9 ); el->push_back( 3 ); el->push_back( 5 ); el->push_back( 7 ); // bottom
     g->addPrimitiveSet( el );
 
     osg::Vec4Array* c = new osg::Vec4Array(1);
@@ -212,7 +271,7 @@ GeoCell::generateBoundaryGeometry()
     osg::StateSet* set = g->getOrCreateStateSet();
     set->setMode( GL_BLEND, 1 );
     set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-    set->setAttribute( new osg::PolygonOffset(-1,1), 1 );
+    set->setAttribute( new osg::PolygonOffset(1,1), 1 );
 
     _boundaryGeode = new osg::Geode();
     _boundaryGeode->addDrawable( g );
@@ -233,9 +292,11 @@ GeoCell::intersects( const osg::Polytope& tope ) const
 void
 GeoCell::traverse( osg::NodeVisitor& nv )
 {
+    bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
+
     if ( _depth > 0 )
     {
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        if ( isCull )
         {
             // process boundary geometry, if present.
             if ( _boundaryGeode.valid() ) 
@@ -249,30 +310,39 @@ GeoCell::traverse( osg::NodeVisitor& nv )
                 _boundaryGeode->accept( nv );
             }
 
-            // custom BSP culling function.
+            // custom BSP culling function. this checks that the set of boundary points
+            // for this cell intersects the viewing frustum.
             osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
             if ( cv && !intersects( cv->getCurrentCullingSet().getFrustum() ) )
-                return;           
+            {
+                return;
+            }
+
+            // passed cull, so record the framestamp.
+            _frameStamp = cv->getFrameStamp()->getFrameNumber();
         }
 
         if ( _objects.size() > 0 )
         {
-            for( std::vector<osg::ref_ptr<GeoObject> >::iterator i = _objects.begin(); i != _objects.end(); ++i )
+            for( GeoObjectCollection::iterator i = _objects.begin(); i != _objects.end(); ++i )
             {
-                osg::Node* node = i->get()->getNode();
+                osg::Node* node = i->second->getNode();
                 if ( node )
                     node->accept( nv );
             }
         }
-        else
-        {
-            osg::LOD::traverse( nv );
-        }
+
+        if ( _clusterGeode.valid() )
+            _clusterGeode->accept( nv );
     }
+
     else
     {
-        osg::LOD::traverse( nv );
+        if ( isCull )
+            _frameStamp = nv.getFrameStamp()->getFrameNumber();
     }
+
+    osg::LOD::traverse( nv );
 }
 
 void
@@ -280,8 +350,24 @@ GeoCell::adjustCount( int delta )
 {
     _count += delta;
 
-    if ( _depth > 0 )
-        static_cast<GeoCell*>(getParent(0))->adjustCount( delta );            
+    if ( _depth > 0 && getNumParents() > 0 )
+    {
+        static_cast<GeoCell*>(getParent(0))->adjustCount( delta );        
+
+#if 0
+        if ( !_clusterGeode.valid() )
+        {
+            _clusterGeode = makeClusterGeode( _extent, _count );
+        }
+        else
+        {
+            osgText::Text* t = static_cast<osgText::Text*>( _clusterGeode->getDrawable(0) );
+            std::stringstream buf;
+            buf << _count;
+            t->setText( buf.str() );
+        }
+#endif
+    }
 }
 
 bool
@@ -290,48 +376,44 @@ GeoCell::insertObject( GeoObject* object )
     osg::Vec3d location;
     if ( object->getLocation(location) && _extent.contains(location.x(), location.y()) )
     {
-        // first see if it will fit in this cell as-is:
-        if ( _count < _maxObjects )
+        object->_cell = this;
+        _objects.insert( std::make_pair(object->getPriority(), object) );
+
+        if ( _objects.size() > _maxObjects )
         {
-            //if ( _objects.size() == 0 )
-            //    _objects.reserve( _maxObjects );
+            GeoObjectCollection::iterator low = _objects.begin();
+            GeoObject* lowPriObject = low->second.get();
+            
+            if ( getNumChildren() == 0 )
+                split();
 
-            object->_cell = this;
-            _objects.push_back( object );
-            object->getNode()->dirtyBound();
-            adjustCount( +1 );
-
-            OE_DEBUG << LC << "Inserted object " << object->getNode()->getName() << " at " << location << std::endl;
-
-            return true;
+            lowPriObject->getLocation(location);
+            unsigned index = getIndex(_extent, location, _splitDim, _splitDim);
+            bool insertedOK = static_cast<GeoCell*>(getChild(index))->insertObject( lowPriObject );
+            if ( insertedOK )
+            {
+                // remove it from this cell.
+                _objects.erase( low );
+            }
+            else
+            {
+                // should never ever happen..
+                OE_WARN << LC << "Object insertion failed" << std::endl;
+            }
         }
-
-        // next see if this cell is already split:
-        else if ( getNumChildren() > 0 )
-        {
-            unsigned index = getIndex( _extent, location, _splitDim, _splitDim );
-            return static_cast<GeoCell*>(getChild(index))->insertObject(object);
-        }
-
-        // otherwise, split the cell and try again
-        else
-        {
-            split();
-            return insertObject( object );
-        }
+        return true;
     }
-
-    return false;
+    else
+    {
+        return false;
+    }
 }
 
 void
 GeoCell::split()
 {
-    std::vector<GeoCell*> newCells;
-    newCells.reserve( _splitDim * _splitDim );
-
     // the max LOD range for children of this cell:
-    float _newRange = _maxRange * _splitRangeFactor;
+    float newRange = _maxRange * _splitRangeFactor;
 
     // first create all the child cells:
     double xInterval = _extent.width() / (double)_splitDim;
@@ -345,40 +427,15 @@ GeoCell::split()
                 _extent.getSRS(),
                 _extent.xMin() + xInterval*(double)col,
                 _extent.yMin() + yInterval*(double)row,
-                _extent.yMin() + xInterval*(double)(col+1),
+                _extent.xMin() + xInterval*(double)(col+1),
                 _extent.yMin() + yInterval*(double)(row+1) );
 
-            newCells.push_back( new GeoCell(cellExtent, _newRange, _maxObjects, _splitDim, _splitRangeFactor, _depth+1) );
+            this->addChild(
+                new GeoCell(cellExtent, newRange, _maxObjects, _splitDim, _splitRangeFactor, _depth+1),
+                0.0f,
+                newRange );
         }
     }
-
-    // now copy the objects over:
-    for( std::vector<osg::ref_ptr<GeoObject> >::iterator i = _objects.begin(); i != _objects.end(); ++i )
-    {
-        // select the correct child cell:
-        GeoObject* object = i->get();
-        osg::Vec3d location;
-        if ( object->getLocation(location) )
-        {
-            unsigned index = getIndex(_extent, location, _splitDim, _splitDim);
-            newCells[index]->insertObject( object );
-            object->_cell = newCells[index];
-        }
-        else
-        {
-            object->_cell = 0L;
-            // quietly disappears from the graph ... 
-        }
-    }
-
-    // now add the new cells:
-    for( unsigned i=0; i<newCells.size(); ++i )
-    {
-        this->addChild( newCells[i], 0.0f, _newRange );
-    }
-
-    // remove all the objects from this cell.
-    _objects.clear();
 }
 
 bool
@@ -387,8 +444,15 @@ GeoCell::removeObject( GeoObject* object )
     if ( object->_cell.get() == this )
     {
         object->_cell = 0L;
-        _objects.erase( std::find( _objects.begin(), _objects.end(), object ) );
+        _objects.erase( findObject(_objects, object) );
         adjustCount( -1 );
+
+        // if we just fell beneath the threshold, pull one up from below.
+        if ( _objects.size() == _minObjects-1 )
+        {
+            //TODO.
+        }
+
         // TODO: rebalance, merge the tree, etc.
         return true;
     }
@@ -412,10 +476,32 @@ GeoCell::merge()
 bool
 GeoCell::reindexObject( GeoObject* object )
 {
-    osg::ref_ptr<GeoCell> safeCell = object->getGeoCell();
-    if ( safeCell.valid() )
+    GeoCell* owner = object->getGeoCell();
+    if ( owner )
     {
-        return safeCell->reindex( object );
+        osg::Vec3d location;
+        if ( object->getLocation(location) && !owner->_extent.contains(location.x(), location.y()) )
+        {
+            // first remove from its current cell
+            owner->removeObject( object );
+            //object->_cell = 0L;
+            //owner->_objects.erase( findObject(owner->_objects, object) );
+            //owner->adjustCount( -1 );
+
+            GeoCell* cell = dynamic_cast<GeoCell*>( owner->getParent(0) );
+            while( cell )
+            {
+                if ( cell->getExtent().contains(location.x(), location.y()) )
+                {
+                    if ( cell->insertObject( object ) )
+                        return true;
+                }
+                cell = dynamic_cast<GeoCell*>( cell->getParent(0) );
+            }
+        }
+
+        // no change
+        return true;
     }
     else
     {
@@ -423,6 +509,7 @@ GeoCell::reindexObject( GeoObject* object )
     }
 }
 
+#if 0
 bool
 GeoCell::reindex( GeoObject* object )
 {
@@ -432,7 +519,14 @@ GeoCell::reindex( GeoObject* object )
         // first remove from its current cell
         osg::ref_ptr<GeoCell> safeCell = object->_cell.get();
         if ( safeCell.valid() )
-            safeCell->removeObject( object );
+        {
+            object->_cell = 0L;
+            safeCell->_objects.erase( findObject(safeCell->_objects, object) );
+            //safeCell->_objects.erase( std::find( _objects.begin(), _objects.end(), std::make_pair(object->getPriority(),object) ) );
+            //safeCell->_objects.erase( std::find( safeCell->_objects.begin(), safeCell->_objects.end(), object ) );
+            safeCell->adjustCount( -1 );
+            //safeCell->removeObject( object );
+        }
 
         GeoCell* cell = dynamic_cast<GeoCell*>( this->getParent(0) );
         while( cell )
@@ -448,3 +542,4 @@ GeoCell::reindex( GeoObject* object )
 
     return true;
 }
+#endif

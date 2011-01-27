@@ -25,12 +25,16 @@
 #include <osg/Geode>
 #include <osg/Plane>
 #include <osg/LOD>
+#include <map>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
     class GeoObject;
+    //typedef std::vector< osg::ref_ptr<GeoObject> > GeoObjectVector;
+    typedef std::pair< float, osg::ref_ptr<GeoObject> > GeoObjectPair;
+    typedef std::multimap< float, osg::ref_ptr<GeoObject> > GeoObjectCollection;
 
     /**
      * A group corresponding to a specific geospatial cell.
@@ -67,7 +71,8 @@ namespace osgEarth { namespace Util
         /** the extent of this cell */
         const GeoExtent& getExtent() const { return _extent; }
 
-        void setDrawBoundaries() { generateBoundaryGeometry(); }
+        /** gets the frame number of the last time this cell passed cull */
+        unsigned getLastCullFrame() const { return _frameStamp; }
 
     public: // osg::LOD overrides
 
@@ -78,27 +83,31 @@ namespace osgEarth { namespace Util
     protected:
         GeoExtent _extent;
         unsigned  _splitDim;
-        unsigned  _maxObjects;
-        float     _maxRange;
-        float     _splitRangeFactor;
+        unsigned  _maxObjects;  // maximum # of objects to render in this cell before splitting.
+        unsigned  _minObjects;  // minimum # of objects to drop below before pulling up
+        float     _maxRange;    // maximum visibility range of this cell.
+        float     _splitRangeFactor; // child range = cell range * factor
         unsigned  _count;       // # of objects in this cell (including all children)
         unsigned  _depth;
+        unsigned  _frameStamp;  // last fram this cell was visited by CULL
 
         void split();
         void merge();
         void adjustCount( int delta );
         bool intersects( const class osg::Polytope& tope ) const;
-        bool reindex( GeoObject* object );
         void generateBoundaries();
         void generateBoundaryGeometry();
 
         std::vector<osg::Vec3d> _boundaryPoints;
 
-        std::vector< osg::ref_ptr<GeoObject> > _objects;
+        // priority-order collection of objects
+        GeoObjectCollection _objects;
 
         osg::ref_ptr<osg::Geode> _clusterGeode;
         osg::ref_ptr<osg::Geode> _boundaryGeode;
         osg::Vec4Array* _boundaryColor;
+
+        friend class GeoCellVisitor;
     };
 
     class OSGEARTHUTIL_EXPORT GeoGraph : public GeoCell
@@ -107,7 +116,7 @@ namespace osgEarth { namespace Util
         GeoGraph(
             const GeoExtent& extent,
             float            maxRange,
-            unsigned         maxOjbects       =500,            
+            unsigned         maxObjects       =500,            
             unsigned         splitDim         =2,
             float            splitRangeFactor =0.5f,
             unsigned         rootWidth        =2,
@@ -118,6 +127,21 @@ namespace osgEarth { namespace Util
 
     private:
         unsigned _rootWidth, _rootHeight;
+    };
+
+    class GeoCellVisitor : public osg::NodeVisitor
+    {
+    public:
+        GeoCellVisitor() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+
+        virtual void operator()( const GeoCell* cell, const GeoObjectCollection& objects ) =0;
+
+        void apply( osg::LOD& node ) {
+            const GeoCell* cell = static_cast<const GeoCell*>(&node);
+            if ( cell->_depth > 0 )
+                this->operator()( cell, cell->_objects );
+            traverse( node );
+        }
     };
 
     /**
@@ -132,16 +156,19 @@ namespace osgEarth { namespace Util
          */
         virtual bool getLocation( osg::Vec3d& output ) const =0;
 
+        /** The priority of the object relative to other objects */
+        virtual float getPriority() const { return 0.0; }
+
         /** Gets the node to render for this object. */
         virtual osg::Node* getNode() const =0;
 
-    public:
+        /** The cell currently holding this object. */
         GeoCell* getGeoCell() const { return _cell.get(); }
-        void setGeoCell( GeoCell* cell ) { _cell = cell; }
 
     protected:
         GeoObject();
         osg::observer_ptr<GeoCell> _cell;
+        float _priority;
         friend class GeoCell;
     };    
 

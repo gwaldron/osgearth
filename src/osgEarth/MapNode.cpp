@@ -279,8 +279,10 @@ osg::BoundingSphere
 MapNode::computeBound() const
 {
     osg::BoundingSphere bs;
-    if ( _terrainEngine.valid() )
-        bs.expandBy( _terrainEngine->getBound() );
+    if ( getTerrainEngine() )
+    {
+        bs.expandBy(  getTerrainEngine()->getBound() );
+    }
     if ( _models.valid() )
         bs.expandBy( _models->getBound() );
     return bs;
@@ -295,6 +297,13 @@ MapNode::getMap()
 TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
+    if ( !_terrainEngineInitialized && _terrainEngine.valid() )
+    {
+        _terrainEngine->postInitialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
+        MapNode* me = const_cast< MapNode* >(this);
+        me->_terrainEngineInitialized = true;
+        me->dirtyBound();
+    }
     return _terrainEngine.get();
 }
 
@@ -554,21 +563,7 @@ MapNode::adjustEventTraversalCount( int delta )
 void
 MapNode::traverse( osg::NodeVisitor& nv )
 {
-    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
-    {
-        // first time traversed, initialize the terrain engine. The reason we defer this until
-        // the first traversal is because there is no need for a terrain engine if you are
-        // not traversing the scene graph.
-        if ( !_terrainEngineInitialized && _terrainEngine.valid() )
-        {
-            _terrainEngine->postInitialize( _map.get(), getMapNodeOptions().getTerrainOptions() );
-            _terrainEngineInitialized = true;
-            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
-            dirtyBound();
-        }
-    }
-
-    else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
     {
         unsigned int numBlacklist = Registry::instance()->getNumBlacklistedFilenames();
         if (numBlacklist != _lastNumBlacklistedFilenames)
@@ -586,7 +581,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
 void
 MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
 {
-    OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
+    OE_INFO << "Overlay changed to "  << layer->getOverlay() << std::endl;
     osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
     osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
 

@@ -40,7 +40,18 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
         if (child.key() == "profile" || 
             child.key() == "cache" )
         {
-            mapOptionsConf.add( child );
+            if (child.key() == "cache")
+            {
+                std::string type = child.attr("type");
+                if (type.empty()) type = "tms";
+                Config cacheConfig(child);
+                cacheConfig.attrs()["driver"] = type;
+                mapOptionsConf.add( cacheConfig );
+            }
+            else
+            {
+                mapOptionsConf.add( child );
+            }
         }
         else if (
             child.key() == "proxy" ||

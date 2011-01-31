@@ -144,6 +144,12 @@ Geometry::buffer(double distance,
             params._capStyle == BufferParameters::CAP_FLAT   ? buffer::BufferParameters::CAP_FLAT :
             buffer::BufferParameters::CAP_SQUARE;
 
+        buffer::BufferParameters::JoinStyle geosJoinStyle =
+            params._joinStyle == BufferParameters::JOIN_ROUND ? buffer::BufferParameters::JOIN_ROUND :
+            params._joinStyle == BufferParameters::JOIN_MITRE ? buffer::BufferParameters::JOIN_MITRE :
+            params._joinStyle == BufferParameters::JOIN_BEVEL ? buffer::BufferParameters::JOIN_BEVEL :
+            buffer::BufferParameters::JOIN_ROUND;
+
         //JB:  Referencing buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS causes link errors b/c it is defined as a static in the header of BufferParameters.h and not defined in the cpp anywhere.
         //     This seems to only effect the Linux build, Windows works fine
         int geosQuadSegs = params._cornerSegs > 0 
@@ -155,6 +161,7 @@ Geometry::buffer(double distance,
         buffer::BufferParameters geosBufferParams;
         geosBufferParams.setQuadrantSegments( geosQuadSegs );
         geosBufferParams.setEndCapStyle( geosEndCap );
+        geosBufferParams.setJoinStyle( geosJoinStyle );
         buffer::BufferBuilder bufBuilder( geosBufferParams );
 
         if (params._singleSided)

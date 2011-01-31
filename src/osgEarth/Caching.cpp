@@ -114,7 +114,10 @@ DiskCache::getPath() const
     if ( _options.path().empty() || _refURI.empty() )
         return _options.path();
     else
+    {
+        if (osgDB::containsServerAddress( _refURI )) return _options.path();
         return osgEarth::getFullPath( _refURI, _options.path() );
+    }
 }
 
 std::string

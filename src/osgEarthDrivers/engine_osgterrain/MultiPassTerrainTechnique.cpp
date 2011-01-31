@@ -798,11 +798,8 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
                 texture2D->setMaxAnisotropy(16.0f);
                 texture2D->setResizeNonPowerOfTwoHint(false);
 
-                texture2D->setFilter(osg::Texture::MIN_FILTER, 
-                    colorLayer->getMapLayer()->getImageLayerOptions().minFilter().value() );
-
-                texture2D->setFilter(osg::Texture::MAG_FILTER, 
-                    colorLayer->getMapLayer()->getImageLayerOptions().magFilter().value() );
+                texture2D->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+                texture2D->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
 
                 texture2D->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
                 texture2D->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);

@@ -52,7 +52,12 @@ public:
     osg::Node* createNode( ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Node> result;
-        HTTPClient::readNodeFile( _url, result, 0L, progress ); //_settings.get(), progress );
+
+        // required if the model includes local refs, like PagedLOD or ProxyNode:
+        osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
+        options->getDatabasePathList().push_back( osgDB::getFilePath(_url) );
+
+        HTTPClient::readNodeFile( _url, result, options.get(), progress ); //_settings.get(), progress );
         return result.release();
     }
 

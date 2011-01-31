@@ -20,7 +20,7 @@
 #include <osgEarthSymbology/LineFunctor>
 #include <osgEarth/GeoMath>
 #include <osg/TriangleFunctor>
-#include <osgUtil/MeshOptimizers>
+//#include <osgUtil/MeshOptimizers>
 #include <climits>
 #include <queue>
 #include <map>

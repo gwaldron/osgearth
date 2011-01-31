@@ -20,6 +20,8 @@
 #include <osgEarth/Map>
 #include <osg/Depth>
 
+#define LC "[ModelLayer] "
+
 using namespace osgEarth;
 //------------------------------------------------------------------------
 
@@ -136,11 +138,11 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
         {
             _node = _modelSource->createNode( progress );
 
-            if ( _enabled.isSet() )
-                setEnabled( _enabled.get() );
+            if ( _options.enabled().isSet() )
+                setEnabled( *_options.enabled() );
 
-            if ( _lighting.isSet() )
-                setLightingEnabled( _lighting.get() );
+            if ( _options.lightingEnabled().isSet() )
+                setLightingEnabled( *_options.lightingEnabled() );
 
             if ( _modelSource->getOptions().depthTestEnabled() == false )            
             {
@@ -178,7 +180,13 @@ ModelLayer::setLightingEnabled( bool value )
 {
     _lighting = value;
     if ( _node.valid() )
-        _node->getOrCreateStateSet()->setMode( GL_LIGHTING, value ? osg::StateAttribute::ON : osg::StateAttribute::OFF );
+    {
+        _node->getOrCreateStateSet()->setMode( 
+            GL_LIGHTING, value ? osg::StateAttribute::ON : 
+            (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
+
+        OE_INFO << LC << "Set lighting to " << value << std::endl;
+    }
 }
 
 bool

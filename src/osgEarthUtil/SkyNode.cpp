@@ -653,10 +653,16 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC )
 {
     if ( _ellipsoidModel.valid() )
     {
+        // position the sun:
         Sun sun;
         osg::Vec3d pos = sun.getPosition( year, month, date, hoursUTC );
         pos.normalize();
         setSunPosition( pos );
+
+        // position the stars:
+        double time_r = hoursUTC/24.0; // 0..1
+        double rot_z = -osg::PI + TWO_PI*time_r;
+        _starsXform->setMatrix( osg::Matrixd::rotate( -rot_z, 0, 0, 1 ) );
     }
 }
 
@@ -823,9 +829,12 @@ SkyNode::makeStars(const std::string& starFile)
   starNode->accept(visitor);
   starNode->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0, 1.0),osg::StateAttribute::ON);
 
+  _starsXform = new osg::MatrixTransform();
+  _starsXform->addChild( starNode );
+
   osg::Group* g = new osg::Group();
   g->setCullCallback(new DoNotIncludeInNearFarComputationCallback);
-  g->addChild(starNode);
+  g->addChild( _starsXform.get() );
   this->addChild(g);
 }
 

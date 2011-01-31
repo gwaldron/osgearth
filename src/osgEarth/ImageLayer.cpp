@@ -407,7 +407,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 	//If the key profile and the source profile exactly match, simply request the image from the source
     if ( mapProfile->isEquivalentTo( layerProfile ) )
     {
-		OE_DEBUG << "Key and source profiles are equivalent, requesting single tile" << std::endl;
+		OE_DEBUG << LC << "Key and source profiles are equivalent, requesting single tile" << std::endl;
         osg::ref_ptr<const osg::Image> image;
         osg::Image* im = createImageWrapper( key, cacheInLayerProfile, progress );
         if ( im )
@@ -417,7 +417,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     // Otherwise, we need to process the tiles.
     else
     {
-		OE_DEBUG << "Key and source profiles are different, creating mosaic" << std::endl;
+		OE_DEBUG << LC << "Key and source profiles are different, creating mosaic" << std::endl;
 		GeoImage mosaic;
 
 		// Determine the intersecting keys and create and extract an appropriate image from the tiles

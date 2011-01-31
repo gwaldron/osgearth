@@ -48,7 +48,7 @@ struct AnimateSunCallback : public osg::NodeCallback
     void operator()( osg::Node* node, osg::NodeVisitor* nv )
     {
         SkyNode* skyNode = static_cast<SkyNode*>(node);
-        double hours = fmod( osg::Timer::instance()->time_s(), 24.0 );
+        double hours = fmod( osg::Timer::instance()->time_s()/4.0, 24.0 );
         skyNode->setDateTime( 2011, 6, 6, hours );
         OE_INFO << "TIME: " << hours << std::endl;
     }

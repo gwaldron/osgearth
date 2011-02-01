@@ -20,6 +20,7 @@ SET(TARGET_H
     CustomTerrain
     CustomTile
     CustomTerrainTechnique
+    DynamicLODScaleCallback   
     FileLocationCallback
     KeyNodeFactory
     MultiPassTerrainTechnique

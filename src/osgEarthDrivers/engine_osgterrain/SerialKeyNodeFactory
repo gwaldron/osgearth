@@ -30,20 +30,20 @@ class SerialKeyNodeFactory : public KeyNodeFactory
 {
 public:
     SerialKeyNodeFactory(
-        TileBuilder*          builder,
-        const TerrainOptions& options,
-        CustomTerrain*        terrain,
-        UID                   engineUID );
+        TileBuilder*             builder,
+        const OSGTerrainOptions& options,
+        CustomTerrain*           terrain,
+        UID                      engineUID );
 
     osg::Node* createNode( const TileKey& key );
 
 protected:
     void addTile(CustomTile* tile, bool tileHasRealData, osg::Group* parent );
 
-    TileBuilder*          _builder;
-    const TerrainOptions& _options;
-    CustomTerrain*        _terrain;
-    UID                   _engineUID;
+    TileBuilder*             _builder;
+    const OSGTerrainOptions& _options;
+    CustomTerrain*           _terrain;
+    UID                      _engineUID;
 };
 
 #endif // OSGEARTH_ENGINE_PARALLEL_KEY_NODE_FACTORY

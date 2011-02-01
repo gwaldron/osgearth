@@ -17,8 +17,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "SerialKeyNodeFactory"
+#include "DynamicLODScaleCallback"
 #include <osgEarth/Registry>
 #include <osg/PagedLOD>
+#include <osg/CullStack>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -26,7 +28,7 @@ using namespace OpenThreads;
 #define LC "[SerialKeyNodeFactory] "
 
 SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder* builder,
-                                           const TerrainOptions& options,
+                                           const OSGTerrainOptions& options,
                                            CustomTerrain* terrain,
                                            UID engineUID ) :
 _builder( builder ),
@@ -57,6 +59,9 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, osg::Group
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
         plod->addChild( tile, minRange, maxRange );
+
+        if ( _options.lodFallOff().isSet() )
+            plod->addCullCallback( new DynamicLODScaleCallback(*_options.lodFallOff()) );
 
         // assemble a URI for this tile's child group:
         std::stringstream buf;

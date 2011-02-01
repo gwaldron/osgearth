@@ -129,6 +129,14 @@ namespace osgEarth
          */
         TerrainEngineNode* getTerrainEngine() const;
 
+        /**
+         * Gets the Config object serializing external data. External data is information
+         * that osgEarth itself does not control, but that an app can include in the
+         * MapNode for the purposes of including it in a .earth file.
+         */
+        Config& externalConfig() { return _externalConf; }
+        const Config& externalConfig() const { return _externalConf; }
+
     public: //override osg::Node
 
         virtual osg::BoundingSphere computeBound() const;
@@ -147,6 +155,7 @@ namespace osgEarth
         osg::ref_ptr< osg::Group > _overlayModels;
         osg::ref_ptr< OverlayDecorator > _overlayDecorator;
         MapNodeOptions _mapNodeOptions;
+        Config _externalConf;
 
         // keep track of nodes created by model layers
         typedef std::map<ModelLayer*,osg::Node*> ModelLayerNodeMap;

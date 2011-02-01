@@ -119,7 +119,16 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         map->setTerrainMaskLayer( new MaskLayer(maskLayerConf) );
     }
 
-    return new MapNode( map, mapNodeOptions );
+    MapNode* mapNode = new MapNode( map, mapNodeOptions );
+
+    // External configs:
+    Config ext = conf.child( "external" );
+    if ( !ext.empty() )
+    {
+        mapNode->externalConfig() = ext;
+    }
+
+    return mapNode;
 }
 
 
@@ -167,6 +176,13 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         //layerConf.attr("driver") = layer->getDriverConfig().value("driver");
         layerConf.attr("driver") = layer->getModelLayerOptions().driver()->getDriver();
         mapConf.add( "model", layerConf );
+    }
+
+    Config ext = input->externalConfig();
+    if ( !ext.empty() )
+    {
+        ext.key() = "external";
+        mapConf.addChild( ext );
     }
 
     return mapConf;

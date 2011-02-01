@@ -60,7 +60,7 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, osg::Group
         plod->setCenter( bs.center() );
         plod->addChild( tile, minRange, maxRange );
 
-        if ( _options.lodFallOff().isSet() )
+        if ( _options.lodFallOff().isSet() && *_options.lodFallOff() > 0.0 )
             plod->addCullCallback( new DynamicLODScaleCallback(*_options.lodFallOff()) );
 
         // assemble a URI for this tile's child group:

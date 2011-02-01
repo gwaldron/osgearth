@@ -40,6 +40,7 @@ usage( const std::string& msg )
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
     OE_NOTICE << "   --animateSky    : animates the sun across the sky" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
+    OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
         
     return -1;
 }
@@ -92,6 +93,7 @@ main(int argc, char** argv)
     bool useAutoClip  = arguments.read( "--autoclip" );
     bool animateSky   = arguments.read( "--animateSky");
     bool useSky       = arguments.read( "--sky" ) || animateSky;
+    bool jump         = arguments.read( "--jump" );
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -148,7 +150,12 @@ main(int argc, char** argv)
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
             viewpoints.push_back( Viewpoint(*i) );
 
-        viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
+        if ( viewpoints.size() > 0 )
+        {
+            viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
+            if ( jump )
+                manip->setViewpoint(viewpoints[0]);
+        }
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

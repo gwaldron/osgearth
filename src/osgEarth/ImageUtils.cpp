@@ -62,7 +62,21 @@ ImageUtils::cloneImage( const osg::Image* input )
         clone->dirty();
         return clone;
     }
+}
 
+void
+ImageUtils::normalizeImage( osg::Image* image )
+{
+    // OpenGL is lax about internal texture formats, and e.g. allows GL_RGBA to be used
+    // instead of the proper GL_RGBA8, etc. Correct that here, since some of our compositors
+    // rely on having a proper internal texture format.
+    if ( image->getDataType() == GL_UNSIGNED_BYTE )
+    {
+        if ( image->getPixelFormat() == GL_RGB )
+            image->setInternalTextureFormat( GL_RGB8 );
+        else if ( image->getPixelFormat() == GL_RGBA )
+            image->setInternalTextureFormat( GL_RGBA8 );
+    }
 }
 
 bool

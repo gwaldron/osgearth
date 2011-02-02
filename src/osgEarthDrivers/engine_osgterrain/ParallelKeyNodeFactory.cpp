@@ -53,9 +53,10 @@ namespace
 
 ParallelKeyNodeFactory::ParallelKeyNodeFactory(TileBuilder* builder,
                                                const TerrainOptions& options,
+                                               const MapInfo& mapInfo,
                                                CustomTerrain* terrain,
                                                UID engineUID ) :
-SerialKeyNodeFactory( builder, options, terrain, engineUID )
+SerialKeyNodeFactory( builder, options, mapInfo, terrain, engineUID )
 {
     //NOP
 }

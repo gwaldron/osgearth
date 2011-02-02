@@ -32,6 +32,7 @@ public:
     SerialKeyNodeFactory(
         TileBuilder*             builder,
         const OSGTerrainOptions& options,
+        const MapInfo&           mapInfo,
         CustomTerrain*           terrain,
         UID                      engineUID );
 
@@ -42,6 +43,7 @@ protected:
 
     TileBuilder*             _builder;
     const OSGTerrainOptions& _options;
+    const MapInfo            _mapInfo;
     CustomTerrain*           _terrain;
     UID                      _engineUID;
 };

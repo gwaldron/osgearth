@@ -20,8 +20,10 @@
 #define OSGEARTH_ENGINE_KEY_NODE_FACTORY 1
 
 #include "Common"
+#include "CustomTile"
 #include <osgEarth/TileKey>
 #include <osg/Node>
+#include <osg/CoordinateSystemNode>
 
 using namespace osgEarth;
 
@@ -33,6 +35,9 @@ class KeyNodeFactory : public osg::Referenced
 {
 public:
     virtual osg::Node* createNode( const TileKey& key ) =0;
+
+protected:
+    KeyNodeFactory();
 };
 
 #endif // OSGEARTH_ENGINE_QUAD_TILE_NODE

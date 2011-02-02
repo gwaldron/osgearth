@@ -29,10 +29,12 @@ using namespace OpenThreads;
 
 SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder* builder,
                                            const OSGTerrainOptions& options,
+                                           const MapInfo& mapInfo,
                                            CustomTerrain* terrain,
                                            UID engineUID ) :
 _builder( builder ),
 _options( options ),
+_mapInfo( mapInfo ),
 _terrain( terrain ),
 _engineUID( engineUID )
 {
@@ -60,8 +62,18 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, osg::Group
         plod->setCenter( bs.center() );
         plod->addChild( tile, minRange, maxRange );
 
+        // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:
         if ( _options.lodFallOff().isSet() && *_options.lodFallOff() > 0.0 )
             plod->addCullCallback( new DynamicLODScaleCallback(*_options.lodFallOff()) );
+
+        // this one rejects back-facing tiles:
+        if ( _mapInfo.isGeocentric() )
+        {
+            plod->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
+                static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer())->getHeightField(),
+                tile->getLocator()->getEllipsoidModel(),
+                tile->getVerticalScale() ) );
+        }
 
         // assemble a URI for this tile's child group:
         std::stringstream buf;

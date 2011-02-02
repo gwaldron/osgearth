@@ -4,6 +4,7 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES})
 SET(TARGET_SRC
     CustomTerrain.cpp
     CustomTile.cpp
+    KeyNodeFactory.cpp
     MultiPassTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp

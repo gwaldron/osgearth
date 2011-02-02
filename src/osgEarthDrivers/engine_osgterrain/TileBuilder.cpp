@@ -185,6 +185,7 @@ struct AssembleTile
         osg::HeightField* hf = _repo->_elevLayer.getHFLayer()->getHeightField();
         hf->setSkirtHeight(bs.radius() * _opt->heightFieldSkirtRatio().get() );
 
+#if 0 // moved to SerialKeyNodeFactory::addTile
         // for now, cluster culling does not work for the unified cube profile.
         if ( _mapInfo->isGeocentric() && !_mapInfo->isCube() )
         {
@@ -193,6 +194,7 @@ struct AssembleTile
                 _tile->getLocator()->getEllipsoidModel(),
                 _tile->getVerticalScale() ) );
         }
+#endif
     }
 
     const TileKey*           _key;

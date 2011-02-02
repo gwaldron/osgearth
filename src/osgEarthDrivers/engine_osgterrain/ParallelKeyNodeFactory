@@ -30,6 +30,7 @@ public:
     ParallelKeyNodeFactory(
         TileBuilder*          builder,
         const TerrainOptions& options,
+        const MapInfo&        mapInfo,
         CustomTerrain*        terrain,
         UID                   engineUID );
 

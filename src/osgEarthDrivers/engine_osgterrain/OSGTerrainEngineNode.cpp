@@ -319,10 +319,10 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     switch( mode )
     {
     case LoadingPolicy::MODE_SERIAL:
-        _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, _terrain, _uid );
+        _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
         break;
     case LoadingPolicy::MODE_PARALLEL:
-        _keyNodeFactory = new ParallelKeyNodeFactory( _tileBuilder.get(), _terrainOptions, _terrain, _uid );
+        _keyNodeFactory = new ParallelKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
         break;
     default:
         break;
@@ -340,7 +340,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     for( unsigned i=0; i<keys.size(); ++i )
     {
         osg::Node* node;
-        if ( mode == LoadingPolicy::MODE_SERIAL || mode == LoadingPolicy::MODE_PARALLEL )
+        if ( _keyNodeFactory.valid() )
             node = _keyNodeFactory->createNode( keys[i] );
         else
             node = _tileFactory->createSubTiles( *_update_mapf, _terrain, keys[i], true );

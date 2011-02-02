@@ -400,6 +400,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 			OE_DEBUG << LC << "Layer \"" << getName()<< "\" got tile " << key.str() << " from map cache " << std::endl;
 
             result = GeoImage( ImageUtils::cloneImage(cachedImage.get()), key.getExtent() );
+            ImageUtils::normalizeImage( result.getImage() );
             return result;
 		}
 	}
@@ -411,7 +412,9 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
         osg::ref_ptr<const osg::Image> image;
         osg::Image* im = createImageWrapper( key, cacheInLayerProfile, progress );
         if ( im )
+        {
             result = GeoImage( im, key.getExtent() );
+        }
     }
 
     // Otherwise, we need to process the tiles.
@@ -588,6 +591,12 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
                 result = result.addTransparentBorder(needsLeftBorder, needsRightBorder, needsBottomBorder, needsTopBorder);
             }
         }
+    }
+
+    // Normalize the image if necessary
+    if ( result.valid() )
+    {
+        ImageUtils::normalizeImage( result.getImage() );
     }
 
 	//If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.

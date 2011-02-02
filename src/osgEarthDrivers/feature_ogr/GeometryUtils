@@ -65,13 +65,15 @@ struct GeometryUtils
                 {
                     output = new Symbology::Polygon( numPoints );
                     populate( partRef, output, numPoints );
-                    output->open();
+                    //output->open();
+                    output->rewind( Symbology::Ring::ORIENTATION_CCW );
                 }
                 else
                 {
                     Symbology::Ring* hole = new Symbology::Ring( numPoints );
                     populate( partRef, hole, numPoints );
-                    hole->open();
+                    //hole->open();
+                    hole->rewind( Symbology::Ring::ORIENTATION_CW );
                     output->getHoles().push_back( hole );
                 }
             }

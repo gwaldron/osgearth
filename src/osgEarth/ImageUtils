@@ -58,6 +58,7 @@ namespace osgEarth
          * used in the internal texture format, when really "GL_RGBA8" is the proper things
          * to use. This method accounts for that. Some parts of osgEarth (like the texture-
          * array compositor) rely on the internal texture format being correct.
+         * (http://http.download.nvidia.com/developer/Papers/2005/Fast_Texture_Transfers/Fast_Texture_Transfers.pdf)
          */
         static void normalizeImage( osg::Image* image );
 

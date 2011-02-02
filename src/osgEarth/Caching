@@ -283,7 +283,7 @@ namespace osgEarth
   class OSGEARTH_EXPORT MemCache : public Cache
   {
   public:
-    MemCache();
+    MemCache( int maxTilesInCache =16 );
     MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Object(osgEarth,MemCache);
 

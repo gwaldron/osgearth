@@ -186,7 +186,7 @@ _visualizeWarp( false ),
 _mipmapping( true )
 {
     // force an update traversal:
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+//    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 
     // points to children of this group. We will override the traverse to route through
     // this container. That way we can assign a stateset to the children without 
@@ -417,6 +417,15 @@ OverlayDecorator::setOverlayGraph( osg::Node* node )
 {
     if ( _overlayGraph.get() != node )
     {
+        if ( _overlayGraph.valid() && node == 0L )
+        {
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
+        else if ( !_overlayGraph.valid() && node != 0L )
+        {
+            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+        }
+
         _overlayGraph = node;
         reinit();
     }

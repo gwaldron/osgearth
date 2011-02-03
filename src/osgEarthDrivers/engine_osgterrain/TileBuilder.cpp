@@ -29,6 +29,7 @@ using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
+#if 0
 struct SourceRepo
 {
     SourceRepo() { }
@@ -49,14 +50,15 @@ struct SourceRepo
     CustomElevLayer _elevLayer;
     Threading::Mutex _m;
 };
+#endif
 
 //------------------------------------------------------------------------
 
 struct BuildColorLayer
 {
-    void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo, SourceRepo& repo )
+    void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo, TileBuilder::SourceRepo& repo )
     {
-        _key     = &key;
+        _key     = key;
         _layer   = layer;
         _mapInfo = &mapInfo;
         _repo    = &repo;
@@ -69,7 +71,7 @@ struct BuildColorLayer
 
         // fetch the image from the layer, falling back on parent keys utils we are 
         // able to find one that works.
-        TileKey imageKey( *_key );
+        TileKey imageKey( _key );
         while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
         {
             geoImage = _layer->createImage( imageKey, 0L ); // TODO: include a progress callback?
@@ -85,8 +87,8 @@ struct BuildColorLayer
         if ( !geoImage.valid() )
         {
             // no image found, so make an empty one (one pixel alpha).
-            geoImage = GeoImage( ImageUtils::createEmptyImage(), _key->getExtent() );
-            locator = GeoLocator::createForKey( *_key, *_mapInfo );
+            geoImage = GeoImage( ImageUtils::createEmptyImage(), _key.getExtent() );
+            locator = GeoLocator::createForKey( _key, *_mapInfo );
             isFallbackData = true;
         }
         else
@@ -99,23 +101,23 @@ struct BuildColorLayer
             _layer,
             geoImage.getImage(),
             locator,
-            _key->getLevelOfDetail(),
+            _key.getLevelOfDetail(),
             isFallbackData ) );
     }
 
-    const TileKey* _key;
+    TileKey        _key;
     const MapInfo* _mapInfo;
     ImageLayer*    _layer;
-    SourceRepo*    _repo;
+    TileBuilder::SourceRepo* _repo;
 };
 
 //------------------------------------------------------------------------
 
 struct BuildElevLayer
 {
-    void init(const TileKey& key, const MapFrame& mapf, const OSGTerrainOptions& opt, SourceRepo& repo)
+    void init(const TileKey& key, const MapFrame& mapf, const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo)
     {
-        _key  = &key;
+        _key  = key;
         _mapf = &mapf;
         _opt  = &opt;
         _repo = &repo;
@@ -130,7 +132,7 @@ struct BuildElevLayer
         osg::ref_ptr<osg::HeightField> hf;
         bool isFallback = false;
 
-        if ( _mapf->getHeightField( *_key, true, hf, &isFallback, *_opt->elevationInterpolation() ) )
+        if ( _mapf->getHeightField( _key, true, hf, &isFallback, *_opt->elevationInterpolation() ) )
         {
             // Treat Plate Carre specially by scaling the height values. (There is no need
             // to do this with an empty heightfield)
@@ -143,25 +145,25 @@ struct BuildElevLayer
             osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf.get() );
 
             // Generate a locator.
-            hfLayer->setLocator( GeoLocator::createForKey( *_key, mapInfo ) );
+            hfLayer->setLocator( GeoLocator::createForKey( _key, mapInfo ) );
 
             _repo->set( CustomElevLayer(hfLayer, isFallback) );
         }
     }
 
-    const TileKey*           _key;
+    TileKey                  _key;
     const MapFrame*          _mapf;
     const OSGTerrainOptions* _opt;
-    SourceRepo*              _repo;
+    TileBuilder::SourceRepo* _repo;
 };
 
 //------------------------------------------------------------------------
 
 struct AssembleTile
 {
-    void init(const TileKey& key, const MapInfo& mapInfo, const OSGTerrainOptions& opt, SourceRepo& repo )
+    void init(const TileKey& key, const MapInfo& mapInfo, const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo )
     {
-        _key     = &key;
+        _key     = key;
         _mapInfo = &mapInfo;
         _opt     = &opt;
         _repo    = &repo;
@@ -170,7 +172,7 @@ struct AssembleTile
 
     void execute()
     {
-        _tile = new CustomTile( *_key, GeoLocator::createForKey(*_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
+        _tile = new CustomTile( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
         _tile->setVerticalScale( *_opt->verticalScale() );
         _tile->setRequiresNormals( true );
         _tile->setDataVariance( osg::Object::DYNAMIC );
@@ -197,10 +199,10 @@ struct AssembleTile
 #endif
     }
 
-    const TileKey*           _key;
+    TileKey                  _key;
     const MapInfo*           _mapInfo;
     const OSGTerrainOptions* _opt;
-    SourceRepo*              _repo;
+    TileBuilder::SourceRepo* _repo;
     CustomTile*              _tile;
 };
 
@@ -212,6 +214,109 @@ _terrainOptions( terrainOptions ),
 _service( service )
 {
     //nop
+}
+
+TileBuilder::Job*
+TileBuilder::createJob( const TileKey& key, Threading::MultiEvent& semaphore )
+{
+    Job* job = new Job( key, _map );
+
+    // create the image layer tasks:
+    for( ImageLayerVector::const_iterator i = job->_mapf.imageLayers().begin(); i != job->_mapf.imageLayers().end(); ++i )
+    {
+        ImageLayer* layer = i->get();
+        if ( layer->isKeyValid(key) )
+        {
+            ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
+            j->init( key, layer, job->_mapf.getMapInfo(), job->_repo );
+            j->setPriority( -(float)key.getLevelOfDetail() );
+            job->_tasks.push_back( j );
+        }
+    }
+
+    // If we have elevation layers, start an elevation job as well. Otherwise just create an
+    // empty one while we're waiting for the images to load.
+    if ( job->_mapf.elevationLayers().size() > 0 )
+    {
+        ParallelTask<BuildElevLayer>* ej = new ParallelTask<BuildElevLayer>( &semaphore );
+        ej->init( key, job->_mapf, _terrainOptions, job->_repo );
+        ej->setPriority( -(float)key.getLevelOfDetail() );
+        job->_tasks.push_back( ej );
+    }
+
+    return job;
+}
+
+void
+TileBuilder::runJob( TileBuilder::Job* job )
+{
+    for( TaskRequestVector::iterator i = job->_tasks.begin(); i != job->_tasks.end(); ++i )
+        _service->add( i->get() );
+}
+
+void
+TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData )
+{
+    SourceRepo& repo = job->_repo;
+
+    // Bail out now if there's no data to be had.
+    if ( repo._colorLayers.size() == 0 && !repo._elevLayer.getHFLayer() )
+    {
+        return;
+    }
+
+    const TileKey& key = job->_key;
+    const MapInfo& mapInfo = job->_mapf.getMapInfo();
+
+    // OK we are making a tile, so if there's no heightfield yet, make an empty one.
+    if ( !repo._elevLayer.getHFLayer() )
+    {
+        osg::HeightField* hf = key.getProfile()->getVerticalSRS()->createReferenceHeightField( key.getExtent(), 8, 8 );
+        osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf );
+        hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
+        repo._elevLayer = CustomElevLayer( hfLayer, true );
+    }
+
+    // Now, if there are any color layers that did not get built, create them with an empty
+    // image so the shaders have something to draw.
+    osg::ref_ptr<osg::Image> emptyImage;
+    osgTerrain::Locator* locator = repo._elevLayer.getHFLayer()->getLocator();
+
+    for( ImageLayerVector::const_iterator i = job->_mapf.imageLayers().begin(); i != job->_mapf.imageLayers().end(); ++i )
+    {
+        if ( !i->get()->isKeyValid(key) )
+        {
+            if ( !emptyImage.valid() )
+                emptyImage = ImageUtils::createEmptyImage();
+
+            repo.add( CustomColorLayer(
+                i->get(), emptyImage.get(),
+                locator,
+                key.getLevelOfDetail(),
+                true ) );
+        }
+    }
+
+    // Ready to create the actual tile.
+    AssembleTile assemble;
+    assemble.init( key, mapInfo, _terrainOptions, repo );
+    assemble.execute();
+
+    // Check the results and see if we have any real data.
+    for( ColorLayersByUID::const_iterator i = repo._colorLayers.begin(); i != repo._colorLayers.end(); ++i )
+    {
+        if ( !i->second.isFallbackData() ) 
+        {
+            out_hasRealData = true;
+            break;
+        }
+    }
+    if ( !out_hasRealData && !repo._elevLayer.isFallbackData() )
+    {
+        out_hasRealData = true;
+    }
+
+    out_tile = assemble._tile;
 }
 
 void

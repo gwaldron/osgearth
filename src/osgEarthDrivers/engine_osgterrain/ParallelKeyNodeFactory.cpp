@@ -35,11 +35,13 @@ namespace
         {
             _key = key;
             _builder = builder;
+
         }
 
         void execute()
         {
-            _builder->createTile( _key, true, _tile, _hasRealData );
+            _builder->createTile( _key, false, _tile, _hasRealData );
+            //_builder->createTile( _key, true, _tile, _hasRealData );
         }
 
         osg::ref_ptr<TileBuilder> _builder;
@@ -52,7 +54,7 @@ namespace
 //--------------------------------------------------------------------------
 
 ParallelKeyNodeFactory::ParallelKeyNodeFactory(TileBuilder* builder,
-                                               const TerrainOptions& options,
+                                               const OSGTerrainOptions& options,
                                                const MapInfo& mapInfo,
                                                CustomTerrain* terrain,
                                                UID engineUID ) :
@@ -65,35 +67,44 @@ osg::Node*
 ParallelKeyNodeFactory::createNode( const TileKey& key )
 {
     // An event for synchronizing the completion of all requests:
-    Threading::MultiEvent semaphore(4);
+    Threading::MultiEvent semaphore;
 
-    // Build all four subtiles in parallel:
-    osg::ref_ptr< ParallelTask<BuildTile> > jobs[4];
-    for( unsigned i = 0; i < 4; ++i )
+    // Collect all the jobs that can run in parallel (from all 4 subtiles)
+    osg::ref_ptr<TileBuilder::Job> jobs[4];
+    unsigned numTasks = 0;
+    for( unsigned i=0; i<4; ++i )
     {
-        TileKey child = key.createChildKey( i );
-        jobs[i] = new ParallelTask<BuildTile>( &semaphore );
-        jobs[i]->init( child, _builder );
-        jobs[i]->setPriority( -(float)child.getLevelOfDetail() ); // lower LODs get higher priority
-        _builder->getTaskService()->add( jobs[i].get() );
+        jobs[i] = _builder->createJob( key.createChildKey(i), semaphore );
+        if ( jobs[i].valid() )
+            numTasks += jobs[i]->_tasks.size();
     }
 
-    // Wait for all requests to complete:
+    // Set up the sempahore to block for the correct number of tasks:
+    semaphore.reset( numTasks );
+
+    // Run all the tasks in parallel:
+    for( unsigned i=0; i<4; ++i )
+        if ( jobs[i].valid() )
+            _builder->runJob( jobs[i].get() );
+
+    // Wait for them to complete:
     semaphore.wait();
 
     // Now postprocess them and assemble into a tile group.
     osg::Group* root = new osg::Group();
 
-    for( unsigned i = 0; i < 4; ++i )
+    for( unsigned i=0; i<4; ++i )
     {
-        CustomTile* tile = jobs[i]->_tile.get();
-        if ( tile )
+        if ( jobs[i].valid() )
         {
-            addTile( tile, jobs[i]->_hasRealData, root );
+            osg::ref_ptr<CustomTile> tile;
+            bool hasRealData;
+            _builder->finalizeJob( jobs[i].get(), tile, hasRealData );
+            if ( tile.valid() )
+                addTile( tile.get(), hasRealData, root );
         }
     }
 
     //TODO: need to check to see if the group is empty, and do something different.
     return root;
 }
-

@@ -319,10 +319,14 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     switch( mode )
     {
     case LoadingPolicy::MODE_SERIAL:
-        _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+        {
+            _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+        }
         break;
     case LoadingPolicy::MODE_PARALLEL:
-        _keyNodeFactory = new ParallelKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+        {
+            _keyNodeFactory = new ParallelKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+        }
         break;
     default:
         break;

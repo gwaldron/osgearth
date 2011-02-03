@@ -28,11 +28,11 @@ class ParallelKeyNodeFactory : public SerialKeyNodeFactory
 {
 public:
     ParallelKeyNodeFactory(
-        TileBuilder*          builder,
-        const TerrainOptions& options,
-        const MapInfo&        mapInfo,
-        CustomTerrain*        terrain,
-        UID                   engineUID );
+        TileBuilder*             builder,
+        const OSGTerrainOptions& options,
+        const MapInfo&           mapInfo,
+        CustomTerrain*           terrain,
+        UID                      engineUID );
 
     osg::Node* createNode( const TileKey& key );
 };

@@ -90,6 +90,8 @@ namespace osgEarth
 
     typedef std::list< osg::ref_ptr<TaskRequest> > TaskRequestList;
 
+    typedef std::vector< osg::ref_ptr<TaskRequest> > TaskRequestVector;
+
     typedef std::multimap< float, osg::ref_ptr<TaskRequest> > TaskRequestPriorityMap;
     
     /**

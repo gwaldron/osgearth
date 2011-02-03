@@ -27,6 +27,7 @@ using namespace OpenThreads;
 
 //--------------------------------------------------------------------------
 
+#if 0
 namespace
 {
     struct BuildTile
@@ -52,6 +53,7 @@ namespace
 }
 
 //--------------------------------------------------------------------------
+#endif
 
 ParallelKeyNodeFactory::ParallelKeyNodeFactory(TileBuilder* builder,
                                                const OSGTerrainOptions& options,

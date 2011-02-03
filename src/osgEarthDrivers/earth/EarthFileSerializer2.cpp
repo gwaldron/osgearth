@@ -102,7 +102,10 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     ConfigSet overlays = conf.children( "overlay" );
     for( ConfigSet::const_iterator i = overlays.begin(); i != overlays.end(); i++ )
     {
-        const Config& layerDriverConf = *i;
+        Config layerDriverConf = *i;
+        if ( !layerDriverConf.hasValue("driver") )
+            layerDriverConf.attr("driver") = "feature_geom";
+        //const Config& layerDriverConf = *i;
 
         ModelLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value( "name" );

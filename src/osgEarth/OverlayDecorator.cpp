@@ -186,12 +186,12 @@ _visualizeWarp( false ),
 _mipmapping( true )
 {
     // force an update traversal:
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    //ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 
     // points to children of this group. We will override the traverse to route through
     // this container. That way we can assign a stateset to the children without 
     // actually modifying them
-    _subgraphContainer = new osg::Group();
+    //_subgraphContainer = new osg::Group();
 }
 
 void
@@ -269,7 +269,7 @@ OverlayDecorator::reinit()
 
     // assemble the subgraph stateset:
     _subgraphStateSet = new osg::StateSet();
-    _subgraphContainer->setStateSet( _subgraphStateSet.get() );
+    //_subgraphContainer->setStateSet( _subgraphStateSet.get() );
 
     if ( _overlayGraph.valid() && _textureUnit.isSet() )
     {
@@ -417,6 +417,15 @@ OverlayDecorator::setOverlayGraph( osg::Node* node )
 {
     if ( _overlayGraph.get() != node )
     {
+        if ( _overlayGraph.valid() && node == 0L )
+        {
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
+        else if ( !_overlayGraph.valid() && node != 0L )
+        {
+            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+        }
+
         _overlayGraph = node;
         reinit();
     }
@@ -599,7 +608,11 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 
     // cull the subgraph here. This doubles as the subgraph's official cull traversal
     // and a gathering of its clip planes.
-    _subgraphContainer->accept( *cv );
+    cv->pushStateSet( _subgraphStateSet.get() );
+    osg::Group::traverse( *cv );
+    cv->popStateSet();
+    //_subgraphContainer->accept( *cv );
+
     cv->computeNearPlane();
 
     // --- FIRST PASS ------------------------
@@ -677,12 +690,13 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         // intersect the viewing frustum:
         osgShadow::ConvexPolyhedron visiblePH;
 
-        const osg::BoundingSphere& bs = _subgraphContainer->getBound();
-        //visiblePH.setToBoundingBox( osg::BoundingBox( -bs.radius(), -bs.radius(), -bs.radius(), bs.radius(), bs.radius(), bs.radius() ) );
+        //const osg::BoundingSphere& bs = _subgraphContainer->getBound();
+        const osg::BoundingSphere& bs = osg::Group::getBound();
 
         // get the bounds of the model. 
         osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
-        _subgraphContainer->accept(cbbv);
+        //_subgraphContainer->accept(cbbv);
+        this->accept(cbbv);
         visiblePH.setToBoundingBox(cbbv.getBoundingBox());
 
         // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
@@ -763,9 +777,11 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 void
 OverlayDecorator::traverse( osg::NodeVisitor& nv )
 {
+    bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
+
     if ( _overlayGraph.valid() && _textureUnit.isSet() )
     {
-        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+        if ( isCull )
         {
             osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
             if ( cv )
@@ -774,10 +790,8 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             }
             _rttCamera->accept( nv );
             
-            // note: texgennode doesn't need a cull, and subgraphContainer
+            // note: texgennode doesn't need a cull, and the subgraph
             // is traversed in cull().
-            //_texGenNode->accept( nv );
-            //_subgraphContainer->accept( nv );
         }
 
         else
@@ -788,16 +802,30 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             }
             _rttCamera->accept( nv );
             _texGenNode->accept( nv );
-            _subgraphContainer->accept( nv );
+
+            //_subgraphContainer->accept( nv );
+            osg::Group::traverse( nv );
         }    
     }
     else
     {
-        _subgraphContainer->accept( nv );
+        osgUtil::CullVisitor* cv = 0L;
+        if ( isCull )
+            cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+
+        if ( cv )
+            cv->pushStateSet( _subgraphStateSet.get() );
+
+        osg::Group::traverse( nv );
+
+        if ( cv )
+            cv->popStateSet();
+        //_subgraphContainer->accept( nv );
     }
 }
 
 
+#if 0
 /** Override all the osg::Group methods: */
 
 bool 
@@ -832,3 +860,4 @@ osg::BoundingSphere
 OverlayDecorator::computeBound() const {
     return _subgraphContainer->computeBound();
 }
+#endif

@@ -605,7 +605,6 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		OE_DEBUG << LC << "Layer \"" << getName() << "\" writing tile " << key.str() << " to cache " << std::endl;
 		_cache->setImage( key, _cacheSpec, result.getImage());
 	}
-
     return result;
 }
 

@@ -197,6 +197,11 @@ namespace osgEarth
         static bool isCompressed( const osg::Image* image );
 
         /**
+         * Compresses the given image.  Valid for RGB images (compressed to DXT1) and RGBA images (compressed to DXT5)
+         */
+        static osg::Image* compress( osg::Image* image );
+
+        /**
          * Reads color data out of an image, regardles of its internal pixel format.
          */
         class OSGEARTH_EXPORT PixelReader

@@ -203,11 +203,25 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
     osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, _lodBlending );
     if ( tex )
     {
-        osg::Image* image = preparedImage.getImage();
+        osg::ref_ptr< osg::Image > compressedImage;
+            if (!ImageUtils::isCompressed(preparedImage.getImage()))
+            {
+                compressedImage  = ImageUtils::compress( preparedImage.getImage() );
+            }
+            /*
+            else
+            {
+                OSG_NOTICE << "Already compressed" << std::endl;
+            }*/
+        /*if (compressedImage.valid())
+        {
+            OE_NOTICE << "Using compressed image" << std::endl;
+        }*/
+        osg::Image* image = compressedImage.valid() ? compressedImage.get() : preparedImage.getImage();
         image->dirty(); // required for ensure the texture recognizes the image as new data
         tex->setImage( image );
 
-        if (_enableMipmappingOnUpdatedTextures && ImageUtils::isPowerOfTwo( image ))
+        if (_enableMipmappingOnUpdatedTextures && ImageUtils::isPowerOfTwo( image ) && !(!image->isMipmap() && ImageUtils::isCompressed(image)))
         {
             if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
                 tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );

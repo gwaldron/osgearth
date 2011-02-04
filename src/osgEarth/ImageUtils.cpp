@@ -21,6 +21,7 @@
 #include <osg/Notify>
 #include <osg/Texture>
 #include <osg/ImageSequence>
+#include <osgDB/Registry>
 #include <string.h>
 #include <memory.h>
 
@@ -514,6 +515,37 @@ ImageUtils::isCompressed(const osg::Image *image)
         default:
             return false;
     }
+}
+
+osg::Image*
+ImageUtils::compress(osg::Image *image)
+{
+    osg::Timer_t start = osg::Timer::instance()->tick();
+    static osgDB::ImageProcessor* imageProcessor = osgDB::Registry::instance()->getImageProcessorForExtension("fastdxt");
+    if (imageProcessor)
+    {
+        osg::Texture::InternalFormatMode mode;
+        if (image->getPixelFormat() == GL_RGB)
+        {
+            mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
+        }
+        else if (image->getPixelFormat() == GL_RGBA)
+        {
+            mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
+        }
+        else
+        {
+            OE_NOTICE << "ImageUtils::compress only works on GL_RGBA or GL_RGB images" << std::endl;
+            return NULL;
+        }
+        //Clone the image
+        osg::Image *result = ImageUtils::cloneImage( image );
+        imageProcessor->compress(*image, mode, false, true, osgDB::ImageProcessor::USE_CPU, osgDB::ImageProcessor::FASTEST);
+        osg::Timer_t end = osg::Timer::instance()->tick();
+        OSG_NOTICE << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
+        return result;
+    }
+    return NULL;
 }
 
 //------------------------------------------------------------------------

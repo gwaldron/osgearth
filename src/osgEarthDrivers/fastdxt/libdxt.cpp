@@ -30,8 +30,6 @@
 #include <malloc.h>
 #endif
 
-#include <pthread.h>
-
 typedef struct _work_t {
 	int width, height;
 	int nbb;
@@ -67,50 +65,31 @@ void *slave5ycocg(void *arg)
 	return NULL;
 }
 
-int CompressDXT(const byte *in, byte *out, int width, int height, int format, int numthreads)
-{
-  pthread_t *pid;
-  work_t    *job;
+int CompressDXT(const byte *in, byte *out, int width, int height, int format)
+{ 
   int        nbbytes;
 
-  if ( (numthreads!=1) && (numthreads!=2) && (numthreads!=4) ) {
-	fprintf(stderr, "DXT> Errror, number of thread should be 1, 2 or 4\n");
-	return 0;
-  }
+  work_t job;
 
-  job = new work_t[numthreads];
-  pid = new pthread_t[numthreads];
-
-  for (int k=0;k<numthreads;k++)
-    {
-      job[k].width = width;
-      job[k].height = height/numthreads;
-      job[k].nbb = 0;
-      job[k].in =  (byte*)in  + (k*width*4*height/numthreads);
-      if (format == FORMAT_DXT1)
-	job[k].out = out + (k*width*4*height/(numthreads*8));
-      else
-	job[k].out = out + (k*width*4*height/(numthreads*4));
-
-      switch (format) {
+  job.width = width;
+  job.height = height;
+  job.nbb = 0;
+  job.in =  (byte*)in;
+  job.out = out;
+  
+  switch (format) {
       case FORMAT_DXT1:
-	pthread_create(&pid[k], NULL, slave1, &job[k]);
-	break;
+          slave1(&job);
+          break;
       case FORMAT_DXT5:
-	pthread_create(&pid[k], NULL, slave5, &job[k]);
-	break;
+          slave5(&job);
+          break;
       case FORMAT_DXT5YCOCG:
-	pthread_create(&pid[k], NULL, slave5ycocg, &job[k]);
-	break;
-      }
-    }
+          slave5ycocg(&job);
+          break;
+  }
 
   // Join all the threads
-  nbbytes = 0;
-  for (int k=0;k<numthreads;k++)
-  {
-    pthread_join(pid[k], NULL);
-    nbbytes += job[k].nbb;
-  }
+  nbbytes = job.nbb;
   return nbbytes;
 }

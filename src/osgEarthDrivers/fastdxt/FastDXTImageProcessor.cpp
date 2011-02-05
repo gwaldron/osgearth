@@ -74,7 +74,7 @@ void FastDXTImageProcessor::compress(osg::Image& image, osg::Texture::InternalFo
     }    
 
     unsigned int numThreads = 1;
-    int outputBytes = CompressDXT(in, out, sourceImage->s(), sourceImage->t(), format, numThreads);
+    int outputBytes = CompressDXT(in, out, sourceImage->s(), sourceImage->t(), format);
 
     //Allocate and copy over the output data to the correct size array.
     unsigned char* data = (unsigned char*)malloc(outputBytes);

@@ -30,6 +30,6 @@
 #define FORMAT_DXT5YCOCG 3
 
 
-int CompressDXT(const byte *in, byte *out, int width, int height, int format, int numthreads);
+int CompressDXT(const byte *in, byte *out, int width, int height, int format);
 
 

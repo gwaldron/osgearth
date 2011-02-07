@@ -96,7 +96,8 @@ _enableLighting( false ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
 _lodTransitionTimeSeconds( 0.5f ),
-_elevationInterpolation( INTERP_BILINEAR )
+_elevationInterpolation( INTERP_BILINEAR ),
+_compressTextures( true )
 {
     fromConfig( _conf );
 }
@@ -115,6 +116,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "combine_layers", _combineLayers );
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "lighting", _enableLighting );
+    conf.updateIfSet( "compress_textures", _compressTextures );
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
     conf.updateIfSet( "lod_blending", _lodBlending );
     conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
@@ -144,6 +146,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "combine_layers", _combineLayers );
     conf.getIfSet( "max_lod", _maxLOD );
     conf.getIfSet( "lighting", _enableLighting );
+    conf.getIfSet( "compress_textures", _compressTextures );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_blending", _lodBlending );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );

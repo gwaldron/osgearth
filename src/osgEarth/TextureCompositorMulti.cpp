@@ -181,6 +181,7 @@ namespace
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options ) :
 _lodBlending( *options.lodBlending() ),
 _lodTransitionTime( *options.lodTransitionTime() ),
+_compressTextures( *options.compressTextures() ),
 _useGPU( useGPU )
 {
     // validate
@@ -204,19 +205,11 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
     if ( tex )
     {
         osg::ref_ptr< osg::Image > compressedImage;
-            if (!ImageUtils::isCompressed(preparedImage.getImage()))
-            {
-                compressedImage  = ImageUtils::compress( preparedImage.getImage() );
-            }
-            /*
-            else
-            {
-                OSG_NOTICE << "Already compressed" << std::endl;
-            }*/
-        /*if (compressedImage.valid())
+        //Compress the incoming image if it's not already compressed
+        if (_compressTextures && !ImageUtils::isCompressed(preparedImage.getImage()))
         {
-            OE_NOTICE << "Using compressed image" << std::endl;
-        }*/
+            compressedImage  = ImageUtils::compress( preparedImage.getImage() );
+        }
         osg::Image* image = compressedImage.valid() ? compressedImage.get() : preparedImage.getImage();
         image->dirty(); // required for ensure the texture recognizes the image as new data
         tex->setImage( image );

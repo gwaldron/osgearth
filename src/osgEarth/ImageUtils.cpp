@@ -24,6 +24,7 @@
 #include <osgDB/Registry>
 #include <string.h>
 #include <memory.h>
+#include <osgEarth/libdxt.h>
 
 #define LC "[ImageUtils] "
 
@@ -520,32 +521,74 @@ ImageUtils::isCompressed(const osg::Image *image)
 osg::Image*
 ImageUtils::compress(osg::Image *image)
 {
-    osg::Timer_t start = osg::Timer::instance()->tick();
-    static osgDB::ImageProcessor* imageProcessor = osgDB::Registry::instance()->getImageProcessorForExtension("fastdxt");
-    if (imageProcessor)
+    if (image->getPixelFormat() != GL_RGBA && image->getPixelFormat() != GL_RGB)
     {
-        osg::Texture::InternalFormatMode mode;
-        if (image->getPixelFormat() == GL_RGB)
-        {
-            mode = osg::Texture::USE_S3TC_DXT1_COMPRESSION;
-        }
-        else if (image->getPixelFormat() == GL_RGBA)
-        {
-            mode = osg::Texture::USE_S3TC_DXT5_COMPRESSION;
-        }
-        else
-        {
-            OE_NOTICE << "ImageUtils::compress only works on GL_RGBA or GL_RGB images" << std::endl;
-            return NULL;
-        }
-        //Clone the image
-        osg::Image *result = ImageUtils::cloneImage( image );
-        imageProcessor->compress(*image, mode, false, true, osgDB::ImageProcessor::USE_CPU, osgDB::ImageProcessor::FASTEST);
-        osg::Timer_t end = osg::Timer::instance()->tick();
-        OSG_NOTICE << "Compress took " << osg::Timer::instance()->delta_m(start, end) << std::endl;
-        return result;
+        OE_WARN << "ImageUtils::compress only supports GL_RGB or GL_RGBA images" << std::endl;
+        return 0;
     }
-    return NULL;
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
+    //Clone the image
+    osg::ref_ptr< osg::Image > result;
+
+    //Resize the image to the nearest power of two 
+    if (!osgEarth::ImageUtils::isPowerOfTwo( image ))
+    {            
+        OE_DEBUG << "Resizing" << std::endl;
+        unsigned int s = osg::Image::computeNearestPowerOfTwo( image->s() );
+        unsigned int t = osg::Image::computeNearestPowerOfTwo( image->t() );
+        ImageUtils::resizeImage(image, s, t, result);
+    }
+    else
+    {
+        //Just clone the image, no need to resize
+        result = ImageUtils::cloneImage( image );
+    }
+
+    //Allocate memory for the output
+    unsigned char* out = (unsigned char*)memalign(16, result->s()*result->t()*4);
+    memset(out, 0, result->s()*result->t()*4);
+
+    //FastDXT only works on RGBA imagery so we must convert it
+    if (result->getPixelFormat() != GL_RGBA)
+    {
+        OE_NOTICE << "Converting to RGBA" << std::endl;
+        osg::Timer_t start = osg::Timer::instance()->tick();
+        result = osgEarth::ImageUtils::convertToRGBA8( image );
+        osg::Timer_t end = osg::Timer::instance()->tick();
+        OE_NOTICE << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
+    }
+
+    //Copy over the source data to an array
+    unsigned char *in = 0;
+    in = (unsigned char*)memalign(16, result->getTotalSizeInBytes());
+    memcpy(in, result->data(0,0), result->getTotalSizeInBytes());
+
+    int format;
+    GLint pixelFormat;
+    if (image->getPixelFormat() == GL_RGB)
+    {
+        format = FORMAT_DXT1;
+        pixelFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+    }
+    else
+    {
+        format = FORMAT_DXT5;
+        pixelFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
+    }
+
+    int outputBytes = CompressDXT(in, out, result->s(), result->t(), format);
+
+    //Allocate and copy over the output data to the correct size array.
+    unsigned char* data = (unsigned char*)malloc(outputBytes);
+    memcpy(data, out, outputBytes);
+    aligned_free(out);
+    aligned_free(in);
+
+    result->setImage(image->s(), image->t(), image->r(), pixelFormat, pixelFormat, GL_UNSIGNED_BYTE, data, osg::Image::USE_MALLOC_FREE);
+    osg::Timer_t end = osg::Timer::instance()->tick();
+    OE_INFO << "ImageUtils compress took " << osg::Timer::instance()->delta_m(start, end) << "ms" << std::endl;
+    return result.release();
 }
 
 //------------------------------------------------------------------------

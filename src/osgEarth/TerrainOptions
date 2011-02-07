@@ -211,6 +211,12 @@ namespace osgEarth
          */
         optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
         optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
+
+        /**
+         * Whether to compress textures or not
+         */
+        optional<bool>& compressTextures() { return _compressTextures; }
+        const optional<bool>& compressTextures() const { return _compressTextures; }  
     
     public:
         virtual Config getConfig() const;
@@ -236,6 +242,7 @@ namespace osgEarth
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
         optional<float> _lodTransitionTimeSeconds;
+        optional<bool> _compressTextures;
 #if 0
         optional<osg::Texture::FilterMode> _contourMagFilter;
         optional<osg::Texture::FilterMode> _contourMinFilter;

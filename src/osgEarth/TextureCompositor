@@ -213,6 +213,11 @@ namespace osgEarth
          */
         osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type ) const;
 
+        /**
+         * Gets the terrain options for this TextureCompositor
+         */
+        TerrainOptions& getOptions() { return _options;}
+
     private:
         void init();
 

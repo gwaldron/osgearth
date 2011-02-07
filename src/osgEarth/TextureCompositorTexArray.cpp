@@ -199,7 +199,8 @@ namespace
 
 TextureCompositorTexArray::TextureCompositorTexArray( const TerrainOptions& options ) :
 _lodBlending( *options.lodBlending() ),
-_lodTransitionTime( *options.lodTransitionTime() )
+_lodTransitionTime( *options.lodTransitionTime() ),
+_compressTextures( *options.compressTextures() )
 {
     // validate
     if ( _lodBlending && _lodTransitionTime <= 0.0f )
@@ -260,9 +261,25 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     // assign the new image at the proper position in the texture array. We have to 
     // dirty() the image because otherwise the texture2d array implementation will not
     // recognize it as new data.
-    osg::Image* image = preparedImage.getImage();
+    osg::ref_ptr< osg::Image > compressedImage;
+    //Compress the incoming image if it's not already compressed
+    if (_compressTextures && !ImageUtils::isCompressed(preparedImage.getImage()))
+    {
+        compressedImage  = ImageUtils::compress( preparedImage.getImage() );
+    }
+    osg::Image* image = compressedImage.valid() ? compressedImage.get() : preparedImage.getImage();
     image->dirty();
     texture->setImage( slot, image );
+
+    if (ImageUtils::isPowerOfTwo( image ) && !(!image->isMipmap() && ImageUtils::isCompressed(image)))
+    {
+        if ( texture->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
+            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+    }
+    else if ( texture->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR )
+    {
+        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    }
     
     // update the region uniform to reflect the geo extent of the image:
     const GeoExtent& imageExtent = preparedImage.getExtent();

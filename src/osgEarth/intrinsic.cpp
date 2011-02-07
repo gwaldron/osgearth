@@ -135,8 +135,16 @@ void GetMinMaxColors_Intrinsics( const byte *colorBlock, byte *minColor, byte *m
     
     // store bounding box extents
     // --------------------------
-    _mm_store_si128 ( (__m128i*) minColor, t0 );
-    _mm_store_si128 ( (__m128i*) maxColor, t1 );
+    //JB:  _mm_store_si128 stores a 128 bit (16 byte) value.  minColor/maxColor are 4 byte arrays so calling _mm_tore_si128 on them overruns the allocated buffer
+    //     causing potential stack corruption.  Allocate 16 a temporary 16 byte array to store the values and use memcpy to get the correct values into the arrays.
+    ALIGN16(byte tmp[16]);
+    _mm_store_si128 ( (__m128i*) tmp, t0 );
+    memcpy(minColor, tmp, 4);
+    _mm_store_si128 ( (__m128i*) tmp, t1 );
+    memcpy(maxColor, tmp, 4);
+    //Original code
+    //_mm_store_si128 ( (__m128i*) minColor, t0 );
+    //_mm_store_si128 ( (__m128i*) maxColor, t1 );
 }
 
 

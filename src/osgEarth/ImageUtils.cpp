@@ -581,8 +581,8 @@ ImageUtils::compress(osg::Image *image)
     //Allocate and copy over the output data to the correct size array.
     unsigned char* data = (unsigned char*)malloc(outputBytes);
     memcpy(data, out, outputBytes);
-    aligned_free(out);
-    aligned_free(in);
+    memfree(out);
+    memfree(in);
 
     result->setImage(image->s(), image->t(), image->r(), pixelFormat, pixelFormat, GL_UNSIGNED_BYTE, data, osg::Image::USE_MALLOC_FREE);
     osg::Timer_t end = osg::Timer::instance()->tick();

@@ -551,12 +551,11 @@ ImageUtils::compress(osg::Image *image)
 
     //FastDXT only works on RGBA imagery so we must convert it
     if (result->getPixelFormat() != GL_RGBA)
-    {
-        OE_NOTICE << "Converting to RGBA" << std::endl;
+    {        
         osg::Timer_t start = osg::Timer::instance()->tick();
         result = osgEarth::ImageUtils::convertToRGBA8( image );
         osg::Timer_t end = osg::Timer::instance()->tick();
-        OE_NOTICE << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
+        OE_INFO << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
     }
 
     //Copy over the source data to an array

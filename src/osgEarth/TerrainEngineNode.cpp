@@ -131,6 +131,17 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     // install the proper layer composition technique:
     _texCompositor = new TextureCompositor( options );
 
+    // prime the compositor with pre-existing image layers:
+    MapFrame mapf(map, Map::IMAGE_LAYERS);
+    for( unsigned i=0; i<mapf.imageLayers().size(); ++i )
+    {
+        _texCompositor->applyMapModelChange( MapModelChange(
+            MapModelChange::ADD_IMAGE_LAYER,
+            mapf.getRevision(),
+            mapf.getImageLayerAt(i),
+            i ) );
+    }
+
     // enable backface culling
     osg::StateSet* set = getOrCreateStateSet();
     set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );

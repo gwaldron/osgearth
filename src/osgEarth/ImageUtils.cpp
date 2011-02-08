@@ -21,6 +21,7 @@
 #include <osg/Notify>
 #include <osg/Texture>
 #include <osg/ImageSequence>
+#include <osg/Timer>
 #include <osgDB/Registry>
 #include <string.h>
 #include <memory.h>
@@ -555,7 +556,7 @@ ImageUtils::compress(osg::Image *image)
         osg::Timer_t start = osg::Timer::instance()->tick();
         result = osgEarth::ImageUtils::convertToRGBA8( image );
         osg::Timer_t end = osg::Timer::instance()->tick();
-        OE_INFO << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
+        OE_DEBUG << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
     }
 
     //Copy over the source data to an array
@@ -586,7 +587,7 @@ ImageUtils::compress(osg::Image *image)
 
     result->setImage(image->s(), image->t(), image->r(), pixelFormat, pixelFormat, GL_UNSIGNED_BYTE, data, osg::Image::USE_MALLOC_FREE);
     osg::Timer_t end = osg::Timer::instance()->tick();
-    OE_INFO << "ImageUtils compress took " << osg::Timer::instance()->delta_m(start, end) << "ms" << std::endl;
+    OE_DEBUG << "ImageUtils compress took " << osg::Timer::instance()->delta_m(start, end) << "ms" << std::endl;
     return result.release();
 }
 

@@ -135,6 +135,9 @@ _supportsMipmappedTextureUpdates( false )
         _renderer = std::string( reinterpret_cast<const char*>(glGetString(GL_RENDERER)) );
         OE_INFO << LC << "  Renderer = " << _renderer << std::endl;
 
+        _version = std::string( reinterpret_cast<const char*>(glGetString(GL_VERSION)) );
+        OE_INFO << LC << "  Version = " << _version << std::endl;
+
         glGetIntegerv( GL_MAX_TEXTURE_UNITS, &_maxFFPTextureUnits );
         OE_INFO << LC << "  Max FFP texture units = " << _maxFFPTextureUnits << std::endl;
 

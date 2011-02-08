@@ -224,7 +224,7 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         t->setRotation( orientation);
         t->setAlignment( osgText::TextBase::CENTER_CENTER );
         t->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
-        t->getOrCreateStateSet()->setRenderBinDetails( 99999, "RenderBin" );
+        t->getOrCreateStateSet()->setRenderBinDetails( 99999, "RenderBin", osg::StateSet::OVERRIDE_RENDERBIN_DETAILS );
 
         // apply styling as appropriate:
         osg::Vec4f textColor = symbol->fill()->color();

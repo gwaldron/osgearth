@@ -97,7 +97,10 @@ namespace osgEarth
         virtual void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const { }
 
         virtual osg::Shader* createSamplerFunction( 
-            UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const { return 0L; }
+            UID layerUID, 
+            const std::string& functionName, 
+            osg::Shader::Type type, 
+            const TextureLayout& layout ) const { return 0L; }
     };
 
     //-----------------------------------------------------------------------

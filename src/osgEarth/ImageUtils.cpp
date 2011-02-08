@@ -554,7 +554,7 @@ ImageUtils::compress(osg::Image *image)
     if (result->getPixelFormat() != GL_RGBA)
     {        
         osg::Timer_t start = osg::Timer::instance()->tick();
-        result = osgEarth::ImageUtils::convertToRGBA8( image );
+        result = osgEarth::ImageUtils::convertToRGBA8( result );
         osg::Timer_t end = osg::Timer::instance()->tick();
         OE_DEBUG << "conversion to rgba took" << osg::Timer::instance()->delta_m(start, end) << std::endl;
     }
@@ -585,7 +585,7 @@ ImageUtils::compress(osg::Image *image)
     memfree(out);
     memfree(in);
 
-    result->setImage(image->s(), image->t(), image->r(), pixelFormat, pixelFormat, GL_UNSIGNED_BYTE, data, osg::Image::USE_MALLOC_FREE);
+    result->setImage(result->s(), result->t(), result->r(), pixelFormat, pixelFormat, GL_UNSIGNED_BYTE, data, osg::Image::USE_MALLOC_FREE);
     osg::Timer_t end = osg::Timer::instance()->tick();
     OE_DEBUG << "ImageUtils compress took " << osg::Timer::instance()->delta_m(start, end) << "ms" << std::endl;
     return result.release();

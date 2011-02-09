@@ -30,6 +30,7 @@
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
 #include <osg/PagedLOD>
+#include <osg/Timer>
 
 #define LC "[OSGTerrainEngine] "
 
@@ -108,7 +109,9 @@ OSGTerrainEngineNode::OSGTerrainEngineNode() :
 TerrainEngineNode(),
 _terrain( 0L ),
 _update_mapf( 0L ),
-_cull_mapf( 0L )
+_cull_mapf( 0L ),
+_tileCount( 0 ),
+_tileCreationTime( 0.0 )
 {
     _uid = Registry::instance()->createUID();
     _taskServiceMgr = Registry::instance()->getTaskServiceManager();
@@ -374,11 +377,15 @@ OSGTerrainEngineNode::createURI(const TileKey& key, std::string& out_uri )
 osg::Node*
 OSGTerrainEngineNode::createNode( const TileKey& key )
 {
+    osg::Timer_t start = _timer.tick();
+
     LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
+
+    osg::Node* result = 0L;
 
     if ( mode == LoadingPolicy::MODE_SERIAL || mode == LoadingPolicy::MODE_PARALLEL )
     {
-        return _keyNodeFactory->createNode( key );
+        result = _keyNodeFactory->createNode( key );
     }
     else
     {
@@ -390,8 +397,23 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
         // create a map frame so we can safely create tiles from this dbpager thread
         MapFrame mapf( getMap(), Map::TERRAIN_LAYERS, "dbpager::earth plugin" );
 
-        return getTileFactory()->createSubTiles( mapf, _terrain, key, false );
+        result = getTileFactory()->createSubTiles( mapf, _terrain, key, false );
     }
+
+    osg::Timer_t end = osg::Timer::instance()->tick();
+
+    if ( result )
+    {
+        _tileCount++;
+        _tileCreationTime += _timer.delta_s(start,_timer.tick());
+        if ( _tileCount % 60 == 0 )
+        {
+            OE_INFO << LC << "Avg tile = " << 1000.0*(_tileCreationTime/(double)_tileCount)
+                << " ms, tiles per sec = " << (double)_tileCount/_timer.time_s() << std::endl;
+        }
+    }
+
+    return result;
 }
 
 void

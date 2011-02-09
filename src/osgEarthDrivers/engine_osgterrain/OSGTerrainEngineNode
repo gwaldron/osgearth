@@ -101,6 +101,10 @@ private:
     osg::ref_ptr<TaskService> _tileService;
     osg::ref_ptr<KeyNodeFactory> _keyNodeFactory;
     osg::ref_ptr<TileBuilder> _tileBuilder;
+
+    osg::Timer _timer;
+    unsigned   _tileCount;
+    double     _tileCreationTime;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

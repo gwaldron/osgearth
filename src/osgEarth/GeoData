@@ -306,6 +306,11 @@ namespace osgEarth
 		 */
 		double getUnitsPerPixel() const;
 
+        /**
+         * Compress the GeoImage if it's not already compressed
+         */
+        void compress();
+
     private:
         osg::ref_ptr<osg::Image> _image;
         GeoExtent _extent;

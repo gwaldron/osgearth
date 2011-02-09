@@ -213,7 +213,7 @@ namespace osgEarth
         optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
 
         /**
-         * Whether to compress textures or not
+         * Whether to compress textures
          */
         optional<bool>& compressTextures() { return _compressTextures; }
         const optional<bool>& compressTextures() const { return _compressTextures; }  

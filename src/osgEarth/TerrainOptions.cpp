@@ -97,7 +97,7 @@ _attenuationDistance( 1000000 ),
 _lodBlending( false ),
 _lodTransitionTimeSeconds( 0.5f ),
 _elevationInterpolation( INTERP_BILINEAR ),
-_compressTextures( true )
+_compressTextures( false )
 {
     fromConfig( _conf );
 }

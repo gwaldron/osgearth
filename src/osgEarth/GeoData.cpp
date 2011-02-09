@@ -443,6 +443,15 @@ GeoImage::getUnitsPerPixel() const {
 	return (uppw + upph) / 2.0;
 }
 
+void
+GeoImage::compress()
+{
+    if (_image.valid() && !ImageUtils::isCompressed( _image.get() ))
+    {
+        _image = ImageUtils::compress( _image.get() );
+    }
+}
+
 GeoImage
 GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigned int height  ) const
 {

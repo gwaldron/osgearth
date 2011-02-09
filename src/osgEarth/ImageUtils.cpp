@@ -543,7 +543,7 @@ ImageUtils::compress(osg::Image *image)
     else
     {
         //Just clone the image, no need to resize
-        result = ImageUtils::cloneImage( image );
+        result = image;
     }
 
     //Allocate memory for the output

@@ -796,13 +796,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
 
                 //Compress the image if it's not compressed and it is requested that we compress textures
 
-                osg::ref_ptr< osg::Image > compressedImage;
-                //Compress the incoming image if it's not already compressed
-                if (*_texCompositor->getOptions().compressTextures() && !ImageUtils::isCompressed(image))
-                {
-                    compressedImage  = ImageUtils::compress( const_cast<osg::Image*>(image) );
-                }
-                osg::Image* img = compressedImage.valid() ? compressedImage.get() : const_cast<osg::Image*>(image);
+                osg::Image* img = const_cast<osg::Image*>(image);
 
                 osg::Texture2D* texture2D = new osg::Texture2D;
                 texture2D->setImage( img );

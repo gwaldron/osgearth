@@ -58,7 +58,6 @@ namespace osgEarth
     private:
         bool _lodBlending;
         float _lodTransitionTime;
-        bool _compressTextures;
     };
 }
 

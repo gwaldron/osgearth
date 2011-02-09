@@ -95,6 +95,7 @@ namespace osgEarth
         bool _supportsMipmappedTextureUpdates;
         std::string _vendor;
         std::string _renderer;
+        std::string _version;
 
     public:
         friend class Registry;

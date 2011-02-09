@@ -97,7 +97,10 @@ namespace osgEarth
         virtual void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const { }
 
         virtual osg::Shader* createSamplerFunction( 
-            UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const { return 0L; }
+            UID layerUID, 
+            const std::string& functionName, 
+            osg::Shader::Type type, 
+            const TextureLayout& layout ) const { return 0L; }
     };
 
     //-----------------------------------------------------------------------
@@ -212,6 +215,11 @@ namespace osgEarth
          *    vec4 function_name()
          */
         osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type ) const;
+
+        /**
+         * Gets the terrain options for this TextureCompositor
+         */
+        TerrainOptions& getOptions() { return _options;}
 
     private:
         void init();

@@ -279,6 +279,9 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
         _terrain->setTerrainTechniquePrototype( tech );
     }
     
+#if 0 // GW: moved this to TerrainEngine::preInitialize(), because TextureCompositor::createSamplerFunction
+      // needs to work prior to the postInitialize.
+
     // prime the texture compositor with any existing layers:
     for( unsigned int i=0; i<_update_mapf->imageLayers().size(); ++i )
     {
@@ -288,6 +291,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
             _update_mapf->getImageLayerAt(i),
             i ) );
     }
+#endif
 
     // install the shader program, if applicable:
     installShaders();

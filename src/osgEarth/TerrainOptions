@@ -211,7 +211,8 @@ namespace osgEarth
          */
         optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
         optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
-    
+
+   
     public:
         virtual Config getConfig() const;
 

@@ -143,9 +143,9 @@ _options( options )
 {
     this->setThreadSafeRefUnref( true );
 
-    if ( *options.enableL2Cache() )
+    if ( *options.L2CacheSize() > 0 )
     {
-        _memCache = new MemCache();
+        _memCache = new MemCache( *options.L2CacheSize() );
     }
     else
     {

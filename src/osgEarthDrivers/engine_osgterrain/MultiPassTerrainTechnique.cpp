@@ -18,6 +18,7 @@
  */
 #include "MultiPassTerrainTechnique"
 #include "TransparentLayer"
+#include <osgEarth/ImageUtils>
 
 #include <osgTerrain/TerrainTile>
 #include <osgTerrain/Terrain>
@@ -793,27 +794,29 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
 
                 osg::StateSet* stateset = geode->getOrCreateStateSet();
 
+                //Compress the image if it's not compressed and it is requested that we compress textures
+
+                osg::Image* img = const_cast<osg::Image*>(image);
+
                 osg::Texture2D* texture2D = new osg::Texture2D;
-                texture2D->setImage( const_cast<osg::Image*>( image ) );
+                texture2D->setImage( img );
                 texture2D->setMaxAnisotropy(16.0f);
                 texture2D->setResizeNonPowerOfTwoHint(false);
 
                 texture2D->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-                texture2D->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+                if (ImageUtils::isPowerOfTwo( img ) && !(!img->isMipmap() && ImageUtils::isCompressed(img)))
+                {
+                    texture2D->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+                }
+                else
+                {
+                    OE_DEBUG<<"[osgEarth::MultiPassTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
+                    texture2D->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+                }
 
                 texture2D->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
                 texture2D->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
                 stateset->setTextureAttributeAndModes(0, texture2D, osg::StateAttribute::ON);           
-
-				bool mipMapping = !(texture2D->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::LINEAR || texture2D->getFilter(osg::Texture::MIN_FILTER)==osg::Texture::NEAREST);
-				bool s_NotPowerOfTwo = image->s()==0 || (image->s() & (image->s() - 1));
-				bool t_NotPowerOfTwo = image->t()==0 || (image->t() & (image->t() - 1));
-
-				if (mipMapping && (s_NotPowerOfTwo || t_NotPowerOfTwo))
-				{
-					OE_DEBUG<<"[osgEarth::MultiPassTerrainTechnique] Disabling mipmapping for non power of two tile size("<<image->s()<<", "<<image->t()<<")"<<std::endl;
-					texture2D->setFilter(osg::Texture::MIN_FILTER, osg::Texture::LINEAR);
-				}
         }
         //    }
         //    else if (contourLayer)

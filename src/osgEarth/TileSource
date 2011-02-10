@@ -75,8 +75,8 @@ namespace osgEarth
         optional<ProfileOptions>& profile() { return _profileOptions; }
         const optional<ProfileOptions>& profile() const { return _profileOptions; }
 
-        optional<bool>& enableL2Cache() { return _enableL2Cache; }
-        const optional<bool>& enableL2Cache() const { return _enableL2Cache; }
+        optional<int>& L2CacheSize() { return _L2CacheSize; }
+        const optional<int>& L2CacheSize() const { return _L2CacheSize; }
 
     public:
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() )
@@ -85,7 +85,7 @@ namespace osgEarth
               _noDataValue( (float)SHRT_MIN ),
               _noDataMinValue( -FLT_MAX ),
               _noDataMaxValue( FLT_MAX ),
-              _enableL2Cache( true )
+              _L2CacheSize( 16 )
         { 
             fromConfig( _conf );
         }
@@ -98,7 +98,8 @@ namespace osgEarth
             conf.updateIfSet( "nodata_min", _noDataMinValue );
             conf.updateIfSet( "nodata_max", _noDataMaxValue );
             conf.updateIfSet( "blacklist_filename", _blacklistFilename);
-            conf.updateIfSet( "enable_l2_cache", _enableL2Cache );
+            //conf.updateIfSet( "enable_l2_cache", _enableL2Cache );
+            conf.updateIfSet( "l2_cache_size", _L2CacheSize );
             conf.updateObjIfSet( "profile", _profileOptions );
             return conf;
         }
@@ -116,7 +117,8 @@ namespace osgEarth
             conf.getIfSet( "nodata_min", _noDataMinValue );
             conf.getIfSet( "nodata_max", _noDataMaxValue );
             conf.getIfSet( "blacklist_filename", _blacklistFilename);
-            conf.getIfSet( "enable_l2_cache", _enableL2Cache );
+            //conf.getIfSet( "enable_l2_cache", _enableL2Cache );
+            conf.getIfSet( "l2_cache_size", _L2CacheSize );
             conf.getObjIfSet( "profile", _profileOptions );
 
             // special handling of default tile size:
@@ -130,7 +132,8 @@ namespace osgEarth
         optional<float> _noDataValue, _noDataMinValue, _noDataMaxValue;
         optional<ProfileOptions> _profileOptions;
         optional<std::string> _blacklistFilename;
-        optional<bool> _enableL2Cache;
+        optional<int> _L2CacheSize;
+        //optional<bool> _enableL2Cache;
     };
 
     typedef std::vector<TileSourceOptions> TileSourceOptionsVector;

@@ -207,7 +207,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
         image->dirty(); // required for ensure the texture recognizes the image as new data
         tex->setImage( image );
 
-        if (_enableMipmappingOnUpdatedTextures && ImageUtils::isPowerOfTwo( image ))
+        if (_enableMipmappingOnUpdatedTextures && ImageUtils::isPowerOfTwo( image ) && !(!image->isMipmap() && ImageUtils::isCompressed(image)))
         {
             if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
                 tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );

@@ -263,6 +263,16 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     osg::Image* image = preparedImage.getImage();
     image->dirty();
     texture->setImage( slot, image );
+
+    if (ImageUtils::isPowerOfTwo( image ) && !(!image->isMipmap() && ImageUtils::isCompressed(image)))
+    {
+        if ( texture->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
+            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+    }
+    else if ( texture->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR )
+    {
+        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    }
     
     // update the region uniform to reflect the geo extent of the image:
     const GeoExtent& imageExtent = preparedImage.getExtent();

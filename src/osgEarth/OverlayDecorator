@@ -84,12 +84,14 @@ namespace osgEarth
         void traverse( osg::NodeVisitor& nv );
         
     public: //osg::Group overrides
+#if 0
         virtual bool addChild( Node *child );
         virtual bool insertChild( unsigned int index, Node *child );
         virtual bool removeChildren(unsigned int pos,unsigned int numChildrenToRemove);
         virtual bool replaceChild( Node *origChild, Node* newChild );
         virtual bool setChild( unsigned  int i, Node* node );
         virtual osg::BoundingSphere computeBound() const;
+#endif
 
     private:
         void updateRTTCamera( osg::NodeVisitor& nv );
@@ -99,7 +101,7 @@ namespace osgEarth
         void initRTTShaders( osg::StateSet* set );
 
     private:
-        osg::ref_ptr<osg::Group>      _subgraphContainer;
+        //osg::ref_ptr<osg::Group>      _subgraphContainer;
         osg::ref_ptr<osg::Node>       _overlayGraph;
         osg::ref_ptr<osg::Camera>     _rttCamera;
         osg::ref_ptr<osg::Texture2D>  _projTexture;

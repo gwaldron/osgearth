@@ -42,6 +42,11 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
+//---------------------------------------------------------------------------
+
+#define BIN_STARS      -10
+#define BIN_SUN         -9
+#define BIN_ATMOSPHERE  -8
 
 //---------------------------------------------------------------------------
 
@@ -680,12 +685,10 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     // configure the state set:
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     set->setMode( GL_CULL_FACE, osg::StateAttribute::ON );
-    set->setMode( GL_DEPTH_TEST, osg::StateAttribute::ON );
     set->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
     //set->setBinNumber( 65 ); // todo, what?
-    set->setBinNumber( -4 );
+    set->setBinNumber( BIN_ATMOSPHERE );
     set->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
-    //osg::BlendFunc* blend = ;
     set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::FrontFace( osg::FrontFace::CLOCKWISE ), osg::StateAttribute::ON );
 
@@ -766,11 +769,8 @@ SkyNode::makeSun()
     // configure the stateset
     set->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
     set->setMode( GL_CULL_FACE, osg::StateAttribute::OFF );
-    set->setMode( GL_DEPTH, osg::StateAttribute::OFF );
-    set->setMode( GL_DEPTH_TEST, osg::StateAttribute::OFF );
-    set->setMode( GL_BLEND, osg::StateAttribute::ON );
-    set->setRenderBinDetails( -5, "RenderBin" );
-    set->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 1.0, 1.0, false), osg::StateAttribute::ON );
+    set->setRenderBinDetails( BIN_SUN, "RenderBin" );
+    set->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
     set->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA), osg::StateAttribute::ON );
 
     // create shaders
@@ -889,11 +889,10 @@ osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   sset->addUniform( _starAlpha.get() );
   sset->addUniform( _starPointSize.get() );
 
-  sset->setRenderBinDetails(-10, "RenderBin");
-  sset->setMode( GL_DEPTH, osg::StateAttribute::OFF );
-  sset->setMode( GL_DEPTH_TEST, osg::StateAttribute::ON );
+  sset->setRenderBinDetails( BIN_STARS, "RenderBin");
   sset->setMode( GL_BLEND, 1 );
   sset->setAttributeAndModes( new osg::Point(3.2f), 1 );
+  sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
   geometry->setStateSet( sset );
 
   osg::Geode* starGeode = new osg::Geode;

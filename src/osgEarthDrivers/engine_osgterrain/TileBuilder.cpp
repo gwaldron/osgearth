@@ -56,12 +56,11 @@ struct SourceRepo
 
 struct BuildColorLayer
 {
-    void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo, bool compress, TileBuilder::SourceRepo& repo )
+    void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo, TileBuilder::SourceRepo& repo )
     {
         _key      = key;
         _layer    = layer;
         _mapInfo  = &mapInfo;
-        _compress = compress;
         _repo     = &repo;
     }
 
@@ -95,14 +94,6 @@ struct BuildColorLayer
         else
         {
             locator = GeoLocator::createForKey( imageKey, *_mapInfo );
-
-            // compress the texture if requested
-            if ( _compress && !geoImage.getImage()->isCompressed() )
-            {
-                osg::Image* compressed = ImageUtils::compress( geoImage.getImage() );
-                if ( compressed )
-                    geoImage = GeoImage( compressed, geoImage.getExtent() );
-            }
         }
 
         // add the color layer to the repo.
@@ -117,7 +108,6 @@ struct BuildColorLayer
     TileKey        _key;
     const MapInfo* _mapInfo;
     ImageLayer*    _layer;
-    bool           _compress;
     TileBuilder::SourceRepo* _repo;
 };
 
@@ -238,7 +228,7 @@ TileBuilder::createJob( const TileKey& key, Threading::MultiEvent& semaphore )
         if ( layer->isKeyValid(key) )
         {
             ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
-            j->init( key, layer, job->_mapf.getMapInfo(), *_terrainOptions.compressTextures(), job->_repo );
+            j->init( key, layer, job->_mapf.getMapInfo(), job->_repo );
             j->setPriority( -(float)key.getLevelOfDetail() );
             job->_tasks.push_back( j );
         }
@@ -367,7 +357,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
             if ( layer->isKeyValid(key) )
             {
                 ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
-                j->init( key, layer, mapInfo, *_terrainOptions.compressTextures(), repo );
+                j->init( key, layer, mapInfo, repo );
                 j->setPriority( -(float)key.getLevelOfDetail() );
                 _service->add( j );
             }
@@ -403,7 +393,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
             if ( layer->isKeyValid(key) )
             {
                 BuildColorLayer build;
-                build.init( key, layer, mapInfo, *_terrainOptions.compressTextures(), repo );
+                build.init( key, layer, mapInfo, repo );
                 build.execute();
             }
         }

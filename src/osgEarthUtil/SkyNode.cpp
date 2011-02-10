@@ -597,8 +597,8 @@ _ambientBrightness( 0.4f )
     _outerRadius = _innerRadius * 1.025f;
 
     makeAtmosphere( _ellipsoidModel );
-    makeStars(starFile);
     makeSun();
+    makeStars(starFile);    
 }
 
 void

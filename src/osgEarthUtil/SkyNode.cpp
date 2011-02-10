@@ -564,26 +564,19 @@ namespace
 
 namespace
 {
-    static const char s_starvertGLSL[] = 
-        "#version 110					      \n"
-        "uniform float starAlpha;			      \n"
-        "uniform float pointSize;			      \n"
-        "varying vec4 starColor;			      \n"
-        "void main()					      \n"
-        "{						      \n"
-        "    starColor = gl_Color - 1.0 + starAlpha;	      \n"
-        "    gl_PointSize = pointSize;			      \n"
-        "    gl_ClipVertex = gl_ModelViewMatrix * gl_Vertex;  \n"
-        "    gl_Position = ftransform();		      \n"
-        "}						      \n";
+    static const char s_starVertexSource[] = 
+        "void main() \n"
+        "{ \n"
+        "    gl_FrontColor = vec4(1,1,1,1); \n"
+        "    gl_PointSize = gl_Color.r + 1.0f; \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "} \n";
 
-    static const char s_starfragGLSL[] = 
-        "#version 110					      \n"
-        "varying vec4 starColor;			      \n"
-        "void main( void )				      \n"
-        "{						      \n"
-        "    gl_FragColor = starColor;			      \n"
-        "}						      \n";
+    static const char s_starFragmentSource[] = 
+        "void main( void ) \n"
+        "{ \n"
+        "    gl_FragColor = gl_Color; \n"
+        "} \n";
 }
 
 //---------------------------------------------------------------------------
@@ -595,10 +588,12 @@ _ambientBrightness( 0.4f )
     _ellipsoidModel =  map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
     _innerRadius = _ellipsoidModel->getRadiusPolar();
     _outerRadius = _innerRadius * 1.025f;
+    _sunDistance = _innerRadius * 12000.0f;
 
+    // note: order is important here
     makeAtmosphere( _ellipsoidModel );
-    makeStars(starFile);
     makeSun();
+    makeStars(starFile);
 }
 
 void
@@ -758,9 +753,8 @@ SkyNode::makeSun()
     sun->setNormal( osg::Vec3(0, 0, 1) );
 
     float sunRadius = _innerRadius * 100.0f;
-    _sunDistance = _innerRadius * 12000.0f;
 
-    sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); //40.0f ) );
+    sun->addDrawable( s_makeDiscGeometry( sunRadius*80.0f ) ); 
 
     osg::StateSet* set = sun->getOrCreateStateSet();
 
@@ -827,7 +821,6 @@ SkyNode::makeStars(const std::string& starFile)
 
   AddCallbackToDrawablesVisitor visitor(_starRadius);
   starNode->accept(visitor);
-  starNode->getOrCreateStateSet()->setAttributeAndModes(new osg::Depth(osg::Depth::LEQUAL, 1.0, 1.0),osg::StateAttribute::ON);
 
   _starsXform = new osg::MatrixTransform();
   _starsXform->addChild( starNode );
@@ -840,14 +833,9 @@ SkyNode::makeStars(const std::string& starFile)
 
 osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 {
-  osg::Vec3Array* coords = new osg::Vec3Array();
-  coords->reserve( stars.size() );
-
-  osg::Vec4Array* colors = new osg::Vec4Array();
-  colors->reserve( stars.size() );
-
   double minMag = DBL_MAX, maxMag = DBL_MIN;
 
+  osg::Vec3Array* coords = new osg::Vec3Array();
   std::vector<StarData>::const_iterator p;
   for( p = stars.begin(); p != stars.end(); p++ )
   {
@@ -861,13 +849,16 @@ osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
     if ( p->magnitude > maxMag ) maxMag = p->magnitude;
   }
 
+  osg::Vec4Array* colors = new osg::Vec4Array();
   for( p = stars.begin(); p != stars.end(); p++ )
   {
-      double c = 0.25 + 0.75 * ( (p->magnitude-minMag) / (maxMag-minMag) );
-      colors->push_back( osg::Vec4(c,c,c,1.0) );
+      //float c = 0.5f + 0.5f * ( (p->magnitude-minMag) / (maxMag-minMag) );
+      float c = ( (p->magnitude-minMag) / (maxMag-minMag) );
+      colors->push_back( osg::Vec4(c,c,c,1.0f) );
   }
 
-  osg::ref_ptr<osg::Geometry> geometry = new osg::Geometry;
+  osg::Geometry* geometry = new osg::Geometry;
+  geometry->setUseVertexBufferObjects( true );
   geometry->setVertexArray( coords );
   geometry->setColorArray( colors );
   geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
@@ -875,28 +866,18 @@ osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 
   osg::StateSet* sset = new osg::StateSet;
 
-  sset->setMode( GL_LIGHTING, osg::StateAttribute::OFF );
   sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
-  
   osg::Program* program = new osg::Program;
-  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_starvertGLSL ));
-  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_starfragGLSL ));
+  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_starVertexSource) );
+  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_starFragmentSource) );
   sset->setAttributeAndModes( program, osg::StateAttribute::ON );
 
-  _starAlpha = new osg::Uniform( "starAlpha", 1.0f );
-  _starPointSize = new osg::Uniform( "pointSize", 3.2f );
-
-  sset->addUniform( _starAlpha.get() );
-  sset->addUniform( _starPointSize.get() );
-
   sset->setRenderBinDetails( BIN_STARS, "RenderBin");
-  sset->setMode( GL_BLEND, 1 );
-  sset->setAttributeAndModes( new osg::Point(3.2f), 1 );
   sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
   geometry->setStateSet( sset );
 
   osg::Geode* starGeode = new osg::Geode;
-  starGeode->addDrawable( geometry.get() );
+  starGeode->addDrawable( geometry );
 
   return starGeode;
 }

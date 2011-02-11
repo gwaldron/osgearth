@@ -819,7 +819,7 @@ HTTPClient::doReadImageFile(const std::string& filename,
             {
                 if (callback)
                 {
-                    OSG_INFO << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
+                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
                     callback->setNeedsRetry( true );
                 }
             }
@@ -910,7 +910,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
             {
                 if (callback)
                 {
-                    OSG_INFO << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
+                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
                     callback->setNeedsRetry( true );
                 }
             }
@@ -957,7 +957,7 @@ HTTPClient::doReadString(const std::string& filename,
             {
                 if (callback)
                 {
-                    OSG_INFO << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
+                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
                     callback->setNeedsRetry( true );
                 }
             }

@@ -690,9 +690,6 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         // intersect the viewing frustum:
         osgShadow::ConvexPolyhedron visiblePH;
 
-        //const osg::BoundingSphere& bs = _subgraphContainer->getBound();
-        const osg::BoundingSphere& bs = osg::Group::getBound();
-
         // get the bounds of the model. 
         osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
         //_subgraphContainer->accept(cbbv);

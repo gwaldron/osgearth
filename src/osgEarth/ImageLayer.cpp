@@ -451,6 +451,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 			osg::ref_ptr<ImageMosaic> mi = new ImageMosaic;
 			std::vector<TileKey> missingTiles;
 
+            bool retry = false;
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
 				double minX, minY, maxX, maxY;
@@ -475,17 +476,23 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 				}
 				else
 				{
+                    if (progress->isCanceled() || progress->needsRetry())
+                    {
+                        retry = true;
+                        break;
+                    }
 					missingTiles.push_back(intersectingTiles[j]);
 				}
 			}
 
-			if (mi->getImages().empty())
+			//if (mi->getImages().empty() || missingTiles.size() > 0)
+            if (mi->getImages().empty() || retry)
 			{
 				OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
                 return GeoImage::INVALID;
 			}
 			else if (missingTiles.size() > 0)
-			{
+			{                
                 osg::ref_ptr<const osg::Image> validImage = mi->getImages()[0].getImage();
                 unsigned int tileWidth = validImage->s();
                 unsigned int tileHeight = validImage->t();

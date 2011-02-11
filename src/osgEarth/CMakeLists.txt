@@ -26,7 +26,6 @@ SET(LIB_PUBLIC_HEADERS
     CompositeTileSource
     Config
     Cube
-	dxt.h
     ElevationLayer
     Export
     EGM
@@ -42,7 +41,6 @@ SET(LIB_PUBLIC_HEADERS
     ImageUtils
     JsonUtils
     Layer
-	libdxt.h
     Locators
     Map
     MapNode
@@ -78,7 +76,6 @@ SET(LIB_PUBLIC_HEADERS
     tinyxml.h 
     TMS
     Units
-	util.h
 	Version
     VerticalSpatialReference
     XmlUtils
@@ -93,7 +90,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
-	dxt.cpp
     EGM.cpp
     ElevationLayer.cpp
     FileUtils.cpp
@@ -105,10 +101,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
-	intrinsic.cpp
     JsonUtils.cpp
     Layer.cpp
-	libdxt.cpp
     Locators.cpp
     Map.cpp
     MapNode.cpp
@@ -144,7 +138,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     tinyxmlparser.cpp
     TMS.cpp
     Units.cpp
-	util.cpp
     Version.cpp
     VerticalSpatialReference.cpp
     XmlUtils.cpp

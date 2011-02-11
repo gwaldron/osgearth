@@ -96,12 +96,6 @@ namespace osgEarth
 		optional<osg::Texture::FilterMode>& minFilter(void) {return _minFilter;}
 		const optional<osg::Texture::FilterMode>& minFilter(void) const {return _minFilter;}
 
-        /**
-         * Whether or not to compress textures
-         */
-		optional<bool>& compressTextures(void) {return _compressTextures;}
-		const optional<bool>& compressTextures(void) const {return _compressTextures;}
-
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -118,7 +112,6 @@ namespace osgEarth
 	    optional<std::string> _noDataImageFilename;
 		optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::FilterMode> _minFilter;
-        optional<bool> _compressTextures;
     };
 
     //--------------------------------------------------------------------

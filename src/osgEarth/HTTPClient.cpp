@@ -814,6 +814,16 @@ HTTPClient::doReadImageFile(const std::string& filename,
                 response.getCode() == HTTPResponse::SERVER_ERROR ? RESULT_SERVER_ERROR :
                 RESULT_UNKNOWN_ERROR;
 
+            //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+            if (HTTPClient::isRecoverable( result ) )
+            {
+                if (callback)
+                {
+                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
+                    callback->setNeedsRetry( true );
+                }
+            }
+
             //if ( response.isCancelled() )
             //    OE_NOTICE << "HTTP cancel: " << filename << std::endl;
             //else
@@ -894,6 +904,16 @@ HTTPClient::doReadNodeFile(const std::string& filename,
                 response.getCode() == HTTPResponse::NOT_FOUND ? RESULT_NOT_FOUND :
                 response.getCode() == HTTPResponse::SERVER_ERROR ? RESULT_SERVER_ERROR :
                 RESULT_UNKNOWN_ERROR;
+
+            //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+            if (HTTPClient::isRecoverable( result ) )
+            {
+                if (callback)
+                {
+                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
+                    callback->setNeedsRetry( true );
+                }
+            }
                
             /*if (response.isCancelled())
                 OE_NOTICE << "Request for " << filename << " was cancelled " << std::endl;*/
@@ -931,6 +951,16 @@ HTTPClient::doReadString(const std::string& filename,
                 response.getCode() == HTTPResponse::NOT_FOUND ? RESULT_NOT_FOUND :
                 response.getCode() == HTTPResponse::SERVER_ERROR ? RESULT_SERVER_ERROR :
                 RESULT_UNKNOWN_ERROR;
+
+            //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+            if (HTTPClient::isRecoverable( result ) )
+            {
+                if (callback)
+                {
+                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
+                    callback->setNeedsRetry( true );
+                }
+            }
         }
     }
     else

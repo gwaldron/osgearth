@@ -1259,3 +1259,73 @@ MapFrame::getImageLayerByName( const std::string& name ) const
             return i->get();
     return 0L;
 }
+
+bool
+MapFrame::isCached( const osgEarth::TileKey& key ) const
+{
+    const Profile* mapProfile = getProfile();
+
+    //Check the imagery layers
+    for( ImageLayerVector::const_iterator i = imageLayers().begin(); i != imageLayers().end(); i++ )
+    {
+        ImageLayer* layer = i->get();
+        osg::ref_ptr< Cache > cache = layer->getCache();
+
+        if ( !cache.valid() || !layer->getProfile() ) 
+            return false;
+
+        std::vector< TileKey > keys;
+
+        if ( mapProfile->isEquivalentTo( layer->getProfile() ) )
+        {
+            keys.push_back( key );
+        }
+        else
+        {
+            layer->getProfile()->getIntersectingTiles( key, keys );
+        }
+
+        for (unsigned int j = 0; j < keys.size(); ++j)
+        {
+            if ( layer->isKeyValid( keys[j] ) )
+            {
+                if ( !cache->isCached( keys[j], layer->getCacheSpec() ) )
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    for( ElevationLayerVector::const_iterator i = elevationLayers().begin(); i != elevationLayers().end(); ++i )
+    {
+        ElevationLayer* layer = i->get();
+        osg::ref_ptr< Cache > cache = layer->getCache();
+
+        if ( !cache.valid() || !layer->getProfile() )
+            return false;
+
+        std::vector<TileKey> keys;
+
+        if ( mapProfile->isEquivalentTo( layer->getProfile() ) )
+        {
+            keys.push_back( key );
+        }
+        else
+        {
+            layer->getProfile()->getIntersectingTiles( key, keys );
+        }
+
+        for (unsigned int j = 0; j < keys.size(); ++j)
+        {
+            if ( layer->isKeyValid( keys[j] ) )
+            {
+                if ( !cache->isCached( keys[j], layer->getCacheSpec() ) )
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}

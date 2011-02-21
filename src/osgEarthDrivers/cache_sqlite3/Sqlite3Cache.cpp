@@ -21,6 +21,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/TaskService>
 #include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
 #include <osgDB/ReaderWriter>
 #if OSG_MIN_VERSION_REQUIRED(2,9,5)
 #  include <osgDB/Options>
@@ -64,6 +65,15 @@ using namespace OpenThreads;
 static
 sqlite3* openDatabase( const std::string& path, bool serialized )
 {
+    //Try to create the path if it doesn't exist
+    std::string dirPath = osgDB::getFilePath(path);
+
+    //If the path doesn't currently exist or we can't create the path, don't cache the file
+    if (!osgDB::fileExists(dirPath) && !osgDB::makeDirectory(dirPath))
+    {
+        OE_WARN << LC << "Couldn't create path " << dirPath << std::endl;
+    }
+
     sqlite3* db = 0L;
 
     // not sure if SHAREDCACHE is necessary or wise 

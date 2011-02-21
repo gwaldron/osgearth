@@ -35,8 +35,8 @@ namespace
 {
     unsigned getIndex( const GeoExtent& cellExtent, const osg::Vec3d& point, unsigned xdim, unsigned ydim )
     {
-        unsigned col = (unsigned)((double)xdim * ((point.x() - cellExtent.xMin()) / cellExtent.width()));
-        unsigned row = (unsigned)((double)ydim * ((point.y() - cellExtent.yMin()) / cellExtent.height()));
+        unsigned col = osg::clampBelow( (unsigned)((double)xdim * ((point.x() - cellExtent.xMin()) / cellExtent.width())), xdim-1 );
+        unsigned row = osg::clampBelow( (unsigned)((double)ydim * ((point.y() - cellExtent.yMin()) / cellExtent.height())), ydim-1 );
         return row*xdim + col;
     }
 

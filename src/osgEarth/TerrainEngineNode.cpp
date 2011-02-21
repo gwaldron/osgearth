@@ -102,7 +102,8 @@ TerrainEngineNode::ImageLayerController::onGammaChanged( ImageLayer* layer )
 
 TerrainEngineNode::TerrainEngineNode() :
 _verticalScale( 1.0f ),
-_elevationSamplingRatio( 1.0f )
+_elevationSamplingRatio( 1.0f ),
+_initStage( INIT_NONE )
 {
     //nop
 }
@@ -111,7 +112,8 @@ TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::C
 osg::CoordinateSystemNode( rhs, op ),
 _verticalScale( rhs._verticalScale ),
 _elevationSamplingRatio( rhs._elevationSamplingRatio ),
-_map( rhs._map.get() )
+_map( rhs._map.get() ),
+_initStage( rhs._initStage )
 {
     //nop
 }
@@ -142,9 +144,14 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
             i ) );
     }
 
+    // then register the callback so we can process further map model changes
+    _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
+
     // enable backface culling
     osg::StateSet* set = getOrCreateStateSet();
     set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
+
+    _initStage = INIT_PREINIT_COMPLETE;
 }
 
 void
@@ -169,8 +176,11 @@ TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options
         updateImageUniforms();
 
         // then register the callback
-        _map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
+        // NOTE: moved this into preInitialize
+        //_map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
     }
+
+    _initStage = INIT_POSTINIT_COMPLETE;
 }
 
 osg::BoundingSphere
@@ -214,23 +224,32 @@ TerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 void
 TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {
-    if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
+    if ( _initStage == INIT_POSTINIT_COMPLETE )
     {
-        change.getImageLayer()->addCallback( _imageLayerController.get() );
-    }
-    else if ( change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER )
-    {
-        change.getImageLayer()->removeCallback( _imageLayerController.get() );
+        if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
+        {
+            change.getImageLayer()->addCallback( _imageLayerController.get() );
+        }
+        else if ( change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER )
+        {
+            change.getImageLayer()->removeCallback( _imageLayerController.get() );
+        }
+
+        if (change.getAction() == MapModelChange::ADD_IMAGE_LAYER ||
+            change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER ||
+            change.getAction() == MapModelChange::MOVE_IMAGE_LAYER )
+        {
+            updateImageUniforms();
+        }
     }
 
-    if (change.getAction() == MapModelChange::ADD_IMAGE_LAYER ||
-        change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER ||
-        change.getAction() == MapModelChange::MOVE_IMAGE_LAYER )
-        //change.getAction() == MapModelChange::ADD_ELEVATION_LAYER ||
-        //change.getAction() == MapModelChange::REMOVE_ELEVATION_LAYER ||
-        //change.getAction() == MapModelChange::MOVE_ELEVATION_LAYER )
+    // if post-initialization has not yet happened, we need to make sure the 
+    // compositor is up to date with the map model. (After post-initialization,
+    // this happens in the subclass...something that probably needs to change
+    // since this is unclear)
+    else if ( _texCompositor.valid() )
     {
-        updateImageUniforms();
+        _texCompositor->applyMapModelChange( change );
     }
 }
 

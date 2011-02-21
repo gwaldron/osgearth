@@ -30,6 +30,7 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
     <image name="arcgisonline esri imagery" driver="arcgis" loading_weight="1">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer</url>
         <nodata_image>http://server.arcgisonline.com/ArcGIS/rest/services/ESRI_Imagery_World_2D/MapServer/tile/100/0/0.jpeg</nodata_image>
+		<compress_textures>true</compress_textures>
     </image>
       
       
@@ -37,6 +38,7 @@ http://resources.esri.com/arcgisonlineservices/index.cfm?fa=content
     
     <image name="arcgisonline transportation" driver="arcgis" loading_weight="5">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer</url>
+		<compress_textures>true</compress_textures>
     </image>
     
 </map>

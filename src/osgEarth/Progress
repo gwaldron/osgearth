@@ -50,10 +50,20 @@ namespace osgEarth
         bool isCanceled() const { return _canceled; }
 
         std::string& message() { return _message; }
+
+        /**
+         *Whether or not the task should be retried.
+         */
+        bool needsRetry() const { return _needsRetry;}
+        /**
+         *Sets whether or not the task should be retried
+         */
+        void setNeedsRetry( bool needsRetry ) { _needsRetry = needsRetry; }
         
     protected:
         volatile bool _canceled;
         std::string _message;
+        volatile bool _needsRetry;
     };
 
     /**

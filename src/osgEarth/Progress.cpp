@@ -25,7 +25,8 @@ using namespace osgEarth;
 
 ProgressCallback::ProgressCallback() :
 osg::Referenced( true ),
-_canceled(false)
+_canceled(false),
+_needsRetry(false)
 {
 }
 

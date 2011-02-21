@@ -55,7 +55,6 @@ ImageLayerOptions::setDefaults()
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _minRange.init( -FLT_MAX );
     _maxRange.init( FLT_MAX );
-    _compressTextures.init( false );
 }
 
 void
@@ -73,7 +72,6 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "gamma", _gamma );
     conf.getIfSet( "min_range", _minRange );
     conf.getIfSet( "max_range", _maxRange );
-    conf.getIfSet( "compress_textures", _compressTextures);
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
@@ -102,7 +100,6 @@ ImageLayerOptions::getConfig() const
     conf.updateIfSet( "gamma", _gamma );
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
-    conf.updateIfSet( "compress_textures", _compressTextures);
 
 	if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
@@ -404,10 +401,6 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 
             result = GeoImage( ImageUtils::cloneImage(cachedImage.get()), key.getExtent() );
             ImageUtils::normalizeImage( result.getImage() );
-            if (*_options.compressTextures())
-            {
-                result.compress();
-            }
             return result;
 		}
 	}
@@ -451,6 +444,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 			osg::ref_ptr<ImageMosaic> mi = new ImageMosaic;
 			std::vector<TileKey> missingTiles;
 
+            bool retry = false;
 			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
 			{
 				double minX, minY, maxX, maxY;
@@ -475,17 +469,23 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 				}
 				else
 				{
+                    if (progress->isCanceled() || progress->needsRetry())
+                    {
+                        retry = true;
+                        break;
+                    }
 					missingTiles.push_back(intersectingTiles[j]);
 				}
 			}
 
-			if (mi->getImages().empty())
+			//if (mi->getImages().empty() || missingTiles.size() > 0)
+            if (mi->getImages().empty() || retry)
 			{
 				OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
                 return GeoImage::INVALID;
 			}
 			else if (missingTiles.size() > 0)
-			{
+			{                
                 osg::ref_ptr<const osg::Image> validImage = mi->getImages()[0].getImage();
                 unsigned int tileWidth = validImage->s();
                 unsigned int tileHeight = validImage->t();
@@ -612,10 +612,6 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		OE_DEBUG << LC << "Layer \"" << getName() << "\" writing tile " << key.str() << " to cache " << std::endl;
 		_cache->setImage( key, _cacheSpec, result.getImage());
 	}
-    if (*_options.compressTextures())
-    {
-        result.compress();
-    }
     return result;
 }
 

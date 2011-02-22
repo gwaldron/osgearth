@@ -469,7 +469,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 				}
 				else
 				{
-                    if (progress->isCanceled() || progress->needsRetry())
+                    if (progress && (progress->isCanceled() || progress->needsRetry()))
                     {
                         retry = true;
                         break;

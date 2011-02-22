@@ -20,6 +20,7 @@ SET(LIB_PUBLIC_HEADERS
     ObjectLocator
     OceanSurfaceNode
     SkyNode
+    SpatialData
     StarData
     Viewpoint
     WMS
@@ -36,6 +37,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ObjectPlacer.cpp
     ObjectLocator.cpp
     OceanSurfaceNode.cpp
+    SpatialData.cpp
     SkyNode.cpp
     Viewpoint.cpp
     WMS.cpp

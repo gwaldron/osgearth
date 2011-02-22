@@ -132,6 +132,7 @@ private:
         GeoImage _image;
         UID      _layerUID;
         //int      _layerIndex;
+        GeoImage _secondaryImage;
     };
     typedef std::queue<ImageLayerUpdate> ImageLayerUpdates;
     ImageLayerUpdates _pendingImageLayerUpdates;
@@ -150,7 +151,7 @@ private:
 private:
 
     osg::Vec3d computeCenterModel();
-    GeoImage createGeoImage( const CustomColorLayer& layer ) const; //const osgTerrain::Layer* imageLayer ) const;
+    bool createGeoImage( const CustomColorLayer& layer, GeoImage& image, GeoImage& secondaryImage ) const; //const osgTerrain::Layer* imageLayer ) const;
     osg::Geode* createGeometry( const CustomTileFrame& tilef );
     osg::StateSet* createStateSet( const CustomTileFrame& tilef );
     void prepareImageLayerUpdate( int layerIndex, const CustomTileFrame& tilef );

@@ -135,6 +135,12 @@ public:
         CustomTerrain* terrain,
         osg::ref_ptr<osg::Image>& output);
 
+    bool createSecondaryImage(
+        UID layerUID,
+        const TileKey& key,
+        CustomTerrain* terrain,
+        osg::ref_ptr<osg::Image>& output);
+
 protected:
 
     //virtual ~MapEngine();

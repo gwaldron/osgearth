@@ -50,11 +50,27 @@ namespace
         {
             buf << "#extension GL_ARB_shader_texture_lod : enable \n"
                 << "uniform float osgearth_SlotStamp[ " << numSlots << "]; \n"
-                << "uniform float osg_FrameTime; \n";
+                << "uniform float osg_FrameTime; \n\n";
+            buf << "#define TEXTURE_SIZE "
+                << static_cast<float>(TextureCompositorTexArray::textureSize()) << "\n"
+                << "#define TEXTURE_MIPCOUNT 9\n\n"
+                << "float mipLevel( float2 uv )\n"
+                << "{\n"
+                << "  float2 dx = ddx( uv * TEXTURE_SIZE );\n"
+                << "  float2 dy = ddy( uv * TEXTURE_SIZE );\n"
+                << "  float d = max( dot( dx, dx ), dot( dy, dy ) );\n"
+                << "  // Clamp the value to the max mip level counts\n"
+                << "  const float rangeClamp = pow(2, (TEXTURE_MIPCOUNT - 1) * 2);\n"
+                << "  d = clamp(d, 1.0, rangeClamp);\n"
+                << "  float mipLevel = 0.5 * log2(d);\n"
+                << "  return mipLevel;\n"
+                << "}\n";
         }
 
-        buf << "uniform sampler2DArray tex0; \n"
-            << "uniform float region[ " << 4*numSlots << "]; \n"
+        buf << "uniform sampler2DArray tex0; \n";
+        if ( blending )
+            buf << "uniform sampler2DArray tex1;\n";
+        buf << "uniform float region[ " << 4*numSlots << "]; \n"
             << "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
             << "uniform bool  osgearth_ImageLayerEnabled[" << numSlots << "]; \n"
             << "uniform float osgearth_ImageLayerRange[" << 2*numSlots << "]; \n"
@@ -89,10 +105,13 @@ namespace
                 float invBlendTime = 1.0f/blendTime;
 
                 buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
-                    << "            if ( age < 1.0 ) \n"
-                    << "                texel = texture2DArrayLod( tex0, vec3(u,v,"<< slot <<"), 1.0-age); \n"
-                    << "            else \n"
-                    << "                texel = texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n";
+                    << "            age = max(age, 1.0);\n"
+                    << "            float lodFac = clamp((mipLevel(vec2(u, v)) - 1.0) / TEXTURE_MIPCOUNT, 0.0, 1.0);\n"
+                    << "            vec3 texCoord = vec3(u, v, " << slot <<");\n;\n"
+                    << "            vec4 texel0 = texture2DArray( tex0, texCoord );\n"
+                    << "            vec4 texel1 = texture2DArray( tex1, texCoord );\n"
+                    << "            float mixval = age * lodFac;\n"
+                    << "            texel = mix(texel0, texel1, mixval);\n";
             }
             else
             {
@@ -129,8 +148,8 @@ namespace
             tex = new SparseTexture2DArray();
             tex->setSourceFormat( GL_RGBA );
             tex->setInternalFormat( GL_RGBA8 );
-            tex->setTextureWidth( 256 );
-            tex->setTextureHeight( 256 );
+            tex->setTextureWidth( TextureCompositorTexArray::textureSize() );
+            tex->setTextureHeight( TextureCompositorTexArray::textureSize() );
             
             // configure the mipmapping 
             tex->setMaxAnisotropy(16.0f);
@@ -210,23 +229,23 @@ _lodTransitionTime( *options.lodTransitionTime() )
 }
 
 GeoImage
-TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
+TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent, unsigned textureSize ) const
 {
     const osg::Image* image = layerImage.getImage();
 
     if (image->getPixelFormat() != GL_RGBA ||
         image->getInternalTextureFormat() != GL_RGBA8 ||
-        image->s() != 256 ||
-        image->t() != 256 )
+        image->s() != textureSize ||
+        image->t() != textureSize )
     {
         // Because all tex2darray layers must be identical in format, let's use RGBA.
         osg::ref_ptr<osg::Image> newImage = ImageUtils::convertToRGBA8( image );
         
         // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
-        if ( image->s() != 256 || image->t() != 256 )
+        if ( image->s() != textureSize || image->t() != textureSize )
         {
             osg::ref_ptr<osg::Image> resizedImage;
-            if ( ImageUtils::resizeImage( newImage.get(), 256, 256, resizedImage ) )
+            if ( ImageUtils::resizeImage( newImage.get(), textureSize, textureSize, resizedImage ) )
                 newImage = resizedImage.get();
         }
 
@@ -248,7 +267,8 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
                                             UID layerUID,
                                             const GeoImage& preparedImage,
                                             const GeoExtent& tileExtent,
-                                            const TextureLayout& layout ) const
+                                            const TextureLayout& layout,
+                                            const GeoImage& secondaryImage) const
 {
     int slot = layout.getSlot( layerUID );
     if ( slot < 0 )

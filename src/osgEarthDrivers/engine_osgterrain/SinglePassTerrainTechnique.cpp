@@ -334,7 +334,9 @@ SinglePassTerrainTechnique::applyTileUpdates()
                 getFrontGeode()->getStateSet(),
                 update._layerUID,
                 update._image,
-                _tileExtent );
+                _tileExtent,
+                update._secondaryImage
+                );
 
             _pendingImageLayerUpdates.pop();
             applied = true;
@@ -350,21 +352,25 @@ SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const CustomT
     CustomColorLayer layer;
     if ( tilef.getCustomColorLayer( layerUID, layer ) )
     {
-        GeoImage geoImage = createGeoImage( layer );
-        if ( geoImage.valid() )
+        GeoImage geoImage, secondaryImage;
+
+        if ( createGeoImage( layer, geoImage, secondaryImage ) )
         {
             ImageLayerUpdate update;
             update._image = _texCompositor->prepareImage( geoImage, _tileExtent );
             update._layerUID = layerUID;
-
+            update._secondaryImage = _texCompositor->prepareSecondaryImage(
+                secondaryImage, _tileExtent );
             if ( update._image.valid() )
                 _pendingImageLayerUpdates.push( update );
         }
+
     }
 }
 
-GeoImage
-SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer ) const
+bool
+SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer,
+                                            GeoImage& image, GeoImage& secondaryImage) const
 {
     osg::ref_ptr<const GeoLocator> layerLocator = dynamic_cast<const GeoLocator*>( colorLayer.getLocator() );
     if ( layerLocator.valid() )
@@ -373,9 +379,11 @@ SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer )
             layerLocator = layerLocator->getGeographicFromGeocentric();
 
         const GeoExtent& imageExtent = layerLocator->getDataExtent();
-        return GeoImage( colorLayer.getImage(), imageExtent ); //const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
+        image = GeoImage( colorLayer.getImage(), imageExtent ); //const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
+        secondaryImage = GeoImage( colorLayer.getSecondaryImage(), imageExtent );
+        return true;
     }
-    return GeoImage::INVALID;
+    return false;
 }
 
 osg::StateSet*
@@ -399,11 +407,12 @@ SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
     for( ColorLayersByUID::const_iterator i = tilef._colorLayers.begin(); i != tilef._colorLayers.end(); ++i )
     {
         const CustomColorLayer& colorLayer = i->second;
-        GeoImage image = createGeoImage( colorLayer );
-        if ( image.valid() )
+        GeoImage image, secondaryImage;
+        if ( createGeoImage( colorLayer, image, secondaryImage ) )
         {
             image = _texCompositor->prepareImage( image, _tileExtent );
-            _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileExtent );
+            secondaryImage = _texCompositor->prepareSecondaryImage( secondaryImage, _tileExtent );
+            _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileExtent, secondaryImage );
         }
     }
 

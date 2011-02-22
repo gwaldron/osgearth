@@ -37,14 +37,16 @@ public:
         osg::Image* image,
         const osgTerrain::Locator* locator,
         int lod,
+        osg::Image* secondaryImage = 0,
         bool fallbackData =false )
-        : _layer(imageLayer), _locator(locator), _image(image), _lod(lod), _fallbackData(fallbackData) { }
+        : _layer(imageLayer), _locator(locator), _image(image),  _secondaryImage(secondaryImage), _lod(lod), _fallbackData(fallbackData) { }
 
     CustomColorLayer( const CustomColorLayer& rhs ) :
         _layer( rhs._layer.get() ),        
         _locator( rhs._locator.get() ),
         _image( rhs._image.get() ),
-        _lod( rhs._lod ) { }
+        _secondaryImage(rhs._secondaryImage),
+        _lod( rhs._lod ){ }
 
     osgEarth::UID getUID() const {
         return _layer->getUID();
@@ -56,6 +58,9 @@ public:
 
     osg::Image* getImage() const { 
         return _image.get(); }
+
+    osg::Image* getSecondaryImage() const {
+        return _secondaryImage.get(); }
 
     const osgEarth::ImageLayer* getMapLayer() const {
         return _layer.get(); }
@@ -83,6 +88,7 @@ private:
     osg::ref_ptr<const osgEarth::ImageLayer> _layer;
     osg::ref_ptr<const osgTerrain::Locator>  _locator;
     osg::ref_ptr<osg::Image>                 _image;
+    osg::ref_ptr<osg::Image>                 _secondaryImage;
     int                                      _lod;
     bool                                     _fallbackData;
 };

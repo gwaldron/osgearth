@@ -102,6 +102,7 @@ struct BuildColorLayer
             geoImage.getImage(),
             locator,
             _key.getLevelOfDetail(),
+            0,
             isFallbackData ) );
     }
 
@@ -293,6 +294,7 @@ TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_t
                 i->get(), emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),
+                0,
                 true ) );
         }
     }
@@ -435,6 +437,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
                 i->get(), emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),
+                0,
                 true ) );
         }
     }

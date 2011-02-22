@@ -91,8 +91,9 @@ namespace osgEarth
         virtual bool supportsLayerUpdate() const { return false; }
 
         virtual GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
+        virtual GeoImage prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) { return image; }
 
-        virtual void applyLayerUpdate( osg::StateSet* stateSet, UID layerUID, const GeoImage& preparedImage, const GeoExtent& tileExtent, const TextureLayout& layout ) const { }
+        virtual void applyLayerUpdate( osg::StateSet* stateSet, UID layerUID, const GeoImage& preparedImage, const GeoExtent& tileExtent, const TextureLayout& layout, const GeoImage& secondaryImage ) const { }
 
         virtual void applyLayerRemoval( osg::StateSet* stateSet, UID layerUID ) const { }
 
@@ -145,6 +146,8 @@ namespace osgEarth
          */
         GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const;
 
+        GeoImage prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) const;
+
         /**
          * Updates a stateset's texture composition with an image. Typically this will be the image
          * returned from prepareImage(), but it doesn't have to be. Note: if the stateset is live in
@@ -154,7 +157,8 @@ namespace osgEarth
             osg::StateSet* stateSet,
             UID layerUID,
             const GeoImage& preparedImage,
-            const GeoExtent& tileExtent ) const;
+            const GeoExtent& tileExtent,
+            const GeoImage& secondaryImage) const;
 
         /**
          * Updates a stateset's texture composition based on the information that a layer has been

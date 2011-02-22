@@ -211,13 +211,15 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         }
         float size = symbol->size().isSet() ? symbol->size().get() : 32.0f;
         t->setCharacterSize( size );
+        /*
+        //TODO:  We need to do something to account for autotransformed text that is under a LOD.  Setting the initial bound works sometimes but not all the time.
         if (rotateToScreen)
         {
             //Set the initial bound so that OSG will traverse the text even if it's under an LOD.
             osg::BoundingBox bb;
             bb.expandBy( osg::BoundingSphere(position, size));
             t->setInitialBound( bb);
-        }
+        }*/
         //t->setCharacterSizeMode( osgText::TextBase::OBJECT_COORDS_WITH_MAXIMUM_SCREEN_SIZE_CAPPED_BY_FONT_HEIGHT );
         //t->setCharacterSize( 300000.0f );
         t->setPosition( position );

@@ -27,34 +27,6 @@ using namespace OpenThreads;
 
 //--------------------------------------------------------------------------
 
-#if 0
-namespace
-{
-    struct BuildTile
-    {
-        void init( const TileKey& key, TileBuilder* builder ) 
-        {
-            _key = key;
-            _builder = builder;
-
-        }
-
-        void execute()
-        {
-            _builder->createTile( _key, false, _tile, _hasRealData );
-            //_builder->createTile( _key, true, _tile, _hasRealData );
-        }
-
-        osg::ref_ptr<TileBuilder> _builder;
-        TileKey _key;
-        osg::ref_ptr<CustomTile> _tile;
-        bool _hasRealData;
-    };
-}
-
-//--------------------------------------------------------------------------
-#endif
-
 ParallelKeyNodeFactory::ParallelKeyNodeFactory(TileBuilder* builder,
                                                const OSGTerrainOptions& options,
                                                const MapInfo& mapInfo,

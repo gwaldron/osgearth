@@ -1152,6 +1152,57 @@ Map::sync( MapFrame& frame ) const
     return result;
 }
 
+bool
+Map::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output )
+{
+    if ( !inputSRS )
+        return false;
+
+    const SpatialReference* mapSRS = getProfile()->getSRS();
+
+    if ( inputSRS->isEquivalentTo( mapSRS ) )
+    {
+        output = input;
+        return true;
+    }
+
+    return inputSRS->transform(
+        input.x(), input.y(),
+        mapSRS,
+        output.x(), output.y() );
+}
+
+bool
+Map::mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output )
+{
+    const SpatialReference* mapSRS = getProfile()->getSRS();
+    if ( !mapSRS->isGeographic() )
+        return false;
+
+    mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
+        osg::DegreesToRadians( input.y() ), osg::DegreesToRadians( input.x() ), input.z(),
+        output.x(), output.y(), output.z() );
+
+    return true;
+}
+
+bool
+Map::geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output )
+{
+    const SpatialReference* mapSRS = getProfile()->getSRS();
+    if ( !mapSRS->isGeographic() )
+        return false;
+
+    mapSRS->getEllipsoid()->convertXYZToLatLongHeight(
+        input.x(), input.y(), input.z(),
+        output.y(), output.x(), output.z() );
+
+    output.y() = osg::RadiansToDegrees(output.y());
+    output.x() = osg::RadiansToDegrees(output.x());
+
+    return true;
+}
+
 //------------------------------------------------------------------------
 
 MapFrame::MapFrame( const Map* map, Map::ModelParts parts, const std::string& name ) :

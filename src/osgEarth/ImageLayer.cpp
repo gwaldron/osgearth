@@ -347,15 +347,6 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 {
     GeoImage result;
 
-    const Profile* layerProfile = getProfile();
-    const Profile* mapProfile = key.getProfile();
-
-	if ( !layerProfile )
-	{
-		OE_WARN << LC << "Could not get a valid profile for Layer \"" << getName() << "\"" << std::endl;
-        return GeoImage::INVALID;
-	}
-
 	//OE_NOTICE << "[osgEarth::MapLayer::createImage] " << key.str() << std::endl;
 	if ( !_actualCacheOnly && !getTileSource()  )
 	{
@@ -363,8 +354,16 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		return GeoImage::INVALID;
 	}
 
-	//Determine whether we should cache in the Map profile or the Layer profile.
+    const Profile* layerProfile = getProfile();
+    const Profile* mapProfile = key.getProfile();
 
+    if ( !getProfile() )
+	{
+		OE_WARN << LC << "Could not get a valid profile for Layer \"" << getName() << "\"" << std::endl;
+        return GeoImage::INVALID;
+	}
+
+	//Determine whether we should cache in the Map profile or the Layer profile.
 	bool cacheInMapProfile = true;
 	if (mapProfile->isEquivalentTo( layerProfile ))
 	{

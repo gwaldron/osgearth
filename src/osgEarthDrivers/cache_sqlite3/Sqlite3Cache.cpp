@@ -21,6 +21,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/TaskService>
 #include <osgDB/FileNameUtils>
+#include <osgDB/FileUtils>
 #include <osgDB/ReaderWriter>
 #if OSG_MIN_VERSION_REQUIRED(2,9,5)
 #  include <osgDB/Options>
@@ -64,6 +65,15 @@ using namespace OpenThreads;
 static
 sqlite3* openDatabase( const std::string& path, bool serialized )
 {
+    //Try to create the path if it doesn't exist
+    std::string dirPath = osgDB::getFilePath(path);
+
+    //If the path doesn't currently exist or we can't create the path, don't cache the file
+    if (!osgDB::fileExists(dirPath) && !osgDB::makeDirectory(dirPath))
+    {
+        OE_WARN << LC << "Couldn't create path " << dirPath << std::endl;
+    }
+
     sqlite3* db = 0L;
 
     // not sure if SHAREDCACHE is necessary or wise 
@@ -352,7 +362,8 @@ struct LayerTable : public osg::Referenced
 {
     LayerTable( const MetadataRecord& meta, sqlite3* db )
         : _meta(meta)
-    {
+    {        
+        _tableName = "layer_" + _meta._layerName;
         // create the table and load the processors.
         if ( ! initialize( db ) )
         {
@@ -362,26 +373,26 @@ struct LayerTable : public osg::Referenced
         // initialize the SELECT statement for fetching records
         std::stringstream buf;
 #ifdef SPLIT_DB_FILE
-        buf << "SELECT created,accessed,size FROM \"" << _meta._layerName << "\" WHERE key = ?";
+        buf << "SELECT created,accessed,size FROM \"" << tableName << "\" WHERE key = ?";
 #else
-        buf << "SELECT created,accessed,data FROM \"" << _meta._layerName << "\" WHERE key = ?";
+        buf << "SELECT created,accessed,data FROM \"" << _tableName << "\" WHERE key = ?";
 #endif
         _selectSQL = buf.str();
 
         // initialize the UPDATE statement for updating the timestamp of an accessed record
         buf.str("");
-        buf << "UPDATE \"" << _meta._layerName << "\" SET accessed = ? "
+        buf << "UPDATE \"" << _tableName << "\" SET accessed = ? "
             << "WHERE key = ?";
         _updateTimeSQL = buf.str();
 
         buf.str("");
-        buf << "UPDATE \"" << _meta._layerName << "\" SET accessed = ? "
+        buf << "UPDATE \"" << _tableName << "\" SET accessed = ? "
             << "WHERE key in ( ? )";
         _updateTimePoolSQL = buf.str();
         
         // initialize the INSERT statement for writing records.
         buf.str("");
-        buf << "INSERT OR REPLACE INTO \"" << _meta._layerName << "\" "
+        buf << "INSERT OR REPLACE INTO \"" << _tableName << "\" "
 #ifdef SPLIT_DB_FILE
             << "(key,created,accessed,size) VALUES (?,?,?,?)";
 #else
@@ -391,17 +402,17 @@ struct LayerTable : public osg::Referenced
 
         // initialize the DELETE statements for purging old records.
         buf.str("");
-        buf << "DELETE FROM \"" << _meta._layerName << "\" "
-            << "INDEXED BY \"" << _meta._layerName << "_lruindex\" "
+        buf << "DELETE FROM \"" << _tableName << "\" "
+            << "INDEXED BY \"" << _tableName << "_lruindex\" "
             << "WHERE accessed < ?";
         _purgeSQL = buf.str();
         
         buf.str("");
-        buf << "DELETE FROM \""  << _meta._layerName << "\" WHERE key in (SELECT key FROM \"" << _meta._layerName << "\" WHERE \"accessed\" < ? limit ?)";
+        buf << "DELETE FROM \""  << _tableName << "\" WHERE key in (SELECT key FROM \"" << _tableName << "\" WHERE \"accessed\" < ? limit ?)";
         _purgeLimitSQL = buf.str();          
 
         buf.str("");
-        buf << "SELECT key FROM \"" << _meta._layerName << "\" WHERE \"accessed\" < ? limit ?";
+        buf << "SELECT key FROM \"" << _tableName << "\" WHERE \"accessed\" < ? limit ?";
         _purgeSelect = buf.str();
 
         _statsLoaded = 0;
@@ -413,9 +424,9 @@ struct LayerTable : public osg::Referenced
     sqlite3_int64 getTableSize(sqlite3* db)
     {
 #ifdef SPLIT_DB_FILE
-        std::string query = "select sum(size) from \"" + _meta._layerName + "\";";
+        std::string query = "select sum(size) from \"" + _tableName + "\";";
 #else
-        std::string query = "select sum(length(data)) from \"" + _meta._layerName + "\";";
+        std::string query = "select sum(length(data)) from \"" + _tableName + "\";";
 #endif
         sqlite3_stmt* select = 0L;
         int rc = sqlite3_prepare_v2( db, query.c_str(), query.length(), &select, 0L );
@@ -440,7 +451,7 @@ struct LayerTable : public osg::Referenced
     }
 
     int getNbEntry(sqlite3* db) {
-        std::string query = "select count(*) from \"" + _meta._layerName + "\";";
+        std::string query = "select count(*) from \"" + _tableName + "\";";
         sqlite3_stmt* select = 0L;
         int rc = sqlite3_prepare_v2( db, query.c_str(), query.length(), &select, 0L );
         if ( rc != SQLITE_OK )
@@ -833,7 +844,7 @@ struct LayerTable : public osg::Referenced
     {
         // first create the table if it does not already exist:
         std::stringstream buf;
-        buf << "CREATE TABLE IF NOT EXISTS \"" << _meta._layerName << "\" ("
+        buf << "CREATE TABLE IF NOT EXISTS \"" << _tableName << "\" ("
             << "key char(64) PRIMARY KEY UNIQUE, "
             << "created int, "
             << "accessed int, "
@@ -858,8 +869,8 @@ struct LayerTable : public osg::Referenced
         // create an index on the time-last-accessed column
         buf.str("");
         buf << "CREATE INDEX IF NOT EXISTS \"" 
-            << _meta._layerName << "_lruindex\" "
-            << "ON \"" << _meta._layerName << "\" (accessed)";
+            << _tableName << "_lruindex\" "
+            << "ON \"" << _tableName << "\" (accessed)";
         sql = buf.str();
 
         OE_DEBUG << LC << "SQL = " << sql << std::endl;
@@ -902,6 +913,7 @@ struct LayerTable : public osg::Referenced
     std::string _purgeSQL;
     std::string _purgeLimitSQL;
     MetadataRecord _meta;
+    std::string _tableName;
 
     osg::ref_ptr<osgDB::ReaderWriter> _rw;
     osg::ref_ptr<osgDB::ReaderWriter::Options> _rwOptions;

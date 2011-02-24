@@ -509,7 +509,7 @@ namespace osgEarth { namespace Util { namespace Controls
     };
 
     /**
-     * All the Controls within a ControlPriorityBin are sorted by priority and
+     * All the Controls within a SceneControlBin are sorted by priority and
      * drawn so as to prevent overlap. They are also positioned in WORLD space,
      * rather than in screen space.
      *
@@ -517,13 +517,13 @@ namespace osgEarth { namespace Util { namespace Controls
      * overlap, but you want some control over the priority of labels. See the
      * "osgearth_labels" example.
      *
-     * Note: to use a ControlPriorityBin, you must add the bin to your scene graph
+     * Note: to use a SceneControlBin, you must add the bin to your scene graph
      * somewhere OUTSIDE the Control Canvas.
      */
-    class OSGEARTHUTIL_EXPORT ControlPriorityBin : public osg::Group
+    class OSGEARTHUTIL_EXPORT SceneControlBin : public osg::Group
     {
     public:
-        ControlPriorityBin();
+        SceneControlBin();
 
         /**
          * Adds a new control to the bin, and returns the MatrixTransform that you
@@ -531,24 +531,36 @@ namespace osgEarth { namespace Util { namespace Controls
          */
         osg::MatrixTransform* addControl( Control* control, float priority = 0.0f );
 
-        /** Updates the renderable controls in this bin. (internal function) */
-        void draw( const ControlContext& context, int bin );
-
-        /** 
-         * Access to the underlying control group that will be rendered under the
-         * ControlCanvas. (internal function)
+        /**
+         * Removes a control from the bin.
          */
-        osg::Group* getControlGroup() const { return _group; }
+        void removeControl( Control* control );
+
+        /**
+         * Accesses the matrix transform node housing a scene control (so you can
+         * move it).
+         */
+        osg::MatrixTransform* getControlTransform( Control* control ) const;
 
     private:
         typedef std::pair<float, ControlNode*> ControlNodePair;
         typedef std::multimap<float, ControlNode*> ControlNodeCollection;
         ControlNodeCollection _controlNodes;
-        osg::ref_ptr<osg::Group> _group;
+
+        typedef std::pair<Control*, ControlNodeCollection::iterator> ControlIndexPair;
+        typedef std::map<Control*, ControlNodeCollection::iterator> ControlIndex;
+        ControlIndex _index;
 
         typedef std::map<ControlNode*, osg::MatrixTransform*> RenderNodeTable;
         typedef std::pair<ControlNode*, osg::MatrixTransform*> RenderNodePair;
         RenderNodeTable _renderNodes;
+
+        osg::ref_ptr<osg::Group> _group;
+
+        friend class ControlCanvas;
+
+        void draw( const ControlContext& context, int bin );
+        osg::Group* getControlGroup() const { return _group; }
     };
 
     /**
@@ -569,7 +581,7 @@ namespace osgEarth { namespace Util { namespace Controls
         Control* getControlAtMouse( float x, float y ) const;
 
         /** Accesses the priority rendering bin for this canvas. */
-        ControlPriorityBin* getPriorityBin() { return _sortedBin; }
+        SceneControlBin* getSceneControls() { return _sceneBin; }
 
     public:
         // internal- no need to call directly
@@ -586,7 +598,7 @@ namespace osgEarth { namespace Util { namespace Controls
         GeodeTable  _geodeTable;
         ControlContext _context;
         bool _contextDirty;
-        osg::ref_ptr<ControlPriorityBin> _sortedBin;
+        osg::ref_ptr<SceneControlBin> _sceneBin;
 
     private:
         friend struct ControlCanvasEventHandler;

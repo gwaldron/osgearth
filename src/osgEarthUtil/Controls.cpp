@@ -1394,19 +1394,22 @@ ControlNode::traverse( osg::NodeVisitor& nv )
 
 // ---------------------------------------------------------------------------
 
-ControlPriorityBin::ControlPriorityBin()
+SceneControlBin::SceneControlBin()
 {
     _group = new Group();
 }
 
 osg::MatrixTransform*
-ControlPriorityBin::addControl( Control* control, float priority )
+SceneControlBin::addControl( Control* control, float priority )
 {
     ControlNode* node = new ControlNode(control);
 
-    // record the node in priority order:
-    _controlNodes.insert( ControlNodePair(-priority, node) );
+    // record the node in priority order.
+    ControlNodeCollection::iterator ptr = _controlNodes.insert( ControlNodePair(-priority, node) );
     this->addChild( node );
+
+    // record it in the index:
+    _index.insert( ControlIndexPair(control, ptr) );
 
     // create and cache a transform/geode pair for the node
     osg::MatrixTransform* xform = new osg::MatrixTransform();
@@ -1421,7 +1424,45 @@ ControlPriorityBin::addControl( Control* control, float priority )
 }
 
 void
-ControlPriorityBin::draw( const ControlContext& context, int bin )
+SceneControlBin::removeControl( Control* control )
+{
+    // look it up in the index:
+    ControlIndex::iterator i = _index.find(control);
+    if ( i != _index.end() )
+    {
+        // found; now save the node pointer
+        ControlNode* node = i->second->second;
+
+        // remove it from the node table and from the index
+        _controlNodes.erase( i->second );
+        _index.erase( i );
+
+        // find the corresponding render node
+        RenderNodeTable::iterator j = _renderNodes.find(node);
+        if ( j != _renderNodes.end() )
+        {
+            // remove it from the render table and from the scene graph.
+            osg::MatrixTransform* xform = j->second;
+            _renderNodes.erase( j );
+            _group->removeChild( xform );
+        }
+    }
+}
+
+osg::MatrixTransform*
+SceneControlBin::getControlTransform( Control* control ) const
+{
+    ControlIndex::const_iterator i = _index.find(control);
+    if ( i != _index.end() )
+    {
+        ControlNode* node = i->second->second;
+        return _renderNodes.find(node)->second;
+    }
+    else return 0L;
+}
+
+void
+SceneControlBin::draw( const ControlContext& context, int bin )
 {
     const osg::Viewport* vp = context._vp;
     osg::Vec2f surfaceSize( context._vp->width(), context._vp->height() );
@@ -1516,8 +1557,8 @@ _contextDirty(true)
 
     getOrCreateStateSet()->setAttributeAndModes( new osg::Depth( osg::Depth::LEQUAL, 0, 1, false ) );
 
-    _sortedBin = new ControlPriorityBin();
-    this->addChild( _sortedBin->getControlGroup() );
+    _sceneBin = new SceneControlBin();
+    this->addChild( _sceneBin->getControlGroup() );
 }
 
 void
@@ -1630,9 +1671,9 @@ ControlCanvas::update()
         }
     }
 
-    if ( _sortedBin.valid() )
+    if ( _sceneBin.valid() )
     {
-        _sortedBin->draw( _context, bin );
+        _sceneBin->draw( _context, bin );
     }
 
     _contextDirty = false;

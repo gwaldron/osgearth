@@ -348,19 +348,19 @@ namespace osgEarth
         /**
          * Convenience function to convert an arbitrary point to map coordinates.
          */
-        bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output );
+        bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
 
         /**
          * Convenience function to convert a point (in map coordinates) to geocentric coordinates.
          * Only valid for geocentric maps.
          */
-        bool mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output );
+        bool mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
 
         /**
          * Convenience function to convert a geocentric point to map coordinates.
          * This is only valid for geocentric maps.
          */
-        bool geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output );
+        bool geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.

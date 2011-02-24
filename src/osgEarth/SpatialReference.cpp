@@ -603,7 +603,7 @@ SpatialReference::transform(double x, double y,
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        OE_DEBUG << "SpatialReference: using cached transform handle" << std::endl;
+        //OE_DEBUG << "SpatialReference: using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else
@@ -723,7 +723,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
         TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
         if (itr != _transformHandleCache.end())
         {
-            OE_DEBUG << "SpatialRefernece: using cached transform handle" << std::endl;
+            //OE_DEBUG << "SpatialRefernece: using cached transform handle" << std::endl;
             xform_handle = itr->second;
         }
         else

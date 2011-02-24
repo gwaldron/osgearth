@@ -136,7 +136,7 @@ namespace osgEarth { namespace Features
          *
          * Caller takes ownership of the returned object.
          */
-        virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query ) =0;
+        virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query =Symbology::Query() ) =0;
 
 
     public: // Styling

@@ -23,6 +23,7 @@
 #include <osgEarth/Common>
 #include <osg/Drawable>
 #include <osg/Geode>
+#include <osg/MatrixTransform>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 #include <osgText/Font>
@@ -480,6 +481,89 @@ namespace osgEarth { namespace Util { namespace Controls
     };
 
     /**
+     * A Node that places a control in world space.
+     */
+    class OSGEARTHUTIL_EXPORT ControlNode : public osg::MatrixTransform
+    {
+    public:
+        ControlNode( Control* control );
+
+        /** Accesses the underlying control */
+        Control* getControl() { return _control.get(); }
+        const Control* getControl() const { return _control.get(); }
+
+        /** Gets the screen-space position of the control */
+        const osg::Vec2f& getScreenPos() const { return _screenPos; }
+
+        /** Whether this control is obscured by other controls. */
+        bool isObscured() const { return _obscured; }
+        void setObscured( bool value ) { _obscured = value; }
+
+    public:
+        virtual void traverse( osg::NodeVisitor& nv ); //override
+
+    private:
+        osg::ref_ptr<Control> _control;
+        osg::Vec2f            _screenPos;
+        bool                  _obscured;
+    };
+
+    /**
+     * All the Controls within a SceneControlBin are sorted by priority and
+     * drawn so as to prevent overlap. They are also positioned in WORLD space,
+     * rather than in screen space.
+     *
+     * The canonical example is labeling, where you don't want label text to
+     * overlap, but you want some control over the priority of labels. See the
+     * "osgearth_labels" example.
+     *
+     * Note: to use a SceneControlBin, you must add the bin to your scene graph
+     * somewhere OUTSIDE the Control Canvas.
+     */
+    class OSGEARTHUTIL_EXPORT SceneControlBin : public osg::Group
+    {
+    public:
+        SceneControlBin();
+
+        /**
+         * Adds a new control to the bin, and returns the MatrixTransform that you
+         * can use to set the World position of the control.
+         */
+        osg::MatrixTransform* addControl( Control* control, float priority = 0.0f );
+
+        /**
+         * Removes a control from the bin.
+         */
+        void removeControl( Control* control );
+
+        /**
+         * Accesses the matrix transform node housing a scene control (so you can
+         * move it).
+         */
+        osg::MatrixTransform* getControlTransform( Control* control ) const;
+
+    private:
+        typedef std::pair<float, ControlNode*> ControlNodePair;
+        typedef std::multimap<float, ControlNode*> ControlNodeCollection;
+        ControlNodeCollection _controlNodes;
+
+        typedef std::pair<Control*, ControlNodeCollection::iterator> ControlIndexPair;
+        typedef std::map<Control*, ControlNodeCollection::iterator> ControlIndex;
+        ControlIndex _index;
+
+        typedef std::map<ControlNode*, osg::MatrixTransform*> RenderNodeTable;
+        typedef std::pair<ControlNode*, osg::MatrixTransform*> RenderNodePair;
+        RenderNodeTable _renderNodes;
+
+        osg::ref_ptr<osg::Group> _group;
+
+        friend class ControlCanvas;
+
+        void draw( const ControlContext& context, int bin );
+        osg::Group* getControlGroup() const { return _group; }
+    };
+
+    /**
      * Associates controls with an OSG View.
      */
     class OSGEARTHUTIL_EXPORT ControlCanvas : public osg::Camera
@@ -487,14 +571,17 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         ControlCanvas( osgViewer::View* view );
 
-        // adds a top-level control to this surface.
+        /** adds a top-level control to this surface. */
         void addControl( Control* control );
 
-        // removes a top-level control.
+        /** removes a top-level control. */
         void removeControl( Control* control );
 
-        // gets the top-most control that intersects the specified position.
+        /** gets the top-most control that intersects the specified position. */
         Control* getControlAtMouse( float x, float y ) const;
+
+        /** Accesses the priority rendering bin for this canvas. */
+        SceneControlBin* getSceneControls() { return _sceneBin; }
 
     public:
         // internal- no need to call directly
@@ -503,11 +590,15 @@ namespace osgEarth { namespace Util { namespace Controls
         // internal - no need to call directly
         void setControlContext( const ControlContext& );
 
+    public:
+        virtual void traverse( osg::NodeVisitor& nv ); // override
+
     protected:
         ControlList _controls;
         GeodeTable  _geodeTable;
         ControlContext _context;
         bool _contextDirty;
+        osg::ref_ptr<SceneControlBin> _sceneBin;
 
     private:
         friend struct ControlCanvasEventHandler;

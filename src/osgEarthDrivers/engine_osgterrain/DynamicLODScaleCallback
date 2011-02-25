@@ -51,7 +51,7 @@ struct DynamicLODScaleCallback : public osg::NodeCallback
             if ( bsToEye > has )
             {
                 float denom = osg::maximum(0.1f, (1.0f/_fallOff)) * 10000.0f;
-                scaleAdj = osg::clampBetween( log10(bsToEye/denom), 1.0f, 3.0f );
+                scaleAdj = osg::clampBetween( log10f(bsToEye/denom), 1.0f, 3.0f );
                 
                 //OE_INFO << LC 
                 //    << std::fixed

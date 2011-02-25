@@ -37,7 +37,8 @@ FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& optio
 ModelSourceOptions( options ),
 _geomTypeOverride( Geometry::TYPE_UNKNOWN ),
 _lit( true ),
-_maxGranularity_deg( 5.0 )
+_maxGranularity_deg( 5.0 ),
+_preserveFeatures( false )
 {
     fromConfig( _conf );
 }
@@ -52,6 +53,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "gridding", _gridding );
     conf.getIfSet( "lighting", _lit );
     conf.getIfSet( "max_granularity", _maxGranularity_deg );
+    conf.getIfSet( "preserve_features", _preserveFeatures );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -72,6 +74,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "styles", _styles );
     conf.updateIfSet( "lighting", _lit );
     conf.updateIfSet( "max_granularity", _maxGranularity_deg );
+    conf.updateIfSet( "preserve_features", _preserveFeatures );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )

@@ -56,6 +56,14 @@ namespace osgEarth { namespace Features
         optional<double>& maxGranularity() { return _maxAngle_deg; }
         const optional<double>& maxGranularity() const { return _maxAngle_deg; }
 
+        /**
+         * Whether to create exactly one osg::Geometry for each Feature. Default is FALSE;
+         * by default, the filter will try to combine geometry drawables to maximize
+         * rendering performance - but in doing so, you lose Feature-level addressability.
+         */
+        optional<bool>& geometryPerFeature() { return _geometryPerFeature; }
+        const optional<bool>& geometryPerFeature() const { return _geometryPerFeature; }
+
         /** Pushes a list of features through the filter. */
         FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
 
@@ -64,6 +72,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const Symbology::Style> _style;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<double> _maxAngle_deg;
+        optional<bool> _geometryPerFeature;
         bool _hasPoints;
         bool _hasLines;
         void reset();

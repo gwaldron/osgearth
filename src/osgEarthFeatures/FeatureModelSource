@@ -54,6 +54,10 @@ namespace osgEarth { namespace Features
         optional<double>& maxGranularity() { return _maxGranularity_deg; }
         const optional<double>& maxGranularity() const { return _maxGranularity_deg; }
 
+        /** Whether to preserve individual feature addressibility in the scene graph */
+        optional<bool>& preserveFeatures() { return _preserveFeatures; }
+        const optional<bool>& preserveFeatures() const { return _preserveFeatures; }
+
         optional<bool>& enableLighting() { return _lit; }
         const optional<bool>& enableLighting() const { return _lit; }
 
@@ -82,6 +86,7 @@ namespace osgEarth { namespace Features
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
         optional<double> _maxGranularity_deg;
+        optional<bool> _preserveFeatures;
 
         osg::ref_ptr<FeatureSource> _featureSource;
     };

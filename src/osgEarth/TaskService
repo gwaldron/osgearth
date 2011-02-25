@@ -108,7 +108,7 @@ namespace osgEarth
 
         void operator()( ProgressCallback* pc ) 
         {
-            execute();
+            this->execute();
             if ( _mev )
                 _mev->notify();
             else if ( _sev )

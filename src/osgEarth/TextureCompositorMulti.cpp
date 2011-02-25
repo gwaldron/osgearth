@@ -181,6 +181,7 @@ namespace
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options ) :
 _lodBlending( *options.lodBlending() ),
 _lodTransitionTime( *options.lodTransitionTime() ),
+_enableMipmapping( *options.enableMipmapping() ),
 _useGPU( useGPU )
 {
     // validate
@@ -207,7 +208,10 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
         image->dirty(); // required for ensure the texture recognizes the image as new data
         tex->setImage( image );
 
-        if (_enableMipmappingOnUpdatedTextures && ImageUtils::isPowerOfTwo( image ) && !(!image->isMipmap() && ImageUtils::isCompressed(image)))
+        if (_enableMipmapping &&
+            _enableMipmappingOnUpdatedTextures && 
+            ImageUtils::isPowerOfTwo( image ) && 
+            !(!image->isMipmap() && ImageUtils::isCompressed(image)) )
         {
             if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
                 tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
@@ -217,7 +221,9 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
             tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
         }
 
-        if ( _enableMipmappingOnUpdatedTextures && _lodBlending )
+        if (_enableMipmapping &&
+            _enableMipmappingOnUpdatedTextures && 
+            _lodBlending )
         {
             // update the timestamp on the image layer to support blending.
             osg::ref_ptr<ArrayUniform> stamp = new ArrayUniform( stateSet, "osgearth_SlotStamp" );

@@ -170,8 +170,11 @@ private:
     osg::ref_ptr<const Profile> _profile;
     OpenThreads::Mutex _taskServiceMutex;
 
+    bool _alwaysUpdate;
     int _numLoadingThreads;
     int _onDemandDelay; // #frames
+    void setDelay( unsigned frames );
+    void decDelay();
 
 	bool _registeredWithReleaseGLCallback;
     //TerrainCallbackList _terrainCallbacks;

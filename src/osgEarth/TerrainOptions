@@ -216,8 +216,13 @@ namespace osgEarth
          * The interpolation method to use when sampling heightfields.
          */
         optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
-        optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
+        const optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
 
+        /**
+         * Whether to enable mipmaping and mipmap generation on textures
+         */
+        optional<bool>& enableMipmapping() { return _enableMipmapping; }
+        const optional<bool>& enableMipmapping() const { return _enableMipmapping; }
    
     public:
         virtual Config getConfig() const;
@@ -243,6 +248,7 @@ namespace osgEarth
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
         optional<float> _lodTransitionTimeSeconds;
+        optional<bool>  _enableMipmapping;
 #if 0
         optional<osg::Texture::FilterMode> _contourMagFilter;
         optional<osg::Texture::FilterMode> _contourMinFilter;

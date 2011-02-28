@@ -418,6 +418,10 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
         hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
         repo._elevLayer = CustomElevLayer( hfLayer, true );
     }
+    else
+    {
+        out_hasRealData = true;
+    }
 
     // Now, if there are any color layers that did not get built, create them with an empty
     // image so the shaders have something to draw.
@@ -444,15 +448,19 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
     assemble.init( key, mapInfo, _terrainOptions, repo );
     assemble.execute();
 
-    // Check the results and see if we have any real data.
-    for( ColorLayersByUID::const_iterator i = repo._colorLayers.begin(); i != repo._colorLayers.end(); ++i )
+    if (!out_hasRealData)
     {
-        if ( !i->second.isFallbackData() ) 
+        // Check the results and see if we have any real data.
+        for( ColorLayersByUID::const_iterator i = repo._colorLayers.begin(); i != repo._colorLayers.end(); ++i )
         {
-            out_hasRealData = true;
-            break;
+            if ( !i->second.isFallbackData() ) 
+            {
+                out_hasRealData = true;
+                break;
+            }
         }
     }
+
     if ( !out_hasRealData && !repo._elevLayer.isFallbackData() )
     {
         out_hasRealData = true;

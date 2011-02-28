@@ -53,14 +53,14 @@ namespace
                 << "uniform float osg_FrameTime; \n\n";
             buf << "#define TEXTURE_SIZE "
                 << static_cast<float>(TextureCompositorTexArray::textureSize()) << "\n"
-                << "#define TEXTURE_MIPCOUNT 9\n\n"
-                << "float mipLevel( float2 uv )\n"
+                << "#define TEXTURE_MIPCOUNT 9.0\n\n"
+                << "float mipLevel( vec2 uv )\n"
                 << "{\n"
-                << "  float2 dx = ddx( uv * TEXTURE_SIZE );\n"
-                << "  float2 dy = ddy( uv * TEXTURE_SIZE );\n"
+                << "  vec2 dx = dFdx( uv * TEXTURE_SIZE );\n"
+                << "  vec2 dy = dFdy( uv * TEXTURE_SIZE );\n"
                 << "  float d = max( dot( dx, dx ), dot( dy, dy ) );\n"
                 << "  // Clamp the value to the max mip level counts\n"
-                << "  const float rangeClamp = pow(2, (TEXTURE_MIPCOUNT - 1) * 2);\n"
+                << "  const float rangeClamp = pow(2.0, (TEXTURE_MIPCOUNT - 1.0) * 2.0);\n"
                 << "  d = clamp(d, 1.0, rangeClamp);\n"
                 << "  float mipLevel = 0.5 * log2(d);\n"
                 << "  return mipLevel;\n"
@@ -111,7 +111,7 @@ namespace
                     << "            vec4 texel0 = texture2DArray( tex0, texCoord );\n"
                     << "            vec4 texel1 = texture2DArray( tex1, texCoord );\n"
                     << "            float mixval = age * lodFac;\n"
-                    << "            texel = mix(texel0, texel1, mixval);\n";
+                    << "            texel = mix(texel1, texel0, mixval);\n";
             }
             else
             {

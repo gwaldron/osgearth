@@ -216,7 +216,7 @@ namespace osgEarth
          * The interpolation method to use when sampling heightfields.
          */
         optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
-        const optional<ElevationInterpolation> const& elevationInterpolation(void) const { return _elevationInterpolation;}
+        const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
 
         /**
          * Whether to enable mipmaping and mipmap generation on textures

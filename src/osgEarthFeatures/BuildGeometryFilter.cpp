@@ -70,6 +70,7 @@ BuildGeometryFilter::reset()
     _geode = new osg::Geode();
     _hasLines = false;
     _hasPoints = false;
+    _hasPolygons = false;
 }
 
 bool
@@ -197,11 +198,13 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
                 const PolygonSymbol* poly = myStyle->getSymbol<PolygonSymbol>();
                 if (poly)
                 {
+                    _hasPolygons = true;
                     color = poly->fill()->color();
                 }
                 else
                 {
                     // if we have a line symbol and no polygon symbol, draw as an outline.
+                    _hasLines = true;
                     const LineSymbol* line = myStyle->getSymbol<LineSymbol>();
                     if ( line )
                     {
@@ -310,7 +313,14 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
     // don't draw. This is not a total solution (won't work for a single point, isn't friendly for
     // doing feature-selection, etc.) but is a workable temporary fix. In the future we're going
     // to replace this filter anyway with something more highly optimized (a la osgGIS).
-    if ( _geometryPerFeature == false )
+    //
+    // however...seems that MERGE_GEOMETRY destroys tesselated polygon meshes. So disable that 
+    // by default until we can figure out why.
+    bool mergeGeometry =
+        _geometryPerFeature.isSetTo( false ) ||
+        (_geometryPerFeature.isSet() == false && !_hasPolygons );
+
+    if (mergeGeometry)
     {
         osgUtil::Optimizer optimizer;
         optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );

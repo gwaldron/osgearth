@@ -75,6 +75,7 @@ namespace osgEarth { namespace Features
         optional<bool> _geometryPerFeature;
         bool _hasPoints;
         bool _hasLines;
+        bool _hasPolygons;
         void reset();
         
         bool push( Feature* input, const FilterContext& context );

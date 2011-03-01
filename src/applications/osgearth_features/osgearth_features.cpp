@@ -33,6 +33,7 @@
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
+#include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -87,7 +88,8 @@ int main(int argc, char** argv)
     }
     else
     {
-        FeatureGeomModelOptions worldOpt;
+        //FeatureGeomModelOptions worldOpt;
+        FeatureStencilModelOptions worldOpt;
         worldOpt.featureOptions() = featureOpt;
         worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
         worldOpt.styles()->addStyle( style );

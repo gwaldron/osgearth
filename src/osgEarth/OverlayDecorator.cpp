@@ -178,7 +178,6 @@ namespace
 OverlayDecorator::OverlayDecorator() :
 _textureUnit( 1 ),
 _textureSize( 1024 ),
-_reservedTextureUnit( false ),
 _useShaders( false ),
 _useWarping( true ),
 _warp( 1.0f ),
@@ -442,7 +441,7 @@ OverlayDecorator::setTextureSize( int texSize )
 void
 OverlayDecorator::setTextureUnit( int texUnit )
 {
-    if ( texUnit != _explicitTextureUnit.value() )
+    if ( !_explicitTextureUnit.isSet() || texUnit != _explicitTextureUnit.value() )
     {
         _explicitTextureUnit = texUnit;
         reinit();
@@ -496,11 +495,10 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
 void
 OverlayDecorator::onUninstall( TerrainEngineNode* engine )
 {
-    if ( _reservedTextureUnit )
+    if ( !_explicitTextureUnit.isSet() && _textureUnit.isSet() )
     {
         _engine->getTextureCompositor()->releaseTextureImageUnit( *_textureUnit );
         _textureUnit.unset();
-        _reservedTextureUnit = false;
     }
 
     _engine = 0L;

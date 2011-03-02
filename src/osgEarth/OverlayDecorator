@@ -112,7 +112,6 @@ namespace osgEarth
         optional<int>                 _explicitTextureUnit;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
-        bool                          _reservedTextureUnit;
         bool                          _useShaders;
         bool                          _useWarping;
         float                         _warp;

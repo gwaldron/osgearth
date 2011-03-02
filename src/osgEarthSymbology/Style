@@ -21,7 +21,13 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Query>
-#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/PointSymbol>
+#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/PolygonSymbol>
+#include <osgEarthSymbology/ModelSymbol>
+#include <osgEarthSymbology/ExtrusionSymbol>
+#include <osgEarthSymbology/TextSymbol>
+
 #include <osgEarth/Config>
 #include <osgEarth/Revisioning>
 #include <osg/Object>
@@ -91,10 +97,12 @@ namespace osgEarth { namespace Symbology
             return sym;
         }
 
+#if 0
         /** Access sub-styles. */
         Style* getSubStyle( const std::string& name );
         const Style* getSubStyle( const std::string& name ) const;
         void addSubStyle( Style* style );
+#endif
 
         /** Serializes this object into a Config. */
         virtual Config getConfig() const;

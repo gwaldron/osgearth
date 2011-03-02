@@ -159,6 +159,16 @@ namespace osgEarth
         return ssStr;
     }
 
+    /** Converts a vec3f to a string */
+    static osg::Vec3f
+    stringToVec3f( const std::string& str, const osg::Vec3f& default_value )
+    {
+        std::stringstream buf(str);
+        osg::Vec3f out = default_value;
+        buf >> out.x() >> out.y() >> out.z();
+        return out;
+    }
+
     /** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
     static osg::Vec4f
     htmlColorToVec4f( const std::string& html )

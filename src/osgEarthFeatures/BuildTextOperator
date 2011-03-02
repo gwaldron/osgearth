@@ -23,7 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthSymbology/Text>
+#include <osgEarthSymbology/TextSymbol>
 #include <osg/Node>
 
 namespace osgEarth { namespace Features

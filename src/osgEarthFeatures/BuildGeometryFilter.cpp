@@ -18,6 +18,9 @@
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthSymbology/Text>
+#include <osgEarthSymbology/PointSymbol>
+#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osg/Geode>
 #include <osg/Geometry>

@@ -1,0 +1,70 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H 1
+
+#include <osgEarth/Common>
+#include <osgEarthSymbology/Symbol>
+
+namespace osgEarth { namespace Symbology
+{
+    class OSGEARTHSYMBOLOGY_EXPORT ModelSymbol : public Symbol
+    {
+    public:
+        enum Placement
+        {
+            PLACEMENT_CENTROID,
+            PLACEMENT_INTERVAL,
+            PLACEMENT_SCATTER
+        };
+
+    public:
+        ModelSymbol( const Config& conf =Config() );
+
+        optional<std::string>& uri() { return _uri; }
+        const optional<std::string>& uri() const { return _uri; }
+
+        optional<Placement> placement() { return _placement; }
+        const optional<Placement> placement() const { return _placement; }
+
+        optional<float> density() { return _density; }
+        const optional<float> density() const { return _density; }
+
+        optional<float> interval() { return _interval; }
+        const optional<float> interval() const { return _interval; }
+
+        optional<osg::Vec3f> scale() { return _scale; }
+        const optional<osg::Vec3f> scale() const { return _scale; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    protected:
+        optional<std::string> _uri;
+        optional<Placement>   _placement;
+        optional<float>       _density;
+        optional<float>       _interval;
+        optional<osg::Vec3f>  _scale;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif

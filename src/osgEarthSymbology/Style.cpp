@@ -19,8 +19,6 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/CssUtils>
 #include <osgEarthSymbology/SLD>
-#include <osgEarthSymbology/GeometrySymbol>
-#include <osgEarthSymbology/Text>
 #include <osgEarth/HTTPClient>
 #include <algorithm>
 
@@ -49,6 +47,7 @@ Style::Style( const Config& conf )
     mergeConfig( conf );
 }
 
+#if 0
 void
 Style::addSubStyle( Style* style )
 {
@@ -68,6 +67,7 @@ Style::getSubStyle( const std::string& name )
     StylesByName::iterator i = _subStyles.find( name );
     return i != _subStyles.end() ? i->second.get() : 0L;
 }
+#endif
 
 void
 Style::mergeConfig( const Config& conf )
@@ -105,11 +105,13 @@ Style::mergeConfig( const Config& conf )
         }
     }
 
+#if 0
     const ConfigSet& children = conf.children( "style" );
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
     {
         addSubStyle( new Style( *i ) );
     }
+#endif
 
     dirty();
 }

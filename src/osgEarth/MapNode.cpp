@@ -358,7 +358,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
             }
             else
             {
-                if ( layer->getModelLayerOptions().overlay() == true )
+                if ( layer->getOverlay() )
                 {
                     _overlayModels->addChild( node ); // todo: index?
                     updateOverlayGraph();

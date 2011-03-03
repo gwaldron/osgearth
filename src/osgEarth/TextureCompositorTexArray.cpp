@@ -50,21 +50,8 @@ namespace
         {
             buf << "#extension GL_ARB_shader_texture_lod : enable \n"
                 << "uniform float osgearth_SlotStamp[ " << numSlots << "]; \n"
-                << "uniform float osg_FrameTime; \n\n";
-            buf << "#define TEXTURE_SIZE "
-                << static_cast<float>(TextureCompositorTexArray::textureSize()) << "\n"
-                << "#define TEXTURE_MIPCOUNT 9.0\n\n"
-                << "float mipLevel( vec2 uv )\n"
-                << "{\n"
-                << "  vec2 dx = dFdx( uv * TEXTURE_SIZE );\n"
-                << "  vec2 dy = dFdy( uv * TEXTURE_SIZE );\n"
-                << "  float d = max( dot( dx, dx ), dot( dy, dy ) );\n"
-                << "  // Clamp the value to the max mip level counts\n"
-                << "  const float rangeClamp = pow(2.0, (TEXTURE_MIPCOUNT - 1.0) * 2.0);\n"
-                << "  d = clamp(d, 1.0, rangeClamp);\n"
-                << "  float mipLevel = 0.5 * log2(d);\n"
-                << "  return mipLevel;\n"
-                << "}\n";
+                << "uniform float osg_FrameTime;\n"
+                << "uniform float osgearth_LODRangeFactor;\n\n";
         }
 
         buf << "uniform sampler2DArray tex0; \n";
@@ -105,12 +92,11 @@ namespace
                 float invBlendTime = 1.0f/blendTime;
 
                 buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
-                    << "            age = max(age, 1.0);\n"
-                    << "            float lodFac = clamp((mipLevel(vec2(u, v)) - 1.0) / TEXTURE_MIPCOUNT, 0.0, 1.0);\n"
+                    << "            age = min(age, 1.0);\n"
                     << "            vec3 texCoord = vec3(u, v, " << slot <<");\n;\n"
                     << "            vec4 texel0 = texture2DArray( tex0, texCoord );\n"
                     << "            vec4 texel1 = texture2DArray( tex1, texCoord );\n"
-                    << "            float mixval = age * lodFac;\n"
+                    << "            float mixval = age * osgearth_LODRangeFactor;\n"
                     << "            texel = mix(texel1, texel0, mixval);\n";
             }
             else

@@ -5,6 +5,7 @@ SET(TARGET_SRC
     CustomTerrain.cpp
     CustomTile.cpp
     KeyNodeFactory.cpp
+    LODFactorCallback.cpp
     MultiPassTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp
@@ -24,6 +25,7 @@ SET(TARGET_H
     DynamicLODScaleCallback   
     FileLocationCallback
     KeyNodeFactory
+    LODFactorCallback
     MultiPassTerrainTechnique
     ParallelKeyNodeFactory
     OSGTerrainEngineNode

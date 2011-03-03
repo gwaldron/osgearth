@@ -18,6 +18,7 @@
 */
 #include "SerialKeyNodeFactory"
 #include "DynamicLODScaleCallback"
+#include "LODFactorCallback"
 #include <osgEarth/Registry>
 #include <osg/PagedLOD>
 #include <osg/CullStack>
@@ -62,6 +63,8 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, osg::Group
         plod->setCenter( bs.center() );
         plod->addChild( tile, minRange, maxRange );
 
+        if (_options.lodBlending() == true)
+            plod->addCullCallback(new Drivers::LODFactorCallback);
         // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:
         if ( _options.lodFallOff().isSet() && *_options.lodFallOff() > 0.0 )
             plod->addCullCallback( new DynamicLODScaleCallback(*_options.lodFallOff()) );

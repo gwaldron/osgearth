@@ -56,11 +56,13 @@ struct SourceRepo
 
 struct BuildColorLayer
 {
-    void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo, TileBuilder::SourceRepo& repo )
+    void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo,
+               const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo )
     {
         _key      = key;
         _layer    = layer;
         _mapInfo  = &mapInfo;
+        _opt      = &opt;
         _repo     = &repo;
     }
 
@@ -95,20 +97,32 @@ struct BuildColorLayer
         {
             locator = GeoLocator::createForKey( imageKey, *_mapInfo );
         }
+        GeoImage secondaryImage;
+        if (!isFallbackData && _opt->lodBlending() == true)
+        {
+            TileKey parentKey = imageKey.createParentKey();
+            if (_layer->isKeyValid(parentKey))
+            {
+                GeoImage parentImage = _layer->createImage(parentKey, 0);
+                if (parentImage.valid())
+                    secondaryImage = parentImage.crop(geoImage.getExtent());
+            }
 
+        }
         // add the color layer to the repo.
         _repo->add( CustomColorLayer(
             _layer,
             geoImage.getImage(),
             locator,
             _key.getLevelOfDetail(),
-            0,
+            secondaryImage.getImage(),
             isFallbackData ) );
     }
 
     TileKey        _key;
     const MapInfo* _mapInfo;
     ImageLayer*    _layer;
+    const OSGTerrainOptions* _opt;
     TileBuilder::SourceRepo* _repo;
 };
 
@@ -229,7 +243,7 @@ TileBuilder::createJob( const TileKey& key, Threading::MultiEvent& semaphore )
         if ( layer->isKeyValid(key) )
         {
             ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
-            j->init( key, layer, job->_mapf.getMapInfo(), job->_repo );
+            j->init( key, layer, job->_mapf.getMapInfo(), _terrainOptions, job->_repo );
             j->setPriority( -(float)key.getLevelOfDetail() );
             job->_tasks.push_back( j );
         }
@@ -359,7 +373,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
             if ( layer->isKeyValid(key) )
             {
                 ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
-                j->init( key, layer, mapInfo, repo );
+                j->init( key, layer, mapInfo, _terrainOptions, repo );
                 j->setPriority( -(float)key.getLevelOfDetail() );
                 _service->add( j );
             }
@@ -395,7 +409,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
             if ( layer->isKeyValid(key) )
             {
                 BuildColorLayer build;
-                build.init( key, layer, mapInfo, repo );
+                build.init( key, layer, mapInfo, _terrainOptions, repo );
                 build.execute();
             }
         }

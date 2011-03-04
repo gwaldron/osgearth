@@ -10,6 +10,7 @@ Demonstrates use of the "agglite" feature rasterization driver.
         <terrain>
             <lod_blending>true</lod_blending>
             <compositor>texture_array</compositor>
+            <!-- <loading_policy mode="sequential"/> -->
         </terrain>
     </options>
 

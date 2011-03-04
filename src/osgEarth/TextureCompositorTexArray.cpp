@@ -21,6 +21,8 @@
 // only in newer OSG versions.
 #if OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
 
+#include <sstream>
+
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
@@ -35,176 +37,180 @@ using namespace osgEarth;
 
 namespace
 {
-    static osg::Shader*
-    s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, float blendTime )
-    {
-        int numSlots = layout.getMaxUsedSlot() + 1;
+static osg::Shader*
+s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, float blendTime )
+{
+    int numSlots = layout.getMaxUsedSlot() + 1;
 
-        std::stringstream buf;
+    std::stringstream buf;
 
-        buf << "#version 130 \n"
-            << "#extension GL_EXT_gpu_shader4 : enable \n";
+    buf << "#version 130 \n"
+        << "#extension GL_EXT_gpu_shader4 : enable \n";
         
 
-        if ( blending )
-        {
-            buf << "#extension GL_ARB_shader_texture_lod : enable \n"
-                << "uniform float osgearth_SlotStamp[ " << numSlots << "]; \n"
-                << "uniform float osg_FrameTime;\n"
-                << "uniform float osgearth_LODRangeFactor;\n\n";
-        }
-
-        buf << "uniform sampler2DArray tex0; \n";
-        if ( blending )
-            buf << "uniform sampler2DArray tex1;\n";
-        buf << "uniform float region[ " << 4*numSlots << "]; \n"
-            << "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
-            << "uniform bool  osgearth_ImageLayerEnabled[" << numSlots << "]; \n"
-            << "uniform float osgearth_ImageLayerRange[" << 2*numSlots << "]; \n"
-            << "uniform float osgearth_ImageLayerAttenuation; \n"
-            << "varying float osgearth_CameraRange; \n"
-
-            << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
-            << "{ \n"
-            << "    vec3 color3 = color.rgb; \n"
-            << "    float u, v, dmin, dmax, atten_min, atten_max, age; \n"
-            << "    vec4 texel; \n";
-
-        const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
-
-        for( unsigned int i = 0; i < order.size(); ++i )
-        {
-            int slot = order[i];
-            int q = 2 * i;
-            int r = 4 * slot;
-
-            buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
-                << "        u = region["<< r <<"] + (region["<< r+2 <<"] * gl_TexCoord[0].s); \n"
-                << "        v = region["<< r+1 <<"] + (region["<< r+3 <<"] * gl_TexCoord[0].t); \n"
-                << "        dmin = osgearth_CameraRange - osgearth_ImageLayerRange["<< q << "]; \n"
-                << "        dmax = osgearth_CameraRange - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
-                << "        if (dmin >= 0 && dmax <= 0.0) { \n"
-                << "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0 ) / osgearth_ImageLayerAttenuation; \n"
-                << "            atten_min =  clamp( dmin, 0, osgearth_ImageLayerAttenuation ) / osgearth_ImageLayerAttenuation; \n";
-                       
-            if ( blending )
-            {
-                float invBlendTime = 1.0f/blendTime;
-
-                buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
-                    << "            age = min(age, 1.0);\n"
-                    << "            vec3 texCoord = vec3(u, v, " << slot <<");\n;\n"
-                    << "            vec4 texel0 = texture2DArray( tex0, texCoord );\n"
-                    << "            vec4 texel1 = texture2DArray( tex1, texCoord );\n"
-                    << "            float mixval = age * osgearth_LODRangeFactor;\n"
-                    << "            texel = mix(texel1, texel0, mixval);\n";
-            }
-            else
-            {
-                buf << "            texel = texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n";
-            }
-  
-            buf << "            color3 = mix(color3, texel.rgb, texel.a * osgearth_ImageLayerOpacity["<< i <<"] * atten_max * atten_min); \n"
-                << "        } \n"
-                << "    } \n"
-                ;
-        }
-
-        buf << "    color = vec4(color3.rgb, color.a); \n"
-            << "} \n";
-
-        std::string str = buf.str();
-        return new osg::Shader( osg::Shader::FRAGMENT, str );
+    if ( blending )
+    {
+        buf << "#extension GL_ARB_shader_texture_lod : enable \n"
+            << "uniform float osgearth_SlotStamp[ " << numSlots << "]; \n"
+            << "uniform float osg_FrameTime;\n"
+            << "uniform float osgearth_LODRangeFactor;\n\n";
     }
+
+    buf << "uniform sampler2DArray tex0; \n";
+    if ( blending )
+        buf << "uniform sampler2DArray tex1;\n";
+    buf << "uniform float region[ " << 4*numSlots << "]; \n"
+        << "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
+        << "uniform bool  osgearth_ImageLayerEnabled[" << numSlots << "]; \n"
+        << "uniform float osgearth_ImageLayerRange[" << 2*numSlots << "]; \n"
+        << "uniform float osgearth_ImageLayerAttenuation; \n"
+        << "varying float osgearth_CameraRange; \n"
+
+        << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
+        << "{ \n"
+        << "    vec3 color3 = color.rgb; \n"
+        << "    float u, v, dmin, dmax, atten_min, atten_max, age; \n"
+        << "    vec4 texel; \n";
+
+    const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
+
+    for( unsigned int i = 0; i < order.size(); ++i )
+    {
+        int slot = order[i];
+        int q = 2 * i;
+        int r = 4 * slot;
+
+        buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
+            << "        u = region["<< r <<"] + (region["<< r+2 <<"] * gl_TexCoord[0].s); \n"
+            << "        v = region["<< r+1 <<"] + (region["<< r+3 <<"] * gl_TexCoord[0].t); \n"
+            << "        dmin = osgearth_CameraRange - osgearth_ImageLayerRange["<< q << "]; \n"
+            << "        dmax = osgearth_CameraRange - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
+            << "        if (dmin >= 0 && dmax <= 0.0) { \n"
+            << "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0 ) / osgearth_ImageLayerAttenuation; \n"
+            << "            atten_min =  clamp( dmin, 0, osgearth_ImageLayerAttenuation ) / osgearth_ImageLayerAttenuation; \n";
+
+        if ( blending )
+        {
+            float invBlendTime = 1.0f/blendTime;
+
+            buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
+                << "            age = min(age, 1.0);\n"
+                << "            vec3 texCoord = vec3(u, v, " << slot <<");\n;\n"
+                << "            vec4 texel0 = texture2DArray( tex0, texCoord );\n"
+                << "            vec4 texel1 = texture2DArray( tex1, texCoord );\n"
+                << "            float mixval = age * osgearth_LODRangeFactor;\n"
+#if 1
+                << "            texel = mix(texel1, texel0, mixval);\n";
+#else
+            << " texel = mix(vec4(0.0,0.0,1.0,1.0), vec4(1.0,0.0,0.0,1.0),mixval);\n";
+#endif
+        }
+        else
+        {
+            buf << "            texel = texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n";
+        }
+
+        buf << "            color3 = mix(color3, texel.rgb, texel.a * osgearth_ImageLayerOpacity["<< i <<"] * atten_max * atten_min); \n"
+            << "        } \n"
+            << "    } \n"
+            ;
+    }
+
+    buf << "    color = vec4(color3.rgb, color.a); \n"
+        << "} \n";
+
+    std::string str = buf.str();
+    return new osg::Shader( osg::Shader::FRAGMENT, str );
+}
 }
 
 //------------------------------------------------------------------------
 
 namespace
 {
-    static osg::Texture2DArray*
-    s_getTexture( osg::StateSet* stateSet, const TextureLayout& layout )
-    {
-        osg::Texture2DArray* tex = static_cast<osg::Texture2DArray*>(
-            stateSet->getTextureAttribute( 0, osg::StateAttribute::TEXTURE ) );
+static osg::Texture2DArray*
+s_getTexture( osg::StateSet* stateSet, const TextureLayout& layout,
+              int unit, unsigned textureSize )
+{
+    osg::Texture2DArray* tex = static_cast<osg::Texture2DArray*>(
+        stateSet->getTextureAttribute( unit, osg::StateAttribute::TEXTURE ) );
 
-        // if the texture array doesn't exist, create it anew.
-        if ( !tex )
-        {
-            tex = new SparseTexture2DArray();
-            tex->setSourceFormat( GL_RGBA );
-            tex->setInternalFormat( GL_RGBA8 );
-            tex->setTextureWidth( TextureCompositorTexArray::textureSize() );
-            tex->setTextureHeight( TextureCompositorTexArray::textureSize() );
+    // if the texture array doesn't exist, create it anew.
+    if ( !tex )
+    {
+        tex = new SparseTexture2DArray();
+        tex->setSourceFormat( GL_RGBA );
+        tex->setInternalFormat( GL_RGBA8 );
+        tex->setTextureWidth( textureSize );
+        tex->setTextureHeight( textureSize );
             
-            // configure the mipmapping 
-            tex->setMaxAnisotropy(16.0f);
-            tex->setResizeNonPowerOfTwoHint(false);
-            tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+        // configure the mipmapping
+        tex->setMaxAnisotropy(16.0f);
+        tex->setResizeNonPowerOfTwoHint(false);
+        tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+        tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
 
-            // configure the wrapping
-            tex->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
-            tex->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
+        // configure the wrapping
+        tex->setWrap(osg::Texture::WRAP_S,osg::Texture::CLAMP_TO_EDGE);
+        tex->setWrap(osg::Texture::WRAP_T,osg::Texture::CLAMP_TO_EDGE);
 
-            stateSet->setTextureAttribute( 0, tex, osg::StateAttribute::ON );
-            stateSet->getOrCreateUniform( "tex0", osg::Uniform::SAMPLER_2D_ARRAY )->set( 0 );
-        }
-
-        // grow the texture array if necessary.
-        int requiredDepth = layout.getMaxUsedSlot() + 1;
-        if ( tex->getTextureDepth() < requiredDepth )
-            tex->setTextureDepth( requiredDepth );
-
-        const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
-
-        // null out any empty slots (to save memory, i guess)
-        for( int i=0; i < tex->getTextureDepth(); ++i )
-        {
-            if ( i < (int)slots.size() && slots[i] < 0 )
-                tex->setImage( i, 0L );
-        }
-
-        return tex;
+        stateSet->setTextureAttribute( unit, tex, osg::StateAttribute::ON );
     }
 
-    static osg::Uniform*
-    s_getRegionUniform( osg::StateSet* stateSet, const TextureLayout& layout )
+    // grow the texture array if necessary.
+    int requiredDepth = layout.getMaxUsedSlot() + 1;
+    if ( tex->getTextureDepth() < requiredDepth )
+        tex->setTextureDepth( requiredDepth );
+
+    const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
+
+    // null out any empty slots (to save memory, i guess)
+    for( int i=0; i < tex->getTextureDepth(); ++i )
     {
-        osg::Uniform* region = stateSet->getUniform( "region" );
-
-        // if the region-uniform doesn't exist, create it now
-        if ( !region )
-        {
-            region = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 4 );
-            stateSet->addUniform( region );
-        }
-
-        // if the region exists but is too small, re-allocate it (cannot grow it) and copy over the old values
-        else if ( region->getNumElements() < layout.getTextureSlots().size() * 4 )
-        {            
-            osg::Uniform* newRegion = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 4 );
-            for( unsigned int i=0; i<region->getNumElements(); ++i )
-            {
-                float value;
-                region->getElement( i, value );
-                newRegion->setElement( i, value );
-            }
-
-            stateSet->removeUniform( region );
-            stateSet->addUniform( newRegion );
-            region = newRegion;
-        }
-
-        return region;
+        if ( i < (int)slots.size() && slots[i] < 0 )
+            tex->setImage( i, 0L );
     }
+
+    return tex;
+}
+
+static osg::Uniform*
+s_getRegionUniform( osg::StateSet* stateSet, const TextureLayout& layout )
+{
+    osg::Uniform* region = stateSet->getUniform( "region" );
+
+    // if the region-uniform doesn't exist, create it now
+    if ( !region )
+    {
+        region = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 4 );
+        stateSet->addUniform( region );
+    }
+
+    // if the region exists but is too small, re-allocate it (cannot grow it) and copy over the old values
+    else if ( region->getNumElements() < layout.getTextureSlots().size() * 4 )
+    {
+        osg::Uniform* newRegion = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 4 );
+        for( unsigned int i=0; i<region->getNumElements(); ++i )
+        {
+            float value;
+            region->getElement( i, value );
+            newRegion->setElement( i, value );
+        }
+
+        stateSet->removeUniform( region );
+        stateSet->addUniform( newRegion );
+        region = newRegion;
+    }
+
+    return region;
+}
 };
 
 //------------------------------------------------------------------------
 
 TextureCompositorTexArray::TextureCompositorTexArray( const TerrainOptions& options ) :
-_lodBlending( *options.lodBlending() ),
-_lodTransitionTime( *options.lodTransitionTime() )
+    _lodBlending( *options.lodBlending() ),
+    _lodTransitionTime( *options.lodTransitionTime() )
 {
     // validate
     if ( _lodBlending && _lodTransitionTime <= 0.0f )
@@ -218,6 +224,8 @@ GeoImage
 TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent, unsigned textureSize ) const
 {
     const osg::Image* image = layerImage.getImage();
+    if (!image)
+        return GeoImage::INVALID;
 
     if (image->getPixelFormat() != GL_RGBA ||
         image->getInternalTextureFormat() != GL_RGBA8 ||
@@ -248,6 +256,45 @@ TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoEx
     //const_cast<osg::Image*>(image.get())->setDataVariance( osg::Object::DYNAMIC );
 }
 
+namespace
+{
+osg::Uniform* ensureSampler(osg::StateSet* ss, int unit)
+{
+    std::stringstream sstream;
+    sstream << "tex" << unit;
+    std::string str = sstream.str();
+    osg::ref_ptr<osg::Uniform> sampler = ss->getUniform(str);
+    int samplerUnit = -1;
+    if (sampler.valid() && sampler->getType() == osg::Uniform::SAMPLER_2D_ARRAY)
+        sampler->get(samplerUnit);
+    if (samplerUnit == -1 || samplerUnit != unit)
+    {
+        sampler = new osg::Uniform(osg::Uniform::SAMPLER_2D_ARRAY, str);
+        sampler->set(unit);
+        ss->addUniform(sampler);
+    }
+    return sampler;
+}
+
+void assignImage(osg::Texture2DArray* texture, int slot, osg::Image* image)
+{
+    // We have to dirty() the image because otherwise the texture2d
+    // array implementation will not recognize it as new data.
+    image->dirty();
+    texture->setImage( slot, image );
+
+    if (ImageUtils::isPowerOfTwo( image ) && !(!image->isMipmap() && ImageUtils::isCompressed(image)))
+    {
+        if ( texture->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
+            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+    }
+    else if ( texture->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR )
+    {
+        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
+    }
+}
+}
+
 void
 TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
                                             UID layerUID,
@@ -261,24 +308,12 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
         return; // means the layer no longer exists
 
     // access the texture array, creating or growing it if necessary:
-    osg::Texture2DArray* texture = s_getTexture( stateSet, layout );
-
-    // assign the new image at the proper position in the texture array. We have to 
-    // dirty() the image because otherwise the texture2d array implementation will not
-    // recognize it as new data.
+    osg::Texture2DArray* texture = s_getTexture( stateSet, layout, 0,
+                                                 textureSize() );
+    ensureSampler( stateSet, 0 );
+    // assign the new image at the proper position in the texture array.
     osg::Image* image = preparedImage.getImage();
-    image->dirty();
-    texture->setImage( slot, image );
-
-    if (ImageUtils::isPowerOfTwo( image ) && !(!image->isMipmap() && ImageUtils::isCompressed(image)))
-    {
-        if ( texture->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
-            texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
-    }
-    else if ( texture->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR )
-    {
-        texture->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR );
-    }
+    assignImage(texture, slot, image);
     
     // update the region uniform to reflect the geo extent of the image:
     const GeoExtent& imageExtent = preparedImage.getExtent();
@@ -301,6 +336,18 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     
     if ( _lodBlending )
     {
+        osg::Uniform* secondarySampler = ensureSampler( stateSet, 1 );
+        osg::Image* image = secondaryImage.getImage();
+        if (image)
+        {
+            osg::Texture2DArray* secondaryTexture
+                = s_getTexture( stateSet, layout, 1, textureSize() / 2 );
+            assignImage(secondaryTexture, slot, image);
+        }
+        else
+        {
+            secondarySampler->set(0);
+        }
         // update the timestamp on the image layer to support blending.
         osg::Uniform* stamp = stateSet->getUniform( "osgearth_SlotStamp" );
         if ( !stamp || stamp->getNumElements() < (unsigned int)layout.getMaxUsedSlot() + 1 )

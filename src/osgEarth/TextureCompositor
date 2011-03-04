@@ -91,7 +91,7 @@ namespace osgEarth
         virtual bool supportsLayerUpdate() const { return false; }
 
         virtual GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
-        virtual GeoImage prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) { return image; }
+        virtual GeoImage prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
 
         virtual void applyLayerUpdate( osg::StateSet* stateSet, UID layerUID, const GeoImage& preparedImage, const GeoExtent& tileExtent, const TextureLayout& layout, const GeoImage& secondaryImage ) const { }
 

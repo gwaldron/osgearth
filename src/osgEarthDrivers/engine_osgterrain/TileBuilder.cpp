@@ -98,7 +98,7 @@ struct BuildColorLayer
             locator = GeoLocator::createForKey( imageKey, *_mapInfo );
         }
         GeoImage secondaryImage;
-        if (!isFallbackData && _opt->lodBlending() == true)
+        if (_opt->lodBlending() == true)
         {
             TileKey parentKey = imageKey.createParentKey();
             if (_layer->isKeyValid(parentKey))
@@ -106,6 +106,8 @@ struct BuildColorLayer
                 GeoImage parentImage = _layer->createImage(parentKey, 0);
                 if (parentImage.valid())
                     secondaryImage = parentImage.crop(geoImage.getExtent());
+                else
+                    OE_WARN << "couldn't make secondary image\n";
             }
 
         }

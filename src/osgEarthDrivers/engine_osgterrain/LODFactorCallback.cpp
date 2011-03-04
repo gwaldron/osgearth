@@ -35,7 +35,7 @@ void LODFactorCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
     osg::LOD::RangeMode rangeMode = lod->getRangeMode();
     float requiredRange = 0.0f;
-    float rangeFactor = 0.0f;
+    float rangeFactor = 1.0f;
     const osg::LOD::RangeList& rangeList = lod->getRangeList();
     if (rangeMode == osg::LOD::DISTANCE_FROM_EYE_POINT)
     {
@@ -58,24 +58,11 @@ void LODFactorCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
     }
     // We're counting on only finding one valid LOD, unlike the
     // general OSG behavior.
-    for (unsigned i = 0; i < rangeList.size(); ++i)
+    if (!rangeList.empty() && rangeList[0].first <= requiredRange
+        && requiredRange < rangeList[0].second)
     {
-        if (rangeList[i].first <= requiredRange && requiredRange < rangeList[i].second)
-        {
-            if (i >= lod->getNumChildren())
-            {
-                // The displayed node is already less detailed than
-                // desired, so its LOD factor is biased all the way to
-                // 1.
-                rangeFactor = 1.0f;
-            }
-            else
-            {
-                rangeFactor = 1.0f - ((requiredRange - rangeList[i].first)
-                                      / (rangeList[i].second - rangeList[i].first));
-            }
-            break;
-        }
+        rangeFactor = 1.0f - (requiredRange - rangeList[0].first) / rangeList[0].first;
+        rangeFactor = osg::clampTo(rangeFactor, 0.0f, 1.0f);
     }
     osg::ref_ptr<osg::Uniform> ufact
         = new osg::Uniform("osgearth_LODRangeFactor", rangeFactor);

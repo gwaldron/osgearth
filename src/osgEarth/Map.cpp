@@ -715,14 +715,14 @@ Map::setTerrainMaskLayer( MaskLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        layer->initialize( _mapOptions.referenceURI().value(), this ); //getReferenceURI(), this );
+        layer->initialize( _mapOptions.referenceURI().value(), this );
 
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_MASK_LAYER, newRevision, layer) );
-        }	
+        }
     }
     else
     {

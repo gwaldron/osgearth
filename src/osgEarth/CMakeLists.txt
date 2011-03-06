@@ -48,6 +48,7 @@ SET(LIB_PUBLIC_HEADERS
     MapOptions
     MaskLayer
     MaskNode
+    MaskSource
     ModelLayer
     ModelSource
 	Notify
@@ -110,6 +111,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MapOptions.cpp
     MaskLayer.cpp
     MaskNode.cpp
+    MaskSource.cpp
 	MimeTypes.cpp
 	ModelLayer.cpp
 	ModelSource.cpp

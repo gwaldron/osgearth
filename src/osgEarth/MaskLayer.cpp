@@ -19,22 +19,81 @@
 #include <osgEarth/MaskLayer>
 #include <osgEarth/Map>
 
+#define LC "[MaskLayer] "
+
 using namespace osgEarth;
+//------------------------------------------------------------------------
 
-#define MASK_MODEL_DRIVER "feature_stencil"
-
-MaskLayer::MaskLayer( const ConfigOptions& options )
+MaskLayerOptions::MaskLayerOptions( const ConfigOptions& options ) :
+ConfigOptions( options )
 {
-    // just in case the caller did not ref the parameter:
-    //osg::ref_ptr<const DriverOptions> tempHold = options;
+    setDefaults();
+    fromConfig( _conf ); 
+}
 
-    // copy the input options and set some special settings:
-    Config conf = options.getConfig();
-    conf.update( "mask", "true" );
-    conf.update( "inverted", "true" );
-    conf.update( "extrusion_distance", "100000" );
-    _driverOptions = DriverConfigOptions( conf );
-    _driverOptions.setDriver( MASK_MODEL_DRIVER );
+MaskLayerOptions::MaskLayerOptions( const std::string& name, const MaskSourceOptions& driverOptions ) :
+ConfigOptions()
+{
+    setDefaults();
+    fromConfig( _conf );
+    _name = name;
+    _driver = driverOptions;
+}
+
+void
+MaskLayerOptions::setDefaults()
+{
+    //nop
+}
+
+Config
+MaskLayerOptions::getConfig() const
+{
+    Config conf = ConfigOptions::getConfig();
+
+    conf.updateIfSet( "name", _name );
+
+    return conf;
+}
+
+void
+MaskLayerOptions::fromConfig( const Config& conf )
+{
+    conf.getIfSet( "name", _name );
+}
+
+void
+MaskLayerOptions::mergeConfig( const Config& conf )
+{
+    ConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
+//------------------------------------------------------------------------
+
+MaskLayer::MaskLayer( const MaskLayerOptions& options ) :
+_initOptions( options )
+{
+    copyOptions();
+}
+
+MaskLayer::MaskLayer( const std::string& name, const MaskSourceOptions& options ) :
+_initOptions( MaskLayerOptions( name, options ) )
+{
+    copyOptions();
+}
+
+MaskLayer::MaskLayer( const MaskLayerOptions& options, MaskSource* source ) :
+_maskSource( source ),
+_initOptions( options )
+{
+    copyOptions();
+}
+
+void
+MaskLayer::copyOptions()
+{
+    _runtimeOptions = _initOptions;
 }
 
 void
@@ -42,43 +101,35 @@ MaskLayer::initialize( const std::string& referenceURI, const Map* map )
 {
     _referenceURI = referenceURI;
 
-    if ( !_modelSource.valid() )
+    if ( !_maskSource.valid() && _initOptions.driver().isSet() )
     {
-        _modelSource = ModelSourceFactory::create( _driverOptions );
+        _maskSource = MaskSourceFactory::create( *_initOptions.driver() );
     }
 
-    if ( _modelSource.valid() )
+    if ( _maskSource.valid() )
     {
-        _modelSource->initialize( _referenceURI, map );
+        _maskSource->initialize( _referenceURI, map );
     }
 }
 
-osg::Node*
-MaskLayer::getOrCreateNode( ProgressCallback* progress )
+osg::Vec3dArray*
+MaskLayer::getOrCreateBoundary( ProgressCallback* progress )
 {
-    osg::Node* result = 0L;
-
-    if ( _modelSource.valid() )
+    if ( _maskSource.valid() )
     {
-        result = _modelSource->createNode( progress );
-
-        // a hack to immediately update-traverse this node so it can generate its 
-        // MaskNodes. Otherwise MapNode will not be able to apply it.
-        if ( result )
+        // if the model source has changed, regenerate the node.
+        if ( _boundary.valid() && !_maskSource->inSyncWith(_maskSourceRev) )
         {
-            osg::NodeVisitor nv( osg::NodeVisitor::UPDATE_VISITOR, osg::NodeVisitor::TRAVERSE_ALL_CHILDREN );
-            result->accept( nv );
+            _boundary = 0L;
+        }
+
+        if ( !_boundary.valid() )
+        {
+            _boundary = _maskSource->createBoundary( progress );
+
+            _maskSource->sync( _maskSourceRev );
         }
     }
 
-    return result;
-}
-
-Config
-MaskLayer::getConfig() const
-{
-    Config conf = _driverOptions.getConfig();
-    conf.key() = "mask";
-    conf.remove( "driver" );
-    return conf;
+    return _boundary.get();
 }

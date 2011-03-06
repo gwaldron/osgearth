@@ -46,12 +46,14 @@ namespace
         void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex ) {
             _node->onModelLayerMoved( layer, oldIndex, newIndex);
         }
+#if 0
         void onMaskLayerAdded( MaskLayer* layer ) {
             _node->onMaskLayerAdded( layer );
         }
         void onMaskLayerRemoved( MaskLayer* layer ) {
             _node->onMaskLayerRemoved( layer );
         }
+#endif
 
         osg::observer_ptr<MapNode> _node;
     };
@@ -241,11 +243,13 @@ MapNode::init()
         onModelLayerAdded( k->get(), modelLayerIndex );
     }
 
+#if 0
     // install any pre-existing mask layer:
     if ( _map->getTerrainMaskLayer() )
     {
         onMaskLayerAdded( _map->getTerrainMaskLayer() );
     }
+#endif
 
     // install a layer callback for processing further map actions:
     _map->addMapCallback( new MapNodeMapCallbackProxy(this) );
@@ -457,6 +461,7 @@ struct MaskNodeFinder : public osg::NodeVisitor {
     std::list< osg::Group* > _groups;
 };
 
+#if 0
 void
 MapNode::onMaskLayerAdded( MaskLayer* layer )
 {
@@ -493,6 +498,7 @@ MapNode::onMaskLayerRemoved( MaskLayer* layer )
         dirtyBound();
     }
 }
+#endif
 
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)

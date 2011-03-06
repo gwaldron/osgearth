@@ -177,8 +177,10 @@ namespace osgEarth
         void onModelLayerAdded( ModelLayer*, unsigned int );
         void onModelLayerRemoved( ModelLayer* );
 		void onModelLayerMoved( ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex );
+#if 0
         void onMaskLayerAdded( MaskLayer* );
         void onMaskLayerRemoved( MaskLayer* );
+#endif
 
     public:
         void onModelLayerOverlayChanged( ModelLayer* layer );

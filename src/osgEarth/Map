@@ -211,7 +211,7 @@ namespace osgEarth
         ModelLayer* getModelLayerAt( int index ) const;
 
         /**
-         * Gets the model layer to draw as a terrain mask.
+         * Gets the masking layer. At the moment, only one is supported.
          */
         MaskLayer* getTerrainMaskLayer() const;
 
@@ -373,8 +373,9 @@ namespace osgEarth
         enum ModelParts {
             IMAGE_LAYERS     = 1 << 0,
             ELEVATION_LAYERS = 1 << 1,
-            MODEL_LAYERS     = 1 << 2,
             TERRAIN_LAYERS   = IMAGE_LAYERS | ELEVATION_LAYERS,
+            MODEL_LAYERS     = 1 << 2,
+            MASK_LAYERS      = 1 << 3,
             ENTIRE_MODEL     = 0xff
         };
 
@@ -482,6 +483,9 @@ namespace osgEarth
         const ModelLayerVector& modelLayers() const { return _modelLayers; }
         ModelLayer* getModelLayerAt(int index) const { return _modelLayers[index].get(); }
 
+        /** The mask layer snapshot */
+        MaskLayer* getTerrainMaskLayer() const { return _maskLayer; }
+
         /** Gets the index of the layer in the layer stack snapshot. */
         int indexOf( ImageLayer* layer ) const;
         int indexOf( ElevationLayer* layer ) const;
@@ -517,6 +521,7 @@ namespace osgEarth
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
+        osg::ref_ptr<MaskLayer> _maskLayer;
         friend class Map;
     };
 

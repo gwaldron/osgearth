@@ -1155,6 +1155,11 @@ Map::sync( MapFrame& frame ) const
             std::copy( _modelLayers.begin(), _modelLayers.end(), std::back_inserter(frame._modelLayers) );
         }
 
+        if ( frame._parts & MASK_LAYERS )
+        {
+            frame._maskLayer = _terrainMaskLayer.get();
+        }
+
         // sync the revision numbers.
         frame._initialized = true;
         frame._mapDataModelRevision = _dataModelRevision;

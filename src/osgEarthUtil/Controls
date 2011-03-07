@@ -215,6 +215,7 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::observer_ptr<Control> _parent;
         bool _active;
         bool _absorbEvents;
+        osg::ref_ptr<osg::Geometry> _geom;
     };
 
     /**
@@ -497,15 +498,18 @@ namespace osgEarth { namespace Util { namespace Controls
 
         /** Whether this control is obscured by other controls. */
         bool isObscured() const { return _obscured; }
-        void setObscured( bool value ) { _obscured = value; }
+        void setObscured() { _obscured = true; }
+
+        float visibleTime() const { return _visibleTime; }
 
     public:
         virtual void traverse( osg::NodeVisitor& nv ); //override
 
     private:
         osg::ref_ptr<Control> _control;
-        osg::Vec2f            _screenPos;
         bool                  _obscured;
+        osg::Vec2f            _screenPos;
+        float                 _visibleTime;
     };
 
     /**

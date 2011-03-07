@@ -150,12 +150,9 @@ main(int argc, char** argv)
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
             viewpoints.push_back( Viewpoint(*i) );
 
-        if ( viewpoints.size() > 0 )
-        {
-            viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
-            if ( jump )
-                manip->setViewpoint(viewpoints[0]);
-        }
+        viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
+        if ( viewpoints.size() > 0 && jump )
+            manip->setViewpoint(viewpoints[0]);
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

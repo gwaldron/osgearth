@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#include <osg/Version>
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
@@ -24,7 +25,9 @@
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
 #include <osgDB/FileNameUtils>
-#include <osgText/Glyph>
+#if !((OPENSCENEGRAPH_MAJOR_VERSION <= 2) && (OPENSCENEGRAPH_MINOR_VERSION <= 8))
+# include <osgText/Glyph>
+#endif
 #include <osgText/Font>
 #include <osg/Notify>
 #include <sstream>
@@ -103,9 +106,11 @@ public:
         osgText::FontResolution resolution(32, 32);
         for( unsigned i=0; i<text.length(); ++i )
         {
+#if !((OPENSCENEGRAPH_MAJOR_VERSION <= 2) && (OPENSCENEGRAPH_MINOR_VERSION <= 8))
             osgText::Glyph* glyph = _font->getGlyph( resolution, text.at(i) );
             copySubImageAndColorize( glyph, image, x, y, _color );
             x += glyph->s() + 1;
+#endif
         }
 
         return image;

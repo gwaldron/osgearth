@@ -19,7 +19,6 @@
 #include "OSGTileFactory"
 #include "CustomTerrain"
 #include "FileLocationCallback"
-#include "TerrainTileEdgeNormalizerUpdateCallback"
 #include "TransparentLayer"
 
 #include <osgEarth/Map>

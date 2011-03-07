@@ -11,8 +11,7 @@ SET(TARGET_SRC
     ParallelKeyNodeFactory.cpp
     Plugin.cpp
     SerialKeyNodeFactory.cpp
-    SinglePassTerrainTechnique.cpp
-    TerrainTileEdgeNormalizerUpdateCallback.cpp
+    SinglePassTerrainTechnique.cpp    
     TileBuilder.cpp
 )
 
@@ -31,7 +30,6 @@ SET(TARGET_H
     OSGTileFactory
     SerialKeyNodeFactory
     SinglePassTerrainTechnique
-    TerrainTileEdgeNormalizerUpdateCallback
     TileBuilder
     TransparentLayer
 )

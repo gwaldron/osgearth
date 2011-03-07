@@ -102,7 +102,7 @@ GeometryRasterizer::draw( const Geometry* geom, const osg::Vec4f& c )
     }
 
     float a = 127+(color.a()*255)/2; // scale alpha up
-    agg::rgba8 fgColor = agg::rgba8( color.r()*255, color.g()*255, color.b()*255, a );
+    agg::rgba8 fgColor = agg::rgba8( (unsigned int)(color.r()*255), (unsigned int)(color.g()*255), (unsigned int)(color.b()*255), (unsigned int)a );
 
     ConstGeometryIterator gi( geomToRender.get() );
     while( gi.hasMore() )

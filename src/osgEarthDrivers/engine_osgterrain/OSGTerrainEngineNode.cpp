@@ -152,7 +152,7 @@ OSGTerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& optio
         }
         else if ( options.loadingPolicy()->numLoadingThreadsPerCore().isSet() )
         {
-            int numThreadsPerCore = *options.loadingPolicy()->numLoadingThreadsPerCore();
+            float numThreadsPerCore = *options.loadingPolicy()->numLoadingThreadsPerCore();
             numThreads = osg::maximum( (int)1, (int)osg::round( 
                 numThreadsPerCore * (float)OpenThreads::GetNumberOfProcessors() ) );
         }
@@ -309,13 +309,13 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 #endif
 
     // calculate a good thread pool size.
-    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+    unsigned int num = 2 * OpenThreads::GetNumberOfProcessors();
     if ( _terrainOptions.loadingPolicy().isSet() )
     {
         if ( _terrainOptions.loadingPolicy()->numLoadingThreads().isSet() )
             num = *_terrainOptions.loadingPolicy()->numLoadingThreads();
         else if ( _terrainOptions.loadingPolicy()->numLoadingThreadsPerCore().isSet() )
-            num = *_terrainOptions.loadingPolicy()->numLoadingThreadsPerCore() * OpenThreads::GetNumberOfProcessors();
+            num = (unsigned int)(*_terrainOptions.loadingPolicy()->numLoadingThreadsPerCore() * OpenThreads::GetNumberOfProcessors());
     }
     _tileService = new TaskService( "TileBuilder", num );
 

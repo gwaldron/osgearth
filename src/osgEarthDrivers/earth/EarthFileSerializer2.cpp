@@ -119,7 +119,10 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     Config maskLayerConf = conf.child( "mask" );
     if ( !maskLayerConf.empty() )
     {
-        map->setTerrainMaskLayer( new MaskLayer(maskLayerConf) );
+        MaskLayerOptions options(maskLayerConf);
+        options.name() = maskLayerConf.value( "name" );
+        options.driver() = MaskSourceOptions(options);
+        map->setTerrainMaskLayer( new MaskLayer(options) );
     }
 
     MapNode* mapNode = new MapNode( map, mapNodeOptions );

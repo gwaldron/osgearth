@@ -55,6 +55,7 @@ IF(GDAL_FOUND)
   ADD_SUBDIRECTORY(model_feature_stencil)
   ADD_SUBDIRECTORY(model_feature_geom)
   ADD_SUBDIRECTORY(model_feature_label)
+  ADD_SUBDIRECTORY(mask_feature)
 ENDIF(GDAL_FOUND)
 
 IF(SQLITE3_FOUND)

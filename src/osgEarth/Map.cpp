@@ -715,14 +715,14 @@ Map::setTerrainMaskLayer( MaskLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        layer->initialize( _mapOptions.referenceURI().value(), this ); //getReferenceURI(), this );
+        layer->initialize( _mapOptions.referenceURI().value(), this );
 
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_MASK_LAYER, newRevision, layer) );
-        }	
+        }
     }
     else
     {
@@ -1153,6 +1153,11 @@ Map::sync( MapFrame& frame ) const
                 frame._modelLayers.reserve( _modelLayers.size() );
             frame._modelLayers.clear();
             std::copy( _modelLayers.begin(), _modelLayers.end(), std::back_inserter(frame._modelLayers) );
+        }
+
+        if ( frame._parts & MASK_LAYERS )
+        {
+            frame._maskLayer = _terrainMaskLayer.get();
         }
 
         // sync the revision numbers.

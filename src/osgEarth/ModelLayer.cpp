@@ -81,30 +81,35 @@ ModelLayerOptions::mergeConfig( const Config& conf )
 //------------------------------------------------------------------------
 
 ModelLayer::ModelLayer( const ModelLayerOptions& options ) :
-_options( options ),
-_enabled( true )
+_initOptions( options )
 {
-    // NOP
+    copyOptions();
 }
 
 ModelLayer::ModelLayer( const std::string& name, const ModelSourceOptions& options ) :
-_options( ModelLayerOptions( name, options ) ),
-_enabled( true )
+_initOptions( ModelLayerOptions( name, options ) )
 {
-    //NOP
+    copyOptions();
 }
 
 ModelLayer::ModelLayer( const ModelLayerOptions& options, ModelSource* source ) :
 _modelSource( source ),
-_options( options )
+_initOptions( options )
 {
-    //NOP
+    copyOptions();
 }
 
 ModelLayer::ModelLayer(const std::string& name, osg::Node* node):
-_options(ModelLayerOptions( name )),
+_initOptions(ModelLayerOptions( name )),
 _node(node)
 {
+    copyOptions();
+}
+
+void
+ModelLayer::copyOptions()
+{
+    _runtimeOptions = _initOptions;
 }
 
 void
@@ -112,9 +117,9 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 {
     _referenceURI = referenceURI;
 
-    if ( !_modelSource.valid() && _options.driver().isSet() )
+    if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
-        _modelSource = ModelSourceFactory::create( *_options.driver() );
+        _modelSource = ModelSourceFactory::create( *_initOptions.driver() );
     }
 
     if ( _modelSource.valid() )
@@ -138,11 +143,11 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
         {
             _node = _modelSource->createNode( progress );
 
-            if ( _options.enabled().isSet() )
-                setEnabled( *_options.enabled() );
+            if ( _runtimeOptions.enabled().isSet() )
+                setEnabled( *_runtimeOptions.enabled() );
 
-            if ( _options.lightingEnabled().isSet() )
-                setLightingEnabled( *_options.lightingEnabled() );
+            if ( _runtimeOptions.lightingEnabled().isSet() )
+                setLightingEnabled( *_runtimeOptions.lightingEnabled() );
 
             if ( _modelSource->getOptions().depthTestEnabled() == false )            
             {
@@ -164,43 +169,42 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
 bool
 ModelLayer::getEnabled() const
 {
-    return _enabled.get();
+    return *_runtimeOptions.enabled();
 }
 
 void
 ModelLayer::setEnabled(bool enabled)
 {
-    _enabled = enabled;
+    _runtimeOptions.enabled() = enabled;
     if ( _node.valid() )
-        _node->setNodeMask( _enabled.get() ? ~0 : 0 );
+        _node->setNodeMask( enabled ? ~0 : 0 );
 }
 
 void
 ModelLayer::setLightingEnabled( bool value )
 {
-    _lighting = value;
+    _runtimeOptions.lightingEnabled() = value;
     if ( _node.valid() )
     {
         _node->getOrCreateStateSet()->setMode( 
             GL_LIGHTING, value ? osg::StateAttribute::ON : 
             (osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED) );
 
-        OE_INFO << LC << "Set lighting to " << value << std::endl;
     }
 }
 
 bool
 ModelLayer::getOverlay() const
 {
-    return _overlay.get();
+    return *_runtimeOptions.overlay();
 }
 
 void
 ModelLayer::setOverlay(bool overlay)
 {
-    if (_overlay != overlay)
+    if ( _runtimeOptions.overlay() != overlay )
     {
-        _overlay = overlay;
+        _runtimeOptions.overlay() = overlay;
         fireCallback( &ModelLayerCallback::onOverlayChanged );
     }
 }

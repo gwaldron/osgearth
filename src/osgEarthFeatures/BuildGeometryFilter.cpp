@@ -59,7 +59,7 @@ BuildGeometryFilter::BuildGeometryFilter() :
 _style( new Style() ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
 _maxAngle_deg( 5.0 ),
-_geometryPerFeature( false )
+_mergeGeometry( false )
 {
     reset();
 }
@@ -314,13 +314,8 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
     // doing feature-selection, etc.) but is a workable temporary fix. In the future we're going
     // to replace this filter anyway with something more highly optimized (a la osgGIS).
     //
-    // however...seems that MERGE_GEOMETRY destroys tesselated polygon meshes. So disable that 
-    // by default until we can figure out why.
-    bool mergeGeometry =
-        _geometryPerFeature.isSetTo( false ) ||
-        (_geometryPerFeature.isSet() == false && !_hasPolygons );
-
-    if (mergeGeometry)
+    // however...seems that MERGE_GEOMETRY destroys almost everything except for points!!
+    if ( _mergeGeometry == true )
     {
         osgUtil::Optimizer optimizer;
         optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );

@@ -1849,7 +1849,7 @@ EarthManipulator::dumpActionInfo( const EarthManipulator::Action& action, osg::N
         if ( s_actionOptionTypes[option.option()] == 0 )
             val = option.boolValue() ? "true" : "false";
         else
-            val = option.doubleValue();
+            val = toString<double>(option.doubleValue());
 
         osgEarth::notify(level)
             << s_actionOptionNames[option.option()] << "=" << val << ", ";

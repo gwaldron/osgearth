@@ -791,7 +791,7 @@ Frame::draw( const ControlContext& cx, DrawableList& out )
         geom->push_back( osg::Vec3d( _renderSize.x()-1, _renderSize.y()-1, 0 ) );
         geom->push_back( osg::Vec3d( 0, _renderSize.y()-1, 0 ) );
 
-        GeometryRasterizer ras( _renderSize.x(), _renderSize.y() );
+        GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y() );
         ras.draw( geom.get() );
 
         osg::Image* image = ras.finalize();
@@ -830,7 +830,7 @@ RoundedFrame::draw( const ControlContext& cx, DrawableList& out )
             bp._capStyle = BufferParameters::CAP_ROUND;
             geom->buffer( buffer-1.0f, geom, bp );
 
-            GeometryRasterizer ras( _renderSize.x(), _renderSize.y() );
+            GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y() );
             ras.draw( geom.get(), backColor().value() );
 
             osg::Image* image = ras.finalize();
@@ -1323,8 +1323,8 @@ namespace osgEarth { namespace Util { namespace Controls
                         cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
                         _cs->setControlContext( cx );
 
-                        _width = vp->width();
-                        _height = vp->height();
+                        _width  = (int)vp->width();
+                        _height = (int)vp->height();
                     }
                     if ( vp->width() != 0 && vp->height() != 0 )
                     {

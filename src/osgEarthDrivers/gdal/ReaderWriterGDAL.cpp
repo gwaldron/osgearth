@@ -988,7 +988,7 @@ public:
             if (off_y + height > _warpedDS->GetRasterYSize())
             {
                 int oversize_bottom = off_y + height - _warpedDS->GetRasterYSize();
-                target_height = target_height - osg::round(float(oversize_bottom) / height * target_height);
+                target_height = target_height - (int)osg::round(float(oversize_bottom) / height * target_height);
                 height = _warpedDS->GetRasterYSize() - off_y;
             }
 

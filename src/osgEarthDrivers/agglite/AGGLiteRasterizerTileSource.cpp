@@ -259,8 +259,8 @@ public:
 
             // set up a default color:
             osg::Vec4 c = color;
-            unsigned int a = 127+(c.a()*255)/2; // scale alpha up
-            agg::rgba8 fgColor( c.r()*255, c.g()*255, c.b()*255, a );
+            unsigned int a = (unsigned int)(127+(c.a()*255)/2); // scale alpha up
+            agg::rgba8 fgColor( (unsigned int)(c.r()*255), (unsigned int)(c.g()*255), (unsigned int)(c.b()*255), a );
 
             GeometryIterator gi( croppedGeometry.get() );
             while( gi.hasMore() )
@@ -291,7 +291,7 @@ public:
                 }
 
                 a = 127+(c.a()*255)/2; // scale alpha up
-                fgColor = agg::rgba8( c.r()*255, c.g()*255, c.b()*255, a );
+                fgColor = agg::rgba8( (unsigned int)(c.r()*255), (unsigned int)(c.g()*255), (unsigned int)(c.b()*255), a );
 
                 ras.filling_rule( agg::fill_even_odd );
                 for( Geometry::iterator p = g->begin(); p != g->end(); p++ )

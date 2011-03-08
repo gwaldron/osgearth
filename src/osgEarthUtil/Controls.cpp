@@ -1511,8 +1511,6 @@ SceneControlBin::getControlTransform( Control* control ) const
     else return 0L;
 }
 
-static int s_frame = 0;
-
 void
 SceneControlBin::draw( const ControlContext& context, bool newContext, int bin )
 {
@@ -1522,11 +1520,6 @@ SceneControlBin::draw( const ControlContext& context, bool newContext, int bin )
     // we don't really need to keep this list in the object, but that prevents it from having to
     // reallocate it each time
     _taken.clear();
-
-    s_frame++;
-    double trackTime = 0.0;
-
-            osg::ElapsedTime t;
 
     for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); ++i )
     {
@@ -1615,14 +1608,8 @@ SceneControlBin::draw( const ControlContext& context, bool newContext, int bin )
         // adjust the visibility based on whether the node is visible
         xform->setNodeMask( node->_obscured ? 0 : ~0 );
     }
-            trackTime += t.elapsedTime_u();
 
     _visibleNodes.clear();
-
-    if ( s_frame % 60 == 0 )
-    {
-        OE_NOTICE << LC << "track " << trackTime << std::endl;
-    }
 }
 
 // ---------------------------------------------------------------------------

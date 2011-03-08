@@ -27,6 +27,8 @@
 
 #include "OSGTerrainOptions"
 #include "OSGTileFactory"
+#include "KeyNodeFactory"
+#include "TileBuilder"
 
 #include <osg/Geode>
 #include <osg/NodeCallback>
@@ -40,6 +42,9 @@ public:
     OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Node(osgEarth,OSGTerrainEngineNode);
     ~OSGTerrainEngineNode();
+
+public:
+    osg::Node* createNode(const TileKey& key);
 
 public: // TerrainEngineNode overrides    
     virtual void preInitialize( const Map* map, const TerrainOptions& options );
@@ -79,9 +84,10 @@ private:
     void installShaders();
     void updateTextureCombining();
     
+    void createURI(const TileKey& key, std::string& out_uri );
+    
 private:
     osg::ref_ptr<OSGTileFactory> _tileFactory;
-    //osg::ref_ptr<TextureCompositor> _texCompositor;
     class CustomTerrain* _terrain;
     UID _uid;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
@@ -91,6 +97,14 @@ private:
     // store a separate map frame for each of the traversal threads
     MapFrame* _update_mapf; // map frame for the main/update traversal thread
     MapFrame* _cull_mapf;   // map frame for the cull traversal thread
+
+    osg::ref_ptr<TaskService> _tileService;
+    osg::ref_ptr<KeyNodeFactory> _keyNodeFactory;
+    osg::ref_ptr<TileBuilder> _tileBuilder;
+
+    osg::Timer _timer;
+    unsigned   _tileCount;
+    double     _tileCreationTime;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

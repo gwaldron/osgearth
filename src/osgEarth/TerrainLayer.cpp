@@ -173,9 +173,15 @@ TerrainLayer::setCache(Cache* cache)
             else
             {
                 // system will generate a cacheId.
+                Config hashConf = opt.driver()->getConfig();
+
+                //TODO: this hash needs to include only the driver conf, not the outer layer conf.
+                //hashConf.remove("name");
+
                 std::stringstream buf;
+                //OE_NOTICE << hashConf.toHashString() << std::endl;
                 buf << std::fixed << std::setfill('0') << std::hex
-                    << osgEarth::hashString( opt.driver()->getConfig().toHashString() );
+                    << osgEarth::hashString( hashConf.toHashString() );
                 cacheId = buf.str();
             }
 

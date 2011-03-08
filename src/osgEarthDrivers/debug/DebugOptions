@@ -1,0 +1,67 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_DEBUG_DRIVEROPTIONS
+#define OSGEARTH_DRIVER_DEBUG_DRIVEROPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/TileSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+
+    class DebugOptions : public TileSourceOptions // NO EXPORT; header only
+    {
+    public:
+        optional<std::string>& colorCode() { return _colorCode; }
+        const optional<std::string>& colorCode() const { return _colorCode; }
+
+    public:
+        DebugOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
+            _colorCode( "#000000" )
+        {
+            setDriver( "debug" );
+            fromConfig( _conf );
+        }
+
+    public:
+        Config getConfig() const {
+            Config conf = TileSourceOptions::getConfig();
+            conf.updateIfSet( "color", _colorCode );
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            TileSourceOptions::mergeConfig( conf );            
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "color", _colorCode );
+        }
+
+        optional<std::string> _colorCode;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_DEBUG_DRIVEROPTIONS
+

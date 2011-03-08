@@ -23,6 +23,7 @@
 #include "Common"
 #include <osgEarth/Common>
 #include <osgTerrain/Locator>
+#include <osgTerrain/Layer>
 #include <osgEarth/ImageLayer>
 #include <osg/Image>
 
@@ -35,8 +36,9 @@ public:
         const osgEarth::ImageLayer* imageLayer,
         osg::Image* image,
         const osgTerrain::Locator* locator,
-        int lod )
-        : _layer(imageLayer), _locator(locator), _image(image), _lod(lod) { }
+        int lod,
+        bool fallbackData =false )
+        : _layer(imageLayer), _locator(locator), _image(image), _lod(lod), _fallbackData(fallbackData) { }
 
     CustomColorLayer( const CustomColorLayer& rhs ) :
         _layer( rhs._layer.get() ),        
@@ -61,6 +63,9 @@ public:
     int getLevelOfDetail() const {
         return _lod; }
 
+    bool isFallbackData() const {
+        return _fallbackData; }
+
     osg::BoundingSphere computeBound() const {
         osg::BoundingSphere bs;
         osg::Vec3d v;
@@ -79,6 +84,7 @@ private:
     osg::ref_ptr<const osgTerrain::Locator>  _locator;
     osg::ref_ptr<osg::Image>                 _image;
     int                                      _lod;
+    bool                                     _fallbackData;
 };
 
 class CustomColorLayerRef : public osg::Referenced
@@ -88,52 +94,23 @@ public:
     CustomColorLayer _layer;
 };
 
-#if 0
-class CustomColorLayer : public osgTerrain::ImageLayer
+class CustomElevLayer
 {
 public:
-    CustomColorLayer(const osg::Image* image, osgEarth::ImageLayer* mapLayer):
-      osgTerrain::ImageLayer( const_cast<osg::Image*>(image) ),
-          _mapLayer(mapLayer),
-          _lod(-1)
-      {
-      }
+    CustomElevLayer() { }
 
-      UID getUID() const
-      {
-          return _mapLayer->getUID();
-      }
+    CustomElevLayer( osgTerrain::HeightFieldLayer* hfLayer, bool fallbackData =false )
+        : _hfLayer(hfLayer), _fallbackData(fallbackData) { }
 
-      float getOpacity() const
-      {
-          return _mapLayer->getOpacity();
-      }
+    osgTerrain::HeightFieldLayer* getHFLayer() {
+        return _hfLayer.get(); }
 
-      bool getEnabled() const
-      {
-          return _mapLayer->getEnabled();
-      }
+    bool isFallbackData() const {
+        return _fallbackData; }
 
-      int getLevelOfDetail() const
-      {
-          return _lod;
-      }
-
-      void setLevelOfDetail(int lod)
-      {
-          _lod = lod;
-      }
-
-      osgEarth::ImageLayer* getMapLayer() const
-      {
-          return _mapLayer.get();
-      }
-
-      const osgTerrain::Locator* getLocator() const { return _locator; }
-
-      osg::ref_ptr<osgEarth::ImageLayer> _mapLayer;
-      int _lod;
+private:
+    osg::ref_ptr<osgTerrain::HeightFieldLayer> _hfLayer;
+    bool _fallbackData;
 };
-#endif
 
 #endif // OSGEARTH_ENGINE_TRANSPARENT_LAYER

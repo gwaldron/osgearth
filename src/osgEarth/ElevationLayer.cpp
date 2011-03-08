@@ -176,8 +176,8 @@ ElevationLayer::initTileSource()
     // call superclass first.
     TerrainLayer::initTileSource();
 
-    if ( getTileSource() )
-        _preCacheOp = new ElevationLayerPreCacheOperation( getTileSource() );
+    if ( _tileSource.valid() )
+        _preCacheOp = new ElevationLayerPreCacheOperation( _tileSource.get() );
 }
 
 GeoHeightField

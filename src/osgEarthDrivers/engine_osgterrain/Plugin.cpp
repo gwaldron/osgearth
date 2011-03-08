@@ -18,11 +18,15 @@
  */
 #include "OSGTerrainEngineNode"
 #include "OSGTerrainOptions"
+#include "CustomTile"
 #include <osgEarth/Registry>
+#include <osgEarth/TaskService>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
 #include <string>
+
+#define LC "[osgterrain_engine Plugin] "
 
 using namespace osgEarth::Drivers;
 
@@ -40,15 +44,14 @@ public:
     {
         return
             osgDB::equalCaseInsensitive( extension, "osgearth_engine_osgterrain" ) ||
-            osgDB::equalCaseInsensitive( extension, "osgearth_osgterrain_tile" ) ||
-            osgDB::equalCaseInsensitive( extension, "test_osgearth_engine_osgterrain" );
+            osgDB::equalCaseInsensitive( extension, "osgearth_osgterrain_tile" );
     }
 
     virtual ReadResult readObject(const std::string& uri, const Options* options) const
     {
         if ( "osgearth_engine_osgterrain" == osgDB::getFileExtension( uri ) )
         {
-            if ( "earth" ==  osgDB::getNameLessExtension( osgDB::getFileExtension( uri ) ) )
+            if ( "earth" == osgDB::getNameLessExtension( osgDB::getFileExtension( uri ) ) )
             {
                 return readNode( uri, options );
             }
@@ -62,67 +65,74 @@ public:
         {
             return readNode( uri, options );
         }
-    }       
+    }    
 
     virtual ReadResult readNode(const std::string& uri, const Options* options) const
     {
-        // Handler for PagedLOD targets created by the OSGTileFactory:
-        if ( "osgearth_osgterrain_tile" == osgDB::getFileExtension( uri ) )
-        {            
-            //See if the filename starts with server: and strip it off.  This will trick OSG into passing in the filename to our plugin
-            //instead of using the CURL plugin if the filename contains a URL.  So, if you want to read a URL, you can use the following format
-            //osgDB::readNodeFile("server:http://myserver/myearth.earth").  This should only be necessary for the first level as the other files will have
-            //a tilekey prepended to them.
+        static int s_tileCount = 0;
+        static double s_tileTime = 0.0;
+        static osg::Timer_t s_startTime;
+
+        if ( "osgearth_osgterrain_tile" == osgDB::getFileExtension(uri) )
+        {
+            if ( s_tileCount == 0 )
+                s_startTime = osg::Timer::instance()->tick();
+
+            // See if the filename starts with server: and strip it off.  This will trick OSG
+            // into passing in the filename to our plugin instead of using the CURL plugin if
+            // the filename contains a URL.  So, if you want to read a URL, you can use the
+            // following format: osgDB::readNodeFile("server:http://myserver/myearth.earth").
+            // This should only be necessary for the first level as the other files will have
+            // a tilekey prepended to them.
             if ((uri.length() > 7) && (uri.substr(0, 7) == "server:"))
-            {
                 return readNode(uri.substr(7), options);
-            }
 
-            osg::Node* node = 0;
-
+            // parse the tile key and engine ID:
             std::string tileDef = osgDB::getNameLessExtension(uri);
+            unsigned int lod, x, y, engineID;
+            sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &engineID);
 
-            unsigned int lod, x, y, id;
-            sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &id);
-
-            //Get the Map from the cache.  It is important that we use a ref_ptr here
-            //to prevent the Map from being deleted while it is is still in use.
-            //osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
-            osg::ref_ptr<OSGTerrainEngineNode> engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)id );
-
-            if ( engineNode.valid() )
+            // find the appropriate engine:
+            OSGTerrainEngineNode* engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)engineID );
+            if ( engineNode )
             {
+                osg::Timer_t start = osg::Timer::instance()->tick();
+
+                // assemble the key and create the node:
                 const Profile* profile = engineNode->getMap()->getProfile();
                 TileKey key( lod, x, y, profile );
-
-                bool populateLayers = engineNode->getTileFactory()->getTerrainOptions().loadingPolicy()->mode() 
-                    == LoadingPolicy::MODE_STANDARD;
-
-                // create a map frame so we can safely create tiles from this dbpager thread
-                MapFrame mapf( engineNode->getMap(), Map::TERRAIN_LAYERS, "dbpager::earth plugin" );
-
-                node = engineNode->getTileFactory()->createSubTiles(
-                    mapf,
-                    engineNode->getTerrain(),
-                    key,
-                    populateLayers );
-
-                //Blacklist the tile if we couldn't load it
-                if (!node)
+                osg::Node* node = engineNode->createNode( key );
+                
+                // Blacklist the tile if we couldn't load it
+                if ( !node )
                 {
-                    OE_DEBUG << "Blacklisting " << uri << std::endl;
-                    osgEarth::Registry::instance()->blacklist(uri);
+                    OE_DEBUG << LC << "Blacklisting " << uri << std::endl;
+                    osgEarth::Registry::instance()->blacklist( uri );
                 }
+#if 0
+                else
+                {
+                    osg::Timer_t end = osg::Timer::instance()->tick();
+                    s_tileTime += osg::Timer::instance()->delta_s( start, end );
+                    double elapsed = osg::Timer::instance()->delta_s( s_startTime, end );
+                    s_tileCount++;
+                    if ( s_tileCount % 10 == 0 )
+                        OE_INFO << LC << "Average = " << s_tileTime / (double)s_tileCount << " s," 
+                        << ", TPS = " << (double)s_tileCount/elapsed << std::endl;
+                }
+#endif
+
+                return ReadResult( node, ReadResult::FILE_LOADED );
             }
             else
             {
-                OE_NOTICE << "Error: Could not find Map with id=" << id << std::endl;
+                return ReadResult::FILE_NOT_FOUND;
             }
-
-            return node ? ReadResult(node) : ReadResult::FILE_NOT_FOUND;
         }
-
-        return ReadResult::FILE_NOT_HANDLED;
+        else
+        {
+            return ReadResult::FILE_NOT_HANDLED;
+        }
     }
 };
 

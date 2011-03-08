@@ -91,7 +91,7 @@ int main(int argc, char** argv)
 
         // load up some labels.
         createLabels( canvas, mapNode->getMap() );
-        root->addChild( canvas->getPriorityBin() );
+        root->addChild( canvas->getSceneControls() );
     }
 
     // add some stock OSG handlers:
@@ -134,7 +134,7 @@ createLabels( ControlCanvas* canvas, Map* map )
         return;
     }
 
-    ControlPriorityBin* priorityBin = canvas->getPriorityBin();
+    SceneControlBin* priorityBin = canvas->getSceneControls();
 
     unsigned count = 0;
 

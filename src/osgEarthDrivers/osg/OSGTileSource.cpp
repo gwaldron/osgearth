@@ -94,7 +94,7 @@ public:
         {
             int minSpan = osg::minimum( image->s(), image->t() );
             int tileSize = _options.tileSize().value();
-            _maxDataLevel = LOG2((minSpan/tileSize)+1);
+            _maxDataLevel = (int)LOG2((minSpan/tileSize)+1);
             //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
 
             

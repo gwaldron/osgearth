@@ -21,13 +21,13 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/HTTPClient>
-#include <OpenThreads/Thread>
-#include <OpenThreads/Condition>
-#include <OpenThreads/ReentrantMutex>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Referenced>
+#include <osg/Timer>
 #include <queue>
 #include <list>
 #include <string>
+#include <map>
 
 namespace osgEarth
 {
@@ -69,6 +69,13 @@ namespace osgEarth
         const std::string& getName() const { return _name; }
         void setName( const std::string& name ) { _name = name; }
         void reset() { _result = 0L; }
+        osg::Timer_t startTime() const { return _startTime; }
+        osg::Timer_t endTime() const { return _endTime; }
+        double runTime() const { return osg::Timer::instance()->delta_s(_startTime,_endTime); }
+
+        void setCompletedEvent( Threading::Event* value ) { _completedEvent = value; }
+        Threading::Event* getCompletedEvent() const { return _completedEvent; }
+
     protected:
         float _priority;
         volatile State _state;
@@ -76,9 +83,41 @@ namespace osgEarth
         osg::ref_ptr<osg::Referenced> _result;
         osg::ref_ptr< ProgressCallback > _progress;
         std::string _name;
+        osg::Timer_t _startTime;
+        osg::Timer_t _endTime;
+        Threading::Event* _completedEvent;
     };
 
     typedef std::list< osg::ref_ptr<TaskRequest> > TaskRequestList;
+
+    typedef std::vector< osg::ref_ptr<TaskRequest> > TaskRequestVector;
+
+    typedef std::multimap< float, osg::ref_ptr<TaskRequest> > TaskRequestPriorityMap;
+    
+    /**
+     * Convenience template for creating a task that synchronized with an event.
+     * Initialze multiple ParallelTask's with a common MultiEvent (semaphore) to
+     * run them in parallel and wait for them all to complete.
+     */
+    template<typename T>
+    struct ParallelTask : public TaskRequest, T
+    {
+        ParallelTask() : _mev(0L), _sev(0L) { }
+        ParallelTask( Threading::MultiEvent* ev ) : _mev(ev), _sev(0L) { }
+        ParallelTask( Threading::Event* ev ) : _sev(ev), _mev(0L) { }
+
+        void operator()( ProgressCallback* pc ) 
+        {
+            this->execute();
+            if ( _mev )
+                _mev->notify();
+            else if ( _sev )
+                _sev->set();
+        }
+
+        Threading::MultiEvent* _mev;
+        Threading::Event*      _sev;
+    };
 
     class TaskRequestQueue : public osg::Referenced
     {
@@ -97,11 +136,10 @@ namespace osgEarth
         unsigned int getNumRequests() const;
 
     private:
-        TaskRequestList _requests;
+        TaskRequestPriorityMap _requests;
         OpenThreads::Mutex _mutex;
         OpenThreads::Condition _cond;
         volatile bool _done;
-        //osg::ref_ptr< osg::RefBlock > _block;
 
         int _stamp;
     };
@@ -159,7 +197,7 @@ namespace osgEarth
     };
 
     /**
-     * Managed a pool of TaskService objects, automatically allocating
+     * Manages a pool of TaskService objects, automatically allocating
      * threads among them based on a weighting metric.
      */
     class OSGEARTH_EXPORT TaskServiceManager : public osg::Referenced

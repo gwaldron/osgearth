@@ -28,18 +28,14 @@ osg::Referenced( true ),
 _canceled(false),
 _needsRetry(false)
 {
-}
-
-bool
-ProgressCallback::reportProgress(double current, double total)
-{
-    return false;
+    //NOP
 }
 
 /******************************************************************************/
 ConsoleProgressCallback::ConsoleProgressCallback() :
 ProgressCallback()
 {
+    //NOP
 }
 
 bool

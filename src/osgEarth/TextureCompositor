@@ -54,6 +54,9 @@ namespace osgEarth
         /** Gets the index of the highest populated slot. */
         int getMaxUsedSlot() const;
 
+        /** Whether the indicated slot is available for use */
+        bool isSlotAvailable( int slot ) const;
+
         /** Accesses a vector that maps layer UIDs to texture slots. */
         const TextureSlotVector& getTextureSlots() const { return _slots; }
 

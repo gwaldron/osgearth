@@ -1,0 +1,104 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_MASK_SOURCE_H
+#define OSGEARTH_MASK_SOURCE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/Progress>
+#include <osgEarth/Revisioning>
+#include <osg/Referenced>
+
+namespace osgEarth
+{   
+    class Map;
+    
+    /**
+     * Configuration options for a masking source.
+     */
+    class OSGEARTH_EXPORT MaskSourceOptions : public DriverConfigOptions
+    {
+    public:
+        MaskSourceOptions( const ConfigOptions& options =ConfigOptions() ) :
+              DriverConfigOptions( options ) { fromConfig(_conf); }
+
+    public: // properties
+
+    public:
+        virtual Config getConfig() const;
+
+    protected:
+        virtual void mergeConfig( const Config& conf );
+        
+    private:
+        void fromConfig( const Config& conf );
+    };
+
+    /**
+     * MaskSource is a plugin object that generates a masking goemetry
+     */
+    class OSGEARTH_EXPORT MaskSource : public virtual Revisioned<osg::Object>
+    {
+    public:        
+        MaskSource( const MaskSourceOptions& options =MaskSourceOptions() );
+
+        /**
+         * Subclass implements this method to create the boundary geometry.
+         */
+        virtual osg::Vec3dArray* createBoundary( ProgressCallback* progress =0L ) =0;
+
+    public:
+		virtual void initialize( const std::string& referenceURI, const Map* map ) { }
+
+        const MaskSourceOptions& getOptions() const { return _options; }
+    public: 
+
+        // META_Object specialization:
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const MaskSource*>(obj)!=NULL; }
+        virtual const char* className() const { return "MaskSource"; }
+        virtual const char* libraryName() const { return "osgEarth"; }
+
+    private:
+        const MaskSourceOptions _options;
+
+        friend class Map;
+        friend class MaskSourceFactory;
+    };
+
+    //--------------------------------------------------------------------
+
+    class OSGEARTH_EXPORT MaskSourceDriver : public osgDB::ReaderWriter
+    {
+    protected:
+        const MaskSourceOptions& getMaskSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+    };
+
+    //--------------------------------------------------------------------
+
+    class OSGEARTH_EXPORT MaskSourceFactory
+    {   
+	public:
+        static MaskSource* create( const MaskSourceOptions& options );
+    };
+}
+
+#endif // OSGEARTH_MASK_SOURCE_H

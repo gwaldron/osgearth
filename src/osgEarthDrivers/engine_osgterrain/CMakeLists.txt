@@ -4,12 +4,15 @@ SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES})
 SET(TARGET_SRC
     CustomTerrain.cpp
     CustomTile.cpp
+    KeyNodeFactory.cpp
     MultiPassTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp
+    ParallelKeyNodeFactory.cpp
     Plugin.cpp
-    TerrainTileEdgeNormalizerUpdateCallback.cpp
-    SinglePassTerrainTechnique.cpp
+    SerialKeyNodeFactory.cpp
+    SinglePassTerrainTechnique.cpp    
+    TileBuilder.cpp
 )
 
 SET(TARGET_H
@@ -17,14 +20,18 @@ SET(TARGET_H
     CustomTerrain
     CustomTile
     CustomTerrainTechnique
+    DynamicLODScaleCallback   
     FileLocationCallback
+    KeyNodeFactory
     MultiPassTerrainTechnique
+    ParallelKeyNodeFactory
     OSGTerrainEngineNode
     OSGTerrainOptions
     OSGTileFactory
-    TerrainTileEdgeNormalizerUpdateCallback
-    TransparentLayer
+    SerialKeyNodeFactory
     SinglePassTerrainTechnique
+    TileBuilder
+    TransparentLayer
 )
 
 SETUP_PLUGIN(osgearth_engine_osgterrain)

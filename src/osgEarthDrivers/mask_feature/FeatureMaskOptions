@@ -1,0 +1,75 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_FEATURE_MASK_OPTIONS
+#define OSGEARTH_DRIVER_FEATURE_MASK_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/MaskSource>
+#include <osgEarthFeatures/FeatureSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    class FeatureMaskOptions : public MaskSourceOptions // NO EXPORT; header only
+    {
+    public:
+        /** Feature source from which to read the feature data */
+        optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
+        const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
+
+        /** A live feature source instance to use. Note, this does not serialize. */
+        osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
+        const osg::ref_ptr<FeatureSource>& featureSource() const { return _featureSource; }
+
+    public:
+        FeatureMaskOptions( const ConfigOptions& options =ConfigOptions() ) :
+            MaskSourceOptions( options )
+        {
+            setDriver( "feature" );
+            fromConfig( _conf );
+        }
+
+    public:
+        Config getConfig() const {
+            Config conf = MaskSourceOptions::getConfig();
+            conf.updateObjIfSet( "features", _featureOptions );
+            return conf;
+        }
+
+    protected:
+        virtual void mergeConfig( const Config& conf ) {
+            MaskSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            if ( conf.hasChild("features") )
+                _featureOptions->merge( conf.child("features") );
+        }
+        
+        optional<FeatureSourceOptions> _featureOptions;
+        osg::ref_ptr<FeatureSource> _featureSource;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_FEATURE_MASK_OPTIONS

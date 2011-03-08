@@ -176,6 +176,9 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
         i != _options._components.end();
         ++i )
     {
+        if ( progress && progress->isCanceled() )
+            return 0L;
+
         // check that this source is within the level bounds:
         if (i->_imageLayerOptions->minLevel().value() > key.getLevelOfDetail() ||
             i->_imageLayerOptions->maxLevel().value() < key.getLevelOfDetail() )
@@ -223,7 +226,11 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
         }
     }
 
-    if ( images.size() == 0 )
+    if ( progress && progress->isCanceled() )
+    {
+        return 0L;
+    }
+    else if ( images.size() == 0 )
     {
         return 0L;
     }

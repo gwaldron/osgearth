@@ -33,6 +33,7 @@
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthDrivers/agglite/AGGLiteOptions>
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
+#include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -47,7 +48,9 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    bool useGeom = arguments.read("--geom");
+    bool useGeom    = arguments.read("--geometry");
+    bool useOverlay = arguments.read("--overlay");
+    bool useStencil = arguments.read("--stencil");
 
     osgViewer::Viewer viewer(arguments);
 
@@ -63,7 +66,7 @@ int main(int argc, char** argv)
     // Next we add a feature layer. First configure a feature driver to 
     // load the vectors from a shapefile:
     OGRFeatureOptions featureOpt;
-    featureOpt.url() = "../data/world.shp";
+    featureOpt.url() = "../data/usa.shp";
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -74,20 +77,18 @@ int main(int argc, char** argv)
     ls->stroke()->width() = 1.0f;
     style->addSymbol(ls);
 
+    // That's it, the map is ready; now create a MapNode to render the Map:
+    MapNodeOptions mapNodeOptions;
+    mapNodeOptions.enableLighting() = false;
+
+    MapNode* mapNode = new MapNode( map, mapNodeOptions );
+
     // Now we'll choose the AGG-Lite driver to render the features. By the way, the
     // feature data is actually polygons, so we override that to treat it as lines.
     // We apply the feature driver and set the style as well.
-    if ( !useGeom )
+    if (useStencil)
     {
-        AGGLiteOptions worldOpt;
-        worldOpt.featureOptions() = featureOpt;
-        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
-        worldOpt.styles()->addStyle( style );
-        map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
-    }
-    else
-    {
-        FeatureGeomModelOptions worldOpt;
+        FeatureStencilModelOptions worldOpt;
         worldOpt.featureOptions() = featureOpt;
         worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
         worldOpt.styles()->addStyle( style );
@@ -95,16 +96,33 @@ int main(int argc, char** argv)
         worldOpt.depthTestEnabled() = false;
         map->addModelLayer( new ModelLayer( "my features", worldOpt ) );
     }
+    else if (useGeom || useOverlay)
+    {
+        FeatureGeomModelOptions worldOpt;
+        worldOpt.featureOptions() = featureOpt;
+        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+        worldOpt.styles()->addStyle( style );
+        worldOpt.enableLighting() = false;
+        worldOpt.depthTestEnabled() = false;
 
-    // That's it, the map is ready; now create a MapNode to render the Map:
-    MapNode* mapNode = new MapNode( map );
-
+        ModelLayerOptions options( "my features", worldOpt );
+        options.overlay() = useOverlay;
+        map->addModelLayer( new ModelLayer(options) );
+    }
+    else // rasterize
+    {
+        AGGLiteOptions worldOpt;
+        worldOpt.featureOptions() = featureOpt;
+        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+        worldOpt.styles()->addStyle( style );
+        map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
+    }
 
     viewer.setSceneData( mapNode );
-
     viewer.setCameraManipulator( new EarthManipulator() );
 
-    viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
+    if ( !useStencil && !useOverlay )
+        viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

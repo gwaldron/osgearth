@@ -48,7 +48,7 @@ using namespace osgEarth::Drivers;
 class OGRFeatureSource : public FeatureSource
 {
 public:
-    OGRFeatureSource( const FeatureSourceOptions& options ) : FeatureSource( options ),
+    OGRFeatureSource( const OGRFeatureOptions& options ) : FeatureSource( options ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
       _ogrDriverHandle( 0L ),

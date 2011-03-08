@@ -27,6 +27,7 @@
 #include <osgDB/Options>
 #endif
 #include <list>
+#include <stack>
 #include <istream>
 
 namespace osgEarth
@@ -64,7 +65,7 @@ namespace osgEarth
         Config( const std::string& key ) : _key(key) { }
         Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ) { }
 
-        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children) { }
+        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children), _refMap(rhs._refMap) { }
 
         bool loadXML( std::istream& in );
 
@@ -311,11 +312,31 @@ namespace osgEarth
 
         std::string toHashString() const;
 
+        /** support for conveying non-serializable objects in a Config (in memory only) */
+
+        typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > RefMap;
+
+        void addNonSerializable( const std::string& key, osg::Referenced* obj ) {
+            _refMap[key] = obj;
+        }
+        
+        void updateNonSerializable( const std::string& key, osg::Referenced* obj ) {
+            _refMap[key] = obj;
+        }
+
+        template<typename X>
+        X* getNonSerializable( const std::string& key ) const {
+            RefMap::const_iterator i = _refMap.find(key);
+            return i == _refMap.end() ? 0 : dynamic_cast<X*>( i->second.get() );
+        }
+
     protected:
         std::string _key;
         std::string _defaultValue;
         Properties  _attrs;
-        ConfigSet   _children;
+        ConfigSet   _children;   
+
+        RefMap _refMap;
     };
 
     // specialization for Config

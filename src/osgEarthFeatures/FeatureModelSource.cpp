@@ -46,8 +46,9 @@ _mergeGeometry( false )
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
-    if ( conf.hasChild("features") )
-        _featureOptions->merge( conf.child("features") );
+    conf.getObjIfSet( "features", _featureOptions );
+    //if ( conf.hasChild("features") )
+    //    _featureOptions->merge( conf.child("features") );
 
     conf.getObjIfSet( "styles", _styles );
     conf.getObjIfSet( "gridding", _gridding );

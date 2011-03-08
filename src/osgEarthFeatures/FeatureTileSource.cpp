@@ -66,8 +66,9 @@ FeatureTileSourceOptions::mergeConfig( const Config& conf )
 void
 FeatureTileSourceOptions::fromConfig( const Config& conf )
 {
-    if ( conf.hasChild("features") )
-        _featureOptions->merge( ConfigOptions(conf.child("features")) );
+    conf.getObjIfSet( "features", _featureOptions );
+    //if ( conf.hasChild("features") )
+    //    _featureOptions->merge( ConfigOptions(conf.child("features")) );
 
     conf.getObjIfSet( "styles", _styles );
     

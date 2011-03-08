@@ -482,37 +482,6 @@ namespace osgEarth { namespace Util { namespace Controls
     };
 
     /**
-     * A Node that places a control in world space.
-     */
-    class OSGEARTHUTIL_EXPORT ControlNode : public osg::MatrixTransform
-    {
-    public:
-        ControlNode( Control* control );
-
-        /** Accesses the underlying control */
-        Control* getControl() { return _control.get(); }
-        const Control* getControl() const { return _control.get(); }
-
-        /** Gets the screen-space position of the control */
-        const osg::Vec2f& getScreenPos() const { return _screenPos; }
-
-        /** Whether this control is obscured by other controls. */
-        bool isObscured() const { return _obscured; }
-        void setObscured() { _obscured = true; }
-
-        float visibleTime() const { return _visibleTime; }
-
-    public:
-        virtual void traverse( osg::NodeVisitor& nv ); //override
-
-    private:
-        osg::ref_ptr<Control> _control;
-        bool                  _obscured;
-        osg::Vec2f            _screenPos;
-        float                 _visibleTime;
-    };
-
-    /**
      * All the Controls within a SceneControlBin are sorted by priority and
      * drawn so as to prevent overlap. They are also positioned in WORLD space,
      * rather than in screen space.
@@ -547,6 +516,39 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::MatrixTransform* getControlTransform( Control* control ) const;
 
     private:
+        class ControlNode : public osg::MatrixTransform
+        {
+        public:
+            ControlNode( Control* control, std::vector<osg::Node*>& visibleNodes );
+
+#if 0
+            /** Accesses the underlying control */
+            Control* getControl() { return _control.get(); }
+            const Control* getControl() const { return _control.get(); }
+
+            /** Gets the screen-space position of the control */
+            const osg::Vec2f& getScreenPos() const { return _screenPos; }
+
+            /** Whether this control is obscured by other controls. */
+            bool isObscured() const { return _obscured; }
+            void setObscured() { _obscured = true; }
+
+            float visibleTime() const { return _visibleTime; }
+#endif
+
+        public:
+            virtual void traverse( osg::NodeVisitor& nv ); //override
+
+        private:
+            osg::ref_ptr<Control>      _control;
+            bool                       _obscured;
+            osg::Vec2f                 _screenPos;
+            float                      _visibleTime;
+            osg::ref_ptr<osg::Uniform> _uniform;
+            std::vector<osg::Node*>&   _visibleNodes;
+            friend class SceneControlBin;
+        };
+
         typedef std::pair<float, ControlNode*> ControlNodePair;
         typedef std::multimap<float, ControlNode*> ControlNodeCollection;
         ControlNodeCollection _controlNodes;
@@ -560,10 +562,12 @@ namespace osgEarth { namespace Util { namespace Controls
         RenderNodeTable _renderNodes;
 
         osg::ref_ptr<osg::Group> _group;
+        std::vector<osg::Node*>  _visibleNodes;
+        std::vector<osg::BoundingBox> _taken;
 
         friend class ControlCanvas;
 
-        void draw( const ControlContext& context, int bin );
+        void draw( const ControlContext& context, bool newContext, int bin );
         osg::Group* getControlGroup() const { return _group; }
     };
 

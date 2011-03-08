@@ -118,6 +118,8 @@ FeatureTileSource::initialize( const std::string& referenceURI, const Profile* o
     if ( _features.valid() )
     {
         _features->initialize( referenceURI );
+
+#if 0 // removed this as it was screwing up the rasterizer (agglite plugin).. not sure there's any reason to do this anyway
         if (_features->getFeatureProfile())
         {
             setProfile( Profile::create(_features->getFeatureProfile()->getSRS(),
@@ -125,6 +127,7 @@ FeatureTileSource::initialize( const std::string& referenceURI, const Profile* o
                                     _features->getFeatureProfile()->getExtent().xMax(), _features->getFeatureProfile()->getExtent().yMax()));
 
         }
+#endif
     }
     else
     {

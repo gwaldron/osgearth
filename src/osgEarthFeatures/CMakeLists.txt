@@ -27,6 +27,7 @@ SET(LIB_PUBLIC_HEADERS
     ResampleFilter
     ScaleFilter
 	BuildTextOperator
+	SubstituteModelFilter
     TransformFilter
     VirtualFeatureSource
 )
@@ -47,6 +48,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ResampleFilter.cpp
     ScaleFilter.cpp
 	BuildTextOperator.cpp
+	SubstituteModelFilter.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp
 )

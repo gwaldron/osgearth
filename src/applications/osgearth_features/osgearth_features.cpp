@@ -63,17 +63,22 @@ int main(int argc, char** argv)
     basemapOpt.url() = "../data/world.tif";
     map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
 
+    LineString* line = new LineString();
+    line->push_back( osg::Vec3d( 0.0, 41.79, 0.0 ) );
+    line->push_back( osg::Vec3d( -90.0, 41.79, 0.0 ) );    
+
     // Next we add a feature layer. First configure a feature driver to 
     // load the vectors from a shapefile:
     OGRFeatureOptions featureOpt;
-    featureOpt.url() = "../data/usa.shp";
+    featureOpt.geometry() = line;
+    //featureOpt.url() = "../data/usa.shp";
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
     Style* style = new Style;
 
     LineSymbol* ls = new LineSymbol;
-    ls->stroke()->color() = osg::Vec4f( 1,1,0,0.1 ); // yellow
+    ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
     ls->stroke()->width() = 1.0f;
     style->addSymbol(ls);
 

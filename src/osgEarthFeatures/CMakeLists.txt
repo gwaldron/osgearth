@@ -15,6 +15,7 @@ SET(LIB_PUBLIC_HEADERS
     Annotation  
     BufferFilter
     BuildGeometryFilter  
+	BuildTextOperator
     Common
     ConvertTypeFilter
     Feature
@@ -24,9 +25,11 @@ SET(LIB_PUBLIC_HEADERS
     FeatureSymbolizer
     FeatureTileSource
     Filter
+    FilterContext
+    OptimizerHints
     ResampleFilter
     ScaleFilter
-	BuildTextOperator
+	Session
 	SubstituteModelFilter
     TransformFilter
     VirtualFeatureSource
@@ -37,6 +40,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Annotation.cpp
     BufferFilter.cpp
     BuildGeometryFilter.cpp
+	BuildTextOperator.cpp
     ConvertTypeFilter.cpp
     Feature.cpp
     FeatureGridder.cpp
@@ -45,9 +49,11 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureSymbolizer.cpp
     FeatureTileSource.cpp
     Filter.cpp
+    FilterContext.cpp
+    OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
-	BuildTextOperator.cpp
+	Session.cpp
 	SubstituteModelFilter.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp

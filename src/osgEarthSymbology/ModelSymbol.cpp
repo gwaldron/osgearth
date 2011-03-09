@@ -34,7 +34,7 @@ Config
 ModelSymbol::getConfig() const
 {
     Config conf( "model" );
-    conf.addIfSet( "uri", _uri );
+    conf.addIfSet( "url", _url );
     conf.addIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
     conf.addIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.addIfSet( "placement", "scatter",  _placement, PLACEMENT_SCATTER );
@@ -47,7 +47,7 @@ ModelSymbol::getConfig() const
 void 
 ModelSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "uri", _uri );
+    conf.getIfSet( "url", _url );
     conf.getIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
     conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.getIfSet( "placement", "scatter",  _placement, PLACEMENT_SCATTER );

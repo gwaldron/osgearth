@@ -23,11 +23,13 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Style>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * This filter will change geometry from one type to another.
@@ -39,13 +41,19 @@ namespace osgEarth { namespace Features
         static bool isSupported() { return true; }
 
     public:
-        SubstituteModelFilter();
+        SubstituteModelFilter( Style* style );
 
     public:
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
 
-    protected:
-        bool push( Feature* input, const FilterContext& context );
+    private:
+        osg::ref_ptr<Style> _style;
+
+        struct Data {
+            osg::ref_ptr<osg::Node> _model;
+        };
+        
+        bool push( Feature* input, Data& data, FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

@@ -17,25 +17,38 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
+#include <osgEarth/HTTPClient>
 #include <list>
 #include <deque>
+
+#define LC "[SubstituteModelFilter] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+//------------------------------------------------------------------------
 
-SubstituteModelFilter::SubstituteModelFilter()
+namespace
+{
+    static osg::Node* s_defaultModel =0L;
+}
+
+//------------------------------------------------------------------------
+
+SubstituteModelFilter::SubstituteModelFilter( Style* style ) :
+_style( style )
 {
     //NOP
 }
 
 bool
-SubstituteModelFilter::push( Feature* input, const FilterContext& context )
+SubstituteModelFilter::push(Feature* input,
+                            SubstituteModelFilter::Data& data,
+                            FilterContext& context )
 {
     return false;
 }
-
 
 FilterContext
 SubstituteModelFilter::push( FeatureList& input, const FilterContext& context )
@@ -46,9 +59,31 @@ SubstituteModelFilter::push( FeatureList& input, const FilterContext& context )
         return context;
     }
 
+    if ( !_style.valid() ) {
+        OE_WARN << LC << "No style supplied; cannot process features" << std::endl;
+        return context;
+    }
+
+    const ModelSymbol* symbol = _style->getSymbol<const ModelSymbol>();
+    if ( !symbol ) {
+        OE_WARN << LC << "No ModelSymbol found in style; cannot process feautres" << std::endl;
+        return context;
+    }
+
+    FilterContext newContext( context );
+
+    // assemble the data for this pass
+    Data data;
+    data._model = newContext.getSession()->getModel( *symbol->url() );
+    if ( !data._model.valid() )
+    {
+        OE_WARN << LC << "Unable to load model from \"" << *symbol->url() << "\"" << std::endl;
+        return context;
+    }
+
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
-        if ( !push( i->get(), context ) )
+        if ( !push( i->get(), data, newContext ) )
             ok = false;
 
     return context;

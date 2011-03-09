@@ -16,7 +16,27 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FilterContext>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+
+FilterContext::FilterContext( Session* session ) :
+_session( session ),
+_isGeocentric( false ),
+_extent( GeoExtent() )
+{
+    //NOP
+}
+
+FilterContext::FilterContext( const FilterContext& rhs ) :
+_profile( rhs._profile.get() ),
+_session( rhs._session.get() ),
+_isGeocentric( rhs._isGeocentric ),
+_extent( rhs._extent ),
+_referenceFrame( rhs._referenceFrame ),
+_inverseReferenceFrame( rhs._inverseReferenceFrame ),
+_optimizerHints( rhs._optimizerHints )
+{
+    //nop
+}

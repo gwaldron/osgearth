@@ -195,7 +195,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "model")
         {
             if (!model) model = new ModelSymbol;
-            model->uri() = p->second;
+            model->url() = p->second;
         }
         else if (p->first == "model-placement")
         {

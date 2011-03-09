@@ -38,8 +38,8 @@ namespace osgEarth { namespace Symbology
     public:
         ModelSymbol( const Config& conf =Config() );
 
-        optional<std::string>& uri() { return _uri; }
-        const optional<std::string>& uri() const { return _uri; }
+        optional<std::string>& url() { return _url; }
+        const optional<std::string>& url() const { return _url; }
 
         optional<Placement> placement() { return _placement; }
         const optional<Placement> placement() const { return _placement; }
@@ -58,7 +58,7 @@ namespace osgEarth { namespace Symbology
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<std::string> _uri;
+        optional<std::string> _url;
         optional<Placement>   _placement;
         optional<float>       _density;
         optional<float>       _interval;

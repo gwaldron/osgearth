@@ -16,7 +16,44 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/Filter>
 
-using namespace osgEarth;
+#include <osgEarthFeatures/OptimizerHints>
+
 using namespace osgEarth::Features;
+
+
+OptimizerHints::OptimizerHints()
+{
+    included = 0;
+    excluded = 0;
+}
+
+OptimizerHints::OptimizerHints( const OptimizerHints& rhs )
+{
+    included = rhs.included;
+    excluded = rhs.excluded;
+}
+
+void
+OptimizerHints::include( osgUtil::Optimizer::OptimizationOptions value )
+{
+    included |= (int)value;
+}
+
+void
+OptimizerHints::exclude( osgUtil::Optimizer::OptimizationOptions value )
+{
+    excluded |= (int)value;
+}
+
+osgUtil::Optimizer::OptimizationOptions
+OptimizerHints::getIncludedOptions() const
+{
+    return (osgUtil::Optimizer::OptimizationOptions)included;
+}
+
+osgUtil::Optimizer::OptimizationOptions
+OptimizerHints::getExcludedOptions() const
+{
+    return (osgUtil::Optimizer::OptimizationOptions)excluded;
+}

@@ -31,6 +31,11 @@ _needsRetry(false)
     //NOP
 }
 
+bool ProgressCallback::reportProgress(double /*current*/, double /*total*/, const std::string& /*msg*/) 
+{
+    return false;
+}
+
 /******************************************************************************/
 ConsoleProgressCallback::ConsoleProgressCallback() :
 ProgressCallback()
@@ -39,9 +44,16 @@ ProgressCallback()
 }
 
 bool
-ConsoleProgressCallback::reportProgress(double current, double total)
+ConsoleProgressCallback::reportProgress(double current, double total, const std::string& msg)
 {
-    double percentComplete = (current / total) * 100.0;
-    OE_NOTICE << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
+    if (total > 0)
+    {
+	double percentComplete = (current / total) * 100.0;
+	OE_NOTICE << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
+    }
+    else
+    {
+	OE_NOTICE << msg << std::endl;
+    }
     return false;
 }

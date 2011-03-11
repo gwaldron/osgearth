@@ -220,7 +220,8 @@ _useTileGenRequest( true ),
 _quickReleaseGLObjects( quickReleaseGLObjects ),
 _key( key ),
 _keyLocator( keyLocator ),
-_verticalScale(1.0f)
+_verticalScale(1.0f),
+_mask( 0L )
 {
     this->setLocator( keyLocator );
 

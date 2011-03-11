@@ -376,6 +376,7 @@ namespace osgEarth
             TERRAIN_LAYERS   = IMAGE_LAYERS | ELEVATION_LAYERS,
             MODEL_LAYERS     = 1 << 2,
             MASK_LAYERS      = 1 << 3,
+            MASKED_TERRAIN_LAYERS = TERRAIN_LAYERS | MASK_LAYERS,
             ENTIRE_MODEL     = 0xff
         };
 

@@ -434,6 +434,26 @@ SinglePassTerrainTechnique::calculateSampling( unsigned int& out_rows, unsigned 
     }
 }
 
+bool
+SinglePassTerrainTechnique::pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* pointList)
+{
+    if (!pointList)
+        return false;
+
+    bool result = false;
+    const osg::Vec3dArray& polygon = *pointList;
+    for( unsigned int i=0, j=polygon.size()-1; i<polygon.size(); j = i++ )
+    {
+        if ((((polygon[i].y() <= point.y()) && (point.y() < polygon[j].y())) ||
+             ((polygon[j].y() <= point.y()) && (point.y() < polygon[i].y()))) &&
+            (point.x() < (polygon[j].x()-polygon[i].x()) * (point.y()-polygon[i].y())/(polygon[j].y()-polygon[i].y())+polygon[i].x()))
+        {
+            result = !result;
+        }
+    }
+    return result;
+}
+
 namespace
 {
     struct GeoLocatorComp
@@ -630,6 +650,9 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     // populate vertex and tex coord arrays    
     unsigned int i, j; //, k=0;
 
+    osgEarth::GeoLocator* geoLocator = _masterLocator->getGeographicFromGeocentric();
+    osg::Vec3dArray* mask = tilef._mask.valid() ? tilef._mask.get() : 0L;
+
     for(j=0; j<numRows; ++j)
     {
         for(i=0; i<numColumns; ++i) // ++k)
@@ -649,6 +672,14 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 float value = 0.0f;
                 validValue = elevationLayer->getValidValue(i_equiv,j_equiv, value);
                 ndc.z() = value*scaleHeight;
+            }
+
+            if (validValue && mask)
+            {
+              osg::Vec3d world;
+              geoLocator->convertLocalToModel(ndc, world);
+
+              validValue = !pointInPolygon(world, mask);
             }
             
             if (validValue)
@@ -731,27 +762,43 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         // build the verts first:
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
         skirtVerts->reserve( numVerticesInSkirt );
+        
+        Indices skirtBreaks;
+        skirtBreaks.push_back(0);
 
         // bottom:
         for( unsigned int c=0; c<numColumns-1; ++c )
         {
             int orig_i = indices[c];
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
 
-            if ( _texCompositor->requiresUnitTextureSpace() )
+            //int offset = 0;
+            //while (orig_i < 0 && offset < numRows - 1)
+            //  orig_i = indices[c + ++offset * numColumns];
+
+            if (orig_i < 0)
             {
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              if (skirtBreaks.back() != skirtVerts->size())
+                skirtBreaks.push_back(skirtVerts->size());
             }
-            else if ( renderLayers.size() > 0 )
+            else
             {
-                for (unsigned int i = 0; i < renderLayers.size(); ++i)
-                {
-                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                }
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+
+              if ( _texCompositor->requiresUnitTextureSpace() )
+              {
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              }
+              else if ( renderLayers.size() > 0 )
+              {
+                  for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                  {
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                  }
+              }
             }
         }
 
@@ -759,22 +806,30 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for( unsigned int r=0; r<numRows-1; ++r )
         {
             int orig_i = indices[r*numColumns+(numColumns-1)];
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-
-            if ( _texCompositor->requiresUnitTextureSpace() )
+            if (orig_i < 0)
             {
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              if (skirtBreaks.back() != skirtVerts->size())
+                skirtBreaks.push_back(skirtVerts->size());
             }
-            else if ( renderLayers.size() > 0 )
+            else
             {
-                for (unsigned int i = 0; i < renderLayers.size(); ++i)
-                {
-                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                }
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+
+              if ( _texCompositor->requiresUnitTextureSpace() )
+              {
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              }
+              else if ( renderLayers.size() > 0 )
+              {
+                  for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                  {
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                  }
+              }
             }
         }
 
@@ -782,22 +837,30 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for( int c=numColumns-1; c>0; --c )
         {
             int orig_i = indices[(numRows-1)*numColumns+c];
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-
-            if ( _texCompositor->requiresUnitTextureSpace() )
+            if (orig_i < 0)
             {
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              if (skirtBreaks.back() != skirtVerts->size())
+                skirtBreaks.push_back(skirtVerts->size());
             }
-            else if ( renderLayers.size() > 0 )
+            else
             {
-                for (unsigned int i = 0; i < renderLayers.size(); ++i)
-                {
-                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                }
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+
+              if ( _texCompositor->requiresUnitTextureSpace() )
+              {
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              }
+              else if ( renderLayers.size() > 0 )
+              {
+                  for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                  {
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                  }
+              }
             }
         }
 
@@ -805,27 +868,39 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for( int r=numRows-1; r>=0; --r )
         {
             int orig_i = indices[r*numColumns];
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-
-            if ( _texCompositor->requiresUnitTextureSpace() )
+            if (orig_i < 0)
             {
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              if (skirtBreaks.back() != skirtVerts->size())
+                skirtBreaks.push_back(skirtVerts->size());
             }
-            else if ( renderLayers.size() > 0 )
+            else
             {
-                for (unsigned int i = 0; i < renderLayers.size(); ++i)
-                {
-                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                }
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+
+              if ( _texCompositor->requiresUnitTextureSpace() )
+              {
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              }
+              else if ( renderLayers.size() > 0 )
+              {
+                  for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                  {
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                  }
+              }
             }
         }
 
         skirt->setVertexArray( skirtVerts );
-        skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, 0, skirtVerts->size() ) );
+
+        //Add a primative set for each continuous skirt strip
+        skirtBreaks.push_back(skirtVerts->size());
+        for (int p=1; p < skirtBreaks.size(); p++)
+          skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
     }
 
     bool recalcNormals = elevationLayer != NULL;

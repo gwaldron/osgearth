@@ -601,8 +601,7 @@ SkyNode::attach( osg::View* view, int lightNum )
 {
     if ( !view ) return;
 
-    _light = new osg::Light( lightNum );
-    _light->setLightNum(0);
+    _light = new osg::Light( lightNum );    
     _light->setPosition( osg::Vec4( _lightPos, 0 ) );
     _light->setAmbient( osg::Vec4(_ambientBrightness,_ambientBrightness,_ambientBrightness,1.0) );
     _light->setDiffuse( osg::Vec4(1,1,1,1) );

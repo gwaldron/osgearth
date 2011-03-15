@@ -1787,7 +1787,7 @@ EarthManipulator::rotate( double dx, double dy )
 void
 EarthManipulator::zoom( double dx, double dy )
 {
-    double fd = _distance;
+    double fd = 1000;
     double scale = 1.0f + dy;
 
     if ( fd * scale > _settings->getMinDistance() )

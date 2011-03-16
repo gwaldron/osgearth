@@ -198,9 +198,9 @@ void
 TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
                                                 UID layerUID,
                                                 const GeoImage& preparedImage,
-                                                const GeoExtent& tileExtent,
+                                                const TileKey& tileKey,
                                                 const TextureLayout& layout,
-                                                const GeoImage& secondaryImage) const
+                                                osg::StateSet* parentStateSet) const
 {
     osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, _lodBlending );
     if ( tex )

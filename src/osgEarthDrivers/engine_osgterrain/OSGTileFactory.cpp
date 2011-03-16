@@ -730,16 +730,16 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
                     mapf.getImageLayerAt(i),
                     blendedImage.get(),
                     img_locator.get(),
-                    key.getLevelOfDetail() ) );
+                    key.getLevelOfDetail(),
+                    key) );
 #endif
                 osg::ref_ptr<osg::Image> secondaryImage;
-                createSecondaryImage(image_tiles[i]._layerUID, key, terrain, secondaryImage);
                 tile->setCustomColorLayer(
                     CustomColorLayer( mapf.getImageLayerAt(i),
                                       geo_image.getImage(),
                                       img_locator.get(),
                                       key.getLevelOfDetail(),
-                                      secondaryImage.get()));
+                                      key)) ;
             }
             else
             {
@@ -747,7 +747,8 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
                     mapf.getImageLayerAt(i),
                     geo_image.getImage(),
                     img_locator.get(),
-                    key.getLevelOfDetail() ) );
+                    key.getLevelOfDetail(),
+                    key) );
             }
 
             double upp = geo_image.getUnitsPerPixel();
@@ -1045,7 +1046,8 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
                 layer,
                 blendedImage.get(),
                 imgLocator.get(),
-                key.getLevelOfDetail() ) );
+                key.getLevelOfDetail(),
+                key) );
         }
         else
 #endif
@@ -1054,7 +1056,8 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
                 layer,
                 geoImage.getImage(),
                 imgLocator.get(),
-                key.getLevelOfDetail() ) );
+                key.getLevelOfDetail(),
+                key) );
         }
 
         //CustomColorLayer result( layer, geoImage.getImage(), imgLocator.get(), key.getLevelOfDetail() );

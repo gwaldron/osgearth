@@ -59,7 +59,7 @@ s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, f
     buf << "uniform sampler2DArray tex0; \n";
     if ( blending )
         buf << "uniform sampler2DArray tex1;\n";
-    buf << "uniform float region[ " << 4*numSlots << "]; \n"
+    buf << "uniform float region[ " << 8*numSlots << "]; \n"
         << "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
         << "uniform bool  osgearth_ImageLayerEnabled[" << numSlots << "]; \n"
         << "uniform float osgearth_ImageLayerRange[" << 2*numSlots << "]; \n"
@@ -78,7 +78,7 @@ s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, f
     {
         int slot = order[i];
         int q = 2 * i;
-        int r = 4 * slot;
+        int r = 8 * slot;
 
         buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
             << "        u = region["<< r <<"] + (region["<< r+2 <<"] * gl_TexCoord[0].s); \n"
@@ -95,9 +95,14 @@ s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, f
 
             buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
                 << "            age = min(age, 1.0);\n"
-                << "            vec3 texCoord = vec3(u, v, " << slot <<");\n;\n"
-                << "            vec4 texel0 = texture2DArray( tex0, texCoord );\n"
-                << "            vec4 texel1 = texture2DArray( tex1, texCoord );\n"
+                << "            float pu, pv;\n"
+                << "            pu = region["<< r+4 <<"] + (region["<< r+6 <<"] * gl_TexCoord[0].s); \n"
+                << "            pv = region["<< r+5 <<"] + (region["<< r+7 <<"] * gl_TexCoord[0].t); \n"
+
+
+                << "            vec3 texCoord = vec3(pu, pv, " << slot <<");\n;\n"
+                << "            vec4 texel0 = texture2DArray( tex0, vec3(u, v, " << slot << ") );\n"
+                << "            vec4 texel1 = texture2DArray( tex1, vec3(pu, pv, " << slot << ") );\n"
                 << "            float mixval = age * osgearth_LODRangeFactor;\n"
 #if 1
                 << "            texel = mix(texel1, texel0, mixval);\n";
@@ -182,14 +187,14 @@ s_getRegionUniform( osg::StateSet* stateSet, const TextureLayout& layout )
     // if the region-uniform doesn't exist, create it now
     if ( !region )
     {
-        region = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 4 );
+        region = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 8 );
         stateSet->addUniform( region );
     }
 
     // if the region exists but is too small, re-allocate it (cannot grow it) and copy over the old values
-    else if ( region->getNumElements() < layout.getTextureSlots().size() * 4 )
+    else if ( region->getNumElements() < layout.getTextureSlots().size() * 8 )
     {
-        osg::Uniform* newRegion = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 4 );
+        osg::Uniform* newRegion = new osg::Uniform( osg::Uniform::FLOAT, "region", layout.getTextureSlots().size() * 8);
         for( unsigned int i=0; i<region->getNumElements(); ++i )
         {
             float value;
@@ -295,14 +300,30 @@ void assignImage(osg::Texture2DArray* texture, int slot, osg::Image* image)
 }
 }
 
+namespace
+{
+void getImageTransform(const GeoExtent& tileExtent,
+                       const GeoExtent& imageExtent,
+                       osg::Vec4& transform)
+{
+    if (!tileExtent.isValid() || !imageExtent.isValid())
+        return;
+    transform[0] = (tileExtent.xMin() - imageExtent.xMin()) / imageExtent.width();
+    transform[1] = (tileExtent.yMin() - imageExtent.yMin()) / imageExtent.height();
+    transform[2]  = tileExtent.width() / imageExtent.width();
+    transform[3]  = tileExtent.height() / imageExtent.height();
+}
+}
+
 void
 TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
                                             UID layerUID,
                                             const GeoImage& preparedImage,
-                                            const GeoExtent& tileExtent,
+                                            const TileKey& tileKey,
                                             const TextureLayout& layout,
-                                            const GeoImage& secondaryImage) const
+                                            osg::StateSet* parentStateSet) const
 {
+    GeoExtent tileExtent(tileKey.getExtent());
     int slot = layout.getSlot( layerUID );
     if ( slot < 0 )
         return; // means the layer no longer exists
@@ -317,37 +338,59 @@ TextureCompositorTexArray::applyLayerUpdate(osg::StateSet* stateSet,
     
     // update the region uniform to reflect the geo extent of the image:
     const GeoExtent& imageExtent = preparedImage.getExtent();
-    float xoffset = (tileExtent.xMin() - imageExtent.xMin()) / imageExtent.width();
-    float yoffset = (tileExtent.yMin() - imageExtent.yMin()) / imageExtent.height();
-    float xscale  = tileExtent.width() / imageExtent.width();
-    float yscale  = tileExtent.height() / imageExtent.height();
+    osg::Vec4 tileTransform;
+    getImageTransform(tileExtent, imageExtent, tileTransform);
 
     // access the region uniform, creating or growing it if necessary:
     osg::Uniform* region = s_getRegionUniform( stateSet, layout );
     if ( region )
     {
-        int layerOffset = slot * 4;
-        region->setElement( layerOffset,     xoffset );
-        region->setElement( layerOffset + 1, yoffset );
-        region->setElement( layerOffset + 2, xscale );
-        region->setElement( layerOffset + 3, yscale );
+        int layerOffset = slot * 8;
+        for (int i = 0; i < 4; ++i)
+            region->setElement( layerOffset + i, tileTransform[i]);
         region->dirty();
     }
     
-    if ( _lodBlending )
+    if ( _lodBlending && region)
     {
         osg::Uniform* secondarySampler = ensureSampler( stateSet, 1 );
-        osg::Image* image = secondaryImage.getImage();
-        if (image)
+        osg::Texture2DArray* parentTexture = 0;
+        const unsigned parentLayerOffset = slot * 8 + 4;
+        if (parentStateSet)
         {
-            osg::Texture2DArray* secondaryTexture
-                = s_getTexture( stateSet, layout, 1, textureSize() / 2 );
-            assignImage(secondaryTexture, slot, image);
+            osg::Uniform* parentRegion = s_getRegionUniform( parentStateSet,
+                                                             layout );
+            GeoExtent parentExtent(tileKey.createParentKey().getExtent());
+            float widthRatio, heightRatio;
+            parentRegion->getElement(slot * 8 + 2, widthRatio);
+            parentRegion->getElement(slot * 8 + 3, heightRatio);
+            float parentImageWidth =  parentExtent.width() / widthRatio;
+            float parentImageHeight = parentExtent.height() / heightRatio;
+            float xRatio, yRatio;
+            parentRegion->getElement(slot * 8, xRatio);
+            parentRegion->getElement(slot * 8 + 1, yRatio);
+            float ParentImageXmin = parentExtent.xMin() - xRatio * parentImageWidth;
+            float ParentImageYmin = parentExtent.yMin() - yRatio * parentImageHeight;
+            region->setElement(parentLayerOffset,
+                               static_cast<float>((tileExtent.xMin() - ParentImageXmin) / parentImageWidth));
+            region->setElement(parentLayerOffset + 1,
+                               static_cast<float>((tileExtent.yMin() - ParentImageYmin) / parentImageHeight));
+            region->setElement(parentLayerOffset + 2,
+                               static_cast<float>(tileExtent.width() / parentImageWidth));
+            region->setElement(parentLayerOffset + 3,
+                               static_cast<float>(tileExtent.height() / parentImageHeight));
+            region->dirty();
+            parentTexture = static_cast<osg::Texture2DArray*>(parentStateSet->getTextureAttribute(0,                                                                              osg::StateAttribute::TEXTURE));
         }
         else
         {
-            secondarySampler->set(0);
+            for (int i = 0; i < 4; ++i)
+                region->setElement(parentLayerOffset + i, tileTransform[i]);
         }
+        if (parentTexture)
+            stateSet->setTextureAttribute(1, parentTexture, osg::StateAttribute::ON);
+        else
+            secondarySampler->set(0);
         // update the timestamp on the image layer to support blending.
         osg::Uniform* stamp = stateSet->getUniform( "osgearth_SlotStamp" );
         if ( !stamp || stamp->getNumElements() < (unsigned int)layout.getMaxUsedSlot() + 1 )
@@ -382,7 +425,7 @@ TextureCompositorTexArray::createSamplerFunction(UID layerUID,
     int slot = layout.getSlot( layerUID );
     if ( slot >= 0 )
     {
-        int r = 4 * slot;
+        int r = 8 * slot;
 
         std::string texCoord = 
             type == osg::Shader::VERTEX ? "gl_MultiTexCoord0" : 

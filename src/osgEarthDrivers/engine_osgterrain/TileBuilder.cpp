@@ -97,27 +97,13 @@ struct BuildColorLayer
         {
             locator = GeoLocator::createForKey( imageKey, *_mapInfo );
         }
-        GeoImage secondaryImage;
-        if (_opt->lodBlending() == true)
-        {
-            TileKey parentKey = imageKey.createParentKey();
-            if (_layer->isKeyValid(parentKey))
-            {
-                GeoImage parentImage = _layer->createImage(parentKey, 0);
-                if (parentImage.valid())
-                    secondaryImage = parentImage.crop(geoImage.getExtent());
-                else
-                    OE_WARN << "couldn't make secondary image\n";
-            }
-
-        }
         // add the color layer to the repo.
         _repo->add( CustomColorLayer(
             _layer,
             geoImage.getImage(),
             locator,
             _key.getLevelOfDetail(),
-            secondaryImage.getImage(),
+            _key,
             isFallbackData ) );
     }
 
@@ -310,7 +296,7 @@ TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_t
                 i->get(), emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),
-                0,
+                key,
                 true ) );
         }
     }
@@ -453,7 +439,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
                 i->get(), emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),
-                0,
+                key,
                 true ) );
         }
     }

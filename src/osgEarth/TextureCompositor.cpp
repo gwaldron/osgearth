@@ -267,14 +267,14 @@ void
 TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
                                     UID layerUID,
                                     const GeoImage& preparedImage,
-                                    const GeoExtent& tileExtent,
-                                    const GeoImage& secondaryImage) const
+                                    const TileKey& tileKey,
+                                    osg::StateSet* parentStateSet) const
 {
     if ( _impl.valid() )
     {
         Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
-        _impl->applyLayerUpdate( stateSet, layerUID, preparedImage, tileExtent,
-                                 _layout, secondaryImage );
+        _impl->applyLayerUpdate( stateSet, layerUID, preparedImage, tileKey,
+                                 _layout,  parentStateSet );
     }
 }
 

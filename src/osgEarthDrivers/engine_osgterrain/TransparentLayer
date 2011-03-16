@@ -25,6 +25,7 @@
 #include <osgTerrain/Locator>
 #include <osgTerrain/Layer>
 #include <osgEarth/ImageLayer>
+#include <osgEarth/TileKey>
 #include <osg/Image>
 
 class CustomColorLayer
@@ -37,15 +38,15 @@ public:
         osg::Image* image,
         const osgTerrain::Locator* locator,
         int lod,
-        osg::Image* secondaryImage = 0,
+        const osgEarth::TileKey& tileKey,
         bool fallbackData =false )
-        : _layer(imageLayer), _locator(locator), _image(image),  _secondaryImage(secondaryImage), _lod(lod), _fallbackData(fallbackData) { }
+        : _layer(imageLayer), _locator(locator), _image(image),  _tileKey(tileKey), _lod(lod), _fallbackData(fallbackData) { }
 
     CustomColorLayer( const CustomColorLayer& rhs ) :
         _layer( rhs._layer.get() ),        
         _locator( rhs._locator.get() ),
         _image( rhs._image.get() ),
-        _secondaryImage(rhs._secondaryImage),
+        _tileKey( rhs._tileKey ),
         _lod( rhs._lod ){ }
 
     osgEarth::UID getUID() const {
@@ -59,8 +60,8 @@ public:
     osg::Image* getImage() const { 
         return _image.get(); }
 
-    osg::Image* getSecondaryImage() const {
-        return _secondaryImage.get(); }
+    const osgEarth::TileKey& getTileKey() const {
+        return _tileKey; }
 
     const osgEarth::ImageLayer* getMapLayer() const {
         return _layer.get(); }
@@ -88,7 +89,7 @@ private:
     osg::ref_ptr<const osgEarth::ImageLayer> _layer;
     osg::ref_ptr<const osgTerrain::Locator>  _locator;
     osg::ref_ptr<osg::Image>                 _image;
-    osg::ref_ptr<osg::Image>                 _secondaryImage;
+    osgEarth::TileKey                        _tileKey;
     int                                      _lod;
     bool                                     _fallbackData;
 };

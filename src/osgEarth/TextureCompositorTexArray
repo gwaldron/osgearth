@@ -61,9 +61,9 @@ namespace osgEarth
             osg::StateSet* stateSet,
             UID layerUID, 
             const GeoImage& preparedImage,
-            const GeoExtent& tileExtent,
+            const TileKey& tileKey,
             const TextureLayout& layout,
-            const GeoImage& secondaryImage) const;
+            osg::StateSet* parentStateSet ) const;
 
         osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const;
         static inline unsigned textureSize() { return 256; }

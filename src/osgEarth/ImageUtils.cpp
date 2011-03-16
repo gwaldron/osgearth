@@ -416,10 +416,15 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
 {
     if ( !image )
         return 0L;
-    
-    if ( image->getPixelFormat() == pixelFormat && image->getDataType() == dataType )
-        return cloneImage(image);
 
+    if ( image->getPixelFormat() == pixelFormat && image->getDataType() == dataType)
+    {
+        GLenum texFormat = image->getInternalTextureFormat();
+        if (dataType != GL_UNSIGNED_BYTE
+            || (pixelFormat == GL_RGB && texFormat == GL_RGB8)
+            || (pixelFormat == GL_RGBA && texFormat == GL_RGBA8))
+        return cloneImage(image);
+    }
     if ( !canConvert(image, pixelFormat, dataType) )
         return 0L;
 

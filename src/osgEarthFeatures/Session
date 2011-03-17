@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Map>
 
 namespace osgEarth { namespace Features
 {
@@ -39,7 +40,8 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT Session : public osg::Referenced
     {
     public:
-        Session();
+        Session( const Map* map );
+        Session( const MapInfo& mapInfo );
 
         /**
          * Sets the reference URI to use to expand relative paths and URLs.
@@ -57,7 +59,13 @@ namespace osgEarth { namespace Features
          */
         void putModel( const std::string& url, osg::Node* node );
 
+        /**
+         * Gets the map information backing up this session.
+         */
+        const MapInfo& getMapInfo() const { return _mapInfo; }
+
     private:
+        MapInfo     _mapInfo;
         std::string _referenceURI;
 
         typedef std::map<std::string, osg::ref_ptr<osg::Node> > ModelMap;

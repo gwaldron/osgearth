@@ -26,7 +26,14 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-Session::Session()
+Session::Session( const Map* map ) :
+_mapInfo( map )
+{
+    //nop
+}
+
+Session::Session( const MapInfo& mapInfo ) :
+_mapInfo( mapInfo )
 {
     //nop
 }

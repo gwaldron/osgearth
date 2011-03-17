@@ -58,8 +58,8 @@ namespace
 }
 
 
-BuildGeometryFilter::BuildGeometryFilter() :
-_style( new Style() ),
+BuildGeometryFilter::BuildGeometryFilter( const Style* style ) :
+_style( style ? style : new Style() ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
 _maxAngle_deg( 5.0 ),
 _mergeGeometry( false )
@@ -70,6 +70,7 @@ _mergeGeometry( false )
 void
 BuildGeometryFilter::reset()
 {
+    _result = 0L;
     _geode = new osg::Geode();
     _hasLines = false;
     _hasPoints = false;
@@ -304,8 +305,10 @@ BuildGeometryFilter::push( Feature* input, const FilterContext& context )
 }
 
 FilterContext
-BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context )
+BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
 {
+    reset();
+
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
         if ( !push( i->get(), context ) )
@@ -343,19 +346,18 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
 
         }
 
-        output = _geode.release();
+        _result = _geode.release();
 
         if ( context.hasReferenceFrame() )
         {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform(
-                context.inverseReferenceFrame() );
-            delocalizer->addChild( output.get() );
-            output = delocalizer;
+            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( context.inverseReferenceFrame() );
+            delocalizer->addChild( _result.get() );
+            _result = delocalizer;
         }
     }
     else
     {
-        output = 0L;
+        _result = 0L;
     }
 
     FilterContext outCx( context );

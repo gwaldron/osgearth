@@ -151,7 +151,8 @@ public:
 
         osg::ref_ptr<osg::Node> result;
         build.setStyle( style );
-        cx = build.push( features, result, cx );
+        cx = build.push( features, cx );
+        result = build.getNode();
 
         // Localize it.
         if ( cx.hasReferenceFrame() )

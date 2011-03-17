@@ -37,7 +37,7 @@ namespace osgEarth { namespace Features
     {
     public:
         TransformFilter();
-        TransformFilter( const SpatialReference* outputSRS );
+        TransformFilter( const SpatialReference* outputSRS, bool outputGeocentric =false );
 
         /** Height offset to apply after doing the SRS transformation. Output SRS units. */
         void setHeightOffset( double value ) { _heightOffset = value; }

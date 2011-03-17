@@ -371,7 +371,8 @@ Graticule::createGridLevel( unsigned int levelNum ) const
             osg::ref_ptr<osg::Node> output;
             BuildGeometryFilter bg;
             bg.setStyle( _lineStyle.get() );
-            cx = bg.push( features, output, cx );
+            cx = bg.push( features, cx );
+            output = bg.getNode();
 
             if ( cx.isGeocentric() )
             {

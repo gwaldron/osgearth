@@ -30,6 +30,7 @@
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
+    class Session;
 
     /**
      * Context within which a chain of filters is executed.
@@ -46,8 +47,8 @@ namespace osgEarth { namespace Features
         /**
          * Access to the Session under which this filter context operates
          */
-        Session* getSession() { return _session; }
-        const Session* getSession() const { return _session; }
+        Session* getSession() { return _session.get(); }
+        const Session* getSession() const { return _session.get(); }
 
         /**
          * The spatial profile of the feature data in this context.

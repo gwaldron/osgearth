@@ -31,9 +31,10 @@ _localize( false )
     // nop
 }
 
-TransformFilter::TransformFilter(const SpatialReference* outputSRS ) :
+TransformFilter::TransformFilter(const SpatialReference* outputSRS,
+                                 bool outputGeocentric ) :
 _outputSRS( outputSRS ),
-_makeGeocentric( false ),
+_makeGeocentric( outputGeocentric ),
 _heightOffset( 0.0 ),
 _localize( false )
 {

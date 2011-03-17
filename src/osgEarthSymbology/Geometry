@@ -95,6 +95,9 @@ namespace osgEarth { namespace Symbology
          */
         osg::Vec3Array* toVec3Array() const;
 
+        /**
+         * Gets the bounds of this geometry
+         */
         virtual Bounds getBounds() const;
 
         /**

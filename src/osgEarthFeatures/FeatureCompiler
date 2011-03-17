@@ -17,14 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H
-#define OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H 1
+#ifndef OSGEARTHFEATURES_FEATURE_COMPILER_H
+#define OSGEARTHFEATURES_FEATURE_COMPILER_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
-#include <osg/Geode>
 
 namespace osgEarth { namespace Features
 {
@@ -32,35 +31,28 @@ namespace osgEarth { namespace Features
     using namespace osgEarth::Symbology;
 
     /**
-     * This filter will change geometry from one type to another.
+     * Compiles a collection of features against a style.
      */
-    class OSGEARTHFEATURES_EXPORT SubstituteModelFilter : public FeatureFilter
+    class OSGEARTHFEATURES_EXPORT FeatureCompiler : public osg::Referenced
     {
     public:
-        // Call this determine whether this filter is available.
-        static bool isSupported() { return true; }
+        /** Constructs a new feature compile under the specified sesison. */
+        FeatureCompiler( Session* session =0L );
+
+        virtual ~FeatureCompiler() { }
 
     public:
-        SubstituteModelFilter( const Style* style );
 
-    public:
-        /** Processes a new feature list */
-        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+        /** Compiles a collection of features into an OSG scene graph. */
+        osg::Node* compile(
+            const FeatureList&    features,
+            const FeatureProfile* featureProfile,
+            const Style*          style );
 
-        /** Gets the resulting OSG scene graph */
-        osg::Node* getNode() const { return _result.get(); }
-
-    private:
-        osg::ref_ptr<const Style> _style;
-        osg::ref_ptr<osg::Node>   _result;
-
-        struct Data {
-            osg::ref_ptr<osg::Node> _model;
-        };
-        
-        bool push( Feature* input, Data& data, osg::Group* ap, FilterContext& context );
+    protected:
+        osg::ref_ptr<Session> _session;
     };
 
 } } // namespace osgEarth::Features
 
-#endif // OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H
+#endif //OSGEARTHFEATURES_FEATURE_COMPILER_H

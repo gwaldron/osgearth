@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarth/HTTPClient>
+#include <osg/MatrixTransform>
 #include <list>
 #include <deque>
 
@@ -36,25 +37,38 @@ namespace
 
 //------------------------------------------------------------------------
 
-SubstituteModelFilter::SubstituteModelFilter( Style* style ) :
+SubstituteModelFilter::SubstituteModelFilter( const Style* style ) :
 _style( style )
 {
     //NOP
 }
 
 bool
-SubstituteModelFilter::push(Feature* input,
+SubstituteModelFilter::push(Feature*                     input,
                             SubstituteModelFilter::Data& data,
-                            FilterContext& context )
+                            osg::Group*                  attachPoint,
+                            FilterContext&               context )
 {
-    return false;
+    Geometry* geom = input->getGeometry();
+    if ( geom )
+    {
+        //TODO: this is the simple, inefficient way of doing it.
+        //TODO: add vertex shifting and clustering support.
+        osg::Vec2d c = geom->getBounds().center2d();
+        osg::MatrixTransform* xform = new osg::MatrixTransform();
+        xform->setMatrix( osg::Matrixd::translate( c.x(), c.y(), 0.0 ) );
+        xform->addChild( data._model.get() );
+        attachPoint->addChild( xform );
+    }
+
+    return true;
 }
 
 FilterContext
-SubstituteModelFilter::push( FeatureList& input, const FilterContext& context )
+SubstituteModelFilter::push(FeatureList&             input, 
+                            const FilterContext&     context )
 {
-    if ( !isSupported() )
-    {
+    if ( !isSupported() ) {
         OE_WARN << "SubstituteModelFilter support not enabled" << std::endl;
         return context;
     }
@@ -64,7 +78,7 @@ SubstituteModelFilter::push( FeatureList& input, const FilterContext& context )
         return context;
     }
 
-    const ModelSymbol* symbol = _style->getSymbol<const ModelSymbol>();
+    const ModelSymbol* symbol = _style->getSymbol<ModelSymbol>();
     if ( !symbol ) {
         OE_WARN << LC << "No ModelSymbol found in style; cannot process feautres" << std::endl;
         return context;
@@ -78,13 +92,17 @@ SubstituteModelFilter::push( FeatureList& input, const FilterContext& context )
     if ( !data._model.valid() )
     {
         OE_WARN << LC << "Unable to load model from \"" << *symbol->url() << "\"" << std::endl;
-        return context;
+        return newContext;
     }
+
+    osg::Group* group = new osg::Group();
 
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
-        if ( !push( i->get(), data, newContext ) )
+        if ( !push( i->get(), data, group, newContext ) )
             ok = false;
 
-    return context;
+    _result = group;
+
+    return newContext;
 }

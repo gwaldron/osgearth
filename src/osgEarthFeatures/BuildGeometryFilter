@@ -30,6 +30,7 @@
 namespace osgEarth { namespace Features 
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * Builds geometry from a stream of input features.
@@ -37,14 +38,14 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT BuildGeometryFilter // : public Filter
     {
     public:
-        BuildGeometryFilter();
+        BuildGeometryFilter( const Style* style =0L );
 
         /** The style to apply to feature geometry */
-        const Symbology::Style* getStyle() { return _style.get(); }
-        void setStyle(const Symbology::Style* s) { _style = s; }
+        const Style* getStyle() { return _style.get(); }
+        void setStyle(const Style* s) { _style = s; }
 
         /** Override and change the geometry type of incoming features. */
-        optional<Symbology::Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
+        optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
         /**
          * For geocentric data, sets the granularity of edges created by the filter. This
@@ -65,12 +66,16 @@ namespace osgEarth { namespace Features
         const optional<bool>& mergeGeometry() const { return _mergeGeometry; }
 
         /** Pushes a list of features through the filter. */
-        FilterContext push( FeatureList& input, osg::ref_ptr<osg::Node>& output, const FilterContext& context );
+        FilterContext push( FeatureList& input, const FilterContext& context );
+
+        /** Gets the resulting OSG scene graph */
+        osg::Node* getNode() const { return _result; }
 
     protected:
+        osg::ref_ptr<osg::Node> _result;
         osg::ref_ptr<osg::Geode> _geode;
-        osg::ref_ptr<const Symbology::Style> _style;
-        optional<Symbology::Geometry::Type> _geomTypeOverride;
+        osg::ref_ptr<const Style> _style;
+        optional<Geometry::Type> _geomTypeOverride;
         optional<double> _maxAngle_deg;
         optional<bool> _mergeGeometry;
         bool _hasPoints;

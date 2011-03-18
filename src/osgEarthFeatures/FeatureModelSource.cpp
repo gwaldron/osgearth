@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureModelSource>
-#include <osgEarthFeatures/FeatureGridder>
+#include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarth/SpatialReference>
 #include <osg/Notify>
 #include <osg/Timer>
@@ -140,6 +140,25 @@ FeatureModelSource::initialize( const std::string& referenceURI, const osgEarth:
     _map = map;
 }
 
+osg::Node*
+FeatureModelSource::createNode( ProgressCallback* progress )
+{
+    if ( !_factory.valid() )
+        _factory = createFeatureNodeFactory();
+
+    if ( !_factory.valid() )
+        return 0L;
+
+    FeatureModelGraph* graph = new FeatureModelGraph( _features.get(), _options, _factory.get() );
+
+    osg::ref_ptr<Session> session = new Session( _map );
+
+    graph->update( session.get(), *_options.styles() );
+
+    return graph;
+}
+
+#if 0
 osg::Node*
 FeatureModelSource::createNode( ProgressCallback* progress )
 {
@@ -368,3 +387,4 @@ FeatureModelSource::gridAndRenderFeaturesForStyle(const Style* style,
 
     return styleGroup;
 }
+#endif

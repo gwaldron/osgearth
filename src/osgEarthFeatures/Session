@@ -64,6 +64,16 @@ namespace osgEarth { namespace Features
          */
         const MapInfo& getMapInfo() const { return _mapInfo; }
 
+        /**
+         * Sets the user-defined build data for this session
+         */
+        void setBuildData( osg::Referenced* buildData ) { _buildData = buildData; }
+
+        /**
+         * Gets the user-defined build data for this session
+         */
+        osg::Referenced* getBuildData() const { return _buildData.get(); }
+
     private:
         MapInfo     _mapInfo;
         std::string _referenceURI;
@@ -71,6 +81,8 @@ namespace osgEarth { namespace Features
         typedef std::map<std::string, osg::ref_ptr<osg::Node> > ModelMap;
         ModelMap _models;
         Threading::ReadWriteMutex _modelsMutex;
+
+        osg::ref_ptr<osg::Referenced> _buildData;
     };
 
 } }

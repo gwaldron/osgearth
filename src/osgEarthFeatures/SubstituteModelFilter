@@ -32,7 +32,19 @@ namespace osgEarth { namespace Features
     using namespace osgEarth::Symbology;
 
     /**
-     * This filter will change geometry from one type to another.
+     * Feature filter that will substitute external nodes for feature geometry.
+     *
+     * TODO:
+     *  - line sub (interval, density scattering)
+     *  - polygon sub (interval, density scattering)
+     *  - density-based scattering for points
+     *  - clustering (optional) at various levels
+     *  - proper ECEF normal computation per feature
+     *  - terrain clamping of the localization point
+     *  - automatic height offset based on minimum Z of model bbox
+     *  - predicate based model selection (scripting)
+     *  - instancing (maybe)
+     *  - texture collection and sharing (session based) when clustering
      */
     class OSGEARTHFEATURES_EXPORT SubstituteModelFilter : public FeatureFilter
     {
@@ -41,6 +53,7 @@ namespace osgEarth { namespace Features
         static bool isSupported() { return true; }
 
     public:
+        /** Construct a new sub-model filter that will operate on the given style */
         SubstituteModelFilter( const Style* style );
 
     public:

@@ -89,6 +89,7 @@ FeatureCompiler::compile(FeatureCursor*        cursor,
     else if ( extrusion && ( line || polygon ) )
     {
         //todo
+        //ExtrudeGeometryFilter will go here
     }
 
     // simple geometry

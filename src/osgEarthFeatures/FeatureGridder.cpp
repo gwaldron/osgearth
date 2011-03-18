@@ -21,6 +21,8 @@
 #include <osg/Notify>
 #include <osg/Timer>
 
+#define LC "[FeatureGridder] "
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
@@ -218,7 +220,7 @@ FeatureGridder::cullFeatureListToCell( int i, FeatureList& features ) const
 
     }
 
-    OE_INFO
+    OE_INFO << LC
             << "Grid cell " << i << ": bounds="
             << b.xMin() << "," << b.yMin() << " => " << b.xMax() << "," << b.yMax()
             << "; in=" << inCount << "; out=" << features.size()

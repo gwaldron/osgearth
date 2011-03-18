@@ -92,6 +92,26 @@ namespace osgEarth { namespace Features
     };
 
     /**
+     * Interface for a class that can create a Node from a set of features and
+     * a style definition. You will provide this to a FeatureModeGraph when
+     * creating a feature node in a driver.
+     */
+    class FeatureNodeFactory : public osg::Referenced
+    {
+    public:
+        /**
+         * Render (or update) a list of features into a node according to the specified
+         * style.
+         */
+        virtual bool createOrUpdateNode(
+            const FeatureList&        features,
+            const FeatureProfile*     profile,
+            const Symbology::Style*   style,
+            Session*                  session,
+            osg::ref_ptr<osg::Node>&  node ) =0;
+    };
+
+    /**
      * A ModelSource that renders Feature data from a FeatureSource.
      */
     class OSGEARTHFEATURES_EXPORT FeatureModelSource : public ModelSource
@@ -109,6 +129,8 @@ namespace osgEarth { namespace Features
 
         // override
         virtual osg::Node* createNode( ProgressCallback* progress );
+    
+        virtual FeatureNodeFactory* createFeatureNodeFactory() =0;
 
 
     public: // properties:
@@ -119,18 +141,16 @@ namespace osgEarth { namespace Features
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
 
-        virtual const FeatureModelSourceOptions& getFeatureModelOptions() const {
-            return _options; }
+        virtual const FeatureModelSourceOptions& getFeatureModelOptions() const { return _options; }
 
         const osgEarth::Map* getMap() const { return _map.get(); }
 
         /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
-        virtual osg::Referenced* createBuildData() {
-            return NULL; }     
+        virtual osg::Referenced* createBuildData() { return NULL; }     
 
     protected:
 
-
+#if 0
         /**
          * Creates OSG graph(s) representing the specified feature list.
          *
@@ -167,6 +187,7 @@ namespace osgEarth { namespace Features
             const Symbology::Query& query,
             osg::Referenced* buildData );
 
+#endif
 
     public: 
 
@@ -186,6 +207,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<const osgEarth::Map> _map;
         const FeatureModelSourceOptions _options;
+        osg::ref_ptr<FeatureNodeFactory> _factory;
 
     };
 

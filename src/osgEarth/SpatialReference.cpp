@@ -764,8 +764,6 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     return success;
 }
 
-
-
 bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
                                   osg::Vec3dArray* points,
@@ -805,6 +803,96 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     return success;
 }
 
+bool 
+SpatialReference::transformToECEF(double x, double y, double z,
+                                  double& out_x, double& out_y, double& out_z ) const
+{
+    osg::Vec3d geo( x, y, z );
+    
+    // first convert to lat/long if necessary:
+    if ( !isGeographic() )
+        transform( x, y, getGeographicSRS(), geo.x(), geo.y() );
+
+    // then convert to ECEF.
+    getGeographicSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+        osg::DegreesToRadians( geo.y() ), osg::DegreesToRadians( geo.x() ), geo.z(),
+        out_x, out_y, out_z );
+
+    return true;
+}
+
+bool 
+SpatialReference::transformPointsToECEF(osg::Vec3dArray* points,
+                                        bool             ignoreErrors ) const
+{
+    if ( !points) return false;
+
+    for( unsigned i=0; i<points->size(); ++i )
+    {
+        osg::Vec3d& p = (*points)[i];
+        bool ok = transformToECEF( p.x(), p.y(), p.z(), p.x(), p.y(), p.z() );
+        if ( !ignoreErrors && !ok )
+            return false;
+    }
+
+    return true;
+}
+
+bool 
+SpatialReference::transformFromECEF(const osg::Vec3d& input,
+                                    osg::Vec3d&       output ) const
+{
+    // transform to lat/long:
+    osg::Vec3d geo;
+
+    getGeographicSRS()->getEllipsoid()->convertXYZToLatLongHeight(
+        input.x(), input.y(), input.z(),
+        geo.y(), geo.x(), geo.z() );
+
+    // then convert to the local SRS.
+    if ( isGeographic() )
+    {
+        output.set( osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()), geo.z() );
+    }
+    else
+    {
+        getGeographicSRS()->transform( 
+            osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()),
+            this,
+            output.x(), output.y() );
+        output.z() = geo.z();
+    }
+
+    return true;
+}
+
+bool 
+SpatialReference::transformPointsFromECEF(osg::Vec3dArray* points,
+                                          bool             ignoreErrors ) const
+{
+    bool ok = true;
+
+    // first convert all the points to lat/long (in place):
+    for( unsigned i=0; i<points->size(); ++i )
+    {
+        osg::Vec3d& p = (*points)[0];
+        osg::Vec3d geo;
+        getGeographicSRS()->getEllipsoid()->convertXYZToLatLongHeight(
+            p.x(), p.y(), p.z(),
+            geo.y(), geo.x(), geo.z() );
+        geo.x() = osg::RadiansToDegrees( geo.x() );
+        geo.y() = osg::RadiansToDegrees( geo.y() );
+        p = geo;
+    }
+
+    // then convert them all to the local SRS if necessary.
+    if ( !isGeographic() )
+    {
+        ok = getGeographicSRS()->transformPoints( this, points, 0L, ignoreErrors );
+    }
+
+    return ok;
+}
 
 bool
 SpatialReference::transformExtent(const SpatialReference* to_srs,

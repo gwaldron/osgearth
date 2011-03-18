@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osg/MatrixTransform>
 
 #define LC "[FeatureCompiler] "
 
@@ -34,7 +35,7 @@ _session( session )
 }
 
 osg::Node*
-FeatureCompiler::compile(const FeatureList&    features,
+FeatureCompiler::compile(FeatureCursor*        cursor,
                          const FeatureProfile* featureProfile,
                          const Style*          style)
 {
@@ -48,10 +49,11 @@ FeatureCompiler::compile(const FeatureList&    features,
         return 0L;
     }
 
-    osg::Node* result =0L;
+    osg::ref_ptr<osg::Node> result;
 
     // start by making a working copy of the feature set
-    FeatureList workingSet( features );
+    FeatureList workingSet;
+    cursor->fill( workingSet );
 
     // create a filter context that will track feature data through the process
     FilterContext cx( _session.get() );
@@ -60,7 +62,8 @@ FeatureCompiler::compile(const FeatureList&    features,
     // only localize coordinates if the map if geocentric AND the extent is
     // less than 180 degrees.
     const MapInfo& mi = _session->getMapInfo();
-    bool localize = mi.isGeocentric() && featureProfile->getExtent().width() < 180.0;
+    GeoExtent geoExtent = featureProfile->getExtent().transform( featureProfile->getSRS()->getGeographicSRS() );
+    bool localize = mi.isGeocentric() && geoExtent.width() < 180.0;
 
     // transform the features into the map profile
     TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   
@@ -100,6 +103,14 @@ FeatureCompiler::compile(const FeatureList&    features,
     {
         OE_WARN << LC << "Insufficient symbology; no geometry created" << std::endl;
     }
+    
+    // install the localization transform if necessary.
+    if ( cx.hasReferenceFrame() )
+    {
+        osg::MatrixTransform* delocalizer = new osg::MatrixTransform( cx.inverseReferenceFrame() );
+        delocalizer->addChild( result.get() );
+        result = delocalizer;
+    }
 
-    return result;
+    return result.release();
 }

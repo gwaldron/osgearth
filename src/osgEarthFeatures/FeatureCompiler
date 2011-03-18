@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
 
@@ -45,8 +46,8 @@ namespace osgEarth { namespace Features
 
         /** Compiles a collection of features into an OSG scene graph. */
         osg::Node* compile(
-            const FeatureList&    features,
-            const FeatureProfile* featureProfile,
+            FeatureCursor*        input,
+            const FeatureProfile* profile,
             const Style*          style );
 
     protected:

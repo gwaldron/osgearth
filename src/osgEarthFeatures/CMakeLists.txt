@@ -20,6 +20,7 @@ SET(LIB_PUBLIC_HEADERS
     ConvertTypeFilter
     Feature
     FeatureCompiler
+    FeatureCursor
     FeatureGridder
     FeatureModelSource
     FeatureSource
@@ -45,6 +46,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ConvertTypeFilter.cpp
     Feature.cpp
     FeatureCompiler.cpp
+    FeatureCursor.cpp
     FeatureGridder.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp

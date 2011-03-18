@@ -39,6 +39,44 @@ CssUtils::readConfig( std::istream& in )
     // tokenize the CSS into a config object..
     Config conf( "css" );
 
+    StringVector tok;
+    osgEarth::tokenize( css, tok, "{}", "" );
+
+    for( unsigned i=0; i<tok.size(); )
+    {
+        const std::string& name = tok[i++];
+        if ( i < tok.size() )
+        {
+            Config elementConf( name );
+            const std::string& props = tok[i++];
+
+            StringVector propsTok;
+            osgEarth::tokenize( props, propsTok, ":;" );
+            
+            for( unsigned j=0; j<propsTok.size(); )
+            {
+                const std::string& key = propsTok[j++];
+                if ( j < propsTok.size() )
+                {
+                    const std::string& value = propsTok[j++];
+                    elementConf.attr(key) = value;
+                }
+            }
+            conf.add( elementConf );
+        }
+    }
+
+    OE_NOTICE << conf.toString() << std::endl;
+
+    return conf;
+}
+
+#if 0
+    for( StringVector::const_iterator i=tokens1.begin(); i != tokens1.end(); ++i )
+    {
+        const std::string& name = *i;
+        if ( 
+
     StringTokenizer tok( css, "{}" );
     while( tok.nextToken() ) {
         std::string name = tok.token();
@@ -59,3 +97,4 @@ CssUtils::readConfig( std::istream& in )
 
     return conf;
 }
+#endif

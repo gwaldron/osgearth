@@ -21,6 +21,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 
+#include <osgEarthFeatures/FeatureCompiler>
+
 #include <osgEarthFeatures/FeatureSymbolizer>
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureSource>
@@ -224,8 +226,29 @@ public:
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         FeatureModelSource::initialize( referenceURI, map );
+        _map = map;
     }
 
+    osg::Node* createNode( ProgressCallback* progress )
+    {
+        osg::Node* result = 0L;
+
+        if ( _features.valid() && _features->getFeatureProfile() )
+        {
+            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
+            if ( cursor.valid() )
+            {
+                const Style* style = _options.styles()->getDefaultStyle();
+                Session* session = new Session( _map );
+                FeatureCompiler compiler( session );
+                result = compiler.compile( cursor.get(), _features->getFeatureProfile(), style );
+            }
+        }
+
+        return result;
+    }
+
+#if 0
     osg::Node* createNode( ProgressCallback* progress )
     {
         if ( _features.valid() && _features->getFeatureProfile() )
@@ -238,9 +261,11 @@ public:
             return 0L;
         }
     }
+#endif
 
 private:
     const FeatureGeomModelOptions _options;
+    const Map* _map;
 };
 
 //------------------------------------------------------------------------

@@ -54,9 +54,10 @@ SubstituteModelFilter::push(Feature*                     input,
     {
         //TODO: this is the simple, inefficient way of doing it.
         //TODO: add vertex shifting and clustering support.
-        osg::Vec2d c = geom->getBounds().center2d();
+        const osg::Vec3d& point = (*geom)[0];
         osg::MatrixTransform* xform = new osg::MatrixTransform();
-        xform->setMatrix( osg::Matrixd::translate( c.x(), c.y(), 0.0 ) );
+        //osg::Vec3d c2 = point * context.referenceFrame();
+        xform->setMatrix( osg::Matrixd::translate( point ) );
         xform->addChild( data._model.get() );
         attachPoint->addChild( xform );
     }
@@ -65,8 +66,8 @@ SubstituteModelFilter::push(Feature*                     input,
 }
 
 FilterContext
-SubstituteModelFilter::push(FeatureList&             input, 
-                            const FilterContext&     context )
+SubstituteModelFilter::push(FeatureList&         features, 
+                            const FilterContext& context )
 {
     if ( !isSupported() ) {
         OE_WARN << "SubstituteModelFilter support not enabled" << std::endl;
@@ -98,7 +99,7 @@ SubstituteModelFilter::push(FeatureList&             input,
     osg::Group* group = new osg::Group();
 
     bool ok = true;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
+    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
         if ( !push( i->get(), data, group, newContext ) )
             ok = false;
 

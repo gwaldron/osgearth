@@ -26,6 +26,8 @@
 
 namespace osgEarth
 {
+    typedef std::vector<std::string> StringVector;
+
     /** Replaces all the instances of "sub" with "other" in "s". */
     static std::string&
     replaceIn( std::string& s, const std::string& sub, const std::string& other)
@@ -71,6 +73,43 @@ namespace osgEarth
         return ref.find( pattern ) == 0;
     }
 
+    static 
+    void tokenize( const std::string& input,
+                   StringVector& output,
+                   const std::string& delims =" \t\n\r", 
+                   const std::string& quotes ="'\"",
+                   bool allowEmpties =true )
+    {
+        std::stringstream buf;
+        bool quoted = false;
+        for( std::string::const_iterator i = input.begin(); i != input.end(); ++i )
+        {
+            char c = *i;    
+            if ( quoted ) {
+                if ( quotes.find(c) != std::string::npos )
+                    quoted = false;
+                else
+                    buf << c;
+            }
+            else {
+                if ( quotes.find(c) != std::string::npos )
+                    quoted = true;
+                else if ( delims.find(c) == std::string::npos )
+                    buf << c;
+                else {
+                    std::string token = trim(buf.str());
+                    if ( allowEmpties || !token.empty() )
+                        output.push_back( token );
+                    buf.str("");
+                }
+            }       
+        }
+        std::string last = trim(buf.str());
+        if ( !last.empty() )
+            output.push_back( last );
+    }
+
+#if 0
     /**
      * Tokenizes a string.
      * http://stackoverflow.com/questions/53849/how-do-i-tokenize-a-string-in-c
@@ -109,7 +148,9 @@ namespace osgEarth
         std::string _token;
         std::string _delimiters;
     };
+#endif
 
+#if 0
     /**
      * Splits "input" into one or more strings in "output" based on the delimiting character(s) in "delims".
      */
@@ -121,6 +162,7 @@ namespace osgEarth
             if ( allowEmpties || !t.token().empty() )
                 output.push_back( t.token() );
     }
+#endif
 
     /** Returns a lower-case version of the input string. */
     static std::string

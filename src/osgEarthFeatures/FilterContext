@@ -92,7 +92,7 @@ namespace osgEarth { namespace Features
          */
         void setReferenceFrame( const osg::Matrixd& in ) {
             _referenceFrame = in;
-            _inverseReferenceFrame = osg::Matrixd::inverse( _referenceFrame );
+            _inverseReferenceFrame.invert( _referenceFrame ); // = osg::Matrixd::inverse( _referenceFrame );
         }      
 
         /**

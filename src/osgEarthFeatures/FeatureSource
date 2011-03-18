@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/Annotation>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Query>
@@ -36,49 +37,6 @@
 namespace osgEarth { namespace Features
 {   
     using namespace osgEarth;
-
-    /**
-     * A cursor that lets you iterate over a collection of features returned 
-     * from a feature query performed on a FeatureStore.
-     */
-    class OSGEARTHFEATURES_EXPORT FeatureCursor : public osg::Referenced
-    {
-    public:
-        virtual bool hasMore() const =0;
-        virtual Feature* nextFeature() =0;
-    };
-
-    /**
-     * A simple cursor implementation that returns features from an in-memory
-     * feature list.
-     */
-    class OSGEARTHFEATURES_EXPORT FeatureListCursor : public FeatureCursor
-    {
-    public:
-        FeatureListCursor( const FeatureList& input );
-        virtual bool hasMore() const;
-        virtual Feature* nextFeature();
-    protected:
-        FeatureList _features;
-        FeatureList::iterator _iter;
-    };
-
-    /**
-     * A simple cursor that returns each Geometry wrapped in a feature.
-     */
-    class OSGEARTHFEATURES_EXPORT GeometryFeatureCursor : public FeatureCursor
-    {
-    public:
-        GeometryFeatureCursor( Symbology::Geometry* geom );
-        GeometryFeatureCursor( Symbology::Geometry* geom, const FeatureProfile* fp, const FeatureFilterList& filters );
-        virtual bool hasMore() const;
-        virtual Feature* nextFeature();
-    protected:
-        osg::ref_ptr<Symbology::Geometry> _geom;
-        osg::ref_ptr<const FeatureProfile> _featureProfile;
-        const FeatureFilterList _filters;
-        osg::ref_ptr<Feature> _lastFeature;
-    };
 
     /**
      * Configuration options for creating a FeatureSource.

@@ -42,7 +42,7 @@ _factory( factory )
 }
 
 void
-FeatureModelGraph::update( Session* session, const StyleCatalog& styles )
+FeatureModelGraph::update( Session* session, const StyleSheet& styles )
 {
     removeChildren( 0, getNumChildren() );
 

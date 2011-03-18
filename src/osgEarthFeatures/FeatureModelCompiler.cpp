@@ -16,26 +16,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/FeatureCompiler>
+#include <osgEarthFeatures/FeatureModelCompiler>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osg/MatrixTransform>
 
-#define LC "[FeatureCompiler] "
+#define LC "[FeatureModelCompiler] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-FeatureCompiler::FeatureCompiler( Session* session ) :
+FeatureModelCompiler::FeatureModelCompiler( Session* session ) :
 _session( session )
 {
     //nop
 }
 
 osg::Node*
-FeatureCompiler::compile(FeatureCursor*        cursor,
+FeatureModelCompiler::compile(FeatureCursor*        cursor,
                          const FeatureProfile* featureProfile,
                          const Style*          style)
 {

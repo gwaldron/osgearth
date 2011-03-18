@@ -19,13 +19,12 @@ SET(LIB_PUBLIC_HEADERS
     Common
     ConvertTypeFilter
     Feature
-    FeatureCompiler
     FeatureCursor
     FeatureGridder
+    FeatureModelCompiler
     FeatureModelGraph
     FeatureModelSource
     FeatureSource
-    FeatureSymbolizer
     FeatureTileSource
     Filter
     FilterContext
@@ -46,13 +45,12 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	BuildTextOperator.cpp
     ConvertTypeFilter.cpp
     Feature.cpp
-    FeatureCompiler.cpp
     FeatureCursor.cpp
     FeatureGridder.cpp
+    FeatureModelCompiler.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp
-    FeatureSymbolizer.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp

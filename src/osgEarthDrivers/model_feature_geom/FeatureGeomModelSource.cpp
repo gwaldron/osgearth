@@ -22,7 +22,7 @@
 #include <osgEarth/Map>
 
 #include <osgEarthFeatures/FeatureModelGraph>
-#include <osgEarthFeatures/FeatureCompiler>
+#include <osgEarthFeatures/FeatureModelCompiler>
 
 #include <osg/Notify>
 #include <osg/MatrixTransform>
@@ -51,7 +51,7 @@ namespace
                 Session*                  session,
                 osg::ref_ptr<osg::Node>&  node )
         {
-            FeatureCompiler compiler( session );
+            FeatureModelCompiler compiler( session );
             osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(features);
             node = compiler.compile( cursor.get(), profile, style );
             return node.valid();

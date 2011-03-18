@@ -32,10 +32,7 @@ SET(LIB_PUBLIC_HEADERS
     StencilVolumeNode
     Style
     SLD
-    StyleSheet
     Symbol
-    SymbolicNode
-    Symbolizer
     TextSymbol
 )
 
@@ -57,10 +54,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     StencilVolumeNode.cpp
     Style.cpp
     SLD.cpp
-    StyleSheet.cpp
     Symbol.cpp
-    SymbolicNode.cpp
-    Symbolizer.cpp
     TextSymbol.cpp
 )
 

@@ -44,8 +44,8 @@ namespace osgEarth { namespace Features
         optional<GriddingPolicy>& gridding() { return _gridding; }
         const optional<GriddingPolicy>& gridding() const { return _gridding; }
 
-        optional<Symbology::StyleCatalog>& styles() { return _styles; }
-        const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
+        optional<Symbology::StyleSheet>& styles() { return _styles; }
+        const optional<Symbology::StyleSheet>& styles() const { return _styles; }
 
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -81,7 +81,7 @@ namespace osgEarth { namespace Features
         void fromConfig( const Config& conf );
 
         optional<FeatureSourceOptions> _featureOptions;
-        optional<Symbology::StyleCatalog> _styles;
+        optional<Symbology::StyleSheet> _styles;
         optional<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
@@ -203,7 +203,7 @@ namespace osgEarth { namespace Features
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureModelSource() { }
 
-        //StyleCatalog _styleCatalog;
+        //StyleSheet _styleCatalog;
         osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<const osgEarth::Map> _map;
         const FeatureModelSourceOptions _options;

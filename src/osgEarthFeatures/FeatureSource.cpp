@@ -82,7 +82,7 @@ FeatureSourceOptions::getConfig() const
     return conf;
 }
 
-/****************************************************************************/
+//------------------------------------------------------------------------
 
 FeatureSource::FeatureSource( const ConfigOptions& options ) :
 _options( options )
@@ -110,7 +110,8 @@ FeatureSource::getFeatureProfile() const
 }
 
 const FeatureFilterList&
-FeatureSource::getFilters() const {
+FeatureSource::getFilters() const
+{
     return _options.filters();
 }
 
@@ -135,7 +136,6 @@ FeatureSourceFactory::create( const FeatureSourceOptions& options )
         featureSource = dynamic_cast<FeatureSource*>( osgDB::readObjectFile( driverExt, rwopts.get() ) );
         if ( featureSource )
         {
-            //featureSource->setName( options.getName() );
             featureSource->setName( options.getDriver() );
         }
         else

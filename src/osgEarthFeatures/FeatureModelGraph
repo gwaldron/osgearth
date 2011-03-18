@@ -64,7 +64,7 @@ namespace osgEarth { namespace Features
          * @param styles
          *      Styles and selectors to use to render the feature data
          */
-        void update( Session* session, const StyleCatalog& styles );
+        void update( Session* session, const StyleSheet& styles );
 
     private:
         osg::Group* gridAndCreateNodeForStyle(

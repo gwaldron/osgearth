@@ -175,7 +175,7 @@ StyleSelector::getConfig() const
 
 /************************************************************************/
 
-StyleCatalog::StyleCatalog( const Config& conf ) :
+StyleSheet::StyleSheet( const Config& conf ) :
     Configurable(),
     _emptyStyle(new Style)
 {
@@ -183,19 +183,19 @@ StyleCatalog::StyleCatalog( const Config& conf ) :
 }
 
 void
-StyleCatalog::addStyle( Style* style )
+StyleSheet::addStyle( Style* style )
 {
     _styles[ style->getName() ] = style;
 }
 
 void
-StyleCatalog::removeStyle( const std::string& name )
+StyleSheet::removeStyle( const std::string& name )
 {
     _styles.erase( name );
 }
 
 bool
-StyleCatalog::getStyle( const std::string& name, Style*& output ) const
+StyleSheet::getStyle( const std::string& name, Style*& output ) const
 {
     StyleMap::const_iterator i = _styles.find( name );
     if ( i != _styles.end() ) {
@@ -207,7 +207,7 @@ StyleCatalog::getStyle( const std::string& name, Style*& output ) const
 }
 
 const Style*
-StyleCatalog::getDefaultStyle() const
+StyleSheet::getDefaultStyle() const
 {
     if ( _styles.size() == 1 )
         return _styles.begin()->second;
@@ -220,7 +220,7 @@ StyleCatalog::getDefaultStyle() const
 }
 
 Config
-StyleCatalog::getConfig() const
+StyleSheet::getConfig() const
 {
     Config conf;
     for( StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
@@ -235,7 +235,7 @@ StyleCatalog::getConfig() const
 }
 
 void
-StyleCatalog::mergeConfig( const Config& conf )
+StyleSheet::mergeConfig( const Config& conf )
 {
     // first read any style class definitions. either "class" or "selector" is allowed
     ConfigSet selectors = conf.children( "selector" );

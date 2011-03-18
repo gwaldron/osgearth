@@ -171,10 +171,10 @@ namespace osgEarth { namespace Symbology
 
 
 
-    class OSGEARTHSYMBOLOGY_EXPORT StyleCatalog : public Configurable
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet : public Configurable
     {
     public:
-        StyleCatalog( const Config& conf =Config() );
+        StyleSheet( const Config& conf =Config() );
 
         StyleSelectorList& selectors() { return _selectors; }
         const StyleSelectorList& selectors() const { return _selectors; }

@@ -22,6 +22,7 @@
 #include <osgEarth/Cube>
 #include <osgEarth/ImageUtils>
 
+#include <osg/Point>
 #include <osg/Program>
 #include <osg/io_utils>
 #include <osg/StateSet>
@@ -29,6 +30,7 @@
 #include <osg/Math>
 #include <osg/Timer>
 #include <osg/Version>
+#include <osgUtil/Tessellator>
 
 #include <sstream>
 
@@ -521,6 +523,11 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     skirt->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     skirt->setDataVariance( osg::Object::DYNAMIC );
     geode->addDrawable( skirt );
+
+    osg::Geometry* mask_skirt = new osg::Geometry();
+    mask_skirt->setThreadSafeRefUnref(true);
+    mask_skirt->setDataVariance( osg::Object::DYNAMIC );
+    geode->addDrawable( mask_skirt);
         
     unsigned int numRows = 20;
     unsigned int numColumns = 20;
@@ -653,6 +660,20 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     osgEarth::GeoLocator* geoLocator = _masterLocator->getGeographicFromGeocentric();
     osg::Vec3dArray* mask = tilef._mask.valid() ? tilef._mask.get() : 0L;
 
+    osg::Vec3Array* maskSkirtVerts = new osg::Vec3Array();
+    if (mask)
+    {
+      for (osg::Vec3dArray::iterator it = mask->begin(); it != mask->end(); ++it)
+      {
+        osg::Vec3d local;
+        geoLocator->convertModelToLocal(*it, local);
+        osg::Vec3d model;
+        _masterLocator->convertLocalToModel(local, model);
+
+        maskSkirtVerts->push_back(model - _centerModel);
+      }
+    }
+
     for(j=0; j<numRows; ++j)
     {
         for(i=0; i<numColumns; ++i) // ++k)
@@ -661,7 +682,6 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
             osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
      
             bool validValue = true;
-     
             
             unsigned int i_equiv = i_sampleFactor==1.0 ? i : (unsigned int) (double(i)*i_sampleFactor);
 
@@ -739,6 +759,24 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
             else
             {
                 indices[iv] = -1;
+            }
+        }
+    }
+
+    //Find mask skirt vertices
+    for(j=0; j<numRows; ++j)
+    {
+        for(i=0; i<numColumns; ++i)
+        {
+            unsigned int iv = j*numColumns + i;
+
+            if (indices[iv] >= 0 &&
+                ((i > 0 && indices[iv - 1] < 0) ||
+                (i < numColumns - 1 && indices[iv + 1] < 0) ||
+                (j > 0 && (indices[iv - numColumns] < 0 || (i > 0 && indices[iv - numColumns - 1] < 0) || (i < numColumns - 1 && indices[iv - numColumns + 1] < 0))) ||
+                (j < numRows - 1 && (indices[iv + numColumns] < 0 || (i > 0 && indices[iv + numColumns - 1] < 0) || (i < numColumns - 1 && indices[iv + numColumns + 1] < 0)))))
+            {
+              maskSkirtVerts->push_back((*surfaceVerts)[indices[iv]]);
             }
         }
     }
@@ -901,6 +939,21 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         skirtBreaks.push_back(skirtVerts->size());
         for (int p=1; p < skirtBreaks.size(); p++)
           skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
+    }
+
+    if (mask  && maskSkirtVerts->size() > 0)
+    {
+      mask_skirt->setVertexArray(maskSkirtVerts);
+      mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, mask->size(), maskSkirtVerts->size() - maskSkirtVerts->size() ) );
+      mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, 0, mask->size()));
+
+      osg::ref_ptr<osgUtil::Tessellator> tscx=new osgUtil::Tessellator;
+    
+      tscx->setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
+      tscx->setBoundaryOnly(false);
+      tscx->setWindingType(osgUtil::Tessellator::TESS_WINDING_ODD);
+    
+      tscx->retessellatePolygons(*mask_skirt);
     }
 
     bool recalcNormals = elevationLayer != NULL;
@@ -1067,6 +1120,9 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
     skirt->setUseDisplayList(false);
     skirt->setUseVertexBufferObjects(true);
+
+    mask_skirt->setUseDisplayList(false);
+    mask_skirt->setUseVertexBufferObjects(true);
     
     
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&

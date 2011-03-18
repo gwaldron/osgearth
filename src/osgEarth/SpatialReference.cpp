@@ -124,6 +124,9 @@ SpatialReference::createFromWKT( const std::string& init, const std::string& ini
 SpatialReference*
 SpatialReference::create( const std::string& init )
 {
+    static OpenThreads::Mutex s_mutex;
+    OpenThreads::ScopedLock<OpenThreads::Mutex> exclusiveLock(s_mutex);
+
     std::string low = init;
     std::transform( low.begin(), low.end(), low.begin(), ::tolower );
 

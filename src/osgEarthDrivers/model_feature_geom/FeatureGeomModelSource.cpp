@@ -21,29 +21,28 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 
-#include <osgEarthFeatures/FeatureModelGraph>
-#include <osgEarthFeatures/FeatureModelCompiler>
-
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
-#include <OpenThreads/Mutex>
-#include <OpenThreads/ScopedLock>
 
 #include "FeatureGeomModelOptions"
+#include "GeomCompiler"
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
-using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
 namespace
 {
-    struct GeomFeatureNodeFactory : public FeatureNodeFactory
+    class GeomFeatureNodeFactory : public FeatureNodeFactory
     {
+    public:
+        GeomFeatureNodeFactory( const FeatureGeomModelOptions& options )
+            : _options( options ) { }
+
         bool createOrUpdateNode(       
                 const FeatureList&        features,
                 const FeatureProfile*     profile,
@@ -51,11 +50,14 @@ namespace
                 Session*                  session,
                 osg::ref_ptr<osg::Node>&  node )
         {
-            FeatureModelCompiler compiler( session );
+            GeomCompiler compiler( session, _options );
             osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(features);
             node = compiler.compile( cursor.get(), profile, style );
             return node.valid();
         }
+
+    private:
+        FeatureGeomModelOptions _options;
     };
 
     //------------------------------------------------------------------------
@@ -65,7 +67,8 @@ namespace
     {
     public:
         FeatureGeomModelSource( const ModelSourceOptions& options )
-            : FeatureModelSource( options ), _options( options )
+            : FeatureModelSource( options ),
+              _options( options )
         {
             //nop
         }
@@ -76,18 +79,16 @@ namespace
         void initialize( const std::string& referenceURI, const osgEarth::Map* map )
         {
             FeatureModelSource::initialize( referenceURI, map );
-            _map = map;
         }
 
         //override
         FeatureNodeFactory* createFeatureNodeFactory()
         {
-            return new GeomFeatureNodeFactory();
+            return new GeomFeatureNodeFactory( _options );
         }
 
     private:
         const FeatureGeomModelOptions _options;
-        const Map* _map;
     };
 }
 

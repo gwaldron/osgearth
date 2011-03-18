@@ -92,7 +92,7 @@ namespace
 
 TransformFilter::TransformFilter() :
 _makeGeocentric( false ),
-_heightOffset( 0.0 ),
+//_heightOffset( 0.0 ),
 _localize( false )
 {
     // nop
@@ -102,7 +102,7 @@ TransformFilter::TransformFilter(const SpatialReference* outputSRS,
                                  bool outputGeocentric ) :
 _outputSRS( outputSRS ),
 _makeGeocentric( outputGeocentric ),
-_heightOffset( 0.0 ),
+//_heightOffset( 0.0 ),
 _localize( false )
 {
     //NOP
@@ -117,8 +117,10 @@ TransformFilter::push( Feature* input, const FilterContext& context )
     bool needsSRSXform =
         ! context.profile()->getSRS()->isEquivalentTo( _outputSRS.get() );
 
+    bool needsMatrixXform = !_mat.isIdentity();
+
     // optimize: do nothing if nothing needs doing
-    if ( !needsSRSXform && !_makeGeocentric && !_localize && _heightOffset == 0.0 )
+    if ( !needsSRSXform && !_makeGeocentric && !_localize && needsMatrixXform ) //_heightOffset == 0.0 )
         return true;
 
     // iterate over the feature geometry.
@@ -130,10 +132,26 @@ TransformFilter::push( Feature* input, const FilterContext& context )
         {
             Geometry* geom = iter.next();
 
+            // pre-transform the point before doing an SRS transformation.
+            if ( needsMatrixXform )
+            {
+                for( unsigned i=0; i < geom->size(); ++i )
+                    (*geom)[i] = (*geom)[i] * _mat;
+            }
+
             // first transform the geometry to the output SRS:            
             if ( needsSRSXform )
                 context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom, false );
-            
+
+            // convert to ECEF if required:
+            if ( _makeGeocentric )
+                _outputSRS->transformPointsToECEF( geom, false );
+
+            // update the bounding box.
+            for( unsigned i=0; i<geom->size(); ++i )
+                _bbox.expandBy( (*geom)[i] );
+
+#if 0
             // apply the height offset:
             for( unsigned i=0; i<geom->size(); ++i )
             {
@@ -150,6 +168,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
                 for( unsigned i=0; i<geom->size(); ++i )
                     _bbox.expandBy( (*geom)[i] );
             }
+#endif
         }
     }
 

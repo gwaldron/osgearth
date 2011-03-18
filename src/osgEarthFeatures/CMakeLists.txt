@@ -21,7 +21,6 @@ SET(LIB_PUBLIC_HEADERS
     Feature
     FeatureCursor
     FeatureGridder
-    FeatureModelCompiler
     FeatureModelGraph
     FeatureModelSource
     FeatureSource
@@ -47,7 +46,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Feature.cpp
     FeatureCursor.cpp
     FeatureGridder.cpp
-    FeatureModelCompiler.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp

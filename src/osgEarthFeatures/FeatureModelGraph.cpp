@@ -19,6 +19,7 @@
 
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/FeatureGridder>
+#include <osg/BlendFunc>
 #include <osg/NodeVisitor>
 #include <osg/ClusterCullingCallback>
 #include <osgUtil/Optimizer>
@@ -39,6 +40,17 @@ _options( options ),
 _factory( factory )
 {
     //nop
+
+    osg::StateSet* stateSet = getOrCreateStateSet();
+
+    stateSet->setAttributeAndModes( 
+        new osg::BlendFunc( GL_ONE, GL_ONE ), //GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA),
+        osg::StateAttribute::ON );
+
+    stateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+
+    //if ( _options.enableLighting().isSet() )
+    //    stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
 }
 
 void

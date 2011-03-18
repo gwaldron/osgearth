@@ -16,28 +16,29 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/FeatureModelCompiler>
+#include "GeomCompiler"
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osg/MatrixTransform>
 
-#define LC "[FeatureModelCompiler] "
+#define LC "[GeomCompiler] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-FeatureModelCompiler::FeatureModelCompiler( Session* session ) :
-_session( session )
+GeomCompiler::GeomCompiler( Session* session, const FeatureGeomModelOptions& options ) :
+_session( session ),
+_options( options )
 {
     //nop
 }
 
 osg::Node*
-FeatureModelCompiler::compile(FeatureCursor*        cursor,
-                         const FeatureProfile* featureProfile,
-                         const Style*          style)
+GeomCompiler::compile(FeatureCursor*        cursor,
+                      const FeatureProfile* featureProfile,
+                      const Style*          style)
 {
     if ( !featureProfile ) {
         OE_WARN << LC << "Valid feature profile required" << std::endl;
@@ -68,6 +69,8 @@ FeatureModelCompiler::compile(FeatureCursor*        cursor,
     // transform the features into the map profile
     TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   
     xform.setLocalizeCoordinates( localize );
+    if ( _options.heightOffset().isSet() )
+        xform.setMatrix( osg::Matrixd::translate(0, 0, *_options.heightOffset()) );
     cx = xform.push( workingSet, cx );
 
     // go through the Style and figure out which filters to use.
@@ -96,6 +99,10 @@ FeatureModelCompiler::compile(FeatureCursor*        cursor,
     else if ( point || line || polygon )
     {
         BuildGeometryFilter filter( style );
+        if ( _options.maxGranularity().isSet() )
+            filter.maxGranularity() = *_options.maxGranularity();
+        if ( _options.mergeGeometry().isSet() )
+            filter.mergeGeometry() = *_options.mergeGeometry();
         cx = filter.push( workingSet, cx );
         result = filter.getNode();
     }

@@ -70,7 +70,8 @@ namespace
             // Transform them into the map's SRS:
             TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );
             xform.setLocalizeCoordinates( true );
-            xform.setHeightOffset( *_options.heightOffset() );
+            xform.setMatrix( osg::Matrixd::translate( 0, 0, *_options.heightOffset() ) );
+            //xform.setHeightOffset( *_options.heightOffset() );
             cx = xform.push( featureList, cx );        
             
             // Make some labels

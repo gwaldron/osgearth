@@ -30,9 +30,7 @@ namespace osgEarth { namespace Drivers
     class FeatureGeomModelOptions : public FeatureModelSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
-
+        /** Z offset to apply to feature geoemtry */
         optional<double>& heightOffset() { return _heightOffset; }
         const optional<double>& heightOffset() const { return _heightOffset; }
 
@@ -48,7 +46,6 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureModelSourceOptions::getConfig();
-            conf.updateIfSet( "url", _url );
             conf.updateIfSet( "height_offset", _heightOffset );
             return conf;
         }
@@ -61,7 +58,6 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
             conf.getIfSet( "height_offset", _heightOffset );
         }
 

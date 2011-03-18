@@ -16,21 +16,19 @@ OSG geometry out of it.
         <!-- Configure the OGR feature driver to read the shapefile -->
         <features name="states" driver="ogr">
             <url>../data/usa.shp</url>
-            <ogr_driver>ESRI Shapefile</ogr_driver>
         </features>
         
-        <!-- Convert polygons to lines -->
-        <geometry_type>line</geometry_type>
-        
         <!-- Render the geometry at a height offset to prevent Z fighting -->
-        <height_offset>10000</height_offset>
+        <height_offset>1000</height_offset>
+        
+        <!-- Ensure a vertex at least every 5 degrees -->
+        <max_granularity>5.0</max_granularity>
         
         <!-- Appearance details -->
         <styles>
             <style type="text/css">
-                default {
+                states {
                    stroke: #ffff00;
-                   stroke-width: 1.0;
                 }                    
             </style>
         </styles>

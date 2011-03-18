@@ -29,6 +29,13 @@ namespace osgEarth
 {
 namespace Drivers
 {
+// This callback sets a uniform, osgearth_LODRangeFactor, based on the
+// distance from the camera and its relation to the minimum and
+// maximum distance for a tile. The maximum distance isn't actually
+// available, so 2 * min distance is used as an estimate. The range
+// factor's value goes from 0 - at the maximum range - to 1 for the
+// minimum range.
+
 void LODFactorCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     osg::PagedLOD* lod =  static_cast<osg::PagedLOD*>(node);

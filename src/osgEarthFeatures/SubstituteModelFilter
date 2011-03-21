@@ -56,6 +56,14 @@ namespace osgEarth { namespace Features
         /** Construct a new sub-model filter that will operate on the given style */
         SubstituteModelFilter( const Style* style );
 
+        /** Whether to cluster all the model instances into a single geode. Default is false. */
+        void setClustering( bool value ) { _cluster = value; }
+        bool getClustering() const { return _cluster; }
+
+        /** The matrix with which to transform each model instance after placement. */
+        void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
+        const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
+
     public:
         /** Processes a new feature list */
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
@@ -66,12 +74,16 @@ namespace osgEarth { namespace Features
     private:
         osg::ref_ptr<const Style> _style;
         osg::ref_ptr<osg::Node>   _result;
+        bool                      _cluster;
+        osg::Matrixd              _modelMatrix;
 
         struct Data {
             osg::ref_ptr<osg::Node> _model;
         };
         
         bool push( Feature* input, Data& data, osg::Group* ap, FilterContext& context );
+
+        bool cluster(const FeatureList& features, Data& data, osg::Group* ap, FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

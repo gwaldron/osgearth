@@ -30,9 +30,12 @@ CssUtils::readConfig( std::istream& in )
 {
     // read the entire stream into a string:
     std::stringstream buf;
-    std::copy( std::istream_iterator<char>(in),
-        std::istream_iterator<char>(),
-        std::ostream_iterator<char>( buf ) );
+    //std::copy( std::istreambuf_iterator<char>(in), //::istream_iterator<char>(in),
+    //    std::istreambuf_iterator<char>(),
+    //    std::ostreambuf_iterator<char>( buf ) );
+
+    buf << in.rdbuf();
+
     std::string css;
 	css = buf.str();
 
@@ -66,35 +69,5 @@ CssUtils::readConfig( std::istream& in )
         }
     }
 
-    OE_NOTICE << conf.toString() << std::endl;
-
     return conf;
 }
-
-#if 0
-    for( StringVector::const_iterator i=tokens1.begin(); i != tokens1.end(); ++i )
-    {
-        const std::string& name = *i;
-        if ( 
-
-    StringTokenizer tok( css, "{}" );
-    while( tok.nextToken() ) {
-        std::string name = tok.token();
-        if ( tok.nextToken() ) {
-            Config elementConf( name );
-            std::string props = tok.token();
-            StringTokenizer propsTok( props, ":;" );
-            while( propsTok.nextToken() ) {
-                std::string key = propsTok.token();
-                if ( propsTok.nextToken() ) {
-                    std::string value = propsTok.token();
-                    elementConf.attr(key) = value;
-                }
-            }    
-            conf.add( elementConf );
-        }
-    }
-
-    return conf;
-}
-#endif

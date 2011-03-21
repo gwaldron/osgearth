@@ -36,18 +36,6 @@ using namespace osgEarth::Symbology;
 
 #define CSS_POINT_SIZE     "point-size"
 
-//#define CSS_EXTRUDE_OFFSET             "extrusion-offset"
-//#define CSS_EXTRUDE_HEIGHT             "extrusion-height"
-
-//#define CSS_MODEL_URI                  "model"
-//#define CSS_MODEL_PLACEMENT            "model-placement"
-//#define CSS_MODEL_PLACEMENT_CENTROID        "centroid"
-//#define CSS_MODEL_PLACEMENT_INTERVAL        "interval"
-//#define CSS_MODEL_PLACEMENT_SCATTER         "scatter"
-//#define CSS_MODEL_PLACEMENT_INTERVAL   "model-interval"
-//#define CSS_MODEL_PLACEMENT_DENSITY    "model-density"
-//#define CSS_MODEL_SCALE                "model-scale"
-
 #define CSS_TEXT_FONT             "text-font"
 #define CSS_TEXT_SIZE             "text-size"
 #define CSS_TEXT_HALO             "text-halo"

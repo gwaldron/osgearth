@@ -41,17 +41,17 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& url() { return _url; }
         const optional<std::string>& url() const { return _url; }
 
-        optional<Placement> placement() { return _placement; }
-        const optional<Placement> placement() const { return _placement; }
+        optional<Placement>& placement() { return _placement; }
+        const optional<Placement>& placement() const { return _placement; }
 
-        optional<float> density() { return _density; }
-        const optional<float> density() const { return _density; }
+        optional<float>& density() { return _density; }
+        const optional<float>& density() const { return _density; }
 
-        optional<float> interval() { return _interval; }
-        const optional<float> interval() const { return _interval; }
+        optional<float>& interval() { return _interval; }
+        const optional<float>& interval() const { return _interval; }
 
-        optional<osg::Vec3f> scale() { return _scale; }
-        const optional<osg::Vec3f> scale() const { return _scale; }
+        optional<osg::Vec3f>& scale() { return _scale; }
+        const optional<osg::Vec3f>& scale() const { return _scale; }
 
     public:
         virtual Config getConfig() const;

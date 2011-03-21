@@ -84,6 +84,10 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     if ( model )
     {
         SubstituteModelFilter filter( style );
+        if ( _options.clustering().isSet() )
+            filter.setClustering( *_options.clustering() );
+        if ( model->scale().isSet() )
+            filter.setModelMatrix( osg::Matrixd::scale( *model->scale() ) );
         cx = filter.push( workingSet, cx );
         result = filter.getNode();
     }

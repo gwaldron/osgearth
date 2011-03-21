@@ -34,6 +34,10 @@ namespace osgEarth { namespace Drivers
         optional<double>& heightOffset() { return _heightOffset; }
         const optional<double>& heightOffset() const { return _heightOffset; }
 
+        /** Whether to cluster feature geometries together for speed */
+        optional<bool>& clustering() { return _clustering; }
+        const optional<bool>& clustering() const { return _clustering; }
+
     public:
         FeatureGeomModelOptions( const ConfigOptions& options =ConfigOptions() ) :
             FeatureModelSourceOptions( options ),
@@ -47,6 +51,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = FeatureModelSourceOptions::getConfig();
             conf.updateIfSet( "height_offset", _heightOffset );
+            conf.updateIfSet( "clustering", _clustering );
             return conf;
         }
 
@@ -59,10 +64,12 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "height_offset", _heightOffset );
+            conf.getIfSet( "clustering", _clustering );
         }
 
-        optional<std::string> _url;
         optional<double> _heightOffset;
+        optional<bool>   _clustering;
+        optional<float>  _scale;
     };
 
 } } // namespace osgEarth::Drivers

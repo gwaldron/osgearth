@@ -207,7 +207,14 @@ namespace osgEarth
     {
         std::stringstream buf(str);
         osg::Vec3f out = default_value;
-        buf >> out.x() >> out.y() >> out.z();
+        buf >> out.x();
+        if ( !buf.eof() ) {
+            buf >> out.y() >> out.z();
+        }
+        else {
+            out.y() = out.x();
+            out.z() = out.x();
+        }
         return out;
     }
 

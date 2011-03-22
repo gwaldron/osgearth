@@ -194,9 +194,11 @@ namespace osgEarth { namespace Symbology
         // gets the ring's orientation
         Orientation getOrientation() const;
 
-        // gets the signed area of a part that is known to be open. A positive
-        // area means it's would CCW; negative means it's would CW.
-        //double getSignedArea() const;
+        // tests whether the point falls withing the ring
+        bool contains2D( double x, double y ) const;
+
+        // gets the signed area of a part that is known to be open.
+        virtual double getSignedArea2D() const;
 
         // ensures that the first and last points are not idential.
         void open();

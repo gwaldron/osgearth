@@ -71,7 +71,7 @@ namespace osgEarth { namespace Features
         /** Gets the resulting OSG scene graph */
         osg::Node* getNode() const { return _result.get(); }
 
-    private:
+    protected:
         osg::ref_ptr<const Style> _style;
         osg::ref_ptr<osg::Node>   _result;
         bool                      _cluster;
@@ -81,7 +81,7 @@ namespace osgEarth { namespace Features
             osg::ref_ptr<osg::Node> _model;
         };
         
-        bool push( Feature* input, Data& data, osg::Group* ap, FilterContext& context );
+        bool pushFeature( Feature* input, Data& data, osg::Group* ap, FilterContext& context );
 
         bool cluster(const FeatureList& features, Data& data, osg::Group* ap, FilterContext& context );
     };

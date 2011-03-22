@@ -383,6 +383,23 @@ Ring::open()
         erase( end()-1 );
 }
 
+// gets the signed area.
+double
+Ring::getSignedArea2D() const
+{
+    const_cast<Ring*>(this)->open();
+
+    double sum = 0.0;
+
+    for( unsigned i=0; i<size(); ++i )
+    {
+        const osg::Vec3d& p0 = (*this)[0];
+        const osg::Vec3d& p1 = i+1 < size() ? (*this)[i+1] : (*this)[0];
+        sum += p0.x()*p1.y() - p1.x()*p0.y();
+    }
+    return .5*sum;
+}
+
 // opens and rewinds the polygon to the specified orientation.
 void 
 Ring::rewind( Orientation orientation )
@@ -393,6 +410,24 @@ Ring::rewind( Orientation orientation )
     {
         std::reverse( begin(), end() );
     }
+}
+
+// point-in-polygon test
+bool
+Ring::contains2D( double x, double y ) const
+{
+    bool result = false;
+    const Ring& poly = *this;
+    for( unsigned i=0, j=size()-1; i<size(); j = i++ )
+    {
+        if ((((poly[i].y() <= y) && (y < poly[j].y())) ||
+            ((poly[j].y() <= y) && (y < poly[i].y()))) &&
+            (x < (poly[j].x()-poly[i].x()) * (y-poly[i].y())/(poly[j].y()-poly[i].y())+poly[i].x()))
+        {
+            result = !result;
+        }
+    }
+    return result;
 }
 
 //----------------------------------------------------------------------------

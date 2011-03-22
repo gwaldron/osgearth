@@ -145,7 +145,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
 
             // convert to ECEF if required:
             if ( _makeGeocentric )
-                _outputSRS->transformPointsToECEF( geom, false );
+                _outputSRS->transformToECEF( geom, false );
 
             // update the bounding box.
             for( unsigned i=0; i<geom->size(); ++i )

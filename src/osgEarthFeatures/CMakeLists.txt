@@ -31,6 +31,7 @@ SET(LIB_PUBLIC_HEADERS
     ResampleFilter
     ScaleFilter
 	Session
+	ScatterFilter
 	SubstituteModelFilter
     TransformFilter
     VirtualFeatureSource
@@ -56,6 +57,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ResampleFilter.cpp
     ScaleFilter.cpp
 	Session.cpp
+	ScatterFilter.cpp
 	SubstituteModelFilter.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp

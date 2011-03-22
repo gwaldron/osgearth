@@ -17,9 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "GeomCompiler"
-#include <osgEarthFeatures/TransformFilter>
-#include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/ScatterFilter>
+#include <osgEarthFeatures/SubstituteModelFilter>
+#include <osgEarthFeatures/TransformFilter>
 #include <osg/MatrixTransform>
 
 #define LC "[GeomCompiler] "
@@ -83,13 +84,20 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     // model substitution
     if ( model )
     {
-        SubstituteModelFilter filter( style );
-        if ( _options.clustering().isSet() )
-            filter.setClustering( *_options.clustering() );
+        if ( model->placement() == ModelSymbol::PLACEMENT_SCATTER )
+        {
+            ScatterFilter scatter;
+            scatter.setDensity( *model->density() );
+            cx = scatter.push( workingSet, cx );
+        }
+
+        SubstituteModelFilter sub( style );
+        sub.setClustering( *_options.clustering() );
         if ( model->scale().isSet() )
-            filter.setModelMatrix( osg::Matrixd::scale( *model->scale() ) );
-        cx = filter.push( workingSet, cx );
-        result = filter.getNode();
+            sub.setModelMatrix( osg::Matrixd::scale( *model->scale() ) );
+
+        cx = sub.push( workingSet, cx );
+        result = sub.getNode();
     }
 
     // extruded geometry

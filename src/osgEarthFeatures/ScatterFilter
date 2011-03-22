@@ -1,0 +1,58 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_SCATTER_FILTER_H
+#define OSGEARTHFEATURES_SCATTER_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Filter>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Feature filter that will take source feature and scatter points within
+     * that feature.
+     */
+    class OSGEARTHFEATURES_EXPORT ScatterFilter : public FeatureFilter
+    {
+    public:
+        // Call this determine whether this filter is available.
+        static bool isSupported() { return true; }
+
+    public:
+        ScatterFilter();
+
+        /** Approximate instances per sqkm. */
+        void setDensity( float value ) { _density = value; }
+        float getDensity() const { return _density; }
+
+    public:
+        /** Processes a new feature list */
+        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+
+    private:
+        float _density;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H

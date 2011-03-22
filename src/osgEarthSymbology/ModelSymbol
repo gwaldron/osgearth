@@ -38,18 +38,23 @@ namespace osgEarth { namespace Symbology
     public:
         ModelSymbol( const Config& conf =Config() );
 
+        /** URL of the model to use for substitution. */
         optional<std::string>& url() { return _url; }
         const optional<std::string>& url() const { return _url; }
 
+        /** How to map feature geometry to model placement. (default is CENTROID) */
         optional<Placement>& placement() { return _placement; }
         const optional<Placement>& placement() const { return _placement; }
 
+        /** For PLACEMENT_SCATTER, the scatterind density in instances per sqkm */
         optional<float>& density() { return _density; }
         const optional<float>& density() const { return _density; }
 
+        /** For PLACEMENT_INTERVAL, the approximate placement interval along segments */
         optional<float>& interval() { return _interval; }
         const optional<float>& interval() const { return _interval; }
 
+        /** Model instance scale factor */
         optional<osg::Vec3f>& scale() { return _scale; }
         const optional<osg::Vec3f>& scale() const { return _scale; }
 

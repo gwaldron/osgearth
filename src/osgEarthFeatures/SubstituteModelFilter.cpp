@@ -49,10 +49,10 @@ _cluster( false )
 }
 
 bool
-SubstituteModelFilter::push(Feature*                     input,
-                            SubstituteModelFilter::Data& data,
-                            osg::Group*                  attachPoint,
-                            FilterContext&               context )
+SubstituteModelFilter::pushFeature(Feature*                     input,
+                                   SubstituteModelFilter::Data& data,
+                                   osg::Group*                  attachPoint,
+                                   FilterContext&               context )
 {
     GeometryIterator gi( input->getGeometry() );
     gi.traversePolygonHoles() = false;
@@ -111,78 +111,44 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
             // foreach each drawable that was originally in the geode...
             for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
             {
-                osg::Drawable* old_d = i->get();
+                osg::Geometry* originalDrawable = dynamic_cast<osg::Geometry*>( i->get() );
+                if ( !originalDrawable )
+                    continue;
 
                 // go through the list of input features...
                 for( FeatureList::const_iterator j = _features.begin(); j != _features.end(); j++ )
                 {
                     const Feature* feature = j->get();
 
-                    // ...and clone the source drawable once for each input feature.
-                    osg::ref_ptr<osg::Drawable> new_d = dynamic_cast<osg::Drawable*>( 
-                        old_d->clone( osg::CopyOp::DEEP_COPY_ARRAYS | osg::CopyOp::DEEP_COPY_PRIMITIVES ) );
+                    ConstGeometryIterator gi( feature->getGeometry() );
+                    gi.traversePolygonHoles() = false;
 
-                    if ( dynamic_cast<osg::Geometry*>( new_d.get() ) )
+                    while( gi.hasMore() )
                     {
-                        osg::Geometry* geom = static_cast<osg::Geometry*>( new_d.get() );
-                        osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>( geom->getVertexArray() );
-                        if ( verts )
+                        const Geometry* geom = gi.next();
+
+                        for( Geometry::const_iterator k = geom->begin(); k != geom->end(); ++k )
                         {
-                            // now, forceably offset the new cloned drawable by the input feature's first point.
-                            // grab the centroid just in case:
-                            const Geometry* fg = feature->getGeometry();
-                            if ( fg == 0L || fg->getTotalPointCount() == 0 )
-                                continue;
+                            osg::Matrixd mx = _modelMatrix * osg::Matrixd::translate( *k );
 
-                            // get the first point in the geometry to use as an offset.
-                            osg::Vec3d c;
-                            ConstGeometryIterator gi( feature->getGeometry() );
-                            while ( gi.hasMore() ) {
-                                const Geometry* fg = gi.next();
-                                if ( fg->size() > 0 ) {
-                                    c = (*fg)[0];
-                                    break;
+                            // clone the source drawable once for each input feature.
+                            osg::ref_ptr<osg::Geometry> newDrawable = osg::clone( 
+                                originalDrawable, 
+                                osg::CopyOp::DEEP_COPY_ARRAYS | osg::CopyOp::DEEP_COPY_PRIMITIVES );
+
+                            osg::Vec3Array* verts = dynamic_cast<osg::Vec3Array*>( newDrawable->getVertexArray() );
+                            if ( verts )
+                            {
+                                for( osg::Vec3Array::iterator v = verts->begin(); v != verts->end(); ++v )
+                                {
+                                    (*v).set( *v * mx );
                                 }
+                                
+                                // add the new cloned, translated drawable back to the geode.
+                                geode.addDrawable( newDrawable.get() );
                             }
-
-                            osg::Matrix translate_mx = osg::Matrix::translate( c );
-
-                            // get the scaler if there is one:
-                            osg::Matrix scale_mx;
-#if 0
-                            if ( filter->getModelScaleScript() )
-                            {
-                                ScriptResult r = env->getScriptEngine()->run( filter->getModelScaleScript(), j->get(), env );
-                                if ( r.isValid() )
-                                    scale_mx = osg::Matrix::scale( r.asVec3() );
-                                else
-                                    env->getReport()->error( r.asString() );
-                                //scaler = r.asVec3();
-                            }
-#endif
-
-                            // and the heading id there is one:
-                            osg::Matrix heading_mx;
-#if 0
-                            if ( filter->getModelHeadingScript() )
-                            {
-                                ScriptResult r = env->getScriptEngine()->run( filter->getModelHeadingScript(), j->get(), env );
-                                if ( r.isValid() )
-                                    heading_mx = osg::Matrix::rotate( osg::DegreesToRadians( r.asDouble(0) ), 0, 0, -1 );
-                                else
-                                    env->getReport()->error( r.asString() );
-                            }
-#endif
-
-                            osg::Matrix mx = _modelMatrix * translate_mx; //heading_mx * scale_mx * translate_mx;
-
-                            // transform all the verts.
-                            for( osg::Vec3Array::iterator k = verts->begin(); k != verts->end(); ++k )
-                                (*k).set( *k * mx );
                         }
 
-                        // add the new cloned, translated drawable back to the geode.
-                        geode.addDrawable( geom );
                     }
                 }
             }
@@ -265,7 +231,7 @@ SubstituteModelFilter::push(FeatureList&         features,
     else
     {
         for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
-            if ( !push( i->get(), data, group, newContext ) )
+            if ( !pushFeature( i->get(), data, group, newContext ) )
                 ok = false;
     }
 

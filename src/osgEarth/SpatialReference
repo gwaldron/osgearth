@@ -97,9 +97,9 @@ namespace osgEarth
          * Transforms an array of points to geocentric/ECEF coordinates. The points
          * are transformed in place.
          */
-        bool transformPointsToECEF(
-            osg::Vec3dArray* points,
-            bool ignore_errors =false) const;
+        bool transformToECEF(
+            osg::Vec3dArray*    points,
+            bool                ignore_errors =false) const;
 
         /**
          * Transforms a point from geocentric/ECEF coordinates into this SRS (with a
@@ -113,9 +113,9 @@ namespace osgEarth
          * Transforms an array of points from geocentric/ECEF coordinates into this SRS
          * (with a height-above-ellipoid). The points are transformed in place.
          */
-        bool transformPointsFromECEF(
-            osg::Vec3dArray* points,
-            bool ignoreErrors =false) const;
+        bool transformFromECEF(
+            osg::Vec3dArray*    points,
+            bool                ignoreErrors =false) const;
 
         /**
          * Transforms a spatial extent to another SRS. 

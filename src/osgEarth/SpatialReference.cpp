@@ -822,17 +822,24 @@ SpatialReference::transformToECEF(double x, double y, double z,
 }
 
 bool 
-SpatialReference::transformPointsToECEF(osg::Vec3dArray* points,
-                                        bool             ignoreErrors ) const
+SpatialReference::transformToECEF(osg::Vec3dArray*    points,
+                                  bool                ignoreErrors ) const
 {
     if ( !points) return false;
+
+    const SpatialReference* geoSRS = getGeographicSRS();
+    const osg::EllipsoidModel* ellipsoid = geoSRS->getEllipsoid();
 
     for( unsigned i=0; i<points->size(); ++i )
     {
         osg::Vec3d& p = (*points)[i];
-        bool ok = transformToECEF( p.x(), p.y(), p.z(), p.x(), p.y(), p.z() );
-        if ( !ignoreErrors && !ok )
-            return false;
+
+        if ( !isGeographic() )
+            transform( p.x(), p.y(), geoSRS, p.x(), p.y() );
+
+        ellipsoid->convertLatLongHeightToXYZ(
+            osg::DegreesToRadians( p.y() ), osg::DegreesToRadians( p.x() ), p.z(),
+            p.x(), p.y(), p.z() );
     }
 
     return true;
@@ -867,15 +874,15 @@ SpatialReference::transformFromECEF(const osg::Vec3d& input,
 }
 
 bool 
-SpatialReference::transformPointsFromECEF(osg::Vec3dArray* points,
-                                          bool             ignoreErrors ) const
+SpatialReference::transformFromECEF(osg::Vec3dArray* points,
+                                    bool             ignoreErrors ) const
 {
     bool ok = true;
 
     // first convert all the points to lat/long (in place):
     for( unsigned i=0; i<points->size(); ++i )
     {
-        osg::Vec3d& p = (*points)[0];
+        osg::Vec3d& p = (*points)[i];
         osg::Vec3d geo;
         getGeographicSRS()->getEllipsoid()->convertXYZToLatLongHeight(
             p.x(), p.y(), p.z(),

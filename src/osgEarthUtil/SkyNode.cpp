@@ -631,6 +631,7 @@ SkyNode::attach( osg::View* view, int lightNum )
 
     data._light = osg::clone( _defaultPerViewData._light.get() );
     data._light->setLightNum( lightNum );
+    data._light->setAmbient( _defaultPerViewData._light->getAmbient() );
     data._lightPos = _defaultPerViewData._lightPos;
 
     // the cull callback has to be on a parent group-- won't work on the xforms themselves.

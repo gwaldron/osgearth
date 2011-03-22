@@ -514,7 +514,7 @@ TMSCache::getFilename( const TileKey& key,const CacheSpec& spec ) const
 #define CACHE_OPTIONS_TAG "__osgEarth::CacheOptions"
 
 Cache*
-CacheFactory::create( const CacheOptions& options )
+CacheFactory::create( const CacheOptions& options)
 {
     osg::ref_ptr<Cache> result =0L;
     OE_INFO << LC << "Initializing cache of type \"" << options.getDriver() << "\"" << std::endl;

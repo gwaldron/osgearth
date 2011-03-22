@@ -52,7 +52,7 @@ namespace osgEarth { namespace Util
         void setDateTime( int year, int month, int date, double hoursUTC, osg::View* view =0L );
 
         /** The minimum brightness for non-sunlit areas. */
-        void setAmbientBrigtness( float value, osg::View* view =0L );
+        void setAmbientBrightness( float value, osg::View* view =0L );
         float getAmbientBrightness( osg::View* view =0L ) const;
 
         /** Whether the stars are visible */

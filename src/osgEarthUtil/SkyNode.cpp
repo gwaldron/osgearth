@@ -633,6 +633,7 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._light->setLightNum( lightNum );
     data._lightPos = _defaultPerViewData._lightPos;
 
+    // the cull callback has to be on a parent group-- won't work on the xforms themselves.
     data._cullContainer = new osg::Group();
     data._cullContainer->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
 
@@ -661,7 +662,7 @@ SkyNode::attach( osg::View* view, int lightNum )
 }
 
 void
-SkyNode::setAmbientBrigtness( float value, osg::View* view )
+SkyNode::setAmbientBrightness( float value, osg::View* view )
 {
     if ( !view )
     {

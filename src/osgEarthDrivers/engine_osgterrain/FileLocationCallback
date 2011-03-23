@@ -52,10 +52,22 @@ public:
             const osgEarth::Profile* profile = engine->getMap()->getProfile();
             osgEarth::TileKey mapKey( lod, x, y, profile );
 
-            if ( engine->getTileFactory()->areChildrenCached( engine->getMap(), mapKey ) )
+            result = LOCAL_FILE;
+
+            MapFrame mapf( engine->getMap() );
+            for( unsigned i=0; i<4; ++i )
             {
-                result = LOCAL_FILE;
+                TileKey childKey = mapKey.createChildKey( i );
+                if ( !mapf.isCached( childKey ) )
+                {
+                    result = REMOTE_FILE;
+                    break;
+                }
             }
+            //if ( engine->getTileFactory()->areChildrenCached( engine->getMap(), mapKey ) )
+            //{
+            //    result = LOCAL_FILE;
+            //}
         }
 
         return result;

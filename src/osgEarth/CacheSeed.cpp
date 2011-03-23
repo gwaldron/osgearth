@@ -156,7 +156,10 @@ CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-        OE_NOTICE << "Caching tile = " << key.str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
+//        OE_NOTICE << "Caching tile = " << key.str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
+	if ( _progress.valid() && _progress->reportProgress(0, 0, "Caching tile: " + key.str()) )
+	    return; // Task has been cancelled by user
+
         cacheTile( mapf, key );
   //      bool validData;
 		//osg::ref_ptr<osg::Node> node = engine->createTile( map, terrain.get(), key, true, false, false, validData );        
@@ -200,4 +203,3 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
         mapf.getHeightField( key, false, hf );
     }
 }
-

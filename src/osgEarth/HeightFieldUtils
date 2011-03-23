@@ -21,6 +21,8 @@
 
 #include <osgEarth/Common>
 #include <osg/Shape>
+#include <osg/CoordinateSystemNode>
+#include <osg/ClusterCullingCallback>
 #include <osgTerrain/ValidDataOperator>
 
 namespace osgEarth
@@ -104,6 +106,16 @@ namespace osgEarth
             int newX,
             int newY,
             ElevationInterpolation interp = INTERP_BILINEAR );
+        
+        /**
+         * Creates a new cluster culler based on a heightfield.
+         * Cluster cullers are for geocentric maps only, and therefore requires
+         * the ellipsoid model.
+         */
+        static osg::ClusterCullingCallback* createClusterCullingCallback(
+            osg::HeightField*    grid, 
+            osg::EllipsoidModel* em, 
+            float verticalScale =1.0f );
     };
 
     /**

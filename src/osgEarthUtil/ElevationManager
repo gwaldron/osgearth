@@ -147,6 +147,17 @@ namespace osgEarth { namespace Util
          */
         ElevationInterpolation getElevationInterpolation() const;
 
+        /**
+        * Sets the maximum level override for elevation queries.
+        * A value of -1 turns off the override.
+        */
+        void setMaxLevelOverride(int maxLevelOverride);
+
+        /**
+        * Gets the maximum level override for elevation queries.
+        */
+        int getMaxLevelOverride() const;
+
     private:
         MapFrame _mapf;
         typedef std::map< osgTerrain::TileID, osg::ref_ptr<osgTerrain::TerrainTile> > TileTable;
@@ -156,6 +167,7 @@ namespace osgEarth { namespace Util
         int _maxCacheSize;
         int _tileSize;
         unsigned int _maxDataLevel;
+        int _maxLevelOverride;
         Technique _technique;
         ElevationInterpolation _interpolation;
 

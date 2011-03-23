@@ -222,6 +222,8 @@ _key( key ),
 _keyLocator( keyLocator ),
 _verticalScale(1.0f)
 {
+    this->setLocator( keyLocator );
+
     this->setThreadSafeRefUnref( true );
 
     this->setTileID( key.getTileId() );

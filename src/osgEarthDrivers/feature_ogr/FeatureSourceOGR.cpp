@@ -48,16 +48,16 @@ using namespace osgEarth::Drivers;
 class OGRFeatureSource : public FeatureSource
 {
 public:
-    OGRFeatureSource( const FeatureSourceOptions& options ) : FeatureSource( options ),
+    OGRFeatureSource( const OGRFeatureOptions& options ) : FeatureSource( options ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
       _ogrDriverHandle( 0L ),
       _options( options )
     {
-
         _geometry = 
             _options.geometry().valid() ? _options.geometry().get() :
-            _options.geometryConfig().isSet() ? parseGeometry( _options.geometryConfig().value() ) :
+            _options.geometryConfig().isSet() ? parseGeometry( *_options.geometryConfig() ) :
+            _options.geometryUrl().isSet() ? parseGeometryUrl( *_options.geometryUrl() ) :
             0L;
     }
 
@@ -247,6 +247,18 @@ protected:
     Symbology::Geometry* parseGeometry( const Config& geomConf )
     {
         return GeometryUtils::createGeometryFromWKT( geomConf.value() );
+    }
+
+    // read the WKT geometry from a URL, then parse into a Geometry.
+    Symbology::Geometry* parseGeometryUrl( const std::string& geomUrl )
+    {
+        std::string wkt;
+        if ( HTTPClient::readString( geomUrl, wkt ) == HTTPClient::RESULT_OK )
+        {
+            Config conf( "geometry", wkt );
+            return parseGeometry( conf );
+        }
+        return 0L;
     }
 
 private:

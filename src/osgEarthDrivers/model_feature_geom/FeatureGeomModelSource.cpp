@@ -145,6 +145,10 @@ public:
         if ( _options.maxGranularity().isSet() )
             build.maxGranularity() = *_options.maxGranularity();
 
+        // set feature preservation optiona:
+        if ( _options.mergeGeometry().isSet() )
+            build.mergeGeometry() = *_options.mergeGeometry();
+
         osg::ref_ptr<osg::Node> result;
         build.setStyle( style );
         cx = build.push( features, result, cx );

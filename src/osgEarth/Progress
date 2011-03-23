@@ -34,6 +34,7 @@ namespace osgEarth
          * Creates a new ProgressCallback
          */
         ProgressCallback();
+	virtual ~ProgressCallback() { }
 
         /**
         * Callback function that will be called.
@@ -41,10 +42,18 @@ namespace osgEarth
         *        The current amount of work to be done.
         * @param total
         *        The total amount of work to be done.
+	* @param msg
+	*        Description of what is being done. Useful when total is unknown.
         * @param returns
         *        Returns true if the current task should be cancelled, false otherwise.
         */
-        virtual bool reportProgress(double current, double total);
+        virtual bool reportProgress(double current, double total, const std::string& msg = std::string());
+
+        // called when the process starts
+        virtual void onStarted() { }
+
+        // called when the process completed 
+        virtual void onCompleted() { }
 
         void cancel() { _canceled = true; }
         bool isCanceled() const { return _canceled; }
@@ -76,6 +85,7 @@ namespace osgEarth
          * Creates a new ConsoleProgressCallback
          */
         ConsoleProgressCallback();
+	virtual ~ConsoleProgressCallback() { }
 
         /**
         * Callback function that will be called.
@@ -86,7 +96,7 @@ namespace osgEarth
         * @param returns
         *        Returns true if the current task should be cancelled, false otherwise.
         */
-        virtual bool reportProgress(double current, double total);
+        virtual bool reportProgress(double current, double total, const std::string& msg = std::string());
     };
 }
 

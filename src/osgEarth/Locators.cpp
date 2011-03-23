@@ -74,16 +74,20 @@ GeoLocator::isEquivalentTo( const GeoLocator& rhs ) const
 
 GeoLocator*
 GeoLocator::createForKey( const TileKey& key, const MapInfo& map )
-{
-    //bool isPlateCarre =  !map.isGeocentric() && map.isGeographicSRS(); //map->getProfile()->getSRS()->isGeographic();
-
+{    
     const GeoExtent& ex = key.getExtent();
+    return createForExtent( ex, map );    
+}
+
+GeoLocator* 
+GeoLocator::createForExtent( const GeoExtent& extent, const class MapInfo& map)
+{
     double xmin, ymin, xmax, ymax;
-    key.getExtent().getBounds( xmin, ymin, xmax, ymax );
+    extent.getBounds( xmin, ymin, xmax, ymax );
 
     // A locator will place the tile on the globe:
-    GeoLocator* locator = key.getProfile()->getSRS()->createLocator(
-        ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax(),
+    GeoLocator* locator = extent.getSRS()->createLocator(
+        extent.xMin(), extent.yMin(), extent.xMax(), extent.yMax(),
         map.isPlateCarre() );
 
     if ( map.isGeocentric() )

@@ -28,10 +28,10 @@ osg::Referenced( true ),
 _canceled(false),
 _needsRetry(false)
 {
+    //NOP
 }
 
-bool
-ProgressCallback::reportProgress(double current, double total)
+bool ProgressCallback::reportProgress(double /*current*/, double /*total*/, const std::string& /*msg*/) 
 {
     return false;
 }
@@ -40,12 +40,20 @@ ProgressCallback::reportProgress(double current, double total)
 ConsoleProgressCallback::ConsoleProgressCallback() :
 ProgressCallback()
 {
+    //NOP
 }
 
 bool
-ConsoleProgressCallback::reportProgress(double current, double total)
+ConsoleProgressCallback::reportProgress(double current, double total, const std::string& msg)
 {
-    double percentComplete = (current / total) * 100.0;
-    OE_NOTICE << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
+    if (total > 0)
+    {
+	double percentComplete = (current / total) * 100.0;
+	OE_NOTICE << "Completed " << percentComplete << "% " << current << " of " << total << std::endl;
+    }
+    else
+    {
+	OE_NOTICE << msg << std::endl;
+    }
     return false;
 }

@@ -18,15 +18,6 @@
  */
 #include <osgEarthFeatures/BufferFilter>
 
-//#ifdef OSGEARTH_HAVE_GEOS
-//#  include <osgEarthSymbology/GEOS>
-//#  include <geos/geom/Geometry.h>
-//#  include <geos/geom/GeometryFactory.h>
-//#  include <geos/operation/buffer/BufferOp.h>
-//   using namespace geos;
-//   using namespace geos::operation;
-//#endif
-
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;

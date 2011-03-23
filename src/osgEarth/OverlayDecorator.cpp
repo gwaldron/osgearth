@@ -178,7 +178,6 @@ namespace
 OverlayDecorator::OverlayDecorator() :
 _textureUnit( 1 ),
 _textureSize( 1024 ),
-_reservedTextureUnit( false ),
 _useShaders( false ),
 _useWarping( true ),
 _warp( 1.0f ),
@@ -201,7 +200,7 @@ OverlayDecorator::reinit()
 
     if ( _overlayGraph.valid() )
     {
-        // apply the user-request texture unit, it applicable:
+        // apply the user-request texture unit, if applicable:
         if ( _explicitTextureUnit.isSet() )
         {
             if ( !_textureUnit.isSet() || *_textureUnit != *_explicitTextureUnit )
@@ -227,13 +226,11 @@ OverlayDecorator::reinit()
 
         if ( _textureUnit.isSet() )
         {
-            // need to pre-allocate the image here, otherwise the RTT images won't have an alpha channel:
-            osg::Image* image = new osg::Image();
-            image->allocateImage( *_textureSize, *_textureSize, 1, GL_RGBA, GL_UNSIGNED_BYTE );
-            image->setInternalTextureFormat( GL_RGBA8 );    
-
-            _projTexture = new osg::Texture2D( image );
+            _projTexture = new osg::Texture2D();
             _projTexture->setTextureSize( *_textureSize, *_textureSize );
+            _projTexture->setInternalFormat( GL_RGBA8 );
+            _projTexture->setSourceFormat( GL_RGBA );
+            _projTexture->setSourceType( GL_UNSIGNED_BYTE );
             _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR );
             _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
             _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
@@ -444,7 +441,7 @@ OverlayDecorator::setTextureSize( int texSize )
 void
 OverlayDecorator::setTextureUnit( int texUnit )
 {
-    if ( texUnit != _explicitTextureUnit.value() )
+    if ( !_explicitTextureUnit.isSet() || texUnit != _explicitTextureUnit.value() )
     {
         _explicitTextureUnit = texUnit;
         reinit();
@@ -498,11 +495,10 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
 void
 OverlayDecorator::onUninstall( TerrainEngineNode* engine )
 {
-    if ( _reservedTextureUnit )
+    if ( !_explicitTextureUnit.isSet() && _textureUnit.isSet() )
     {
         _engine->getTextureCompositor()->releaseTextureImageUnit( *_textureUnit );
         _textureUnit.unset();
-        _reservedTextureUnit = false;
     }
 
     _engine = 0L;

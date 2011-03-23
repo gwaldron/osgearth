@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <OpenThreads/Condition>
 #include <OpenThreads/Mutex>
+#include <OpenThreads/ReentrantMutex>
 #include <set>
 
 #define USE_CUSTOM_READ_WRITE_LOCK 1
@@ -33,6 +34,7 @@ namespace osgEarth { namespace Threading
 {   
     typedef OpenThreads::Mutex Mutex;
     typedef OpenThreads::ScopedLock<OpenThreads::Mutex> ScopedMutexLock;
+    typedef OpenThreads::Thread Thread;
 
 #ifdef USE_CUSTOM_READ_WRITE_LOCK
 
@@ -53,6 +55,20 @@ namespace osgEarth { namespace Threading
         inline bool wait() {
             OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
             return _set ? true : (_cond.wait( &_m ) == 0);
+        }
+
+        /** waits on a signal, and then automatically resets it before returning. */
+        inline bool waitAndReset() {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+            if ( _set ) {
+                _set = false;
+                return true;
+            }
+            else {
+                bool value = _cond.wait( &_m ) == 0;
+                _set = false;
+                return value;
+            }
         }
 
         inline void set() {
@@ -79,6 +95,56 @@ namespace osgEarth { namespace Threading
         bool _set;
     };
 
+    /** Same as an Event, but waits on multiple notifications before releasing its wait. */
+    class MultiEvent 
+    {
+    public:
+        MultiEvent( int num =1 ) : _set( num ), _num(num)  { }
+
+        ~MultiEvent() {
+            reset();
+            for( int i=0; i<255; ++i ) // workaround buggy broadcast
+                _cond.signal();
+        }
+
+        inline bool wait() {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+            while( _set > 0 )
+                if ( _cond.wait( &_m ) != 0 )
+                    return false;
+            return true;
+        }
+
+        /** waits on a signal, and then automatically resets it before returning. */
+        inline bool waitAndReset() {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+            while( _set > 0 )
+                if ( _cond.wait( &_m ) != 0 )
+                    return false;
+            _set = _num;
+            return true;
+        }
+
+        inline void notify() {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+            if ( _set > 0 )
+                --_set;
+            if ( _set == 0 )
+                _cond.broadcast(); // possible deadlock before OSG r10457 on windows
+            //_cond.signal();
+        }
+
+        inline void reset( int num =0 ) {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _m );
+            if ( num > 0 ) _num = num;
+            _set = _num;
+        }
+
+    protected:
+        OpenThreads::Mutex _m;
+        OpenThreads::Condition _cond;
+        int _set, _num;
+    };
 
     /**
      * Custom read/write lock. The read/write lock in OSG can unlock mutexes from a different

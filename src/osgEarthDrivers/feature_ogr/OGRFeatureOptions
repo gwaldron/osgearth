@@ -42,9 +42,13 @@ namespace osgEarth { namespace Drivers
         optional<Config>& geometryConfig() { return _geometryConf; }
         const optional<Config>& geometryConfig() const { return _geometryConf; }
 
+        optional<std::string>& geometryUrl() { return _geometryUrl; }
+        const optional<std::string>& geometryUrl() const { return _geometryUrl; }
+
         optional<Config>& geometryProfileOptions() { return _geometryProfileConf; }
         const optional<Config>& geometryProfileOptions() const { return _geometryProfileConf; }
 
+        // does not serialize
         osg::ref_ptr<Symbology::Geometry>& geometry() { return _geometry; }
         const osg::ref_ptr<Symbology::Geometry>& geometry() const { return _geometry; }
 
@@ -61,7 +65,9 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet( "ogr_driver", _ogrDriver );
             conf.updateIfSet( "build_spatial_index", _buildSpatialIndex );
             conf.updateIfSet( "geometry", _geometryConf );    
+            conf.updateIfSet( "geometry_url", _geometryUrl );
             conf.updateIfSet( "geometry_profile", _geometryProfileConf );
+            conf.updateNonSerializable( "OGRFeatureOptions::geometry", _geometry.get() );
             return conf;
         }
 
@@ -77,7 +83,9 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "ogr_driver", _ogrDriver );
             conf.getIfSet( "build_spatial_index", _buildSpatialIndex );
             conf.getIfSet( "geometry", _geometryConf );
+            conf.getIfSet( "geometry_url", _geometryUrl );
             conf.getIfSet( "geometry_profile", _geometryProfileConf );
+            _geometry = conf.getNonSerializable<Symbology::Geometry>( "OGRFeatureOptions::geometry" );
         }
 
         optional<std::string> _url;
@@ -85,6 +93,7 @@ namespace osgEarth { namespace Drivers
         optional<bool> _buildSpatialIndex;
         optional<Config> _geometryConf;
         optional<Config> _geometryProfileConf;
+        optional<std::string> _geometryUrl;
         osg::ref_ptr<Symbology::Geometry> _geometry;
     };
 

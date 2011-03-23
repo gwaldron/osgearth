@@ -25,6 +25,12 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 {
     MapOptions mapOptions( conf.child( "options" ) );
 
+    //Set the reference URI of the cache config.
+    if (mapOptions.cache().isSet())
+    {
+        mapOptions.cache()->setReferenceURI(referenceURI);
+    }
+
     // the reference URI allows osgEarth to resolve relative paths within the configuration
     mapOptions.referenceURI() = referenceURI;
 
@@ -102,7 +108,10 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     ConfigSet overlays = conf.children( "overlay" );
     for( ConfigSet::const_iterator i = overlays.begin(); i != overlays.end(); i++ )
     {
-        const Config& layerDriverConf = *i;
+        Config layerDriverConf = *i;
+        if ( !layerDriverConf.hasValue("driver") )
+            layerDriverConf.attr("driver") = "feature_geom";
+        //const Config& layerDriverConf = *i;
 
         ModelLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value( "name" );
@@ -116,10 +125,22 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     Config maskLayerConf = conf.child( "mask" );
     if ( !maskLayerConf.empty() )
     {
-        map->setTerrainMaskLayer( new MaskLayer(maskLayerConf) );
+        MaskLayerOptions options(maskLayerConf);
+        options.name() = maskLayerConf.value( "name" );
+        options.driver() = MaskSourceOptions(options);
+        map->setTerrainMaskLayer( new MaskLayer(options) );
     }
 
-    return new MapNode( map, mapNodeOptions );
+    MapNode* mapNode = new MapNode( map, mapNodeOptions );
+
+    // External configs:
+    Config ext = conf.child( "external" );
+    if ( !ext.empty() )
+    {
+        mapNode->externalConfig() = ext;
+    }
+
+    return mapNode;
 }
 
 
@@ -167,6 +188,13 @@ EarthFileSerializer2::serialize( MapNode* input ) const
         //layerConf.attr("driver") = layer->getDriverConfig().value("driver");
         layerConf.attr("driver") = layer->getModelLayerOptions().driver()->getDriver();
         mapConf.add( "model", layerConf );
+    }
+
+    Config ext = input->externalConfig();
+    if ( !ext.empty() )
+    {
+        ext.key() = "external";
+        mapConf.addChild( ext );
     }
 
     return mapConf;

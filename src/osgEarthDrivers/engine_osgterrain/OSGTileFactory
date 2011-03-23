@@ -95,22 +95,14 @@ public:
     const OSGTerrainOptions& getTerrainOptions() const;
 
     /**
-    * Returns true if all the data needed to contruct a tile from the specified tile key is
-    * in a cache.
-    */
-    bool isCached( const MapFrame& mapf, const TileKey& key ) const;
-
-    /**
-     * Returns true is data for all the key's child tiles is cached.
-     */
-    bool areChildrenCached( const Map* map, const TileKey& parentKey ) const;
-
-    /**
     * Gets a pagedLOD child URI given a tile key.
     */
     std::string createURI( unsigned int id, const TileKey& key );
 
-
+    /**
+     * Wraps a tile in a paged LOD and setup up all its parameters
+     */
+    osg::Node* prepareTile( CustomTile* tile, CustomTerrain* terrain, const MapInfo& mapInfo, bool wrapInPagedLOD );
 
     bool createValidGeoImage(
         ImageLayer* layer,

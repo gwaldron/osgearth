@@ -1269,14 +1269,16 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             break;
 
         case osgGA::GUIEventAdapter::DRAG:
-            action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
-            addMouseEvent( ea );
-            if ( handleMouseAction( action, aa.asView() ) )
-                aa.requestRedraw();
-            aa.requestContinuousUpdate(false);
-            _continuous = action.getBoolOption(OPTION_CONTINUOUS, false); //._continuous;
-            _thrown = false;
-            handled = true;
+            {
+                action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+                addMouseEvent( ea );
+                _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
+                if ( handleMouseAction( action, aa.asView() ) )
+                    aa.requestRedraw();
+                aa.requestContinuousUpdate(false);
+                _thrown = false;
+                handled = true;
+            }
             break;
 
         case osgGA::GUIEventAdapter::KEYDOWN:
@@ -1791,7 +1793,7 @@ EarthManipulator::rotate( double dx, double dy )
 void
 EarthManipulator::zoom( double dx, double dy )
 {
-    double fd = _distance;
+    double fd = 1000;
     double scale = 1.0f + dy;
 
     if ( fd * scale > _settings->getMinDistance() )
@@ -1853,7 +1855,7 @@ EarthManipulator::dumpActionInfo( const EarthManipulator::Action& action, osg::N
         if ( s_actionOptionTypes[option.option()] == 0 )
             val = option.boolValue() ? "true" : "false";
         else
-            val = option.doubleValue();
+            val = toString<double>(option.doubleValue());
 
         osgEarth::notify(level)
             << s_actionOptionNames[option.option()] << "=" << val << ", ";

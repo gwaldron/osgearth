@@ -23,7 +23,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Layer>
 #include <osgEarth/Config>
-#include <osgEarth/ModelSource>
+#include <osgEarth/MaskSource>
 #include <osg/Node>
 
 namespace osgEarth
@@ -31,10 +31,42 @@ namespace osgEarth
     class Map;
 
     /**
+     * Configuration options for a MaskLayer.
+     */
+    class OSGEARTH_EXPORT MaskLayerOptions : public ConfigOptions
+    {
+    public:        
+        MaskLayerOptions( const ConfigOptions& options =ConfigOptions() );
+
+        MaskLayerOptions( const std::string& name, const MaskSourceOptions& driverOptions =MaskSourceOptions() );
+
+        /**
+         * The readable name of the layer.
+         */
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
+
+        /**
+         * Options for the underlying model source driver.
+         */
+        optional<MaskSourceOptions>& driver() { return _driver; }
+        const optional<MaskSourceOptions>& driver() const { return _driver; }
+
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    private:
+        void fromConfig( const Config& conf );
+        void setDefaults();
+
+        optional<std::string> _name;
+        optional<MaskSourceOptions> _driver;
+    };
+
+    /**
      * A MaskLayer is a specialized layer used to mask out a part of the terrain.
      * Typically you would use this if you had a pre-built 3D terrain model for an inset area.
-     *
-     * TODO: move this to osgEarth::Util and give it a reasonable API.
      */
     class OSGEARTH_EXPORT MaskLayer : public Layer
     {
@@ -42,33 +74,42 @@ namespace osgEarth
         /**
          * Constructs a new mask layer based on a configuration setup.
          */
-        MaskLayer( const ConfigOptions& options =ConfigOptions() );
+        MaskLayer( const MaskLayerOptions& options =MaskLayerOptions() );
 
         /**
-         * Gets the reference URI (for resolving relative paths)
+         * Constructs a new mask layer with a user-provided driver options.
          */
-        const std::string& getReferenceURI() const { return _referenceURI; }
+        MaskLayer( const std::string& name, const MaskSourceOptions& options );
+        
+        /**
+         * Constructs a new mask layer with a user-provided mask source.
+         */
+        MaskLayer(const MaskLayerOptions& options, MaskSource* source );
 
         /**
-         * Access the underlying model source.
+         * Access the underlying mask source.
          */
-        ModelSource* getModelSource() const { return _modelSource.get(); }
+        MaskSource* getMaskSource() const { return _maskSource.get(); }
 
     public:
-
-        osg::Node* getOrCreateNode( ProgressCallback* progress =0L );
+        /** 
+         * Gets the geometric boundary polygon representing the area of the
+         * terrain to mask out.
+         */
+        osg::Vec3dArray* getOrCreateBoundary( ProgressCallback* progress =0L );
 
     public:
 
         void initialize( const std::string& referenceURI, const Map* map );
 
-        virtual Config getConfig() const;
-
     private:
         std::string _referenceURI;
-        osg::ref_ptr<ModelSource> _modelSource;
-        DriverConfigOptions _driverOptions;
-        osg::ref_ptr<osg::Node> _node;
+        MaskLayerOptions _initOptions, _runtimeOptions;
+        osg::ref_ptr<MaskSource> _maskSource;
+        Revision _maskSourceRev;
+        osg::ref_ptr<osg::Vec3dArray> _boundary;
+
+        void copyOptions();
     };
 }
 

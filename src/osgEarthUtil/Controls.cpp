@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/Controls>
+#include <osgEarth/FindNode>
 #include <osg/Geometry>
 #include <osg/NodeCallback>
 #include <osg/Depth>
@@ -279,29 +280,34 @@ Control::draw(const ControlContext& cx, DrawableList& out )
 {
     // by default, rendering a Control directly results in a colored quad. Usually however
     // you will not render a Control directly, but rather one of its subclasses.
-    if ( visible() == true && !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
+    if ( visible() == true )
     {
-        float vph = cx._vp->height(); // - padding().bottom();
+        if ( !(_backColor.isSet() && _backColor->a() == 0) && _renderSize.x() > 0 && _renderSize.y() > 0 )
+        {
+            float vph = cx._vp->height(); // - padding().bottom();
 
-        osg::Geometry* geom = new osg::Geometry();
+            _geom = new osg::Geometry();
 
-        float rx = _renderPos.x() - padding().left();
-        float ry = _renderPos.y() - padding().top();
+            float rx = _renderPos.x() - padding().left();
+            float ry = _renderPos.y() - padding().top();
 
-        osg::Vec3Array* verts = new osg::Vec3Array(4);
-        geom->setVertexArray( verts );
-        (*verts)[0].set( rx, vph - ry, 0 );
-        (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
-        (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
-        (*verts)[3].set( rx + _renderSize.x(), vph - ry, 0 );
-        geom->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
+            osg::Vec3Array* verts = new osg::Vec3Array(4);
+            _geom->setVertexArray( verts );
+            (*verts)[0].set( rx, vph - ry, 0 );
+            (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
+            (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
+            (*verts)[3].set( rx + _renderSize.x(), vph - ry, 0 );
+            _geom->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
 
-        osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0] = _active && _activeColor.isSet() ? _activeColor.value() : _backColor.value();
-        geom->setColorArray( colors );
-        geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+            osg::Vec4Array* colors = new osg::Vec4Array(1);
+            (*colors)[0] = _active && _activeColor.isSet() ? _activeColor.value() : _backColor.value();
+            _geom->setColorArray( colors );
+            _geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
-        out.push_back( geom );
+            out.push_back( _geom.get() );
+        }
+
+        _dirty = false;
     }
 }
 
@@ -442,7 +448,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         out_size.set(0,0);
     }
 
-    _dirty = false;
+    //_dirty = false;
 }
 
 void
@@ -497,7 +503,7 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             margin().left() + margin().right() + _renderSize.x(),
             margin().top() + margin().bottom() + _renderSize.y() );
 
-        _dirty = false;
+        //_dirty = false;
     }
     else
     {
@@ -546,6 +552,8 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
 
         out.push_back( g );
+
+        _dirty = false;
     }
 }
 
@@ -786,7 +794,7 @@ Frame::draw( const ControlContext& cx, DrawableList& out )
         geom->push_back( osg::Vec3d( _renderSize.x()-1, _renderSize.y()-1, 0 ) );
         geom->push_back( osg::Vec3d( 0, _renderSize.y()-1, 0 ) );
 
-        GeometryRasterizer ras( _renderSize.x(), _renderSize.y() );
+        GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y() );
         ras.draw( geom.get() );
 
         osg::Image* image = ras.finalize();
@@ -825,7 +833,7 @@ RoundedFrame::draw( const ControlContext& cx, DrawableList& out )
             bp._capStyle = BufferParameters::CAP_ROUND;
             geom->buffer( buffer-1.0f, geom, bp );
 
-            GeometryRasterizer ras( _renderSize.x(), _renderSize.y() );
+            GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y() );
             ras.draw( geom.get(), backColor().value() );
 
             osg::Image* image = ras.finalize();
@@ -913,7 +921,7 @@ Container::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 
         // no need to set the output vars.
 
-        _dirty = false;  
+        //_dirty = false;  
     }
 }
 
@@ -1284,6 +1292,7 @@ Grid::draw( const ControlContext& cx, DrawableList& out )
 
 namespace osgEarth { namespace Util { namespace Controls
 {
+#if 0
     // binds the update traversal to the update() method
     struct ControlUpdater : public osg::NodeCallback
     {
@@ -1292,6 +1301,7 @@ namespace osgEarth { namespace Util { namespace Controls
             static_cast<ControlCanvas*>(node)->update();
         }
     };
+#endif
 
     // This handler keeps an eye on the viewport and informs the control surface when it changes.
     // We need this info since controls position from the upper-left corner.
@@ -1316,8 +1326,8 @@ namespace osgEarth { namespace Util { namespace Controls
                         cx._viewContextID = aa.asView()->getCamera()->getGraphicsContext()->getState()->getContextID();
                         _cs->setControlContext( cx );
 
-                        _width = vp->width();
-                        _height = vp->height();
+                        _width  = (int)vp->width();
+                        _height = (int)vp->height();
                     }
                     if ( vp->width() != 0 && vp->height() != 0 )
                     {
@@ -1348,6 +1358,262 @@ namespace osgEarth { namespace Util { namespace Controls
 
 // ---------------------------------------------------------------------------
 
+SceneControlBin::ControlNode::ControlNode( Control* control, std::vector<osg::Node*>& visibleNodes ) :
+_control( control ),
+_obscured( true ),
+_visibleTime( 0.0f ),
+_visibleNodes( visibleNodes ),
+_screenPos( 0.0f, 0.0f )
+{
+    //nop
+}
+
+void
+SceneControlBin::ControlNode::traverse( osg::NodeVisitor& nv )
+{
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+        static osg::Vec3d s_zero(0,0,0);
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+
+        // first, normal-cull it:
+        osg::Vec3d n = getMatrix().getTrans();
+        double dp = cv->getEyePoint() * n;
+        if ( dp < 0.0 )
+        {
+            _obscured = true;
+        }
+
+        else
+        {
+            // calculate its screen position:
+            osg::Matrix mvpw = *cv->getMVPW();
+            osg::Vec3f sp = s_zero * mvpw;
+            _screenPos.set( sp.x(), sp.y() );
+
+            if ( _obscured == true )
+            {
+                _obscured = false;
+                _visibleTime = cv->getFrameStamp()->getReferenceTime();
+            }
+            _visibleNodes.push_back( this );
+        }
+    }
+
+    // ControlNode has no children, so no point in calling traverse.
+}
+
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    char* s_controlVertexShader =
+        "void main() \n"
+        "{ \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+        "    gl_FrontColor = gl_Color; \n"
+        "} \n";
+
+    char* s_controlFragmentShader =
+        "uniform sampler2D tex0; \n"
+        "uniform float visibleTime; \n"
+        "uniform float osg_FrameTime; \n"
+        "void main() \n"
+        "{ \n"
+        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
+        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"       
+        "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
+        "} \n";
+}
+
+// ---------------------------------------------------------------------------
+
+SceneControlBin::SceneControlBin()
+{
+    _group = new Group();
+
+    osg::Program* program = new osg::Program();
+    program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
+
+    osg::StateSet* stateSet = _group->getOrCreateStateSet();
+    stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
+
+    osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "opacity" );
+    defaultOpacity->set( 1.0f );
+    stateSet->addUniform( defaultOpacity );
+
+    osg::Uniform* defaultVisibleTime = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
+    defaultVisibleTime->set( 0.0f );
+    stateSet->addUniform( defaultVisibleTime );
+}
+
+osg::MatrixTransform*
+SceneControlBin::addControl( Control* control, float priority )
+{
+    ControlNode* node = new ControlNode(control, _visibleNodes);
+
+    // record the node in priority order.
+    ControlNodeCollection::iterator ptr = _controlNodes.insert( ControlNodePair(-priority, node) );
+    this->addChild( node );
+
+    // record it in the index:
+    _index.insert( ControlIndexPair(control, ptr) );
+
+    // create and cache a transform/geode pair for the node
+    osg::MatrixTransform* xform = new osg::MatrixTransform();
+    osg::Geode* geode = new osg::Geode();
+    xform->addChild( geode );
+    _renderNodes.insert( RenderNodePair(node, xform) );
+
+    // put it in the render graph.
+    _group->addChild( xform );
+
+    return node;
+}
+
+void
+SceneControlBin::removeControl( Control* control )
+{
+    // look it up in the index:
+    ControlIndex::iterator i = _index.find(control);
+    if ( i != _index.end() )
+    {
+        // found; now save the node pointer
+        ControlNode* node = i->second->second;
+
+        // remove it from the node table and from the index
+        _controlNodes.erase( i->second );
+        _index.erase( i );
+
+        // find the corresponding render node
+        RenderNodeTable::iterator j = _renderNodes.find(node);
+        if ( j != _renderNodes.end() )
+        {
+            // remove it from the render table and from the scene graph.
+            osg::MatrixTransform* xform = j->second;
+            _renderNodes.erase( j );
+            _group->removeChild( xform );
+        }
+    }
+}
+
+osg::MatrixTransform*
+SceneControlBin::getControlTransform( Control* control ) const
+{
+    ControlIndex::const_iterator i = _index.find(control);
+    if ( i != _index.end() )
+    {
+        ControlNode* node = i->second->second;
+        return _renderNodes.find(node)->second;
+    }
+    else return 0L;
+}
+
+void
+SceneControlBin::draw( const ControlContext& context, bool newContext, int bin )
+{
+    const osg::Viewport* vp = context._vp;
+    osg::Vec2f surfaceSize( context._vp->width(), context._vp->height() );
+
+    // we don't really need to keep this list in the object, but that prevents it from having to
+    // reallocate it each time
+    _taken.clear();
+
+    for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); ++i )
+    {
+        ControlNode* node = i->second;
+        osg::MatrixTransform* xform = _renderNodes[node];
+
+        // if the context changed (e.g., viewport resize), we need to mark all nodes as dirty
+        // even if they're obscured...that way they will regenerate properly next time
+        if ( newContext )
+        {
+            node->_control->dirty();
+        }
+
+        if ( !node->_obscured )
+        {
+            Control* control = node->_control.get();
+            const osg::Vec2f& nPos = node->_screenPos;
+            const osg::Vec2f& size = control->renderSize();
+
+            float x = nPos.x()-size.x()*0.5;
+            float y = nPos.y();
+            xform->setMatrix( osg::Matrixd::translate(x, y-context._vp->height(), 0) );
+
+            osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
+
+            for( std::vector<osg::BoundingBox>::iterator u = _taken.begin(); u != _taken.end(); ++u )
+            {
+                if ( u->intersects( bbox ) )
+                {
+                    node->_obscured = true;
+                    break;
+                }
+            }
+
+            if ( !node->_obscured )
+            {
+                _taken.push_back( bbox );
+
+                // the geode holding this node's geometry:
+                osg::Geode* geode = static_cast<osg::Geode*>( xform->getChild(0) );
+
+                // if the control changed, we need to rebuild its drawables:
+                if ( node->_control->isDirty() )
+                {
+                    Control* control = node->_control.get();
+
+                    // clear out the geode:
+                    geode->removeDrawables( 0, geode->getNumDrawables() );
+
+                    // calculate the size of the control in screen space:
+                    osg::Vec2f dummySize;
+                    control->calcSize( context, dummySize );
+
+                    // only need to do this if the control has children ... (pos is always 0,0)
+                    control->calcPos( context, osg::Vec2f(0,0), surfaceSize );
+                 
+                    // build the drawables for the geode and insert them:
+                    DrawableList drawables;
+                    control->draw( context, drawables );
+
+                    for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
+                    {
+                        j->get()->setDataVariance( osg::Object::DYNAMIC );
+
+                        osg::StateSet* stateSet = j->get()->getOrCreateStateSet();
+                        stateSet->setRenderBinDetails( bin, "RenderBin" );
+                        geode->addDrawable( j->get() );
+                    }
+                }
+
+                // update the "visible time" uniform if it's changed. this will cause the
+                // shader to "fade in" the label when it becomes visible.
+                if ( !node->_uniform.valid() )
+                {
+                    node->_uniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
+                    geode->getOrCreateStateSet()->addUniform( node->_uniform.get() );
+                }
+
+                float oldValue;
+                node->_uniform->get( oldValue );
+                if ( oldValue != node->_visibleTime )
+                    node->_uniform->set( node->_visibleTime );                
+            }
+        }
+        
+        // adjust the visibility based on whether the node is visible
+        xform->setNodeMask( node->_obscured ? 0 : ~0 );
+    }
+
+    _visibleNodes.clear();
+}
+
+// ---------------------------------------------------------------------------
+
 ControlCanvas::ControlCanvas( osgViewer::View* view ) :
 _contextDirty(true)
 {
@@ -1360,12 +1626,16 @@ _contextDirty(true)
     setRenderOrder(osg::Camera::POST_RENDER); 
     setAllowEventFocus( true );
     
-    this->setUpdateCallback( new ControlUpdater );
+    // activate the update traversal
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 
     getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
     getOrCreateStateSet()->setMode( GL_BLEND, 1 );
 
     getOrCreateStateSet()->setAttributeAndModes( new osg::Depth( osg::Depth::LEQUAL, 0, 1, false ) );
+
+    _sceneBin = new SceneControlBin();
+    this->addChild( _sceneBin->getControlGroup() );
 }
 
 void
@@ -1477,7 +1747,24 @@ ControlCanvas::update()
             }
         }
     }
+
+    if ( _sceneBin.valid() )
+    {
+        _sceneBin->draw( _context, _contextDirty, bin );
+    }
+
     _contextDirty = false;
+}
+
+void
+ControlCanvas::traverse( osg::NodeVisitor& nv )
+{
+    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        update();
+    }
+
+    osg::Camera::traverse( nv );
 }
 
 void

@@ -235,7 +235,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     }
     else if ( dynamic_cast<const geom::MultiPoint*>( input ) )
     {
-        const geom::MultiPoint* mp = static_cast<const geom::MultiPoint*>( input );
+        const geom::MultiPoint* mp = dynamic_cast<const geom::MultiPoint*>( input );
         Symbology::PointSet* part = new Symbology::PointSet( mp->getNumPoints() );
         for( unsigned int i=0; i < mp->getNumPoints(); i++ )
         {
@@ -246,7 +246,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     }
     else if ( dynamic_cast<const geom::LineString*>( input ) )
     {
-        const geom::LineString* line = static_cast<const geom::LineString*>( input );
+        const geom::LineString* line = dynamic_cast<const geom::LineString*>( input );
         Symbology::LineString* part = new Symbology::LineString( line->getNumPoints() );
         for( unsigned int i=0; i<line->getNumPoints(); i++ )
         {
@@ -257,7 +257,7 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     }
     else if ( dynamic_cast<const geom::MultiLineString*>( input ) )
     {
-        const geom::MultiLineString* m = static_cast<const geom::MultiLineString*>( input );
+        const geom::MultiLineString* m = dynamic_cast<const geom::MultiLineString*>( input );
         for( unsigned int i=0; i<m->getNumGeometries(); i++ ) 
         {
             Symbology::Geometry* part = exportGeometry( m->getGeometryN(i) );
@@ -266,17 +266,17 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
     }
     else if ( dynamic_cast<const geom::Polygon*>( input ) )
     {
-        const geom::Polygon* poly = static_cast<const geom::Polygon*>( input );
+        const geom::Polygon* poly = dynamic_cast<const geom::Polygon*>( input );
         Symbology::Geometry* part = exportPolygon( poly );
         if ( part ) parts.push_back( part );
     }
     else if ( dynamic_cast<const geom::MultiPolygon*>( input ) )
     {
         //OE_NOTICE << "Multipolygon" << std::endl;
-        const geom::MultiPolygon* mpoly = static_cast<const geom::MultiPolygon*>( input );
+        const geom::MultiPolygon* mpoly = dynamic_cast<const geom::MultiPolygon*>( input );
         for( unsigned int i=0; i<mpoly->getNumGeometries(); i++ )
         {
-            Symbology::Geometry* part = exportPolygon( static_cast<const geom::Polygon*>( mpoly->getGeometryN(i) ) );
+            Symbology::Geometry* part = exportPolygon( dynamic_cast<const geom::Polygon*>( mpoly->getGeometryN(i) ) );
             if ( part ) parts.push_back( part );
         }        
     }

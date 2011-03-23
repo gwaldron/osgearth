@@ -25,6 +25,7 @@ ElevationManager::postCTOR()
     _maxCacheSize = 100;
     _technique = TECHNIQUE_PARAMETRIC;
     _interpolation = INTERP_BILINEAR;
+    _maxLevelOverride = -1;
 }
 
 void
@@ -118,6 +119,10 @@ ElevationManager::getElevationImpl(double x, double y,
 
     // based on the heightfields available, this is the best we can theorically do:
     unsigned int bestAvailLevel = osg::minimum( idealLevel, _maxDataLevel );
+    if (_maxLevelOverride >= 0)
+    {
+        bestAvailLevel = osg::minimum(bestAvailLevel, (unsigned int)_maxLevelOverride);
+    }
     
     // transform the input coords to map coords:
     double map_x = x, map_y = y;
@@ -174,7 +179,7 @@ ElevationManager::getElevationImpl(double x, double y,
 
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
-        _mapf.getHeightField( key, true, hf, _interpolation );
+        _mapf.getHeightField( key, true, hf, 0L, _interpolation );
 
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )

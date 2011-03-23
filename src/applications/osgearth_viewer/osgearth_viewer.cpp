@@ -27,6 +27,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Viewpoint>
 
 using namespace osgEarth::Util;
 
@@ -39,6 +40,7 @@ usage( const std::string& msg )
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
     OE_NOTICE << "   --animateSky    : animates the sun across the sky" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
+    OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
         
     return -1;
 }
@@ -54,6 +56,33 @@ struct AnimateSunCallback : public osg::NodeCallback
     }
 };
 
+struct ViewpointHandler : public osgGA::GUIEventHandler
+{
+    ViewpointHandler( const std::vector<Viewpoint>& viewpoints, EarthManipulator* manip )
+        : _viewpoints( viewpoints ), _manip( manip ){ }
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+        if ( ea.getEventType() == ea.KEYDOWN )
+        {
+            int index = (int)ea.getKey() - (int)'1';
+            if ( index >= 0 && index < (int)_viewpoints.size() )
+            {
+                _manip->setViewpoint( _viewpoints[index], 3.0 );
+            }
+            else if ( ea.getKey() == 'v' )
+            {
+                Viewpoint vp = _manip->getViewpoint();
+                OE_NOTICE << vp.getConfig().toString() << std::endl;
+            }
+        }
+        return false;
+    }
+
+    std::vector<Viewpoint> _viewpoints;
+    EarthManipulator* _manip;
+};
+
 int
 main(int argc, char** argv)
 {
@@ -64,6 +93,7 @@ main(int argc, char** argv)
     bool useAutoClip  = arguments.read( "--autoclip" );
     bool animateSky   = arguments.read( "--animateSky");
     bool useSky       = arguments.read( "--sky" ) || animateSky;
+    bool jump         = arguments.read( "--jump" );
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -71,6 +101,9 @@ main(int argc, char** argv)
         return usage( "Unable to load earth model." );
 
     osgViewer::Viewer viewer(arguments);
+    
+    EarthManipulator* manip = new EarthManipulator();
+    viewer.setCameraManipulator( manip );
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
@@ -101,7 +134,6 @@ main(int argc, char** argv)
             {
                 SkyNode* sky = new SkyNode( mapNode->getMap() );
                 sky->setDateTime( 2011, 1, 6, 17.0 );
-                //sky->setSunPosition( osg::Vec3(0,-1,0) );
                 sky->attach( &viewer );
                 root->addChild( sky );
                 if (animateSky)
@@ -110,6 +142,17 @@ main(int argc, char** argv)
                 }
             }
         }
+
+        // read in viewpoints, if any
+        std::vector<Viewpoint> viewpoints;
+        const Config& conf = mapNode->externalConfig();
+        const ConfigSet children = conf.children("viewpoint");
+        for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+            viewpoints.push_back( Viewpoint(*i) );
+
+        viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
+        if ( viewpoints.size() > 0 && jump )
+            manip->setViewpoint(viewpoints[0]);
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
@@ -117,9 +160,6 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setDoPreCompile( true );
 
     viewer.setSceneData( root );
-
-    EarthManipulator* manip = new EarthManipulator();
-    viewer.setCameraManipulator( manip );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

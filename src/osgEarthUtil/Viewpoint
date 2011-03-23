@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/Config>
 
 namespace osgEarth { namespace Util
 {
@@ -114,6 +115,11 @@ namespace osgEarth { namespace Util
             const osgEarth::SpatialReference* srs =NULL );
 
         /**
+         * Deserialize a Config into this viewpoint object.
+         */
+        Viewpoint( const Config& conf );
+
+        /**
          * Copy constructor.
          */
         Viewpoint( const Viewpoint& rhs );
@@ -173,6 +179,11 @@ namespace osgEarth { namespace Util
          * Returns a printable string with the viewpoint data
          */
         std::string toString() const;
+
+        /**
+         * Serialize this viewpoint to a config.
+         */
+        Config getConfig() const;
 
     private:
         std::string _name;

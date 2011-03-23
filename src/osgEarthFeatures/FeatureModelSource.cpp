@@ -37,7 +37,8 @@ FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& optio
 ModelSourceOptions( options ),
 _geomTypeOverride( Geometry::TYPE_UNKNOWN ),
 _lit( true ),
-_maxGranularity_deg( 5.0 )
+_maxGranularity_deg( 5.0 ),
+_mergeGeometry( false )
 {
     fromConfig( _conf );
 }
@@ -45,13 +46,15 @@ _maxGranularity_deg( 5.0 )
 void
 FeatureModelSourceOptions::fromConfig( const Config& conf )
 {
-    if ( conf.hasChild("features") )
-        _featureOptions->merge( conf.child("features") );
+    conf.getObjIfSet( "features", _featureOptions );
+    //if ( conf.hasChild("features") )
+    //    _featureOptions->merge( conf.child("features") );
 
     conf.getObjIfSet( "styles", _styles );
     conf.getObjIfSet( "gridding", _gridding );
     conf.getIfSet( "lighting", _lit );
     conf.getIfSet( "max_granularity", _maxGranularity_deg );
+    conf.getIfSet( "merge_geometry", _mergeGeometry );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -72,6 +75,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "styles", _styles );
     conf.updateIfSet( "lighting", _lit );
     conf.updateIfSet( "max_granularity", _maxGranularity_deg );
+    conf.updateIfSet( "merge_geometry", _mergeGeometry );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )

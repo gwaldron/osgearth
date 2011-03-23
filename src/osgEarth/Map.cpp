@@ -716,14 +716,14 @@ Map::setTerrainMaskLayer( MaskLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        layer->initialize( _mapOptions.referenceURI().value(), this ); //getReferenceURI(), this );
+        layer->initialize( _mapOptions.referenceURI().value(), this );
 
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_MASK_LAYER, newRevision, layer) );
-        }	
+        }
     }
     else
     {
@@ -875,6 +875,7 @@ namespace
                      ElevationInterpolation interpolation,
                      ElevationSamplePolicy samplePolicy,
                      osg::ref_ptr<osg::HeightField>& out_result,
+                     bool* out_isFallback,
                      ProgressCallback* progress) 
     {
         unsigned int lowestLOD = key.getLevelOfDetail();
@@ -888,6 +889,8 @@ namespace
 
         unsigned int numValidHeightFields = 0;
 
+        if ( out_isFallback )
+            *out_isFallback = false;
         
         //First pass:  Try to get the exact LOD requested for each enabled heightfield
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
@@ -915,8 +918,11 @@ namespace
             return false;
         }
 
-        //Second pass:  We were either asked to fallback or we might have some heightfields at the requested LOD and some that are NULL
-        //              Fall back on parent tiles to fill in the missing data if possible.
+        if ( out_isFallback )
+            *out_isFallback = true;
+
+        //Second pass:  We were either asked to fallback or we might have some heightfields at the requested
+        //              LOD and some that are NULL. Fall back on parent tiles to fill in the missing data if possible.
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
         {
             ElevationLayer* layer = i->get();
@@ -1088,12 +1094,18 @@ bool
 Map::getHeightField(const TileKey& key,
                     bool fallback,
                     osg::ref_ptr<osg::HeightField>& out_result,
+                    bool* out_isFallback,
                     ElevationInterpolation interpolation,
                     ElevationSamplePolicy samplePolicy,
                     ProgressCallback* progress) const
 {
     Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
-    return s_getHeightField( key, _elevationLayers, getProfile(), fallback, interpolation, samplePolicy, out_result, progress );
+
+    return s_getHeightField(
+        key, _elevationLayers, getProfile(), fallback, 
+        interpolation, samplePolicy, 
+        out_result, out_isFallback,
+        progress );
 }
 
 bool
@@ -1144,6 +1156,11 @@ Map::sync( MapFrame& frame ) const
             std::copy( _modelLayers.begin(), _modelLayers.end(), std::back_inserter(frame._modelLayers) );
         }
 
+        if ( frame._parts & MASK_LAYERS )
+        {
+            frame._maskLayer = _terrainMaskLayer.get();
+        }
+
         // sync the revision numbers.
         frame._initialized = true;
         frame._mapDataModelRevision = _dataModelRevision;
@@ -1151,6 +1168,57 @@ Map::sync( MapFrame& frame ) const
         result = true;
     }    
     return result;
+}
+
+bool
+Map::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output ) const
+{
+    if ( !inputSRS )
+        return false;
+
+    const SpatialReference* mapSRS = getProfile()->getSRS();
+
+    if ( inputSRS->isEquivalentTo( mapSRS ) )
+    {
+        output = input;
+        return true;
+    }
+
+    return inputSRS->transform(
+        input.x(), input.y(),
+        mapSRS,
+        output.x(), output.y() );
+}
+
+bool
+Map::mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+{
+    const SpatialReference* mapSRS = getProfile()->getSRS();
+    if ( !mapSRS->isGeographic() )
+        return false;
+
+    mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
+        osg::DegreesToRadians( input.y() ), osg::DegreesToRadians( input.x() ), input.z(),
+        output.x(), output.y(), output.z() );
+
+    return true;
+}
+
+bool
+Map::geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+{
+    const SpatialReference* mapSRS = getProfile()->getSRS();
+    if ( !mapSRS->isGeographic() )
+        return false;
+
+    mapSRS->getEllipsoid()->convertXYZToLatLongHeight(
+        input.x(), input.y(), input.z(),
+        output.y(), output.x(), output.z() );
+
+    output.y() = osg::RadiansToDegrees(output.y());
+    output.x() = osg::RadiansToDegrees(output.x());
+
+    return true;
 }
 
 //------------------------------------------------------------------------
@@ -1201,11 +1269,12 @@ bool
 MapFrame::getHeightField(const TileKey& key,
                             bool fallback,
                             osg::ref_ptr<osg::HeightField>& out_hf,
+                            bool* out_isFallback,
                             ElevationInterpolation interpolation,
                             ElevationSamplePolicy samplePolicy,
                             ProgressCallback* progress) const
 {
-    return s_getHeightField( key, _elevationLayers, _mapInfo.getProfile(), fallback, interpolation, samplePolicy, out_hf, progress );
+    return s_getHeightField( key, _elevationLayers, _mapInfo.getProfile(), fallback, interpolation, samplePolicy, out_hf, out_isFallback, progress );
 }
 
 int
@@ -1245,4 +1314,74 @@ MapFrame::getImageLayerByName( const std::string& name ) const
         if ( i->get()->getName() == name )
             return i->get();
     return 0L;
+}
+
+bool
+MapFrame::isCached( const osgEarth::TileKey& key ) const
+{
+    const Profile* mapProfile = getProfile();
+
+    //Check the imagery layers
+    for( ImageLayerVector::const_iterator i = imageLayers().begin(); i != imageLayers().end(); i++ )
+    {
+        ImageLayer* layer = i->get();
+        osg::ref_ptr< Cache > cache = layer->getCache();
+
+        if ( !cache.valid() || !layer->getProfile() ) 
+            return false;
+
+        std::vector< TileKey > keys;
+
+        if ( mapProfile->isEquivalentTo( layer->getProfile() ) )
+        {
+            keys.push_back( key );
+        }
+        else
+        {
+            layer->getProfile()->getIntersectingTiles( key, keys );
+        }
+
+        for (unsigned int j = 0; j < keys.size(); ++j)
+        {
+            if ( layer->isKeyValid( keys[j] ) )
+            {
+                if ( !cache->isCached( keys[j], layer->getCacheSpec() ) )
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    for( ElevationLayerVector::const_iterator i = elevationLayers().begin(); i != elevationLayers().end(); ++i )
+    {
+        ElevationLayer* layer = i->get();
+        osg::ref_ptr< Cache > cache = layer->getCache();
+
+        if ( !cache.valid() || !layer->getProfile() )
+            return false;
+
+        std::vector<TileKey> keys;
+
+        if ( mapProfile->isEquivalentTo( layer->getProfile() ) )
+        {
+            keys.push_back( key );
+        }
+        else
+        {
+            layer->getProfile()->getIntersectingTiles( key, keys );
+        }
+
+        for (unsigned int j = 0; j < keys.size(); ++j)
+        {
+            if ( layer->isKeyValid( keys[j] ) )
+            {
+                if ( !cache->isCached( keys[j], layer->getCacheSpec() ) )
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
 }

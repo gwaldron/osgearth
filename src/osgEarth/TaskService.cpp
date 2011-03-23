@@ -39,8 +39,9 @@ TaskRequest::run()
 {
     if ( _state == STATE_IN_PROGRESS )
     {
+        _startTime = osg::Timer::instance()->tick();
         (*this)( _progress.get() );        
-        //OE_INFO << LC << "TR [" << getName() << "] finished" << std::endl;
+        _endTime = osg::Timer::instance()->tick();
     }
     else
     {
@@ -86,14 +87,18 @@ TaskRequestQueue::getNumRequests() const
 void 
 TaskRequestQueue::add( TaskRequest* request )
 {
-    ScopedLock<Mutex> lock(_mutex);
-
     request->setState( TaskRequest::STATE_PENDING );
 
     // install a progress callback if one isn't already installed
     if ( !request->getProgressCallback() )
         request->setProgressCallback( new ProgressCallback() );
 
+    ScopedLock<Mutex> lock(_mutex);
+
+    // insert by priority.
+    _requests.insert( std::pair<float,TaskRequest*>(request->getPriority(), request) );
+
+#if 0
     // insert by priority.
     bool inserted = false;
     for( TaskRequestList::iterator i = _requests.begin(); i != _requests.end(); i++ )
@@ -109,6 +114,7 @@ TaskRequestQueue::add( TaskRequest* request )
 
     if ( !inserted )
         _requests.push_back( request );
+#endif
 
     // since there is data in the queue, wake up one waiting task thread.
     _cond.signal();
@@ -130,8 +136,8 @@ TaskRequestQueue::get()
         return 0L;
     }
 
-    osg::ref_ptr<TaskRequest> next = _requests.front();
-    _requests.pop_front();
+    osg::ref_ptr<TaskRequest> next = _requests.begin()->second.get(); //_requests.front();
+    _requests.erase( _requests.begin() ); //_requests.pop_front();
 
     // I'm done, someone else take a turn:
     // (technically this shouldn't be necessary since add() bumps the semaphore once
@@ -186,11 +192,24 @@ TaskThread::run()
 
             else if ( !_request->wasCanceled() )
             {
+                if ( _request->getProgressCallback() )
+                    _request->getProgressCallback()->onStarted();
+
                 _request->setState( TaskRequest::STATE_IN_PROGRESS );
                 _request->run();
+
+                //OE_INFO << LC << "Task \"" << _request->getName() << "\" runtime = " << _request->runTime() << " s." << std::endl;
+            }
+            else
+            {
+                //OE_INFO << LC << "Task \"" << _request->getName() << "\" was cancelled before it ran." << std::endl;
             }
             
             _request->setState( TaskRequest::STATE_COMPLETED );
+
+            // signal the completion of a request.
+            if ( _request->getProgressCallback() )
+                _request->getProgressCallback()->onCompleted();
 
             // Release the request
             _request = 0;
@@ -272,8 +291,8 @@ TaskService::setStamp( int stamp )
     //Remove finished threads every 60 frames
     if (stamp - _lastRemoveFinishedThreadsStamp > 60)
     {
-      removeFinishedThreads();
-      _lastRemoveFinishedThreadsStamp = stamp;
+        removeFinishedThreads();
+        _lastRemoveFinishedThreadsStamp = stamp;
     }
 }
 

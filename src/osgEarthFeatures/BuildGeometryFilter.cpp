@@ -29,6 +29,7 @@
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
+#include <osgUtil/Optimizer>
 
 #include <osg/Version>
 
@@ -57,7 +58,8 @@ namespace
 BuildGeometryFilter::BuildGeometryFilter() :
 _style( new Style() ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
-_maxAngle_deg( 5.0 )
+_maxAngle_deg( 5.0 ),
+_mergeGeometry( false )
 {
     reset();
 }
@@ -68,6 +70,7 @@ BuildGeometryFilter::reset()
     _geode = new osg::Geode();
     _hasLines = false;
     _hasPoints = false;
+    _hasPolygons = false;
 }
 
 bool
@@ -195,11 +198,13 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
                 const PolygonSymbol* poly = myStyle->getSymbol<PolygonSymbol>();
                 if (poly)
                 {
+                    _hasPolygons = true;
                     color = poly->fill()->color();
                 }
                 else
                 {
                     // if we have a line symbol and no polygon symbol, draw as an outline.
+                    _hasLines = true;
                     const LineSymbol* line = myStyle->getSymbol<LineSymbol>();
                     if ( line )
                     {
@@ -264,7 +269,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             tess.retessellatePolygons( *osgGeom );
         }
 
-        if ( context.isGeocentric() )
+        if ( context.isGeocentric() && renderType != Geometry::TYPE_POINTSET )
         {
             double threshold = osg::DegreesToRadians( *_maxAngle_deg );
 
@@ -283,7 +288,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         // add the part to the geode.
         _geode->addDrawable( osgGeom );
     }
-
+    
     return true;
 }
 
@@ -306,6 +311,19 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
         if ( !push( i->get(), context ) )
             ok = false;
 
+    // In a feature class with one point-per-feature, you end up with one geometry per point,
+    // which results is (a) very bad performance and (b) geometries with a zero bbox that therefore
+    // don't draw. This is not a total solution (won't work for a single point, isn't friendly for
+    // doing feature-selection, etc.) but is a workable temporary fix. In the future we're going
+    // to replace this filter anyway with something more highly optimized (a la osgGIS).
+    //
+    // however...seems that MERGE_GEOMETRY destroys almost everything except for points!!
+    if ( _mergeGeometry == true )
+    {
+        osgUtil::Optimizer optimizer;
+        optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+    }
+
     if ( ok )
     {
         if ( _style.valid() && _geode.valid() )
@@ -317,6 +335,12 @@ BuildGeometryFilter::push( FeatureList& input, osg::ref_ptr<osg::Node>& output, 
                 size = lineSymbol->stroke()->width().value();
             _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
             _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(size), osg::StateAttribute::ON );
+
+            const PointSymbol* pointSymbol = _style->getSymbol<PointSymbol>();
+            if ( pointSymbol && pointSymbol->size().isSet() )
+                _geode->getOrCreateStateSet()->setAttribute( 
+                    new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
+
         }
 
         output = _geode.release();

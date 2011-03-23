@@ -81,6 +81,12 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     MapNodeOptions mapNodeOptions( mapNodeOptionsConf );
     mapNodeOptions.setTerrainOptions( TerrainOptions(terrainOptionsConf) );
 
+    //Set the reference URI of the cache config.
+    if (mapOptions.cache().isSet())
+    {
+        mapOptions.cache()->setReferenceURI(referenceURI);
+    }
+
     // the reference URI allows osgEarth to resolve relative paths within the configuration
     mapOptions.referenceURI() = referenceURI;
 
@@ -139,7 +145,10 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     Config maskLayerConf = conf.child( "mask" );
     if ( !maskLayerConf.empty() )
     {
-        map->setTerrainMaskLayer( new MaskLayer(maskLayerConf) );
+        MaskLayerOptions options(maskLayerConf);
+        options.name() = maskLayerConf.value( "name" );
+        options.driver() = MaskSourceOptions(options);
+        map->setTerrainMaskLayer( new MaskLayer(options) );
     }
 
     return new MapNode( map, mapNodeOptions );

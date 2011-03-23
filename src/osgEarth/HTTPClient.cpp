@@ -253,23 +253,33 @@ HTTPResponse::getMimeType() const {
 #define USER_AGENT "osgearth" QUOTE(OSGEARTH_MAJOR_VERSION) "." QUOTE(OSGEARTH_MINOR_VERSION)
 
 typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> >    ThreadClientMap;        
-static OpenThreads::Mutex          _threadClientMapMutex;
+static Threading::ReadWriteMutex   _threadClientMapMutex;
 static ThreadClientMap             _threadClientMap;
 static optional<ProxySettings>     _proxySettings;
 static std::string                 _userAgent = USER_AGENT;
 
 HTTPClient& HTTPClient::getClient()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex>  lock(_threadClientMapMutex);
-    static unsigned int numClients = 0;
-    osg::ref_ptr<HTTPClient>& client = _threadClientMap[OpenThreads::Thread::CurrentThread()];
-    if (!client) 
+    OpenThreads::Thread* current = OpenThreads::Thread::CurrentThread();
+
+    // first try the map:
     {
-        client = new HTTPClient();
-        numClients++;
+        Threading::ScopedReadLock sharedLock(_threadClientMapMutex);
+        ThreadClientMap::iterator i = _threadClientMap.find(current);
+        if ( i != _threadClientMap.end() )
+            return *i->second.get();
     }
 
-    return *client;
+    // not there; add it.
+    {
+        Threading::ScopedWriteLock exclusiveLock(_threadClientMapMutex);
+
+        // normally, we'd double check b/c of the race condition, but since the map is being 
+        // indexed by the actual thread pointer, there's no chance of a race.
+        HTTPClient* client = new HTTPClient();
+        _threadClientMap[current] = client;
+        return *client;
+    }
 }
 
 HTTPClient::HTTPClient()

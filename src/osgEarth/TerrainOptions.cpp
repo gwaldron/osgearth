@@ -38,7 +38,9 @@ _numCompileThreadsPerCore( 0.5 )
 void
 LoadingPolicy::fromConfig( const Config& conf )
 {
-    conf.getIfSet( "mode", "standard", _mode, MODE_STANDARD );
+    conf.getIfSet( "mode", "standard", _mode, MODE_SERIAL );
+    conf.getIfSet( "mode", "serial", _mode, MODE_SERIAL );
+    conf.getIfSet( "mode", "parallel", _mode, MODE_PARALLEL );
     conf.getIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
     conf.getIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
     conf.getIfSet( "loading_threads", _numLoadingThreads );
@@ -52,7 +54,8 @@ Config
 LoadingPolicy::getConfig() const
 {
     Config conf( "loading_policy" );
-    conf.addIfSet( "mode", "standard", _mode, MODE_STANDARD );
+    conf.addIfSet( "mode", "standard", _mode, MODE_STANDARD ); // aka MODE_SERIAL
+    conf.addIfSet( "mode", "parallel", _mode, MODE_PARALLEL );
     conf.addIfSet( "mode", "sequential", _mode, MODE_SEQUENTIAL );
     conf.addIfSet( "mode", "preemptive", _mode, MODE_PREEMPTIVE );
     conf.addIfSet( "loading_threads", _numLoadingThreads );
@@ -96,7 +99,8 @@ _enableLighting( false ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
 _lodTransitionTimeSeconds( 0.5f ),
-_elevationInterpolation( INTERP_BILINEAR )
+_elevationInterpolation( INTERP_BILINEAR ),
+_enableMipmapping( true )
 {
     fromConfig( _conf );
 }
@@ -118,6 +122,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
     conf.updateIfSet( "lod_blending", _lodBlending );
     conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
+    conf.updateIfSet( "mipmapping", _enableMipmapping );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -147,6 +152,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_blending", _lodBlending );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
+    conf.getIfSet( "mipmapping", _enableMipmapping );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );

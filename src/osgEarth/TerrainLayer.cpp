@@ -85,6 +85,7 @@ TerrainLayerOptions::getConfig() const
     conf.updateIfSet( "enabled", _enabled );
     conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.updateObjIfSet( "profile", _profile );
+    conf.updateIfSet( "max_data_level", _maxDataLevel);
 
     return conf;
 }
@@ -103,6 +104,7 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "enabled", _enabled );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getObjIfSet( "profile", _profile );
+    conf.getIfSet( "max_data_level", _maxDataLevel);
 
     if ( conf.hasValue("driver") )
         driver() = TileSourceOptions(conf);
@@ -172,9 +174,15 @@ TerrainLayer::setCache(Cache* cache)
             else
             {
                 // system will generate a cacheId.
+                Config hashConf = opt.driver()->getConfig();
+
+                //TODO: this hash needs to include only the driver conf, not the outer layer conf.
+                //hashConf.remove("name");
+
                 std::stringstream buf;
+                //OE_NOTICE << hashConf.toHashString() << std::endl;
                 buf << std::fixed << std::setfill('0') << std::hex
-                    << osgEarth::hashString( opt.driver()->getConfig().toHashString() );
+                    << osgEarth::hashString( hashConf.toHashString() );
                 cacheId = buf.str();
             }
 
@@ -250,11 +258,21 @@ TerrainLayer::getProfile() const
 unsigned int
 TerrainLayer::getMaxDataLevel() const
 {
+    const TerrainLayerOptions& opt = getTerrainLayerOptions();
+    //Try the setting first
+    if (opt.maxDataLevel().isSet())
+    {
+        return opt.maxDataLevel().get();
+    }
+
+    //Try the TileSource
 	TileSource* ts = getTileSource();
 	if (ts)
 	{
 		return ts->getMaxDataLevel();
 	}
+
+    //Just default
 	return 20;
 }
 

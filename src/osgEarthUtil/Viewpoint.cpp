@@ -107,6 +107,64 @@ _is_valid( rhs._is_valid )
     //NOP
 }
 
+Viewpoint::Viewpoint( const Config& conf )
+{
+    _name = conf.value("name");
+
+    if ( conf.hasValue("x") )
+    {
+        _focal_point.set(
+            conf.value<double>("x", 0.0),
+            conf.value<double>("y", 0.0),
+            conf.value<double>("z", 0.0) );
+    }
+    else if ( conf.hasValue("lat") )
+    {
+        _focal_point.set(
+            conf.value<double>("long", 0.0),
+            conf.value<double>("lat", 0.0),
+            conf.value<double>("height", 0.0) );
+    }
+
+    _heading_deg = conf.value<double>("heading", 0.0);
+    _pitch_deg   = conf.value<double>("pitch",   0.0);
+    _range       = conf.value<double>("range",   0.0);
+    _is_valid    = _range > 0.0;
+
+    //TODO: SRS
+}
+
+Config
+Viewpoint::getConfig() const
+{
+    Config conf;
+
+    if ( _is_valid )
+    {
+        conf.attr("name") = _name;
+        if ( getSRS() && getSRS()->isGeographic() )
+        {
+            conf.attr("lat") = osgEarth::toString(_focal_point.y());
+            conf.attr("long") = osgEarth::toString(_focal_point.x());
+            conf.attr("height") = osgEarth::toString(_focal_point.z());
+        }
+        else
+        {
+            conf.attr("x") = osgEarth::toString(_focal_point.x());
+            conf.attr("y") = osgEarth::toString(_focal_point.y());
+            conf.attr("z") = osgEarth::toString(_focal_point.z());
+        }
+
+        conf.attr("heading") = osgEarth::toString(_heading_deg);
+        conf.attr("pitch") = osgEarth::toString(_pitch_deg);
+        conf.attr("range") = osgEarth::toString(_range);
+
+        //TODO: SRS
+    }
+
+    return conf;
+}
+
 bool
 Viewpoint::isValid() const {
     return _is_valid;

@@ -156,6 +156,19 @@ TextureLayout::setReservedSlots( const std::set<int>& reservedSlots )
     _reservedSlots = reservedSlots;
 }
 
+bool
+TextureLayout::isSlotAvailable( int i ) const
+{
+    if ( (i < (int)_slots.size() && _slots[i] < 0) || i >= (int)_slots.size() )
+    {
+        if ( _reservedSlots.find(i) == _reservedSlots.end() )
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 //---------------------------------------------------------------------------
 
 TextureCompositor::TextureCompositor(const TerrainOptions& options) :
@@ -193,10 +206,9 @@ TextureCompositor::reserveTextureImageUnit( int& out_unit )
     {
         Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
 
-        const TextureLayout::TextureSlotVector& slots = _layout.getTextureSlots();
         for( int i=0; i<maxUnits; ++i )
         {
-            if (( i < (int)slots.size() && slots[i] < 0 ) || i >= (int)slots.size() )
+            if ( _layout.isSlotAvailable(i) )
             {
                 out_unit = i;
                 _reservedUnits.insert( i );

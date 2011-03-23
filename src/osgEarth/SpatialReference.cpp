@@ -124,6 +124,9 @@ SpatialReference::createFromWKT( const std::string& init, const std::string& ini
 SpatialReference*
 SpatialReference::create( const std::string& init )
 {
+    static OpenThreads::Mutex s_mutex;
+    OpenThreads::ScopedLock<OpenThreads::Mutex> exclusiveLock(s_mutex);
+
     std::string low = init;
     std::transform( low.begin(), low.end(), low.begin(), ::tolower );
 
@@ -602,7 +605,7 @@ SpatialReference::transform(double x, double y,
     TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
     if (itr != _transformHandleCache.end())
     {
-        OE_DEBUG << "SpatialReference: using cached transform handle" << std::endl;
+        //OE_DEBUG << "SpatialReference: using cached transform handle" << std::endl;
         xform_handle = itr->second;
     }
     else
@@ -722,7 +725,7 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
         TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
         if (itr != _transformHandleCache.end())
         {
-            OE_DEBUG << "SpatialRefernece: using cached transform handle" << std::endl;
+            //OE_DEBUG << "SpatialRefernece: using cached transform handle" << std::endl;
             xform_handle = itr->second;
         }
         else

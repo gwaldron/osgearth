@@ -18,6 +18,7 @@
 */
 #include "SerialKeyNodeFactory"
 #include "DynamicLODScaleCallback"
+#include "FileLocationCallback"
 #include <osgEarth/Registry>
 #include <osg/PagedLOD>
 #include <osg/CullStack>
@@ -94,7 +95,6 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, osg::Group
         }
 
 #if USE_FILELOCATIONCALLBACK
-
         osgDB::Options* options = new osgDB::Options;
         options->setFileLocationCallback( new FileLocationCallback() );
         plod->setDatabaseOptions( options );

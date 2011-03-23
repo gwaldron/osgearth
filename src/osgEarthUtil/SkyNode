@@ -63,6 +63,9 @@ namespace osgEarth { namespace Util
         //override
         virtual void traverse( osg::NodeVisitor& nv );
 
+        //override
+        virtual osg::BoundingSphere computeBound() const;
+
     private:
         struct StarData
         {
@@ -95,9 +98,7 @@ namespace osgEarth { namespace Util
         PerViewDataMap _perViewData;
 
         float _innerRadius, _outerRadius, _sunDistance, _starRadius;
-        osg::ref_ptr<osg::Node> _sun;
-        osg::ref_ptr<osg::Node> _stars;
-        //osg::ref_ptr<osg::MatrixTransform> _starsXform;
+        osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere;
         osg::ref_ptr<osg::Uniform> _starAlpha;
         osg::ref_ptr<osg::Uniform> _starPointSize;
 

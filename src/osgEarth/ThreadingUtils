@@ -99,7 +99,7 @@ namespace osgEarth { namespace Threading
     class MultiEvent 
     {
     public:
-        MultiEvent( int num =1 ) : _num(num), _set( num ) { }
+        MultiEvent( int num =1 ) : _set( num ), _num(num)  { }
 
         ~MultiEvent() {
             reset();

@@ -25,6 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/CacheSeed>
+#include <osgEarth/Progress>
 #include <osgEarth/Registry>
 
 #include <osgEarth/Caching>
@@ -122,6 +123,8 @@ seed( osg::ArgumentParser& args )
     std::string cacheType;
     while (args.read("--cache-type", cacheType));
 
+    bool quiet = args.read("--quiet");
+
     //Read in the earth file.
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
@@ -135,6 +138,10 @@ seed( osg::ArgumentParser& args )
     seeder.setMinLevel( minLevel );
     seeder.setMaxLevel( maxLevel );
     seeder.setBounds( bounds );
+    if (!quiet)
+    {
+        seeder.setProgressCallback(new ConsoleProgressCallback);
+    }
     seeder.seed( mapNode->getMap() );
 
     return 0;

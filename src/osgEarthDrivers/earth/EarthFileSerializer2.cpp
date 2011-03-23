@@ -25,6 +25,12 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 {
     MapOptions mapOptions( conf.child( "options" ) );
 
+    //Set the reference URI of the cache config.
+    if (mapOptions.cache().isSet())
+    {
+        mapOptions.cache()->setReferenceURI(referenceURI);
+    }
+
     // the reference URI allows osgEarth to resolve relative paths within the configuration
     mapOptions.referenceURI() = referenceURI;
 

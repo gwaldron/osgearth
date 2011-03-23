@@ -539,7 +539,7 @@ CustomTerrain::setDelay( unsigned frames )
 {
     if ( _onDemandDelay == 0 && !_alwaysUpdate )
     {
-        //ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
     }
     _onDemandDelay = frames;
 }
@@ -550,7 +550,7 @@ CustomTerrain::decDelay()
     _onDemandDelay--;
     if ( _onDemandDelay == 0 && !_alwaysUpdate )
     {
-        //ADJUST_UPDATE_TRAV_COUNT(this, -1);
+        ADJUST_UPDATE_TRAV_COUNT(this, -1);
     }
 }
 

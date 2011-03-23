@@ -1358,17 +1358,18 @@ namespace osgEarth { namespace Util { namespace Controls
 
 // ---------------------------------------------------------------------------
 
-ControlNode::ControlNode( Control* control ) :
+SceneControlBin::ControlNode::ControlNode( Control* control, std::vector<osg::Node*>& visibleNodes ) :
 _control( control ),
 _obscured( true ),
 _visibleTime( 0.0f ),
+_visibleNodes( visibleNodes ),
 _screenPos( 0.0f, 0.0f )
 {
     //nop
 }
 
 void
-ControlNode::traverse( osg::NodeVisitor& nv )
+SceneControlBin::ControlNode::traverse( osg::NodeVisitor& nv )
 {
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
@@ -1395,6 +1396,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
                 _obscured = false;
                 _visibleTime = cv->getFrameStamp()->getReferenceTime();
             }
+            _visibleNodes.push_back( this );
         }
     }
 
@@ -1450,7 +1452,7 @@ SceneControlBin::SceneControlBin()
 osg::MatrixTransform*
 SceneControlBin::addControl( Control* control, float priority )
 {
-    ControlNode* node = new ControlNode(control);
+    ControlNode* node = new ControlNode(control, _visibleNodes);
 
     // record the node in priority order.
     ControlNodeCollection::iterator ptr = _controlNodes.insert( ControlNodePair(-priority, node) );
@@ -1510,23 +1512,31 @@ SceneControlBin::getControlTransform( Control* control ) const
 }
 
 void
-SceneControlBin::draw( const ControlContext& context, int bin )
+SceneControlBin::draw( const ControlContext& context, bool newContext, int bin )
 {
     const osg::Viewport* vp = context._vp;
     osg::Vec2f surfaceSize( context._vp->width(), context._vp->height() );
 
-    // records screen space taken up by higher-priority controls
-    std::vector<osg::BoundingBox> taken;
+    // we don't really need to keep this list in the object, but that prevents it from having to
+    // reallocate it each time
+    _taken.clear();
 
     for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); ++i )
     {
         ControlNode* node = i->second;
         osg::MatrixTransform* xform = _renderNodes[node];
 
-        if ( !node->isObscured() )
+        // if the context changed (e.g., viewport resize), we need to mark all nodes as dirty
+        // even if they're obscured...that way they will regenerate properly next time
+        if ( newContext )
         {
-            Control* control = node->getControl();
-            const osg::Vec2f& nPos = node->getScreenPos();
+            node->_control->dirty();
+        }
+
+        if ( !node->_obscured )
+        {
+            Control* control = node->_control.get();
+            const osg::Vec2f& nPos = node->_screenPos;
             const osg::Vec2f& size = control->renderSize();
 
             float x = nPos.x()-size.x()*0.5;
@@ -1535,26 +1545,26 @@ SceneControlBin::draw( const ControlContext& context, int bin )
 
             osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
 
-            for( std::vector<osg::BoundingBox>::iterator u = taken.begin(); u != taken.end(); ++u )
+            for( std::vector<osg::BoundingBox>::iterator u = _taken.begin(); u != _taken.end(); ++u )
             {
                 if ( u->intersects( bbox ) )
                 {
-                    node->setObscured();
+                    node->_obscured = true;
                     break;
                 }
             }
 
-            if ( !node->isObscured() )
+            if ( !node->_obscured )
             {
-                taken.push_back( bbox );
+                _taken.push_back( bbox );
 
                 // the geode holding this node's geometry:
                 osg::Geode* geode = static_cast<osg::Geode*>( xform->getChild(0) );
 
                 // if the control changed, we need to rebuild its drawables:
-                if ( node->getControl()->isDirty() )
+                if ( node->_control->isDirty() )
                 {
-                    Control* control = node->getControl();
+                    Control* control = node->_control.get();
 
                     // clear out the geode:
                     geode->removeDrawables( 0, geode->getNumDrawables() );
@@ -1575,30 +1585,31 @@ SceneControlBin::draw( const ControlContext& context, int bin )
                         j->get()->setDataVariance( osg::Object::DYNAMIC );
 
                         osg::StateSet* stateSet = j->get()->getOrCreateStateSet();
-                        stateSet->setRenderBinDetails( bin++, "RenderBin" );
+                        stateSet->setRenderBinDetails( bin, "RenderBin" );
                         geode->addDrawable( j->get() );
                     }
                 }
 
                 // update the "visible time" uniform if it's changed. this will cause the
                 // shader to "fade in" the label when it becomes visible.
-                osg::StateSet* stateSet = geode->getOrCreateStateSet();
-                osg::Uniform* timeUniform = stateSet->getUniform( "visibleTime" );
-                if ( !timeUniform )
+                if ( !node->_uniform.valid() )
                 {
-                    timeUniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
-                    stateSet->addUniform( timeUniform );
+                    node->_uniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
+                    geode->getOrCreateStateSet()->addUniform( node->_uniform.get() );
                 }
+
                 float oldValue;
-                timeUniform->get(oldValue);
-                if ( oldValue != node->visibleTime() )
-                    timeUniform->set( node->visibleTime() );
+                node->_uniform->get( oldValue );
+                if ( oldValue != node->_visibleTime )
+                    node->_uniform->set( node->_visibleTime );                
             }
         }
         
         // adjust the visibility based on whether the node is visible
-        xform->setNodeMask( node->isObscured() ? 0 : ~0 );
+        xform->setNodeMask( node->_obscured ? 0 : ~0 );
     }
+
+    _visibleNodes.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -1739,7 +1750,7 @@ ControlCanvas::update()
 
     if ( _sceneBin.valid() )
     {
-        _sceneBin->draw( _context, bin );
+        _sceneBin->draw( _context, _contextDirty, bin );
     }
 
     _contextDirty = false;

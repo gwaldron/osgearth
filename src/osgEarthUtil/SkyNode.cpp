@@ -651,7 +651,6 @@ SkyNode::attach( osg::View* view, int lightNum )
 
     // the cull callback has to be on a parent group-- won't work on the xforms themselves.
     data._cullContainer = new osg::Group();
-    //data._cullContainer->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
 
     data._sunXform = new osg::MatrixTransform();
     data._sunMatrix = osg::Matrixd::translate(

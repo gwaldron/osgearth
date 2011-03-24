@@ -1216,35 +1216,41 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             break;       
         
         case osgGA::GUIEventAdapter::RELEASE:
-            // bail out of continuous mode if necessary:
-            _continuous = false;
 
-            // check for a mouse-throw continuation:
-            if ( _settings->getThrowingEnabled() && isMouseMoving() )
+            if ( _continuous )
             {
-                action = _last_action;
-                if( handleMouseAction( action, aa.asView() ) )
-                {
-                    aa.requestRedraw();
-                    aa.requestContinuousUpdate( true );
-                    _thrown = true;
-                }
-            }
-            else if ( isMouseClick( &ea ) )
-            {
-                addMouseEvent( ea );
-                if ( _mouse_down_event )
-                {
-                    action = _settings->getAction( EVENT_MOUSE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-                    if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ))
-                        aa.requestRedraw();                
-                }
-                resetMouse( aa );
+                // bail out of continuous mode if necessary:
+                _continuous = false;
             }
             else
             {
-                resetMouse( aa );
-                addMouseEvent( ea );
+                // check for a mouse-throw continuation:
+                if ( _settings->getThrowingEnabled() && isMouseMoving() )
+                {
+                    action = _last_action;
+                    if( handleMouseAction( action, aa.asView() ) )
+                    {
+                        aa.requestRedraw();
+                        aa.requestContinuousUpdate( true );
+                        _thrown = true;
+                    }
+                }
+                else if ( isMouseClick( &ea ) )
+                {
+                    addMouseEvent( ea );
+                    if ( _mouse_down_event )
+                    {
+                        action = _settings->getAction( EVENT_MOUSE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+                        if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ))
+                            aa.requestRedraw();                
+                    }
+                    resetMouse( aa );
+                }
+                else
+                {
+                    resetMouse( aa );
+                    addMouseEvent( ea );
+                }
             }
             handled = true;
             break;

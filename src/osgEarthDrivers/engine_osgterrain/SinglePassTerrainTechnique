@@ -35,6 +35,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarthSymbology/Geometry>
 
 #include <queue>
 
@@ -108,8 +109,6 @@ public:
 protected:
 
     void calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j );
-
-    bool pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* polygon);
 
 private:
 

@@ -32,6 +32,8 @@
 #include <osg/Version>
 #include <osgUtil/Tessellator>
 
+#include <osgEarthSymbology/Geometry>
+
 #include <sstream>
 
 using namespace osgEarth;
@@ -43,6 +45,8 @@ using namespace OpenThreads;
 #if OSG_VERSION_GREATER_OR_EQUAL(2,9,8)
 #   define USE_NEW_OSGTERRAIN_298_API 1 
 #endif
+
+#define MATCH_TOLERANCE 0.001
 
 // --------------------------------------------------------------------------
 
@@ -436,26 +440,6 @@ SinglePassTerrainTechnique::calculateSampling( unsigned int& out_rows, unsigned 
     }
 }
 
-bool
-SinglePassTerrainTechnique::pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* pointList)
-{
-    if (!pointList)
-        return false;
-
-    bool result = false;
-    const osg::Vec3dArray& polygon = *pointList;
-    for( unsigned int i=0, j=polygon.size()-1; i<polygon.size(); j = i++ )
-    {
-        if ((((polygon[i].y() <= point.y()) && (point.y() < polygon[j].y())) ||
-             ((polygon[j].y() <= point.y()) && (point.y() < polygon[i].y()))) &&
-            (point.x() < (polygon[j].x()-polygon[i].x()) * (point.y()-polygon[i].y())/(polygon[j].y()-polygon[i].y())+polygon[i].x()))
-        {
-            result = !result;
-        }
-    }
-    return result;
-}
-
 namespace
 {
     struct GeoLocatorComp
@@ -661,22 +645,15 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     osgEarth::GeoLocator* geoLocator = _masterLocator->getGeographicFromGeocentric();
     osg::Vec3dArray* mask = tilef._mask.valid() ? tilef._mask.get() : 0L;
 
-    osg::Vec3Array* maskSkirtVerts = new osg::Vec3Array();
+    //Find the mask bounds
     osg::BoundingBoxd maskBB;
     if (mask)
     {
       osg::Vec3d min, max;
       min = max = mask->front();
 
-      //for (osg::Vec3dArray::iterator it = mask->begin(); it != mask->end(); ++it)
-      for (osg::Vec3dArray::reverse_iterator it = mask->rbegin(); it != mask->rend(); ++it)
+      for (osg::Vec3dArray::iterator it = mask->begin(); it != mask->end(); ++it)
       {
-        osg::Vec3d local;
-        geoLocator->convertModelToLocal(*it, local);
-        osg::Vec3d model;
-        _masterLocator->convertLocalToModel(local, model);
-        maskSkirtVerts->push_back(model - _centerModel);
-
         if (it->x() < min.x())
           min.x() = it->x();
 
@@ -715,12 +692,12 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 ndc.z() = value*scaleHeight;
             }
 
+            //Invalidate if point falls within mask bounding box
             if (validValue && mask)
             {
               osg::Vec3d world;
               geoLocator->convertLocalToModel(ndc, world);
 
-              //validValue = !pointInPolygon(world, mask);
               validValue = !maskBB.contains(world);
             }
             
@@ -785,95 +762,200 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         }
     }
 
-    //Find mask skirt vertices
-    for(j=0; j<numRows; ++j)
+
+    if (mask)
     {
-        for(i=0; i<numColumns; ++i)
-        {
-            unsigned int iv = j*numColumns + i;
+      //Find mask skirt vertices
+      osgEarth::Symbology::Polygon* maskSkirtPoly = new osgEarth::Symbology::Polygon();
+      for(j=0; j<numRows; ++j)
+      {
+          for(i=0; i<numColumns; ++i)
+          {
+              unsigned int iv = j*numColumns + i;
 
-            int n = 0;
-            if (indices[iv] >= 0)
-            {
-              if (j > 0)
-              {               
-                if (i > 0 && indices[iv - numColumns - 1] < 0)
-                  n++;
-                
-                if (i < numColumns - 1 && indices[iv - numColumns + 1] < 0)
-                  n++;
-              }
-
-              if (j < numRows - 1)
+              int n = 0;
+              if (indices[iv] >= 0)
               {
-                if (i > 0 && indices[iv + numColumns - 1] < 0)
-                  n++;
-                
-                if (i < numColumns - 1 && indices[iv + numColumns + 1] < 0)
-                  n++;
-              }
-
-              if (n == 1)
-              {
-                if (i != 0 && i != numColumns - 1 && j != 0 && j != numRows - 1)
-                {
-                  if (indices[iv - 1] < 0)
+                if (j > 0)
+                {               
+                  if (i > 0 && indices[iv - numColumns - 1] < 0)
                     n++;
-
-                  if (indices[iv + 1] < 0)
-                    n++;
-
-                  if (indices[iv - numColumns] < 0 )
-                    n++;
-
-                  if (indices[iv + numColumns] < 0)
+                  
+                  if (i < numColumns - 1 && indices[iv - numColumns + 1] < 0)
                     n++;
                 }
+
+                if (j < numRows - 1)
+                {
+                  if (i > 0 && indices[iv + numColumns - 1] < 0)
+                    n++;
+                  
+                  if (i < numColumns - 1 && indices[iv + numColumns + 1] < 0)
+                    n++;
+                }
+
+                if (n == 1)
+                {
+                  if (i != 0 && i != numColumns - 1 && j != 0 && j != numRows - 1)
+                  {
+                    if (indices[iv - 1] < 0)
+                      n++;
+
+                    if (indices[iv + 1] < 0)
+                      n++;
+
+                    if (indices[iv - numColumns] < 0 )
+                      n++;
+
+                    if (indices[iv + numColumns] < 0)
+                      n++;
+                  }
+                }
+                else
+                {
+                  //Test for special case where mask only intersects a single row
+                  //or column along the edge of the tile.
+
+                  if (i == 0 || i == numColumns - 1)
+                  {
+                    if (j > 0 && indices[iv - numColumns] < 0)
+                      n++;
+
+                    if (j < numRows - 1 && indices[iv + numColumns] < 0)
+                      n++;
+                  }
+                  
+                  if(j == 0 || j == numRows - 1)
+                  {
+                    if (i > 0 && indices[iv - 1] < 0)
+                      n++;
+
+                    if (i < numColumns - 1 && indices[iv + 1] < 0)
+                      n++;
+                  }
+                }
+
+                if (n == 1)
+                    maskSkirtPoly->push_back((*surfaceVerts)[indices[iv]]);
               }
               else
               {
-                //Test for special case where mask only intersects a single row
-                //or column along the edge of the tile.
-
-                if (i == 0 || i == numColumns - 1)
+                //Test for tile corners that fall within the mask bounds
+                if ((i==0 && (j == 0 || j == numRows - 1)) ||
+                    (i == numColumns - 1 && (j == 0 || j == numRows - 1)))
                 {
-                  if (j > 0 && indices[iv - numColumns] < 0)
-                    n++;
+                  osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
 
-                  if (j < numRows - 1 && indices[iv + numColumns] < 0)
-                    n++;
-                }
-                
-                if(j == 0 || j == numRows - 1)
-                {
-                  if (i > 0 && indices[iv - 1] < 0)
-                    n++;
+                  osg::Vec3d model;
+                  _masterLocator->convertLocalToModel(ndc, model);
 
-                  if (i < numColumns - 1 && indices[iv + 1] < 0)
-                    n++;
+                  maskSkirtPoly->push_back(model - _centerModel);
                 }
               }
+          }
+      }
 
-              if (n == 1)
-                  maskSkirtVerts->push_back((*surfaceVerts)[indices[iv]]);
-            }
-            else
-            {
-              //Test for tile corners that fall within the mask bounds
-              if ((i==0 && (j == 0 || j == numRows - 1)) ||
-                  (i == numColumns - 1 && (j == 0 || j == numRows - 1)))
-              {
-                osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
+      if (maskSkirtPoly->size() == 4)
+      {
+        //Reorder mask skirt points into proper order
+        osg::Vec3d tv = (*maskSkirtPoly)[2];
+        (*maskSkirtPoly)[2] = (*maskSkirtPoly)[3];
+        (*maskSkirtPoly)[3] = tv;
 
-                osg::Vec3d model;
-                _masterLocator->convertLocalToModel(ndc, model);
-
-                maskSkirtVerts->push_back(model - _centerModel);
-              }
-            }
+        //Create local polygon representing mask
+        osg::ref_ptr<osgEarth::Symbology::Polygon> maskPoly = new osgEarth::Symbology::Polygon();
+        for (osg::Vec3dArray::iterator it = mask->begin(); it != mask->end(); ++it)
+        {
+          osg::Vec3d local;
+          geoLocator->convertModelToLocal(*it, local);
+          osg::Vec3d model;
+          _masterLocator->convertLocalToModel(local, model);
+          maskPoly->push_back(model - _centerModel);
         }
+
+//Change the following two #if statements to see mask skirt polygons
+//before clipping and adjusting
+#if 1
+        //Do a diff on the polygons to get the actual mask skirt
+        osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly;
+        maskSkirtPoly->difference(maskPoly, outPoly);
+#else
+        osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly = maskSkirtPoly;
+#endif
+
+        if (outPoly.valid())
+        {
+          osg::Vec3Array* outVerts = outPoly->toVec3Array();
+
+          mask_skirt->setVertexArray(outVerts);
+          mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, 0, outVerts->size()));
+
+#if 1
+          //Tessellate mask skirt
+          osg::ref_ptr<osgUtil::Tessellator> tscx=new osgUtil::Tessellator;
+          tscx->setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
+          tscx->setBoundaryOnly(false);
+          tscx->setWindingType(osgUtil::Tessellator::TESS_WINDING_ODD);
+          tscx->retessellatePolygons(*mask_skirt);
+
+          //Retrieve z values for mask skirt verts
+          for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
+          {
+            //Look for verts that belong to the original mask skirt polygon
+            for (osgEarth::Symbology::Polygon::iterator mit = maskSkirtPoly->begin(); mit != maskSkirtPoly->end(); ++mit)
+            {
+              if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+              {
+                (*it).z() = (*mit).z();
+                break;
+              }
+            }
+
+            //Look for verts that belong to the mask polygon
+            for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+            {
+              if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+              {
+                (*it).z() = (*mit).z();
+                break;
+              }
+            }
+          }
+
+          //Any mask skirt verts that still have a z value of 0 are newly created verts where the
+          //skirt meets the mask. Find the mask segment the point lies along and calculate the
+          //appropriate z value for the point.
+          for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
+          {
+            if ((*it).z() == 0.0)
+            {
+              osg::Vec3d p2 = *it;
+              for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+              {
+                osg::Vec3d p1 = *mit;
+                osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
+                
+                double m1 = (p2.y() - p1.y()) / (p2.x() - p1.x());
+                double m2 = (p3.y() - p1.y()) / (p3.x() - p1.x());
+
+                if (osg::absolute(m2 - m1) < MATCH_TOLERANCE)
+                {
+                  double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                  double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                  double zmag = osg::maximum(p3.z(), p1.z()) - osg::minimum(p3.z(), p1.z());
+
+                  (*it).z() = (l1 / lt) * zmag + osg::minimum(p3.z(), p1.z());
+
+                  break;
+                }
+              }
+            }
+          }
+#endif
+        }
+      }
     }
-    
+
     // populate primitive sets
     bool swapOrientation = !(_masterLocator->orientationOpenGL());
 
@@ -1034,32 +1116,6 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
           skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
     }
 
-    if (mask  && maskSkirtVerts->size() > 0)
-    {
-      mask_skirt->setVertexArray(maskSkirtVerts);
-      mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, 0, mask->size()));
-
-      if (maskSkirtVerts->size() - mask->size() == 4)
-      {
-        osg::Vec3d tv = (*maskSkirtVerts)[mask->size() + 2];
-        (*maskSkirtVerts)[mask->size() + 2] = (*maskSkirtVerts)[mask->size() + 3];
-        (*maskSkirtVerts)[mask->size() + 3] = tv;
-
-        //osg::Vec3d tv = (*maskSkirtVerts)[mask->size()];
-        //(*maskSkirtVerts)[mask->size()] = (*maskSkirtVerts)[mask->size() + 1];
-        //(*maskSkirtVerts)[mask->size() + 1] = tv;
-
-        mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, mask->size(), maskSkirtVerts->size() - mask->size() ) );
-
-        /*osg::ref_ptr<osgUtil::Tessellator> tscx=new osgUtil::Tessellator;
-
-        tscx->setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
-        tscx->setBoundaryOnly(false);
-        tscx->setWindingType(osgUtil::Tessellator::TESS_WINDING_POSITIVE);
-
-        tscx->retessellatePolygons(*mask_skirt);*/
-      }
-    }
 
     bool recalcNormals = elevationLayer != NULL;
 

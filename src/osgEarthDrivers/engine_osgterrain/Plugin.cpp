@@ -92,21 +92,9 @@ public:
             unsigned int lod, x, y, engineID;
             sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &engineID);
 
-<<<<<<< HEAD
-            unsigned int lod, x, y, id;
-            sscanf(tileDef.c_str(), "%d_%d_%d.%d", (int*)&lod, (int*)&x, (int*)&y, (int*)&id);
-
-            //Get the Map from the cache.  It is important that we use a ref_ptr here
-            //to prevent the Map from being deleted while it is is still in use.
-            //osg::ref_ptr<MapEngine> engine = MapEngine::getMapEngineById( id );
-            osg::ref_ptr<OSGTerrainEngineNode> engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)id );
-
-            if ( engineNode.valid() )
-=======
             // find the appropriate engine:
             OSGTerrainEngineNode* engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)engineID );
             if ( engineNode )
->>>>>>> upstream/master
             {
                 osg::Timer_t start = osg::Timer::instance()->tick();
 

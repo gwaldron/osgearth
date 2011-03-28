@@ -1038,7 +1038,8 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                                                 oldLayer.getMapLayer(),
                                                 oldLayer.getImage(),
                                                 oldLayer.getLocator(),
-                                                _key.getLevelOfDetail() ) );
+                                                _key.getLevelOfDetail(),
+                                                _key ));
 
                                             itr = _requests.erase( itr );
                                             increment = false;

@@ -35,16 +35,29 @@ using namespace osgEarth;
 namespace
 {
     static osg::Shader*
-    s_createTextureVertexShader( int maxUnits )
+    s_createTextureVertexShader( int numSlots, bool blending )
     {
         std::stringstream buf;
 
+        if (blending)
+            buf << "uniform vec4 osgearth_texCoordFactors;\n\n";
         buf << "void osgearth_vert_setupTexturing() \n"
             << "{ \n";
-
-        for(int i=0; i<maxUnits; ++i )
+        if (blending)
         {
-            buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
+            buf << "    mat4 texMat = mat4(1.0);\n"
+                << "    texMat[0][0] = osgearth_texCoordFactors[0];\n"
+                << "    texMat[1][1] = osgearth_texCoordFactors[1];\n"
+                << "    texMat[3][0] = osgearth_texCoordFactors[2];\n"
+                << "    texMat[3][1] = osgearth_texCoordFactors[3];\n";
+            for (int i = 0, j = numSlots; i < numSlots; ++i, ++j)
+                buf << "    gl_TexCoord[" << i << "] = gl_MultiTexCoord" << i << "; \n"
+                    << "    gl_TexCoord[" << j << "] = texMat * gl_MultiTexCoord" << i << ";\n";
+        }
+        else
+        {
+            for(int i = 0; i< numSlots; ++i )
+                buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
         }
             
         buf << "} \n";
@@ -54,7 +67,7 @@ namespace
     }
 
     static osg::Shader*
-    s_createTextureFragShaderFunction( const TextureLayout& layout, int maxUnits, bool blending, float blendTime )
+    s_createTextureFragShaderFunction( const TextureLayout& layout, int numSlots, bool blending, float blendTime )
     {
         //const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
         const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
@@ -66,35 +79,43 @@ namespace
         if ( blending )
         {
             buf << "#extension GL_ARB_shader_texture_lod : enable \n"
-                << "uniform float osgearth_SlotStamp[" << maxUnits << "]; \n"
+                << "uniform float osgearth_SlotStamp[" << numSlots << "]; \n"
                 << "uniform float osg_FrameTime; \n";
         }
 
-        buf << "uniform float osgearth_ImageLayerOpacity[" << maxUnits << "]; \n"
-            << "uniform bool  osgearth_ImageLayerEnabled[" << maxUnits << "]; \n"
-            << "uniform float osgearth_ImageLayerRange[" << 2*maxUnits << "]; \n"
+        buf << "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
+            << "uniform bool  osgearth_ImageLayerEnabled[" << numSlots << "]; \n"
+            << "uniform float osgearth_ImageLayerRange[" << 2 * numSlots << "]; \n"
             << "uniform float osgearth_ImageLayerAttenuation; \n"
+            << "uniform float osgearth_LODRangeFactor;\n"
             << "varying float osgearth_CameraRange; \n";
-
-        if ( order.size() > 0 )
+        // XXX Is order.size() ever != numSlots?
+        size_t orderSize = order.size();
+        if ( orderSize > 0 )
         {
             buf << "uniform sampler2D ";
-            for( unsigned int i=0; i<order.size(); ++i )
-                buf << "tex"<< order[i] << (i+1 < order.size()? "," : ";");
+            for( unsigned int i=0; i<orderSize; ++i )
+                buf << "tex"<< order[i] << (i+1 < orderSize ? "," : ";");
+            if (blending)
+            {
+                buf << "uniform sampler2D ";
+                for( unsigned int i=0; i<orderSize; ++i )
+                    buf << "tex"<< orderSize + order[i]
+                        << (i+1 < orderSize ? "," : ";");
+            }
             buf << "\n";
         }
 
         buf << "void osgearth_frag_applyTexturing( inout vec4 color ) \n"
             << "{ \n"
             << "    vec3 color3 = color.rgb; \n"
-            << "    vec4 texel, texel2; \n"
+            << "    vec4 texel; \n"
             << "    float dmin, dmax, atten_min, atten_max, age; \n";
 
-        for( unsigned int i=0; i<order.size(); ++i )
+        for( unsigned int i=0; i < orderSize; ++i )
         {
             int slot = order[i];
             int q = 2 * i;
-            int r = 4 * slot;
 
             buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
                 << "        dmin = osgearth_CameraRange - osgearth_ImageLayerRange["<< q << "]; \n"
@@ -108,10 +129,11 @@ namespace
                 float invBlendTime = 1.0f/blendTime;
 
                 buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
-                    << "            if ( age < 1.0 ) \n"
-                    << "                texel = texture2DLod(tex" << slot << ", gl_TexCoord["<< slot << "].st, 1.0-age); \n"
-                    << "            else \n"
-                    << "                texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot << "].st ); \n";
+                    << "            age = min(age, 1.0);\n"
+                    << "            vec4 texel0 = texture2D(tex" << slot << ", gl_TexCoord["<< slot << "].st);\n"
+                    << "            vec4 texel1 = texture2D(tex" << slot + orderSize << ", gl_TexCoord["<< slot + orderSize << "].st);\n"
+                    << "            float mixval = age * osgearth_LODRangeFactor;\n"
+                    << "            texel = mix(texel1, texel0, mixval);\n";
             }
             else
             {
@@ -136,8 +158,15 @@ namespace
 
 namespace
 {
+static std::string makeSamplerName(int slot)
+{
+    std::stringstream buf;
+    buf << "tex" << slot;
+    return buf.str();
+}
+    
     static osg::Texture2D*
-    s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout, bool lodBlending )
+    s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout, bool blending, osg::StateSet* parentStateSet)
     {
         int slot = layout.getSlot( layerUID );
         if ( slot < 0 )
@@ -152,8 +181,7 @@ namespace
 
             // configure the mipmapping
 
-            // only enable anisotropic filtering if we are NOT using mipmap blending.
-            tex->setMaxAnisotropy( lodBlending ? 1.0f : 16.0f );
+            tex->setMaxAnisotropy( 16.0f );
 
             tex->setResizeNonPowerOfTwoHint(false);
             tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
@@ -166,12 +194,36 @@ namespace
             stateSet->setTextureAttributeAndModes( slot, tex, osg::StateAttribute::ON );
             
             // install the slot attribute
-            std::stringstream buf;
-            buf << "tex" << slot;
-            std::string name = buf.str();
+            std::string name = makeSamplerName(slot);
             stateSet->getOrCreateUniform( name.c_str(), osg::Uniform::SAMPLER_2D )->set( slot );
         }
-
+        if (blending)
+        {
+            osg::Texture2D* parentTex = 0;
+            int parentSlot = slot + layout.getRenderOrder().size();
+            std::string parentSampler = makeSamplerName(parentSlot);
+            if (parentStateSet)
+            {
+                parentTex = static_cast<osg::Texture2D*>(
+                    parentStateSet->getTextureAttribute( slot, osg::StateAttribute::TEXTURE ) );
+                if (parentTex)
+                {
+                    stateSet->setTextureAttributeAndModes(parentSlot, parentTex, osg::StateAttribute::ON );
+                    stateSet->getOrCreateUniform(parentSampler.c_str(),
+                                                 osg::Uniform::SAMPLER_2D )->set( parentSlot );
+                }
+            }
+            if (!parentTex)
+            {
+                // Bind the main texture as the secondary texture and
+                // set the scaling factors appropriately.
+                stateSet->getOrCreateUniform(
+                    parentSampler.c_str(), osg::Uniform::SAMPLER_2D)->set(slot);
+                osg::Vec4 texCoordFactors(1.0f, 1.0f, 0.0f, 0.0f);
+                osg::Uniform* uTexCoordFactor = new osg::Uniform("osgearth_texCoordFactors", texCoordFactors);
+                stateSet->addUniform(uTexCoordFactor);
+            }
+        }
         return tex;
     }
 }
@@ -198,10 +250,11 @@ void
 TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet* stateSet,
                                                 UID layerUID,
                                                 const GeoImage& preparedImage,
-                                                const GeoExtent& tileExtent,
-                                                const TextureLayout& layout ) const
+                                                const TileKey& tileKey,
+                                                const TextureLayout& layout,
+                                                osg::StateSet* parentStateSet) const
 {
-    osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, _lodBlending );
+    osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, _lodBlending, parentStateSet);
     if ( tex )
     {
         osg::Image* image = preparedImage.getImage();
@@ -243,14 +296,17 @@ void
 TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
                                                     const TextureLayout& layout ) const
 {
-    int maxUnits = layout.getMaxUsedSlot() + 1;
-
+    int numSlots = layout.getMaxUsedSlot() + 1;
+    int maxUnits = numSlots;
+    if (_useGPU && _lodBlending)
+        maxUnits = numSlots * 2;
     if ( _useGPU )
     {
         // Validate against the max number of GPU texture units:
         if ( maxUnits > Registry::instance()->getCapabilities().getMaxGPUTextureUnits() )
         {
             maxUnits = Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+            numSlots = maxUnits / 2;
             OE_WARN << LC
                 << "Warning! You have exceeded the number of texture units available on your GPU ("
                 << maxUnits << "). Consider using another compositing mode."
@@ -266,7 +322,7 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet* stateSet,
 
             vp->setShader( 
                 "osgearth_vert_setupTexturing", 
-                s_createTextureVertexShader(maxUnits) );
+                s_createTextureVertexShader(numSlots, _lodBlending) );
         }
         else
         {

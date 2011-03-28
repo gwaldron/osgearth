@@ -271,6 +271,7 @@ class CustomTileFrame
 {
 public:
     CustomTileFrame( CustomTile* tile )
+        : _tileKey(tile->getKey())
     {
         Threading::ScopedReadLock sharedLock( tile->_tileLayersMutex );
         _colorLayers = tile->_colorLayers;
@@ -278,7 +279,7 @@ public:
         _locator = tile->getLocator();
         _sampleRatio = tile->getTerrain()->getSampleRatio();
     }
-
+    TileKey _tileKey;
     ColorLayersByUID _colorLayers;
     osg::ref_ptr< osgTerrain::Layer > _elevationLayer;
     osg::ref_ptr< osgTerrain::Locator > _locator;

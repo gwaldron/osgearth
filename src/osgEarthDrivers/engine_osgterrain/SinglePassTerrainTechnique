@@ -26,6 +26,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osg/StateSet>
 #include <osg/Texture2DArray>
 #include <osg/Version>
 #include <osg/Uniform>
@@ -140,7 +141,9 @@ private:
     typedef std::map< UID, int > LayerUIDtoIndexMap;
     LayerUIDtoIndexMap _layerUIDtoIndexMap;
 
+    // XXX Are these both necessary?
     GeoExtent _tileExtent;
+    TileKey _tileKey;
 
     bool _optimizeTriangleOrientation;
 
@@ -150,12 +153,13 @@ private:
 private:
 
     osg::Vec3d computeCenterModel();
-    GeoImage createGeoImage( const CustomColorLayer& layer ) const; //const osgTerrain::Layer* imageLayer ) const;
+    bool createGeoImage( const CustomColorLayer& layer, GeoImage& image ) const; //const osgTerrain::Layer* imageLayer ) const;
     osg::Geode* createGeometry( const CustomTileFrame& tilef );
     osg::StateSet* createStateSet( const CustomTileFrame& tilef );
     void prepareImageLayerUpdate( int layerIndex, const CustomTileFrame& tilef );
     //Threading::ReadWriteMutex& getMutex();
     inline osg::Geode* getFrontGeode() { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
+    osg::StateSet* getParentStateSet() const;
     //const CustomColorLayer* getLayerByUID( UID uid ) const;
     int getIndexOfColorLayerWithUID( UID uid ) const;
 

@@ -58,11 +58,10 @@ namespace
     {
         virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
-            osgUtil::CullVisitor *cv = dynamic_cast< osgUtil::CullVisitor*>( nv );
+            osgUtil::CullVisitor* cv = dynamic_cast< osgUtil::CullVisitor*>( nv );
 
             // Default value
-            osg::CullSettings::ComputeNearFarMode oldMode =
-                osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES;
+            osg::CullSettings::ComputeNearFarMode oldMode;
 
             if( cv )
             {
@@ -604,12 +603,23 @@ SkyNode::SkyNode( Map* map, const std::string& starFile )
     makeStars(starFile);
 }
 
+osg::BoundingSphere
+SkyNode::computeBound() const
+{
+    return osg::BoundingSphere();
+}
+
 void
 SkyNode::traverse( osg::NodeVisitor& nv )
 {
+    osg::CullSettings::ComputeNearFarMode saveMode;
+
     osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
     if ( cv )
     {
+        saveMode = cv->getComputeNearFarMode();
+        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+
         osg::View* view = cv->getCurrentCamera()->getView();
         PerViewDataMap::iterator i = _perViewData.find( view );
         if ( i != _perViewData.end() )
@@ -619,6 +629,11 @@ SkyNode::traverse( osg::NodeVisitor& nv )
     }
 
     osg::Group::traverse( nv );
+
+    if ( cv )
+    {
+        cv->setComputeNearFarMode( saveMode );
+    }
 }
 
 void
@@ -636,7 +651,6 @@ SkyNode::attach( osg::View* view, int lightNum )
 
     // the cull callback has to be on a parent group-- won't work on the xforms themselves.
     data._cullContainer = new osg::Group();
-    data._cullContainer->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
 
     data._sunXform = new osg::MatrixTransform();
     data._sunMatrix = osg::Matrixd::translate(
@@ -655,6 +669,7 @@ SkyNode::attach( osg::View* view, int lightNum )
 
     data._starsVisible = true;
 
+    data._cullContainer->addChild( _atmosphere.get() );
     data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
 
     view->setLightingMode( osg::View::SKY_LIGHT );
@@ -874,13 +889,8 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     //geode->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
     AddCallbackToDrawablesVisitor visitor( _innerRadius );
     geode->accept( visitor );
-    //this->addChild( geode );
 
-    // add an intermediate group for the clip plane callback (won't work on the geode itself)
-    osg::Group* g = new osg::Group;
-    g->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
-    g->addChild( geode );
-    this->addChild( g );
+    _atmosphere = geode;
 }
 
 void
@@ -924,15 +934,6 @@ SkyNode::makeSun()
     
     AddCallbackToDrawablesVisitor visitor( _sunDistance );
     sun->accept( visitor );
-    //_sunXform->accept( visitor );
-
-#if 0 // moved this to attach
-    // add an intermediate group for the clip plane callback (won't work on the node itself)
-    osg::Group* g = new osg::Group;
-    g->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
-    g->addChild( _sunXform ); //todo: move this?
-    this->addChild( g );
-#endif
 
     _sun = sun;
 }
@@ -970,13 +971,6 @@ SkyNode::makeStars(const std::string& starFile)
   starNode->accept(visitor);
 
   _stars = starNode;
-  //_starsXform = new osg::MatrixTransform();
-  //_starsXform->addChild( starNode );
-
-  //osg::Group* g = new osg::Group();
-  //g->setCullCallback(new DoNotIncludeInNearFarComputationCallback);
-  //g->addChild( _starsXform.get() );
-  //this->addChild(g);
 }
 
 osg::Geode*

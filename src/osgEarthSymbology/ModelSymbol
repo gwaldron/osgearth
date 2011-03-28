@@ -35,6 +35,13 @@ namespace osgEarth { namespace Symbology
             PLACEMENT_SCATTER
         };
 
+        enum Clamping
+        {
+            CLAMP_NONE,
+            CLAMP_TO_TERRAIN,
+            CLAMP_RELATIVE_TO_TERRAIN
+        };
+
     public:
         ModelSymbol( const Config& conf =Config() );
 
@@ -45,6 +52,10 @@ namespace osgEarth { namespace Symbology
         /** How to map feature geometry to model placement. (default is CENTROID) */
         optional<Placement>& placement() { return _placement; }
         const optional<Placement>& placement() const { return _placement; }
+
+        /** How to clamp instances to the terrain (default is CLAMP_NONE) */
+        optional<Clamping>& clamping() { return _clamping; }
+        const optional<Clamping>& clamping() const { return _clamping; }
 
         /** For PLACEMENT_SCATTER, the scatterind density in instances per sqkm */
         optional<float>& density() { return _density; }
@@ -69,6 +80,7 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<std::string> _url;
         optional<Placement>   _placement;
+        optional<Clamping>    _clamping;
         optional<float>       _density;
         optional<float>       _interval;
         optional<osg::Vec3f>  _scale;

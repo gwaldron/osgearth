@@ -194,13 +194,15 @@ FeatureModelGraph::gridAndCreateNodeForStyle(const Symbology::Style* style,
                         double cx, cy;
                         mapCellExtent.getCentroid( cx, cy );
                         osg::Vec3d ecefCenter;
-                        mapSRS->transformToECEF( cx, cy, 0.0, ecefCenter.x(), ecefCenter.y(), ecefCenter.z() );
+                        mapSRS->transformToECEF( osg::Vec3d(cy, cy, 0.0), ecefCenter );
+                        //mapSRS->transformToECEF( cx, cy, 0.0, ecefCenter.x(), ecefCenter.y(), ecefCenter.z() );
 
                         // get the cell corner as ECEF:
                         osg::Vec3d ecefCorner;
-                        mapSRS->transformToECEF(
-                            mapCellExtent.xMin(), mapCellExtent.yMin(), 0.0,
-                            ecefCorner.x(), ecefCorner.y(), ecefCorner.z() );
+                        mapSRS->transformToECEF( osg::Vec3d(mapCellExtent.xMin(), mapCellExtent.yMin(), 0.0), ecefCorner );
+                        //mapSRS->transformToECEF(
+                        //    mapCellExtent.xMin(), mapCellExtent.yMin(), 0.0,
+                        //    ecefCorner.x(), ecefCorner.y(), ecefCorner.z() );
 
                         // normal vector at the center of the cell:
                         osg::Vec3d normal = mapSRS->getEllipsoid()->computeLocalUpVector(

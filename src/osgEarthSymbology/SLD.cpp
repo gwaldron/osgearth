@@ -212,6 +212,13 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!model) model = new ModelSymbol;
             model->scale() = stringToVec3f(p->second, osg::Vec3f(1,1,1));
         }
+        else if (p->first == "model-clamping")
+        {
+            if (!model) model = new ModelSymbol;
+            if      (p->second == "none"    ) model->clamping() = ModelSymbol::CLAMP_NONE;
+            else if (p->second == "terrain" ) model->clamping() = ModelSymbol::CLAMP_TO_TERRAIN;
+            else if (p->second == "relative") model->clamping() = ModelSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        }
 
         else if (p->first == "extrusion-offset")
         {

@@ -27,6 +27,7 @@ SET(LIB_PUBLIC_HEADERS
     Config
     Cube
     ElevationLayer
+    ElevationQuery
     Export
     EGM
     FileUtils
@@ -93,6 +94,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Cube.cpp
     EGM.cpp
     ElevationLayer.cpp
+    ElevationQuery.cpp
     FileUtils.cpp
     GeoData.cpp
     GeoMath.cpp

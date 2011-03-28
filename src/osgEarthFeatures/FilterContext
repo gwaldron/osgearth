@@ -73,9 +73,19 @@ namespace osgEarth { namespace Features
         osg::Vec3d toLocal( const osg::Vec3d& world ) const { return world * _referenceFrame; }
 
         /**
+         * Converts an array of points from world corods to local coords
+         */
+        void toLocal( osg::Vec3dArray* worldPoints ) const;
+
+        /**
          * Converts from local (reference frame) coordinates into world coordinates
          */
         osg::Vec3d toWorld( const osg::Vec3d& local ) const { return local * _inverseReferenceFrame; }
+
+        /**
+         * Converts an array of points from local coords to world coords
+         */
+        void toWorld( osg::Vec3dArray* localPoints ) const;
 
         /**
          * Multiplying by the reference frame takes a point from world coords into local coords.

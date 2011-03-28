@@ -807,19 +807,20 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 }
 
 bool 
-SpatialReference::transformToECEF(double x, double y, double z,
-                                  double& out_x, double& out_y, double& out_z ) const
+SpatialReference::transformToECEF(const osg::Vec3d& input,
+                                  osg::Vec3d&       output ) const
 {
-    osg::Vec3d geo( x, y, z );
+    double lat = input.y(), lon = input.x();
+    //osg::Vec3d geo( x, y, z );
     
     // first convert to lat/long if necessary:
     if ( !isGeographic() )
-        transform( x, y, getGeographicSRS(), geo.x(), geo.y() );
+        transform( input.x(), input.y(), getGeographicSRS(), lon, lat );
 
     // then convert to ECEF.
     getGeographicSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( geo.y() ), osg::DegreesToRadians( geo.x() ), geo.z(),
-        out_x, out_y, out_z );
+        osg::DegreesToRadians( lat ), osg::DegreesToRadians( lon ), input.z(),
+        output.x(), output.y(), output.z() );
 
     return true;
 }

@@ -40,3 +40,19 @@ _optimizerHints( rhs._optimizerHints )
 {
     //nop
 }
+
+void
+FilterContext::toLocal( osg::Vec3dArray* worldPoints ) const
+{
+    if ( hasReferenceFrame() )
+        for( osg::Vec3dArray::iterator i = worldPoints->begin(); i != worldPoints->end(); ++i )
+            *i = toLocal( *i );
+}
+        
+void
+FilterContext::toWorld( osg::Vec3dArray* localPoints ) const
+{
+    if ( hasReferenceFrame() )
+        for( osg::Vec3dArray::iterator i = localPoints->begin(); i != localPoints->end(); ++i )
+            *i = toWorld( *i );
+}

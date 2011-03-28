@@ -40,13 +40,21 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT Session : public osg::Referenced
     {
     public:
+        /**
+         * Constructs a new Session that is tied to a map
+         */
         Session( const Map* map );
-        Session( const MapInfo& mapInfo );
 
         /**
          * Sets the reference URI to use to expand relative paths and URLs.
          */
         void setReferenceURI( const std::string& referenceURI );
+
+        /**
+         * Resolves a URI based on the reference URI. You can use this method
+         * to create an absolute URI from a relative one, for example.
+         */
+        std::string resolveURI( const std::string& inputURI ) const;
 
         /**
          * Gets the node for a named model. This method may check multiple locations to
@@ -60,9 +68,14 @@ namespace osgEarth { namespace Features
         void putModel( const std::string& url, osg::Node* node );
 
         /**
+         * Gets the underlying map (frame) interface in this session
+         */
+        const MapFrame& getMap() const { return _mapFrame; }
+
+        /**
          * Gets the map information backing up this session.
          */
-        const MapInfo& getMapInfo() const { return _mapInfo; }
+        const MapInfo& getMapInfo() const { return _mapFrame.getMapInfo(); }
 
         /**
          * Sets the user-defined build data for this session
@@ -75,7 +88,7 @@ namespace osgEarth { namespace Features
         osg::Referenced* getBuildData() const { return _buildData.get(); }
 
     private:
-        MapInfo     _mapInfo;
+        MapFrame    _mapFrame;
         std::string _referenceURI;
 
         typedef std::map<std::string, osg::ref_ptr<osg::Node> > ModelMap;

@@ -18,6 +18,7 @@
  */
 #include "GeomCompiler"
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/ClampFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TransformFilter>
@@ -90,6 +91,13 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             scatter.setDensity( *model->density() );
             scatter.setRandomSeed( *model->randomSeed() );
             cx = scatter.push( workingSet, cx );
+        }
+
+        if ( model->clamping() != ModelSymbol::CLAMP_NONE )
+        {
+            ClampFilter clamp;
+            clamp.setIgnoreZ( model->clamping() == ModelSymbol::CLAMP_TO_TERRAIN );
+            cx = clamp.push( workingSet, cx );
         }
 
         SubstituteModelFilter sub( style );

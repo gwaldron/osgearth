@@ -27,13 +27,7 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 
 Session::Session( const Map* map ) :
-_mapInfo( map )
-{
-    //nop
-}
-
-Session::Session( const MapInfo& mapInfo ) :
-_mapInfo( mapInfo )
+_mapFrame( map )
 {
     //nop
 }
@@ -44,11 +38,17 @@ Session::setReferenceURI( const std::string& referenceURI )
     _referenceURI = referenceURI;
 }
 
+std::string
+Session::resolveURI( const std::string& inputURI ) const
+{
+    return osgEarth::getFullPath( _referenceURI, inputURI );
+}
+
 osg::Node*
 Session::getModel( const std::string& url ) const
 {
     // expand the URL
-    std::string absurl = osgEarth::getFullPath( _referenceURI, url );
+    std::string absurl = resolveURI( url );
 
     // first, check the local repo
     {

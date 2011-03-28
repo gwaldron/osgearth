@@ -39,6 +39,9 @@ ModelSymbol::getConfig() const
     conf.addIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
     conf.addIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.addIfSet( "placement", "scatter",  _placement, PLACEMENT_SCATTER );
+    conf.addIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
+    conf.addIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
+    conf.addIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
     conf.addIfSet( "interval", _interval );
     conf.addIfSet( "density", _density );
     conf.addIfSet( "scale", _scale );
@@ -53,6 +56,9 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
     conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.getIfSet( "placement", "scatter",  _placement, PLACEMENT_SCATTER );
+    conf.getIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
+    conf.getIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
+    conf.getIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
     conf.getIfSet( "interval", _interval );
     conf.getIfSet( "density", _density );
     conf.getIfSet( "scale", _scale );

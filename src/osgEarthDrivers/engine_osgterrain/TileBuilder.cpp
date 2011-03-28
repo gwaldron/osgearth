@@ -93,7 +93,7 @@ struct BuildColorLayer
         }
         else
         {
-            locator = GeoLocator::createForKey( imageKey, *_mapInfo );
+            locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);                                                                                       
         }
 
         // add the color layer to the repo.

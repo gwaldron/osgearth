@@ -202,6 +202,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!model) model = new ModelSymbol;
             model->density() = as<float>(p->second, 1.0f);
         }
+        else if (p->first == "model-random-seed")
+        {
+            if (!model) model = new ModelSymbol();
+            model->randomSeed() = as<unsigned>(p->second, 0);
+        }
         else if (p->first == "model-scale")
         {
             if (!model) model = new ModelSymbol;

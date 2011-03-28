@@ -25,7 +25,8 @@ ModelSymbol::ModelSymbol( const Config& conf ) :
 _placement( PLACEMENT_CENTROID ),
 _density( 1.0f ),
 _interval( 1.0f ),
-_scale( osg::Vec3f(1,1,1) )
+_scale( osg::Vec3f(1,1,1) ),
+_randomSeed( 0 )
 {
     mergeConfig( conf );
 }
@@ -41,6 +42,7 @@ ModelSymbol::getConfig() const
     conf.addIfSet( "interval", _interval );
     conf.addIfSet( "density", _density );
     conf.addIfSet( "scale", _scale );
+    conf.addIfSet( "random_seed", _randomSeed );
     return conf;
 }
 
@@ -54,4 +56,5 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "interval", _interval );
     conf.getIfSet( "density", _density );
     conf.getIfSet( "scale", _scale );
+    conf.getIfSet( "random_seed", _randomSeed );
 }

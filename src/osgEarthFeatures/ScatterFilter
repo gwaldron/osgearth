@@ -45,12 +45,17 @@ namespace osgEarth { namespace Features
         void setDensity( float value ) { _density = value; }
         float getDensity() const { return _density; }
 
+        /** Seed value for the random number generator */
+        void setRandomSeed( unsigned value ) { _randomSeed = value; }
+        unsigned getRandomSeed() const { return _randomSeed; }
+
     public:
         /** Processes a new feature list */
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
 
     private:
-        float _density;
+        float    _density;
+        unsigned _randomSeed;
     };
 
 } } // namespace osgEarth::Features

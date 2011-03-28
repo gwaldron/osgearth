@@ -88,6 +88,7 @@ GeomCompiler::compile(FeatureCursor*        cursor,
         {
             ScatterFilter scatter;
             scatter.setDensity( *model->density() );
+            scatter.setRandomSeed( *model->randomSeed() );
             cx = scatter.push( workingSet, cx );
         }
 

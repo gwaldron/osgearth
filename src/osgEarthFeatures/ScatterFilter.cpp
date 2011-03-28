@@ -28,7 +28,8 @@ using namespace osgEarth::Symbology;
 //------------------------------------------------------------------------
 
 ScatterFilter::ScatterFilter() :
-_density( 10.0f )
+_density( 10.0f ),
+_randomSeed( 0 )
 {
     //NOP
 }
@@ -43,7 +44,7 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
 
     // seed the random number generator so the randomness is the same each time
     // todo: control this seeding based on the feature source name, perhaps?
-    ::srand( 0 );
+    ::srand( _randomSeed );
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {

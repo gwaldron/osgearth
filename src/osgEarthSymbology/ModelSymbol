@@ -58,6 +58,10 @@ namespace osgEarth { namespace Symbology
         optional<osg::Vec3f>& scale() { return _scale; }
         const optional<osg::Vec3f>& scale() const { return _scale; }
 
+        /** Seeding value for the randomizer */
+        optional<unsigned>& randomSeed() { return _randomSeed; }
+        const optional<unsigned>& randomSeed() const { return _randomSeed; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -68,6 +72,7 @@ namespace osgEarth { namespace Symbology
         optional<float>       _density;
         optional<float>       _interval;
         optional<osg::Vec3f>  _scale;
+        optional<unsigned>    _randomSeed;
     };
 
 } } // namespace osgEarth::Symbology

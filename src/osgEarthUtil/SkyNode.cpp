@@ -58,11 +58,10 @@ namespace
     {
         virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
-            osgUtil::CullVisitor *cv = dynamic_cast< osgUtil::CullVisitor*>( nv );
+            osgUtil::CullVisitor* cv = dynamic_cast< osgUtil::CullVisitor*>( nv );
 
             // Default value
-            osg::CullSettings::ComputeNearFarMode oldMode =
-                osg::CullSettings::COMPUTE_NEAR_FAR_USING_BOUNDING_VOLUMES;
+            osg::CullSettings::ComputeNearFarMode oldMode;
 
             if( cv )
             {
@@ -581,19 +580,60 @@ namespace
 
 //---------------------------------------------------------------------------
 
-SkyNode::SkyNode( Map* map, const std::string& starFile ) :
-_lightPos( osg::Vec3f(0.0f, 1.0f, 0.0f) ),
-_ambientBrightness( 0.4f )
+SkyNode::SkyNode( Map* map, const std::string& starFile )
 {
+    // intialize the default settings:
+    _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
+    _defaultPerViewData._light = new osg::Light( 0 );  
+    _defaultPerViewData._light->setPosition( osg::Vec4( _defaultPerViewData._lightPos, 0 ) );
+    _defaultPerViewData._light->setAmbient( osg::Vec4(0.4f, 0.4f, 0.4f ,1.0) );
+    _defaultPerViewData._light->setDiffuse( osg::Vec4(1,1,1,1) );
+    _defaultPerViewData._light->setSpecular( osg::Vec4(0,0,0,1) );
+    _defaultPerViewData._starsVisible = true;
+    
+    // set up the astronomical parameters:
     _ellipsoidModel =  map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
     _innerRadius = _ellipsoidModel->getRadiusPolar();
     _outerRadius = _innerRadius * 1.025f;
     _sunDistance = _innerRadius * 12000.0f;
 
-    // note: order is important here
+    // make the ephemeris (note: order is important here)
     makeAtmosphere( _ellipsoidModel );
     makeSun();
     makeStars(starFile);
+}
+
+osg::BoundingSphere
+SkyNode::computeBound() const
+{
+    return osg::BoundingSphere();
+}
+
+void
+SkyNode::traverse( osg::NodeVisitor& nv )
+{
+    osg::CullSettings::ComputeNearFarMode saveMode;
+
+    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+    if ( cv )
+    {
+        saveMode = cv->getComputeNearFarMode();
+        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+
+        osg::View* view = cv->getCurrentCamera()->getView();
+        PerViewDataMap::iterator i = _perViewData.find( view );
+        if ( i != _perViewData.end() )
+        {
+            i->second._cullContainer->accept( nv );
+        }
+    }
+
+    osg::Group::traverse( nv );
+
+    if ( cv )
+    {
+        cv->setComputeNearFarMode( saveMode );
+    }
 }
 
 void
@@ -601,55 +641,118 @@ SkyNode::attach( osg::View* view, int lightNum )
 {
     if ( !view ) return;
 
-    _light = new osg::Light( lightNum );
-    _light->setLightNum(0);
-    _light->setPosition( osg::Vec4( _lightPos, 0 ) );
-    _light->setAmbient( osg::Vec4(_ambientBrightness,_ambientBrightness,_ambientBrightness,1.0) );
-    _light->setDiffuse( osg::Vec4(1,1,1,1) );
-    _light->setSpecular( osg::Vec4(0,0,0,1) );
+    // creates the new per-view if it does not already exist
+    PerViewData& data = _perViewData[view];
+
+    data._light = osg::clone( _defaultPerViewData._light.get() );
+    data._light->setLightNum( lightNum );
+    data._light->setAmbient( _defaultPerViewData._light->getAmbient() );
+    data._lightPos = _defaultPerViewData._lightPos;
+
+    // the cull callback has to be on a parent group-- won't work on the xforms themselves.
+    data._cullContainer = new osg::Group();
+
+    data._sunXform = new osg::MatrixTransform();
+    data._sunMatrix = osg::Matrixd::translate(
+        _sunDistance * data._lightPos.x(),
+        _sunDistance * data._lightPos.y(),
+        _sunDistance * data._lightPos.z() );
+    data._sunXform->setMatrix( data._sunMatrix );
+    data._sunXform->addChild( _sun.get() );
+    data._cullContainer->addChild( data._sunXform.get() );
+
+    data._starsXform = new osg::MatrixTransform();
+    data._starsMatrix = _defaultPerViewData._starsMatrix;
+    data._starsXform->setMatrix( _defaultPerViewData._starsMatrix );
+    data._starsXform->addChild( _stars.get() );
+    data._cullContainer->addChild( data._starsXform.get() );
+
+    data._starsVisible = true;
+
+    data._cullContainer->addChild( _atmosphere.get() );
+    data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
 
     view->setLightingMode( osg::View::SKY_LIGHT );
-    view->setLight( _light.get() );
+    view->setLight( data._light.get() );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
 }
 
 void
-SkyNode::setAmbientBrigtness( float value )
+SkyNode::setAmbientBrightness( float value, osg::View* view )
 {
-    _ambientBrightness = osg::clampBetween( value, 0.0f, 1.0f );
-    if ( _light.valid() )
-        _light->setAmbient( osg::Vec4(_ambientBrightness,_ambientBrightness,_ambientBrightness,1.0f) );
-}
-
-void
-SkyNode::setSunPosition( const osg::Vec3& pos )
-{
-    _lightPos = pos;
-
-    if ( _light.valid() )
-        _light->setPosition( osg::Vec4( _lightPos, 0 ) );
-
-    if ( _lightPosUniform.valid() )
-        _lightPosUniform->set( _lightPos / _lightPos.length() );
-
-    if ( _sunXform.valid() )
-        _sunXform->setMatrix( osg::Matrix::translate( _sunDistance * _lightPos.x(), _sunDistance * _lightPos.y(), _sunDistance * _lightPos.z() ) );
-}
-
-void
-SkyNode::setSunPosition( double latitudeRad, double longitudeRad )
-{
-    if (_ellipsoidModel.valid())
+    if ( !view )
     {
-        double x, y, z;
-        _ellipsoidModel->convertLatLongHeightToXYZ(latitudeRad, longitudeRad, 0, x, y, z);
-        osg::Vec3d up  = _ellipsoidModel->computeLocalUpVector(x, y, z);
-        setSunPosition( up );
+        setAmbientBrightness( _defaultPerViewData, value );
+
+        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+            setAmbientBrightness( i->second, value );
+    }
+    else if ( _perViewData.find(view) != _perViewData.end() )
+    {
+        setAmbientBrightness( _perViewData[view], value );
+    }
+}
+
+void 
+SkyNode::setAmbientBrightness( PerViewData& data, float value )
+{
+    value = osg::clampBetween( value, 0.0f, 1.0f );
+    data._light->setAmbient( osg::Vec4f(value, value, value, 1.0f) );
+}
+
+void
+SkyNode::setSunPosition( const osg::Vec3& pos, osg::View* view )
+{
+    if ( !view )
+    {
+        setSunPosition( _defaultPerViewData, pos );
+        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+            setSunPosition( i->second, pos );
+    }
+    else if ( _perViewData.find(view) != _perViewData.end() )
+    {
+        setSunPosition( _perViewData[view], pos );
     }
 }
 
 void
-SkyNode::setDateTime( int year, int month, int date, double hoursUTC )
+SkyNode::setSunPosition( PerViewData& data, const osg::Vec3& pos )
+{
+    data._lightPos = pos;
+
+    if ( data._light.valid() )
+        data._light->setPosition( osg::Vec4( data._lightPos, 0 ) );
+
+    if ( data._lightPosUniform.valid() )
+        data._lightPosUniform->set( data._lightPos / data._lightPos.length() );
+
+    if ( data._sunXform.valid() )
+    {
+        data._sunXform->setMatrix( osg::Matrix::translate( 
+            _sunDistance * data._lightPos.x(), 
+            _sunDistance * data._lightPos.y(),
+            _sunDistance * data._lightPos.z() ) );
+    }
+}
+
+void
+SkyNode::setSunPosition( double lat_degrees, double long_degrees, osg::View* view )
+{
+    if (_ellipsoidModel.valid())
+    {
+        double x, y, z;
+        _ellipsoidModel->convertLatLongHeightToXYZ(
+            osg::RadiansToDegrees(lat_degrees),
+            osg::RadiansToDegrees(long_degrees),
+            0, 
+            x, y, z);
+        osg::Vec3d up  = _ellipsoidModel->computeLocalUpVector(x, y, z);
+        setSunPosition( up, view );
+    }
+}
+
+void
+SkyNode::setDateTime( int year, int month, int date, double hoursUTC, osg::View* view )
 {
     if ( _ellipsoidModel.valid() )
     {
@@ -657,12 +760,62 @@ SkyNode::setDateTime( int year, int month, int date, double hoursUTC )
         Sun sun;
         osg::Vec3d pos = sun.getPosition( year, month, date, hoursUTC );
         pos.normalize();
-        setSunPosition( pos );
+        setSunPosition( pos, view );
 
         // position the stars:
         double time_r = hoursUTC/24.0; // 0..1
         double rot_z = -osg::PI + TWO_PI*time_r;
-        _starsXform->setMatrix( osg::Matrixd::rotate( -rot_z, 0, 0, 1 ) );
+
+        osg::Matrixd starsMatrix = osg::Matrixd::rotate( -rot_z, 0, 0, 1 );
+        if ( !view )
+        {
+            _defaultPerViewData._starsMatrix = starsMatrix;
+            for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+            {
+                i->second._starsMatrix = starsMatrix;
+                i->second._starsXform->setMatrix( starsMatrix );
+            }
+        }
+        else if ( _perViewData.find(view) != _perViewData.end() )
+        {
+            PerViewData& data = _perViewData[view];
+            data._starsMatrix = starsMatrix;
+            data._starsXform->setMatrix( starsMatrix );
+        }
+    }
+}
+
+void
+SkyNode::setStarsVisible( bool value, osg::View* view )
+{
+    if ( !view )
+    {
+        _defaultPerViewData._starsVisible = value;
+        for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+        {
+            i->second._starsVisible = value;
+            i->second._starsXform->setNodeMask( value ? ~0 : 0 );
+        }
+    }
+    else if ( _perViewData.find(view) != _perViewData.end() )
+    {
+        _perViewData[view]._starsVisible = value;
+        _perViewData[view]._starsXform->setNodeMask( value ? ~0 : 0 );
+    }
+}
+
+bool
+SkyNode::getStarsVisible( osg::View* view ) const
+{
+    PerViewDataMap::const_iterator i = _perViewData.find(view);
+
+    if ( !view || i == _perViewData.end() )
+    {
+        return _defaultPerViewData._starsVisible;
+    }
+    else
+    {
+        return i->second._starsVisible;
     }
 }
 
@@ -712,8 +865,8 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     
     float Scale = 1.0f / (_outerRadius - _innerRadius);
 
-    _lightPosUniform = set->getOrCreateUniform( "atmos_v3LightPos", osg::Uniform::FLOAT_VEC3 );
-    _lightPosUniform->set( _lightPos / _lightPos.length() );
+    _defaultPerViewData._lightPosUniform = set->getOrCreateUniform( "atmos_v3LightPos", osg::Uniform::FLOAT_VEC3 );
+    _defaultPerViewData._lightPosUniform->set( _defaultPerViewData._lightPos / _defaultPerViewData._lightPos.length() );
 
     set->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
     set->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
@@ -736,13 +889,8 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     //geode->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
     AddCallbackToDrawablesVisitor visitor( _innerRadius );
     geode->accept( visitor );
-    //this->addChild( geode );
 
-    // add an intermediate group for the clip plane callback (won't work on the geode itself)
-    osg::Group* g = new osg::Group;
-    g->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
-    g->addChild( geode );
-    this->addChild( g );
+    _atmosphere = geode;
 }
 
 void
@@ -776,18 +924,18 @@ SkyNode::makeSun()
     set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
     // make the sun's transform:
-    _sunXform = new osg::MatrixTransform();
-    _sunXform->setMatrix( osg::Matrix::translate( _sunDistance * _lightPos.x(), _sunDistance * _lightPos.y(), _sunDistance * _lightPos.z() ) );
-    _sunXform->addChild( sun );
+    // todo: move this?
+    _defaultPerViewData._sunXform = new osg::MatrixTransform();
+    _defaultPerViewData._sunXform->setMatrix( osg::Matrix::translate( 
+        _sunDistance * _defaultPerViewData._lightPos.x(), 
+        _sunDistance * _defaultPerViewData._lightPos.y(), 
+        _sunDistance * _defaultPerViewData._lightPos.z() ) );
+    _defaultPerViewData._sunXform->addChild( sun );
     
     AddCallbackToDrawablesVisitor visitor( _sunDistance );
-    _sunXform->accept( visitor );
+    sun->accept( visitor );
 
-    // add an intermediate group for the clip plane callback (won't work on the node itself)
-    osg::Group* g = new osg::Group;
-    g->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
-    g->addChild( _sunXform );
-    this->addChild( g );
+    _sun = sun;
 }
 
 SkyNode::StarData::StarData(std::stringstream &ss)
@@ -822,16 +970,11 @@ SkyNode::makeStars(const std::string& starFile)
   AddCallbackToDrawablesVisitor visitor(_starRadius);
   starNode->accept(visitor);
 
-  _starsXform = new osg::MatrixTransform();
-  _starsXform->addChild( starNode );
-
-  osg::Group* g = new osg::Group();
-  g->setCullCallback(new DoNotIncludeInNearFarComputationCallback);
-  g->addChild( _starsXform.get() );
-  this->addChild(g);
+  _stars = starNode;
 }
 
-osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
+osg::Geode*
+SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
 {
   double minMag = DBL_MAX, maxMag = DBL_MIN;
 
@@ -882,7 +1025,8 @@ osg::Geode* SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   return starGeode;
 }
 
-void SkyNode::getDefaultStars(std::vector<StarData>& out_stars)
+void
+SkyNode::getDefaultStars(std::vector<StarData>& out_stars)
 {
   out_stars.clear();
 
@@ -893,7 +1037,8 @@ void SkyNode::getDefaultStars(std::vector<StarData>& out_stars)
   }
 }
 
-bool SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars)
+bool
+SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars)
 {
   out_stars.clear();
 

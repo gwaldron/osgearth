@@ -51,6 +51,7 @@ int main(int argc, char** argv)
     bool useGeom    = arguments.read("--geometry");
     bool useOverlay = arguments.read("--overlay");
     bool useStencil = arguments.read("--stencil");
+    bool useMem     = arguments.read("--mem");
 
     osgViewer::Viewer viewer(arguments);
 
@@ -63,15 +64,22 @@ int main(int argc, char** argv)
     basemapOpt.url() = "../data/world.tif";
     map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
 
-    LineString* line = new LineString();
-    line->push_back( osg::Vec3d( 0.0, 41.79, 0.0 ) );
-    line->push_back( osg::Vec3d( -90.0, 41.79, 0.0 ) );    
-
     // Next we add a feature layer. First configure a feature driver to 
     // load the vectors from a shapefile:
     OGRFeatureOptions featureOpt;
-    featureOpt.geometry() = line;
-    //featureOpt.url() = "../data/usa.shp";
+    if ( !useMem )
+    {
+        featureOpt.url() = "../data/usa.shp";
+    }
+    else
+    {
+        Ring* line = new Ring();
+        line->push_back( osg::Vec3d(-60, 20, 0) );
+        line->push_back( osg::Vec3d(-120, 20, 0) );
+        line->push_back( osg::Vec3d(-120, 60, 0) );
+        line->push_back( osg::Vec3d(-60, 60, 0) );
+        featureOpt.geometry() = line;
+    }
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -79,7 +87,7 @@ int main(int argc, char** argv)
 
     LineSymbol* ls = new LineSymbol;
     ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
-    ls->stroke()->width() = 1.0f;
+    ls->stroke()->width() = 3.0f;
     style->addSymbol(ls);
 
     // That's it, the map is ready; now create a MapNode to render the Map:

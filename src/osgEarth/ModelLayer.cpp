@@ -194,6 +194,12 @@ ModelLayer::setLightingEnabled( bool value )
 }
 
 bool
+ModelLayer::isLightingEnabled() const
+{
+    return *_runtimeOptions.lightingEnabled();
+}
+
+bool
 ModelLayer::getOverlay() const
 {
     return *_runtimeOptions.overlay();

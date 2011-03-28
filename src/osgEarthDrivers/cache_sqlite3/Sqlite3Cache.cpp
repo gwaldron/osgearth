@@ -66,7 +66,7 @@ static
 sqlite3* openDatabase( const std::string& path, bool serialized )
 {
     //Try to create the path if it doesn't exist
-    std::string dirPath = osgDB::getFilePath(path);
+    std::string dirPath = osgDB::getFilePath(path);    
 
     //If the path doesn't currently exist or we can't create the path, don't cache the file
     if (!osgDB::fileExists(dirPath) && !osgDB::makeDirectory(dirPath))
@@ -1011,7 +1011,15 @@ class Sqlite3Cache : public AsyncCache
 public:
     Sqlite3Cache( const CacheOptions& options ) 
       : AsyncCache(options), _options(options),  _db(0L)
-    {
+    {                
+        if ( _options.path().get().empty() || options.getReferenceURI().empty() )
+            _databasePath = _options.path().get();
+        else
+        {
+           _databasePath = osgEarth::getFullPath( options.getReferenceURI(), _options.path().get() );
+        }
+
+        
         setName( "sqlite3" );
 
         _nbRequest = 0;
@@ -1036,8 +1044,8 @@ public:
         _L2cache->setMaxNumTilesInCache( 64 );
         OE_INFO << LC << "Using L2 memory cache" << std::endl;
 #endif
-
-        _db = openDatabase( _options.path().value(), _options.serialized().value() );
+        
+        _db = openDatabase( _databasePath, _options.serialized().value() );
 
         if ( _db )
         {
@@ -1570,7 +1578,7 @@ private:
         std::map<Thread*,sqlite3*>::const_iterator k = _dbPerThread.find(thread);
         if ( k == _dbPerThread.end() )
         {
-            db = openDatabase( _options.path().value(), _options.serialized().value() );
+            db = openDatabase( _databasePath, _options.serialized().value() );
             if ( db )
             {
                 _dbPerThread[thread] = db;
@@ -1662,6 +1670,7 @@ private:
     int _nbRequest;
 
     std::vector<std::string> _layersList;
+    std::string _databasePath;
 };
 
 

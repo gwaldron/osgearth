@@ -43,21 +43,28 @@ namespace osgEarth { namespace Util
         void attach( osg::View* view, int lightNum =0 );
 
         /** Sets the sun's position as a unit vector. */
-        void setSunPosition( const osg::Vec3& pos );
+        void setSunPosition( const osg::Vec3& pos, osg::View* view =0L );
 
         /** Sets the sun's position as a latitude and longitude. */         
-        void setSunPosition( double latitudeRad, double longitudeRad );
+        void setSunPosition( double lat_degrees, double lon_degrees, osg::View* view =0L );
         
         /** Sets the sun's position based on a julian date. */
-        void setDateTime( int year, int month, int date, double hoursUTC );
+        void setDateTime( int year, int month, int date, double hoursUTC, osg::View* view =0L );
 
         /** The minimum brightness for non-sunlit areas. */
-        void setAmbientBrigtness( float value );
-        float getAmbientBrightness() const { return _ambientBrightness; }
+        void setAmbientBrightness( float value, osg::View* view =0L );
+        float getAmbientBrightness( osg::View* view =0L ) const;
 
         /** Whether the stars are visible */
-        void setStarsVisible( bool value ) { _starsXform->setNodeMask(value? ~0 : 0); }
-        bool getStarsVisible() const { return _starsXform->getNodeMask() != 0; }
+        void setStarsVisible( bool value, osg::View* view =0L );
+        bool getStarsVisible( osg::View* view =0L ) const;
+
+    public:
+        //override
+        virtual void traverse( osg::NodeVisitor& nv );
+
+        //override
+        virtual osg::BoundingSphere computeBound() const;
 
     private:
         struct StarData
@@ -71,13 +78,27 @@ namespace osgEarth { namespace Util
             StarData( std::stringstream &ss );
         };
 
+        struct PerViewData
+        {
+            osg::Vec3f                         _lightPos;
+            osg::ref_ptr<osg::Light>           _light;
+            osg::ref_ptr<osg::Uniform>         _lightPosUniform;
+            osg::Matrixd                       _sunMatrix;            
+            osg::Matrixd                       _starsMatrix;
+            bool                               _starsVisible;
+
+            // only available in per-view structures..not default
+            osg::ref_ptr<osg::Group>           _cullContainer;
+            osg::ref_ptr<osg::MatrixTransform> _sunXform;
+            osg::ref_ptr<osg::MatrixTransform> _starsXform;
+        };
+
+        PerViewData _defaultPerViewData;
+        typedef std::map<osg::View*, PerViewData> PerViewDataMap;
+        PerViewDataMap _perViewData;
+
         float _innerRadius, _outerRadius, _sunDistance, _starRadius;
-        osg::Vec3f _lightPos;
-        float _ambientBrightness;
-        osg::ref_ptr<osg::Light> _light;
-        osg::ref_ptr<osg::Uniform> _lightPosUniform;
-        osg::ref_ptr<osg::MatrixTransform> _sunXform;
-        osg::ref_ptr<osg::MatrixTransform> _starsXform;
+        osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere;
         osg::ref_ptr<osg::Uniform> _starAlpha;
         osg::ref_ptr<osg::Uniform> _starPointSize;
 
@@ -90,6 +111,9 @@ namespace osgEarth { namespace Util
         osg::Geode* buildStarGeometry(const std::vector<StarData>& stars);
         void getDefaultStars(std::vector<StarData>& out_stars);
         bool parseStarFile(const std::string& starFile, std::vector<StarData>& out_stars);
+
+        void setAmbientBrightness( PerViewData& data, float value );
+        void setSunPosition( PerViewData& data, const osg::Vec3& pos );
     };
 
 } } // namespace osgEarth::Util

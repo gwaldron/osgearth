@@ -71,6 +71,14 @@ namespace osgEarth
         optional<int>& maxLevel() { return _maxLevel; }
         const optional<int>& maxLevel() const { return _maxLevel; }
 
+        /**
+         * The maximum level that data should be queried for this layer.
+         */
+        optional<unsigned int>& maxDataLevel() { return _maxDataLevel; }
+        const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel; }
+
+
+
 		/**
 		 * Whether to render this layer with the map.
 		 */        
@@ -152,6 +160,7 @@ namespace osgEarth
 		optional<unsigned int> _reprojectedTileSize;
         optional<double> _edgeBufferRatio;
         optional<std::string> _cacheId;
+        optional<unsigned int> _maxDataLevel;
     };
 
     /**

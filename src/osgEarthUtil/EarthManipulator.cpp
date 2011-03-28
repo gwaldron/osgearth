@@ -1216,35 +1216,41 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             break;       
         
         case osgGA::GUIEventAdapter::RELEASE:
-            // bail out of continuous mode if necessary:
-            _continuous = false;
 
-            // check for a mouse-throw continuation:
-            if ( _settings->getThrowingEnabled() && isMouseMoving() )
+            if ( _continuous )
             {
-                action = _last_action;
-                if( handleMouseAction( action, aa.asView() ) )
-                {
-                    aa.requestRedraw();
-                    aa.requestContinuousUpdate( true );
-                    _thrown = true;
-                }
-            }
-            else if ( isMouseClick( &ea ) )
-            {
-                addMouseEvent( ea );
-                if ( _mouse_down_event )
-                {
-                    action = _settings->getAction( EVENT_MOUSE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-                    if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ))
-                        aa.requestRedraw();                
-                }
-                resetMouse( aa );
+                // bail out of continuous mode if necessary:
+                _continuous = false;
             }
             else
             {
-                resetMouse( aa );
-                addMouseEvent( ea );
+                // check for a mouse-throw continuation:
+                if ( _settings->getThrowingEnabled() && isMouseMoving() )
+                {
+                    action = _last_action;
+                    if( handleMouseAction( action, aa.asView() ) )
+                    {
+                        aa.requestRedraw();
+                        aa.requestContinuousUpdate( true );
+                        _thrown = true;
+                    }
+                }
+                else if ( isMouseClick( &ea ) )
+                {
+                    addMouseEvent( ea );
+                    if ( _mouse_down_event )
+                    {
+                        action = _settings->getAction( EVENT_MOUSE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+                        if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ))
+                            aa.requestRedraw();                
+                    }
+                    resetMouse( aa );
+                }
+                else
+                {
+                    resetMouse( aa );
+                    addMouseEvent( ea );
+                }
             }
             handled = true;
             break;
@@ -1269,14 +1275,16 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             break;
 
         case osgGA::GUIEventAdapter::DRAG:
-            action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
-            addMouseEvent( ea );
-            if ( handleMouseAction( action, aa.asView() ) )
-                aa.requestRedraw();
-            aa.requestContinuousUpdate(false);
-            _continuous = action.getBoolOption(OPTION_CONTINUOUS, false); //._continuous;
-            _thrown = false;
-            handled = true;
+            {
+                action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
+                addMouseEvent( ea );
+                _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
+                if ( handleMouseAction( action, aa.asView() ) )
+                    aa.requestRedraw();
+                aa.requestContinuousUpdate(false);
+                _thrown = false;
+                handled = true;
+            }
             break;
 
         case osgGA::GUIEventAdapter::KEYDOWN:
@@ -1787,7 +1795,7 @@ EarthManipulator::rotate( double dx, double dy )
 void
 EarthManipulator::zoom( double dx, double dy )
 {
-    double fd = _distance;
+    double fd = 1000;
     double scale = 1.0f + dy;
 
     if ( fd * scale > _settings->getMinDistance() )

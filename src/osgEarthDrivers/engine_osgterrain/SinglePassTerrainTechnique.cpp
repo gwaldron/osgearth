@@ -883,7 +883,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly = maskSkirtPoly;
 #endif
 
-        if (outPoly.valid())
+        if (outPoly.valid() && outPoly->size() > 0)
         {
           osg::Vec3Array* outVerts = outPoly->toVec3Array();
 
@@ -942,9 +942,9 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 {
                   double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
                   double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
-                  double zmag = osg::maximum(p3.z(), p1.z()) - osg::minimum(p3.z(), p1.z());
+                  double zmag = p3.z() - p1.z();
 
-                  (*it).z() = (l1 / lt) * zmag + osg::minimum(p3.z(), p1.z());
+                  (*it).z() = (l1 / lt) * zmag + p1.z();
 
                   break;
                 }
@@ -952,6 +952,11 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
             }
           }
 #endif
+        }
+        else
+        {
+          //mask_skirt->setVertexArray(maskSkirtPoly);
+          //mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, 0, maskSkirtPoly->size()));
         }
       }
     }

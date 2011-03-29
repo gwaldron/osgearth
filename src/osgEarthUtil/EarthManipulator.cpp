@@ -1782,12 +1782,12 @@ EarthManipulator::rotate( double dx, double dy )
     double minp = osg::DegreesToRadians( osg::clampAbove( _settings->getMinPitch(), -89.9 ) );
     double maxp = osg::DegreesToRadians( _settings->getMaxPitch() );
 
-    OE_NOTICE << LC 
-        << "LocalPitch=" << osg::RadiansToDegrees(_local_pitch)
-        << ", dy=" << osg::RadiansToDegrees(dy)
-        << ", dy+lp=" << osg::RadiansToDegrees(_local_pitch+dy)
-        << ", limits=" << osg::RadiansToDegrees(minp) << "," << osg::RadiansToDegrees(maxp)
-        << std::endl;
+    //OE_NOTICE << LC 
+    //    << "LocalPitch=" << osg::RadiansToDegrees(_local_pitch)
+    //    << ", dy=" << osg::RadiansToDegrees(dy)
+    //    << ", dy+lp=" << osg::RadiansToDegrees(_local_pitch+dy)
+    //    << ", limits=" << osg::RadiansToDegrees(minp) << "," << osg::RadiansToDegrees(maxp)
+    //    << std::endl;
 
     // clamp pitch range:
     if ( dy + _local_pitch > maxp || dy + _local_pitch < minp )

@@ -326,6 +326,9 @@ SinglePassTerrainTechnique::applyTileUpdates()
         }
 
         // process any pending LIVE per-layer updates:
+        osg::StateSet* parentStateSet = 0;
+        if (! _pendingImageLayerUpdates.empty())
+            parentStateSet = getParentStateSet();
         while( _pendingImageLayerUpdates.size() > 0 )
         {
             const ImageLayerUpdate& update = _pendingImageLayerUpdates.front();
@@ -334,7 +337,8 @@ SinglePassTerrainTechnique::applyTileUpdates()
                 getFrontGeode()->getStateSet(),
                 update._layerUID,
                 update._image,
-                _tileExtent );
+                _tileKey,
+                parentStateSet);
 
             _pendingImageLayerUpdates.pop();
             applied = true;
@@ -350,21 +354,23 @@ SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const CustomT
     CustomColorLayer layer;
     if ( tilef.getCustomColorLayer( layerUID, layer ) )
     {
-        GeoImage geoImage = createGeoImage( layer );
-        if ( geoImage.valid() )
+        GeoImage geoImage, secondaryImage;
+
+        if ( createGeoImage( layer, geoImage ) )
         {
             ImageLayerUpdate update;
             update._image = _texCompositor->prepareImage( geoImage, _tileExtent );
             update._layerUID = layerUID;
-
             if ( update._image.valid() )
                 _pendingImageLayerUpdates.push( update );
         }
+
     }
 }
 
-GeoImage
-SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer ) const
+bool
+SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer,
+                                            GeoImage& image) const
 {
     osg::ref_ptr<const GeoLocator> layerLocator = dynamic_cast<const GeoLocator*>( colorLayer.getLocator() );
     if ( layerLocator.valid() )
@@ -373,9 +379,34 @@ SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer )
             layerLocator = layerLocator->getGeographicFromGeocentric();
 
         const GeoExtent& imageExtent = layerLocator->getDataExtent();
-        return GeoImage( colorLayer.getImage(), imageExtent ); //const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
+        image = GeoImage( colorLayer.getImage(), imageExtent ); //const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
+        return true;
     }
-    return GeoImage::INVALID;
+    return false;
+}
+
+osg::StateSet* SinglePassTerrainTechnique::getParentStateSet() const
+{
+    osg::StateSet* parentStateSet = 0;
+    if (_terrainTile->getTerrain())
+    {
+        TileKey parentKey = _tileKey.createParentKey();
+        CustomTile* parentTile
+            = dynamic_cast<CustomTile*>(_terrainTile->getTerrain()->getTile(parentKey.getTileId()));
+        if (parentTile)
+        {
+            SinglePassTerrainTechnique* parentTechnique
+                = dynamic_cast<SinglePassTerrainTechnique*>(parentTile->getTerrainTechnique());
+            if (parentTechnique)
+            {
+                if (parentTechnique->_backGeode.valid())
+                    parentStateSet = parentTechnique->_backGeode->getStateSet();
+                else
+                    parentStateSet = parentTechnique->getFrontGeode()->getStateSet();
+            }
+        }
+    }
+    return parentStateSet;
 }
 
 osg::StateSet*
@@ -392,18 +423,20 @@ SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
 
             _tileExtent = tileLocator->getDataExtent();
         }
+        _tileKey = tilef._tileKey;
     }
 
     osg::StateSet* stateSet = new osg::StateSet();
+    osg::StateSet* parentStateSet = getParentStateSet();
 
     for( ColorLayersByUID::const_iterator i = tilef._colorLayers.begin(); i != tilef._colorLayers.end(); ++i )
     {
         const CustomColorLayer& colorLayer = i->second;
-        GeoImage image = createGeoImage( colorLayer );
-        if ( image.valid() )
+        GeoImage image;
+        if ( createGeoImage( colorLayer, image ) )
         {
             image = _texCompositor->prepareImage( image, _tileExtent );
-            _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileExtent );
+            _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileKey, parentStateSet );
         }
     }
 

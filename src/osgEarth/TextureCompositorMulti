@@ -43,8 +43,8 @@ namespace osgEarth
 
         void applyLayerUpdate( 
             osg::StateSet* stateSet, UID layerUID,
-            const GeoImage& preparedImage, const GeoExtent& tileExtent,
-            const TextureLayout& layout ) const;
+            const GeoImage& preparedImage, const TileKey& tileExtent,
+            const TextureLayout& layout, osg::StateSet* parentStateSet) const;
 
         osg::Shader* createSamplerFunction(
             UID layerUID, 

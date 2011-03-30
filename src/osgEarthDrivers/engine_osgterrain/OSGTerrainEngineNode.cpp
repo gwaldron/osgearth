@@ -515,7 +515,7 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             tile->setCustomColorLayer( CustomColorLayer(
                 layerAdded,
                 geoImage.getImage(),
-                img_locator.get(), imageLOD ) );
+                img_locator.get(), imageLOD,  tile->getKey() ) );
 
             // if necessary, tell the tile to queue up a new imagery request (since we
             // just installed a placeholder)

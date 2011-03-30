@@ -19,9 +19,11 @@
 #include "SerialKeyNodeFactory"
 #include "DynamicLODScaleCallback"
 #include "FileLocationCallback"
+#include "LODFactorCallback"
 #include <osgEarth/Registry>
 #include <osg/PagedLOD>
 #include <osg/CullStack>
+#include <osg/Uniform>
 
 using namespace osgEarth;
 using namespace OpenThreads;
@@ -63,6 +65,28 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, osg::Group
         plod->setCenter( bs.center() );
         plod->addChild( tile, minRange, maxRange );
 
+        if (_options.lodBlending() == true)
+        {
+            // Make the LOD transition distance, and a measure of how
+            // close the tile is to an LOD change, to shaders.
+            plod->addCullCallback(new Drivers::LODFactorCallback);
+            // What child are we? This is used to access the textures
+            // of the parent tile.
+            unsigned tileX, tileY;
+            tile->getKey().getTileXY(tileX, tileY);
+#if 0
+            float tileQuadrant = tileX % 2 + tileY % 2 * 2.0f;
+            osg::Uniform* uTileQuadrant
+                = new osg::Uniform("osgearth_tileQuadrant", tileQuadrant);
+#endif
+            // A vector of scale and offset factors for a secondary
+            // (LOD blending) texture
+            osg::Vec4 texCoordFactors(.5f, .5f,
+                                      tileX % 2 * .5f, (1 - tileY % 2) * .5f);
+            osg::Uniform* uTexCoordFactor = new osg::Uniform("osgearth_texCoordFactors", texCoordFactors);
+
+            plod->getOrCreateStateSet()->addUniform(uTexCoordFactor);
+        }
         // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:
         if ( _options.lodFallOff().isSet() && *_options.lodFallOff() > 0.0 )
             plod->addCullCallback( new DynamicLODScaleCallback(*_options.lodFallOff()) );

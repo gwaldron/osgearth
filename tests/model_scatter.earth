@@ -62,8 +62,8 @@ is randomized, but it is randomized exactly the same way each time.
     </elevation>
     
     <external>
-        <viewpoint name="DC1" heading="-27" lat="38.89" long="-77" pitch="-26" range="21000"/>
-        <viewpoint name="DC2" heading="-13.48" lat="38.911" long="-77.051" pitch="-10.1" range="2711"/>
+        <viewpoint name="DC wide angle" heading="-27" lat="38.89" long="-77" pitch="-26" range="21000"/>
+        <viewpoint name="DC close up"   heading="-13.48" lat="38.911" long="-77.051" pitch="-10.1" range="2711"/>
     </external>
   
 </map>

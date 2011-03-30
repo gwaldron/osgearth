@@ -30,7 +30,8 @@ namespace osgEarth { namespace Features
 
     /**
      * Feature filter that will take source feature and scatter points within
-     * that feature.
+     * that feature. It will either scatter points randomly (the default), or
+     * at fixed intervals, based on the density.
      */
     class OSGEARTHFEATURES_EXPORT ScatterFilter : public FeatureFilter
     {
@@ -45,6 +46,10 @@ namespace osgEarth { namespace Features
         void setDensity( float value ) { _density = value; }
         float getDensity() const { return _density; }
 
+        /** Whether to randomly scatter (as opposed to a fixed interval scatter) */
+        void setRandom( bool value ) { _random = value; }
+        bool getRandom() const { return _random; }
+
         /** Seed value for the random number generator */
         void setRandomSeed( unsigned value ) { _randomSeed = value; }
         unsigned getRandomSeed() const { return _randomSeed; }
@@ -55,6 +60,7 @@ namespace osgEarth { namespace Features
 
     private:
         float    _density;
+        bool     _random;
         unsigned _randomSeed;
     };
 

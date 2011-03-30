@@ -57,13 +57,9 @@ namespace osgEarth { namespace Symbology
         optional<Clamping>& clamping() { return _clamping; }
         const optional<Clamping>& clamping() const { return _clamping; }
 
-        /** For PLACEMENT_SCATTER, the scatterind density in instances per sqkm */
+        /** For PLACEMENT_SCATTER/INTERVAL, the scattering density in instances per sqkm */
         optional<float>& density() { return _density; }
         const optional<float>& density() const { return _density; }
-
-        /** For PLACEMENT_INTERVAL, the approximate placement interval along segments */
-        optional<float>& interval() { return _interval; }
-        const optional<float>& interval() const { return _interval; }
 
         /** Model instance scale factor */
         optional<osg::Vec3f>& scale() { return _scale; }
@@ -82,7 +78,6 @@ namespace osgEarth { namespace Symbology
         optional<Placement>   _placement;
         optional<Clamping>    _clamping;
         optional<float>       _density;
-        optional<float>       _interval;
         optional<osg::Vec3f>  _scale;
         optional<unsigned>    _randomSeed;
     };

@@ -192,11 +192,6 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             else if (p->second == "interval") model->placement() = ModelSymbol::PLACEMENT_INTERVAL;
             else if (p->second == "scatter" ) model->placement() = ModelSymbol::PLACEMENT_SCATTER;
         }
-        else if (p->first == "model-interval")
-        {
-            if (!model) model = new ModelSymbol;
-            model->interval() = as<float>(p->second, 1.0f);
-        }
         else if (p->first == "model-density")
         {
             if (!model) model = new ModelSymbol;

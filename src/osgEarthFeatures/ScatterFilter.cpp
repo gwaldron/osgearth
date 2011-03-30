@@ -29,6 +29,7 @@ using namespace osgEarth::Symbology;
 
 ScatterFilter::ScatterFilter() :
 _density( 10.0f ),
+_random( true ),
 _randomSeed( 0 )
 {
     //NOP
@@ -92,18 +93,44 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
         {
             PointSet* points = new PointSet();
 
-            for( unsigned j=0; j<numInstances; ++j )
+            if ( _random )
             {
-                double rx = ((double)::rand()) / (double)RAND_MAX;
-                double ry = ((double)::rand()) / (double)RAND_MAX;
+                // random scattering:
+                for( unsigned j=0; j<numInstances; ++j )
+                {
+                    double rx = ((double)::rand()) / (double)RAND_MAX;
+                    double ry = ((double)::rand()) / (double)RAND_MAX;
 
-                double x = bounds.xMin() + rx * bounds.width();
-                double y = bounds.yMin() + ry * bounds.height();
+                    double x = bounds.xMin() + rx * bounds.width();
+                    double y = bounds.yMin() + ry * bounds.height();
 
-                if ( ring->contains2D( x, y ) )
-                    points->push_back( osg::Vec3d( x, y, zMin ) );
-                else
-                    --j;
+                    if ( ring->contains2D( x, y ) )
+                        points->push_back( osg::Vec3d( x, y, zMin ) );
+                    else
+                        --j;      
+                }
+            }
+
+            else
+            {
+                // fixed interval scattering:
+                double numInst1D = sqrt((double)numInstances);
+                double ar = bounds.width() / bounds.height();
+                unsigned instancesX = (unsigned)( ar >= 1.0f ? numInst1D * ar : numInst1D / ar );
+                unsigned instancesY = (unsigned)( ar >= 1.0f ? numInst1D / ar : numInst1D * ar );
+                double intervalX = bounds.width() / (double)instancesX;
+                double intervalY =  bounds.height() / (double)instancesY;
+
+                for( unsigned y=0; y<instancesY; ++y )
+                {
+                    double cy = bounds.yMin() + intervalY*(double)y;
+                    for( unsigned x=0; x<instancesX; ++x )
+                    {
+                        double cx = bounds.xMin() + intervalX*(double)x;
+                        if ( ring->contains2D( cx, cy ) )
+                            points->push_back( osg::Vec3d(cx, cy, zMin) );
+                    }
+                }
             }
 
             if ( context.isGeocentric() )

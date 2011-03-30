@@ -85,10 +85,12 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     // model substitution
     if ( model )
     {
-        if ( model->placement() == ModelSymbol::PLACEMENT_SCATTER )
+        if ( model->placement() == ModelSymbol::PLACEMENT_SCATTER ||
+             model->placement() == ModelSymbol::PLACEMENT_INTERVAL )
         {
             ScatterFilter scatter;
             scatter.setDensity( *model->density() );
+            scatter.setRandom( model->placement() == ModelSymbol::PLACEMENT_SCATTER );
             scatter.setRandomSeed( *model->randomSeed() );
             cx = scatter.push( workingSet, cx );
         }

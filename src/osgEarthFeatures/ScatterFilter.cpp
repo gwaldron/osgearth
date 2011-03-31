@@ -51,26 +51,37 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
     {
         Feature* f = i->get();
         
-        // must contain an aereal geometry:
-        Ring* ring = dynamic_cast<Ring*>( f->getGeometry() );
-        if ( !ring )
+        Geometry* geom = f->getGeometry();
+        if ( !geom )
             continue;
 
         //TODO:
         // only works properly for geocentric data OR projected data in meters.
         // does not work for a "plate carre" projection -gw
 
+        // first, undo the localization frame if there is one.
+        if ( context.hasReferenceFrame() )
+        {
+            GeometryIterator gi( geom );
+            while( gi.hasMore() )
+                context.toWorld( gi.next() );
+        }
+
+        // convert to geodetic if necessary, and compute the approximate area in sq km
+        if ( context.isGeocentric() )
+        {
+            GeometryIterator gi( geom );
+            while( gi.hasMore() )
+                context.profile()->getSRS()->getGeographicSRS()->transformFromECEF( gi.next(), true );
+        }
+    
+        Ring* ring = dynamic_cast<Ring*>( geom );
+
         Bounds bounds;
         double areaSqKm = 0.0;
         
-        if ( context.hasReferenceFrame() )
-            for( Ring::iterator i = ring->begin(); i != ring->end(); ++i )
-                *i = context.toWorld( *i );
-
         if ( context.isGeocentric() )
         {
-            context.profile()->getSRS()->getGeographicSRS()->transformFromECEF( ring, true );
-
             bounds = ring->getBounds();
 
             double avglat = bounds.yMin() + 0.5*bounds.height();
@@ -133,14 +144,14 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
                 }
             }
 
+            // convert back to geocentric if necessary.
             if ( context.isGeocentric() )
             {
                 context.profile()->getSRS()->getGeographicSRS()->transformToECEF( points, true );
             }
 
-            if ( context.hasReferenceFrame() )
-                for( PointSet::iterator i = points->begin(); i != points->end(); ++i )
-                    *i = context.toLocal( *i );
+            // re-apply the localization frame.
+            context.toLocal( points );
 
             // replace the source geometry with the scattered points.
             f->setGeometry( points );

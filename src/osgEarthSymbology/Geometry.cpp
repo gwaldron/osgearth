@@ -455,6 +455,25 @@ Polygon::getTotalPointCount() const
     return total;
 }
 
+
+bool
+Polygon::contains2D( double x, double y ) const
+{
+    // first check the outer ring
+    if ( !Ring::contains2D(x, y) )
+        return false;
+
+    // then check each inner ring (holes). Point has to be inside the outer ring, 
+    // but NOT inside any of the holes
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+    {
+        if ( i->get()->contains2D(x, y) )
+            return false;
+    }
+
+    return true;
+}
+
 //----------------------------------------------------------------------------
 
 MultiGeometry::MultiGeometry( const MultiGeometry& rhs, const osg::CopyOp& op ) :

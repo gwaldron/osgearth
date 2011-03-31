@@ -42,17 +42,31 @@ _optimizerHints( rhs._optimizerHints )
 }
 
 void
-FilterContext::toLocal( osg::Vec3dArray* worldPoints ) const
+FilterContext::toLocal( Geometry* geom ) const
 {
     if ( hasReferenceFrame() )
-        for( osg::Vec3dArray::iterator i = worldPoints->begin(); i != worldPoints->end(); ++i )
-            *i = toLocal( *i );
+    {
+        GeometryIterator gi( geom );
+        while( gi.hasMore() )
+        {
+            Geometry* g = gi.next();
+            for( osg::Vec3dArray::iterator i = g->begin(); i != g->end(); ++i )
+                *i = *i * _referenceFrame;
+        }
+    }
 }
-        
+
 void
-FilterContext::toWorld( osg::Vec3dArray* localPoints ) const
+FilterContext::toWorld( Geometry* geom ) const
 {
     if ( hasReferenceFrame() )
-        for( osg::Vec3dArray::iterator i = localPoints->begin(); i != localPoints->end(); ++i )
-            *i = toWorld( *i );
+    {
+        GeometryIterator gi( geom );
+        while( gi.hasMore() )
+        {
+            Geometry* g = gi.next();
+            for( osg::Vec3dArray::iterator i = g->begin(); i != g->end(); ++i )
+                *i = *i * _inverseReferenceFrame;
+        }
+    }
 }

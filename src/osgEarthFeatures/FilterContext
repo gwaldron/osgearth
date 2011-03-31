@@ -30,6 +30,7 @@
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
     class Session;
 
     /**
@@ -73,9 +74,9 @@ namespace osgEarth { namespace Features
         osg::Vec3d toLocal( const osg::Vec3d& world ) const { return world * _referenceFrame; }
 
         /**
-         * Converts an array of points from world corods to local coords
+         * Converts a Geometry from world coords to local coords
          */
-        void toLocal( osg::Vec3dArray* worldPoints ) const;
+        void toLocal( Geometry* geom ) const;
 
         /**
          * Converts from local (reference frame) coordinates into world coordinates
@@ -83,9 +84,9 @@ namespace osgEarth { namespace Features
         osg::Vec3d toWorld( const osg::Vec3d& local ) const { return local * _inverseReferenceFrame; }
 
         /**
-         * Converts an array of points from local coords to world coords
+         * Converts a Geometry from local coords to world coords
          */
-        void toWorld( osg::Vec3dArray* localPoints ) const;
+        void toWorld( Geometry* geom ) const;
 
         /**
          * Multiplying by the reference frame takes a point from world coords into local coords.

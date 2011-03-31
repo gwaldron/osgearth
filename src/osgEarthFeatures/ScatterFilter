@@ -58,6 +58,9 @@ namespace osgEarth { namespace Features
         /** Processes a new feature list */
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
 
+    protected:
+        void polygonScatter(Geometry* geometry, const FilterContext& context, PointSet* output) const;
+
     private:
         float    _density;
         bool     _random;

@@ -35,6 +35,86 @@ _randomSeed( 0 )
     //NOP
 }
 
+void
+ScatterFilter::polygonScatter(Geometry*            geom,
+                              const FilterContext& context,
+                              PointSet*            output ) const
+{
+    Bounds bounds;
+    double areaSqKm = 0.0;
+
+    GeometryIterator iter( geom );
+    iter.traversePolygonHoles() = false;
+
+    while( iter.hasMore() )
+    {
+        Polygon* polygon = dynamic_cast<Polygon*>( iter.next() );
+        if ( !polygon )
+            continue;
+
+        if ( context.isGeocentric() )
+        {
+            bounds = polygon->getBounds();
+
+            double avglat = bounds.yMin() + 0.5*bounds.height();
+            double h = bounds.height() * 111.32;
+            double w = bounds.width() * 111.32 * sin( 1.57079633 + osg::DegreesToRadians(avglat) );
+
+            areaSqKm = w * h;
+        }
+
+        else if ( context.profile()->getSRS()->isProjected() )
+        {
+            bounds = polygon->getBounds();
+            areaSqKm = (0.001*bounds.width()) * (0.001*bounds.height());
+        }
+
+        double zMin = 0.0;
+        unsigned numInstances = areaSqKm * (double)osg::clampAbove( 0.1f, _density );
+        if ( numInstances == 0 )
+            continue;
+
+        if ( _random )
+        {
+            // random scattering:
+            for( unsigned j=0; j<numInstances; ++j )
+            {
+                double rx = ((double)::rand()) / (double)RAND_MAX;
+                double ry = ((double)::rand()) / (double)RAND_MAX;
+
+                double x = bounds.xMin() + rx * bounds.width();
+                double y = bounds.yMin() + ry * bounds.height();
+
+                if ( polygon->contains2D( x, y ) )
+                    output->push_back( osg::Vec3d( x, y, zMin ) );
+                else
+                    --j;
+            }
+        }
+
+        else
+        {
+            // regular interval scattering:
+            double numInst1D = sqrt((double)numInstances);
+            double ar = bounds.width() / bounds.height();
+            unsigned cols = (unsigned)( numInst1D * ar );
+            unsigned rows = (unsigned)( numInst1D / ar );
+            double colInterval = bounds.width() / (double)(cols-1);
+            double rowInterval = bounds.height() / (double)(rows-1);
+            double interval = 0.5*(colInterval+rowInterval);
+
+            for( double cy=bounds.yMin(); cy<=bounds.yMax(); cy += interval )
+            {
+                for( double cx = bounds.xMin(); cx <= bounds.xMax(); cx += interval )
+                {
+                    if ( polygon->contains2D( cx, cy ) )
+                        output->push_back( osg::Vec3d(cx, cy, zMin) );
+                }
+            }
+        }
+    }
+}
+
 FilterContext
 ScatterFilter::push(FeatureList& features, const FilterContext& context )
 {
@@ -60,12 +140,7 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
         // does not work for a "plate carre" projection -gw
 
         // first, undo the localization frame if there is one.
-        if ( context.hasReferenceFrame() )
-        {
-            GeometryIterator gi( geom );
-            while( gi.hasMore() )
-                context.toWorld( gi.next() );
-        }
+        context.toWorld( geom );
 
         // convert to geodetic if necessary, and compute the approximate area in sq km
         if ( context.isGeocentric() )
@@ -74,88 +149,39 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
             while( gi.hasMore() )
                 context.profile()->getSRS()->getGeographicSRS()->transformFromECEF( gi.next(), true );
         }
-    
-        Ring* ring = dynamic_cast<Ring*>( geom );
 
-        Bounds bounds;
-        double areaSqKm = 0.0;
-        
+        PointSet* points = new PointSet();
+
+        if ( geom->getComponentType() == Geometry::TYPE_POLYGON )
+        {
+            polygonScatter( geom, context, points );
+        }
+
+        // convert back to geocentric if necessary.
         if ( context.isGeocentric() )
+            context.profile()->getSRS()->getGeographicSRS()->transformToECEF( points, true );
+
+        // re-apply the localization frame.
+        context.toLocal( points );
+
+        // replace the source geometry with the scattered points.
+        f->setGeometry( points );
+
+        //TODO: remove (never happens)
+#if 0
+        else
         {
-            bounds = ring->getBounds();
-
-            double avglat = bounds.yMin() + 0.5*bounds.height();
-            double h = bounds.height() * 111.32;
-            double w = bounds.width() * 111.32 * sin( 1.57079633 + osg::DegreesToRadians(avglat) );
-
-            areaSqKm = w * h;
-        }
-
-        else if ( context.profile()->getSRS()->isProjected() )
-        {
-            bounds = ring->getBounds();
-            areaSqKm = (0.001*bounds.width()) * (0.001*bounds.height());
-        }
-
-        double zMin = 0.0;
-        unsigned numInstances = areaSqKm * (double)osg::clampAbove( 0.1f, _density );
-
-        if ( numInstances > 0 )
-        {
-            PointSet* points = new PointSet();
-
-            if ( _random )
-            {
-                // random scattering:
-                for( unsigned j=0; j<numInstances; ++j )
-                {
-                    double rx = ((double)::rand()) / (double)RAND_MAX;
-                    double ry = ((double)::rand()) / (double)RAND_MAX;
-
-                    double x = bounds.xMin() + rx * bounds.width();
-                    double y = bounds.yMin() + ry * bounds.height();
-
-                    if ( ring->contains2D( x, y ) )
-                        points->push_back( osg::Vec3d( x, y, zMin ) );
-                    else
-                        --j;      
-                }
-            }
-
-            else
-            {
-                // fixed interval scattering:
-                double numInst1D = sqrt((double)numInstances);
-                double ar = bounds.width() / bounds.height();
-                unsigned instancesX = (unsigned)( ar >= 1.0f ? numInst1D * ar : numInst1D / ar );
-                unsigned instancesY = (unsigned)( ar >= 1.0f ? numInst1D / ar : numInst1D * ar );
-                double intervalX = bounds.width() / (double)instancesX;
-                double intervalY =  bounds.height() / (double)instancesY;
-
-                for( unsigned y=0; y<instancesY; ++y )
-                {
-                    double cy = bounds.yMin() + intervalY*(double)y;
-                    for( unsigned x=0; x<instancesX; ++x )
-                    {
-                        double cx = bounds.xMin() + intervalX*(double)x;
-                        if ( ring->contains2D( cx, cy ) )
-                            points->push_back( osg::Vec3d(cx, cy, zMin) );
-                    }
-                }
-            }
-
-            // convert back to geocentric if necessary.
+            // back out the original conversions
             if ( context.isGeocentric() )
             {
-                context.profile()->getSRS()->getGeographicSRS()->transformToECEF( points, true );
+                GeometryIterator gi( geom );
+                while( gi.hasMore() )
+                    context.profile()->getSRS()->getGeographicSRS()->transformFromECEF( gi.next(), true );
             }
 
-            // re-apply the localization frame.
-            context.toLocal( points );
-
-            // replace the source geometry with the scattered points.
-            f->setGeometry( points );
+            context.toLocal( geom );
         }
+#endif
     }
 
     return context;

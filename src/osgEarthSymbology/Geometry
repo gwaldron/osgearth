@@ -194,7 +194,7 @@ namespace osgEarth { namespace Symbology
         Orientation getOrientation() const;
 
         // tests whether the point falls withing the ring
-        bool contains2D( double x, double y ) const;
+        virtual bool contains2D( double x, double y ) const;
 
         // gets the signed area of a part that is known to be open.
         virtual double getSignedArea2D() const;
@@ -229,6 +229,9 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
         virtual int getTotalPointCount() const;
+
+        // tests whether the point falls withing the polygon (but not its holes)
+        virtual bool contains2D( double x, double y ) const;
 
     public:
         RingCollection& getHoles() { return _holes; }

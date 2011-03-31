@@ -330,6 +330,7 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
         << "{ \n"
         << "    gl_Position = warpVertex( gl_ModelViewProjectionMatrix * gl_Vertex ); \n"
         << "    gl_FrontColor = gl_Color; \n"
+        << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
         << "} \n";
 
     std::string vertSource = buf.str();
@@ -401,7 +402,7 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
     if ( !_visualizeWarp )
         buf  << "    texCoord = warpTexCoord( texCoord ); \n";
 
-    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"
+    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"        
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 

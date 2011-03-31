@@ -20,6 +20,7 @@
 #include <osgEarthSymbology/LineFunctor>
 #include <osgEarth/GeoMath>
 #include <osg/TriangleFunctor>
+#include <osg/TriangleIndexFunctor>
 //#include <osgUtil/MeshOptimizers>
 #include <climits>
 #include <queue>
@@ -109,33 +110,56 @@ namespace
     struct Triangle
     {
         Triangle() { }
-        Triangle(GLuint i0, GLuint i1, GLuint i2) : _i0(i0), _i1(i1), _i2(i2) { }
-        GLuint _i0, _i1, _i2;
+        Triangle(GLuint i0, GLuint i1, GLuint i2) : 
+        _i0(i0), _i1(i1), _i2(i2){}                 
+        GLuint _i0, _i1, _i2;        
     };
 
     typedef std::queue<Triangle> TriangleQueue;
     typedef std::vector<Triangle> TriangleVector;
+    
 
     struct TriangleData
     {
-        typedef std::map<osg::Vec3,GLuint> VertMap;
+        typedef std::map<osg::Vec3,GLuint> VertMap;        
         VertMap _vertMap;
-        osg::Vec3Array* _verts;
+        osg::Vec3Array* _sourceVerts;
+        osg::Vec2Array* _sourceTexCoords;
+        osg::ref_ptr<osg::Vec3Array> _verts;        
+        osg::ref_ptr<osg::Vec2Array> _texcoords;
         TriangleQueue _tris;
         
         TriangleData()
+        {            
+            _verts = new osg::Vec3Array();             
+            _sourceVerts = 0;
+            _sourceTexCoords = 0;
+        }       
+
+        void setSourceVerts(osg::Vec3Array* sourceVerts )
         {
-            _verts = new osg::Vec3Array();
+            _sourceVerts = sourceVerts;
         }
 
-        GLuint record( const osg::Vec3& v )
+        void setSourceTexCoords(osg::Vec2Array* sourceTexCoords)
+        {
+            _sourceTexCoords = sourceTexCoords;
+            _texcoords = new osg::Vec2Array();
+        }
+
+        GLuint record( const osg::Vec3& v, const osg::Vec2f& t )
         {
             VertMap::iterator i = _vertMap.find(v);
             if ( i == _vertMap.end() )
             {
                 GLuint index = _verts->size();
-                _verts->push_back(v);
+                _verts->push_back(v);                
                 _vertMap[v] = index;
+                //Only push back the texture coordinate if it's valid
+                if (_texcoords)
+                {
+                  _texcoords->push_back( t );
+                }
                 return index;
             }
             else
@@ -143,10 +167,22 @@ namespace
                 return i->second;
             }
         }
-        
-        void operator()( const osg::Vec3& v0, const osg::Vec3& v1, const osg::Vec3& v2, bool temp )
+       
+
+        void operator() (unsigned int p1, unsigned int p2, unsigned int p3)
         {
-            _tris.push( Triangle(record(v0), record(v1), record(v2)) );
+            const osg::Vec3 v0 = (*_sourceVerts)[p1];
+            const osg::Vec3 v1 = (*_sourceVerts)[p2];
+            const osg::Vec3 v2 = (*_sourceVerts)[p3];            
+            osg::Vec2 t0, t1, t2;
+            if (_sourceTexCoords)
+            {
+                t0 = (*_sourceTexCoords)[p1];
+                t1 = (*_sourceTexCoords)[p2];
+                t2 = (*_sourceTexCoords)[p3];
+            }
+            _tris.push( Triangle(record(v0, t0), record(v1, t1), record(v2, t2)) );            
+            //OE_NOTICE << "Incoming verts " << p1 << ", " << p2 << ", " << p3 << std::endl;
         }
     };      
 
@@ -383,11 +419,15 @@ namespace
         const osg::Matrixd& L2W, // local=>world xform
         unsigned int maxElementsPerEBO )
     {
+        
         // collect all the triangled in the geometry.
-        osg::TriangleFunctor<TriangleData> data;
+        osg::TriangleIndexFunctor<TriangleData> data;;
+        data.setSourceVerts(dynamic_cast<osg::Vec3Array*>(geom.getVertexArray()));
+        data.setSourceTexCoords(dynamic_cast<osg::Vec2Array*>(geom.getTexCoordArray(0)));
         geom.accept( data );
 
-        int numTrisIn = data._tris.size();
+        
+        int numTrisIn = data._tris.size();        
 
         TriangleVector done;
         done.reserve(2.0 * data._tris.size());
@@ -405,6 +445,10 @@ namespace
             osg::Vec3d v1_w = (*data._verts)[tri._i1] * L2W;
             osg::Vec3d v2_w = (*data._verts)[tri._i2] * L2W;
 
+            osg::Vec2  t0 = (*data._texcoords)[tri._i0];
+            osg::Vec2  t1 = (*data._texcoords)[tri._i1];
+            osg::Vec2  t2 = (*data._texcoords)[tri._i2];
+
             double g0 = angleBetween(v0_w, v1_w);
             double g1 = angleBetween(v1_w, v2_w);
             double g2 = angleBetween(v2_w, v0_w);
@@ -421,6 +465,7 @@ namespace
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
+                        data._texcoords->push_back( (t0 + t1) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -441,6 +486,7 @@ namespace
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v1_w, v2_w) * W2L );
+                        data._texcoords->push_back( (t1 + t2) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -461,6 +507,7 @@ namespace
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v2_w, v0_w) * W2L );
+                        data._texcoords->push_back( (t2 + t0) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -488,6 +535,8 @@ namespace
 
             // set the new VBO.
             geom.setVertexArray( data._verts );
+
+            geom.setTexCoordArray(0, data._texcoords );
 
             if ( data._verts->size() < 256 )
                 populateTriangles<osg::DrawElementsUByte,GLubyte>( geom, done, maxElementsPerEBO );

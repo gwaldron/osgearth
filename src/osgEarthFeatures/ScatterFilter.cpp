@@ -36,9 +36,9 @@ _randomSeed( 0 )
 }
 
 void
-ScatterFilter::polygonScatter(Geometry*            geom,
-                              const FilterContext& context,
-                              PointSet*            output ) const
+ScatterFilter::polyScatter(Geometry*            geom,
+                           const FilterContext& context,
+                           PointSet*            output ) const
 {
     Bounds bounds;
     double areaSqKm = 0.0;
@@ -115,6 +115,15 @@ ScatterFilter::polygonScatter(Geometry*            geom,
     }
 }
 
+void
+ScatterFilter::lineScatter(Geometry*            geom,
+                           const FilterContext& context,
+                           PointSet*            output ) const
+{
+    //TODO.
+    OE_WARN << LC << "LINE Scattering NOT YET IMPLEMENTED ***" << std::endl;
+}
+
 FilterContext
 ScatterFilter::push(FeatureList& features, const FilterContext& context )
 {
@@ -154,7 +163,7 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
 
         if ( geom->getComponentType() == Geometry::TYPE_POLYGON )
         {
-            polygonScatter( geom, context, points );
+            polyScatter( geom, context, points );
         }
 
         // convert back to geocentric if necessary.
@@ -166,22 +175,6 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
 
         // replace the source geometry with the scattered points.
         f->setGeometry( points );
-
-        //TODO: remove (never happens)
-#if 0
-        else
-        {
-            // back out the original conversions
-            if ( context.isGeocentric() )
-            {
-                GeometryIterator gi( geom );
-                while( gi.hasMore() )
-                    context.profile()->getSRS()->getGeographicSRS()->transformFromECEF( gi.next(), true );
-            }
-
-            context.toLocal( geom );
-        }
-#endif
     }
 
     return context;

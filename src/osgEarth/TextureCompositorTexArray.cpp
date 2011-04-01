@@ -94,21 +94,25 @@ s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, f
             float invBlendTime = 1.0f/blendTime;
 
             buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
-                << "            age = min(age, 1.0);\n"
+                << "            age = clamp(age, 0.0, 1.0);\n"
                 << "            float pu, pv;\n"
                 << "            pu = region["<< r+4 <<"] + (region["<< r+6 <<"] * gl_TexCoord[0].s); \n"
                 << "            pv = region["<< r+5 <<"] + (region["<< r+7 <<"] * gl_TexCoord[0].t); \n"
-
 
                 << "            vec3 texCoord = vec3(pu, pv, " << slot <<");\n;\n"
                 << "            vec4 texel0 = texture2DArray( tex0, vec3(u, v, " << slot << ") );\n"
                 << "            vec4 texel1 = texture2DArray( tex1, vec3(pu, pv, " << slot << ") );\n"
                 << "            float mixval = age * osgearth_LODRangeFactor;\n"
-#if 1
-                << "            texel = mix(texel1, texel0, mixval);\n";
-#else
-            << " texel = mix(vec4(0.0,0.0,1.0,1.0), vec4(1.0,0.0,0.0,1.0),mixval);\n";
-#endif
+                
+                // pre-multiply alpha before mixing:
+                << "            texel0.rgb *= texel0.a; \n"
+                << "            texel1.rgb *= texel1.a; \n"
+                << "            texel = mix(texel1, texel0, mixval); \n"
+
+                // revert to non-pre-multiplies alpha (assumes openGL state uses non-pre-mult alpha)
+                << "            if (texel.a > 0.0) { \n"
+                << "                texel.rgb /= texel.a; \n"
+                << "            } \n";
         }
         else
         {

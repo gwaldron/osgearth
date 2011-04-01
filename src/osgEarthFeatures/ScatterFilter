@@ -59,8 +59,17 @@ namespace osgEarth { namespace Features
         virtual FilterContext push( FeatureList& input, const FilterContext& context );
 
     protected:
-        void polyScatter(Geometry* geometry, const FilterContext& context, PointSet* output) const;
-        void lineScatter(Geometry* geometry, const FilterContext& context, PointSet* output) const;
+        void polyScatter(
+            const Geometry*         input,
+            const SpatialReference* inputSRS,
+            const FilterContext&    context, 
+            PointSet*               output) const;
+
+        void lineScatter(
+            const Geometry*         input,
+            const SpatialReference* inputSRS,
+            const FilterContext&    context, 
+            PointSet*               output) const;
 
     private:
         float    _density;

@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ScatterFilter>
+#include <osgEarth/GeoMath>
 #include <stdlib.h>
 
 #define LC "[ScatterFilter] "
@@ -24,6 +25,9 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
+
+//------------------------------------------------------------------------
+
 
 //------------------------------------------------------------------------
 
@@ -36,23 +40,24 @@ _randomSeed( 0 )
 }
 
 void
-ScatterFilter::polyScatter(Geometry*            geom,
-                           const FilterContext& context,
-                           PointSet*            output ) const
+ScatterFilter::polyScatter(const Geometry*         input,
+                           const SpatialReference* inputSRS,
+                           const FilterContext&    context,
+                           PointSet*               output ) const
 {
     Bounds bounds;
     double areaSqKm = 0.0;
 
-    GeometryIterator iter( geom );
+    ConstGeometryIterator iter( input );
     iter.traversePolygonHoles() = false;
 
     while( iter.hasMore() )
     {
-        Polygon* polygon = dynamic_cast<Polygon*>( iter.next() );
+        const Polygon* polygon = dynamic_cast<const Polygon*>( iter.next() );
         if ( !polygon )
             continue;
 
-        if ( context.isGeocentric() )
+        if ( context.isGeocentric() || context.profile()->getSRS()->isGeographic() )
         {
             bounds = polygon->getBounds();
 
@@ -116,12 +121,64 @@ ScatterFilter::polyScatter(Geometry*            geom,
 }
 
 void
-ScatterFilter::lineScatter(Geometry*            geom,
-                           const FilterContext& context,
-                           PointSet*            output ) const
+ScatterFilter::lineScatter(const Geometry*         input,
+                           const SpatialReference* inputSRS,
+                           const FilterContext&    context,
+                           PointSet*               output ) const
 {
-    //TODO.
-    OE_WARN << LC << "LINE Scattering NOT YET IMPLEMENTED ***" << std::endl;
+    // calculate the number of instances per linear km.
+    float instPerKm = sqrt( osg::clampAbove( 0.1f, _density ) );
+
+    bool isGeo = inputSRS->isGeographic();
+
+    ConstGeometryIterator iter( input );
+    while( iter.hasMore() )
+    {
+        const Geometry* part = iter.next();
+
+        // see whether it's a ring, because rings have to connect the last two points.
+        bool isRing = part->getType() == Geometry::TYPE_RING;
+        
+        for( unsigned i=0; i<part->size(); ++i )
+        {
+            // done if we're not traversing a ring.
+            if ( !isRing && i+1 == part->size() )
+                break;
+
+            // extract the segment:
+            const osg::Vec3d& p0 = (*part)[i];
+            const osg::Vec3d& p1 = isRing && i+1 == part->size() ? (*part)[0] : (*part)[i+1];
+
+            // figure out the segment length in meters (assumed geodetic coords)
+            double seglen_m;
+            double seglen_native = (p1-p0).length();
+            
+            if ( isGeo )
+            {
+                seglen_m = GeoMath::distance(
+                    osg::DegreesToRadians( p0.y() ), osg::DegreesToRadians( p0.x() ),
+                    osg::DegreesToRadians( p1.y() ), osg::DegreesToRadians( p1.x() ) );
+            }
+            else // projected
+            {
+                seglen_m = seglen_native;
+            }
+
+            unsigned numInstances = (seglen_m*0.001) * instPerKm;
+            if ( numInstances > 0 )
+            {            
+                // a unit vector for scattering points along the segment
+                osg::Vec3d unit = p1-p0;
+                unit.normalize();
+
+                for( unsigned n=0; n<numInstances; ++n )
+                {
+                    double offset = ((double)::rand()/(double)RAND_MAX) * seglen_native;
+                    output->push_back( p0 + unit*offset );
+                }
+            }
+        }
+    }
 }
 
 FilterContext
@@ -144,9 +201,7 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
         if ( !geom )
             continue;
 
-        //TODO:
-        // only works properly for geocentric data OR projected data in meters.
-        // does not work for a "plate carre" projection -gw
+        const SpatialReference* geomSRS = context.profile()->getSRS();
 
         // first, undo the localization frame if there is one.
         context.toWorld( geom );
@@ -156,14 +211,25 @@ ScatterFilter::push(FeatureList& features, const FilterContext& context )
         {
             GeometryIterator gi( geom );
             while( gi.hasMore() )
-                context.profile()->getSRS()->getGeographicSRS()->transformFromECEF( gi.next(), true );
+                geomSRS->getGeographicSRS()->transformFromECEF( gi.next(), true );
+
+            geomSRS = geomSRS->getGeographicSRS();
         }
 
         PointSet* points = new PointSet();
 
         if ( geom->getComponentType() == Geometry::TYPE_POLYGON )
         {
-            polyScatter( geom, context, points );
+            polyScatter( geom, geomSRS, context, points );
+        }
+        else if (
+            geom->getComponentType() == Geometry::TYPE_LINESTRING ||
+            geom->getComponentType() == Geometry::TYPE_RING )            
+        {
+            lineScatter( geom, geomSRS, context, points );
+        }
+        else {
+            OE_WARN << LC << "Sorry, don't know how to scatter a PointSet yet" << std::endl;
         }
 
         // convert back to geocentric if necessary.

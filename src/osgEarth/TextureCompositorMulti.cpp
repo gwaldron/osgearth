@@ -41,8 +41,10 @@ namespace
 
         if (blending)
             buf << "uniform vec4 osgearth_texCoordFactors;\n\n";
+
         buf << "void osgearth_vert_setupTexturing() \n"
             << "{ \n";
+
         if (blending)
         {
             buf << "    mat4 texMat = mat4(1.0);\n"
@@ -120,6 +122,7 @@ namespace
             buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
                 << "        dmin = osgearth_CameraRange - osgearth_ImageLayerRange["<< q << "]; \n"
                 << "        dmax = osgearth_CameraRange - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
+
                 << "        if (dmin >= 0 && dmax <= 0.0) { \n"
                 << "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0 ) / osgearth_ImageLayerAttenuation; \n"
                 << "            atten_min =  clamp( dmin, 0, osgearth_ImageLayerAttenuation ) / osgearth_ImageLayerAttenuation; \n";
@@ -129,11 +132,20 @@ namespace
                 float invBlendTime = 1.0f/blendTime;
 
                 buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
-                    << "            age = min(age, 1.0);\n"
+                    << "            age = clamp(age, 0.0, 1.0); \n"
                     << "            vec4 texel0 = texture2D(tex" << slot << ", gl_TexCoord["<< slot << "].st);\n"
                     << "            vec4 texel1 = texture2D(tex" << slot + orderSize << ", gl_TexCoord["<< slot + orderSize << "].st);\n"
                     << "            float mixval = age * osgearth_LODRangeFactor;\n"
-                    << "            texel = mix(texel1, texel0, mixval);\n";
+
+                    // pre-multiply alpha before mixing:
+                    << "            texel0.rgb *= texel0.a; \n"
+                    << "            texel1.rgb *= texel1.a; \n"
+                    << "            texel = mix(texel1, texel0, mixval); \n"
+
+                    // revert to non-pre-multiplies alpha (assumes openGL state uses non-pre-mult alpha)
+                    << "            if (texel.a > 0.0) { \n"
+                    << "                texel.rgb /= texel.a; \n"
+                    << "            } \n";
             }
             else
             {
@@ -158,12 +170,12 @@ namespace
 
 namespace
 {
-static std::string makeSamplerName(int slot)
-{
-    std::stringstream buf;
-    buf << "tex" << slot;
-    return buf.str();
-}
+    static std::string makeSamplerName(int slot)
+    {
+        std::stringstream buf;
+        buf << "tex" << slot;
+        return buf.str();
+    }
     
     static osg::Texture2D*
     s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout, bool blending, osg::StateSet* parentStateSet)

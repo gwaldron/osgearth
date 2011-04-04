@@ -19,9 +19,12 @@
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/BufferFilter>
+#include <osgEarthFeatures/ConvertTypeFilter>
 #include <osg/Notify>
 #include <osgDB/ReadFile>
 #include <OpenThreads/ScopedLock>
+
+#define LC "[FeatureSource] "
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -36,23 +39,53 @@ DriverConfigOptions( options )
 void
 FeatureSourceOptions::fromConfig( const Config& conf )
 {
-    const Config& bufferConf = conf.child("buffer");
-    if ( !bufferConf.empty() )
-    {
-        BufferFilter* buffer = new BufferFilter();
-        bufferConf.getIfSet( "distance", buffer->distance() );
-        _filters.push_back( buffer );
-    }
+    unsigned numResamples = 0;
 
-    // resample operation:
-    // resampling must occur AFTER buffering, because the buffer op will remove colinear segments.
-    const Config& resampleConf = conf.child("resample");
-    if ( !resampleConf.empty() )
+    const ConfigSet& children = conf.children();
+    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
     {
-        ResampleFilter* resample = new ResampleFilter();
-        resampleConf.getIfSet( "min_length", resample->minLength() );
-        resampleConf.getIfSet( "max_length", resample->maxLength() );
-        _filters.push_back( resample );
+        const Config& child = *i;
+
+        if ( child.key() == "buffer" && !child.empty() )
+        {
+            BufferFilter* buffer = new BufferFilter();
+            child.getIfSet( "distance", buffer->distance() );
+            _filters.push_back( buffer );
+
+            if ( numResamples > 0 )
+            {
+                OE_WARN << LC 
+                    << "Warning: Resampling should be applied before buffering, as buffering"
+                    << " will remove colinear segments created by the buffer operation."
+                    << std::endl;
+            }
+
+            OE_INFO << LC << "Added buffer filter" << std::endl;
+        }
+
+        else if ( child.key() == "resample" && !child.empty() )
+        {
+            ResampleFilter* resample = new ResampleFilter();
+            child.getIfSet( "min_length", resample->minLength() );
+            child.getIfSet( "max_length", resample->maxLength() );
+            _filters.push_back( resample );
+            numResamples++;
+
+            OE_INFO << LC << "Added resample filter" << std::endl;
+        }
+
+        else if ( child.key() == "convert" && !child.empty() )
+        {
+            ConvertTypeFilter* convert = new ConvertTypeFilter();
+            optional<Geometry::Type> type = Geometry::TYPE_POINTSET;
+            child.getIfSet( "type", "point",   type, Geometry::TYPE_POINTSET );
+            child.getIfSet( "type", "line",    type, Geometry::TYPE_LINESTRING );
+            child.getIfSet( "type", "polygon", type, Geometry::TYPE_POLYGON );
+            convert->toType() = *type;
+            _filters.push_back( convert );
+
+            OE_INFO << LC << "Added convert filter" << std::endl;
+        }
     }
 }
 
@@ -70,12 +103,23 @@ FeatureSourceOptions::getConfig() const
             bufferConf.addIfSet( "distance", buffer->distance() );
             conf.update( bufferConf );
         }
+
         ResampleFilter* resample = dynamic_cast<ResampleFilter*>( i->get() );
         if ( resample ) { 
             Config resampleConf( "resample" );
             resampleConf.addIfSet( "min_length", resample->minLength() );
             resampleConf.addIfSet( "max_length", resample->maxLength() );
             conf.update( resampleConf );
+        }
+
+        ConvertTypeFilter* convert = dynamic_cast<ConvertTypeFilter*>( i->get() );
+        if ( convert ) {
+            Config convertConf( "convert" );
+            optional<Geometry::Type> type( convert->toType(), convert->toType() ); // weird optional ctor :)
+            convertConf.addIfSet( "type", "point",   type, Geometry::TYPE_POINTSET );
+            convertConf.addIfSet( "type", "line",    type, Geometry::TYPE_LINESTRING );
+            convertConf.addIfSet( "type", "polygon", type, Geometry::TYPE_POLYGON );
+            conf.update( convertConf );
         }
     }
 

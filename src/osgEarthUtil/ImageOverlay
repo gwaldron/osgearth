@@ -54,6 +54,7 @@ namespace osgEarth { namespace Util
         void dirty();
     private:
         void init();
+        void clampLatitudes();
         osg::Vec2d _lowerLeft;
         osg::Vec2d _lowerRight;
         osg::Vec2d _upperRight;

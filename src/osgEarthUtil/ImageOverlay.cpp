@@ -4,12 +4,18 @@
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osg/io_utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
 
 /***************************************************************************/
+
+void clampLatitude(osg::Vec2d& l)
+{
+    l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
+}
 
 ImageOverlay::ImageOverlay(const osg::EllipsoidModel* ellipsoid, osg::Image* image):
 _lowerLeft(10,10),
@@ -130,6 +136,15 @@ ImageOverlay::setAlpha(float alpha)
     }
 }
 
+void
+ImageOverlay::clampLatitudes()
+{
+    clampLatitude( _lowerLeft );
+    clampLatitude( _lowerRight );
+    clampLatitude( _upperLeft );
+    clampLatitude( _upperRight );
+}
+
 
 osg::Vec2d
 ImageOverlay::getCenter() const
@@ -152,6 +167,7 @@ ImageOverlay::setNorth(double value_deg)
 {
     _upperRight.y() = value_deg;
     _upperLeft.y()  = value_deg;
+    clampLatitudes();
     dirty();
 }
 
@@ -160,6 +176,7 @@ ImageOverlay::setSouth(double value_deg)
 {
     _lowerRight.y() = value_deg;
     _lowerLeft.y() = value_deg;
+    clampLatitudes();
     dirty();
 }
 
@@ -187,6 +204,8 @@ ImageOverlay::setCorners(const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRig
     _lowerRight = lowerRight;
     _upperLeft = upperLeft;
     _upperRight = upperRight;
+    clampLatitudes();
+    
     dirty();
 }
 
@@ -211,6 +230,7 @@ void
 ImageOverlay::setLowerLeft(double lon_deg, double lat_deg)
 {
     _lowerLeft = osg::Vec2d(lon_deg, lat_deg);
+    clampLatitudes();
     dirty();
 }
 
@@ -218,6 +238,7 @@ void
 ImageOverlay::setLowerRight(double lon_deg, double lat_deg)
 {
     _lowerRight = osg::Vec2d(lon_deg, lat_deg);
+    clampLatitudes();
     dirty();
 }
 
@@ -225,6 +246,7 @@ void
 ImageOverlay::setUpperRight(double lon_deg, double lat_deg)
 {
     _upperRight = osg::Vec2d(lon_deg, lat_deg);
+    clampLatitudes();
     dirty();
 }
 
@@ -232,6 +254,7 @@ void
 ImageOverlay::setUpperLeft(double lon_deg, double lat_deg)
 {
     _upperLeft = osg::Vec2d(lon_deg, lat_deg);
+    clampLatitudes();
     dirty();
 }
 

@@ -401,19 +401,26 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
 
     osg::Node* result = 0L;
 
-    if (_update_mapf)
-    {
-      osgEarth::MaskLayer* mask = _update_mapf->getTerrainMaskLayer();
-      if (mask)
-      { 
-        double xmin, ymin, xmax, ymax;
-        key.getExtent().getBounds(xmin, ymin, xmax, ymax);
-        osg::Vec3dArray* maskBounds = mask->getOrCreateBoundary();
+    //NOTE: Removed due to resulting gaps
+    //if (_update_mapf)
+    //{
+    //  osgEarth::MaskLayer* mask = _update_mapf->getTerrainMaskLayer();
+    //  if (mask)
+    //  { 
+    //    double xmin, ymin, xmax, ymax;
+    //    key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+    //    osg::Vec3dArray* maskBounds = mask->getOrCreateBoundary();
 
-        if (pointInPolygon(osg::Vec3d(xmin, ymin, 0.0), maskBounds) && pointInPolygon(osg::Vec3d(xmax, ymax, 0.0), maskBounds))
-          return result;
-      }
-    }
+    //    if (pointInPolygon(osg::Vec3d(xmin, ymin, 0.0), maskBounds) &&
+    //        pointInPolygon(osg::Vec3d(xmax, ymax, 0.0), maskBounds) &&
+    //        pointInPolygon(osg::Vec3d(xmin, ymax, 0.0), maskBounds) &&
+    //        pointInPolygon(osg::Vec3d(xmax, ymin, 0.0), maskBounds))
+    //    {
+    //      //std::cout << "min(" << xmin << ", " << ymin << ") max(" << xmax << ", " << ymax << ")" << std::endl;
+    //      return result;
+    //    }
+    //  }
+    //}
 
     LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
 

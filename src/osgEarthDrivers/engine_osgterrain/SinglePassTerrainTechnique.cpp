@@ -914,7 +914,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
             //Look for verts that belong to the mask polygon
             for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
             {
-              if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+              if ((*it).z() == 0 && osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
               {
                 (*it).z() = (*mit).z();
                 break;
@@ -953,12 +953,16 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
           }
 #endif
         }
-        else
-        {
-          //mask_skirt->setVertexArray(maskSkirtPoly);
-          //mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, 0, maskSkirtPoly->size()));
-        }
+        //else
+        //{
+        //  mask_skirt->setVertexArray(maskSkirtPoly);
+        //  mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, 0, maskSkirtPoly->size()));
+        //}
       }
+      //else
+      //{
+      //  std::cout << "Invalid maskSkirtPoly size: " << maskSkirtPoly->size() << std::endl;
+      //}
     }
 
     // populate primitive sets

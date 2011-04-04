@@ -16,6 +16,8 @@ SET(LIB_PUBLIC_HEADERS
     ElevationManager
     Export
     Graticule
+	ImageOverlay
+	ImageOverlayEditor
     ObjectPlacer
     ObjectLocator
     OceanSurfaceNode
@@ -34,6 +36,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     EarthManipulator.cpp	
     ElevationManager.cpp
     Graticule.cpp
+	ImageOverlay.cpp
+	ImageOverlayEditor.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
     OceanSurfaceNode.cpp

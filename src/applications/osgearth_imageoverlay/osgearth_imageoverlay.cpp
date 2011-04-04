@@ -222,27 +222,32 @@ main(int argc, char** argv)
         // Add an image:                
         ImageControl* imageCon = new ImageControl( image );
         imageCon->setSize( 64, 64 );
+        imageCon->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 0, 0, imageCon );            
 
 
         //Add some controls        
         CheckBoxControl* enabled = new CheckBoxControl( true );
         enabled->addEventHandler( new EnabledHandler(overlay) );
+        enabled->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 1, 0, enabled );
 
         //The overlay name
         LabelControl* name = new LabelControl( osgDB::getSimpleFileName( imageFile) );      
+        name->setVertAlign( Control::ALIGN_CENTER );
         s_layerBox->setControl( 2, 0, name );
 
         // an opacity slider
         HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, overlay->getAlpha() );
         opacity->setWidth( 125 );
         opacity->setHeight( 12 );
+        opacity->setVertAlign( Control::ALIGN_CENTER );
         opacity->addEventHandler( new OpacityHandler(overlay) );
         s_layerBox->setControl( 3, 0, opacity );
 
         // Add a text label:
         LabelControl* edit = new LabelControl( "Edit" );        
+        edit->setVertAlign( Control::ALIGN_CENTER );
         edit->addEventHandler(new EditHandler(overlay, &viewer, editorGroup));
         s_layerBox->setControl(4, 0, edit );
     }

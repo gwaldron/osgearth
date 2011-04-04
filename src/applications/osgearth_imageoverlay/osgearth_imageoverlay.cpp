@@ -25,14 +25,39 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/Controls>
 
 #include <osg/ImageStream>
+#include <osgDB/FileNameUtils>
 
 #include <osgEarthUtil/ImageOverlay>
 #include <osgEarthUtil/ImageOverlayEditor>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
+
+static Grid* s_layerBox = NULL;
+static ImageOverlayEditor* s_editor = NULL;
+
+osg::Node*
+createControlPanel( osgViewer::View* view )
+{
+    ControlCanvas* canvas = new ControlCanvas( view );
+
+    // the outer container:
+    s_layerBox = new Grid();
+    s_layerBox->setBackColor(0,0,0,0.5);
+    s_layerBox->setMargin( 10 );
+    s_layerBox->setPadding( 10 );
+    s_layerBox->setSpacing( 10 );
+    s_layerBox->setChildVertAlign( Control::ALIGN_CENTER );
+    s_layerBox->setAbsorbEvents( true );
+    s_layerBox->setVertAlign( Control::ALIGN_BOTTOM );
+
+    canvas->addControl( s_layerBox );
+    return canvas;
+}
 
 int
 usage( const std::string& msg )
@@ -85,6 +110,53 @@ struct ToggleEditHandler : public osgGA::GUIEventHandler
     bool _moveVert;
 };
 
+struct OpacityHandler : public ControlEventHandler
+{
+    OpacityHandler( ImageOverlay* overlay ) : _overlay(overlay) { }
+    void onValueChanged( Control* control, float value ) {
+        _overlay->setAlpha( value );
+    }
+    ImageOverlay* _overlay;
+};
+
+struct EnabledHandler : public ControlEventHandler
+{
+    EnabledHandler( ImageOverlay* overlay ) :  _overlay(overlay) { }
+    void onValueChanged( Control* control, bool value ) {
+        _overlay->setNodeMask( value ? ~0 : 0 );
+    }
+    ImageOverlay* _overlay;
+};
+
+struct EditHandler : public ControlEventHandler
+{
+    EditHandler( ImageOverlay* overlay, osgViewer::Viewer* viewer, osg::Group* editGroup) :
+      _overlay(overlay),
+      _viewer(viewer),
+      _editGroup(editGroup){ }
+
+    void onClick( Control* control, int mouseButtonMask ) {
+        if (!s_editor)
+        {
+            static_cast<LabelControl*>(control)->setText( "Finish" );
+            s_editor = new ImageOverlayEditor(_overlay, _editGroup );                    
+            _viewer->addEventHandler( s_editor );
+        }
+        else
+        {
+            static_cast<LabelControl*>(control)->setText( "Edit" );
+            if (s_editor)
+            {
+                _viewer->removeEventHandler( s_editor );
+                s_editor = 0;
+            }
+        }
+    }
+    ImageOverlay* _overlay;
+    osgViewer::Viewer* _viewer;
+    osg::Group* _editGroup;
+};
+
 
 
 int
@@ -116,6 +188,9 @@ main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
+
+    //Create the control panel
+    root->addChild( createControlPanel( &viewer ) );
     
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
@@ -142,9 +217,34 @@ main(int argc, char** argv)
 
         //Create a group for the editor to stick it's controls
         osg::Group* editorGroup = new osg::Group;
-        root->addChild( editorGroup );
-        
-        viewer.addEventHandler( new ToggleEditHandler(overlay, editorGroup, moveVert ) );
+        root->addChild( editorGroup );       
+
+        // Add an image:                
+        ImageControl* imageCon = new ImageControl( image );
+        imageCon->setSize( 64, 64 );
+        s_layerBox->setControl( 0, 0, imageCon );            
+
+
+        //Add some controls        
+        CheckBoxControl* enabled = new CheckBoxControl( true );
+        enabled->addEventHandler( new EnabledHandler(overlay) );
+        s_layerBox->setControl( 1, 0, enabled );
+
+        //The overlay name
+        LabelControl* name = new LabelControl( osgDB::getSimpleFileName( imageFile) );      
+        s_layerBox->setControl( 2, 0, name );
+
+        // an opacity slider
+        HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, overlay->getAlpha() );
+        opacity->setWidth( 125 );
+        opacity->setHeight( 12 );
+        opacity->addEventHandler( new OpacityHandler(overlay) );
+        s_layerBox->setControl( 3, 0, opacity );
+
+        // Add a text label:
+        LabelControl* edit = new LabelControl( "Edit" );        
+        edit->addEventHandler(new EditHandler(overlay, &viewer, editorGroup));
+        s_layerBox->setControl(4, 0, edit );
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

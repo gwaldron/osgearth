@@ -1,0 +1,56 @@
+#ifndef OSGEARTH_UTIL_IMAGE_OVERLAY_EDITOR_H
+#define OSGEARTH_UTIL_IMAGE_OVERLAY_EDITOR_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarthUtil/ImageOverlay>
+#include <osg/MatrixTransform>
+#include <osgGA/GUIEventHandler>
+
+namespace osgEarth { namespace Util
+{
+    struct OSGEARTHUTIL_EXPORT ImageOverlayEditor: public osgGA::GUIEventHandler
+    {
+    public:
+        enum EditPoint
+        {
+            EDITPOINT_CENTER,
+            EDITPOINT_LOWER_LEFT,
+            EDITPOINT_LOWER_RIGHT,
+            EDITPOINT_UPPER_LEFT,
+            EDITPOINT_UPPER_RIGHT,
+            EDITPOINT_NONE
+        };
+
+        ImageOverlayEditor(ImageOverlay* imageOverlay, osg::Group* editorGroup);            
+        ~ImageOverlayEditor();
+
+        bool getMoveVert() const { return _moveVert; }
+        void setMoveVert(bool moveVert) { _moveVert = moveVert;}
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );            
+
+    private:
+        osg::Matrixd getTransform(const osg::Vec2d& loc);
+
+        void updateEditor();
+        EditPoint getEditPoint(const osg::NodePath &nodePath);
+
+        osg::ref_ptr< ImageOverlay > _imageOverlay;        
+        bool _dragging;
+        EditPoint _editPoint;
+
+        osg::ref_ptr< osg::Group > _editorGroup;
+        osg::ref_ptr< osg::Group > _editor;
+        osg::ref_ptr< osg::MatrixTransform > _lowerLeftHandle;
+        osg::ref_ptr< osg::MatrixTransform > _lowerRightHandle;
+        osg::ref_ptr< osg::MatrixTransform > _upperLeftHandle;
+        osg::ref_ptr< osg::MatrixTransform > _upperRightHandle;
+        osg::ref_ptr< osg::MatrixTransform > _centerHandle;
+        osg::ref_ptr< osg::Node > _handle;
+        bool _moveVert;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_IMAGE_OVERLAY_EDITOR_H
+

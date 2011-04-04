@@ -27,10 +27,12 @@ ElevationQuery::postCTOR()
 {
     _tileSize         = 0;
     _maxDataLevel     = 0;
-    _maxCacheSize     = 100;
+    //_maxCacheSize     = 100;
     _technique        = TECHNIQUE_PARAMETRIC;
     _interpolation    = INTERP_BILINEAR;
     _maxLevelOverride = -1;
+
+    _tileCache.setMaxSize( 100 );
 }
 
 void
@@ -71,13 +73,13 @@ ElevationQuery::setTechnique( ElevationQuery::Technique technique )
 void
 ElevationQuery::setMaxTilesToCache( int value )
 {
-    _maxCacheSize = value;
+    _tileCache.setMaxSize( value );
 }
 
 int
 ElevationQuery::getMaxTilesToCache() const
 {
-    return _maxCacheSize;
+    return _tileCache.getMaxSize();
 }
 
 void
@@ -175,10 +177,14 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
 
     if ( !tile.valid() )
     {
-        // next check the local tile cache:
-        TileTable::const_iterator i = _tileCache.find( tileId );
-        if ( i != _tileCache.end() )
-            tile = i->second.get();
+        TileCache::Record record = _tileCache.get( tileId );
+        if ( record.valid() )
+            tile = record.value().get();
+
+        //// next check the local tile cache:
+        //TileTable::const_iterator i = _tileCache.find( tileId );
+        //if ( i != _tileCache.end() )
+        //    tile = i->second.get();
     }
          
     // if we found it, make sure it has a heightfield in it:
@@ -224,17 +230,19 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
 
         // store it in the local tile cache.
         // TODO: limit the size of the cache with a parallel FIFO list.
-        _tileCache[tileId] = tile.get();
-        _tileCacheFIFO.push_back( tileId );
+        _tileCache.insert( tileId, tile.get() );
 
-        // prune the cache. this is a terrible pruning method.
-        if ( _tileCache.size() > _maxCacheSize )
-        {
-            osgTerrain::TileID id = _tileCacheFIFO.front();
-            _tileCacheFIFO.pop_front();
-            if ( tileId != id )
-                _tileCache.erase( id );
-        }
+        //_tileCache[tileId] = tile.get();
+        //_tileCacheFIFO.push_back( tileId );
+
+        //// prune the cache. this is a terrible pruning method.
+        //if ( _tileCache.size() > _maxCacheSize )
+        //{
+        //    osgTerrain::TileID id = _tileCacheFIFO.front();
+        //    _tileCacheFIFO.pop_front();
+        //    if ( tileId != id )
+        //        _tileCache.erase( id );
+        //}
     }
 
     // see what the actual resolution of the heightfield is.

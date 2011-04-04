@@ -21,8 +21,12 @@
 
 #include <osgEarth/Common>
 #include <osg/Vec4>
+#include <osg/Vec4ub>
 #include <string>
 #include <algorithm>
+#include <vector>
+#include <sstream>
+#include <iomanip>
 
 namespace osgEarth
 {
@@ -201,7 +205,7 @@ namespace osgEarth
         return ssStr;
     }
 
-    /** Converts a vec3f to a string */
+    /** Converts a string to a vec3f */
     static osg::Vec3f
     stringToVec3f( const std::string& str, const osg::Vec3f& default_value )
     {
@@ -216,6 +220,19 @@ namespace osgEarth
             out.z() = out.x();
         }
         return out;
+    }
+
+    /** Converts a vec3f to a string */
+    static std::string
+    vec3fToString( const osg::Vec3f& v )
+    {
+        std::stringstream buf;
+        buf << std::setprecision(6)
+            << v.x() << " " << v.y() << " " << v.z()
+            << std::endl;
+        std::string result;
+        result = buf.str();
+        return result;
     }
 
     /** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
@@ -291,6 +308,69 @@ namespace osgEarth
 	    h ^= h >> 15;
 
 	    return h;
+    }
+    
+    //------------------------------------------------------------------------
+    // conversion templates
+
+    // converts a string to primitive using serialization
+    template<typename T> inline T
+    as( const std::string& str, const T& default_value )
+    {
+        T temp = default_value;
+        std::istringstream strin( str );
+        if ( !strin.eof() ) strin >> temp;
+        return temp;
+    }
+
+    // template specialization for a bool
+    template<> inline bool
+    as<bool>( const std::string& str, const bool& default_value )
+    {
+        std::string temp = str;
+        std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
+        return
+            temp == "true" || temp == "yes" || temp == "on" ? true :
+            temp == "false" || temp == "no" || temp == "off" ? false :
+            default_value;
+    }
+
+    template<> inline osg::Vec3f
+    as<osg::Vec3f>( const std::string& str, const osg::Vec3f& default_value )
+    {
+        return stringToVec3f(str, default_value);
+    }
+
+    // template specialization for string
+    template<> inline std::string
+    as<std::string>( const std::string& str, const std::string& default_value )
+    {
+        return str;
+    }
+
+    // converts a primitive to a string
+    // TODO: precision??
+    template<typename T> inline std::string
+    toString(const T& value)
+    {
+        std::stringstream out;
+		out << std::setprecision(20) << std::fixed << value;
+        std::string outStr;
+        outStr = out.str();
+        return outStr;
+    }
+
+    // template speciallization for a bool to print out "true" or "false"
+    template<> inline std::string
+    toString<bool>(const bool& value)
+    {
+        return value ? "true" : "false";
+    }
+
+    template<> inline std::string
+    toString<osg::Vec3f>(const osg::Vec3f& value)
+    {
+        return vec3fToString(value);
     }
 }
 

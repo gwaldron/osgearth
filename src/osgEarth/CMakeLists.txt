@@ -78,6 +78,7 @@ SET(LIB_PUBLIC_HEADERS
     tinyxml.h 
     TMS
     Units
+    Utils
 	Version
     VerticalSpatialReference
     XmlUtils

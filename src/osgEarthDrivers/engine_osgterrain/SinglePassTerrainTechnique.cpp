@@ -883,13 +883,28 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly = maskSkirtPoly;
 #endif
 
-        if (outPoly.valid() && outPoly->size() > 0)
+        osg::Vec3Array* outVerts = new osg::Vec3Array();
+        mask_skirt->setVertexArray(outVerts);
+        
+        osgEarth::Symbology::GeometryIterator i( outPoly );
+        i.traverseMultiGeometry() = true;
+        i.traversePolygonHoles() = true;
+        while( i.hasMore() )
         {
-          osg::Vec3Array* outVerts = outPoly->toVec3Array();
+          osgEarth::Symbology::Geometry* part = i.next();
+          if (!part)
+            continue;
 
-          mask_skirt->setVertexArray(outVerts);
-          mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, 0, outVerts->size()));
+          if (part->getType() == osgEarth::Symbology::Geometry::TYPE_POLYGON)
+          {
+            osg::Vec3Array* partVerts = part->toVec3Array();
+            outVerts->insert(outVerts->end(), partVerts->begin(), partVerts->end());
+            mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - partVerts->size(), partVerts->size()));
+          }
+        }
 
+        if (mask_skirt->getNumPrimitiveSets() > 0)
+        {
 #if 1
           //Tessellate mask skirt
           osg::ref_ptr<osgUtil::Tessellator> tscx=new osgUtil::Tessellator;
@@ -953,16 +968,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
           }
 #endif
         }
-        //else
-        //{
-        //  mask_skirt->setVertexArray(maskSkirtPoly);
-        //  mask_skirt->addPrimitiveSet( new osg::DrawArrays( osg::PrimitiveSet::POLYGON, 0, maskSkirtPoly->size()));
-        //}
       }
-      //else
-      //{
-      //  std::cout << "Invalid maskSkirtPoly size: " << maskSkirtPoly->size() << std::endl;
-      //}
     }
 
     // populate primitive sets

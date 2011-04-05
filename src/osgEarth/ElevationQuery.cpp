@@ -31,6 +31,8 @@ ElevationQuery::postCTOR()
     _interpolation    = INTERP_BILINEAR;
     _maxLevelOverride = -1;
 
+    // Limit the size of the cache we'll use to cache heightfields. This is an
+    // LRU cache.
     _tileCache.setMaxSize( 50 );
 }
 
@@ -171,35 +173,31 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         return false;
     }
 
-    // now, see if we already have this tile loaded somewhere:
-    osgTerrain::TileID tileId = key.getTileId();
+    // Check the tile cache. Note that the TileSource already likely has a MemCache
+    // attached to it. We employ a secondary cache here for a couple reasons. One, this
+    // cache will store not only the heightfield, but also the tesselated tile in the event
+    // that we're using GEOMETRIC mode. Second, since the call the getHeightField can 
+    // fallback on a lower resolution, this cache will hold the final resolution heightfield
+    // instead of trying to fetch the higher resolution one each tiem.
 
-    if ( !tile.valid() )
-    {
-        TileCache::Record record = _tileCache.get( tileId );
-        if ( record.valid() )
-            tile = record.value().get();
-    }
+    TileCache::Record record = _tileCache.get( key );
+    if ( record.valid() )
+        tile = record.value().get();
          
     // if we found it, make sure it has a heightfield in it:
     if ( tile.valid() )
     {
         osgTerrain::HeightFieldLayer* layer = dynamic_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer());
         if ( layer )
-        {
             hf = layer->getHeightField();
-        }
+
         if ( !hf.valid() )
-        {
-            tile = NULL;
-        }
+            tile = 0L;
     }
 
     // if we didn't find it (or it didn't have heightfield data), build it.
     if ( !tile.valid() )
     {
-        //OE_NOTICE << "ElevationQuery: cache miss" << std::endl;
-
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
         _mapf.getHeightField( key, true, hf, 0L, _interpolation );
@@ -207,10 +205,12 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )
         {
-            OE_WARN << "ElevationQuery: unable to create heightfield" << std::endl;
+            OE_WARN << LC << "Unable to create heightfield for key " << key.str() << std::endl;
             return false;
         }
 
+        // All this stuff is requires for GEOMETRIC mode. An optimization would be to
+        // defer this so that PARAMETRIC mode doesn't waste time
         GeoLocator* locator = GeoLocator::createForKey( key, _mapf.getMapInfo() );
 
         tile = new osgTerrain::TerrainTile();
@@ -223,8 +223,7 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         tile->setTerrainTechnique( new osgTerrain::GeometryTechnique );
 
         // store it in the local tile cache.
-        // TODO: limit the size of the cache with a parallel FIFO list.
-        _tileCache.insert( tileId, tile.get() );
+        _tileCache.insert( key, tile.get() );
     }
 
     OE_DEBUG << LC << "LRU Cache, hit ratio = " << _tileCache.getHitRatio() << std::endl;
@@ -279,7 +278,7 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
             return true;            
         }
 
-        OE_WARN << "ElevationQuery: no intersections" << std::endl;
+        OE_DEBUG << LC << "No intersection" << std::endl;
         return false;
     }
 }

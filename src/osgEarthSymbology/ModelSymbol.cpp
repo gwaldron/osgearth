@@ -37,7 +37,7 @@ ModelSymbol::getConfig() const
     conf.addIfSet( "url", _url );
     conf.addIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
     conf.addIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
-    conf.addIfSet( "placement", "scatter",  _placement, PLACEMENT_SCATTER );
+    conf.addIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
     conf.addIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
     conf.addIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
     conf.addIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
@@ -53,7 +53,7 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "url", _url );
     conf.getIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
     conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
-    conf.getIfSet( "placement", "scatter",  _placement, PLACEMENT_SCATTER );
+    conf.getIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
     conf.getIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
     conf.getIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
     conf.getIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );

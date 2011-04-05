@@ -37,7 +37,7 @@ is randomized, but it is randomized exactly the same way each time.
             <style type="text/css">
                 parks {
                    model:           "../data/tree.osg";
-                   model-placement: scatter;
+                   model-placement: random;
                    model-density:   1000;
                    model-scale:     2;
                    model-clamping:  terrain;

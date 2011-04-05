@@ -190,7 +190,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!model) model = new ModelSymbol;
             if      (p->second == "centroid") model->placement() = ModelSymbol::PLACEMENT_CENTROID;
             else if (p->second == "interval") model->placement() = ModelSymbol::PLACEMENT_INTERVAL;
-            else if (p->second == "scatter" ) model->placement() = ModelSymbol::PLACEMENT_SCATTER;
+            else if (p->second == "random"  ) model->placement() = ModelSymbol::PLACEMENT_RANDOM;
         }
         else if (p->first == "model-density")
         {

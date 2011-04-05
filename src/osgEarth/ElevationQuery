@@ -155,10 +155,6 @@ namespace osgEarth
 
     private:
         MapFrame _mapf;
-        //typedef std::map< osgTerrain::TileID, osg::ref_ptr<osgTerrain::TerrainTile> > TileTable;
-        //TileTable _tileCache;
-        //typedef std::list< osgTerrain::TileID > TileIdList;
-        //TileIdList _tileCacheFIFO;
         unsigned _maxCacheSize;
         int _tileSize;
         unsigned int _maxDataLevel;
@@ -166,7 +162,7 @@ namespace osgEarth
         Technique _technique;
         ElevationInterpolation _interpolation;
 
-        typedef LRUCache< osgTerrain::TileID, osg::ref_ptr<osgTerrain::TerrainTile> > TileCache;
+        typedef LRUCache< TileKey, osg::ref_ptr<osgTerrain::TerrainTile> > TileCache;
         TileCache _tileCache;
 
 

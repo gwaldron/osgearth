@@ -29,18 +29,24 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ModelSymbol : public Symbol
     {
     public:
+        /**
+         * Controls the placements of models.
+         */
         enum Placement
         {
-            PLACEMENT_CENTROID,
-            PLACEMENT_INTERVAL,
-            PLACEMENT_SCATTER
+            PLACEMENT_CENTROID,   /** Place a model at feature centroid */
+            PLACEMENT_INTERVAL,   /** Place models at regular intervals within feature, according to density */
+            PLACEMENT_RANDOM      /** Place models randomly within feature, according to density */
         };
 
+        /**
+         * Controls if/how models are clamped to the terrin
+         */
         enum Clamping
         {
-            CLAMP_NONE,
-            CLAMP_TO_TERRAIN,
-            CLAMP_RELATIVE_TO_TERRAIN
+            CLAMP_NONE,                 /** Perform no clamping */
+            CLAMP_TO_TERRAIN,           /** Clamp to the terrain, ignoring feature's existing Z */
+            CLAMP_RELATIVE_TO_TERRAIN   /** Clamp to terrain, offset by feature's existing Z */
         };
 
     public:

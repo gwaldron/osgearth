@@ -38,6 +38,8 @@ namespace osgEarth { namespace Symbology
         virtual Config getConfig() const { return Config(); }
     };
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
+
+    //--------------------------------------------------------------------
     
     /**
      * Simple drawing parameters for a line.
@@ -83,6 +85,8 @@ namespace osgEarth { namespace Symbology
         optional<LineJoinStyle> _lineJoin;
         optional<float>         _width;
     };
+
+    //--------------------------------------------------------------------
 
     /**
      * Simple drawing parameters for a filled area.

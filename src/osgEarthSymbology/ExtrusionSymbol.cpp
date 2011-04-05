@@ -22,23 +22,23 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 ExtrusionSymbol::ExtrusionSymbol( const Config& conf ) :
-_offset( 0.0 ),
-_height( 1.0 )
+_height( 10.0 )
 {
     if ( !conf.empty() )
         mergeConfig(conf);
 }
 
 Config 
-ExtrusionSymbol::getConfig() const {
-    Config conf( "extrusion" );
-    conf.addIfSet( "offset", _offset );
+ExtrusionSymbol::getConfig() const
+{
+    Config conf = Symbol::getConfig();
+    conf.key() = "extrusion";
     conf.addIfSet( "height", _height );
     return conf;
 }
 
 void 
-ExtrusionSymbol::mergeConfig( const Config& conf ) {
-    conf.getIfSet( "offset", _offset );
+ExtrusionSymbol::mergeConfig( const Config& conf )
+{
     conf.getIfSet( "height", _height );
 }

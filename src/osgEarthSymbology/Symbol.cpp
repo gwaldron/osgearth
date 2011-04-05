@@ -21,6 +21,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+//------------------------------------------------------------------------
+
 Symbol::Symbol()
 {
     //NOP

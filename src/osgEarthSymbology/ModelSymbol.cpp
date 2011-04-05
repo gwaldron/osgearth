@@ -33,14 +33,12 @@ _randomSeed( 0 )
 Config 
 ModelSymbol::getConfig() const
 {
-    Config conf( "model" );
+    Config conf = Symbol::getConfig();
+    conf.key() = "model";
     conf.addIfSet( "url", _url );
     conf.addIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
     conf.addIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.addIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
-    conf.addIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
-    conf.addIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
-    conf.addIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
     conf.addIfSet( "density", _density );
     conf.addIfSet( "scale", _scale );
     conf.addIfSet( "random_seed", _randomSeed );
@@ -54,9 +52,6 @@ ModelSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
     conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.getIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
-    conf.getIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
-    conf.getIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
-    conf.getIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
     conf.getIfSet( "density", _density );
     conf.getIfSet( "scale", _scale );
     conf.getIfSet( "random_seed", _randomSeed );

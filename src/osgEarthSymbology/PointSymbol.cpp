@@ -28,15 +28,18 @@ _fill( Fill() ), _size(1.0)
 }
 
 Config 
-PointSymbol::getConfig() const {
-    Config conf( "point" );
+PointSymbol::getConfig() const
+{
+    Config conf = Symbol::getConfig();
+    conf.key() = "point";
     conf.addObjIfSet( "fill", _fill );
     conf.addIfSet( "size", _size );
     return conf;
 }
 
 void 
-PointSymbol::mergeConfig( const Config& conf ) {
+PointSymbol::mergeConfig( const Config& conf )
+{
     conf.getObjIfSet( "fill", _fill );
     conf.getIfSet( "size", _size );
 }

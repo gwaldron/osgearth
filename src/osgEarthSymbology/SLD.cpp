@@ -68,6 +68,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
     TextSymbol*      text      = 0L;
     ExtrusionSymbol* extrusion = 0L;
     ModelSymbol*     model     = 0L;
+    AltitudeSymbol*  altitude  = 0L;
 
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {
@@ -207,23 +208,24 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!model) model = new ModelSymbol;
             model->scale() = stringToVec3f(p->second, osg::Vec3f(1,1,1));
         }
-        else if (p->first == "model-clamping")
-        {
-            if (!model) model = new ModelSymbol;
-            if      (p->second == "none"    ) model->clamping() = ModelSymbol::CLAMP_NONE;
-            else if (p->second == "terrain" ) model->clamping() = ModelSymbol::CLAMP_TO_TERRAIN;
-            else if (p->second == "relative") model->clamping() = ModelSymbol::CLAMP_RELATIVE_TO_TERRAIN;
-        }
 
-        else if (p->first == "extrusion-offset")
-        {
-            if (!extrusion) extrusion = new ExtrusionSymbol;
-            extrusion->offset() = as<float>( p->second, 0.0f );
-        }
         else if (p->first == "extrusion-height")
         {
             if (!extrusion) extrusion = new ExtrusionSymbol;
             extrusion->height() = as<float>( p->second, 1.0f );
+        }
+                
+        else if (p->first == "altitude-clamping")
+        {
+            if (!altitude) altitude = new AltitudeSymbol();
+            if      (p->second == "none"    ) altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
+            else if (p->second == "terrain" ) altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            else if (p->second == "relative") altitude->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        }
+        else if (p->first == "altitude-offset")
+        {
+            if (!altitude) altitude = new AltitudeSymbol();
+            altitude->verticalOffset() = as<float>( p->second, 0.0f );
         }
     }
 
@@ -240,6 +242,8 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         sc.addSymbol(extrusion);
     if (model)
         sc.addSymbol(model);
+    if (altitude)
+        sc.addSymbol(altitude);
 
     return true;
 }

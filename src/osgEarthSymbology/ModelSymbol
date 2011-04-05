@@ -39,16 +39,6 @@ namespace osgEarth { namespace Symbology
             PLACEMENT_RANDOM      /** Place models randomly within feature, according to density */
         };
 
-        /**
-         * Controls if/how models are clamped to the terrin
-         */
-        enum Clamping
-        {
-            CLAMP_NONE,                 /** Perform no clamping */
-            CLAMP_TO_TERRAIN,           /** Clamp to the terrain, ignoring feature's existing Z */
-            CLAMP_RELATIVE_TO_TERRAIN   /** Clamp to terrain, offset by feature's existing Z */
-        };
-
     public:
         ModelSymbol( const Config& conf =Config() );
 
@@ -59,10 +49,6 @@ namespace osgEarth { namespace Symbology
         /** How to map feature geometry to model placement. (default is CENTROID) */
         optional<Placement>& placement() { return _placement; }
         const optional<Placement>& placement() const { return _placement; }
-
-        /** How to clamp instances to the terrain (default is CLAMP_NONE) */
-        optional<Clamping>& clamping() { return _clamping; }
-        const optional<Clamping>& clamping() const { return _clamping; }
 
         /** For PLACEMENT_SCATTER/INTERVAL, the scattering density in instances per sqkm */
         optional<float>& density() { return _density; }
@@ -83,7 +69,6 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<std::string> _url;
         optional<Placement>   _placement;
-        optional<Clamping>    _clamping;
         optional<float>       _density;
         optional<osg::Vec3f>  _scale;
         optional<unsigned>    _randomSeed;

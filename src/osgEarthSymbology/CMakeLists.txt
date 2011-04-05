@@ -14,6 +14,7 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
     AGG.h
+    AltitudeSymbol
     Common
     Content
     CssUtils
@@ -39,6 +40,7 @@ SET(LIB_PUBLIC_HEADERS
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
+    AltitudeSymbol.cpp
     CssUtils.cpp
     ExtrusionSymbol.cpp
     Geometry.cpp

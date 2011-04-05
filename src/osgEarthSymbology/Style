@@ -26,6 +26,7 @@
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/ModelSymbol>
 #include <osgEarthSymbology/ExtrusionSymbol>
+#include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarthSymbology/TextSymbol>
 
 #include <osgEarth/Config>

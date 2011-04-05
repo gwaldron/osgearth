@@ -16,28 +16,35 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/AltitudeSymbol>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-LineSymbol::LineSymbol( const Config& conf ) :
-_stroke( Stroke() )
+AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
+Symbol(),
+_clamping( CLAMP_NONE ),
+_verticalOffset( 0 )
 {
-    mergeConfig(conf);
+    mergeConfig( conf );
 }
 
 Config 
-LineSymbol::getConfig() const
+AltitudeSymbol::getConfig() const
 {
-    Config conf = Symbol::getConfig();
-    conf.key() = "line";
-    conf.addObjIfSet("stroke", _stroke);
+    Config conf;
+    conf.addIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
+    conf.addIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
+    conf.addIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
+    conf.addIfSet( "vertical_offset", _verticalOffset );
     return conf;
 }
 
 void 
-LineSymbol::mergeConfig( const Config& conf )
+AltitudeSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet("stroke", _stroke);
+    conf.getIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
+    conf.getIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
+    conf.getIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
+    conf.getIfSet( "vertical_offset", _verticalOffset );
 }

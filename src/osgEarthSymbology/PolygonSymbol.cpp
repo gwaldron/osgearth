@@ -28,13 +28,16 @@ _fill( Fill() )
 }
 
 Config 
-PolygonSymbol::getConfig() const {
-    Config conf( "polygon" );
+PolygonSymbol::getConfig() const
+{
+    Config conf = Symbol::getConfig();
+    conf.key() = "polygon";
     conf.addObjIfSet( "fill", _fill );
     return conf;
 }
 
 void 
-PolygonSymbol::mergeConfig(const Config& conf ) {
+PolygonSymbol::mergeConfig(const Config& conf )
+{
     conf.getObjIfSet( "fill", _fill );
 }

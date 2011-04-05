@@ -35,17 +35,12 @@ namespace osgEarth { namespace Symbology
         /** Height to which to extrude geometry above the footprint */
         optional<float>& height() { return _height; }
         const optional<float>& height() const { return _height; }
-
-        /** Z offset relative to footprint to begin extrusion */
-        optional<float>& offset() { return _offset; }
-        const optional<float>& offset() const { return _offset; }
         
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<float> _offset;
         optional<float> _height;
     };
 

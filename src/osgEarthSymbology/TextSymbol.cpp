@@ -35,7 +35,8 @@ _sizeMode( SIZEMODE_SCREEN )
 Config 
 TextSymbol::getConfig() const
 {
-    Config conf("text");
+    Config conf = Symbol::getConfig();
+    conf.key() = "text";
     conf.addObjIfSet( "fill", _fill );
     conf.addObjIfSet( "halo", _halo );
     conf.addIfSet( "font", _font );

@@ -81,6 +81,7 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     const LineSymbol*      line      = style->getSymbol<LineSymbol>();
     const PolygonSymbol*   polygon   = style->getSymbol<PolygonSymbol>();
     const ExtrusionSymbol* extrusion = style->getSymbol<ExtrusionSymbol>();
+    const AltitudeSymbol*  altitude  = style->getSymbol<AltitudeSymbol>();
 
     // model substitution
     if ( model )
@@ -95,10 +96,10 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             cx = scatter.push( workingSet, cx );
         }
 
-        if ( model->clamping() != ModelSymbol::CLAMP_NONE )
+        if ( altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE )
         {
             ClampFilter clamp;
-            clamp.setIgnoreZ( model->clamping() == ModelSymbol::CLAMP_TO_TERRAIN );
+            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
             cx = clamp.push( workingSet, cx );
         }
 

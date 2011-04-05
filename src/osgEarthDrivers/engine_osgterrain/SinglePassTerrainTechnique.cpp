@@ -879,6 +879,16 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 {
                   osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
 
+                  if (elevationLayer)
+                  {
+                    unsigned int i_equiv = i_sampleFactor==1.0 ? i : (unsigned int) (double(i)*i_sampleFactor);
+                    unsigned int j_equiv = j_sampleFactor==1.0 ? j : (unsigned int) (double(j)*j_sampleFactor);
+
+                    float value = 0.0f;
+                    if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                      ndc.z() = value*scaleHeight;
+                  }
+
                   osg::Vec3d model;
                   _masterLocator->convertLocalToModel(ndc, model);
 

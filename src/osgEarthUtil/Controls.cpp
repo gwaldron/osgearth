@@ -490,15 +490,22 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
     {
         _renderSize.set( 0, 0 );
 
-        if ( _image.valid() )
+        //First try the explicit settings
+        if (width().isSet() && height().isSet())
+        {
+            _renderSize.set(width().value(), height().value());
+        }
+        //Second try the size of the image itself
+        else if (_image.valid())
         {
             _renderSize.set( _image->s(), _image->t() );
         }
-
-        _renderSize.set(
-            osg::maximum( _renderSize.x(), width().value() ),
-            osg::maximum( _renderSize.y(), height().value() ) );
-
+        //Lastly just use the default values for width and height
+        else
+        {
+            _renderSize.set( width().value(), height().value());
+        }
+        
         out_size.set(
             margin().left() + margin().right() + _renderSize.x(),
             margin().top() + margin().bottom() + _renderSize.y() );
@@ -536,11 +543,13 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         g->setColorArray( c );
         g->setColorBinding( osg::Geometry::BIND_OVERALL );
 
+        bool flip = _image->getOrigin()==osg::Image::TOP_LEFT;
+
         osg::Vec2Array* t = new osg::Vec2Array(4);
-        (*t)[0].set( 0, _renderSize.y()-1 );
-        (*t)[1].set( 0, 0 );
-        (*t)[2].set( _renderSize.x()-1, 0 );
-        (*t)[3].set( _renderSize.x()-1, _renderSize.y()-1 );
+        (*t)[0].set( 0, flip? 0: _image->t()-1 );
+        (*t)[1].set( 0, flip? _image->t()-1: 0 );
+        (*t)[2].set( _image->s()-1, flip? _image->t()-1: 0 );
+        (*t)[3].set( _image->s()-1, flip? 0: _image->t()-1 );
         g->setTexCoordArray( 0, t );
 
         osg::TextureRectangle* texrec = new osg::TextureRectangle( _image.get() );

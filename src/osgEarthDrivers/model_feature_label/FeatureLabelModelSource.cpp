@@ -92,7 +92,7 @@ public:
         osg::Node* labels = NULL;
         if (textSymbol.valid())
         {
-            BuildTextOperator textOperator;
+            BuildTextOperator textOperator(_options.hideClutter().isSet() ? _options.hideClutter().get() : false);
             labels = textOperator(featureList, textSymbol.get(), contextFilter);
         }
 

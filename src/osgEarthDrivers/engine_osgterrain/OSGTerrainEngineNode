@@ -85,6 +85,8 @@ private:
     void updateTextureCombining();
     
     void createURI(const TileKey& key, std::string& out_uri );
+
+    bool pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* polygon);
     
 private:
     osg::ref_ptr<OSGTileFactory> _tileFactory;

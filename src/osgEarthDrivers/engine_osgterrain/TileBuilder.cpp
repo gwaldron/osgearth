@@ -164,13 +164,14 @@ struct BuildElevLayer
 
 struct AssembleTile
 {
-    void init(const TileKey& key, const MapInfo& mapInfo, const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo )
+    void init(const TileKey& key, const MapInfo& mapInfo, const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo, osg::Vec3dArray* mask=0L )
     {
         _key     = key;
         _mapInfo = &mapInfo;
         _opt     = &opt;
         _repo    = &repo;
         _tile    = 0L;
+        _mask    = mask;
     }
 
     void execute()
@@ -179,6 +180,7 @@ struct AssembleTile
         _tile->setVerticalScale( *_opt->verticalScale() );
         _tile->setRequiresNormals( true );
         _tile->setDataVariance( osg::Object::DYNAMIC );
+        _tile->setTerrainMaskGeometry(_mask);
 
         // copy over the source data.
         _tile->setCustomColorLayers( _repo->_colorLayers );
@@ -207,6 +209,7 @@ struct AssembleTile
     const OSGTerrainOptions* _opt;
     TileBuilder::SourceRepo* _repo;
     CustomTile*              _tile;
+    osg::Vec3dArray*         _mask;
 };
 
 //------------------------------------------------------------------------
@@ -326,7 +329,7 @@ TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_t
 void
 TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData )
 {
-    MapFrame mapf( _map, Map::TERRAIN_LAYERS );
+    MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
 
     SourceRepo repo;
 
@@ -448,9 +451,14 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
         }
     }
 
+    osg::Vec3dArray* maskBounds = 0L;
+    osgEarth::MaskLayer* mask = mapf.getTerrainMaskLayer();
+    if (mask)
+      maskBounds = mask->getOrCreateBoundary();
+
     // Ready to create the actual tile.
     AssembleTile assemble;
-    assemble.init( key, mapInfo, _terrainOptions, repo );
+    assemble.init( key, mapInfo, _terrainOptions, repo, maskBounds );
     assemble.execute();
 
     if (!out_hasRealData)

@@ -269,16 +269,24 @@ TextureCompositor::prepareImage( const GeoImage& image, const GeoExtent& tileExt
     return _impl.valid() ? _impl->prepareImage( image, tileExtent ) : GeoImage::INVALID;
 }
 
+GeoImage
+TextureCompositor::prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) const
+{
+    return _impl.valid() ? _impl->prepareSecondaryImage( image, tileExtent ) : GeoImage::INVALID;
+}
+
 void
 TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
                                     UID layerUID,
                                     const GeoImage& preparedImage,
-                                    const GeoExtent& tileExtent ) const
+                                    const TileKey& tileKey,
+                                    osg::StateSet* parentStateSet) const
 {
     if ( _impl.valid() )
     {
         Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
-        _impl->applyLayerUpdate( stateSet, layerUID, preparedImage, tileExtent, _layout );
+        _impl->applyLayerUpdate( stateSet, layerUID, preparedImage, tileKey,
+                                 _layout,  parentStateSet );
     }
 }
 

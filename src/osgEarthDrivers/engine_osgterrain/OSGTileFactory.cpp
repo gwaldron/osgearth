@@ -715,8 +715,10 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
 
             // if blending is on, AND if actual new data was loaded (instead of just reusing a parent tile),
             // create a custom blended image.
+
             if ( _terrainOptions.lodBlending() == true && key == image_tiles[i]._imageTileKey )
             {
+#if 0
                 osg::ref_ptr<osg::Image> blendedImage;
                 if ( ! createLodBlendedImage( image_tiles[i]._layerUID, key, geo_image.getImage(), terrain, blendedImage ) )
                 {
@@ -727,7 +729,16 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
                     mapf.getImageLayerAt(i),
                     blendedImage.get(),
                     img_locator.get(),
-                    key.getLevelOfDetail() ) );
+                    key.getLevelOfDetail(),
+                    key) );
+#endif
+                osg::ref_ptr<osg::Image> secondaryImage;
+                tile->setCustomColorLayer(
+                    CustomColorLayer( mapf.getImageLayerAt(i),
+                                      geo_image.getImage(),
+                                      img_locator.get(),
+                                      key.getLevelOfDetail(),
+                                      key)) ;
             }
             else
             {
@@ -735,7 +746,8 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
                     mapf.getImageLayerAt(i),
                     geo_image.getImage(),
                     img_locator.get(),
-                    key.getLevelOfDetail() ) );
+                    key.getLevelOfDetail(),
+                    key) );
             }
 
             double upp = geo_image.getUnitsPerPixel();
@@ -960,6 +972,36 @@ OSGTileFactory::createLodBlendedImage(UID layerUID, const TileKey& key,
     return false;
 }
 
+bool
+OSGTileFactory::createSecondaryImage(UID layerUID, const TileKey& key,
+                                       CustomTerrain* terrain,
+                                      osg::ref_ptr<osg::Image>& output)
+{
+    TileKey parentKey = key.createParentKey();
+    if ( parentKey.valid() )
+    {
+        osg::ref_ptr<CustomTile> parentTile;
+        terrain->getCustomTile( parentKey.getTileId(), parentTile );
+        if ( parentTile.valid() )
+        {
+            CustomColorLayer parentLayer;
+            if ( parentTile->getCustomColorLayer( layerUID, parentLayer ) )
+            {
+                if ( parentLayer.getImage() && parentLayer.getLocator() )
+                {
+                    GeoImage parentGI(
+                        const_cast<osg::Image*>( parentLayer.getImage() ),
+                        static_cast<const GeoLocator*>(parentLayer.getLocator())->getDataExtent() );
+
+                    GeoImage cropped = parentGI.crop( key.getExtent() );
+                    output = cropped.getImage();
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
 CustomColorLayerRef*
 OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
                                  ImageLayer* layer,
@@ -1003,7 +1045,8 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
                 layer,
                 blendedImage.get(),
                 imgLocator.get(),
-                key.getLevelOfDetail() ) );
+                key.getLevelOfDetail(),
+                key) );
         }
         else
 #endif
@@ -1012,7 +1055,8 @@ OSGTileFactory::createImageLayer(const MapInfo& mapInfo,
                 layer,
                 geoImage.getImage(),
                 imgLocator.get(),
-                key.getLevelOfDetail() ) );
+                key.getLevelOfDetail(),
+                key) );
         }
 
         //CustomColorLayer result( layer, geoImage.getImage(), imgLocator.get(), key.getLevelOfDetail() );

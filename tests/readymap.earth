@@ -29,6 +29,8 @@ http://readymap.org
         <terrain>
             <lighting>false</lighting>
             <lod_fall_off>6.0</lod_fall_off>
+            <lod_blending>true</lod_blending>
+            <compositor>texture_array</compositor>
         </terrain>
         <cache type="tms">
             <path>cache_readymap</path>

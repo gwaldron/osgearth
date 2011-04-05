@@ -330,10 +330,27 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
         << "{ \n"
         << "    gl_Position = warpVertex( gl_ModelViewProjectionMatrix * gl_Vertex ); \n"
         << "    gl_FrontColor = gl_Color; \n"
+        << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
         << "} \n";
 
     std::string vertSource = buf.str();
     program->addShader( new osg::Shader( osg::Shader::VERTEX, vertSource ) );
+
+    std::stringstream fragBuf;
+    fragBuf    << "#version 110 \n"
+               << "uniform sampler2D texture_0; \n"
+               << "void main() \n"
+               << "{\n"                              
+               << "    vec4 tex = texture2D(texture_0, gl_TexCoord[0].xy);\n"                                                   
+               << "    vec3 mixed_color = mix(gl_Color.rgb, tex.rgb, tex.a);\n"
+               << "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
+               //<< "    gl_FragColor = vec4(gl_Color) * tex;\n"                              
+               << "}\n";
+    
+    std::string fragSource = fragBuf.str();
+    
+    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, fragSource ) );
+    set->addUniform(new osg::Uniform("texture_0",0));
 }
 
 void
@@ -401,7 +418,7 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
     if ( !_visualizeWarp )
         buf  << "    texCoord = warpTexCoord( texCoord ); \n";
 
-    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"
+    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"        
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 

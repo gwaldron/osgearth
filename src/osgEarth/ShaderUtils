@@ -45,6 +45,7 @@ namespace osgEarth
         bool  _dirty;
         bool  _applied;
         bool  _useUpdateTrav;
+        OpenThreads::Mutex _stateSetMutex;
 
         osg::ref_ptr<osg::Uniform> _lightingEnabledUniform;
         osg::ref_ptr<osg::Uniform> _lightEnabledUniform;

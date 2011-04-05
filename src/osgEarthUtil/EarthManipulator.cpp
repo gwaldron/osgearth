@@ -58,6 +58,24 @@ namespace
     void
     s_getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
     {
+        // http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToEuler/index.htm
+
+        p = atan2(2*(q.y()*q.z() + q.w()*q.x()), (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z() * q.z()));
+	    h = asin (2*q.x()*q.y() + 2*q.z()*q.w());
+        r = atan2(2*q.x()*q.w()-2*q.y()*q.z() , 1 - 2*q.x()*q.x() - 2*q.z()*q.z());
+    	
+        if( osg::equivalent( q.x()*q.y() + q.z() *q.w(), 0.5 ) )
+	    { 
+		    p = (float)(2 * atan2( q.x(),q.w())); 
+		    r = 0;     
+	    }  	 
+        else if( osg::equivalent( q.x()*q.y() + q.z()*q.w(), -0.5 ) )
+	    { 
+		    p = (float)(-2 * atan2(q.x(), q.w())); 
+		    r = 0; 
+	    } 
+     
+#if 0
         osg::Matrixd rot(q);
         p = asin(rot(1,2));
         if( osg::equivalent(osg::absolute(p), osg::PI_2) )
@@ -70,6 +88,7 @@ namespace
             r = atan2( rot(0,2), rot(2,2) );
             h = atan2( rot(1,0), rot(1,1) );
         }
+#endif
     }
 }
 
@@ -1762,6 +1781,13 @@ EarthManipulator::rotate( double dx, double dy )
     // clamp the local pitch delta; never allow the pitch to hit -90.
     double minp = osg::DegreesToRadians( osg::clampAbove( _settings->getMinPitch(), -89.9 ) );
     double maxp = osg::DegreesToRadians( _settings->getMaxPitch() );
+
+    //OE_NOTICE << LC 
+    //    << "LocalPitch=" << osg::RadiansToDegrees(_local_pitch)
+    //    << ", dy=" << osg::RadiansToDegrees(dy)
+    //    << ", dy+lp=" << osg::RadiansToDegrees(_local_pitch+dy)
+    //    << ", limits=" << osg::RadiansToDegrees(minp) << "," << osg::RadiansToDegrees(maxp)
+    //    << std::endl;
 
     // clamp pitch range:
     if ( dy + _local_pitch > maxp || dy + _local_pitch < minp )

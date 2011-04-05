@@ -78,6 +78,9 @@ AutoClipPlaneHandler::frame( osgGA::GUIActionAdapter& aa )
 
         double d = eye.length();
 
+        if ( d < _rp )
+            d = _rp;
+
         if ( d > _rp )
         {
             double fovy, ar, znear, zfar, finalZfar;

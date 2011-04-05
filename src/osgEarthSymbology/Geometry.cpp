@@ -455,7 +455,6 @@ Polygon::getTotalPointCount() const
     return total;
 }
 
-
 bool
 Polygon::contains2D( double x, double y ) const
 {
@@ -472,6 +471,14 @@ Polygon::contains2D( double x, double y ) const
     }
 
     return true;
+}
+
+void
+Polygon::open() 
+{
+    Ring::open();
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+        (*i)->open();
 }
 
 //----------------------------------------------------------------------------

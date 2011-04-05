@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #ifndef OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H
 #define OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H 1
 
@@ -35,6 +34,10 @@ namespace osgEarth { namespace Symbology
         /** Height to which to extrude geometry above the footprint */
         optional<float>& height() { return _height; }
         const optional<float>& height() const { return _height; }
+
+        /** Whether the top cap of the extruded geometry should be flat (default=true) */
+        optional<bool>& uniformHeight() { return _uniformHeight; }
+        const optional<bool>& uniformHeight() const { return _uniformHeight; }
         
     public:
         virtual Config getConfig() const;
@@ -42,6 +45,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<float> _height;
+        optional<bool>  _uniformHeight;
     };
 
 } } // namespace osgEarth::Symbology

@@ -79,8 +79,15 @@ namespace osgEarth { namespace Symbology
         static bool hasBufferOperation();
 
     public:
-        // gets the total number of points in this geometry.
+        /**
+         * Gets the total number of points in this geometry.
+         */
         virtual int getTotalPointCount() const;
+
+        /**
+         * Gets the total number of geometry components
+         */
+        virtual unsigned getNumComponents() const { return 1; }
 
         /**
          * Converts this geometry to another type. This function will return "this" if
@@ -200,7 +207,7 @@ namespace osgEarth { namespace Symbology
         virtual double getSignedArea2D() const;
 
         // ensures that the first and last points are not idential.
-        void open();
+        virtual void open();
         
         // opens and rewinds the ring to the specified orientation.
         void rewind( Orientation ori );
@@ -233,6 +240,8 @@ namespace osgEarth { namespace Symbology
         // tests whether the point falls withing the polygon (but not its holes)
         virtual bool contains2D( double x, double y ) const;
 
+        virtual void open();
+
     public:
         RingCollection& getHoles() { return _holes; }
         const RingCollection& getHoles() const { return _holes; }
@@ -257,7 +266,8 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Type getType() const { return Geometry::TYPE_MULTI; }        
         virtual Type getComponentType() const;
-        virtual int getTotalPointCount() const;
+        virtual int getTotalPointCount() const;        
+        virtual unsigned getNumComponents() const { return _parts.size(); }
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;

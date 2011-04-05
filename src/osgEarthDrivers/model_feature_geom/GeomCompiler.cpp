@@ -19,6 +19,7 @@
 #include "GeomCompiler"
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/ClampFilter>
+#include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TransformFilter>
@@ -115,8 +116,15 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     // extruded geometry
     else if ( extrusion && ( line || polygon ) )
     {
-        //todo
-        //ExtrudeGeometryFilter will go here
+        if ( altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE )
+        {
+            ClampFilter clamp;
+            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+            cx = clamp.push( workingSet, cx );
+        }
+
+        ExtrudeGeometryFilter extrude( style );
+        result = extrude.push( workingSet, cx );
     }
 
     // simple geometry

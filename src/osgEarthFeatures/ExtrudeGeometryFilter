@@ -1,0 +1,76 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H
+#define OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Style>
+#include <osg/Geode>
+
+namespace osgEarth { namespace Features 
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Extrudes footprint geometry into 3D geometry
+     */
+    class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter : public Filter
+    {
+    public:
+        ExtrudeGeometryFilter( const Style* style =0L );
+
+        /** Pushes a list of features through the filter. */
+        osg::Node* push( FeatureList& input, const FilterContext& context );
+
+        /** Gets the resulting OSG scene graph */
+        //osg::Node* getNode() { return _geode.release(); }
+
+    protected:
+        osg::ref_ptr<osg::Geode>  _geode;
+        osg::ref_ptr<const Style> _style;
+        optional<double>          _maxAngle_deg;
+        optional<bool>            _mergeGeometry;
+        double                    _height;
+        bool                      _uniformHeight;
+        osg::Vec4f                _color;
+
+        void reset();
+        
+        bool pushFeature( 
+            Feature*             input, 
+            const FilterContext& context );
+
+        bool extrudeGeometry(
+            const Geometry*      input,
+            double               height,
+            bool                 uniformHeight,
+            osg::Geometry*       walls,
+            osg::Geometry*       top_cap,
+            osg::Geometry*       bottom_cap,
+            const osg::Vec4&     color,
+            const FilterContext& cx );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

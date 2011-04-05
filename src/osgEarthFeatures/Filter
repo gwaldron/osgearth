@@ -29,9 +29,16 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
 
     /**
+     * Base class for a filter.
+     */
+    class Filter : public osg::Referenced
+    {
+    };
+
+    /**
      * Base class for feature filters.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureFilter : public osg::Referenced
+    class OSGEARTHFEATURES_EXPORT FeatureFilter : public Filter
     {
     public:
         virtual FilterContext push( FeatureList& input, const FilterContext& context ) =0;

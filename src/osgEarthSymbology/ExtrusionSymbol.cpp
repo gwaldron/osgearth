@@ -22,7 +22,8 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 ExtrusionSymbol::ExtrusionSymbol( const Config& conf ) :
-_height( 10.0 )
+_height( 10.0 ),
+_uniformHeight( true )
 {
     if ( !conf.empty() )
         mergeConfig(conf);
@@ -33,12 +34,14 @@ ExtrusionSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "extrusion";
-    conf.addIfSet( "height", _height );
+    conf.addIfSet( "height",         _height );
+    conf.addIfSet( "uniform_height", _uniformHeight );
     return conf;
 }
 
 void 
 ExtrusionSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "height", _height );
+    conf.getIfSet( "height",         _height );
+    conf.getIfSet( "uniform_height", _uniformHeight );
 }

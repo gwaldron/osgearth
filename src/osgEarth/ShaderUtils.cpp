@@ -137,9 +137,13 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
         // apply if necessary:
         if ( !_applied && !_useUpdateTrav )
         {
-            node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
-            node->getStateSet()->addUniform( _lightEnabledUniform.get() );
-            _applied = true;
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _stateSetMutex );
+            if (!_applied)
+            {
+                node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
+                node->getStateSet()->addUniform( _lightEnabledUniform.get() );
+                _applied = true;
+            }
         }		
     }        
 }

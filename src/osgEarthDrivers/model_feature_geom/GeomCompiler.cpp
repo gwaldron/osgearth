@@ -68,13 +68,6 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     GeoExtent geoExtent = featureProfile->getExtent().transform( featureProfile->getSRS()->getGeographicSRS() );
     bool localize = mi.isGeocentric() && geoExtent.width() < 180.0;
 
-    // transform the features into the map profile
-    TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   
-    xform.setLocalizeCoordinates( localize );
-    if ( _options.heightOffset().isSet() )
-        xform.setMatrix( osg::Matrixd::translate(0, 0, *_options.heightOffset()) );
-    cx = xform.push( workingSet, cx );
-
     // go through the Style and figure out which filters to use.
     const ModelSymbol*     model     = style->getSymbol<ModelSymbol>();
     const PointSymbol*     point     = style->getSymbol<PointSymbol>();
@@ -82,6 +75,13 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     const PolygonSymbol*   polygon   = style->getSymbol<PolygonSymbol>();
     const ExtrusionSymbol* extrusion = style->getSymbol<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style->getSymbol<AltitudeSymbol>();
+    
+    // transform the features into the map profile
+    TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   
+    xform.setLocalizeCoordinates( localize );
+    if ( altitude && altitude->verticalOffset().isSet() )
+        xform.setMatrix( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
+    cx = xform.push( workingSet, cx );
 
     // model substitution
     if ( model )

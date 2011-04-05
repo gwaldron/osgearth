@@ -92,7 +92,6 @@ namespace
 
 TransformFilter::TransformFilter() :
 _makeGeocentric( false ),
-//_heightOffset( 0.0 ),
 _localize( false )
 {
     // nop
@@ -102,7 +101,6 @@ TransformFilter::TransformFilter(const SpatialReference* outputSRS,
                                  bool outputGeocentric ) :
 _outputSRS( outputSRS ),
 _makeGeocentric( outputGeocentric ),
-//_heightOffset( 0.0 ),
 _localize( false )
 {
     //NOP
@@ -115,60 +113,41 @@ TransformFilter::push( Feature* input, const FilterContext& context )
         return true;
 
     bool needsSRSXform =
-        ! context.profile()->getSRS()->isEquivalentTo( _outputSRS.get() );
+        _outputSRS.valid() &&
+        ( ! context.profile()->getSRS()->isEquivalentTo( _outputSRS.get() ) );
 
     bool needsMatrixXform = !_mat.isIdentity();
 
     // optimize: do nothing if nothing needs doing
-    if ( !needsSRSXform && !_makeGeocentric && !_localize && needsMatrixXform ) //_heightOffset == 0.0 )
+    if ( !needsSRSXform && !_makeGeocentric && !_localize && !needsMatrixXform )
         return true;
 
     // iterate over the feature geometry.
-    Geometry* container = input->getGeometry();
-    if ( container )
+    GeometryIterator iter( input->getGeometry() );
+    while( iter.hasMore() )
     {
-        GeometryIterator iter( container );
-        while( iter.hasMore() )
+        Geometry* geom = iter.next();
+
+        // pre-transform the point before doing an SRS transformation.
+        if ( needsMatrixXform )
         {
-            Geometry* geom = iter.next();
+            for( unsigned i=0; i < geom->size(); ++i )
+                (*geom)[i] = (*geom)[i] * _mat;
+        }
 
-            // pre-transform the point before doing an SRS transformation.
-            if ( needsMatrixXform )
-            {
-                for( unsigned i=0; i < geom->size(); ++i )
-                    (*geom)[i] = (*geom)[i] * _mat;
-            }
+        // first transform the geometry to the output SRS:            
+        if ( needsSRSXform )
+            context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom, false );
 
-            // first transform the geometry to the output SRS:            
-            if ( needsSRSXform )
-                context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom, false );
+        // convert to ECEF if required:
+        if ( _makeGeocentric )
+            _outputSRS->transformToECEF( geom, false );
 
-            // convert to ECEF if required:
-            if ( _makeGeocentric )
-                _outputSRS->transformToECEF( geom, false );
-
-            // update the bounding box.
+        // update the bounding box.
+        if ( _localize )
+        {
             for( unsigned i=0; i<geom->size(); ++i )
                 _bbox.expandBy( (*geom)[i] );
-
-#if 0
-            // apply the height offset:
-            for( unsigned i=0; i<geom->size(); ++i )
-            {
-                (*geom)[i].z() += _heightOffset;
-                if ( !_makeGeocentric )
-                    _bbox.expandBy( (*geom)[i] );
-            }
-
-            // convert to geocentric if applicable:
-            if ( _makeGeocentric )
-            {
-                _outputSRS->transformPointsToECEF( geom, false );
-
-                for( unsigned i=0; i<geom->size(); ++i )
-                    _bbox.expandBy( (*geom)[i] );
-            }
-#endif
         }
     }
 
@@ -188,7 +167,9 @@ TransformFilter::push( FeatureList& input, const FilterContext& incx )
 
     FilterContext outcx( incx );
     outcx.isGeocentric() = _makeGeocentric;
-    outcx.profile() = new FeatureProfile( incx.profile()->getExtent().transform( _outputSRS.get() ) );
+
+    if ( _outputSRS.valid() )
+        outcx.profile() = new FeatureProfile( incx.profile()->getExtent().transform( _outputSRS.get() ) );
 
     // set the reference frame to shift data to the centroid. This will
     // prevent floating point precision errors in the openGL pipeline for

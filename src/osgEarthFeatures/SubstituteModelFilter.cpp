@@ -68,6 +68,7 @@ SubstituteModelFilter::pushFeature(Feature*                     input,
             const osg::Vec3d& point = (*geom)[i];
             osg::MatrixTransform* xform = new osg::MatrixTransform();
             xform->setMatrix( _modelMatrix * osg::Matrixd::translate( point ) );
+            xform->setDataVariance( osg::Object::STATIC );
             xform->addChild( data._model.get() );
             attachPoint->addChild( xform );
         }
@@ -233,6 +234,16 @@ SubstituteModelFilter::push(FeatureList&         features,
         for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
             if ( !pushFeature( i->get(), data, group, newContext ) )
                 ok = false;
+
+#if 0
+        // speeds things up a bit, at the expense of creating tons of geometry..
+
+        // this optimizer pass will remove all the MatrixTransform nodes that we
+        // used to offset each instance
+        osgUtil::Optimizer optimizer;
+        optimizer.optimize( group, osgUtil::Optimizer::FLATTEN_STATIC_TRANSFORMS_DUPLICATING_SHARED_SUBGRAPHS );
+#endif
+
     }
 
     _result = group;

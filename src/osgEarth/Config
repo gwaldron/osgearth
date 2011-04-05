@@ -20,7 +20,7 @@
 #define OSGEARTH_CONFIG_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Utils>
+#include <osgEarth/StringUtils>
 #include <osgDB/ReaderWriter>
 #include <osg/Version>
 #if OSG_MIN_VERSION_REQUIRED(2,9,5)

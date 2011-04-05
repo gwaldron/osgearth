@@ -66,10 +66,14 @@ namespace osgEarth
         lru_type _lru;
         unsigned _max;
         unsigned _buf;
+        unsigned _queries;
+        unsigned _hits;
 
     public:
         LRUCache( unsigned max =100 ) : _max(max) {
             _buf = _max/10;
+            _queries = 0;
+            _hits = 0;
         }
 
         void insert( const K& key, const T& value ) {
@@ -97,11 +101,13 @@ namespace osgEarth
         }
 
         Record get( const K& key ) {
+            _queries++;
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
                 lru_iter i = mi->second.second;
                 _lru.erase( i );
                 _lru.push_back( key );
+                _hits++;
                 return Record( &(mi->second.first) );
             }
             else {
@@ -130,6 +136,10 @@ namespace osgEarth
 
         unsigned getMaxSize() const {
             return _max;
+        }
+
+        float getHitRatio() const {
+            return _queries > 0 ? (float)_hits/(float)_queries : 0.0f;
         }
     };
 

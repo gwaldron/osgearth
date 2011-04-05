@@ -27,12 +27,11 @@ ElevationQuery::postCTOR()
 {
     _tileSize         = 0;
     _maxDataLevel     = 0;
-    //_maxCacheSize     = 100;
     _technique        = TECHNIQUE_PARAMETRIC;
     _interpolation    = INTERP_BILINEAR;
     _maxLevelOverride = -1;
 
-    _tileCache.setMaxSize( 100 );
+    _tileCache.setMaxSize( 50 );
 }
 
 void
@@ -180,11 +179,6 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         TileCache::Record record = _tileCache.get( tileId );
         if ( record.valid() )
             tile = record.value().get();
-
-        //// next check the local tile cache:
-        //TileTable::const_iterator i = _tileCache.find( tileId );
-        //if ( i != _tileCache.end() )
-        //    tile = i->second.get();
     }
          
     // if we found it, make sure it has a heightfield in it:
@@ -231,19 +225,9 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         // store it in the local tile cache.
         // TODO: limit the size of the cache with a parallel FIFO list.
         _tileCache.insert( tileId, tile.get() );
-
-        //_tileCache[tileId] = tile.get();
-        //_tileCacheFIFO.push_back( tileId );
-
-        //// prune the cache. this is a terrible pruning method.
-        //if ( _tileCache.size() > _maxCacheSize )
-        //{
-        //    osgTerrain::TileID id = _tileCacheFIFO.front();
-        //    _tileCacheFIFO.pop_front();
-        //    if ( tileId != id )
-        //        _tileCache.erase( id );
-        //}
     }
+
+    OE_DEBUG << LC << "LRU Cache, hit ratio = " << _tileCache.getHitRatio() << std::endl;
 
     // see what the actual resolution of the heightfield is.
     if ( out_actualResolution )

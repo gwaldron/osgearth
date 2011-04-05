@@ -29,7 +29,7 @@
 #include <osgEarth/TileKey>
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
-#include <osgEarth/Utils>
+#include <osgEarth/StringUtils>
 
 #include <limits.h>
 #include <iomanip>

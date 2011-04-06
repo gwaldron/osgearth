@@ -1,0 +1,37 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to read feature data from a WFS server
+-->
+
+<map name="WFS Feature Demo" type="geocentric" version="2">
+    
+    <options lighting="false"/>
+
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <overlay name="states" driver="feature_geom">          
+				
+		<features name="states" driver="wfs">
+            <url> http://demo.opengeo.org/geoserver/wfs</url>     		
+	    	<typename>states</typename>
+			<outputformat>json</outputformat>
+        </features>
+		
+		<geometry_type>line</geometry_type>
+			      
+        <styles>        
+            <style type="text/css">
+                states {
+                   stroke: #ffff00;
+                   stroke-opacity: 1.0;
+                   stroke-width: 3.0;
+                }                       
+            </style>                   
+            
+        </styles>
+        
+    </overlay>
+</map>

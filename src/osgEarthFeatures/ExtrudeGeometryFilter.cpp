@@ -17,18 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
-#include <osgEarthSymbology/LineSymbol>
-#include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osg/Geode>
 #include <osg/Geometry>
-#include <osg/LineWidth>
-#include <osg/Point>
-#include <osg/Depth>
-#include <osg/PolygonOffset>
-#include <osg/MatrixTransform>
 #include <osg/ClusterCullingCallback>
-#include <osgText/Text>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>

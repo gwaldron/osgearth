@@ -1,0 +1,87 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_GEOMETRY_INDEX_H
+#define OSGEARTHFEATURES_FEATURE_GEOMETRY_INDEX_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osg/Geode>
+#include <osg/Geometry>
+#include <osg/PrimitiveSet>
+#include <map>
+#include <vector>
+
+namespace osgEarth { namespace Features
+{
+    class OSGEARTHFEATURES_EXPORT FeatureGeometryIndex : public osg::Referenced
+    {
+    public:
+        typedef std::vector< osg::ref_ptr<osg::PrimitiveSet> >              PrimitiveSetVector;
+        typedef std::map< osg::ref_ptr<osg::Geometry>, PrimitiveSetVector > GeomPrimSetMap;
+
+        struct Record
+        {
+            osg::ref_ptr<osg::Geode> _geode;
+            GeomPrimSetMap           _primSetsByGeometry;
+        };
+
+        typedef std::map< FeatureID, Record > FeatureRecords;
+
+    public:
+        /** Gets the record associated with the feature ID, or NULL if there isn't one */
+        const Record* get( FeatureID fid ) const;
+
+        /** Gets the entire database for self-iteration */
+        const FeatureRecords& getRecords() const { return _records; }
+
+    private:
+        FeatureRecords _records;
+        friend class FeatureGeometryIndexBuilder;
+        FeatureGeometryIndex();
+    };
+
+
+    class OSGEARTHFEATURES_EXPORT FeatureGeometryIndexBuilder
+    {
+    public:
+        FeatureGeometryIndexBuilder();
+
+        /**
+         * Maps a primitiset set to a feature.
+         */
+        void add( FeatureID id, osg::PrimitiveSet* primSet );
+
+        /**
+         * Creates an index from a scene graph and the feature ID map
+         */
+        FeatureGeometryIndex* createIndex( osg::Node* graph );
+
+
+        typedef std::map< osg::PrimitiveSet*, FeatureID > PrimSetFeatureIdMap;
+        //typedef std::map< FeatureID, osg::ref_ptr<osg::PrimitiveSet> > FeaturePrimSetMap;
+
+    protected:
+        PrimSetFeatureIdMap _primSetIds;
+        //FeaturePrimSetMap _featurePrimSets;
+    };
+
+} } // osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_GEOMETRY_INDEX_H

@@ -23,12 +23,69 @@ using namespace osgEarth::Features;
 
 //---------------------------------------------------------------------------
 
+namespace
+{
+    struct FindVisitor : public osg::NodeVisitor
+    {
+        FindVisitor( FeatureID id )
+            : _id(id), 
+              _rec(0L),
+              osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
+
+        void apply( osg::Node& node )
+        {
+            if ( _rec )
+                return;
+
+            osg::Referenced* ref = node.getUserData();
+            if ( ref )
+            {
+                FeatureGeometryIndex* index = dynamic_cast<FeatureGeometryIndex*>( ref );
+                if ( index )
+                {
+                    _rec = index->get( _id );
+                    if ( _rec )
+                        return;
+                }
+            }
+            traverse( node );
+        }
+
+        FeatureID _id;
+        const FeatureGeometryRecord* _rec;
+    };
+}
+
+FeatureGeometryQuery::FeatureGeometryQuery( osg::Node* graph ) :
+_graph( graph )
+{
+    //nop
+}
+
+bool
+FeatureGeometryQuery::find( FeatureID id, FeatureGeometryRecord& record ) const
+{
+    if ( _graph.valid() )
+    {
+        FindVisitor visitor( id );
+        _graph->accept( visitor );
+        if ( visitor._rec )
+        {
+            record = *(visitor._rec);
+            return true;
+        }
+    }
+    return false;
+}
+
+//---------------------------------------------------------------------------
+
 FeatureGeometryIndex::FeatureGeometryIndex()
 {
     //nop
 }
 
-const FeatureGeometryIndex::Record*
+const FeatureGeometryRecord*
 FeatureGeometryIndex::get( FeatureID fid ) const
 {
     FeatureRecords::const_iterator i = _records.find( fid );
@@ -42,7 +99,6 @@ namespace
     struct Collector : public osg::NodeVisitor
     {
         typedef FeatureGeometryIndexBuilder::PrimSetFeatureIdMap IdMap;
-        typedef FeatureGeometryIndex::Record                     Rec;
 
         Collector(const IdMap& ids, FeatureGeometryIndex::FeatureRecords& recs )
             : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
@@ -64,7 +120,7 @@ namespace
                         if ( k != _ids.end() )
                         {
                             FeatureID fid = k->second;
-                            Rec& rec = _recs[fid];
+                            FeatureGeometryRecord& rec = _recs[fid];
                             rec._geode = &geode;
                             rec._primSetsByGeometry[geom].push_back( primSet );
                         }

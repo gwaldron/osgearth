@@ -30,23 +30,57 @@
 
 namespace osgEarth { namespace Features
 {
+    /**
+     * Record of all the OSG components that comprise a single Feature.
+     */
+    struct FeatureGeometryRecord
+    {
+        typedef std::vector< osg::ref_ptr<osg::PrimitiveSet> > PrimitiveSetVector;
+        typedef std::map< osg::ref_ptr<osg::Geometry>, PrimitiveSetVector > GeomPrimSetMap;
+
+        osg::ref_ptr<osg::Geode> _geode;
+        GeomPrimSetMap           _primSetsByGeometry;
+    };
+
+    /**
+     * This query object will search the specified scene graph for all the 
+     * OSG components that comprise a particular Feature ID. It searched the
+     * graph for a UserData structure containing a FeatureGeometryIndex. When
+     * found, it searches that index for the Feature ID. If found, it returns
+     * the record; otherwise it continues searching.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureGeometryQuery
+    {
+    public:
+        FeatureGeometryQuery( osg::Node* graph );
+
+        /**
+         * Locates the geometry record representing the specified feature.
+         * Returns true if found; false if not.
+         */
+        bool find( FeatureID fid, FeatureGeometryRecord& output ) const;
+
+    protected:
+        osg::ref_ptr<osg::Node> _graph;
+    };
+
+    /**
+     * Index that lets you look up the OSG components that comprise a given
+     * Feature. Given the Feature ID, this index will return a set of Geode,
+     * Geometies, and PrimitiveSets that make up the feature.
+     *
+     * Use a FeatureGeometryIndexBuilder to create an index. Typically you can
+     * then attach the index to a node in the scene graph that you used to
+     * create the index.
+     */
     class OSGEARTHFEATURES_EXPORT FeatureGeometryIndex : public osg::Referenced
     {
     public:
-        typedef std::vector< osg::ref_ptr<osg::PrimitiveSet> >              PrimitiveSetVector;
-        typedef std::map< osg::ref_ptr<osg::Geometry>, PrimitiveSetVector > GeomPrimSetMap;
-
-        struct Record
-        {
-            osg::ref_ptr<osg::Geode> _geode;
-            GeomPrimSetMap           _primSetsByGeometry;
-        };
-
-        typedef std::map< FeatureID, Record > FeatureRecords;
+        typedef std::map< FeatureID, FeatureGeometryRecord > FeatureRecords;
 
     public:
         /** Gets the record associated with the feature ID, or NULL if there isn't one */
-        const Record* get( FeatureID fid ) const;
+        const FeatureGeometryRecord* get( FeatureID fid ) const;
 
         /** Gets the entire database for self-iteration */
         const FeatureRecords& getRecords() const { return _records; }
@@ -57,7 +91,12 @@ namespace osgEarth { namespace Features
         FeatureGeometryIndex();
     };
 
-
+    /**
+     * Use this class to construct a geometry index. Every time you create a
+     * new primitive set that belongs to a Feature, call "add" to remember the
+     * mapping. When you are done building geometry, call "createIndex" to 
+     * build a index for a particular scene graph.
+     */
     class OSGEARTHFEATURES_EXPORT FeatureGeometryIndexBuilder
     {
     public:
@@ -74,12 +113,11 @@ namespace osgEarth { namespace Features
         FeatureGeometryIndex* createIndex( osg::Node* graph );
 
 
+    public:
         typedef std::map< osg::PrimitiveSet*, FeatureID > PrimSetFeatureIdMap;
-        //typedef std::map< FeatureID, osg::ref_ptr<osg::PrimitiveSet> > FeaturePrimSetMap;
 
     protected:
         PrimSetFeatureIdMap _primSetIds;
-        //FeaturePrimSetMap _featurePrimSets;
     };
 
 } } // osgEarth::Features

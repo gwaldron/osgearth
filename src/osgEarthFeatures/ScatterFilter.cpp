@@ -48,9 +48,7 @@ ScatterFilter::polyScatter(const Geometry*         input,
     Bounds bounds;
     double areaSqKm = 0.0;
 
-    ConstGeometryIterator iter( input );
-    iter.traversePolygonHoles() = false;
-
+    ConstGeometryIterator iter( input, false );
     while( iter.hasMore() )
     {
         const Polygon* polygon = dynamic_cast<const Polygon*>( iter.next() );

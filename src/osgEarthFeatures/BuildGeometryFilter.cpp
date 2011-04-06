@@ -133,8 +133,7 @@ BuildGeometryFilter::pushTextAnnotation( TextAnnotation* anno, const FilterConte
 bool
 BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& context )
 {
-    GeometryIterator parts( input->getGeometry() );
-    parts.traversePolygonHoles() = false;
+    GeometryIterator parts( input->getGeometry(), false );
     while( parts.hasMore() )
     {
         Geometry* part = parts.next();
@@ -390,8 +389,6 @@ osgEarth::Features::createVolume(Geometry*            geom,
     // start by offsetting the input data and counting the number of rings
     {
         GeometryIterator i( geom );
-        i.traverseMultiGeometry() = true;
-        i.traversePolygonHoles() = true;
         while( i.hasMore() )
         {
             Geometry* part = i.next();
@@ -430,8 +427,6 @@ osgEarth::Features::createVolume(Geometry*            geom,
     // will break the stenciling logic.
 #define PARALLEL_EPSILON 0.01
     GeometryIterator i( geom );
-    i.traverseMultiGeometry() = true;
-    i.traversePolygonHoles() = true;
     while( i.hasMore() )
     {
         Geometry* part = i.next();

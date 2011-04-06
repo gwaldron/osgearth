@@ -291,19 +291,18 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT GeometryIterator
     {
     public:
-        GeometryIterator( Geometry* geom );
-
-        // set to TRUE to return MG children, but never an MG itself;
-        // set to FALSE to return MGs and NOT their children.
-        // default = TRUE
-        bool& traverseMultiGeometry() {
-            return _traverseMulti; }
-
-        // set to TRUE to return Polygons AND Polygon hole geometries;
-        // set to FALSE to only return Polygon (outer ring).
-        // default = TRUE
-        bool& traversePolygonHoles() {
-            return _traversePolyHoles; }
+        /**
+         * New iterator.
+         *
+         * traversePolyHoles: set to TRUE to return Polygons AND Polygon hole geometries;
+         *                    set to FALSE to only return Polygon (outer ring).
+         *
+         * traverseMultiGeometry: set to TRUE to return MG children, but never an MG itself;
+         *                        set to FALSE to return MGs and NOT their children.
+         */
+        GeometryIterator(
+            Geometry* geom,
+            bool      traversePolygonHoles  =true );
 
         bool hasMore() const;
         Geometry* next();
@@ -320,19 +319,18 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ConstGeometryIterator
     {
     public:
-        ConstGeometryIterator( const Geometry* geom );
-
-        // set to TRUE to return MG children, but never an MG itself;
-        // set to FALSE to return MGs and NOT their children.
-        // default = TRUE
-        bool& traverseMultiGeometry() {
-            return _traverseMulti; }
-
-        // set to TRUE to return Polygons AND Polygon hole geometries;
-        // set to FALSE to only return Polygon (outer ring).
-        // default = TRUE
-        bool& traversePolygonHoles() {
-            return _traversePolyHoles; }
+        /**
+         * New iterator.
+         *
+         * traversePolyHoles: set to TRUE to return Polygons AND Polygon hole geometries;
+         *                    set to FALSE to only return Polygon (outer ring).
+         *
+         * traverseMultiGeometry: set to TRUE to return MG children, but never an MG itself;
+         *                        set to FALSE to return MGs and NOT their children.
+         */
+        ConstGeometryIterator(
+            const Geometry* geom,
+            bool            traversePolygonHoles  =true );
 
         bool hasMore() const;
         const Geometry* next();

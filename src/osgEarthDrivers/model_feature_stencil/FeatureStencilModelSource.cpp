@@ -115,8 +115,6 @@ namespace
         // start by offsetting the input data and counting the number of rings
         {
             osgEarth::Symbology::GeometryIterator i( geom );
-            i.traverseMultiGeometry() = true;
-            i.traversePolygonHoles() = true;
             while( i.hasMore() )
             {
                 osgEarth::Symbology::Geometry* part = i.next();
@@ -155,8 +153,6 @@ namespace
         // will break the stenciling logic.
     #define PARALLEL_EPSILON 0.01
         osgEarth::Symbology::GeometryIterator i( geom );
-        i.traverseMultiGeometry() = true;
-        i.traversePolygonHoles() = true;
         while( i.hasMore() )
         {
             osgEarth::Symbology::Geometry* part = i.next();

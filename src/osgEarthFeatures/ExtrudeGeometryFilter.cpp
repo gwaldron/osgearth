@@ -58,6 +58,9 @@ ExtrudeGeometryFilter::reset()
 
 #undef USE_TEX
 
+
+//..... need to convert this to use GL_TRIANGLES.
+
 bool
 ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        double                  height,
@@ -81,11 +84,22 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     bool   tex_repeats_y = true;
 #endif
 
+    bool isPolygon = input->getComponentType() == Geometry::TYPE_POLYGON;
+
     unsigned pointCount = input->getTotalPointCount();
     unsigned numVerts = 2 * pointCount;
     
-    if ( input->getComponentType() == Geometry::TYPE_POLYGON )
-        numVerts += 2 * input->getNumComponents();
+    //if ( isPolygon )
+    //{
+    //    // count the total number of rings
+    //    unsigned rings = 0;
+    //    ConstGeometryIterator count(input);
+    //    while( count.hasMore() ) {
+    //        count.next();
+    //        ++rings;
+    //    }
+    //    numVerts += 2 * rings;
+    //}
 
     // create all the OSG geometry components
     osg::Vec3Array* verts = new osg::Vec3Array( numVerts );
@@ -100,10 +114,9 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     walls->setColorArray( colors );
     walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-    osg::Vec3Array* normals = new osg::Vec3Array( numVerts );
-    walls->setNormalArray( normals );
-    walls->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
-
+    //osg::Vec3Array* normals = new osg::Vec3Array( numVerts );
+    //walls->setNormalArray( normals );
+    //walls->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
     osg::Vec3Array* topVerts = NULL;
     osg::Vec4Array* topColors = NULL;
@@ -128,16 +141,12 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     unsigned topVertPtr    = 0;
     unsigned bottomVertPtr = 0;
 
-    GLenum primType = GL_TRIANGLE_STRIP;
-
     double targetLen = -DBL_MAX;
     osg::Vec3d minLoc(DBL_MAX, DBL_MAX, DBL_MAX);
 
-    bool isPolygon = input->getComponentType() == Geometry::TYPE_POLYGON;
-
     // first, calculate the minimum Z across all parts.
     ConstGeometryIterator zfinder( input );
-    while( !zfinder.hasMore() )
+    while( zfinder.hasMore() )
     {
         const Geometry* geom = zfinder.next();
 
@@ -192,6 +201,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         double div = osg::round(maxHeight / tex_height_m);
         if (div == 0) div = 1; //Prevent divide by zero
         tex_height_m_adj = maxHeight / div;
+
+        osg::DrawElementsUInt* idx = new osg::DrawElementsUInt( GL_TRIANGLES );
 
         for( Geometry::const_iterator m = part->begin(); m != part->end(); ++m )
         {
@@ -251,49 +262,55 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             int p;
 
-            p = wallVertPtr++;
+            p = wallVertPtr; // ++
             (*colors)[p] = color;
             (*verts)[p] = extrudeVec;
 #ifdef USE_TEX
             (*texcoords)[p].set( part_len/tex_width_m, 0.0f );
 #endif
 
-            p = wallVertPtr++;
+            p = wallVertPtr+1; // ++
             (*colors)[p] = color;
             (*verts)[p] = *m;
 #ifdef USE_TEX
             (*texcoords)[p].set( part_len/tex_width_m, h/tex_height_m_adj );
 #endif
 
+            // form the 2 triangles
+            if ( (m+1) == part->end() )
+            {
+                if ( isPolygon )
+                {
+                    // end of the wall; loop around to close it off.
+                    idx->push_back(wallVertPtr); 
+                    idx->push_back(wallVertPtr+1);
+                    idx->push_back(wallPartPtr);
+
+                    idx->push_back(wallVertPtr+1);
+                    idx->push_back(wallPartPtr+1);
+                    idx->push_back(wallPartPtr);
+                }
+                else
+                {
+                    //nop - no elements required at the end of a line
+                }
+            }
+            else
+            {
+                idx->push_back(wallVertPtr); 
+                idx->push_back(wallVertPtr+1);
+                idx->push_back(wallVertPtr+2); 
+
+                idx->push_back(wallVertPtr+1);
+                idx->push_back(wallVertPtr+3);
+                idx->push_back(wallVertPtr+2);
+            }
+
+            wallVertPtr += 2;
             made_geom = true;
         }
 
-        if ( isPolygon ) //&& !part->isClosed() ) assume closed??
-        {            
-            partLen += wallVertPtr > wallPartPtr ?
-                ((*verts)[wallPartPtr] - (*verts)[wallVertPtr-2]).length() :
-                0.0;
-
-            int p;
-
-            p = wallVertPtr++;
-            (*colors)[p] = color;
-            (*verts)[p] = (*verts)[wallPartPtr];
-#ifdef USE_TEX
-            (*texcoords)[p].set( part_len/tex_width_m, (*texcoords)[wallPartPtr].y() );
-#endif
-
-            p = wallVertPtr++;
-            (*colors)[p] = color;
-            (*verts)[p] = (*verts)[wallPartPtr+1];
-#ifdef USE_TEX
-            (*texcoords)[p].set( part_len/tex_width_m, (*texcoords)[wallPartPtr+1].y() );
-#endif
-        }
-
-        walls->addPrimitiveSet( new osg::DrawArrays(
-            primType,
-            wallPartPtr, wallVertPtr - wallPartPtr ) );
+        walls->addPrimitiveSet( idx );
 
         if ( topCap )
         {
@@ -320,14 +337,13 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 bool
 ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context )
 {
-    GeometryIterator iter( input->getGeometry() );
-    iter.traversePolygonHoles() = false;
-
+    GeometryIterator iter( input->getGeometry(), false );
     while( iter.hasMore() )
     {
         Geometry* part = iter.next();
 
         osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
+        
         osg::ref_ptr<osg::Geometry> rooflines = 0L;
         
         if ( part->getType() == Geometry::TYPE_POLYGON )
@@ -355,19 +371,25 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
 #endif
             {
                 //There is no skin, so disable texturing for the walls to prevent other textures from being applied to the walls
-                walls->getOrCreateStateSet()->setTextureMode(0, GL_TEXTURE_2D, osg::StateAttribute::OFF);
+                if ( !_noTextureStateSet.valid() )
+                {
+                    _noTextureStateSet = new osg::StateSet();
+                    _noTextureStateSet->setTextureMode(0, GL_TEXTURE_2D, osg::StateAttribute::OFF);
+                }
+
+                walls->setStateSet( _noTextureStateSet.get() );
             }
 
             // generate per-vertex normals
             osgUtil::SmoothingVisitor smoother;
-            smoother.smooth( *walls.get() );
+            smoother.smooth( *walls.get() );           
 
             // tessellate and add the roofs if necessary:
             if ( rooflines.valid() )
             {
                 osgUtil::Tessellator tess;
                 tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-                tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+                tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD ); //POSITIVE );
                 tess.retessellatePolygons( *(rooflines.get()) );
 
                 osgUtil::SmoothingVisitor smoother;
@@ -380,6 +402,7 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
             //applyFragmentName( new_fragment, input, env );
 
             _geode->addDrawable( walls.get() );
+
             if ( rooflines.valid() )
                 _geode->addDrawable( rooflines.get() );
         }   
@@ -387,6 +410,27 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
 
 
     return true;
+}
+
+namespace 
+{
+    struct EnableVBO : public osg::NodeVisitor 
+    {
+        EnableVBO() : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ) { }
+
+        void accept( osg::Geode& geode )
+        {
+            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            {
+                osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+                if ( geom )
+                {
+                    geom->setUseVertexBufferObjects( true );
+                }
+            }
+            traverse( geode );
+        }
+    };
 }
 
 osg::Node*
@@ -406,6 +450,14 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
         pushFeature( i->get(), context );
+
+    // BREAKS if you use VBOs
+    osgUtil::Optimizer optimizer;
+    //optimizer.optimize( _geode, osgUtil::Optimizer::INDEX_MESH );
+    optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+
+    EnableVBO visitor;
+    _geode->accept( visitor );
 
     return _geode.release();
 }

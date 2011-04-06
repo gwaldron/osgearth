@@ -46,13 +46,14 @@ namespace osgEarth { namespace Features
         //osg::Node* getNode() { return _geode.release(); }
 
     protected:
-        osg::ref_ptr<osg::Geode>  _geode;
-        osg::ref_ptr<const Style> _style;
-        optional<double>          _maxAngle_deg;
-        optional<bool>            _mergeGeometry;
-        double                    _height;
-        bool                      _uniformHeight;
-        osg::Vec4f                _color;
+        osg::ref_ptr<osg::Geode>    _geode;
+        osg::ref_ptr<const Style>   _style;
+        optional<double>            _maxAngle_deg;
+        optional<bool>              _mergeGeometry;
+        double                      _height;
+        bool                        _uniformHeight;
+        osg::Vec4f                  _color;
+        osg::ref_ptr<osg::StateSet> _noTextureStateSet;
 
         void reset();
         

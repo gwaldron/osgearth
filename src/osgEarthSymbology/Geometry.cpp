@@ -552,10 +552,10 @@ MultiGeometry::isValid() const
 
 //----------------------------------------------------------------------------
 
-GeometryIterator::GeometryIterator( Geometry* geom ) :
+GeometryIterator::GeometryIterator( Geometry* geom, bool holes ) :
 _next( 0L ),
 _traverseMulti( true ),
-_traversePolyHoles( true )
+_traversePolyHoles( holes )
 {
     if ( geom )
     {
@@ -610,10 +610,10 @@ GeometryIterator::fetchNext()
 
 //----------------------------------------------------------------------------
 
-ConstGeometryIterator::ConstGeometryIterator( const Geometry* geom ) :
+ConstGeometryIterator::ConstGeometryIterator( const Geometry* geom, bool holes ) :
 _next( 0L ),
 _traverseMulti( true ),
-_traversePolyHoles( true )
+_traversePolyHoles( holes )
 {
     if ( geom )
     {

@@ -54,9 +54,7 @@ SubstituteModelFilter::pushFeature(Feature*                     input,
                                    osg::Group*                  attachPoint,
                                    FilterContext&               context )
 {
-    GeometryIterator gi( input->getGeometry() );
-    gi.traversePolygonHoles() = false;
-
+    GeometryIterator gi( input->getGeometry(), false );
     while( gi.hasMore() )
     {
         Geometry* geom = gi.next();
@@ -121,9 +119,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
                 {
                     const Feature* feature = j->get();
 
-                    ConstGeometryIterator gi( feature->getGeometry() );
-                    gi.traversePolygonHoles() = false;
-
+                    ConstGeometryIterator gi( feature->getGeometry(), false );
                     while( gi.hasMore() )
                     {
                         const Geometry* geom = gi.next();

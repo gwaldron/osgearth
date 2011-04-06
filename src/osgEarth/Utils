@@ -104,9 +104,10 @@ namespace osgEarth
             _queries++;
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
-                lru_iter i = mi->second.second;
-                _lru.erase( i );
+                _lru.erase( mi->second.second );
                 _lru.push_back( key );
+                lru_iter new_iter = _lru.end(); new_iter--;
+                mi->second.second = new_iter;
                 _hits++;
                 return Record( &(mi->second.first) );
             }
@@ -118,8 +119,7 @@ namespace osgEarth
         void erase( const K& key ) {
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {
-                lru_iter i = mi->second.second;
-                _lru.erase( i );
+                _lru.erase( mi->second.second );
                 _map.erase( mi );
             }
         }

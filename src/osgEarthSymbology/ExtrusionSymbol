@@ -36,8 +36,8 @@ namespace osgEarth { namespace Symbology
         const optional<float>& height() const { return _height; }
 
         /** Whether the top cap of the extruded geometry should be flat (default=true) */
-        optional<bool>& uniformHeight() { return _uniformHeight; }
-        const optional<bool>& uniformHeight() const { return _uniformHeight; }
+        optional<bool>& flatten() { return _flatten; }
+        const optional<bool>& flatten() const { return _flatten; }
         
     public:
         virtual Config getConfig() const;
@@ -45,7 +45,7 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<float> _height;
-        optional<bool>  _uniformHeight;
+        optional<bool>  _flatten;
     };
 
 } } // namespace osgEarth::Symbology

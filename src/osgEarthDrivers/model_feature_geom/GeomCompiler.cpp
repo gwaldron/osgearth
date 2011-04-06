@@ -123,7 +123,17 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             cx = clamp.push( workingSet, cx );
         }
 
-        ExtrudeGeometryFilter extrude( style );
+        ExtrudeGeometryFilter extrude;
+        if ( extrusion )
+        {
+            extrude.setExtrusionHeight( *extrusion->height() );
+            extrude.setFlatten( *extrusion->flatten() );
+        }
+        if ( polygon )
+        {
+            extrude.setColor( polygon->fill()->color() );
+        }
+
         result = extrude.push( workingSet, cx );
     }
 

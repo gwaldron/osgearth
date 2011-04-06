@@ -39,12 +39,11 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 
-ExtrudeGeometryFilter::ExtrudeGeometryFilter( const Style* style ) :
-_style( style ? style : new Style() ),
+ExtrudeGeometryFilter::ExtrudeGeometryFilter() :
 _maxAngle_deg( 5.0 ),
 _mergeGeometry( false ),
 _height( 10.0 ),
-_uniformHeight( true ),
+_flatten( true ),
 _color( osg::Vec4f(1, 1, 1, 1) )
 {
     reset();
@@ -64,7 +63,7 @@ ExtrudeGeometryFilter::reset()
 bool
 ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        double                  height,
-                                       bool                    uniformHeight,
+                                       bool                    flatten,
                                        osg::Geometry*          walls,
                                        osg::Geometry*          topCap,
                                        osg::Geometry*          bottomCap,
@@ -214,7 +213,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             {
                 osg::Vec3d p_vec = m_world;
 
-                if ( uniformHeight )
+                if ( flatten )
                 {
                     double p_len = p_vec.length();
                     double ratio = targetLen/p_len;
@@ -231,7 +230,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             }
             else
             {
-                if ( uniformHeight )
+                if ( flatten )
                     extrudeVec.set( m_world.x(), m_world.y(), targetLen );
                 else
                     extrudeVec.set( m_world.x(), m_world.y(), m_world.z() + height );
@@ -354,7 +353,7 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
             static_cast<Polygon*>(part)->open();
         }
 
-        if ( extrudeGeometry( part, _height, _uniformHeight, walls.get(), rooflines.get(), 0L, _color, context ) )
+        if ( extrudeGeometry( part, _height, _flatten, walls.get(), rooflines.get(), 0L, _color, context ) )
         {      
 #ifdef USE_TEX
             if ( skin )
@@ -438,24 +437,18 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
 {
     reset();
 
-    _geode = new osg::Geode();
-
-    const ExtrusionSymbol* extrusion = _style->getSymbol<ExtrusionSymbol>();
-    if ( extrusion )
-    {
-        _height        = *extrusion->height();
-        _uniformHeight = *extrusion->uniformHeight();
-    }
-
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
         pushFeature( i->get(), context );
 
-    // BREAKS if you use VBOs
+    // BREAKS if you use VBOs - make sure they're disabled
     osgUtil::Optimizer optimizer;
-    //optimizer.optimize( _geode, osgUtil::Optimizer::INDEX_MESH );
     optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
 
+    //TODO: figure out whether this helps
+    //optimizer.optimize( _geode, osgUtil::Optimizer::VERTEX_PRETRANSFORM | osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
+    
+    // activate the VBOs after optimization
     EnableVBO visitor;
     _geode->accept( visitor );
 

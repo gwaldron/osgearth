@@ -174,7 +174,7 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
     // Initialize the map frames. We need one for the update thread and one for the
     // cull thread. Someday we can detect whether these are actually the same thread
     // (depends on the viewer's threading mode).
-    _update_mapf = new MapFrame( map, Map::TERRAIN_LAYERS, "osgterrain-update" );
+    _update_mapf = new MapFrame( map, Map::MASKED_TERRAIN_LAYERS, "osgterrain-update" );
     _cull_mapf   = new MapFrame( map, Map::TERRAIN_LAYERS, "osgterrain-cull" );
 
     // merge in the custom options:
@@ -374,14 +374,55 @@ OSGTerrainEngineNode::createURI(const TileKey& key, std::string& out_uri )
     out_uri = ss.str();
 }
 
+bool
+OSGTerrainEngineNode::pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* pointList)
+{
+    if (!pointList)
+        return false;
+
+    bool result = false;
+    const osg::Vec3dArray& polygon = *pointList;
+    for( unsigned int i=0, j=polygon.size()-1; i<polygon.size(); j = i++ )
+    {
+        if ((((polygon[i].y() <= point.y()) && (point.y() < polygon[j].y())) ||
+             ((polygon[j].y() <= point.y()) && (point.y() < polygon[i].y()))) &&
+            (point.x() < (polygon[j].x()-polygon[i].x()) * (point.y()-polygon[i].y())/(polygon[j].y()-polygon[i].y())+polygon[i].x()))
+        {
+            result = !result;
+        }
+    }
+    return result;
+}
+
 osg::Node*
 OSGTerrainEngineNode::createNode( const TileKey& key )
 {
     osg::Timer_t start = _timer.tick();
 
-    LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
-
     osg::Node* result = 0L;
+
+    //NOTE: Removed due to resulting gaps
+    //if (_update_mapf)
+    //{
+    //  osgEarth::MaskLayer* mask = _update_mapf->getTerrainMaskLayer();
+    //  if (mask)
+    //  { 
+    //    double xmin, ymin, xmax, ymax;
+    //    key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+    //    osg::Vec3dArray* maskBounds = mask->getOrCreateBoundary();
+
+    //    if (pointInPolygon(osg::Vec3d(xmin, ymin, 0.0), maskBounds) &&
+    //        pointInPolygon(osg::Vec3d(xmax, ymax, 0.0), maskBounds) &&
+    //        pointInPolygon(osg::Vec3d(xmin, ymax, 0.0), maskBounds) &&
+    //        pointInPolygon(osg::Vec3d(xmax, ymin, 0.0), maskBounds))
+    //    {
+    //      //std::cout << "min(" << xmin << ", " << ymin << ") max(" << xmax << ", " << ymax << ")" << std::endl;
+    //      return result;
+    //    }
+    //  }
+    //}
+
+    LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
 
     if ( mode == LoadingPolicy::MODE_SERIAL || mode == LoadingPolicy::MODE_PARALLEL )
     {

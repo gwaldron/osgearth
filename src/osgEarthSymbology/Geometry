@@ -113,6 +113,10 @@ namespace osgEarth { namespace Symbology
             const class Polygon* cropPolygon,
             osg::ref_ptr<Geometry>& output ) const;
 
+        bool difference(
+          const class Polygon* diffPolygon,
+          osg::ref_ptr<Geometry>& output ) const;
+
     public:
         virtual Type getType() const =0;
         virtual Type getComponentType() const { return getType(); }

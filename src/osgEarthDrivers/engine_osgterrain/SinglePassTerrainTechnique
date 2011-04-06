@@ -36,6 +36,7 @@
 #include <osgEarth/Progress>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarthSymbology/Geometry>
 
 #include <queue>
 

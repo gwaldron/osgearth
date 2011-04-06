@@ -245,6 +245,55 @@ Geometry::crop( const Polygon* cropPoly, osg::ref_ptr<Geometry>& output ) const
 #endif // OSGEARTH_HAVE_GEOS
 }
 
+bool
+Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output ) const
+{
+#ifdef OSGEARTH_HAVE_GEOS
+
+    geom::GeometryFactory* f = new geom::GeometryFactory();
+
+    //Create the GEOS Geometries
+    geom::Geometry* inGeom = GEOSUtils::importGeometry( this );
+    geom::Geometry* diffGeom = GEOSUtils::importGeometry( diffPolygon );
+
+    if ( inGeom )
+    {    
+        geom::Geometry* outGeom = 0L;
+        try {
+            outGeom = overlay::OverlayOp::overlayOp(
+                inGeom, diffGeom,
+                overlay::OverlayOp::opDIFFERENCE );
+        }
+        catch( ... ) {
+            outGeom = 0L;
+            OE_NOTICE << LC << "::difference, GEOS overlay op exception, skipping feature" << std::endl;
+        }
+
+        if ( outGeom )
+        {
+            output = GEOSUtils::exportGeometry( outGeom );
+            f->destroyGeometry( outGeom );
+            if ( output.valid() && !output->isValid() )
+            {
+                output = 0L;
+            }
+        }
+    }
+
+    //Destroy the geometry
+    f->destroyGeometry( diffGeom );
+    f->destroyGeometry( inGeom );
+
+    delete f;
+    return output.valid();
+
+#else // OSGEARTH_HAVE_GEOS
+
+    OE_WARN << LC << "Difference failed - GEOS not available" << std::endl;
+    return false;
+
+#endif // OSGEARTH_HAVE_GEOS
+}
 
 //----------------------------------------------------------------------------
 

@@ -407,7 +407,7 @@ osg::StateSet* SinglePassTerrainTechnique::getParentStateSet() const
             {
                 if (parentTechnique->_backGeode.valid())
                     parentStateSet = parentTechnique->_backGeode->getStateSet();
-                else
+                else if (parentTechnique->_transform.valid())
                     parentStateSet = parentTechnique->getFrontGeode()->getStateSet();
             }
         }

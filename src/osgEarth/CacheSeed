@@ -23,7 +23,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/TileKey>
-#include <osgEarth/MapNode>
 #include <osgEarth/Progress>
 
 namespace osgEarth
@@ -73,11 +72,12 @@ namespace osgEarth
         * Sets the bounds to seed in
         */
         void setBounds(const double& minLon, const double& minLat, const double& maxLon, const double& maxLat) { _bounds = Bounds(minLon, minLat, maxLon, maxLat); }
-	
-	/**
-	 * Set progress callback for reporting which tiles are seeded
-	 */
-	void setProgressCallback(osgEarth::ProgressCallback* progress) { _progress = progress? progress : new ProgressCallback; }
+
+        /**
+        * Set progress callback for reporting which tiles are seeded
+        */
+        void setProgressCallback(osgEarth::ProgressCallback* progress) { _progress = progress? progress : new ProgressCallback; }
+
         /**
         * Performs the seed operation
         */
@@ -87,7 +87,7 @@ namespace osgEarth
         unsigned int _minLevel;
         unsigned int _maxLevel;
         Bounds _bounds;
-	osg::ref_ptr<ProgressCallback> _progress;
+        osg::ref_ptr<ProgressCallback> _progress;
 
         void processKey( const MapFrame& mapf, const TileKey& key ) const;
         void cacheTile( const MapFrame& mapf, const TileKey& key ) const;

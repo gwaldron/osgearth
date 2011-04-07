@@ -140,6 +140,13 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     // simple geometry
     else if ( point || line || polygon )
     {
+        if ( altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE )
+        {
+            ClampFilter clamp;
+            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+            cx = clamp.push( workingSet, cx );
+        }
+
         BuildGeometryFilter filter( style );
         if ( _options.maxGranularity().isSet() )
             filter.maxGranularity() = *_options.maxGranularity();

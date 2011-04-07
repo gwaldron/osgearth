@@ -680,6 +680,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
     //Find the mask bounds
     osg::BoundingBoxd maskBB;
+    //int i_max, i_min, j_max, j_min;
     if (mask)
     {
       osg::Vec3d min, max;
@@ -703,6 +704,16 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
       min.z() = DBL_MIN;
       max.z() = DBL_MAX;
       maskBB.set(min, max);
+
+      //min.z() = mask->front().z();
+      //max.z() = mask->front().z();
+      //osg::Vec3d localMin, localMax;
+      //geoLocator->convertModelToLocal(min, localMin);
+      //geoLocator->convertModelToLocal(max, localMax);
+
+      //int max_x = max.x() * 
+
+      //std::cout << std::endl << "localMin: " << localMin << std::endl << "localMax: " << localMax << std::endl;
     }
 
     for(j=0; j<numRows; ++j)
@@ -799,7 +810,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     if (mask)
     {
       //Find mask skirt vertices
-      osgEarth::Symbology::Polygon* maskSkirtPoly = new osgEarth::Symbology::Polygon();
+      int min_i = -1, max_i = -1, min_j = -1, max_j = -1;
       for(j=0; j<numRows; ++j)
       {
           for(i=0; i<numColumns; ++i)
@@ -869,7 +880,17 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 }
 
                 if (n == 1)
-                    maskSkirtPoly->push_back((*surfaceVerts)[indices[iv]]);
+                {
+                    if (min_i == -1)
+                      min_i = i;
+                    else if (min_i != i && max_i == -1)
+                      max_i = i;
+
+                    if (min_j == -1)
+                      min_j = j;
+                    else if (min_j != j && max_j == -1)
+                      max_j = j;
+                }
               }
               else
               {
@@ -877,33 +898,135 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 if ((i==0 && (j == 0 || j == numRows - 1)) ||
                     (i == numColumns - 1 && (j == 0 || j == numRows - 1)))
                 {
-                  osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
+                  if (min_i == -1)
+                    min_i = i;
+                  else if (min_i != i && max_i == -1)
+                    max_i = i;
 
-                  if (elevationLayer)
-                  {
-                    unsigned int i_equiv = i_sampleFactor==1.0 ? i : (unsigned int) (double(i)*i_sampleFactor);
-                    unsigned int j_equiv = j_sampleFactor==1.0 ? j : (unsigned int) (double(j)*j_sampleFactor);
-
-                    float value = 0.0f;
-                    if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
-                      ndc.z() = value*scaleHeight;
-                  }
-
-                  osg::Vec3d model;
-                  _masterLocator->convertLocalToModel(ndc, model);
-
-                  maskSkirtPoly->push_back(model - _centerModel);
+                  if (min_j == -1)
+                    min_j = j;
+                  else if (min_j != j && max_j == -1)
+                    max_j = j;
                 }
               }
           }
       }
 
-      if (maskSkirtPoly->size() == 4)
+      if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
       {
-        //Reorder mask skirt points into proper order
-        osg::Vec3d tv = (*maskSkirtPoly)[2];
-        (*maskSkirtPoly)[2] = (*maskSkirtPoly)[3];
-        (*maskSkirtPoly)[3] = tv;
+        int num_i = max_i - min_i + 1;
+        int num_j = max_j - min_j + 1;
+
+        osg::ref_ptr<osgEarth::Symbology::Polygon> maskSkirtPoly = new osgEarth::Symbology::Polygon();
+        maskSkirtPoly->resize(num_i * 2 + num_j * 2 - 4);
+        for (int i = 0; i < num_i; i++)
+        {
+          int index = indices[min_j*numColumns + i + min_i];
+          if (index == -1)
+          {
+            //unsigned int iv = j*numColumns + i;
+            osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)min_j)/(double)(numRows-1), 0.0);
+
+            if (elevationLayer)
+            {
+              unsigned int i_equiv = i_sampleFactor==1.0 ? i + min_i : (unsigned int) (double(i + min_i)*i_sampleFactor);
+              unsigned int j_equiv = j_sampleFactor==1.0 ? min_j : (unsigned int) (double(min_j)*j_sampleFactor);
+
+              float value = 0.0f;
+              if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                ndc.z() = value*scaleHeight;
+            }
+
+            osg::Vec3d model;
+            _masterLocator->convertLocalToModel(ndc, model);
+
+            (*maskSkirtPoly)[i] = model - _centerModel;
+          }
+          else
+          {
+            (*maskSkirtPoly)[i] = (*surfaceVerts)[index];
+          }
+
+          index = indices[max_j*numColumns + i + min_i];
+          if (index == -1)
+          {
+            //unsigned int iv = j*numColumns + i;
+            osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)max_j)/(double)(numRows-1), 0.0);
+
+            if (elevationLayer)
+            {
+              unsigned int i_equiv = i_sampleFactor==1.0 ? i + min_i : (unsigned int) (double(i + min_i)*i_sampleFactor);
+              unsigned int j_equiv = j_sampleFactor==1.0 ? max_j : (unsigned int) (double(max_j)*j_sampleFactor);
+
+              float value = 0.0f;
+              if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                ndc.z() = value*scaleHeight;
+            }
+
+            osg::Vec3d model;
+            _masterLocator->convertLocalToModel(ndc, model);
+
+            (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = model - _centerModel;
+          }
+          else
+          {
+            (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = (*surfaceVerts)[index];
+          }
+        }
+        for (int j = 0; j < num_j - 2; j++)
+        {
+          int index = indices[(min_j + j + 1)*numColumns + max_i];
+          if (index == -1)
+          {
+            //unsigned int iv = j*numColumns + i;
+            osg::Vec3d ndc( ((double)max_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
+
+            if (elevationLayer)
+            {
+              unsigned int i_equiv = i_sampleFactor==1.0 ? max_i : (unsigned int) (double(max_i)*i_sampleFactor);
+              unsigned int j_equiv = j_sampleFactor==1.0 ? min_j + j + 1 : (unsigned int) (double(min_j + j + 1)*j_sampleFactor);
+
+              float value = 0.0f;
+              if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                ndc.z() = value*scaleHeight;
+            }
+
+            osg::Vec3d model;
+            _masterLocator->convertLocalToModel(ndc, model);
+
+            (*maskSkirtPoly)[j + num_i] = model - _centerModel;
+          }
+          else
+          {
+            (*maskSkirtPoly)[j + num_i] = (*surfaceVerts)[index];
+          }
+
+          index = indices[(min_j + j + 1)*numColumns + min_i];
+          if (index == -1)
+          {
+            //unsigned int iv = j*numColumns + i;
+            osg::Vec3d ndc( ((double)min_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
+
+            if (elevationLayer)
+            {
+              unsigned int i_equiv = i_sampleFactor==1.0 ? min_i : (unsigned int) (double(min_i)*i_sampleFactor);
+              unsigned int j_equiv = j_sampleFactor==1.0 ? min_j + j + 1 : (unsigned int) (double(min_j + j + 1)*j_sampleFactor);
+
+              float value = 0.0f;
+              if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                ndc.z() = value*scaleHeight;
+            }
+
+            osg::Vec3d model;
+            _masterLocator->convertLocalToModel(ndc, model);
+
+            (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = model - _centerModel;
+          }
+          else
+          {
+            (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = (*surfaceVerts)[index];
+          }
+        }
 
         //Create local polygon representing mask
         osg::ref_ptr<osgEarth::Symbology::Polygon> maskPoly = new osgEarth::Symbology::Polygon();

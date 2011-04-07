@@ -348,6 +348,22 @@ namespace osgEarth { namespace Symbology
         void fetchNext();
     };
 
+    typedef std::pair<osg::Vec3d, osg::Vec3d> Segment;
+
+    class OSGEARTHSYMBOLOGY_EXPORT ConstSegmentIterator
+    {
+    public:
+        ConstSegmentIterator( const osg::Vec3dArray* verts, bool closedLoop );        
+        bool hasMore() const { return !_done; }
+        Segment next();
+
+    private:
+        const osg::Vec3dArray* _verts;
+        osg::Vec3dArray::const_iterator _iter;
+        bool _done;
+        bool _closeLoop;
+    };
+
     typedef std::vector<osg::ref_ptr<Geometry> > GeometryList;
 
 } } // namespace osgEarth::Symbology

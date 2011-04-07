@@ -58,6 +58,11 @@ namespace osgEarth { namespace Features
          */
         void setColor( const osg::Vec4f& value ) { _color = value; }
 
+        /**
+         * Sets the maximum wall angle that doesn't require a new normal vector
+         */
+        void setWallAngleThreshold( float angle_deg ) { _wallAngleThresh_deg = angle_deg; }
+
     protected:
         osg::ref_ptr<osg::Geode>    _geode;
         optional<double>            _maxAngle_deg;
@@ -65,6 +70,8 @@ namespace osgEarth { namespace Features
         double                      _height;
         bool                        _flatten;
         osg::Vec4f                  _color;
+        float                       _wallAngleThresh_deg;
+        float                       _cosWallAngleThresh;
         osg::ref_ptr<osg::StateSet> _noTextureStateSet;
 
         void reset();

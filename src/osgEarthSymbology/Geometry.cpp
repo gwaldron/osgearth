@@ -715,3 +715,29 @@ ConstGeometryIterator::fetchNext()
     }    
 }
 
+//----------------------------------------------------------------------------
+
+ConstSegmentIterator::ConstSegmentIterator( const osg::Vec3dArray* verts, bool closeLoop ) :
+_verts(verts),
+_closeLoop(closeLoop),
+_iter(verts->begin())
+{
+    _done = _verts->size() < 2;
+}
+
+Segment
+ConstSegmentIterator::next()
+{
+    osg::Vec3d p0 = *_iter++;
+    if ( _iter == _verts->end() ) 
+    {
+        _iter = _verts->begin();
+        _done = true;
+    }
+    else if ( _iter+1 == _verts->end() && !_closeLoop )
+    {
+        _done = true;
+    }
+
+    return Segment( p0, *_iter );
+}

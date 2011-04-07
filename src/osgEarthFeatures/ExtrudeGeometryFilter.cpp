@@ -26,6 +26,8 @@
 #include <osgUtil/SmoothingVisitor>
 #include <osg/Version>
 
+#define LC "[ExtrudeGeometryFilter] "
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -36,6 +38,7 @@ _maxAngle_deg( 5.0 ),
 _mergeGeometry( false ),
 _height( 10.0 ),
 _flatten( true ),
+_wallAngleThresh_deg( 60.0 ),
 _color( osg::Vec4f(1, 1, 1, 1) )
 {
     reset();
@@ -45,12 +48,10 @@ void
 ExtrudeGeometryFilter::reset()
 {
     _geode = new osg::Geode();
+    _cosWallAngleThresh = cos( _wallAngleThresh_deg );
 }
 
 #undef USE_TEX
-
-
-//..... need to convert this to use GL_TRIANGLES.
 
 bool
 ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
@@ -79,18 +80,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
     unsigned pointCount = input->getTotalPointCount();
     unsigned numVerts = 2 * pointCount;
-    
-    //if ( isPolygon )
-    //{
-    //    // count the total number of rings
-    //    unsigned rings = 0;
-    //    ConstGeometryIterator count(input);
-    //    while( count.hasMore() ) {
-    //        count.next();
-    //        ++rings;
-    //    }
-    //    numVerts += 2 * rings;
-    //}
 
     // create all the OSG geometry components
     osg::Vec3Array* verts = new osg::Vec3Array( numVerts );
@@ -135,14 +124,17 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     double targetLen = -DBL_MAX;
     osg::Vec3d minLoc(DBL_MAX, DBL_MAX, DBL_MAX);
 
-    // first, calculate the minimum Z across all parts.
+
+    // Initial pass over the geometry does two things:
+    // 1: Calculate the minimum Z across all parts.
+    // 2: Establish a "target length" for extrusion
     ConstGeometryIterator zfinder( input );
     while( zfinder.hasMore() )
     {
         const Geometry* geom = zfinder.next();
-
         for( Geometry::const_iterator m = geom->begin(); m != geom->end(); ++m )
         {
+            // Find the minimum Z
             osg::Vec3d m_world = cx.toWorld( *m );
             if ( cx.isGeocentric() )
             {
@@ -371,9 +363,11 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
                 walls->setStateSet( _noTextureStateSet.get() );
             }
 
-            // generate per-vertex normals
-            osgUtil::SmoothingVisitor smoother;
-            smoother.smooth( *walls.get() );           
+            // generate per-vertex normals, altering the geometry as necessary to avoid
+            // smoothing around sharp corners
+            osgUtil::SmoothingVisitor::smooth(
+                *walls.get(), 
+                osg::DegreesToRadians(_wallAngleThresh_deg) );
 
             // tessellate and add the roofs if necessary:
             if ( rooflines.valid() )
@@ -383,8 +377,8 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
                 tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD ); //POSITIVE );
                 tess.retessellatePolygons( *(rooflines.get()) );
 
-                osgUtil::SmoothingVisitor smoother;
-                smoother.smooth( *rooflines.get() );
+                // generate default normals (no crease angle necessary; they are all pointing up)
+                osgUtil::SmoothingVisitor::smooth( *rooflines.get() );
 
                 // texture the rooflines if necessary
                 //applyOverlayTexturing( rooflines.get(), input, env );
@@ -436,6 +430,8 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
     // BREAKS if you use VBOs - make sure they're disabled
     osgUtil::Optimizer optimizer;
     optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+
+    //optimizer.optimize( _geode.get(), osgUtil::Optimizer::INDEX_MESH );
 
     //TODO: figure out whether this helps
     //optimizer.optimize( _geode, osgUtil::Optimizer::VERTEX_PRETRANSFORM | osgUtil::Optimizer::VERTEX_POSTTRANSFORM );

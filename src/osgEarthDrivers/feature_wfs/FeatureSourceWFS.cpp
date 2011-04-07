@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
+#include <osgEarthUtil/WFS>
 #include "WFSFeatureOptions"
 #include "GeometryUtils"
 #include <osg/Notify>
@@ -36,6 +37,7 @@
 #define LC "[WFS FeatureSource] "
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 
@@ -62,15 +64,51 @@ public:
     //override
     void initialize( const std::string& referenceURI )
     {
+        char sep = _options.url()->find_first_of('?') == std::string::npos? '?' : '&';
+
+        std::string capUrl;
+        if ( capUrl.empty() )
+        {
+            capUrl = 
+                _options.url().value() + 
+                sep + 
+                "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
+        }
+
+        _capabilities = WFSCapabilitiesReader::read( capUrl, 0L );
+        if ( !_capabilities.valid() )
+        {
+            OE_WARN << "[osgEarth::WFS] Unable to read WFS GetCapabilities." << std::endl;
+            //return;
+        }
+        else
+        {
+            OE_NOTICE << "[osgEarth::WFS] Got capabilities from " << capUrl << std::endl;
+        }
     }
 
     /** Called once at startup to create the profile for this feature set. Successful profile
         creation implies that the datasource opened succesfully. */
     const FeatureProfile* createFeatureProfile()
     {
-        //TODO:  Get from capabilities        
-        GeoExtent e( SpatialReference::create( "epsg:4326" ), -180, -90, 180, 90);
-        FeatureProfile* result = new FeatureProfile(e);
+        FeatureProfile* result = NULL;
+        if (_capabilities.valid())
+        {
+            //Find the feature type by name
+            osg::ref_ptr< WFSFeatureType > featureType = _capabilities->getFeatureTypeByName( _options.typeName().get() );
+            if (featureType.valid())
+            {
+                if (featureType->getExtent().isValid())
+                {
+                    result = new FeatureProfile(featureType->getExtent());
+                }
+            }
+        }
+
+        if (!result)
+        {
+            result = new FeatureProfile(GeoExtent(SpatialReference::create( "epsg:4326" ), -180, -90, 180, 90));
+        }
         return result;        
     }
 
@@ -202,7 +240,8 @@ public:
     }
 
 private:
-    const WFSFeatureOptions _options;    
+    const WFSFeatureOptions _options;  
+    osg::ref_ptr< WFSCapabilities > _capabilities;
 };
 
 

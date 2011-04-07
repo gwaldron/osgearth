@@ -25,6 +25,7 @@ SET(LIB_PUBLIC_HEADERS
     SpatialData
     StarData
     Viewpoint
+	WFS
     WMS
 )
 
@@ -44,6 +45,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     SpatialData.cpp
     SkyNode.cpp
     Viewpoint.cpp
+	WFS.cpp
     WMS.cpp
 )
 

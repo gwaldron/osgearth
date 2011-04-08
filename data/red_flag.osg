@@ -1,0 +1,193 @@
+Group {
+  name "db"
+  nodeMask 0xffffffff
+  cullingActive TRUE
+  num_children 1
+  Group {
+    name "Default"
+    nodeMask 0xffffffff
+    cullingActive TRUE
+    num_children 2
+    Geode {
+      DataVariance STATIC
+      name "p21"
+      nodeMask 0xffffffff
+      cullingActive TRUE
+      StateSet {
+        DataVariance STATIC
+        rendering_hint DEFAULT_BIN
+        renderBinMode INHERIT
+        GL_CULL_FACE ON
+        GL_LIGHTING ON
+        Material {
+          ColorMode OFF
+          ambientColor 1 1 1 1
+          diffuseColor 1 1 1 1
+          specularColor 0 0 0 1
+          emissionColor 0 0 0 1
+          shininess 0
+        }
+        CullFace {
+          UniqueID CullFace_0
+          mode BACK
+        }
+      }
+      num_drawables 1
+      Geometry {
+        DataVariance STATIC
+        useDisplayList TRUE
+        useVertexBufferObjects FALSE
+        PrimitiveSets 2
+        {
+          DrawArrays QUADS 0 32
+          DrawElementsUByte TRIANGLE_FAN 8
+          {
+            32 33 34 35 36 37 38 39 
+          }
+        }
+        VertexArray Vec3Array 40
+        {
+          -0.0353553 -0.0353553 0
+          -0.0353553 -0.0353553 1
+          -0.05 0 1
+          -0.05 0 0
+          -3.06152e-018 -0.05 0
+          -3.06152e-018 -0.05 1
+          -0.0353553 -0.0353553 1
+          -0.0353553 -0.0353553 0
+          0.0353553 -0.0353553 0
+          0.0353553 -0.0353553 1
+          -3.06152e-018 -0.05 1
+          -3.06152e-018 -0.05 0
+          0.05 -6.12303e-018 0
+          0.05 -6.12303e-018 1
+          0.0353553 -0.0353553 1
+          0.0353553 -0.0353553 0
+          0.0353553 0.0353553 0
+          0.0353553 0.0353553 1
+          0.05 -6.12303e-018 1
+          0.05 -6.12303e-018 0
+          9.18455e-018 0.05 0
+          9.18455e-018 0.05 1
+          0.0353553 0.0353553 1
+          0.0353553 0.0353553 0
+          -0.0353553 0.0353553 0
+          -0.0353553 0.0353553 1
+          9.18455e-018 0.05 1
+          9.18455e-018 0.05 0
+          -0.05 0 0
+          -0.05 0 1
+          -0.0353553 0.0353553 1
+          -0.0353553 0.0353553 0
+          -0.05 0 1
+          -0.0353553 -0.0353553 1
+          -3.06152e-018 -0.05 1
+          0.0353553 -0.0353553 1
+          0.05 -6.12303e-018 1
+          0.0353553 0.0353553 1
+          9.18455e-018 0.05 1
+          -0.0353553 0.0353553 1
+        }
+        NormalBinding PER_VERTEX
+        NormalArray Vec3Array 40
+        {
+          -0.92388 -0.382683 -0
+          -0.92388 -0.382683 -0
+          -0.92388 -0.382683 -0
+          -0.92388 -0.382683 -0
+          -0.382683 -0.92388 -0
+          -0.382683 -0.92388 -0
+          -0.382683 -0.92388 -0
+          -0.382683 -0.92388 -0
+          0.382683 -0.92388 0
+          0.382683 -0.92388 0
+          0.382683 -0.92388 0
+          0.382683 -0.92388 0
+          0.92388 -0.382683 0
+          0.92388 -0.382683 0
+          0.92388 -0.382683 0
+          0.92388 -0.382683 0
+          0.92388 0.382683 0
+          0.92388 0.382683 0
+          0.92388 0.382683 0
+          0.92388 0.382683 0
+          0.382683 0.92388 0
+          0.382683 0.92388 0
+          0.382683 0.92388 0
+          0.382683 0.92388 0
+          -0.382683 0.92388 0
+          -0.382683 0.92388 0
+          -0.382683 0.92388 0
+          -0.382683 0.92388 0
+          -0.92388 0.382683 0
+          -0.92388 0.382683 0
+          -0.92388 0.382683 0
+          -0.92388 0.382683 0
+          0 -0 1
+          0 -0 1
+          0 -0 1
+          0 -0 1
+          0 -0 1
+          0 -0 1
+          0 -0 1
+          0 -0 1
+        }
+        ColorBinding OVERALL
+        ColorArray Vec4Array 1
+        {
+          1 1 1 1
+        }
+      }
+    }
+    Geode {
+      DataVariance STATIC
+      name "p31"
+      nodeMask 0xffffffff
+      cullingActive TRUE
+      StateSet {
+        UniqueID StateSet_1
+        DataVariance STATIC
+        rendering_hint DEFAULT_BIN
+        renderBinMode INHERIT
+        GL_CULL_FACE OFF
+        GL_LIGHTING ON
+        Material {
+          ColorMode OFF
+          ambientColor 1 0 0 1
+          diffuseColor 1 0 0 1
+          specularColor 0 0 0 1
+          emissionColor 0 0 0 1
+          shininess 0
+        }
+      }
+      num_drawables 1
+      Geometry {
+        DataVariance STATIC
+        useDisplayList TRUE
+        useVertexBufferObjects FALSE
+        PrimitiveSets 1
+        {
+          DrawArrays TRIANGLES 0 3
+        }
+        VertexArray Vec3Array 3
+        {
+          0.05 -6.12303e-018 0.80159
+          0.3 0 0.9
+          0.05 -6.12303e-018 1
+        }
+        NormalBinding PER_VERTEX
+        NormalArray Vec3Array 3
+        {
+          2.44921e-017 -1 0
+          2.44921e-017 -1 0
+          2.44921e-017 -1 0
+        }
+        ColorBinding OVERALL
+        ColorArray Vec4Array 1
+        {
+          1 0 0 1
+        }
+      }
+    }
+  }
+}

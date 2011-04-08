@@ -432,6 +432,23 @@ Ring::open()
         erase( end()-1 );
 }
 
+// gets the signed area.
+double
+Ring::getSignedArea2D() const
+{
+    const_cast<Ring*>(this)->open();
+
+    double sum = 0.0;
+
+    for( unsigned i=0; i<size(); ++i )
+    {
+        const osg::Vec3d& p0 = (*this)[0];
+        const osg::Vec3d& p1 = i+1 < size() ? (*this)[i+1] : (*this)[0];
+        sum += p0.x()*p1.y() - p1.x()*p0.y();
+    }
+    return .5*sum;
+}
+
 // opens and rewinds the polygon to the specified orientation.
 void 
 Ring::rewind( Orientation orientation )
@@ -442,6 +459,24 @@ Ring::rewind( Orientation orientation )
     {
         std::reverse( begin(), end() );
     }
+}
+
+// point-in-polygon test
+bool
+Ring::contains2D( double x, double y ) const
+{
+    bool result = false;
+    const Ring& poly = *this;
+    for( unsigned i=0, j=size()-1; i<size(); j = i++ )
+    {
+        if ((((poly[i].y() <= y) && (y < poly[j].y())) ||
+            ((poly[j].y() <= y) && (y < poly[i].y()))) &&
+            (x < (poly[j].x()-poly[i].x()) * (y-poly[i].y())/(poly[j].y()-poly[i].y())+poly[i].x()))
+        {
+            result = !result;
+        }
+    }
+    return result;
 }
 
 //----------------------------------------------------------------------------
@@ -467,6 +502,32 @@ Polygon::getTotalPointCount() const
     for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
         total += i->get()->getTotalPointCount();
     return total;
+}
+
+bool
+Polygon::contains2D( double x, double y ) const
+{
+    // first check the outer ring
+    if ( !Ring::contains2D(x, y) )
+        return false;
+
+    // then check each inner ring (holes). Point has to be inside the outer ring, 
+    // but NOT inside any of the holes
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+    {
+        if ( i->get()->contains2D(x, y) )
+            return false;
+    }
+
+    return true;
+}
+
+void
+Polygon::open() 
+{
+    Ring::open();
+    for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
+        (*i)->open();
 }
 
 //----------------------------------------------------------------------------
@@ -540,10 +601,10 @@ MultiGeometry::isValid() const
 
 //----------------------------------------------------------------------------
 
-GeometryIterator::GeometryIterator( Geometry* geom ) :
+GeometryIterator::GeometryIterator( Geometry* geom, bool holes ) :
 _next( 0L ),
 _traverseMulti( true ),
-_traversePolyHoles( true )
+_traversePolyHoles( holes )
 {
     if ( geom )
     {
@@ -598,10 +659,10 @@ GeometryIterator::fetchNext()
 
 //----------------------------------------------------------------------------
 
-ConstGeometryIterator::ConstGeometryIterator( const Geometry* geom ) :
+ConstGeometryIterator::ConstGeometryIterator( const Geometry* geom, bool holes ) :
 _next( 0L ),
 _traverseMulti( true ),
-_traversePolyHoles( true )
+_traversePolyHoles( holes )
 {
     if ( geom )
     {
@@ -654,3 +715,29 @@ ConstGeometryIterator::fetchNext()
     }    
 }
 
+//----------------------------------------------------------------------------
+
+ConstSegmentIterator::ConstSegmentIterator( const osg::Vec3dArray* verts, bool closeLoop ) :
+_verts(verts),
+_closeLoop(closeLoop),
+_iter(verts->begin())
+{
+    _done = _verts->size() < 2;
+}
+
+Segment
+ConstSegmentIterator::next()
+{
+    osg::Vec3d p0 = *_iter++;
+    if ( _iter == _verts->end() ) 
+    {
+        _iter = _verts->begin();
+        _done = true;
+    }
+    else if ( _iter+1 == _verts->end() && !_closeLoop )
+    {
+        _done = true;
+    }
+
+    return Segment( p0, *_iter );
+}

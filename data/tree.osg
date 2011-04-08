@@ -1,0 +1,90 @@
+Group {
+  nodeMask 0xffffffff
+  cullingActive TRUE
+  num_children 1
+  Group {
+    nodeMask 0xffffffff
+    cullingActive TRUE
+    num_children 1
+    Geode {
+      DataVariance STATIC
+      nodeMask 0xffffffff
+      cullingActive TRUE
+      StateSet {
+        DataVariance STATIC
+        rendering_hint TRANSPARENT_BIN
+        renderBinMode USE
+        binNumber 10
+        binName DepthSortedBin
+        GL_CULL_FACE OFF
+        GL_LIGHTING OFF
+        GL_BLEND ON
+        BlendFunc {
+          UniqueID BlendFunc_0
+          source SRC_ALPHA
+          destination ONE_MINUS_SRC_ALPHA
+        }
+        textureUnit 0 {
+          GL_TEXTURE_2D ON
+          Texture2D {
+            UniqueID Texture2D_1
+            file "tree.gif"
+            wrap_s REPEAT
+            wrap_t REPEAT
+            wrap_r CLAMP
+            min_filter LINEAR_MIPMAP_LINEAR
+            mag_filter LINEAR
+            maxAnisotropy 1
+            borderColor 0 0 0 0
+            borderWidth 0
+            useHardwareMipMapGeneration TRUE
+            unRefImageDataAfterApply FALSE
+            internalFormatMode USE_IMAGE_DATA_FORMAT
+            resizeNonPowerOfTwo TRUE
+          }
+          TexEnv {
+            UniqueID TexEnv_2
+            mode MODULATE
+          }
+        }
+      }
+      num_drawables 1
+      Geometry {
+        DataVariance STATIC
+        useDisplayList FALSE
+        useVertexBufferObjects TRUE
+        PrimitiveSets 1
+        {
+          DrawArrays QUADS 0 8
+        }
+        VertexArray Vec3Array 8
+        {
+          -0.130412 2 -0.0728768
+          -0.130412 2 7.92712
+          -0.130412 -2 7.92712
+          -0.130412 -2 -0.0728768
+          1.86959 0 -0.0728768
+          1.86959 0 7.92712
+          -2.13041 0 7.92712
+          -2.13041 0 -0.0728768
+        }
+        ColorBinding OVERALL
+        ColorArray Vec4Array 1
+        {
+          1 1 1 1
+        }
+        TexCoordArray 0 Vec2Array 8
+        {
+          1 0
+          1 1
+          0 1
+          0 0
+          1 0
+          1 1
+          0 1
+          0 0
+        }
+      }
+    }
+  }
+}

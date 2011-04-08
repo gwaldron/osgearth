@@ -31,8 +31,13 @@
 #include <osgDB/FileUtils>
 #include <list>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <ogr_api.h>
+
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 #define LC "[WFS FeatureSource] "
 
@@ -42,6 +47,42 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
+
+std::string getTempPath()
+{
+#if defined(WIN32)  && !defined(__CYGWIN__)
+    BOOL fSuccess  = FALSE;
+
+    TCHAR lpTempPathBuffer[MAX_PATH];    
+
+    //  Gets the temp path env string (no guarantee it's a valid path).
+    DWORD dwRetVal = ::GetTempPath(MAX_PATH,          // length of the buffer
+                                   lpTempPathBuffer); // buffer for path     
+
+    if (dwRetVal > MAX_PATH || (dwRetVal == 0))
+    {
+        OE_NOTICE << "GetTempPath failed" << std::endl;
+        return ".";
+    }
+
+    return std::string(lpTempPathBuffer);
+#else
+    return "/tmp/";
+#endif
+}
+
+std::string getTempName(const std::string& prefix="", const std::string& suffix="")
+{
+    //tmpname is kind of busted on Windows, it always returns a file of the form \blah which gets put in your root directory but
+    //oftentimes can't get opened by some drivers b/c it doesn't have a drive letter in front of it.
+    bool valid = false;
+    while (!valid)
+    {
+        std::stringstream ss;
+        ss << prefix << "~" << rand() << suffix;
+        if (!osgDB::fileExists(ss.str())) return ss.str();
+    }
+}
 
 /**
  * A FeatureSource that reads features from a WFS layer
@@ -158,16 +199,43 @@ public:
         return feature;
     }
 
-    void getFeatures(HTTPResponse &response, FeatureList& features)
+    std::string getExtensionForMimeType(const std::string& mime)
     {
-        //TODO:  Handle more than just geojson...
-        std::string ext = ".json";
-        //Save the response to a temp file            
-        char *tmpname = tmpnam( NULL );
-        std::string name(tmpname);
-        name += ext;
-        saveResponse(response, name );
+        //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
+        //the temp file have an appropriate extension
+        if ((mime.compare("text/xml") == 0) ||
+            (mime.compare("text/xml; subtype=gml/2.1.2") == 0) ||
+            (mime.compare("text/xml; subtype=gml/3.1.1") == 0)
+            )
+        {
+            return ".xml";
+        }        
+        else if ((mime.compare("application/json") == 0) ||
+                 (mime.compare("json") == 0) ||            
 
+                 (mime.compare("application/x-javascript") == 0) ||
+                 (mime.compare("text/javascript") == 0) ||
+                 (mime.compare("text/x-javascript") == 0) ||
+                 (mime.compare("text/x-json") == 0)                 
+                )
+        {
+            return ".json";
+        }        
+        return "";
+    }
+
+    void getFeatures(HTTPResponse &response, FeatureList& features)
+    {        
+        //OE_NOTICE << "mimetype=" << response.getMimeType() << std::endl;
+        //TODO:  Handle more than just geojson...
+        std::string ext = getExtensionForMimeType(response.getMimeType());
+        //Save the response to a temp file            
+        std::string tmpPath = getTempPath();        
+        std::string name = getTempName(tmpPath, ext);
+        saveResponse(response, name );
+        //OE_NOTICE << "Saving to " << name << std::endl;        
+
+        //OGRDataSourceH ds = OGROpen(name.c_str(), FALSE, &driver);            
         OGRDataSourceH ds = OGROpen(name.c_str(), FALSE, NULL);            
         if (!ds)
         {

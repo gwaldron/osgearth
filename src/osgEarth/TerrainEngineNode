@@ -131,6 +131,7 @@ namespace osgEarth
         osg::ref_ptr<ImageLayerController> _imageLayerController;
         osg::ref_ptr<const Map> _map;
         osg::ref_ptr<osg::Uniform> _startFrameTimeUniform;
+        osg::ref_ptr<osg::Uniform> _cameraElevationUniform;
         
         enum InitStage {
             INIT_NONE,

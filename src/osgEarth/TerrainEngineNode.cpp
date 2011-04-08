@@ -151,6 +151,14 @@ TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options 
     osg::StateSet* set = getOrCreateStateSet();
     set->setAttributeAndModes( new osg::CullFace( osg::CullFace::BACK ), osg::StateAttribute::ON );
 
+    // elevation uniform
+    _cameraElevationUniform = new osg::Uniform( osg::Uniform::FLOAT, "osgearth_CameraElevation" );
+    _cameraElevationUniform->set( 0.0f );
+    set->addUniform( _cameraElevationUniform.get() );
+    
+    set->getOrCreateUniform( "osgearth_ImageLayerAttenuation", osg::Uniform::FLOAT )->set(
+        *options.attentuationDistance() );
+
     _initStage = INIT_PREINIT_COMPLETE;
 }
 
@@ -275,13 +283,7 @@ TerrainEngineNode::updateImageUniforms()
     if ( _imageLayerController->_layerRangeUniform.valid() )
         _imageLayerController->_layerRangeUniform->removeFrom( stateSet );
 
-    //stateSet->removeUniform( "osgearth_ImageLayerOpacity" );
-    //stateSet->removeUniform( "osgearth_ImageLayerOpacity[0]" );
-    //stateSet->removeUniform( "osgearth_ImageLayerEnabled" );
-    //stateSet->removeUniform( "osgearth_ImageLayerEnabled[0]" );
-    //stateSet->removeUniform( "osgearth_ImageLayerRange" );
-    //stateSet->removeUniform( "osgearth_ImageLayerRange[0]" );
-    stateSet->removeUniform( "osgearth_ImageLayerAttenuation" );
+    //stateSet->removeUniform( "osgearth_ImageLayerAttenuation" );
     
     if ( mapf.imageLayers().size() > 0 )
     {
@@ -315,9 +317,6 @@ TerrainEngineNode::updateImageUniforms()
         //stateSet->addUniform( _imageLayerController->_layerEnabledUniform.get() );
         //stateSet->addUniform( _imageLayerController->_layerRangeUniform.get() );
     }
-
-    stateSet->getOrCreateUniform( "osgearth_ImageLayerAttenuation", osg::Uniform::FLOAT )->set(
-        *getTerrainOptions().attentuationDistance() );
 }
 
 void
@@ -342,7 +341,23 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         if ( Registry::instance()->getCapabilities().supportsGLSL() )
+        {
             _updateLightingUniformsHelper.cullTraverse( this, &nv );
+
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+            if ( cv )
+            {
+                osg::Vec3d eye = cv->getEyePoint();
+
+                float elevation;
+                if ( _map->isGeocentric() )
+                    elevation = eye.length() - osg::WGS_84_RADIUS_EQUATOR;
+                else
+                    elevation = eye.z();
+
+                _cameraElevationUniform->set( elevation );
+            }
+        }
     }
 
     //else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )

@@ -90,6 +90,7 @@ namespace
             << "uniform float osgearth_ImageLayerRange[" << 2 * numSlots << "]; \n"
             << "uniform float osgearth_ImageLayerAttenuation; \n"
             << "uniform float osgearth_LODRangeFactor;\n"
+            << "uniform float osgearth_CameraElevation; \n"
             << "varying float osgearth_CameraRange; \n";
         // XXX Is order.size() ever != numSlots?
         size_t orderSize = order.size();
@@ -120,8 +121,8 @@ namespace
             int q = 2 * i;
 
             buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
-                << "        dmin = osgearth_CameraRange - osgearth_ImageLayerRange["<< q << "]; \n"
-                << "        dmax = osgearth_CameraRange - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
+                << "        dmin = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q << "]; \n"
+                << "        dmax = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
 
                 << "        if (dmin >= 0 && dmax <= 0.0) { \n"
                 << "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0 ) / osgearth_ImageLayerAttenuation; \n"

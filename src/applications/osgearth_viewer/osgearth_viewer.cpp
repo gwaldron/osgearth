@@ -150,7 +150,7 @@ main(int argc, char** argv)
             // when you are very close to the ground. If your app never brings a user very
             // close to the ground, you may not need this.
             if ( useAutoClip )
-                viewer.addEventHandler( new AutoClipPlaneHandler );
+                viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
 
             // the Graticule is a lat/long grid that overlays the terrain. It only works
             // in a round-earth geocentric terrain.
@@ -163,7 +163,7 @@ main(int argc, char** argv)
             if ( useSky )
             {
                 SkyNode* sky = new SkyNode( mapNode->getMap() );
-                sky->setDateTime( 2011, 1, 6, 17.0 );
+                sky->setDateTime( 2011, 3, 6, 12.0 );
                 sky->attach( &viewer );
                 root->addChild( sky );
                 if (animateSky)

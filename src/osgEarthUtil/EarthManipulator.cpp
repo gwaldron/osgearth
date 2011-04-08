@@ -58,6 +58,7 @@ namespace
     void
     s_getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
     {
+#if 0
         // http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToEuler/index.htm
 
         p = atan2(2*(q.y()*q.z() + q.w()*q.x()), (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z() * q.z()));
@@ -75,7 +76,7 @@ namespace
 		    r = 0; 
 	    } 
      
-#if 0
+#else
         osg::Matrixd rot(q);
         p = asin(rot(1,2));
         if( osg::equivalent(osg::absolute(p), osg::PI_2) )

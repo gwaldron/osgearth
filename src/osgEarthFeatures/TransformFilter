@@ -37,11 +37,17 @@ namespace osgEarth { namespace Features
     {
     public:
         TransformFilter();
-        TransformFilter( const SpatialReference* outputSRS );
+        TransformFilter( const osg::Matrixd& xform );
+        TransformFilter( const SpatialReference* outputSRS, bool outputGeocentric =false );
+
+        /** Transform matrix to apply to each point. If there's is also an SRS conversion,
+            the matrix will be applied first. */
+        void setMatrix( const osg::Matrixd& mat ) { _mat = mat; }
+        const osg::Matrixd& getMatrix() const { return _mat; }
 
         /** Height offset to apply after doing the SRS transformation. Output SRS units. */
-        void setHeightOffset( double value ) { _heightOffset = value; }
-        double getHeightOffset() const { return _heightOffset; }
+        //void setHeightOffset( double value ) { _heightOffset = value; }
+        //double getHeightOffset() const { return _heightOffset; }
 
         /** Whether to convert the transformed coordinates into geocentric (default = false ) */
         void setMakeGeocentric( bool value ) { _makeGeocentric = value; }
@@ -58,9 +64,10 @@ namespace osgEarth { namespace Features
     protected:
         osg::ref_ptr<const SpatialReference> _outputSRS;
         bool _makeGeocentric;
-        double _heightOffset;
+        //double _heightOffset;
         osg::BoundingBoxd _bbox;
         bool _localize;
+        osg::Matrixd _mat;
         
         bool push( Feature* feature, const FilterContext& context );
     };

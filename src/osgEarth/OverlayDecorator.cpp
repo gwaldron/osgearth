@@ -303,35 +303,49 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
     set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
     std::stringstream buf;
-    buf << "#version 110 \n"
-        << "uniform float warp; \n"
+    buf << "#version 110 \n";
 
-        // because the built-in pow() is busted
-        << "float mypow( in float x, in float y ) \n"
-        << "{ \n"
-        << "    return x/(x+y-y*x); \n"
-        << "} \n"
+    if ( _useWarping )
+    {
+        buf << "uniform float warp; \n"
 
-        << "vec4 warpVertex( in vec4 src ) \n"
-        << "{ \n"
-        //      normalize to [-1..1], then take the absolute values since we
-        //      want to apply the warping in [0..1] on each side of zero:
-        << "    vec2 srct = vec2( abs(src.x)/src.w, abs(src.y)/src.w ); \n"
-        << "    vec2 sign = vec2( src.x > 0.0 ? 1.0 : -1.0, src.y > 0.0 ? 1.0 : -1.0 ); \n"
+            // because the built-in pow() is busted
+            << "float mypow( in float x, in float y ) \n"
+            << "{ \n"
+            << "    return x/(x+y-y*x); \n"
+            << "} \n"
 
-        //      apply the deformation using a "deceleration" curve:
-        << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
+            << "vec4 warpVertex( in vec4 src ) \n"
+            << "{ \n"
+            //      normalize to [-1..1], then take the absolute values since we
+            //      want to apply the warping in [0..1] on each side of zero:
+            << "    vec2 srct = vec2( abs(src.x)/src.w, abs(src.y)/src.w ); \n"
+            << "    vec2 sign = vec2( src.x > 0.0 ? 1.0 : -1.0, src.y > 0.0 ? 1.0 : -1.0 ); \n"
 
-        //      re-apply the sign. no need to un-normalize, just use w=1 instead
-        << "    return vec4( sign.x*srcp.x, sign.y*srcp.y, src.z/src.w, 1.0 ); \n"
-        << "} \n"
+            //      apply the deformation using a "deceleration" curve:
+            << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
 
-        << "void main() \n"
-        << "{ \n"
-        << "    gl_Position = warpVertex( gl_ModelViewProjectionMatrix * gl_Vertex ); \n"
-        << "    gl_FrontColor = gl_Color; \n"
-        << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
-        << "} \n";
+            //      re-apply the sign. no need to un-normalize, just use w=1 instead
+            << "    return vec4( sign.x*srcp.x, sign.y*srcp.y, src.z/src.w, 1.0 ); \n"
+            << "} \n"
+
+            << "void main() \n"
+            << "{ \n"
+            << "    gl_Position = warpVertex( gl_ModelViewProjectionMatrix * gl_Vertex ); \n"
+            << "    gl_FrontColor = gl_Color; \n"
+            << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
+            << "} \n";
+    }
+
+    else // no vertex warping
+    {
+        buf << "void main() \n"
+            << "{ \n"
+            << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+            << "    gl_FrontColor = gl_Color; \n"
+            << "    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
+            << "} \n";
+    }
 
     std::string vertSource = buf.str();
     program->addShader( new osg::Shader( osg::Shader::VERTEX, vertSource ) );
@@ -384,38 +398,42 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
     // fragment shader - subgraph
     buf.str("");
     buf << "#version 110 \n"
-        << "uniform sampler2D osgearth_overlay_ProjTex; \n"
-        << "uniform float warp; \n"
+        << "uniform sampler2D osgearth_overlay_ProjTex; \n";
 
-        // because the built-in pow() is busted
-        << "float mypow( in float x, in float y ) \n"
-        << "{ \n"
-        << "    return x/(x+y-y*x); \n"
-        << "} \n"
+    if ( _useWarping )
+    {
+        buf << "uniform float warp; \n"
 
-        << "vec2 warpTexCoord( in vec2 src ) \n"
-        << "{ \n"
-        //      incoming tex coord is [0..1], so we scale to [-1..1]
-        << "    vec2 srcn = vec2( src.x*2.0 - 1.0, src.y*2.0 - 1.0 ); \n" 
-        
-        //      we want to work in the [0..1] space on each side of 0, so can the abs
-        //      and store the signs for later:
-        << "    vec2 srct = vec2( abs(srcn.x), abs(srcn.y) ); \n"
-        << "    vec2 sign = vec2( srcn.x > 0.0 ? 1.0 : -1.0, srcn.y > 0.0 ? 1.0 : -1.0 ); \n"
+            // because the built-in pow() is busted
+            << "float mypow( in float x, in float y ) \n"
+            << "{ \n"
+            << "    return x/(x+y-y*x); \n"
+            << "} \n"
 
-        //      apply the deformation using a deceleration curve:
-        << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
+            << "vec2 warpTexCoord( in vec2 src ) \n"
+            << "{ \n"
+            //      incoming tex coord is [0..1], so we scale to [-1..1]
+            << "    vec2 srcn = vec2( src.x*2.0 - 1.0, src.y*2.0 - 1.0 ); \n" 
 
-        //      reapply the sign, and scale back to [0..1]:
-        << "    vec2 srcr = vec2( sign.x*srcp.x, sign.y*srcp.y ); \n"
-        << "    return vec2( 0.5*(srcr.x + 1.0), 0.5*(srcr.y + 1.0) ); \n"
-        << "} \n"
+            //      we want to work in the [0..1] space on each side of 0, so can the abs
+            //      and store the signs for later:
+            << "    vec2 srct = vec2( abs(srcn.x), abs(srcn.y) ); \n"
+            << "    vec2 sign = vec2( srcn.x > 0.0 ? 1.0 : -1.0, srcn.y > 0.0 ? 1.0 : -1.0 ); \n"
 
-        << "void osgearth_overlay_fragment( inout vec4 color ) \n"
+            //      apply the deformation using a deceleration curve:
+            << "    vec2 srcp = vec2( 1.0-mypow(1.0-srct.x,warp), 1.0-mypow(1.0-srct.y,warp) ); \n"
+
+            //      reapply the sign, and scale back to [0..1]:
+            << "    vec2 srcr = vec2( sign.x*srcp.x, sign.y*srcp.y ); \n"
+            << "    return vec2( 0.5*(srcr.x + 1.0), 0.5*(srcr.y + 1.0) ); \n"
+            << "} \n";
+    }
+
+    buf << "void osgearth_overlay_fragment( inout vec4 color ) \n"
         << "{ \n"
         << "    vec2 texCoord = gl_TexCoord["<< *_textureUnit << "].xy / gl_TexCoord["<< *_textureUnit << "].q; \n";
 
-    if ( !_visualizeWarp )
+    if ( _useWarping && !_visualizeWarp )
         buf  << "    texCoord = warpTexCoord( texCoord ); \n";
 
     buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"        
@@ -471,6 +489,16 @@ OverlayDecorator::setMipmapping( bool value )
     if ( value != _mipmapping )
     {
         _mipmapping = value;
+        reinit();
+    }
+}
+
+void
+OverlayDecorator::setVertexWarping( bool value )
+{
+    if ( value != _useWarping )
+    {
+        _useWarping = value;
         reinit();
     }
 }

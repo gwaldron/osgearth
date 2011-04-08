@@ -44,8 +44,8 @@ namespace osgEarth { namespace Features
         optional<GriddingPolicy>& gridding() { return _gridding; }
         const optional<GriddingPolicy>& gridding() const { return _gridding; }
 
-        optional<Symbology::StyleCatalog>& styles() { return _styles; }
-        const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
+        optional<Symbology::StyleSheet>& styles() { return _styles; }
+        const optional<Symbology::StyleSheet>& styles() const { return _styles; }
 
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -81,7 +81,7 @@ namespace osgEarth { namespace Features
         void fromConfig( const Config& conf );
 
         optional<FeatureSourceOptions> _featureOptions;
-        optional<Symbology::StyleCatalog> _styles;
+        optional<Symbology::StyleSheet> _styles;
         optional<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;
@@ -89,6 +89,26 @@ namespace osgEarth { namespace Features
         optional<bool> _mergeGeometry;
 
         osg::ref_ptr<FeatureSource> _featureSource;
+    };
+
+    /**
+     * Interface for a class that can create a Node from a set of features and
+     * a style definition. You will provide this to a FeatureModeGraph when
+     * creating a feature node in a driver.
+     */
+    class FeatureNodeFactory : public osg::Referenced
+    {
+    public:
+        /**
+         * Render (or update) a list of features into a node according to the specified
+         * style.
+         */
+        virtual bool createOrUpdateNode(
+            const FeatureList&        features,
+            const FeatureProfile*     profile,
+            const Symbology::Style*   style,
+            Session*                  session,
+            osg::ref_ptr<osg::Node>&  node ) =0;
     };
 
     /**
@@ -109,6 +129,8 @@ namespace osgEarth { namespace Features
 
         // override
         virtual osg::Node* createNode( ProgressCallback* progress );
+    
+        virtual FeatureNodeFactory* createFeatureNodeFactory() =0;
 
 
     public: // properties:
@@ -119,18 +141,16 @@ namespace osgEarth { namespace Features
         /** The underlying feature source. */
         FeatureSource* getFeatureSource() { return _features.get(); }
 
-        virtual const FeatureModelSourceOptions& getFeatureModelOptions() const {
-            return _options; }
+        virtual const FeatureModelSourceOptions& getFeatureModelOptions() const { return _options; }
 
         const osgEarth::Map* getMap() const { return _map.get(); }
 
         /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
-        virtual osg::Referenced* createBuildData() {
-            return NULL; }     
+        virtual osg::Referenced* createBuildData() { return NULL; }     
 
     protected:
 
-
+#if 0
         /**
          * Creates OSG graph(s) representing the specified feature list.
          *
@@ -167,6 +187,7 @@ namespace osgEarth { namespace Features
             const Symbology::Query& query,
             osg::Referenced* buildData );
 
+#endif
 
     public: 
 
@@ -182,10 +203,11 @@ namespace osgEarth { namespace Features
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureModelSource() { }
 
-        //StyleCatalog _styleCatalog;
+        //StyleSheet _styleCatalog;
         osg::ref_ptr<FeatureSource> _features;
         osg::ref_ptr<const osgEarth::Map> _map;
         const FeatureModelSourceOptions _options;
+        osg::ref_ptr<FeatureNodeFactory> _factory;
 
     };
 

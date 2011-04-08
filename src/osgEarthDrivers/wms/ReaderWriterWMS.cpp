@@ -61,7 +61,8 @@ public:
     {
         if ( _options.times().isSet() )
         {
-            osgEarth::split( _options.times().value(), ",", _timesVec, false );
+            osgEarth::tokenize( _options.times().value(), _timesVec, ",", "", false );
+            //osgEarth::split( _options.times().value(), ",", _timesVec, false );
         }
 
         // localize it since we might override them:

@@ -27,6 +27,7 @@ SET(LIB_PUBLIC_HEADERS
     Config
     Cube
     ElevationLayer
+    ElevationQuery
     Export
     EGM
     FileUtils
@@ -77,6 +78,7 @@ SET(LIB_PUBLIC_HEADERS
     tinyxml.h 
     TMS
     Units
+    Utils
 	Version
     VerticalSpatialReference
     XmlUtils
@@ -93,6 +95,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Cube.cpp
     EGM.cpp
     ElevationLayer.cpp
+    ElevationQuery.cpp
     FileUtils.cpp
     GeoData.cpp
     GeoMath.cpp

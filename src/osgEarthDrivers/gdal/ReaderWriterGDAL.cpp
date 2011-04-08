@@ -123,6 +123,7 @@ typedef struct
 } BandProperty;
 
 
+#if 0
 static void
 tokenize(const string& str,
          vector<string>& tokens,
@@ -143,6 +144,7 @@ tokenize(const string& str,
         pos = str.find_first_of(delimiters, lastPos);
     }
 }
+#endif
 
 static void
 getFiles(const std::string &file, const std::vector<std::string> &exts, std::vector<std::string> &files)

@@ -14,58 +14,50 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
     AGG.h
+    AltitudeSymbol
     Common
     Content
     CssUtils
-    ExtrudedSymbol
+    ExtrusionSymbol
     Geometry
-    GeometryExtrudeSymbolizer
-    GeometrySymbolizer
-    GeometrySymbol
     GEOS
     GeometryRasterizer
     LineFunctor
-    MarkerSymbolizer
-    MarkerSymbol
+    LineSymbol
     MeshSubdivider
-    ModelSymbolizer
+    ModelSymbol
+    PointSymbol
+    PolygonSymbol
     Query
     Registry
     StencilVolumeNode
     Style
     SLD
-    StyleSheet
     Symbol
-    SymbolicNode
-    Symbolizer
-    Text
+    TextSymbol
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
+    AltitudeSymbol.cpp
     CssUtils.cpp
-    ExtrudedSymbol.cpp
+    ExtrusionSymbol.cpp
     Geometry.cpp
-    GeometryExtrudeSymbolizer.cpp
-    GeometrySymbolizer.cpp
-    GeometrySymbol.cpp
     GEOS.cpp
     GeometryRasterizer.cpp
-    MarkerSymbolizer.cpp
-    MarkerSymbol.cpp
+    LineSymbol.cpp
     MeshSubdivider.cpp
-    ModelSymbolizer.cpp
+    ModelSymbol.cpp
+    PointSymbol.cpp
+    PolygonSymbol.cpp
     Query.cpp
     Registry.cpp
     StencilVolumeNode.cpp
     Style.cpp
     SLD.cpp
-    StyleSheet.cpp
     Symbol.cpp
-    SymbolicNode.cpp
-    Symbolizer.cpp
-    Text.cpp
+    TextSymbol.cpp
 )
 
 IF(GEOS_FOUND)

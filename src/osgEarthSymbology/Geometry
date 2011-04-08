@@ -79,8 +79,15 @@ namespace osgEarth { namespace Symbology
         static bool hasBufferOperation();
 
     public:
-        // gets the total number of points in this geometry.
+        /**
+         * Gets the total number of points in this geometry.
+         */
         virtual int getTotalPointCount() const;
+
+        /**
+         * Gets the total number of geometry components
+         */
+        virtual unsigned getNumComponents() const { return 1; }
 
         /**
          * Converts this geometry to another type. This function will return "this" if
@@ -94,6 +101,9 @@ namespace osgEarth { namespace Symbology
          */
         osg::Vec3Array* toVec3Array() const;
 
+        /**
+         * Gets the bounds of this geometry
+         */
         virtual Bounds getBounds() const;
 
         /**
@@ -194,12 +204,14 @@ namespace osgEarth { namespace Symbology
         // gets the ring's orientation
         Orientation getOrientation() const;
 
-        // gets the signed area of a part that is known to be open. A positive
-        // area means it's would CCW; negative means it's would CW.
-        //double getSignedArea() const;
+        // tests whether the point falls withing the ring
+        virtual bool contains2D( double x, double y ) const;
+
+        // gets the signed area of a part that is known to be open.
+        virtual double getSignedArea2D() const;
 
         // ensures that the first and last points are not idential.
-        void open();
+        virtual void open();
         
         // opens and rewinds the ring to the specified orientation.
         void rewind( Orientation ori );
@@ -229,6 +241,11 @@ namespace osgEarth { namespace Symbology
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
         virtual int getTotalPointCount() const;
 
+        // tests whether the point falls withing the polygon (but not its holes)
+        virtual bool contains2D( double x, double y ) const;
+
+        virtual void open();
+
     public:
         RingCollection& getHoles() { return _holes; }
         const RingCollection& getHoles() const { return _holes; }
@@ -253,7 +270,8 @@ namespace osgEarth { namespace Symbology
     public:
         virtual Type getType() const { return Geometry::TYPE_MULTI; }        
         virtual Type getComponentType() const;
-        virtual int getTotalPointCount() const;
+        virtual int getTotalPointCount() const;        
+        virtual unsigned getNumComponents() const { return _parts.size(); }
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
@@ -277,19 +295,18 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT GeometryIterator
     {
     public:
-        GeometryIterator( Geometry* geom );
-
-        // set to TRUE to return MG children, but never an MG itself;
-        // set to FALSE to return MGs and NOT their children.
-        // default = TRUE
-        bool& traverseMultiGeometry() {
-            return _traverseMulti; }
-
-        // set to TRUE to return Polygons AND Polygon hole geometries;
-        // set to FALSE to only return Polygon (outer ring).
-        // default = TRUE
-        bool& traversePolygonHoles() {
-            return _traversePolyHoles; }
+        /**
+         * New iterator.
+         *
+         * traversePolyHoles: set to TRUE to return Polygons AND Polygon hole geometries;
+         *                    set to FALSE to only return Polygon (outer ring).
+         *
+         * traverseMultiGeometry: set to TRUE to return MG children, but never an MG itself;
+         *                        set to FALSE to return MGs and NOT their children.
+         */
+        GeometryIterator(
+            Geometry* geom,
+            bool      traversePolygonHoles  =true );
 
         bool hasMore() const;
         Geometry* next();
@@ -306,19 +323,18 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ConstGeometryIterator
     {
     public:
-        ConstGeometryIterator( const Geometry* geom );
-
-        // set to TRUE to return MG children, but never an MG itself;
-        // set to FALSE to return MGs and NOT their children.
-        // default = TRUE
-        bool& traverseMultiGeometry() {
-            return _traverseMulti; }
-
-        // set to TRUE to return Polygons AND Polygon hole geometries;
-        // set to FALSE to only return Polygon (outer ring).
-        // default = TRUE
-        bool& traversePolygonHoles() {
-            return _traversePolyHoles; }
+        /**
+         * New iterator.
+         *
+         * traversePolyHoles: set to TRUE to return Polygons AND Polygon hole geometries;
+         *                    set to FALSE to only return Polygon (outer ring).
+         *
+         * traverseMultiGeometry: set to TRUE to return MG children, but never an MG itself;
+         *                        set to FALSE to return MGs and NOT their children.
+         */
+        ConstGeometryIterator(
+            const Geometry* geom,
+            bool            traversePolygonHoles  =true );
 
         bool hasMore() const;
         const Geometry* next();
@@ -330,6 +346,22 @@ namespace osgEarth { namespace Symbology
         bool _traversePolyHoles;
 
         void fetchNext();
+    };
+
+    typedef std::pair<osg::Vec3d, osg::Vec3d> Segment;
+
+    class OSGEARTHSYMBOLOGY_EXPORT ConstSegmentIterator
+    {
+    public:
+        ConstSegmentIterator( const osg::Vec3dArray* verts, bool closedLoop );        
+        bool hasMore() const { return !_done; }
+        Segment next();
+
+    private:
+        const osg::Vec3dArray* _verts;
+        osg::Vec3dArray::const_iterator _iter;
+        bool _done;
+        bool _closeLoop;
     };
 
     typedef std::vector<osg::ref_ptr<Geometry> > GeometryList;

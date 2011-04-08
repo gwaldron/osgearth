@@ -40,8 +40,8 @@ namespace osgEarth { namespace Features
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        optional<Symbology::StyleCatalog>& styles() { return _styles; }
-        const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
+        optional<Symbology::StyleSheet>& styles() { return _styles; }
+        const optional<Symbology::StyleSheet>& styles() const { return _styles; }
 
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
@@ -59,7 +59,7 @@ namespace osgEarth { namespace Features
     protected:
         virtual void mergeConfig( const Config& conf );
         optional<FeatureSourceOptions> _featureOptions;
-        optional<Symbology::StyleCatalog> _styles;
+        optional<Symbology::StyleSheet> _styles;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         osg::ref_ptr<FeatureSource> _featureSource;
 

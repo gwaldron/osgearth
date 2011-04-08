@@ -158,7 +158,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
         return 0L;
 
     // style data
-    const StyleCatalog* styles = _options.styles();
+    const StyleSheet* styles = _options.styles();
 
     // implementation-specific data
     osg::ref_ptr<osg::Referenced> buildData = createBuildData();

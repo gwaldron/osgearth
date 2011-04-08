@@ -75,6 +75,14 @@ namespace osgEarth
         void setMipmapping( bool value );
         bool getMipmapping() const { return _mipmapping; }
 
+        /**
+         * Whether to employ overlay warping. Warping can help increase the apparent
+         * resolution of the overlay image. But it can cause artifacts when you zoom
+         * in very close. Default = true
+         */
+        void setVertexWarping( bool value );
+        bool getVertexWarping() const { return _warping; }
+
 
     public: // TerrainDecorator
         virtual void onInstall( TerrainEngineNode* engine );
@@ -115,6 +123,7 @@ namespace osgEarth
         bool                          _useShaders;
         bool                          _useWarping;
         float                         _warp;
+        bool                          _warping;
         bool                          _visualizeWarp;
         bool                          _isGeocentric;
         double                        _maxProjectedMapExtent;

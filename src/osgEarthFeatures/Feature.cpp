@@ -35,7 +35,7 @@ _extent( extent )
 
 /****************************************************************************/
 
-Feature::Feature( long fid ) :
+Feature::Feature( FeatureID fid ) :
 _fid( fid ),
 _style( new Style() )
 {
@@ -51,7 +51,7 @@ _style( rhs._style )
         _geom = dynamic_cast<Geometry*>( copyOp( rhs._geom.get() ) );
 }
 
-long
+FeatureID
 Feature::getFID() const 
 {
     return _fid;
@@ -69,4 +69,3 @@ Feature::getAttr( const std::string& name ) const
     AttributeTable::const_iterator i = _attrs.find(name);
     return i != _attrs.end()? i->second : EMPTY_STRING;
 }
-

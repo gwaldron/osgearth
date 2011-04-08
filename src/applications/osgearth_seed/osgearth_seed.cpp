@@ -25,7 +25,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/Map>
 #include <osgEarth/CacheSeed>
-#include <osgEarth/Progress>
+#include <osgEarth/MapNode>
 #include <osgEarth/Registry>
 
 #include <osgEarth/Caching>

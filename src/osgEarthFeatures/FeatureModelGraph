@@ -1,0 +1,83 @@
+/* --*-c++-*-- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H
+#define OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/FeatureModelSource>
+#include <osgEarthFeatures/Session>
+#include <osgEarthSymbology/Style>
+#include <osg/Node>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * A graph that gets its contents from a FeatureNodeFactory. This class will
+     * handle all the internals of selecting features, gridding feature data if
+     * required, and sorting features based on style. Then for each cell and each
+     * style, it will invoke the FeatureNodeFactory to create the actual data for
+     * each set.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureModelGraph : public osg::Group
+    {
+    public:
+        /**
+         * Constructs a new model graph.
+         *
+         * @param source
+         *      Source from which to read feature data
+         * @param options
+         *      Model source options
+         * @param factory
+         *      Node factory that will be invoked to compile feature data into nodes
+         */
+        FeatureModelGraph( 
+            FeatureSource*                   source,
+            const FeatureModelSourceOptions& options,
+            FeatureNodeFactory*              factory );
+
+        /**
+         * Creates or update feature node data.
+         *
+         * @param session
+         *      Shared session data for all feature sets in this graph
+         * @param styles
+         *      Styles and selectors to use to render the feature data
+         */
+        void update( Session* session, const StyleSheet& styles );
+
+    private:
+        osg::Group* gridAndCreateNodeForStyle(
+            const Symbology::Style* style,
+            const Symbology::Query& query,
+            Session*                session );
+
+    private:
+        FeatureModelSourceOptions        _options;
+        osg::ref_ptr<FeatureSource>      _source;
+        osg::ref_ptr<FeatureNodeFactory> _factory;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H

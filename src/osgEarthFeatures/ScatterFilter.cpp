@@ -73,14 +73,17 @@ ScatterFilter::polyScatter(const Geometry*         input,
         }
 
         double zMin = 0.0;
-        unsigned numInstances = areaSqKm * (double)osg::clampAbove( 0.1f, _density );
-        if ( numInstances == 0 )
+        unsigned numInstancesInBoundingRect = areaSqKm * (double)osg::clampAbove( 0.1f, _density );
+        if ( numInstancesInBoundingRect == 0 )
             continue;
 
         if ( _random )
         {
-            // random scattering:
-            for( unsigned j=0; j<numInstances; ++j )
+            // Random scattering. Note, we try to place as many instances as would
+            // fit in the bounding rectangle; The real placed number will be less since
+            // we only place models inside the actual polygon. But the density will 
+            // be correct.
+            for( unsigned j=0; j<numInstancesInBoundingRect; ++j )
             {
                 double rx = ((double)::rand()) / (double)RAND_MAX;
                 double ry = ((double)::rand()) / (double)RAND_MAX;
@@ -90,15 +93,13 @@ ScatterFilter::polyScatter(const Geometry*         input,
 
                 if ( polygon->contains2D( x, y ) )
                     output->push_back( osg::Vec3d( x, y, zMin ) );
-                else
-                    --j;
             }
         }
 
         else
         {
             // regular interval scattering:
-            double numInst1D = sqrt((double)numInstances);
+            double numInst1D = sqrt((double)numInstancesInBoundingRect);
             double ar = bounds.width() / bounds.height();
             unsigned cols = (unsigned)( numInst1D * ar );
             unsigned rows = (unsigned)( numInst1D / ar );

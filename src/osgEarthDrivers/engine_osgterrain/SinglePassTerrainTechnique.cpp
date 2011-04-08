@@ -1059,8 +1059,6 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         mask_skirt->setVertexArray(outVerts);
         
         osgEarth::Symbology::GeometryIterator i( outPoly );
-        i.traverseMultiGeometry() = true;
-        i.traversePolygonHoles() = true;
         while( i.hasMore() )
         {
           osgEarth::Symbology::Geometry* part = i.next();

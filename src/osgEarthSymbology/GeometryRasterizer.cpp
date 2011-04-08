@@ -17,7 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/GeometryRasterizer>
-#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarthSymbology/PointSymbol>
+#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/AGG.h>
 
 using namespace osgEarth::Symbology;

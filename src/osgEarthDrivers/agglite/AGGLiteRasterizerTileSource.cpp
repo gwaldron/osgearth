@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
 //TODO: replace this with ImageRasterizer
 #include <osgEarthSymbology/AGG.h>
 #include <osgEarth/Registry>

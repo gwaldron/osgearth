@@ -16,38 +16,36 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHSYMBOLOGY_STYLESHEET_H
-#define OSGEARTHSYMBOLOGY_STYLESHEET_H 1
-
-#include <osgEarthSymbology/Common>
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Style>
-#include <osg/ref_ptr>
-#include <map>
+#include "FeatureGeomModelOptions"
 
-namespace osgEarth { namespace Symbology 
+using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
+using namespace osgEarth::Drivers;
+
+/**
+* Compiles a collection of features against a style.
+*/
+class GeomCompiler
 {
-    using namespace osgEarth;
+public:
+    /** Constructs a new feature compile under the specified sesison. */
+    GeomCompiler( Session* session, const FeatureGeomModelOptions& options );
 
-    /**
-     * A stylesheet is a catalog of available Styles.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet
-    {
-    public:
-        StyleSheet();
-        
-        void addStyle( const std::string& name, Style* style );
+public:
 
-        Style* getStyle( const std::string& name );
-        const Style* getStyle( const std::string& name ) const;
+    /** Compiles a collection of features into an OSG scene graph. */
+    osg::Node* compile(
+        FeatureCursor*        input,
+        const FeatureProfile* profile,
+        const Style*          style );
 
-    protected:
-        typedef std::map<std::string,osg::ref_ptr<Style> > NameStyleMap;
-        NameStyleMap _styles;
-    };
-
-} } // namespace osgEarth::Symbology
-
-
-#endif // OSGEARTHSYMBOLOGY_STYLESHEET_H
+protected:
+    osg::ref_ptr<Session> _session;
+    const FeatureGeomModelOptions& _options;
+};
 

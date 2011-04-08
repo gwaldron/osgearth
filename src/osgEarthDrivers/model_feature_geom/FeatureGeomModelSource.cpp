@@ -21,234 +21,84 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
 
-#include <osgEarthFeatures/FeatureSymbolizer>
-#include <osgEarthFeatures/FeatureModelSource>
-#include <osgEarthFeatures/FeatureSource>
-#include <osgEarthFeatures/TransformFilter>
-#include <osgEarthFeatures/BuildGeometryFilter>
-#include <osgEarthFeatures/BuildTextOperator>
-
-#include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
-#include <osgEarthSymbology/GeometrySymbolizer>
-#include <osgEarthSymbology/SymbolicNode>
-
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
-#include <OpenThreads/Mutex>
-#include <OpenThreads/ScopedLock>
 
 #include "FeatureGeomModelOptions"
+#include "GeomCompiler"
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
-using namespace OpenThreads;
-
-class FeatureGeomModelSource;
 
 //------------------------------------------------------------------------
 
-class FactoryGeomSymbolizer : public SymbolizerFactory
+namespace
 {
-protected:
-    osg::ref_ptr<FeatureModelSource> _modelSource;
-    const FeatureGeomModelOptions _options;
-
-public:
-    FactoryGeomSymbolizer( FeatureModelSource* modelSource, const FeatureGeomModelOptions& options ) :
-      _modelSource( modelSource ),
-      _options( options ) { }
-
-    //override
-    virtual FeatureModelSource* getFeatureModelSource() { return _modelSource.get(); }
-
-    //override
-    virtual osg::Node* createNodeForStyle(
-        const Symbology::Style* style,
-        const FeatureList& features,
-        FeatureSymbolizerContext* context,
-        osg::Node** out_newNode)
+    class GeomFeatureNodeFactory : public FeatureNodeFactory
     {
-        // break the features out into separate lists for geometries and text annotations:
-        FeatureList geomFeatureList, textAnnoList;
+    public:
+        GeomFeatureNodeFactory( const FeatureGeomModelOptions& options )
+            : _options( options ) { }
 
-        for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
+        bool createOrUpdateNode(       
+                const FeatureList&        features,
+                const FeatureProfile*     profile,
+                const Style*              style,
+                Session*                  session,
+                osg::ref_ptr<osg::Node>&  node )
         {
-            Feature* f = osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL);
-            if ( dynamic_cast<TextAnnotation*>(f) )
-                textAnnoList.push_back( f );
-            else
-                geomFeatureList.push_back( f );
+            GeomCompiler compiler( session, _options );
+            osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(features);
+            node = compiler.compile( cursor.get(), profile, style );
+            return node.valid();
         }
 
-        // a single group to hold the results:
-        osg::Group* root = new osg::Group;
+    private:
+        FeatureGeomModelOptions _options;
+    };
 
-        // compile the geometry features:
-        if ( geomFeatureList.size() > 0 )
-        {
-            osg::Node* node = compileGeometries( geomFeatureList, style );
-            if ( node ) root->addChild( node );
-        }
+    //------------------------------------------------------------------------
 
-        // compile the text annotation features:
-        if ( textAnnoList.size() > 0 )
-        {
-            osg::Node* node = compileTextAnnotations( textAnnoList, style );
-            if ( node ) root->addChild( node );
-        }
-        
-        // Apply an LOD if required:
-        if ( _options.minRange().isSet() || _options.maxRange().isSet() )
-        {
-            osg::LOD* lod = new osg::LOD();
-            lod->addChild( root, _options.minRange().value(), _options.maxRange().value() );
-            root = lod;
-        }
-
-        // set the output node if necessary:
-        if ( out_newNode )
-            *out_newNode = root;
-
-        return root;
-    }
-
-    osg::Node*
-    compileGeometries( FeatureList& features, const Style* style )
+    /** The model source implementation for feature_geom */
+    class FeatureGeomModelSource : public FeatureModelSource
     {
-        // A processing context to use with the filters:
-        FilterContext cx;
-        cx.profile() = _modelSource->getFeatureSource()->getFeatureProfile();
-
-        // Transform them into the map's SRS:
-        TransformFilter xform( _modelSource->getMap()->getProfile()->getSRS() );
-        xform.setMakeGeocentric( _modelSource->getMap()->isGeocentric() );
-        xform.setLocalizeCoordinates( true );
-
-        // Apply the height offset if necessary:
-        if ( _options.heightOffset().isSet() )
-            xform.setHeightOffset( _options.heightOffset().value() );
-
-        cx = xform.push( features, cx );
-
-        // Build geometry:
-        BuildGeometryFilter build;
-
-        // apply a type change:
-        if ( _options.geometryTypeOverride().isSet() )
-            build.geomTypeOverride() = *_options.geometryTypeOverride();
-
-        // subdivide geocentric geometry as required:
-        if ( _options.maxGranularity().isSet() )
-            build.maxGranularity() = *_options.maxGranularity();
-
-        // set feature preservation optiona:
-        if ( _options.mergeGeometry().isSet() )
-            build.mergeGeometry() = *_options.mergeGeometry();
-
-        osg::ref_ptr<osg::Node> result;
-        build.setStyle( style );
-        cx = build.push( features, result, cx );
-
-        // Localize it.
-        if ( cx.hasReferenceFrame() )
+    public:
+        FeatureGeomModelSource( const ModelSourceOptions& options )
+            : FeatureModelSource( options ),
+              _options( options )
         {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( cx.inverseReferenceFrame() );
-            delocalizer->addChild( result );
-            result = delocalizer;
+            //nop
         }
 
-        return result.release();
-    }
+        const FeatureGeomModelOptions& getOptions() const { return _options; }
 
-    osg::Node*
-    compileTextAnnotations( FeatureList& features, const Style* style )
-    {
-        // A processing context to use with the filters:
-        FilterContext contextFilter;
-        contextFilter.profile() = _modelSource->getFeatureSource()->getFeatureProfile();
-
-        // Transform them into the map's SRS:
-        TransformFilter xform( _modelSource->getMap()->getProfile()->getSRS() );
-        xform.setMakeGeocentric( _modelSource->getMap()->isGeocentric() );
-        xform.setLocalizeCoordinates( true );
-
-        // Apply the height offset if necessary:
-        xform.setHeightOffset( _options.heightOffset().value() );
-        contextFilter = xform.push( features, contextFilter );
-
-        osg::ref_ptr<const TextSymbol> textSymbol = style->getSymbol<TextSymbol>();
-        //Use a default symbol if we have no text symbol
-        if (! textSymbol)
+        //override
+        void initialize( const std::string& referenceURI, const osgEarth::Map* map )
         {
-            TextSymbol* ts = new TextSymbol();
-            ts->rotateToScreen() = true;
-            textSymbol = ts;
+            FeatureModelSource::initialize( referenceURI, map );
         }
 
-        // build the text.
-        BuildTextOperator textOperator;
-        osg::Node* result = textOperator( features, textSymbol.get(), contextFilter );
-        
-        // install the localization transform if necessary.
-        if ( contextFilter.hasReferenceFrame() )
+        //override
+        FeatureNodeFactory* createFeatureNodeFactory()
         {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( contextFilter.inverseReferenceFrame() );
-            delocalizer->addChild( result );
-            result = delocalizer;
+            return new GeomFeatureNodeFactory( _options );
         }
 
-        return result;
-    }
-};
-
-//------------------------------------------------------------------------
-
-/** The model source implementation for feature_geom */
-class FeatureGeomModelSource : public FeatureModelSource
-{
-public:
-    FeatureGeomModelSource( const ModelSourceOptions& options )
-        : FeatureModelSource( options ), _options( options )
-    {
-        //nop
-    }
-
-    const FeatureGeomModelOptions& getOptions() const { return _options; }
-
-    //override
-    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
-    {
-        FeatureModelSource::initialize( referenceURI, map );
-    }
-
-    osg::Node* createNode( ProgressCallback* progress )
-    {
-        if ( _features.valid() && _features->getFeatureProfile() )
-        {
-            //OE_NOTICE << _options.getConfig().toString() << std::endl;
-            return new FeatureSymbolizerGraph( new FactoryGeomSymbolizer(this, _options) );
-        }
-        else
-        {
-            return 0L;
-        }
-    }
-
-private:
-    const FeatureGeomModelOptions _options;
-};
+    private:
+        const FeatureGeomModelOptions _options;
+    };
+}
 
 //------------------------------------------------------------------------
 
 /** The plugin factory object */
-class FeatureGeomModelSourceFactory : public ModelSourceDriver
+class FeatureGeomModelSourceDriver : public ModelSourceDriver
 {
 public:
-    FeatureGeomModelSourceFactory()
+    FeatureGeomModelSourceDriver()
     {
         supportsExtension( "osgearth_model_feature_geom", "osgEarth feature geom plugin" );
     }
@@ -267,4 +117,4 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_model_feature_geom, FeatureGeomModelSourceFactory) 
+REGISTER_OSGPLUGIN(osgearth_model_feature_geom, FeatureGeomModelSourceDriver) 

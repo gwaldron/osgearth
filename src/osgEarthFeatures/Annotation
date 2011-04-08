@@ -74,4 +74,3 @@ namespace osgEarth { namespace Features
 } } // osgEarth::Features
 
 #endif // OSGEARTHFEATURES_ANNOTATION_H
-

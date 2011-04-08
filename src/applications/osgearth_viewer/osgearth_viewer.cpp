@@ -25,11 +25,13 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/Controls>
 #include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/Viewpoint>
 
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
 
 int
 usage( const std::string& msg )
@@ -43,6 +45,34 @@ usage( const std::string& msg )
     OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
         
     return -1;
+}
+ 
+osg::Node*
+createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
+{
+    ControlCanvas* canvas = new ControlCanvas( view );
+
+    // the outer container:
+    Grid* g = new Grid();
+    g->setBackColor(0,0,0,0.5);
+    g->setMargin( 10 );
+    g->setPadding( 10 );
+    g->setSpacing( 10 );
+    g->setChildVertAlign( Control::ALIGN_CENTER );
+    g->setAbsorbEvents( true );
+    g->setVertAlign( Control::ALIGN_BOTTOM );
+
+    for( unsigned i=0; i<vps.size(); ++i )
+    {
+        const Viewpoint& vp = vps[i];
+        std::stringstream buf;
+        buf << (i+1);
+        g->setControl( 0, i, new LabelControl(buf.str(), osg::Vec4f(1,1,0,1)) );
+        g->setControl( 1, i, new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName()) );
+    }
+
+    canvas->addControl( g );
+    return canvas;
 }
 
 struct AnimateSunCallback : public osg::NodeCallback
@@ -120,7 +150,7 @@ main(int argc, char** argv)
             // when you are very close to the ground. If your app never brings a user very
             // close to the ground, you may not need this.
             if ( useAutoClip )
-                viewer.addEventHandler( new AutoClipPlaneHandler );
+                viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
 
             // the Graticule is a lat/long grid that overlays the terrain. It only works
             // in a round-earth geocentric terrain.
@@ -133,7 +163,7 @@ main(int argc, char** argv)
             if ( useSky )
             {
                 SkyNode* sky = new SkyNode( mapNode->getMap() );
-                sky->setDateTime( 2011, 1, 6, 17.0 );
+                sky->setDateTime( 2011, 3, 6, 12.0 );
                 sky->attach( &viewer );
                 root->addChild( sky );
                 if (animateSky)
@@ -153,6 +183,9 @@ main(int argc, char** argv)
         viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
         if ( viewpoints.size() > 0 && jump )
             manip->setViewpoint(viewpoints[0]);
+
+        if ( viewpoints.size() > 0 )
+            root->addChild( createControlPanel(&viewer, viewpoints) );
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

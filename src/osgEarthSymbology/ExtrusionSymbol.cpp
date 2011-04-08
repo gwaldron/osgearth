@@ -16,17 +16,32 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/Text>
+#include <osgEarthSymbology/ExtrusionSymbol>
 
+using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-TextSymbol::TextSymbol() :
-_fill( Fill( 1, 1, 1, 1 ) ),
-_halo( Stroke( 0.3, 0.3, 0.3, 1) ),
-//_font( "fonts/arial.ttf" ),
-_size( 16.0f ),
-_contentAttributeDelimiter( "[]" ),
-_sizeMode( SIZEMODE_SCREEN )
+ExtrusionSymbol::ExtrusionSymbol( const Config& conf ) :
+_height( 10.0 ),
+_flatten( true )
 {
-    //nop
+    if ( !conf.empty() )
+        mergeConfig(conf);
+}
+
+Config 
+ExtrusionSymbol::getConfig() const
+{
+    Config conf = Symbol::getConfig();
+    conf.key() = "extrusion";
+    conf.addIfSet( "height",  _height );
+    conf.addIfSet( "flatten", _flatten );
+    return conf;
+}
+
+void 
+ExtrusionSymbol::mergeConfig( const Config& conf )
+{
+    conf.getIfSet( "height",  _height );
+    conf.getIfSet( "flatten", _flatten );
 }

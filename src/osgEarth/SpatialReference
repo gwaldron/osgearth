@@ -87,6 +87,39 @@ namespace osgEarth
             bool ignore_errors =false) const;
 
         /**
+         * Transforms a point to geocentric/ECEF coordinates.
+         */
+        bool transformToECEF(
+            const osg::Vec3d& input,
+            osg::Vec3d& output ) const;
+            //double x, double y, double z,
+            //double& out_x, double& out_y, double& out_z ) const;
+
+        /**
+         * Transforms an array of points to geocentric/ECEF coordinates. The points
+         * are transformed in place.
+         */
+        bool transformToECEF(
+            osg::Vec3dArray*    points,
+            bool                ignore_errors =false) const;
+
+        /**
+         * Transforms a point from geocentric/ECEF coordinates into this SRS (with a
+         * height above ellipsoid).
+         */
+        bool transformFromECEF(
+            const osg::Vec3d& input,
+            osg::Vec3d& output ) const;
+
+        /**
+         * Transforms an array of points from geocentric/ECEF coordinates into this SRS
+         * (with a height-above-ellipoid). The points are transformed in place.
+         */
+        bool transformFromECEF(
+            osg::Vec3dArray*    points,
+            bool                ignoreErrors =false) const;
+
+        /**
          * Transforms a spatial extent to another SRS. 
          *
          * TODO: Update this method to work for:

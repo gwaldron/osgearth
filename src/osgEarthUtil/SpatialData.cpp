@@ -23,6 +23,7 @@
 #include <osg/Geometry>
 #include <osg/Depth>
 #include <osgText/Text>
+#include <sstream>
 
 #define LC "[GeoGraph] "
 

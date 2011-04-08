@@ -16,16 +16,28 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/ExtrudedSymbol>
+#include <osgEarthSymbology/PolygonSymbol>
 
+using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-ExtrudedPolygonSymbol::ExtrudedPolygonSymbol()
+PolygonSymbol::PolygonSymbol( const Config& conf ) :
+_fill( Fill() )
 {
-    //NOP
+    mergeConfig(conf);
 }
 
-ExtrudedLineSymbol::ExtrudedLineSymbol()
+Config 
+PolygonSymbol::getConfig() const
 {
-    //NOP
+    Config conf = Symbol::getConfig();
+    conf.key() = "polygon";
+    conf.addObjIfSet( "fill", _fill );
+    return conf;
+}
+
+void 
+PolygonSymbol::mergeConfig(const Config& conf )
+{
+    conf.getObjIfSet( "fill", _fill );
 }

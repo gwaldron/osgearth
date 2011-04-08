@@ -231,7 +231,8 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
-    //_overlayDecorator->setOverlayGraph( _overlayModels.get() );
+    if ( _mapNodeOptions.overlayVertexWarping().isSet() )
+        _overlayDecorator->setVertexWarping( *_mapNodeOptions.overlayVertexWarping() );
     addTerrainDecorator( _overlayDecorator.get() );
 
     // install any pre-existing model layers:

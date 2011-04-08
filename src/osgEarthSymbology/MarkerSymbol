@@ -1,83 +1,83 @@
-/* -*-c++-*- */
-/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
-
-#ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H 1
-
-#include <osgEarth/Common>
-#include <osgEarthSymbology/GeometrySymbol>
-
-namespace osgEarth { namespace Symbology
-{
-
-    class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbol : public PointSymbol
-    {
-    public:
-        MarkerSymbol();
-
-        optional<std::string>& marker() { return _marker; }
-        const optional<std::string>& marker() const { return _marker; }
-
-    protected:
-        optional<std::string> _marker;
-    };
-
-
-    class OSGEARTHSYMBOLOGY_EXPORT MarkerLineSymbol : public LineSymbol
-    {
-    public:
-        MarkerLineSymbol();
-
-        optional<std::string>& marker() { return _marker; }
-        const optional<std::string>& marker() const { return _marker; }
-
-        optional<float>& interval() { return _interval; }
-        const optional<float>& interval() const { return _interval; }
-
-    protected:
-        optional<std::string> _marker;
-        optional<float> _interval;
-    };
-
-
-    class OSGEARTHSYMBOLOGY_EXPORT MarkerPolygonSymbol : public PolygonSymbol
-    {
-    public:
-        MarkerPolygonSymbol();
-
-        optional<std::string>& marker() { return _marker; }
-        const optional<std::string>& marker() const { return _marker; }
-
-        optional<float>& interval() { return _interval; }
-        const optional<float>& interval() const { return _interval; }
-
-        optional<float>& randomRatio() { return _randomRatio; }
-        const optional<float>& randomRatio() const { return _randomRatio; }
-
-    protected:
-        optional<std::string> _marker;
-        optional<float> _randomRatio; // use a random from distance to avoid regularity
-        optional<float> _interval;
-    };
-
-
-
-} } // namespace osgEarth::Symbology
-
-#endif
+///* -*-c++-*- */
+///* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+// * Copyright 2008-2010 Pelican Mapping
+// * http://osgearth.org
+// *
+// * osgEarth is free software; you can redistribute it and/or modify
+// * it under the terms of the GNU Lesser General Public License as published by
+// * the Free Software Foundation; either version 2 of the License, or
+// * (at your option) any later version.
+// *
+// * This program is distributed in the hope that it will be useful,
+// * but WITHOUT ANY WARRANTY; without even the implied warranty of
+// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// * GNU Lesser General Public License for more details.
+// *
+// * You should have received a copy of the GNU Lesser General Public License
+// * along with this program.  If not, see <http://www.gnu.org/licenses/>
+// */
+//
+//#ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H
+//#define OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H 1
+//
+//#include <osgEarth/Common>
+//#include <osgEarthSymbology/GeometrySymbol>
+//
+//namespace osgEarth { namespace Symbology
+//{
+//
+//    class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbol : public PointSymbol
+//    {
+//    public:
+//        MarkerSymbol();
+//
+//        optional<std::string>& marker() { return _marker; }
+//        const optional<std::string>& marker() const { return _marker; }
+//
+//    protected:
+//        optional<std::string> _marker;
+//    };
+//
+//
+//    class OSGEARTHSYMBOLOGY_EXPORT MarkerLineSymbol : public LineSymbol
+//    {
+//    public:
+//        MarkerLineSymbol();
+//
+//        optional<std::string>& marker() { return _marker; }
+//        const optional<std::string>& marker() const { return _marker; }
+//
+//        optional<float>& interval() { return _interval; }
+//        const optional<float>& interval() const { return _interval; }
+//
+//    protected:
+//        optional<std::string> _marker;
+//        optional<float> _interval;
+//    };
+//
+//
+//    class OSGEARTHSYMBOLOGY_EXPORT MarkerPolygonSymbol : public PolygonSymbol
+//    {
+//    public:
+//        MarkerPolygonSymbol();
+//
+//        optional<std::string>& marker() { return _marker; }
+//        const optional<std::string>& marker() const { return _marker; }
+//
+//        optional<float>& interval() { return _interval; }
+//        const optional<float>& interval() const { return _interval; }
+//
+//        optional<float>& randomRatio() { return _randomRatio; }
+//        const optional<float>& randomRatio() const { return _randomRatio; }
+//
+//    protected:
+//        optional<std::string> _marker;
+//        optional<float> _randomRatio; // use a random from distance to avoid regularity
+//        optional<float> _interval;
+//    };
+//
+//
+//
+//} } // namespace osgEarth::Symbology
+//
+//#endif

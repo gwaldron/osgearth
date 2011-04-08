@@ -52,13 +52,15 @@ namespace osgEarth { namespace Features
 
     typedef std::map<std::string, std::string> AttributeTable;
 
+    typedef unsigned long FeatureID;
+
     /**
      * Basic building block of vector feature data.
      */
     class OSGEARTHFEATURES_EXPORT Feature : public osg::Object
     {
     public:
-        Feature( long fid =0L );
+        Feature( FeatureID fid =0L );
 
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
@@ -67,7 +69,7 @@ namespace osgEarth { namespace Features
 
     public:
 
-        long getFID() const;
+        FeatureID getFID() const;
 
         void setGeometry( Symbology::Geometry* geom ) {
             _geom = geom; }
@@ -90,7 +92,7 @@ namespace osgEarth { namespace Features
         const optional<osg::ref_ptr<Symbology::Style> >& style() const { return _style; }
 
     protected:
-        long _fid;
+        FeatureID _fid;
         osg::ref_ptr<Symbology::Geometry> _geom;
         AttributeTable _attrs;
         optional<osg::ref_ptr<Symbology::Style> > _style;

@@ -35,6 +35,8 @@
 #include <OpenThreads/ReadWriteMutex>
 
 #include <string>
+#include <list>
+#include <map>
 
 namespace osgEarth
 {

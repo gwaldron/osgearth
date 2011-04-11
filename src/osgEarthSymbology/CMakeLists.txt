@@ -25,7 +25,7 @@ SET(LIB_PUBLIC_HEADERS
     LineFunctor
     LineSymbol
     MeshSubdivider
-    ModelSymbol
+    MarkerSymbol
     PointSymbol
     PolygonSymbol
     Query
@@ -48,7 +48,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryRasterizer.cpp
     LineSymbol.cpp
     MeshSubdivider.cpp
-    ModelSymbol.cpp
+    MarkerSymbol.cpp
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp

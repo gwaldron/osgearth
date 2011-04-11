@@ -24,7 +24,7 @@
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
-#include <osgEarthSymbology/ModelSymbol>
+#include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarthSymbology/TextSymbol>

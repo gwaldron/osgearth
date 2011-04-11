@@ -29,7 +29,7 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
 #include <osgEarth/HTTPClient>
-//#include <osgEarthSymbology/ModelSymbolizer>
+//#include <osgEarthSymbology/MarkerSymbolizer>
 //#include <osgEarthSymbology/Style>
 //#include <osgEarthSymbology/MarkerSymbol>
 //#include <osgEarthSymbology/SymbolicNode>

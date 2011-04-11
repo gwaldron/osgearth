@@ -22,9 +22,9 @@ SET(LIB_PUBLIC_HEADERS
     ExtrudeGeometryFilter
     Feature
     FeatureCursor
+    FeatureDisplaySchema
     FeatureGeometryIndex
     FeatureGridder
-    FeatureLevelSchema
     FeatureModelGraph
     FeatureModelSource    
     FeatureSource
@@ -52,9 +52,9 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ExtrudeGeometryFilter.cpp
     Feature.cpp
     FeatureCursor.cpp
+    FeatureDisplaySchema.cpp
     FeatureGeometryIndex.cpp
     FeatureGridder.cpp
-    FeatureLevelSchema.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp

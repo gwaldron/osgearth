@@ -20,6 +20,9 @@
 #include <osgEarthFeatures/Session>
 #include <osgEarth/FileUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/StringUtils>
+#include <osg/AutoTransform>
+#include <osg/Texture2D>
 
 #define LC "[Session] "
 
@@ -44,11 +47,77 @@ Session::resolveURI( const std::string& inputURI ) const
     return osgEarth::getFullPath( _referenceURI, inputURI );
 }
 
+void
+Session::parseMarker(const std::string& marker, std::string& url, bool &isImage) const
+{    
+    StringVector tok;
+    osgEarth::tokenize( marker, tok, "()", "" );
+
+    if (tok.size() > 1)
+    {
+        if (tok[0].compare("model") == 0)
+        {         
+            isImage = false;
+            url = resolveURI( tok[1] );
+        }
+        else if (tok[0].compare("image") == 0)
+        {
+            url = resolveURI( tok[1] );
+            isImage = true;
+        }    
+    }
+    else
+    {
+        url = resolveURI( marker );
+        isImage = false;
+    }    
+}
+
+osg::Node* buildImageModel(osg::Image* image)
+{
+    float width = image->s();
+    float height = image->t();
+
+    osg::Geometry* geometry = new osg::Geometry;
+
+    osg::Vec3Array* verts = new osg::Vec3Array(4);
+    (*verts)[0] = osg::Vec3(-width/2.0f, -height/2.0, 0.0f);
+    (*verts)[1] = osg::Vec3(width/2.0f, -height/2.0, 0.0f);
+    (*verts)[2] = osg::Vec3(width/2.0f, height/2.0, 0.0f);
+    (*verts)[3] = osg::Vec3(-width/2.0f,height/2.0, 0.0f);
+    geometry->setVertexArray( verts );
+
+    bool flip = image->getOrigin()==osg::Image::TOP_LEFT;
+
+    osg::Vec2Array* texcoords = new osg::Vec2Array(4);
+    (*texcoords)[0].set(0.0f,flip ? 1.0 : 0.0f);
+    (*texcoords)[1].set(1.0f,flip ? 1.0 : 0.0f);
+    (*texcoords)[2].set(1.0f,flip ? 0.0 : 1.0f);
+    (*texcoords)[3].set(0.0f,flip ? 0.0 : 1.0f);
+    geometry->setTexCoordArray(0, texcoords);
+
+    geometry->addPrimitiveSet( new osg::DrawArrays(GL_QUADS, 0, 4));
+
+    osg::Texture2D* texture = new osg::Texture2D( image );
+    texture->setResizeNonPowerOfTwoHint(false);
+    geometry->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);
+
+    osg::Geode* geode = new osg::Geode;
+    geode->addDrawable( geometry );
+
+    osg::AutoTransform* at = new osg::AutoTransform;
+    at->setAutoScaleToScreen( true );
+    at->setAutoRotateMode( osg::AutoTransform::AutoRotateMode::ROTATE_TO_CAMERA );
+    at->addChild( geode );
+    return at;
+}
+
 osg::Node*
 Session::getModel( const std::string& url ) const
-{
-    // expand the URL
-    std::string absurl = resolveURI( url );
+{    
+    bool isImage;
+    std::string absurl;
+    parseMarker(url, absurl, isImage);
 
     // first, check the local repo
     {
@@ -60,10 +129,24 @@ Session::getModel( const std::string& url ) const
 
     // next, try to load the model from its URL
     osg::ref_ptr<osg::Node> node;
-    if ( HTTPClient::readNodeFile( absurl, node ) != HTTPClient::RESULT_OK )
+    if (!isImage)
     {
-        OE_WARN << LC << "Failed to load model from \"" << url << "\"" << std::endl;
-        return 0L;
+        if ( HTTPClient::readNodeFile( absurl, node ) != HTTPClient::RESULT_OK )
+        {
+            OE_WARN << LC << "Failed to load model from \"" << url << "\"" << std::endl;
+            return 0L;
+        }
+    }
+    else
+    {
+        osg::ref_ptr< osg::Image > image;
+        if (HTTPClient::readImageFile( absurl, image ) != HTTPClient::RESULT_OK )
+        {
+            OE_WARN << LC << "Failed to load image from \"" << url << "\"" << std::endl;
+            return 0L;
+        }
+
+        node = buildImageModel( image.get() );
     }
 
     // add it to the local model cache for next time

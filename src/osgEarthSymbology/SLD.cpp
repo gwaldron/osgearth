@@ -181,29 +181,29 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             text->contentAttributeDelimiter() = p->second;
         }
 
-        else if (p->first == "model")
+        else if (p->first == "marker")
         {
             if (!model) model = new ModelSymbol;
             model->url() = p->second;
         }
-        else if (p->first == "model-placement")
+        else if (p->first == "marker-placement")
         {
             if (!model) model = new ModelSymbol;
             if      (p->second == "centroid") model->placement() = ModelSymbol::PLACEMENT_CENTROID;
             else if (p->second == "interval") model->placement() = ModelSymbol::PLACEMENT_INTERVAL;
             else if (p->second == "random"  ) model->placement() = ModelSymbol::PLACEMENT_RANDOM;
         }
-        else if (p->first == "model-density")
+        else if (p->first == "marker-density")
         {
             if (!model) model = new ModelSymbol;
             model->density() = as<float>(p->second, 1.0f);
         }
-        else if (p->first == "model-random-seed")
+        else if (p->first == "marker-random-seed")
         {
             if (!model) model = new ModelSymbol();
             model->randomSeed() = as<unsigned>(p->second, 0);
         }
-        else if (p->first == "model-scale")
+        else if (p->first == "marker-scale")
         {
             if (!model) model = new ModelSymbol;
             model->scale() = stringToVec3f(p->second, osg::Vec3f(1,1,1));

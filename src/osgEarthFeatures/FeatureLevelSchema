@@ -1,0 +1,82 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_LEVEL_SCHEMA_H
+#define OSGEARTHFEATURES_FEATURE_LEVEL_SCHEMA_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#include <osg/Geode>
+#include <vector>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+
+    class OSGEARTHFEATURES_EXPORT FeatureLevel
+    {
+    public:
+        FeatureLevel( float minRange, float maxRange, const Query& query );
+
+        float getMinRange() const { return _minRange; }
+        float getMaxRange() const { return _maxRange; }
+        const Query& getQuery() const { return _query; }
+
+    protected:
+        float _minRange, _maxRange;
+        Query _query;
+    };
+
+    /**
+     * Defines a multi-LOD layout for a feature model layer.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureDisplaySchema : public osg::Referenced
+    {
+    public:
+        FeatureDisplaySchema();
+
+        /**
+         * The ratio of visibility range to feature tile radius.
+         */
+        void setRadiusMultiplier( float value ) { _radiusFactor = value; }
+        float getRadiusMultiplier() const { return _radiusFactor; }
+
+        /** Adds a new feature level */
+        void addLevel( const FeatureLevel& level );
+
+        /** Gets the number of feature levels in the schema */
+        unsigned getNumLevels() const;
+
+        /** Gets the nth level */
+        const FeatureLevel* getLevel( unsigned i ) const;
+
+        /** Given the full extent of a feature layer, returns the optimial feature display
+            information for features are the specified LOD. */
+        const FeatureLevel* getLevelForLOD( unsigned lod, const GeoExtent& featureExtent ) const;
+
+    protected:
+        typedef std::vector<FeatureLevel> Levels;
+        Levels _levels;
+        float _radiusFactor;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_LEVEL_SCHEMA_H

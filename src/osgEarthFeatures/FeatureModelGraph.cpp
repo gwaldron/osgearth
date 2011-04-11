@@ -19,9 +19,12 @@
 
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/FeatureGridder>
+#include <osgEarth/ThreadingUtils>
 #include <osg/BlendFunc>
 #include <osg/NodeVisitor>
 #include <osg/ClusterCullingCallback>
+#include <osgDB/FileNameUtils>
+#include <osgDB/ReaderWriter>
 #include <osgUtil/Optimizer>
 
 #define LC "[FeatureModelGraph] "
@@ -29,6 +32,75 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
+
+//---------------------------------------------------------------------------
+
+// pseudo-loader for paging in feature tiles for a FeatureModelGraph.
+
+namespace
+{
+    struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
+    {
+        osgEarthFeatureModelPseudoLoader()
+        {
+            supportsExtension( "osgearth_pseudo_fmg", "Feature model pseudo-loader" );
+        }
+
+        const char* className()
+        { // override
+            return "osgEarth Feature Model Pseudo-Loader";
+        }
+
+        ReadResult readObject(const std::string uri, const Options* options) const
+        {
+            if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
+                return ReadResult::FILE_NOT_HANDLED;
+
+            UID uid;
+            sscanf( uri.c_str(), "%u.%*s", &uid );
+            return getGraph( uid );
+        }
+
+        static UID _uid;
+        static OpenThreads::Mutex _fmgMutex;
+        static std::map<UID, FeatureModelGraph*> _fmgRegistry;
+
+        static UID registerGraph( FeatureModelGraph* graph )
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+            UID key = ++_uid;
+            _fmgRegistry[key] = graph;
+            return key;
+        }
+
+        static void unregisterGraph( UID uid )
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+            _fmgRegistry.erase( uid );
+        }
+
+        static FeatureModelGraph* getGraph( UID uid ) 
+        {
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+            std::map<UID, FeatureModelGraph*>::const_iterator i = _fmgRegistry.find( uid );
+            return i != _fmgRegistry.end() ? i->second : 0L;
+        }
+
+        static std::string makeURI( UID uid ) 
+        {
+            std::stringstream buf;
+            buf << uid << ".osgearth_pseudo_fmg";
+            std::string str = buf.str();
+            return str;
+        }
+    };
+
+    UID osgEarthFeatureModelPseudoLoader::_uid = 0;
+    OpenThreads::Mutex osgEarthFeatureModelPseudoLoader::_fmgMutex;
+    std::map<UID, FeatureModelGraph*> osgEarthFeatureModelPseudoLoader::_fmgRegistry;
+
+    REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
+}
 
 //---------------------------------------------------------------------------
 
@@ -43,6 +115,13 @@ _factory( factory )
 
     if ( _options.enableLighting().isSet() )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
+
+    _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
+}
+
+FeatureModelGraph::~FeatureModelGraph()
+{
+    osgEarthFeatureModelPseudoLoader::unregisterGraph( _uid );
 }
 
 void

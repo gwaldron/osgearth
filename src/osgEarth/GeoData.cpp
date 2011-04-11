@@ -55,6 +55,13 @@ Bounds::contains(double x, double y ) const {
     return x >= xMin() && x <= xMax() && y >= yMin() && y <= yMax();
 }
 
+bool
+Bounds::contains(const Bounds& rhs) const {
+    return 
+        xMin() <= rhs.xMin() && xMax() >= rhs.xMax() &&
+        yMin() <= rhs.yMin() && yMax() >= rhs.yMax();
+}
+
 void
 Bounds::expandBy( double x, double y ) {
     osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, 0 );
@@ -85,6 +92,27 @@ Bounds::unionWith(const Bounds& rhs) const {
         u.zMax() = zMax() >= rhs.zMin() && zMax() <= rhs.zMax() ? zMax() : rhs.zMax();
     }
     return u;
+}
+
+Bounds
+Bounds::intersectionWith(const Bounds& rhs) const 
+{
+    if ( valid() && !rhs.valid() ) return *this;
+    if ( !valid() && rhs.valid() ) return rhs;
+
+    if ( this->contains(rhs) ) return rhs;
+    if ( rhs.contains(*this) ) return *this;
+
+    if ( !intersects(rhs) ) return Bounds();
+
+    double xmin, xmax, ymin, ymax;
+
+    xmin = ( xMin() > rhs.xMin() && xMin() < rhs.xMax() ) ? xMin() : rhs.xMin();
+    xmax = ( xMax() > rhs.xMin() && xMax() < rhs.xMax() ) ? xMax() : rhs.xMax();
+    ymin = ( yMin() > rhs.yMin() && yMin() < rhs.yMax() ) ? yMin() : rhs.yMin();
+    ymax = ( yMax() > rhs.yMin() && yMax() < rhs.yMax() ) ? yMax() : rhs.yMax();
+
+    return Bounds(xmin, ymin, xmax, ymax);
 }
 
 double

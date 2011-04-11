@@ -44,6 +44,11 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& expression() { return _expression; }
         const optional<std::string>& expression() const { return _expression; }
 
+        /**
+         * Merges this query with another query, and returns the result
+         */
+        Query and( const Query& other ) const;
+
     public: // configurable
 
         virtual Config getConfig() const;

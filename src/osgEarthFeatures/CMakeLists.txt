@@ -24,8 +24,9 @@ SET(LIB_PUBLIC_HEADERS
     FeatureCursor
     FeatureGeometryIndex
     FeatureGridder
+    FeatureLevelSchema
     FeatureModelGraph
-    FeatureModelSource
+    FeatureModelSource    
     FeatureSource
     FeatureTileSource
     Filter
@@ -53,6 +54,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureCursor.cpp
     FeatureGeometryIndex.cpp
     FeatureGridder.cpp
+    FeatureLevelSchema.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp

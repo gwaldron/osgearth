@@ -66,6 +66,9 @@ namespace osgEarth { namespace Features
          */
         void update( Session* session, const StyleSheet& styles );
 
+    protected:
+        virtual ~FeatureModelGraph();
+
     private:
         osg::Group* gridAndCreateNodeForStyle(
             const Symbology::Style* style,
@@ -76,6 +79,7 @@ namespace osgEarth { namespace Features
         FeatureModelSourceOptions        _options;
         osg::ref_ptr<FeatureSource>      _source;
         osg::ref_ptr<FeatureNodeFactory> _factory;
+        UID                              _uid;
     };
 
 } } // namespace osgEarth::Features

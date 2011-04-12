@@ -41,7 +41,8 @@ namespace osgEarth { namespace Drivers
     public:
         FeatureGeomModelOptions( const ConfigOptions& options =ConfigOptions() ) :
             FeatureModelSourceOptions( options ),
-            _heightOffset( 0.0 )
+            _heightOffset( 0.0 ),
+            _clustering( true )
         {
             setDriver( "feature_geom" );
             fromConfig( _conf );

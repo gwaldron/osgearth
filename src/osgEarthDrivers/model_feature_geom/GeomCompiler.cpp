@@ -70,7 +70,7 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     bool localize = mi.isGeocentric() && geoExtent.width() < 180.0;
 
     // go through the Style and figure out which filters to use.
-    const ModelSymbol*     model     = style->getSymbol<ModelSymbol>();
+    const MarkerSymbol*    marker    = style->getSymbol<MarkerSymbol>();
     const PointSymbol*     point     = style->getSymbol<PointSymbol>();
     const LineSymbol*      line      = style->getSymbol<LineSymbol>();
     const PolygonSymbol*   polygon   = style->getSymbol<PolygonSymbol>();
@@ -85,15 +85,15 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     cx = xform.push( workingSet, cx );
 
     // model substitution
-    if ( model )
+    if ( marker )
     {
-        if ( model->placement() == ModelSymbol::PLACEMENT_RANDOM   ||
-             model->placement() == ModelSymbol::PLACEMENT_INTERVAL )
+        if ( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM   ||
+             marker->placement() == MarkerSymbol::PLACEMENT_INTERVAL )
         {
             ScatterFilter scatter;
-            scatter.setDensity( *model->density() );
-            scatter.setRandom( model->placement() == ModelSymbol::PLACEMENT_RANDOM );
-            scatter.setRandomSeed( *model->randomSeed() );
+            scatter.setDensity( *marker->density() );
+            scatter.setRandom( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM );
+            scatter.setRandomSeed( *marker->randomSeed() );
             cx = scatter.push( workingSet, cx );
         }
 
@@ -106,8 +106,8 @@ GeomCompiler::compile(FeatureCursor*        cursor,
 
         SubstituteModelFilter sub( style );
         sub.setClustering( *_options.clustering() );
-        if ( model->scale().isSet() )
-            sub.setModelMatrix( osg::Matrixd::scale( *model->scale() ) );
+        if ( marker->scale().isSet() )
+            sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
 
         cx = sub.push( workingSet, cx );
         result = sub.getNode();

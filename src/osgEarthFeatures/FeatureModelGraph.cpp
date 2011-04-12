@@ -147,8 +147,17 @@ _session( session )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
 
     // if there's a display schema in place, set up for quadtree paging.
-    //if ( options.levels().isSet() )
-    setupPaging();
+    if ( options.levels().isSet() )
+    {
+        setupPaging();
+    }
+    else
+    {
+        FeatureLevel defaultLevel( 0.0f, FLT_MAX, Query() );
+        osg::Node* node = build( defaultLevel, GeoExtent::INVALID );
+        if ( node )
+            this->addChild( node );
+    }
 }
 
 FeatureModelGraph::~FeatureModelGraph()
@@ -192,16 +201,6 @@ FeatureModelGraph::setupPaging()
         buildSubTiles( 0, 0, 0, 0, firstLevel, firstLOD, group );
 
         this->addChild( group );
-
-        //// a simple paged lod node that will kick off the quadtree paging.
-        //osg::PagedLOD* root = new osg::PagedLOD();
-        //std::stringstream buf;
-        //buf << _uid << ".0_0_0.osgearth_pseudo_fmg";
-        //root->setFileName( 0, buf.str() );
-        //root->setRange( 0, 0.0f, maxRange ); 
-        //root->setCenter( bs.center() );
-        //root->setRadius( bs.radius() );
-        //this->addChild( root );
     }
 }
 

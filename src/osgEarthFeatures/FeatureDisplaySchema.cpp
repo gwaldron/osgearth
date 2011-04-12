@@ -17,14 +17,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureDisplaySchema>
-#include <list>
-#include <deque>
+#include <limits>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
+
+FeatureLevel::FeatureLevel( const Config& conf ) :
+_minRange( 0.0f ),
+_maxRange( FLT_MAX )
+{
+    fromConfig( conf );
+}
+
+FeatureLevel::FeatureLevel( float minRange, float maxRange ) :
+_minRange( minRange ),
+_maxRange( maxRange )
+{
+    //nop
+}
 
 FeatureLevel::FeatureLevel( float minRange, float maxRange, const Query& query ) :
 _minRange( minRange ),
@@ -34,18 +47,57 @@ _query   ( query )
     //nop
 }
 
+void
+FeatureLevel::fromConfig( const Config& conf )
+{
+    if ( conf.hasValue( "min_range" ) )
+        _minRange = conf.value( "min_range", 0.0f );
+    if ( conf.hasValue( "max_range" ) )
+        _maxRange = conf.value( "max_range", FLT_MAX );
+    conf.getObjIfSet( "query", _query );
+}
+
+Config
+FeatureLevel::getConfig() const
+{
+    Config conf( "level" );
+    conf.add( "min_range", toString(_minRange) );
+    conf.add( "max_range", toString(_maxRange) );
+    conf.addObjIfSet( "query", _query );
+    return conf;
+}
+
 //------------------------------------------------------------------------
 
-FeatureDisplaySchema::FeatureDisplaySchema() :
-_radiusFactor( 10.0f )
+FeatureDisplaySchema::FeatureDisplaySchema( const Config& conf ) :
+_tileSizeFactor( 15.0f )
 {
-    //nop
+    fromConfig( conf );
+}
+
+void
+FeatureDisplaySchema::fromConfig( const Config& conf )
+{
+    conf.getIfSet( "tile_size_factor", _tileSizeFactor );
+    ConfigSet children = conf.children( "level" );
+    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+        addLevel( FeatureLevel( *i ) );
+}
+
+Config
+FeatureDisplaySchema::getConfig() const
+{
+    Config conf( "levels" );
+    conf.addIfSet( "tile_size_factor", _tileSizeFactor );
+    for( Levels::const_iterator i = _levels.begin(); i != _levels.end(); ++i )
+        conf.add( i->second.getConfig() );
+    return conf;
 }
 
 void 
 FeatureDisplaySchema::addLevel( const FeatureLevel& level )
 {
-    _levels.push_back( level );
+    _levels.insert( std::make_pair( -level.maxRange(), level ) );
 }
 
 unsigned 
@@ -54,29 +106,36 @@ FeatureDisplaySchema::getNumLevels() const
     return _levels.size();
 }
 
-const FeatureLevel* 
-FeatureDisplaySchema::getLevel( unsigned i ) const
+const FeatureLevel*
+FeatureDisplaySchema::getLevel( unsigned n ) const
 {
-    return i >= 0 && i < _levels.size() ? &_levels[i] : 0L;
+    unsigned i = 0;
+    for( Levels::const_iterator k = _levels.begin(); k != _levels.end(); ++k )
+    {
+        if ( n == i++ )
+            return &(k->second);
+    }
+    return 0L;
 }
 
-const FeatureLevel* 
-FeatureDisplaySchema::getLevelForLOD( unsigned lod, const GeoExtent& featureExtent ) const
+float
+FeatureDisplaySchema::getMaxRange() const
 {
-    double radius = featureExtent.bounds().radius();
-    for( unsigned i=0; i<lod; ++i )
-        radius *= 0.5;
+    return _levels.size() > 0 ? _levels.begin()->second.maxRange() : 0.0f;
+}
 
-    double lodRange = radius * _radiusFactor;
-
-    for( unsigned j=0; j<_levels.size(); ++j )
+unsigned
+FeatureDisplaySchema::chooseLOD( const FeatureLevel& level, double fullExtentRadius ) const
+{
+    double radius = fullExtentRadius;    
+    unsigned lod = 1;
+    for( ; lod < 20; ++lod )
     {
-        const FeatureLevel* level = getLevel(j);
-        if ( lodRange > level->getMinRange() && lodRange <= level->getMaxRange() )
-        {
-            return level;
-        }
+        radius *= 0.5;
+        float lodMaxRange = radius * _tileSizeFactor.value();
+        
+        if ( level.maxRange() >= lodMaxRange )
+            break;
     }
-
-    return 0L;
+    return lod-1;
 }

@@ -48,6 +48,7 @@ namespace osgEarth { namespace Features
         optional<Symbology::StyleSheet>& styles() { return _styles; }
         const optional<Symbology::StyleSheet>& styles() const { return _styles; }
 
+        /** deprecated - use the ConvertTypeFilter instead */
         optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
         const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
 

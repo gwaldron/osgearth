@@ -30,18 +30,27 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
 
+    /**
+     * Settings for a single level of detail of feature data
+     */
     class OSGEARTHFEATURES_EXPORT FeatureLevel
     {
     public:
+        FeatureLevel( const Config& config );
+        FeatureLevel( float minRange, float maxRange );
         FeatureLevel( float minRange, float maxRange, const Query& query );
 
-        float getMinRange() const { return _minRange; }
-        float getMaxRange() const { return _maxRange; }
-        const Query& getQuery() const { return _query; }
+        float minRange() const { return _minRange; }
+        float maxRange() const { return _maxRange; }
+        const optional<Query> query() const { return _query; }
+
+    public:
+        Config getConfig() const;
 
     protected:
+        void fromConfig( const Config& conf );
         float _minRange, _maxRange;
-        Query _query;
+        optional<Query> _query;
     };
 
     /**
@@ -50,13 +59,15 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureDisplaySchema : public osg::Referenced
     {
     public:
-        FeatureDisplaySchema();
+        FeatureDisplaySchema( const Config& conf =Config() );
 
         /**
-         * The ratio of visibility range to feature tile radius.
+         * The ratio of visibility range to feature tile radius. Default is 15.
+         * Increase this to produce more, smaller tiles at a given visibility
+         * range; decrease this to procide fewer, larger tiles.
          */
-        void setRadiusMultiplier( float value ) { _radiusFactor = value; }
-        float getRadiusMultiplier() const { return _radiusFactor; }
+        optional<float>& tileSizeFactor() { return _tileSizeFactor; }
+        const optional<float>& tileSizeFactor() const { return _tileSizeFactor; }
 
         /** Adds a new feature level */
         void addLevel( const FeatureLevel& level );
@@ -67,14 +78,24 @@ namespace osgEarth { namespace Features
         /** Gets the nth level */
         const FeatureLevel* getLevel( unsigned i ) const;
 
-        /** Given the full extent of a feature layer, returns the optimial feature display
-            information for features are the specified LOD. */
-        const FeatureLevel* getLevelForLOD( unsigned lod, const GeoExtent& featureExtent ) const;
+        /** Gets the maximum range of the schema */
+        float getMaxRange() const;
+
+        /**
+         * Calculates the "best" quadtree LOD for the specified level, given the radius 
+         * of the full extent of the dataset.
+         */
+        unsigned chooseLOD( const FeatureLevel& level, double fullExtentRadius ) const;
+
+    public:
+        Config getConfig() const;
 
     protected:
-        typedef std::vector<FeatureLevel> Levels;
+        optional<float> _tileSizeFactor;
+        typedef std::multimap<float,FeatureLevel> Levels;
         Levels _levels;
-        float _radiusFactor;
+
+        void fromConfig( const Config& conf );
     };
 
 } } // namespace osgEarth::Features

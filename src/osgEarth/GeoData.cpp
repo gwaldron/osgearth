@@ -136,6 +136,10 @@ Bounds::center2d() const {
     return osg::Vec2d( c.x(), c.y() );
 }
 
+double
+Bounds::radius2d() const {
+    return (center2d() - osg::Vec2d(xMin(),yMin())).length();
+}
 
 /*************************************************************/
 

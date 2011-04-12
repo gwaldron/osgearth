@@ -21,8 +21,9 @@
 #include <osgEarthFeatures/FeatureGridder>
 #include <osgEarth/ThreadingUtils>
 #include <osg/BlendFunc>
-#include <osg/NodeVisitor>
 #include <osg/ClusterCullingCallback>
+#include <osg/NodeVisitor>
+#include <osg/PagedLOD>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 #include <osgUtil/Optimizer>
@@ -39,84 +40,115 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
-    struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
-    {
-        osgEarthFeatureModelPseudoLoader()
-        {
-            supportsExtension( "osgearth_pseudo_fmg", "Feature model pseudo-loader" );
-        }
-
-        const char* className()
-        { // override
-            return "osgEarth Feature Model Pseudo-Loader";
-        }
-
-        ReadResult readObject(const std::string uri, const Options* options) const
-        {
-            if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
-                return ReadResult::FILE_NOT_HANDLED;
-
-            UID uid;
-            sscanf( uri.c_str(), "%u.%*s", &uid );
-            return getGraph( uid );
-        }
-
-        static UID _uid;
-        static OpenThreads::Mutex _fmgMutex;
-        static std::map<UID, FeatureModelGraph*> _fmgRegistry;
-
-        static UID registerGraph( FeatureModelGraph* graph )
-        {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
-            UID key = ++_uid;
-            _fmgRegistry[key] = graph;
-            return key;
-        }
-
-        static void unregisterGraph( UID uid )
-        {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
-            _fmgRegistry.erase( uid );
-        }
-
-        static FeatureModelGraph* getGraph( UID uid ) 
-        {
-            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
-            std::map<UID, FeatureModelGraph*>::const_iterator i = _fmgRegistry.find( uid );
-            return i != _fmgRegistry.end() ? i->second : 0L;
-        }
-
-        static std::string makeURI( UID uid ) 
-        {
-            std::stringstream buf;
-            buf << uid << ".osgearth_pseudo_fmg";
-            std::string str = buf.str();
-            return str;
-        }
-    };
-
-    UID osgEarthFeatureModelPseudoLoader::_uid = 0;
-    OpenThreads::Mutex osgEarthFeatureModelPseudoLoader::_fmgMutex;
-    std::map<UID, FeatureModelGraph*> osgEarthFeatureModelPseudoLoader::_fmgRegistry;
-
-    REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
+    UID _uid = 0;
+    OpenThreads::Mutex _fmgMutex;
+    std::map<UID, FeatureModelGraph*> _fmgRegistry;
 }
+
+struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
+{
+    osgEarthFeatureModelPseudoLoader()
+    {
+        supportsExtension( "osgearth_pseudo_fmg", "Feature model pseudo-loader" );
+    }
+
+    const char* className()
+    { // override
+        return "osgEarth Feature Model Pseudo-Loader";
+    }
+
+    ReadResult readNode(const std::string& uri, const Options* options) const
+    {
+        if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
+            return ReadResult::FILE_NOT_HANDLED;
+
+        UID uid;
+        unsigned lod, x, y;
+        sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &lod, &x, &y );
+
+        FeatureModelGraph* graph = getGraph(uid);
+        if ( graph )
+            return ReadResult( graph->load( lod, x, y, uri ) );
+        else
+            return ReadResult::ERROR_IN_READING_FILE;
+    }
+
+    static UID registerGraph( FeatureModelGraph* graph )
+    {
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+        UID key = ++_uid;
+        _fmgRegistry[key] = graph;
+        return key;
+    }
+
+    static void unregisterGraph( UID uid )
+    {
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+        _fmgRegistry.erase( uid );
+    }
+
+    static FeatureModelGraph* getGraph( UID uid ) 
+    {
+        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+        std::map<UID, FeatureModelGraph*>::const_iterator i = _fmgRegistry.find( uid );
+        return i != _fmgRegistry.end() ? i->second : 0L;
+    }
+
+    static std::string makeURI( UID uid ) 
+    {
+        std::stringstream buf;
+        buf << uid << ".osgearth_pseudo_fmg";
+        std::string str = buf.str();
+        return str;
+    }
+};
+
+REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
+
+namespace
+{    
+    GeoExtent
+    s_getTileExtent( unsigned lod, unsigned tileX, unsigned tileY, const GeoExtent& fullExtent )
+    {
+        double w = fullExtent.width();
+        double h = fullExtent.height();
+        for( unsigned i=0; i<lod; ++i ) {
+            w *= 0.5;
+            h *= 0.5;
+        }
+        return GeoExtent(
+            fullExtent.getSRS(),
+            fullExtent.xMin() + w * (double)tileX,
+            fullExtent.yMin() + h * (double)tileY,
+            fullExtent.xMin() + w * (double)(tileX+1),
+            fullExtent.yMin() + h * (double)(tileY+1) );
+    }
+}
+
 
 //---------------------------------------------------------------------------
 
 FeatureModelGraph::FeatureModelGraph(FeatureSource*                   source,
                                      const FeatureModelSourceOptions& options,
-                                     FeatureNodeFactory*              factory) :
-_source( source ),
+                                     FeatureNodeFactory*              factory,
+                                     const StyleSheet&                styles,
+                                     Session*                         session ) :
+_source ( source ),
 _options( options ),
-_factory( factory )
+_factory( factory ),
+_styles ( styles ),
+_session( session )
 {
+    _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
+
     osg::StateSet* stateSet = getOrCreateStateSet();
 
     if ( _options.enableLighting().isSet() )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
 
-    _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
+    // if there's a display schema in place, set up for quadtree paging.
+    //if ( options.levels().isSet() )
+    setupPaging();
 }
 
 FeatureModelGraph::~FeatureModelGraph()
@@ -124,17 +156,235 @@ FeatureModelGraph::~FeatureModelGraph()
     osgEarthFeatureModelPseudoLoader::unregisterGraph( _uid );
 }
 
-void
-FeatureModelGraph::update( Session* session, const StyleSheet& styles )
+osg::BoundingSphered
+FeatureModelGraph::getBoundInWorldCoords( const GeoExtent& extent ) const
 {
-    removeChildren( 0, getNumChildren() );
+    osg::Vec3d center, corner;
+
+    GeoExtent extentOnMap = extent.transform( _session->getMap().getProfile()->getSRS() );
+    extentOnMap.getCentroid( center.x(), center.y() );
+    corner.x() = extentOnMap.xMin();
+    corner.y() = extentOnMap.yMin();
+
+    if ( _session->getMap().getMapInfo().isGeocentric() )
+    {
+        extentOnMap.getSRS()->transformToECEF( center, center );
+        extentOnMap.getSRS()->transformToECEF( corner, corner );
+    }
+
+    return osg::BoundingSphered( center, (center-corner).length() );
+}
+
+void
+FeatureModelGraph::setupPaging()
+{
+    float maxRange = _options.levels().isSet() ? _options.levels()->getMaxRange() : FLT_MAX;
+    if ( maxRange > 0.0f )
+    {
+        // find the bounds.
+        const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
+        osg::BoundingSphered bs = getBoundInWorldCoords( fullExtent );
+
+        const FeatureLevel* firstLevel = _options.levels()->getLevel( 0 );
+        unsigned firstLOD = _options.levels()->chooseLOD( *firstLevel, bs.radius() );
+
+        osg::Group* group = new osg::Group();
+        buildSubTiles( 0, 0, 0, 0, firstLevel, firstLOD, group );
+
+        this->addChild( group );
+
+        //// a simple paged lod node that will kick off the quadtree paging.
+        //osg::PagedLOD* root = new osg::PagedLOD();
+        //std::stringstream buf;
+        //buf << _uid << ".0_0_0.osgearth_pseudo_fmg";
+        //root->setFileName( 0, buf.str() );
+        //root->setRange( 0, 0.0f, maxRange ); 
+        //root->setCenter( bs.center() );
+        //root->setRadius( bs.radius() );
+        //this->addChild( root );
+    }
+}
+
+void
+FeatureModelGraph::buildSubTiles(unsigned nextLevelIndex,
+                                 unsigned lod,
+                                 unsigned tileX,
+                                 unsigned tileY,
+                                 const FeatureLevel* nextLevel,
+                                 unsigned nextLOD,
+                                 osg::Group* parent)
+{
+    // calculate how many subtiles there will be:
+    unsigned numTiles = 1;
+    for( unsigned k = lod; k < nextLOD; ++k )
+    {
+        tileX *= 2;
+        tileY *= 2;
+        numTiles *= 2;
+    }
+
+    OE_DEBUG << LC 
+        << "Building " << numTiles*numTiles << " plods for next level = " << nextLevelIndex
+        << ", nextLOD = " << nextLOD
+        << std::endl;
+
+    const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
+
+    // make a paged LOD for each subtile:
+    for( unsigned u = tileX; u < tileX+numTiles; ++u )
+    {
+        for( unsigned v = tileY; v < tileY+numTiles; ++v )
+        {
+            GeoExtent subtileExtent = s_getTileExtent( nextLOD, u, v, fullExtent );
+            osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileExtent );
+
+            std::stringstream buf;
+            buf << _uid << "." << nextLevelIndex << "_" << u << "_" << v << ".osgearth_pseudo_fmg";
+
+            std::string uri = buf.str();
+
+            // check the blacklist to make sure we haven't unsuccessfully tried
+            // this URI before
+            bool blacklisted = false;
+            {
+                Threading::ScopedReadLock sharedLock( _blacklistMutex );
+                blacklisted = _blacklist.find( uri ) != _blacklist.end();
+            }
+
+            if ( !blacklisted )
+            {
+                OE_DEBUG << LC << "    " << uri
+                    << std::fixed
+                    << "; center = " << subtile_bs.center().x() << "," << subtile_bs.center().y() << "," << subtile_bs.center().z()
+                    << "; radius = " << subtile_bs.radius()
+                    << std::endl;
+
+                osg::PagedLOD* plod = new osg::PagedLOD();
+                plod->setCenter  ( subtile_bs.center() );
+                plod->setRadius  ( subtile_bs.radius() );
+                plod->setFileName( 0, uri );
+                plod->setRange   ( 0, nextLevel->minRange(), nextLevel->maxRange() );
+
+                parent->addChild( plod );
+            }
+        }
+    }
+
+    osgUtil::Optimizer optimizer;
+    optimizer.optimize( parent, osgUtil::Optimizer::SPATIALIZE_GROUPS );
+}
+
+osg::Node*
+FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, const std::string& uri )
+{
+    // note: "level" is not the same as "lod". "level" is an index into the FeatureDisplaySchema
+    // levels list, which is sorted by maxRange.
+
+    OE_DEBUG << LC
+        << "load: " << levelIndex << "_" << tileX << "_" << tileY << std::endl;
+
+    osg::Node* result = 0L;
+
+    // todo: cache this value
+    const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
+    osg::BoundingSphered fullBound = getBoundInWorldCoords( fullExtent );
+
+    if ( !_options.levels().isSet() )
+    {
+        // no levels defined; just load all the features.
+        FeatureLevel all( 0.0f, FLT_MAX, Query() );
+        result = build( all, GeoExtent::INVALID );
+    }
+
+    else
+    {
+        const FeatureLevel* level = _options.levels()->getLevel( levelIndex );
+
+        if ( level )
+        {
+            unsigned lod = _options.levels()->chooseLOD( *level, fullBound.radius() );
+
+            OE_DEBUG << LC 
+                << "Choose LOD " << lod << " for level " << levelIndex 
+                << std::endl;
+
+            GeoExtent tileExtent = 
+                lod > 0 ?
+                s_getTileExtent( lod, tileX, tileY, fullExtent ) :
+                GeoExtent::INVALID;
+
+            osg::Node* geometry = build( *level, tileExtent );
+            result = geometry;
+
+            // see if there are any more levels. If so, build some pagedlods to bring the
+            // next one in.
+            const FeatureLevel* nextLevel = _options.levels()->getLevel( levelIndex+1 );
+            if ( nextLevel )
+            {
+                osg::ref_ptr<osg::Group> group = new osg::Group();
+
+                // calculate the LOD of the next level:
+                unsigned nextLOD = _options.levels()->chooseLOD( *nextLevel, fullBound.radius() );
+                if ( nextLOD != ~0 )
+                {
+                    buildSubTiles( levelIndex+1, lod, tileX, tileY, nextLevel, nextLOD, group.get() );
+
+                    // slap the geometry in there afterwards, if there is any
+                    if ( geometry )
+                        group->addChild( geometry );
+
+                    result = group.release();
+                }
+            }
+        }
+    }
+
+    if ( !result )
+    {
+        // If the read resulting in nothing, do two things. First, blacklist the URI
+        // so that the next time we try to create a PagedLOD pointing at this URI, it
+        // will find it in the blacklist and not create said PagedLOD. Second, create
+        // an empty group so that the read (technically) succeeds and it doesn't try
+        // to load the null child over and over.
+
+        result = new osg::Group();
+
+        {
+            Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
+            _blacklist.insert( uri );
+        }
+    }
+
+    return result;
+}
+
+osg::Node*
+FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent )
+{
+    OE_DEBUG << LC
+        << "Build started"
+        << std::endl;
+
+    osg::ref_ptr<osg::Group> group = new osg::Group();
+
+    Query localQuery = *level.query();
+    if ( extent.isValid() )
+    {
+        Query spatialQuery;
+        spatialQuery.bounds() = extent.bounds();
+        localQuery = localQuery.and( spatialQuery );
+    }
+
+    OE_DEBUG << LC
+        << "local query = " << localQuery.getConfig().toString()
+        << std::endl;
 
     if ( _source->hasEmbeddedStyles() )
     {
         const FeatureProfile* profile = _source->getFeatureProfile();
 
         // each feature has its own style, so use that and ignore the style catalog.
-        osg::ref_ptr<FeatureCursor> cursor = _source->createFeatureCursor( Query() );
+        osg::ref_ptr<FeatureCursor> cursor = _source->createFeatureCursor( localQuery );
         while( cursor->hasMore() )
         {
             Feature* feature = cursor->nextFeature();
@@ -145,9 +395,9 @@ FeatureModelGraph::update( Session* session, const StyleSheet& styles )
 
                 // note: gridding is not supported for embedded styles.
                 osg::ref_ptr<osg::Node> node;
-                if ( _factory->createOrUpdateNode( list, profile, feature->style().get(), session, node ) )
+                if ( _factory->createOrUpdateNode( list, profile, feature->style().get(), _session.get(), node ) )
                 {
-                    addChild( node );
+                    group->addChild( node );
                 }
             }
         }
@@ -156,37 +406,44 @@ FeatureModelGraph::update( Session* session, const StyleSheet& styles )
     else
     {
         // if we have selectors, sort the features into style groups and create a node for each group.
-        if ( styles.selectors().size() > 0 )
+        if ( _styles.selectors().size() > 0 )
         {
-            for( StyleSelectorList::const_iterator i = styles.selectors().begin(); i != styles.selectors().end(); ++i )
+            for( StyleSelectorList::const_iterator i = _styles.selectors().begin(); i != _styles.selectors().end(); ++i )
             {
                 const StyleSelector& sel = *i;
                 Style* style;
-                styles.getStyle( sel.getSelectedStyleName(), style );
+                _styles.getStyle( sel.getSelectedStyleName(), style );
 
-                osg::Group* styleGroup = gridAndCreateNodeForStyle( style, *sel.query(), session );
+                Query selectorQuery = localQuery.and( *sel.query() );
+
+                osg::Group* styleGroup = gridAndCreateNodeForStyle( style, selectorQuery );
                 if ( styleGroup )
-                    addChild( styleGroup );
+                    group->addChild( styleGroup );
             }
         }
 
         // otherwise, render all the features with a single style
         else
         {
-            const Style* style = styles.getDefaultStyle();
-            osg::Group* styleGroup = gridAndCreateNodeForStyle( style, Query(), session );
+            const Style* style = _styles.getDefaultStyle();
+            osg::Group* styleGroup = gridAndCreateNodeForStyle( style, localQuery );
             if ( styleGroup )
-                addChild( styleGroup );
+                group->addChild( styleGroup );
         }
     }
+
+    OE_DEBUG << LC
+        << "Build complete"
+        << std::endl;
+
+    return group->getNumChildren() > 0 ? group.release() : 0L;
 }
 
 // if necessary, this method will grid up the features (according to the gridding
 // policy) and then proceed to build sorted style groups for each grid cell.
 osg::Group*
 FeatureModelGraph::gridAndCreateNodeForStyle(const Symbology::Style* style,
-                                             const Symbology::Query& query,
-                                             Session*                session )
+                                             const Symbology::Query& query )
 {
     osg::Group* styleGroup = 0L;
 
@@ -249,7 +506,7 @@ FeatureModelGraph::gridAndCreateNodeForStyle(const Symbology::Style* style,
                 // next ask the implementation to construct OSG geometry for the cell features.
                 osg::ref_ptr<osg::Node> node;
 
-                if ( _factory->createOrUpdateNode( cellFeatures, profile, style, session, node ) && node.valid() )
+                if ( _factory->createOrUpdateNode( cellFeatures, profile, style, _session.get(), node ) && node.valid() )
                 {
                     if ( !styleGroup )
                         styleGroup = new osg::Group();
@@ -261,7 +518,7 @@ FeatureModelGraph::gridAndCreateNodeForStyle(const Symbology::Style* style,
                 // apply a cluster culler.
                 if ( node.valid() )
                 {
-                    const MapInfo& mi = session->getMapInfo();
+                    const MapInfo& mi = _session->getMapInfo();
 
                     if ( mi.isGeocentric() && _options.gridding()->clusterCulling() == true )
                     {
@@ -316,7 +573,7 @@ FeatureModelGraph::gridAndCreateNodeForStyle(const Symbology::Style* style,
     // run the SpatializeGroups optimization pass on the result
     if ( styleGroup && _options.gridding()->spatializeGroups() == true )
     {
-        //OE_INFO << LC << context->getModelSource()->getName() << ": running spatial optimization" << std::endl;
+        //OE_DEBUG << LC << context->getModelSource()->getName() << ": running spatial optimization" << std::endl;
         osgUtil::Optimizer optimizer;
         optimizer.optimize( styleGroup, osgUtil::Optimizer::SPATIALIZE_GROUPS );
     }

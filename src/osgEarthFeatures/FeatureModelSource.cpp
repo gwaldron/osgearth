@@ -51,6 +51,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     //    _featureOptions->merge( conf.child("features") );
 
     conf.getObjIfSet( "styles", _styles );
+    conf.getObjIfSet( "levels", _levels );
     conf.getObjIfSet( "gridding", _gridding );
     conf.getIfSet( "lighting", _lit );
     conf.getIfSet( "max_granularity", _maxGranularity_deg );
@@ -73,6 +74,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "features", _featureOptions );
     conf.updateObjIfSet( "gridding", _gridding );
     conf.updateObjIfSet( "styles", _styles );
+    conf.updateObjIfSet( "levels", _levels );
     conf.updateIfSet( "lighting", _lit );
     conf.updateIfSet( "max_granularity", _maxGranularity_deg );
     conf.updateIfSet( "merge_geometry", _mergeGeometry );
@@ -149,11 +151,12 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     if ( !_factory.valid() )
         return 0L;
 
-    FeatureModelGraph* graph = new FeatureModelGraph( _features.get(), _options, _factory.get() );
-
-    osg::ref_ptr<Session> session = new Session( _map );
-
-    graph->update( session.get(), *_options.styles() );
+    FeatureModelGraph* graph = new FeatureModelGraph( 
+        _features.get(), 
+        _options, 
+        _factory.get(),
+        *_options.styles(),
+        new Session( _map ) );
 
     return graph;
 }

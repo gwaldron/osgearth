@@ -39,7 +39,10 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FilterContext
     {
     public:
-        FilterContext( Session* session =0L );
+        FilterContext(
+            Session*              session       =0L,
+            const FeatureProfile* profile       =0L,
+            const GeoExtent&      workingExtent =GeoExtent::INVALID );
 
         FilterContext( const FilterContext& rhs );
 
@@ -56,6 +59,12 @@ namespace osgEarth { namespace Features
          */
         const FeatureProfile* profile() const { return _profile.get(); }
         osg::ref_ptr<const FeatureProfile>& profile() { return _profile; }
+
+        /**
+         * The spatial extent of the working cell
+         */
+        optional<GeoExtent>& extent() { return _extent; }
+        const optional<GeoExtent>& extent() const { return _extent; }
 
         /**
          * Whether to assume a geocentric coordinate system for geographic profiles.

@@ -34,6 +34,7 @@
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     class OSGEARTHFEATURES_EXPORT FeatureModelSourceOptions : public ModelSourceOptions
     {
@@ -66,6 +67,9 @@ namespace osgEarth { namespace Features
         optional<FeatureDisplaySchema>& levels() { return _levels; }
         const optional<FeatureDisplaySchema>& levels() const { return _levels; }
 
+        optional<bool>& clusterCulling() { return _clusterCulling; }
+        const optional<bool>& clusterCulling() const { return _clusterCulling; }
+
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
         osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
@@ -93,6 +97,7 @@ namespace osgEarth { namespace Features
         optional<bool> _lit;
         optional<double> _maxGranularity_deg;
         optional<bool> _mergeGeometry;
+        optional<bool> _clusterCulling;
 
         osg::ref_ptr<FeatureSource> _featureSource;
     };
@@ -110,10 +115,9 @@ namespace osgEarth { namespace Features
          * style.
          */
         virtual bool createOrUpdateNode(
-            const FeatureList&        features,
-            const FeatureProfile*     profile,
-            const Symbology::Style*   style,
-            Session*                  session,
+            FeatureCursor*            cursor,
+            const Style*              style,
+            const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node ) =0;
     };
 

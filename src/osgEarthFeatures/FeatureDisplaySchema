@@ -69,6 +69,16 @@ namespace osgEarth { namespace Features
         optional<float>& tileSizeFactor() { return _tileSizeFactor; }
         const optional<float>& tileSizeFactor() const { return _tileSizeFactor; }
 
+        /**
+         * Whether to crop geometry to fit within the cell extents when chopping
+         * a feature level up into grid cells. By default, this is false, meaning 
+         * that a feature whose centroid falls within the cell will be included.
+         * Setting this to true means that if any part of the feature falls within
+         * the working cell, it will be cropped to the cell extents and used.
+         */
+        optional<bool>& cropFeatures() { return _cropFeatures; }
+        const optional<bool>& cropFeatures() const { return _cropFeatures; }
+
         /** Adds a new feature level */
         void addLevel( const FeatureLevel& level );
 
@@ -92,6 +102,7 @@ namespace osgEarth { namespace Features
 
     protected:
         optional<float> _tileSizeFactor;
+        optional<bool>  _cropFeatures;
         typedef std::multimap<float,FeatureLevel> Levels;
         Levels _levels;
 

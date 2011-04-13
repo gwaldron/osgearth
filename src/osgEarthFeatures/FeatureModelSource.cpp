@@ -38,7 +38,8 @@ ModelSourceOptions( options ),
 _geomTypeOverride( Geometry::TYPE_UNKNOWN ),
 _lit( true ),
 _maxGranularity_deg( 5.0 ),
-_mergeGeometry( false )
+_mergeGeometry( false ),
+_clusterCulling( true )
 {
     fromConfig( _conf );
 }
@@ -51,11 +52,12 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     //    _featureOptions->merge( conf.child("features") );
 
     conf.getObjIfSet( "styles", _styles );
-    conf.getObjIfSet( "levels", _levels );
+    conf.getObjIfSet( "paging", _levels );
     conf.getObjIfSet( "gridding", _gridding );
     conf.getIfSet( "lighting", _lit );
     conf.getIfSet( "max_granularity", _maxGranularity_deg );
     conf.getIfSet( "merge_geometry", _mergeGeometry );
+    conf.getIfSet( "cluster_culling", _clusterCulling );
 
     std::string gt = conf.value( "geometry_type" );
     if ( gt == "line" || gt == "lines" || gt == "linestring" )
@@ -74,10 +76,11 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "features", _featureOptions );
     conf.updateObjIfSet( "gridding", _gridding );
     conf.updateObjIfSet( "styles", _styles );
-    conf.updateObjIfSet( "levels", _levels );
+    conf.updateObjIfSet( "paging", _levels );
     conf.updateIfSet( "lighting", _lit );
     conf.updateIfSet( "max_granularity", _maxGranularity_deg );
     conf.updateIfSet( "merge_geometry", _mergeGeometry );
+    conf.updateIfSet( "cluster_culling", _clusterCulling );
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )

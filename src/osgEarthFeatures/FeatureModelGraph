@@ -87,9 +87,12 @@ namespace osgEarth { namespace Features
         osg::Node* build( const FeatureLevel& level, const GeoExtent& extent );
 
     private:
-        osg::Group* gridAndCreateNodeForStyle(
-            const Symbology::Style* style,
-            const Symbology::Query& query );
+        
+        osg::Group* createNodeForStyle(const Style* style, const Query& query);
+
+        //osg::Group* gridAndCreateNodeForStyle(
+        //    const Symbology::Style* style,
+        //    const Symbology::Query& query );
        
         osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent ) const;
 

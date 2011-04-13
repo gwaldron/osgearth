@@ -19,6 +19,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     ClampFilter
     ConvertTypeFilter
+    CropFilter
     ExtrudeGeometryFilter
     Feature
     FeatureCursor
@@ -49,6 +50,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	BuildTextOperator.cpp
     ClampFilter.cpp
     ConvertTypeFilter.cpp
+    CropFilter.cpp
     ExtrudeGeometryFilter.cpp
     Feature.cpp
     FeatureCursor.cpp

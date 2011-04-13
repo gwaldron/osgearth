@@ -21,10 +21,13 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-FilterContext::FilterContext( Session* session ) :
+FilterContext::FilterContext(Session*               session,
+                             const FeatureProfile*  profile,
+                             const GeoExtent&       workingExtent ) :
 _session( session ),
-_isGeocentric( false ),
-_extent( GeoExtent() )
+_profile( profile ),
+_extent( workingExtent, workingExtent ),
+_isGeocentric( false )
 {
     //NOP
 }

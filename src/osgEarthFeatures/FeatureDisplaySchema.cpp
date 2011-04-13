@@ -70,7 +70,8 @@ FeatureLevel::getConfig() const
 //------------------------------------------------------------------------
 
 FeatureDisplaySchema::FeatureDisplaySchema( const Config& conf ) :
-_tileSizeFactor( 15.0f )
+_tileSizeFactor( 15.0f ),
+_cropFeatures( false )
 {
     fromConfig( conf );
 }
@@ -79,6 +80,7 @@ void
 FeatureDisplaySchema::fromConfig( const Config& conf )
 {
     conf.getIfSet( "tile_size_factor", _tileSizeFactor );
+    conf.getIfSet( "crop_features",    _cropFeatures );
     ConfigSet children = conf.children( "level" );
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         addLevel( FeatureLevel( *i ) );
@@ -87,8 +89,9 @@ FeatureDisplaySchema::fromConfig( const Config& conf )
 Config
 FeatureDisplaySchema::getConfig() const
 {
-    Config conf( "levels" );
+    Config conf( "paging" );
     conf.addIfSet( "tile_size_factor", _tileSizeFactor );
+    conf.addIfSet( "crop_features",    _cropFeatures );
     for( Levels::const_iterator i = _levels.begin(); i != _levels.end(); ++i )
         conf.add( i->second.getConfig() );
     return conf;

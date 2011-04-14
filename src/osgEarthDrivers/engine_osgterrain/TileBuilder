@@ -67,17 +67,22 @@ public:
         const OSGTerrainOptions& terrainOptions,
         TaskService* service );
 
+    void createTile(
+        const TileKey&            key,
+        bool                      parallelize,
+        osg::ref_ptr<CustomTile>& out_tile,
+        bool&                     out_hasRealData,
+        bool&                     out_hasLodBlendedLayers );
+
     Job* createJob( const TileKey& key, Threading::MultiEvent& semaphore );
 
     void runJob( Job* job );
 
-    void finalizeJob( Job* job, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData );
-
-    void createTile(
-        const TileKey& key,
-        bool parallelize,
+    void finalizeJob( 
+        Job*                      job, 
         osg::ref_ptr<CustomTile>& out_tile,
-        bool& out_hasRealData );
+        bool&                     out_hasRealData,
+        bool&                     out_hasLodBlending );
 
     TaskService* getTaskService() const { return _service; }
 

@@ -15,7 +15,7 @@ SET(LIB_PUBLIC_HEADERS
     Annotation  
     BufferFilter
     BuildGeometryFilter  
-	BuildTextOperator
+    BuildTextOperator
     Common
     ClampFilter
     ConvertTypeFilter
@@ -35,9 +35,9 @@ SET(LIB_PUBLIC_HEADERS
     OptimizerHints
     ResampleFilter
     ScaleFilter
-	Session
-	ScatterFilter
-	SubstituteModelFilter
+    Session
+    ScatterFilter
+    SubstituteModelFilter
     TransformFilter
     VirtualFeatureSource
 )
@@ -47,7 +47,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Annotation.cpp
     BufferFilter.cpp
     BuildGeometryFilter.cpp
-	BuildTextOperator.cpp
+    BuildTextOperator.cpp
     ClampFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
@@ -66,9 +66,9 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
-	Session.cpp
-	ScatterFilter.cpp
-	SubstituteModelFilter.cpp
+    Session.cpp
+    ScatterFilter.cpp
+    SubstituteModelFilter.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp
 )

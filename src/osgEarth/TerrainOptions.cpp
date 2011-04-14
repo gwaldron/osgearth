@@ -120,7 +120,6 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "max_lod", _maxLOD );
     conf.updateIfSet( "lighting", _enableLighting );
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
-    conf.updateIfSet( "lod_blending", _lodBlending );
     conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.updateIfSet( "mipmapping", _enableMipmapping );
 
@@ -150,7 +149,6 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "max_lod", _maxLOD );
     conf.getIfSet( "lighting", _enableLighting );
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
-    conf.getIfSet( "lod_blending", _lodBlending );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.getIfSet( "mipmapping", _enableMipmapping );
 

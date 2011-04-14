@@ -53,7 +53,6 @@ namespace osgEarth
             const TextureLayout& layout ) const;
 
     private:
-        bool _lodBlending;
         float _lodTransitionTime;
         bool _useGPU;
         bool _enableMipmappingOnUpdatedTextures;

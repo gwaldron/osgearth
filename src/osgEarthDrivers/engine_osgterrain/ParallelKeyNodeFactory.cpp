@@ -73,9 +73,10 @@ ParallelKeyNodeFactory::createNode( const TileKey& key )
         {
             osg::ref_ptr<CustomTile> tile;
             bool hasRealData;
-            _builder->finalizeJob( jobs[i].get(), tile, hasRealData );
+            bool hasLodBlending;
+            _builder->finalizeJob( jobs[i].get(), tile, hasRealData, hasLodBlending );
             if ( tile.valid() )
-                addTile( tile.get(), hasRealData, root );
+                addTile( tile.get(), hasRealData, hasLodBlending, root );
         }
     }
 

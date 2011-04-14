@@ -218,15 +218,9 @@ s_getRegionUniform( osg::StateSet* stateSet, const TextureLayout& layout )
 //------------------------------------------------------------------------
 
 TextureCompositorTexArray::TextureCompositorTexArray( const TerrainOptions& options ) :
-    _lodBlending( *options.lodBlending() ),
-    _lodTransitionTime( *options.lodTransitionTime() )
+_lodTransitionTime( *options.lodTransitionTime() )
 {
-    // validate
-    if ( _lodBlending && _lodTransitionTime <= 0.0f )
-    {
-        _lodBlending = false;
-        OE_WARN << LC << "Disabling LOD blending because transition time <= 0.0" << std::endl;
-    }
+    //nop
 }
 
 GeoImage

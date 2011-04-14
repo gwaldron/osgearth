@@ -748,6 +748,7 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 {
     TerrainEngineNode::validateTerrainOptions( options );
 
+#if 0
     // LOD blending is currently only compatible with STANDARD loading policy
     if (options.lodBlending() == true && 
         ( options.loadingPolicy()->mode() == LoadingPolicy::MODE_PREEMPTIVE ||
@@ -755,6 +756,7 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     {
         options.lodBlending() = false;
     }
+#endif
     
     //nop for now.
     //note: to validate plugin-specific features, we would create an OSGTerrainOptions

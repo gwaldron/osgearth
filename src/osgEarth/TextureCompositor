@@ -31,6 +31,16 @@ namespace osgEarth
 {
     /**
      * Tracks the usage of texture slots and their rendering order for a map.
+     *
+     * A "slot" is a home for a texture layer. For example, in a multitexturing setup, a
+     * slot corresponds to a texture image unit in the hardware. In a texture_array setup,
+     * a slot is one "slice" of the texture array.
+     *
+     * A single layer can occupy more than one slot. (Specifically, this is the case when
+     * LOD Blending is enabled on that layer -- the layer will require 2 slots in order to
+     * blend the images together in the shader.) In this case, we refer to the first slot
+     * as the "primary" slot, and any additional slots belonging to the same layer as 
+     * "secondary" slots.
      */
     class OSGEARTH_EXPORT TextureLayout
     {        
@@ -45,8 +55,12 @@ namespace osgEarth
     public:
         TextureLayout();
 
-        /** Gets the texture slot corresponding to the layer UID */
-        int getSlot( UID layerUID ) const;
+        /**
+         * Gets a texture slot corresponding to the layer UID. There may be more than one,
+         * the "which" parameter allows you to select one in particular. You can also limit
+         * the number of slots to search.
+         */
+        int getSlot( UID layerUID, unsigned which =0, unsigned maxSlotsToSearch =~0 ) const;
 
         /** Gets the render order index of the layer with the given UID */
         int getOrder( UID layerUID ) const;
@@ -63,7 +77,12 @@ namespace osgEarth
         /** Access a vector that specifies the rendering order of texture slots. */
         const RenderOrderVector& getRenderOrder() const { return _order; }
 
-    public:
+        /** Returns "true" if the layout contains at least one secondary slot allocation. */
+        bool containsSecondarySlots( unsigned maxSlotsToSearch = ~0) const;
+
+    protected:
+        friend class TextureCompositor;
+
         void applyMapModelChange( const MapModelChange& change );
 
         void setReservedSlots( const std::set<int>& reservedSlots );
@@ -73,6 +92,9 @@ namespace osgEarth
         RenderOrderVector _order;
         bool _textureImageUnitPerSlot;
         std::set<int> _reservedSlots;
+
+        void assignPrimarySlot( ImageLayer* layer, int index );
+        void assignSecondarySlot( ImageLayer* layer );
     };
 
     //-----------------------------------------------------------------------
@@ -149,6 +171,9 @@ namespace osgEarth
          */
         GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const;
 
+        /**
+         * Like prepareImage, but prepares it for use as a secondary texture (for LOD blending).
+         */
         GeoImage prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) const;
 
         /**
@@ -157,11 +182,11 @@ namespace osgEarth
          * the scene graph, be sure to only call this method from UPDATE trav.
          */
         void applyLayerUpdate(
-            osg::StateSet* stateSet,
-            UID layerUID,
+            osg::StateSet*  stateSet,
+            UID             layerUID,
             const GeoImage& preparedImage,
-            const TileKey& tileKey,
-            osg::StateSet* parentStateSet ) const;
+            const TileKey&  tileKey,
+            osg::StateSet*  parentStateSet ) const;
 
         /**
          * Updates a stateset's texture composition based on the information that a layer has been
@@ -174,8 +199,8 @@ namespace osgEarth
          * texture slot according to the compositor's layout.
          */
         void assignTexCoordArray(
-            osg::Geometry* geom,
-            UID layerUID,
+            osg::Geometry*  geom,
+            UID             layerUID,
             osg::Vec2Array* texCoords ) const;
 
         /**

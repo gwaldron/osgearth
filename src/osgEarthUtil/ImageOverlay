@@ -13,9 +13,11 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT ImageOverlay : public osg::Group
     {
     public:    
+        ImageOverlay();
         ImageOverlay(const osg::EllipsoidModel* ellipsoid, osg::Image* image);
 
         const osg::EllipsoidModel* getEllipsoid() const { return _ellipsoid.get(); }
+        void setEllipsoid(const osg::EllipsoidModel* ellipsoid);
 
         void setCorners(const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRight, 
                         const osg::Vec2d& upperLeft, const osg::Vec2d& upperRight);
@@ -53,6 +55,7 @@ namespace osgEarth { namespace Util
 
         void dirty();
     private:
+        void postCTOR();
         void init();
         void clampLatitudes();
         osg::Vec2d _lowerLeft;

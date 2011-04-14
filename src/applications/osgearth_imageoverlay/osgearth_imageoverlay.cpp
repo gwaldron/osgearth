@@ -38,6 +38,7 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
 static Grid* s_layerBox = NULL;
+static Grid* s_imageBox = NULL;
 static ImageOverlayEditor* s_editor = NULL;
 
 osg::Node*
@@ -55,7 +56,18 @@ createControlPanel( osgViewer::View* view )
     s_layerBox->setAbsorbEvents( true );
     s_layerBox->setVertAlign( Control::ALIGN_BOTTOM );
 
+    s_imageBox = new Grid();
+    s_imageBox->setHorizAlign(Control::ALIGN_RIGHT);
+    s_imageBox->setBackColor(0,0,0,0.5);
+    s_imageBox->setMargin( 10 );
+    s_imageBox->setPadding( 10 );
+    s_imageBox->setSpacing( 10 );
+    s_imageBox->setChildVertAlign( Control::ALIGN_CENTER );
+    s_imageBox->setAbsorbEvents( true );
+    s_imageBox->setVertAlign( Control::ALIGN_BOTTOM );
+
     canvas->addControl( s_layerBox );
+    canvas->addControl( s_imageBox );
     return canvas;
 }
 
@@ -71,44 +83,6 @@ usage( const std::string& msg )
         
     return -1;
 }
-
-struct ToggleEditHandler : public osgGA::GUIEventHandler
-{
-    ToggleEditHandler( ImageOverlay* overlay, osg::Group* editorGroup, bool moveVert)
-        : _overlay(overlay),
-          _editorGroup(editorGroup),
-          _moveVert(moveVert){ }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        osgViewer::Viewer* viewer = static_cast<osgViewer::Viewer*>(&aa);
-        if ( ea.getEventType() == ea.KEYDOWN )
-        {
-            //Hit 'e' to toggle editing
-            if (ea.getKey() == 'e')
-            {
-                if (_editor.valid())
-                {
-                    viewer->removeEventHandler( _editor.get() );
-                    _editor = 0;
-                }
-                else
-                {
-                    _editor = new ImageOverlayEditor(_overlay.get(), _editorGroup.get() );
-                    _editor->setMoveVert( _moveVert );
-                    viewer->addEventHandler( _editor.get() );
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    osg::ref_ptr< ImageOverlayEditor > _editor;
-    osg::ref_ptr< ImageOverlay > _overlay;
-    osg::ref_ptr< osg::Group > _editorGroup;
-    bool _moveVert;
-};
 
 struct OpacityHandler : public ControlEventHandler
 {
@@ -140,7 +114,7 @@ struct EditHandler : public ControlEventHandler
         {
             static_cast<LabelControl*>(control)->setText( "Finish" );
             s_editor = new ImageOverlayEditor(_overlay, _editGroup );                    
-            _viewer->addEventHandler( s_editor );
+            _viewer->addEventHandler( s_editor );            
         }
         else
         {
@@ -156,6 +130,33 @@ struct EditHandler : public ControlEventHandler
     osgViewer::Viewer* _viewer;
     osg::Group* _editGroup;
 };
+
+struct ChangeImageHandler : public ControlEventHandler
+{
+    ChangeImageHandler( osg::Image* image, ImageOverlay* overlay, ImageControl* preview) :
+      _image(image),
+      _overlay(overlay),
+      _preview(preview){ }
+
+    void onClick( Control* control, int mouseButtonMask ) {
+        _overlay->setImage( _image );
+        _preview->setImage( _image );
+    }
+    ImageOverlay* _overlay;
+    osg::ref_ptr< osg::Image > _image;
+    osg::ref_ptr< ImageControl> _preview;
+};
+
+void addImage(osg::Image* image, ImageOverlay* overlay, ImageControl* preview)
+{
+    static unsigned int row = 0;
+    // Add an image:                
+    ImageControl* imageCon = new ImageControl( image );
+    imageCon->setSize( 128, 128 );
+    imageCon->setVertAlign( Control::ALIGN_CENTER );
+    s_imageBox->setControl( 0, row++, imageCon );     
+    imageCon->addEventHandler(new ChangeImageHandler(image, overlay, preview));
+}
 
 
 
@@ -191,6 +192,7 @@ main(int argc, char** argv)
 
     //Create the control panel
     root->addChild( createControlPanel( &viewer ) );
+
     
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
@@ -207,7 +209,9 @@ main(int argc, char** argv)
         }
 
         //Create a new ImageOverlay and set it's bounds
-        ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);        
+        //ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);        
+        ImageOverlay* overlay = new ImageOverlay();        
+        overlay->setImage( image );
         overlay->setBounds(bounds);
 
         //Create a new ModelLayer so we can overlay it on the earth
@@ -217,9 +221,9 @@ main(int argc, char** argv)
 
         //Create a group for the editor to stick it's controls
         osg::Group* editorGroup = new osg::Group;
-        root->addChild( editorGroup );       
+        root->addChild( editorGroup );      
 
-        // Add an image:                
+        // Add an image preview
         ImageControl* imageCon = new ImageControl( image );
         imageCon->setSize( 64, 64 );
         imageCon->setVertAlign( Control::ALIGN_CENTER );
@@ -250,6 +254,13 @@ main(int argc, char** argv)
         edit->setVertAlign( Control::ALIGN_CENTER );
         edit->addEventHandler(new EditHandler(overlay, &viewer, editorGroup));
         s_layerBox->setControl(4, 0, edit );
+
+
+        //Add some images that the user can tinker with
+        addImage(osgDB::readImageFile("../data/icon.png"), overlay, imageCon);
+        addImage(osgDB::readImageFile("../data/tree.gif"), overlay, imageCon);
+        addImage(osgDB::readImageFile("../data/osgearth.gif"), overlay, imageCon);
+        addImage(image, overlay, imageCon);
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

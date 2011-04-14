@@ -17,6 +17,18 @@ void clampLatitude(osg::Vec2d& l)
     l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
 }
 
+ImageOverlay::ImageOverlay():
+_lowerLeft(10,10),
+_lowerRight(20, 10),
+_upperRight(20,20),
+_upperLeft(10, 20),
+_ellipsoid(new osg::EllipsoidModel()),
+_dirty(false),
+_alpha(1.0f)
+{
+    postCTOR();
+}
+
 ImageOverlay::ImageOverlay(const osg::EllipsoidModel* ellipsoid, osg::Image* image):
 _lowerLeft(10,10),
 _lowerRight(20, 10),
@@ -26,14 +38,15 @@ _image(image),
 _ellipsoid(ellipsoid),
 _dirty(false),
 _alpha(1.0f)
+{    
+    postCTOR();
+}
+
+void
+ImageOverlay::postCTOR()
 {
     _geode = new osg::Geode;
     addChild( _geode );    
-    
-    //Create the texture
-    osg::Texture2D* texture = new osg::Texture2D(_image.get());
-    texture->setResizeNonPowerOfTwoHint(false);
-    _geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);    
 
     init();    
     setNumChildrenRequiringUpdateTraversal( 1 );    
@@ -64,7 +77,7 @@ ImageOverlay::init()
     (*verts)[1] = lr;
     (*verts)[2] = ur;
     (*verts)[3] = ul;
-
+    
     geometry->setVertexArray( verts );
 
     osg::Vec4Array* colors = new osg::Vec4Array(1);
@@ -78,7 +91,15 @@ ImageOverlay::init()
                       };        
     geometry->addPrimitiveSet(new osg::DrawElementsUInt( GL_TRIANGLES, 6, tris ) );
 
-    bool flip = _image->getOrigin()==osg::Image::TOP_LEFT;
+    bool flip = false;
+    if (_image.valid())
+    {
+        //Create the texture
+        osg::Texture2D* texture = new osg::Texture2D(_image.get());
+        texture->setResizeNonPowerOfTwoHint(false);
+        _geode->getOrCreateStateSet()->setTextureAttributeAndModes(0, texture, osg::StateAttribute::ON);    
+        flip = _image->getOrigin()==osg::Image::TOP_LEFT;
+    }
 
     osg::Vec2Array* texcoords = new osg::Vec2Array(4);
     (*texcoords)[0].set(0.0f,flip ? 1.0 : 0.0f);
@@ -110,11 +131,16 @@ void ImageOverlay::setImage( osg::Image* image )
     if (_image != image)
     {
         _image = image;
-        osg::Texture2D* texture = dynamic_cast<osg::Texture2D*>(_geode->getOrCreateStateSet()->getTextureAttribute(0, osg::StateAttribute::TEXTURE));
-        if (texture)
-        {
-            texture->setImage( _image.get() );
-        }
+        dirty();        
+    }
+}
+
+void
+ImageOverlay::setEllipsoid(const osg::EllipsoidModel* ellipsoid)
+{
+    if (_ellipsoid != ellipsoid)
+    {
+        _ellipsoid = ellipsoid;
         dirty();
     }
 }

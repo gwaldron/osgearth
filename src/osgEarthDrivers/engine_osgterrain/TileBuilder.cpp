@@ -300,11 +300,11 @@ TileBuilder::finalizeJob(TileBuilder::Job*         job,
 }
 
 void
-TileBuilder::createTile(const TileKey& key, 
-                        bool parallelize, 
+TileBuilder::createTile(const TileKey&            key, 
+                        bool                      parallelize, 
                         osg::ref_ptr<CustomTile>& out_tile, 
-                        bool& out_hasRealData,
-                        bool& out_hasLodBlendedLayers )
+                        bool&                     out_hasRealData,
+                        bool&                     out_hasLodBlendedLayers )
 {
     MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
 

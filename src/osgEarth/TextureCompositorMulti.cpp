@@ -42,11 +42,18 @@ namespace
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
 
         if ( blending )
-            buf << "uniform vec4 osgearth_texCoordFactors;\n\n";
+        {
+            //buf << "uniform vec4 osgearth_texCoordFactors[" << slots.size() << "];\n";
+            buf << "uniform mat4 osgearth_texBlendMatrix[" << slots.size() << "];\n";
+        }
+
+        //if ( blending )
+        //    buf << "uniform vec4 osgearth_texCoordFactors;\n\n";
 
         buf << "void osgearth_vert_setupTexturing() \n"
             << "{ \n";
 
+#if 0
         // to support LOD blending:
         if ( blending )
         {
@@ -56,6 +63,7 @@ namespace
                 << "    texMat[3][0] = osgearth_texCoordFactors[2];\n"
                 << "    texMat[3][1] = osgearth_texCoordFactors[3];\n";
         }
+#endif
 
         // Set up the texture coordinates for each active slot (primary and secondary).
         // Primary slots are the actual image layer's texture image unit. A Secondary
@@ -75,7 +83,8 @@ namespace
                 else
                 {
                     // secondary (blending) unit:
-                    buf << "    gl_TexCoord["<< slot <<"] = texMat * gl_MultiTexCoord" << primarySlot << ";\n";
+                    //buf << "    gl_TexCoord["<< slot <<"] = texMat * gl_MultiTexCoord" << primarySlot << ";\n";
+                    buf << "    gl_TexCoord["<< slot <<"] = osgearth_texBlendMatrix["<< primarySlot << "] * gl_MultiTexCoord" << primarySlot << ";\n";
                 }
             }
         }
@@ -265,7 +274,7 @@ namespace
                 }
             }
 
-            if (!parentTex)
+            if ( !parentTex )
             {
                 // Bind the main texture as the secondary texture and
                 // set the scaling factors appropriately.
@@ -325,6 +334,8 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
             _enableMipmappingOnUpdatedTextures && 
             lodBlending )
         {
+            int slot = layout.getSlot(layerUID, 0);
+
             // update the timestamp on the image layer to support blending.
             osg::ref_ptr<ArrayUniform> stamp = new ArrayUniform( stateSet, "osgearth_SlotStamp" );
             if ( !stamp->isComplete() || stamp->getNumElements() < layout.getMaxUsedSlot() + 1 )
@@ -334,7 +345,31 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
             }
 
             float now = (float)osg::Timer::instance()->delta_s( osg::Timer::instance()->getStartTick(), osg::Timer::instance()->tick() );
-            stamp->setElement( layout.getSlot(layerUID, 0), now );
+            stamp->setElement( slot, now );           
+            
+
+            // set the texture matrix to properly position the blend (parent) texture
+            osg::ref_ptr<ArrayUniform> texmat = new ArrayUniform( stateSet, "osgearth_texBlendMatrix" );
+            if ( !texmat->isComplete() || texmat->getNumElements() < layout.getMaxUsedSlot() + 1 )
+            {
+                texmat = new ArrayUniform( osg::Uniform::FLOAT_MAT4, "osgearth_texBlendMatrix", layout.getMaxUsedSlot()+1 );
+                texmat->addTo( stateSet );
+            }
+
+            osg::Matrix mat;
+
+            if ( parentStateSet != 0L )
+            {
+                unsigned tileX, tileY;
+                tileKey.getTileXY(tileX, tileY);
+
+                mat(0,0) = 0.5f;
+                mat(1,1) = 0.5f;
+                mat(3,0) = (float)(tileX % 2) * 0.5f;
+                mat(3,1) = (float)(1 - tileY % 2) * 0.5f;
+            }
+
+            texmat->setElement( slot, mat );
         }
     }
 }
@@ -345,15 +380,14 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
 {
     int numSlots = layout.getMaxUsedSlot() + 1;
     int maxUnits = numSlots;
-//    if (_useGPU && _lodBlending)
-//        maxUnits = numSlots * 2;
+
     if ( _useGPU )
     {
         // Validate against the max number of GPU texture units:
         if ( maxUnits > Registry::instance()->getCapabilities().getMaxGPUTextureUnits() )
         {
             maxUnits = Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
-            //numSlots = maxUnits / 2;
+
             OE_WARN << LC
                 << "Warning! You have exceeded the number of texture units available on your GPU ("
                 << maxUnits << "). Consider using another compositing mode."
@@ -368,7 +402,7 @@ TextureCompositorMultiTexture::updateMasterStateSet(osg::StateSet*       stateSe
 
             vp->setShader( 
                 "osgearth_vert_setupTexturing", 
-                s_createTextureVertexShader(layout, hasBlending) ); //_lodBlending) );
+                s_createTextureVertexShader(layout, hasBlending) );
 
             vp->setShader( 
                 "osgearth_frag_applyTexturing",

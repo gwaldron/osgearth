@@ -204,6 +204,13 @@ ArrayUniform::setElement( int index, float value )
     _uniformAlt->setElement( index, value );
 }
 
+void
+ArrayUniform::setElement( int index, const osg::Matrix& value )
+{
+    _uniform->setElement( index, value );
+    _uniformAlt->setElement( index, value );
+}
+
 void 
 ArrayUniform::addTo( osg::StateSet* stateSet )
 {

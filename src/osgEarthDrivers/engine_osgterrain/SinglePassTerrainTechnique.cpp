@@ -335,6 +335,7 @@ SinglePassTerrainTechnique::applyTileUpdates()
         osg::StateSet* parentStateSet = 0;
         if (! _pendingImageLayerUpdates.empty())
             parentStateSet = getParentStateSet();
+
         while( _pendingImageLayerUpdates.size() > 0 )
         {
             const ImageLayerUpdate& update = _pendingImageLayerUpdates.front();
@@ -344,7 +345,7 @@ SinglePassTerrainTechnique::applyTileUpdates()
                 update._layerUID,
                 update._image,
                 _tileKey,
-                parentStateSet);
+                update._isRealData ? parentStateSet : 0L );
 
             _pendingImageLayerUpdates.pop();
             applied = true;
@@ -365,8 +366,11 @@ SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const CustomT
         if ( createGeoImage( layer, geoImage ) )
         {
             ImageLayerUpdate update;
+            
             update._image = _texCompositor->prepareImage( geoImage, _tileExtent );
             update._layerUID = layerUID;
+            update._isRealData = !layer.isFallbackData();
+
             if ( update._image.valid() )
                 _pendingImageLayerUpdates.push( update );
         }
@@ -438,11 +442,20 @@ SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
     for( ColorLayersByUID::const_iterator i = tilef._colorLayers.begin(); i != tilef._colorLayers.end(); ++i )
     {
         const CustomColorLayer& colorLayer = i->second;
+
+        bool isRealData = !colorLayer.isFallbackData();
+
         GeoImage image;
         if ( createGeoImage( colorLayer, image ) )
         {
             image = _texCompositor->prepareImage( image, _tileExtent );
-            _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileKey, parentStateSet );
+
+            _texCompositor->applyLayerUpdate( 
+                stateSet, 
+                colorLayer.getUID(), 
+                image, 
+                _tileKey, 
+                isRealData ? parentStateSet : 0L );
         }
     }
 

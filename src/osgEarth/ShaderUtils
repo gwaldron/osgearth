@@ -67,6 +67,7 @@ namespace osgEarth
         void setElement( int index, int value );
         void setElement( int index, bool value );
         void setElement( int index, float value );
+        void setElement( int index, const osg::Matrix& value );
 
         void addTo( osg::StateSet* stateSet );
         void removeFrom( osg::StateSet* stateSet );

@@ -70,18 +70,6 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, bool tileH
             // Make the LOD transition distance, and a measure of how
             // close the tile is to an LOD change, to shaders.
             plod->addCullCallback(new Drivers::LODFactorCallback);
-            // What child are we? This is used to access the textures
-            // of the parent tile.
-            unsigned tileX, tileY;
-            tile->getKey().getTileXY(tileX, tileY);
-
-            // A vector of scale and offset factors for a secondary
-            // (LOD blending) texture
-            osg::Vec4 texCoordFactors(.5f, .5f,
-                                      tileX % 2 * .5f, (1 - tileY % 2) * .5f);
-            osg::Uniform* uTexCoordFactor = new osg::Uniform("osgearth_texCoordFactors", texCoordFactors);
-
-            plod->getOrCreateStateSet()->addUniform(uTexCoordFactor);
         }
 
         // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:

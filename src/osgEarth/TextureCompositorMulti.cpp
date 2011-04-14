@@ -43,27 +43,11 @@ namespace
 
         if ( blending )
         {
-            //buf << "uniform vec4 osgearth_texCoordFactors[" << slots.size() << "];\n";
-            buf << "uniform mat4 osgearth_texBlendMatrix[" << slots.size() << "];\n";
+            buf << "uniform mat4 osgearth_TexBlendMatrix[" << slots.size() << "];\n";
         }
-
-        //if ( blending )
-        //    buf << "uniform vec4 osgearth_texCoordFactors;\n\n";
 
         buf << "void osgearth_vert_setupTexturing() \n"
             << "{ \n";
-
-#if 0
-        // to support LOD blending:
-        if ( blending )
-        {
-            buf << "    mat4 texMat = mat4(1.0);\n"
-                << "    texMat[0][0] = osgearth_texCoordFactors[0];\n"
-                << "    texMat[1][1] = osgearth_texCoordFactors[1];\n"
-                << "    texMat[3][0] = osgearth_texCoordFactors[2];\n"
-                << "    texMat[3][1] = osgearth_texCoordFactors[3];\n";
-        }
-#endif
 
         // Set up the texture coordinates for each active slot (primary and secondary).
         // Primary slots are the actual image layer's texture image unit. A Secondary
@@ -83,30 +67,10 @@ namespace
                 else
                 {
                     // secondary (blending) unit:
-                    //buf << "    gl_TexCoord["<< slot <<"] = texMat * gl_MultiTexCoord" << primarySlot << ";\n";
-                    buf << "    gl_TexCoord["<< slot <<"] = osgearth_texBlendMatrix["<< primarySlot << "] * gl_MultiTexCoord" << primarySlot << ";\n";
+                    buf << "    gl_TexCoord["<< slot <<"] = osgearth_TexBlendMatrix["<< primarySlot << "] * gl_MultiTexCoord" << primarySlot << ";\n";
                 }
             }
         }
-
-#if 0
-        if (blending)
-        {
-            buf << "    mat4 texMat = mat4(1.0);\n"
-                << "    texMat[0][0] = osgearth_texCoordFactors[0];\n"
-                << "    texMat[1][1] = osgearth_texCoordFactors[1];\n"
-                << "    texMat[3][0] = osgearth_texCoordFactors[2];\n"
-                << "    texMat[3][1] = osgearth_texCoordFactors[3];\n";
-            for (int i = 0, j = numSlots; i < numSlots; ++i, ++j)
-                buf << "    gl_TexCoord[" << i << "] = gl_MultiTexCoord" << i << "; \n"
-                    << "    gl_TexCoord[" << j << "] = texMat * gl_MultiTexCoord" << i << ";\n";
-        }
-        else
-        {
-            for(int i = 0; i< numSlots; ++i )
-                buf << "    gl_TexCoord["<< i <<"] = gl_MultiTexCoord"<< i << "; \n";
-        }
-#endif
             
         buf << "} \n";
 
@@ -115,7 +79,7 @@ namespace
     }
 
     static osg::Shader*
-    s_createTextureFragShaderFunction( const TextureLayout& layout, int maxSlots, bool blending, float blendTime )
+    s_createTextureFragShaderFunction( const TextureLayout& layout, int maxSlots, bool blending, float fadeInDuration )
     {
         const TextureLayout::RenderOrderVector& order = layout.getRenderOrder();
 
@@ -172,9 +136,9 @@ namespace
 
             if ( secondarySlot >= 0 )
             {
-                float invBlendTime = 1.0f/blendTime;
+                float invFadeInDuration = 1.0f/fadeInDuration;
 
-                buf << "            age = "<< invBlendTime << " * min( "<< blendTime << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
+                buf << "            age = "<< invFadeInDuration << " * min( "<< fadeInDuration << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
                     << "            age = clamp(age, 0.0, 1.0); \n"
                     << "            vec4 texel0 = texture2D(tex" << slot << ", gl_TexCoord["<< slot << "].st);\n"
                     << "            vec4 texel1 = texture2D(tex" << secondarySlot << ", gl_TexCoord["<< secondarySlot << "].st);\n"
@@ -280,10 +244,8 @@ namespace
                 // set the scaling factors appropriately.
                 stateSet->getOrCreateUniform(
                     parentSampler.c_str(), osg::Uniform::SAMPLER_2D)->set(slot);
-                osg::Vec4 texCoordFactors(1.0f, 1.0f, 0.0f, 0.0f);
-                osg::Uniform* uTexCoordFactor = new osg::Uniform("osgearth_texCoordFactors", texCoordFactors);
-                stateSet->addUniform(uTexCoordFactor);
             }
+
         }
         return tex;
     }
@@ -345,14 +307,13 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
             }
 
             float now = (float)osg::Timer::instance()->delta_s( osg::Timer::instance()->getStartTick(), osg::Timer::instance()->tick() );
-            stamp->setElement( slot, now );           
-            
+            stamp->setElement( slot, now );            
 
             // set the texture matrix to properly position the blend (parent) texture
-            osg::ref_ptr<ArrayUniform> texmat = new ArrayUniform( stateSet, "osgearth_texBlendMatrix" );
+            osg::ref_ptr<ArrayUniform> texmat = new ArrayUniform( stateSet, "osgearth_TexBlendMatrix" );
             if ( !texmat->isComplete() || texmat->getNumElements() < layout.getMaxUsedSlot() + 1 )
             {
-                texmat = new ArrayUniform( osg::Uniform::FLOAT_MAT4, "osgearth_texBlendMatrix", layout.getMaxUsedSlot()+1 );
+                texmat = new ArrayUniform( osg::Uniform::FLOAT_MAT4, "osgearth_TexBlendMatrix", layout.getMaxUsedSlot()+1 );
                 texmat->addTo( stateSet );
             }
 

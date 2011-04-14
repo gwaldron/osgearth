@@ -47,7 +47,8 @@ public:
         _locator( rhs._locator.get() ),
         _image( rhs._image.get() ),
         _tileKey( rhs._tileKey ),
-        _lod( rhs._lod ){ }
+        _lod( rhs._lod ),
+        _fallbackData( rhs._fallbackData ) { }
 
     osgEarth::UID getUID() const {
         return _layer->getUID();

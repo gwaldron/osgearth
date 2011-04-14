@@ -24,12 +24,12 @@
 
 namespace osgEarth
 {
-namespace Drivers
-{
-struct LODFactorCallback : public osg::NodeCallback
-{
-    void operator()(osg::Node* node, osg::NodeVisitor* nv);
-};
-}
+    namespace Drivers
+    {
+        struct LODFactorCallback : public osg::NodeCallback
+        {
+            void operator()(osg::Node* node, osg::NodeVisitor* nv);
+        };
+    }
 }
 #endif

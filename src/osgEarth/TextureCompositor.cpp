@@ -158,14 +158,15 @@ TextureLayout::assignSecondarySlot( ImageLayer* layer )
 }
 
 void
-TextureLayout::applyMapModelChange( const MapModelChange& change )
+TextureLayout::applyMapModelChange( const MapModelChange& change, bool reserveSeconarySlotIfNecessary )
 {
     if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
     {
         assignPrimarySlot( change.getImageLayer(), change.getFirstIndex() );
 
         // for LOD blending, this layer needs 2 slots.
-        if ( change.getImageLayer()->getImageLayerOptions().lodBlending() == true )
+        if ( reserveSeconarySlotIfNecessary &&
+             change.getImageLayer()->getImageLayerOptions().lodBlending() == true )
         {
             assignSecondarySlot( change.getImageLayer() );
         }
@@ -277,13 +278,13 @@ TextureCompositor::reserveTextureImageUnit( int& out_unit )
     out_unit = -1;
 
     //TODO: this only supports GPU texturing....
-    int maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    unsigned maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
 
     if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU )
     {
         Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
 
-        for( int i=0; i<maxUnits; ++i )
+        for( unsigned i=0; i<maxUnits; ++i )
         {
             if ( _layout.isSlotAvailable(i) )
             {
@@ -297,10 +298,28 @@ TextureCompositor::reserveTextureImageUnit( int& out_unit )
         // all taken, return false.
         return false;
     }
-    else // texture array or multipass... they area locked to unit 0
+
+    else if ( _tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY )
+    {
+        // texture array reserved slots 0 and 1 (for primary and blending)
+        for( unsigned i=2; i<maxUnits; ++i ) // 0 and 1 always reserved.
+        {
+            if ( _reservedUnits.find( i ) == _reservedUnits.end() )
+            {
+                out_unit = i;
+                _reservedUnits.insert( i );
+                return true;
+            }
+        }
+
+        // all taken, return false.
+        return false;
+    }
+
+    else // multipass... locked at unit 0.
     {
         // search for an unused unit.
-        for( int i=1; i<maxUnits; ++i ) // start at 1 because unit 0 is always reserved
+        for( unsigned i=1; i<maxUnits; ++i ) // start at 1 because unit 0 is always reserved
         {
             if ( _reservedUnits.find( i ) == _reservedUnits.end() )
             {
@@ -331,7 +350,10 @@ void
 TextureCompositor::applyMapModelChange( const MapModelChange& change )
 {
     Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
-    _layout.applyMapModelChange( change );
+
+    _layout.applyMapModelChange(
+        change, 
+        _impl.valid() ? _impl->blendingRequiresSecondarySlot() : false );
 }
 
 bool

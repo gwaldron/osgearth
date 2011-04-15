@@ -83,7 +83,7 @@ namespace osgEarth
     protected:
         friend class TextureCompositor;
 
-        void applyMapModelChange( const MapModelChange& change );
+        void applyMapModelChange( const MapModelChange& change, bool reserveSeconarySlotIfNecessary );
 
         void setReservedSlots( const std::set<int>& reservedSlots );
 
@@ -111,11 +111,14 @@ namespace osgEarth
 
         virtual bool usesShaderComposition() const =0;
 
-        virtual void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const { }
+        virtual bool blendingRequiresSecondarySlot() const { return false; }
 
         virtual bool supportsLayerUpdate() const { return false; }
 
+        virtual void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const { }
+
         virtual GeoImage prepareImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
+
         virtual GeoImage prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) const { return image; }
 
         virtual void applyLayerUpdate( osg::StateSet* stateSet, UID layerUID, const GeoImage& preparedImage, const TileKey& tileKey, const TextureLayout& layout, osg::StateSet* parentStateSet ) const { }

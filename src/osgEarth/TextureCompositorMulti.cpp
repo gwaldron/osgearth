@@ -134,7 +134,7 @@ namespace
                 << "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0 ) / osgearth_ImageLayerAttenuation; \n"
                 << "            atten_min =  clamp( dmin, 0, osgearth_ImageLayerAttenuation ) / osgearth_ImageLayerAttenuation; \n";
 
-            if ( secondarySlot >= 0 )
+            if ( secondarySlot >= 0 ) // LOD blending enabled for this layer
             {
                 float invFadeInDuration = 1.0f/fadeInDuration;
 
@@ -299,26 +299,12 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
             int slot = layout.getSlot(layerUID, 0);
 
             // update the timestamp on the image layer to support blending.
-            osg::ref_ptr<ArrayUniform> stamp = new ArrayUniform( stateSet, "osgearth_SlotStamp" );
-            if ( !stamp->isComplete() || stamp->getNumElements() < layout.getMaxUsedSlot() + 1 )
-            {
-                stamp = new ArrayUniform( osg::Uniform::FLOAT, "osgearth_SlotStamp", layout.getMaxUsedSlot()+1 );
-                stamp->addTo( stateSet );
-            }
-
             float now = (float)osg::Timer::instance()->delta_s( osg::Timer::instance()->getStartTick(), osg::Timer::instance()->tick() );
-            stamp->setElement( slot, now );            
+            ArrayUniform stampUniform( "osgearth_SlotStamp", osg::Uniform::FLOAT, stateSet, layout.getMaxUsedSlot() + 1 );
+            stampUniform.setElement( slot, now );            
 
             // set the texture matrix to properly position the blend (parent) texture
-            osg::ref_ptr<ArrayUniform> texmat = new ArrayUniform( stateSet, "osgearth_TexBlendMatrix" );
-            if ( !texmat->isComplete() || texmat->getNumElements() < layout.getMaxUsedSlot() + 1 )
-            {
-                texmat = new ArrayUniform( osg::Uniform::FLOAT_MAT4, "osgearth_TexBlendMatrix", layout.getMaxUsedSlot()+1 );
-                texmat->addTo( stateSet );
-            }
-
             osg::Matrix mat;
-
             if ( parentStateSet != 0L )
             {
                 unsigned tileX, tileY;
@@ -330,7 +316,8 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
                 mat(3,1) = (float)(1 - tileY % 2) * 0.5f;
             }
 
-            texmat->setElement( slot, mat );
+            ArrayUniform texMatUniform( "osgearth_TexBlendMatrix", osg::Uniform::FLOAT_MAT4, stateSet, layout.getMaxUsedSlot() + 1 );
+            texMatUniform.setElement( slot, mat );
         }
     }
 }

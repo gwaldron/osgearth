@@ -164,9 +164,10 @@ TextureLayout::applyMapModelChange( const MapModelChange& change, bool reserveSe
     {
         assignPrimarySlot( change.getImageLayer(), change.getFirstIndex() );
 
-        // for LOD blending, this layer needs 2 slots.
-        if ( reserveSeconarySlotIfNecessary &&
-             change.getImageLayer()->getImageLayerOptions().lodBlending() == true )
+        bool blendingOn = change.getImageLayer()->getImageLayerOptions().lodBlending() == true;
+        _lodBlending[ change.getImageLayer()->getUID() ] = blendingOn;
+
+        if ( blendingOn && reserveSeconarySlotIfNecessary )
         {
             assignSecondarySlot( change.getImageLayer() );
         }
@@ -245,6 +246,13 @@ TextureLayout::containsSecondarySlots( unsigned maxSlotsToSearch ) const
             return true;
     }
     return false;
+}
+
+bool
+TextureLayout::isBlendingEnabled( UID layerUID ) const
+{
+    std::map<UID,bool>::const_iterator i = _lodBlending.find(layerUID);
+    return i != _lodBlending.end() ? i->second : false;
 }
 
 //---------------------------------------------------------------------------

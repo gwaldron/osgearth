@@ -171,23 +171,6 @@ UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
 
 //------------------------------------------------------------------------
 
-//ArrayUniform::ArrayUniform( osg::Uniform::Type type, const std::string& name, int size )
-//{
-//    _uniform = new osg::Uniform( type, name, size );
-//    _uniformAlt = new osg::Uniform( type, name + "[0]", size );
-//}
-//
-//ArrayUniform::ArrayUniform( osg::StateSet* stateSet, const std::string& name, bool createIfNecessary )
-//{
-//    _uniform    = stateSet->getUniform( name );
-//    _uniformAlt = stateSet->getUniform( name + "[0]" );
-//
-//    if ( createIfNecessary && !isComplete() )
-//    {
-//        _uniform = 
-//    }
-//}
-
 ArrayUniform::ArrayUniform( const std::string& name, osg::Uniform::Type type, osg::StateSet* stateSet, unsigned size )
 {
     attach( name, type, stateSet, size );
@@ -287,7 +270,7 @@ ArrayUniform::ensureCapacity( unsigned newSize )
         if ( stateSet_safe.valid() )
         {
             osg::ref_ptr<osg::Uniform> _oldUniform    = _uniform.get();
-            osg::ref_ptr<osg::Uniform> _oldUniformAlt = _oldUniformAlt.get();
+            osg::ref_ptr<osg::Uniform> _oldUniformAlt = _oldUniform.get();
 
             stateSet_safe->removeUniform( _uniform->getName() );
             stateSet_safe->removeUniform( _uniformAlt->getName() );
@@ -304,21 +287,11 @@ ArrayUniform::ensureCapacity( unsigned newSize )
 
             stateSet_safe->addUniform( _uniform.get() );
             stateSet_safe->addUniform( _uniformAlt.get() );
+
+            stateSet_safe.release(); // don't want to unref delete
         }
     }
 }
-
-#if 0
-void 
-ArrayUniform::addTo( osg::StateSet* stateSet )
-{
-    if ( stateSet )
-    {
-        stateSet->addUniform( _uniform.get() );
-        stateSet->addUniform( _uniformAlt.get() );
-    }
-}
-#endif
 
 void
 ArrayUniform::detach()
@@ -334,18 +307,8 @@ ArrayUniform::detach()
             _uniform = 0L;
             _uniformAlt = 0L;
             _stateSet = 0L;
+
+            stateSet_safe.release(); // don't want to unref delete
         }
     }
 }
-
-#if 0
-void 
-ArrayUniform::removeFrom( osg::StateSet* stateSet )
-{
-    if ( stateSet )
-    {
-        stateSet->removeUniform( _uniform->getName() );
-        stateSet->removeUniform( _uniformAlt->getName() );
-    }
-}
-#endif

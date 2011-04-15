@@ -28,7 +28,7 @@
 
 using namespace osgEarth;
 
-#define LC "[TextureCompositorMultiTexture] "
+#define LC "[TextureCompositorMulti] "
 
 //------------------------------------------------------------------------
 
@@ -91,14 +91,14 @@ namespace
         {
             buf << "#extension GL_ARB_shader_texture_lod : enable \n"
                 << "uniform float osgearth_SlotStamp[" << maxSlots << "]; \n"
-                << "uniform float osg_FrameTime; \n";
+                << "uniform float osg_FrameTime; \n"
+                << "uniform float osgearth_LODRangeFactor; \n";
         }
 
         buf << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
             << "uniform bool  osgearth_ImageLayerEnabled[" << maxSlots << "]; \n"
             << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
             << "uniform float osgearth_ImageLayerAttenuation; \n"
-            << "uniform float osgearth_LODRangeFactor;\n"
             << "uniform float osgearth_CameraElevation; \n"
             << "varying float osgearth_CameraRange; \n";
 

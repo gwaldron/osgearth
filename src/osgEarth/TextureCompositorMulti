@@ -37,6 +37,8 @@ namespace osgEarth
 
         bool usesShaderComposition() const { return _useGPU; }
 
+        bool blendingRequiresSecondarySlot() const { return true; }
+
         void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;
 
         bool supportsLayerUpdate() const { return true; }

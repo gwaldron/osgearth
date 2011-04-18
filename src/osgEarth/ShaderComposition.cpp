@@ -310,6 +310,7 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
     buf << "void osgearth_vert_setupTexturing(); \n"
         << "void osgearth_vert_setupLighting(); \n"
         << "uniform bool osgearth_LightingEnabled; \n"
+        << "uniform float osgearth_CameraElevation; \n"
         << "varying float osgearth_CameraRange; \n";
 
     if ( preTexture )
@@ -330,6 +331,8 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 
         << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
         << "    osgearth_CameraRange = length( position4.xyz ); \n"
+
+//        << "    vec3 cameraPos = normalize(vec3( osg_ViewMatrixInverse[3][0], osg_ViewMatrixInverse[3][1], osg_ViewMatrixInverse[3][2] ));
 
         << "    vec3 position = position4.xyz / position4.w; \n"
         << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";

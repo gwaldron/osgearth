@@ -34,15 +34,15 @@ class GeomCompiler
 {
 public:
     /** Constructs a new feature compile under the specified sesison. */
-    GeomCompiler( Session* session, const FeatureGeomModelOptions& options );
+    GeomCompiler( const FeatureGeomModelOptions& options );
 
 public:
 
     /** Compiles a collection of features into an OSG scene graph. */
     osg::Node* compile(
         FeatureCursor*        input,
-        const FeatureProfile* profile,
-        const Style*          style );
+        const Style*          style,
+        const FilterContext&  context);
 
 protected:
     osg::ref_ptr<Session> _session;

@@ -28,7 +28,7 @@ _moveVert(false)
     geode->getOrCreateStateSet()->setRenderBinDetails( 99999, "RenderBin" );
     osg::AutoTransform* at = new osg::AutoTransform;
     at->setAutoScaleToScreen( true );
-    at->setAutoRotateMode( osg::AutoTransform::AutoRotateMode::ROTATE_TO_CAMERA );
+    at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_CAMERA );
     at->addChild( geode );
     //_handle = geode;
     _handle = at;

@@ -50,22 +50,21 @@ namespace
 
         //override
         bool createOrUpdateNode(
-            const FeatureList&        features,
-            const FeatureProfile*     profile,
+            FeatureCursor*            cursor,
             const Symbology::Style*   style,
-            Session*                  session,
+            const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node )
         {
-            const MapInfo& mi = session->getMapInfo();
+            const MapInfo& mi = context.getSession()->getMapInfo();
 
             // A processing context to use with the filters:
-            FilterContext cx( session );
-            cx.profile() = profile;
+            FilterContext cx = context;
 
             // Make a working copy of the features:
             FeatureList featureList;
-            for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
-                featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
+            cursor->fill( featureList );
+            //for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
+            //    featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
 
             // Transform them into the map's SRS:
             TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );

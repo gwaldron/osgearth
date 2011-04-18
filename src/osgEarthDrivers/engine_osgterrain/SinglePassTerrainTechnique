@@ -133,7 +133,7 @@ private:
     struct ImageLayerUpdate {
         GeoImage _image;
         UID      _layerUID;
-        //int      _layerIndex;
+        bool     _isRealData; // versus fallback data
     };
     typedef std::queue<ImageLayerUpdate> ImageLayerUpdates;
     ImageLayerUpdates _pendingImageLayerUpdates;

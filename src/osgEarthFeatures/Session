@@ -88,6 +88,9 @@ namespace osgEarth { namespace Features
         osg::Referenced* getBuildData() const { return _buildData.get(); }
 
     private:
+
+        void parseMarker(const std::string& marker, std::string& url, bool &isImage) const;
+
         MapFrame    _mapFrame;
         std::string _referenceURI;
 

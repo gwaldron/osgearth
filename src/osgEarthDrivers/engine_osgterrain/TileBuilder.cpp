@@ -29,31 +29,6 @@ using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
-#if 0
-struct SourceRepo
-{
-    SourceRepo() { }
-
-    void add( const CustomColorLayer& layer )
-    {
-        Threading::ScopedMutexLock lock(_m);
-        _colorLayers[ layer.getUID() ] = layer;
-    }
-
-    void set( const CustomElevLayer& elevLayer )
-    {
-        // only one...no lock required
-        _elevLayer = elevLayer;
-    }
-
-    ColorLayersByUID _colorLayers;
-    CustomElevLayer _elevLayer;
-    Threading::Mutex _m;
-};
-#endif
-
-//------------------------------------------------------------------------
-
 struct BuildColorLayer
 {
     void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo,
@@ -191,17 +166,6 @@ struct AssembleTile
         // a skirt hides cracks when transitioning between LODs:
         osg::HeightField* hf = _repo->_elevLayer.getHFLayer()->getHeightField();
         hf->setSkirtHeight(bs.radius() * _opt->heightFieldSkirtRatio().get() );
-
-#if 0 // moved to SerialKeyNodeFactory::addTile
-        // for now, cluster culling does not work for the unified cube profile.
-        if ( _mapInfo->isGeocentric() && !_mapInfo->isCube() )
-        {
-            _tile->setCullCallback( HeightFieldUtils::createClusterCullingCallback(
-                hf,
-                _tile->getLocator()->getEllipsoidModel(),
-                _tile->getVerticalScale() ) );
-        }
-#endif
     }
 
     TileKey                  _key;
@@ -261,9 +225,15 @@ TileBuilder::runJob( TileBuilder::Job* job )
 }
 
 void
-TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData )
+TileBuilder::finalizeJob(TileBuilder::Job*         job, 
+                         osg::ref_ptr<CustomTile>& out_tile,
+                         bool&                     out_hasRealData,
+                         bool&                     out_hasLodBlending)
 {
     SourceRepo& repo = job->_repo;
+
+    out_hasRealData = false;
+    out_hasLodBlending = false;
 
     // Bail out now if there's no data to be had.
     if ( repo._colorLayers.size() == 0 && !repo._elevLayer.getHFLayer() )
@@ -302,6 +272,9 @@ TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_t
                 key,
                 true ) );
         }
+
+        if ( i->get()->getImageLayerOptions().lodBlending() == true )
+            out_hasLodBlending = true;
     }
 
     // Ready to create the actual tile.
@@ -327,7 +300,11 @@ TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_t
 }
 
 void
-TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData )
+TileBuilder::createTile(const TileKey&            key, 
+                        bool                      parallelize, 
+                        osg::ref_ptr<CustomTile>& out_tile, 
+                        bool&                     out_hasRealData,
+                        bool&                     out_hasLodBlendedLayers )
 {
     MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
 
@@ -337,6 +314,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
     // directly to the key, as opposed to fallback data, which is derived from a lower
     // LOD key.
     out_hasRealData = false;
+    out_hasLodBlendedLayers = false;
 
     const MapInfo& mapInfo = mapf.getMapInfo();
 
@@ -348,8 +326,13 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
         int jobCount = 0;
 
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        {
             if ( i->get()->isKeyValid( key ) )
                 ++jobCount;
+
+            if ( i->get()->getImageLayerOptions().lodBlending() == true )
+                out_hasLodBlendedLayers = true;
+        }
 
         if ( mapf.elevationLayers().size() > 0 )
             ++jobCount;
@@ -403,6 +386,9 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
                 build.init( key, layer, mapInfo, _terrainOptions, repo );
                 build.execute();
             }
+
+            if ( layer->getImageLayerOptions().lodBlending() == true )
+                out_hasLodBlendedLayers = true;
         }
         
         // make an elevation layer.

@@ -342,18 +342,22 @@ namespace
 
         //override
         bool createOrUpdateNode(
-            const FeatureList&        features,
-            const FeatureProfile*     profile,
+            FeatureCursor*            cursor,
             const Symbology::Style*   style,
-            Session*                  session,
+            const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node )
         {
-            const MapInfo& mi = session->getMapInfo();
+            const MapInfo& mi = context.getSession()->getMapInfo();
+            
+            // A processing context to use locally
+            FilterContext cx = context;
 
             // make a working copy of the feature data.
             FeatureList featureList;
-            for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
-                featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
+            cursor->fill( featureList );
+
+            //for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
+            //    featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
 
             // establish the extrusion distance for the stencil volumes
             double extrusionDistance = 1;
@@ -375,10 +379,10 @@ namespace
             densificationThreshold = *_options.densificationThreshold();
 
             // establish the shared build data (shared across compiles in the same session)
-            BuildData* buildData = dynamic_cast<BuildData*>( session->getBuildData() );
+            BuildData* buildData = dynamic_cast<BuildData*>( context.getSession()->getBuildData() );
             if ( !buildData ) {
                 buildData = new BuildData( _renderBinStart );
-                session->setBuildData( buildData );
+                cx.getSession()->setBuildData( buildData );
             }            
 
             // Scan the geometry to see if it includes line data, since that will require buffering:
@@ -395,10 +399,6 @@ namespace
                     break;
                 }
             }
-
-            // A processing context to use with the filters:
-            FilterContext cx( session );
-            cx.profile() = profile;
 
             // If the geometry is lines, we need to buffer them before they will work with stenciling
             if ( hasLines )

@@ -39,7 +39,7 @@ public:
     osg::Node* createNode( const TileKey& key );
 
 protected:
-    void addTile(CustomTile* tile, bool tileHasRealData, osg::Group* parent );
+    void addTile(CustomTile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
 
     TileBuilder*             _builder;
     const OSGTerrainOptions& _options;

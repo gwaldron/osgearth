@@ -199,9 +199,9 @@ SubstituteModelFilter::push(FeatureList&         features,
         return context;
     }
 
-    const ModelSymbol* symbol = _style->getSymbol<ModelSymbol>();
+    const MarkerSymbol* symbol = _style->getSymbol<MarkerSymbol>();
     if ( !symbol ) {
-        OE_WARN << LC << "No ModelSymbol found in style; cannot process feautres" << std::endl;
+        OE_WARN << LC << "No MarkerSymbol found in style; cannot process feautres" << std::endl;
         return context;
     }
 

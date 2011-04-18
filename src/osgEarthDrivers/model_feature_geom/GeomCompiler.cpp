@@ -31,8 +31,7 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-GeomCompiler::GeomCompiler( Session* session, const FeatureGeomModelOptions& options ) :
-_session( session ),
+GeomCompiler::GeomCompiler( const FeatureGeomModelOptions& options ) :
 _options( options )
 {
     //nop
@@ -40,10 +39,11 @@ _options( options )
 
 osg::Node*
 GeomCompiler::compile(FeatureCursor*        cursor,
-                      const FeatureProfile* featureProfile,
-                      const Style*          style)
+                      const Style*          style,
+                      const FilterContext&  context)
+
 {
-    if ( !featureProfile ) {
+    if ( !context.profile() ) {
         OE_WARN << LC << "Valid feature profile required" << std::endl;
         return 0L;
     }
@@ -60,17 +60,18 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     cursor->fill( workingSet );
 
     // create a filter context that will track feature data through the process
-    FilterContext cx( _session.get() );
-    cx.profile() = featureProfile;
+    FilterContext cx = context;
+    if ( !cx.extent().isSet() )
+        cx.extent() = cx.profile()->getExtent();
 
     // only localize coordinates if the map if geocentric AND the extent is
     // less than 180 degrees.
-    const MapInfo& mi = _session->getMapInfo();
-    GeoExtent geoExtent = featureProfile->getExtent().transform( featureProfile->getSRS()->getGeographicSRS() );
-    bool localize = mi.isGeocentric() && geoExtent.width() < 180.0;
+    const MapInfo& mi = cx.getSession()->getMapInfo();
+    GeoExtent workingExtent = cx.extent()->transform( cx.profile()->getSRS()->getGeographicSRS() );
+    bool localize = mi.isGeocentric() && workingExtent.width() < 180.0;
 
     // go through the Style and figure out which filters to use.
-    const ModelSymbol*     model     = style->getSymbol<ModelSymbol>();
+    const MarkerSymbol*    marker    = style->getSymbol<MarkerSymbol>();
     const PointSymbol*     point     = style->getSymbol<PointSymbol>();
     const LineSymbol*      line      = style->getSymbol<LineSymbol>();
     const PolygonSymbol*   polygon   = style->getSymbol<PolygonSymbol>();
@@ -85,15 +86,15 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     cx = xform.push( workingSet, cx );
 
     // model substitution
-    if ( model )
+    if ( marker )
     {
-        if ( model->placement() == ModelSymbol::PLACEMENT_RANDOM   ||
-             model->placement() == ModelSymbol::PLACEMENT_INTERVAL )
+        if ( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM   ||
+             marker->placement() == MarkerSymbol::PLACEMENT_INTERVAL )
         {
             ScatterFilter scatter;
-            scatter.setDensity( *model->density() );
-            scatter.setRandom( model->placement() == ModelSymbol::PLACEMENT_RANDOM );
-            scatter.setRandomSeed( *model->randomSeed() );
+            scatter.setDensity( *marker->density() );
+            scatter.setRandom( marker->placement() == MarkerSymbol::PLACEMENT_RANDOM );
+            scatter.setRandomSeed( *marker->randomSeed() );
             cx = scatter.push( workingSet, cx );
         }
 
@@ -106,8 +107,8 @@ GeomCompiler::compile(FeatureCursor*        cursor,
 
         SubstituteModelFilter sub( style );
         sub.setClustering( *_options.clustering() );
-        if ( model->scale().isSet() )
-            sub.setModelMatrix( osg::Matrixd::scale( *model->scale() ) );
+        if ( marker->scale().isSet() )
+            sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
 
         cx = sub.push( workingSet, cx );
         result = sub.getNode();

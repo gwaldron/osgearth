@@ -91,8 +91,10 @@ ScatterFilter::polyScatter(const Geometry*         input,
                 double x = bounds.xMin() + rx * bounds.width();
                 double y = bounds.yMin() + ry * bounds.height();
 
-                if ( polygon->contains2D( x, y ) )
-                    output->push_back( osg::Vec3d( x, y, zMin ) );
+                bool include = true;
+
+                if ( include && polygon->contains2D( x, y ) )
+                    output->push_back( osg::Vec3d(x, y, zMin) );
             }
         }
 
@@ -111,7 +113,9 @@ ScatterFilter::polyScatter(const Geometry*         input,
             {
                 for( double cx = bounds.xMin(); cx <= bounds.xMax(); cx += interval )
                 {
-                    if ( polygon->contains2D( cx, cy ) )
+                    bool include = true;
+
+                    if ( include && polygon->contains2D( cx, cy ) )
                         output->push_back( osg::Vec3d(cx, cy, zMin) );
                 }
             }

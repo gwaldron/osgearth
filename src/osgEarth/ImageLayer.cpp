@@ -55,6 +55,7 @@ ImageLayerOptions::setDefaults()
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _minRange.init( -FLT_MAX );
     _maxRange.init( FLT_MAX );
+    _lodBlending.init( false );
 }
 
 void
@@ -72,6 +73,7 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "gamma", _gamma );
     conf.getIfSet( "min_range", _minRange );
     conf.getIfSet( "max_range", _maxRange );
+    conf.getIfSet( "lod_blending", _lodBlending );
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
@@ -100,6 +102,7 @@ ImageLayerOptions::getConfig() const
     conf.updateIfSet( "gamma", _gamma );
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
+    conf.updateIfSet( "lod_blending", _lodBlending );
 
 	if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
@@ -134,6 +137,16 @@ namespace
 
         ImageLayerTileProcessor _processor;
     };
+    
+    struct ApplyChromaKey
+    {
+        osg::Vec4f _chromaKey;
+        bool operator()( osg::Vec4f& pixel ) {
+            bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
+            if ( equiv ) pixel.a() = 0.0f;
+            return equiv;
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -165,16 +178,6 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
         }
     }
 }
-
-struct ApplyChromaKey
-{
-    osg::Vec4f _chromaKey;
-    bool operator()( osg::Vec4f& pixel ) {
-        bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
-        if ( equiv ) pixel.a() = 0.0f;
-        return equiv;
-    }
-};
 
 void
 ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
@@ -251,8 +254,9 @@ void
 ImageLayer::init()
 {
     // intialize the runtime actuals from the initialization options:
-    _actualOpacity = _options.opacity().value();
-    _actualGamma   = _options.gamma().value();
+    _actualOpacity     = _options.opacity().value();
+    _actualGamma       = _options.gamma().value();
+    _actualLODBlending = _options.lodBlending().value();
 
     //TODO: probably should graduate this to the superclass.
     _actualEnabled = _options.enabled().value();
@@ -304,6 +308,12 @@ ImageLayer::setGamma( float value )
 {
     _actualGamma = value;
     fireCallback( &ImageLayerCallback::onGammaChanged );
+}
+
+void 
+ImageLayer::disableLODBlending()
+{
+    _actualLODBlending = false;
 }
 
 void

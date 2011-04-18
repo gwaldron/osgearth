@@ -44,11 +44,14 @@ namespace osgEarth
         double height() const;
         double depth() const;
         bool contains(double x, double y ) const;
+        bool contains(const Bounds& rhs) const;
         Bounds unionWith(const Bounds& rhs) const; 
+        Bounds intersectionWith(const Bounds& rhs) const;
         void expandBy( double x, double y );
         void expandBy( double x, double y, double z );
         void expandBy( const Bounds& rhs );
         osg::Vec2d center2d() const;
+        double radius2d() const;
     };
 
     /**

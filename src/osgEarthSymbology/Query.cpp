@@ -61,4 +61,45 @@ Query::getConfig() const
     return conf;
 }
 
+Query
+Query::combineWith( const Query& rhs ) const
+{
+    Query merged;
 
+    // merge the expressions:
+
+    bool lhsEmptyExpr = !_expression.isSet() || _expression->empty();
+    bool rhsEmptyExpr = !rhs.expression().isSet() || rhs.expression()->empty();
+
+    if ( !lhsEmptyExpr && !rhsEmptyExpr )
+    {
+        std::stringstream buf;
+        buf << "( " << *_expression << " ) AND ( " << *rhs.expression() << " )";
+        std::string str = buf.str();
+        merged.expression() = str;
+    }
+    else if ( lhsEmptyExpr && !rhsEmptyExpr )
+    {
+        merged.expression() = *rhs.expression();
+    }
+    else if ( !lhsEmptyExpr && rhsEmptyExpr )
+    {
+        merged.expression() = *_expression;
+    }
+
+    // merge the bounds:
+    if ( bounds().isSet() && rhs.bounds().isSet() )
+    {
+        merged.bounds() = bounds()->intersectionWith( *rhs.bounds() );
+    }
+    else if ( bounds().isSet() )
+    {
+        merged.bounds() = *bounds();
+    }
+    else if ( rhs.bounds().isSet() )
+    {
+        merged.bounds() = *rhs.bounds();
+    }
+
+    return merged;
+}

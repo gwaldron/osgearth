@@ -287,6 +287,16 @@ Map::addMapCallback( MapCallback* cb ) const
         const_cast<Map*>(this)->_mapCallbacks.push_back( cb );
 }
 
+void 
+Map::removeMapCallback( MapCallback* cb )
+{
+    MapCallbackList::iterator i = std::find( _mapCallbacks.begin(), _mapCallbacks.end(), cb);
+    if (i != _mapCallbacks.end())
+    {
+        _mapCallbacks.erase( i );
+    }    
+}
+
 void
 Map::addImageLayer( ImageLayer* layer )
 {

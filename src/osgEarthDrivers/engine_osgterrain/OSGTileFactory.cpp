@@ -713,12 +713,12 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
             if ( mapInfo.isGeocentric() )
                 img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
 
+#if 0
             // if blending is on, AND if actual new data was loaded (instead of just reusing a parent tile),
             // create a custom blended image.
 
             if ( _terrainOptions.lodBlending() == true && key == image_tiles[i]._imageTileKey )
             {
-#if 0
                 osg::ref_ptr<osg::Image> blendedImage;
                 if ( ! createLodBlendedImage( image_tiles[i]._layerUID, key, geo_image.getImage(), terrain, blendedImage ) )
                 {
@@ -731,7 +731,6 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
                     img_locator.get(),
                     key.getLevelOfDetail(),
                     key) );
-#endif
                 osg::ref_ptr<osg::Image> secondaryImage;
                 tile->setCustomColorLayer(
                     CustomColorLayer( mapf.getImageLayerAt(i),
@@ -741,6 +740,8 @@ OSGTileFactory::createPopulatedTile(const MapFrame& mapf, CustomTerrain* terrain
                                       key)) ;
             }
             else
+#endif
+
             {
                 tile->setCustomColorLayer( CustomColorLayer(
                     mapf.getImageLayerAt(i),

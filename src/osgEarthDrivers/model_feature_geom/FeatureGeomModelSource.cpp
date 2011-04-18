@@ -44,15 +44,14 @@ namespace
             : _options( options ) { }
 
         bool createOrUpdateNode(       
-                const FeatureList&        features,
-                const FeatureProfile*     profile,
+                FeatureCursor*            features,
                 const Style*              style,
-                Session*                  session,
+                const FilterContext&      context,
                 osg::ref_ptr<osg::Node>&  node )
         {
-            GeomCompiler compiler( session, _options );
-            osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(features);
-            node = compiler.compile( cursor.get(), profile, style );
+            GeomCompiler compiler( _options );
+            //osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(features);
+            node = compiler.compile( features, style, context );
             return node.valid();
         }
 

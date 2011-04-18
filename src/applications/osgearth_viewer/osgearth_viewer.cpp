@@ -143,15 +143,10 @@ main(int argc, char** argv)
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
     {
+        const Config& externals = mapNode->externalConfig();
+
         if ( mapNode->getMap()->isGeocentric() )
         {
-            // the AutoClipPlaneHandler will automatically adjust the near/far clipping
-            // planes based on your view of the horizon. This prevents near clipping issues
-            // when you are very close to the ground. If your app never brings a user very
-            // close to the ground, you may not need this.
-            if ( useAutoClip )
-                viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
-
             // the Graticule is a lat/long grid that overlays the terrain. It only works
             // in a round-earth geocentric terrain.
             if ( useGraticule )
@@ -160,10 +155,16 @@ main(int argc, char** argv)
                 root->addChild( graticule );
             }
 
+            // Sky model.
+            Config skyConf = externals.child( "sky" );
+            if ( !skyConf.empty() )
+                useSky = true;
+
             if ( useSky )
             {
+                double hours = skyConf.value( "hours", 12.0 );
                 SkyNode* sky = new SkyNode( mapNode->getMap() );
-                sky->setDateTime( 2011, 3, 6, 12.0 );
+                sky->setDateTime( 2011, 3, 6, hours );
                 sky->attach( &viewer );
                 root->addChild( sky );
                 if (animateSky)
@@ -171,12 +172,20 @@ main(int argc, char** argv)
                     sky->setUpdateCallback( new AnimateSunCallback());
                 }
             }
+
+            // the AutoClipPlaneHandler will automatically adjust the near/far clipping
+            // planes based on your view of the horizon. This prevents near clipping issues
+            // when you are very close to the ground. If your app never brings a user very
+            // close to the ground, you may not need this.
+            if ( useSky || useAutoClip )
+            {
+                viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
+            }
         }
 
         // read in viewpoints, if any
         std::vector<Viewpoint> viewpoints;
-        const Config& conf = mapNode->externalConfig();
-        const ConfigSet children = conf.children("viewpoint");
+        const ConfigSet children = externals.children("viewpoint");
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
             viewpoints.push_back( Viewpoint(*i) );
 

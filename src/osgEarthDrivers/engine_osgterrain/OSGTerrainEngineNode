@@ -74,8 +74,8 @@ private:
     void addImageLayer( ImageLayer* layer );
     void addElevationLayer( ElevationLayer* layer );
 
-    void removeImageLayer( ImageLayer* layerRemoved, unsigned int index );
-    void removeElevationLayer( ElevationLayer* layerRemoved, unsigned int index );
+    void removeImageLayer( ImageLayer* layerRemoved );
+    void removeElevationLayer( ElevationLayer* layerRemoved );
 
     void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
     void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );

@@ -476,13 +476,13 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
             addImageLayer( change.getImageLayer() );
             break;
         case MapModelChange::REMOVE_IMAGE_LAYER:
-            removeImageLayer( change.getImageLayer(), change.getFirstIndex() );
+            removeImageLayer( change.getImageLayer() );
             break;
         case MapModelChange::ADD_ELEVATION_LAYER:
             addElevationLayer( change.getElevationLayer() );
             break;
         case MapModelChange::REMOVE_ELEVATION_LAYER:
-            removeElevationLayer( change.getElevationLayer(), change.getFirstIndex() );
+            removeElevationLayer( change.getElevationLayer() );
             break;
         case MapModelChange::MOVE_IMAGE_LAYER:
             moveImageLayer( change.getFirstIndex(), change.getSecondIndex() );
@@ -583,7 +583,7 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
 }
 
 void
-OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved, unsigned int index )
+OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 {
     // make a thread-safe copy of the tile table
     CustomTileVector tiles;
@@ -594,7 +594,7 @@ OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved, unsigned int i
         CustomTile* tile = itr->get();
 
         // critical section
-        tile->removeCustomColorLayer( index );
+        tile->removeCustomColorLayer( layerRemoved->getUID() );
 
         //if ( _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_STANDARD )
         //    tile->applyImmediateTileUpdate( TileUpdate::REMOVE_IMAGE_LAYER, layerRemoved->getUID() );
@@ -718,7 +718,7 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 }
 
 void
-OSGTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved, unsigned int index )
+OSGTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 {
     CustomTileVector tiles;
     _terrain->getCustomTiles( tiles );
@@ -748,6 +748,7 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
 {
     TerrainEngineNode::validateTerrainOptions( options );
 
+#if 0
     // LOD blending is currently only compatible with STANDARD loading policy
     if (options.lodBlending() == true && 
         ( options.loadingPolicy()->mode() == LoadingPolicy::MODE_PREEMPTIVE ||
@@ -755,6 +756,7 @@ OSGTerrainEngineNode::validateTerrainOptions( TerrainOptions& options )
     {
         options.lodBlending() = false;
     }
+#endif
     
     //nop for now.
     //note: to validate plugin-specific features, we would create an OSGTerrainOptions

@@ -67,7 +67,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
     PointSymbol*     point     = 0L;
     TextSymbol*      text      = 0L;
     ExtrusionSymbol* extrusion = 0L;
-    ModelSymbol*     model     = 0L;
+    MarkerSymbol*    marker     = 0L;
     AltitudeSymbol*  altitude  = 0L;
 
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
@@ -181,32 +181,32 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             text->contentAttributeDelimiter() = p->second;
         }
 
-        else if (p->first == "model")
+        else if (p->first == "marker")
         {
-            if (!model) model = new ModelSymbol;
-            model->url() = p->second;
+            if (!marker) marker = new MarkerSymbol;
+            marker->url() = p->second;
         }
-        else if (p->first == "model-placement")
+        else if (p->first == "marker-placement")
         {
-            if (!model) model = new ModelSymbol;
-            if      (p->second == "centroid") model->placement() = ModelSymbol::PLACEMENT_CENTROID;
-            else if (p->second == "interval") model->placement() = ModelSymbol::PLACEMENT_INTERVAL;
-            else if (p->second == "random"  ) model->placement() = ModelSymbol::PLACEMENT_RANDOM;
+            if (!marker) marker = new MarkerSymbol;
+            if      (p->second == "centroid") marker->placement() = MarkerSymbol::PLACEMENT_CENTROID;
+            else if (p->second == "interval") marker->placement() = MarkerSymbol::PLACEMENT_INTERVAL;
+            else if (p->second == "random"  ) marker->placement() = MarkerSymbol::PLACEMENT_RANDOM;
         }
-        else if (p->first == "model-density")
+        else if (p->first == "marker-density")
         {
-            if (!model) model = new ModelSymbol;
-            model->density() = as<float>(p->second, 1.0f);
+            if (!marker) marker = new MarkerSymbol;
+            marker->density() = as<float>(p->second, 1.0f);
         }
-        else if (p->first == "model-random-seed")
+        else if (p->first == "marker-random-seed")
         {
-            if (!model) model = new ModelSymbol();
-            model->randomSeed() = as<unsigned>(p->second, 0);
+            if (!marker) marker = new MarkerSymbol();
+            marker->randomSeed() = as<unsigned>(p->second, 0);
         }
-        else if (p->first == "model-scale")
+        else if (p->first == "marker-scale")
         {
-            if (!model) model = new ModelSymbol;
-            model->scale() = stringToVec3f(p->second, osg::Vec3f(1,1,1));
+            if (!marker) marker = new MarkerSymbol;
+            marker->scale() = stringToVec3f(p->second, osg::Vec3f(1,1,1));
         }
 
         else if (p->first == "extrusion-height")
@@ -245,8 +245,8 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         sc.addSymbol(text);
     if (extrusion)
         sc.addSymbol(extrusion);
-    if (model)
-        sc.addSymbol(model);
+    if (marker)
+        sc.addSymbol(marker);
     if (altitude)
         sc.addSymbol(altitude);
 

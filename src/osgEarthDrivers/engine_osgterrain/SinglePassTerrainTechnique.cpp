@@ -31,12 +31,14 @@
 #include <osg/Timer>
 #include <osg/Version>
 #include <osgUtil/Tessellator>
+#include <osgUtil/SmoothingVisitor>
 
 #include <osgEarthSymbology/Geometry>
 
 #include <sstream>
 
 using namespace osgEarth;
+using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 #define LC "[SinglePassTechnique] "
@@ -335,6 +337,7 @@ SinglePassTerrainTechnique::applyTileUpdates()
         osg::StateSet* parentStateSet = 0;
         if (! _pendingImageLayerUpdates.empty())
             parentStateSet = getParentStateSet();
+
         while( _pendingImageLayerUpdates.size() > 0 )
         {
             const ImageLayerUpdate& update = _pendingImageLayerUpdates.front();
@@ -344,7 +347,7 @@ SinglePassTerrainTechnique::applyTileUpdates()
                 update._layerUID,
                 update._image,
                 _tileKey,
-                parentStateSet);
+                update._isRealData ? parentStateSet : 0L );
 
             _pendingImageLayerUpdates.pop();
             applied = true;
@@ -365,8 +368,11 @@ SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const CustomT
         if ( createGeoImage( layer, geoImage ) )
         {
             ImageLayerUpdate update;
+            
             update._image = _texCompositor->prepareImage( geoImage, _tileExtent );
             update._layerUID = layerUID;
+            update._isRealData = !layer.isFallbackData();
+
             if ( update._image.valid() )
                 _pendingImageLayerUpdates.push( update );
         }
@@ -438,11 +444,20 @@ SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
     for( ColorLayersByUID::const_iterator i = tilef._colorLayers.begin(); i != tilef._colorLayers.end(); ++i )
     {
         const CustomColorLayer& colorLayer = i->second;
+
+        bool isRealData = !colorLayer.isFallbackData();
+
         GeoImage image;
         if ( createGeoImage( colorLayer, image ) )
         {
             image = _texCompositor->prepareImage( image, _tileExtent );
-            _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileKey, parentStateSet );
+
+            _texCompositor->applyLayerUpdate( 
+                stateSet, 
+                colorLayer.getUID(), 
+                image, 
+                _tileKey, 
+                isRealData ? parentStateSet : 0L );
         }
     }
 
@@ -1053,22 +1068,44 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
           if (part->getType() == osgEarth::Symbology::Geometry::TYPE_POLYGON)
           {
-            osg::Vec3Array* partVerts = part->toVec3Array();
-            outVerts->insert(outVerts->end(), partVerts->begin(), partVerts->end());
-            mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - partVerts->size(), partVerts->size()));
+              osg::Vec3Array* partVerts = part->toVec3Array();
+              outVerts->insert(outVerts->end(), partVerts->begin(), partVerts->end());
+              mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - partVerts->size(), partVerts->size()));
           }
         }
 
         if (mask_skirt->getNumPrimitiveSets() > 0)
         {
 #if 1
-          //Tessellate mask skirt
+          // Tessellate mask skirt
           osg::ref_ptr<osgUtil::Tessellator> tscx=new osgUtil::Tessellator;
           tscx->setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
           tscx->setBoundaryOnly(false);
           tscx->setWindingType(osgUtil::Tessellator::TESS_WINDING_ODD);
           tscx->retessellatePolygons(*mask_skirt);
 
+          // Assign normals to the stitching polygon: -gw
+          osg::Vec3Array* msVerts = dynamic_cast<osg::Vec3Array*>(mask_skirt->getVertexArray());
+          osg::Vec3Array* msNormals = new osg::Vec3Array(msVerts->size());
+          mask_skirt->setNormalArray( msNormals );
+          mask_skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+          
+          // must convert each vert out of model space into local (NDC) space,
+          // calculate the normal, then convert back.
+          for( unsigned v=0; v<msVerts->size(); ++v )
+          {
+              const osg::Vec3& vert = (*msVerts)[v];
+              osg::Vec3d model = vert + _centerModel;
+              osg::Vec3d ndc;
+              _masterLocator->convertModelToLocal( model, ndc );
+              osg::Vec3d local_one = ndc;
+              local_one.z() += 1.0;
+              osg::Vec3d model_one;
+              _masterLocator->convertLocalToModel( local_one, model_one );
+              model_one = model_one - model;
+              model_one.normalize();
+              (*msNormals)[v] = model_one;
+          }
 
           //Initialize tex coords
           if (_texCompositor->requiresUnitTextureSpace())

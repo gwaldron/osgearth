@@ -30,11 +30,11 @@ using namespace OpenThreads;
 
 #define LC "[SerialKeyNodeFactory] "
 
-SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder* builder,
+SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder*             builder,
                                            const OSGTerrainOptions& options,
-                                           const MapInfo& mapInfo,
-                                           CustomTerrain* terrain,
-                                           UID engineUID ) :
+                                           const MapInfo&           mapInfo,
+                                           CustomTerrain*           terrain,
+                                           UID                      engineUID ) :
 _builder( builder ),
 _options( options ),
 _mapInfo( mapInfo ),
@@ -45,7 +45,7 @@ _engineUID( engineUID )
 }
 
 void
-SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, osg::Group* parent )
+SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
 {
     // associate this tile with the terrain:
     tile->setTerrainTechnique( osg::clone(_terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
@@ -65,31 +65,18 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, osg::Group
         plod->setCenter( bs.center() );
         plod->addChild( tile, minRange, maxRange );
 
-        if (_options.lodBlending() == true)
+        if ( tileHasLodBlending )
         {
             // Make the LOD transition distance, and a measure of how
             // close the tile is to an LOD change, to shaders.
             plod->addCullCallback(new Drivers::LODFactorCallback);
-            // What child are we? This is used to access the textures
-            // of the parent tile.
-            unsigned tileX, tileY;
-            tile->getKey().getTileXY(tileX, tileY);
-#if 0
-            float tileQuadrant = tileX % 2 + tileY % 2 * 2.0f;
-            osg::Uniform* uTileQuadrant
-                = new osg::Uniform("osgearth_tileQuadrant", tileQuadrant);
-#endif
-            // A vector of scale and offset factors for a secondary
-            // (LOD blending) texture
-            osg::Vec4 texCoordFactors(.5f, .5f,
-                                      tileX % 2 * .5f, (1 - tileY % 2) * .5f);
-            osg::Uniform* uTexCoordFactor = new osg::Uniform("osgearth_texCoordFactors", texCoordFactors);
-
-            plod->getOrCreateStateSet()->addUniform(uTexCoordFactor);
         }
+
         // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:
         if ( _options.lodFallOff().isSet() && *_options.lodFallOff() > 0.0 )
+        {
             plod->addCullCallback( new DynamicLODScaleCallback(*_options.lodFallOff()) );
+        }
 
         // this one rejects back-facing tiles:
         if ( _mapInfo.isGeocentric() )
@@ -138,11 +125,13 @@ SerialKeyNodeFactory::createNode( const TileKey& key )
 {
     osg::ref_ptr<CustomTile> tiles[4];
     bool                     realData[4];
+    bool                     lodBlending[4];
 
     for( unsigned i = 0; i < 4; ++i )
     {
         TileKey child = key.createChildKey( i );
-        _builder->createTile( child, false, tiles[i], realData[i] );
+        bool hasBlending = false;
+        _builder->createTile( child, false, tiles[i], realData[i], lodBlending[i] );
     }
 
     // Now postprocess them and assemble into a tile group.
@@ -152,7 +141,7 @@ SerialKeyNodeFactory::createNode( const TileKey& key )
     {
         if ( tiles[i].valid() )
         {
-            addTile( tiles[i].get(), realData[i], root );
+            addTile( tiles[i].get(), realData[i], lodBlending[i], root );
         }
     }
 

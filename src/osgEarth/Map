@@ -221,6 +221,8 @@ namespace osgEarth
          */
         void addMapCallback( MapCallback* callback ) const;
 
+        void removeMapCallback( MapCallback* callback );
+
         /**
          * Adds an image layer to the map.
          */

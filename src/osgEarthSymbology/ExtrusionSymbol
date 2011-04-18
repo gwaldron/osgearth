@@ -38,6 +38,12 @@ namespace osgEarth { namespace Symbology
         /** Whether the top cap of the extruded geometry should be flat (default=true) */
         optional<bool>& flatten() { return _flatten; }
         const optional<bool>& flatten() const { return _flatten; }
+
+        /** The attribute value to use to get the extruded height*/
+        optional<std::string>& attribute() { return _attribute; }
+        const optional<std::string>& attribute() const { return _attribute; }
+
+
         
     public:
         virtual Config getConfig() const;
@@ -46,6 +52,7 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<float> _height;
         optional<bool>  _flatten;
+        optional<std::string> _attribute;
     };
 
 } } // namespace osgEarth::Symbology

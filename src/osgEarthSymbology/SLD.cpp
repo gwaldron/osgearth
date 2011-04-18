@@ -219,6 +219,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!extrusion) extrusion = new ExtrusionSymbol;
             extrusion->flatten() = as<bool>(p->second, true);
         }
+        else if (p->first == "extrusion-attribute")
+        {
+            if (!extrusion) extrusion = new ExtrusionSymbol;
+            extrusion->attribute() = p->second;
+        }
                 
         else if (p->first == "altitude-clamping")
         {

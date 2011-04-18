@@ -47,6 +47,8 @@ namespace osgEarth { namespace Features
          */
         void setExtrusionHeight( double value ) { _height = value; }
 
+        void setExtrusionAttribute( const std::string& attribute ) { _attribute = attribute; }
+
         /**
          * Sets whether the cap (e.g. rooftop) should be flat, even if the footprint in not 
          * (like a building on the side of a hill). Default = true.
@@ -73,6 +75,7 @@ namespace osgEarth { namespace Features
         float                       _wallAngleThresh_deg;
         float                       _cosWallAngleThresh;
         osg::ref_ptr<osg::StateSet> _noTextureStateSet;
+        optional<std::string>       _attribute;
 
         void reset();
         

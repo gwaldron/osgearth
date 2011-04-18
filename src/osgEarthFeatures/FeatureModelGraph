@@ -84,7 +84,7 @@ namespace osgEarth { namespace Features
 
         void setupPaging();
 
-        osg::Node* build( const FeatureLevel& level, const GeoExtent& extent );
+        osg::Node* build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key);
 
     private:
         

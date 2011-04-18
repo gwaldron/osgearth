@@ -46,8 +46,20 @@ namespace osgEarth { namespace Features
         const SpatialReference* getSRS() const {
             return _extent.getSRS(); }
 
+        bool getTiled() const;
+        void setTiled(bool tiled);
+
+        int getMaxLevel() const;
+        void setMaxLevel(int maxLevel);
+
+        const osgEarth::Profile* getProfile() const;
+        void setProfile( const osgEarth::Profile* profile );
+
     protected:
+        osg::ref_ptr< const osgEarth::Profile > _profile;
         GeoExtent _extent;
+        bool _tiled;
+        int _maxLevel;
     };
 
     typedef std::map<std::string, std::string> AttributeTable;
@@ -85,7 +97,8 @@ namespace osgEarth { namespace Features
 
         void setAttr( const std::string& name, const std::string& value );
 
-        const std::string& getAttr( const std::string& name ) const;
+        const std::string& getAttr( const std::string& name ) const;        
+
 
         /** Embedded style. */
         optional<osg::ref_ptr<Symbology::Style> >& style() { return _style; }

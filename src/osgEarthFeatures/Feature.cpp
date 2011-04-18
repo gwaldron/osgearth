@@ -28,9 +28,47 @@ std::string EMPTY_STRING;
 
 
 FeatureProfile::FeatureProfile( const GeoExtent& extent ) :
-_extent( extent )
+_extent( extent ),
+_maxLevel(-1),
+_tiled(false)
 {
     //nop
+}
+
+bool
+FeatureProfile::getTiled() const
+{
+    return _tiled;
+}
+
+void
+FeatureProfile::setTiled(bool tiled)
+{
+    _tiled = true;
+}
+
+int
+FeatureProfile::getMaxLevel() const
+{
+    return _maxLevel;
+}
+
+void
+FeatureProfile::setMaxLevel(int maxLevel)
+{
+    _maxLevel = maxLevel;
+}
+
+const osgEarth::Profile* 
+FeatureProfile::getProfile() const
+{
+    return _profile.get();
+}
+
+void
+FeatureProfile::setProfile( const osgEarth::Profile* profile )
+{
+    _profile = profile;
 }
 
 /****************************************************************************/

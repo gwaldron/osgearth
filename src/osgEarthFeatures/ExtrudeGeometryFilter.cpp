@@ -337,7 +337,13 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
             static_cast<Polygon*>(part)->open();
         }
 
-        if ( extrudeGeometry( part, _height, _flatten, walls.get(), rooflines.get(), 0L, _color, context ) )
+        float height = _height;
+        if (_attribute.isSet())
+        {
+            height = as<float>(input->getAttr( _attribute.get() ), 50.0f);            
+        }
+
+        if ( extrudeGeometry( part, height, _flatten, walls.get(), rooflines.get(), 0L, _color, context ) )
         {      
 #ifdef USE_TEX
             if ( skin )

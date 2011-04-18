@@ -61,8 +61,6 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
             return ReadResult::FILE_NOT_HANDLED;
 
-        OE_NOTICE << "Reading " << uri << std::endl;
-
         UID uid;
         unsigned levelIndex, x, y;
         sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &levelIndex, &x, &y );
@@ -188,26 +186,25 @@ FeatureModelGraph::getBoundInWorldCoords( const GeoExtent& extent ) const
 void
 FeatureModelGraph::setupPaging()
 {
-    float maxRange = _options.levels().isSet() ? _options.levels()->getMaxRange() : FLT_MAX;
+    float maxRange = _options.levels().isSet() && _options.levels()->getNumLevels() > 0 ? _options.levels()->getMaxRange() : FLT_MAX;
     if ( maxRange > 0.0f )
     {
         // find the bounds.
         const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
         osg::BoundingSphered bs = getBoundInWorldCoords( fullExtent );
 
+        float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
+
         const FeatureLevel* firstLevel = 0;
-        unsigned firstLOD = 0;//_options.levels()->chooseLOD( *firstLevel, bs.radius() );
-
-        FeatureLevel defaultLevel( 0.0f, bs.radius() * 3, Query() );
-
-        if (_options.levels().isSet())
+        unsigned firstLOD = 0;
+        FeatureLevel defaultLevel( 0.0f, bs.radius() * tileFactor, Query() );
+        if (_options.levels().isSet() && _options.levels()->getNumLevels() > 0)
         {
             firstLevel = _options.levels()->getLevel( 0 );
             firstLOD = _options.levels()->chooseLOD( *firstLevel, bs.radius() );
         }
         else if (_source->getFeatureProfile()->getTiled())
         {            
-            OE_NOTICE << "setupPaging tiled" << std::endl;
             firstLOD = 0;
             firstLevel = &defaultLevel;
         }
@@ -237,7 +234,7 @@ FeatureModelGraph::buildSubTiles(unsigned nextLevelIndex,
         numTiles *= 2;
     }
 
-    OE_NOTICE << LC 
+    OE_INFO << LC 
         << "Building " << numTiles*numTiles << " plods for next level = " << nextLevelIndex
         << ", nextLOD = " << nextLOD
         << std::endl;
@@ -294,7 +291,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
     // note: "level" is not the same as "lod". "level" is an index into the FeatureDisplaySchema
     // levels list, which is sorted by maxRange.
 
-    OE_NOTICE << LC
+    OE_DEBUG << LC
         << "load: " << levelIndex << "_" << tileX << "_" << tileY << std::endl;
 
     osg::Node* result = 0L;
@@ -305,7 +302,6 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
     
     if (_source->getFeatureProfile()->getTiled())
     {        
-        OE_NOTICE << "load(" << levelIndex << ", " << tileX << ", " << tileY << ")" << std::endl;
         unsigned int lod = levelIndex;
         GeoExtent tileExtent = 
             lod >= 0 ?
@@ -313,7 +309,9 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
         GeoExtent::INVALID;
         osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent );
 
-        double maxRange =  tileBound.radius() * 3.0;
+        float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
+
+        double maxRange =  tileBound.radius() * tileFactor;
         FeatureLevel level(0,maxRange, Query());                
         
         TileKey key(lod, tileX, tileY, _source->getFeatureProfile()->getProfile());
@@ -342,7 +340,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
             }   
         }
     }
-    else if ( !_options.levels().isSet() )
+    else if ( !_options.levels().isSet() || _options.levels()->getNumLevels() == 0 )
     {
         // no levels defined; just load all the features.
         FeatureLevel all( 0.0f, FLT_MAX, Query() );
@@ -413,7 +411,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
 osg::Node*
 FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key )
 {
-    OE_NOTICE << LC
+    OE_INFO << LC
         << "Build started"
         << std::endl;
 
@@ -427,15 +425,11 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
         localQuery = localQuery.combineWith( spatialQuery );
     }
 
+    //If we have a key, pass it into the query
     if (key)
     {
-        OE_NOTICE << "Setting key" << std::endl;
         localQuery.tileKey() = *key;
-    }
-    else
-    {
-        OE_NOTICE << "No key" << std::endl;
-    }
+    }    
 
     OE_DEBUG << LC
         << "local query = " << localQuery.getConfig().toString()

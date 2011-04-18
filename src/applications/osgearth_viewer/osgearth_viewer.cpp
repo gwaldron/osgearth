@@ -23,6 +23,7 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
@@ -103,7 +104,10 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
             else if ( ea.getKey() == 'v' )
             {
                 Viewpoint vp = _manip->getViewpoint();
-                OE_NOTICE << vp.getConfig().toString() << std::endl;
+                XmlDocument xml( vp.getConfig() );
+                xml.store( std::cout );
+                std::cout << std::endl;
+                //OE_NOTICE << vp.getConfig().toString() << std::endl;
             }
         }
         return false;

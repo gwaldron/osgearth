@@ -370,7 +370,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent )
     {
         Query spatialQuery;
         spatialQuery.bounds() = extent.bounds();
-        localQuery = localQuery.and( spatialQuery );
+        localQuery = localQuery.combineWith( spatialQuery );
     }
 
     OE_DEBUG << LC
@@ -417,7 +417,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent )
                 _styles.getStyle( sel.getSelectedStyleName(), style );
 
                 // .. and merge it's query into the existing query
-                Query selectorQuery = localQuery.and( *sel.query() );
+                Query selectorQuery = localQuery.combineWith( *sel.query() );
 
                 // then create the node.
                 osg::Group* styleGroup = createNodeForStyle( style, selectorQuery );

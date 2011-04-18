@@ -62,7 +62,7 @@ Query::getConfig() const
 }
 
 Query
-Query::and( const Query& rhs ) const
+Query::combineWith( const Query& rhs ) const
 {
     Query merged;
 

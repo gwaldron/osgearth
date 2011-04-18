@@ -47,7 +47,7 @@ namespace osgEarth { namespace Symbology
         /**
          * Merges this query with another query, and returns the result
          */
-        Query and( const Query& other ) const;
+        Query combineWith( const Query& other ) const;
 
     public: // configurable
 

@@ -51,6 +51,8 @@ WFSCapabilities::getFeatureTypeByName(const std::string& name)
 #define ELEM_SERVICE "service"
 #define ELEM_REQUEST "request"
 #define ELEM_ABSTRACT "abstract"
+#define ELEM_TILED "tiled"
+#define ELEM_MAXLEVEL "maxlevel"
 #define ELEM_FORMAT "format"
 #define ELEM_NAME "name"
 #define ELEM_TITLE "title"
@@ -119,7 +121,7 @@ WFSCapabilitiesReader::read(std::istream &in)
     //Read the parameters from the Service block
     capabilities->setName( e_service->getSubElementText(ELEM_NAME ) );
     capabilities->setAbstract( e_service->getSubElementText( ELEM_ABSTRACT ) );
-    capabilities->setTitle( e_service->getSubElementText( ELEM_TITLE ) );
+    capabilities->setTitle( e_service->getSubElementText( ELEM_TITLE ) );    
 
     //Read all the feature types    
     osg::ref_ptr<XmlElement> e_feature_types = e_root->getSubElement( ELEM_FEATURETYPELIST );
@@ -133,6 +135,19 @@ WFSCapabilitiesReader::read(std::istream &in)
             featureType->setName( e_featureType->getSubElementText( ELEM_NAME ) );
             featureType->setTitle( e_featureType->getSubElementText( ELEM_TITLE ) );
             featureType->setAbstract( e_featureType->getSubElementText( ELEM_ABSTRACT ) );
+
+            //NOTE:  TILED and MAXLEVEL aren't part of the WFS spec, these are enhancements to our server for tiled WFS access
+            std::string tiledStr = e_featureType->getSubElementText(ELEM_TILED);
+            if (tiledStr.compare("") != 0)
+            {
+                featureType->setTiled( as<bool>(tiledStr, false) );
+            }
+
+            std::string maxLevelStr = e_featureType->getSubElementText(ELEM_TILED);
+            if (maxLevelStr.compare("") != 0)
+            {
+                featureType->setMaxLevel( as<int>(maxLevelStr, -1));
+            }
 
             osg::ref_ptr<XmlElement> e_bb = e_featureType->getSubElement( ELEM_LATLONBOUNDINGBOX );
             if (e_bb.valid())

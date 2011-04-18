@@ -142,6 +142,13 @@ public:
                 if (featureType->getExtent().isValid())
                 {
                     result = new FeatureProfile(featureType->getExtent());
+
+                    if (featureType->getTiled())
+                    {                        
+                        result->setTiled( true );
+                        result->setMaxLevel( featureType->getMaxLevel() );
+                        result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), featureType->getExtent().xMin(), featureType->getExtent().yMin(), featureType->getExtent().xMax(), featureType->getExtent().yMax(), 0, 1, 1) );
+                    }
                 }
             }
         }
@@ -284,7 +291,13 @@ public:
             buf << "&MAXFEATURES=" << _options.maxFeatures().get();
         }
 
-        if (query.bounds().isSet())
+        if (query.tileKey().isSet())
+        {
+            buf << "&Z=" << query.tileKey().get().getLevelOfDetail() << 
+                   "&X=" << query.tileKey().get().getTileX() <<
+                   "&Y=" << query.tileKey().get().getTileY();
+        }
+        else if (query.bounds().isSet())
         {
             buf << "&BBOX=" << query.bounds().get().xMin() << "," << query.bounds().get().yMin() << ","
                             << query.bounds().get().xMax() << "," << query.bounds().get().yMax();
@@ -297,14 +310,17 @@ public:
     {
         std::string url = createURL( query );
         HTTPResponse response = HTTPClient::get(url);                
+        FeatureList features;
         if (response.isOK())
         {
-            FeatureList features;
             getFeatures(response, features);            
-            std::string data = response.getPartAsString(0);
-            return new FeatureListCursor( features );
+            std::string data = response.getPartAsString(0);        
         }
-        return 0L;
+        else
+        {
+            OE_INFO << "Error getting url " << url << std::endl;
+        }
+        return new FeatureListCursor( features );        
     }
 
 private:

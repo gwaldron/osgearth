@@ -141,6 +141,14 @@ Bounds::radius2d() const {
     return (center2d() - osg::Vec2d(xMin(),yMin())).length();
 }
 
+std::string
+Bounds::toString() const {
+    std::stringstream buf;
+    buf << "(" << xMin() << "," << yMin() << " => " << xMax() << "," << yMax() << ")";
+    std::string result = buf.str();
+    return result;
+}
+
 /*************************************************************/
 
 GeoExtent GeoExtent::INVALID = GeoExtent();

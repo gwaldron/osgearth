@@ -700,9 +700,8 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     osgEarth::GeoLocator* geoLocator = _masterLocator->getGeographicFromGeocentric();
     osg::Vec3dArray* mask = tilef._mask.valid() ? tilef._mask.get() : 0L;
 
-    //Find the mask bounds
-    osg::BoundingBoxd maskBB;
-    //int i_max, i_min, j_max, j_min;
+    //Find the mask bounds in local coords
+    osg::Vec3d mask_min_ndc, mask_max_ndc;
     if (mask)
     {
       osg::Vec3d min, max;
@@ -723,19 +722,10 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
           max.y() = it->y();
       }
 
-      min.z() = DBL_MIN;
-      max.z() = DBL_MAX;
-      maskBB.set(min, max);
+      geoLocator->convertModelToLocal(min, mask_min_ndc);
+      geoLocator->convertModelToLocal(max, mask_max_ndc);
 
-      //min.z() = mask->front().z();
-      //max.z() = mask->front().z();
-      //osg::Vec3d localMin, localMax;
-      //geoLocator->convertModelToLocal(min, localMin);
-      //geoLocator->convertModelToLocal(max, localMax);
-
-      //int max_x = max.x() * 
-
-      //std::cout << std::endl << "localMin: " << localMin << std::endl << "localMax: " << localMax << std::endl;
+      //std::cout << std::endl << "mask_min_ndc: " << mask_min_ndc << std::endl << "mask_max_ndc: " << mask_max_ndc << std::endl;
     }
 
     for(j=0; j<numRows; ++j)
@@ -759,12 +749,12 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
             }
 
             //Invalidate if point falls within mask bounding box
-            if (validValue && mask)
+            if (validValue && mask &&
+                (ndc.x() >= mask_min_ndc.x() && ndc.x() <= mask_max_ndc.x() &&
+                 ndc.y() >= mask_min_ndc.y() && ndc.y() <= mask_max_ndc.y()))
             {
-              osg::Vec3d world;
-              geoLocator->convertLocalToModel(ndc, world);
-
-              validValue = !maskBB.contains(world);
+              validValue = false;
+              indices[iv] = -2;
             }
             
             if (validValue)
@@ -821,10 +811,6 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 //(*normals)[k] = model_one;
                 (*normals).push_back(model_one);
             }
-            else
-            {
-                indices[iv] = -1;
-            }
         }
     }
 
@@ -844,19 +830,19 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
               {
                 if (j > 0)
                 {               
-                  if (i > 0 && indices[iv - numColumns - 1] < 0)
+                  if (i > 0 && indices[iv - numColumns - 1] == -2)
                     n++;
                   
-                  if (i < numColumns - 1 && indices[iv - numColumns + 1] < 0)
+                  if (i < numColumns - 1 && indices[iv - numColumns + 1] == -2)
                     n++;
                 }
 
                 if (j < numRows - 1)
                 {
-                  if (i > 0 && indices[iv + numColumns - 1] < 0)
+                  if (i > 0 && indices[iv + numColumns - 1] == -2)
                     n++;
                   
-                  if (i < numColumns - 1 && indices[iv + numColumns + 1] < 0)
+                  if (i < numColumns - 1 && indices[iv + numColumns + 1] == -2)
                     n++;
                 }
 
@@ -864,16 +850,16 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 {
                   if (i != 0 && i != numColumns - 1 && j != 0 && j != numRows - 1)
                   {
-                    if (indices[iv - 1] < 0)
+                    if (indices[iv - 1] == -2)
                       n++;
 
-                    if (indices[iv + 1] < 0)
+                    if (indices[iv + 1] == -2)
                       n++;
 
-                    if (indices[iv - numColumns] < 0 )
+                    if (indices[iv - numColumns] == -2)
                       n++;
 
-                    if (indices[iv + numColumns] < 0)
+                    if (indices[iv + numColumns] == -2)
                       n++;
                   }
                 }
@@ -884,19 +870,19 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
                   if (i == 0 || i == numColumns - 1)
                   {
-                    if (j > 0 && indices[iv - numColumns] < 0)
+                    if (j > 0 && indices[iv - numColumns] == -2)
                       n++;
 
-                    if (j < numRows - 1 && indices[iv + numColumns] < 0)
+                    if (j < numRows - 1 && indices[iv + numColumns] == -2)
                       n++;
                   }
                   
                   if(j == 0 || j == numRows - 1)
                   {
-                    if (i > 0 && indices[iv - 1] < 0)
+                    if (i > 0 && indices[iv - 1] == -2)
                       n++;
 
-                    if (i < numColumns - 1 && indices[iv + 1] < 0)
+                    if (i < numColumns - 1 && indices[iv + 1] == -2)
                       n++;
                   }
                 }
@@ -944,7 +930,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for (int i = 0; i < num_i; i++)
         {
           int index = indices[min_j*numColumns + i + min_i];
-          if (index == -1)
+          if (index == -2)
           {
             osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)min_j)/(double)(numRows-1), 0.0);
 
@@ -969,7 +955,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
           }
 
           index = indices[max_j*numColumns + i + min_i];
-          if (index == -1)
+          if (index == -2)
           {
             //unsigned int iv = j*numColumns + i;
             osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)max_j)/(double)(numRows-1), 0.0);
@@ -997,7 +983,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for (int j = 0; j < num_j - 2; j++)
         {
           int index = indices[(min_j + j + 1)*numColumns + max_i];
-          if (index == -1)
+          if (index == -2)
           {
             //unsigned int iv = j*numColumns + i;
             osg::Vec3d ndc( ((double)max_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
@@ -1023,7 +1009,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
           }
 
           index = indices[(min_j + j + 1)*numColumns + min_i];
-          if (index == -1)
+          if (index == -2)
           {
             //unsigned int iv = j*numColumns + i;
             osg::Vec3d ndc( ((double)min_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);

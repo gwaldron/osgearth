@@ -41,6 +41,8 @@ CropFilter::push( FeatureList& input, const FilterContext& context )
 
     const GeoExtent& extent = *context.extent();
 
+    GeoExtent newExtent( extent.getSRS() );
+
     if ( _method == METHOD_CENTROID )
     {
         for( FeatureList::iterator i = input.begin(); i != input.end();  )
@@ -51,10 +53,12 @@ CropFilter::push( FeatureList& input, const FilterContext& context )
             Geometry* featureGeom = feature->getGeometry();
             if ( featureGeom )
             {
-                osg::Vec3d centroid = featureGeom->getBounds().center();
+                Bounds bounds = featureGeom->getBounds();
+                osg::Vec3d centroid = bounds.center();
                 if ( extent.contains( centroid.x(), centroid.y() ) )
                 {
                     keepFeature = true;
+                    newExtent.expandToInclude( bounds );
                 }
             }
 
@@ -70,12 +74,8 @@ CropFilter::push( FeatureList& input, const FilterContext& context )
 #ifdef OSGEARTH_HAVE_GEOS
 
         // create the intersection polygon:
-        osg::ref_ptr<Symbology::Polygon> poly = new Symbology::Polygon();
-        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMin(), 0 ));
-        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMin(), 0 ));
-        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMax(), 0 ));
-        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMax(), 0 ));
-
+        osg::ref_ptr<Symbology::Polygon> poly;
+        
         for( FeatureList::iterator i = input.begin(); i != input.end();  )
         {
             bool keepFeature = false;
@@ -84,12 +84,35 @@ CropFilter::push( FeatureList& input, const FilterContext& context )
             Symbology::Geometry* featureGeom = feature->getGeometry();
             if ( featureGeom )
             {
-                osg::ref_ptr<Geometry> croppedGeometry;
-                if ( featureGeom->crop( poly.get(), croppedGeometry ) )
+                // test for trivial acceptance:
+                const Bounds bounds = featureGeom->getBounds();
+                if ( extent.contains( bounds ) )
                 {
-                    feature->setGeometry( croppedGeometry.get() );
                     keepFeature = true;
-                }                   
+                    newExtent.expandToInclude( bounds );
+                }
+
+                // then move on to the cropping operation:
+                else
+                {
+                    if ( !poly.valid() )
+                    {
+                        poly = new Symbology::Polygon();
+                        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMin(), 0 ));
+                        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMin(), 0 ));
+                        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMax(), 0 ));
+                        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMax(), 0 ));
+                    }
+
+                    osg::ref_ptr<Geometry> croppedGeometry;
+                    if ( featureGeom->crop( poly.get(), croppedGeometry ) )
+                    {
+                        feature->setGeometry( croppedGeometry.get() );
+                        keepFeature = true;
+
+                        newExtent.expandToInclude( croppedGeometry->getBounds() );
+                    }
+                }
             }
 
             if ( keepFeature )
@@ -106,5 +129,8 @@ CropFilter::push( FeatureList& input, const FilterContext& context )
 #endif
     }
 
-    return context;
+    FilterContext newContext = context;
+    newContext.extent() = newExtent;
+
+    return newContext;
 }

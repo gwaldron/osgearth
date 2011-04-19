@@ -169,7 +169,12 @@ TransformFilter::push( FeatureList& input, const FilterContext& incx )
     outcx.isGeocentric() = _makeGeocentric;
 
     if ( _outputSRS.valid() )
-        outcx.profile() = new FeatureProfile( incx.profile()->getExtent().transform( _outputSRS.get() ) );
+    {
+        if ( incx.extent()->isValid() )
+            outcx.profile() = new FeatureProfile( incx.extent()->transform( _outputSRS.get() ) );
+        else
+            outcx.profile() = new FeatureProfile( incx.profile()->getExtent().transform( _outputSRS.get() ) );
+    }
 
     // set the reference frame to shift data to the centroid. This will
     // prevent floating point precision errors in the openGL pipeline for

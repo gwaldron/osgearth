@@ -907,17 +907,16 @@ SpatialReference::transformFromECEF(osg::Vec3dArray* points,
 
 bool
 SpatialReference::transformExtent(const SpatialReference* to_srs,
-                                  double& in_out_xmin,
-                                  double& in_out_ymin,
-                                  double& in_out_xmax,
-                                  double& in_out_ymax,
-                                  void* context ) const
+                                  double&                 in_out_xmin,
+                                  double&                 in_out_ymin,
+                                  double&                 in_out_xmax,
+                                  double&                 in_out_ymax,
+                                  void*                   context ) const
 {
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
 
     int oks = 0;
-
 
     //Transform all points and take the maximum bounding rectangle the resulting points
     double llx, lly;

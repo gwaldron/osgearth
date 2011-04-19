@@ -292,7 +292,7 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
         }
 
     }
-    return GeoExtent(); // invalid
+    return GeoExtent::INVALID;
 }
 
 void
@@ -333,6 +333,16 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 }
 
 bool
+GeoExtent::contains( const Bounds& rhs ) const
+{
+    return 
+        rhs.xMin() >= _xmin &&
+        rhs.yMin() >= _ymin &&
+        rhs.xMax() <= _xmax &&
+        rhs.yMax() <= _ymax;
+}
+
+bool
 GeoExtent::intersects( const GeoExtent& rhs ) const
 {
     bool valid = isValid();
@@ -354,14 +364,14 @@ GeoExtent::expandToInclude( double x, double y )
     if ( y > _ymax ) _ymax = y;
 }
 
-void GeoExtent::expandToInclude(const osgEarth::GeoExtent &rhs)
+void GeoExtent::expandToInclude(const Bounds& rhs)
 {
     expandToInclude( rhs.xMin(), rhs.yMin() );
     expandToInclude( rhs.xMax(), rhs.yMax() );
 }
 
 GeoExtent
-GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
+GeoExtent::intersectionSameSRS( const Bounds& rhs ) const
 {
     Bounds b(
         osg::maximum( xMin(), rhs.xMin() ),

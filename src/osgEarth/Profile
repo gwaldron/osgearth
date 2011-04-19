@@ -227,7 +227,7 @@ namespace osgEarth
          * clamped extents to this profile's SRS, and returns the result. Returned GeoExtent::INVALID
          * if the transformation fails.
          */
-        GeoExtent clampAndTransformExtent( const GeoExtent& input ) const;
+        GeoExtent clampAndTransformExtent( const GeoExtent& input, bool* out_clamped =0L ) const;
 
         /**
          * Creates a tile key for a tile that contains the input location at the specified LOD.

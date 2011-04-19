@@ -89,10 +89,6 @@ namespace osgEarth { namespace Features
     private:
         
         osg::Group* createNodeForStyle(const Style* style, const Query& query);
-
-        //osg::Group* gridAndCreateNodeForStyle(
-        //    const Symbology::Style* style,
-        //    const Symbology::Query& query );
        
         osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent ) const;
 
@@ -109,6 +105,10 @@ namespace osgEarth { namespace Features
         UID                              _uid;
         std::set<std::string>            _blacklist;
         Threading::ReadWriteMutex        _blacklistMutex;
+        GeoExtent                        _usableFeatureExtent;
+        bool                             _featureExtentClamped;
+        GeoExtent                        _usableMapExtent;
+        osg::BoundingSphered             _fullWorldBound;
     };
 
 } } // namespace osgEarth::Features

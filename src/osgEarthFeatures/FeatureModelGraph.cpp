@@ -144,6 +144,22 @@ _session( session )
 
     if ( _options.enableLighting().isSet() )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
+    
+    // Calculate the usable extent (in both feature and map coordinates) and bounds.
+    const Profile* mapProfile = session->getMap().getProfile();
+
+    // the part of the feature extent that will fit on the map (in map coords):
+    _usableMapExtent = mapProfile->clampAndTransformExtent( 
+        _source->getFeatureProfile()->getExtent(), 
+        &_featureExtentClamped );
+
+    // same, back into feature coords:
+    _usableFeatureExtent = _usableMapExtent.transform( _source->getFeatureProfile()->getSRS() );
+    //_usableFeatureProfile = new FeatureProfile( _usableFeatureExtent );
+
+    // world-space bounds of the feature layer
+    _fullWorldBound = getBoundInWorldCoords( _usableMapExtent );
+
 
     // if there's a display schema in place, set up for quadtree paging.
     if ( options.levels().isSet() || _source->getFeatureProfile()->getTiled() )
@@ -169,15 +185,25 @@ FeatureModelGraph::getBoundInWorldCoords( const GeoExtent& extent ) const
 {
     osg::Vec3d center, corner;
 
-    GeoExtent extentOnMap = extent.transform( _session->getMap().getProfile()->getSRS() );
-    extentOnMap.getCentroid( center.x(), center.y() );
-    corner.x() = extentOnMap.xMin();
-    corner.y() = extentOnMap.yMin();
+    GeoExtent workingExtent;
+
+    if ( extent.getSRS()->isEquivalentTo( _usableMapExtent.getSRS() ) )
+    {
+        workingExtent = extent;
+    }
+    else
+    {
+        workingExtent = extent.transform( _usableMapExtent.getSRS() ); // safe.
+    }
+
+    workingExtent.getCentroid( center.x(), center.y() );
+    corner.x() = workingExtent.xMin();
+    corner.y() = workingExtent.yMin();
 
     if ( _session->getMap().getMapInfo().isGeocentric() )
     {
-        extentOnMap.getSRS()->transformToECEF( center, center );
-        extentOnMap.getSRS()->transformToECEF( corner, corner );
+        workingExtent.getSRS()->transformToECEF( center, center );
+        workingExtent.getSRS()->transformToECEF( corner, corner );
     }
 
     return osg::BoundingSphered( center, (center-corner).length() );
@@ -189,9 +215,10 @@ FeatureModelGraph::setupPaging()
     float maxRange = _options.levels().isSet() && _options.levels()->getNumLevels() > 0 ? _options.levels()->getMaxRange() : FLT_MAX;
     if ( maxRange > 0.0f )
     {
-        // find the bounds.
-        const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
-        osg::BoundingSphered bs = getBoundInWorldCoords( fullExtent );
+        osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent );
+
+        //const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
+        //osg::BoundingSphered bs = getBoundInWorldCoords( fullExtent );
 
         float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
 
@@ -239,15 +266,15 @@ FeatureModelGraph::buildSubTiles(unsigned nextLevelIndex,
         << ", nextLOD = " << nextLOD
         << std::endl;
 
-    const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
+    //const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
 
     // make a paged LOD for each subtile:
     for( unsigned u = tileX; u < tileX+numTiles; ++u )
     {
         for( unsigned v = tileY; v < tileY+numTiles; ++v )
         {
-            GeoExtent subtileExtent = s_getTileExtent( nextLOD, u, v, fullExtent );
-            osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileExtent );
+            GeoExtent subtileFeatureExtent = s_getTileExtent( nextLOD, u, v, _usableFeatureExtent );
+            osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileFeatureExtent );
 
             std::stringstream buf;
             buf << _uid << "." << nextLevelIndex << "_" << u << "_" << v << ".osgearth_pseudo_fmg";
@@ -297,16 +324,14 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
     osg::Node* result = 0L;
 
     // todo: cache this value
-    const GeoExtent& fullExtent = _source->getFeatureProfile()->getExtent();
-    osg::BoundingSphered fullBound = getBoundInWorldCoords( fullExtent );
     
     if (_source->getFeatureProfile()->getTiled())
     {        
         unsigned int lod = levelIndex;
         GeoExtent tileExtent = 
             lod >= 0 ?
-            s_getTileExtent( levelIndex, tileX, tileY, fullExtent ) :
-        GeoExtent::INVALID;
+            s_getTileExtent( levelIndex, tileX, tileY, _usableFeatureExtent ) : GeoExtent::INVALID;
+
         osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent );
 
         float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
@@ -352,7 +377,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
 
         if ( level )
         {
-            unsigned lod = _options.levels()->chooseLOD( *level, fullBound.radius() );
+            unsigned lod = _options.levels()->chooseLOD( *level, _fullWorldBound.radius() );
 
             OE_DEBUG << LC 
                 << "Choose LOD " << lod << " for level " << levelIndex 
@@ -360,7 +385,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
 
             GeoExtent tileExtent = 
                 lod > 0 ?
-                s_getTileExtent( lod, tileX, tileY, fullExtent ) :
+                s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent ) :
                 GeoExtent::INVALID;
 
             osg::Node* geometry = build( *level, tileExtent, 0 );
@@ -374,7 +399,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
                 osg::ref_ptr<osg::Group> group = new osg::Group();
 
                 // calculate the LOD of the next level:
-                unsigned nextLOD = _options.levels()->chooseLOD( *nextLevel, fullBound.radius() );
+                unsigned nextLOD = _options.levels()->chooseLOD( *nextLevel, _fullWorldBound.radius() );
                 if ( nextLOD != ~0 )
                 {
                     buildSubTiles( levelIndex+1, lod, tileX, tileY, nextLevel, nextLOD, group.get() );
@@ -529,6 +554,17 @@ FeatureModelGraph::createNodeForStyle(const Style* style, const Query& query)
             _options.levels()->cropFeatures() == true ? 
             CropFilter::METHOD_CROPPING : CropFilter::METHOD_CENTROID );
         context = crop.push( workingSet, context );
+
+        // next, if the usable extent is less than the full extent (i.e. we had to crop the feature
+        // extent to fit on the map), calculate the extent of the features in this tile and 
+        // crop to the map extent if necessary. (Note, if cropFeatures was set to true, this is
+        // already done)
+        if ( _featureExtentClamped && _options.levels()->cropFeatures() == false )
+        {
+            context.extent() = _usableFeatureExtent;
+            CropFilter crop2( CropFilter::METHOD_CROPPING );
+            context = crop2.push( workingSet, context );
+        }
 
         if ( workingSet.size() > 0 )
         {

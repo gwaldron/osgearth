@@ -51,14 +51,18 @@ CropFilter::push( FeatureList& input, const FilterContext& context )
 
             Feature* feature = i->get();
             Geometry* featureGeom = feature->getGeometry();
-            if ( featureGeom )
+
+            if ( featureGeom && featureGeom->isValid() )
             {
                 Bounds bounds = featureGeom->getBounds();
-                osg::Vec3d centroid = bounds.center();
-                if ( extent.contains( centroid.x(), centroid.y() ) )
+                if ( bounds.isValid() )
                 {
-                    keepFeature = true;
-                    newExtent.expandToInclude( bounds );
+                    osg::Vec3d centroid = bounds.center();
+                    if ( extent.contains( centroid.x(), centroid.y() ) )
+                    {
+                        keepFeature = true;
+                        newExtent.expandToInclude( bounds );
+                    }
                 }
             }
 
@@ -82,11 +86,16 @@ CropFilter::push( FeatureList& input, const FilterContext& context )
 
             Feature* feature = i->get();
             Symbology::Geometry* featureGeom = feature->getGeometry();
-            if ( featureGeom )
+            if ( featureGeom && featureGeom->isValid() )
             {
                 // test for trivial acceptance:
                 const Bounds bounds = featureGeom->getBounds();
-                if ( extent.contains( bounds ) )
+                if ( !bounds.isValid() )
+                {
+                    //nop
+                }
+
+                else if ( extent.contains( bounds ) )
                 {
                     keepFeature = true;
                     newExtent.expandToInclude( bounds );
@@ -107,10 +116,12 @@ CropFilter::push( FeatureList& input, const FilterContext& context )
                     osg::ref_ptr<Geometry> croppedGeometry;
                     if ( featureGeom->crop( poly.get(), croppedGeometry ) )
                     {
-                        feature->setGeometry( croppedGeometry.get() );
-                        keepFeature = true;
-
-                        newExtent.expandToInclude( croppedGeometry->getBounds() );
+                        if ( croppedGeometry->isValid() )
+                        {
+                            feature->setGeometry( croppedGeometry.get() );
+                            keepFeature = true;
+                            newExtent.expandToInclude( croppedGeometry->getBounds() );
+                        }
                     }
                 }
             }

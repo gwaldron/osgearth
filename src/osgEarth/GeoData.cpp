@@ -51,34 +51,43 @@ osg::BoundingBoxImpl<osg::Vec3d>( xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX )
 }
 
 bool 
-Bounds::contains(double x, double y ) const {
-    return x >= xMin() && x <= xMax() && y >= yMin() && y <= yMax();
+Bounds::contains(double x, double y ) const
+{
+    return 
+        isValid() &&
+        x >= xMin() && x <= xMax() && y >= yMin() && y <= yMax();
 }
 
 bool
-Bounds::contains(const Bounds& rhs) const {
+Bounds::contains(const Bounds& rhs) const
+{
     return 
+        isValid() && rhs.isValid() && 
         xMin() <= rhs.xMin() && xMax() >= rhs.xMax() &&
         yMin() <= rhs.yMin() && yMax() >= rhs.yMax();
 }
 
 void
-Bounds::expandBy( double x, double y ) {
+Bounds::expandBy( double x, double y )
+{
     osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, 0 );
 }
 
 void
-Bounds::expandBy( double x, double y, double z ) {
+Bounds::expandBy( double x, double y, double z )
+{
     osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, z );
 }
 
 void
-Bounds::expandBy( const Bounds& rhs ) {
+Bounds::expandBy( const Bounds& rhs )
+{
     osg::BoundingBoxImpl<osg::Vec3d>::expandBy( rhs );
 }
 
 Bounds 
-Bounds::unionWith(const Bounds& rhs) const {
+Bounds::unionWith(const Bounds& rhs) const
+{
     if ( valid() && !rhs.valid() ) return *this;
     if ( !valid() && rhs.valid() ) return rhs;
 

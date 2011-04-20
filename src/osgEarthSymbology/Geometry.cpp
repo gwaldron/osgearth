@@ -295,6 +295,45 @@ Geometry::difference( const Polygon* diffPolygon, osg::ref_ptr<Geometry>& output
 #endif // OSGEARTH_HAVE_GEOS
 }
 
+osg::Vec3d
+Geometry::localize()
+{
+    osg::Vec3d offset;
+
+    Bounds bounds = getBounds();
+    if ( bounds.isValid() )
+    {      
+        osg::Vec2d center = bounds.center2d();
+        offset.set( center.x(), center.y(), 0 );
+
+        GeometryIterator i( this );
+        while( i.hasMore() )
+        {
+            Geometry* part = i.next();
+            for( Geometry::iterator j = part->begin(); j != part->end(); ++j )
+            {
+                *j = *j - offset;
+            }
+        }
+    }
+
+    return offset;
+}
+
+void
+Geometry::delocalize( const osg::Vec3d& offset )
+{
+    GeometryIterator i( this );
+    while( i.hasMore() )
+    {
+        Geometry* part = i.next();
+        for( Geometry::iterator j = part->begin(); j != part->end(); ++j )
+        {
+            *j = *j + offset;
+        }
+    }
+}
+
 //----------------------------------------------------------------------------
 
 PointSet::PointSet( const PointSet& rhs, const osg::CopyOp& op ) :

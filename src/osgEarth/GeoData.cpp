@@ -432,6 +432,9 @@ GeoExtent::toString() const
         buf << "INVALID";
     else
         buf << "MIN=" << _xmin << "," << _ymin << " MAX=" << _xmax << "," << _ymax;
+
+    buf << ", SRS=" << _srs->getName();
+
 	std::string bufStr;
 	bufStr = buf.str();
     return bufStr;

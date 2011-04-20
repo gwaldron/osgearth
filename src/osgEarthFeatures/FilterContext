@@ -121,6 +121,9 @@ namespace osgEarth { namespace Features
          */
         OptimizerHints& optimizerHints() { return _optimizerHints; }
 
+        /** Dump as a string */
+        std::string toString() const;
+
     protected:
         osg::ref_ptr<Session> _session;
         osg::ref_ptr<const FeatureProfile> _profile;

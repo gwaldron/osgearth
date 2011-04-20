@@ -123,9 +123,24 @@ namespace osgEarth { namespace Symbology
             const class Polygon* cropPolygon,
             osg::ref_ptr<Geometry>& output ) const;
 
+        /**
+         * Boolean difference - subtracts diffPolygon from this geometry, and put the
+         * result in output.
+         */
         bool difference(
-          const class Polygon* diffPolygon,
-          osg::ref_ptr<Geometry>& output ) const;
+            const class Polygon* diffPolygon,
+            osg::ref_ptr<Geometry>& output ) const;
+
+        /**
+         * Localizes this geometry relative to its centroid, and returns the localization
+         * offset.
+         */
+        osg::Vec3d localize();
+
+        /**
+         * Reverses a call the localize(), given the same offset returned by that method.
+         */
+        void delocalize( const osg::Vec3d& offset );
 
     public:
         virtual Type getType() const =0;

@@ -88,13 +88,6 @@ namespace osgEarth { namespace Features
         bool pushTextAnnotation( TextAnnotation* input, const FilterContext& context );
     };
 
-
-    OSGEARTHFEATURES_EXPORT osg::Geode*
-    createVolume(Symbology::Geometry* geom,
-                 double               offset,
-                 double               height,
-                 const FilterContext& context );
-
 } } // namespace osgEarth::Features
 
 #endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

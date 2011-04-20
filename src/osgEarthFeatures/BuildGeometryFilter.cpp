@@ -33,9 +33,10 @@
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
-
+#include <osgDB/WriteFile>
 #include <osg/Version>
 
+#define LC "[BuildGeometryFilter] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -140,13 +141,6 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         
         osg::PrimitiveSet::Mode primMode = osg::PrimitiveSet::POINTS;
 
-        Geometry::Type renderType = _geomTypeOverride.isSet() ? _geomTypeOverride.get() : part->getType();
-
-        //OE_NOTICE
-        //    << "BuildGeomFilter: part type = "
-        //    << Geometry::toString( part->getType() ) << ", renderType = "
-        //    << Geometry::toString( renderType ) << std::endl;
-
         const Style* myStyle = input->style().isSet() ? input->style()->get() : _style.get();
 
         osg::Vec4f color = osg::Vec4(1,1,1,1);
@@ -155,7 +149,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         bool setWidth = input->style().isSet(); // otherwise it will be set globally, we assume
         float width = 1.0f;
 
-        switch( renderType )
+        switch( part->getType() )
         {
         case Geometry::TYPE_POINTSET:
             {
@@ -231,7 +225,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
                 new osg::LineWidth( width ), osg::StateAttribute::ON );
         }
         
-        if ( renderType == Geometry::TYPE_POLYGON && part->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(part)->getHoles().size() > 0 )
+        if (part->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(part)->getHoles().size() > 0 )
         {
             Polygon* poly = static_cast<Polygon*>(part);
             int totalPoints = poly->getTotalPointCount();
@@ -245,9 +239,12 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
             {
                 Geometry* hole = h->get();
-                std::copy( hole->begin(), hole->end(), allPoints->begin() + offset );
-                osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, offset, hole->size() ) );
-                offset += hole->size();
+                if ( hole->isValid() )
+                {
+                    std::copy( hole->begin(), hole->end(), allPoints->begin() + offset );
+                    osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, offset, hole->size() ) );
+                    offset += hole->size();
+                }
             }
             osgGeom->setVertexArray( allPoints );
         }
@@ -261,15 +258,22 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
         // using TESS_TYPE_DRAWABLE.
 
-        if ( renderType == Geometry::TYPE_POLYGON && tessellatePolys )
+        if ( part->getType() == Geometry::TYPE_POLYGON && tessellatePolys )
         {
             osgUtil::Tessellator tess;
+            //tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_DRAWABLE );
+            //tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
             tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
             tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+
             tess.retessellatePolygons( *osgGeom );
+
+            // no worky
+            //osgUtil::IndexMeshVisitor imv;
+            //imv.makeMesh( *osgGeom );
         }
 
-        if ( context.isGeocentric() && renderType != Geometry::TYPE_POINTSET )
+        if ( context.isGeocentric() && part->getType() != Geometry::TYPE_POINTSET )
         {
             double threshold = osg::DegreesToRadians( *_maxAngle_deg );
 
@@ -280,10 +284,18 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
 
         // set the color array. We have to do this last, otherwise it screws up any modifications
         // make by the MeshSubdivider. No idea why. gw
-        osg::Vec4Array* colors = new osg::Vec4Array(1);
-        (*colors)[0] = color;
+        osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() );
+        for( unsigned c = 0; c < colors->size(); ++c )
+            (*colors)[c] = color;
         osgGeom->setColorArray( colors );
-        osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+        osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+
+        //osg::Vec4Array* colors = new osg::Vec4Array(1);
+        //(*colors)[0] = color;
+        //osgGeom->setColorArray( colors );
+        //osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        //osgGeom->setDataVariance( osg::Object::DYNAMIC );
 
         // add the part to the geode.
         _geode->addDrawable( osgGeom );
@@ -307,6 +319,9 @@ FilterContext
 BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
 {
     reset();
+
+    OE_NOTICE << LC 
+        << context.toString() << std::endl;
 
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
@@ -335,6 +350,7 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
             float size = 1.0;
             if (lineSymbol)
                 size = lineSymbol->stroke()->width().value();
+
             _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
             _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(size), osg::StateAttribute::ON );
 
@@ -342,7 +358,6 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
             if ( pointSymbol && pointSymbol->size().isSet() )
                 _geode->getOrCreateStateSet()->setAttribute( 
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
-
         }
 
         _result = _geode.release();
@@ -362,222 +377,4 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
     FilterContext outCx( context );
     outCx.setReferenceFrame( osg::Matrixd::identity() ); // clear the ref frame.
     return outCx;
-}
-
-
-
-static
-void tessellate( osg::Geometry* geom )
-{
-    osgUtil::Tessellator tess;
-    tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
-//    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-    tess.retessellatePolygons( *geom );
-}
-
-osg::Geode*
-osgEarth::Features::createVolume(Geometry*            geom,
-                                 double               offset,
-                                 double               height,
-                                 const FilterContext& context )
-{
-    if ( !geom ) return 0L;
-
-    int numRings = 0;
-
-    // start by offsetting the input data and counting the number of rings
-    {
-        GeometryIterator i( geom );
-        while( i.hasMore() )
-        {
-            Geometry* part = i.next();
-
-            if (offset != 0.0)
-            {
-                for( osg::Vec3dArray::iterator j = part->begin(); j != part->end(); j++ )
-                {
-                    if ( context.isGeocentric() )
-                    {
-                        osg::Vec3d world = context.toWorld( *j );
-                        // TODO: get the proper up vector; this is spherical.. or does it really matter for
-                        // stencil volumes?
-                        osg::Vec3d offset_vec = world;
-                        offset_vec.normalize();
-                        *j = context.toLocal( world + offset_vec * offset ); //(*j) += offset_vec * offset;
-                    }
-                    else
-                    {
-                        (*j).z() += offset;
-                    }
-                }
-            }
-
-            // in the meantime, count the # of closed geoms. We will need to know this in 
-            // order to pre-allocate the proper # of verts.
-            if ( part->getType() == Geometry::TYPE_POLYGON || part->getType() == Geometry::TYPE_RING )
-            {
-                numRings++;
-            }
-        }
-    }
-
-    // now, go thru and remove any coplanar segments from the geometry. The tesselator will
-    // not work include a vert connecting two colinear segments in the tesselation, and this
-    // will break the stenciling logic.
-#define PARALLEL_EPSILON 0.01
-    GeometryIterator i( geom );
-    while( i.hasMore() )
-    {
-        Geometry* part = i.next();
-        if ( part->size() >= 3 )
-        {
-            osg::Vec3d prevVec = part->front() - part->back();
-            prevVec.normalize();
-
-            for( osg::Vec3dArray::iterator j = part->begin(); part->size() >= 3 && j != part->end(); )
-            {
-                osg::Vec3d& p0 = *j;
-                osg::Vec3d& p1 = j+1 != part->end() ? *(j+1) : part->front();
-                osg::Vec3d vec = p1-p0; vec.normalize();
-
-                // if the vectors are essentially parallel, remove the extraneous vertex.
-                if ( (prevVec ^ vec).length() < PARALLEL_EPSILON )
-                {
-                    j = part->erase( j );
-                    //OE_NOTICE << "removed colinear segment" << std::endl;
-                }
-                else
-                {
-                    ++j;
-                    prevVec = vec;
-                }
-            }
-        }
-    }
-
-
-    const SpatialReference* srs = context.profile()->getSRS();
-
-    // total up all the points so we can pre-allocate the vertex arrays.
-    int num_cap_verts = geom->getTotalPointCount();
-    int num_wall_verts = 2 * (num_cap_verts + numRings); // add in numRings b/c we need to close each wall
-
-    osg::Geometry* walls = new osg::Geometry();
-    osg::Vec3Array* verts = new osg::Vec3Array( num_wall_verts );
-    walls->setVertexArray( verts );
-
-    osg::Geometry* top_cap = new osg::Geometry();
-    osg::Vec3Array* top_verts = new osg::Vec3Array( num_cap_verts );
-    top_cap->setVertexArray( top_verts );
-
-    osg::Geometry* bottom_cap = new osg::Geometry();
-    osg::Vec3Array* bottom_verts = new osg::Vec3Array( num_cap_verts );
-    bottom_cap->setVertexArray( bottom_verts );
-
-    int wall_vert_ptr = 0;
-    int top_vert_ptr = 0;
-    int bottom_vert_ptr = 0;
-
-    //double target_len = height;
-
-    // now generate the extruded geometry.
-    GeometryIterator k( geom );
-    while( k.hasMore() )
-    {
-        Geometry* part = k.next();
-
-        unsigned int wall_part_ptr = wall_vert_ptr;
-        unsigned int top_part_ptr = top_vert_ptr;
-        unsigned int bottom_part_ptr = bottom_vert_ptr;
-        double part_len = 0.0;
-
-        GLenum prim_type = part->getType() == Geometry::TYPE_POINTSET ? GL_LINES : GL_TRIANGLE_STRIP;
-
-        for( osg::Vec3dArray::const_iterator m = part->begin(); m != part->end(); ++m )
-        {
-            osg::Vec3d extrude_vec;
-
-            if ( srs )
-            {
-                osg::Vec3d m_world = context.toWorld( *m ); //*m * context.inverseReferenceFrame();
-                if ( context.isGeocentric() )
-                {
-                    osg::Vec3d p_vec = m_world; // todo: not exactly right; spherical
-
-                    osg::Vec3d unit_vec = p_vec; 
-                    unit_vec.normalize();
-                    p_vec = p_vec + unit_vec*height;
-
-                    extrude_vec = context.toLocal( p_vec ); //p_vec * context.referenceFrame();
-                }
-                else
-                {
-                    extrude_vec.set( m_world.x(), m_world.y(), height );
-                    extrude_vec = context.toLocal( extrude_vec ); //extrude_vec * context.referenceFrame();
-                }
-            }
-            else
-            {
-                extrude_vec.set( m->x(), m->y(), height );
-            }
-
-            (*top_verts)[top_vert_ptr++] = extrude_vec;
-            (*bottom_verts)[bottom_vert_ptr++] = *m;
-             
-            part_len += wall_vert_ptr > wall_part_ptr?
-                (extrude_vec - (*verts)[wall_vert_ptr-2]).length() :
-                0.0;
-
-            int p;
-
-            p = wall_vert_ptr++;
-            (*verts)[p] = extrude_vec;
-
-            p = wall_vert_ptr++;
-            (*verts)[p] = *m;
-        }
-
-        // close the wall if it's a ring/poly:
-        if ( part->getType() == Geometry::TYPE_RING || part->getType() == Geometry::TYPE_POLYGON )
-        {
-            part_len += wall_vert_ptr > wall_part_ptr?
-                ((*verts)[wall_part_ptr] - (*verts)[wall_vert_ptr-2]).length() :
-                0.0;
-
-            int p;
-
-            p = wall_vert_ptr++;
-            (*verts)[p] = (*verts)[wall_part_ptr];
-
-            p = wall_vert_ptr++;
-            (*verts)[p] = (*verts)[wall_part_ptr+1];
-        }
-
-        walls->addPrimitiveSet( new osg::DrawArrays(
-            prim_type,
-            wall_part_ptr, wall_vert_ptr - wall_part_ptr ) );
-
-        top_cap->addPrimitiveSet( new osg::DrawArrays(
-            osg::PrimitiveSet::LINE_LOOP,
-            top_part_ptr, top_vert_ptr - top_part_ptr ) );
-
-        // reverse the bottom verts so the front face is down:
-        std::reverse( bottom_verts->begin()+bottom_part_ptr, bottom_verts->begin()+bottom_vert_ptr );
-
-        bottom_cap->addPrimitiveSet( new osg::DrawArrays(
-            osg::PrimitiveSet::LINE_LOOP,
-            bottom_part_ptr, bottom_vert_ptr - bottom_part_ptr ) );
-    }
-
-    // build solid surfaces for the caps:
-    tessellate( top_cap );
-    tessellate( bottom_cap );
-
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( walls );
-    geode->addDrawable( top_cap );
-    geode->addDrawable( bottom_cap );
-
-    return geode;
 }

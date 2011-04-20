@@ -52,27 +52,10 @@ ConvertTypeFilter::push( Feature* input, const FilterContext& context )
     if ( input->getGeometry()->getComponentType() == _toType )
         return true;
 
-    bool success = true;
-
     Geometry* geom = input->getGeometry()->cloneAs( _toType );
     input->setGeometry( geom );
 
-    //GeometryIterator i( input->getGeometry() );
-    //i.traversePolygonHoles() = false;
-    //i.traverseMultiGeometry() = false;
-
-    //while( i.hasMore() )
-    //{
-    //    Geometry* part = i.next();
-    //    if ( _toType != part->getComponentType() )
-    //    {
-    //        part = part->cloneAs( _toType );
-    //        if ( part )
-    //            input->setGeometry( part );
-    //    }
-    //}
-
-    return success;
+    return true;
 }
 
 

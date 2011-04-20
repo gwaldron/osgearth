@@ -73,3 +73,19 @@ FilterContext::toWorld( Geometry* geom ) const
         }
     }
 }
+
+std::string
+FilterContext::toString() const
+{
+    std::stringstream buf;
+
+    buf << std::fixed
+        << "CONTEXT: ["
+        << "profile extent = "  << profile()->getExtent().toString()
+        << ", working extent = " << extent()->toString()
+        << ", geocentric = "     << osgEarth::toString(_isGeocentric)
+        << "]";
+
+    std::string str = buf.str();
+    return str;
+}

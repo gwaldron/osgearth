@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarthSymbology/MeshConsolidator>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/ClusterCullingCallback>
@@ -93,10 +94,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     osg::Vec4Array* colors = new osg::Vec4Array( numVerts );
     walls->setColorArray( colors );
     walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-
-    //osg::Vec3Array* normals = new osg::Vec3Array( numVerts );
-    //walls->setNormalArray( normals );
-    //walls->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
     osg::Vec3Array* topVerts = NULL;
     osg::Vec4Array* topColors = NULL;
@@ -388,6 +385,12 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
 
                 // texture the rooflines if necessary
                 //applyOverlayTexturing( rooflines.get(), input, env );
+                
+                // reorganize the drawable into a single triangle set.
+                MeshConsolidator::run( *rooflines.get() );
+
+                // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
+                rooflines->setDataVariance( osg::Object::DYNAMIC );
             }
 
             //applyFragmentName( new_fragment, input, env );

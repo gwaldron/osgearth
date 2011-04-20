@@ -22,6 +22,7 @@
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarthSymbology/MeshConsolidator>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
@@ -268,9 +269,12 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
 
             tess.retessellatePolygons( *osgGeom );
 
-            // no worky
-            //osgUtil::IndexMeshVisitor imv;
-            //imv.makeMesh( *osgGeom );
+            // the tessellator results in a collection of trifans, strips, etc. This step will
+            // consolidate those into one (or more if necessary) GL_TRIANGLES primitive.
+            MeshConsolidator::run( *osgGeom );
+
+            // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
+            //osgGeom->setDataVariance( osg::Object::DYNAMIC );
         }
 
         if ( context.isGeocentric() && part->getType() != Geometry::TYPE_POINTSET )
@@ -284,18 +288,19 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
 
         // set the color array. We have to do this last, otherwise it screws up any modifications
         // make by the MeshSubdivider. No idea why. gw
-        osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() );
-        for( unsigned c = 0; c < colors->size(); ++c )
-            (*colors)[c] = color;
-        osgGeom->setColorArray( colors );
-        osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-        //osg::Vec4Array* colors = new osg::Vec4Array(1);
-        //(*colors)[0] = color;
+        //osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() );
+        //for( unsigned c = 0; c < colors->size(); ++c )
+        //    (*colors)[c] = color;
         //osgGeom->setColorArray( colors );
-        //osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+        //osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-        //osgGeom->setDataVariance( osg::Object::DYNAMIC );
+        // NOTE! per-vertex colors makes the optimizer destroy the geometry....
+
+        osg::Vec4Array* colors = new osg::Vec4Array(1);
+        (*colors)[0] = color;
+        osgGeom->setColorArray( colors );
+        osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         // add the part to the geode.
         _geode->addDrawable( osgGeom );

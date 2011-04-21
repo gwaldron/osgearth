@@ -74,8 +74,7 @@ FeatureProfile::setProfile( const osgEarth::Profile* profile )
 /****************************************************************************/
 
 Feature::Feature( FeatureID fid ) :
-_fid( fid ),
-_style( new Style() )
+_fid( fid )
 {
     //NOP
 }

@@ -54,7 +54,7 @@ namespace osgEarth { namespace Features
 
     public:
         /** Construct a new sub-model filter that will operate on the given style */
-        SubstituteModelFilter( const Style* style );
+        SubstituteModelFilter( const Style& style =Style() );
 
         /** Whether to cluster all the model instances into a single geode. Default is false. */
         void setClustering( bool value ) { _cluster = value; }
@@ -72,7 +72,7 @@ namespace osgEarth { namespace Features
         osg::Node* getNode() const { return _result.get(); }
 
     protected:
-        osg::ref_ptr<const Style> _style;
+        Style                     _style;
         osg::ref_ptr<osg::Node>   _result;
         bool                      _cluster;
         osg::Matrixd              _modelMatrix;

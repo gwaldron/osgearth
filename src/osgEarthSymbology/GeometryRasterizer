@@ -33,7 +33,7 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT GeometryRasterizer
     {
     public:
-        GeometryRasterizer( int width, int height, Style* style =0L );
+        GeometryRasterizer( int width, int height, const Style& style =Style() );
 
         /** draws the geometry to the image. */
         void draw( const Geometry* geom, const osg::Vec4f& color =osg::Vec4f(1,1,1,1) );
@@ -42,8 +42,8 @@ namespace osgEarth { namespace Symbology
         osg::Image* finalize();
 
     private:
-        osg::ref_ptr<osg::Image> _image;
-        osg::ref_ptr<Style> _style;
+        osg::ref_ptr<osg::Image>      _image;
+        Style                         _style;
         osg::ref_ptr<osg::Referenced> _state;
     };
 

@@ -41,7 +41,7 @@ public:
     /** Compiles a collection of features into an OSG scene graph. */
     osg::Node* compile(
         FeatureCursor*        input,
-        const Style*          style,
+        const Style&          style,
         const FilterContext&  context);
 
 protected:

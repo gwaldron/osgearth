@@ -116,7 +116,7 @@ namespace osgEarth { namespace Features
          */
         virtual bool createOrUpdateNode(
             FeatureCursor*            cursor,
-            const Style*              style,
+            const Style&              style,
             const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node ) =0;
     };

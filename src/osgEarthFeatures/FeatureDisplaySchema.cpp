@@ -39,12 +39,11 @@ _maxRange( maxRange )
     //nop
 }
 
-FeatureLevel::FeatureLevel( float minRange, float maxRange, const Query& query ) :
+FeatureLevel::FeatureLevel( float minRange, float maxRange, const StyleSelector& oneSelector ) :
 _minRange( minRange ),
-_maxRange( maxRange ),
-_query   ( query )
+_maxRange( maxRange )
 {
-    //nop
+    _selectors.push_back( oneSelector );
 }
 
 void
@@ -54,7 +53,12 @@ FeatureLevel::fromConfig( const Config& conf )
         _minRange = conf.value( "min_range", 0.0f );
     if ( conf.hasValue( "max_range" ) )
         _maxRange = conf.value( "max_range", FLT_MAX );
-    conf.getObjIfSet( "query", _query );
+
+    const ConfigSet selectorsConf = conf.children( "selector" );
+    for( ConfigSet::const_iterator i = selectorsConf.begin(); i != selectorsConf.end(); ++i )
+    {
+        _selectors.push_back( StyleSelector(*i) );
+    }
 }
 
 Config
@@ -63,7 +67,12 @@ FeatureLevel::getConfig() const
     Config conf( "level" );
     conf.add( "min_range", toString(_minRange) );
     conf.add( "max_range", toString(_maxRange) );
-    conf.addObjIfSet( "query", _query );
+
+    for( StyleSelectorVector::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
+    {
+        conf.addChild( (*i).getConfig() );
+    }
+
     return conf;
 }
 

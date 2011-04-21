@@ -45,7 +45,7 @@ namespace
 
         bool createOrUpdateNode(       
                 FeatureCursor*            features,
-                const Style*              style,
+                const Style&              style,
                 const FilterContext&      context,
                 osg::ref_ptr<osg::Node>&  node )
         {

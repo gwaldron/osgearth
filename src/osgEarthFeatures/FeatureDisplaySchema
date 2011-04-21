@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Style>
 #include <osg/Geode>
 #include <vector>
 
@@ -38,19 +39,25 @@ namespace osgEarth { namespace Features
     public:
         FeatureLevel( const Config& config );
         FeatureLevel( float minRange, float maxRange );
-        FeatureLevel( float minRange, float maxRange, const Query& query );
+        //FeatureLevel( float minRange, float maxRange, const Query& query );
+        FeatureLevel( float minRange, float maxRange, const StyleSelector& oneSelector );
 
         float minRange() const { return _minRange; }
         float maxRange() const { return _maxRange; }
-        const optional<Query> query() const { return _query; }
+        //const optional<Query> query() const { return _query; }
+
+        const StyleSelectorVector& selectors() const { return _selectors; }
 
     public:
         Config getConfig() const;
 
     protected:
         void fromConfig( const Config& conf );
+
         float _minRange, _maxRange;
-        optional<Query> _query;
+        StyleSelectorVector _selectors;
+        //optional<StyleSelector> _selector;
+        //optional<Query> _query;
     };
 
     /**

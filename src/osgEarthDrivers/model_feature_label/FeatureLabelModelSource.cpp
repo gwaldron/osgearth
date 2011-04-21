@@ -51,7 +51,7 @@ namespace
         //override
         bool createOrUpdateNode(
             FeatureCursor*            cursor,
-            const Symbology::Style*   style,
+            const Style&              style,
             const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node )
         {
@@ -74,7 +74,7 @@ namespace
             cx = xform.push( featureList, cx );        
             
             // Make some labels
-            osg::ref_ptr<const TextSymbol> textSymbol = style->getSymbol<TextSymbol>();
+            osg::ref_ptr<const TextSymbol> textSymbol = style.getSymbol<TextSymbol>();
             //Use a default symbol if we have no text symbol
             if (!textSymbol) textSymbol = new TextSymbol();
             osg::Node* labels = NULL;

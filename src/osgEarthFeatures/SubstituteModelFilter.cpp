@@ -41,7 +41,7 @@ namespace
 
 //------------------------------------------------------------------------
 
-SubstituteModelFilter::SubstituteModelFilter( const Style* style ) :
+SubstituteModelFilter::SubstituteModelFilter( const Style& style ) :
 _style( style ),
 _cluster( false )
 {
@@ -194,12 +194,12 @@ SubstituteModelFilter::push(FeatureList&         features,
         return context;
     }
 
-    if ( !_style.valid() ) {
-        OE_WARN << LC << "No style supplied; cannot process features" << std::endl;
+    if ( _style.empty() ) { //!_style.valid() ) {
+        OE_WARN << LC << "Empty style; cannot process features" << std::endl;
         return context;
     }
 
-    const MarkerSymbol* symbol = _style->getSymbol<MarkerSymbol>();
+    const MarkerSymbol* symbol = _style.getSymbol<MarkerSymbol>();
     if ( !symbol ) {
         OE_WARN << LC << "No MarkerSymbol found in style; cannot process feautres" << std::endl;
         return context;

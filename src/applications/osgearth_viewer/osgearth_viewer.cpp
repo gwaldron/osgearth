@@ -99,7 +99,7 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
             int index = (int)ea.getKey() - (int)'1';
             if ( index >= 0 && index < (int)_viewpoints.size() )
             {
-                _manip->setViewpoint( _viewpoints[index], 3.0 );
+                _manip->setViewpoint( _viewpoints[index], 4.5 );
             }
             else if ( ea.getKey() == 'v' )
             {

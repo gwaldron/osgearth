@@ -343,7 +343,7 @@ namespace
         //override
         bool createOrUpdateNode(
             FeatureCursor*            cursor,
-            const Symbology::Style*   style,
+            const Style&              style,
             const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node )
         {
@@ -403,7 +403,7 @@ namespace
             // If the geometry is lines, we need to buffer them before they will work with stenciling
             if ( hasLines )
             {
-                const LineSymbol* line = style->getSymbol<LineSymbol>();
+                const LineSymbol* line = style.getSymbol<LineSymbol>();
                 if (line)
                 {
                     BufferFilter buffer;
@@ -470,7 +470,7 @@ namespace
                 }
 
                 osgEarth::Symbology::StencilVolumeNode* styleNode = 0L;
-                bool styleNodeAlreadyCreated = buildData->getStyleNode(style->getName(), styleNode);
+                bool styleNodeAlreadyCreated = buildData->getStyleNode(style.getName(), styleNode);
                 if ( _options.showVolumes() == true )
                 {
                     result = volumes;
@@ -484,27 +484,27 @@ namespace
                         if ( _options.mask() == true )
                             OE_INFO << LC << "Creating MASK LAYER for feature group" << std::endl;
                         else
-                            OE_INFO << LC << "Creating new style group for '" << style->getName() << "'" << std::endl;
+                            OE_INFO << LC << "Creating new style group for '" << style.getName() << "'" << std::endl;
 
                         styleNode = new osgEarth::Symbology::StencilVolumeNode( *_options.mask(), *_options.inverted() );
                         if ( _options.mask() == false )
                         {
                             osg::Vec4f maskColor = osg::Vec4(1,1,0,1);
-                            if (hasLines && style->getSymbol<LineSymbol>())
+                            if (hasLines && style.getSymbol<LineSymbol>())
                             {
-                                const LineSymbol* line = style->getSymbol<LineSymbol>();
+                                const LineSymbol* line = style.getSymbol<LineSymbol>();
                                 maskColor = line->stroke()->color();
                             } 
                             else
                             {
-                                const PolygonSymbol* poly = style->getSymbol<PolygonSymbol>();
+                                const PolygonSymbol* poly = style.getSymbol<PolygonSymbol>();
                                 if (poly)
                                     maskColor = poly->fill()->color();
                             }
                             styleNode->addChild( createColorNode(maskColor) );
                         }
                         buildData->_renderBin = styleNode->setBaseRenderBin( buildData->_renderBin );
-                        buildData->_styleGroups.push_back( BuildData::StyleGroup( style->getName(), styleNode ) );
+                        buildData->_styleGroups.push_back( BuildData::StyleGroup( style.getName(), styleNode ) );
                     }
                 
                     styleNode->addVolumes( volumes );

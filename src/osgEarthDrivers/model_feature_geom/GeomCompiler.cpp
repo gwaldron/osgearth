@@ -39,7 +39,7 @@ _options( options )
 
 osg::Node*
 GeomCompiler::compile(FeatureCursor*        cursor,
-                      const Style*          style,
+                      const Style&          style,
                       const FilterContext&  context)
 
 {
@@ -48,8 +48,8 @@ GeomCompiler::compile(FeatureCursor*        cursor,
         return 0L;
     }
 
-    if ( !style ) {
-        OE_WARN << LC << "Valid style required" << std::endl;
+    if ( style.empty() ) {
+        OE_WARN << LC << "Non-empty style required" << std::endl;
         return 0L;
     }
 
@@ -71,12 +71,12 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     bool localize = mi.isGeocentric() && workingExtent.width() < 180.0;
 
     // go through the Style and figure out which filters to use.
-    const MarkerSymbol*    marker    = style->getSymbol<MarkerSymbol>();
-    const PointSymbol*     point     = style->getSymbol<PointSymbol>();
-    const LineSymbol*      line      = style->getSymbol<LineSymbol>();
-    const PolygonSymbol*   polygon   = style->getSymbol<PolygonSymbol>();
-    const ExtrusionSymbol* extrusion = style->getSymbol<ExtrusionSymbol>();
-    const AltitudeSymbol*  altitude  = style->getSymbol<AltitudeSymbol>();
+    const MarkerSymbol*    marker    = style.getSymbol<MarkerSymbol>();
+    const PointSymbol*     point     = style.getSymbol<PointSymbol>();
+    const LineSymbol*      line      = style.getSymbol<LineSymbol>();
+    const PolygonSymbol*   polygon   = style.getSymbol<PolygonSymbol>();
+    const ExtrusionSymbol* extrusion = style.getSymbol<ExtrusionSymbol>();
+    const AltitudeSymbol*  altitude  = style.getSymbol<AltitudeSymbol>();
     
     // transform the features into the map profile
     TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   

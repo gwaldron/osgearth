@@ -60,8 +60,8 @@ namespace
 }
 
 
-BuildGeometryFilter::BuildGeometryFilter( const Style* style ) :
-_style( style ? style : new Style() ),
+BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
+_style( style ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
 _maxAngle_deg( 5.0 ),
 _mergeGeometry( false )
@@ -102,7 +102,7 @@ BuildGeometryFilter::pushTextAnnotation( TextAnnotation* anno, const FilterConte
     osg::Vec4f textColor(1,1,1,1);
     osg::Vec4f haloColor(0,0,0,1);
 
-    const TextSymbol* textSymbolizer = getStyle()->getSymbol<TextSymbol>();
+    const TextSymbol* textSymbolizer = getStyle().getSymbol<TextSymbol>();
     if ( textSymbolizer )
     {
         textColor = textSymbolizer->fill()->color();
@@ -142,7 +142,8 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         
         osg::PrimitiveSet::Mode primMode = osg::PrimitiveSet::POINTS;
 
-        const Style* myStyle = input->style().isSet() ? input->style()->get() : _style.get();
+        const Style& myStyle = input->style().isSet() ? *input->style() : _style;
+        //const Style* myStyle = input->style().isSet() ? input->style()->get() : _style.get();
 
         osg::Vec4f color = osg::Vec4(1,1,1,1);
         bool tessellatePolys = true;
@@ -156,7 +157,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasPoints = true;
                 primMode = osg::PrimitiveSet::POINTS;
-                const PointSymbol* point = myStyle->getSymbol<PointSymbol>();
+                const PointSymbol* point = myStyle.getSymbol<PointSymbol>();
                 if (point)
                 {
                     color = point->fill()->color();
@@ -168,7 +169,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasLines = true;
                 primMode = osg::PrimitiveSet::LINE_STRIP;
-                const LineSymbol* lineSymbol = myStyle->getSymbol<LineSymbol>();
+                const LineSymbol* lineSymbol = myStyle.getSymbol<LineSymbol>();
                 if (lineSymbol)
                 {
                     color = lineSymbol->stroke()->color();
@@ -181,7 +182,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             {
                 _hasLines = true;
                 primMode = osg::PrimitiveSet::LINE_LOOP;
-                const LineSymbol* lineSymbol = myStyle->getSymbol<LineSymbol>();
+                const LineSymbol* lineSymbol = myStyle.getSymbol<LineSymbol>();
                 if (lineSymbol)
                 {
                     color = lineSymbol->stroke()->color();
@@ -193,7 +194,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         case Geometry::TYPE_POLYGON:
             {
                 primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-                const PolygonSymbol* poly = myStyle->getSymbol<PolygonSymbol>();
+                const PolygonSymbol* poly = myStyle.getSymbol<PolygonSymbol>();
                 if (poly)
                 {
                     _hasPolygons = true;
@@ -203,7 +204,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
                 {
                     // if we have a line symbol and no polygon symbol, draw as an outline.
                     _hasLines = true;
-                    const LineSymbol* line = myStyle->getSymbol<LineSymbol>();
+                    const LineSymbol* line = myStyle.getSymbol<LineSymbol>();
                     if ( line )
                     {
                         color = line->stroke()->color();
@@ -348,10 +349,10 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
 
     if ( ok )
     {
-        if ( _style.valid() && _geode.valid() )
+        if ( !_style.empty() && _geode.valid() )
         {
             // could optimize this to only happen is lines or points were created ..
-            const LineSymbol* lineSymbol = _style->getSymbol<LineSymbol>();
+            const LineSymbol* lineSymbol = _style.getSymbol<LineSymbol>();
             float size = 1.0;
             if (lineSymbol)
                 size = lineSymbol->stroke()->width().value();
@@ -359,7 +360,7 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
             _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
             _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(size), osg::StateAttribute::ON );
 
-            const PointSymbol* pointSymbol = _style->getSymbol<PointSymbol>();
+            const PointSymbol* pointSymbol = _style.getSymbol<PointSymbol>();
             if ( pointSymbol && pointSymbol->size().isSet() )
                 _geode->getOrCreateStateSet()->setAttribute( 
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );

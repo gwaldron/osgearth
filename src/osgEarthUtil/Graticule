@@ -91,7 +91,7 @@ namespace osgEarth { namespace Util
         osg::observer_ptr<const Map> _map;
         std::vector<Level> _levels;
         osg::Vec4f _textColor;
-        osg::ref_ptr<Style> _lineStyle;
+        Style _lineStyle;
 
         osg::Node* createGridLevel( unsigned int levelNum ) const;
         osg::Node* createTextLevel( unsigned int levelNum ) const;

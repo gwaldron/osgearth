@@ -303,10 +303,7 @@ namespace
 void
 Graticule::setLineColor( const osg::Vec4f& color )
 {
-    LineSymbol* symbol = new LineSymbol();
-    symbol->stroke()->color() = color;
-    _lineStyle = new Style();
-    _lineStyle->addSymbol( symbol );
+    _lineStyle.getOrCreateSymbol<LineSymbol>()->stroke()->color() = color;
 }
 
 osg::Node*
@@ -370,7 +367,7 @@ Graticule::createGridLevel( unsigned int levelNum ) const
 
             osg::ref_ptr<osg::Node> output;
             BuildGeometryFilter bg;
-            bg.setStyle( _lineStyle.get() );
+            bg.setStyle( _lineStyle );
             cx = bg.push( features, cx );
             output = bg.getNode();
 

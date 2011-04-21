@@ -83,12 +83,11 @@ int main(int argc, char** argv)
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
-    Style* style = new Style;
+    Style style;
 
-    LineSymbol* ls = new LineSymbol;
+    LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
     ls->stroke()->width() = 3.0f;
-    style->addSymbol(ls);
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNodeOptions mapNodeOptions;

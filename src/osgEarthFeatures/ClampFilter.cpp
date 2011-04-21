@@ -44,13 +44,14 @@ ClampFilter::push( FeatureList& features, const FilterContext& cx )
     }
 
     // the map against which we'll be doing elevation clamping
-    const MapFrame& map = session->getMap();
-    const SpatialReference* mapSRS = map.getProfile()->getSRS();
+    MapFrame mapf = session->createMapFrame( Map::ELEVATION_LAYERS );
+
+    const SpatialReference* mapSRS     = mapf.getProfile()->getSRS();
     const SpatialReference* featureSRS = cx.profile()->getSRS();
-    bool isGeocentric = map.getMapInfo().isGeocentric();
+    bool isGeocentric = session->getMapInfo().isGeocentric();
 
     // establish an elevation query interface based on the features' SRS.
-    ElevationQuery eq( session->getMap() );
+    ElevationQuery eq( mapf );
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {

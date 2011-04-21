@@ -38,6 +38,7 @@ _origType( rhs._origType ),
 _origData( rhs._origData ),
 _url     ( rhs._url )
 {
+    //nop
 }
 
 void Style::addSymbol(Symbol* symbol)
@@ -215,15 +216,22 @@ StyleSheet::removeStyle( const std::string& name )
 }
 
 bool
-StyleSheet::getStyle( const std::string& name, Style& out_style ) const
+StyleSheet::getStyle( const std::string& name, Style& out_style, bool fallBackOnDefault ) const
 {
     StyleMap::const_iterator i = _styles.find( name );
     if ( i != _styles.end() ) {
         out_style = i->second;
         return true;
     }
+    else if ( fallBackOnDefault && name.empty() && _styles.size() == 1 )
+    {
+        out_style = _styles.begin()->second;
+        return true;
+    }
     else
+    {
         return false;
+    }
 }
 
 bool

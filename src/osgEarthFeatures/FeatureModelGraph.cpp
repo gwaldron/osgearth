@@ -147,7 +147,7 @@ _session( session )
         stateSet->setMode( GL_LIGHTING, *_options.enableLighting() ? 1 : 0 );
     
     // Calculate the usable extent (in both feature and map coordinates) and bounds.
-    const Profile* mapProfile = session->getMap().getProfile();
+    const Profile* mapProfile = session->getMapInfo().getProfile();
 
     // the part of the feature extent that will fit on the map (in map coords):
     _usableMapExtent = mapProfile->clampAndTransformExtent( 
@@ -200,7 +200,7 @@ FeatureModelGraph::getBoundInWorldCoords( const GeoExtent& extent ) const
     corner.x() = workingExtent.xMin();
     corner.y() = workingExtent.yMin();
 
-    if ( _session->getMap().getMapInfo().isGeocentric() )
+    if ( _session->getMapInfo().isGeocentric() )
     {
         workingExtent.getSRS()->transformToECEF( center, center );
         workingExtent.getSRS()->transformToECEF( corner, corner );

@@ -87,7 +87,9 @@ namespace
 //----------------------------------------------------------------------------
 
 Session::Session( const Map* map ) :
-_mapFrame( map )
+osg::Referenced( true ),
+_map(map),
+_mapInfo(map)
 {
     //nop
 }
@@ -102,6 +104,12 @@ std::string
 Session::resolveURI( const std::string& inputURI ) const
 {
     return osgEarth::getFullPath( _referenceURI, inputURI );
+}
+
+MapFrame
+Session::createMapFrame( Map::ModelParts parts ) const
+{
+    return MapFrame( _map, parts );
 }
 
 void

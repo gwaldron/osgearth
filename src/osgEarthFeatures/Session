@@ -70,12 +70,12 @@ namespace osgEarth { namespace Features
         /**
          * Gets the underlying map (frame) interface in this session
          */
-        const MapFrame& getMap() const { return _mapFrame; }
+        MapFrame createMapFrame( Map::ModelParts parts =Map::TERRAIN_LAYERS ) const;
 
         /**
          * Gets the map information backing up this session.
          */
-        const MapInfo& getMapInfo() const { return _mapFrame.getMapInfo(); }
+        const MapInfo& getMapInfo() const { return _mapInfo; }
 
         /**
          * Sets the user-defined build data for this session
@@ -91,7 +91,8 @@ namespace osgEarth { namespace Features
 
         void parseMarker(const std::string& marker, std::string& url, bool &isImage) const;
 
-        MapFrame    _mapFrame;
+        osg::ref_ptr<const Map> _map;
+        MapInfo _mapInfo;
         std::string _referenceURI;
 
         typedef std::map<std::string, osg::ref_ptr<osg::Node> > ModelMap;

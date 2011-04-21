@@ -65,16 +65,6 @@ namespace osgEarth { namespace Features
             Session*                         session );
 
         /**
-         * Creates or update feature node data.
-         *
-         * @param session
-         *      Shared session data for all feature sets in this graph
-         * @param styles
-         *      Styles and selectors to use to render the feature data
-         */
-        //void update( Session* session, const StyleSheet& styles );
-
-        /**
          * Loads and returns a subnode. Used internally for paging.
          */
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );

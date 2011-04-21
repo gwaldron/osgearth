@@ -417,6 +417,11 @@ namespace osgEarth
             : _profile( map->getProfile() ),
               _isGeocentric( map->isGeocentric() ),
               _isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ) { }
+
+        MapInfo( const MapInfo& rhs )
+            : _profile( rhs._profile ),
+              _isGeocentric( rhs._isGeocentric ),
+              _isCube( rhs._isCube ) { }              
         
         const Profile* getProfile() const { return _profile; }
 

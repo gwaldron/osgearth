@@ -326,7 +326,7 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
 {
     reset();
 
-    OE_NOTICE << LC 
+    OE_DEBUG << LC 
         << context.toString() << std::endl;
 
     bool ok = true;

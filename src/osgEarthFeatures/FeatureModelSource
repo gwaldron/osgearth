@@ -119,6 +119,15 @@ namespace osgEarth { namespace Features
             const Style&              style,
             const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node ) =0;
+
+        /**
+         * Creates a group that will contain all the geometry corresponding to a
+         * given style. The subclass has the option of overriding this in order to create
+         * a custom implementation.
+         */
+        virtual osg::Group* getOrCreateStyleGroup(
+            const Style& style,
+            Session*     session ) { return new osg::Group(); }
     };
 
     /**
@@ -157,47 +166,6 @@ namespace osgEarth { namespace Features
 
         /** Creates an implementation-specific data object to be passed to buildNodeForStyle */
         virtual osg::Referenced* createBuildData() { return NULL; }     
-
-    protected:
-
-#if 0
-        /**
-         * Creates OSG graph(s) representing the specified feature list.
-         *
-         * @param style
-         *      Styling information for the feature geometry
-         * @param features
-         *      Features to render
-         * @param buildData
-         *      Implementation-specific build data (from createBuildData)
-         * @param out_newNode 
-         *      Populate this field with a pointer to the new node created by this method.
-         *      This may be the same as the node returned by the method. If you do NOT
-         *      return the node, that means that the method added the node to the scene
-         *      graph itself (presumably by adding it to a group that it returned during
-         *      a previous invocation).
-         *
-         * @return Node to add to the scene graph.
-         */
-        virtual osg::Node* renderFeaturesForStyle(
-            const Symbology::Style* style,
-            FeatureList& features,
-            osg::Referenced* buildData,
-            osg::Node** out_newNode =0L ) { return 0L; }
-
-
-    private:   
-        
-        /** Creates an OSG graph containing objects rendered with the provided style. The model 
-            source calls this once for each style class associated with this model source. This
-            method will also grid the input features into cells if necessary, calling
-            renderStyleCell() for each cell. */
-        osg::Group* gridAndRenderFeaturesForStyle(
-            const Symbology::Style* style,
-            const Symbology::Query& query,
-            osg::Referenced* buildData );
-
-#endif
 
     public: 
 

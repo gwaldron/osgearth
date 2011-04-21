@@ -524,9 +524,15 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 
                 // note: gridding is not supported for embedded styles.
                 osg::ref_ptr<osg::Node> node;
+
+                osg::Group* styleGroup = _factory->getOrCreateStyleGroup(*feature->style(), _session.get());
+                if ( !group->containsNode( styleGroup ) )
+                    group->addChild( styleGroup );                
+
                 if ( _factory->createOrUpdateNode( cursor, *feature->style(), context, node ) )
                 {
-                    group->addChild( node );
+                    if ( node.valid() )
+                        styleGroup->addChild( node );
                 }
             }
         }
@@ -552,7 +558,7 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 
                 // then create the node.
                 osg::Group* styleGroup = createNodeForStyle( combinedStyle, combinedQuery );
-                if ( styleGroup )
+                if ( styleGroup && !group->containsNode(styleGroup) )
                     group->addChild( styleGroup );
             }
         }
@@ -567,7 +573,7 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
                 _styles.getDefaultStyle( combinedStyle );
 
             osg::Group* styleGroup = createNodeForStyle( combinedStyle, baseQuery );
-            if ( styleGroup )
+            if ( styleGroup && !group->containsNode(styleGroup) )
                 group->addChild( styleGroup );
         }
     }
@@ -624,64 +630,68 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
 
             osg::ref_ptr<FeatureCursor> newCursor = new FeatureListCursor(workingSet);
 
-            if ( _factory->createOrUpdateNode( newCursor.get(), style, context, node ) && node.valid() )
+            if ( _factory->createOrUpdateNode( newCursor.get(), style, context, node ) )
             {
                 if ( !styleGroup )
-                    styleGroup = new osg::Group();
+                    styleGroup = _factory->getOrCreateStyleGroup( style, _session.get() );
 
-                styleGroup->addChild( node.get() );
+                // if it returned a node, add it. (it doesn't necessarily have to)
+                if ( node.valid() )
+                    styleGroup->addChild( node.get() );
             }
+        }
 
-            // if the method created a node, and we are building a geocentric map,
-            // apply a cluster culler.
-            if ( node.valid() )
+        // if the method created a node, and we are building a geocentric map,
+        // apply a cluster culler.
+        // TODO: this should probably go one level up instead.
+        if ( styleGroup )
+        {
+            const MapInfo& mi = _session->getMapInfo();
+
+            if ( mi.isGeocentric() && _options.clusterCulling() == true )
             {
-                const MapInfo& mi = _session->getMapInfo();
+                const SpatialReference* mapSRS = mi.getProfile()->getSRS()->getGeographicSRS();
+                GeoExtent cellExtent( extent.getSRS(), cellBounds );
+                GeoExtent mapCellExtent = cellExtent.transform( mapSRS );
 
-                if ( mi.isGeocentric() && _options.clusterCulling() == true )
-                {
-                    const SpatialReference* mapSRS = mi.getProfile()->getSRS()->getGeographicSRS();
-                    GeoExtent cellExtent( extent.getSRS(), cellBounds );
-                    GeoExtent mapCellExtent = cellExtent.transform( mapSRS );
+                // get the cell center as ECEF:
+                double cx, cy;
+                mapCellExtent.getCentroid( cx, cy );
+                osg::Vec3d ecefCenter;
+                mapSRS->transformToECEF( osg::Vec3d(cy, cy, 0.0), ecefCenter );
 
-                    // get the cell center as ECEF:
-                    double cx, cy;
-                    mapCellExtent.getCentroid( cx, cy );
-                    osg::Vec3d ecefCenter;
-                    mapSRS->transformToECEF( osg::Vec3d(cy, cy, 0.0), ecefCenter );
+                // get the cell corner as ECEF:
+                osg::Vec3d ecefCorner;
+                mapSRS->transformToECEF( osg::Vec3d(mapCellExtent.xMin(), mapCellExtent.yMin(), 0.0), ecefCorner );
 
-                    // get the cell corner as ECEF:
-                    osg::Vec3d ecefCorner;
-                    mapSRS->transformToECEF( osg::Vec3d(mapCellExtent.xMin(), mapCellExtent.yMin(), 0.0), ecefCorner );
+                // normal vector at the center of the cell:
+                osg::Vec3d normal = mapSRS->getEllipsoid()->computeLocalUpVector(
+                    ecefCenter.x(), ecefCenter.y(), ecefCenter.z() );
 
-                    // normal vector at the center of the cell:
-                    osg::Vec3d normal = mapSRS->getEllipsoid()->computeLocalUpVector(
-                        ecefCenter.x(), ecefCenter.y(), ecefCenter.z() );
+                // the "deviation" determines how far below the tangent plane of the cell your
+                // camera has to be before culling occurs. 0.0 is at the plane; -1.0 is 90deg
+                // below the plane (which means never cull).
+                osg::Vec3d radialVector = ecefCorner - ecefCenter;
+                double radius = radialVector.length();
+                radialVector.normalize();
+                double minDotProduct = radialVector * normal;
 
-                    // the "deviation" determines how far below the tangent plane of the cell your
-                    // camera has to be before culling occurs. 0.0 is at the plane; -1.0 is 90deg
-                    // below the plane (which means never cull).
-                    osg::Vec3d radialVector = ecefCorner - ecefCenter;
-                    double radius = radialVector.length();
-                    radialVector.normalize();
-                    double minDotProduct = radialVector * normal;
+                osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
+                ccc->set( ecefCenter, normal, minDotProduct, radius );
 
-                    osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
-                    ccc->set( ecefCenter, normal, minDotProduct, radius );
+                styleGroup->setCullCallback( ccc );
 
-                    node->setCullCallback( ccc );
-
-                    OE_DEBUG << LC
-                        << "Cell: " << mapCellExtent.toString()
-                        << ": centroid = " << cx << "," << cy
-                        << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()
-                        << "; dev = " << minDotProduct
-                        << "; radius = " << radius
-                        << std::endl;
-                }
+                OE_DEBUG << LC
+                    << "Cell: " << mapCellExtent.toString()
+                    << ": centroid = " << cx << "," << cy
+                    << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()
+                    << "; dev = " << minDotProduct
+                    << "; radius = " << radius
+                    << std::endl;
             }
         }
     }
+
 
     return styleGroup;
 }

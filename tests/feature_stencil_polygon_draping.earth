@@ -31,7 +31,6 @@ block.
                           
         <features name="states" driver="ogr">
             <url>../data/world.shp</url>
-            <ogr_driver>ESRI Shapefile</ogr_driver>
             <buffer distance="-0.05"/>
         </features>
         
@@ -68,31 +67,31 @@ block.
                 }                                      
             </style>
         
-            <selector name="p1">
+            <selector class="p1">
                 <query>
                     <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
                 </query>
             </selector>
         
-            <selector name="p2">
+            <selector class="p2">
                 <query>
                     <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
                 </query>
             </selector>
             
-            <selector name="p3">
+            <selector class="p3">
                 <query>
                     <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
                 </query>
             </selector>
             
-            <selector name="p4">
+            <selector class="p4">
                 <query>
                     <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
                 </query>
             </selector>
             
-            <selector name="p5">
+            <selector class="p5">
                 <query>
                     <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
                 </query>

@@ -62,6 +62,16 @@ Style::combineWith( const Style& rhs ) const
     // next, merge in the symbology from the other style.
     newStyle.mergeConfig( rhs.getConfig(false) );
     //SLDReader::readStyleFromCSSParams( rhs.getConfig(false), newStyle );
+
+    if ( !this->empty() && !rhs.empty() )
+        newStyle.setName( _name + ":" + rhs.getName() );
+    else if ( !this->empty() && rhs.empty() )
+        newStyle.setName( _name );
+    else if ( this->empty() && !rhs.empty() )
+        newStyle.setName( rhs.getName() );
+    else
+        newStyle.setName( _name );
+
     return newStyle;
 }
 

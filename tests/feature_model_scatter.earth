@@ -33,15 +33,52 @@ is randomized, but it is randomized exactly the same way each time.
              we indicate model substitution with density-based scattering. The "density"
              units are instances-per-sqkm. -->
              
+        <paging>
+            <level max_range="100000">
+                <selector class="parks-outline"/>
+            </level>
+            <level max_range="10000">
+                <selector class="parks-1"/>
+            </level>            
+            <level max_range="5000">
+                <selector class="parks-2"/>
+            </level>       
+            <level max_range="1500">
+                <selector class="parks-3"/>
+            </level>
+        </paging>
+             
         <styles>
             <style type="text/css">
-                parks {
+                parks-1 {
                    marker:              model("../data/tree.osg");
                    marker-placement:    random;
                    marker-density:      1000;
                    marker-scale:        2;
-                   altitude-clamping:  terrain;
+                   altitude-clamping:   terrain;
                 }            
+                parks-2 {
+                   marker:              model("../data/tree.osg");
+                   marker-placement:    random;
+                   marker-density:      1000;
+                   marker-scale:        2;
+                   altitude-clamping:   terrain;
+                   marker-random-seed:  1;
+                }              
+                parks-3 {
+                   marker:              model("../data/tree.osg");
+                   marker-placement:    random;
+                   marker-density:      1000;
+                   marker-scale:        2;
+                   altitude-clamping:   terrain;
+                   marker-random-seed:  2;
+                }           
+                parks-outline {
+                   stroke:              #00ff00ff;
+                   altitude-offset:     25;
+                   altitide-clamping:   terrain;
+                }
+                
             </style>
         </styles>        
     </model>
@@ -62,8 +99,8 @@ is randomized, but it is randomized exactly the same way each time.
     </elevation>
     
     <external>
-        <viewpoint name="DC wide angle" heading="-27" lat="38.89" long="-77" pitch="-26" range="21000"/>
-        <viewpoint name="DC close up"   heading="-13.48" lat="38.911" long="-77.051" pitch="-10.1" range="2711"/>
+        <viewpoint name="DC overview" heading="0" height="25.83" lat="38.9015" long="-77.0217" pitch="-89.9" range="28262"/>
+        <viewpoint name="DC close up" heading="-13.48" lat="38.911" long="-77.051" pitch="-10.1" range="2711"/>
     </external>
   
 </map>

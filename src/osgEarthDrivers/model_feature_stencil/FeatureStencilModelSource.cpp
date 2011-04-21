@@ -379,11 +379,7 @@ namespace
             densificationThreshold = *_options.densificationThreshold();
 
             // establish the shared build data (shared across compiles in the same session)
-            BuildData* buildData = dynamic_cast<BuildData*>( context.getSession()->getBuildData() );
-            if ( !buildData ) {
-                buildData = new BuildData( _renderBinStart );
-                cx.getSession()->setBuildData( buildData );
-            }            
+            BuildData* buildData = getOrCreateBuildData( cx.getSession() );
 
             // Scan the geometry to see if it includes line data, since that will require buffering:
             bool hasLines = false;
@@ -449,7 +445,7 @@ namespace
                 }
             }
 
-            osg::Node* result = 0L;
+            //osg::Node* result = 0L;
 
             if ( volumes )
             {
@@ -469,64 +465,78 @@ namespace
                     volumes = lod;
                 }
 
-                osgEarth::Symbology::StencilVolumeNode* styleNode = 0L;
-                bool styleNodeAlreadyCreated = buildData->getStyleNode(style.getName(), styleNode);
-                if ( _options.showVolumes() == true )
-                {
-                    result = volumes;
-                }
-                else
-                {
-                    if ( !styleNodeAlreadyCreated )
-                    {
-                        //TODO: deprecate/remove all this "mask" support
-
-                        if ( _options.mask() == true )
-                            OE_INFO << LC << "Creating MASK LAYER for feature group" << std::endl;
-                        else
-                            OE_INFO << LC << "Creating new style group for '" << style.getName() << "'" << std::endl;
-
-                        styleNode = new osgEarth::Symbology::StencilVolumeNode( *_options.mask(), *_options.inverted() );
-                        if ( _options.mask() == false )
-                        {
-                            osg::Vec4f maskColor = osg::Vec4(1,1,0,1);
-                            if (hasLines && style.getSymbol<LineSymbol>())
-                            {
-                                const LineSymbol* line = style.getSymbol<LineSymbol>();
-                                maskColor = line->stroke()->color();
-                            } 
-                            else
-                            {
-                                const PolygonSymbol* poly = style.getSymbol<PolygonSymbol>();
-                                if (poly)
-                                    maskColor = poly->fill()->color();
-                            }
-                            styleNode->addChild( createColorNode(maskColor) );
-                        }
-                        buildData->_renderBin = styleNode->setBaseRenderBin( buildData->_renderBin );
-                        buildData->_styleGroups.push_back( BuildData::StyleGroup( style.getName(), styleNode ) );
-                    }
-                
-                    styleNode->addVolumes( volumes );
-                    result = styleNodeAlreadyCreated ? 0L : styleNode;
-                    //if ( out_createdNode ) *out_createdNode = volumes;
-                }
+                // Add the volumes to the appropriate style group.
+                StencilVolumeNode* styleNode = dynamic_cast<StencilVolumeNode*>( getOrCreateStyleGroup( style, cx.getSession() ) );
+                styleNode->addVolumes( volumes );
             }
 
-            // apply explicit lighting if necessary:
-            if ( result && _options.enableLighting().isSet() )
-            {
-                osg::StateSet* ss = result->getOrCreateStateSet();
+            node = 0L; // always return null, since we added our geom to the style group.
+            return volumes != 0L;
+        }
 
-                ss->setMode( GL_LIGHTING, _options.enableLighting() == true?
+        //override
+        osg::Group* getOrCreateStyleGroup( const Style& style, Session* session )
+        {
+            if ( _options.showVolumes() == true )
+            {
+                return new osg::Group();
+            }
+            else
+            {
+                BuildData* buildData = getOrCreateBuildData( session );
+
+                StencilVolumeNode* styleNode = 0L;
+                if ( !buildData->getStyleNode(style.getName(), styleNode) )
+                {
+                    OE_INFO << LC << "Create style group \"" << style.getName() << "\"" << std::endl;
+
+                    styleNode = new StencilVolumeNode( *_options.mask(), *_options.inverted() );
+
+                    if ( _options.mask() == false )
+                    {
+                        osg::Vec4f maskColor = osg::Vec4(1,1,0,1);
+
+                        if (/*hasLines &&*/ style.getSymbol<LineSymbol>())
+                        {
+                            const LineSymbol* line = style.getSymbol<LineSymbol>();
+                            maskColor = line->stroke()->color();
+                        } 
+                        else
+                        {
+                            const PolygonSymbol* poly = style.getSymbol<PolygonSymbol>();
+                            if (poly)
+                                maskColor = poly->fill()->color();
+                        }
+                        styleNode->addChild( createColorNode(maskColor) );
+                        
+                        osg::StateSet* ss = styleNode->getOrCreateStateSet();
+
+                        ss->setMode( GL_LIGHTING, _options.enableLighting() == true?
                              osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
                              osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
-            }
+                    }
 
-            node = result;
-            return true;
+                    buildData->_renderBin = styleNode->setBaseRenderBin( buildData->_renderBin );
+                    buildData->_styleGroups.push_back( BuildData::StyleGroup( style.getName(), styleNode ) );
+                }
+
+                return styleNode;
+            }
+        }
+
+        //private
+        BuildData* getOrCreateBuildData( Session* session )
+        {
+            // establish the shared build data (shared across compiles in the same session)
+            BuildData* buildData = dynamic_cast<BuildData*>( session->getBuildData() );
+            if ( !buildData ) {
+                buildData = new BuildData( _renderBinStart );
+                session->setBuildData( buildData );
+            }
+            return buildData;
         }
     };
+
 
     class FeatureStencilModelSource : public FeatureModelSource
     {

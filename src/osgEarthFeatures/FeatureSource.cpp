@@ -60,7 +60,7 @@ FeatureSourceOptions::fromConfig( const Config& conf )
                     << std::endl;
             }
 
-            OE_INFO << LC << "Added buffer filter" << std::endl;
+            OE_DEBUG << LC << "Added buffer filter" << std::endl;
         }
 
         else if ( child.key() == "resample" && !child.empty() )
@@ -71,7 +71,7 @@ FeatureSourceOptions::fromConfig( const Config& conf )
             _filters.push_back( resample );
             numResamples++;
 
-            OE_INFO << LC << "Added resample filter" << std::endl;
+            OE_DEBUG << LC << "Added resample filter" << std::endl;
         }
 
         else if ( child.key() == "convert" && !child.empty() )
@@ -84,7 +84,7 @@ FeatureSourceOptions::fromConfig( const Config& conf )
             convert->toType() = *type;
             _filters.push_back( convert );
 
-            OE_INFO << LC << "Added convert filter" << std::endl;
+            OE_DEBUG << LC << "Added convert filter" << std::endl;
         }
     }
 }

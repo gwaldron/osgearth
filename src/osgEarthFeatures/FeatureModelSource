@@ -23,7 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureGridder>
-#include <osgEarthFeatures/FeatureDisplaySchema>
+#include <osgEarthFeatures/FeatureDisplayLayout>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
@@ -64,8 +64,8 @@ namespace osgEarth { namespace Features
         optional<bool>& enableLighting() { return _lit; }
         const optional<bool>& enableLighting() const { return _lit; }
 
-        optional<FeatureDisplaySchema>& levels() { return _levels; }
-        const optional<FeatureDisplaySchema>& levels() const { return _levels; }
+        optional<FeatureDisplayLayout>& levels() { return _levels; }
+        const optional<FeatureDisplayLayout>& levels() const { return _levels; }
 
         optional<bool>& clusterCulling() { return _clusterCulling; }
         const optional<bool>& clusterCulling() const { return _clusterCulling; }
@@ -91,7 +91,7 @@ namespace osgEarth { namespace Features
 
         optional<FeatureSourceOptions>  _featureOptions;
         optional<Symbology::StyleSheet> _styles;
-        optional<FeatureDisplaySchema>  _levels;
+        optional<FeatureDisplayLayout>  _levels;
         optional<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
         optional<bool> _lit;

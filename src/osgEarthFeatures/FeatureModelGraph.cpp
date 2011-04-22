@@ -329,7 +329,7 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
 osg::Node*
 FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, const std::string& uri )
 {
-    // note: "level" is not the same as "lod". "level" is an index into the FeatureDisplaySchema
+    // note: "level" is not the same as "lod". "level" is an index into the FeatureDisplayLayout
     // levels list, which is sorted by maxRange.
 
     OE_DEBUG << LC

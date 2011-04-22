@@ -52,8 +52,9 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     //    _featureOptions->merge( conf.child("features") );
 
     conf.getObjIfSet( "styles", _styles );
-    conf.getObjIfSet( "paging", _levels );
-    conf.getObjIfSet( "gridding", _gridding );
+    conf.getObjIfSet( "layout", _levels );
+    conf.getObjIfSet( "paging", _levels ); // backwards compat.. to be deprecated
+    conf.getObjIfSet( "gridding", _gridding ); // to be deprecated
     conf.getIfSet( "lighting", _lit );
     conf.getIfSet( "max_granularity", _maxGranularity_deg );
     conf.getIfSet( "merge_geometry", _mergeGeometry );
@@ -74,9 +75,9 @@ FeatureModelSourceOptions::getConfig() const
     Config conf = ModelSourceOptions::getConfig();
 
     conf.updateObjIfSet( "features", _featureOptions );
-    conf.updateObjIfSet( "gridding", _gridding );
+    conf.updateObjIfSet( "gridding", _gridding ); // to be deprecated
     conf.updateObjIfSet( "styles", _styles );
-    conf.updateObjIfSet( "paging", _levels );
+    conf.updateObjIfSet( "layout", _levels );
     conf.updateIfSet( "lighting", _lit );
     conf.updateIfSet( "max_granularity", _maxGranularity_deg );
     conf.updateIfSet( "merge_geometry", _mergeGeometry );

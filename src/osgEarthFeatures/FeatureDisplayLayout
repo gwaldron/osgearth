@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_FEATURE_LEVEL_SCHEMA_H
-#define OSGEARTHFEATURES_FEATURE_LEVEL_SCHEMA_H 1
+#ifndef OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H
+#define OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
@@ -63,10 +63,10 @@ namespace osgEarth { namespace Features
     /**
      * Defines a multi-LOD layout for a feature model layer.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureDisplaySchema : public osg::Referenced
+    class OSGEARTHFEATURES_EXPORT FeatureDisplayLayout : public osg::Referenced
     {
     public:
-        FeatureDisplaySchema( const Config& conf =Config() );
+        FeatureDisplayLayout( const Config& conf =Config() );
 
         /**
          * The ratio of visibility range to feature tile radius. Default is 15.
@@ -118,4 +118,4 @@ namespace osgEarth { namespace Features
 
 } } // namespace osgEarth::Features
 
-#endif // OSGEARTHFEATURES_FEATURE_LEVEL_SCHEMA_H
+#endif // OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H

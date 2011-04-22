@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/FeatureDisplaySchema>
+#include <osgEarthFeatures/FeatureDisplayLayout>
 #include <limits>
 
 using namespace osgEarth;
@@ -78,7 +78,7 @@ FeatureLevel::getConfig() const
 
 //------------------------------------------------------------------------
 
-FeatureDisplaySchema::FeatureDisplaySchema( const Config& conf ) :
+FeatureDisplayLayout::FeatureDisplayLayout( const Config& conf ) :
 _tileSizeFactor( 15.0f ),
 _cropFeatures( false )
 {
@@ -86,7 +86,7 @@ _cropFeatures( false )
 }
 
 void
-FeatureDisplaySchema::fromConfig( const Config& conf )
+FeatureDisplayLayout::fromConfig( const Config& conf )
 {
     conf.getIfSet( "tile_size_factor", _tileSizeFactor );
     conf.getIfSet( "crop_features",    _cropFeatures );
@@ -96,9 +96,9 @@ FeatureDisplaySchema::fromConfig( const Config& conf )
 }
 
 Config
-FeatureDisplaySchema::getConfig() const
+FeatureDisplayLayout::getConfig() const
 {
-    Config conf( "paging" );
+    Config conf( "layout" );
     conf.addIfSet( "tile_size_factor", _tileSizeFactor );
     conf.addIfSet( "crop_features",    _cropFeatures );
     for( Levels::const_iterator i = _levels.begin(); i != _levels.end(); ++i )
@@ -107,19 +107,19 @@ FeatureDisplaySchema::getConfig() const
 }
 
 void 
-FeatureDisplaySchema::addLevel( const FeatureLevel& level )
+FeatureDisplayLayout::addLevel( const FeatureLevel& level )
 {
     _levels.insert( std::make_pair( -level.maxRange(), level ) );
 }
 
 unsigned 
-FeatureDisplaySchema::getNumLevels() const
+FeatureDisplayLayout::getNumLevels() const
 {
     return _levels.size();
 }
 
 const FeatureLevel*
-FeatureDisplaySchema::getLevel( unsigned n ) const
+FeatureDisplayLayout::getLevel( unsigned n ) const
 {
     unsigned i = 0;
     for( Levels::const_iterator k = _levels.begin(); k != _levels.end(); ++k )
@@ -131,13 +131,13 @@ FeatureDisplaySchema::getLevel( unsigned n ) const
 }
 
 float
-FeatureDisplaySchema::getMaxRange() const
+FeatureDisplayLayout::getMaxRange() const
 {
     return _levels.size() > 0 ? _levels.begin()->second.maxRange() : 0.0f;
 }
 
 unsigned
-FeatureDisplaySchema::chooseLOD( const FeatureLevel& level, double fullExtentRadius ) const
+FeatureDisplayLayout::chooseLOD( const FeatureLevel& level, double fullExtentRadius ) const
 {
     double radius = fullExtentRadius;    
     unsigned lod = 1;

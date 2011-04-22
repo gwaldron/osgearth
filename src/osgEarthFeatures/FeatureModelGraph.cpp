@@ -21,6 +21,7 @@
 //#include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Utils>
 #include <osg/ClusterCullingCallback>
 #include <osg/PagedLOD>
 #include <osgDB/FileNameUtils>
@@ -302,9 +303,9 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
 
                 osg::PagedLOD* plod = new osg::PagedLOD();
                 plod->setCenter  ( subtile_bs.center() );
-                plod->setRadius  ( subtile_bs.radius() );
+                //plod->setRadius  ( subtile_bs.radius() );
                 plod->setFileName( 0, uri );
-                plod->setRange   ( 0, 0, nextLevel->maxRange() ); // nextLevel->minRange(), nextLevel->maxRange() );
+                plod->setRange   ( 0, 0, nextLevel->maxRange() );
 
                 parent->addChild( plod );
             }
@@ -491,6 +492,23 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
             group = lod;
         }
 
+        if ( _session->getMapInfo().isGeocentric() && _options.clusterCulling() == true )
+        {
+            const GeoExtent& ccExtent = extent.isValid() ? extent : _source->getFeatureProfile()->getExtent();
+            if ( ccExtent.isValid() )
+            {
+                // get the geocentric tile center:
+                osg::Vec3d tileCenter;
+                ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
+                osg::Vec3d centerECEF;
+                ccExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
+
+                osg::NodeCallback* ccc = ClusterCullerFactory::create( group.get(), centerECEF );
+                if ( ccc )
+                    group->addCullCallback( ccc );
+            }
+        }
+
         return group.release();
     }
 
@@ -638,56 +656,6 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
                 // if it returned a node, add it. (it doesn't necessarily have to)
                 if ( node.valid() )
                     styleGroup->addChild( node.get() );
-            }
-        }
-
-        // if the method created a node, and we are building a geocentric map,
-        // apply a cluster culler.
-        // TODO: this should probably go one level up instead.
-        if ( styleGroup )
-        {
-            const MapInfo& mi = _session->getMapInfo();
-
-            if ( mi.isGeocentric() && _options.clusterCulling() == true )
-            {
-                const SpatialReference* mapSRS = mi.getProfile()->getSRS()->getGeographicSRS();
-                GeoExtent cellExtent( extent.getSRS(), cellBounds );
-                GeoExtent mapCellExtent = cellExtent.transform( mapSRS );
-
-                // get the cell center as ECEF:
-                double cx, cy;
-                mapCellExtent.getCentroid( cx, cy );
-                osg::Vec3d ecefCenter;
-                mapSRS->transformToECEF( osg::Vec3d(cy, cy, 0.0), ecefCenter );
-
-                // get the cell corner as ECEF:
-                osg::Vec3d ecefCorner;
-                mapSRS->transformToECEF( osg::Vec3d(mapCellExtent.xMin(), mapCellExtent.yMin(), 0.0), ecefCorner );
-
-                // normal vector at the center of the cell:
-                osg::Vec3d normal = mapSRS->getEllipsoid()->computeLocalUpVector(
-                    ecefCenter.x(), ecefCenter.y(), ecefCenter.z() );
-
-                // the "deviation" determines how far below the tangent plane of the cell your
-                // camera has to be before culling occurs. 0.0 is at the plane; -1.0 is 90deg
-                // below the plane (which means never cull).
-                osg::Vec3d radialVector = ecefCorner - ecefCenter;
-                double radius = radialVector.length();
-                radialVector.normalize();
-                double minDotProduct = radialVector * normal;
-
-                osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback();
-                ccc->set( ecefCenter, normal, minDotProduct, radius );
-
-                styleGroup->setCullCallback( ccc );
-
-                OE_DEBUG << LC
-                    << "Cell: " << mapCellExtent.toString()
-                    << ": centroid = " << cx << "," << cy
-                    << "; normal = " << normal.x() << "," << normal.y() << "," << normal.z()
-                    << "; dev = " << minDotProduct
-                    << "; radius = " << radius
-                    << std::endl;
             }
         }
     }

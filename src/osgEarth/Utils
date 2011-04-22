@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
 #include <osg/Vec3f>
+#include <osg/ClusterCullingCallback>
 #include <string>
 #include <list>
 #include <map>
@@ -143,6 +144,18 @@ namespace osgEarth
         }
     };
 
+    //------------------------------------------------------------------------
+
+    struct OSGEARTH_EXPORT ClusterCullerFactory
+    {
+        /**
+         * Given a geocentric subgraph and a center point, generate a suitable
+         * cluster culling callback.
+         */
+        static osg::ClusterCullingCallback* create( 
+            osg::Node*        node, 
+            const osg::Vec3d& centerGeocentric );
+    };
 }
 
 #endif // OSGEARTH_CACHING_H

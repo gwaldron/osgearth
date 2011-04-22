@@ -143,6 +143,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     tinyxmlparser.cpp
     TMS.cpp
     Units.cpp
+    Utils.cpp
     Version.cpp
     VerticalSpatialReference.cpp
     XmlUtils.cpp

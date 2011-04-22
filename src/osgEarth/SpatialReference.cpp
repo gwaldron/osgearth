@@ -1003,10 +1003,6 @@ SpatialReference::init()
         // therefore do not call init() from the constructor!
         _init();
     }
-    else
-    {
-        OE_INFO << LC << "********** GOOD, double-checked worked" << std::endl;
-    }
 }
 
 void

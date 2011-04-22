@@ -303,7 +303,7 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
 
                 osg::PagedLOD* plod = new osg::PagedLOD();
                 plod->setCenter  ( subtile_bs.center() );
-                //plod->setRadius  ( subtile_bs.radius() );
+                //plod->setRadius  ( subtile_bs.radius() ); // do not set this; don't know the content size
                 plod->setFileName( 0, uri );
                 plod->setRange   ( 0, 0, nextLevel->maxRange() );
 
@@ -312,6 +312,8 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
         }
     }
 
+    // tree up the plods to cull a little more efficiently (not sure this actually works since
+    // we didn't set radii on the plods)
     osgUtil::Optimizer optimizer;
     optimizer.optimize( parent, osgUtil::Optimizer::SPATIALIZE_GROUPS );
 }
@@ -326,11 +328,11 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
         << "load: " << levelIndex << "_" << tileX << "_" << tileY << std::endl;
 
     osg::Node* result = 0L;
-
-    // todo: cache this value
     
     if (_source->getFeatureProfile()->getTiled())
     {        
+        // Handle a tiled feature source:
+
         unsigned int lod = levelIndex;
         GeoExtent tileExtent = 
             lod >= 0 ?
@@ -369,12 +371,14 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
             }   
         }
     }
+
     else if ( !_options.levels().isSet() || _options.levels()->getNumLevels() == 0 )
     {
         // no levels defined; just load all the features.
         FeatureLevel all( 0.0f, FLT_MAX );
         result = build( all, GeoExtent::INVALID, 0 );
     }
+
     else
     {
         const FeatureLevel* level = _options.levels()->getLevel( levelIndex );

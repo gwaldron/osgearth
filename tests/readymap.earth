@@ -36,4 +36,7 @@ http://readymap.org
         </cache>
     </options>
     
+    <external>
+        <viewpoint name="Los Angeles" heading="35.27" height="97.48" lat="34.051" long="-117.974" pitch="-17" range="136405"/>
+    </external>
 </map>

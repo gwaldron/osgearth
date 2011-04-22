@@ -20,8 +20,8 @@
 #define OSGEARTHSYMBOLOGY_MESH_CONSOLIDATOR
 
 #include <osgEarthSymbology/Common>
+#include <osg/Geode>
 #include <osg/Geometry>
-#include <osg/PrimitiveSet>
 
 namespace osgEarth { namespace Symbology
 {
@@ -32,6 +32,8 @@ namespace osgEarth { namespace Symbology
     {
     public:
         static void run( osg::Geometry& geom );
+
+        static void run( osg::Geode& geode );
     };
 
 } } // namespace osgEarth::Symbology

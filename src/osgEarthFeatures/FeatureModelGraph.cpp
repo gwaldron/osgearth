@@ -65,7 +65,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         unsigned levelIndex, x, y;
         sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &levelIndex, &x, &y );
 
-        OE_INFO << LC << "Page in: " << uri << std::endl;
+        //OE_INFO << LC << "Page in: " << uri << std::endl;
 
         FeatureModelGraph* graph = getGraph(uid);
         if ( graph )
@@ -161,9 +161,14 @@ _session( session )
     // world-space bounds of the feature layer
     _fullWorldBound = getBoundInWorldCoords( _usableMapExtent );
 
+    // whether to request tiles from the source (if available). if the source is tiled, but the
+    // user manually specified schema levels, don't use the tiles.
+    _useTiledSource = _source->getFeatureProfile()->getTiled();
+    if ( _useTiledSource && options.levels().isSet() && options.levels()->getNumLevels() > 0 )
+        _useTiledSource = false;
 
     // if there's a display schema in place, set up for quadtree paging.
-    if ( options.levels().isSet() || _source->getFeatureProfile()->getTiled() )
+    if ( options.levels().isSet() || _useTiledSource ) //_source->getFeatureProfile()->getTiled() )
     {
         setupPaging();
     }
@@ -332,7 +337,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
 
     osg::Group* result = 0L;
     
-    if (_source->getFeatureProfile()->getTiled())
+    if ( _useTiledSource )
     {        
         // Handle a tiled feature source:
 

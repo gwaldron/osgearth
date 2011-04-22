@@ -101,6 +101,7 @@ namespace osgEarth { namespace Features
         bool                             _featureExtentClamped;
         GeoExtent                        _usableMapExtent;
         osg::BoundingSphered             _fullWorldBound;
+        bool                             _useTiledSource;
     };
 
 } } // namespace osgEarth::Features

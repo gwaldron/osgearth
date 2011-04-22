@@ -551,11 +551,15 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     osg::Geometry* surface = new osg::Geometry();
     surface->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     surface->setDataVariance( osg::Object::DYNAMIC );
+    surface->setUseDisplayList(false);
+    surface->setUseVertexBufferObjects(true);
     geode->addDrawable( surface );
 
     osg::Geometry* skirt = new osg::Geometry();
     skirt->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     skirt->setDataVariance( osg::Object::DYNAMIC );
+    skirt->setUseDisplayList(false);
+    skirt->setUseVertexBufferObjects(true);
     geode->addDrawable( skirt );
 
     // see if we're using a Mask geometry:
@@ -567,6 +571,8 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         new osg::Geometry();
         mask_skirt->setThreadSafeRefUnref(true);
         mask_skirt->setDataVariance( osg::Object::DYNAMIC );
+        mask_skirt->setUseDisplayList(false);
+        mask_skirt->setUseVertexBufferObjects(true);
         //mask_skirt->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
         geode->addDrawable( mask_skirt);
     }
@@ -1539,26 +1545,15 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         }
     }
 
-    surface->setUseDisplayList(false);
-    surface->setUseVertexBufferObjects(true);
     MeshConsolidator::run( *surface );
 
     if ( skirt )
-    {
-        skirt->setUseDisplayList(false);
-        skirt->setUseVertexBufferObjects(true);
         MeshConsolidator::run( *skirt );
-    }
 
     if ( mask_skirt )
-    {
-        mask_skirt->setUseDisplayList(false);
-        mask_skirt->setUseVertexBufferObjects(true);
         MeshConsolidator::run( *mask_skirt );
-    }
     
-
-    
+   
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())
     {            

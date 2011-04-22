@@ -22,7 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
 #include <osg/Vec3f>
-#include <osg/ClusterCullingCallback>
 #include <string>
 #include <list>
 #include <map>
@@ -142,19 +141,6 @@ namespace osgEarth
         float getHitRatio() const {
             return _queries > 0 ? (float)_hits/(float)_queries : 0.0f;
         }
-    };
-
-    //------------------------------------------------------------------------
-
-    struct OSGEARTH_EXPORT ClusterCullerFactory
-    {
-        /**
-         * Given a geocentric subgraph and a center point, generate a suitable
-         * cluster culling callback.
-         */
-        static osg::ClusterCullingCallback* create( 
-            osg::Node*        node, 
-            const osg::Vec3d& centerGeocentric );
     };
 }
 

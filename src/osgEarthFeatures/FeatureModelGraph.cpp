@@ -18,11 +18,9 @@
  */
 
 #include <osgEarthFeatures/FeatureModelGraph>
-//#include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Utils>
-#include <osg/ClusterCullingCallback>
+#include <osgEarth/NodeUtils>
 #include <osg/PagedLOD>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
@@ -66,6 +64,8 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         UID uid;
         unsigned levelIndex, x, y;
         sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &levelIndex, &x, &y );
+
+        OE_INFO << LC << "Page in: " << uri << std::endl;
 
         FeatureModelGraph* graph = getGraph(uid);
         if ( graph )
@@ -302,8 +302,11 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
                     << std::endl;
 
                 osg::PagedLOD* plod = new osg::PagedLOD();
+                plod->setName( uri );
+                // We don't really know the exact center/radius beforehand, since we have yet to generate any data,
+                // so approximate it by using the tile bounds...
                 plod->setCenter  ( subtile_bs.center() );
-                //plod->setRadius  ( subtile_bs.radius() ); // do not set this; don't know the content size
+                plod->setRadius  ( subtile_bs.radius() );
                 plod->setFileName( 0, uri );
                 plod->setRange   ( 0, 0, nextLevel->maxRange() );
 
@@ -314,8 +317,8 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
 
     // tree up the plods to cull a little more efficiently (not sure this actually works since
     // we didn't set radii on the plods)
-    osgUtil::Optimizer optimizer;
-    optimizer.optimize( parent, osgUtil::Optimizer::SPATIALIZE_GROUPS );
+    //osgUtil::Optimizer optimizer;
+    //optimizer.optimize( parent, osgUtil::Optimizer::SPATIALIZE_GROUPS );
 }
 
 osg::Node*
@@ -327,7 +330,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
     OE_DEBUG << LC
         << "load: " << levelIndex << "_" << tileX << "_" << tileY << std::endl;
 
-    osg::Node* result = 0L;
+    osg::Group* result = 0L;
     
     if (_source->getFeatureProfile()->getTiled())
     {        
@@ -346,7 +349,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
         FeatureLevel level( 0, maxRange );
         
         TileKey key(lod, tileX, tileY, _source->getFeatureProfile()->getProfile());
-        osg::Node* geometry = build( level, tileExtent, &key );
+        osg::Group* geometry = build( level, tileExtent, &key );
         result = geometry;
 
         if (lod < _source->getFeatureProfile()->getMaxLevel())
@@ -396,7 +399,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
                 s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent ) :
                 GeoExtent::INVALID;
 
-            osg::Node* geometry = build( *level, tileExtent, 0 );
+            osg::Group* geometry = build( *level, tileExtent, 0 );
             result = geometry;
 
             // see if there are any more levels. If so, build some pagedlods to bring the
@@ -422,26 +425,32 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
         }
     }
 
+    // If the read resulting in nothing, do two things. First, blacklist the URI
+    // so that the next time we try to create a PagedLOD pointing at this URI, it
+    // will find it in the blacklist and not create said PagedLOD. Second, create
+    // an empty group so that the read (technically) succeeds and it doesn't try
+    // to load the null child over and over.
     if ( !result )
     {
-        // If the read resulting in nothing, do two things. First, blacklist the URI
-        // so that the next time we try to create a PagedLOD pointing at this URI, it
-        // will find it in the blacklist and not create said PagedLOD. Second, create
-        // an empty group so that the read (technically) succeeds and it doesn't try
-        // to load the null child over and over.
-
         result = new osg::Group();
+    }
+    else
+    {
+        RemoveEmptyGroupsVisitor::run( result );
+    }
 
-        {
-            Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
-            _blacklist.insert( uri );
-        }
+    if ( result->getNumChildren() == 0 )
+    {
+        Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
+        _blacklist.insert( uri );
+
+        OE_INFO << LC << "Blacklisting: " << uri << std::endl;
     }
 
     return result;
 }
 
-osg::Node*
+osg::Group*
 FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key )
 {
     osg::ref_ptr<osg::Group> group = new osg::Group();
@@ -522,7 +531,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
     }
 }
 
-osg::Node*
+osg::Group*
 FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& workingExtent )
 {
     osg::ref_ptr<osg::Group> group = new osg::Group();
@@ -629,6 +638,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
         // the cell boundaries.
         FeatureList workingSet;
         cursor->fill( workingSet );
+
         CropFilter crop( 
             _options.levels()->cropFeatures() == true ? 
             CropFilter::METHOD_CROPPING : CropFilter::METHOD_CENTROID );

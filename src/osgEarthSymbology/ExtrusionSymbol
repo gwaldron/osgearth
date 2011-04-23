@@ -40,9 +40,12 @@ namespace osgEarth { namespace Symbology
         const optional<bool>& flatten() const { return _flatten; }
 
         /** The attribute value to use to get the extruded height*/
-        optional<std::string>& attribute() { return _attribute; }
-        const optional<std::string>& attribute() const { return _attribute; }
+        optional<std::string>& heightAttribute() { return _heightAttr; }
+        const optional<std::string>& heightAttribute() const { return _heightAttr; }
 
+        /** Simple expression to evaluate to get height */
+        optional<std::string>& heightExpression() { return _heightExpr; }
+        const optional<std::string>& heightExpression() const { return _heightExpr; }
 
         
     public:
@@ -52,7 +55,8 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<float> _height;
         optional<bool>  _flatten;
-        optional<std::string> _attribute;
+        optional<std::string> _heightAttr;
+        optional<std::string> _heightExpr;
     };
 
 } } // namespace osgEarth::Symbology

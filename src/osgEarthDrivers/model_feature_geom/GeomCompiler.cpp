@@ -127,14 +127,13 @@ GeomCompiler::compile(FeatureCursor*        cursor,
         ExtrudeGeometryFilter extrude;
         if ( extrusion )
         {
-            if (extrusion->attribute().isSet())
-            {
-                extrude.setExtrusionAttribute( *extrusion->attribute() );
-            }
+            if ( extrusion->heightAttribute().isSet() )
+                extrude.setExtrusionAttribute( *extrusion->heightAttribute() );
+            else if ( extrusion->heightExpression().isSet() )
+                extrude.setExtrusionExpr( Expression(*extrusion->heightExpression()) );
             else
-            {
                 extrude.setExtrusionHeight( *extrusion->height() );
-            }
+
             extrude.setFlatten( *extrusion->flatten() );
         }
         if ( polygon )

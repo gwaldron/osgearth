@@ -18,6 +18,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Content
     CssUtils
+    Expression
     ExtrusionSymbol
     Geometry
     GEOS
@@ -43,6 +44,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 #  .cpp files go here
     AltitudeSymbol.cpp
     CssUtils.cpp
+    Expression.cpp
     ExtrusionSymbol.cpp
     Geometry.cpp
     GEOS.cpp

@@ -82,7 +82,8 @@ namespace osgEarth
                    StringVector& output,
                    const std::string& delims =" \t\n\r", 
                    const std::string& quotes ="'\"",
-                   bool allowEmpties =true )
+                   bool allowEmpties =true,
+                   bool keepDelims =false)
     {
         std::stringstream buf;
         bool quoted = false;
@@ -104,6 +105,10 @@ namespace osgEarth
                     std::string token = trim(buf.str());
                     if ( allowEmpties || !token.empty() )
                         output.push_back( token );
+                    
+                    if ( keepDelims )
+                        output.push_back( std::string(1, c) );
+
                     buf.str("");
                 }
             }       

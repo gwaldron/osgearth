@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Expression>
 #include <osgEarthSymbology/Style>
 #include <osg/Geode>
 
@@ -37,6 +38,12 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter : public Filter
     {
     public:
+        struct HeightCallback : public osg::Referenced
+        {
+            virtual float operator()( Feature* input, const FilterContext& cx ) =0;
+        };
+
+    public:
         ExtrudeGeometryFilter();
 
         /** Pushes a list of features through the filter. */
@@ -45,9 +52,23 @@ namespace osgEarth { namespace Features
         /**
          * Sets the height above the footprint to which to extrude wall geometry
          */
-        void setExtrusionHeight( double value ) { _height = value; }
+        void setExtrusionHeight( float value ) { _height = value; }
 
-        void setExtrusionAttribute( const std::string& attribute ) { _attribute = attribute; }
+        /**
+         * Sets the name of the feature attribute holding the extrusion height.
+         * This will override a value set by setExtrusionHeight.
+         */
+        void setExtrusionAttribute( const std::string& value ) { _heightAttr = value; }
+
+        /**
+         * Sets an arithmetic expression to evaluate to determine the extrusion height.
+         */
+        void setExtrusionExpr( const Expression& value ) { _heightExpr = value; }
+
+        /**
+         * Sets a callback that can return an extrusion height for a feature.
+         */
+        void setExtrusionHeightCallback( HeightCallback* callback );
 
         /**
          * Sets whether the cap (e.g. rooftop) should be flat, even if the footprint in not 
@@ -66,16 +87,18 @@ namespace osgEarth { namespace Features
         void setWallAngleThreshold( float angle_deg ) { _wallAngleThresh_deg = angle_deg; }
 
     protected:
-        osg::ref_ptr<osg::Geode>    _geode;
-        optional<double>            _maxAngle_deg;
-        optional<bool>              _mergeGeometry;
-        double                      _height;
-        bool                        _flatten;
-        osg::Vec4f                  _color;
-        float                       _wallAngleThresh_deg;
-        float                       _cosWallAngleThresh;
-        osg::ref_ptr<osg::StateSet> _noTextureStateSet;
-        optional<std::string>       _attribute;
+        osg::ref_ptr<osg::Geode>     _geode;
+        optional<double>             _maxAngle_deg;
+        optional<bool>               _mergeGeometry;
+        float                        _height;
+        bool                         _flatten;
+        osg::Vec4f                   _color;
+        float                        _wallAngleThresh_deg;
+        float                        _cosWallAngleThresh;
+        osg::ref_ptr<osg::StateSet>  _noTextureStateSet;
+        optional<std::string>        _heightAttr;
+        optional<Expression>         _heightExpr;
+        osg::ref_ptr<HeightCallback> _heightCallback;
 
         void reset();
         

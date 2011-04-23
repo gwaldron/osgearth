@@ -334,10 +334,26 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
             static_cast<Polygon*>(part)->open();
         }
 
-        float height = _height;
-        if (_attribute.isSet())
+        float height;
+
+        if ( _heightCallback.valid() )
         {
-            height = as<float>(input->getAttr( _attribute.get() ), 50.0f);            
+            height = _heightCallback->operator()(input, context);
+        }
+        else if ( _heightAttr.isSet() )
+        {
+            height = as<float>(input->getAttr(*_heightAttr), _height);
+        }
+        else if ( _heightExpr.isSet() )
+        {
+            const Expression::Variables& vars = _heightExpr->variables();
+            for( Expression::Variables::const_iterator v = vars.begin(); v != vars.end(); ++v )
+                _heightExpr->set( *v, as<double>( input->getAttr(v->first), _height) );
+            height = _heightExpr->eval();
+        }
+        else
+        {
+            height = _height;
         }
 
         if ( extrudeGeometry( part, height, _flatten, walls.get(), rooflines.get(), 0L, _color, context ) )

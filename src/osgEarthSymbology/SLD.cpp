@@ -19,6 +19,7 @@
 #include <osgEarthSymbology/SLD>
 #include <osgEarthSymbology/CssUtils>
 #include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/Expression>
 #include <osgEarth/XmlUtils>
 #include <stack>
 #include <algorithm>
@@ -222,7 +223,12 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "extrusion-attribute")
         {
             if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
-            extrusion->attribute() = p->second;
+            extrusion->heightAttribute() = p->second;
+        }
+        else if (p->first == "extrusion-expr")
+        {
+            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
+            extrusion->heightExpression() = p->second;
         }
                 
         else if (p->first == "altitude-clamping")

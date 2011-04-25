@@ -35,9 +35,8 @@ ExtrusionSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "extrusion";
     conf.addIfSet( "height",            _height );
-    conf.addIfSet( "height_attribute",  _heightAttr );
-    conf.addIfSet( "height_expression", _heightExpr );
     conf.addIfSet( "flatten",           _flatten );
+    conf.addObjIfSet( "height_expression", _heightExpr );
     return conf;
 }
 
@@ -45,7 +44,6 @@ void
 ExtrusionSymbol::mergeConfig( const Config& conf )
 {
     conf.getIfSet( "height",  _height );
-    conf.getIfSet( "height_attribute", _heightAttr );
-    conf.getIfSet( "height_expression", _heightExpr );
     conf.getIfSet( "flatten", _flatten );
+    conf.getObjIfSet( "height_expression", _heightExpr );
 }

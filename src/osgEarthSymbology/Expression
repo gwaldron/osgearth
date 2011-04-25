@@ -39,6 +39,8 @@ namespace osgEarth { namespace Symbology
     public:
         Expression() { }
 
+        Expression( const Config& conf );
+
         /** Construct a new expression from the infix string. */
         Expression( const std::string& expr );
 
@@ -54,14 +56,23 @@ namespace osgEarth { namespace Symbology
         /** Evaluate the expression. */
         double eval() const;
 
+    public:
+        Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
     private:
-        enum Op { OPERAND, VARIABLE, ADD, SUB, MULT, DIV, MOD, LPAREN, RPAREN }; // in low-high precedence order
+        enum Op { OPERAND, VARIABLE, ADD, SUB, MULT, DIV, MOD, MIN, MAX, LPAREN, RPAREN }; // in low-high precedence order
         typedef std::pair<Op,double> Atom;
         typedef std::vector<Atom> AtomVector;
         typedef std::stack<Atom> AtomStack;
         
-        AtomVector _rpn;
-        Variables  _vars;
+        std::string _src;
+        AtomVector  _rpn;
+        Variables   _vars;
+        double      _value;
+        bool        _dirty;
+
+        void init();
     };
 
 

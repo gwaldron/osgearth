@@ -397,7 +397,6 @@ MemCache::purge( const std::string& cacheId, int olderThan, bool async )
 {
     //TODO: can this be a ReadWriteLock instead?
 
-
     // MemCache does not support timestamps or async, so just clear it out altogether.
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
@@ -413,11 +412,7 @@ MemCache::getObject( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<con
 {
   OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_mutex);
 
-  //OE_NOTICE << "List contains: " << _images.size() << std::endl;
-
   std::string id = key.str() + spec.cacheId();
-  //Find the image in the cache
-  //ImageCache::iterator itr = _images.find(id);
   KeyToIteratorMap::iterator itr = _keyToIterMap.find(id);
   if (itr != _keyToIterMap.end())
   {
@@ -425,10 +420,8 @@ MemCache::getObject( const TileKey& key, const CacheSpec& spec, osg::ref_ptr<con
     _objects.erase(itr->second);
     _objects.push_front(entry);
     itr->second = _objects.begin();
-    //OE_NOTICE<<"Getting from memcache "<< key.str() <<std::endl;
     output = itr->second->_object.get();
     return output.valid();
-    //return itr->second->_object.get();
   }
   return false;
 }
@@ -440,19 +433,23 @@ MemCache::setObject( const TileKey& key, const CacheSpec& spec, const osg::Objec
 
   std::string id = key.str() + spec.cacheId();
 
-  CachedObject entry;
-  //entry._object = referenced->clone( osg::CopyOp::DEEP_COPY_ALL );
+  _objects.push_front(CachedObject());
+  CachedObject& entry = _objects.front();
+
+  //CachedObject entry;
   entry._object = referenced;
   entry._key = id;
-  _objects.push_front(entry);
+  //_objects.push_front(entry);
 
   _keyToIterMap[id] = _objects.begin();
 
   if (_objects.size() > _maxNumTilesInCache)
   {
-    CachedObject toRemove = _objects.back();
-    _objects.pop_back();
-    _keyToIterMap.erase(toRemove._key);
+      _keyToIterMap.erase( _objects.back()._key );
+      _objects.pop_back();
+    //CachedObject toRemove = _objects.back();
+    //_objects.pop_back();
+    //_keyToIterMap.erase(toRemove._key);
   }
 }
 

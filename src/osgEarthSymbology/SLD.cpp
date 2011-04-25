@@ -213,22 +213,12 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "extrusion-height")
         {
             if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
-            extrusion->height() = as<float>( p->second, 1.0f );
+            extrusion->heightExpression() = Expression(p->second);
         }
         else if (p->first == "extrusion-flatten")
         {
             if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
             extrusion->flatten() = as<bool>(p->second, true);
-        }
-        else if (p->first == "extrusion-attribute")
-        {
-            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
-            extrusion->heightAttribute() = p->second;
-        }
-        else if (p->first == "extrusion-expr")
-        {
-            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
-            extrusion->heightExpression() = p->second;
         }
                 
         else if (p->first == "altitude-clamping")

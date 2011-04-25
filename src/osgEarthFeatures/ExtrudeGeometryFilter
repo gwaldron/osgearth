@@ -90,12 +90,13 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<osg::Geode>     _geode;
         optional<double>             _maxAngle_deg;
         optional<bool>               _mergeGeometry;
-        float                        _height;
         bool                         _flatten;
         osg::Vec4f                   _color;
         float                        _wallAngleThresh_deg;
         float                        _cosWallAngleThresh;
         osg::ref_ptr<osg::StateSet>  _noTextureStateSet;
+
+        float                        _height;
         optional<std::string>        _heightAttr;
         optional<Expression>         _heightExpr;
         osg::ref_ptr<HeightCallback> _heightCallback;

@@ -18,30 +18,79 @@
 */
 #include <osgEarthSymbology/Expression>
 #include <osgEarth/StringUtils>
+#include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-Expression::Expression( const std::string& expr )
+Expression::Expression( const std::string& expr ) : 
+_src( expr ),
+_value( 0.0 ),
+_dirty( true )
+{
+    init();
+}
+
+Expression::Expression( const Expression& rhs ) :
+_src( rhs._src ),
+_rpn( rhs._rpn ),
+_vars( rhs._vars ),
+_value( rhs._value ),
+_dirty( rhs._dirty )
+{
+    //nop
+}
+
+Expression::Expression( const Config& conf )
+{
+    mergeConfig( conf );
+    init();
+}
+
+void
+Expression::mergeConfig( const Config& conf )
+{
+    _src = conf.value();
+    _dirty = true;
+}
+
+Config
+Expression::getConfig() const
+{
+    return Config( "expression", _src );
+}
+
+void
+Expression::init()
 {
     StringVector t;
-    tokenize(expr, t, "()%*/+-", "'\"", false, true);
+    tokenize(_src, t, "[],()%*/+-", "'\"", false, true);
 
     // identify tokens:
     AtomVector infix;
+    bool invar = false;
     for( unsigned i=0; i<t.size(); ++i ) {
-        if      ( t[i] == "(" ) infix.push_back( Atom(LPAREN,0.0) );
+        if ( t[i] == "[" && !invar ) {
+            invar = true;
+        }
+        else if ( t[i] == "]" && invar ) {
+            invar = false;
+            infix.push_back( Atom(VARIABLE,0.0) );
+            _vars.push_back( Variable(t[i-1],0) );
+        }
+        else if ( t[i] == "(" )infix.push_back( Atom(LPAREN,0.0) );
         else if ( t[i] == ")" ) infix.push_back( Atom(RPAREN,0.0) );
         else if ( t[i] == "%" ) infix.push_back( Atom(MOD,0.0) );
         else if ( t[i] == "*" ) infix.push_back( Atom(MULT,0.0) );
         else if ( t[i] == "/" ) infix.push_back( Atom(DIV,0.0) );
         else if ( t[i] == "+" ) infix.push_back( Atom(ADD,0.0) );
         else if ( t[i] == "-" ) infix.push_back( Atom(SUB,0.0) );
-        else if ( t[i][0] >= '0' && t[i][0] <= '9' ) infix.push_back( Atom(OPERAND,as<double>(t[i],0.0)) );
-        else {
-            infix.push_back( Atom(VARIABLE,0.0) );
-            _vars.push_back( Variable(t[i],0) );
-        }
+        else if ( t[i] == "min" ) infix.push_back( Atom(MIN,0.0) );
+        else if ( t[i] == "max" ) infix.push_back( Atom(MAX,0.0) );
+        else if ( t[i][0] >= '0' && t[i][0] <= '9' )
+            infix.push_back( Atom(OPERAND,as<double>(t[i],0.0)) );
+
+        // note: do nothing for a comma
     }
 
     // convert to RPN:
@@ -84,6 +133,10 @@ Expression::Expression( const std::string& expr )
                 s.push( a );
             }
         }
+        else if ( a.first == MIN || a.first == MAX )
+        {
+            s.push( a );
+        }
         else if ( a.first == OPERAND )
         {
             _rpn.push_back( a );
@@ -102,63 +155,100 @@ Expression::Expression( const std::string& expr )
     }
 }
 
-Expression::Expression( const Expression& rhs ) :
-_rpn( rhs._rpn ),
-_vars( rhs._vars )
-{
-    //nop
-}
-
 void 
 Expression::set( const Variable& var, double value )
 {
-    _rpn[var.second].second = value;
+    Atom& a = _rpn[var.second];
+    if ( a.second != value )
+    {
+        a.second = value;
+        _dirty = true;
+    }
 }
 
 double
 Expression::eval() const
 {
-    std::stack<double> s;
-
-    for( unsigned i=0; i<_rpn.size(); ++i )
+    if ( _dirty )
     {
-        const Atom& a = _rpn[i];
+        std::stack<double> s;
 
-        if ( a.first == ADD )
+        for( unsigned i=0; i<_rpn.size(); ++i )
         {
-            double op2 = s.top(); s.pop();
-            double op1 = s.top(); s.pop();
-            s.push( op1 + op2 );
+            const Atom& a = _rpn[i];
+
+            if ( a.first == ADD )
+            {
+                if ( s.size() >= 2 )
+                {
+                    double op2 = s.top(); s.pop();
+                    double op1 = s.top(); s.pop();
+                    s.push( op1 + op2 );
+                }
+            }
+            else if ( a.first == SUB )
+            {
+                if ( s.size() >= 2 )
+                {
+                    double op2 = s.top(); s.pop();
+                    double op1 = s.top(); s.pop();
+                    s.push( op1 - op2 );
+                }
+            }
+            else if ( a.first == MULT )
+            {
+                if ( s.size() >= 2 )
+                {
+                    double op2 = s.top(); s.pop();
+                    double op1 = s.top(); s.pop();
+                    s.push( op1 * op2 );
+                }
+            }
+            else if ( a.first == DIV )
+            {
+                if ( s.size() >= 2 )
+                {
+                    double op2 = s.top(); s.pop();
+                    double op1 = s.top(); s.pop();
+                    s.push( op1 / op2 );
+                }
+            }
+            else if ( a.first == MOD )
+            {
+                if ( s.size() >= 2 )
+                {
+                    double op2 = s.top(); s.pop();
+                    double op1 = s.top(); s.pop();
+                    s.push( fmod(op1, op2) );
+                }
+            }
+            else if ( a.first == MIN )
+            {
+                if ( s.size() >= 2 )
+                {
+                    double op2 = s.top(); s.pop();
+                    double op1 = s.top(); s.pop();
+                    s.push( std::min(op1, op2) );
+                }
+            }
+            else if ( a.first == MAX )
+            {
+                if ( s.size() >= 2 )
+                {
+                    double op2 = s.top(); s.pop();
+                    double op1 = s.top(); s.pop();
+                    s.push( std::max(op1, op2) );
+                }
+            }
+            else // OPERAND or VARIABLE
+            {
+                s.push( a.second );
+            }
         }
-        else if ( a.first == SUB )
-        {
-            double op2 = s.top(); s.pop();
-            double op1 = s.top(); s.pop();
-            s.push( op1 - op2 );
-        }
-        else if ( a.first == MULT )
-        {
-            double op2 = s.top(); s.pop();
-            double op1 = s.top(); s.pop();
-            s.push( op1 * op2 );
-        }
-        else if ( a.first == DIV )
-        {
-            double op2 = s.top(); s.pop();
-            double op1 = s.top(); s.pop();
-            s.push( op1 / op2 );
-        }
-        else if ( a.first == MOD )
-        {
-            double op2 = s.top(); s.pop();
-            double op1 = s.top(); s.pop();
-            s.push( fmod(op1, op2) );
-        }
-        else // OPERAND or VARIABLE
-        {
-            s.push( a.second );
-        }
+
+        const_cast<Expression*>(this)->_value = s.size() > 0 ? s.top() : 0.0;
+        const_cast<Expression*>(this)->_dirty = false;
     }
 
-    return s.size() > 0 ? s.top() : 0.0;
+    return _value;
 }

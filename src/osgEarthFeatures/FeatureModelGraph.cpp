@@ -314,6 +314,7 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
                 plod->setRadius  ( subtile_bs.radius() );
                 plod->setFileName( 0, uri );
                 plod->setRange   ( 0, 0, nextLevel->maxRange() );
+                plod->setPriorityOffset( 0, -(float)nextLOD );
 
                 parent->addChild( plod );
             }

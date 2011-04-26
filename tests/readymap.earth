@@ -28,8 +28,8 @@ http://readymap.org
     <options>
         <terrain>
             <lighting>false</lighting>
-            <lod_blending>true</lod_blending>
             <compositor>multitexture</compositor>
+            <sample_ratio>0.125</sample_ratio>
         </terrain>
         <cache type="tms">
             <path>cache_readymap</path>

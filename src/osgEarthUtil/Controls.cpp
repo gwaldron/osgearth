@@ -34,6 +34,46 @@ using namespace osgEarth::Util::Controls;
 
 #define LC "[Controls] "
 
+namespace
+{
+    void calculateRotatedSize( float w, float h, float angle_rad, float& out_w, float& out_h )
+    {
+        float x1 = -w/2, x2 = w/2, x3 =  w/2, x4 = -w/2;
+        float y1 =  h/2, y2 = h/2, y3 = -h/2, y4 = -h/2;
+
+        float cosa = cos(angle_rad);
+        float sina = sin(angle_rad);
+
+        float
+            x11 =  x1*cosa + y1*sina,
+            y11 = -x1*sina + y1*cosa,
+            x21 =  x2*cosa + y2*sina,
+            y21 = -x2*sina + y2*cosa,
+            x31 =  x3*cosa + y3*sina,
+            y31 = -x3*sina + y3*cosa,
+            x41 =  x4*cosa + y4*sina,
+            y41 = -x4*sina + y3*cosa;
+
+        float xmin = std::min(x11, std::min(x21, std::min(x31, x41)));
+        float ymin = std::min(y11, std::min(y21, std::min(y31, y41)));
+
+        float xmax = std::max(x11, std::max(x21, std::max(x31, x41)));
+        float ymax = std::max(y11, std::max(y21, std::max(y31, y41)));
+
+        out_w = xmax-xmin;
+        out_h = ymax-ymin;
+    }
+
+    void rot( float x, float y, const osg::Vec2f& c, float angle_rad, osg::Vec3f& out )
+    {
+        float cosa = cos(angle_rad);
+        float sina = sin(angle_rad);
+        out.x() = (c.x()-x)*cosa - (c.y()-y)*sina + c.x();
+        out.y() = (c.y()-y)*cosa + (c.x()-x)*sina + c.y();
+        out.z() = 0.0f;
+    }
+}
+
 // ---------------------------------------------------------------------------
 
 Control::Control() :
@@ -484,6 +524,15 @@ ImageControl::setImage( osg::Image* image )
 }
 
 void
+ImageControl::setRotation( float value_deg )
+{
+    if ( _rotation_deg != value_deg ) {
+        _rotation_deg = value_deg;
+        dirty();
+    }
+}
+
+void
 ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
@@ -505,6 +554,15 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         {
             _renderSize.set( width().value(), height().value());
         }
+
+        //if there's a rotation angle, rotate
+        if ( _rotation_deg != 0.0f )
+        {
+            calculateRotatedSize( 
+                _renderSize.x(), _renderSize.y(), 
+                osg::DegreesToRadians(_rotation_deg),
+                _renderSize.x(), _renderSize.y() );
+        }            
         
         out_size.set(
             margin().left() + margin().right() + _renderSize.x(),
@@ -528,14 +586,32 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
-        float vph = cx._vp->height(); // - padding().bottom();
+        float vph = cx._vp->height();
 
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         g->setVertexArray( verts );
-        (*verts)[0].set( rx, vph - ry, 0 );
-        (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
-        (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
-        (*verts)[3].set( rx + _renderSize.x(), vph - ry, 0 );
+
+        if ( _rotation_deg != 0.0f )
+        {
+            osg::Vec2f rc( rx+_renderSize.x()/2, (vph-ry)-_renderSize.y()/2 );
+            float ra = osg::PI - osg::DegreesToRadians(_rotation_deg);
+
+            rx += 0.5*_renderSize.x() - 0.5*(float)_image->s();
+            ry += 0.5*_renderSize.y() - 0.5*(float)_image->t();
+
+            rot( rx, vph-ry, rc, ra, (*verts)[0] );
+            rot( rx, vph-ry-_image->t(), rc, ra, (*verts)[1] );
+            rot( rx+_image->s(), vph-ry-_image->t(), rc, ra, (*verts)[2] );
+            rot( rx+_image->s(), vph-ry, rc, ra, (*verts)[3] );
+        }
+        else
+        {
+            (*verts)[0].set( rx, vph - ry, 0 );
+            (*verts)[1].set( rx, vph - ry - _renderSize.y(), 0 );
+            (*verts)[2].set( rx + _renderSize.x(), vph - ry - _renderSize.y(), 0 );
+            (*verts)[3].set( rx + _renderSize.x(), vph - ry, 0 );
+        }
+
         g->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
 
         osg::Vec4Array* c = new osg::Vec4Array(1);

@@ -266,8 +266,14 @@ namespace osgEarth { namespace Util { namespace Controls
         void setImage( osg::Image* image );
         osg::Image* getImage() const { return _image.get(); }
 
+        /** Rotates the image. */
         void setRotation( float rotation_deg );
-        float getRotation() const { return _rotation_deg; }
+        float getRotation() const { return osg::RadiansToDegrees(_rotation_rad); }
+
+        /** Tells the control to fix its minimum size to account to rotation. Otherwise the
+            control will auto-size its width/height based on the rotation angle. */
+        void setFixSizeForRotation( bool value );
+        bool getFixSizeForRotation() const { return _fixSizeForRot; }
 
     public: // Control
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
@@ -275,7 +281,8 @@ namespace osgEarth { namespace Util { namespace Controls
 
     private:
         osg::ref_ptr<osg::Image> _image;
-        float _rotation_deg;
+        float _rotation_rad;
+        bool _fixSizeForRot;
         osg::Geometry* _geom;
     };
 

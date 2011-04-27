@@ -509,7 +509,9 @@ LabelControl::draw( const ControlContext& cx, DrawableList& out )
 
 // ---------------------------------------------------------------------------
 
-ImageControl::ImageControl( osg::Image* image )
+ImageControl::ImageControl( osg::Image* image ) :
+_rotation_rad( 0.0f ),
+_fixSizeForRot( false )
 {
     setImage( image );
 }
@@ -526,8 +528,18 @@ ImageControl::setImage( osg::Image* image )
 void
 ImageControl::setRotation( float value_deg )
 {
-    if ( _rotation_deg != value_deg ) {
-        _rotation_deg = value_deg;
+    float rad = osg::DegreesToRadians(value_deg);
+    if ( _rotation_rad != rad ) {
+        _rotation_rad = rad;
+        dirty();
+    }
+}
+
+void
+ImageControl::setFixSizeForRotation( bool value ) 
+{
+    if ( _fixSizeForRot != value ) {
+        _fixSizeForRot = value;
         dirty();
     }
 }
@@ -556,13 +568,14 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         }
 
         //if there's a rotation angle, rotate
-        if ( _rotation_deg != 0.0f )
+        float rot = _fixSizeForRot ? osg::PI_4 : _rotation_rad;
+        if ( rot != 0.0f )
         {
             calculateRotatedSize( 
                 _renderSize.x(), _renderSize.y(), 
-                osg::DegreesToRadians(_rotation_deg),
+                rot,
                 _renderSize.x(), _renderSize.y() );
-        }            
+        }
         
         out_size.set(
             margin().left() + margin().right() + _renderSize.x(),
@@ -591,10 +604,10 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         g->setVertexArray( verts );
 
-        if ( _rotation_deg != 0.0f )
+        if ( _rotation_rad != 0.0f || _fixSizeForRot == true )
         {
             osg::Vec2f rc( rx+_renderSize.x()/2, (vph-ry)-_renderSize.y()/2 );
-            float ra = osg::PI - osg::DegreesToRadians(_rotation_deg);
+            float ra = osg::PI - _rotation_rad;
 
             rx += 0.5*_renderSize.x() - 0.5*(float)_image->s();
             ry += 0.5*_renderSize.y() - 0.5*(float)_image->t();

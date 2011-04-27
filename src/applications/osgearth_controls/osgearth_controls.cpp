@@ -101,6 +101,7 @@ createControls( ControlCanvas* cs )
         if ( image ) {
             ImageControl* imageCon = new ImageControl( image );
             imageCon->setHorizAlign( Control::ALIGN_CENTER );
+            imageCon->setFixSizeForRotation( true );
             imageCon->addEventHandler( new ImageRotationHandler );
             center->addControl( imageCon );
             center->setHorizAlign( Control::ALIGN_CENTER );

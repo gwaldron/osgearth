@@ -191,15 +191,15 @@ TileSource::getPixelsPerTile() const
 osg::Image*
 TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCallback* progress)
 {
-	// Try to get it from the memcache fist
+    // Try to get it from the memcache fist
     if (_memCache.valid())
-	{
+    {
         osg::ref_ptr<const osg::Image> cachedImage;
-		if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
+        if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
         {
             return ImageUtils::cloneImage(cachedImage.get());
         }
-	}
+    }
 
     osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
 
@@ -238,6 +238,7 @@ TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, 
         _memCache->setHeightField( key, CacheSpec(), newHF.get() );
     }
 
+    //TODO: why not just newHF.release()? -gw
     return newHF.valid() ? new osg::HeightField( *newHF.get() ) : 0L;
 }
 

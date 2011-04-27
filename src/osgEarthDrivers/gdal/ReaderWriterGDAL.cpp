@@ -737,7 +737,6 @@ public:
         if ( overrideProfile )
         {
             src_srs = overrideProfile->getSRS();
-            _srcDS->SetProjection( src_srs->getWKT().c_str() ); // will this work?
         }
         else if ( srcProj )
         {
@@ -816,14 +815,27 @@ public:
         }
         else
         {
-            _warpedDS = _srcDS;
-            warpedSRSWKT = _srcDS->GetProjectionRef();
-            if ( warpedSRSWKT.empty() )
-                warpedSRSWKT = src_srs->getWKT();
+            _warpedDS = _srcDS;            
+            warpedSRSWKT = src_srs->getWKT();
         }
 
         //Get the _geotransform
-        _warpedDS->GetGeoTransform(_geotransform);
+        if (overrideProfile)
+        {        
+            _geotransform[0] = overrideProfile->getExtent().xMin(); //Top left x
+            _geotransform[1] = overrideProfile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
+            _geotransform[2] = 0;
+
+            _geotransform[3] = overrideProfile->getExtent().yMax(); //Top left y
+            _geotransform[4] = 0;
+            _geotransform[5] = -overrideProfile->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
+
+        }
+        else
+        {
+            _warpedDS->GetGeoTransform(_geotransform);
+        }
+
         GDALInvGeoTransform(_geotransform, _invtransform);
 
 

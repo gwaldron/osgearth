@@ -865,19 +865,22 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
                 if (n == 1)
                 {
-                  if (i != 0 && i != numColumns - 1 && j != 0 && j != numRows - 1)
+                  if (i != 0 && i != numColumns - 1)
                   {
-                    if (indices[iv - 1] == -2)
+                    if (j > 0 && indices[iv - numColumns] == -2)
                       n++;
 
-                    if (indices[iv + 1] == -2)
+                    if (j < numRows - 1 && indices[iv + numColumns] == -2)
+                      n++;
+                  }
+                  
+                  if (j != 0 && j != numRows - 1)
+                  {
+                    if (i > 0 && indices[iv - 1] == -2)
                       n++;
 
-                    if (indices[iv - numColumns] == -2)
-                      n++;
-
-                    if (indices[iv + numColumns] == -2)
-                      n++;
+                    if (i < numColumns - 1 && indices[iv + 1] == -2)
+                      n++; 
                   }
                 }
                 else

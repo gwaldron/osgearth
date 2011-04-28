@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_ENGINE_OSGTERRAIN_CUSTOM_TERRAIN
 #define OSGEARTH_ENGINE_OSGTERRAIN_CUSTOM_TERRAIN 1
 
+#error
 #include "Common"
 #include "CustomTile"
 #include "OSGTileFactory"
@@ -120,19 +121,16 @@ protected:
 	~CustomTerrain();
 
     typedef std::map< osgTerrain::TileID, osg::ref_ptr<CustomTile> > TileTable;
-    //typedef std::map< TileKey, osg::ref_ptr<CustomTile> > TileTable;
 
-    typedef std::queue< osg::ref_ptr<CustomTile> > TileQueue;
-    typedef std::list< osg::ref_ptr<CustomTile> > TileList;
+    typedef std::queue< osg::ref_ptr<CustomTile> >  TileQueue;
+    typedef std::list< osg::ref_ptr<CustomTile> >   TileList;
     typedef std::vector< osg::ref_ptr<CustomTile> > TileVector;
-    typedef std::queue< osgTerrain::TileID > TileIDQueue;
+    typedef std::queue< osgTerrain::TileID >        TileIDQueue;
 
     Threading::ReadWriteMutex _tilesMutex;
     TileTable  _tiles;
     TileList   _tilesToShutDown;
     TileQueue  _tilesToRelease;
-    //TileQueue  _tilesToAdd;
-    //TileVector _tilesToServiceElevation;
 
     Threading::Mutex _tilesToReleaseMutex;
 
@@ -141,7 +139,6 @@ public:
 
     void registerTile( CustomTile* newTile );
 
-    //void getCustomTile( const TileKey& key, osg::ref_ptr<CustomTile>& out_tile, bool lock =true );
     void getCustomTile( const osgTerrain::TileID&, osg::ref_ptr<CustomTile>& out_tile, bool lock =true );
     void getCustomTiles( TileVector& out_tiles );
 
@@ -152,18 +149,13 @@ private:
     TaskService* createTaskService( const std::string& name, int id, int numThreads );
     TaskService* getTaskService( int id );
 
-    //void refreshFamily( 
-    //    const MapInfo& info, const osgTerrain::TileID& tileId, Relative* family, bool tileTableLocked );
-
     void refreshFamily( 
         const MapInfo& info, const TileKey& key, Relative* family, bool tileTableLocked );
 
     int _revision; 
     OpenThreads::Mutex _revisionMutex;
 
-    //osg::ref_ptr<Map> _map;
-
-    osg::ref_ptr<OSGTileFactory> _tileFactory; // _engine;
+    osg::ref_ptr<OSGTileFactory> _tileFactory;
     typedef std::map< int, osg::ref_ptr< TaskService > > TaskServiceMap;
     TaskServiceMap _taskServices;
 

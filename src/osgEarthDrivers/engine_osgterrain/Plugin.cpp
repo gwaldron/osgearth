@@ -18,9 +18,7 @@
  */
 #include "OSGTerrainEngineNode"
 #include "OSGTerrainOptions"
-#include "CustomTile"
 #include <osgEarth/Registry>
-#include <osgEarth/TaskService>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>

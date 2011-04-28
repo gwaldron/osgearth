@@ -20,10 +20,8 @@
 #define OSGEARTH_ENGINE_KEY_NODE_FACTORY 1
 
 #include "Common"
-#include "CustomTile"
 #include <osgEarth/TileKey>
 #include <osg/Node>
-#include <osg/CoordinateSystemNode>
 
 using namespace osgEarth;
 

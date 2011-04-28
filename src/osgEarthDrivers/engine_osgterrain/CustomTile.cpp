@@ -16,6 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#if 0
 #include "CustomTerrain"
 #include "CustomTerrainTechnique"
 #include "TransparentLayer"
@@ -228,6 +229,8 @@ _mask( 0L )
     this->setThreadSafeRefUnref( true );
 
     this->setTileID( key.getTileId() );
+
+    this->setName( key.str() );
 
     // because the lowest LOD (1) is always loaded fully:
     _elevationLayerUpToDate = _key.getLevelOfDetail() <= 1;
@@ -1213,3 +1216,4 @@ CustomTile::releaseGLObjects(osg::State* state) const
         _terrainTechnique->releaseGLObjects( state );
     }
 }
+#endif

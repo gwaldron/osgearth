@@ -545,11 +545,11 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Lo
 	return geometry;
 }
 
-osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
+osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int            order,
                                                   const CustomColorLayer* colorLayer,
-                                                  osgTerrain::Locator* masterLocator,
-                                                  const osg::Vec3d& centerModel,
-                                                  osg::Geometry* geometry)
+                                                  osgTerrain::Locator*    masterLocator,
+                                                  const osg::Vec3d&       centerModel,
+                                                  osg::Geometry*          geometry)
 {
 	OE_DEBUG << "osgEarth::MultiPassTerrainTechnique createPass " << order << std::endl;
     unsigned int binNumber = 1000;
@@ -854,7 +854,7 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
 	osg::ref_ptr<osg::Geometry> prototype = createGeometryPrototype( masterLocator, centerModel );
 
     // take a thread-safe snapshot of the layer stack:
-    CustomTileFrame tilef( static_cast<CustomTile*>( _terrainTile ) );
+    TileFrame tilef( static_cast<Tile*>( _terrainTile ) );
 
     if ( tilef._colorLayers.size() == 0 )
     {
@@ -912,48 +912,9 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
         updateTransparency();
     }
 
-
     // traverse the dynamically-generated geometry.
     if (_transform.valid()) 
         _transform->accept(nv);
-
-#if 0
-    // if app traversal update the frame count.
-    if (nv.getVisitorType()==osg::NodeVisitor::UPDATE_VISITOR)
-    {
-        if ((_terrainTile->getDirty()))
-        {
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-            _terrainTile->init(~0x0, true);
-#else
-            _terrainTile->init();
-#endif
-            _terrainTileInitialized = true;
-        }
-
-        if (_terrainTile)
-            _terrainTile->osg::Group::traverse( nv );
-    }
-    else if (nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR)
-    {		
-		updateTransparency();
-    }
-
-    if (_terrainTile->getDirty() && !_terrainTileInitialized) 
-    {
-        OE_DEBUG<<"******* Doing init ***********"<<std::endl;
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-        _terrainTile->init(~0x0, true);
-#else
-        _terrainTile->init();
-#endif
-        _terrainTileInitialized = true;
-    }
-
-    // traverse the dynamically-generated geometry.
-    if (_transform.valid()) 
-        _transform->accept(nv);
-#endif
 }
 
 void MultiPassTerrainTechnique::updateTransparency()
@@ -961,7 +922,7 @@ void MultiPassTerrainTechnique::updateTransparency()
     if ( _passes.valid() )
     {
         ColorLayersByUID colorLayers;
-        static_cast<CustomTile*>( _terrainTile )->getCustomColorLayers( colorLayers );
+        static_cast<Tile*>(_terrainTile)->getCustomColorLayers( colorLayers );
 
         for( ColorLayersByUID::const_iterator i = colorLayers.begin(); i != colorLayers.end(); ++i )
         {
@@ -996,4 +957,3 @@ void MultiPassTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
     if (_transform.valid()) _transform->releaseGLObjects( state );
 }
-

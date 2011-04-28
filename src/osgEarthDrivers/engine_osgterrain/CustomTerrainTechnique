@@ -21,7 +21,7 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_EXTENDED_TERRAIN_TECHNIQUE 1
 
 #include "Common"
-#include "CustomTile"
+#include "Tile"
 #include <osgTerrain/TerrainTechnique>
 #include <osgEarth/Progress>
 
@@ -30,7 +30,7 @@ using namespace osgEarth;
 class CustomTerrainTechnique : public osgTerrain::TerrainTechnique
 {
 public:
-    virtual void compile( const TileUpdate& updateSpec, ProgressCallback* progress ) =0;
+    virtual void compile( const Tile::Update& updateSpec, ProgressCallback* progress ) =0;
 
     virtual bool applyTileUpdates() =0;
 

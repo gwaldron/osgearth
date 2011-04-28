@@ -20,7 +20,7 @@
 #define OSGEARTH_ENGINE_TILE_BUILDER 1
 
 #include "Common"
-#include "CustomTile"
+#include "Tile"
 #include <osgEarth/Map>
 #include <osgEarth/TaskService>
 #include <osg/Group>
@@ -63,32 +63,32 @@ public:
 
 public:
     TileBuilder(
-        const Map* map,
+        const Map*               map,
         const OSGTerrainOptions& terrainOptions,
-        TaskService* service );
+        TaskService*             service );
 
     void createTile(
-        const TileKey&            key,
-        bool                      parallelize,
-        osg::ref_ptr<CustomTile>& out_tile,
-        bool&                     out_hasRealData,
-        bool&                     out_hasLodBlendedLayers );
+        const TileKey&      key,
+        bool                parallelize,
+        osg::ref_ptr<Tile>& out_tile,
+        bool&               out_hasRealData,
+        bool&               out_hasLodBlendedLayers );
 
     Job* createJob( const TileKey& key, Threading::MultiEvent& semaphore );
 
     void runJob( Job* job );
 
     void finalizeJob( 
-        Job*                      job, 
-        osg::ref_ptr<CustomTile>& out_tile,
-        bool&                     out_hasRealData,
-        bool&                     out_hasLodBlending );
+        Job*                job, 
+        osg::ref_ptr<Tile>& out_tile,
+        bool&               out_hasRealData,
+        bool&               out_hasLodBlending );
 
     TaskService* getTaskService() const { return _service; }
 
 private:
-    const Map* _map;
-    TaskService* _service;
+    const Map*               _map;
+    TaskService*             _service;
     const OSGTerrainOptions& _terrainOptions;
 };
 

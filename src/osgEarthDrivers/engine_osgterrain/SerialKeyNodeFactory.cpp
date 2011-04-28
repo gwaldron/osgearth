@@ -33,7 +33,7 @@ using namespace OpenThreads;
 SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder*             builder,
                                            const OSGTerrainOptions& options,
                                            const MapInfo&           mapInfo,
-                                           CustomTerrain*           terrain,
+                                           Terrain*         terrain,
                                            UID                      engineUID ) :
 _builder( builder ),
 _options( options ),
@@ -45,12 +45,11 @@ _engineUID( engineUID )
 }
 
 void
-SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
+SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
 {
     // associate this tile with the terrain:
     tile->setTerrainTechnique( osg::clone(_terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
     tile->setTerrain( _terrain );
-    tile->setTerrainRevision( _terrain->getRevision() );
     _terrain->registerTile( tile );
 
     // check to see if this tile has children of its own:
@@ -123,9 +122,9 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, bool tileH
 osg::Node*
 SerialKeyNodeFactory::createNode( const TileKey& key )
 {
-    osg::ref_ptr<CustomTile> tiles[4];
-    bool                     realData[4];
-    bool                     lodBlending[4];
+    osg::ref_ptr<Tile> tiles[4];
+    bool               realData[4];
+    bool               lodBlending[4];
 
     for( unsigned i = 0; i < 4; ++i )
     {

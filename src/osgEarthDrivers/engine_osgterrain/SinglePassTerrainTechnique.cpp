@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "SinglePassTerrainTechnique"
-#include "CustomTerrain"
+#include "Terrain"
 
 #include <osgEarth/Cube>
 #include <osgEarth/ImageUtils>
@@ -58,7 +58,7 @@ _verticalScaleOverride(1.0f),
 _initCount(0),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
-_lastUpdate( TileUpdate::UPDATE_ALL ),
+_lastUpdate( Tile::Update::UPDATE_ALL ),
 _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
 _frontGeodeInstalled( false )
@@ -116,14 +116,14 @@ SinglePassTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
 SinglePassTerrainTechnique::init()
 #endif
 {
-    compile( TileUpdate(TileUpdate::UPDATE_ALL), 0L );
+    compile( Tile::Update(Tile::Update::UPDATE_ALL), 0L );
 
     //_pendingFullUpdate = true;
     applyTileUpdates();
 }
 
 void
-SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback* progress )
+SinglePassTerrainTechnique::compile( const Tile::Update& update, ProgressCallback* progress )
 {
     // safety check
     if ( !_terrainTile ) 
@@ -136,7 +136,8 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
     OpenThreads::ScopedLock<Mutex> exclusiveLock( _compileMutex );
 
     // make a frame to use during compilation.
-    CustomTileFrame tilef( static_cast<CustomTile*>(_terrainTile) );
+    TileFrame tilef( static_cast<Tile*>(_terrainTile) );
+    //CustomTileFrame tilef( static_cast<CustomTile*>(_terrainTile) );
 
     _lastUpdate = update;
 
@@ -156,7 +157,7 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
 
     // handle image layer addition or update:
     if (partialUpdateOK && 
-        ( update.getAction() == TileUpdate::ADD_IMAGE_LAYER || update.getAction() == TileUpdate::UPDATE_IMAGE_LAYER ))
+        ( update.getAction() == Tile::Update::ADD_IMAGE_LAYER || update.getAction() == Tile::Update::UPDATE_IMAGE_LAYER ))
     {
         prepareImageLayerUpdate( update.getLayerUID(), tilef );
 
@@ -172,14 +173,14 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         }
     }
 
-    else if (partialUpdateOK && update.getAction() == TileUpdate::MOVE_IMAGE_LAYER )
+    else if (partialUpdateOK && update.getAction() == Tile::Update::MOVE_IMAGE_LAYER )
     {
         //nop - layer re-ordering happens entirely in the texture compositor.
     }
 
     //TODO: we should not need to check supportsLayerUpdate here, but it is not working properly in
     // multitexture mode (white tiles show up). Need to investigate and fix.
-    else if ( partialUpdateOK && update.getAction() == TileUpdate::UPDATE_ELEVATION )
+    else if ( partialUpdateOK && update.getAction() == Tile::Update::UPDATE_ELEVATION )
     {
         osg::ref_ptr<osg::StateSet> stateSet = _backGeode.valid() ? _backGeode->getStateSet() : 0L;
         _backGeode = createGeometry( tilef );
@@ -227,8 +228,8 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         }
        
         _initCount++;
-        //if ( _initCount > 1 )
-        //    OE_WARN << LC << "Tile was fully build " << _initCount << " times" << std::endl;
+        if ( _initCount > 1 )
+            OE_WARN << LC << "Tile was fully build " << _initCount << " times" << std::endl;
 
         if ( _backGeode.valid() && !_backGeode->getStateSet() )
             OE_WARN << LC << "ILLEGAL! no stateset in BackGeode!!" << std::endl;
@@ -359,7 +360,7 @@ SinglePassTerrainTechnique::applyTileUpdates()
 }
 
 void
-SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const CustomTileFrame& tilef )
+SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const TileFrame& tilef )
 {
     CustomColorLayer layer;
     if ( tilef.getCustomColorLayer( layerUID, layer ) )
@@ -404,8 +405,8 @@ osg::StateSet* SinglePassTerrainTechnique::getParentStateSet() const
     if (_terrainTile->getTerrain())
     {
         TileKey parentKey = _tileKey.createParentKey();
-        CustomTile* parentTile
-            = dynamic_cast<CustomTile*>(_terrainTile->getTerrain()->getTile(parentKey.getTileId()));
+        Tile* parentTile  = dynamic_cast<Tile*>(_terrainTile->getTerrain()->getTile(parentKey.getTileId()));
+
         if (parentTile)
         {
             SinglePassTerrainTechnique* parentTechnique
@@ -423,7 +424,7 @@ osg::StateSet* SinglePassTerrainTechnique::getParentStateSet() const
 }
 
 osg::StateSet*
-SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
+SinglePassTerrainTechnique::createStateSet( const TileFrame& tilef )
 {
     // establish the tile extent. we will calculate texture coordinate offset/scale based on this
     if ( !_tileExtent.isValid() )
@@ -525,7 +526,7 @@ namespace
 }
 
 osg::Geode*
-SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
+SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 {
     osg::ref_ptr<GeoLocator> masterTextureLocator = _masterLocator.get();
     //GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(_masterLocator.get());
@@ -568,7 +569,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     osg::Geometry* mask_skirt = 0L;
     if ( mask )
     {
-        new osg::Geometry();
+        mask_skirt = new osg::Geometry();
         mask_skirt->setThreadSafeRefUnref(true);
         mask_skirt->setDataVariance( osg::Object::DYNAMIC );
         mask_skirt->setUseDisplayList(false);
@@ -1623,8 +1624,7 @@ SinglePassTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
     SinglePassTerrainTechnique* ncThis = const_cast<SinglePassTerrainTechnique*>(this);
 
-    Threading::ScopedWriteLock lock( 
-        static_cast<CustomTile*>( ncThis->_terrainTile )->getTileLayersMutex() );
+    Threading::ScopedWriteLock lock( static_cast<Tile*>(ncThis->_terrainTile)->getTileLayersMutex() );
 
     if ( _transform.valid() )
         _transform->releaseGLObjects( state );

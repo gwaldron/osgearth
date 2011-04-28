@@ -404,8 +404,10 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                 if ( tile->getNumParents() == 0 && tile->getHasBeenTraversed() )
                 {
                     _tilesToShutDown.push_back( tile );
-                    i = _tiles.erase( i );
-                    //_tiles.erase( i++ ); // huh?
+                    
+                    // i is incremented prior to calling erase, but i's previous value goes to erase,
+                    // maintaining validity
+                    _tiles.erase( i++ );
                 }
                 else
                     ++i;
@@ -436,6 +438,8 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                     ++i;
             }
         }
+
+//        OE_NOTICE << "Tiles = " << _tiles.size() << std::endl;
 
         if ( _loadingPolicy.mode() == LoadingPolicy::MODE_SEQUENTIAL || _loadingPolicy.mode() == LoadingPolicy::MODE_PREEMPTIVE )
         {

@@ -127,7 +127,7 @@ namespace
     {
         TO* newDE = new TO( GL_TRIANGLES );
         newDE->reserve( src->size() );
-        for( FROM::const_iterator i = src->begin(); i != src->end(); ++i )
+        for( typename FROM::const_iterator i = src->begin(); i != src->end(); ++i )
             newDE->push_back( (*i) + offset );
         return newDE;
     }

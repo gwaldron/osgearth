@@ -61,7 +61,8 @@ _pendingGeometryUpdate(false),
 _lastUpdate( Tile::Update::UPDATE_ALL ),
 _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
-_frontGeodeInstalled( false )
+_frontGeodeInstalled( false ),
+_debug( false )
 {
     this->setThreadSafeRefUnref(true);
 }
@@ -75,7 +76,9 @@ _pendingGeometryUpdate( false ),
 _lastUpdate( rhs._lastUpdate ),
 _optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _texCompositor( rhs._texCompositor.get() ),
-_frontGeodeInstalled( rhs._frontGeodeInstalled )
+_frontGeodeInstalled( rhs._frontGeodeInstalled ),
+_debug( rhs._debug ),
+_parentTile( rhs._parentTile )
 {
     //NOP
 }
@@ -116,6 +119,15 @@ SinglePassTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
 SinglePassTerrainTechnique::init()
 #endif
 {
+    if ( dynamic_cast<Tile*>(_terrainTile)->getKey().str() == "2_2_2" )
+        _debug = true;
+    
+    if ( _debug )
+    {
+        OE_NOTICE << LC << "init() " << std::endl;
+    }
+
+
     compile( Tile::Update(Tile::Update::UPDATE_ALL), 0L );
 
     //_pendingFullUpdate = true;
@@ -132,12 +144,16 @@ SinglePassTerrainTechnique::compile( const Tile::Update& update, ProgressCallbac
         return;
     }
 
+    if ( _debug )
+    {
+        OE_NOTICE << LC << "compile() " << std::endl;
+    }
+
     // serialize access to the compilation procedure.
     OpenThreads::ScopedLock<Mutex> exclusiveLock( _compileMutex );
 
     // make a frame to use during compilation.
     TileFrame tilef( static_cast<Tile*>(_terrainTile) );
-    //CustomTileFrame tilef( static_cast<CustomTile*>(_terrainTile) );
 
     _lastUpdate = update;
 
@@ -250,6 +266,11 @@ SinglePassTerrainTechnique::applyTileUpdates()
 {
     bool applied = false;
 
+    if ( _debug )
+    {
+        OE_NOTICE << "A" << std::endl;
+    }
+
     //Threading::ScopedReadLock lock( getMutex() );
 
     // serialize access to the compilation mechanism.
@@ -337,8 +358,11 @@ SinglePassTerrainTechnique::applyTileUpdates()
 
         // process any pending LIVE per-layer updates:
         osg::StateSet* parentStateSet = 0;
-        if (! _pendingImageLayerUpdates.empty())
+
+        if ( !_pendingImageLayerUpdates.empty() )
+        {
             parentStateSet = getParentStateSet();
+        }
 
         while( _pendingImageLayerUpdates.size() > 0 )
         {
@@ -354,6 +378,11 @@ SinglePassTerrainTechnique::applyTileUpdates()
             _pendingImageLayerUpdates.pop();
             applied = true;
         }
+    }
+
+    if ( _debug )
+    {
+        OE_NOTICE << "applyTileUpdates()" << std::endl;
     }
 
     return applied;
@@ -399,18 +428,45 @@ SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer,
     return false;
 }
 
-osg::StateSet* SinglePassTerrainTechnique::getParentStateSet() const
+osg::StateSet*
+SinglePassTerrainTechnique::getActiveStateSet() const
+{
+    OpenThreads::ScopedLock<Mutex> exclusiveLock( const_cast<SinglePassTerrainTechnique*>(this)->_compileMutex );
+
+    osg::StateSet* result = 0L;
+    osg::Geode* front = getFrontGeode();
+    if ( front ) 
+        result = front->getStateSet();
+    if ( !result && _backGeode.valid() )
+        result = _backGeode->getStateSet();
+
+    return result;
+}
+
+osg::StateSet*
+SinglePassTerrainTechnique::getParentStateSet() const
 {
     osg::StateSet* parentStateSet = 0;
+    osg::ref_ptr<Tile> parentTile_safe = _parentTile.get();
+    if ( parentTile_safe.valid() )
+    {
+        return static_cast<SinglePassTerrainTechnique*>(_parentTile->getTerrainTechnique())->getActiveStateSet();
+    }
+    else return 0L;
+}
+
+#if 0
     if (_terrainTile->getTerrain())
     {
         TileKey parentKey = _tileKey.createParentKey();
-        Tile* parentTile  = dynamic_cast<Tile*>(_terrainTile->getTerrain()->getTile(parentKey.getTileId()));
-
-        if (parentTile)
+        osg::ref_ptr<Tile> parentTile;
+        static_cast<const Tile*>(_terrainTile)->getParentTerrain()->getTile( parentKey.getTileId(), parentTile );
+        //Tile* parentTile  = dynamic_cast<Tile*>(_terrainTile->getTerrain()->getTile(parentKey.getTileId()));
+        if ( parentTile.valid() )
         {
             SinglePassTerrainTechnique* parentTechnique
                 = dynamic_cast<SinglePassTerrainTechnique*>(parentTile->getTerrainTechnique());
+
             if (parentTechnique)
             {
                 if (parentTechnique->_backGeode.valid())
@@ -422,6 +478,7 @@ osg::StateSet* SinglePassTerrainTechnique::getParentStateSet() const
     }
     return parentStateSet;
 }
+#endif
 
 osg::StateSet*
 SinglePassTerrainTechnique::createStateSet( const TileFrame& tilef )
@@ -518,6 +575,9 @@ namespace
         osg::Vec2Array* _texCoords;
         osg::Vec2Array* _skirtTexCoords;
         osg::Vec2Array* _maskSkirtTexCoords;
+        //osg::ref_ptr<osg::Vec2Array> _texCoords;
+        //osg::ref_ptr<osg::Vec2Array> _skirtTexCoords;
+        //osg::ref_ptr<osg::Vec2Array> _maskSkirtTexCoords;
         bool _ownsTexCoords;
         RenderLayer() : _texCoords(0L), _ownsTexCoords(false) { }
     };

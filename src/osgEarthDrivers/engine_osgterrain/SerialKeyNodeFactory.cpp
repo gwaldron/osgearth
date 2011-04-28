@@ -49,8 +49,10 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
 {
     // associate this tile with the terrain:
     tile->setTerrainTechnique( osg::clone(_terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
-    tile->setTerrain( _terrain );
-    _terrain->registerTile( tile );
+
+    tile->attachToTerrain( _terrain );
+    //tile->setTerrain( _terrain );
+    //_terrain->registerTile( tile );
 
     // check to see if this tile has children of its own:
     if ( tileHasRealData )

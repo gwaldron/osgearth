@@ -73,6 +73,8 @@ public: /* overrides */
     virtual void init();
 #endif
 
+    void setParentTile( Tile* tile ) { _parentTile = tile; }
+
     void compile( const Tile::Update& updateSpec, ProgressCallback* progress );
 
     // returns TRUE if a swap occurred and a new subgraph is now in place.
@@ -107,6 +109,9 @@ public:
     * for all graphics contexts. */
     virtual void releaseGLObjects(osg::State* = 0) const;
 
+    osg::StateSet* getActiveStateSet() const;
+
+
 protected:
 
     void calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j );
@@ -114,6 +119,7 @@ protected:
 private:
 
     virtual ~SinglePassTerrainTechnique();
+    bool _debug;
 
     OpenThreads::Mutex _compileMutex;
     //OpenThreads::Mutex                  _writeBufferMutex;
@@ -159,13 +165,13 @@ private:
     osg::StateSet* createStateSet( const TileFrame& tilef );
     void prepareImageLayerUpdate( int layerIndex, const TileFrame& tilef );
     //Threading::ReadWriteMutex& getMutex();
-    inline osg::Geode* getFrontGeode() { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
+    inline osg::Geode* getFrontGeode() const { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
     osg::StateSet* getParentStateSet() const;
     //const CustomColorLayer* getLayerByUID( UID uid ) const;
     int getIndexOfColorLayerWithUID( UID uid ) const;
 
     
-
+    osg::observer_ptr<Tile> _parentTile;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_SINGLE_PASS_TERRAIN_TECHNIQUE

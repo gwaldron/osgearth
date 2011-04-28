@@ -568,7 +568,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     osg::Geometry* mask_skirt = 0L;
     if ( mask )
     {
-        new osg::Geometry();
+        mask_skirt = new osg::Geometry();
         mask_skirt->setThreadSafeRefUnref(true);
         mask_skirt->setDataVariance( osg::Object::DYNAMIC );
         mask_skirt->setUseDisplayList(false);

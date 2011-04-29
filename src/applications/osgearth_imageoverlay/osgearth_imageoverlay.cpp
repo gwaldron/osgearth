@@ -26,6 +26,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
+#include <osgEarth/Utils>
 
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
@@ -123,15 +124,7 @@ struct EditHandler : public ControlEventHandler
             static_cast<LabelControl*>(control)->setText( "Edit" );
             if (s_editor)
             {
-#if OSG_MIN_VERSION_REQUIRED(2,9,1)
-                _viewer->removeEventHandler( s_editor );
-#else
-                osgViewer::View::EventHandlers::iterator itr = std::find(_viewer->getEventHandlers().begin(), _viewer->getEventHandlers().end(), s_editor);
-                if (itr != _viewer->getEventHandlers().end())
-                {
-                    _viewer->getEventHandlers().erase(itr);
-                }
-#endif
+                removeEventHandler(_viewer, s_editor);
                 s_editor = 0;
             }
         }

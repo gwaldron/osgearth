@@ -156,8 +156,8 @@ protected:
         const TileKey& ancestorKey );
 
     osg::ClusterCullingCallback* createClusterCullingCallback(
-        osgTerrain::TerrainTile* tile,
-        osg::EllipsoidModel*     et );
+        Tile*                tile,
+        osg::EllipsoidModel* et );
 
     void init();
 

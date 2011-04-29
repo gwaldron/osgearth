@@ -18,6 +18,7 @@
  */
 #include "SinglePassTerrainTechnique"
 #include "Terrain"
+#include "Tile"
 
 #include <osgEarth/Cube>
 #include <osgEarth/ImageUtils>
@@ -44,21 +45,16 @@ using namespace OpenThreads;
 
 #define LC "[SinglePassTechnique] "
 
-// OSG 2.9.8 changed the osgTerrain API...
-#if OSG_VERSION_GREATER_OR_EQUAL(2,9,8)
-#   define USE_NEW_OSGTERRAIN_298_API 1 
-#endif
-
 #define MATCH_TOLERANCE 0.001
 
 // --------------------------------------------------------------------------
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
+CustomTerrainTechnique(),
 _verticalScaleOverride(1.0f),
 _initCount(0),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
-_lastUpdate( Tile::Update::UPDATE_ALL ),
 _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
 _frontGeodeInstalled( false ),
@@ -73,7 +69,6 @@ _verticalScaleOverride( rhs._verticalScaleOverride ),
 _initCount( 0 ),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate( false ),
-_lastUpdate( rhs._lastUpdate ),
 _optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _texCompositor( rhs._texCompositor.get() ),
 _frontGeodeInstalled( rhs._frontGeodeInstalled ),
@@ -112,14 +107,10 @@ SinglePassTerrainTechnique::getOptimizeTriangleOrientation() const
     return _optimizeTriangleOrientation;
 }
 
-void
-#ifdef USE_NEW_OSGTERRAIN_298_API
-SinglePassTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
-#else
+void 
 SinglePassTerrainTechnique::init()
-#endif
 {
-    if ( dynamic_cast<Tile*>(_terrainTile)->getKey().str() == "2_2_2" )
+    if ( _tile->getKey().str() == "2_2_2" )
         _debug = true;
     
     if ( _debug )
@@ -127,18 +118,15 @@ SinglePassTerrainTechnique::init()
         OE_NOTICE << LC << "init() " << std::endl;
     }
 
-
-    compile( Tile::Update(Tile::Update::UPDATE_ALL), 0L );
-
-    //_pendingFullUpdate = true;
+    compile( TileUpdate(TileUpdate::UPDATE_ALL), 0L );
     applyTileUpdates();
 }
 
 void
-SinglePassTerrainTechnique::compile( const Tile::Update& update, ProgressCallback* progress )
+SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback* progress )
 {
     // safety check
-    if ( !_terrainTile ) 
+    if ( !_tile ) 
     {
         OE_WARN << LC << "Illegal; terrain tile is null" << std::endl;
         return;
@@ -151,11 +139,9 @@ SinglePassTerrainTechnique::compile( const Tile::Update& update, ProgressCallbac
 
     // serialize access to the compilation procedure.
     OpenThreads::ScopedLock<Mutex> exclusiveLock( _compileMutex );
-
+    
     // make a frame to use during compilation.
-    TileFrame tilef( static_cast<Tile*>(_terrainTile) );
-
-    _lastUpdate = update;
+    TileFrame tilef( _tile );
 
     // establish the master tile locator if this is the first compilation:
     if ( !_masterLocator.valid() || !_transform.valid() )
@@ -173,7 +159,7 @@ SinglePassTerrainTechnique::compile( const Tile::Update& update, ProgressCallbac
 
     // handle image layer addition or update:
     if (partialUpdateOK && 
-        ( update.getAction() == Tile::Update::ADD_IMAGE_LAYER || update.getAction() == Tile::Update::UPDATE_IMAGE_LAYER ))
+        ( update.getAction() == TileUpdate::ADD_IMAGE_LAYER || update.getAction() == TileUpdate::UPDATE_IMAGE_LAYER ))
     {
         prepareImageLayerUpdate( update.getLayerUID(), tilef );
 
@@ -189,14 +175,14 @@ SinglePassTerrainTechnique::compile( const Tile::Update& update, ProgressCallbac
         }
     }
 
-    else if (partialUpdateOK && update.getAction() == Tile::Update::MOVE_IMAGE_LAYER )
+    else if (partialUpdateOK && update.getAction() == TileUpdate::MOVE_IMAGE_LAYER )
     {
         //nop - layer re-ordering happens entirely in the texture compositor.
     }
 
     //TODO: we should not need to check supportsLayerUpdate here, but it is not working properly in
     // multitexture mode (white tiles show up). Need to investigate and fix.
-    else if ( partialUpdateOK && update.getAction() == Tile::Update::UPDATE_ELEVATION )
+    else if ( partialUpdateOK && update.getAction() == TileUpdate::UPDATE_ELEVATION )
     {
         osg::ref_ptr<osg::StateSet> stateSet = _backGeode.valid() ? _backGeode->getStateSet() : 0L;
         _backGeode = createGeometry( tilef );
@@ -252,12 +238,6 @@ SinglePassTerrainTechnique::compile( const Tile::Update& update, ProgressCallbac
 
         _pendingFullUpdate = true;
     }
-    
-#ifdef USE_NEW_OSGTERRAIN_298_API
-    // In the updated API, the technique is now responsible for clearing the dirty flag.
-    // It used to be the tile that cleared it.
-    _terrainTile->setDirtyMask(0);
-#endif
 }
 
 // from the UPDATE traversal thread:
@@ -455,31 +435,6 @@ SinglePassTerrainTechnique::getParentStateSet() const
     else return 0L;
 }
 
-#if 0
-    if (_terrainTile->getTerrain())
-    {
-        TileKey parentKey = _tileKey.createParentKey();
-        osg::ref_ptr<Tile> parentTile;
-        static_cast<const Tile*>(_terrainTile)->getParentTerrain()->getTile( parentKey.getTileId(), parentTile );
-        //Tile* parentTile  = dynamic_cast<Tile*>(_terrainTile->getTerrain()->getTile(parentKey.getTileId()));
-        if ( parentTile.valid() )
-        {
-            SinglePassTerrainTechnique* parentTechnique
-                = dynamic_cast<SinglePassTerrainTechnique*>(parentTile->getTerrainTechnique());
-
-            if (parentTechnique)
-            {
-                if (parentTechnique->_backGeode.valid())
-                    parentStateSet = parentTechnique->_backGeode->getStateSet();
-                else if (parentTechnique->_transform.valid())
-                    parentStateSet = parentTechnique->getFrontGeode()->getStateSet();
-            }
-        }
-    }
-    return parentStateSet;
-}
-#endif
-
 osg::StateSet*
 SinglePassTerrainTechnique::createStateSet( const TileFrame& tilef )
 {
@@ -526,14 +481,14 @@ SinglePassTerrainTechnique::createStateSet( const TileFrame& tilef )
 void
 SinglePassTerrainTechnique::calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j )
 {            
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+    osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
     out_rows = elevationLayer->getNumRows();
     out_cols = elevationLayer->getNumColumns();
     out_i = 1.0;
     out_j = 1.0;
 
-    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
+    float sampleRatio = _tile->getTerrain() ? _tile->getTerrain()->getSampleRatio() : 1.0f;
     if ( sampleRatio != 1.0f )
     {
         unsigned int originalNumColumns = out_cols;
@@ -572,14 +527,11 @@ namespace
     struct RenderLayer {
         CustomColorLayer _layer;
         osg::ref_ptr<const GeoLocator> _locator;
-        osg::Vec2Array* _texCoords;
-        osg::Vec2Array* _skirtTexCoords;
-        osg::Vec2Array* _maskSkirtTexCoords;
-        //osg::ref_ptr<osg::Vec2Array> _texCoords;
-        //osg::ref_ptr<osg::Vec2Array> _skirtTexCoords;
-        //osg::ref_ptr<osg::Vec2Array> _maskSkirtTexCoords;
+        osg::ref_ptr<osg::Vec2Array> _texCoords;
+        osg::ref_ptr<osg::Vec2Array> _skirtTexCoords;
+        osg::ref_ptr<osg::Vec2Array> _maskSkirtTexCoords;
         bool _ownsTexCoords;
-        RenderLayer() : _texCoords(0L), _ownsTexCoords(false) { }
+        RenderLayer() : _ownsTexCoords(false) { }
     };
 
     typedef std::vector< RenderLayer > RenderLayerVector;
@@ -600,7 +552,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         masterTextureLocator = masterTextureLocator->getGeographicFromGeocentric();
     }
     
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+    osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
     // fire up a brand new geode.
     osg::Geode* geode = new osg::Geode();
@@ -683,7 +635,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     // allocate and assign texture coordinates
     osg::Vec2Array* unifiedSurfaceTexCoords = 0L;
 
-    //int numColorLayers = _terrainTile->getNumColorLayers();
+    //int numColorLayers = _tile->getNumColorLayers();
     RenderLayerVector renderLayers;
 
     if ( _texCompositor->requiresUnitTextureSpace() )
@@ -717,12 +669,12 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             if ( locator )
             {
                 r._texCoords = locatorToTexCoordTable.find( locator );
-                if ( !r._texCoords )
+                if ( !r._texCoords.valid() )
                 {
                     r._texCoords = new osg::Vec2Array();
                     r._texCoords->reserve( numVerticesInSurface );
                     r._ownsTexCoords = true;
-                    locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords) );
+                    locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords.get()) );
                 }
 
                 r._skirtTexCoords = new osg::Vec2Array();
@@ -739,11 +691,11 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                         r._locator = geo->getGeographicFromGeocentric();
                 }
 
-                _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords );
-                _texCompositor->assignTexCoordArray( skirt, colorLayer.getUID(), r._skirtTexCoords );
+                _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords.get() );
+                _texCompositor->assignTexCoordArray( skirt, colorLayer.getUID(), r._skirtTexCoords.get() );
 
                 if (mask)
-                    _texCompositor->assignTexCoordArray( mask_skirt, colorLayer.getUID(), r._maskSkirtTexCoords );
+                    _texCompositor->assignTexCoordArray( mask_skirt, colorLayer.getUID(), r._maskSkirtTexCoords.get() );
 
                 //surface->setTexCoordArray( renderLayers.size(), r._texCoords );
                 renderLayers.push_back( r );
@@ -757,7 +709,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
     float scaleHeight = 
         _verticalScaleOverride != 1.0? _verticalScaleOverride :
-        _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() :
+        _tile->getTerrain() ? _tile->getTerrain()->getVerticalScale() :
         1.0f;
 
     osg::ref_ptr<osg::FloatArray> elevations = new osg::FloatArray;
@@ -776,7 +728,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     // populate vertex and tex coord arrays    
     unsigned int i, j; //, k=0;
 
-    osgEarth::GeoLocator* geoLocator = _masterLocator->getGeographicFromGeocentric();
+    osg::ref_ptr<GeoLocator> geoLocator = _masterLocator->getGeographicFromGeocentric();
 
     //Find the mask bounds in local coords
     osg::Vec3d mask_min_ndc, mask_max_ndc;
@@ -1360,7 +1312,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
               {
                   for (unsigned int i = 0; i < renderLayers.size(); ++i)
                   {
-                      const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords.get())[orig_i];
                       renderLayers[i]._skirtTexCoords->push_back( tc );
                       renderLayers[i]._skirtTexCoords->push_back( tc );
                   }
@@ -1391,7 +1343,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
               {
                   for (unsigned int i = 0; i < renderLayers.size(); ++i)
                   {
-                      const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords.get())[orig_i];
                       renderLayers[i]._skirtTexCoords->push_back( tc );
                       renderLayers[i]._skirtTexCoords->push_back( tc );
                   }
@@ -1422,7 +1374,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
               {
                   for (unsigned int i = 0; i < renderLayers.size(); ++i)
                   {
-                      const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords.get())[orig_i];
                       renderLayers[i]._skirtTexCoords->push_back( tc );
                       renderLayers[i]._skirtTexCoords->push_back( tc );
                   }
@@ -1453,7 +1405,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
               {
                   for (unsigned int i = 0; i < renderLayers.size(); ++i)
                   {
-                      const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords.get())[orig_i];
                       renderLayers[i]._skirtTexCoords->push_back( tc );
                       renderLayers[i]._skirtTexCoords->push_back( tc );
                   }
@@ -1652,54 +1604,22 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     return geode;
 }
 
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)
+#  define INIT_ARGS ~0,true
+#else
+#  define INIT_ARGS
+#endif
+
 void
 SinglePassTerrainTechnique::traverse(osg::NodeVisitor& nv)
 {
-    if ( !_terrainTile )
+    if ( !_tile )
         return;
-
-    // if app traversal update the frame count.
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-        if (_terrainTile->getDirty()) _terrainTile->init(~0x0,true);
-#else
-        if (_terrainTile->getDirty()) _terrainTile->init();
-#endif
-
-        _terrainTile->osg::Group::traverse( nv );    
-
-        // traverse the actual geometry in the tile. this is especially 
-        // important for geometry with ImageSequences and other things
-        // that require an update traversal.
-        if ( _transform.valid() )
-            _transform->accept( nv );
-
-        return;
-    }
-
-    else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-    {
-        if ( _transform.valid() )
-            _transform->accept( nv );
-        return;
-    }
-
-    // the code from here on accounts for user traversals (intersections, etc)
-
-    //TODO: evaluate this and see if we can get rid of it.
-
-    if ( _terrainTile->getDirty() ) 
-    {
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-        _terrainTile->init(~0x0, true);
-#else
-        _terrainTile->init();
-#endif
-    }
 
     if ( _transform.valid() )
+    {
         _transform->accept( nv );
+    }
 }
 
 void
@@ -1707,10 +1627,12 @@ SinglePassTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
     SinglePassTerrainTechnique* ncThis = const_cast<SinglePassTerrainTechnique*>(this);
 
-    Threading::ScopedWriteLock lock( static_cast<Tile*>(ncThis->_terrainTile)->getTileLayersMutex() );
+    Threading::ScopedWriteLock lock( static_cast<Tile*>(ncThis->_tile)->getTileLayersMutex() );
 
     if ( _transform.valid() )
+    {
         _transform->releaseGLObjects( state );
+    }
 
     if ( _backGeode.valid() )
     {

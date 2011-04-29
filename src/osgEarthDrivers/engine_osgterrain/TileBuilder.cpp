@@ -152,7 +152,7 @@ struct AssembleTile
     {
         _tile = new Tile( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
         _tile->setVerticalScale( *_opt->verticalScale() );
-        _tile->setRequiresNormals( true );
+        //_tile->setRequiresNormals( true );
         _tile->setDataVariance( osg::Object::DYNAMIC );
         _tile->setTerrainMaskGeometry(_mask);
 

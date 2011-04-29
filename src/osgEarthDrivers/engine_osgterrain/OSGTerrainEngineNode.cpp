@@ -239,12 +239,12 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     _tileFactory = new OSGTileFactory( _uid, *_cull_mapf, _terrainOptions );
 
     // go through and build the root nodesets.
-    if ( mode == LoadingPolicy::MODE_SERIAL || mode == LoadingPolicy::MODE_PARALLEL )
+    if ( !_isStreaming )
     {
         _terrain = new Terrain(
             *_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );
     }
-    else // if ( mode == LoadingPolicy::MODE_SEQUENTIAL || mode == LoadingPolicy::MODE_PREEMPTIVE )
+    else
     {
         _terrain = new StreamingTerrain(
             *_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );
@@ -258,12 +258,11 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
-    //// install the proper layer composition technique:
-    //_texCompositor = new TextureCompositor( _terrainOptions.compositingTechnique().value() );
+    // install the proper layer composition technique:
 
     if ( _texCompositor->getTechnique() == TerrainOptions::COMPOSITING_MULTIPASS )
     {
-        _terrain->setTerrainTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
+        _terrain->setTechniquePrototype( new MultiPassTerrainTechnique( _texCompositor.get() ) );
         OE_INFO << LC << "Compositing technique = MULTIPASS" << std::endl;
     }
 
@@ -275,50 +274,48 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
         if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
             tech->setOptimizeTriangleOrientation( false );
 
-        _terrain->setTerrainTechniquePrototype( tech );
+        _terrain->setTechniquePrototype( tech );
     }
 
     // install the shader program, if applicable:
     installShaders();
 
-    // calculate a good thread pool size.
-    unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
-    if ( _terrainOptions.loadingPolicy().isSet() )
+    // calculate a good thread pool size for non-streaming parallel processing
+    if ( !_isStreaming )
     {
-        if ( _terrainOptions.loadingPolicy()->numLoadingThreads().isSet() )
+        unsigned num = 2 * OpenThreads::GetNumberOfProcessors();
+        if ( _terrainOptions.loadingPolicy().isSet() )
         {
-            num = *_terrainOptions.loadingPolicy()->numLoadingThreads();
+            if ( _terrainOptions.loadingPolicy()->numLoadingThreads().isSet() )
+            {
+                num = *_terrainOptions.loadingPolicy()->numLoadingThreads();
+            }
+            else if ( _terrainOptions.loadingPolicy()->numLoadingThreadsPerCore().isSet() )
+            {
+                num = (unsigned)(*_terrainOptions.loadingPolicy()->numLoadingThreadsPerCore() * OpenThreads::GetNumberOfProcessors());
+            }
         }
-        else if ( _terrainOptions.loadingPolicy()->numLoadingThreadsPerCore().isSet() )
+        _tileService = new TaskService( "TileBuilder", num );
+
+        // initialize the tile builder
+        _tileBuilder = new TileBuilder( getMap(), _terrainOptions, _tileService.get() );
+
+
+        // initialize a key node factory.
+        switch( mode )
         {
-            num = (unsigned)(*_terrainOptions.loadingPolicy()->numLoadingThreadsPerCore() * OpenThreads::GetNumberOfProcessors());
+        case LoadingPolicy::MODE_SERIAL:
+            _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+            break;
+
+        case LoadingPolicy::MODE_PARALLEL:
+            _keyNodeFactory = new ParallelKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+            break;
+
+        default:
+            break;
         }
     }
-    _tileService = new TaskService( "TileBuilder", num );
-
-    // initialize the tile builder
-    _tileBuilder = new TileBuilder( getMap(), _terrainOptions, _tileService.get() );
-
-
-    // initialize a key node factory.
-    switch( mode )
-    {
-    case LoadingPolicy::MODE_SERIAL:
-        _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
-        break;
-
-    case LoadingPolicy::MODE_PARALLEL:
-        _keyNodeFactory = new ParallelKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
-        break;
-
-    default:
-        break;
-    }
-
-    //if ( _keyNodeFactory.valid() )
-    //{
-    //    OE_INFO << LC << "Thread pool size = " << num << std::endl;
-    //}
 
     // Build the first level of the terrain.
     // Collect the tile keys comprising the root tiles of the terrain.
@@ -501,7 +498,7 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
             // we will rely on the driver to dump out a warning if this is an error.
         }
 
-        tile->applyImmediateTileUpdate( Tile::Update::ADD_IMAGE_LAYER, layerAdded->getUID() );
+        tile->applyImmediateTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getUID() );
     }
 
     updateTextureCombining();
@@ -535,7 +532,7 @@ OSGTerrainEngineNode::moveImageLayer( unsigned int oldIndex, unsigned int newInd
     for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
     {
         Tile* tile = itr->get();
-        tile->applyImmediateTileUpdate( Tile::Update::MOVE_IMAGE_LAYER );
+        tile->applyImmediateTileUpdate( TileUpdate::MOVE_IMAGE_LAYER );
     }     
 
     updateTextureCombining();
@@ -568,8 +565,9 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
             hf->setSkirtHeight( tile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
 
             //TODO: review this in favor of a tile update...
-            tile->setDirty(true);
+            tile->setDirty( true );
         }
+
         else // if ( isStreaming )
         {
             StreamingTile* stile = static_cast<StreamingTile*>(tile);
@@ -585,7 +583,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
                 hf->setSkirtHeight( stile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
                 stile->setElevationLOD( key.getLevelOfDetail() );
                 stile->resetElevationRequests( *_update_mapf );
-                stile->queueTileUpdate( Tile::Update::UPDATE_ELEVATION );
+                stile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
             }
             else
             {
@@ -599,7 +597,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
                     heightFieldLayer->setHeightField( hf.get() );
                     hf->setSkirtHeight( stile->getBound().radius() * _terrainOptions.heightFieldSkirtRatio().value() );
                     stile->setElevationLOD(tile->getKey().getLevelOfDetail());
-                    stile->queueTileUpdate( Tile::Update::UPDATE_ELEVATION );
+                    stile->queueTileUpdate( TileUpdate::UPDATE_ELEVATION );
                 }
                 else
                 {

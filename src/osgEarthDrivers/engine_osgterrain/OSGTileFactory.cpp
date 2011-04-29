@@ -421,11 +421,10 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
 
     // The empty tile:
     StreamingTile* tile = new StreamingTile( key, locator.get(), terrain->getQuickReleaseGLObjects() );
-    tile->setTerrainTechnique( osg::clone(terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
+    tile->setTerrainTechnique( terrain->cloneTechnique() );
     tile->setVerticalScale( _terrainOptions.verticalScale().value() );
-    tile->setRequiresNormals( true );
     tile->setDataVariance( osg::Object::DYNAMIC );
-    tile->setLocator( locator.get() );
+    //tile->setLocator( locator.get() );
 
     // Attach an updatecallback to normalize the edges of TerrainTiles.
 #if 0
@@ -471,8 +470,9 @@ OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
     }
 
     // install a tile switcher:
-    tile->setTerrain( terrain );
-    terrain->registerTile( tile );
+    tile->attachToTerrain( terrain );
+    //tile->setTerrain( terrain );
+    //terrain->registerTile( tile );
 
     osg::Node* result = 0L;
 
@@ -664,11 +664,11 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         _terrainOptions.loadingPolicy()->mode() == LoadingPolicy::MODE_PREEMPTIVE;
 
     Tile* tile = terrain->createTile( key, locator.get() );
-    tile->setTerrainTechnique( osg::clone(terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
+    tile->setTerrainTechnique( terrain->cloneTechnique() );
     tile->setVerticalScale( _terrainOptions.verticalScale().value() );
-    tile->setLocator( locator.get() );
+    //tile->setLocator( locator.get() );
     tile->setElevationLayer( hf_layer );
-    tile->setRequiresNormals( true );
+    //tile->setRequiresNormals( true );
     tile->setDataVariance(osg::Object::DYNAMIC);
 
 #if 0
@@ -768,8 +768,9 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
     //
     // If there's already a placeholder tile registered, this will be ignored. If there isn't,
     // this will register the new tile.
-    tile->setTerrain( terrain );
-    terrain->registerTile( tile );
+    tile->attachToTerrain( terrain );
+    //tile->setTerrain( terrain );
+    //terrain->registerTile( tile );
 
     if ( isStreaming && key.getLevelOfDetail() > 0 )
     {
@@ -889,7 +890,7 @@ OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key
 }
 
 osg::ClusterCullingCallback*
-OSGTileFactory::createClusterCullingCallback(osgTerrain::TerrainTile* tile, osg::EllipsoidModel* et)
+OSGTileFactory::createClusterCullingCallback(Tile* tile, osg::EllipsoidModel* et)
 {
     //This code is a very slightly modified version of the DestinationTile::createClusterCullingCallback in VirtualPlanetBuilder.
     osg::HeightField* grid = ((osgTerrain::HeightFieldLayer*)tile->getElevationLayer())->getHeightField();

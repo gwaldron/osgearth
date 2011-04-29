@@ -110,14 +110,6 @@ SinglePassTerrainTechnique::getOptimizeTriangleOrientation() const
 void 
 SinglePassTerrainTechnique::init()
 {
-    if ( _tile->getKey().str() == "2_2_2" )
-        _debug = true;
-    
-    if ( _debug )
-    {
-        OE_NOTICE << LC << "init() " << std::endl;
-    }
-
     compile( TileUpdate(TileUpdate::UPDATE_ALL), 0L );
     applyTileUpdates();
 }
@@ -132,10 +124,10 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         return;
     }
 
-    if ( _debug )
-    {
-        OE_NOTICE << LC << "compile() " << std::endl;
-    }
+    //if ( _debug )
+    //{
+    //    OE_NOTICE << LC << "compile() " << std::endl;
+    //}
 
     // serialize access to the compilation procedure.
     OpenThreads::ScopedLock<Mutex> exclusiveLock( _compileMutex );
@@ -245,13 +237,6 @@ bool
 SinglePassTerrainTechnique::applyTileUpdates()
 {
     bool applied = false;
-
-    if ( _debug )
-    {
-        OE_NOTICE << "A" << std::endl;
-    }
-
-    //Threading::ScopedReadLock lock( getMutex() );
 
     // serialize access to the compilation mechanism.
     OpenThreads::ScopedLock<Mutex> exclusiveLock( _compileMutex );
@@ -1593,22 +1578,12 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())
     {            
-        //osg::Timer_t before = osg::Timer::instance()->tick();
-        //OE_NOTICE<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
         geode->accept(*builder);
-        //osg::Timer_t after = osg::Timer::instance()->tick();
-        //OE_NOTICE<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
 
     return geode;
 }
-
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-#  define INIT_ARGS ~0,true
-#else
-#  define INIT_ARGS
-#endif
 
 void
 SinglePassTerrainTechnique::traverse(osg::NodeVisitor& nv)

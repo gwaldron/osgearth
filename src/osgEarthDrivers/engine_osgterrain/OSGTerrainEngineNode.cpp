@@ -340,14 +340,6 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     dirtyBound();
 }
 
-void
-OSGTerrainEngineNode::createURI(const TileKey& key, std::string& out_uri )
-{
-    std::stringstream ss;
-    ss << key.str() << "." << _uid << ".osgearth_osgterrain_tile";
-    out_uri = ss.str();
-}
-
 osg::Node*
 OSGTerrainEngineNode::createNode( const TileKey& key )
 {

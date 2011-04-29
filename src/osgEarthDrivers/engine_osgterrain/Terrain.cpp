@@ -90,6 +90,7 @@ Terrain::Terrain(const MapFrame& update_mapf,
                  const MapFrame& cull_mapf, 
                  OSGTileFactory* tileFactory,
                  bool            quickReleaseGLObjects ) :
+
 _tileFactory( tileFactory ),
 _registeredWithReleaseGLCallback( false ),
 _update_mapf( update_mapf ),
@@ -301,9 +302,7 @@ Terrain::traverse( osg::NodeVisitor &nv )
         }
     }
 
-    // skip osgTerrain's traverse.
     osg::Group::traverse( nv );
-    //osgTerrain::Terrain::traverse( nv );
 }
 
 void

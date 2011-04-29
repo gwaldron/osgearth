@@ -83,8 +83,6 @@ private:
     void updateElevation( Tile* tile );
     void installShaders();
     void updateTextureCombining();
-    
-    void createURI(const TileKey& key, std::string& out_uri );
 
 private:
     osg::ref_ptr<OSGTileFactory>         _tileFactory;

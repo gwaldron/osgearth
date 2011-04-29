@@ -29,6 +29,8 @@
 
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
+#include <osg/Version>
+#include <osgEarth/Version>
 
 #include <osgEarthUtil/ImageOverlay>
 #include <osgEarthUtil/ImageOverlayEditor>
@@ -121,7 +123,15 @@ struct EditHandler : public ControlEventHandler
             static_cast<LabelControl*>(control)->setText( "Edit" );
             if (s_editor)
             {
+#if OSG_MIN_VERSION_REQUIRED(2,9,1)
                 _viewer->removeEventHandler( s_editor );
+#else
+                osgViewer::View::EventHandlers::iterator itr = std::find(_viewer->getEventHandlers().begin(), _viewer->getEventHandlers().end(), s_editor);
+                if (itr != _viewer->getEventHandlers().end())
+                {
+                    _viewer->getEventHandlers().erase(itr);
+                }
+#endif
                 s_editor = 0;
             }
         }

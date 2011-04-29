@@ -926,19 +926,22 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
                 if (n == 1)
                 {
-                  if (i != 0 && i != numColumns - 1 && j != 0 && j != numRows - 1)
+                  if (i != 0 && i != numColumns - 1)
                   {
-                    if (indices[iv - 1] == -2)
+                    if (j > 0 && indices[iv - numColumns] == -2)
                       n++;
 
-                    if (indices[iv + 1] == -2)
+                    if (j < numRows - 1 && indices[iv + numColumns] == -2)
+                      n++;
+                  }
+                  
+                  if (j != 0 && j != numRows - 1)
+                  {
+                    if (i > 0 && indices[iv - 1] == -2)
                       n++;
 
-                    if (indices[iv - numColumns] == -2)
-                      n++;
-
-                    if (indices[iv + numColumns] == -2)
-                      n++;
+                    if (i < numColumns - 1 && indices[iv + 1] == -2)
+                      n++; 
                   }
                 }
                 else
@@ -1136,8 +1139,12 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
         osg::Vec3Array* outVerts = new osg::Vec3Array();
         mask_skirt->setVertexArray(outVerts);
+
+        bool multiParent = false;
+        if (outPoly.valid())
+          multiParent = outPoly->getType() == osgEarth::Symbology::Geometry::TYPE_MULTI;
         
-        osgEarth::Symbology::GeometryIterator i( outPoly );
+        osgEarth::Symbology::GeometryIterator i( outPoly, false );
         while( i.hasMore() )
         {
           osgEarth::Symbology::Geometry* part = i.next();
@@ -1146,9 +1153,25 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
           if (part->getType() == osgEarth::Symbology::Geometry::TYPE_POLYGON)
           {
-              osg::Vec3Array* partVerts = part->toVec3Array();
-              outVerts->insert(outVerts->end(), partVerts->begin(), partVerts->end());
-              mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - partVerts->size(), partVerts->size()));
+            osg::Vec3Array* partVerts = part->toVec3Array();
+            outVerts->insert(outVerts->end(), partVerts->begin(), partVerts->end());
+            mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - partVerts->size(), partVerts->size()));
+
+            if (!multiParent)
+            {
+              osg::ref_ptr<osgEarth::Symbology::Polygon> holePoly = static_cast<osgEarth::Symbology::Polygon*>(outPoly.get());
+              if (holePoly)
+              {
+                osgEarth::Symbology::RingCollection holes = holePoly->getHoles();
+                
+                for (osgEarth::Symbology::RingCollection::iterator hit = holes.begin(); hit != holes.end(); ++hit)
+                {
+                  (*hit)->rewind(osgEarth::Symbology::Ring::ORIENTATION_CCW);
+                  outVerts->insert(outVerts->end(), (*hit)->begin(), (*hit)->end());
+                  mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - (*hit)->size(), (*hit)->size()));
+                }
+              }
+            }
           }
         }
 

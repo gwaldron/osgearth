@@ -222,7 +222,13 @@ namespace osgEarth
         /**
          * Gets the number of pixels per tile for this TileSource.
          */
-        virtual int getPixelsPerTile() const;
+        virtual int getPixelsPerTile() const;   
+
+        /**
+         * Gets the list of areas with data for this TileSource
+         */
+        const DataExtentList& getDataExtents() const { return _dataExtents; }
+        DataExtentList& getDataExtents() { return _dataExtents; }
 
 	    /**
     	 * Creates an image for the given TileKey
@@ -238,7 +244,7 @@ namespace osgEarth
         virtual osg::HeightField* createHeightField(
             const TileKey& key,
             HeightFieldOperation* prepOp =0L,
-            ProgressCallback* progress = 0L );
+            ProgressCallback* progress = 0L );     
 
     public:
 
@@ -302,17 +308,22 @@ namespace osgEarth
          *Gets the blacklist for this TileSource
          */
         TileBlacklist* getBlacklist();
-        const TileBlacklist* getBlacklist() const;             
-
-        /**
-         * Gets the list of areas with data for this TileSource
-         */
-        const DataExtentList& getDataExtents() const { return _dataExtents; }
+        const TileBlacklist* getBlacklist() const;     
 
         /**
          * Whether or not the source has data for the given TileKey
          */
         virtual bool hasData(const TileKey& key) const;
+
+        /**
+         * Whether the tile source can generate data for the specified LOD.
+         */
+        virtual bool hasDataAtLOD( unsigned lod ) const;
+
+        /**
+         * Whether the tile source can generate data within the specified extent
+         */
+        virtual bool hasDataInExtent( const GeoExtent& extent ) const;
 
         /**
          * Whether this TileSource produces tiles whose data can change after
@@ -350,11 +361,6 @@ namespace osgEarth
          * The returned object is new and is the responsibility of the caller.
          */
         virtual osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress );
-
-        /**
-         * Mutable list of the data areas 
-         */
-        DataExtentList& getDataExtents() { return _dataExtents; }
 
 		/**
 		 * Called by subclasses to initialize their profile

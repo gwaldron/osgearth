@@ -627,14 +627,24 @@ ImageLayer::createImageWrapper(const TileKey& key,
                                bool cacheInLayerProfile,
                                ProgressCallback* progress )
 {
+    // Results:
+    //
+    // * return NULL to indicate that the key exceeds the maximum LOD of the source data,
+    //   and that the engine may need to generate a "fallback" tile if necessary.
+    //
+    // * return an "empty image" if the LOD is valid BUT the key does not intersect the
+    //   source's data extents.
+
     osg::Image* result = 0L;
 
+    // first check the cache.
+    // TODO: find a way to avoid caching/checking when the LOD falls
     if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
     {
         osg::ref_ptr<const osg::Image> cachedImage;
 		if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
 	    {
-            OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
+            OE_INFO << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
             return ImageUtils::cloneImage(cachedImage.get());
     	}
     }
@@ -643,32 +653,41 @@ ImageLayer::createImageWrapper(const TileKey& key,
 	{
         TileSource* source = getTileSource();
         if ( !source )
-            return false;
+            return 0L;
 
-        //Only try to get the image if it's not in the blacklist
-        if (!source->getBlacklist()->contains( key.getTileId() ))
+        // Only try to get the image if it's not in the blacklist
+        if ( !source->getBlacklist()->contains(key.getTileId()) )
         {
-            //Only try to get data if the source actually has data
-            if (source->hasData( key ) )
+            // if the tile source cannot service this key's LOD, return NULL.
+            if ( source->hasDataAtLOD( key.getLevelOfDetail() ) )
             {
-                result = source->createImage( key, _preCacheOp.get(), progress );
-
-                //If the image is not valid and the progress was not cancelled, blacklist
-                if ( result == 0L && (!progress || !progress->isCanceled()))
+                // if the key's extent intersects the source's extent, ask the
+                // source for an image.
+                if ( source->hasDataInExtent( key.getExtent() ) )
                 {
-                    //Add the tile to the blacklist
-                    OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
-                    source->getBlacklist()->add(key.getTileId());
+                    result = source->createImage( key, _preCacheOp.get(), progress );
+                }
+
+                // otherwise, generate an empty image.
+                else
+                {
+                    result = ImageUtils::createEmptyImage();
                 }
             }
+
             else
             {
-                OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
+                // in this case, the source cannot service the LOD
+                result = NULL;
             }
-        }
-        else
-        {
-            OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
+
+            // if no result was created, add this key to the blacklist.
+            if ( result == 0L && (!progress || !progress->isCanceled()) )
+            {
+                //Add the tile to the blacklist
+                OE_DEBUG << LC << getName() << ": adding tile " << key.str() << " to the blacklist" << std::endl;
+                source->getBlacklist()->add(key.getTileId());
+            }
         }
 
         // Cache is necessary:

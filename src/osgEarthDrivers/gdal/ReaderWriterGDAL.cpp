@@ -967,7 +967,7 @@ public:
         int tileSize = _options.tileSize().value();
 
         osg::ref_ptr<osg::Image> image;
-        if (intersects(key))
+        if (intersects(key)) //TODO: I think this test is OBE -gw
         {
             //Get the extents of the tile
             double xmin, ymin, xmax, ymax;
@@ -1241,11 +1241,13 @@ public:
             }
         }
 
-        //Create a transparent image if we don't have an image
-        if (!image.valid())
-        {
-            return ImageUtils::createEmptyImage();
-        }
+        // Moved this logic up into ImageLayer::createImageWrapper.
+        ////Create a transparent image if we don't have an image
+        //if (!image.valid())
+        //{
+        //    //OE_WARN << LC << "Illegal state-- should not get here" << std::endl;
+        //    return ImageUtils::createEmptyImage();
+        //}
         return image.release();
     }
 

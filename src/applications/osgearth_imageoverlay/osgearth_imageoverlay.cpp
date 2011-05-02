@@ -26,9 +26,12 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
+#include <osgEarth/Utils>
 
 #include <osg/ImageStream>
 #include <osgDB/FileNameUtils>
+#include <osg/Version>
+#include <osgEarth/Version>
 
 #include <osgEarthUtil/ImageOverlay>
 #include <osgEarthUtil/ImageOverlayEditor>
@@ -121,7 +124,7 @@ struct EditHandler : public ControlEventHandler
             static_cast<LabelControl*>(control)->setText( "Edit" );
             if (s_editor)
             {
-                _viewer->removeEventHandler( s_editor );
+                removeEventHandler(_viewer, s_editor);
                 s_editor = 0;
             }
         }

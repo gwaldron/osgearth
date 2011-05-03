@@ -177,6 +177,9 @@ main(int argc, char** argv)
                 }
             }
 
+            if ( externals.hasChild("autoclip") )
+                useAutoClip = externals.child("autoclip").boolValue( useAutoClip );
+
             // the AutoClipPlaneHandler will automatically adjust the near/far clipping
             // planes based on your view of the horizon. This prevents near clipping issues
             // when you are very close to the ground. If your app never brings a user very

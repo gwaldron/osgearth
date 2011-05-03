@@ -516,15 +516,20 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
             const GeoExtent& ccExtent = extent.isValid() ? extent : _source->getFeatureProfile()->getExtent();
             if ( ccExtent.isValid() )
             {
-                // get the geocentric tile center:
-                osg::Vec3d tileCenter;
-                ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
-                osg::Vec3d centerECEF;
-                ccExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
+                // if the extent is more than 90 degrees, bail
+                GeoExtent geodeticExtent = ccExtent.transform( ccExtent.getSRS()->getGeographicSRS() );
+                if ( geodeticExtent.width() < 90.0 )
+                {
+                    // get the geocentric tile center:
+                    osg::Vec3d tileCenter;
+                    ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
+                    osg::Vec3d centerECEF;
+                    ccExtent.getSRS()->transformToECEF( tileCenter, centerECEF );
 
-                osg::NodeCallback* ccc = ClusterCullerFactory::create( group.get(), centerECEF );
-                if ( ccc )
-                    group->addCullCallback( ccc );
+                    osg::NodeCallback* ccc = ClusterCullerFactory::create( group.get(), centerECEF );
+                    if ( ccc )
+                        group->addCullCallback( ccc );
+                }
             }
         }
 

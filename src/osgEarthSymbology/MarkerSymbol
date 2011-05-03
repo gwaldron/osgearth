@@ -50,7 +50,7 @@ namespace osgEarth { namespace Symbology
         optional<Placement>& placement() { return _placement; }
         const optional<Placement>& placement() const { return _placement; }
 
-        /** For PLACEMENT_SCATTER/INTERVAL, the scattering density in instances per sqkm */
+        /** For PLACEMENT_RANDOM/INTERVAL, the scattering density in instances per sqkm */
         optional<float>& density() { return _density; }
         const optional<float>& density() const { return _density; }
 

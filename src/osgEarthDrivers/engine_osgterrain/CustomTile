@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_ENGINE_OSGTERRAIN_CUSTOM_TILE
 #define OSGEARTH_ENGINE_OSGTERRAIN_CUSTOM_TILE 1
 
+#error
 #include "Common"
 #include "OSGTileFactory"
 #include "TransparentLayer"

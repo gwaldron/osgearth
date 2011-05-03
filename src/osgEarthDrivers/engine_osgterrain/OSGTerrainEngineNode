@@ -60,7 +60,7 @@ public: // MapCallback adapter functions
 
     UID getUID() const;
     OSGTileFactory* getTileFactory() const { return _tileFactory.get(); }
-    class CustomTerrain* getTerrain() const { return _terrain; }
+    class Terrain* getTerrain() const { return _terrain; }
 
 public: // statics    
     static void registerEngine( OSGTerrainEngineNode* engineNode );
@@ -80,33 +80,31 @@ private:
     void moveImageLayer( unsigned int oldIndex, unsigned int newIndex );
     void moveElevationLayer( unsigned int oldIndex, unsigned int newIndex );
     
-    void updateElevation(CustomTile* tile);
+    void updateElevation( Tile* tile );
     void installShaders();
     void updateTextureCombining();
-    
-    void createURI(const TileKey& key, std::string& out_uri );
 
-    bool pointInPolygon(const osg::Vec3d& point, osg::Vec3dArray* polygon);
-    
 private:
-    osg::ref_ptr<OSGTileFactory> _tileFactory;
-    class CustomTerrain* _terrain;
-    UID _uid;
+    osg::ref_ptr<OSGTileFactory>         _tileFactory;
+    //class CustomTerrain* _terrain;
+    class Terrain*               _terrain;
+    UID                                  _uid;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
-    Revision _shaderLibRev;
-    osg::ref_ptr<TaskServiceManager> _taskServiceMgr;
+    Revision                             _shaderLibRev;
+    osg::ref_ptr<TaskServiceManager>     _taskServiceMgr;
 
     // store a separate map frame for each of the traversal threads
     MapFrame* _update_mapf; // map frame for the main/update traversal thread
     MapFrame* _cull_mapf;   // map frame for the cull traversal thread
 
-    osg::ref_ptr<TaskService> _tileService;
+    osg::ref_ptr<TaskService>    _tileService;
     osg::ref_ptr<KeyNodeFactory> _keyNodeFactory;
-    osg::ref_ptr<TileBuilder> _tileBuilder;
+    osg::ref_ptr<TileBuilder>    _tileBuilder;
 
     osg::Timer _timer;
     unsigned   _tileCount;
     double     _tileCreationTime;
+    bool       _isStreaming;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

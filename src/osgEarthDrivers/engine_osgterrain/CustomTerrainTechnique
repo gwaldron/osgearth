@@ -21,28 +21,53 @@
 #define OSGEARTH_ENGINE_OSGTERRAIN_EXTENDED_TERRAIN_TECHNIQUE 1
 
 #include "Common"
-#include "CustomTile"
-#include <osgTerrain/TerrainTechnique>
+#include <osg/CopyOp>
+#include <osg/NodeVisitor>
 #include <osgEarth/Progress>
 
 using namespace osgEarth;
 
-class CustomTerrainTechnique : public osgTerrain::TerrainTechnique
+class Tile;
+class TileUpdate;
+
+class TerrainTechnique : public osg::Object
+{
+public:
+    virtual void init() =0;
+
+    virtual void traverse( osg::NodeVisitor& nv ) =0;
+
+    virtual void releaseGLObjects( osg::State* state ) const =0;
+
+protected:
+    TerrainTechnique() : _tile(0L) { }
+
+    TerrainTechnique( const TerrainTechnique& rhs, const osg::CopyOp& op ) : _tile(0L) { }
+
+    Tile* _tile;
+
+    friend class Tile;
+};
+
+class CustomTerrainTechnique : public TerrainTechnique
 {
 public:
     virtual void compile( const TileUpdate& updateSpec, ProgressCallback* progress ) =0;
 
     virtual bool applyTileUpdates() =0;
 
+    virtual void setParentTile( class Tile* tile ) =0;
+
     virtual void setOptimizeTriangleOrientation( bool optimizeTriangleOrientation ) =0;
 
     virtual bool getOptimizeTriangleOrientation() const =0;
+
 
 protected:
     CustomTerrainTechnique() { }
 
     CustomTerrainTechnique( const CustomTerrainTechnique& rhs, const osg::CopyOp& op )
-        : osgTerrain::TerrainTechnique( rhs, op ) { }
+        : TerrainTechnique( rhs, op ) { }
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_EXTENDED_TERRAIN_TECHNIQUE

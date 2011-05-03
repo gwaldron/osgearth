@@ -450,7 +450,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
         Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
         _blacklist.insert( uri );
 
-        OE_INFO << LC << "Blacklisting: " << uri << std::endl;
+        OE_DEBUG << LC << "Blacklisting: " << uri << std::endl;
     }
 
     return result;

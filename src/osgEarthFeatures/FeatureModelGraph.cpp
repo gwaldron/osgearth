@@ -518,7 +518,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
             {
                 // if the extent is more than 90 degrees, bail
                 GeoExtent geodeticExtent = ccExtent.transform( ccExtent.getSRS()->getGeographicSRS() );
-                if ( geodeticExtent.width() < 90.0 )
+                if ( geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0 )
                 {
                     // get the geocentric tile center:
                     osg::Vec3d tileCenter;

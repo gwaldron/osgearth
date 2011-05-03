@@ -26,6 +26,7 @@
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>
 #include <osg/Version>
+#include <osgEarth/Version>
 
 #define LC "[ExtrudeGeometryFilter] "
 
@@ -384,9 +385,14 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
 
             // generate per-vertex normals, altering the geometry as necessary to avoid
             // smoothing around sharp corners
+#if OSG_MIN_VERSION_REQUIRED(2,9,9)
+            //Crease angle threshold wasn't added until
             osgUtil::SmoothingVisitor::smooth(
                 *walls.get(), 
-                osg::DegreesToRadians(_wallAngleThresh_deg) );
+                osg::DegreesToRadians(_wallAngleThresh_deg) );            
+#else
+            osgUtil::SmoothingVisitor::smooth(*walls.get());            
+#endif
 
             // tessellate and add the roofs if necessary:
             if ( rooflines.valid() )

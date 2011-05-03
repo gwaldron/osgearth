@@ -380,6 +380,7 @@ ImageUtils::createEmptyImage()
     // each time.
     osg::Image* image = new osg::Image;
     image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat( GL_RGBA8 );
     unsigned char *data = image->data(0,0);
     memset(data, 0, 4);
     return image;

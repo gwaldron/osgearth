@@ -21,7 +21,11 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
+
 #include <osg/Vec3f>
+#include <osgViewer/View>
+#include <osgGA/GUIEventHandler>
+
 #include <string>
 #include <list>
 #include <map>
@@ -142,6 +146,15 @@ namespace osgEarth
             return _queries > 0 ? (float)_hits/(float)_queries : 0.0f;
         }
     };
+
+
+    /**
+     * Removes the given event handler from the view.
+     * This is the equivalent of osgViewer::View::removeEventHandler which is not available
+     * in older versions of OSG
+     */
+    extern OSGEARTH_EXPORT void removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler);
+
 }
 
-#endif // OSGEARTH_CACHING_H
+#endif // OSGEARTH_UTILS_H

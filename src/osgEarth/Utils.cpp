@@ -19,3 +19,12 @@
 
 #include <osgEarth/Utils>
 
+void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler)
+{
+    osgViewer::View::EventHandlers::iterator itr = std::find(view->getEventHandlers().begin(), view->getEventHandlers().end(), handler);
+    if (itr != view->getEventHandlers().end())
+    {
+        view->getEventHandlers().erase(itr);
+    }
+}
+

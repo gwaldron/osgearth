@@ -33,7 +33,7 @@
 #include <osgEarth/TextureCompositor>
 
 
-class MultiPassTerrainTechnique : public osgTerrain::TerrainTechnique
+class MultiPassTerrainTechnique : public TerrainTechnique
 {
 public:
 
@@ -42,13 +42,9 @@ public:
     /** Copy constructor using CopyOp to manage deep vs shallow copy.*/
     MultiPassTerrainTechnique(const MultiPassTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
     
-    META_Object(osgEarth, MultiPassTerrainTechnique);
+    META_Object( osgEarth, MultiPassTerrainTechnique );
 
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)        
-    virtual void init(int dirtyMask, bool assumeMultiThreaded);
-#else
     virtual void init();
-#endif
     
     virtual osgTerrain::Locator* computeMasterLocator();
     

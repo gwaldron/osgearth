@@ -34,7 +34,8 @@ is randomized, but it is randomized exactly the same way each time.
              units are instances-per-sqkm. -->
              
         <paging>
-            <level max_range="100000">
+            <crop_features>true</crop_features>
+            <level max_range="100000" min_range="10000">
                 <selector class="parks-outline"/>
             </level>
             <level max_range="10000">

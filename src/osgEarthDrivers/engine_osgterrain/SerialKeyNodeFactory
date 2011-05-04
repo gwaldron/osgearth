@@ -21,7 +21,7 @@
 
 #include "Common"
 #include "KeyNodeFactory"
-#include "CustomTerrain"
+#include "Terrain"
 #include "TileBuilder"
 
 using namespace osgEarth;
@@ -33,18 +33,18 @@ public:
         TileBuilder*             builder,
         const OSGTerrainOptions& options,
         const MapInfo&           mapInfo,
-        CustomTerrain*           terrain,
+        Terrain*         terrain,
         UID                      engineUID );
 
     osg::Node* createNode( const TileKey& key );
 
 protected:
-    void addTile(CustomTile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
+    void addTile(Tile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
 
     TileBuilder*             _builder;
     const OSGTerrainOptions& _options;
     const MapInfo            _mapInfo;
-    CustomTerrain*           _terrain;
+    Terrain*         _terrain;
     UID                      _engineUID;
 };
 

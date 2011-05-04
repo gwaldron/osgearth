@@ -33,7 +33,7 @@ using namespace OpenThreads;
 SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder*             builder,
                                            const OSGTerrainOptions& options,
                                            const MapInfo&           mapInfo,
-                                           CustomTerrain*           terrain,
+                                           Terrain*                 terrain,
                                            UID                      engineUID ) :
 _builder( builder ),
 _options( options ),
@@ -45,16 +45,26 @@ _engineUID( engineUID )
 }
 
 void
-SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
+SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent )
 {
     // associate this tile with the terrain:
-    tile->setTerrainTechnique( osg::clone(_terrain->getTerrainTechniquePrototype(), osg::CopyOp::DEEP_COPY_ALL) );
-    tile->setTerrain( _terrain );
-    tile->setTerrainRevision( _terrain->getRevision() );
-    _terrain->registerTile( tile );
+    tile->setTerrainTechnique( _terrain->cloneTechnique() );
+    tile->attachToTerrain( _terrain );
 
-    // check to see if this tile has children of its own:
-    if ( tileHasRealData )
+    // assemble a URI for this tile's child group:
+    std::stringstream buf;
+    buf << tile->getKey().str() << "." << _engineUID << ".osgearth_osgterrain_tile";
+    std::string uri; uri = buf.str();
+
+    osg::Node* result = 0L;
+
+    // Only add the next tile if it hasn't been blacklisted
+    bool wrapInPagedLOD =
+        tileHasRealData &&
+        !osgEarth::Registry::instance()->isBlacklisted( uri ) &&
+        tile->getKey().getLevelOfDetail() < (unsigned)*_options.maxLOD();
+
+    if ( wrapInPagedLOD )
     {
         osg::BoundingSphere bs = tile->getBound();
         double maxRange = 1e10;
@@ -65,45 +75,8 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, bool tileH
         plod->setCenter( bs.center() );
         plod->addChild( tile, minRange, maxRange );
 
-        if ( tileHasLodBlending )
-        {
-            // Make the LOD transition distance, and a measure of how
-            // close the tile is to an LOD change, to shaders.
-            plod->addCullCallback(new Drivers::LODFactorCallback);
-        }
-
-        // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:
-        if ( _options.lodFallOff().isSet() && *_options.lodFallOff() > 0.0 )
-        {
-            plod->addCullCallback( new DynamicLODScaleCallback(*_options.lodFallOff()) );
-        }
-
-        // this one rejects back-facing tiles:
-        if ( _mapInfo.isGeocentric() )
-        {
-            plod->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
-                static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer())->getHeightField(),
-                tile->getLocator()->getEllipsoidModel(),
-                tile->getVerticalScale() ) );
-        }
-
-        // assemble a URI for this tile's child group:
-        std::stringstream buf;
-        buf << tile->getKey().str() << "." << _engineUID << ".osgearth_osgterrain_tile";
-        std::string uri; uri = buf.str();
-
-        //Only add the next tile if it hasn't been blacklisted
-        bool isBlacklisted = osgEarth::Registry::instance()->isBlacklisted( uri );
-        if ( !isBlacklisted && tile->getKey().getLevelOfDetail() < (unsigned)*_options.maxLOD() ) //&& validData )
-        {
-            plod->setFileName( 1, uri );
-            plod->setRange( 1, 0.0, minRange );
-        }
-        else
-        {
-            plod->setRange( 0, 0, FLT_MAX );
-            OE_DEBUG << LC << "Ignored a blacklisted tile at key " << tile->getKey().str() << std::endl;
-        }
+        plod->setFileName( 1, uri );
+        plod->setRange   ( 1, 0, minRange );
 
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = new osgDB::Options;
@@ -111,40 +84,69 @@ SerialKeyNodeFactory::addTile(CustomTile* tile, bool tileHasRealData, bool tileH
         plod->setDatabaseOptions( options );
 
 #endif
-
-        parent->addChild( plod );
+        result = plod;
     }
     else
     {
-        parent->addChild( tile );
+        result = tile;
     }
+
+    if ( tileHasLodBlending )
+    {
+        // Make the LOD transition distance, and a measure of how
+        // close the tile is to an LOD change, to shaders.
+        result->addCullCallback(new Drivers::LODFactorCallback);
+    }
+
+    // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:
+    if ( _options.lodFallOff().isSet() && *_options.lodFallOff() > 0.0 )
+    {
+        result->addCullCallback( new DynamicLODScaleCallback(*_options.lodFallOff()) );
+    }
+
+    // this one rejects back-facing tiles:
+    if ( _mapInfo.isGeocentric() )
+    {
+        result->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
+            static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer())->getHeightField(),
+            tile->getLocator()->getEllipsoidModel(),
+            tile->getVerticalScale() ) );
+    }
+
+    parent->addChild( result );
 }
 
 osg::Node*
 SerialKeyNodeFactory::createNode( const TileKey& key )
 {
-    osg::ref_ptr<CustomTile> tiles[4];
-    bool                     realData[4];
-    bool                     lodBlending[4];
+    osg::ref_ptr<Tile> tiles[4];
+    bool               realData[4];
+    bool               lodBlending[4];
+    bool               tileHasAnyRealData = false;
 
     for( unsigned i = 0; i < 4; ++i )
     {
         TileKey child = key.createChildKey( i );
-        bool hasBlending = false;
         _builder->createTile( child, false, tiles[i], realData[i], lodBlending[i] );
+        if ( tiles[i].valid() && realData[i] )
+            tileHasAnyRealData = true;
     }
 
-    // Now postprocess them and assemble into a tile group.
-    osg::Group* root = new osg::Group();
+    osg::Group* root = 0L;
 
-    for( unsigned i = 0; i < 4; ++i )
+    if ( tileHasAnyRealData )
     {
-        if ( tiles[i].valid() )
+        // Now postprocess them and assemble into a tile group.
+        root = new osg::Group();
+
+        for( unsigned i = 0; i < 4; ++i )
         {
-            addTile( tiles[i].get(), realData[i], lodBlending[i], root );
+            if ( tiles[i].valid() )
+            {
+                addTile( tiles[i].get(), realData[i], lodBlending[i], root );
+            }
         }
     }
 
-    //TODO: need to check to see if the group is empty, and do something different.
     return root;
 }

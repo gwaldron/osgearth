@@ -38,10 +38,10 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-//class osgEarth::Map;
-//class osgEarth::MapFrame;
-class CustomTerrain;
-class CustomTile;
+class Terrain;
+class StreamingTerrain;
+class Tile;
+class StreamingTile;
 
 /**
 * TileFactory is the main workhorse - it generates osg Nodes for TileKeys.
@@ -50,8 +50,8 @@ class OSGTileFactory : public osg::Referenced
 {
 public:
     OSGTileFactory(
-        unsigned int engineId,
-        const MapFrame& cull_thread_mapf,
+        unsigned                 engineId,
+        const MapFrame&          cull_thread_mapf,
         const OSGTerrainOptions& props =OSGTerrainOptions() );
 
 public:
@@ -60,34 +60,34 @@ public:
     * subkeys of the provided TileKey.
     */
     osg::Node* createSubTiles(
-        const MapFrame& mapf,
-        CustomTerrain* terrain,
-        const TileKey& key,
-        bool populateLayers );
+        const MapFrame&  mapf,
+        Terrain*         terrain,
+        const TileKey&   key,
+        bool             populateLayers );
 
     /**
     * Creates a single terrain tile corresponding to the provided TileKey.
     */
     osg::Node* createTile(
-        const MapFrame& mapf,
-        CustomTerrain* terrain,
-        const TileKey& key,
-        bool populateLayers,
-        bool wrapInPagedLOD,
-        bool fallback,
-        bool &validData);
+        const MapFrame&  mapf,
+        Terrain*         terrain,
+        const TileKey&   key,
+        bool             populateLayers,
+        bool             wrapInPagedLOD,
+        bool             fallback,
+        bool&            out_validData);
 
 
     CustomColorLayerRef* createImageLayer(
-        const MapInfo& mapInfo,
-        ImageLayer* layer,
-        const TileKey& key,
+        const MapInfo&    mapInfo,
+        ImageLayer*       layer,
+        const TileKey&    key,
         ProgressCallback* progress);
 
     osgTerrain::HeightFieldLayer* createHeightFieldLayer(
         const MapFrame& mapf,
-        const TileKey& key,
-        bool exactOnly );
+        const TileKey&  key,
+        bool            exactOnly );
 
     /**
     * Gets the properties that customize how this engine renders tile data.
@@ -102,13 +102,17 @@ public:
     /**
      * Wraps a tile in a paged LOD and setup up all its parameters
      */
-    osg::Node* prepareTile( CustomTile* tile, CustomTerrain* terrain, const MapInfo& mapInfo, bool wrapInPagedLOD );
+    osg::Node* prepareTile( 
+        Tile*            tile, 
+        Terrain*         terrain,
+        const MapInfo&   mapInfo,
+        bool             wrapInPagedLOD );
 
     bool createValidGeoImage(
-        ImageLayer* layer,
-        const TileKey& key,
-        GeoImage& out_image,
-        TileKey&  out_actualTileKey,
+        ImageLayer*       layer,
+        const TileKey&    key,
+        GeoImage&         out_image,
+        TileKey&          out_actualTileKey,
         ProgressCallback* progress  = 0);
 
     osg::Matrixd getTransformFromExtents(double minX, double minY, double maxX, double maxY) const;
@@ -118,71 +122,49 @@ public:
 
     static osg::HeightField* createEmptyHeightField(
         const TileKey& key,
-        int numCols =8,
-        int numRows =8 );
-
+        int            numCols =8,
+        int            numRows =8 );
 
     osgTerrain::HeightFieldLayer* createPlaceholderHeightfieldLayer(
         osg::HeightField* ancestorHF,
-        const TileKey& ancestorKey,
-        const TileKey& key,
-        GeoLocator*    locator );
-
-    bool createLodBlendedImage(
-        UID layerUID, 
-        const TileKey& key, 
-        const osg::Image* tileImage,
-        CustomTerrain* terrain,
-        osg::ref_ptr<osg::Image>& output);
-
-    bool createSecondaryImage(
-        UID layerUID,
-        const TileKey& key,
-        CustomTerrain* terrain,
-        osg::ref_ptr<osg::Image>& output);
+        const TileKey&    ancestorKey,
+        const TileKey&    key,
+        GeoLocator*       locator );
 
 protected:
 
-    //virtual ~MapEngine();
-
-
     osg::Node* createPlaceholderTile(
-        const MapFrame& mapf,
-        CustomTerrain* terrain,
-        const TileKey& key );
+        const MapFrame&   mapf,
+        StreamingTerrain* terrain,
+        const TileKey&    key );
 
     osg::Node* createPopulatedTile(
-        const MapFrame& mapf,
-        CustomTerrain* terrain,
-        const TileKey& key,
-        bool wrapInPagedLOD,
-        bool fallback,
-        bool &validData);
+        const MapFrame&  mapf,
+        Terrain*         terrain,
+        const TileKey&   key,
+        bool             wrapInPagedLOD,
+        bool             fallback,
+        bool&            out_validData);
 
-    void addPlaceholderImageLayers(
-        CustomTile* tile,
-        CustomTile* ancestorTile,
-        const ImageLayerVector& imageLayers,
-        GeoLocator* defaultLocator,
-        const TileKey& key);
+    void addPlaceholderImageLayers( Tile* tile, Tile* ancestorTile );
 
     void addPlaceholderHeightfieldLayer(
-        CustomTile* tile,
-        CustomTile* ancestorTile,
-        GeoLocator* defaultLocator,
+        StreamingTile* tile,
+        StreamingTile* ancestorTile,
+        GeoLocator*    defaultLocator,
         const TileKey& key,
         const TileKey& ancestorKey );
 
     osg::ClusterCullingCallback* createClusterCullingCallback(
-        osgTerrain::TerrainTile* tile,
+        Tile*                tile,
         osg::EllipsoidModel* et );
 
     void init();
 
 protected:
 
-    unsigned int _engineId;
-    const MapFrame& _cull_thread_mapf;
+    unsigned          _engineId;
+    const MapFrame&   _cull_thread_mapf;
     OSGTerrainOptions _terrainOptions;
 };
 

@@ -18,9 +18,7 @@
  */
 #include "OSGTerrainEngineNode"
 #include "OSGTerrainOptions"
-#include "CustomTile"
 #include <osgEarth/Registry>
-#include <osgEarth/TaskService>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
@@ -108,19 +106,8 @@ public:
                 {
                     OE_DEBUG << LC << "Blacklisting " << uri << std::endl;
                     osgEarth::Registry::instance()->blacklist( uri );
+                    return ReadResult::FILE_NOT_FOUND;
                 }
-#if 0
-                else
-                {
-                    osg::Timer_t end = osg::Timer::instance()->tick();
-                    s_tileTime += osg::Timer::instance()->delta_s( start, end );
-                    double elapsed = osg::Timer::instance()->delta_s( s_startTime, end );
-                    s_tileCount++;
-                    if ( s_tileCount % 10 == 0 )
-                        OE_INFO << LC << "Average = " << s_tileTime / (double)s_tileCount << " s," 
-                        << ", TPS = " << (double)s_tileCount/elapsed << std::endl;
-                }
-#endif
 
                 return ReadResult( node, ReadResult::FILE_LOADED );
             }

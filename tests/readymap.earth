@@ -15,10 +15,12 @@ http://readymap.org
 
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+        <lod_blending>true</lod_blending>
     </image>
 
     <image name="ReadyMap.org - Street Map" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/35/</url>
+        <lod_blending>true</lod_blending>
     </image>
         
     <elevation name="ReadyMap.org - Elevation" driver="tms">

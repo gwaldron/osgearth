@@ -18,7 +18,6 @@
 */
 #include "TileBuilder"
 #include "TransparentLayer"
-#include "CustomTile"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TaskService>
 
@@ -151,9 +150,9 @@ struct AssembleTile
 
     void execute()
     {
-        _tile = new CustomTile( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
+        _tile = new Tile( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
         _tile->setVerticalScale( *_opt->verticalScale() );
-        _tile->setRequiresNormals( true );
+        //_tile->setRequiresNormals( true );
         _tile->setDataVariance( osg::Object::DYNAMIC );
         _tile->setTerrainMaskGeometry(_mask);
 
@@ -172,7 +171,7 @@ struct AssembleTile
     const MapInfo*           _mapInfo;
     const OSGTerrainOptions* _opt;
     TileBuilder::SourceRepo* _repo;
-    CustomTile*              _tile;
+    Tile*                    _tile;
     osg::Vec3dArray*         _mask;
 };
 
@@ -225,10 +224,10 @@ TileBuilder::runJob( TileBuilder::Job* job )
 }
 
 void
-TileBuilder::finalizeJob(TileBuilder::Job*         job, 
-                         osg::ref_ptr<CustomTile>& out_tile,
-                         bool&                     out_hasRealData,
-                         bool&                     out_hasLodBlending)
+TileBuilder::finalizeJob(TileBuilder::Job*   job, 
+                         osg::ref_ptr<Tile>& out_tile,
+                         bool&               out_hasRealData,
+                         bool&               out_hasLodBlending)
 {
     SourceRepo& repo = job->_repo;
 
@@ -300,11 +299,11 @@ TileBuilder::finalizeJob(TileBuilder::Job*         job,
 }
 
 void
-TileBuilder::createTile(const TileKey&            key, 
-                        bool                      parallelize, 
-                        osg::ref_ptr<CustomTile>& out_tile, 
-                        bool&                     out_hasRealData,
-                        bool&                     out_hasLodBlendedLayers )
+TileBuilder::createTile(const TileKey&      key, 
+                        bool                parallelize, 
+                        osg::ref_ptr<Tile>& out_tile, 
+                        bool&               out_hasRealData,
+                        bool&               out_hasLodBlendedLayers )
 {
     MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
 

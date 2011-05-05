@@ -43,7 +43,7 @@ namespace osgEarth { namespace Drivers
         FeatureLabelModelOptions( const ConfigOptions& opt =ConfigOptions() ) : FeatureModelSourceOptions( opt ),
             _heightOffset( 0.0 )
         {
-            setDriver( "feature_geom" );
+            setDriver( "feature_label" );
             fromConfig( _conf );
         }
 

@@ -948,7 +948,6 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         for (int i = 0; i < num_i; i++)
         {
           int index = indices[min_j*numColumns + i + min_i];
-          if (index == -2)
           {
             osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)min_j)/(double)(numRows-1), 0.0);
 
@@ -962,20 +961,11 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 ndc.z() = value*scaleHeight;
             }
 
-            osg::Vec3d model;
-            _masterLocator->convertLocalToModel(ndc, model);
-
-            (*maskSkirtPoly)[i] = model - _centerModel;
-          }
-          else
-          {
-            (*maskSkirtPoly)[i] = (*surfaceVerts)[index];
+            (*maskSkirtPoly)[i] = ndc;
           }
 
           index = indices[max_j*numColumns + i + min_i];
-          if (index == -2)
           {
-            //unsigned int iv = j*numColumns + i;
             osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)max_j)/(double)(numRows-1), 0.0);
 
             if (elevationLayer)
@@ -988,22 +978,13 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 ndc.z() = value*scaleHeight;
             }
 
-            osg::Vec3d model;
-            _masterLocator->convertLocalToModel(ndc, model);
-
-            (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = model - _centerModel;
-          }
-          else
-          {
-            (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = (*surfaceVerts)[index];
+            (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
           }
         }
         for (int j = 0; j < num_j - 2; j++)
         {
           int index = indices[(min_j + j + 1)*numColumns + max_i];
-          if (index == -2)
           {
-            //unsigned int iv = j*numColumns + i;
             osg::Vec3d ndc( ((double)max_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
 
             if (elevationLayer)
@@ -1016,20 +997,11 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 ndc.z() = value*scaleHeight;
             }
 
-            osg::Vec3d model;
-            _masterLocator->convertLocalToModel(ndc, model);
-
-            (*maskSkirtPoly)[j + num_i] = model - _centerModel;
-          }
-          else
-          {
-            (*maskSkirtPoly)[j + num_i] = (*surfaceVerts)[index];
+            (*maskSkirtPoly)[j + num_i] = ndc;
           }
 
           index = indices[(min_j + j + 1)*numColumns + min_i];
-          if (index == -2)
           {
-            //unsigned int iv = j*numColumns + i;
             osg::Vec3d ndc( ((double)min_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
 
             if (elevationLayer)
@@ -1042,14 +1014,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 ndc.z() = value*scaleHeight;
             }
 
-            osg::Vec3d model;
-            _masterLocator->convertLocalToModel(ndc, model);
-
-            (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = model - _centerModel;
-          }
-          else
-          {
-            (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = (*surfaceVerts)[index];
+            (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
           }
         }
 
@@ -1059,9 +1024,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         {
           osg::Vec3d local;
           geoLocator->convertModelToLocal(*it, local);
-          osg::Vec3d model;
-          _masterLocator->convertLocalToModel(local, model);
-          maskPoly->push_back(model - _centerModel);
+          maskPoly->push_back(local);
         }
 
 //Change the following two #if statements to see mask skirt polygons
@@ -1128,15 +1091,13 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
           mask_skirt->setNormalArray( msNormals );
           mask_skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
           
-          // must convert each vert out of model space into local (NDC) space,
-          // calculate the normal, then convert back.
+          // calculate the normal and convert to model space.
           for( unsigned v=0; v<msVerts->size(); ++v )
           {
               const osg::Vec3& vert = (*msVerts)[v];
-              osg::Vec3d model = vert + _centerModel;
-              osg::Vec3d ndc;
-              _masterLocator->convertModelToLocal( model, ndc );
-              osg::Vec3d local_one = ndc;
+              osg::Vec3d local_one(vert);
+              osg::Vec3d model;
+              _masterLocator->convertLocalToModel( local_one, model );
               local_one.z() += 1.0;
               osg::Vec3d model_one;
               _masterLocator->convertLocalToModel( local_one, model_one );
@@ -1175,12 +1136,15 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             }
 
             //Look for verts that belong to the mask polygon
-            for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+            if ((*it).z() == 0)
             {
-              if ((*it).z() == 0 && osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+              for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
               {
-                (*it).z() = (*mit).z();
-                break;
+                if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+                {
+                  (*it).z() = (*mit).z();
+                  break;
+                }
               }
             }
           }
@@ -1188,6 +1152,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
           //Any mask skirt verts that still have a z value of 0 are newly created verts where the
           //skirt meets the mask. Find the mask segment the point lies along and calculate the
           //appropriate z value for the point.
+          //
+          //Now that all the z values are set, convert each vert into model coords.
           //
           //Also, while we are iterating through the verts, set up tex coords.
           for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
@@ -1215,6 +1181,12 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 }
               }
             }
+
+            //Convert to model coords
+            osg::Vec3d model;
+            _masterLocator->convertLocalToModel(*it, model);
+            model = model - _centerModel;
+            (*it).set(model.x(), model.y(), model.z());
 
             //Setup tex coords
             osg::Vec3d ndc;

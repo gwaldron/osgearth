@@ -35,7 +35,7 @@ ConfigOptions( conf ),
 _proxySettings( ProxySettings() ),
 _cacheOnly( false ),
 _enableLighting( true ),
-_overlayVertexWarping( true ),
+_overlayVertexWarping( false ),
 _terrainOptions( 0L )
 {
     mergeConfig( conf );
@@ -45,7 +45,7 @@ MapNodeOptions::MapNodeOptions( const TerrainOptions& to ) :
 _proxySettings( ProxySettings() ),
 _cacheOnly( false ),
 _enableLighting( true ),
-_overlayVertexWarping( true ),
+_overlayVertexWarping( false ),
 _terrainOptions( 0L )
 {
     setTerrainOptions( to );

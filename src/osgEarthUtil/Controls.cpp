@@ -1442,6 +1442,38 @@ namespace osgEarth { namespace Util { namespace Controls
         ControlCanvas* _cs;
     };
 
+    // This callback installs a control canvas under a view.
+    struct CanvasInstaller : public osg::NodeCallback
+    {
+        CanvasInstaller( ControlCanvas* canvas, osg::Camera* camera )
+            : _canvas( canvas )
+        {
+            _oldCallback = camera->getUpdateCallback();
+            camera->setUpdateCallback( this );
+        }
+        
+        void operator()( osg::Node* node, osg::NodeVisitor* nv )
+        {
+            osg::Camera* camera = static_cast<osg::Camera*>(node);
+            osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(camera->getView());
+            install( view2, _canvas.get() );
+            camera->setUpdateCallback( _oldCallback.get() );
+        }
+
+        static void install( osgViewer::View* view2, ControlCanvas* canvas )
+        {
+            osg::Node* node = view2->getSceneData();
+            osg::Group* group = new osg::Group();
+            if ( node )
+                group->addChild( node );
+            group->addChild( canvas );
+            view2->setSceneData( group );
+        }
+
+        osg::ref_ptr<ControlCanvas>     _canvas;
+        osg::ref_ptr<osg::NodeCallback> _oldCallback;
+    };
+
 } } } // namespace osgEarth::Util::Controls
 
 // ---------------------------------------------------------------------------
@@ -1474,12 +1506,12 @@ ControlNode::traverse( osg::NodeVisitor& nv )
         // cache a reference to its control node bin:
         if ( !data._visibleNodes.valid() )
         {
-            ControlCanvas* canvas = ControlCanvas::getControlCanvas( cv->getCurrentCamera()->getView() );
+            ControlCanvas* canvas = ControlCanvas::get( cv->getCurrentCamera()->getView(), true );
             if ( canvas )
             {
                 ControlNodeBin* bin = canvas->getControlNodeBin();
                 bin->addNode( this );
-                data._visibleNodes = bin->getVisibleNodesVector();                
+                data._visibleNodes = bin->getVisibleNodesVector();       
             }
         }
 
@@ -1700,14 +1732,44 @@ ControlCanvas::ViewCanvasMap ControlCanvas::_viewCanvasMap;
 OpenThreads::Mutex           ControlCanvas::_viewCanvasMapMutex;
 
 ControlCanvas*
-ControlCanvas::getControlCanvas( osg::View* view )
+ControlCanvas::get( osg::View* view, bool installInSceneData )
 {
+    ControlCanvas* canvas = 0L;
+
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
+
     ViewCanvasMap::iterator i = _viewCanvasMap.find( view );
-    return i != _viewCanvasMap.end() ? i->second : 0L;
+    if ( i != _viewCanvasMap.end() )
+    {
+        canvas = i->second;
+    }
+
+    else
+    {
+        // Not found, so create one. If requested, add a callback that will
+        // automatically install it in the view's scene data during the 
+        // next update traversal.
+        osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(view);
+        if ( view2 )
+        {
+            canvas = new ControlCanvas( view2 );
+            _viewCanvasMap[view] = canvas;
+
+            if ( installInSceneData )
+                new CanvasInstaller( canvas, view->getCamera() );
+        }
+    }
+
+    return canvas;
 }
 
 // ---------------------------------------------------------------------------
+
+struct UpdateHook : public osg::NodeCallback {
+    void operator()(osg::Node* node, osg::NodeVisitor* nv ) {
+        static_cast<ControlCanvas*>(node)->update();
+    }
+};
 
 ControlCanvas::ControlCanvas( osgViewer::View* view ) :
 _contextDirty(true)
@@ -1737,6 +1799,8 @@ _contextDirty(true)
         OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
         _viewCanvasMap[view] = this;
     }
+
+    //this->setUpdateCallback( new UpdateHook );
 }
 
 ControlCanvas::~ControlCanvas()

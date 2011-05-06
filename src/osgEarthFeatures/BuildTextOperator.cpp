@@ -105,6 +105,8 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
 
     bool removeDuplicateLabels = symbol->removeDuplicateLabels().isSet() ? symbol->removeDuplicateLabels().get() : false;
 
+    StringExpression contentExpr = *symbol->content();
+
     osg::Geode* result = new osg::Geode;
     for (FeatureList::const_iterator itr = features.begin(); itr != features.end(); ++itr)
     {
@@ -121,15 +123,16 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         else if (symbol->content().isSet())
         {
              //Get the text from the specified content and referenced attributes
-             std::string content = symbol->content().value();
-             text = parseAttributes(feature, content, symbol->contentAttributeDelimiter().value());
+             text = feature->eval( contentExpr );
+             //std::string content = symbol->content().value();
+             //text = parseAttributes(feature, content, symbol->contentAttributeDelimiter().value());
         }
-        else if (symbol->attribute().isSet())
-        {
-            //Get the text from the specified attribute
-            std::string attr = symbol->attribute().value();
-            text = feature->getAttr(attr);
-        }
+        //else if (symbol->attribute().isSet())
+        //{
+        //    //Get the text from the specified attribute
+        //    std::string attr = symbol->attribute().value();
+        //    text = feature->getAttr(attr);
+        //}
 
         if (text.empty()) continue;
 

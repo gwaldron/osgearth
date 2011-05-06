@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_TEXT_SYMBOL_H 1
 
 #include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Expression>
 #include <osg/Referenced>
 #include <vector>
 
@@ -56,14 +57,20 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& font() { return _font; }
         const optional<std::string>& font() const { return _font; }
 
-        optional<std::string>& content() { return _content; }
-        const optional<std::string>& content() const { return _content; }
+        //optional<std::string>& content() { return _content; }
+        //const optional<std::string>& content() const { return _content; }
 
-        optional<std::string>& contentAttributeDelimiter() { return _contentAttributeDelimiter; }
-        const optional<std::string>& contentAttributeDelimiter() const { return _contentAttributeDelimiter; }
+        optional<StringExpression>& content() { return _content; }
+        const optional<StringExpression>& content() const { return _content; }
 
-        optional<std::string>& attribute() { return _attribute; }
-        const optional<std::string>& attribute() const { return _attribute; }
+        optional<NumericExpression>& priority() { return _priority; }
+        const optional<NumericExpression>& priority() const { return _priority; }
+
+        //optional<std::string>& contentAttributeDelimiter() { return _contentAttributeDelimiter; }
+        //const optional<std::string>& contentAttributeDelimiter() const { return _contentAttributeDelimiter; }
+
+        //optional<std::string>& attribute() { return _attribute; }
+        //const optional<std::string>& attribute() const { return _attribute; }
 
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
@@ -86,25 +93,30 @@ namespace osgEarth { namespace Symbology
         optional<LinePlacement>& linePlacement() { return _linePlacement; }
         const optional<LinePlacement>& linePlacement() const { return _linePlacement; }
 
+        optional<std::string>& provider() { return _provider; }
+        const optional<std::string>& provider() const { return _provider; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<Fill>            _fill;
-        optional<Stroke>          _halo;
-        optional<std::string>     _font;
-        optional<float>           _size;
-        optional<std::string>     _content;
-        optional<std::string>     _contentAttributeDelimiter;
-        optional<std::string>     _attribute;
-        optional<bool>            _rotateToScreen;
-        optional<bool>            _removeDuplicateLabels;
-        optional<SizeMode>        _sizeMode;
-        optional<LineOrientation> _lineOrientation;
-        optional<LinePlacement>   _linePlacement;
-        optional<std::string>     _theme;
-        optional<osg::Vec2s>      _pixelOffset;
+        optional<Fill>              _fill;
+        optional<Stroke>            _halo;
+        optional<std::string>       _font;
+        optional<float>             _size;
+        optional<StringExpression>  _content;
+        optional<NumericExpression> _priority;
+        //optional<std::string>      _contentAttributeDelimiter;
+        //optional<std::string>      _attribute;
+        optional<bool>              _rotateToScreen;
+        optional<bool>              _removeDuplicateLabels;
+        optional<SizeMode>          _sizeMode;
+        optional<LineOrientation>   _lineOrientation;
+        optional<LinePlacement>     _linePlacement;
+        optional<std::string>       _theme;
+        optional<osg::Vec2s>        _pixelOffset;
+        optional<std::string>       _provider;
     };
 
 } } // namespace osgEarth::Symbology

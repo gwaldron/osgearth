@@ -135,11 +135,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
             text->halo()->color() = htmlColorToVec4f( p->second );
         }
-        else if (p->first == CSS_TEXT_ATTRIBUTE)
-        {
-            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            text->attribute() = p->second;
-        }
+        //else if (p->first == CSS_TEXT_ATTRIBUTE)
+        //{
+        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+        //    text->attribute() = p->second;
+        //}
         else if (p->first == CSS_TEXT_ROTATE_TO_SCREEN)
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
@@ -171,16 +171,32 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (p->second == "centroid") text->linePlacement() = TextSymbol::LINEPLACEMENT_CENTROID;
             else if (p->second == "along-line") text->linePlacement() = TextSymbol::LINEPLACEMENT_ALONG_LINE;
         }
-        else if (p->first == CSS_TEXT_CONTENT)
+        else if (p->first == "text-content")
+        {
+            if (!text) text = sc.getOrCreate<TextSymbol>();
+            text->content() = StringExpression( p->second );
+        }
+        else if (p->first == "text-priority")
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            text->content() = p->second;
+            text->priority() = NumericExpression( p->second );
         }
-        else if (p->first == CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER)
+        else if (p->first == "text-provider")
         {
-            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            text->contentAttributeDelimiter() = p->second;
+            if (!text) text = sc.getOrCreate<TextSymbol>();
+            text->provider() = p->second;
         }
+
+        //else if (p->first == CSS_TEXT_CONTENT)
+        //{
+        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+        //    text->content() = p->second;
+        //}
+        //else if (p->first == CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER)
+        //{
+        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+        //    text->contentAttributeDelimiter() = p->second;
+        //}
 
         else if (p->first == "marker")
         {
@@ -213,7 +229,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "extrusion-height")
         {
             if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
-            extrusion->heightExpression() = Expression(p->second);
+            extrusion->heightExpression() = NumericExpression(p->second);
         }
         else if (p->first == "extrusion-flatten")
         {

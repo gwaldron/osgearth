@@ -591,9 +591,10 @@ namespace osgEarth { namespace Util { namespace Controls
     class OSGEARTHUTIL_EXPORT ControlCanvas : public osg::Camera
     {
     public:
-        /** Constructs a new canvas and attaches it to a view. */
-        ControlCanvas( osgViewer::View* view );
+        /** Accesses the control canvas attached the the specified view. */
+        static ControlCanvas* get( osg::View* view, bool installCanvasInSceneData =false );
 
+    public:
         /** adds a top-level control to this surface. */
         void addControl( Control* control );
 
@@ -602,10 +603,6 @@ namespace osgEarth { namespace Util { namespace Controls
 
         /** gets the top-most control that intersects the specified position. */
         Control* getControlAtMouse( float x, float y ) const;
-
-    public:
-        /** Accesses the control canvas attached the the specified view. */
-        static ControlCanvas* getControlCanvas( osg::View* view );
 
     public:
         // internal- no need to call directly
@@ -619,7 +616,14 @@ namespace osgEarth { namespace Util { namespace Controls
 
         virtual ~ControlCanvas();
 
+        /**
+         * Constructs a new canvas and attaches it to a view. Call
+         * getOrCreateControlCanvas(view) to create one.
+         */
+        ControlCanvas( osgViewer::View* view );
+
     protected:
+
         ControlList     _controls;
         GeodeTable      _geodeTable;
         ControlContext  _context;

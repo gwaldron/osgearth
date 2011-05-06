@@ -37,8 +37,8 @@ namespace osgEarth { namespace Symbology
         const optional<float>& height() const { return _height; }
 
         /** Simple expression to evaluate to get height */
-        optional<Expression>& heightExpression() { return _heightExpr; }
-        const optional<Expression>& heightExpression() const { return _heightExpr; }
+        optional<NumericExpression>& heightExpression() { return _heightExpr; }
+        const optional<NumericExpression>& heightExpression() const { return _heightExpr; }
 
         /** Whether the top cap of the extruded geometry should be flat (default=true) */
         optional<bool>& flatten() { return _flatten; }
@@ -50,9 +50,9 @@ namespace osgEarth { namespace Symbology
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<float> _height;
-        optional<bool>  _flatten;
-        optional<Expression> _heightExpr;
+        optional<float>             _height;
+        optional<bool>              _flatten;
+        optional<NumericExpression> _heightExpr;
     };
 
 } } // namespace osgEarth::Symbology

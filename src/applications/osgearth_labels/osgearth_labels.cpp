@@ -34,7 +34,7 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-osg::Group* createLabels( ControlCanvas*, Map* );
+osg::Group* createLabels( Map* );
 
 std::string g_featureFile, g_labelAttr, g_priorityAttr;
 bool g_removeDupes = true;
@@ -82,15 +82,13 @@ int main(int argc, char** argv)
     MapNode* mapNode = MapNode::findMapNode(node);
     if ( mapNode )
     {
-        // create a surface to house the controls
-        ControlCanvas* canvas = new ControlCanvas( &viewer );
-        root->addChild( canvas );
-
         viewer.setSceneData( root );
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator );
 
+        //root->addChild( new ControlCanvas( &viewer ) );
+
         // load up some labels.
-        root->addChild( createLabels(canvas, mapNode->getMap()) );
+        root->addChild( createLabels(mapNode->getMap()) );
     }
 
     // add some stock OSG handlers:
@@ -105,7 +103,7 @@ int main(int argc, char** argv)
 }
 
 osg::Group*
-createLabels( ControlCanvas* canvas, Map* map )
+createLabels( Map* map )
 {
     osg::ref_ptr<osg::Group> labels = new osg::Group();
 

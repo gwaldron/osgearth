@@ -347,10 +347,7 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
         }
         else if ( _heightExpr.isSet() )
         {
-            const Expression::Variables& vars = _heightExpr->variables();
-            for( Expression::Variables::const_iterator v = vars.begin(); v != vars.end(); ++v )
-                _heightExpr->set( *v, as<double>( input->getAttr(v->first), _height) );
-            height = _heightExpr->eval();
+            height = input->eval( _heightExpr.mutable_value() );
         }
         else
         {

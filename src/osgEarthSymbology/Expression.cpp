@@ -23,7 +23,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-Expression::Expression( const std::string& expr ) : 
+NumericExpression::NumericExpression( const std::string& expr ) : 
 _src( expr ),
 _value( 0.0 ),
 _dirty( true )
@@ -31,7 +31,7 @@ _dirty( true )
     init();
 }
 
-Expression::Expression( const Expression& rhs ) :
+NumericExpression::NumericExpression( const NumericExpression& rhs ) :
 _src( rhs._src ),
 _rpn( rhs._rpn ),
 _vars( rhs._vars ),
@@ -41,27 +41,27 @@ _dirty( rhs._dirty )
     //nop
 }
 
-Expression::Expression( const Config& conf )
+NumericExpression::NumericExpression( const Config& conf )
 {
     mergeConfig( conf );
     init();
 }
 
 void
-Expression::mergeConfig( const Config& conf )
+NumericExpression::mergeConfig( const Config& conf )
 {
     _src = conf.value();
     _dirty = true;
 }
 
 Config
-Expression::getConfig() const
+NumericExpression::getConfig() const
 {
-    return Config( "expression", _src );
+    return Config( "numeric_expression", _src );
 }
 
 void
-Expression::init()
+NumericExpression::init()
 {
     StringVector t;
     tokenize(_src, t, "[],()%*/+-", "'\"", false, true);
@@ -156,7 +156,7 @@ Expression::init()
 }
 
 void 
-Expression::set( const Variable& var, double value )
+NumericExpression::set( const Variable& var, double value )
 {
     Atom& a = _rpn[var.second];
     if ( a.second != value )
@@ -167,7 +167,7 @@ Expression::set( const Variable& var, double value )
 }
 
 double
-Expression::eval() const
+NumericExpression::eval() const
 {
     if ( _dirty )
     {
@@ -246,8 +246,98 @@ Expression::eval() const
             }
         }
 
-        const_cast<Expression*>(this)->_value = s.size() > 0 ? s.top() : 0.0;
-        const_cast<Expression*>(this)->_dirty = false;
+        const_cast<NumericExpression*>(this)->_value = s.size() > 0 ? s.top() : 0.0;
+        const_cast<NumericExpression*>(this)->_dirty = false;
+    }
+
+    return _value;
+}
+
+//------------------------------------------------------------------------
+
+StringExpression::StringExpression( const std::string& expr ) : 
+_src( expr ),
+_dirty( true )
+{
+    init();
+}
+
+StringExpression::StringExpression( const StringExpression& rhs ) :
+_src( rhs._src ),
+_vars( rhs._vars ),
+_value( rhs._value ),
+_infix( rhs._infix ),
+_dirty( rhs._dirty )
+{
+    //nop
+}
+
+StringExpression::StringExpression( const Config& conf )
+{
+    mergeConfig( conf );
+    init();
+}
+
+void
+StringExpression::mergeConfig( const Config& conf )
+{
+    _src = conf.value();
+    _dirty = true;
+}
+
+Config
+StringExpression::getConfig() const
+{
+    return Config( "string_expression", _src );
+}
+
+void
+StringExpression::init()
+{
+    StringVector t;
+    tokenize(_src, t, "[]", "'\"", false, true, false);
+
+    // identify tokens:
+    bool invar = false;
+    for( unsigned i=0; i<t.size(); ++i )
+    {
+        if ( t[i] == "[" && !invar )
+        {
+            invar = true;
+        }
+        else if ( t[i] == "]" && invar )
+        {
+            invar = false;
+            _infix.push_back( Atom(VARIABLE,"") );
+            _vars.push_back( Variable(t[i-1],0) );
+        }
+        else
+            _infix.push_back( Atom(OPERAND,t[i]) );
+    }
+}
+
+void 
+StringExpression::set( const Variable& var, const std::string& value )
+{
+    Atom& a = _infix[var.second];
+    if ( a.second != value )
+    {
+        a.second = value;
+        _dirty = true;
+    }
+}
+
+const std::string&
+StringExpression::eval() const
+{
+    if ( _dirty )
+    {
+        std::stringstream buf;
+        for( AtomVector::const_iterator i = _infix.begin(); i != _infix.end(); ++i )
+            buf << i->second;
+
+        const_cast<StringExpression*>(this)->_value = buf.str();
+        const_cast<StringExpression*>(this)->_dirty = false;
     }
 
     return _value;

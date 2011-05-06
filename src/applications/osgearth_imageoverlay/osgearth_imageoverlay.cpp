@@ -47,7 +47,7 @@ static ImageOverlayEditor* s_editor = NULL;
 osg::Node*
 createControlPanel( osgViewer::View* view )
 {
-    ControlCanvas* canvas = new ControlCanvas( view );
+    ControlCanvas* canvas = ControlCanvas::get( view );
 
     // the outer container:
     s_layerBox = new Grid();
@@ -71,6 +71,7 @@ createControlPanel( osgViewer::View* view )
 
     canvas->addControl( s_layerBox );
     canvas->addControl( s_imageBox );
+
     return canvas;
 }
 
@@ -194,8 +195,9 @@ main(int argc, char** argv)
     root->addChild( earthNode );
 
     //Create the control panel
-    root->addChild( createControlPanel( &viewer ) );
+    root->addChild( createControlPanel(&viewer) );
 
+    viewer.setSceneData( root );
     
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
@@ -269,8 +271,6 @@ main(int argc, char** argv)
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
     viewer.getDatabasePager()->setDoPreCompile( true );
-
-    viewer.setSceneData( root );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

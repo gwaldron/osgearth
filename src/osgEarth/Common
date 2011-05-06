@@ -69,6 +69,9 @@ namespace osgEarth
         const T& value() const { return _value; }
         const T& defaultValue() const { return _defaultValue; }
 
+        // gets a mutable reference, automatically setting
+        T& mutable_value() { _set = true; return _value; }
+
         void init(T defValue) { _value=defValue; _defaultValue=defValue; unset(); }
 
         operator const T*() const { return &_value; }

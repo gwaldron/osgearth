@@ -15,6 +15,7 @@ SET(LIB_PUBLIC_HEADERS
     Annotation  
     BufferFilter
     BuildGeometryFilter  
+    BuildTextFilter
     BuildTextOperator
     Common
     ClampFilter
@@ -32,6 +33,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureTileSource
     Filter
     FilterContext
+    LabelSource
     OptimizerHints
     ResampleFilter
     ScaleFilter
@@ -46,7 +48,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     Annotation.cpp
     BufferFilter.cpp
-    BuildGeometryFilter.cpp
+    BuildGeometryFilter.cpp 
+    BuildTextFilter.cpp
     BuildTextOperator.cpp
     ClampFilter.cpp
     ConvertTypeFilter.cpp
@@ -63,6 +66,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp
+    LabelSource.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp

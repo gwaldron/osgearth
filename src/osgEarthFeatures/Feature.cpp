@@ -106,3 +106,21 @@ Feature::getAttr( const std::string& name ) const
     AttributeTable::const_iterator i = _attrs.find(name);
     return i != _attrs.end()? i->second : EMPTY_STRING;
 }
+
+double
+Feature::eval( NumericExpression& expr ) const
+{
+    const NumericExpression::Variables& vars = expr.variables();
+    for( NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
+        expr.set( *i, osgEarth::as<double>(getAttr(i->first),0.0) );
+    return expr.eval();
+}
+
+const std::string&
+Feature::eval( StringExpression& expr ) const
+{
+    const StringExpression::Variables& vars = expr.variables();
+    for( StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
+        expr.set( *i, getAttr(i->first) );
+    return expr.eval();
+}

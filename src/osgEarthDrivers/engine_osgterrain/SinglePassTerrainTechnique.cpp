@@ -1166,18 +1166,20 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 osg::Vec3d p1 = *mit;
                 osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
                 
-                double m1 = (p2.y() - p1.y()) / (p2.x() - p1.x());
-                double m2 = (p3.y() - p1.y()) / (p3.x() - p1.x());
-
-                if (osg::absolute(m2 - m1) < MATCH_TOLERANCE)
+                if (p1.x() < p3.x() ? p2.x() >= p1.x() && p2.x() <= p3.x() : p2.x() >= p3.x() && p2.x() <= p1.x())
                 {
-                  double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
-                  double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
-                  double zmag = p3.z() - p1.z();
+                  double m1 = (p2.y() - p1.y()) / (p2.x() - p1.x());
+                  double m2 = (p3.y() - p1.y()) / (p3.x() - p1.x());
 
-                  (*it).z() = (l1 / lt) * zmag + p1.z();
+                  if (osg::absolute(m2 - m1) < MATCH_TOLERANCE)
+                  {
+                    double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                    double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                    double zmag = p3.z() - p1.z();
 
-                  break;
+                    (*it).z() = (l1 / lt) * zmag + p1.z();
+                    break;
+                  }
                 }
               }
             }
@@ -1212,6 +1214,15 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 }
               }
             }
+          }
+#else
+          for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
+          {
+            //Convert to model coords
+            osg::Vec3d model;
+            _masterLocator->convertLocalToModel(*it, model);
+            model = model - _centerModel;
+            (*it).set(model.x(), model.y(), model.z());
           }
 #endif
         }

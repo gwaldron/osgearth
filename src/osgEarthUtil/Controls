@@ -24,6 +24,7 @@
 #include <osg/Drawable>
 #include <osg/Geode>
 #include <osg/MatrixTransform>
+#include <osg/MixinVector>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 #include <osgText/Font>
@@ -80,6 +81,7 @@ namespace osgEarth { namespace Util { namespace Controls
     struct ControlContext
     {
         ControlContext() : _viewContextID(~0) { }
+        osg::View* _view;
         osg::ref_ptr<const osg::Viewport> _vp;
         unsigned int _viewContextID;
         std::queue< osg::ref_ptr<class Control> > _active;
@@ -493,74 +495,70 @@ namespace osgEarth { namespace Util { namespace Controls
         std::vector<float> _rowHeights, _colWidths;
     };
 
+    class OSGEARTHUTIL_EXPORT RefNodeVector :
+        public osg::Referenced,
+        public osg::MixinVector<osg::Node*> { };
+
     /**
-     * All the Controls within a SceneControlBin are sorted by priority and
-     * drawn so as to prevent overlap. They are also positioned in WORLD space,
-     * rather than in screen space.
-     *
-     * The canonical example is labeling, where you don't want label text to
-     * overlap, but you want some control over the priority of labels. See the
-     * "osgearth_labels" example.
-     *
-     * Note: to use a SceneControlBin, you must add the bin to your scene graph
-     * somewhere OUTSIDE the Control Canvas.
+     * A control wrapped in a node that you can place anywhere in the scene
+     * graph. Its scene location will control its 2D screen position, and it
+     * can participate in conflict resolution.
      */
-    class OSGEARTHUTIL_EXPORT SceneControlBin : public osg::Group
+    class OSGEARTHUTIL_EXPORT ControlNode : public osg::Node
     {
     public:
-        SceneControlBin();
-
         /**
-         * Adds a new control to the bin, and returns the MatrixTransform that you
-         * can use to set the World position of the control.
+         * Constructs a new control node with an embedded control.
          */
-        osg::MatrixTransform* addControl( Control* control, float priority = 0.0f );
+        ControlNode( Control* control, float priority =0.0f );
 
-        /**
-         * Removes a control from the bin.
-         */
-        void removeControl( Control* control );
+        /** The control encaspulated in this node */
+        Control* getControl() const { return _control.get(); }
 
-        /**
-         * Accesses the matrix transform node housing a scene control (so you can
-         * move it).
-         */
-        osg::MatrixTransform* getControlTransform( Control* control ) const;
+        /** The draw priority of this control */
+        float getPriority() const { return _priority; }
+
+    public: // osg::Node overrides
+
+        virtual void traverse( osg::NodeVisitor& nv );
+
+        virtual osg::BoundingSphere computeBound() const;
+
+    protected:
+
+        struct PerViewData
+        {
+            PerViewData();
+            bool                              _obscured;
+            osg::Vec2f                        _screenPos;
+            float                             _visibleTime;
+            osg::ref_ptr<osg::Uniform>        _uniform;
+            osg::observer_ptr<RefNodeVector>  _visibleNodes;
+        };
+        typedef std::map<osg::View*,PerViewData> PerViewDataMap;
+
+        PerViewDataMap        _perViewData;
+        osg::ref_ptr<Control> _control;
+        float                 _priority;
+
+        PerViewData& getData( osg::View* view ) { return _perViewData[view]; }
+
+        friend class ControlNodeBin;
+    };
+
+    /**
+     * Internal class that renders ControlNode objects found in the scene graph.
+     * There is no need to instantiate or access this object directly.
+     */
+    class OSGEARTHUTIL_EXPORT ControlNodeBin : public osg::Group
+    {
+    public:
+        ControlNodeBin();
+
+        /** Registers a control node with this bin. */
+        void addNode( ControlNode* node );
 
     private:
-        class ControlNode : public osg::MatrixTransform
-        {
-        public:
-            ControlNode( Control* control, std::vector<osg::Node*>& visibleNodes );
-
-#if 0
-            /** Accesses the underlying control */
-            Control* getControl() { return _control.get(); }
-            const Control* getControl() const { return _control.get(); }
-
-            /** Gets the screen-space position of the control */
-            const osg::Vec2f& getScreenPos() const { return _screenPos; }
-
-            /** Whether this control is obscured by other controls. */
-            bool isObscured() const { return _obscured; }
-            void setObscured() { _obscured = true; }
-
-            float visibleTime() const { return _visibleTime; }
-#endif
-
-        public:
-            virtual void traverse( osg::NodeVisitor& nv ); //override
-
-        private:
-            osg::ref_ptr<Control>      _control;
-            bool                       _obscured;
-            osg::Vec2f                 _screenPos;
-            float                      _visibleTime;
-            osg::ref_ptr<osg::Uniform> _uniform;
-            std::vector<osg::Node*>&   _visibleNodes;
-            friend class SceneControlBin;
-        };
-
         typedef std::pair<float, ControlNode*> ControlNodePair;
         typedef std::multimap<float, ControlNode*> ControlNodeCollection;
         ControlNodeCollection _controlNodes;
@@ -573,11 +571,15 @@ namespace osgEarth { namespace Util { namespace Controls
         typedef std::pair<ControlNode*, osg::MatrixTransform*> RenderNodePair;
         RenderNodeTable _renderNodes;
 
-        osg::ref_ptr<osg::Group> _group;
-        std::vector<osg::Node*>  _visibleNodes;
+        osg::ref_ptr<osg::Group>      _group;
+        //std::vector<osg::Node*>       _visibleNodes;
+        osg::ref_ptr<RefNodeVector>   _visibleNodes;
         std::vector<osg::BoundingBox> _taken;
 
         friend class ControlCanvas;
+        friend class ControlNode;
+
+        RefNodeVector* getVisibleNodesVector() { return _visibleNodes.get(); }
 
         void draw( const ControlContext& context, bool newContext, int bin );
         osg::Group* getControlGroup() const { return _group; }
@@ -589,8 +591,10 @@ namespace osgEarth { namespace Util { namespace Controls
     class OSGEARTHUTIL_EXPORT ControlCanvas : public osg::Camera
     {
     public:
-        ControlCanvas( osgViewer::View* view );
+        /** Accesses the control canvas attached the the specified view. */
+        static ControlCanvas* get( osg::View* view, bool installCanvasInSceneData =false );
 
+    public:
         /** adds a top-level control to this surface. */
         void addControl( Control* control );
 
@@ -599,9 +603,6 @@ namespace osgEarth { namespace Util { namespace Controls
 
         /** gets the top-most control that intersects the specified position. */
         Control* getControlAtMouse( float x, float y ) const;
-
-        /** Accesses the priority rendering bin for this canvas. */
-        SceneControlBin* getSceneControls() { return _sceneBin; }
 
     public:
         // internal- no need to call directly
@@ -613,16 +614,36 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         virtual void traverse( osg::NodeVisitor& nv ); // override
 
+        virtual ~ControlCanvas();
+
+        /**
+         * Constructs a new canvas and attaches it to a view. Call
+         * getOrCreateControlCanvas(view) to create one.
+         */
+        ControlCanvas( osgViewer::View* view );
+
     protected:
-        ControlList _controls;
-        GeodeTable  _geodeTable;
-        ControlContext _context;
-        bool _contextDirty;
-        osg::ref_ptr<SceneControlBin> _sceneBin;
+
+        ControlList     _controls;
+        GeodeTable      _geodeTable;
+        ControlContext  _context;
+        bool            _contextDirty;
+
+        osg::ref_ptr<ControlNodeBin> _controlNodeBin;
 
     private:
         friend struct ControlCanvasEventHandler;
+        friend class ControlNode;
+
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
+
+        // a static registry of canvases in the scene graph.
+        typedef std::map<osg::View*, ControlCanvas*> ViewCanvasMap;
+        static ViewCanvasMap      _viewCanvasMap;        
+        static OpenThreads::Mutex _viewCanvasMapMutex;
+
+        /** Accesses the priority rendering bin for this canvas. */
+        ControlNodeBin* getControlNodeBin() { return _controlNodeBin; }
     };
 
 

@@ -80,6 +80,7 @@ namespace osgEarth { namespace Symbology
             }
             return 0L;
         }
+        template<typename T> T* get() { return getSymbol<T>(); } // alias
 
         /** Gets a typed symbol from the style (the first one found) */
         template<typename T>
@@ -94,6 +95,7 @@ namespace osgEarth { namespace Symbology
             }
             return 0L;
         }
+        template<typename T> const T* get() const { return getSymbol<T>(); } // alias
 
         /** Gets a typed symbol from the style (first one found), or creates/adds/returns one of 
             that type if it doesn't already exist. */
@@ -108,6 +110,7 @@ namespace osgEarth { namespace Symbology
             }
             return sym;
         }
+        template<typename T> T* getOrCreate() { return getOrCreateSymbol<T>(); } // alias        
 
         /** Serializes this object into a Config. */
         virtual Config getConfig( bool keepOrigType =true ) const;

@@ -60,6 +60,9 @@ namespace
      * Visits a scene graph (in our case, the overlay graph) and calculates a
      * geometry bounding box that intersects the provided polytope (which in out case is the
      * view frustum).
+     *
+     * It's called "Coarse" because it does not traverse to the Drawable level, just to
+     * the Geode bounding sphere level.
      */
     struct CoarsePolytopeIntersector : public osg::NodeVisitor
     {
@@ -121,7 +124,11 @@ namespace
     /**
      * This method takes a set of verts and finds the nearest and farthest distances from
      * the points to the camera. It does this calculation in the plane defined by the
-     * look vector. 
+     * look vector.
+     *
+     * IOW, all the test points are "projected" on to the plane defined by the camera point
+     * and the look (normal) vector, and then the distances from the camera point to each
+     * projected point are tested in order to find the min/max extent.
      */
     void
     getMinMaxExtentInSilhouette(const osg::Vec3d& cam, const osg::Vec3d& look, 
@@ -179,18 +186,12 @@ OverlayDecorator::OverlayDecorator() :
 _textureUnit( 1 ),
 _textureSize( 1024 ),
 _useShaders( false ),
-_useWarping( true ),
+_useWarping( false ),
 _warp( 1.0f ),
 _visualizeWarp( false ),
 _mipmapping( true )
 {
-    // force an update traversal:
-    //ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-
-    // points to children of this group. We will override the traverse to route through
-    // this container. That way we can assign a stateset to the children without 
-    // actually modifying them
-    //_subgraphContainer = new osg::Group();
+    // nop
 }
 
 void
@@ -252,6 +253,7 @@ OverlayDecorator::reinit()
             // texture coordinate generator:
             _texGenNode = new osg::TexGenNode();
             _texGenNode->setTextureUnit( *_textureUnit );
+            _texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR );
             
             // attach the overlay graph to the RTT camera.
             if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != _rttCamera.get() ))
@@ -266,7 +268,6 @@ OverlayDecorator::reinit()
 
     // assemble the subgraph stateset:
     _subgraphStateSet = new osg::StateSet();
-    //_subgraphContainer->setStateSet( _subgraphStateSet.get() );
 
     if ( _overlayGraph.valid() && _textureUnit.isSet() )
     {
@@ -552,14 +553,20 @@ OverlayDecorator::onUninstall( TerrainEngineNode* engine )
 void
 OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
 {
+    static osg::Matrix normalizeMatrix = 
+        osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
+
     // configure the RTT camera:
     _rttCamera->setViewMatrix( _rttViewMatrix );
     _rttCamera->setProjectionMatrix( _rttProjMatrix );
 
     // configure the Projector camera:
-    osg::Matrix MVP = _projectorViewMatrix * _projectorProjMatrix;
-    osg::Matrix MVPT = MVP * osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
-    _texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR );
+    //osg::Matrix MVP = _projectorViewMatrix * _projectorProjMatrix;
+    //osg::Matrix MVPT = MVP * normalizeMatrix; //osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
+
+    osg::Matrix MVPT = _projectorViewMatrix * _projectorProjMatrix * normalizeMatrix;
+
+    //_texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR ); // moved to initialization
     _texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
     
     // uniform update:
@@ -571,11 +578,11 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
     }
 }
 
-static int s_frame = 1;
-
 void
 OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 {
+    static int s_frame = 1;
+
     osg::Vec3 eye = cv->getEyePoint();
 
     double eyeLen;
@@ -612,8 +619,6 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         // data beyond the visible horizon.
         double pitchAngleOfHorizon_rad = acos( horizonDistance/eyeLen );
         horizonDistanceInRTTPlane = horizonDistance * sin( pitchAngleOfHorizon_rad );
-
-        _rttViewMatrix = osg::Matrixd::lookAt( eye, osg::Vec3(0,0,0), osg::Vec3(0,0,1) );
     }
     else // projected map
     {
@@ -652,17 +657,15 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     cv->pushStateSet( _subgraphStateSet.get() );
     osg::Group::traverse( *cv );
     cv->popStateSet();
-    //_subgraphContainer->accept( *cv );
 
-    cv->computeNearPlane();
-
+#if 0
     // --- FIRST PASS ------------------------
-
     // First, intersect the view frustum with the overlay geometry. This will provide
     // a maximum required extent for our ortho RTT camera. Depending on the layout of
     // the geometry in the overlay graph, this may or may not be optimal ... we will
     // work to refine it in later passes if necessary.
 
+    cv->computeNearPlane();
     double znear = cv->getCalculatedNearPlane();
     double zfar  = cv->getCalculatedFarPlane();
     osg::Matrixd projMatrix = *cv->getProjectionMatrix();
@@ -689,83 +692,88 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 
     if ( !_isGeocentric )
         eyeLen = zfar;
-
-#if 0
-    if ( s_frame++ % 100 == 0 )
-    {
-        osgShadow::ConvexPolyhedron tempPH;
-        tempPH.setToUnitFrustum(true, true);
-        tempPH.transform(osg::Matrix::inverse(viewMVP), viewMVP);
-        tempPH.dumpGeometry();
-    }
 #endif
 
-    // simple test...TODO
-    bool needSecondPass = true;
+    // --- SECOND PASS --------------------
+    // Remake the projection matrix with better hueristic for the far clipping plane.
+    // (Jason's method)
+    osg::Matrixd projMatrix = *cv->getProjectionMatrix();
+    double fovy, aspectRatio, zfar, znear;
+    cv->getProjectionMatrix()->getPerspective( fovy, aspectRatio, znear, zfar );
+    double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
+    maxDistance *= 1.5;
+    if (zfar - znear >= maxDistance)
+        zfar = znear + maxDistance;
+    projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
+   
+    // contruct the polyhedron representing the viewing frustum.
+    osgShadow::ConvexPolyhedron frustumPH;
+    frustumPH.setToUnitFrustum( true, true );
+    osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
+    osg::Matrixd inverseMVP;
+    inverseMVP.invert(MVP);
+    frustumPH.transform( inverseMVP, MVP );
 
-    // --- SECOND PASS: --------------------------
+    // make a polyhedron representing the viewing frustum of the overlay, and cut it to
+    // intersect the viewing frustum:
+    osgShadow::ConvexPolyhedron visiblePH;
 
-    // If the calculated eMax isn't quite good enough, go on to calculate a better one
-    if ( needSecondPass )
+    // get the bounds of the model. 
+    //const osg::BoundingSphere& bs = osg::Group::getBound();
+    osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
+    this->accept(cbbv);
+    visiblePH.setToBoundingBox(cbbv.getBoundingBox());
+
+    // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
+    // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
+    // minimal without clipping at the geometry level, but that would probably be too expensive.)
+    visiblePH.cut( frustumPH );
+
+    // calculate the extents for our orthographic RTT camera (clamping it to the
+    // visible horizon)
+    std::vector<osg::Vec3d> verts;
+    visiblePH.getPoints( verts );
+
+    if ( _isGeocentric )
     {
-        // Remake the projection matrix with better hueristic far clipping plane.
-        // (Jason's method)
-        //osg::Matrixd projMatrix = *cv->getProjectionMatrix();
-        double fovy, aspectRatio, zfar, znear;
-        cv->getProjectionMatrix()->getPerspective( fovy, aspectRatio, znear, zfar );
-        double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
-        maxDistance *= 1.5;
-        if (zfar - znear >= maxDistance)
-            zfar = znear + maxDistance;
-        projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
-       
-        // contruct the polyhedron representing the viewing frustum.
-        osgShadow::ConvexPolyhedron frustumPH;
-        frustumPH.setToUnitFrustum( true, true );
-        osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
-        osg::Matrixd inverseMVP;
-        inverseMVP.invert(MVP);
-        frustumPH.transform( inverseMVP, MVP );
-
-        // make a polyhedron representing the viewing frustum of the overlay, and cut it to
-        // intersect the viewing frustum:
-        osgShadow::ConvexPolyhedron visiblePH;
-
-        //const osg::BoundingSphere& bs = _subgraphContainer->getBound();
-        const osg::BoundingSphere& bs = osg::Group::getBound();
-
-        // get the bounds of the model. 
-        osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
-        //_subgraphContainer->accept(cbbv);
-        this->accept(cbbv);
-        visiblePH.setToBoundingBox(cbbv.getBoundingBox());
-
-        // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
-        // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
-        // minimal without clipping at the geometry level, but that would probably be too expensive.)
-        visiblePH.cut( frustumPH );
-
-#if 0
-        // dumps a copy of the PH to disk...handy
-        if ( s_frame++ % 100 == 0 )
+        // for a geocentric map, try to place the RTT camera position at an optimal point
+        // that will minimize the span of the RTT texture. Take the centroid of the 
+        // visible polyhedron and clamp it's distance to the eyepoint by half the horizon
+        // distance.
+        osg::BoundingBox box = visiblePH.computeBoundingBox();
+        osg::Vec3d bc = box.center();
+        osg::Vec3d eye2bc = eye - bc;
+        if ( eye2bc.length() > horizonDistance )
         {
-            visiblePH.dumpGeometry();
-            OE_INFO << "DUMP" << std::endl;
+            eye2bc.normalize();
+            bc = eye + eye2bc * 0.5*horizonDistance;
         }
-#endif
-
-        // calculate the extents for our orthographic RTT camera (clamping it to the
-        // visible horizon)
-        std::vector<osg::Vec3d> verts;
-        visiblePH.getPoints( verts );
+        
+        rttLookVec = -bc;
+        rttLookVec.normalize();
 
         double new_eMax;
-        getMinMaxExtentInSilhouette( from, rttLookVec, verts, eMin, new_eMax );
-        eMax = osg::minimum( eMax, new_eMax );
-        //eMax = osg::minimum( eMax, horizonDistanceInRTTPlane ); // already done in first pass -gw
-    }
+        getMinMaxExtentInSilhouette( bc, rttLookVec, verts, eMin, new_eMax );
+        eMax = std::min( eMax, new_eMax );
+        _rttViewMatrix = osg::Matrixd::lookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+        _rttProjMatrix = osg::Matrixd::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, bc.length() );
 
-    _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
+        //OE_INFO << std::fixed << std::setprecision(1)
+        //    << "eMax = " << eMax
+        //    << ", bc = " << bc.x() << ", " << bc.y() << ", " << bc.z()
+        //    << ", eye = " << eye.x() << ", " << eye.y() << ", " << eye.z()
+        //    << ", eyeLen = " << eyeLen
+        //    << std::endl;
+    }
+    else
+    {
+        // for a projected map, just point the RTT straight down at the camera position.
+        // TODO: this could be optimized, probably.
+        double new_eMax;
+        getMinMaxExtentInSilhouette( from, osg::Vec3d(0,0,-1), verts, eMin, new_eMax );   
+        eMax = std::min( eMax, new_eMax ); 
+        _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
+    }
 
     if ( _useWarping )
     {

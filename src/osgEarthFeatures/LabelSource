@@ -1,0 +1,109 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_LABELSOURCE_H
+#define OSGEARTH_FEATURES_LABELSOURCE_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FilterContext>
+#include <osgEarth/Config>
+#include <osgEarth/Revisioning>
+#include <osgEarthSymbology/TextSymbol>
+
+namespace osgEarth { namespace Features
+{  
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Configuration options for a label source.
+     */
+    class OSGEARTHFEATURES_EXPORT LabelSourceOptions : public DriverConfigOptions
+    {
+    public:
+        LabelSourceOptions( const ConfigOptions& options =ConfigOptions() ) :
+              DriverConfigOptions( options )
+              
+              { fromConfig(_conf); }
+
+    public: // properties
+
+    public:
+        virtual Config getConfig() const;
+
+    protected:
+        virtual void mergeConfig( const Config& conf );
+        
+    private:
+        void fromConfig( const Config& conf );
+    };
+
+    //--------------------------------------------------------------------
+
+    /**
+     * Plugin object that generates text label nodes.
+     */
+    class OSGEARTHFEATURES_EXPORT LabelSource : public virtual Revisioned<osg::Object>
+    {
+    public:        
+        LabelSource( const LabelSourceOptions& options =LabelSourceOptions() )
+        {
+            //nop
+        }
+
+        /**
+         * Subclass implements this method to create the labeling node.
+         */
+        virtual osg::Node* createNode(
+            const FeatureList&   input,
+            const TextSymbol*    symbol,
+            const FilterContext& context ) =0;
+
+    public:
+        
+        // META_Object specialization:
+        virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
+        virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
+        virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const LabelSource*>(obj)!=NULL; }
+        virtual const char* className() const { return "LabelSource"; }
+        virtual const char* libraryName() const { return "osgEarth::Features"; }
+
+    protected:
+        virtual ~LabelSource() { }
+    };
+
+    //--------------------------------------------------------------------
+
+    class OSGEARTHFEATURES_EXPORT LabelSourceDriver : public osgDB::ReaderWriter
+    {
+    protected:
+        const LabelSourceOptions& getLabelSourceOptions( const osgDB::ReaderWriter::Options* rwOpt ) const;
+    };
+
+    //--------------------------------------------------------------------
+
+    class OSGEARTHFEATURES_EXPORT LabelSourceFactory
+    {   
+	public:
+        static LabelSource* create( const LabelSourceOptions& options =LabelSourceOptions() );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTH_FEATURES_LABELSOURCE_H

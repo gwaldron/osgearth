@@ -7,9 +7,6 @@ Demonstrates use of the "feature_overlay" feature draping driver.
   
     <options>
         <lighting>false</lighting>
-        <terrain>
-            <lod_blending>false</lod_blending>
-        </terrain>
     </options>
 
     <image name="world" driver="gdal">
@@ -22,10 +19,8 @@ Demonstrates use of the "feature_overlay" feature draping driver.
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
             <build_spatial_index>true</build_spatial_index>
+            <convert type="line"/>
         </features>
-        
-        <!-- Treat the geometry as lines. -->
-        <geometry_type>line</geometry_type>
                 
         <styles>
             <style type="text/css">

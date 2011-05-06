@@ -68,7 +68,7 @@ static osg::Node* createMenu( osgViewer::View* view )
 {
     using namespace osgEarth::Util::Controls;
 
-    ControlCanvas* canvas = new ControlCanvas( view );
+    ControlCanvas* canvas = ControlCanvas::get( view );
 
     Grid* grid = new Grid();
     grid->setBackColor( 0, 0, 0, 0.5 );
@@ -273,7 +273,7 @@ int main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
 
     group->addChild( loadedModel );
-    group->addChild( createMenu( &viewer ) );
+    group->addChild( createMenu(&viewer) );
     viewer.setSceneData(group);
     
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );

@@ -18,6 +18,7 @@
  */
 #include "GeomCompiler"
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/ClampFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
@@ -71,12 +72,13 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     bool localize = mi.isGeocentric() && workingExtent.width() < 180.0;
 
     // go through the Style and figure out which filters to use.
-    const MarkerSymbol*    marker    = style.getSymbol<MarkerSymbol>();
-    const PointSymbol*     point     = style.getSymbol<PointSymbol>();
-    const LineSymbol*      line      = style.getSymbol<LineSymbol>();
-    const PolygonSymbol*   polygon   = style.getSymbol<PolygonSymbol>();
-    const ExtrusionSymbol* extrusion = style.getSymbol<ExtrusionSymbol>();
-    const AltitudeSymbol*  altitude  = style.getSymbol<AltitudeSymbol>();
+    const MarkerSymbol*    marker    = style.get<MarkerSymbol>();
+    const PointSymbol*     point     = style.get<PointSymbol>();
+    const LineSymbol*      line      = style.get<LineSymbol>();
+    const PolygonSymbol*   polygon   = style.get<PolygonSymbol>();
+    const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
+    const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
+    const TextSymbol*      text      = style.get<TextSymbol>();
     
     // transform the features into the map profile
     TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   
@@ -84,6 +86,9 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     if ( altitude && altitude->verticalOffset().isSet() )
         xform.setMatrix( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
     cx = xform.push( workingSet, cx );
+
+    bool clampRequired =
+        altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
 
     // model substitution
     if ( marker )
@@ -98,11 +103,12 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             cx = scatter.push( workingSet, cx );
         }
 
-        if ( altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE )
+        if ( clampRequired )
         {
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
             cx = clamp.push( workingSet, cx );
+            clampRequired = false;
         }
 
         SubstituteModelFilter sub( style );
@@ -117,11 +123,12 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     // extruded geometry
     else if ( extrusion && ( line || polygon ) )
     {
-        if ( altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE )
+        if ( clampRequired )
         {
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
             cx = clamp.push( workingSet, cx );
+            clampRequired = false;
         }
 
         ExtrudeGeometryFilter extrude;
@@ -145,11 +152,12 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     // simple geometry
     else if ( point || line || polygon )
     {
-        if ( altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE )
+        if ( clampRequired )
         {
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
             cx = clamp.push( workingSet, cx );
+            clampRequired = false;
         }
 
         BuildGeometryFilter filter( style );
@@ -159,6 +167,21 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             filter.mergeGeometry() = *_options.mergeGeometry();
         cx = filter.push( workingSet, cx );
         result = filter.getNode();
+    }
+
+    else if ( text )
+    {
+        if ( clampRequired )
+        {
+            ClampFilter clamp;
+            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+            cx = clamp.push( workingSet, cx );
+            clampRequired = false;
+        }
+
+        BuildTextFilter filter( style );
+        cx = filter.push( workingSet, cx );
+        result = filter.takeNode();
     }
 
     else // insufficient symbology

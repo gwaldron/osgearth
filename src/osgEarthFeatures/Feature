@@ -102,10 +102,15 @@ namespace osgEarth { namespace Features
 
         const std::string& getAttr( const std::string& name ) const;        
 
-
         /** Embedded style. */
         optional<Style>& style() { return _style; }
         const optional<Style>& style() const { return _style; }
+
+        /** populates the variables of an expression with attribute values and evals the expression. */
+        double eval( NumericExpression& expr ) const;
+        
+        /** populates the variables of an expression with attribute values and evals the expression. */
+        const std::string& eval( StringExpression& expr ) const;
 
     protected:
         FeatureID _fid;

@@ -83,7 +83,8 @@ namespace osgEarth
                    const std::string& delims =" \t\n\r", 
                    const std::string& quotes ="'\"",
                    bool allowEmpties =true,
-                   bool keepDelims =false)
+                   bool keepDelims   =false,
+                   bool trimTokens   =true )
     {
         std::stringstream buf;
         bool quoted = false;
@@ -102,7 +103,7 @@ namespace osgEarth
                 else if ( delims.find(c) == std::string::npos )
                     buf << c;
                 else {
-                    std::string token = trim(buf.str());
+                    std::string token = trimTokens ? trim(buf.str()) : buf.str();
                     if ( allowEmpties || !token.empty() )
                         output.push_back( token );
                     
@@ -113,7 +114,7 @@ namespace osgEarth
                 }
             }       
         }
-        std::string last = trim(buf.str());
+        std::string last = trimTokens ? trim(buf.str()) : buf.str();
         if ( !last.empty() )
             output.push_back( last );
     }

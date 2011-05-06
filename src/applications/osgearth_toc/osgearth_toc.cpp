@@ -160,7 +160,7 @@ struct MoveLayerHandler : public ControlEventHandler
 osg::Node*
 createControlPanel( osgViewer::View* view )
 {
-    ControlCanvas* canvas = new ControlCanvas( view );
+    ControlCanvas* canvas = ControlCanvas::get( view );
 
     // the outer container:
     s_layerBox = new Grid();

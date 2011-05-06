@@ -41,8 +41,7 @@ int main(int argc, char** argv)
         root->addChild( node );
 
     // create a surface to house the controls
-    ControlCanvas* cs = new ControlCanvas( &viewer );
-    root->addChild( cs );
+    ControlCanvas* cs = ControlCanvas::get( &viewer );
 
     viewer.setSceneData( root );
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator );

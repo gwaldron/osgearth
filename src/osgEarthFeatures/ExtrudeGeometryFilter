@@ -63,7 +63,7 @@ namespace osgEarth { namespace Features
         /**
          * Sets an arithmetic expression to evaluate to determine the extrusion height.
          */
-        void setExtrusionExpr( const Expression& value ) { _heightExpr = value; }
+        void setExtrusionExpr( const NumericExpression& value ) { _heightExpr = value; }
 
         /**
          * Sets a callback that can return an extrusion height for a feature.
@@ -98,7 +98,7 @@ namespace osgEarth { namespace Features
 
         float                        _height;
         optional<std::string>        _heightAttr;
-        optional<Expression>         _heightExpr;
+        optional<NumericExpression>  _heightExpr;
         osg::ref_ptr<HeightCallback> _heightCallback;
 
         void reset();

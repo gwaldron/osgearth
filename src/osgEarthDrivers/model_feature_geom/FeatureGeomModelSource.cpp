@@ -50,7 +50,6 @@ namespace
                 osg::ref_ptr<osg::Node>&  node )
         {
             GeomCompiler compiler( _options );
-            //osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(features);
             node = compiler.compile( features, style, context );
             return node.valid();
         }

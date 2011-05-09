@@ -73,10 +73,8 @@ public:
                 Controls::LabelControl* label = new Controls::LabelControl( value );
                 Controls::ControlNode* node = new Controls::ControlNode( label, priority );
 
-                osg::MatrixTransform* xform = new osg::MatrixTransform();
-                xform->setMatrix( osg::Matrixd::translate(centroid) );
+                osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrixd::translate(centroid) );
                 xform->addChild( node );
-
                 group->addChild( xform );
 
                 if ( skipDupes )

@@ -507,9 +507,7 @@ namespace osgEarth { namespace Util { namespace Controls
     class OSGEARTHUTIL_EXPORT ControlNode : public osg::Node
     {
     public:
-        /**
-         * Constructs a new control node with an embedded control.
-         */
+        /** Constructs a new control node with an embedded control. */
         ControlNode( Control* control, float priority =0.0f );
 
         /** The control encaspulated in this node */
@@ -534,12 +532,13 @@ namespace osgEarth { namespace Util { namespace Controls
             float                             _visibleTime;
             osg::ref_ptr<osg::Uniform>        _uniform;
             osg::observer_ptr<RefNodeVector>  _visibleNodes;
+            osg::Matrixd                      _lastMVM;
         };
         typedef std::map<osg::View*,PerViewData> PerViewDataMap;
 
-        PerViewDataMap        _perViewData;
-        osg::ref_ptr<Control> _control;
-        float                 _priority;
+        PerViewDataMap         _perViewData;
+        osg::ref_ptr<Control>  _control;
+        float                  _priority;
 
         PerViewData& getData( osg::View* view ) { return _perViewData[view]; }
 

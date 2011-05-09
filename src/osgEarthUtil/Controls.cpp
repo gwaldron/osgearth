@@ -1482,7 +1482,7 @@ ControlNode::ControlNode( Control* control, float priority ) :
 _control ( control ),
 _priority( priority )
 {
-    setCullingActive(false);
+    setCullingActive( false );
 }
 
 osg::BoundingSphere
@@ -1517,7 +1517,8 @@ ControlNode::traverse( osg::NodeVisitor& nv )
 
         if ( data._visibleNodes.valid() )
         {
-            // first, normal-cull it:
+            // normal-cull it:
+            // TODO: only do this in geocentric mode.....
             osg::Matrixd local2world = osg::computeLocalToWorld( nv.getNodePath() );            
             double dp = cv->getEyePoint() * local2world.getTrans();
 
@@ -1529,8 +1530,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
             else
             {
                 // calculate its screen position:
-                osg::Matrix mvpw = *cv->getMVPW();
-                osg::Vec3f sp = s_zero * mvpw;
+                osg::Vec3f sp = s_zero * (*cv->getMVPW());
                 data._screenPos.set( sp.x(), sp.y() );
 
                 if ( data._obscured == true )

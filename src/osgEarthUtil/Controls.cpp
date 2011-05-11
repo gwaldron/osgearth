@@ -457,6 +457,12 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         if ( _font.valid() )
             t->setFont( _font.get() );
 
+        if ( backColor().isSet() )
+        {
+            t->setBackdropType( osgText::Text::OUTLINE );
+            t->setBackdropColor( backColor().value() );
+        }
+
         osg::BoundingBox bbox = t->getTextBB();
         if ( cx._viewContextID != ~0u )
         {

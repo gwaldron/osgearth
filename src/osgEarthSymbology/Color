@@ -62,6 +62,8 @@ namespace osgEarth { namespace Symbology
         static Color Fuchsia;
         static Color Purple;
         static Color Orange;
+
+        static Color DarkGray;
     };
 
 } } // namespace osgEarth::Symbology

@@ -71,6 +71,15 @@ public:
                 double priority = feature->eval( priorityExpr );
 
                 Controls::LabelControl* label = new Controls::LabelControl( value );
+                if ( text->fill().isSet() )
+                    label->setForeColor( text->fill()->color() );
+                if ( text->halo().isSet() )
+                    label->setBackColor( text->halo()->color() );
+                if ( text->size().isSet() )
+                    label->setFontSize( *text->size() );
+                if ( text->font().isSet() )
+                    label->setFont( osgText::readFontFile(*text->font()) );
+
                 Controls::ControlNode* node = new Controls::ControlNode( label, priority );
 
                 osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrixd::translate(centroid) );

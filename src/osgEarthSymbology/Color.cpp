@@ -42,6 +42,8 @@ Color Color::Fuchsia  ( 0xff00ffff );
 Color Color::Purple   ( 0x800080ff );
 Color Color::Orange   ( 0xffa500ff );
 
+Color Color::DarkGray ( 0x404040ff );
+
 Color::Color( unsigned rgba )
 {
     set(

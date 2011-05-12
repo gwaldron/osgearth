@@ -13,6 +13,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT ImageOverlay : public osg::Group
     {
     public:    
+        
         enum ControlPoint
         {
             CONTROLPOINT_CENTER,
@@ -49,6 +50,16 @@ namespace osgEarth { namespace Util
         osg::Vec2d getControlPoint(ControlPoint controlPoint);
         void setControlPoint(ControlPoint controlPoint, double lon_deg, double lat_deg, bool singleVert=false);
 
+        struct ImageOverlayCallback : public osg::Referenced
+        {
+            virtual void onOverlayChanged() {};
+        };
+
+        typedef std::list< osg::ref_ptr<ImageOverlayCallback> > CallbackList;
+
+        void addCallback( ImageOverlayCallback* callback );
+        void removeCallback( ImageOverlayCallback* callback );
+
 
         osgEarth::Bounds getBounds() const;
         void setBounds(const osgEarth::Bounds& bounds);
@@ -68,6 +79,8 @@ namespace osgEarth { namespace Util
 
         void dirty();
     private:
+        void fireCallback(ImageOverlay::ControlPoint point, const osg::Vec2d& location);
+
         void postCTOR();
         void init();
         void clampLatitudes();
@@ -82,6 +95,7 @@ namespace osgEarth { namespace Util
         osg::Geode* _geode;
         osg::Geometry* _geometry;
         float _alpha;
+        CallbackList _callbacks;
     };
 
 } } // namespace osgEarth::Util

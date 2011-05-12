@@ -5,6 +5,7 @@
 #include <osg/Texture2D>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osg/io_utils>
+#include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -257,7 +258,7 @@ ImageOverlay::setLowerLeft(double lon_deg, double lat_deg)
 {
     _lowerLeft = osg::Vec2d(lon_deg, lat_deg);
     clampLatitudes();
-    dirty();
+    dirty();    
 }
 
 void
@@ -265,7 +266,7 @@ ImageOverlay::setLowerRight(double lon_deg, double lat_deg)
 {
     _lowerRight = osg::Vec2d(lon_deg, lat_deg);
     clampLatitudes();
-    dirty();
+    dirty();    
 }
 
 void
@@ -371,6 +372,30 @@ ImageOverlay::traverse(osg::NodeVisitor &nv)
 
 void ImageOverlay::dirty()
 {
-    OpenThreads::ScopedLock< OpenThreads::Mutex > lock(_mutex);
-    _dirty = true;
+    {
+        OpenThreads::ScopedLock< OpenThreads::Mutex > lock(_mutex);
+        _dirty = true;
+    }
+
+    for( CallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); i++ )
+    {
+        i->get()->onOverlayChanged();
+    }
+}
+
+void 
+ImageOverlay::addCallback( ImageOverlayCallback* cb )
+{
+    if ( cb )
+        this->_callbacks.push_back( cb );
+}
+
+void 
+ImageOverlay::removeCallback( ImageOverlayCallback* cb )
+{
+    CallbackList::iterator i = std::find( _callbacks.begin(), _callbacks.end(), cb);
+    if (i != _callbacks.end())
+    {
+        _callbacks.erase( i );
+    }    
 }

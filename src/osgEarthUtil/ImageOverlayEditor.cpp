@@ -10,217 +10,167 @@ using namespace osgEarth::Util;
 
 /***************************************************************************/
 
+class ImageOverlayDraggerCallback : public osgManipulator::DraggerCallback
+{
+public:
+    ImageOverlayDraggerCallback(ImageOverlay* overlay, const osg::EllipsoidModel* ellipsoid, ImageOverlay::ControlPoint controlPoint):
+      _overlay(overlay),
+          _ellipsoid(ellipsoid),
+          _controlPoint(controlPoint)
+      {}
 
-ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* imageOverlay, osg::Group* editorGroup):
-_imageOverlay(imageOverlay),
-_editorGroup(editorGroup),
-_dragging(false),
-_moveVert(false)
-{      
-    //Build the handle
-    osg::Sphere* sphere = new osg::Sphere(osg::Vec3(0,0,0), 5.0);
-    osg::Geode* geode = new osg::Geode();
-    osg::ShapeDrawable* sd = new osg::ShapeDrawable( sphere );
-    sd->setColor(osg::Vec4(0,1,0,1));
-    geode->addDrawable( sd );
-    geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    geode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    geode->getOrCreateStateSet()->setRenderBinDetails( 99999, "RenderBin" );
-    osg::AutoTransform* at = new osg::AutoTransform;
-    at->setAutoScaleToScreen( true );
-    at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_CAMERA );
-    at->addChild( geode );
-    //_handle = geode;
-    _handle = at;
+      osg::Vec2d getLocation(const osg::Matrixd& matrix)
+      {
+          osg::Vec3d trans = matrix.getTrans();
+          double lat, lon, height;
+          _ellipsoid->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
+          return osg::Vec2d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat));
+      }
 
-    _lowerLeftHandle = new osg::MatrixTransform;
-    _lowerLeftHandle->setName("LOWER_LEFT");
-    _lowerLeftHandle->addChild( _handle );
 
-    _lowerRightHandle = new osg::MatrixTransform;
-    _lowerRightHandle->setName("LOWER_RIGHT");
-    _lowerRightHandle->addChild( _handle );
+      virtual bool receive(const osgManipulator::MotionCommand& command)
+      {
+          switch (command.getStage())
+          {
+          case osgManipulator::MotionCommand::START:
+              {
+                  // Save the current matrix
+                  osg::Vec2d startLocation = _overlay->getControlPoint(_controlPoint);
+                  double x, y, z;
+                  _ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(startLocation.y()), osg::DegreesToRadians(startLocation.x()), 0, x, y, z);
+                  _startMotionMatrix = osg::Matrixd::translate(x, y, z);
 
-    _upperRightHandle = new osg::MatrixTransform;
-    _upperRightHandle->setName("UPPER_RIGHT");
-    _upperRightHandle->addChild( _handle );
+                  // Get the LocalToWorld and WorldToLocal matrix for this node.
+                  osg::NodePath nodePathToRoot;
+                  _localToWorld = osg::Matrixd::identity();
+                  _worldToLocal = osg::Matrixd::identity();
 
-    _upperLeftHandle = new osg::MatrixTransform;
-    _upperLeftHandle->setName("UPPER_LEFT");
-    _upperLeftHandle->addChild( _handle );
+                  return true;
+              }
+          case osgManipulator::MotionCommand::MOVE:
+              {
+                  // Transform the command's motion matrix into local motion matrix.
+                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
+                      * command.getMotionMatrix()
+                      * command.getLocalToWorld() * _worldToLocal;
 
-    _centerHandle = new osg::MatrixTransform;
-    _centerHandle->setName("CENTER");
-    _centerHandle->addChild( _handle );
+                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
+                  osg::Vec2d location = getLocation( newMatrix );
+                  _overlay->setControlPoint(_controlPoint, location.x(), location.y());
 
-    _editor = new osg::Group;
-    _editor->addChild( _lowerLeftHandle );
-    _editor->addChild( _lowerRightHandle );
-    _editor->addChild( _upperRightHandle );
-    _editor->addChild( _upperLeftHandle );
-    _editor->addChild( _centerHandle );
+                  return true;
+              }
+          case osgManipulator::MotionCommand::FINISH:
+              {
+                  return true;
+              }
+          case osgManipulator::MotionCommand::NONE:
+          default:
+              return false;
+          }
+      }
 
-    if (_editorGroup.valid())
+
+      osg::ref_ptr<const osg::EllipsoidModel>            _ellipsoid;
+      osg::ref_ptr<ImageOverlay>           _overlay;
+
+      osg::Matrix _startMotionMatrix;
+      ImageOverlay::ControlPoint _controlPoint;
+
+      osg::Matrix _localToWorld;
+      osg::Matrix _worldToLocal;
+};
+
+/***************************************************************************/
+class UpdateDraggersCallback : public osgManipulator::DraggerCallback
+{
+public:
+    UpdateDraggersCallback(ImageOverlayEditor* editor)
     {
-        _editorGroup->addChild( _editor );
+        _editor = editor;
     }
 
-    updateEditor();
-}
-
-ImageOverlayEditor::~ImageOverlayEditor()
-{
-    if (_editorGroup.valid())
+    virtual bool receive(const osgManipulator::MotionCommand& command)
     {
-        _editorGroup->removeChild( _editor );
-    }
-}
+        for (ImageOverlayEditor::ControlPointDraggerMap::iterator itr = _editor->getDraggers().begin(); itr != _editor->getDraggers().end(); ++itr)
+        {
+            //Get the location of the control point
+            osg::Vec2d location = _editor->getOverlay()->getControlPoint( itr->first );
 
-osg::Matrixd
-ImageOverlayEditor::getTransform(const osg::Vec2d& loc)
-{
-    osg::Matrixd matrix;
-    _imageOverlay->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(loc.y()), osg::DegreesToRadians(loc.x()), 0, matrix);
-    return matrix;
+            osg::Matrixd matrix;
+
+            //Compute the geocentric location
+            osg::ref_ptr< const osg::EllipsoidModel > ellipsoid = _editor->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
+            osg::Vec3d geo_loc;
+            ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), 0, geo_loc.x(), geo_loc.y(), geo_loc.z());
+
+            osg::Vec3d up = geo_loc;
+            up.normalize();
+
+            double segOffset = 50000;
+
+            osg::Vec3d start = geo_loc + (up * segOffset);
+            osg::Vec3d end = geo_loc - (up * segOffset);
+
+            osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
+
+            osgUtil::IntersectionVisitor iv;
+            iv.setIntersector( i );
+            _editor->getMapNode()->accept( iv );
+
+            osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
+            if ( !results.empty() )
+            {
+                const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
+                geo_loc = result.getWorldIntersectPoint();
+            }
+
+            _editor->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromXYZ(geo_loc.x(), geo_loc.y(), geo_loc.z(), matrix);
+
+
+            itr->second.get()->setMatrix( matrix );                               
+
+        }
+        return false;
+    }
+
+    friend class ImageOverlayEditor;
+
+    ImageOverlayEditor* _editor;
+};
+
+/***************************************************************************/
+
+
+
+
+ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay, MapNode* mapNode):
+_overlay(overlay),
+_mapNode(mapNode)
+{   
+    _updateDraggersCallback = new UpdateDraggersCallback(this);
+    addDragger( ImageOverlay::CONTROLPOINT_CENTER );
+    addDragger( ImageOverlay::CONTROLPOINT_LOWER_LEFT );
+    addDragger( ImageOverlay::CONTROLPOINT_LOWER_RIGHT );
+    addDragger( ImageOverlay::CONTROLPOINT_UPPER_LEFT );
+    addDragger( ImageOverlay::CONTROLPOINT_UPPER_RIGHT );
 }
 
 void
-ImageOverlayEditor::updateEditor()
+ImageOverlayEditor::addDragger( ImageOverlay::ControlPoint controlPoint )
 {
-    _lowerLeftHandle->setMatrix(getTransform(_imageOverlay->getLowerLeft()));
-    _lowerRightHandle->setMatrix(getTransform(_imageOverlay->getLowerRight()));
-    _upperLeftHandle->setMatrix(getTransform(_imageOverlay->getUpperLeft()));
-    _upperRightHandle->setMatrix(getTransform(_imageOverlay->getUpperRight()));  
-    _centerHandle->setMatrix(getTransform(_imageOverlay->getCenter()));
-}
+    osg::Vec2d location = _overlay->getControlPoint( controlPoint );
+    osg::Matrixd matrix;
+    _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), 0, matrix);    
 
-ImageOverlayEditor::EditPoint
-ImageOverlayEditor::getEditPoint(const osg::NodePath &nodePath)
-{
-    for (osg::NodePath::const_iterator itr = nodePath.begin(); itr != nodePath.end(); ++itr)
-    {
-        if ((*itr)->getName() == "LOWER_LEFT") return EDITPOINT_LOWER_LEFT;
-        if ((*itr)->getName() == "LOWER_RIGHT") return EDITPOINT_LOWER_RIGHT;
-        if ((*itr)->getName() == "UPPER_LEFT") return EDITPOINT_UPPER_LEFT;
-        if ((*itr)->getName() == "UPPER_RIGHT") return EDITPOINT_UPPER_RIGHT;
-        if ((*itr)->getName() == "CENTER") return EDITPOINT_CENTER;
-    }
-    return EDITPOINT_NONE;
-}
+    IntersectingDragger* dragger = new IntersectingDragger;
+    dragger->setNode( _mapNode );
+    dragger->setupDefaultGeometry();
+    dragger->setMatrix(matrix);
+    dragger->setHandleEvents( true );
+    dragger->addDraggerCallback(new ImageOverlayDraggerCallback(_overlay, _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), controlPoint));
+    dragger->addDraggerCallback( this->_updateDraggersCallback.get() );
 
-
-
-
-
-bool ImageOverlayEditor::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-{
-    osgViewer::Viewer* viewer = dynamic_cast<osgViewer::Viewer*>(&aa);
-    if (!viewer) return false;
-
-    if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH && ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON )
-    {                        
-        // use window coordinates
-        // remap the mouse x,y into viewport coordinates.
-        osg::Viewport* viewport = viewer->getCamera()->getViewport();
-        double mx = viewport->x() + (int)((double )viewport->width()*(ea.getXnormalized()*0.5+0.5));
-        double my = viewport->y() + (int)((double )viewport->height()*(ea.getYnormalized()*0.5+0.5));
-
-        // half width, height.
-        double w = 5.0f;
-        double h = 5.0f;
-        osgUtil::PolytopeIntersector* picker = new osgUtil::PolytopeIntersector( osgUtil::Intersector::WINDOW, mx-w, my-h, mx+w, my+h );
-        osgUtil::IntersectionVisitor iv(picker);
-
-        viewer->getCamera()->accept(iv);
-
-        if (picker->containsIntersections())
-        {
-            osgUtil::PolytopeIntersector::Intersection intersection = picker->getFirstIntersection();                                
-            osg::NodePath& nodePath = intersection.nodePath;
-            _editPoint = getEditPoint(nodePath);
-            if (_editPoint != EDITPOINT_NONE)
-            {                    
-                _dragging = true;
-                //_moveVert = ((ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_LEFT_CTRL) == osgGA::GUIEventAdapter::MODKEY_LEFT_CTRL);
-            }
-        }
-
-    }
-    else if ( ea.getEventType() == osgGA::GUIEventAdapter::RELEASE && ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON )
-    {
-        _dragging = false;
-    }
-    else if ( ea.getEventType() == osgGA::GUIEventAdapter::DRAG)
-    {         
-        if (_dragging)
-        {
-            osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());            
-            osgUtil::LineSegmentIntersector::Intersections results;            
-            if ( view->computeIntersections( ea.getX(), ea.getY(), results ) )
-            {                
-                // find the first hit under the mouse:
-                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-                osg::Vec3d point = first.getWorldIntersectPoint();
-
-                double lat_rad, lon_rad, height;                
-                _imageOverlay->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, height );
-
-                switch (_editPoint)
-                {
-                case EDITPOINT_LOWER_LEFT:
-                    if (_moveVert)
-                    {
-                        _imageOverlay->setLowerLeft(osg::RadiansToDegrees(lon_rad), osg::RadiansToDegrees(lat_rad));                
-                    }
-                    else
-                    {
-                        _imageOverlay->setSouth(osg::RadiansToDegrees(lat_rad));
-                        _imageOverlay->setWest(osg::RadiansToDegrees(lon_rad));
-                    }
-                    break;
-                case EDITPOINT_LOWER_RIGHT:
-                    if (_moveVert)
-                    {
-                        _imageOverlay->setLowerRight(osg::RadiansToDegrees(lon_rad), osg::RadiansToDegrees(lat_rad));                
-                    }
-                    else
-                    {
-                        _imageOverlay->setSouth(osg::RadiansToDegrees(lat_rad));
-                        _imageOverlay->setEast(osg::RadiansToDegrees(lon_rad));
-                    }
-                    break;
-                case EDITPOINT_UPPER_LEFT:
-                    if (_moveVert)
-                    {
-                        _imageOverlay->setUpperLeft(osg::RadiansToDegrees(lon_rad), osg::RadiansToDegrees(lat_rad));                
-                    }
-                    else
-                    {
-                        _imageOverlay->setNorth(osg::RadiansToDegrees(lat_rad));
-                        _imageOverlay->setWest(osg::RadiansToDegrees(lon_rad));
-                    }
-                    break;
-                case EDITPOINT_UPPER_RIGHT:
-                    if (_moveVert)
-                    {
-                        _imageOverlay->setUpperRight(osg::RadiansToDegrees(lon_rad), osg::RadiansToDegrees(lat_rad));                
-                    }
-                    else
-                    {
-                        _imageOverlay->setNorth(osg::RadiansToDegrees(lat_rad));
-                        _imageOverlay->setEast(osg::RadiansToDegrees(lon_rad));
-                    }
-                    break;
-                case EDITPOINT_CENTER:
-                    _imageOverlay->setCenter(osg::RadiansToDegrees(lon_rad), osg::RadiansToDegrees(lat_rad));                
-                    break;
-
-                }
-
-                updateEditor();
-                return true;
-            }
-        }
-    }
-    return false;
+    addChild(dragger);
+    _draggers[ controlPoint ] = dragger;
 }

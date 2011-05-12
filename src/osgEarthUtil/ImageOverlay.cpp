@@ -284,6 +284,81 @@ ImageOverlay::setUpperLeft(double lon_deg, double lat_deg)
     dirty();
 }
 
+osg::Vec2d
+ImageOverlay::getControlPoint(ControlPoint controlPoint)
+{
+    switch (controlPoint)
+    {
+    case CONTROLPOINT_CENTER:
+        return getCenter();
+    case CONTROLPOINT_UPPER_LEFT:
+        return getUpperLeft();
+    case CONTROLPOINT_LOWER_LEFT:
+        return getLowerLeft();
+    case CONTROLPOINT_UPPER_RIGHT:
+        return getUpperRight();
+    case CONTROLPOINT_LOWER_RIGHT:
+        return getLowerRight();
+    default:
+        return getCenter();
+    }       
+}
+
+void
+ImageOverlay::setControlPoint(ControlPoint controlPoint, double lon_deg, double lat_deg,  bool singleVert)
+{
+    switch (controlPoint)
+    {
+    case CONTROLPOINT_CENTER:
+        return setCenter(lon_deg, lat_deg);
+        break;
+    case CONTROLPOINT_UPPER_LEFT:
+        if (singleVert)
+        {
+            setUpperLeft(lon_deg, lat_deg);
+        }
+        else
+        {
+            setNorth(lat_deg);
+            setWest(lon_deg);
+        }
+        break;
+    case CONTROLPOINT_LOWER_LEFT:
+        if (singleVert)
+        {
+            setLowerLeft(lon_deg, lat_deg);
+        }
+        else
+        {
+            setSouth(lat_deg);
+            setWest(lon_deg);
+        }
+        break;
+    case CONTROLPOINT_UPPER_RIGHT:
+        if (singleVert)
+        {
+            setUpperRight(lon_deg, lat_deg);
+        }
+        else
+        {
+            setNorth( lat_deg);
+            setEast( lon_deg );            
+        }
+        break;
+    case CONTROLPOINT_LOWER_RIGHT:
+        if (singleVert)
+        {
+            setLowerRight(lon_deg, lat_deg);
+        }
+        else
+        {
+            setSouth( lat_deg );
+            setEast( lon_deg );
+        }
+        break;
+    }
+}
+
 void
 ImageOverlay::traverse(osg::NodeVisitor &nv)
 { 

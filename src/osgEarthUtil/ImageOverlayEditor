@@ -1,53 +1,34 @@
 #ifndef OSGEARTH_UTIL_IMAGE_OVERLAY_EDITOR_H
 #define OSGEARTH_UTIL_IMAGE_OVERLAY_EDITOR_H
 
+#include <osgEarth/MapNode>
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/ImageOverlay>
 #include <osg/MatrixTransform>
 #include <osgGA/GUIEventHandler>
+#include <osgEarthUtil/Draggers>
 
 namespace osgEarth { namespace Util
 {
-    struct OSGEARTHUTIL_EXPORT ImageOverlayEditor: public osgGA::GUIEventHandler
+    class OSGEARTHUTIL_EXPORT ImageOverlayEditor : public osg::Group
     {
     public:
-        enum EditPoint
-        {
-            EDITPOINT_CENTER,
-            EDITPOINT_LOWER_LEFT,
-            EDITPOINT_LOWER_RIGHT,
-            EDITPOINT_UPPER_LEFT,
-            EDITPOINT_UPPER_RIGHT,
-            EDITPOINT_NONE
-        };
+        typedef std::map< ImageOverlay::ControlPoint, osg::ref_ptr< osgManipulator::Dragger > >  ControlPointDraggerMap;
 
-        ImageOverlayEditor(ImageOverlay* imageOverlay, osg::Group* editorGroup);            
-        ~ImageOverlayEditor();
+        ImageOverlayEditor(ImageOverlay* overlay, MapNode* mapNode);
 
-        bool getMoveVert() const { return _moveVert; }
-        void setMoveVert(bool moveVert) { _moveVert = moveVert;}
+        ControlPointDraggerMap& getDraggers() { return _draggers; }
+        osgEarth::MapNode* getMapNode()  { return _mapNode; }
 
-        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );            
+        ImageOverlay* getOverlay() { return _overlay;}
 
-    private:
-        osg::Matrixd getTransform(const osg::Vec2d& loc);
+    protected:
+        void addDragger( ImageOverlay::ControlPoint controlPoint );
 
-        void updateEditor();
-        EditPoint getEditPoint(const osg::NodePath &nodePath);
-
-        osg::ref_ptr< ImageOverlay > _imageOverlay;        
-        bool _dragging;
-        EditPoint _editPoint;
-
-        osg::ref_ptr< osg::Group > _editorGroup;
-        osg::ref_ptr< osg::Group > _editor;
-        osg::ref_ptr< osg::MatrixTransform > _lowerLeftHandle;
-        osg::ref_ptr< osg::MatrixTransform > _lowerRightHandle;
-        osg::ref_ptr< osg::MatrixTransform > _upperLeftHandle;
-        osg::ref_ptr< osg::MatrixTransform > _upperRightHandle;
-        osg::ref_ptr< osg::MatrixTransform > _centerHandle;
-        osg::ref_ptr< osg::Node > _handle;
-        bool _moveVert;
+        osg::ref_ptr< ImageOverlay > _overlay;
+        osg::ref_ptr< osgEarth::MapNode > _mapNode;    
+        osg::ref_ptr< osgManipulator::DraggerCallback > _updateDraggersCallback;
+        ControlPointDraggerMap _draggers;
     };
 
 } } // namespace osgEarth::Util

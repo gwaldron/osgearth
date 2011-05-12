@@ -42,7 +42,7 @@ using namespace osgEarth::Util::Controls;
 
 static Grid* s_layerBox = NULL;
 static Grid* s_imageBox = NULL;
-static ImageOverlayEditor* s_editor = NULL;
+static Grid* s_coordInfo = NULL;
 
 osg::Node*
 createControlPanel( osgViewer::View* view )
@@ -69,8 +69,19 @@ createControlPanel( osgViewer::View* view )
     s_imageBox->setAbsorbEvents( true );
     s_imageBox->setVertAlign( Control::ALIGN_BOTTOM );
 
+    s_coordInfo = new Grid();
+    s_coordInfo->setHorizAlign(Control::ALIGN_LEFT);
+    s_coordInfo->setBackColor(0,0,0,0.5);
+    s_coordInfo->setMargin( 10 );
+    s_coordInfo->setPadding( 10 );
+    s_coordInfo->setSpacing( 10 );
+    s_coordInfo->setChildVertAlign( Control::ALIGN_CENTER );
+    s_coordInfo->setAbsorbEvents( true );
+    s_coordInfo->setVertAlign( Control::ALIGN_TOP );
+
     canvas->addControl( s_layerBox );
     canvas->addControl( s_imageBox );
+    canvas->addControl( s_coordInfo );
 
     return canvas;
 }
@@ -113,8 +124,8 @@ struct EditHandler : public ControlEventHandler
       _viewer(viewer),
       _editor(editor){ }
 
-    void onClick( Control* control, int mouseButtonMask ) {
-        if (!s_editor)
+    void onClick( Control* control, int mouseButtonMask ) {        
+        if (_editor->getNodeMask() != ~0)
         {
             static_cast<LabelControl*>(control)->setText( "Finish" );
             _editor->setNodeMask(~0);
@@ -155,6 +166,81 @@ void addImage(osg::Image* image, ImageOverlay* overlay, ImageControl* preview)
     imageCon->setVertAlign( Control::ALIGN_CENTER );
     s_imageBox->setControl( 0, row++, imageCon );     
     imageCon->addEventHandler(new ChangeImageHandler(image, overlay, preview));
+}
+
+struct UpdateLabelCallback : public ImageOverlay::ImageOverlayCallback
+{
+    UpdateLabelCallback(LabelControl* label, ImageOverlay* overlay, ImageOverlay::ControlPoint controlPoint):
+      _label(label),
+      _overlay(overlay),
+      _controlPoint(controlPoint)
+    {
+
+    }
+
+    virtual void onOverlayChanged()
+    {
+        osg::Vec2d location = _overlay->getControlPoint( _controlPoint );
+        std::stringstream ss;
+        ss << location.y() << ", " << location.x();
+        _label->setText( ss.str() );
+    }
+    
+
+    osg::ref_ptr< LabelControl > _label;
+    osg::ref_ptr< ImageOverlay > _overlay;
+    ImageOverlay::ControlPoint _controlPoint;
+};
+
+void addCoordInfo(ImageOverlay* overlay, ImageOverlay::ControlPoint point)
+{
+
+    static unsigned int row = 0;
+    Grid *grid = new Grid();
+    //grid->setBackColor(0,0,0,0.5);
+    grid->setMargin( 10 );
+    grid->setPadding( 10 );
+    grid->setSpacing( 10 );
+    grid->setChildVertAlign( Control::ALIGN_CENTER );
+    grid->setAbsorbEvents( true );
+    grid->setVertAlign( Control::ALIGN_BOTTOM );
+
+    std::string name;
+    switch (point)
+    {
+    case ImageOverlay::CONTROLPOINT_CENTER:
+        name = "Center:";
+        break;
+    case ImageOverlay::CONTROLPOINT_LOWER_LEFT:
+        name = "Lower Left:";
+        break;
+    case ImageOverlay::CONTROLPOINT_LOWER_RIGHT:
+        name = "Lower Right:";
+        break;
+    case ImageOverlay::CONTROLPOINT_UPPER_LEFT:
+        name = "Upper Left:";
+        break;
+    case ImageOverlay::CONTROLPOINT_UPPER_RIGHT:
+        name = "Upper Right:";
+        break;
+    }
+
+    LabelControl* lbl = new LabelControl( name );      
+    lbl->setVertAlign( Control::ALIGN_CENTER );
+    grid->setControl(0, 0, lbl);
+
+
+
+    LabelControl* coords = new LabelControl(  );      
+    osg::Vec2d location = overlay->getControlPoint( point );
+    std::stringstream ss;
+    ss << location.y() << ", " << location.x();
+    coords->setText( ss.str() );
+    coords->setVertAlign( Control::ALIGN_CENTER );
+    grid->setControl(1, 0, coords);
+    overlay->addCallback(new UpdateLabelCallback(coords, overlay, point));
+
+    s_coordInfo->setControl( 0, row++, grid );  
 }
 
 
@@ -223,6 +309,12 @@ main(int argc, char** argv)
         ImageOverlayEditor* editor = new ImageOverlayEditor( overlay, mapNode );
         editor->setNodeMask( 0 );
         root->addChild( editor );      
+
+        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_CENTER);
+        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_UPPER_LEFT);
+        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_UPPER_RIGHT);
+        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_LOWER_LEFT);
+        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_LOWER_RIGHT);
 
         // Add an image preview
         ImageControl* imageCon = new ImageControl( image );

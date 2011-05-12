@@ -208,5 +208,7 @@ GeomCompiler::compile(FeatureCursor*        cursor,
         resultGroup = delocalizer;
     }
 
+    resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+
     return resultGroup.release();
 }

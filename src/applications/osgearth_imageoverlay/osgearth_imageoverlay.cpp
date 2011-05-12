@@ -108,31 +108,26 @@ struct EnabledHandler : public ControlEventHandler
 
 struct EditHandler : public ControlEventHandler
 {
-    EditHandler( ImageOverlay* overlay, osgViewer::Viewer* viewer, osg::Group* editGroup) :
+    EditHandler( ImageOverlay* overlay, osgViewer::Viewer* viewer, ImageOverlayEditor* editor) :
       _overlay(overlay),
       _viewer(viewer),
-      _editGroup(editGroup){ }
+      _editor(editor){ }
 
     void onClick( Control* control, int mouseButtonMask ) {
         if (!s_editor)
         {
             static_cast<LabelControl*>(control)->setText( "Finish" );
-            s_editor = new ImageOverlayEditor(_overlay, _editGroup );                    
-            _viewer->addEventHandler( s_editor );            
+            _editor->setNodeMask(~0);
         }
         else
         {
             static_cast<LabelControl*>(control)->setText( "Edit" );
-            if (s_editor)
-            {
-                removeEventHandler(_viewer, s_editor);
-                s_editor = 0;
-            }
+            _editor->setNodeMask(0);
         }
     }
     ImageOverlay* _overlay;
     osgViewer::Viewer* _viewer;
-    osg::Group* _editGroup;
+    ImageOverlayEditor* _editor;
 };
 
 struct ChangeImageHandler : public ControlEventHandler
@@ -224,9 +219,10 @@ main(int argc, char** argv)
         modelLayer->setOverlay( true );
         mapNode->getMap()->addModelLayer( modelLayer );
 
-        //Create a group for the editor to stick it's controls
-        osg::Group* editorGroup = new osg::Group;
-        root->addChild( editorGroup );      
+        //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
+        ImageOverlayEditor* editor = new ImageOverlayEditor( overlay, mapNode );
+        editor->setNodeMask( 0 );
+        root->addChild( editor );      
 
         // Add an image preview
         ImageControl* imageCon = new ImageControl( image );
@@ -257,7 +253,7 @@ main(int argc, char** argv)
         // Add a text label:
         LabelControl* edit = new LabelControl( "Edit" );        
         edit->setVertAlign( Control::ALIGN_CENTER );
-        edit->addEventHandler(new EditHandler(overlay, &viewer, editorGroup));
+        edit->addEventHandler(new EditHandler(overlay, &viewer, editor));
         s_layerBox->setControl(4, 0, edit );
 
 

@@ -54,7 +54,7 @@ GeomCompiler::compile(FeatureCursor*        cursor,
         return 0L;
     }
 
-    osg::ref_ptr<osg::Node> result;
+    osg::ref_ptr<osg::Group> resultGroup = new osg::Group();
 
     // start by making a working copy of the feature set
     FeatureList workingSet;
@@ -117,11 +117,14 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
 
         cx = sub.push( workingSet, cx );
-        result = sub.getNode();
+
+        osg::Node* node = sub.getNode();
+        if ( node )
+            resultGroup->addChild( node );
     }
 
     // extruded geometry
-    else if ( extrusion && ( line || polygon ) )
+    if ( extrusion && ( line || polygon ) )
     {
         if ( clampRequired )
         {
@@ -146,7 +149,9 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             extrude.setColor( polygon->fill()->color() );
         }
 
-        result = extrude.push( workingSet, cx );
+        osg::Node* node = extrude.push( workingSet, cx );
+        if ( node )
+            resultGroup->addChild( node );
     }
 
     // simple geometry
@@ -166,10 +171,13 @@ GeomCompiler::compile(FeatureCursor*        cursor,
         if ( _options.mergeGeometry().isSet() )
             filter.mergeGeometry() = *_options.mergeGeometry();
         cx = filter.push( workingSet, cx );
-        result = filter.getNode();
+
+        osg::Node* node = filter.getNode();
+        if ( node )
+            resultGroup->addChild( node );
     }
 
-    else if ( text )
+    if ( text )
     {
         if ( clampRequired )
         {
@@ -181,21 +189,26 @@ GeomCompiler::compile(FeatureCursor*        cursor,
 
         BuildTextFilter filter( style );
         cx = filter.push( workingSet, cx );
-        result = filter.takeNode();
+
+        osg::Node* node = filter.takeNode();
+        if ( node )
+            resultGroup->addChild( node );
     }
 
-    else // insufficient symbology
-    {
-        OE_WARN << LC << "Insufficient symbology; no geometry created" << std::endl;
-    }
-    
+    //else // insufficient symbology
+    //{
+    //    OE_WARN << LC << "Insufficient symbology; no geometry created" << std::endl;
+    //}
+
     // install the localization transform if necessary.
     if ( cx.hasReferenceFrame() )
     {
         osg::MatrixTransform* delocalizer = new osg::MatrixTransform( cx.inverseReferenceFrame() );
-        delocalizer->addChild( result.get() );
-        result = delocalizer;
+        delocalizer->addChild( resultGroup.get() );
+        resultGroup = delocalizer;
     }
 
-    return result.release();
+    resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+
+    return resultGroup.release();
 }

@@ -16,7 +16,7 @@ SET(LIB_PUBLIC_HEADERS
     AGG.h
     AltitudeSymbol
     Common
-    Content
+    Color
     CssUtils
     Expression
     ExtrusionSymbol
@@ -31,7 +31,6 @@ SET(LIB_PUBLIC_HEADERS
     PointSymbol
     PolygonSymbol
     Query
-    Registry
     StencilVolumeNode
     Style
     SLD
@@ -43,6 +42,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
     AltitudeSymbol.cpp
+    Color.cpp
     CssUtils.cpp
     Expression.cpp
     ExtrusionSymbol.cpp
@@ -56,7 +56,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp
-    Registry.cpp
     StencilVolumeNode.cpp
     Style.cpp
     SLD.cpp

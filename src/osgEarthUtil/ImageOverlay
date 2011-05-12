@@ -13,6 +13,15 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT ImageOverlay : public osg::Group
     {
     public:    
+        enum ControlPoint
+        {
+            CONTROLPOINT_CENTER,
+            CONTROLPOINT_LOWER_LEFT,
+            CONTROLPOINT_LOWER_RIGHT,
+            CONTROLPOINT_UPPER_LEFT,
+            CONTROLPOINT_UPPER_RIGHT
+        };
+
         ImageOverlay();
         ImageOverlay(const osg::EllipsoidModel* ellipsoid, osg::Image* image);
 
@@ -36,6 +45,10 @@ namespace osgEarth { namespace Util
 
         osg::Vec2d getCenter() const;
         void setCenter(double lon_deg, double lat_deg);
+
+        osg::Vec2d getControlPoint(ControlPoint controlPoint);
+        void setControlPoint(ControlPoint controlPoint, double lon_deg, double lat_deg, bool singleVert=false);
+
 
         osgEarth::Bounds getBounds() const;
         void setBounds(const osgEarth::Bounds& bounds);

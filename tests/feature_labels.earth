@@ -22,6 +22,7 @@ This shows how to label point features with an attribute.
                 cities {
                    text-provider: overlay;
                    text-content:  [cntry_name];
+                   text-priority: [pop_cntry];
                    text-halo:     #000000;
                    text-font:     arial.ttf;
                    text-size:     18;

@@ -45,7 +45,7 @@ using namespace OpenThreads;
 
 #define LC "[SinglePassTechnique] "
 
-#define MATCH_TOLERANCE 0.001
+#define MATCH_TOLERANCE 0.000001
 
 // --------------------------------------------------------------------------
 
@@ -1027,6 +1027,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
           maskPoly->push_back(local);
         }
 
+
 //Change the following two #if statements to see mask skirt polygons
 //before clipping and adjusting
 #if 1
@@ -1123,66 +1124,115 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
 
           //Retrieve z values for mask skirt verts
+          std::vector<int> isZSet;
           for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
           {
+            int zSet = 0;
+
             //Look for verts that belong to the original mask skirt polygon
             for (osgEarth::Symbology::Polygon::iterator mit = maskSkirtPoly->begin(); mit != maskSkirtPoly->end(); ++mit)
             {
               if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
               {
                 (*it).z() = (*mit).z();
+                zSet += 1;
                 break;
               }
             }
 
             //Look for verts that belong to the mask polygon
-            if ((*it).z() == 0)
+            for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
             {
-              for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+              if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
               {
-                if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
-                {
-                  (*it).z() = (*mit).z();
-                  break;
-                }
+                (*it).z() = (*mit).z();
+                zSet += 2;
+                break;
               }
             }
+
+            isZSet.push_back(zSet);
           }
 
-          //Any mask skirt verts that still have a z value of 0 are newly created verts where the
-          //skirt meets the mask. Find the mask segment the point lies along and calculate the
+          //Any mask skirt verts that are still unset are newly created verts where the skirt
+          //meets the mask. Find the mask segment the point lies along and calculate the
           //appropriate z value for the point.
           //
           //Now that all the z values are set, convert each vert into model coords.
           //
           //Also, while we are iterating through the verts, set up tex coords.
+          int count = 0;
           for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
           {
-            if ((*it).z() == 0.0)
+            //If the z-value was set from a mask vertex there is no need to change it.  If
+            //it was set from a vertex from the stitching polygon it may need overriden if
+            //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
+            if (isZSet[count] < 2)
             {
               osg::Vec3d p2 = *it;
+              double closestZ = 0.0;
+              double closestRatio = DBL_MAX;
               for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
               {
                 osg::Vec3d p1 = *mit;
                 osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
-                
-                if (p1.x() < p3.x() ? p2.x() >= p1.x() && p2.x() <= p3.x() : p2.x() >= p3.x() && p2.x() <= p1.x())
+
+                //Truncated vales to compensate for accuracy issues
+                double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
+                double p3x = ((int)(p3.x() * 1000000)) / 1000000.0L;
+                double p2x = ((int)(p2.x() * 1000000)) / 1000000.0L;
+
+                double p1y = ((int)(p1.y() * 1000000)) / 1000000.0L;
+                double p3y = ((int)(p3.y() * 1000000)) / 1000000.0L;
+                double p2y = ((int)(p2.y() * 1000000)) / 1000000.0L;
+
+                if ((p1x < p3x ? p2x >= p1x && p2x <= p3x : p2x >= p3x && p2x <= p1x) &&
+                    (p1y < p3y ? p2y >= p1y && p2y <= p3y : p2y >= p3y && p2y <= p1y))
                 {
-                  double m1 = (p2.y() - p1.y()) / (p2.x() - p1.x());
-                  double m2 = (p3.y() - p1.y()) / (p3.x() - p1.x());
+                  double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                  double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                  double zmag = p3.z() - p1.z();
 
-                  if (osg::absolute(m2 - m1) < MATCH_TOLERANCE)
+                  double foundZ = (l1 / lt) * zmag + p1.z();
+
+                  double mRatio = 1.0;
+                  if (osg::absolute(p1x - p3x) < MATCH_TOLERANCE)
                   {
-                    double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
-                    double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
-                    double zmag = p3.z() - p1.z();
+                    if (osg::absolute(p1x-p2x) < MATCH_TOLERANCE)
+                      mRatio = 0.0;
+                  }
+                  else
+                  {
+                    double m1 = p1x == p2x ? 0.0 : (p2y - p1y) / (p2x - p1x);
+                    double m2 = p1x == p3x ? 0.0 : (p3y - p1y) / (p3x - p1x);
+                    mRatio = m2 == 0.0 ? m1 : osg::absolute(1.0L - m1 / m2);
+                  }
 
-                    (*it).z() = (l1 / lt) * zmag + p1.z();
+                  if (mRatio < 0.01)
+                  {
+                    (*it).z() = foundZ;
+                    isZSet[count] = 2;
                     break;
+                  }
+                  else if (mRatio < closestRatio)
+                  {
+                    closestRatio = mRatio;
+                    closestZ = foundZ;
                   }
                 }
               }
+
+              if (!isZSet[count] && closestRatio < DBL_MAX)
+              {
+                (*it).z() = closestZ;
+                isZSet[count] = 2;
+              }
             }
+
+            if (!isZSet[count])
+              OE_WARN << LC << "Z-value not set for stitching polygon vertex" << std::endl;
+
+            count++;
 
             //Convert to model coords
             osg::Vec3d model;

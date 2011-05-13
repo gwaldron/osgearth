@@ -14,4 +14,5 @@ SETUP_PLUGIN(osgearth_model_feature_geom)
 # to install public driver includes:
 SET(LIB_NAME model_feature_geom)
 SET(LIB_PUBLIC_HEADERS ${TARGET_H})
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

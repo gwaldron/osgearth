@@ -1,4 +1,3 @@
-
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology)
 
 SET(TARGET_SRC
@@ -13,4 +12,5 @@ SETUP_PLUGIN(osgearth_agglite)
 # to install public driver includes:
 SET(LIB_NAME agglite)
 SET(LIB_PUBLIC_HEADERS AGGLiteOptions)
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

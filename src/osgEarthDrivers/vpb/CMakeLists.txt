@@ -12,4 +12,5 @@ SETUP_PLUGIN(osgearth_vpb)
 # to install public driver includes:
 SET(LIB_NAME vpb)
 SET(LIB_PUBLIC_HEADERS VPBOptions)
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

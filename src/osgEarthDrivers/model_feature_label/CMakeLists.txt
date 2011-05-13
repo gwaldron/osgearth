@@ -7,5 +7,6 @@ SETUP_PLUGIN(osgearth_model_feature_label)
 # to install public driver includes:
 SET(LIB_NAME model_feature_label)
 SET(LIB_PUBLIC_HEADERS FeatureLabelModelOptions)
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 

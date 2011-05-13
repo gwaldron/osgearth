@@ -7,4 +7,5 @@ SETUP_PLUGIN(osgearth_model_simple)
 # to install public driver includes:
 SET(LIB_NAME model_simple)
 SET(LIB_PUBLIC_HEADERS SimpleModelOptions)
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

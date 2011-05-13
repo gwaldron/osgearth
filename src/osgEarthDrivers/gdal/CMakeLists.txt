@@ -17,5 +17,6 @@ SETUP_PLUGIN(osgearth_gdal)
 # to install public driver includes:
 SET(LIB_NAME gdal)
 SET(LIB_PUBLIC_HEADERS GDALOptions)
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 

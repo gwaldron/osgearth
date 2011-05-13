@@ -18,4 +18,5 @@ SET(TARGET_SRC
     EarthFileSerializer2.cpp)
 
 #### end var setup  ###
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 SETUP_PLUGIN(earth)

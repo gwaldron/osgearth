@@ -1,4 +1,3 @@
-
 SET(TARGET_SRC
     ReaderWriterWMS.cpp
     TileService.cpp)
@@ -15,5 +14,6 @@ SETUP_PLUGIN(osgearth_wms)
 # to install public driver includes:
 SET(LIB_NAME wms)
 SET(LIB_PUBLIC_HEADERS ${TARGET_H} )
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 

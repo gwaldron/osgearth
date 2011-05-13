@@ -1,4 +1,3 @@
-
 INCLUDE_DIRECTORIES( ${SQLITE3_INCLUDE_DIR} )
 
 SET(TARGET_COMMON_LIBRARIES
@@ -18,5 +17,6 @@ SETUP_PLUGIN(osgearth_cache_sqlite3)
 # to install public driver includes:
 SET(LIB_NAME cache_sqlite3)
 SET(LIB_PUBLIC_HEADERS Sqlite3CacheOptions)
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 

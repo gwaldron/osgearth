@@ -1,4 +1,3 @@
-
 OPTION(CURL_IS_STATIC "on if curl is a static lib " ON)
 MARK_AS_ADVANCED(CURL_IS_STATIC)
 
@@ -28,6 +27,7 @@ SETUP_PLUGIN(osgearth_wcs)
 # to install public driver includes:
 SET(LIB_NAME wcs)
 SET(LIB_PUBLIC_HEADERS WCSOptions)
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 
 

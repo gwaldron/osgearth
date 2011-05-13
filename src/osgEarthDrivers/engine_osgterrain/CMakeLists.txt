@@ -1,4 +1,3 @@
-
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 SET(TARGET_SRC
@@ -45,5 +44,6 @@ SETUP_PLUGIN(osgearth_engine_osgterrain)
 # to install public driver includes:
 SET(LIB_NAME engine_osgterrain)
 SET(LIB_PUBLIC_HEADERS ${TARGET_H})
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 

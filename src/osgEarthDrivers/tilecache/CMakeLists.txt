@@ -1,5 +1,4 @@
 
-
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES})
 
 SET(TARGET_SRC ReaderWriterTileCache.cpp)
@@ -13,5 +12,6 @@ SETUP_PLUGIN(osgearth_tilecache)
 # to install public driver includes:
 SET(LIB_NAME tilecache)
 SET(LIB_PUBLIC_HEADERS TileCacheOptions)
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} )
 INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)
 

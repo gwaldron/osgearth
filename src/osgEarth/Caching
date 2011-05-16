@@ -54,8 +54,8 @@ namespace osgEarth
         }
 
         /** Whether to run exclusively off the cache (and not fetch files from tile sources) */
-        optional<bool> cacheOnly() { return _cacheOnly; }
-        const optional<bool> cacheOnly() const { return _cacheOnly; }
+        optional<bool>& cacheOnly() { return _cacheOnly; }
+        const optional<bool>& cacheOnly() const { return _cacheOnly; }
 
         void setReferenceURI(const std::string& referenceURI)
         {

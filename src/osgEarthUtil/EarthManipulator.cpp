@@ -597,7 +597,7 @@ EarthManipulator::established()
         // track the local angles.
         recalculateLocalPitchAndAzimuth();
 
-        OE_DEBUG << "[EarthManip] new CSN established." << std::endl;
+        //OE_DEBUG << "[EarthManip] new CSN established." << std::endl;
     }
 
     return _csn.valid() && _node.valid();
@@ -1679,7 +1679,7 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame
         if (!hitFound)
         {
             // ??
-            OE_DEBUG<<"EarthManipulator unable to intersect with terrain."<<std::endl;
+            //OE_DEBUG<<"EarthManipulator unable to intersect with terrain."<<std::endl;
         }
     }
 }
@@ -1741,7 +1741,7 @@ EarthManipulator::pan( double dx, double dy )
 			}
 			else
 			{
-				OE_DEBUG<<"New up orientation nearly inline - no need to rotate"<<std::endl;
+				//OE_DEBUG<<"New up orientation nearly inline - no need to rotate"<<std::endl;
 			}
 
 			if ( _settings->getLockAzimuthWhilePanning() )
@@ -1987,8 +1987,8 @@ EarthManipulator::handleMouseAction( const Action& action, osg::View* view )
     // return if less then two events have been added.
     if (_ga_t0.get()==NULL || _ga_t1.get()==NULL) return false;
 
-    if ( osgEarth::getNotifyLevel() > osg::INFO )
-        dumpActionInfo( action, osg::DEBUG_INFO );
+    //if ( osgEarth::getNotifyLevel() > osg::INFO )
+    //    dumpActionInfo( action, osg::DEBUG_INFO );
 
     double dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
     double dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
@@ -2073,8 +2073,8 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
 {
     bool handled = true;
 
-    if ( osgEarth::getNotifyLevel() > osg::INFO )
-        dumpActionInfo( action, osg::DEBUG_INFO );
+    //if ( osgEarth::getNotifyLevel() > osg::INFO )
+    //    dumpActionInfo( action, osg::DEBUG_INFO );
 
     //OE_NOTICE << "action=" << action << ", dx=" << dx << ", dy=" << dy << std::endl;
 

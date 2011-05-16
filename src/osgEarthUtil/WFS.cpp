@@ -59,7 +59,7 @@ WFSCapabilities::getFeatureTypeByName(const std::string& name)
 #define ELEM_SRS "srs"
 #define ELEM_FEATURETYPELIST "featuretypelist"
 #define ELEM_FEATURETYPE "featuretype"
-#define ELEM_LATLONBOUNDINGBOX "latlonboundingbox"
+#define ELEM_LATLONGBOUNDINGBOX "latlongboundingbox"
 #define ATTR_MINX              "minx"
 #define ATTR_MINY              "miny"
 #define ATTR_MAXX              "maxx"
@@ -149,7 +149,7 @@ WFSCapabilitiesReader::read(std::istream &in)
                 featureType->setMaxLevel( as<int>(maxLevelStr, -1));
             }
 
-            osg::ref_ptr<XmlElement> e_bb = e_featureType->getSubElement( ELEM_LATLONBOUNDINGBOX );
+            osg::ref_ptr<XmlElement> e_bb = e_featureType->getSubElement( ELEM_LATLONGBOUNDINGBOX );
             if (e_bb.valid())
             {
                 double minX, minY, maxX, maxY;

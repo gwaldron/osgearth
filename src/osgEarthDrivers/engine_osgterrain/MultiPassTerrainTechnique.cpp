@@ -21,8 +21,6 @@
 #include "TransparentLayer"
 #include <osgEarth/ImageUtils>
 
-#include <osgTerrain/TerrainTile>
-#include <osgTerrain/Terrain>
 
 #include <osgUtil/SmoothingVisitor>
 #include <osgDB/FileUtils>

@@ -7,18 +7,17 @@ ENDIF(DYNAMIC_OSGEARTH)
 SET(LIB_NAME osgEarthUtil)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
+
 SET(LIB_PUBLIC_HEADERS    
     AutoClipPlaneHandler
     Common
     Controls
     ClampCallback
-	Draggers
     EarthManipulator
     ElevationManager
     Export
     Graticule
-	ImageOverlay
-	ImageOverlayEditor
+	ImageOverlay	
     ObjectPlacer
     ObjectLocator
     OceanSurfaceNode
@@ -30,17 +29,14 @@ SET(LIB_PUBLIC_HEADERS
     WMS
 )
 
-ADD_LIBRARY(${LIB_NAME} SHARED
-    ${LIB_PUBLIC_HEADERS}  
+SET(LIB_COMMON_FILES
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
-	Draggers.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
     Graticule.cpp
 	ImageOverlay.cpp
-	ImageOverlayEditor.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
     OceanSurfaceNode.cpp
@@ -50,6 +46,25 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	WFS.cpp
     WMS.cpp
 )
+
+IF(NOT (${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6"))
+SET(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS}
+    Draggers
+	ImageOverlayEditor
+	)
+	
+SET(LIB_COMMON_FILES ${LIB_COMMON_FILES} 
+    Draggers.cpp
+    ImageOverlayEditor.cpp
+    )
+ENDIF()
+
+ADD_LIBRARY(${LIB_NAME} SHARED
+    ${LIB_PUBLIC_HEADERS}  
+	${LIB_COMMON_FILES}
+)
+
+
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})
 

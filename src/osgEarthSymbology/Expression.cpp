@@ -60,11 +60,18 @@ NumericExpression::getConfig() const
     return Config( "numeric_expression", _src );
 }
 
+#define IS_OPERATOR(a) ( a .first == ADD || a .first == SUB || a .first == MULT || a .first == DIV || a .first == MOD )
+
 void
 NumericExpression::init()
 {
+    StringTokenizer tokenizer( "", "'\"" );
+    tokenizer.addDelims( "[],()%*/+-", true );
+    tokenizer.keepEmpties() = false;
+
     StringVector t;
-    tokenize(_src, t, "[],()%*/+-", "'\"", false, true);
+    tokenizer.tokenize( _src, t );
+    //tokenize(_src, t, "[],()%*/+-", "'\"", false, true);
 
     // identify tokens:
     AtomVector infix;
@@ -78,7 +85,7 @@ NumericExpression::init()
             infix.push_back( Atom(VARIABLE,0.0) );
             _vars.push_back( Variable(t[i-1],0) );
         }
-        else if ( t[i] == "(" )infix.push_back( Atom(LPAREN,0.0) );
+        else if ( t[i] == "(" ) infix.push_back( Atom(LPAREN,0.0) );
         else if ( t[i] == ")" ) infix.push_back( Atom(RPAREN,0.0) );
         else if ( t[i] == "%" ) infix.push_back( Atom(MOD,0.0) );
         else if ( t[i] == "*" ) infix.push_back( Atom(MULT,0.0) );
@@ -94,6 +101,7 @@ NumericExpression::init()
     }
 
     // convert to RPN:
+    // http://en.wikipedia.org/wiki/Shunting-yard_algorithm
     AtomStack s;
     unsigned var_i = 0;
 
@@ -117,7 +125,7 @@ NumericExpression::init()
                     _rpn.push_back( top );
             }
         }
-        else if ( a.first == ADD || a.first == SUB || a.first == MULT || a.first == DIV || a.first == MOD )
+        else if ( IS_OPERATOR(a) )
         {
             if ( s.empty() || a.first > s.top().first )
             {
@@ -125,7 +133,7 @@ NumericExpression::init()
             }
             else 
             {
-                while( s.size() > 0 && a.first < s.top().first )
+                while( s.size() > 0 && a.first < s.top().first && IS_OPERATOR(s.top()) )
                 {
                     _rpn.push_back( s.top() );
                     s.pop();
@@ -294,8 +302,15 @@ StringExpression::getConfig() const
 void
 StringExpression::init()
 {
+    StringTokenizer izer;
+    izer.addDelims( "[]", true );
+    izer.addQuotes( "'\"", false );
+    izer.keepEmpties() = false;
+    izer.trimTokens() = false;
+
     StringVector t;
-    tokenize(_src, t, "[]", "'\"", false, true, false);
+    izer.tokenize( _src, t );
+    //tokenize(_src, t, "[]", "'\"", false, true, false);
 
     // identify tokens:
     bool invar = false;

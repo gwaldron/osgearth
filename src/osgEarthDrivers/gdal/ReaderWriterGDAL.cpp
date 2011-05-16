@@ -122,30 +122,6 @@ typedef struct
     double                 noDataValue;
 } BandProperty;
 
-
-#if 0
-static void
-tokenize(const string& str,
-         vector<string>& tokens,
-         const string& delimiters = " ")
-{
-    // Skip delimiters at beginning.
-    string::size_type lastPos = str.find_first_not_of(delimiters, 0);
-    // Find first "non-delimiter".
-    string::size_type pos     = str.find_first_of(delimiters, lastPos);
-
-    while (string::npos != pos || string::npos != lastPos)
-    {
-        // Found a token, add it to the vector.
-        tokens.push_back(str.substr(lastPos, pos - lastPos));
-        // Skip delimiters.  Note the "not_of"
-        lastPos = str.find_first_not_of(delimiters, pos);
-        // Find next "non-delimiter"
-        pos = str.find_first_of(delimiters, lastPos);
-    }
-}
-#endif
-
 static void
 getFiles(const std::string &file, const std::vector<std::string> &exts, std::vector<std::string> &files)
 {
@@ -681,9 +657,13 @@ public:
             path = osgEarth::getFullPath(referenceURI, path);
         }
 
+        StringTokenizer izer( ";" );
+        StringVector exts;
+        izer.tokenize( *_options.extensions(), exts );
 
-        std::vector<std::string> exts;
-        tokenize( _options.extensions().value(), exts, ";");
+        //std::vector<std::string> exts;
+
+        //tokenize( _options.extensions().value(), exts, ";");
         for (unsigned int i = 0; i < exts.size(); ++i)
         {
             OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;

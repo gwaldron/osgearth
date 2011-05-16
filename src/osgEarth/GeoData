@@ -53,7 +53,7 @@ namespace osgEarth
         osg::Vec2d center2d() const;
         double radius2d() const;
         std::string toString() const;
-        bool isValid() const { return width() > 0.0 && height() > 0.0; }
+        bool isValid() const;
         bool isEmpty() const { return !isValid(); }
     };
 

@@ -33,9 +33,9 @@ is randomized, but it is randomized exactly the same way each time.
              we indicate model substitution with density-based scattering. The "density"
              units are instances-per-sqkm. -->
              
-        <paging>
+        <layout>
             <crop_features>true</crop_features>
-            <level max_range="100000" min_range="10000">
+            <level max_range="100000" min_range="0">
                 <selector class="parks-outline"/>
             </level>
             <level max_range="10000">
@@ -47,7 +47,7 @@ is randomized, but it is randomized exactly the same way each time.
             <level max_range="1500">
                 <selector class="parks-3"/>
             </level>
-        </paging>
+        </layout>
              
         <styles>
             <style type="text/css">

@@ -61,7 +61,10 @@ public:
     {
         if ( _options.times().isSet() )
         {
-            osgEarth::tokenize( _options.times().value(), _timesVec, ",", "", false );
+            StringTokenizer izer( ",", "" );
+            izer.keepEmpties() = false;
+            izer.tokenize( *_options.times(), _timesVec );
+            //osgEarth::tokenize( _options.times().value(), _timesVec, ",", "", false );
             //osgEarth::split( _options.times().value(), ",", _timesVec, false );
         }
 

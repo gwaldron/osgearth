@@ -68,8 +68,8 @@ createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
         const Viewpoint& vp = vps[i];
         std::stringstream buf;
         buf << (i+1);
-        g->setControl( 0, i, new LabelControl(buf.str(), osg::Vec4f(1,1,0,1)) );
-        g->setControl( 1, i, new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName()) );
+        g->setControl( 0, i, new LabelControl(buf.str(), 16.0f, osg::Vec4f(1,1,0,1)) );
+        g->setControl( 1, i, new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName(), 16.0f) );
     }
 
     canvas->addControl( g );
@@ -108,7 +108,6 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
                 XmlDocument xml( vp.getConfig() );
                 xml.store( std::cout );
                 std::cout << std::endl;
-                //OE_NOTICE << vp.getConfig().toString() << std::endl;
             }
         }
         return false;
@@ -194,15 +193,19 @@ main(int argc, char** argv)
         // read in viewpoints, if any
         std::vector<Viewpoint> viewpoints;
         const ConfigSet children = externals.children("viewpoint");
-        for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
-            viewpoints.push_back( Viewpoint(*i) );
+        if ( children.size() > 0 )
+        {
+            manip->getSettings()->setArcViewpointTransitions( true );
 
-        viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
-        if ( viewpoints.size() > 0 && jump )
-            manip->setViewpoint(viewpoints[0]);
+            for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+                viewpoints.push_back( Viewpoint(*i) );
 
-        if ( viewpoints.size() > 0 )
+            viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
+            if ( jump )
+                manip->setViewpoint(viewpoints[0]);
+
             root->addChild( createControlPanel(&viewer, viewpoints) );
+        }
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

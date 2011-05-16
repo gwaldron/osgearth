@@ -34,7 +34,9 @@
 #include <osgEarth/Version>
 
 #include <osgEarthUtil/ImageOverlay>
+#if OSG_MIN_VERSION_REQUIRED(2,9,6)
 #include <osgEarthUtil/ImageOverlayEditor>
+#endif
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -117,14 +119,17 @@ struct EnabledHandler : public ControlEventHandler
     ImageOverlay* _overlay;
 };
 
+
+
 struct EditHandler : public ControlEventHandler
 {
-    EditHandler( ImageOverlay* overlay, osgViewer::Viewer* viewer, ImageOverlayEditor* editor) :
+    EditHandler( ImageOverlay* overlay, osgViewer::Viewer* viewer, osg::Node* editor) :
       _overlay(overlay),
       _viewer(viewer),
       _editor(editor){ }
 
     void onClick( Control* control, int mouseButtonMask ) {        
+#if OSG_MIN_VERSION_REQUIRED(2,9,6)
         if (_editor->getNodeMask() != ~0)
         {
             static_cast<LabelControl*>(control)->setText( "Finish" );
@@ -135,10 +140,14 @@ struct EditHandler : public ControlEventHandler
             static_cast<LabelControl*>(control)->setText( "Edit" );
             _editor->setNodeMask(0);
         }
+
+#else
+        OE_NOTICE << "Use OSG 2.9.6 or greater to use editing" << std::endl;
+#endif
     }
     ImageOverlay* _overlay;
     osgViewer::Viewer* _viewer;
-    ImageOverlayEditor* _editor;
+    osg::Node* _editor;
 };
 
 struct ChangeImageHandler : public ControlEventHandler
@@ -306,7 +315,12 @@ main(int argc, char** argv)
         mapNode->getMap()->addModelLayer( modelLayer );
 
         //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
-        ImageOverlayEditor* editor = new ImageOverlayEditor( overlay, mapNode );
+#if OSG_MIN_VERSION_REQUIRED(2,9,6)
+        osg::Node* editor = new ImageOverlayEditor( overlay, mapNode );
+#else
+        //Just make an empty group for pre-2.9.6
+        osg::Node* editor = new osg::Group;
+#endif
         editor->setNodeMask( 0 );
         root->addChild( editor );      
 

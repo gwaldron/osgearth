@@ -28,8 +28,6 @@
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/Map>
 #include <osgEarth/ThreadingUtils>
-#include <osgTerrain/Terrain>
-#include <osgTerrain/TerrainTile>
 #include <list>
 #include <queue>
 #include <vector>

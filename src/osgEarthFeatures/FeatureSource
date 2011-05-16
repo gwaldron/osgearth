@@ -48,6 +48,10 @@ namespace osgEarth { namespace Features
         FeatureFilterList& filters() { return _filters; }
         const FeatureFilterList& filters() const { return _filters; }
 
+        optional<bool> openWrite() { return _openWrite; }
+        const optional<bool> openWrite() const { return _openWrite; }
+
+
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
         virtual Config getConfig() const;
@@ -62,6 +66,7 @@ namespace osgEarth { namespace Features
         void fromConfig( const Config& conf );
 
         FeatureFilterList _filters;
+        optional< bool > _openWrite;
     };
 
     /**
@@ -95,6 +100,18 @@ namespace osgEarth { namespace Features
          * Caller takes ownership of the returned object.
          */
         virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query =Symbology::Query() ) =0;
+
+        /**
+         * Deletes the feature with the given FID
+         */
+        virtual bool deleteFeature(FeatureID fid) = 0;
+
+        /**
+         * Gets the number of features in this FeatureSource
+         * @returns
+         *      The number of features or -1 if the number of features cannot be determined.
+         */
+        virtual int getFeatureCount() const = 0;
 
 
     public: // Styling

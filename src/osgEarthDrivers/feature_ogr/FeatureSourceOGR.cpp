@@ -52,8 +52,11 @@ public:
       _dsHandle( 0L ),
       _layerHandle( 0L ),
       _ogrDriverHandle( 0L ),
-      _options( options )
+      _options( options ),
+      _featureCount(-1),
+      _needsSync(false)
     {
+        OE_NOTICE << "OpenWrite set=" << _options.openWrite().isSet() << " value=" << _options.openWrite().value() << std::endl;
         _geometry = 
             _options.geometry().valid() ? _options.geometry().get() :
             _options.geometryConfig().isSet() ? parseGeometry( *_options.geometryConfig() ) :
@@ -68,7 +71,16 @@ public:
 
         if ( _layerHandle )
         {
-            // OGR_L_SyncToDisk( _layerHandle ); // for writing only
+            if (_needsSync)
+            {
+                OGR_L_SyncToDisk( _layerHandle ); // for writing only
+                const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
+                std::stringstream buf;
+                buf << "REPACK " << name; 
+                std::string bufStr;
+                bufStr = buf.str();
+                OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
+            }
             _layerHandle = 0L;
         }
 
@@ -167,6 +179,9 @@ public:
 
                         OE_INFO << LC << "...done." << std::endl;
                     }
+
+                    //Get the feature count
+                    _featureCount = OGR_L_GetFeatureCount( _layerHandle, 1 );
                 }
 	        }
             else
@@ -221,27 +236,25 @@ public:
         }
     }
 
-protected:
-
-    // closes any open OGR objects and releases the handles
-    bool cleanup()
+    virtual bool deleteFeature(FeatureID fid)
     {
-        OGR_SCOPED_LOCK;
-
-        if ( _layerHandle )
+        if (_layerHandle)
         {
-            // OGR_L_SyncToDisk( _layerHandle ); // for writing only
-            _layerHandle = 0L;
+            if (OGR_L_DeleteFeature( _layerHandle, fid ) != OGRERR_NONE)
+            {
+                _needsSync = true;
+                return true;
+            }            
         }
-
-        if ( _dsHandle )
-        {
-            OGRReleaseDataSource( _dsHandle );
-            _dsHandle = 0L;
-        }
-
-        return true;
+        return false;
     }
+
+    virtual int getFeatureCount() const
+    {
+        return _featureCount;
+    }
+
+protected:
 
     // parses an explicit WKT geometry string into a Geometry.
     Symbology::Geometry* parseGeometry( const Config& geomConf )
@@ -261,6 +274,8 @@ protected:
         return 0L;
     }
 
+
+
 private:
     std::string _absUrl;
     OGRDataSourceH _dsHandle;
@@ -268,6 +283,8 @@ private:
     OGRSFDriverH _ogrDriverHandle;
     osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
     const OGRFeatureOptions _options;
+    int _featureCount;
+    bool _needsSync;
 };
 
 

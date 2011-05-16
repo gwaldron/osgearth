@@ -323,6 +323,18 @@ public:
         return new FeatureListCursor( features );        
     }
 
+    virtual bool deleteFeature(FeatureID fid)
+    {
+        return false;
+    }
+
+    virtual int getFeatureCount() const
+    {
+        return -1;
+    }
+
+
+
 private:
     const WFSFeatureOptions _options;  
     osg::ref_ptr< WFSCapabilities > _capabilities;

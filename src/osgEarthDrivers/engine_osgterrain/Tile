@@ -28,13 +28,12 @@
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/Map>
 #include <osgEarth/ThreadingUtils>
-#include <osgTerrain/Terrain>
-#include <osgTerrain/TerrainTile>
+#include "Terrain"
+#include "Tile"
 #include <list>
 #include <queue>
 
 class TileFactory;
-class Terrain;
 class TerrainTechnique;
 
 using namespace osgEarth;

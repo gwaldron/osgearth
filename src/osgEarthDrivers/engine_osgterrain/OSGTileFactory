@@ -30,7 +30,6 @@
 #include <osgEarth/Locators>
 
 #include <osgDB/ReaderWriter>
-#include <osgTerrain/Terrain>
 #include <osg/CoordinateSystemNode>
 #include <osg/ClusterCullingCallback>
 #include <vector>

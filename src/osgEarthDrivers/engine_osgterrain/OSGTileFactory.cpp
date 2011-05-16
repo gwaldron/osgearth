@@ -37,8 +37,6 @@
 #include <osgFX/MultiTextureControl>
 #include <osgDB/ReadFile>
 #include <osgDB/WriteFile>
-#include <osgTerrain/Terrain>
-#include <osgTerrain/TerrainTile>
 #include <osgTerrain/Locator>
 #include <osgTerrain/GeometryTechnique>
 #include <OpenThreads/ReentrantMutex>

@@ -116,7 +116,7 @@ ImageOverlay::init()
 
     _geode->addDrawable( geometry );
 
-    _geometry = _geometry;
+    _geometry = geometry;
 
     _dirty = false;
 }

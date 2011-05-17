@@ -48,8 +48,8 @@ namespace osgEarth { namespace Features
         FeatureFilterList& filters() { return _filters; }
         const FeatureFilterList& filters() const { return _filters; }
 
-        optional<bool> openWrite() { return _openWrite; }
-        const optional<bool> openWrite() const { return _openWrite; }
+        optional<bool>& openWrite() { return _openWrite; }
+        const optional<bool>& openWrite() const { return _openWrite; }
 
 
     public:

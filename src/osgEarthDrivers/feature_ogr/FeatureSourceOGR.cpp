@@ -56,7 +56,6 @@ public:
       _featureCount(-1),
       _needsSync(false)
     {
-        OE_NOTICE << "OpenWrite set=" << _options.openWrite().isSet() << " value=" << _options.openWrite().value() << std::endl;
         _geometry = 
             _options.geometry().valid() ? _options.geometry().get() :
             _options.geometryConfig().isSet() ? parseGeometry( *_options.geometryConfig() ) :
@@ -138,7 +137,9 @@ public:
             _ogrDriverHandle = OGRGetDriverByName( driverName.c_str() );
 
             // attempt to open the dataset:
-	        _dsHandle = OGROpenShared( _absUrl.c_str(), 0, &_ogrDriverHandle );
+            int openMode = _options.openWrite().isSet() && _options.openWrite().value() ? 1 : 0;
+
+	        _dsHandle = OGROpenShared( _absUrl.c_str(), openMode, &_ogrDriverHandle );
 	        if ( _dsHandle )
 	        {
 		        _layerHandle = OGR_DS_GetLayer( _dsHandle, 0 ); // default to layer 0 for now
@@ -240,7 +241,7 @@ public:
     {
         if (_layerHandle)
         {
-            if (OGR_L_DeleteFeature( _layerHandle, fid ) != OGRERR_NONE)
+            if (OGR_L_DeleteFeature( _layerHandle, fid ) == OGRERR_NONE)
             {
                 _needsSync = true;
                 return true;

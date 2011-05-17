@@ -333,6 +333,15 @@ public:
         return -1;
     }
 
+    /**
+    * Gets the Feature with the given FID
+    * @returns
+    *     The Feature with the given FID or NULL if not found.
+    */
+    virtual Feature* getFeature( FeatureID fid )
+    {
+        return 0;
+    }
 
 
 private:

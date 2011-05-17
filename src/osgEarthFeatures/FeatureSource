@@ -113,6 +113,13 @@ namespace osgEarth { namespace Features
          */
         virtual int getFeatureCount() const = 0;
 
+        /**
+         * Gets the Feature with the given FID
+         * @returns
+         *     The Feature with the given FID or NULL if not found.
+         */
+        virtual Feature* getFeature( FeatureID fid ) = 0;
+        
 
     public: // Styling
 

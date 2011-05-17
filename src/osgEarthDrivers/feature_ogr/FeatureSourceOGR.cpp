@@ -255,6 +255,18 @@ public:
         return _featureCount;
     }
 
+    virtual Feature* getFeature( FeatureID fid )
+    {
+        Feature* result = NULL;
+        OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
+        if (handle)
+        {
+            result = OgrUtils::createFeature( handle );
+            OGR_F_Destroy( handle );
+        }
+        return result;
+    }
+
 protected:
 
     // parses an explicit WKT geometry string into a Geometry.

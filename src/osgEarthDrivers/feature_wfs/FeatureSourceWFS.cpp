@@ -25,7 +25,7 @@
 #include <osgEarthFeatures/ScaleFilter>
 #include <osgEarthUtil/WFS>
 #include "WFSFeatureOptions"
-#include "GeometryUtils"
+#include <osgEarthFeatures/OgrUtils>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -186,7 +186,7 @@ public:
         OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
         if ( geomRef )
         {
-            Symbology::Geometry* geom = GeometryUtils::createGeometry( geomRef );
+            Symbology::Geometry* geom = OgrUtils::createGeometry( geomRef );
             feature->setGeometry( geom );
         }
 

@@ -16,8 +16,8 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHFEATURES_FEATURE_OGR_GEOM_UTILS
-#define OSGEARTHFEATURES_FEATURE_OGR_GEOM_UTILS 1
+#ifndef OSGEARTHFEATURES_FEATURE_OGR_UTILS
+#define OSGEARTHFEATURES_FEATURE_OGR_UTILS 1
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarth/StringUtils>
@@ -27,7 +27,7 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-struct GeometryUtils
+struct OgrUtils
 {
     static void
     populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints )

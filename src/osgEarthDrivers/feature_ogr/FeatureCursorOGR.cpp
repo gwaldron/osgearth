@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "FeatureCursorOGR"
-#include "GeometryUtils"
+#include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/Registry>
 #include <algorithm>
@@ -223,7 +223,7 @@ FeatureCursorOGR::createFeature( OGRFeatureH handle )
     OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
 	if ( geomRef )
 	{
-        Symbology::Geometry* geom = GeometryUtils::createGeometry( geomRef );
+        Symbology::Geometry* geom = OgrUtils::createGeometry( geomRef );
         feature->setGeometry( geom );
 	}
 

@@ -25,7 +25,7 @@
 #include <osgEarthFeatures/ScaleFilter>
 #include "OGRFeatureOptions"
 #include "FeatureCursorOGR"
-#include "GeometryUtils"
+#include <osgEarthFeatures/OgrUtils>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -260,7 +260,7 @@ protected:
     // parses an explicit WKT geometry string into a Geometry.
     Symbology::Geometry* parseGeometry( const Config& geomConf )
     {
-        return GeometryUtils::createGeometryFromWKT( geomConf.value() );
+        return OgrUtils::createGeometryFromWKT( geomConf.value() );
     }
 
     // read the WKT geometry from a URL, then parse into a Geometry.

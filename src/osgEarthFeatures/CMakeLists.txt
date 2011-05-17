@@ -34,7 +34,8 @@ SET(LIB_PUBLIC_HEADERS
     Filter
     FilterContext
     LabelSource
-    OptimizerHints
+	OgrUtils
+    OptimizerHints	
     ResampleFilter
     ScaleFilter
     Session

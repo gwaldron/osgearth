@@ -177,36 +177,7 @@ public:
         delete[] buffer;
         fout.close();
     }
-
-    Feature* createFeature( OGRFeatureH handle )
-    {
-        long fid = OGR_F_GetFID( handle );
-
-        Feature* feature = new Feature( fid );
-
-        OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
-        if ( geomRef )
-        {
-            Symbology::Geometry* geom = OgrUtils::createGeometry( geomRef );
-            feature->setGeometry( geom );
-        }
-
-        int numAttrs = OGR_F_GetFieldCount(handle); 
-        for (int i = 0; i < numAttrs; ++i) 
-        { 
-            void* field_handle_ref = OGR_F_GetFieldDefnRef( handle, i ); 
-            const char* field_name = OGR_Fld_GetNameRef( field_handle_ref ); 
-            const char* field_value= OGR_F_GetFieldAsString(handle, i); 
-            std::string name = std::string( field_name ); 
-            std::string value = std::string( field_value); 
-            //Make the name lower case 
-            std::transform( name.begin(), name.end(), name.begin(), ::tolower ); 
-            feature->setAttr(name, value); 
-        } 
-
-        return feature;
-    }
-
+    
     std::string getExtensionForMimeType(const std::string& mime)
     {
         //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
@@ -261,7 +232,7 @@ public:
             {
                 if ( feat_handle )
                 {
-                    Feature* f = createFeature( feat_handle );
+                    Feature* f = OgrUtils::createFeature( feat_handle );
                     if ( f ) 
                     {
                         features.push_back( f );
@@ -332,6 +303,11 @@ public:
     virtual int getFeatureCount() const
     {
         return -1;
+    }
+
+    virtual bool insertFeature(Feature* feature)
+    {
+        return false;
     }
 
     /**

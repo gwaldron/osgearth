@@ -113,14 +113,14 @@ namespace osgEarth { namespace Features
 
         /**
          * Gets the number of features in this FeatureSource
-         * @returns
+         * @return
          *      The number of features or -1 if the number of features cannot be determined.
          */
         virtual int getFeatureCount() const = 0;
 
         /**
          * Gets the Feature with the given FID
-         * @returns
+         * @return
          *     The Feature with the given FID or NULL if not found.
          */
         virtual Feature* getFeature( FeatureID fid ) = 0;
@@ -129,6 +129,13 @@ namespace osgEarth { namespace Features
          * Gets the FeatureSchema for this FeatureSource
          */
         virtual const FeatureSchema& getSchema() const = 0;
+
+        /**
+         * Inserts the given feature into the FeatureSource
+         * @return
+         *     True if the feature was inserted, false if not
+         */
+        virtual bool insertFeature(Feature* feature) = 0;
         
 
     public: // Styling

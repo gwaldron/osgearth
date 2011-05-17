@@ -54,7 +54,8 @@ public:
       _ogrDriverHandle( 0L ),
       _options( options ),
       _featureCount(-1),
-      _needsSync(false)
+      _needsSync(false),
+      _writable(false)
     {
         _geometry = 
             _options.geometry().valid() ? _options.geometry().get() :
@@ -142,9 +143,11 @@ public:
 	        _dsHandle = OGROpenShared( _absUrl.c_str(), openMode, &_ogrDriverHandle );
 	        if ( _dsHandle )
 	        {
+                if (openMode == 1) _writable = true;
+
 		        _layerHandle = OGR_DS_GetLayer( _dsHandle, 0 ); // default to layer 0 for now
                 if ( _layerHandle )
-                {
+                {                    
                     GeoExtent extent;
 
                     // extract the SRS and Extent:                
@@ -183,6 +186,8 @@ public:
 
                     //Get the feature count
                     _featureCount = OGR_L_GetFeatureCount( _layerHandle, 1 );
+
+                    initSchema();
                 }
 	        }
             else
@@ -239,7 +244,7 @@ public:
 
     virtual bool deleteFeature(FeatureID fid)
     {
-        if (_layerHandle)
+        if (_writable && _layerHandle)
         {
             if (OGR_L_DeleteFeature( _layerHandle, fid ) == OGRERR_NONE)
             {
@@ -267,6 +272,16 @@ public:
         return result;
     }
 
+    virtual bool isWritable() const
+    {
+        return _writable;
+    }
+
+    const FeatureSchema& getSchema() const
+    {
+        return _schema;
+    }
+
 protected:
 
     // parses an explicit WKT geometry string into a Geometry.
@@ -287,6 +302,21 @@ protected:
         return 0L;
     }
 
+    void initSchema()
+    {
+        OGRFeatureDefnH layerDef =  OGR_L_GetLayerDefn( _layerHandle );
+        for (int i = 0; i < OGR_FD_GetFieldCount( layerDef ); i++)
+        {
+            OGRFieldDefnH fieldDef = OGR_FD_GetFieldDefn( layerDef, i );
+            std::string name;
+            name = std::string( OGR_Fld_GetNameRef( fieldDef ) );
+            OGRFieldType ogrType = OGR_Fld_GetType( fieldDef );
+            _schema[ name ] = OgrUtils::getAttributeType( ogrType );
+        }
+    }
+
+
+
 
 
 private:
@@ -298,6 +328,8 @@ private:
     const OGRFeatureOptions _options;
     int _featureCount;
     bool _needsSync;
+    bool _writable;
+    FeatureSchema _schema;
 };
 
 

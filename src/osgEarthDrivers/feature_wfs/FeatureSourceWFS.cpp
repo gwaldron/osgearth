@@ -82,6 +82,7 @@ std::string getTempName(const std::string& prefix="", const std::string& suffix=
         ss << prefix << "~" << rand() << suffix;
         if (!osgDB::fileExists(ss.str())) return ss.str();
     }
+    return "";
 }
 
 /**
@@ -343,10 +344,23 @@ public:
         return 0;
     }
 
+    virtual bool isWritable() const
+    {
+        return false;
+    }
+
+    const FeatureSchema& getSchema() const
+    {
+        //TODO:  Populate the schema from the DescribeFeatureType call
+        return _schema;
+    }
+
+
 
 private:
     const WFSFeatureOptions _options;  
     osg::ref_ptr< WFSCapabilities > _capabilities;
+    FeatureSchema _schema;
 };
 
 

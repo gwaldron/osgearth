@@ -208,7 +208,17 @@ struct OgrUtils
         } 
 
         return feature;
+    }
 
+    static AttributeType getAttributeType( OGRFieldType type )
+    {
+        switch (type)
+        {
+        case OFTString: return ATTRTYPE_STRING;
+        case OFTReal: return ATTRTYPE_DOUBLE;
+        case OFTInteger: return ATTRTYPE_INT;
+        default: return ATTRTYPE_UNSPECIFIED;
+        };        
     }
 };
 

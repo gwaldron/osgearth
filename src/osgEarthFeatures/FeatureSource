@@ -102,6 +102,11 @@ namespace osgEarth { namespace Features
         virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query =Symbology::Query() ) =0;
 
         /**
+         * Whether or not this FeatureSource is writeable.
+         */
+        virtual bool isWritable() const = 0;
+
+        /**
          * Deletes the feature with the given FID
          */
         virtual bool deleteFeature(FeatureID fid) = 0;
@@ -119,6 +124,11 @@ namespace osgEarth { namespace Features
          *     The Feature with the given FID or NULL if not found.
          */
         virtual Feature* getFeature( FeatureID fid ) = 0;
+
+        /**
+         * Gets the FeatureSchema for this FeatureSource
+         */
+        virtual const FeatureSchema& getSchema() const = 0;
         
 
     public: // Styling

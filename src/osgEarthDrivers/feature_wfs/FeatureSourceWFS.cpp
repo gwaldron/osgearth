@@ -325,10 +325,15 @@ public:
         return false;
     }
 
-    const FeatureSchema& getSchema() const
+    virtual const FeatureSchema& getSchema() const
     {
         //TODO:  Populate the schema from the DescribeFeatureType call
         return _schema;
+    }
+
+    virtual osgEarth::Symbology::Geometry::Type getGeometryType() const
+    {
+        return Geometry::TYPE_UNKNOWN;
     }
 
 

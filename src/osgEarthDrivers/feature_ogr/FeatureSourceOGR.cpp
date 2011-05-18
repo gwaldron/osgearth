@@ -188,6 +188,43 @@ public:
                     _featureCount = OGR_L_GetFeatureCount( _layerHandle, 1 );
 
                     initSchema();
+
+                    OGRwkbGeometryType wkbType = OGR_FD_GetGeomType( OGR_L_GetLayerDefn( _layerHandle ) );
+                    if (
+                        wkbType == wkbPolygon ||
+                        wkbType == wkbPolygon25D )
+                    {
+                        _geometryType = Geometry::TYPE_POLYGON;
+                    }
+                    else if (
+                        wkbType == wkbLineString ||
+                        wkbType == wkbLineString25D )
+                    {
+                        _geometryType = Geometry::TYPE_LINESTRING;
+                    }
+                    else if (
+                        wkbType == wkbLinearRing )
+                    {
+                        _geometryType = Geometry::TYPE_RING;
+                    }
+                    else if ( 
+                        wkbType == wkbPoint ||
+                        wkbType == wkbPoint25D )
+                    {
+                        _geometryType = Geometry::TYPE_POINTSET;
+                    }
+                    else if (
+                        wkbType == wkbGeometryCollection ||
+                        wkbType == wkbGeometryCollection25D ||
+                        wkbType == wkbMultiPoint ||
+                        wkbType == wkbMultiPoint25D ||
+                        wkbType == wkbMultiLineString ||
+                        wkbType == wkbMultiLineString25D ||
+                        wkbType == wkbMultiPolygon ||
+                        wkbType == wkbMultiPolygon25D )
+                    {
+                        _geometryType = Geometry::TYPE_MULTI;
+                    }
                 }
 	        }
             else
@@ -345,6 +382,11 @@ public:
         return true;
     }
 
+    virtual osgEarth::Symbology::Geometry::Type getGeometryType() const
+    {
+        return _geometryType;
+    }
+
 protected:
 
     // parses an explicit WKT geometry string into a Geometry.
@@ -393,6 +435,7 @@ private:
     bool _needsSync;
     bool _writable;
     FeatureSchema _schema;
+    Geometry::Type _geometryType;
 };
 
 

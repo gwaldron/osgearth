@@ -136,6 +136,13 @@ namespace osgEarth { namespace Features
          *     True if the feature was inserted, false if not
          */
         virtual bool insertFeature(Feature* feature) = 0;
+
+        /**
+         * Gets the Geometry type of the FeatureSource
+         * @return
+         *      The Geometry type of the FeatureSource
+         */
+        virtual osgEarth::Symbology::Geometry::Type getGeometryType() const = 0;
         
 
     public: // Styling

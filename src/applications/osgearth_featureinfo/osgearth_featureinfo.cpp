@@ -39,22 +39,22 @@ std::string attributeTypeToString( AttributeType type )
     }
 }
 
+std::string indent = "    ";
+
 void printStats(FeatureSource* features)
 {
     std::cout << "Feature Count:  " << features->getFeatureCount() << std::endl;
-    std::cout << std::endl;
+    std::cout << "Geometry Type:  " << osgEarth::Symbology::Geometry::toString( features->getGeometryType() ) << std::endl;
 
     //Print the schema
     const FeatureSchema schema = features->getSchema();
-    std::cout << "Schema" << std::endl;
+    std::cout << "Schema:" << std::endl;
     for (FeatureSchema::const_iterator itr = schema.begin(); itr != schema.end(); ++itr)
     {
-        std::cout << itr->first << ": " << attributeTypeToString(itr->second) << std::endl;
+        std::cout << indent << itr->first << ": " << attributeTypeToString(itr->second) << std::endl;
     }
     std::cout << std::endl;
 }
-
-std::string indent = "    ";
 
 void printFeature( Feature* feature )
 {

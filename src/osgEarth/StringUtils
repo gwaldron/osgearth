@@ -27,6 +27,7 @@
 #include <vector>
 #include <sstream>
 #include <iomanip>
+#include <cctype>
 
 #ifdef __GNUC__
 #define LIKELY_UNUSED_FUNCTION __attribute__ ((unused))
@@ -185,7 +186,7 @@ namespace osgEarth
     toLower( const std::string& input )
     {
         std::string output = input;
-        std::transform( output.begin(), output.end(), output.begin(), ::tolower );
+        std::transform( output.begin(), output.end(), output.begin(), std::tolower );
         return output;
     }
 

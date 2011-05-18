@@ -427,7 +427,8 @@ namespace
         data.setSourceTexCoords(dynamic_cast<osg::Vec2Array*>(geom.getTexCoordArray(0)));
         geom.accept( data );
 
-//        int numTrisIn = data._tris.size();
+        
+//        int numTrisIn = data._tris.size();        
 
         TriangleVector done;
         done.reserve(2.0 * data._tris.size());

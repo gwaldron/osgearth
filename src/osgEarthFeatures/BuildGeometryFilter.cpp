@@ -214,8 +214,7 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
                 }
             }
             break;
-        case Geometry::TYPE_MULTI:
-		case Geometry::TYPE_UNKNOWN:
+		default:
 			break;
         }
         

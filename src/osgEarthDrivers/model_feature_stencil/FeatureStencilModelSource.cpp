@@ -488,20 +488,9 @@ namespace
                 StencilVolumeNode* styleNode = 0L;
                 if ( !buildData->getStyleNode(style.getName(), styleNode) )
                 {
-<<<<<<< HEAD
-                    if ( _options.mask() == true )
-					{
-                        OE_INFO << LC << "Creating MASK LAYER for feature group" << std::endl;
-					}
-                    else
-					{
-                        OE_INFO << LC << "Creating new style group for '" << style->getName() << "'" << std::endl;
-					}
-=======
                     OE_INFO << LC << "Create style group \"" << style.getName() << "\"" << std::endl;
 
                     styleNode = new StencilVolumeNode( *_options.mask(), *_options.inverted() );
->>>>>>> upstream/master
 
                     if ( _options.mask() == false )
                     {
@@ -549,23 +538,13 @@ namespace
     };
 
 
-<<<<<<< HEAD
-class FeatureStencilModelSource : public FeatureModelSource
-{
-public:
-    FeatureStencilModelSource( const ModelSourceOptions& options, int renderBinStart ) :
-        FeatureModelSource( options ),
-        _renderBinStart( renderBinStart ),
-        _options( options )
-=======
     class FeatureStencilModelSource : public FeatureModelSource
->>>>>>> upstream/master
     {
     public:
         FeatureStencilModelSource( const ModelSourceOptions& options, int renderBinStart ) :
             FeatureModelSource( options ),
-            _options( options ),
-            _renderBinStart( renderBinStart )
+            _renderBinStart( renderBinStart ),
+            _options( options )
         {
             // make sure we have stencil bits. Note, this only works before
             // a viewer gets created. You may need to allocate stencil bits

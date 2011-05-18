@@ -42,6 +42,7 @@ _loadingWeight( 1.0f ),
 _exactCropping( false ),
 _enabled( true ),
 _reprojectedTileSize( 256 )
+
 {
     setDefaults();
     fromConfig( _conf ); 

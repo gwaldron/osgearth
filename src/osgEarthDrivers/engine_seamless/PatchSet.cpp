@@ -34,7 +34,6 @@ using namespace osgEarth;
 PatchSet::PatchSet()
     : _resolution(128), _maxLevel(16), _verticalScale(1.0f),
     _patchOptionsPrototype(new PatchOptions), _mapf(0)
-      
 {
     setPrecisionFactor(4);
     initPrimitiveSets();

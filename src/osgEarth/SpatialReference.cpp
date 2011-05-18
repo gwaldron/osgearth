@@ -284,6 +284,7 @@ SpatialReference::validate()
 
 /****************************************************************************/
 
+
 SpatialReference::SpatialReference(void* handle, 
                                    const std::string& init_type,
                                    const std::string& init_str,

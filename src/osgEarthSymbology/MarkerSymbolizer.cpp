@@ -261,14 +261,6 @@ MarkerSymbolizer::compile(MarkerSymbolizerState* state,
                 }
             }
             break;
-            case Geometry::TYPE_MULTI:
-            {
-			}
-			break;
-            case Geometry::TYPE_UNKNOWN:
-            {
-			}
-			break;
 
             default:
                 break;

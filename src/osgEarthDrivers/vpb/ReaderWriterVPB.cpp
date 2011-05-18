@@ -147,7 +147,7 @@ public:
         _options( in_options ),
         //_directory_structure( FLAT_TASK_DIRECTORIES ),
         _profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() ),
-        _maxNumTilesInCache( 128 ),
+        _maxNumTilesInCache( in_options.terrainTileCacheSize().value() ),
         _initialized( false )
     {
 	}

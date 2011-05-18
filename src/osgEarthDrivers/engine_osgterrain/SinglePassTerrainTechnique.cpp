@@ -411,7 +411,6 @@ SinglePassTerrainTechnique::getActiveStateSet() const
 osg::StateSet*
 SinglePassTerrainTechnique::getParentStateSet() const
 {
-    osg::StateSet* parentStateSet = 0;
     osg::ref_ptr<Tile> parentTile_safe = _parentTile.get();
     if ( parentTile_safe.valid() )
     {
@@ -1175,7 +1174,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
               for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
               {
                 osg::Vec3d p1 = *mit;
-                osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
+				osgEarth::Symbology::Polygon::iterator mitEnd = maskPoly->end();
+                osg::Vec3d p3 = (mit == (--mitEnd)) ? maskPoly->front() : (*(mit + 1));
 
                 //Truncated vales to compensate for accuracy issues
                 double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;

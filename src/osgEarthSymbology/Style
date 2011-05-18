@@ -20,8 +20,16 @@
 #define OSGEARTHSYMBOLOGY_STYLE_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/Query>
-#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/PointSymbol>
+#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/PolygonSymbol>
+#include <osgEarthSymbology/MarkerSymbol>
+#include <osgEarthSymbology/ExtrusionSymbol>
+#include <osgEarthSymbology/AltitudeSymbol>
+#include <osgEarthSymbology/TextSymbol>
+
 #include <osgEarth/Config>
 #include <osgEarth/Revisioning>
 #include <osg/Object>
@@ -32,19 +40,30 @@ namespace osgEarth { namespace Symbology
     /**
      * A Style is an unordered collection of Symbols.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT Style : public osgEarth::Revisioned<osg::Object>
+    class OSGEARTHSYMBOLOGY_EXPORT Style // : public osgEarth::Revisioned<osg::Object>
     {
     public:
         /** Constructs a new, empty style. */
-        Style();
+        Style( const std::string& name = "" );
 
         /** Constructs a style by deserializing it from a Config. */
-        Style(const Config&);
+        Style(const Config& conf);
 
         /** Copy constructor. */
-        Style(const Style&, const osg::CopyOp&);
+        Style(const Style& rhs); 
 
-        META_Object(osgEarthSymbology, Style);
+        /** Gets the name of this style */
+        const std::string& getName() const { return _name; }
+
+        /** Sets the name of this style */
+        void setName( const std::string& value ) { _name = value; }
+
+        /** Starts with this style, merges in all the symbols from the other style, and
+            returns a new style */
+        Style combineWith( const Style& rhs ) const;
+
+        /** Test whether the style is empty */
+        bool empty() const { return _symbols.empty(); }
 
         /** Adds a symbol to the collection. */
         void addSymbol(Symbol* symbol);
@@ -62,6 +81,7 @@ namespace osgEarth { namespace Symbology
             }
             return 0L;
         }
+        template<typename T> T* get() { return getSymbol<T>(); } // alias
 
         /** Gets a typed symbol from the style (the first one found) */
         template<typename T>
@@ -76,6 +96,7 @@ namespace osgEarth { namespace Symbology
             }
             return 0L;
         }
+        template<typename T> const T* get() const { return getSymbol<T>(); } // alias
 
         /** Gets a typed symbol from the style (first one found), or creates/adds/returns one of 
             that type if it doesn't already exist. */
@@ -90,31 +111,27 @@ namespace osgEarth { namespace Symbology
             }
             return sym;
         }
-
-        /** Access sub-styles. */
-        Style* getSubStyle( const std::string& name );
-        const Style* getSubStyle( const std::string& name ) const;
-        void addSubStyle( Style* style );
+        template<typename T> T* getOrCreate() { return getOrCreateSymbol<T>(); } // alias        
 
         /** Serializes this object into a Config. */
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool keepOrigType =true ) const;
 
         void mergeConfig( const Config& conf );
         void fromCSS( const std::string& css );
 
     protected:
+        std::string                 _name;
         SymbolList                  _symbols;
-
         std::string                 _origType;
         std::string                 _origData;
         optional<std::string>       _url;
 
-        typedef std::map<std::string,osg::ref_ptr<Style> > StylesByName;
-        StylesByName _subStyles;
+        //typedef std::map<std::string,osg::ref_ptr<Style> > StylesByName;
+        //StylesByName _subStyles;
     };
 
-    typedef std::vector< osg::ref_ptr<Style> > StyleList;
-    typedef std::map< std::string, osg::ref_ptr<Style> > StyleMap;
+    typedef std::vector<Style> StyleList;
+    typedef std::map<std::string, Style> StyleMap;
 
 
     class OSGEARTHSYMBOLOGY_EXPORT StyleComponent
@@ -146,7 +163,7 @@ namespace osgEarth { namespace Symbology
         optional<Query>& query() { return _query; }
         const optional<Query>& query() const { return _query; }
 
-        /** Returns the styleName() property, it set; otherwise returns the selector name. */
+        /** Returns the styleClass() property, if set; otherwise returns the selector name. */
         std::string getSelectedStyleName() const;
 
         //Configurable
@@ -154,27 +171,28 @@ namespace osgEarth { namespace Symbology
         virtual Config getConfig() const;
 
     protected:
-        std::string _name;
+        std::string           _name;
         optional<std::string> _styleName;
-        optional<Query> _query;
+        optional<Query>       _query;
     };
 
     typedef std::list<StyleSelector> StyleSelectorList;
+    typedef std::vector<StyleSelector> StyleSelectorVector;
 
 
 
-    class OSGEARTHSYMBOLOGY_EXPORT StyleCatalog : public Configurable
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet : public Configurable
     {
     public:
-        StyleCatalog( const Config& conf =Config() );
+        StyleSheet( const Config& conf =Config() );
 
         StyleSelectorList& selectors() { return _selectors; }
         const StyleSelectorList& selectors() const { return _selectors; }
 
-        void addStyle( Style* style );
+        void addStyle( const Style& style );
         void removeStyle( const std::string& name );
-        bool getStyle( const std::string& name, Style*& out ) const;
-        const Style* getDefaultStyle() const;
+        bool getStyle( const std::string& name, Style& out_style, bool fallBackOnDefault =true ) const;
+        bool getDefaultStyle( Style& out_style ) const;
 
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -182,7 +200,7 @@ namespace osgEarth { namespace Symbology
     protected:
         StyleSelectorList _selectors;
         StyleMap _styles;
-        osg::ref_ptr<Style> _emptyStyle;
+        Style _emptyStyle;
     };
 
 } } // namespace osgEarth::Symbology

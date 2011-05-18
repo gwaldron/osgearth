@@ -18,7 +18,6 @@
 */
 #include "TileBuilder"
 #include "TransparentLayer"
-#include "CustomTile"
 #include <osgEarth/ImageUtils>
 #include <osgEarth/TaskService>
 
@@ -29,38 +28,15 @@ using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
-#if 0
-struct SourceRepo
-{
-    SourceRepo() { }
-
-    void add( const CustomColorLayer& layer )
-    {
-        Threading::ScopedMutexLock lock(_m);
-        _colorLayers[ layer.getUID() ] = layer;
-    }
-
-    void set( const CustomElevLayer& elevLayer )
-    {
-        // only one...no lock required
-        _elevLayer = elevLayer;
-    }
-
-    ColorLayersByUID _colorLayers;
-    CustomElevLayer _elevLayer;
-    Threading::Mutex _m;
-};
-#endif
-
-//------------------------------------------------------------------------
-
 struct BuildColorLayer
 {
-    void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo, TileBuilder::SourceRepo& repo )
+    void init( const TileKey& key, ImageLayer* layer, const MapInfo& mapInfo,
+               const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo )
     {
         _key      = key;
         _layer    = layer;
         _mapInfo  = &mapInfo;
+        _opt      = &opt;
         _repo     = &repo;
     }
 
@@ -95,19 +71,20 @@ struct BuildColorLayer
         {
             locator = GeoLocator::createForExtent(geoImage.getExtent(), *_mapInfo);                                                                                       
         }
-
         // add the color layer to the repo.
         _repo->add( CustomColorLayer(
             _layer,
             geoImage.getImage(),
             locator,
             _key.getLevelOfDetail(),
+            _key,
             isFallbackData ) );
     }
 
     TileKey        _key;
     const MapInfo* _mapInfo;
     ImageLayer*    _layer;
+    const OSGTerrainOptions* _opt;
     TileBuilder::SourceRepo* _repo;
 };
 
@@ -161,21 +138,23 @@ struct BuildElevLayer
 
 struct AssembleTile
 {
-    void init(const TileKey& key, const MapInfo& mapInfo, const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo )
+    void init(const TileKey& key, const MapInfo& mapInfo, const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo, osg::Vec3dArray* mask=0L )
     {
         _key     = key;
         _mapInfo = &mapInfo;
         _opt     = &opt;
         _repo    = &repo;
         _tile    = 0L;
+        _mask    = mask;
     }
 
     void execute()
     {
-        _tile = new CustomTile( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
+        _tile = new Tile( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
         _tile->setVerticalScale( *_opt->verticalScale() );
-        _tile->setRequiresNormals( true );
+        //_tile->setRequiresNormals( true );
         _tile->setDataVariance( osg::Object::DYNAMIC );
+        _tile->setTerrainMaskGeometry(_mask);
 
         // copy over the source data.
         _tile->setCustomColorLayers( _repo->_colorLayers );
@@ -186,24 +165,14 @@ struct AssembleTile
         // a skirt hides cracks when transitioning between LODs:
         osg::HeightField* hf = _repo->_elevLayer.getHFLayer()->getHeightField();
         hf->setSkirtHeight(bs.radius() * _opt->heightFieldSkirtRatio().get() );
-
-#if 0 // moved to SerialKeyNodeFactory::addTile
-        // for now, cluster culling does not work for the unified cube profile.
-        if ( _mapInfo->isGeocentric() && !_mapInfo->isCube() )
-        {
-            _tile->setCullCallback( HeightFieldUtils::createClusterCullingCallback(
-                hf,
-                _tile->getLocator()->getEllipsoidModel(),
-                _tile->getVerticalScale() ) );
-        }
-#endif
     }
 
     TileKey                  _key;
     const MapInfo*           _mapInfo;
     const OSGTerrainOptions* _opt;
     TileBuilder::SourceRepo* _repo;
-    CustomTile*              _tile;
+    Tile*                    _tile;
+    osg::Vec3dArray*         _mask;
 };
 
 //------------------------------------------------------------------------
@@ -228,7 +197,7 @@ TileBuilder::createJob( const TileKey& key, Threading::MultiEvent& semaphore )
         if ( layer->isKeyValid(key) )
         {
             ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
-            j->init( key, layer, job->_mapf.getMapInfo(), job->_repo );
+            j->init( key, layer, job->_mapf.getMapInfo(), _terrainOptions, job->_repo );
             j->setPriority( -(float)key.getLevelOfDetail() );
             job->_tasks.push_back( j );
         }
@@ -255,9 +224,15 @@ TileBuilder::runJob( TileBuilder::Job* job )
 }
 
 void
-TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData )
+TileBuilder::finalizeJob(TileBuilder::Job*   job, 
+                         osg::ref_ptr<Tile>& out_tile,
+                         bool&               out_hasRealData,
+                         bool&               out_hasLodBlending)
 {
     SourceRepo& repo = job->_repo;
+
+    out_hasRealData = false;
+    out_hasLodBlending = false;
 
     // Bail out now if there's no data to be had.
     if ( repo._colorLayers.size() == 0 && !repo._elevLayer.getHFLayer() )
@@ -293,8 +268,12 @@ TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_t
                 i->get(), emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),
+                key,
                 true ) );
         }
+
+        if ( i->get()->getImageLayerOptions().lodBlending() == true )
+            out_hasLodBlending = true;
     }
 
     // Ready to create the actual tile.
@@ -320,9 +299,13 @@ TileBuilder::finalizeJob( TileBuilder::Job* job, osg::ref_ptr<CustomTile>& out_t
 }
 
 void
-TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<CustomTile>& out_tile, bool& out_hasRealData )
+TileBuilder::createTile(const TileKey&      key, 
+                        bool                parallelize, 
+                        osg::ref_ptr<Tile>& out_tile, 
+                        bool&               out_hasRealData,
+                        bool&               out_hasLodBlendedLayers )
 {
-    MapFrame mapf( _map, Map::TERRAIN_LAYERS );
+    MapFrame mapf( _map, Map::MASKED_TERRAIN_LAYERS );
 
     SourceRepo repo;
 
@@ -330,6 +313,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
     // directly to the key, as opposed to fallback data, which is derived from a lower
     // LOD key.
     out_hasRealData = false;
+    out_hasLodBlendedLayers = false;
 
     const MapInfo& mapInfo = mapf.getMapInfo();
 
@@ -341,8 +325,13 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
         int jobCount = 0;
 
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        {
             if ( i->get()->isKeyValid( key ) )
                 ++jobCount;
+
+            if ( i->get()->getImageLayerOptions().lodBlending() == true )
+                out_hasLodBlendedLayers = true;
+        }
 
         if ( mapf.elevationLayers().size() > 0 )
             ++jobCount;
@@ -357,7 +346,7 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
             if ( layer->isKeyValid(key) )
             {
                 ParallelTask<BuildColorLayer>* j = new ParallelTask<BuildColorLayer>( &semaphore );
-                j->init( key, layer, mapInfo, repo );
+                j->init( key, layer, mapInfo, _terrainOptions, repo );
                 j->setPriority( -(float)key.getLevelOfDetail() );
                 _service->add( j );
             }
@@ -393,9 +382,12 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
             if ( layer->isKeyValid(key) )
             {
                 BuildColorLayer build;
-                build.init( key, layer, mapInfo, repo );
+                build.init( key, layer, mapInfo, _terrainOptions, repo );
                 build.execute();
             }
+
+            if ( layer->getImageLayerOptions().lodBlending() == true )
+                out_hasLodBlendedLayers = true;
         }
         
         // make an elevation layer.
@@ -439,13 +431,19 @@ TileBuilder::createTile( const TileKey& key, bool parallelize, osg::ref_ptr<Cust
                 i->get(), emptyImage.get(),
                 locator,
                 key.getLevelOfDetail(),
+                key,
                 true ) );
         }
     }
 
+    osg::Vec3dArray* maskBounds = 0L;
+    osgEarth::MaskLayer* mask = mapf.getTerrainMaskLayer();
+    if (mask)
+      maskBounds = mask->getOrCreateBoundary();
+
     // Ready to create the actual tile.
     AssembleTile assemble;
-    assemble.init( key, mapInfo, _terrainOptions, repo );
+    assemble.init( key, mapInfo, _terrainOptions, repo, maskBounds );
     assemble.execute();
 
     if (!out_hasRealData)

@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
 //TODO: replace this with ImageRasterizer
 #include <osgEarthSymbology/AGG.h>
 #include <osgEarth/Registry>
@@ -84,11 +83,11 @@ public:
 
     //override
     bool renderFeaturesForStyle(
-        const Symbology::Style* style,
+        const Style&       style,
         const FeatureList& inFeatures,
-        osg::Referenced* buildData,
-        const GeoExtent& imageExtent,
-        osg::Image* image )
+        osg::Referenced*   buildData,
+        const GeoExtent&   imageExtent,
+        osg::Image*        image )
     {
         // local copy of the features that we can process
         FeatureList features = inFeatures;
@@ -99,8 +98,8 @@ public:
         FilterContext context;
         context.profile() = getFeatureSource()->getFeatureProfile();
 
-        const LineSymbol* masterLine = style->getSymbol<LineSymbol>();
-        const PolygonSymbol* masterPoly = style->getSymbol<PolygonSymbol>();
+        const LineSymbol* masterLine = style.getSymbol<LineSymbol>();
+        const PolygonSymbol* masterPoly = style.getSymbol<PolygonSymbol>();
 
         //bool embeddedStyles = getFeatureSource()->hasEmbeddedStyles();
 
@@ -133,9 +132,10 @@ public:
             {
                 // check for an embedded style:
                 const LineSymbol* line = feature->style().isSet() ? 
-                    feature->style()->get()->getSymbol<LineSymbol>() : masterLine;
+                    feature->style()->getSymbol<LineSymbol>() : masterLine;
+
                 const PolygonSymbol* poly =
-                    feature->style().isSet() ? feature->style()->get()->getSymbol<PolygonSymbol>() : masterPoly;
+                    feature->style().isSet() ? feature->style()->getSymbol<PolygonSymbol>() : masterPoly;
 
                 // if we have polygons but only a LineSymbol, draw the poly as a line.
                 if ( geom->getComponentType() == Geometry::TYPE_POLYGON )
@@ -269,10 +269,10 @@ public:
                 Geometry* g = gi.next();
             
                 const LineSymbol* line = feature->style().isSet() ? 
-                    feature->style()->get()->getSymbol<LineSymbol>() : masterLine;
+                    feature->style()->getSymbol<LineSymbol>() : masterLine;
 
                 const PolygonSymbol* poly =
-                    feature->style().isSet() ? feature->style()->get()->getSymbol<PolygonSymbol>() : masterPoly;
+                    feature->style().isSet() ? feature->style()->getSymbol<PolygonSymbol>() : masterPoly;
 
                 if (g->getType() == Geometry::TYPE_RING || g->getType() == Geometry::TYPE_LINESTRING)
                 {

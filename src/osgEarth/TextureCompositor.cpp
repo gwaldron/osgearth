@@ -41,16 +41,25 @@ TextureLayout::TextureLayout()
 }
 
 int
-TextureLayout::getSlot( UID layerUID ) const
+TextureLayout::getSlot( UID layerUID, unsigned which, unsigned maxSlotsToSearch ) const
 {
-    TextureSlotVector::const_iterator i = std::find( _slots.begin(), _slots.end(), layerUID );
-    return i != _slots.end() ? (int)(i-_slots.begin()) : -1;
+    for( unsigned slot = 0; slot < _slots.size() && slot < maxSlotsToSearch; ++slot )
+    {
+        if ( _slots[slot] == layerUID )
+        {
+            if ( which == 0 )
+                return slot;
+            else
+                --which;
+        }
+    }
+    return -1;
 }
 
 int 
 TextureLayout::getOrder( UID layerUID ) const
 {
-    int slot = getSlot( layerUID );
+    int slot = getSlot( layerUID, 0 );
     RenderOrderVector::const_iterator i = std::find( _order.begin(), _order.end(), slot );
     return i != _order.end() ? (int)(i-_order.begin()) : -1;
 }
@@ -65,66 +74,124 @@ TextureLayout::getMaxUsedSlot() const
 }
 
 void
-TextureLayout::applyMapModelChange( const MapModelChange& change )
+TextureLayout::assignPrimarySlot( ImageLayer* layer, int orderIndex )
+{
+    int slot = -1;
+
+    bool found = false;
+    for( TextureSlotVector::iterator i = _slots.begin(); i != _slots.end() && !found; ++i )
+    {
+        slot = (int)(i - _slots.begin());
+
+        // negative UID means the slot is empty.
+        bool slotAvailable = (*i < 0) && (_reservedSlots.find(slot) == _reservedSlots.end());
+        if ( slotAvailable )
+        {
+            // record this UID in the new slot:
+            *i = layer->getUID();
+
+            // record the render order of this slot:
+            if ( orderIndex >= (int)_order.size() )
+            {
+                _order.resize( orderIndex + 1, -1 );
+                _order[orderIndex] = slot;
+            }
+            else
+            {
+                if (_order[orderIndex] == -1)
+                    _order[orderIndex] = slot;
+                else
+                    _order.insert(_order.begin() + orderIndex, slot);
+            }
+
+            found = true;
+            break;
+        }
+    }
+
+    if ( !found )
+    {
+        // put the UID in the next available slot (that's not reserved).
+        while( _reservedSlots.find(_slots.size()) != _reservedSlots.end() )
+            _slots.push_back( -1 );
+
+        slot = _slots.size();
+        _slots.push_back( layer->getUID() );
+        _order.push_back( _slots.size() - 1 );
+    }
+
+    OE_INFO << LC << "Allocated SLOT " << slot << "; primary slot for layer \"" << layer->getName() << "\"" << std::endl;
+}
+
+void
+TextureLayout::assignSecondarySlot( ImageLayer* layer )
+{
+    int slot = -1;
+    bool found = false;
+
+    for( TextureSlotVector::iterator i = _slots.begin(); i != _slots.end() && !found; ++i )
+    {
+        slot = (int)(i - _slots.begin());
+
+        // negative UID means the slot is empty.
+        bool slotAvailable = (*i < 0) && (_reservedSlots.find(slot) == _reservedSlots.end());
+        if ( slotAvailable )
+        {
+            // record this UID in the new slot:
+            *i = layer->getUID();
+            found = true;
+            break;
+        }
+    }
+
+    if ( !found )
+    {
+        // put the UID in the next available slot (that's not reserved).
+        while( _reservedSlots.find(_slots.size()) != _reservedSlots.end() )
+            _slots.push_back( -1 );
+
+        slot = _slots.size();
+        _slots.push_back( layer->getUID() );
+    }
+
+    OE_INFO << LC << "Allocated SLOT " << slot << "; secondary slot for layer \"" << layer->getName() << "\"" << std::endl;
+}
+
+void
+TextureLayout::applyMapModelChange( const MapModelChange& change, bool reserveSeconarySlotIfNecessary )
 {
     if ( change.getAction() == MapModelChange::ADD_IMAGE_LAYER )
     {
-        bool found = false;
-        for( TextureSlotVector::iterator i = _slots.begin(); i != _slots.end() && !found; ++i )
+        assignPrimarySlot( change.getImageLayer(), change.getFirstIndex() );
+
+        bool blendingOn = change.getImageLayer()->getImageLayerOptions().lodBlending() == true;
+        _lodBlending[ change.getImageLayer()->getUID() ] = blendingOn;
+
+        if ( blendingOn && reserveSeconarySlotIfNecessary )
         {
-            int slot = (int)(i - _slots.begin());
-
-            // negative UID means the slot is empty.
-            bool slotAvailable = (*i < 0) && (_reservedSlots.find(slot) == _reservedSlots.end());
-            if ( slotAvailable )
-            {
-                *i = change.getImageLayer()->getUID();
-
-                if ( change.getFirstIndex() >= (int)_order.size() )
-                {
-                    _order.resize( change.getFirstIndex() + 1, -1 );
-                    _order[change.getFirstIndex()] = slot;
-                }
-                else
-                {
-                    if (_order[change.getFirstIndex()] == -1)
-                        _order[change.getFirstIndex()] = slot;
-                    else
-                        _order.insert(_order.begin() + change.getFirstIndex(), slot);
-                }
-
-                found = true;
-                break;
-            }
-        }
-
-        if ( !found )
-        {
-            // put the UID in the next available slot (that's not reserved).
-            while( _reservedSlots.find(_slots.size()) != _reservedSlots.end() )
-                _slots.push_back( -1 );
-
-            _slots.push_back( change.getImageLayer()->getUID() );
-            _order.push_back( _slots.size() - 1 );
+            assignSecondarySlot( change.getImageLayer() );
         }
     }
 
     else if ( change.getAction() == MapModelChange::REMOVE_IMAGE_LAYER )
     {
-        for( TextureSlotVector::iterator i = _slots.begin(); i != _slots.end(); ++i )
+        for( int which = 0; which <= 1; ++which )
         {
-            if ( *i == change.getLayer()->getUID() )
-            {
-                *i = -1;
-                for( RenderOrderVector::iterator j = _order.begin(); j != _order.end(); ++j )
-                {
-                    if ( *j == (int)(i - _slots.begin()) )
-                    {
-                        j = _order.erase( j );
-                        break;
-                    }
-                }
+            int slot = getSlot( change.getLayer()->getUID(), which );
+            if ( slot < 0 )
                 break;
+
+            _slots[slot] = -1;
+
+            if ( which == 0 ) // primary slot; remove from render order:
+            {
+                for( RenderOrderVector::iterator j = _order.begin(); j != _order.end(); )
+                {
+                    if ( *j == slot )
+                        j = _order.erase( j );
+                    else
+                        ++j;
+                }
             }
         }
     }
@@ -169,6 +236,25 @@ TextureLayout::isSlotAvailable( int i ) const
     return false;
 }
 
+bool
+TextureLayout::containsSecondarySlots( unsigned maxSlotsToSearch ) const
+{
+    for( int slot = 0; slot < (int)_slots.size() && slot < (int)maxSlotsToSearch; ++slot )
+    {
+        UID uid = _slots[slot];
+        if ( getSlot(uid, 0) != slot )
+            return true;
+    }
+    return false;
+}
+
+bool
+TextureLayout::isBlendingEnabled( UID layerUID ) const
+{
+    std::map<UID,bool>::const_iterator i = _lodBlending.find(layerUID);
+    return i != _lodBlending.end() ? i->second : false;
+}
+
 //---------------------------------------------------------------------------
 
 TextureCompositor::TextureCompositor(const TerrainOptions& options) :
@@ -200,13 +286,13 @@ TextureCompositor::reserveTextureImageUnit( int& out_unit )
     out_unit = -1;
 
     //TODO: this only supports GPU texturing....
-    int maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
+    unsigned maxUnits = osgEarth::Registry::instance()->getCapabilities().getMaxGPUTextureUnits();
 
     if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU )
     {
         Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
 
-        for( int i=0; i<maxUnits; ++i )
+        for( unsigned i=0; i<maxUnits; ++i )
         {
             if ( _layout.isSlotAvailable(i) )
             {
@@ -220,10 +306,28 @@ TextureCompositor::reserveTextureImageUnit( int& out_unit )
         // all taken, return false.
         return false;
     }
-    else // texture array or multipass... they area locked to unit 0
+
+    else if ( _tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY )
+    {
+        // texture array reserved slots 0 and 1 (for primary and blending)
+        for( unsigned i=2; i<maxUnits; ++i ) // 0 and 1 always reserved.
+        {
+            if ( _reservedUnits.find( i ) == _reservedUnits.end() )
+            {
+                out_unit = i;
+                _reservedUnits.insert( i );
+                return true;
+            }
+        }
+
+        // all taken, return false.
+        return false;
+    }
+
+    else // multipass... locked at unit 0.
     {
         // search for an unused unit.
-        for( int i=1; i<maxUnits; ++i ) // start at 1 because unit 0 is always reserved
+        for( unsigned i=1; i<maxUnits; ++i ) // start at 1 because unit 0 is always reserved
         {
             if ( _reservedUnits.find( i ) == _reservedUnits.end() )
             {
@@ -254,7 +358,10 @@ void
 TextureCompositor::applyMapModelChange( const MapModelChange& change )
 {
     Threading::ScopedWriteLock exclusiveLock( _layoutMutex );
-    _layout.applyMapModelChange( change );
+
+    _layout.applyMapModelChange(
+        change, 
+        _impl.valid() ? _impl->blendingRequiresSecondarySlot() : false );
 }
 
 bool
@@ -269,16 +376,24 @@ TextureCompositor::prepareImage( const GeoImage& image, const GeoExtent& tileExt
     return _impl.valid() ? _impl->prepareImage( image, tileExtent ) : GeoImage::INVALID;
 }
 
+GeoImage
+TextureCompositor::prepareSecondaryImage( const GeoImage& image, const GeoExtent& tileExtent ) const
+{
+    return _impl.valid() ? _impl->prepareSecondaryImage( image, tileExtent ) : GeoImage::INVALID;
+}
+
 void
 TextureCompositor::applyLayerUpdate(osg::StateSet* stateSet,
                                     UID layerUID,
                                     const GeoImage& preparedImage,
-                                    const GeoExtent& tileExtent ) const
+                                    const TileKey& tileKey,
+                                    osg::StateSet* parentStateSet) const
 {
     if ( _impl.valid() )
     {
         Threading::ScopedReadLock sharedLock( const_cast<TextureCompositor*>(this)->_layoutMutex );
-        _impl->applyLayerUpdate( stateSet, layerUID, preparedImage, tileExtent, _layout );
+        _impl->applyLayerUpdate( stateSet, layerUID, preparedImage, tileKey,
+                                 _layout,  parentStateSet );
     }
 }
 

@@ -112,17 +112,21 @@ namespace osgEarth
             void onOpacityChanged( ImageLayer* layer );
             void onGammaChanged( ImageLayer* layer );
 
-            // a uniform array marking the opacity of each image layer
-            osg::ref_ptr< ArrayUniform > _layerOpacityUniform;
-            //osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
+            ArrayUniform _layerOpacityUniform;
+            ArrayUniform _layerEnabledUniform;
+            ArrayUniform _layerRangeUniform;
 
-            // a uniform array marking the enabled state of each image layer
-            osg::ref_ptr< ArrayUniform > _layerEnabledUniform;
-            //osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
+            //// a uniform array marking the opacity of each image layer
+            //osg::ref_ptr< ArrayUniform > _layerOpacityUniform;
+            ////osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
 
-            // a uniform array holding the min and max visible range of each image layer
-            osg::ref_ptr< ArrayUniform > _layerRangeUniform;
-            //osg::ref_ptr< osg::Uniform > _layerRangeUniform;
+            //// a uniform array marking the enabled state of each image layer
+            //osg::ref_ptr< ArrayUniform > _layerEnabledUniform;
+            ////osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
+
+            //// a uniform array holding the min and max visible range of each image layer
+            //osg::ref_ptr< ArrayUniform > _layerRangeUniform;
+            ////osg::ref_ptr< osg::Uniform > _layerRangeUniform;
 
         private:
             MapFrame _mapf;
@@ -131,6 +135,7 @@ namespace osgEarth
         osg::ref_ptr<ImageLayerController> _imageLayerController;
         osg::ref_ptr<const Map> _map;
         osg::ref_ptr<osg::Uniform> _startFrameTimeUniform;
+        osg::ref_ptr<osg::Uniform> _cameraElevationUniform;
         
         enum InitStage {
             INIT_NONE,

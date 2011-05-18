@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_ENGINE_OSGTERRAIN_CUSTOM_TILE
 #define OSGEARTH_ENGINE_OSGTERRAIN_CUSTOM_TILE 1
 
+#error
 #include "Common"
 #include "OSGTileFactory"
 #include "TransparentLayer"
@@ -170,6 +171,10 @@ public:
     class CustomTerrain* getCustomTerrain();
     const class CustomTerrain* getCustomTerrain() const;
 
+    /** Gets or sets the terrain mask geometry. */
+    osg::Vec3dArray* getTerrainMaskGeometry() { return _mask.get(); }
+    void setTerrainMaskGeometry(osg::Vec3dArray* terrainMask) { _mask = terrainMask; }
+
     bool getHasBeenTraversed() const;
 
     Threading::ReadWriteMutex& getTileLayersMutex();
@@ -247,6 +252,8 @@ private:
 
     osg::observer_ptr<osgTerrain::Terrain> _CustomTerrain;
 
+    osg::ref_ptr<osg::Vec3dArray> _mask;
+
     Relative _family[5];
     Threading::ReadWriteMutex _tileLayersMutex;
 
@@ -271,18 +278,21 @@ class CustomTileFrame
 {
 public:
     CustomTileFrame( CustomTile* tile )
+        : _tileKey(tile->getKey())
     {
         Threading::ScopedReadLock sharedLock( tile->_tileLayersMutex );
         _colorLayers = tile->_colorLayers;
         _elevationLayer = tile->getElevationLayer();
         _locator = tile->getLocator();
         _sampleRatio = tile->getTerrain()->getSampleRatio();
+        _mask = tile->getTerrainMaskGeometry();
     }
-
+    TileKey _tileKey;
     ColorLayersByUID _colorLayers;
     osg::ref_ptr< osgTerrain::Layer > _elevationLayer;
     osg::ref_ptr< osgTerrain::Locator > _locator;
     float _sampleRatio;
+    osg::ref_ptr< osg::Vec3dArray > _mask;
 
     bool getCustomColorLayer( UID layerUID, CustomColorLayer& out ) const {
         ColorLayersByUID::const_iterator i = _colorLayers.find( layerUID );

@@ -1,0 +1,71 @@
+/* --*-c++-*-- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_COLOR_H
+#define OSGEARTHSYMBOLOGY_COLOR_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osg/Vec4f>
+#include <string>
+
+namespace osgEarth { namespace Symbology
+{
+    struct OSGEARTHSYMBOLOGY_EXPORT Color : public osg::Vec4f
+    {
+        Color() : osg::Vec4f(1,1,1,1) { }
+
+        Color( const Color& rhs ) : osg::Vec4f(rhs) { }
+
+        Color( const Color& rhs, float a );
+
+        Color( float r, float g, float b, float a = 1.0f )
+            : osg::Vec4f(r, g, b, a) { }
+
+        Color( unsigned rgba );
+
+        Color( const std::string& html );
+
+        std::string toHTML() const;
+
+        // built in colors
+        // http://en.wikipedia.org/wiki/Web_colors#HTML_color_names
+
+        static Color White;
+        static Color Silver;
+        static Color Gray;
+        static Color Black;
+        static Color Red;
+        static Color Maroon;
+        static Color Yellow;
+        static Color Olive;
+        static Color Lime;
+        static Color Green;
+        static Color Aqua;
+        static Color Teal;
+        static Color Blue;
+        static Color Navy;
+        static Color Fuchsia;
+        static Color Purple;
+        static Color Orange;
+
+        static Color DarkGray;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_COLOR_H

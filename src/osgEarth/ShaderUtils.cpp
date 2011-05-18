@@ -137,9 +137,13 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
         // apply if necessary:
         if ( !_applied && !_useUpdateTrav )
         {
-            node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
-            node->getStateSet()->addUniform( _lightEnabledUniform.get() );
-            _applied = true;
+            OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _stateSetMutex );
+            if (!_applied)
+            {
+                node->getOrCreateStateSet()->addUniform( _lightingEnabledUniform.get() );
+                node->getStateSet()->addUniform( _lightEnabledUniform.get() );
+                _applied = true;
+            }
         }		
     }        
 }
@@ -167,55 +171,144 @@ UpdateLightingUniformsHelper::updateTraverse( osg::Node* node )
 
 //------------------------------------------------------------------------
 
-ArrayUniform::ArrayUniform( osg::Uniform::Type type, const std::string& name, int size )
+ArrayUniform::ArrayUniform( const std::string& name, osg::Uniform::Type type, osg::StateSet* stateSet, unsigned size )
 {
-    _uniform = new osg::Uniform( type, name, size );
-    _uniformAlt = new osg::Uniform( type, name + "[0]", size );
+    attach( name, type, stateSet, size );
 }
 
-ArrayUniform::ArrayUniform( osg::StateSet* stateSet, const std::string& name )
+void
+ArrayUniform::attach( const std::string& name, osg::Uniform::Type type, osg::StateSet* stateSet, unsigned size )
 {
-    _uniform = stateSet->getUniform( name );
+    _uniform    = stateSet->getUniform( name );
     _uniformAlt = stateSet->getUniform( name + "[0]" );
-}
 
-void 
-ArrayUniform::setElement( int index, int value )
-{
-    _uniform->setElement( index, value );
-    _uniformAlt->setElement( index, value );
-}
-
-void 
-ArrayUniform::setElement( int index, bool value )
-{
-    _uniform->setElement( index, value );
-    _uniformAlt->setElement( index, value );
-}
-
-void 
-ArrayUniform::setElement( int index, float value )
-{
-    _uniform->setElement( index, value );
-    _uniformAlt->setElement( index, value );
-}
-
-void 
-ArrayUniform::addTo( osg::StateSet* stateSet )
-{
-    if ( stateSet )
+    if ( !isValid() )
     {
+        _uniform    = new osg::Uniform( type, name, size );
+        _uniformAlt = new osg::Uniform( type, name + "[0]", size );
         stateSet->addUniform( _uniform.get() );
         stateSet->addUniform( _uniformAlt.get() );
+    }
+
+    _stateSet = stateSet;
+}
+
+void 
+ArrayUniform::setElement( unsigned index, int value )
+{
+    if ( isValid() )
+    {
+        ensureCapacity( index+1 );
+        _uniform->setElement( index, value );
+        _uniformAlt->setElement( index, value );
     }
 }
 
 void 
-ArrayUniform::removeFrom( osg::StateSet* stateSet )
+ArrayUniform::setElement( unsigned index, bool value )
 {
-    if ( stateSet )
+    if ( isValid() )
     {
-        stateSet->removeUniform( _uniform->getName() );
-        stateSet->removeUniform( _uniformAlt->getName() );
+        ensureCapacity( index+1 );
+        _uniform->setElement( index, value );
+        _uniformAlt->setElement( index, value );
+    }
+}
+
+void 
+ArrayUniform::setElement( unsigned index, float value )
+{
+    if ( isValid() )
+    {
+        ensureCapacity( index+1 );
+        _uniform->setElement( index, value );
+        _uniformAlt->setElement( index, value );
+    }
+}
+
+void
+ArrayUniform::setElement( unsigned index, const osg::Matrix& value )
+{
+    if ( isValid() )
+    {
+        ensureCapacity( index+1 );
+        _uniform->setElement( index, value );
+        _uniformAlt->setElement( index, value );
+    }
+}
+
+bool 
+ArrayUniform::getElement( unsigned index, int& out_value ) const
+{
+    return isValid() ? _uniform->getElement( index, out_value ) : false;
+}
+
+bool 
+ArrayUniform::getElement( unsigned index, bool& out_value ) const
+{
+    return isValid() ? _uniform->getElement( index, out_value ) : false;
+}
+
+bool 
+ArrayUniform::getElement( unsigned index, float& out_value ) const
+{
+    return isValid() ? _uniform->getElement( index, out_value ) : false;
+}
+
+bool 
+ArrayUniform::getElement( unsigned index, osg::Matrix& out_value ) const
+{
+    return isValid() ? _uniform->getElement( index, out_value ) : false;
+}
+
+void
+ArrayUniform::ensureCapacity( unsigned newSize )
+{
+    if ( isValid() && _uniform->getNumElements() < newSize )
+    {
+        osg::ref_ptr<osg::StateSet> stateSet_safe = _stateSet.get();
+        if ( stateSet_safe.valid() )
+        {
+            osg::ref_ptr<osg::Uniform> _oldUniform    = _uniform.get();
+            osg::ref_ptr<osg::Uniform> _oldUniformAlt = _oldUniform.get();
+
+            stateSet_safe->removeUniform( _uniform->getName() );
+            stateSet_safe->removeUniform( _uniformAlt->getName() );
+
+            _uniform    = new osg::Uniform( _uniform->getType(), _uniform->getName(), newSize );
+            _uniformAlt = new osg::Uniform( _uniform->getType(), _uniform->getName() + "[0]", newSize );
+
+            for( unsigned i = 0; i < _oldUniform->getNumElements(); ++i )
+            {
+                float value;
+                _oldUniform->getElement( i, value );
+                setElement( i, value );
+            }
+
+            stateSet_safe->addUniform( _uniform.get() );
+            stateSet_safe->addUniform( _uniformAlt.get() );
+
+            stateSet_safe.release(); // don't want to unref delete
+        }
+    }
+}
+
+void
+ArrayUniform::detach()
+{
+    if ( isValid() )
+    {
+        osg::ref_ptr<osg::StateSet> stateSet_safe = _stateSet.get();
+        if ( stateSet_safe.valid() )
+        {
+            stateSet_safe->removeUniform( _uniform->getName() );
+            stateSet_safe->removeUniform( _uniformAlt->getName() );
+
+            _uniform = 0L;
+            _uniformAlt = 0L;
+            _stateSet = 0L;
+
+            stateSet_safe.release(); // don't want to unref delete
+        }
     }
 }

@@ -262,6 +262,10 @@ namespace osgEarth
             return osgEarth::as<T>( r, fallback );
         }
 
+        bool boolValue( bool fallback ) const {
+            return osgEarth::as<bool>( _defaultValue, fallback );
+        }
+
         // populates the output value iff the Config exists.
         template<typename T>
         bool getIfSet( const std::string& key, optional<T>& output ) const {

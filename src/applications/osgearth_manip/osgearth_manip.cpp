@@ -37,126 +37,114 @@ using namespace osgEarth::Util::Controls;
 
 namespace
 {
-class SwitchHandler : public osgGA::GUIEventHandler
-{
-public:
-    SwitchHandler(char key = 0)
-        : _key(key) {}
-
-    bool handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& /*aa*/, osg::Object* object, osg::NodeVisitor* /*nv*/)
+    class SwitchHandler : public osgGA::GUIEventHandler
     {
-        osg::Switch* sw = dynamic_cast<osg::Switch*>(object);
-        if (!sw)
-            return false;
-        if (ea.getHandled())
-            return false;
-        switch(ea.getEventType())
+    public:
+        SwitchHandler(char key = 0) : _key(key) {}
+
+        bool handle(const osgGA::GUIEventAdapter& ea,osgGA::GUIActionAdapter& aa, osg::Object* object, osg::NodeVisitor* /*nv*/)
         {
-        case osgGA::GUIEventAdapter::KEYDOWN:
-            if (ea.getKey() == _key)
+            if (ea.getHandled() || ea.getEventType() != osgGA::GUIEventAdapter::KEYDOWN )
+                return false;
+
+            if ( ea.getKey() == _key )
             {
-                for (unsigned i = 0; i < sw->getNumChildren(); ++i)
-                {
-                    bool state = sw->getValue(i);
-                    sw->setValue(i, !state);
-                }
+                ControlCanvas* canvas = ControlCanvas::get(aa.asView());
+                if ( canvas )
+                    canvas->setNodeMask( canvas->getNodeMask() ^ 0xFFFFFFFF );
+            }
+            return false;
+        }
+
+    protected:
+        char _key;
+    };
+
+    osg::Node* createHelp( osgViewer::View* view )
+    {
+        static char s_help[] = 
+            "left mouse: pan \n"
+            "middle mouse: tilt/slew \n"
+            "right mouse: zoom in/out continuous \n"
+            "double-click: zoom in \n"
+            "scroll wheel: zoom in/out \n"
+            "arrows: pan\n"
+            "1-6 : fly to preset viewpoints \n"
+            "shift-right-mouse: locked panning\n"
+            "u : toggle azimuth locking\n"
+            "h : toggle this help\n";
+
+        VBox* v = new VBox();
+        v->addControl( new LabelControl( "EarthManipulator", osg::Vec4f(1,1,0,1) ) );
+        v->addControl( new LabelControl( s_help ) );
+        ControlCanvas* canvas = ControlCanvas::get( view );
+        canvas->addControl( v );
+        canvas->setEventCallback(new SwitchHandler('h'));    
+
+        return canvas;
+    }
+
+    // some preset viewpoints.
+    static Viewpoint VPs[] = {
+        Viewpoint( "Africa",        osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
+        Viewpoint( "California",    osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
+        Viewpoint( "Europe",        osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
+        Viewpoint( "Washington DC", osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
+        Viewpoint( "Australia",     osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 ),
+        Viewpoint( "Boston",        osg::Vec3d( -71.096936, 42.332771, 0 ), 0.0, -90, 1e5 )
+    };
+
+    // a simple handler that demonstrates the "viewpoint" functionality in 
+    // osgEarthUtil::EarthManipulator. Press a number key to fly to a viewpoint.
+    struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
+    {
+        FlyToViewpointHandler( EarthManipulator* manip ) : _manip(manip) { }
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+        {
+            if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() >= '1' && ea.getKey() <= '6' )
+            {
+                _manip->setViewpoint( VPs[ea.getKey()-'1'], 4.0 );
+            }
+            return false;
+        }
+
+        osg::observer_ptr<EarthManipulator> _manip;
+    };
+
+    struct LockAzimuthHandler : public osgGA::GUIEventHandler
+    {
+        LockAzimuthHandler(char key, EarthManipulator* manip)
+            : _key(key), _manip(manip)
+        {
+        }
+
+        bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
+        {
+            if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
+            {
+                bool lockAzimuth
+                    = _manip->getSettings()->getLockAzimuthWhilePanning();
+                _manip->getSettings()->setLockAzimuthWhilePanning(!lockAzimuth);
                 return true;
             }
-            break;
-        default:
-            break;
+            return false;
         }
-        return false;
-    }
-protected:
-    char _key;
-};
+
+        void getUsage(osg::ApplicationUsage& usage) const
+        {
+            using namespace std;
+            usage.addKeyboardMouseBinding(string(1, _key),
+                string("Toggle azimuth locking"));
+        }
+
+        char _key;
+        osg::ref_ptr<EarthManipulator> _manip;
+
+    };
+
 }
 
-static osg::Node*
-createHelp( osgViewer::View* view )
-{
-    static char s_help[] = 
-        "left mouse: pan \n"
-        "middle mouse: tilt/slew \n"
-        "right mouse: zoom in/out continuous \n"
-        "double-click: zoom in \n"
-        "scroll wheel: zoom in/out \n"
-        "arrows: pan\n"
-        "1-6 : fly to preset viewpoints \n"
-        "shift-right-mouse: locked panning\n"
-        "u : toggle azimuth locking\n"
-        "h : toggle this help\n";
-
-    VBox* v = new VBox();
-    v->addControl( new LabelControl( "EarthManipulator", osg::Vec4f(1,1,0,1) ) );
-    v->addControl( new LabelControl( s_help ) );
-    ControlCanvas* cc = new ControlCanvas( view );
-    cc->addControl( v );
-    osg::Switch* sw = new osg::Switch;
-    sw->addChild(cc);
-    sw->setEventCallback(new SwitchHandler('h'));
-    return sw;
-}
-
-// some preset viewpoints.
-static Viewpoint VPs[] = {
-    Viewpoint( "Africa",        osg::Vec3d(    0.0,   0.0, 0.0 ), 0.0, -90.0, 10e6 ),
-    Viewpoint( "California",    osg::Vec3d( -121.0,  34.0, 0.0 ), 0.0, -90.0, 6e6 ),
-    Viewpoint( "Europe",        osg::Vec3d(    0.0,  45.0, 0.0 ), 0.0, -90.0, 4e6 ),
-    Viewpoint( "Washington DC", osg::Vec3d(  -77.0,  38.0, 0.0 ), 0.0, -90.0, 1e6 ),
-    Viewpoint( "Australia",     osg::Vec3d(  135.0, -20.0, 0.0 ), 0.0, -90.0, 2e6 ),
-    Viewpoint( "Boston",        osg::Vec3d( -71.096936, 42.332771, 0 ), 0.0, -90, 1e5 )
-};
-
-// a simple handler that demonstrates the "viewpoint" functionality in 
-// osgEarthUtil::EarthManipulator. Press a number key to fly to a viewpoint.
-struct FlyToViewpointHandler : public osgGA::GUIEventHandler 
-{
-    FlyToViewpointHandler( EarthManipulator* manip ) : _manip(manip) { }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() >= '1' && ea.getKey() <= '6' )
-        {
-            _manip->setViewpoint( VPs[ea.getKey()-'1'], 4.0 );
-        }
-        return false;
-    }
-
-    osg::observer_ptr<EarthManipulator> _manip;
-};
-
-struct LockAzimuthHandler : public osgGA::GUIEventHandler
-{
-    LockAzimuthHandler(char key, EarthManipulator* manip)
-        : _key(key), _manip(manip)
-    {
-    }
-
-    bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
-    {
-        if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
-        {
-            bool lockAzimuth
-                = _manip->getSettings()->getLockAzimuthWhilePanning();
-            _manip->getSettings()->setLockAzimuthWhilePanning(!lockAzimuth);
-            return true;
-        }
-        return false;
-    }
-
-    void getUsage(osg::ApplicationUsage& usage) const
-    {
-        using namespace std;
-        usage.addKeyboardMouseBinding(string(1, _key),
-                                      string("Toggle azimuth locking"));
-    }
-
-    char _key;
-    osg::ref_ptr<EarthManipulator> _manip;
-    
-};
 
 int main(int argc, char** argv)
 {
@@ -177,7 +165,7 @@ int main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
-    root->addChild( createHelp( &viewer ) );
+    root->addChild( createHelp(&viewer) );
 
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )

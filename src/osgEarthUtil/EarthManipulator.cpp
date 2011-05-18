@@ -58,6 +58,25 @@ namespace
     void
     s_getHPRFromQuat(const osg::Quat& q, double &h, double &p, double &r)
     {
+#if 0
+        // http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToEuler/index.htm
+
+        p = atan2(2*(q.y()*q.z() + q.w()*q.x()), (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z() * q.z()));
+	    h = asin (2*q.x()*q.y() + 2*q.z()*q.w());
+        r = atan2(2*q.x()*q.w()-2*q.y()*q.z() , 1 - 2*q.x()*q.x() - 2*q.z()*q.z());
+    	
+        if( osg::equivalent( q.x()*q.y() + q.z() *q.w(), 0.5 ) )
+	    { 
+		    p = (float)(2 * atan2( q.x(),q.w())); 
+		    r = 0;     
+	    }  	 
+        else if( osg::equivalent( q.x()*q.y() + q.z()*q.w(), -0.5 ) )
+	    { 
+		    p = (float)(-2 * atan2(q.x(), q.w())); 
+		    r = 0; 
+	    } 
+     
+#else
         osg::Matrixd rot(q);
         p = asin(rot(1,2));
         if( osg::equivalent(osg::absolute(p), osg::PI_2) )
@@ -70,6 +89,7 @@ namespace
             r = atan2( rot(0,2), rot(2,2) );
             h = atan2( rot(1,0), rot(1,1) );
         }
+#endif
     }
 }
 
@@ -577,7 +597,7 @@ EarthManipulator::established()
         // track the local angles.
         recalculateLocalPitchAndAzimuth();
 
-        OE_DEBUG << "[EarthManip] new CSN established." << std::endl;
+        //OE_DEBUG << "[EarthManip] new CSN established." << std::endl;
     }
 
     return _csn.valid() && _node.valid();
@@ -1663,7 +1683,7 @@ EarthManipulator::recalculateCenter( const osg::CoordinateFrame& coordinateFrame
         if (!hitFound)
         {
             // ??
-            OE_DEBUG<<"EarthManipulator unable to intersect with terrain."<<std::endl;
+            //OE_DEBUG<<"EarthManipulator unable to intersect with terrain."<<std::endl;
         }
     }
 }
@@ -1725,7 +1745,7 @@ EarthManipulator::pan( double dx, double dy )
 			}
 			else
 			{
-				OE_DEBUG<<"New up orientation nearly inline - no need to rotate"<<std::endl;
+				//OE_DEBUG<<"New up orientation nearly inline - no need to rotate"<<std::endl;
 			}
 
 			if ( _settings->getLockAzimuthWhilePanning() )
@@ -1766,6 +1786,13 @@ EarthManipulator::rotate( double dx, double dy )
     // clamp the local pitch delta; never allow the pitch to hit -90.
     double minp = osg::DegreesToRadians( osg::clampAbove( _settings->getMinPitch(), -89.9 ) );
     double maxp = osg::DegreesToRadians( _settings->getMaxPitch() );
+
+    //OE_NOTICE << LC 
+    //    << "LocalPitch=" << osg::RadiansToDegrees(_local_pitch)
+    //    << ", dy=" << osg::RadiansToDegrees(dy)
+    //    << ", dy+lp=" << osg::RadiansToDegrees(_local_pitch+dy)
+    //    << ", limits=" << osg::RadiansToDegrees(minp) << "," << osg::RadiansToDegrees(maxp)
+    //    << std::endl;
 
     // clamp pitch range:
     if ( dy + _local_pitch > maxp || dy + _local_pitch < minp )
@@ -1970,8 +1997,8 @@ EarthManipulator::handleMouseAction( const Action& action, osg::View* view )
     // return if less then two events have been added.
     if (_ga_t0.get()==NULL || _ga_t1.get()==NULL) return false;
 
-    if ( osgEarth::getNotifyLevel() > osg::INFO )
-        dumpActionInfo( action, osg::DEBUG_INFO );
+    //if ( osgEarth::getNotifyLevel() > osg::INFO )
+    //    dumpActionInfo( action, osg::DEBUG_INFO );
 
     double dx = _ga_t0->getXnormalized()-_ga_t1->getXnormalized();
     double dy = _ga_t0->getYnormalized()-_ga_t1->getYnormalized();
@@ -2058,8 +2085,8 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
 {
     bool handled = true;
 
-    if ( osgEarth::getNotifyLevel() > osg::INFO )
-        dumpActionInfo( action, osg::DEBUG_INFO );
+    //if ( osgEarth::getNotifyLevel() > osg::INFO )
+    //    dumpActionInfo( action, osg::DEBUG_INFO );
 
     //OE_NOTICE << "action=" << action << ", dx=" << dx << ", dy=" << dy << std::endl;
 

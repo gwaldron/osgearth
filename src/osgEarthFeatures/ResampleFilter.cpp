@@ -118,6 +118,7 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
                 double newSegLen = segLen/(double)numDivs;
                 seg.normalize();
                 osg::Vec3d newPt;
+                double newHeight;
                 switch (_resampleMode.value())
                 {
                 case RESAMPLE_LINEAR:
@@ -130,7 +131,8 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
                         double bearing = GeoMath::bearing(p0Rad.y(), p0Rad.x(), p1Rad.y(), p1Rad.x());
                         double lat,lon;
                         GeoMath::destination(p0Rad.y(), p0Rad.x(), bearing, newSegLen, lat, lon);
-                        newPt = osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), p0Rad.z());
+                        newHeight = p0Rad.z() + ( p1Rad.z() - p0Rad.z() ) / (double)numDivs;
+                        newPt = osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), newHeight);
                     }
                     break;
                 case RESAMPLE_RHUMB:
@@ -138,7 +140,8 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
                         double bearing = GeoMath::rhumbBearing(p0Rad.y(), p0Rad.x(), p1Rad.y(), p1Rad.x());
                         double lat,lon;
                         GeoMath::rhumbDestination(p0Rad.y(), p0Rad.x(), bearing, newSegLen, lat, lon);
-                        newPt = osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), p0Rad.z());
+                        newHeight = p0Rad.z() + ( p1Rad.z() - p0Rad.z() ) / (double)numDivs;
+                        newPt = osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), newHeight);
                     }
                     break;
                 }

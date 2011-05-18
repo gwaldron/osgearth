@@ -287,6 +287,13 @@ CompositeTileSource::initialize( const std::string& referenceURI, const Profile*
             }
             
             _dynamic = _dynamic || source->isDynamic();
+
+            // gather extents
+            const DataExtentList& extents = source->getDataExtents();
+            for( DataExtentList::const_iterator j = extents.begin(); j != extents.end(); ++j )
+            {
+                getDataExtents().push_back( *j );
+            }
         }
     }
 

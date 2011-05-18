@@ -1,0 +1,91 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H
+#define OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Style>
+#include <osg/Geode>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Feature filter that will substitute external nodes for feature geometry.
+     *
+     * TODO:
+     *  - line sub (interval, density scattering)
+     *  - polygon sub (interval, density scattering)
+     *  - density-based scattering for points
+     *  - clustering (optional) at various levels
+     *  - proper ECEF normal computation per feature
+     *  - terrain clamping of the localization point
+     *  - automatic height offset based on minimum Z of model bbox
+     *  - predicate based model selection (scripting)
+     *  - instancing (maybe)
+     *  - texture collection and sharing (session based) when clustering
+     */
+    class OSGEARTHFEATURES_EXPORT SubstituteModelFilter : public FeatureFilter
+    {
+    public:
+        // Call this determine whether this filter is available.
+        static bool isSupported() { return true; }
+
+    public:
+        /** Construct a new sub-model filter that will operate on the given style */
+        SubstituteModelFilter( const Style& style =Style() );
+
+        /** Whether to cluster all the model instances into a single geode. Default is false. */
+        void setClustering( bool value ) { _cluster = value; }
+        bool getClustering() const { return _cluster; }
+
+        /** The matrix with which to transform each model instance after placement. */
+        void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
+        const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
+
+    public:
+        /** Processes a new feature list */
+        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+
+        /** Gets the resulting OSG scene graph */
+        osg::Node* getNode() const { return _result.get(); }
+
+    protected:
+        Style                     _style;
+        osg::ref_ptr<osg::Node>   _result;
+        bool                      _cluster;
+        osg::Matrixd              _modelMatrix;
+
+        struct Data {
+            osg::ref_ptr<osg::Node> _model;
+        };
+        
+        bool pushFeature( Feature* input, Data& data, osg::Group* ap, FilterContext& context );
+
+        bool cluster(const FeatureList& features, Data& data, osg::Group* ap, FilterContext& context );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_SUBSTITUTE_MODEL_FILTER_H

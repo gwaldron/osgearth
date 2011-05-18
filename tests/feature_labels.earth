@@ -11,25 +11,22 @@ This shows how to label point features with an attribute.
         <url>../data/world.tif</url>
     </image>
     
-    <!-- use the "feature_label" driver to generate labels -->
-    <model name="cities" driver="feature_label">
+    <model name="cities" driver="feature_geom">
 
-        <!-- Configure the OGR feature driver to read the shapefile -->
         <features name="cities" driver="ogr">
             <url>../data/world.shp</url>
         </features>
 
-        <!-- Appearance details. Note the use of [...] to fetch an attribute value. -->
         <styles>
             <style type="text/css">              
                 cities {
-                   stroke: #ffff00;
-                   text-halo: #000000;
-                   text-font: arial.ttf;
-                   text-size: 18;
-                   text-rotate-to-screen: true;
+                   text-provider: overlay;
+                   text-content:  [cntry_name];
+                   text-priority: [pop_cntry];
+                   text-halo:     #000000;
+                   text-font:     arial.ttf;
+                   text-size:     18;
                    text-remove-duplicate-labels: true;
-                   text-content: [cntry_name];
                 }     
             </style>
         </styles>

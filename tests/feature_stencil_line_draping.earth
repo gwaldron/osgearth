@@ -24,10 +24,8 @@ build osgEarth with GEOS support.
              
         <features name="world" driver="ogr">
             <url>../data/world.shp</url>
-            <ogr_driver>ESRI Shapefile</ogr_driver>
+            <convert type="line"/>
         </features>
-        
-        <geometry_type>line</geometry_type>
                 
         <!-- This driver uses the "stroke-width" property below to define
              the width (in data source coordinated) of the draped lines.

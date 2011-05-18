@@ -1,0 +1,60 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_BUILD_TEXT_FILTER_H
+#define OSGEARTHFEATURES_BUILD_TEXT_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Style>
+#include <osg/Geode>
+
+namespace osgEarth { namespace Features 
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Builds text labels from a stream of input features.
+     */
+    class OSGEARTHFEATURES_EXPORT BuildTextFilter
+    {
+    public:
+        BuildTextFilter( const Style& style =Style() );
+
+        /** The style to apply to feature geometry */
+        const Style& getStyle() { return _style; }
+        void setStyle(const Style& s) { _style = s; }
+
+        /** Gets the resulting OSG scene graph */
+        osg::Node* takeNode() { return _result.release(); }
+
+        /** Pushes a list of features through the filter. */
+        FilterContext push( FeatureList& input, const FilterContext& context );
+
+    protected:
+        osg::ref_ptr<osg::Node>  _result;
+        osg::ref_ptr<osg::Geode> _geode;
+        Style                    _style;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

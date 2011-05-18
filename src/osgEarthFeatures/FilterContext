@@ -1,0 +1,140 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHFEATURES_FILTER_CONTEXT_H
+#define OSGEARTHFEATURES_FILTER_CONTEXT_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/OptimizerHints>
+#include <osgEarthFeatures/Session>
+#include <osgEarth/GeoData>
+#include <osg/Matrix>
+#include <list>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+    class Session;
+
+    /**
+     * Context within which a chain of filters is executed.
+     */
+    class OSGEARTHFEATURES_EXPORT FilterContext
+    {
+    public:
+        FilterContext(
+            Session*              session       =0L,
+            const FeatureProfile* profile       =0L,
+            const GeoExtent&      workingExtent =GeoExtent::INVALID );
+
+        FilterContext( const FilterContext& rhs );
+
+    public: // properties
+
+        /**
+         * Access to the Session under which this filter context operates
+         */
+        Session* getSession() { return _session.get(); }
+        const Session* getSession() const { return _session.get(); }
+
+        /**
+         * The spatial profile of the feature data in this context.
+         */
+        const FeatureProfile* profile() const { return _profile.get(); }
+        osg::ref_ptr<const FeatureProfile>& profile() { return _profile; }
+
+        /**
+         * The spatial extent of the working cell
+         */
+        optional<GeoExtent>& extent() { return _extent; }
+        const optional<GeoExtent>& extent() const { return _extent; }
+
+        /**
+         * Whether to assume a geocentric coordinate system for geographic profiles.
+         */
+        bool isGeocentric() const { return _isGeocentric; }
+        bool& isGeocentric() { return _isGeocentric; }
+
+        /**
+         * Whether this context has a non-identity reference frame
+         */
+        bool hasReferenceFrame() const { return !_referenceFrame.isIdentity(); }
+
+        /**
+         * Converts from world coordiantes into local coordinates 
+         */
+        osg::Vec3d toLocal( const osg::Vec3d& world ) const { return world * _referenceFrame; }
+
+        /**
+         * Converts a Geometry from world coords to local coords
+         */
+        void toLocal( Geometry* geom ) const;
+
+        /**
+         * Converts from local (reference frame) coordinates into world coordinates
+         */
+        osg::Vec3d toWorld( const osg::Vec3d& local ) const { return local * _inverseReferenceFrame; }
+
+        /**
+         * Converts a Geometry from local coords to world coords
+         */
+        void toWorld( Geometry* geom ) const;
+
+        /**
+         * Multiplying by the reference frame takes a point from world coords into local coords.
+         */
+        const osg::Matrixd& referenceFrame() const { return _referenceFrame; }
+
+        /**
+         * Multiplying by the inverse reference frame takes a point from local coords into world coords.
+         */
+        const osg::Matrix& inverseReferenceFrame() const { return _inverseReferenceFrame; }
+
+        /**
+         * Sets the reference frame (and its inverse)
+         */
+        void setReferenceFrame( const osg::Matrixd& in ) {
+            _referenceFrame = in;
+            _inverseReferenceFrame.invert( _referenceFrame ); // = osg::Matrixd::inverse( _referenceFrame );
+        }      
+
+        /**
+         * Hints to the OSG optimizer. Filters that use this context can explicity
+         * ask to include or exclude optimizer options via this mechanism.
+         */
+        OptimizerHints& optimizerHints() { return _optimizerHints; }
+
+        /** Dump as a string */
+        std::string toString() const;
+
+    protected:
+        osg::ref_ptr<Session> _session;
+        osg::ref_ptr<const FeatureProfile> _profile;
+        bool _isGeocentric;
+        optional<GeoExtent> _extent;
+        osg::Matrixd _referenceFrame;
+        osg::Matrixd _inverseReferenceFrame;
+        OptimizerHints _optimizerHints;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FILTER_CONTEXT_H
+

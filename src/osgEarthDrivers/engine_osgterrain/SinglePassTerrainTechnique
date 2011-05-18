@@ -26,6 +26,7 @@
 #include <osg/MatrixTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osg/StateSet>
 #include <osg/Texture2DArray>
 #include <osg/Version>
 #include <osg/Uniform>
@@ -35,8 +36,12 @@
 #include <osgEarth/Progress>
 #include <osgEarth/TextureCompositor>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarthSymbology/Geometry>
 
 #include <queue>
+
+class Tile;
+class TileFrame;
 
 // --------------------------------------------------------------------------
 
@@ -61,15 +66,22 @@ public:
     SinglePassTerrainTechnique( TextureCompositor* compositor =0L ); //osgTerrain::Locator* locator =0L );
 
     SinglePassTerrainTechnique(const SinglePassTerrainTechnique&,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
-    META_Object(osgEarth, SinglePassTerrainTechnique);
 
+    META_Object( osgEarth, SinglePassTerrainTechnique );
 
 public: /* overrides */
+
+    virtual void init();
+
+#if 0
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)        
     virtual void init(int dirtyMask, bool assumeMultiThreaded);
 #else
     virtual void init();
 #endif
+#endif
+
+    void setParentTile( Tile* tile ) { _parentTile = tile; }
 
     void compile( const TileUpdate& updateSpec, ProgressCallback* progress );
 
@@ -77,7 +89,7 @@ public: /* overrides */
     bool applyTileUpdates();
 
     /** Traverse the terrain subgraph.*/
-    virtual void traverse(osg::NodeVisitor& nv);
+    virtual void traverse( osg::NodeVisitor& nv );
 
 public:
 
@@ -105,6 +117,9 @@ public:
     * for all graphics contexts. */
     virtual void releaseGLObjects(osg::State* = 0) const;
 
+    osg::StateSet* getActiveStateSet() const;
+
+
 protected:
 
     void calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j );
@@ -112,6 +127,7 @@ protected:
 private:
 
     virtual ~SinglePassTerrainTechnique();
+    bool _debug;
 
     OpenThreads::Mutex _compileMutex;
     //OpenThreads::Mutex                  _writeBufferMutex;
@@ -126,12 +142,10 @@ private:
     bool _pendingFullUpdate;    
     bool _pendingGeometryUpdate;
 
-    TileUpdate _lastUpdate;
-
     struct ImageLayerUpdate {
         GeoImage _image;
         UID      _layerUID;
-        //int      _layerIndex;
+        bool     _isRealData; // versus fallback data
     };
     typedef std::queue<ImageLayerUpdate> ImageLayerUpdates;
     ImageLayerUpdates _pendingImageLayerUpdates;
@@ -140,7 +154,9 @@ private:
     typedef std::map< UID, int > LayerUIDtoIndexMap;
     LayerUIDtoIndexMap _layerUIDtoIndexMap;
 
+    // XXX Are these both necessary?
     GeoExtent _tileExtent;
+    TileKey _tileKey;
 
     bool _optimizeTriangleOrientation;
 
@@ -150,17 +166,18 @@ private:
 private:
 
     osg::Vec3d computeCenterModel();
-    GeoImage createGeoImage( const CustomColorLayer& layer ) const; //const osgTerrain::Layer* imageLayer ) const;
-    osg::Geode* createGeometry( const CustomTileFrame& tilef );
-    osg::StateSet* createStateSet( const CustomTileFrame& tilef );
-    void prepareImageLayerUpdate( int layerIndex, const CustomTileFrame& tilef );
+    bool createGeoImage( const CustomColorLayer& layer, GeoImage& image ) const; //const osgTerrain::Layer* imageLayer ) const;
+    osg::Geode* createGeometry( const TileFrame& tilef );
+    osg::StateSet* createStateSet( const TileFrame& tilef );
+    void prepareImageLayerUpdate( int layerIndex, const TileFrame& tilef );
     //Threading::ReadWriteMutex& getMutex();
-    inline osg::Geode* getFrontGeode() { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
+    inline osg::Geode* getFrontGeode() const { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
+    osg::StateSet* getParentStateSet() const;
     //const CustomColorLayer* getLayerByUID( UID uid ) const;
     int getIndexOfColorLayerWithUID( UID uid ) const;
 
     
-
+    osg::observer_ptr<Tile> _parentTile;
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_SINGLE_PASS_TERRAIN_TECHNIQUE

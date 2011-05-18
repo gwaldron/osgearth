@@ -455,8 +455,11 @@ Profile::createTileKey( double x, double y, unsigned int level ) const
 }
 
 GeoExtent
-Profile::clampAndTransformExtent( const GeoExtent& input ) const
+Profile::clampAndTransformExtent( const GeoExtent& input, bool* out_clamped ) const
 {
+    if ( out_clamped )
+        *out_clamped = false;
+
     // do the clamping in LAT/LONG.
     const SpatialReference* geo_srs = getSRS()->getGeographicSRS();
 
@@ -476,6 +479,9 @@ Profile::clampAndTransformExtent( const GeoExtent& input ) const
         osg::clampBetween( gcs_input.yMin(), _latlong_extent.yMin(), _latlong_extent.yMax() ),
         osg::clampBetween( gcs_input.xMax(), _latlong_extent.xMin(), _latlong_extent.xMax() ),
         osg::clampBetween( gcs_input.yMax(), _latlong_extent.yMin(), _latlong_extent.yMax() ) );
+
+    if ( out_clamped )
+        *out_clamped = (clamped_gcs_input != gcs_input);
 
     // finally, transform the clamped extent into this profile's SRS and return it.
     GeoExtent result =

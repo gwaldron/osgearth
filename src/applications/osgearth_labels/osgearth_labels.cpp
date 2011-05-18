@@ -34,7 +34,7 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-void createLabels( ControlCanvas*, Map* );
+osg::Group* createLabels( Map* );
 
 std::string g_featureFile, g_labelAttr, g_priorityAttr;
 bool g_removeDupes = true;
@@ -82,16 +82,13 @@ int main(int argc, char** argv)
     MapNode* mapNode = MapNode::findMapNode(node);
     if ( mapNode )
     {
-        // create a surface to house the controls
-        ControlCanvas* canvas = new ControlCanvas( &viewer );
-        root->addChild( canvas );
-
         viewer.setSceneData( root );
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator );
 
+        //root->addChild( new ControlCanvas( &viewer ) );
+
         // load up some labels.
-        createLabels( canvas, mapNode->getMap() );
-        root->addChild( canvas->getSceneControls() );
+        root->addChild( createLabels(mapNode->getMap()) );
     }
 
     // add some stock OSG handlers:
@@ -105,9 +102,11 @@ int main(int argc, char** argv)
     return viewer.run();
 }
 
-void
-createLabels( ControlCanvas* canvas, Map* map )
+osg::Group*
+createLabels( Map* map )
 {
+    osg::ref_ptr<osg::Group> labels = new osg::Group();
+
     // first, open up the source shapefile
     OGRFeatureOptions fo;
     fo.url() = g_featureFile;
@@ -116,7 +115,7 @@ createLabels( ControlCanvas* canvas, Map* map )
     if ( !features.valid() )
     {
         OE_WARN << LC << "Unable to load features!" << std::endl;
-        return;
+        return 0L;
     }
 
     features->initialize( "" );
@@ -124,17 +123,17 @@ createLabels( ControlCanvas* canvas, Map* map )
     if ( !featureProfile || !featureProfile->getSRS() )
     {
         OE_WARN << LC << "Feature data has no spatial reference!" << std::endl;
-        return;
+        return 0L;
     }
 
     osg::ref_ptr<FeatureCursor> cursor = features->createFeatureCursor();
     if ( !cursor.valid() )
     {
         OE_WARN << LC << "Failed to query the feature source!" << std::endl;
-        return;
+        return 0L;
     }
 
-    SceneControlBin* priorityBin = canvas->getSceneControls();
+    //SceneControlBin* priorityBin = canvas->getSceneControls();
 
     unsigned count = 0;
 
@@ -177,9 +176,13 @@ createLabels( ControlCanvas* canvas, Map* map )
             continue;
 
         // create the label and place it:
-        LabelControl* label = new LabelControl( text );
-        osg::MatrixTransform* xform = priorityBin->addControl( label, population );
-        xform->setMatrix( osg::Matrix::translate(worldPoint) );
+        osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::translate(worldPoint) );
+        xform->addChild( new ControlNode(new LabelControl(text)) );
+        labels->addChild( xform );
+
+        //LabelControl* label = new LabelControl( text );
+        //osg::MatrixTransform* xform = priorityBin->addControl( label, population );
+        //xform->setMatrix( osg::Matrix::translate(worldPoint) );
 
         ++count;
 
@@ -187,5 +190,7 @@ createLabels( ControlCanvas* canvas, Map* map )
     }
 
     OE_NOTICE << LC << "Found " << count << " features. " << std::endl;
+
+    return labels.release();
 }
 

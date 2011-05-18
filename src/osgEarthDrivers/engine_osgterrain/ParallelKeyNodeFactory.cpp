@@ -27,11 +27,12 @@ using namespace OpenThreads;
 
 //--------------------------------------------------------------------------
 
-ParallelKeyNodeFactory::ParallelKeyNodeFactory(TileBuilder* builder,
+ParallelKeyNodeFactory::ParallelKeyNodeFactory(TileBuilder*             builder,
                                                const OSGTerrainOptions& options,
-                                               const MapInfo& mapInfo,
-                                               CustomTerrain* terrain,
-                                               UID engineUID ) :
+                                               const MapInfo&           mapInfo,
+                                               Terrain*         terrain,
+                                               UID                      engineUID ) :
+
 SerialKeyNodeFactory( builder, options, mapInfo, terrain, engineUID )
 {
     //NOP
@@ -71,11 +72,12 @@ ParallelKeyNodeFactory::createNode( const TileKey& key )
     {
         if ( jobs[i].valid() )
         {
-            osg::ref_ptr<CustomTile> tile;
+            osg::ref_ptr<Tile> tile;
             bool hasRealData;
-            _builder->finalizeJob( jobs[i].get(), tile, hasRealData );
+            bool hasLodBlending;
+            _builder->finalizeJob( jobs[i].get(), tile, hasRealData, hasLodBlending );
             if ( tile.valid() )
-                addTile( tile.get(), hasRealData, root );
+                addTile( tile.get(), hasRealData, hasLodBlending, root );
         }
     }
 

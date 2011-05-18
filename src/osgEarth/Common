@@ -26,12 +26,6 @@
 #include <osg/ref_ptr>
 #include <osg/Version>
 #include <string>
-#include <sstream>
-#include <osg/io_utils>
-#include <map>
-#include <algorithm>
-#include <iomanip>
-#include <cctype>
 
 // define the OSG Version checks for older OSG versions
 
@@ -48,55 +42,7 @@ namespace osgEarth
 {
     // application-wide unique ID.
     typedef int UID;
-
-    // converts a string to primitive using serialization
-    template<typename T> inline T
-    as( const std::string& str, T default_value )
-    {
-        T temp = default_value;
-        std::istringstream strin( str );
-        if ( !strin.eof() ) strin >> temp;
-        return temp;
-    }
-
-    // template specialization for a bool
-    template<> inline bool
-    as<bool>( const std::string& str, bool default_value )
-    {
-        std::string temp = str;
-        std::transform( temp.begin(), temp.end(), temp.begin(), ::tolower );
-        return
-            temp == "true" || temp == "yes" || temp == "on" ? true :
-            temp == "false" || temp == "no" || temp == "off" ? false :
-            default_value;
-    }
-
-    // template specialization for string
-    template<> inline std::string
-    as<std::string>( const std::string& str, std::string default_value )
-    {
-        return str;
-    }
-
-    // converts a primitive to a string
-    // TODO: precision??
-    template<typename T> inline std::string
-    toString(const T value)
-    {
-        std::stringstream out;
-		out << std::setprecision(20) << std::fixed << value;
-        std::string outStr;
-        outStr = out.str();
-        return outStr;
-    }
-
-    // template speciallization for a bool to print out "true" or "false"
-    template<> inline std::string
-    toString<bool>(const bool value)
-    {
-      return value ? "true" : "false";
-    }
-
+    
     /**
      * A template for defining "optional" class members. An optional member has a default value
      * and a flag indicating whether the member is "set".
@@ -123,6 +69,9 @@ namespace osgEarth
         const T& value() const { return _value; }
         const T& defaultValue() const { return _defaultValue; }
 
+        // gets a mutable reference, automatically setting
+        T& mutable_value() { _set = true; return _value; }
+
         void init(T defValue) { _value=defValue; _defaultValue=defValue; unset(); }
 
         operator const T*() const { return &_value; }
@@ -139,7 +88,6 @@ namespace osgEarth
     public:
         operator unspecified_bool_type() const { return 0; }
     };
-
 }
 
 // backwards-compat stuff:
@@ -153,7 +101,5 @@ namespace osgDB
 }
 
 #endif // OSG_VERSION_LESS_THAN( 2, 9, 5 )
-
-
 
 #endif // OSGEARTH_COMMON_H

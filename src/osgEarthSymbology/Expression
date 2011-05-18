@@ -1,0 +1,128 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_EXPRESSION_H
+#define OSGEARTHSYMBOLOGY_EXPRESSION_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarth/Config>
+#include <osgEarth/GeoData>
+#include <osgEarth/TileKey>
+
+namespace osgEarth { namespace Symbology
+{    
+    /**
+     * Simple expression evaluator with variables.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT NumericExpression
+    {
+    public:
+        typedef std::pair<std::string,unsigned> Variable;
+        typedef std::vector<Variable> Variables;
+
+    public:
+        NumericExpression() { }
+
+        NumericExpression( const Config& conf );
+
+        /** Construct a new expression from the infix string. */
+        NumericExpression( const std::string& expr );
+
+        /** Copy ctor. */
+        NumericExpression( const NumericExpression& rhs );
+
+        /** Access the expression variables. */
+        const Variables& variables() const { return _vars; }
+
+        /** Set the value of a variable. */
+        void set( const Variable& var, double value );
+
+        /** Evaluate the expression. */
+        double eval() const;
+
+    public:
+        Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    private:
+        enum Op { OPERAND, VARIABLE, ADD, SUB, MULT, DIV, MOD, MIN, MAX, LPAREN, RPAREN }; // in low-high precedence order
+        typedef std::pair<Op,double> Atom;
+        typedef std::vector<Atom> AtomVector;
+        typedef std::stack<Atom> AtomStack;
+        
+        std::string _src;
+        AtomVector  _rpn;
+        Variables   _vars;
+        double      _value;
+        bool        _dirty;
+
+        void init();
+    };
+
+    //--------------------------------------------------------------------
+
+    class OSGEARTHSYMBOLOGY_EXPORT StringExpression
+    {
+    public:
+        typedef std::pair<std::string,unsigned> Variable;
+        typedef std::vector<Variable> Variables;
+
+    public:
+        StringExpression() { }
+
+        StringExpression( const Config& conf );
+
+        /** Construct a new expression from the infix string. */
+        StringExpression( const std::string& expr );
+
+        /** Copy ctor. */
+        StringExpression( const StringExpression& rhs );
+
+        /** Access the expression variables. */
+        const Variables& variables() const { return _vars; }
+
+        /** Set the value of a variable. */
+        void set( const Variable& var, const std::string& value );
+
+        /** Evaluate the expression. */
+        const std::string& eval() const;
+
+    public:
+        Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    private:
+        enum Op { OPERAND, VARIABLE }; // in low-high precedence order
+        typedef std::pair<Op,std::string> Atom;
+        typedef std::vector<Atom> AtomVector;
+        
+        std::string  _src;
+        AtomVector   _infix;
+        Variables    _vars;
+        std::string  _value;
+        bool         _dirty;
+
+        void init();
+    };
+
+
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_EXPRESSION_H

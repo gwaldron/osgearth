@@ -1,0 +1,160 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_UTILS_H
+#define OSGEARTH_UTILS_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/StringUtils>
+
+#include <osg/Vec3f>
+#include <osgViewer/View>
+#include <osgGA/GUIEventHandler>
+
+#include <string>
+#include <list>
+#include <map>
+
+namespace osgEarth
+{
+
+    //------------------------------------------------------------------------
+
+    /**
+     * Least-recently-used cache class.
+     * K = key type, T = value type
+     *
+     * usage:
+     *    LRUCache<K,T> cache;
+     *    cache.put( key, value );
+     *    LRUCache.Record rec = cache.get( key );
+     *    if ( rec.valid() )
+     *        const T& value = rec.value();
+     */
+    template<typename K, typename T>
+    class LRUCache
+    {
+    public:
+        struct Record {
+            Record(const T* value) : _value(value) { }
+            const bool valid() const { return _value != 0L; }
+            const T& value() const { return *_value; }
+        private:
+            bool _valid;
+            const T* _value;
+        };
+
+    protected:
+        typedef typename std::list<K>::iterator lru_iter;
+        typedef typename std::list<K> lru_type;
+        typedef typename std::pair<T, lru_iter> map_value_type;
+        typedef typename std::map<K, map_value_type> map_type;
+        typedef typename map_type::iterator map_iter;
+
+        map_type _map;
+        lru_type _lru;
+        unsigned _max;
+        unsigned _buf;
+        unsigned _queries;
+        unsigned _hits;
+
+    public:
+        LRUCache( unsigned max =100 ) : _max(max) {
+            _buf = _max/10;
+            _queries = 0;
+            _hits = 0;
+        }
+
+        void insert( const K& key, const T& value ) {
+            map_iter mi = _map.find( key );
+            if ( mi != _map.end() ) {
+                _lru.erase( mi->second.second );
+                mi->second.first = value;
+                _lru.push_back( key );
+                mi->second.second = _lru.end();
+                mi->second.second--;
+            }
+            else {
+                _lru.push_back( key );
+                lru_iter last = _lru.end(); last--;
+                _map[key] = std::make_pair(value, last);
+            }
+
+            if ( _lru.size() > _max ) {
+                for( unsigned i=0; i < _buf; ++i ) {
+                    const K& key = _lru.front();
+                    _map.erase( key );
+                    _lru.pop_front();
+                }
+            }
+        }
+
+        Record get( const K& key ) {
+            _queries++;
+            map_iter mi = _map.find( key );
+            if ( mi != _map.end() ) {
+                _lru.erase( mi->second.second );
+                _lru.push_back( key );
+                lru_iter new_iter = _lru.end(); new_iter--;
+                mi->second.second = new_iter;
+                _hits++;
+                return Record( &(mi->second.first) );
+            }
+            else {
+                return Record( 0L );
+            }
+        }
+
+        void erase( const K& key ) {
+            map_iter mi = _map.find( key );
+            if ( mi != _map.end() ) {
+                _lru.erase( mi->second.second );
+                _map.erase( mi );
+            }
+        }
+
+        void setMaxSize( unsigned max ) {
+            _max = max;
+            _buf = max/10;
+            while( _lru.size() > _max ) {
+                const K& key = _lru.front();
+                _map.erase( key );
+                _lru.pop_front();
+            }
+        }
+
+        unsigned getMaxSize() const {
+            return _max;
+        }
+
+        float getHitRatio() const {
+            return _queries > 0 ? (float)_hits/(float)_queries : 0.0f;
+        }
+    };
+
+
+    /**
+     * Removes the given event handler from the view.
+     * This is the equivalent of osgViewer::View::removeEventHandler which is not available
+     * in older versions of OSG
+     */
+    extern OSGEARTH_EXPORT void removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler);
+
+}
+
+#endif // OSGEARTH_UTILS_H

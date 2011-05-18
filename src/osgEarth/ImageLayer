@@ -96,6 +96,12 @@ namespace osgEarth
 		optional<osg::Texture::FilterMode>& minFilter(void) {return _minFilter;}
 		const optional<osg::Texture::FilterMode>& minFilter(void) const {return _minFilter;}
 
+        /**
+         * Whether LOD blending is enabled for this layer
+         */
+        optional<bool>& lodBlending() { return _lodBlending; }
+        const optional<bool>& lodBlending() const { return _lodBlending; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -112,6 +118,7 @@ namespace osgEarth
 	    optional<std::string> _noDataImageFilename;
 		optional<osg::Texture::FilterMode> _magFilter;
         optional<osg::Texture::FilterMode> _minFilter;
+        optional<bool> _lodBlending;
     };
 
     //--------------------------------------------------------------------
@@ -198,6 +205,9 @@ namespace osgEarth
         void setGamma( float gamma );
         float getGamma() const { return _actualGamma; }
 
+        void disableLODBlending();
+        bool isLODBlendingEnabled() const { return _actualLODBlending; }
+
     public: // methods
 
 		/**
@@ -217,9 +227,7 @@ namespace osgEarth
         ImageLayerOptions _options;
         float _actualOpacity;
         float _actualGamma;
-        //float _prevGamma;
-        //unsigned char _gammaLUT[256];
-        //osg::ref_ptr<osg::Image> _noDataImage;
+        bool  _actualLODBlending;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         

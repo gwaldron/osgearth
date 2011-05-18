@@ -1,0 +1,63 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_CROP_FILTER_H
+#define OSGEARTHFEATURES_CROP_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/GeometrySymbol>
+#include <osg/Geode>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Crops feature geometry to an extent, either by centroid or by actually
+     * cutting the geometry.
+     */
+    class OSGEARTHFEATURES_EXPORT CropFilter : public FeatureFilter
+    {
+    public:
+        enum Method 
+        {
+            METHOD_CENTROID,    // include a feature if its centroid is included
+            METHOD_CROPPING     // crop a feature's geometry to the target extent
+        };
+
+    public:
+        CropFilter( Method method =METHOD_CENTROID );
+
+        optional<Method>& method() { return _method; }
+        const optional<Method>& method() const { return _method; }
+
+    public:
+        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+
+    protected:
+        optional<Method> _method;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_BUFFER_FILTER_H

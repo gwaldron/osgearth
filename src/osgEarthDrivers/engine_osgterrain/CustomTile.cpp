@@ -16,6 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#if 0
 #include "CustomTerrain"
 #include "CustomTerrainTechnique"
 #include "TransparentLayer"
@@ -220,13 +221,16 @@ _useTileGenRequest( true ),
 _quickReleaseGLObjects( quickReleaseGLObjects ),
 _key( key ),
 _keyLocator( keyLocator ),
-_verticalScale(1.0f)
+_verticalScale(1.0f),
+_mask( 0L )
 {
     this->setLocator( keyLocator );
 
     this->setThreadSafeRefUnref( true );
 
     this->setTileID( key.getTileId() );
+
+    this->setName( key.str() );
 
     // because the lowest LOD (1) is always loaded fully:
     _elevationLayerUpToDate = _key.getLevelOfDetail() <= 1;
@@ -1038,7 +1042,8 @@ CustomTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLocked
                                                 oldLayer.getMapLayer(),
                                                 oldLayer.getImage(),
                                                 oldLayer.getLocator(),
-                                                _key.getLevelOfDetail() ) );
+                                                _key.getLevelOfDetail(),
+                                                _key ));
 
                                             itr = _requests.erase( itr );
                                             increment = false;
@@ -1211,3 +1216,4 @@ CustomTile::releaseGLObjects(osg::State* state) const
         _terrainTechnique->releaseGLObjects( state );
     }
 }
+#endif

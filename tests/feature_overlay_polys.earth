@@ -7,7 +7,9 @@ on the map using the overlay technique.
 
 <map name="Feature Overlay Demo" type="geocentric" version="2">
     
-    <options lighting="false"/>
+    <options>
+        <lighting>false</lighting>
+    </options>
 
     <image name="world" driver="gdal">
         <url>../data/world.tif</url>
@@ -45,31 +47,31 @@ on the map using the overlay technique.
                 }                                      
             </style>
         
-            <selector name="p1">
+            <selector class="p1">
                 <query>
                     <expr><![CDATA[ POP_CNTRY <= 14045470 ]]></expr>
                 </query>
             </selector>
         
-            <selector name="p2">
+            <selector class="p2">
                 <query>
                     <expr><![CDATA[ POP_CNTRY > 14045470 and POP_CNTRY <= 43410900 ]]></expr>
                 </query>
             </selector>
             
-            <selector name="p3">
+            <selector class="p3">
                 <query>
                     <expr><![CDATA[ POP_CNTRY > 43410900 and POP_CNTRY <= 97228750 ]]></expr>
                 </query>
             </selector>
             
-            <selector name="p4">
+            <selector class="p4">
                 <query>
                     <expr><![CDATA[ POP_CNTRY > 97228750 and POP_CNTRY <= 258833000 ]]></expr>
                 </query>
             </selector>
             
-            <selector name="p5">
+            <selector class="p5">
                 <query>
                     <expr><![CDATA[ POP_CNTRY > 258833000 ]]></expr>
                 </query>

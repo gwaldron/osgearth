@@ -231,7 +231,8 @@ MapNode::init()
 
     // a decorator for overlay models:
     _overlayDecorator = new OverlayDecorator();
-    //_overlayDecorator->setOverlayGraph( _overlayModels.get() );
+    if ( _mapNodeOptions.overlayVertexWarping().isSet() )
+        _overlayDecorator->setVertexWarping( *_mapNodeOptions.overlayVertexWarping() );
     addTerrainDecorator( _overlayDecorator.get() );
 
     // install any pre-existing model layers:
@@ -251,8 +252,9 @@ MapNode::init()
     }
 #endif
 
+    _mapCallback = new MapNodeMapCallbackProxy(this);
     // install a layer callback for processing further map actions:
-    _map->addMapCallback( new MapNodeMapCallbackProxy(this) );
+    _map->addMapCallback( _mapCallback.get()  );
 
     osg::StateSet* ss = getOrCreateStateSet();
 	//ss->setAttributeAndModes( new osg::CullFace() ); //, osg::StateAttribute::ON);
@@ -278,7 +280,15 @@ MapNode::init()
 
 MapNode::~MapNode()
 {
-    removeChildren( 0, getNumChildren() );
+    _map->removeMapCallback( _mapCallback.get() );
+
+    ModelLayerVector modelLayers;
+    _map->getModelLayers( modelLayers );
+    //Remove our model callback from any of the model layers in the map
+    for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
+    {
+        itr->get()->removeCallback(_modelLayerCallback.get() );
+    }
 }
 
 osg::BoundingSphere
@@ -589,7 +599,7 @@ MapNode::traverse( osg::NodeVisitor& nv )
 void
 MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
 {
-    OE_INFO << "Overlay changed to "  << layer->getOverlay() << std::endl;
+    OE_NOTICE << "Overlay changed to "  << layer->getOverlay() << std::endl;
     osg::ref_ptr< osg::Group > origParent = layer->getOverlay() ? _models.get() : _overlayModels.get();
     osg::ref_ptr< osg::Group > newParent  = layer->getOverlay() ? _overlayModels.get() : _models.get();
 

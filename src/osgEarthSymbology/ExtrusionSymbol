@@ -1,0 +1,60 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Expression>
+
+namespace osgEarth { namespace Symbology
+{
+    using namespace osgEarth;
+
+    class OSGEARTHSYMBOLOGY_EXPORT ExtrusionSymbol : public Symbol
+    {
+    public:
+        ExtrusionSymbol( const Config& conf =Config() );
+
+        /** Height to which to extrude geometry above the footprint */
+        optional<float>& height() { return _height; }
+        const optional<float>& height() const { return _height; }
+
+        /** Simple expression to evaluate to get height */
+        optional<NumericExpression>& heightExpression() { return _heightExpr; }
+        const optional<NumericExpression>& heightExpression() const { return _heightExpr; }
+
+        /** Whether the top cap of the extruded geometry should be flat (default=true) */
+        optional<bool>& flatten() { return _flatten; }
+        const optional<bool>& flatten() const { return _flatten; }
+
+        
+    public:
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
+
+    protected:
+        optional<float>             _height;
+        optional<bool>              _flatten;
+        optional<NumericExpression> _heightExpr;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_EXTRUSION_SYMBOL_H

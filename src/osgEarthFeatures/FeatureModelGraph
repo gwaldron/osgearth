@@ -1,0 +1,109 @@
+/* --*-c++-*-- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H
+#define OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/FeatureModelSource>
+#include <osgEarthFeatures/Session>
+#include <osgEarthSymbology/Style>
+#include <osgEarth/ThreadingUtils>
+#include <osg/Node>
+#include <set>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * A graph that gets its contents from a FeatureNodeFactory. This class will
+     * handle all the internals of selecting features, gridding feature data if
+     * required, and sorting features based on style. Then for each cell and each
+     * style, it will invoke the FeatureNodeFactory to create the actual data for
+     * each set.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureModelGraph : public osg::Group
+    {
+    public:
+        /**
+         * Constructs a new model graph.
+         *
+         * @param source
+         *      Source from which to read feature data
+         * @param options
+         *      Model source options
+         * @param factory
+         *      Node factory that will be invoked to compile feature data into nodes
+         * @param styles
+         *      Stylesheet for this graph
+         * @param sessoin
+         *      Session under which to create elements in this graph
+         */
+        FeatureModelGraph( 
+            FeatureSource*                   source,
+            const FeatureModelSourceOptions& options,
+            FeatureNodeFactory*              factory,
+            const StyleSheet&                styles,
+            Session*                         session );
+
+        /**
+         * Loads and returns a subnode. Used internally for paging.
+         */
+        osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
+
+    protected:
+        virtual ~FeatureModelGraph();
+
+        void setupPaging();
+
+        osg::Group* build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key);
+
+        osg::Group* build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& extent );
+
+    private:
+        
+        osg::Group* createNodeForStyle(const Style& style, const Query& query);
+       
+        osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent ) const;
+
+        void buildSubTiles(
+            unsigned levelIndex, unsigned lod, unsigned tileX, unsigned tileY,
+            const FeatureLevel* nextLevel, unsigned nextLOD, osg::Group* parent);
+
+    private:
+        FeatureModelSourceOptions        _options;
+        osg::ref_ptr<FeatureSource>      _source;
+        osg::ref_ptr<FeatureNodeFactory> _factory;
+        osg::ref_ptr<Session>            _session;
+        StyleSheet                       _styles;
+        UID                              _uid;
+        std::set<std::string>            _blacklist;
+        Threading::ReadWriteMutex        _blacklistMutex;
+        GeoExtent                        _usableFeatureExtent;
+        bool                             _featureExtentClamped;
+        GeoExtent                        _usableMapExtent;
+        osg::BoundingSphered             _fullWorldBound;
+        bool                             _useTiledSource;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_MODEL_GRAPH_H

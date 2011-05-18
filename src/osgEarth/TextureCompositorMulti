@@ -37,14 +37,16 @@ namespace osgEarth
 
         bool usesShaderComposition() const { return _useGPU; }
 
+        bool blendingRequiresSecondarySlot() const { return true; }
+
         void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;
 
         bool supportsLayerUpdate() const { return true; }
 
         void applyLayerUpdate( 
             osg::StateSet* stateSet, UID layerUID,
-            const GeoImage& preparedImage, const GeoExtent& tileExtent,
-            const TextureLayout& layout ) const;
+            const GeoImage& preparedImage, const TileKey& tileExtent,
+            const TextureLayout& layout, osg::StateSet* parentStateSet) const;
 
         osg::Shader* createSamplerFunction(
             UID layerUID, 
@@ -53,7 +55,6 @@ namespace osgEarth
             const TextureLayout& layout ) const;
 
     private:
-        bool _lodBlending;
         float _lodTransitionTime;
         bool _useGPU;
         bool _enableMipmappingOnUpdatedTextures;

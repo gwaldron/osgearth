@@ -17,11 +17,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "SinglePassTerrainTechnique"
-#include "CustomTerrain"
+#include "Terrain"
+#include "Tile"
 
 #include <osgEarth/Cube>
 #include <osgEarth/ImageUtils>
 
+#include <osg/Point>
 #include <osg/Program>
 #include <osg/io_utils>
 #include <osg/StateSet>
@@ -29,30 +31,34 @@
 #include <osg/Math>
 #include <osg/Timer>
 #include <osg/Version>
+#include <osgUtil/Tessellator>
+#include <osgUtil/SmoothingVisitor>
+
+#include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/MeshConsolidator>
 
 #include <sstream>
 
 using namespace osgEarth;
+using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 #define LC "[SinglePassTechnique] "
 
-// OSG 2.9.8 changed the osgTerrain API...
-#if OSG_VERSION_GREATER_OR_EQUAL(2,9,8)
-#   define USE_NEW_OSGTERRAIN_298_API 1 
-#endif
+#define MATCH_TOLERANCE 0.000001
 
 // --------------------------------------------------------------------------
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
+CustomTerrainTechnique(),
 _verticalScaleOverride(1.0f),
 _initCount(0),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
-_lastUpdate( TileUpdate::UPDATE_ALL ),
 _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
-_frontGeodeInstalled( false )
+_frontGeodeInstalled( false ),
+_debug( false )
 {
     this->setThreadSafeRefUnref(true);
 }
@@ -63,10 +69,11 @@ _verticalScaleOverride( rhs._verticalScaleOverride ),
 _initCount( 0 ),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate( false ),
-_lastUpdate( rhs._lastUpdate ),
 _optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _texCompositor( rhs._texCompositor.get() ),
-_frontGeodeInstalled( rhs._frontGeodeInstalled )
+_frontGeodeInstalled( rhs._frontGeodeInstalled ),
+_debug( rhs._debug ),
+_parentTile( rhs._parentTile )
 {
     //NOP
 }
@@ -100,16 +107,10 @@ SinglePassTerrainTechnique::getOptimizeTriangleOrientation() const
     return _optimizeTriangleOrientation;
 }
 
-void
-#ifdef USE_NEW_OSGTERRAIN_298_API
-SinglePassTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
-#else
+void 
 SinglePassTerrainTechnique::init()
-#endif
 {
     compile( TileUpdate(TileUpdate::UPDATE_ALL), 0L );
-
-    //_pendingFullUpdate = true;
     applyTileUpdates();
 }
 
@@ -117,19 +118,22 @@ void
 SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback* progress )
 {
     // safety check
-    if ( !_terrainTile ) 
+    if ( !_tile ) 
     {
         OE_WARN << LC << "Illegal; terrain tile is null" << std::endl;
         return;
     }
 
+    //if ( _debug )
+    //{
+    //    OE_NOTICE << LC << "compile() " << std::endl;
+    //}
+
     // serialize access to the compilation procedure.
     OpenThreads::ScopedLock<Mutex> exclusiveLock( _compileMutex );
-
+    
     // make a frame to use during compilation.
-    CustomTileFrame tilef( static_cast<CustomTile*>(_terrainTile) );
-
-    _lastUpdate = update;
+    TileFrame tilef( _tile );
 
     // establish the master tile locator if this is the first compilation:
     if ( !_masterLocator.valid() || !_transform.valid() )
@@ -218,20 +222,14 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
         }
        
         _initCount++;
-        //if ( _initCount > 1 )
-        //    OE_WARN << LC << "Tile was fully build " << _initCount << " times" << std::endl;
+        if ( _initCount > 1 )
+            OE_WARN << LC << "Tile was fully build " << _initCount << " times" << std::endl;
 
         if ( _backGeode.valid() && !_backGeode->getStateSet() )
             OE_WARN << LC << "ILLEGAL! no stateset in BackGeode!!" << std::endl;
 
         _pendingFullUpdate = true;
     }
-    
-#ifdef USE_NEW_OSGTERRAIN_298_API
-    // In the updated API, the technique is now responsible for clearing the dirty flag.
-    // It used to be the tile that cleared it.
-    _terrainTile->setDirtyMask(0);
-#endif
 }
 
 // from the UPDATE traversal thread:
@@ -239,8 +237,6 @@ bool
 SinglePassTerrainTechnique::applyTileUpdates()
 {
     bool applied = false;
-
-    //Threading::ScopedReadLock lock( getMutex() );
 
     // serialize access to the compilation mechanism.
     OpenThreads::ScopedLock<Mutex> exclusiveLock( _compileMutex );
@@ -326,6 +322,13 @@ SinglePassTerrainTechnique::applyTileUpdates()
         }
 
         // process any pending LIVE per-layer updates:
+        osg::StateSet* parentStateSet = 0;
+
+        if ( !_pendingImageLayerUpdates.empty() )
+        {
+            parentStateSet = getParentStateSet();
+        }
+
         while( _pendingImageLayerUpdates.size() > 0 )
         {
             const ImageLayerUpdate& update = _pendingImageLayerUpdates.front();
@@ -334,37 +337,48 @@ SinglePassTerrainTechnique::applyTileUpdates()
                 getFrontGeode()->getStateSet(),
                 update._layerUID,
                 update._image,
-                _tileExtent );
+                _tileKey,
+                update._isRealData ? parentStateSet : 0L );
 
             _pendingImageLayerUpdates.pop();
             applied = true;
         }
     }
 
+    if ( _debug )
+    {
+        OE_NOTICE << "applyTileUpdates()" << std::endl;
+    }
+
     return applied;
 }
 
 void
-SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const CustomTileFrame& tilef )
+SinglePassTerrainTechnique::prepareImageLayerUpdate( UID layerUID, const TileFrame& tilef )
 {
     CustomColorLayer layer;
     if ( tilef.getCustomColorLayer( layerUID, layer ) )
     {
-        GeoImage geoImage = createGeoImage( layer );
-        if ( geoImage.valid() )
+        GeoImage geoImage, secondaryImage;
+
+        if ( createGeoImage( layer, geoImage ) )
         {
             ImageLayerUpdate update;
+            
             update._image = _texCompositor->prepareImage( geoImage, _tileExtent );
             update._layerUID = layerUID;
+            update._isRealData = !layer.isFallbackData();
 
             if ( update._image.valid() )
                 _pendingImageLayerUpdates.push( update );
         }
+
     }
 }
 
-GeoImage
-SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer ) const
+bool
+SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer,
+                                            GeoImage& image) const
 {
     osg::ref_ptr<const GeoLocator> layerLocator = dynamic_cast<const GeoLocator*>( colorLayer.getLocator() );
     if ( layerLocator.valid() )
@@ -373,13 +387,41 @@ SinglePassTerrainTechnique::createGeoImage( const CustomColorLayer& colorLayer )
             layerLocator = layerLocator->getGeographicFromGeocentric();
 
         const GeoExtent& imageExtent = layerLocator->getDataExtent();
-        return GeoImage( colorLayer.getImage(), imageExtent ); //const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
+        image = GeoImage( colorLayer.getImage(), imageExtent ); //const_cast<osg::Image*>(colorLayer.getImage()), imageExtent );
+        return true;
     }
-    return GeoImage::INVALID;
+    return false;
 }
 
 osg::StateSet*
-SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
+SinglePassTerrainTechnique::getActiveStateSet() const
+{
+    OpenThreads::ScopedLock<Mutex> exclusiveLock( const_cast<SinglePassTerrainTechnique*>(this)->_compileMutex );
+
+    osg::StateSet* result = 0L;
+    osg::Geode* front = getFrontGeode();
+    if ( front ) 
+        result = front->getStateSet();
+    if ( !result && _backGeode.valid() )
+        result = _backGeode->getStateSet();
+
+    return result;
+}
+
+osg::StateSet*
+SinglePassTerrainTechnique::getParentStateSet() const
+{
+    osg::StateSet* parentStateSet = 0;
+    osg::ref_ptr<Tile> parentTile_safe = _parentTile.get();
+    if ( parentTile_safe.valid() )
+    {
+        return static_cast<SinglePassTerrainTechnique*>(_parentTile->getTerrainTechnique())->getActiveStateSet();
+    }
+    else return 0L;
+}
+
+osg::StateSet*
+SinglePassTerrainTechnique::createStateSet( const TileFrame& tilef )
 {
     // establish the tile extent. we will calculate texture coordinate offset/scale based on this
     if ( !_tileExtent.isValid() )
@@ -392,18 +434,29 @@ SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
 
             _tileExtent = tileLocator->getDataExtent();
         }
+        _tileKey = tilef._tileKey;
     }
 
     osg::StateSet* stateSet = new osg::StateSet();
+    osg::StateSet* parentStateSet = getParentStateSet();
 
     for( ColorLayersByUID::const_iterator i = tilef._colorLayers.begin(); i != tilef._colorLayers.end(); ++i )
     {
         const CustomColorLayer& colorLayer = i->second;
-        GeoImage image = createGeoImage( colorLayer );
-        if ( image.valid() )
+
+        bool isRealData = !colorLayer.isFallbackData();
+
+        GeoImage image;
+        if ( createGeoImage( colorLayer, image ) )
         {
             image = _texCompositor->prepareImage( image, _tileExtent );
-            _texCompositor->applyLayerUpdate( stateSet, colorLayer.getUID(), image, _tileExtent );
+
+            _texCompositor->applyLayerUpdate( 
+                stateSet, 
+                colorLayer.getUID(), 
+                image, 
+                _tileKey, 
+                isRealData ? parentStateSet : 0L );
         }
     }
 
@@ -413,14 +466,14 @@ SinglePassTerrainTechnique::createStateSet( const CustomTileFrame& tilef )
 void
 SinglePassTerrainTechnique::calculateSampling( unsigned int& out_rows, unsigned int& out_cols, double& out_i, double& out_j )
 {            
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+    osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
     out_rows = elevationLayer->getNumRows();
     out_cols = elevationLayer->getNumColumns();
     out_i = 1.0;
     out_j = 1.0;
 
-    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
+    float sampleRatio = _tile->getTerrain() ? _tile->getTerrain()->getSampleRatio() : 1.0f;
     if ( sampleRatio != 1.0f )
     {
         unsigned int originalNumColumns = out_cols;
@@ -459,17 +512,18 @@ namespace
     struct RenderLayer {
         CustomColorLayer _layer;
         osg::ref_ptr<const GeoLocator> _locator;
-        osg::Vec2Array* _texCoords;
-        osg::Vec2Array* _skirtTexCoords;
+        osg::ref_ptr<osg::Vec2Array> _texCoords;
+        osg::ref_ptr<osg::Vec2Array> _skirtTexCoords;
+        osg::ref_ptr<osg::Vec2Array> _maskSkirtTexCoords;
         bool _ownsTexCoords;
-        RenderLayer() : _texCoords(0L), _ownsTexCoords(false) { }
+        RenderLayer() : _ownsTexCoords(false) { }
     };
 
     typedef std::vector< RenderLayer > RenderLayerVector;
 }
 
 osg::Geode*
-SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
+SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 {
     osg::ref_ptr<GeoLocator> masterTextureLocator = _masterLocator.get();
     //GeoLocator* geoMasterLocator = dynamic_cast<GeoLocator*>(_masterLocator.get());
@@ -483,7 +537,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         masterTextureLocator = masterTextureLocator->getGeographicFromGeocentric();
     }
     
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+    osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
     // fire up a brand new geode.
     osg::Geode* geode = new osg::Geode();
@@ -495,13 +549,32 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     osg::Geometry* surface = new osg::Geometry();
     surface->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     surface->setDataVariance( osg::Object::DYNAMIC );
+    surface->setUseDisplayList(false);
+    surface->setUseVertexBufferObjects(true);
     geode->addDrawable( surface );
 
     osg::Geometry* skirt = new osg::Geometry();
     skirt->setThreadSafeRefUnref(true); // TODO: probably unnecessary.
     skirt->setDataVariance( osg::Object::DYNAMIC );
+    skirt->setUseDisplayList(false);
+    skirt->setUseVertexBufferObjects(true);
     geode->addDrawable( skirt );
-        
+
+    // see if we're using a Mask geometry:
+    osg::Vec3dArray* mask = tilef._mask.valid() ? tilef._mask.get() : 0L;
+
+    osg::Geometry* mask_skirt = 0L;
+    if ( mask )
+    {
+        mask_skirt = new osg::Geometry();
+        mask_skirt->setThreadSafeRefUnref(true);
+        mask_skirt->setDataVariance( osg::Object::DYNAMIC );
+        mask_skirt->setUseDisplayList(false);
+        mask_skirt->setUseVertexBufferObjects(true);
+        //mask_skirt->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
+        geode->addDrawable( mask_skirt);
+    }
+            
     unsigned int numRows = 20;
     unsigned int numColumns = 20;
     
@@ -541,10 +614,13 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     // skirt texture coordinates, if applicable:
     osg::Vec2Array* unifiedSkirtTexCoords = 0L;
 
+    // mask skirt texture coordinates, if applicable:
+    osg::Vec2Array* unifiedMaskSkirtTexCoords = 0L;
+
     // allocate and assign texture coordinates
     osg::Vec2Array* unifiedSurfaceTexCoords = 0L;
 
-    //int numColorLayers = _terrainTile->getNumColorLayers();
+    //int numColorLayers = _tile->getNumColorLayers();
     RenderLayerVector renderLayers;
 
     if ( _texCompositor->requiresUnitTextureSpace() )
@@ -578,16 +654,19 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
             if ( locator )
             {
                 r._texCoords = locatorToTexCoordTable.find( locator );
-                if ( !r._texCoords )
+                if ( !r._texCoords.valid() )
                 {
                     r._texCoords = new osg::Vec2Array();
                     r._texCoords->reserve( numVerticesInSurface );
                     r._ownsTexCoords = true;
-                    locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords) );
+                    locatorToTexCoordTable.push_back( LocatorTexCoordPair(locator, r._texCoords.get()) );
                 }
 
                 r._skirtTexCoords = new osg::Vec2Array();
                 r._skirtTexCoords->reserve( numVerticesInSkirt );
+
+                if ( mask )
+                    r._maskSkirtTexCoords = new osg::Vec2Array();
 
                 r._locator = locator;
                 if ( locator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC )
@@ -597,8 +676,12 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                         r._locator = geo->getGeographicFromGeocentric();
                 }
 
-                _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords );
-                _texCompositor->assignTexCoordArray( skirt, colorLayer.getUID(), r._skirtTexCoords );
+                _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords.get() );
+                _texCompositor->assignTexCoordArray( skirt, colorLayer.getUID(), r._skirtTexCoords.get() );
+
+                if (mask)
+                    _texCompositor->assignTexCoordArray( mask_skirt, colorLayer.getUID(), r._maskSkirtTexCoords.get() );
+
                 //surface->setTexCoordArray( renderLayers.size(), r._texCoords );
                 renderLayers.push_back( r );
             }
@@ -611,7 +694,7 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 
     float scaleHeight = 
         _verticalScaleOverride != 1.0? _verticalScaleOverride :
-        _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() :
+        _tile->getTerrain() ? _tile->getTerrain()->getVerticalScale() :
         1.0f;
 
     osg::ref_ptr<osg::FloatArray> elevations = new osg::FloatArray;
@@ -630,6 +713,36 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
     // populate vertex and tex coord arrays    
     unsigned int i, j; //, k=0;
 
+    osg::ref_ptr<GeoLocator> geoLocator = _masterLocator->getGeographicFromGeocentric();
+
+    //Find the mask bounds in local coords
+    osg::Vec3d mask_min_ndc, mask_max_ndc;
+    if (mask)
+    {
+      osg::Vec3d min, max;
+      min = max = mask->front();
+
+      for (osg::Vec3dArray::iterator it = mask->begin(); it != mask->end(); ++it)
+      {
+        if (it->x() < min.x())
+          min.x() = it->x();
+
+        if (it->y() < min.y())
+          min.y() = it->y();
+
+        if (it->x() > max.x())
+          max.x() = it->x();
+
+        if (it->y() > max.y())
+          max.y() = it->y();
+      }
+
+      geoLocator->convertModelToLocal(min, mask_min_ndc);
+      geoLocator->convertModelToLocal(max, mask_max_ndc);
+
+      //std::cout << std::endl << "mask_min_ndc: " << mask_min_ndc << std::endl << "mask_max_ndc: " << mask_max_ndc << std::endl;
+    }
+
     for(j=0; j<numRows; ++j)
     {
         for(i=0; i<numColumns; ++i) // ++k)
@@ -638,7 +751,6 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
             osg::Vec3d ndc( ((double)i)/(double)(numColumns-1), ((double)j)/(double)(numRows-1), 0.0);
      
             bool validValue = true;
-     
             
             unsigned int i_equiv = i_sampleFactor==1.0 ? i : (unsigned int) (double(i)*i_sampleFactor);
 
@@ -649,6 +761,15 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 float value = 0.0f;
                 validValue = elevationLayer->getValidValue(i_equiv,j_equiv, value);
                 ndc.z() = value*scaleHeight;
+            }
+
+            //Invalidate if point falls within mask bounding box
+            if (validValue && mask &&
+                (ndc.x() >= mask_min_ndc.x() && ndc.x() <= mask_max_ndc.x() &&
+                 ndc.y() >= mask_min_ndc.y() && ndc.y() <= mask_max_ndc.y()))
+            {
+              validValue = false;
+              indices[iv] = -2;
             }
             
             if (validValue)
@@ -705,13 +826,459 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
                 //(*normals)[k] = model_one;
                 (*normals).push_back(model_one);
             }
-            else
-            {
-                indices[iv] = -1;
-            }
         }
     }
-    
+
+
+    if (mask)
+    {
+      //Find mask skirt vertices
+      int min_i = -1, max_i = -1, min_j = -1, max_j = -1;
+      for(j=0; j<numRows; ++j)
+      {
+          for(i=0; i<numColumns; ++i)
+          {
+              unsigned int iv = j*numColumns + i;
+
+              int n = 0;
+              if (indices[iv] >= 0)
+              {
+                if (j > 0)
+                {               
+                  if (i > 0 && indices[iv - numColumns - 1] == -2)
+                    n++;
+                  
+                  if (i < numColumns - 1 && indices[iv - numColumns + 1] == -2)
+                    n++;
+                }
+
+                if (j < numRows - 1)
+                {
+                  if (i > 0 && indices[iv + numColumns - 1] == -2)
+                    n++;
+                  
+                  if (i < numColumns - 1 && indices[iv + numColumns + 1] == -2)
+                    n++;
+                }
+
+                if (n == 1)
+                {
+                  if (i != 0 && i != numColumns - 1)
+                  {
+                    if (j > 0 && indices[iv - numColumns] == -2)
+                      n++;
+
+                    if (j < numRows - 1 && indices[iv + numColumns] == -2)
+                      n++;
+                  }
+                  
+                  if (j != 0 && j != numRows - 1)
+                  {
+                    if (i > 0 && indices[iv - 1] == -2)
+                      n++;
+
+                    if (i < numColumns - 1 && indices[iv + 1] == -2)
+                      n++; 
+                  }
+                }
+                else
+                {
+                  //Test for special case where mask only intersects a single row
+                  //or column along the edge of the tile.
+
+                  if (i == 0 || i == numColumns - 1)
+                  {
+                    if (j > 0 && indices[iv - numColumns] == -2)
+                      n++;
+
+                    if (j < numRows - 1 && indices[iv + numColumns] == -2)
+                      n++;
+                  }
+                  
+                  if(j == 0 || j == numRows - 1)
+                  {
+                    if (i > 0 && indices[iv - 1] == -2)
+                      n++;
+
+                    if (i < numColumns - 1 && indices[iv + 1] == -2)
+                      n++;
+                  }
+                }
+
+                if (n == 1)
+                {
+                    if (min_i == -1)
+                      min_i = i;
+                    else if (min_i != i && max_i == -1)
+                      max_i = i;
+
+                    if (min_j == -1)
+                      min_j = j;
+                    else if (min_j != j && max_j == -1)
+                      max_j = j;
+                }
+              }
+              else
+              {
+                //Test for tile corners that fall within the mask bounds
+                if ((i==0 && (j == 0 || j == numRows - 1)) ||
+                    (i == numColumns - 1 && (j == 0 || j == numRows - 1)))
+                {
+                  if (min_i == -1)
+                    min_i = i;
+                  else if (min_i != i && max_i == -1)
+                    max_i = i;
+
+                  if (min_j == -1)
+                    min_j = j;
+                  else if (min_j != j && max_j == -1)
+                    max_j = j;
+                }
+              }
+          }
+      }
+
+      if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
+      {
+        int num_i = max_i - min_i + 1;
+        int num_j = max_j - min_j + 1;
+
+        osg::ref_ptr<osgEarth::Symbology::Polygon> maskSkirtPoly = new osgEarth::Symbology::Polygon();
+        maskSkirtPoly->resize(num_i * 2 + num_j * 2 - 4);
+        for (int i = 0; i < num_i; i++)
+        {
+          int index = indices[min_j*numColumns + i + min_i];
+          {
+            osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)min_j)/(double)(numRows-1), 0.0);
+
+            if (elevationLayer)
+            {
+              unsigned int i_equiv = i_sampleFactor==1.0 ? i + min_i : (unsigned int) (double(i + min_i)*i_sampleFactor);
+              unsigned int j_equiv = j_sampleFactor==1.0 ? min_j : (unsigned int) (double(min_j)*j_sampleFactor);
+
+              float value = 0.0f;
+              if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                ndc.z() = value*scaleHeight;
+            }
+
+            (*maskSkirtPoly)[i] = ndc;
+          }
+
+          index = indices[max_j*numColumns + i + min_i];
+          {
+            osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)max_j)/(double)(numRows-1), 0.0);
+
+            if (elevationLayer)
+            {
+              unsigned int i_equiv = i_sampleFactor==1.0 ? i + min_i : (unsigned int) (double(i + min_i)*i_sampleFactor);
+              unsigned int j_equiv = j_sampleFactor==1.0 ? max_j : (unsigned int) (double(max_j)*j_sampleFactor);
+
+              float value = 0.0f;
+              if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                ndc.z() = value*scaleHeight;
+            }
+
+            (*maskSkirtPoly)[i + (2 * num_i + num_j - 3) - 2 * i] = ndc;
+          }
+        }
+        for (int j = 0; j < num_j - 2; j++)
+        {
+          int index = indices[(min_j + j + 1)*numColumns + max_i];
+          {
+            osg::Vec3d ndc( ((double)max_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
+
+            if (elevationLayer)
+            {
+              unsigned int i_equiv = i_sampleFactor==1.0 ? max_i : (unsigned int) (double(max_i)*i_sampleFactor);
+              unsigned int j_equiv = j_sampleFactor==1.0 ? min_j + j + 1 : (unsigned int) (double(min_j + j + 1)*j_sampleFactor);
+
+              float value = 0.0f;
+              if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                ndc.z() = value*scaleHeight;
+            }
+
+            (*maskSkirtPoly)[j + num_i] = ndc;
+          }
+
+          index = indices[(min_j + j + 1)*numColumns + min_i];
+          {
+            osg::Vec3d ndc( ((double)min_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
+
+            if (elevationLayer)
+            {
+              unsigned int i_equiv = i_sampleFactor==1.0 ? min_i : (unsigned int) (double(min_i)*i_sampleFactor);
+              unsigned int j_equiv = j_sampleFactor==1.0 ? min_j + j + 1 : (unsigned int) (double(min_j + j + 1)*j_sampleFactor);
+
+              float value = 0.0f;
+              if (elevationLayer->getValidValue(i_equiv,j_equiv, value))
+                ndc.z() = value*scaleHeight;
+            }
+
+            (*maskSkirtPoly)[j + (2 * num_i + 2 * num_j - 5) - 2 * j] = ndc;
+          }
+        }
+
+        //Create local polygon representing mask
+        osg::ref_ptr<osgEarth::Symbology::Polygon> maskPoly = new osgEarth::Symbology::Polygon();
+        for (osg::Vec3dArray::iterator it = mask->begin(); it != mask->end(); ++it)
+        {
+          osg::Vec3d local;
+          geoLocator->convertModelToLocal(*it, local);
+          maskPoly->push_back(local);
+        }
+
+
+//Change the following two #if statements to see mask skirt polygons
+//before clipping and adjusting
+#if 1
+        //Do a diff on the polygons to get the actual mask skirt
+        osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly;
+        maskSkirtPoly->difference(maskPoly, outPoly);
+#else
+        osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly = maskSkirtPoly;
+#endif
+
+        osg::Vec3Array* outVerts = new osg::Vec3Array();
+        mask_skirt->setVertexArray(outVerts);
+
+        bool multiParent = false;
+        if (outPoly.valid())
+          multiParent = outPoly->getType() == osgEarth::Symbology::Geometry::TYPE_MULTI;
+        
+        osgEarth::Symbology::GeometryIterator i( outPoly, false );
+        while( i.hasMore() )
+        {
+          osgEarth::Symbology::Geometry* part = i.next();
+          if (!part)
+            continue;
+
+          if (part->getType() == osgEarth::Symbology::Geometry::TYPE_POLYGON)
+          {
+            osg::Vec3Array* partVerts = part->toVec3Array();
+            outVerts->insert(outVerts->end(), partVerts->begin(), partVerts->end());
+            mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - partVerts->size(), partVerts->size()));
+
+            if (!multiParent)
+            {
+              osg::ref_ptr<osgEarth::Symbology::Polygon> holePoly = static_cast<osgEarth::Symbology::Polygon*>(outPoly.get());
+              if (holePoly)
+              {
+                osgEarth::Symbology::RingCollection holes = holePoly->getHoles();
+                
+                for (osgEarth::Symbology::RingCollection::iterator hit = holes.begin(); hit != holes.end(); ++hit)
+                {
+                  (*hit)->rewind(osgEarth::Symbology::Ring::ORIENTATION_CCW);
+                  outVerts->insert(outVerts->end(), (*hit)->begin(), (*hit)->end());
+                  mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - (*hit)->size(), (*hit)->size()));
+                }
+              }
+            }
+          }
+        }
+
+        if (mask_skirt->getNumPrimitiveSets() > 0)
+        {
+#if 1
+          // Tessellate mask skirt
+          osg::ref_ptr<osgUtil::Tessellator> tscx=new osgUtil::Tessellator;
+          tscx->setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
+          tscx->setBoundaryOnly(false);
+          tscx->setWindingType(osgUtil::Tessellator::TESS_WINDING_ODD);
+          tscx->retessellatePolygons(*mask_skirt);
+
+          // Assign normals to the stitching polygon: -gw
+          osg::Vec3Array* msVerts = dynamic_cast<osg::Vec3Array*>(mask_skirt->getVertexArray());
+          osg::Vec3Array* msNormals = new osg::Vec3Array(msVerts->size());
+          mask_skirt->setNormalArray( msNormals );
+          mask_skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+          
+          // calculate the normal and convert to model space.
+          for( unsigned v=0; v<msVerts->size(); ++v )
+          {
+              const osg::Vec3& vert = (*msVerts)[v];
+              osg::Vec3d local_one(vert);
+              osg::Vec3d model;
+              _masterLocator->convertLocalToModel( local_one, model );
+              local_one.z() += 1.0;
+              osg::Vec3d model_one;
+              _masterLocator->convertLocalToModel( local_one, model_one );
+              model_one = model_one - model;
+              model_one.normalize();
+              (*msNormals)[v] = model_one;
+          }
+
+          //Initialize tex coords
+          if (_texCompositor->requiresUnitTextureSpace())
+          {
+            unifiedMaskSkirtTexCoords = new osg::Vec2Array();
+            unifiedMaskSkirtTexCoords->reserve(outVerts->size());
+            mask_skirt->setTexCoordArray(0, unifiedMaskSkirtTexCoords);
+          }
+          else if ( renderLayers.size() > 0 )
+          {
+            for (unsigned int i = 0; i < renderLayers.size(); ++i)
+            {
+              renderLayers[i]._maskSkirtTexCoords->reserve(outVerts->size());
+            }
+          }
+
+
+          //Retrieve z values for mask skirt verts
+          std::vector<int> isZSet;
+          for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
+          {
+            int zSet = 0;
+
+            //Look for verts that belong to the original mask skirt polygon
+            for (osgEarth::Symbology::Polygon::iterator mit = maskSkirtPoly->begin(); mit != maskSkirtPoly->end(); ++mit)
+            {
+              if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+              {
+                (*it).z() = (*mit).z();
+                zSet += 1;
+                break;
+              }
+            }
+
+            //Look for verts that belong to the mask polygon
+            for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+            {
+              if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+              {
+                (*it).z() = (*mit).z();
+                zSet += 2;
+                break;
+              }
+            }
+
+            isZSet.push_back(zSet);
+          }
+
+          //Any mask skirt verts that are still unset are newly created verts where the skirt
+          //meets the mask. Find the mask segment the point lies along and calculate the
+          //appropriate z value for the point.
+          //
+          //Now that all the z values are set, convert each vert into model coords.
+          //
+          //Also, while we are iterating through the verts, set up tex coords.
+          int count = 0;
+          for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
+          {
+            //If the z-value was set from a mask vertex there is no need to change it.  If
+            //it was set from a vertex from the stitching polygon it may need overriden if
+            //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
+            if (isZSet[count] < 2)
+            {
+              osg::Vec3d p2 = *it;
+              double closestZ = 0.0;
+              double closestRatio = DBL_MAX;
+              for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+              {
+                osg::Vec3d p1 = *mit;
+                osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
+
+                //Truncated vales to compensate for accuracy issues
+                double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
+                double p3x = ((int)(p3.x() * 1000000)) / 1000000.0L;
+                double p2x = ((int)(p2.x() * 1000000)) / 1000000.0L;
+
+                double p1y = ((int)(p1.y() * 1000000)) / 1000000.0L;
+                double p3y = ((int)(p3.y() * 1000000)) / 1000000.0L;
+                double p2y = ((int)(p2.y() * 1000000)) / 1000000.0L;
+
+                if ((p1x < p3x ? p2x >= p1x && p2x <= p3x : p2x >= p3x && p2x <= p1x) &&
+                    (p1y < p3y ? p2y >= p1y && p2y <= p3y : p2y >= p3y && p2y <= p1y))
+                {
+                  double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                  double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                  double zmag = p3.z() - p1.z();
+
+                  double foundZ = (l1 / lt) * zmag + p1.z();
+
+                  double mRatio = 1.0;
+                  if (osg::absolute(p1x - p3x) < MATCH_TOLERANCE)
+                  {
+                    if (osg::absolute(p1x-p2x) < MATCH_TOLERANCE)
+                      mRatio = 0.0;
+                  }
+                  else
+                  {
+                    double m1 = p1x == p2x ? 0.0 : (p2y - p1y) / (p2x - p1x);
+                    double m2 = p1x == p3x ? 0.0 : (p3y - p1y) / (p3x - p1x);
+                    mRatio = m2 == 0.0 ? m1 : osg::absolute(1.0L - m1 / m2);
+                  }
+
+                  if (mRatio < 0.01)
+                  {
+                    (*it).z() = foundZ;
+                    isZSet[count] = 2;
+                    break;
+                  }
+                  else if (mRatio < closestRatio)
+                  {
+                    closestRatio = mRatio;
+                    closestZ = foundZ;
+                  }
+                }
+              }
+
+              if (!isZSet[count] && closestRatio < DBL_MAX)
+              {
+                (*it).z() = closestZ;
+                isZSet[count] = 2;
+              }
+            }
+
+            if (!isZSet[count])
+              OE_WARN << LC << "Z-value not set for stitching polygon vertex" << std::endl;
+
+            count++;
+
+            //Convert to model coords
+            osg::Vec3d model;
+            _masterLocator->convertLocalToModel(*it, model);
+            model = model - _centerModel;
+            (*it).set(model.x(), model.y(), model.z());
+
+            //Setup tex coords
+            osg::Vec3d ndc;
+            _masterLocator->convertModelToLocal(*it + _centerModel, ndc);
+
+            if (_texCompositor->requiresUnitTextureSpace())
+            {
+              unifiedMaskSkirtTexCoords->push_back(osg::Vec2(ndc.x(), ndc.y()));
+            }
+            else if (renderLayers.size() > 0)
+            {
+              for (unsigned int i = 0; i < renderLayers.size(); ++i)
+              {
+                if (!renderLayers[i]._locator->isEquivalentTo(*masterTextureLocator.get()))
+                {
+                  osg::Vec3d color_ndc;
+                  osgTerrain::Locator::convertLocalCoordBetween(*masterTextureLocator.get(), ndc, *renderLayers[i]._locator.get(), color_ndc);
+                  renderLayers[i]._maskSkirtTexCoords->push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
+                }
+                else
+                {
+                  renderLayers[i]._maskSkirtTexCoords->push_back(osg::Vec2(ndc.x(), ndc.y()));
+                }
+              }
+            }
+          }
+#else
+          for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
+          {
+            //Convert to model coords
+            osg::Vec3d model;
+            _masterLocator->convertLocalToModel(*it, model);
+            model = model - _centerModel;
+            (*it).set(model.x(), model.y(), model.z());
+          }
+#endif
+        }
+      }
+    }
+
     // populate primitive sets
     bool swapOrientation = !(_masterLocator->orientationOpenGL());
 
@@ -731,27 +1298,43 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         // build the verts first:
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
         skirtVerts->reserve( numVerticesInSkirt );
+        
+        Indices skirtBreaks;
+        skirtBreaks.push_back(0);
 
         // bottom:
         for( unsigned int c=0; c<numColumns-1; ++c )
         {
             int orig_i = indices[c];
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
 
-            if ( _texCompositor->requiresUnitTextureSpace() )
+            //int offset = 0;
+            //while (orig_i < 0 && offset < numRows - 1)
+            //  orig_i = indices[c + ++offset * numColumns];
+
+            if (orig_i < 0)
             {
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              if (skirtBreaks.back() != skirtVerts->size())
+                skirtBreaks.push_back(skirtVerts->size());
             }
-            else if ( renderLayers.size() > 0 )
+            else
             {
-                for (unsigned int i = 0; i < renderLayers.size(); ++i)
-                {
-                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                }
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+
+              if ( _texCompositor->requiresUnitTextureSpace() )
+              {
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              }
+              else if ( renderLayers.size() > 0 )
+              {
+                  for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                  {
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords.get())[orig_i];
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                  }
+              }
             }
         }
 
@@ -759,22 +1342,30 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for( unsigned int r=0; r<numRows-1; ++r )
         {
             int orig_i = indices[r*numColumns+(numColumns-1)];
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-
-            if ( _texCompositor->requiresUnitTextureSpace() )
+            if (orig_i < 0)
             {
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              if (skirtBreaks.back() != skirtVerts->size())
+                skirtBreaks.push_back(skirtVerts->size());
             }
-            else if ( renderLayers.size() > 0 )
+            else
             {
-                for (unsigned int i = 0; i < renderLayers.size(); ++i)
-                {
-                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                }
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+
+              if ( _texCompositor->requiresUnitTextureSpace() )
+              {
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              }
+              else if ( renderLayers.size() > 0 )
+              {
+                  for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                  {
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords.get())[orig_i];
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                  }
+              }
             }
         }
 
@@ -782,22 +1373,30 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for( int c=numColumns-1; c>0; --c )
         {
             int orig_i = indices[(numRows-1)*numColumns+c];
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-
-            if ( _texCompositor->requiresUnitTextureSpace() )
+            if (orig_i < 0)
             {
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              if (skirtBreaks.back() != skirtVerts->size())
+                skirtBreaks.push_back(skirtVerts->size());
             }
-            else if ( renderLayers.size() > 0 )
+            else
             {
-                for (unsigned int i = 0; i < renderLayers.size(); ++i)
-                {
-                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                }
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+
+              if ( _texCompositor->requiresUnitTextureSpace() )
+              {
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              }
+              else if ( renderLayers.size() > 0 )
+              {
+                  for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                  {
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords.get())[orig_i];
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                  }
+              }
             }
         }
 
@@ -805,28 +1404,41 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         for( int r=numRows-1; r>=0; --r )
         {
             int orig_i = indices[r*numColumns];
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-            skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
-
-            if ( _texCompositor->requiresUnitTextureSpace() )
+            if (orig_i < 0)
             {
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
-                unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              if (skirtBreaks.back() != skirtVerts->size())
+                skirtBreaks.push_back(skirtVerts->size());
             }
-            else if ( renderLayers.size() > 0 )
+            else
             {
-                for (unsigned int i = 0; i < renderLayers.size(); ++i)
-                {
-                    const osg::Vec2& tc = (*renderLayers[i]._texCoords)[orig_i];
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                    renderLayers[i]._skirtTexCoords->push_back( tc );
-                }
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+
+              if ( _texCompositor->requiresUnitTextureSpace() )
+              {
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+                  unifiedSkirtTexCoords->push_back( (*unifiedSurfaceTexCoords)[orig_i] );
+              }
+              else if ( renderLayers.size() > 0 )
+              {
+                  for (unsigned int i = 0; i < renderLayers.size(); ++i)
+                  {
+                      const osg::Vec2& tc = (*renderLayers[i]._texCoords.get())[orig_i];
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                      renderLayers[i]._skirtTexCoords->push_back( tc );
+                  }
+              }
             }
         }
 
         skirt->setVertexArray( skirtVerts );
-        skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, 0, skirtVerts->size() ) );
+
+        //Add a primative set for each continuous skirt strip
+        skirtBreaks.push_back(skirtVerts->size());
+        for (int p=1; p < skirtBreaks.size(); p++)
+          skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
     }
+
 
     bool recalcNormals = elevationLayer != NULL;
 
@@ -987,22 +1599,20 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
         }
     }
 
-    surface->setUseDisplayList(false);
-    surface->setUseVertexBufferObjects(true);
+    MeshConsolidator::run( *surface );
 
-    skirt->setUseDisplayList(false);
-    skirt->setUseVertexBufferObjects(true);
+    if ( skirt )
+        MeshConsolidator::run( *skirt );
+
+    if ( mask_skirt )
+        MeshConsolidator::run( *mask_skirt );
     
-    
+   
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&
         osgDB::Registry::instance()->getKdTreeBuilder())
     {            
-        //osg::Timer_t before = osg::Timer::instance()->tick();
-        //OE_NOTICE<<"osgTerrain::GeometryTechnique::build kd tree"<<std::endl;
         osg::ref_ptr<osg::KdTreeBuilder> builder = osgDB::Registry::instance()->getKdTreeBuilder()->clone();
         geode->accept(*builder);
-        //osg::Timer_t after = osg::Timer::instance()->tick();
-        //OE_NOTICE<<"KdTree build time "<<osg::Timer::instance()->delta_m(before, after)<<std::endl;
     }
 
     return geode;
@@ -1011,51 +1621,13 @@ SinglePassTerrainTechnique::createGeometry( const CustomTileFrame& tilef )
 void
 SinglePassTerrainTechnique::traverse(osg::NodeVisitor& nv)
 {
-    if ( !_terrainTile )
+    if ( !_tile )
         return;
-
-    // if app traversal update the frame count.
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    {
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-        if (_terrainTile->getDirty()) _terrainTile->init(~0x0,true);
-#else
-        if (_terrainTile->getDirty()) _terrainTile->init();
-#endif
-
-        _terrainTile->osg::Group::traverse( nv );    
-
-        // traverse the actual geometry in the tile. this is especially 
-        // important for geometry with ImageSequences and other things
-        // that require an update traversal.
-        if ( _transform.valid() )
-            _transform->accept( nv );
-
-        return;
-    }
-
-    else if (nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-    {
-        if ( _transform.valid() )
-            _transform->accept( nv );
-        return;
-    }
-
-    // the code from here on accounts for user traversals (intersections, etc)
-
-    //TODO: evaluate this and see if we can get rid of it.
-
-    if ( _terrainTile->getDirty() ) 
-    {
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-        _terrainTile->init(~0x0, true);
-#else
-        _terrainTile->init();
-#endif
-    }
 
     if ( _transform.valid() )
+    {
         _transform->accept( nv );
+    }
 }
 
 void
@@ -1063,11 +1635,12 @@ SinglePassTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
     SinglePassTerrainTechnique* ncThis = const_cast<SinglePassTerrainTechnique*>(this);
 
-    Threading::ScopedWriteLock lock( 
-        static_cast<CustomTile*>( ncThis->_terrainTile )->getTileLayersMutex() );
+    Threading::ScopedWriteLock lock( static_cast<Tile*>(ncThis->_tile)->getTileLayersMutex() );
 
     if ( _transform.valid() )
+    {
         _transform->releaseGLObjects( state );
+    }
 
     if ( _backGeode.valid() )
     {

@@ -171,12 +171,6 @@ namespace osgEarth
         const optional<float>& attentuationDistance() const { return _attenuationDistance; }
 
         /**
-         * Level-of-detail blending
-         */
-        optional<bool>& lodBlending() { return _lodBlending; }
-        const optional<bool>& lodBlending() const { return _lodBlending; }
-
-        /**
          * Transition time, in seconds, for tile image fade-in when LOD blending is enabled
          */
         optional<float>& lodTransitionTime() { return _lodTransitionTimeSeconds; }

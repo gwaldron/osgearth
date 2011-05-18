@@ -21,7 +21,9 @@
 
 #include <osgEarth/Common>
 #include <osg/NodeCallback>
+#include <osg/StateSet>
 #include <osg/Uniform>
+#include <osg/observer_ptr>
 
 namespace osgEarth
 {
@@ -45,6 +47,7 @@ namespace osgEarth
         bool  _dirty;
         bool  _applied;
         bool  _useUpdateTrav;
+        OpenThreads::Mutex _stateSetMutex;
 
         osg::ref_ptr<osg::Uniform> _lightingEnabledUniform;
         osg::ref_ptr<osg::Uniform> _lightEnabledUniform;
@@ -55,27 +58,56 @@ namespace osgEarth
      * differently on different drivers (ATI vs NVIDIA), so this class helps mitigate
      * those differences.
      */
-    class OSGEARTH_EXPORT ArrayUniform : public osg::Referenced
+    class OSGEARTH_EXPORT ArrayUniform //  : public osg::Referenced
     {
     public:
-        ArrayUniform( osg::Uniform::Type type, const std::string& name, int size );
+        /** Empty array uniform */
+        ArrayUniform() { }
+
+        /**
+         * Creates or retrieves a named uniform array.
+         */
+        ArrayUniform(
+            const std::string& name,
+            osg::Uniform::Type type,
+            osg::StateSet*     stateSet,
+            unsigned           size =1 );
+
+        void attach(
+            const std::string& name,
+            osg::Uniform::Type type,
+            osg::StateSet*     stateSet,
+            unsigned           size =1 );
+
+        void detach();
+
+        // ArrayUniform( osg::Uniform::Type type, const std::string& name, int size );
 
         /** creates an array uniform helper from an existing stateset */
-        ArrayUniform( osg::StateSet* from, const std::string& name );
+        //ArrayUniform( osg::StateSet* from, const std::string& name );
 
-        void setElement( int index, int value );
-        void setElement( int index, bool value );
-        void setElement( int index, float value );
+        void setElement( unsigned index, int value );
+        void setElement( unsigned index, bool value );
+        void setElement( unsigned index, float value );
+        void setElement( unsigned index, const osg::Matrix& value );
 
-        void addTo( osg::StateSet* stateSet );
-        void removeFrom( osg::StateSet* stateSet );
+        bool getElement( unsigned index, int& out_value ) const;
+        bool getElement( unsigned index, bool& out_value ) const;
+        bool getElement( unsigned index, float& out_value ) const;
+        bool getElement( unsigned index, osg::Matrix& out_value ) const;
 
-        bool isComplete() const { return _uniform.valid() && _uniformAlt.valid(); }
-        int getNumElements() const { return isComplete() ? _uniform->getNumElements() : -1; }
+        //void addTo( osg::StateSet* stateSet );
+        //void removeFrom( osg::StateSet* stateSet );
+
+        bool isValid() const { return _uniform.valid() && _uniformAlt.valid(); }
+        int getNumElements() const { return isValid() ? _uniform->getNumElements() : -1; }
 
     private:
-        osg::ref_ptr<osg::Uniform> _uniform;
-        osg::ref_ptr<osg::Uniform> _uniformAlt;
+        osg::ref_ptr<osg::Uniform>       _uniform;
+        osg::ref_ptr<osg::Uniform>       _uniformAlt;
+        osg::observer_ptr<osg::StateSet> _stateSet;
+
+        void ensureCapacity( unsigned newSize );
     };
 }
 

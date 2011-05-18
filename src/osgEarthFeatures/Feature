@@ -30,6 +30,9 @@
 
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
     /**
      * Metadata and schema information for feature data.
      */
@@ -46,11 +49,25 @@ namespace osgEarth { namespace Features
         const SpatialReference* getSRS() const {
             return _extent.getSRS(); }
 
+        bool getTiled() const;
+        void setTiled(bool tiled);
+
+        int getMaxLevel() const;
+        void setMaxLevel(int maxLevel);
+
+        const osgEarth::Profile* getProfile() const;
+        void setProfile( const osgEarth::Profile* profile );
+
     protected:
+        osg::ref_ptr< const osgEarth::Profile > _profile;
         GeoExtent _extent;
+        bool _tiled;
+        int _maxLevel;
     };
 
     typedef std::map<std::string, std::string> AttributeTable;
+
+    typedef unsigned long FeatureID;
 
     /**
      * Basic building block of vector feature data.
@@ -58,7 +75,7 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT Feature : public osg::Object
     {
     public:
-        Feature( long fid =0L );
+        Feature( FeatureID fid =0L );
 
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
@@ -67,7 +84,7 @@ namespace osgEarth { namespace Features
 
     public:
 
-        long getFID() const;
+        FeatureID getFID() const;
 
         void setGeometry( Symbology::Geometry* geom ) {
             _geom = geom; }
@@ -83,17 +100,23 @@ namespace osgEarth { namespace Features
 
         void setAttr( const std::string& name, const std::string& value );
 
-        const std::string& getAttr( const std::string& name ) const;
+        const std::string& getAttr( const std::string& name ) const;        
 
         /** Embedded style. */
-        optional<osg::ref_ptr<Symbology::Style> >& style() { return _style; }
-        const optional<osg::ref_ptr<Symbology::Style> >& style() const { return _style; }
+        optional<Style>& style() { return _style; }
+        const optional<Style>& style() const { return _style; }
+
+        /** populates the variables of an expression with attribute values and evals the expression. */
+        double eval( NumericExpression& expr ) const;
+        
+        /** populates the variables of an expression with attribute values and evals the expression. */
+        const std::string& eval( StringExpression& expr ) const;
 
     protected:
-        long _fid;
+        FeatureID _fid;
         osg::ref_ptr<Symbology::Geometry> _geom;
         AttributeTable _attrs;
-        optional<osg::ref_ptr<Symbology::Style> > _style;
+        optional<Style> _style;
     };
 
     typedef std::list< osg::ref_ptr<Feature> > FeatureList;

@@ -28,16 +28,53 @@ std::string EMPTY_STRING;
 
 
 FeatureProfile::FeatureProfile( const GeoExtent& extent ) :
-_extent( extent )
+_extent( extent ),
+_maxLevel(-1),
+_tiled(false)
 {
     //nop
 }
 
+bool
+FeatureProfile::getTiled() const
+{
+    return _tiled;
+}
+
+void
+FeatureProfile::setTiled(bool tiled)
+{
+    _tiled = true;
+}
+
+int
+FeatureProfile::getMaxLevel() const
+{
+    return _maxLevel;
+}
+
+void
+FeatureProfile::setMaxLevel(int maxLevel)
+{
+    _maxLevel = maxLevel;
+}
+
+const osgEarth::Profile* 
+FeatureProfile::getProfile() const
+{
+    return _profile.get();
+}
+
+void
+FeatureProfile::setProfile( const osgEarth::Profile* profile )
+{
+    _profile = profile;
+}
+
 /****************************************************************************/
 
-Feature::Feature( long fid ) :
-_fid( fid ),
-_style( new Style() )
+Feature::Feature( FeatureID fid ) :
+_fid( fid )
 {
     //NOP
 }
@@ -51,7 +88,7 @@ _style( rhs._style )
         _geom = dynamic_cast<Geometry*>( copyOp( rhs._geom.get() ) );
 }
 
-long
+FeatureID
 Feature::getFID() const 
 {
     return _fid;
@@ -70,3 +107,20 @@ Feature::getAttr( const std::string& name ) const
     return i != _attrs.end()? i->second : EMPTY_STRING;
 }
 
+double
+Feature::eval( NumericExpression& expr ) const
+{
+    const NumericExpression::Variables& vars = expr.variables();
+    for( NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
+        expr.set( *i, osgEarth::as<double>(getAttr(i->first),0.0) );
+    return expr.eval();
+}
+
+const std::string&
+Feature::eval( StringExpression& expr ) const
+{
+    const StringExpression::Variables& vars = expr.variables();
+    for( StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
+        expr.set( *i, getAttr(i->first) );
+    return expr.eval();
+}

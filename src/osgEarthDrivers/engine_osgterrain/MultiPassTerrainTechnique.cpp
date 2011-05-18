@@ -17,11 +17,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "MultiPassTerrainTechnique"
+#include "Terrain"
 #include "TransparentLayer"
 #include <osgEarth/ImageUtils>
 
-#include <osgTerrain/TerrainTile>
-#include <osgTerrain/Terrain>
 
 #include <osgUtil/SmoothingVisitor>
 #include <osgDB/FileUtils>
@@ -67,7 +66,8 @@ namespace
 //-------------------------------------------------------------------------
 
 MultiPassTerrainTechnique::MultiPassTerrainTechnique( TextureCompositor* texCompositor ) :
-osgTerrain::TerrainTechnique(),
+TerrainTechnique(),
+//osgTerrain::TerrainTechnique(),
 _terrainTileInitialized(false),
 _texCompositor( texCompositor )
 {
@@ -85,16 +85,21 @@ MultiPassTerrainTechnique::~MultiPassTerrainTechnique()
 {
 }
 
+#if 0
 void
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)
 MultiPassTerrainTechnique::init(int dirtyMask, bool assumeMultiThreaded)
 #else
 MultiPassTerrainTechnique::init()
 #endif
+#endif
+
+void
+MultiPassTerrainTechnique::init()
 {
     OE_DEBUG<<"Doing MultiPassTerrainTechnique::init()"<<std::endl;
     
-    if (!_terrainTile) return;
+    if (!_tile) return;
    
     osgTerrain::Locator* masterLocator = computeMasterLocator();
     
@@ -105,33 +110,28 @@ MultiPassTerrainTechnique::init()
     if (_transform.valid()) _transform->setThreadSafeReferenceCounting(true);
 }
 
-osgTerrain::Locator* MultiPassTerrainTechnique::computeMasterLocator()
+osgTerrain::Locator*
+MultiPassTerrainTechnique::computeMasterLocator()
 {
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
-    osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(0);
+    osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
+    osgTerrain::Locator* locator = elevationLayer ? elevationLayer->getLocator() : 0L;
 
-    osgTerrain::Locator* elevationLocator = elevationLayer ? elevationLayer->getLocator() : 0;
-    osgTerrain::Locator* colorLocator = colorLayer ? colorLayer->getLocator() : 0;
-    
-    osgTerrain::Locator* masterLocator = elevationLocator ? elevationLocator : colorLocator;
-    if (!masterLocator)
+    if ( !locator )
     {
-        OE_NOTICE<<"Problem, no locator found in any of the terrain layers"<<std::endl;
+        OE_NOTICE << "Problem, no locator found in any of the terrain layers"<<std::endl;
         return 0;
     }
-    
-    return masterLocator;
+    return locator;
 }
 
-osg::Vec3d MultiPassTerrainTechnique::computeCenterModel(osgTerrain::Locator* masterLocator)
+osg::Vec3d
+MultiPassTerrainTechnique::computeCenterModel(osgTerrain::Locator* masterLocator)
 {
     if (!masterLocator) return osg::Vec3d(0.0,0.0,0.0);
   
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
-    osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(0);
-
+    osgTerrain::Layer*   elevationLayer   = _tile->getElevationLayer();
     osgTerrain::Locator* elevationLocator = elevationLayer ? elevationLayer->getLocator() : 0;
-    osgTerrain::Locator* colorLocator = colorLayer ? colorLayer->getLocator() : 0;
+    osgTerrain::Locator* colorLocator     = 0L;
     
     if (!elevationLocator) elevationLocator = masterLocator;
     if (!colorLocator) colorLocator = masterLocator;
@@ -154,23 +154,23 @@ osg::Vec3d MultiPassTerrainTechnique::computeCenterModel(osgTerrain::Locator* ma
         }
     }
 
-    if (colorLayer)
-    {
-        if (colorLocator!= masterLocator)
-        {
-            masterLocator->computeLocalBounds(*colorLocator, bottomLeftNDC, topRightNDC);
-        }
-        else
-        {
-            bottomLeftNDC.x() = osg::minimum(bottomLeftNDC.x(), 0.0);
-            bottomLeftNDC.y() = osg::minimum(bottomLeftNDC.y(), 0.0);
-            topRightNDC.x() = osg::maximum(topRightNDC.x(), 1.0);
-            topRightNDC.y() = osg::maximum(topRightNDC.y(), 1.0);
-        }
-    }
+    //if (colorLayer)
+    //{
+    //    if (colorLocator!= masterLocator)
+    //    {
+    //        masterLocator->computeLocalBounds(*colorLocator, bottomLeftNDC, topRightNDC);
+    //    }
+    //    else
+    //    {
+    //        bottomLeftNDC.x() = osg::minimum(bottomLeftNDC.x(), 0.0);
+    //        bottomLeftNDC.y() = osg::minimum(bottomLeftNDC.y(), 0.0);
+    //        topRightNDC.x() = osg::maximum(topRightNDC.x(), 1.0);
+    //        topRightNDC.y() = osg::maximum(topRightNDC.y(), 1.0);
+    //    }
+    //}
 
-    OE_DEBUG<<"bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
-    OE_DEBUG<<"topRightNDC = "<<topRightNDC<<std::endl;
+    //OE_DEBUG<<"bottomLeftNDC = "<<bottomLeftNDC<<std::endl;
+    //OE_DEBUG<<"topRightNDC = "<<topRightNDC<<std::endl;
 
     _transform = new osg::MatrixTransform;
 
@@ -183,9 +183,10 @@ osg::Vec3d MultiPassTerrainTechnique::computeCenterModel(osgTerrain::Locator* ma
     return centerModel;
 }
 
-osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel)
+osg::Geometry*
+MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Locator* masterLocator, const osg::Vec3d& centerModel)
 {  
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+    osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
     osg::Geometry* geometry = new osg::Geometry;
 
@@ -198,7 +199,7 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Lo
         numRows = elevationLayer->getNumRows();
     }
     
-    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
+    float sampleRatio = _tile->getTerrain() ? _tile->getTerrain()->getSampleRatio() : 1.0f;
     
     double i_sampleFactor = 1.0;
     double j_sampleFactor = 1.0;
@@ -220,8 +221,8 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Lo
     
     
 
-    bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-    OE_DEBUG<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+    //bool treatBoundariesToValidDataAsDefaultValue = _tile->getTreatBoundariesToValidDataAsDefaultValue();
+    //OE_DEBUG<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     osgTerrain::HeightFieldLayer* hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(elevationLayer);
@@ -248,7 +249,7 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Lo
     geometry->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
     
     //float minHeight = 0.0;
-    float scaleHeight = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() : 1.0f;
+    float scaleHeight = _tile->getTerrain() ? _tile->getTerrain()->getVerticalScale() : 1.0f;
 
     //Reserve space for the elevations
     osg::ref_ptr<osg::FloatArray> elevations = new osg::FloatArray;
@@ -545,17 +546,17 @@ osg::Geometry* MultiPassTerrainTechnique::createGeometryPrototype(osgTerrain::Lo
 	return geometry;
 }
 
-osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
+osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int            order,
                                                   const CustomColorLayer* colorLayer,
-                                                  osgTerrain::Locator* masterLocator,
-                                                  const osg::Vec3d& centerModel,
-                                                  osg::Geometry* geometry)
+                                                  osgTerrain::Locator*    masterLocator,
+                                                  const osg::Vec3d&       centerModel,
+                                                  osg::Geometry*          geometry)
 {
 	OE_DEBUG << "osgEarth::MultiPassTerrainTechnique createPass " << order << std::endl;
     unsigned int binNumber = 1000;
     binNumber += order;
    
-    osgTerrain::Layer* elevationLayer = _terrainTile->getElevationLayer();
+    osgTerrain::Layer* elevationLayer = _tile->getElevationLayer();
 
     //Create a new geode to store the geometry
     osg::Geode* geode = new osg::Geode;
@@ -573,7 +574,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
         numRows = elevationLayer->getNumRows();
     }
     
-    float sampleRatio = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getSampleRatio() : 1.0f;
+    float sampleRatio = _tile->getTerrain() ? _tile->getTerrain()->getSampleRatio() : 1.0f;
     
     double i_sampleFactor = 1.0;
     double j_sampleFactor = 1.0;
@@ -593,8 +594,8 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
         j_sampleFactor = double(originalNumRows-1)/double(numRows-1);
     }
 
-    bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
-    OE_DEBUG<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
+    //bool treatBoundariesToValidDataAsDefaultValue = _terrainTile->getTreatBoundariesToValidDataAsDefaultValue();
+    //OE_DEBUG<<"TreatBoundariesToValidDataAsDefaultValue="<<treatBoundariesToValidDataAsDefaultValue<<std::endl;
     
     float skirtHeight = 0.0f;
     osgTerrain::HeightFieldLayer* hfl = dynamic_cast<osgTerrain::HeightFieldLayer*>(elevationLayer);
@@ -610,7 +611,7 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
     unsigned int numVertices = numVerticesInBody+numVerticesInSkirt;
 
     //float minHeight = 0.0;
-    float scaleHeight = _terrainTile->getTerrain() ? _terrainTile->getTerrain()->getVerticalScale() : 1.0f;
+    float scaleHeight = _tile->getTerrain() ? _tile->getTerrain()->getVerticalScale() : 1.0f;
 
     osg::ref_ptr<osg::Vec2Array> texCoords;
 
@@ -623,33 +624,6 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int order,
     }
 
     const osgTerrain::Locator* colorLocator = locator ? locator : masterLocator;
-
-#if 0
-    //osgTerrain::Layer* colorLayer = _terrainTile->getColorLayer(layerNum);
-    if (colorLayer)
-    {
-            const osgTerrain::Locator* locator = colorLayer->getLocator(); //colorLayer->getLocator();
-            //if (!locator)
-            //{            
-            //    osgTerrain::SwitchLayer* switchLayer = dynamic_cast<osgTerrain::SwitchLayer*>(colorLayer);
-            //    if (switchLayer)
-            //    {
-            //        if (switchLayer->getActiveLayer()>=0 &&
-            //            static_cast<unsigned int>(switchLayer->getActiveLayer())<switchLayer->getNumLayers() &&
-            //            switchLayer->getLayer(switchLayer->getActiveLayer()))
-            //        {
-            //            locator = switchLayer->getLayer(switchLayer->getActiveLayer())->getLocator();
-            //        }
-            //    }
-            //}            
-            texCoords = new osg::Vec2Array;
-            texCoords->reserve(numVertices);
-
-            const osgTerrain::Locator* colorLocator = locator ? locator : masterLocator;
-            _texCompositor->assignTexCoordArray( geometry, colorLayer->getUID(), texCoords.get() );
-            //geometry->setTexCoordArray(0, texCoords.get()); // only one texture unit (multipass)
-    }
-#endif
 
     // allocate and assign color
     osg::ref_ptr<osg::Vec4Array> colors = new osg::Vec4Array(1);
@@ -854,7 +828,7 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
 	osg::ref_ptr<osg::Geometry> prototype = createGeometryPrototype( masterLocator, centerModel );
 
     // take a thread-safe snapshot of the layer stack:
-    CustomTileFrame tilef( static_cast<CustomTile*>( _terrainTile ) );
+    TileFrame tilef( _tile );
 
     if ( tilef._colorLayers.size() == 0 )
     {
@@ -894,17 +868,23 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
 
 void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
 {
-    if (!_terrainTile) return;
+    if (!_tile) return;
 
     // initialize the terrain tile on startup
-    if (_terrainTile->getDirty() && !_terrainTileInitialized) 
+    if (_tile->getDirty() && !_terrainTileInitialized) 
     {
+        _tile->init();
+        _terrainTileInitialized = true;
+
+#if 0
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)
         _terrainTile->init(~0x0, true);
 #else
         _terrainTile->init();
 #endif
+
         _terrainTileInitialized = true;
+#endif
     }
     
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
@@ -912,48 +892,9 @@ void MultiPassTerrainTechnique::traverse(osg::NodeVisitor& nv)
         updateTransparency();
     }
 
-
     // traverse the dynamically-generated geometry.
     if (_transform.valid()) 
         _transform->accept(nv);
-
-#if 0
-    // if app traversal update the frame count.
-    if (nv.getVisitorType()==osg::NodeVisitor::UPDATE_VISITOR)
-    {
-        if ((_terrainTile->getDirty()))
-        {
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-            _terrainTile->init(~0x0, true);
-#else
-            _terrainTile->init();
-#endif
-            _terrainTileInitialized = true;
-        }
-
-        if (_terrainTile)
-            _terrainTile->osg::Group::traverse( nv );
-    }
-    else if (nv.getVisitorType()==osg::NodeVisitor::CULL_VISITOR)
-    {		
-		updateTransparency();
-    }
-
-    if (_terrainTile->getDirty() && !_terrainTileInitialized) 
-    {
-        OE_DEBUG<<"******* Doing init ***********"<<std::endl;
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-        _terrainTile->init(~0x0, true);
-#else
-        _terrainTile->init();
-#endif
-        _terrainTileInitialized = true;
-    }
-
-    // traverse the dynamically-generated geometry.
-    if (_transform.valid()) 
-        _transform->accept(nv);
-#endif
 }
 
 void MultiPassTerrainTechnique::updateTransparency()
@@ -961,7 +902,7 @@ void MultiPassTerrainTechnique::updateTransparency()
     if ( _passes.valid() )
     {
         ColorLayersByUID colorLayers;
-        static_cast<CustomTile*>( _terrainTile )->getCustomColorLayers( colorLayers );
+        _tile->getCustomColorLayers( colorLayers );
 
         for( ColorLayersByUID::const_iterator i = colorLayers.begin(); i != colorLayers.end(); ++i )
         {
@@ -996,4 +937,3 @@ void MultiPassTerrainTechnique::releaseGLObjects(osg::State* state) const
 {
     if (_transform.valid()) _transform->releaseGLObjects( state );
 }
-

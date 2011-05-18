@@ -55,6 +55,7 @@ ImageLayerOptions::setDefaults()
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _minRange.init( -FLT_MAX );
     _maxRange.init( FLT_MAX );
+    _lodBlending.init( false );
 }
 
 void
@@ -72,6 +73,7 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "gamma", _gamma );
     conf.getIfSet( "min_range", _minRange );
     conf.getIfSet( "max_range", _maxRange );
+    conf.getIfSet( "lod_blending", _lodBlending );
 
     if ( conf.hasValue( "transparent_color" ) )
         _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
@@ -100,6 +102,7 @@ ImageLayerOptions::getConfig() const
     conf.updateIfSet( "gamma", _gamma );
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
+    conf.updateIfSet( "lod_blending", _lodBlending );
 
 	if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
@@ -134,6 +137,16 @@ namespace
 
         ImageLayerTileProcessor _processor;
     };
+    
+    struct ApplyChromaKey
+    {
+        osg::Vec4f _chromaKey;
+        bool operator()( osg::Vec4f& pixel ) {
+            bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
+            if ( equiv ) pixel.a() = 0.0f;
+            return equiv;
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -165,16 +178,6 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
         }
     }
 }
-
-struct ApplyChromaKey
-{
-    osg::Vec4f _chromaKey;
-    bool operator()( osg::Vec4f& pixel ) {
-        bool equiv = ImageUtils::areRGBEquivalent( pixel, _chromaKey );
-        if ( equiv ) pixel.a() = 0.0f;
-        return equiv;
-    }
-};
 
 void
 ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
@@ -251,8 +254,9 @@ void
 ImageLayer::init()
 {
     // intialize the runtime actuals from the initialization options:
-    _actualOpacity = _options.opacity().value();
-    _actualGamma   = _options.gamma().value();
+    _actualOpacity     = _options.opacity().value();
+    _actualGamma       = _options.gamma().value();
+    _actualLODBlending = _options.lodBlending().value();
 
     //TODO: probably should graduate this to the superclass.
     _actualEnabled = _options.enabled().value();
@@ -304,6 +308,12 @@ ImageLayer::setGamma( float value )
 {
     _actualGamma = value;
     fireCallback( &ImageLayerCallback::onGammaChanged );
+}
+
+void 
+ImageLayer::disableLODBlending()
+{
+    _actualLODBlending = false;
 }
 
 void
@@ -617,14 +627,24 @@ ImageLayer::createImageWrapper(const TileKey& key,
                                bool cacheInLayerProfile,
                                ProgressCallback* progress )
 {
+    // Results:
+    //
+    // * return NULL to indicate that the key exceeds the maximum LOD of the source data,
+    //   and that the engine may need to generate a "fallback" tile if necessary.
+    //
+    // * return an "empty image" if the LOD is valid BUT the key does not intersect the
+    //   source's data extents.
+
     osg::Image* result = 0L;
 
+    // first check the cache.
+    // TODO: find a way to avoid caching/checking when the LOD falls
     if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
     {
         osg::ref_ptr<const osg::Image> cachedImage;
 		if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
 	    {
-            OE_DEBUG << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
+            OE_INFO << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
             return ImageUtils::cloneImage(cachedImage.get());
     	}
     }
@@ -633,32 +653,41 @@ ImageLayer::createImageWrapper(const TileKey& key,
 	{
         TileSource* source = getTileSource();
         if ( !source )
-            return false;
+            return 0L;
 
-        //Only try to get the image if it's not in the blacklist
-        if (!source->getBlacklist()->contains( key.getTileId() ))
+        // Only try to get the image if it's not in the blacklist
+        if ( !source->getBlacklist()->contains(key.getTileId()) )
         {
-            //Only try to get data if the source actually has data
-            if (source->hasData( key ) )
+            // if the tile source cannot service this key's LOD, return NULL.
+            if ( source->hasDataAtLOD( key.getLevelOfDetail() ) )
             {
-                result = source->createImage( key, _preCacheOp.get(), progress );
-
-                //If the image is not valid and the progress was not cancelled, blacklist
-                if ( result == 0L && (!progress || !progress->isCanceled()))
+                // if the key's extent intersects the source's extent, ask the
+                // source for an image.
+                if ( source->hasDataInExtent( key.getExtent() ) )
                 {
-                    //Add the tile to the blacklist
-                    OE_DEBUG << LC << "Adding tile " << key.str() << " to the blacklist" << std::endl;
-                    source->getBlacklist()->add(key.getTileId());
+                    result = source->createImage( key, _preCacheOp.get(), progress );
+                }
+
+                // otherwise, generate an empty image.
+                else
+                {
+                    result = ImageUtils::createEmptyImage();
                 }
             }
+
             else
             {
-                OE_DEBUG << LC << "Source has no data at " << key.str() << std::endl;
+                // in this case, the source cannot service the LOD
+                result = NULL;
             }
-        }
-        else
-        {
-            OE_DEBUG << LC << "Tile " << key.str() << " is blacklisted, not checking" << std::endl;
+
+            // if no result was created, add this key to the blacklist.
+            if ( result == 0L && (!progress || !progress->isCanceled()) )
+            {
+                //Add the tile to the blacklist
+                OE_DEBUG << LC << getName() << ": adding tile " << key.str() << " to the blacklist" << std::endl;
+                source->getBlacklist()->add(key.getTileId());
+            }
         }
 
         // Cache is necessary:

@@ -29,9 +29,9 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT SLDReader
     {
     public:
-        //static bool readConfig( const Config& conf, StyleCatalog& out_sld );
+        //static bool readConfig( const Config& conf, StyleSheet& out_sld );
 
-        //static bool readXML( std::istream& input, StyleCatalog& out_sld );
+        //static bool readXML( std::istream& input, StyleSheet& out_sld );
 
         static bool readStyleFromCSSParams( const Config& conf, Symbology::Style& out_style );
     };

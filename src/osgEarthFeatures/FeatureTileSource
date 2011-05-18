@@ -32,6 +32,7 @@
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     class OSGEARTHFEATURES_EXPORT FeatureTileSourceOptions : public TileSourceOptions
     {
@@ -40,11 +41,12 @@ namespace osgEarth { namespace Features
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        optional<Symbology::StyleCatalog>& styles() { return _styles; }
-        const optional<Symbology::StyleCatalog>& styles() const { return _styles; }
+        optional<StyleSheet>& styles() { return _styles; }
+        const optional<StyleSheet>& styles() const { return _styles; }
 
-        optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
-        const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
+        //TODO: deprecate in favor of convert filter
+        optional<Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
+        const optional<Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
 
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
@@ -58,10 +60,11 @@ namespace osgEarth { namespace Features
 
     protected:
         virtual void mergeConfig( const Config& conf );
+
         optional<FeatureSourceOptions> _featureOptions;
-        optional<Symbology::StyleCatalog> _styles;
-        optional<Symbology::Geometry::Type> _geomTypeOverride;
-        osg::ref_ptr<FeatureSource> _featureSource;
+        optional<StyleSheet>           _styles;
+        optional<Geometry::Type>       _geomTypeOverride;
+        osg::ref_ptr<FeatureSource>    _featureSource;
 
     private:
         void fromConfig( const Config& conf );
@@ -117,11 +120,11 @@ namespace osgEarth { namespace Features
          * @return true if the rendering succeeded, false if the out_image did not change.
          */
         virtual bool renderFeaturesForStyle(
-            const Symbology::Style* style,
+            const Style&       style,
             const FeatureList& features,
-            osg::Referenced* buildData,
-            const GeoExtent& imageExtent,
-            osg::Image* out_image ) { return false; }            
+            osg::Referenced*   buildData,
+            const GeoExtent&   imageExtent,
+            osg::Image*        out_image ) { return false; }            
             
         /**
          * Optional implementation hook to pre-process an image tile before any calls to 
@@ -160,11 +163,11 @@ namespace osgEarth { namespace Features
         bool _initialized;
         
         bool queryAndRenderFeaturesForStyle(
-            const Symbology::Style* style,
-            const Symbology::Query& query,
+            const Style&     style,
+            const Query&     query,
             osg::Referenced* data,
             const GeoExtent& imageExtent,
-            osg::Image* out_image );
+            osg::Image*      out_image );
     };
 
     } } // namespace osgEarth::Features

@@ -15,18 +15,31 @@ SET(LIB_PUBLIC_HEADERS
     Annotation  
     BufferFilter
     BuildGeometryFilter  
+    BuildTextFilter
+    BuildTextOperator
     Common
+    ClampFilter
     ConvertTypeFilter
+    CropFilter
+    ExtrudeGeometryFilter
     Feature
+    FeatureCursor
+    FeatureDisplayLayout
+    FeatureGeometryIndex
     FeatureGridder
-    FeatureModelSource
+    FeatureModelGraph
+    FeatureModelSource    
     FeatureSource
-    FeatureSymbolizer
     FeatureTileSource
     Filter
+    FilterContext
+    LabelSource
+    OptimizerHints
     ResampleFilter
     ScaleFilter
-	BuildTextOperator
+    Session
+    ScatterFilter
+    SubstituteModelFilter
     TransformFilter
     VirtualFeatureSource
 )
@@ -35,18 +48,31 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
     Annotation.cpp
     BufferFilter.cpp
-    BuildGeometryFilter.cpp
+    BuildGeometryFilter.cpp 
+    BuildTextFilter.cpp
+    BuildTextOperator.cpp
+    ClampFilter.cpp
     ConvertTypeFilter.cpp
+    CropFilter.cpp
+    ExtrudeGeometryFilter.cpp
     Feature.cpp
+    FeatureCursor.cpp
+    FeatureDisplayLayout.cpp
+    FeatureGeometryIndex.cpp
     FeatureGridder.cpp
+    FeatureModelGraph.cpp
     FeatureModelSource.cpp
     FeatureSource.cpp
-    FeatureSymbolizer.cpp
     FeatureTileSource.cpp
     Filter.cpp
+    FilterContext.cpp
+    LabelSource.cpp
+    OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
-	BuildTextOperator.cpp
+    Session.cpp
+    ScatterFilter.cpp
+    SubstituteModelFilter.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp
 )

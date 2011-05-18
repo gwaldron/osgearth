@@ -41,8 +41,7 @@ int main(int argc, char** argv)
         root->addChild( node );
 
     // create a surface to house the controls
-    ControlCanvas* cs = new ControlCanvas( &viewer );
-    root->addChild( cs );
+    ControlCanvas* cs = ControlCanvas::get( &viewer );
 
     viewer.setSceneData( root );
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator );
@@ -75,6 +74,15 @@ struct MySliderHandler : public ControlEventHandler
     }
 };
 
+struct ImageRotationHandler : public ControlEventHandler
+{
+    void onClick( Control* control, int mbm )
+    {
+        ImageControl* imageControl = dynamic_cast<ImageControl*>(control);
+        imageControl->setRotation( imageControl->getRotation() + 10.0f );
+    }
+};
+
 void
 createControls( ControlCanvas* cs )
 {
@@ -88,19 +96,28 @@ createControls( ControlCanvas* cs )
         center->setVertAlign( Control::ALIGN_CENTER );
 
         // Add an image:
-        osg::Image* image = osgDB::readImageFile( "http://pelicanmapping.com/pelican.png" );
+        osg::Image* image = osgDB::readImageFile( "http://osgearth.org/chrome/site/osgearth.gif" );
         if ( image ) {
             ImageControl* imageCon = new ImageControl( image );
+            imageCon->setHorizAlign( Control::ALIGN_CENTER );
+            imageCon->setFixSizeForRotation( true );
+            imageCon->addEventHandler( new ImageRotationHandler );
             center->addControl( imageCon );
             center->setHorizAlign( Control::ALIGN_CENTER );
         }
 
         // Add a text label:
-        LabelControl* label = new LabelControl( "osgEarth Controls Toolkit - new in osgEarth 1.4" );
+        LabelControl* label = new LabelControl( "osgEarth Controls Toolkit" );
         label->setFont( osgText::readFontFile( "arialbd.ttf" ) );
         label->setFontSize( 24.0f );
         label->setHorizAlign( Control::ALIGN_CENTER );
+        label->setMargin( 5 );
         center->addControl( label );
+
+        // Add another
+        LabelControl* label2 = new LabelControl( "(Click the osgEarth logo to rotate it)" );
+        label2->setHorizAlign( Control::ALIGN_CENTER );
+        center->addControl( label2 );
 
         cs->addControl( center );
     }

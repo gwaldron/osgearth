@@ -17,7 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/GeometrySymbolizer>
-#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarthSymbology/PointSymbol>
+#include <osgEarthSymbology/LineSymbol>
+#include <osgEarthSymbology/PolygonSymbol>
 #include <osgUtil/Tessellator>
 #include <osg/Geometry>
 #include <osg/Point>

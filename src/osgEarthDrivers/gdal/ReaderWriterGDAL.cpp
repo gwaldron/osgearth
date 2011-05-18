@@ -123,6 +123,7 @@ typedef struct
 } BandProperty;
 
 
+#if 0
 static void
 tokenize(const string& str,
          vector<string>& tokens,
@@ -143,6 +144,7 @@ tokenize(const string& str,
         pos = str.find_first_of(delimiters, lastPos);
     }
 }
+#endif
 
 static void
 getFiles(const std::string &file, const std::vector<std::string> &exts, std::vector<std::string> &files)
@@ -735,7 +737,6 @@ public:
         if ( overrideProfile )
         {
             src_srs = overrideProfile->getSRS();
-            _srcDS->SetProjection( src_srs->getWKT().c_str() ); // will this work?
         }
         else if ( srcProj )
         {
@@ -814,14 +815,27 @@ public:
         }
         else
         {
-            _warpedDS = _srcDS;
-            warpedSRSWKT = _srcDS->GetProjectionRef();
-            if ( warpedSRSWKT.empty() )
-                warpedSRSWKT = src_srs->getWKT();
+            _warpedDS = _srcDS;            
+            warpedSRSWKT = src_srs->getWKT();
         }
 
         //Get the _geotransform
-        _warpedDS->GetGeoTransform(_geotransform);
+        if (overrideProfile)
+        {        
+            _geotransform[0] = overrideProfile->getExtent().xMin(); //Top left x
+            _geotransform[1] = overrideProfile->getExtent().width() / (double)_warpedDS->GetRasterXSize();//pixel width
+            _geotransform[2] = 0;
+
+            _geotransform[3] = overrideProfile->getExtent().yMax(); //Top left y
+            _geotransform[4] = 0;
+            _geotransform[5] = -overrideProfile->getExtent().height() / (double)_warpedDS->GetRasterYSize();//pixel height
+
+        }
+        else
+        {
+            _warpedDS->GetGeoTransform(_geotransform);
+        }
+
         GDALInvGeoTransform(_geotransform, _invtransform);
 
 
@@ -953,7 +967,7 @@ public:
         int tileSize = _options.tileSize().value();
 
         osg::ref_ptr<osg::Image> image;
-        if (intersects(key))
+        if (intersects(key)) //TODO: I think this test is OBE -gw
         {
             //Get the extents of the tile
             double xmin, ymin, xmax, ymax;
@@ -1227,11 +1241,13 @@ public:
             }
         }
 
-        //Create a transparent image if we don't have an image
-        if (!image.valid())
-        {
-            return ImageUtils::createEmptyImage();
-        }
+        // Moved this logic up into ImageLayer::createImageWrapper.
+        ////Create a transparent image if we don't have an image
+        //if (!image.valid())
+        //{
+        //    //OE_WARN << LC << "Illegal state-- should not get here" << std::endl;
+        //    return ImageUtils::createEmptyImage();
+        //}
         return image.release();
     }
 

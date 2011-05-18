@@ -35,6 +35,7 @@ ConfigOptions( conf ),
 _proxySettings( ProxySettings() ),
 _cacheOnly( false ),
 _enableLighting( true ),
+_overlayVertexWarping( false ),
 _terrainOptions( 0L )
 {
     mergeConfig( conf );
@@ -44,6 +45,7 @@ MapNodeOptions::MapNodeOptions( const TerrainOptions& to ) :
 _proxySettings( ProxySettings() ),
 _cacheOnly( false ),
 _enableLighting( true ),
+_overlayVertexWarping( false ),
 _terrainOptions( 0L )
 {
     setTerrainOptions( to );
@@ -65,10 +67,11 @@ MapNodeOptions::getConfig() const
     Config conf; // start with a fresh one since this is a FINAL object  // = ConfigOptions::getConfig();
     conf.key() = "options";
 
-    conf.updateObjIfSet( "proxy", _proxySettings );
-    conf.updateIfSet( "cache_only", _cacheOnly );
-    conf.updateIfSet( "lighting", _enableLighting );
-    conf.updateIfSet( "terrain", _terrainOptionsConf );
+    conf.updateObjIfSet( "proxy",           _proxySettings );
+    conf.updateIfSet   ( "cache_only",      _cacheOnly );
+    conf.updateIfSet   ( "lighting",        _enableLighting );
+    conf.updateIfSet   ( "terrain",         _terrainOptionsConf );
+    conf.updateIfSet   ( "overlay_warping", _overlayVertexWarping );
 
     return conf;
 }
@@ -78,9 +81,10 @@ MapNodeOptions::mergeConfig( const Config& conf )
 {
     ConfigOptions::mergeConfig( conf );
 
-    conf.getObjIfSet( "proxy", _proxySettings );
-    conf.getIfSet( "cache_only", _cacheOnly );
-    conf.getIfSet( "lighting", _enableLighting );
+    conf.getObjIfSet( "proxy",           _proxySettings );
+    conf.getIfSet   ( "cache_only",      _cacheOnly );
+    conf.getIfSet   ( "lighting",        _enableLighting );
+    conf.getIfSet   ( "overlay_warping", _overlayVertexWarping );
 
     if ( conf.hasChild( "terrain" ) )
     {

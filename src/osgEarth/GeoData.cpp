@@ -51,27 +51,43 @@ osg::BoundingBoxImpl<osg::Vec3d>( xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX )
 }
 
 bool 
-Bounds::contains(double x, double y ) const {
-    return x >= xMin() && x <= xMax() && y >= yMin() && y <= yMax();
+Bounds::contains(double x, double y ) const
+{
+    return 
+        isValid() &&
+        x >= xMin() && x <= xMax() && y >= yMin() && y <= yMax();
+}
+
+bool
+Bounds::contains(const Bounds& rhs) const
+{
+    return 
+        isValid() && rhs.isValid() && 
+        xMin() <= rhs.xMin() && xMax() >= rhs.xMax() &&
+        yMin() <= rhs.yMin() && yMax() >= rhs.yMax();
 }
 
 void
-Bounds::expandBy( double x, double y ) {
+Bounds::expandBy( double x, double y )
+{
     osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, 0 );
 }
 
 void
-Bounds::expandBy( double x, double y, double z ) {
+Bounds::expandBy( double x, double y, double z )
+{
     osg::BoundingBoxImpl<osg::Vec3d>::expandBy( x, y, z );
 }
 
 void
-Bounds::expandBy( const Bounds& rhs ) {
+Bounds::expandBy( const Bounds& rhs )
+{
     osg::BoundingBoxImpl<osg::Vec3d>::expandBy( rhs );
 }
 
 Bounds 
-Bounds::unionWith(const Bounds& rhs) const {
+Bounds::unionWith(const Bounds& rhs) const
+{
     if ( valid() && !rhs.valid() ) return *this;
     if ( !valid() && rhs.valid() ) return rhs;
 
@@ -85,6 +101,27 @@ Bounds::unionWith(const Bounds& rhs) const {
         u.zMax() = zMax() >= rhs.zMin() && zMax() <= rhs.zMax() ? zMax() : rhs.zMax();
     }
     return u;
+}
+
+Bounds
+Bounds::intersectionWith(const Bounds& rhs) const 
+{
+    if ( valid() && !rhs.valid() ) return *this;
+    if ( !valid() && rhs.valid() ) return rhs;
+
+    if ( this->contains(rhs) ) return rhs;
+    if ( rhs.contains(*this) ) return *this;
+
+    if ( !intersects(rhs) ) return Bounds();
+
+    double xmin, xmax, ymin, ymax;
+
+    xmin = ( xMin() > rhs.xMin() && xMin() < rhs.xMax() ) ? xMin() : rhs.xMin();
+    xmax = ( xMax() > rhs.xMin() && xMax() < rhs.xMax() ) ? xMax() : rhs.xMax();
+    ymin = ( yMin() > rhs.yMin() && yMin() < rhs.yMax() ) ? yMin() : rhs.yMin();
+    ymax = ( yMax() > rhs.yMin() && yMax() < rhs.yMax() ) ? yMax() : rhs.yMax();
+
+    return Bounds(xmin, ymin, xmax, ymax);
 }
 
 double
@@ -108,6 +145,18 @@ Bounds::center2d() const {
     return osg::Vec2d( c.x(), c.y() );
 }
 
+double
+Bounds::radius2d() const {
+    return (center2d() - osg::Vec2d(xMin(),yMin())).length();
+}
+
+std::string
+Bounds::toString() const {
+    std::stringstream buf;
+    buf << "(" << xMin() << "," << yMin() << " => " << xMax() << "," << yMax() << ")";
+    std::string result = buf.str();
+    return result;
+}
 
 /*************************************************************/
 
@@ -252,7 +301,7 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
         }
 
     }
-    return GeoExtent(); // invalid
+    return GeoExtent::INVALID;
 }
 
 void
@@ -293,6 +342,16 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 }
 
 bool
+GeoExtent::contains( const Bounds& rhs ) const
+{
+    return 
+        rhs.xMin() >= _xmin &&
+        rhs.yMin() >= _ymin &&
+        rhs.xMax() <= _xmax &&
+        rhs.yMax() <= _ymax;
+}
+
+bool
 GeoExtent::intersects( const GeoExtent& rhs ) const
 {
     bool valid = isValid();
@@ -314,14 +373,14 @@ GeoExtent::expandToInclude( double x, double y )
     if ( y > _ymax ) _ymax = y;
 }
 
-void GeoExtent::expandToInclude(const osgEarth::GeoExtent &rhs)
+void GeoExtent::expandToInclude(const Bounds& rhs)
 {
     expandToInclude( rhs.xMin(), rhs.yMin() );
     expandToInclude( rhs.xMax(), rhs.yMax() );
 }
 
 GeoExtent
-GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
+GeoExtent::intersectionSameSRS( const Bounds& rhs ) const
 {
     Bounds b(
         osg::maximum( xMin(), rhs.xMin() ),
@@ -373,6 +432,9 @@ GeoExtent::toString() const
         buf << "INVALID";
     else
         buf << "MIN=" << _xmin << "," << _ymin << " MAX=" << _xmax << "," << _ymax;
+
+    buf << ", SRS=" << _srs->getName();
+
 	std::string bufStr;
 	bufStr = buf.str();
     return bufStr;

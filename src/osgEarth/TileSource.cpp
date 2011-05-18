@@ -191,15 +191,15 @@ TileSource::getPixelsPerTile() const
 osg::Image*
 TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCallback* progress)
 {
-	// Try to get it from the memcache fist
+    // Try to get it from the memcache fist
     if (_memCache.valid())
-	{
+    {
         osg::ref_ptr<const osg::Image> cachedImage;
-		if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
+        if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
         {
             return ImageUtils::cloneImage(cachedImage.get());
         }
-	}
+    }
 
     osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
 
@@ -238,6 +238,7 @@ TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, 
         _memCache->setHeightField( key, CacheSpec(), newHF.get() );
     }
 
+    //TODO: why not just newHF.release()? -gw
     return newHF.valid() ? new osg::HeightField( *newHF.get() ) : 0L;
 }
 
@@ -302,6 +303,47 @@ TileSource::getMinDataLevel() const
 }
 
 bool
+TileSource::hasDataAtLOD( unsigned lod ) const
+{
+    //If no data extents are provided, just return true
+    if ( _dataExtents.size() == 0 )
+        return true;
+
+    bool intersects = false;
+
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        if ( itr->getMinLevel() <= lod && lod <= itr->getMaxLevel() )
+        {
+            intersects = true;
+            break;
+        }
+    }
+    return intersects;
+}
+
+bool
+TileSource::hasDataInExtent( const GeoExtent& extent ) const
+{
+    //If no data extents are provided, just return true
+    if ( _dataExtents.size() == 0 )
+        return true;
+
+    bool intersects = false;
+
+    for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
+    {
+        if ( extent.intersects( *itr ) )
+        {
+            intersects = true;
+            break;
+        }
+    }
+    return intersects;
+}
+
+
+bool
 TileSource::hasData(const osgEarth::TileKey& key) const
 {
     //If no data extents are provided, just return true
@@ -309,8 +351,6 @@ TileSource::hasData(const osgEarth::TileKey& key) const
 
     const osgEarth::GeoExtent& keyExtent = key.getExtent();
     bool intersectsData = false;
-    
-    //osg::Timer_t loopStart = osg::Timer::instance()->tick();
 
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)
     {
@@ -320,31 +360,6 @@ TileSource::hasData(const osgEarth::TileKey& key) const
             break;
         }
     }
-    //osg::Timer_t loopEnd = osg::Timer::instance()->tick();
-
-    /*
-    osg::Timer_t rtreeStart = osg::Timer::instance()->tick();
-
-    std::list<unsigned int> validExtents = _dataExtentsIndex->find(keyExtent);
-    //OE_NOTICE << "Found " << validExtents.size() << " intersecting areas " << std::endl;
-    for (std::list<unsigned int>::const_iterator itr = validExtents.begin(); itr != validExtents.end(); ++itr)
-    {
-        unsigned int index = *itr;
-        //OE_NOTICE << "index " << index << std::endl;
-        const DataExtent& e = _dataExtents[index];
-        if (keyExtent.intersects( e ) && key.getLevelOfDetail() >= e.getMinLevel() && key.getLevelOfDetail() <= e.getMaxLevel())
-        {
-            intersectsData = true;
-            break;
-        }
-    }
-    osg::Timer_t rtreeEnd = osg::Timer::instance()->tick();
-
-    double loopTime = osg::Timer::instance()->delta_m(loopStart, loopEnd);
-    double rtreeTime = osg::Timer::instance()->delta_m(rtreeStart, rtreeEnd);
-
-    OE_NOTICE << "Loop = " << loopTime << "ms   rtree=" << rtreeTime << "ms  diff=" << rtreeTime - loopTime << std::endl;
-    */
 
     return intersectsData;
 }

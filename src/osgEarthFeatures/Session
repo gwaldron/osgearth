@@ -1,0 +1,107 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_FEATURES_SESSION_H
+#define OSGEARTH_FEATURES_SESSION_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Map>
+
+namespace osgEarth { namespace Features
+{
+    /**
+     * Session is a state object that exists throughout the life of one or more related
+     * feature compilations.
+     *
+     * A Session holds shared, re-usable data elements that can be accessed through a 
+     * FilterContext.
+     *
+     * Whereas a FilterContext exists thoughout the life of a single compilation, a Session
+     * exists one level above this and governs any number of "related" compilations
+     * (e.g., the compilation of many grid cells comprising a single feature layer).
+     */
+    class OSGEARTHFEATURES_EXPORT Session : public osg::Referenced
+    {
+    public:
+        /**
+         * Constructs a new Session that is tied to a map
+         */
+        Session( const Map* map );
+
+        /**
+         * Sets the reference URI to use to expand relative paths and URLs.
+         */
+        void setReferenceURI( const std::string& referenceURI );
+
+        /**
+         * Resolves a URI based on the reference URI. You can use this method
+         * to create an absolute URI from a relative one, for example.
+         */
+        std::string resolveURI( const std::string& inputURI ) const;
+
+        /**
+         * Gets the node for a named model. This method may check multiple locations to
+         * look for a shared object or load the model from its URL.
+         */
+        osg::Node* getModel(const std::string& url) const;
+
+        /**
+         * Puts a named model into the shared repository.
+         */
+        void putModel( const std::string& url, osg::Node* node );
+
+        /**
+         * Gets the underlying map (frame) interface in this session
+         */
+        MapFrame createMapFrame( Map::ModelParts parts =Map::TERRAIN_LAYERS ) const;
+
+        /**
+         * Gets the map information backing up this session.
+         */
+        const MapInfo& getMapInfo() const { return _mapInfo; }
+
+        /**
+         * Sets the user-defined build data for this session
+         */
+        void setBuildData( osg::Referenced* buildData ) { _buildData = buildData; }
+
+        /**
+         * Gets the user-defined build data for this session
+         */
+        osg::Referenced* getBuildData() const { return _buildData.get(); }
+
+    private:
+
+        void parseMarker(const std::string& marker, std::string& url, bool &isImage) const;
+
+        osg::ref_ptr<const Map> _map;
+        MapInfo _mapInfo;
+        std::string _referenceURI;
+
+        typedef std::map<std::string, osg::ref_ptr<osg::Node> > ModelMap;
+        ModelMap _models;
+        Threading::ReadWriteMutex _modelsMutex;
+
+        osg::ref_ptr<osg::Referenced> _buildData;
+    };
+
+} }
+
+#endif // OSGEARTH_FEATURES_SESSION_H

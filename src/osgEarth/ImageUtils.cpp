@@ -39,31 +39,10 @@ ImageUtils::cloneImage( const osg::Image* input )
     // Calling clone->dirty() might work, but we are not sure.
 
     if ( !input ) return 0L;
-
-    if ( input->className() == "Image" )
-    {
-#if 0
-        osg::Image* clone = new osg::Image( *input );
-        clone->dirty();
-        return clone;
-#else
-        osg::Image* clone = new osg::Image();
-        clone->allocateImage( input->s(), input->t(), input->r(), input->getPixelFormat(), input->getDataType(), input->getPacking() );
-        clone->setInternalTextureFormat( input->getInternalTextureFormat() );
-        if ( input->isMipmap() )
-            clone->setMipmapLevels( input->getMipmapLevels() );
-        memcpy( clone->data(), input->data(), input->getTotalSizeInBytesIncludingMipmaps() );
-        return clone;
-#endif
-    }
-
-    else
-    {
-        // handles Image subclasses.
-        osg::Image* clone = osg::clone( input, osg::CopyOp::DEEP_COPY_ALL );
-        clone->dirty();
-        return clone;
-    }
+    
+    osg::Image* clone = osg::clone( input, osg::CopyOp::DEEP_COPY_ALL );
+    clone->dirty();
+    return clone;
 }
 
 void
@@ -391,8 +370,11 @@ ImageUtils::sharpenImage( const osg::Image* input )
 osg::Image*
 ImageUtils::createEmptyImage()
 {
+    //TODO: Make this a static or store it in the registry to avoid creating it
+    // each time.
     osg::Image* image = new osg::Image;
     image->allocateImage(1,1,1, GL_RGBA, GL_UNSIGNED_BYTE);
+    image->setInternalTextureFormat( GL_RGBA8 );
     unsigned char *data = image->data(0,0);
     memset(data, 0, 4);
     return image;
@@ -410,10 +392,15 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
 {
     if ( !image )
         return 0L;
-    
-    if ( image->getPixelFormat() == pixelFormat && image->getDataType() == dataType )
-        return cloneImage(image);
 
+    if ( image->getPixelFormat() == pixelFormat && image->getDataType() == dataType)
+    {
+        GLenum texFormat = image->getInternalTextureFormat();
+        if (dataType != GL_UNSIGNED_BYTE
+            || (pixelFormat == GL_RGB && texFormat == GL_RGB8)
+            || (pixelFormat == GL_RGBA && texFormat == GL_RGBA8))
+        return cloneImage(image);
+    }
     if ( !canConvert(image, pixelFormat, dataType) )
         return 0L;
 

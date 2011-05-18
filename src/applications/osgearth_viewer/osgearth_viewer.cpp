@@ -23,13 +23,16 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
+#include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/Controls>
 #include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/Viewpoint>
 
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
 
 int
 usage( const std::string& msg )
@@ -43,6 +46,35 @@ usage( const std::string& msg )
     OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
         
     return -1;
+}
+ 
+osg::Node*
+createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
+{
+    ControlCanvas* canvas = ControlCanvas::get( view );
+
+    // the outer container:
+    Grid* g = new Grid();
+    g->setBackColor(0,0,0,0.5);
+    g->setMargin( 10 );
+    g->setPadding( 10 );
+    g->setSpacing( 10 );
+    g->setChildVertAlign( Control::ALIGN_CENTER );
+    g->setAbsorbEvents( true );
+    g->setVertAlign( Control::ALIGN_BOTTOM );
+
+    for( unsigned i=0; i<vps.size(); ++i )
+    {
+        const Viewpoint& vp = vps[i];
+        std::stringstream buf;
+        buf << (i+1);
+        g->setControl( 0, i, new LabelControl(buf.str(), osg::Vec4f(1,1,0,1)) );
+        g->setControl( 1, i, new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName()) );
+    }
+
+    canvas->addControl( g );
+
+    return canvas;
 }
 
 struct AnimateSunCallback : public osg::NodeCallback
@@ -68,12 +100,15 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
             int index = (int)ea.getKey() - (int)'1';
             if ( index >= 0 && index < (int)_viewpoints.size() )
             {
-                _manip->setViewpoint( _viewpoints[index], 3.0 );
+                _manip->setViewpoint( _viewpoints[index], 4.5 );
             }
             else if ( ea.getKey() == 'v' )
             {
                 Viewpoint vp = _manip->getViewpoint();
-                OE_NOTICE << vp.getConfig().toString() << std::endl;
+                XmlDocument xml( vp.getConfig() );
+                xml.store( std::cout );
+                std::cout << std::endl;
+                //OE_NOTICE << vp.getConfig().toString() << std::endl;
             }
         }
         return false;
@@ -113,15 +148,10 @@ main(int argc, char** argv)
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
     {
+        const Config& externals = mapNode->externalConfig();
+
         if ( mapNode->getMap()->isGeocentric() )
         {
-            // the AutoClipPlaneHandler will automatically adjust the near/far clipping
-            // planes based on your view of the horizon. This prevents near clipping issues
-            // when you are very close to the ground. If your app never brings a user very
-            // close to the ground, you may not need this.
-            if ( useAutoClip )
-                viewer.addEventHandler( new AutoClipPlaneHandler );
-
             // the Graticule is a lat/long grid that overlays the terrain. It only works
             // in a round-earth geocentric terrain.
             if ( useGraticule )
@@ -130,10 +160,16 @@ main(int argc, char** argv)
                 root->addChild( graticule );
             }
 
+            // Sky model.
+            Config skyConf = externals.child( "sky" );
+            if ( !skyConf.empty() )
+                useSky = true;
+
             if ( useSky )
             {
+                double hours = skyConf.value( "hours", 12.0 );
                 SkyNode* sky = new SkyNode( mapNode->getMap() );
-                sky->setDateTime( 2011, 1, 6, 17.0 );
+                sky->setDateTime( 2011, 3, 6, hours );
                 sky->attach( &viewer );
                 root->addChild( sky );
                 if (animateSky)
@@ -141,18 +177,32 @@ main(int argc, char** argv)
                     sky->setUpdateCallback( new AnimateSunCallback());
                 }
             }
+
+            if ( externals.hasChild("autoclip") )
+                useAutoClip = externals.child("autoclip").boolValue( useAutoClip );
+
+            // the AutoClipPlaneHandler will automatically adjust the near/far clipping
+            // planes based on your view of the horizon. This prevents near clipping issues
+            // when you are very close to the ground. If your app never brings a user very
+            // close to the ground, you may not need this.
+            if ( useSky || useAutoClip )
+            {
+                viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
+            }
         }
 
         // read in viewpoints, if any
         std::vector<Viewpoint> viewpoints;
-        const Config& conf = mapNode->externalConfig();
-        const ConfigSet children = conf.children("viewpoint");
+        const ConfigSet children = externals.children("viewpoint");
         for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
             viewpoints.push_back( Viewpoint(*i) );
 
         viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
         if ( viewpoints.size() > 0 && jump )
             manip->setViewpoint(viewpoints[0]);
+
+        if ( viewpoints.size() > 0 )
+            root->addChild( createControlPanel(&viewer, viewpoints) );
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

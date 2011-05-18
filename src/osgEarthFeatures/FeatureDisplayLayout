@@ -1,0 +1,121 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H
+#define OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Style>
+#include <osg/Geode>
+#include <vector>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+
+    /**
+     * Settings for a single level of detail of feature data
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureLevel
+    {
+    public:
+        FeatureLevel( const Config& config );
+        FeatureLevel( float minRange, float maxRange );
+        //FeatureLevel( float minRange, float maxRange, const Query& query );
+        FeatureLevel( float minRange, float maxRange, const StyleSelector& oneSelector );
+
+        float minRange() const { return _minRange; }
+        float maxRange() const { return _maxRange; }
+        //const optional<Query> query() const { return _query; }
+
+        const StyleSelectorVector& selectors() const { return _selectors; }
+
+    public:
+        Config getConfig() const;
+
+    protected:
+        void fromConfig( const Config& conf );
+
+        float _minRange, _maxRange;
+        StyleSelectorVector _selectors;
+        //optional<StyleSelector> _selector;
+        //optional<Query> _query;
+    };
+
+    /**
+     * Defines a multi-LOD layout for a feature model layer.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureDisplayLayout : public osg::Referenced
+    {
+    public:
+        FeatureDisplayLayout( const Config& conf =Config() );
+
+        /**
+         * The ratio of visibility range to feature tile radius. Default is 15.
+         * Increase this to produce more, smaller tiles at a given visibility
+         * range; decrease this to procide fewer, larger tiles.
+         */
+        optional<float>& tileSizeFactor() { return _tileSizeFactor; }
+        const optional<float>& tileSizeFactor() const { return _tileSizeFactor; }
+
+        /**
+         * Whether to crop geometry to fit within the cell extents when chopping
+         * a feature level up into grid cells. By default, this is false, meaning 
+         * that a feature whose centroid falls within the cell will be included.
+         * Setting this to true means that if any part of the feature falls within
+         * the working cell, it will be cropped to the cell extents and used.
+         */
+        optional<bool>& cropFeatures() { return _cropFeatures; }
+        const optional<bool>& cropFeatures() const { return _cropFeatures; }
+
+        /** Adds a new feature level */
+        void addLevel( const FeatureLevel& level );
+
+        /** Gets the number of feature levels in the schema */
+        unsigned getNumLevels() const;
+
+        /** Gets the nth level */
+        const FeatureLevel* getLevel( unsigned i ) const;
+
+        /** Gets the maximum range of the schema */
+        float getMaxRange() const;
+
+        /**
+         * Calculates the "best" quadtree LOD for the specified level, given the radius 
+         * of the full extent of the dataset.
+         */
+        unsigned chooseLOD( const FeatureLevel& level, double fullExtentRadius ) const;
+
+    public:
+        Config getConfig() const;
+
+    protected:
+        optional<float> _tileSizeFactor;
+        optional<bool>  _cropFeatures;
+        typedef std::multimap<float,FeatureLevel> Levels;
+        Levels _levels;
+
+        void fromConfig( const Config& conf );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_DISPLAY_LAYOUT_H

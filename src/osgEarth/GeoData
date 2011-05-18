@@ -44,11 +44,17 @@ namespace osgEarth
         double height() const;
         double depth() const;
         bool contains(double x, double y ) const;
+        bool contains(const Bounds& rhs) const;
         Bounds unionWith(const Bounds& rhs) const; 
+        Bounds intersectionWith(const Bounds& rhs) const;
         void expandBy( double x, double y );
         void expandBy( double x, double y, double z );
         void expandBy( const Bounds& rhs );
         osg::Vec2d center2d() const;
+        double radius2d() const;
+        std::string toString() const;
+        bool isValid() const { return width() > 0.0 && height() > 0.0; }
+        bool isEmpty() const { return !isValid(); }
     };
 
     /**
@@ -119,7 +125,13 @@ namespace osgEarth
         bool splitAcrossDateLine( GeoExtent& first, GeoExtent& second ) const;
 
         /**
-         * Returns this extent transformed into another spatial reference.
+         * Returns this extent transformed into another spatial reference. 
+         *
+         * NOTE! It is possible that the target SRS will not be able to accomadate the
+         * extents of the source SRS. (For example, transforming a full WGS84 extent
+         * to Mercator will resultin an error since Mercator does not cover the entire
+         * globe.) Consider using Profile:clampAndTransformExtent() instead of using
+         * this method directly.
          */
         GeoExtent transform( const SpatialReference* to_srs ) const;
 
@@ -133,6 +145,11 @@ namespace osgEarth
          *      are in the same SRS as this object.
          */
         bool contains(double x, double y, const SpatialReference* xy_srs =0L) const;
+
+        /**
+         * Returns true if this extent fully contains the target bounds.
+         */
+        bool contains( const Bounds& rhs ) const;
 
         /**
          * Returns TRUE if this extent intersects another extent.
@@ -152,13 +169,13 @@ namespace osgEarth
          * Grow this extent to include the specified GeoExtent (which is assumed to be
          * in the extent's SRS.
          */
-        void expandToInclude( const GeoExtent& rhs );
+        void expandToInclude( const Bounds& rhs );
         
         /**
          * Intersect this extent with another extent in the same SRS and return the
          * result.
          */
-        GeoExtent intersectionSameSRS( const GeoExtent& rhs ) const;
+        GeoExtent intersectionSameSRS( const Bounds& rhs ) const;
 
         /**
          * Returns a human-readable string containing the extent data (without the SRS)

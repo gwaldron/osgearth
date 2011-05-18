@@ -1,0 +1,107 @@
+<!--
+osgEarth Sample
+
+Model Scattering using the "feature_geom" driver.
+
+For each polygon in the feature geometry, scatter model instances within
+that polygon as a specific density (instances/sqkm). Scattered placement
+is randomized, but it is randomized exactly the same way each time.
+-->
+
+<map name="Model Scattering Demo" type="geocentric" version="2">
+      
+    <!-- Our features layer. The "feature_geom" driver will analyze the
+         style sheet and determine how to render the feature data. -->
+         
+    <model name="trees" driver="feature_geom">
+          
+        <!-- Feature data set to load. This is a set of polygons representing
+             the public parks in Washington DC -->
+             
+        <features name="parks" driver="ogr">
+            <url>../data/parks.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        
+        <!-- Clustering is a method of combining geometry in the scene graph to
+             improve performance. It is recommended when dealing with large numbers
+             of features. -->
+             
+        <clustering>true</clustering>
+        
+        <!-- The stylesheet will describe how to render the feature data. In this case
+             we indicate model substitution with density-based scattering. The "density"
+             units are instances-per-sqkm. -->
+             
+        <paging>
+            <crop_features>true</crop_features>
+            <level max_range="100000" min_range="10000">
+                <selector class="parks-outline"/>
+            </level>
+            <level max_range="10000">
+                <selector class="parks-1"/>
+            </level>            
+            <level max_range="5000">
+                <selector class="parks-2"/>
+            </level>       
+            <level max_range="1500">
+                <selector class="parks-3"/>
+            </level>
+        </paging>
+             
+        <styles>
+            <style type="text/css">
+                parks-1 {
+                   marker:              model("../data/tree.osg");
+                   marker-placement:    random;
+                   marker-density:      1000;
+                   marker-scale:        2;
+                   altitude-clamping:   terrain;
+                }            
+                parks-2 {
+                   marker:              model("../data/tree.osg");
+                   marker-placement:    random;
+                   marker-density:      1000;
+                   marker-scale:        2;
+                   altitude-clamping:   terrain;
+                   marker-random-seed:  1;
+                }              
+                parks-3 {
+                   marker:              model("../data/tree.osg");
+                   marker-placement:    random;
+                   marker-density:      1000;
+                   marker-scale:        2;
+                   altitude-clamping:   terrain;
+                   marker-random-seed:  2;
+                }           
+                parks-outline {
+                   stroke:              #00ff00ff;
+                   altitude-offset:     25;
+                   altitide-clamping:   terrain;
+                }
+                
+            </style>
+        </styles>        
+    </model>
+    
+    
+    <options>
+        <lighting>false</lighting>
+        <cache type="tms">
+            <path>osgearth_cache</path>
+        </cache>
+    </options> 
+    
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+    <elevation name="ReadyMap.org - Elevation" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
+    </elevation>
+    
+    <external>
+        <viewpoint name="DC overview" heading="0" height="25.83" lat="38.9015" long="-77.0217" pitch="-89.9" range="28262"/>
+        <viewpoint name="DC close up" heading="-13.48" lat="38.911" long="-77.051" pitch="-10.1" range="2711"/>
+    </external>
+  
+</map>

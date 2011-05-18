@@ -1,0 +1,125 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_FEATURE_GEOMETRY_INDEX_H
+#define OSGEARTHFEATURES_FEATURE_GEOMETRY_INDEX_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osg/Geode>
+#include <osg/Geometry>
+#include <osg/PrimitiveSet>
+#include <map>
+#include <vector>
+
+namespace osgEarth { namespace Features
+{
+    /**
+     * Record of all the OSG components that comprise a single Feature.
+     */
+    struct FeatureGeometryRecord
+    {
+        typedef std::vector< osg::ref_ptr<osg::PrimitiveSet> > PrimitiveSetVector;
+        typedef std::map< osg::ref_ptr<osg::Geometry>, PrimitiveSetVector > GeomPrimSetMap;
+
+        osg::ref_ptr<osg::Geode> _geode;
+        GeomPrimSetMap           _primSetsByGeometry;
+    };
+
+    /**
+     * This query object will search the specified scene graph for all the 
+     * OSG components that comprise a particular Feature ID. It searched the
+     * graph for a UserData structure containing a FeatureGeometryIndex. When
+     * found, it searches that index for the Feature ID. If found, it returns
+     * the record; otherwise it continues searching.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureGeometryQuery
+    {
+    public:
+        FeatureGeometryQuery( osg::Node* graph );
+
+        /**
+         * Locates the geometry record representing the specified feature.
+         * Returns true if found; false if not.
+         */
+        bool find( FeatureID fid, FeatureGeometryRecord& output ) const;
+
+    protected:
+        osg::ref_ptr<osg::Node> _graph;
+    };
+
+    /**
+     * Index that lets you look up the OSG components that comprise a given
+     * Feature. Given the Feature ID, this index will return a set of Geode,
+     * Geometies, and PrimitiveSets that make up the feature.
+     *
+     * Use a FeatureGeometryIndexBuilder to create an index. Typically you can
+     * then attach the index to a node in the scene graph that you used to
+     * create the index.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureGeometryIndex : public osg::Referenced
+    {
+    public:
+        typedef std::map< FeatureID, FeatureGeometryRecord > FeatureRecords;
+
+    public:
+        /** Gets the record associated with the feature ID, or NULL if there isn't one */
+        const FeatureGeometryRecord* get( FeatureID fid ) const;
+
+        /** Gets the entire database for self-iteration */
+        const FeatureRecords& getRecords() const { return _records; }
+
+    private:
+        FeatureRecords _records;
+        friend class FeatureGeometryIndexBuilder;
+        FeatureGeometryIndex();
+    };
+
+    /**
+     * Use this class to construct a geometry index. Every time you create a
+     * new primitive set that belongs to a Feature, call "add" to remember the
+     * mapping. When you are done building geometry, call "createIndex" to 
+     * build a index for a particular scene graph.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureGeometryIndexBuilder
+    {
+    public:
+        FeatureGeometryIndexBuilder();
+
+        /**
+         * Maps a primitiset set to a feature.
+         */
+        void add( FeatureID id, osg::PrimitiveSet* primSet );
+
+        /**
+         * Creates an index from a scene graph and the feature ID map
+         */
+        FeatureGeometryIndex* createIndex( osg::Node* graph );
+
+
+    public:
+        typedef std::map< osg::PrimitiveSet*, FeatureID > PrimSetFeatureIdMap;
+
+    protected:
+        PrimSetFeatureIdMap _primSetIds;
+    };
+
+} } // osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_GEOMETRY_INDEX_H

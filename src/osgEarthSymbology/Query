@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarth/Config>
 #include <osgEarth/GeoData>
+#include <osgEarth/TileKey>
 
 namespace osgEarth { namespace Symbology
 {
@@ -44,6 +45,16 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& expression() { return _expression; }
         const optional<std::string>& expression() const { return _expression; }
 
+        /** Sets a driver-specific query expression. */
+        optional<osgEarth::TileKey>& tileKey() { return _tileKey; }
+        const optional<osgEarth::TileKey>& tileKey() const { return _tileKey; }
+        
+
+        /**
+         * Merges this query with another query, and returns the result
+         */
+        Query combineWith( const Query& other ) const;
+
     public: // configurable
 
         virtual Config getConfig() const;
@@ -52,6 +63,7 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<Bounds> _bounds;
         optional<std::string> _expression;
+        optional<osgEarth::TileKey> _tileKey;
     };
 
 } } // namespace osgEarth::Symbology

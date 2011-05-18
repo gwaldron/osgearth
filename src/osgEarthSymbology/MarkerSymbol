@@ -17,66 +17,62 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H
-#define OSGEARTHSYMBOLOGY_MARKER_SYMBOL_H 1
+#ifndef OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H
+#define OSGEARTHSYMBOLOGY_MODEL_SYMBOL_H 1
 
 #include <osgEarth/Common>
-#include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarthSymbology/Symbol>
+#include <osg/Vec3f>
 
 namespace osgEarth { namespace Symbology
 {
-
-    class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbol : public PointSymbol
+    class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbol : public Symbol
     {
     public:
-        MarkerSymbol();
+        /**
+         * Controls the placements of models.
+         */
+        enum Placement
+        {
+            PLACEMENT_CENTROID,   /** Place a model at feature centroid */
+            PLACEMENT_INTERVAL,   /** Place models at regular intervals within feature, according to density */
+            PLACEMENT_RANDOM      /** Place models randomly within feature, according to density */
+        };
 
-        optional<std::string>& marker() { return _marker; }
-        const optional<std::string>& marker() const { return _marker; }
-
-    protected:
-        optional<std::string> _marker;
-    };
-
-
-    class OSGEARTHSYMBOLOGY_EXPORT MarkerLineSymbol : public LineSymbol
-    {
     public:
-        MarkerLineSymbol();
+        MarkerSymbol( const Config& conf =Config() );
 
-        optional<std::string>& marker() { return _marker; }
-        const optional<std::string>& marker() const { return _marker; }
+        /** URL of the model to use for substitution. */
+        optional<std::string>& url() { return _url; }
+        const optional<std::string>& url() const { return _url; }
 
-        optional<float>& interval() { return _interval; }
-        const optional<float>& interval() const { return _interval; }
+        /** How to map feature geometry to model placement. (default is CENTROID) */
+        optional<Placement>& placement() { return _placement; }
+        const optional<Placement>& placement() const { return _placement; }
 
-    protected:
-        optional<std::string> _marker;
-        optional<float> _interval;
-    };
+        /** For PLACEMENT_RANDOM/INTERVAL, the scattering density in instances per sqkm */
+        optional<float>& density() { return _density; }
+        const optional<float>& density() const { return _density; }
 
+        /** Model instance scale factor */
+        optional<osg::Vec3f>& scale() { return _scale; }
+        const optional<osg::Vec3f>& scale() const { return _scale; }
 
-    class OSGEARTHSYMBOLOGY_EXPORT MarkerPolygonSymbol : public PolygonSymbol
-    {
+        /** Seeding value for the randomizer */
+        optional<unsigned>& randomSeed() { return _randomSeed; }
+        const optional<unsigned>& randomSeed() const { return _randomSeed; }
+
     public:
-        MarkerPolygonSymbol();
-
-        optional<std::string>& marker() { return _marker; }
-        const optional<std::string>& marker() const { return _marker; }
-
-        optional<float>& interval() { return _interval; }
-        const optional<float>& interval() const { return _interval; }
-
-        optional<float>& randomRatio() { return _randomRatio; }
-        const optional<float>& randomRatio() const { return _randomRatio; }
+        virtual Config getConfig() const;
+        virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<std::string> _marker;
-        optional<float> _randomRatio; // use a random from distance to avoid regularity
-        optional<float> _interval;
+        optional<std::string> _url;
+        optional<Placement>   _placement;
+        optional<float>       _density;
+        optional<osg::Vec3f>  _scale;
+        optional<unsigned>    _randomSeed;
     };
-
-
 
 } } // namespace osgEarth::Symbology
 

@@ -1,0 +1,137 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_WFS_H
+#define OSGEARTHUTIL_WFS_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/GeoData>
+#include <osg/Referenced>
+#include <osg/ref_ptr>
+#include <osgEarth/Common>
+
+#include <osgDB/ReaderWriter>
+#include <osg/Version>
+#if OSG_MIN_VERSION_REQUIRED(2,9,5)
+#include <osgDB/Options>
+#endif
+
+
+#include <string>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{
+    class OSGEARTHUTIL_EXPORT WFSFeatureType : public osg::Referenced
+    {
+    public:
+        WFSFeatureType();
+
+        const std::string& getName() const { return _name;}
+        void setName(const std::string& name) { _name = name;}
+
+        const std::string& getTitle() const { return _title;}
+        void setTitle(const std::string& title) { _title = title;}
+
+        const std::string& getSRS() const { return _srs;}
+        void  setSRS(const std::string& srs) { _srs = srs; }
+
+        const std::string& getAbstract() const { return _abstract;}
+        void setAbstract(const std::string& abstract) { _abstract = abstract; }
+
+        const GeoExtent& getExtent() const { return _extent;}
+        void setExtent(const GeoExtent& extent) { _extent = extent;}
+
+        int getMaxLevel() const { return _maxLevel;}
+        void setMaxLevel( int maxLevel ) { _maxLevel = maxLevel; }
+
+        bool getTiled() const { return _tiled;}
+        void setTiled(bool tiled) { _tiled = tiled;}
+        
+    private:
+        std::string _name;
+        std::string _title;
+        std::string _srs;
+        std::string _abstract;
+        GeoExtent   _extent;
+        bool        _tiled;
+        int         _maxLevel;
+    };
+
+    typedef std::vector< osg::ref_ptr< WFSFeatureType > > FeatureTypeList;
+
+    
+
+    /**
+    *WFS Capabilities
+    */
+    class OSGEARTHUTIL_EXPORT WFSCapabilities : public osg::Referenced
+    {
+    public:
+        WFSCapabilities();
+
+        /**
+        *Gets the WFS capabilities version
+        */
+        const std::string& getVersion() const {return _version;}
+
+        /**
+        *Sets the WFS capabilities version
+        */
+        void setVersion(const std::string& version) {_version = version;}        
+
+        const std::string& getName() const { return _name; }
+        void setName(const std::string& name) { _name = name; }
+
+        const std::string& getTitle() const { return _title;}
+        void setTitle(const std::string& title) { _title = title;}
+
+        const std::string& getAbstract() const { return _abstract; }
+        void setAbstract( const std::string& abstract) { _abstract = abstract; }
+
+        WFSFeatureType* getFeatureTypeByName(const std::string& name);
+
+        FeatureTypeList& getFeatureTypes() { return _featureTypes; }
+
+                
+    protected:
+        FeatureTypeList _featureTypes;
+
+        std::string _version;
+        std::string _name;
+        std::string _title;
+        std::string _abstract;
+    };
+
+    /*
+    * Reads Capabilities from a URL or file
+    */
+    class OSGEARTHUTIL_EXPORT WFSCapabilitiesReader
+    {
+    public:
+        static WFSCapabilities* read( const std::string &location, const osgDB::ReaderWriter::Options *options );
+        static WFSCapabilities* read( std::istream &in );
+    private:
+        WFSCapabilitiesReader(){}
+        WFSCapabilitiesReader(const WFSCapabilitiesReader &cr){}
+    };
+
+} } // namespace osgEarth::Util
+
+#endif //OSGEARTHUTIL_WFS_H

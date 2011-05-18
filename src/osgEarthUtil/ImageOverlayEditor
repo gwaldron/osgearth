@@ -1,0 +1,37 @@
+#ifndef OSGEARTH_UTIL_IMAGE_OVERLAY_EDITOR_H
+#define OSGEARTH_UTIL_IMAGE_OVERLAY_EDITOR_H
+
+#include <osgEarth/MapNode>
+#include <osgEarthUtil/Common>
+#include <osgEarthUtil/ImageOverlay>
+#include <osg/MatrixTransform>
+#include <osgGA/GUIEventHandler>
+#include <osgEarthUtil/Draggers>
+
+namespace osgEarth { namespace Util
+{
+    class OSGEARTHUTIL_EXPORT ImageOverlayEditor : public osg::Group
+    {
+    public:
+        typedef std::map< ImageOverlay::ControlPoint, osg::ref_ptr< osgManipulator::Dragger > >  ControlPointDraggerMap;
+
+        ImageOverlayEditor(ImageOverlay* overlay, MapNode* mapNode);
+
+        ControlPointDraggerMap& getDraggers() { return _draggers; }
+        osgEarth::MapNode* getMapNode()  { return _mapNode; }
+
+        ImageOverlay* getOverlay() { return _overlay;}
+
+    protected:
+        void addDragger( ImageOverlay::ControlPoint controlPoint );
+
+        osg::ref_ptr< ImageOverlay > _overlay;
+        osg::ref_ptr< osgEarth::MapNode > _mapNode;    
+        osg::ref_ptr< osgManipulator::DraggerCallback > _updateDraggersCallback;
+        ControlPointDraggerMap _draggers;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_IMAGE_OVERLAY_EDITOR_H
+

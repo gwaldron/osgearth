@@ -23,7 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthSymbology/Text>
+#include <osgEarthSymbology/TextSymbol>
 #include <osg/Node>
 
 namespace osgEarth { namespace Features
@@ -34,10 +34,14 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT BuildTextOperator
     {
     public:
+		    BuildTextOperator(bool hideClutter=false) : _hideClutter(hideClutter) { };
+    public:
         osg::Node* operator()(
             const FeatureList& features, 
             const osgEarth::Symbology::TextSymbol *symbol,
             const FilterContext& context);
+    protected:
+	    bool _hideClutter;
     };
 
 } } // namespace osgEarth::Features

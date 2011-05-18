@@ -48,10 +48,11 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    bool useGeom    = arguments.read("--geometry");
+    bool useRaster  = arguments.read("--rasterize");
     bool useOverlay = arguments.read("--overlay");
     bool useStencil = arguments.read("--stencil");
     bool useMem     = arguments.read("--mem");
+    bool useLabels  = arguments.read("--labels");
 
     osgViewer::Viewer viewer(arguments);
 
@@ -83,12 +84,24 @@ int main(int argc, char** argv)
 
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
-    Style* style = new Style;
+    Style style;
 
-    LineSymbol* ls = new LineSymbol;
+    LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
-    ls->stroke()->width() = 3.0f;
-    style->addSymbol(ls);
+    ls->stroke()->width() = 2.0f;
+
+    // Add some text labels.
+    if ( useLabels )
+    {
+        TextSymbol* text = style.getOrCreateSymbol<TextSymbol>();
+        text->provider() = "overlay";
+        text->content() = StringExpression( "[name]" );
+        text->priority() = NumericExpression( "[area]" );
+        text->removeDuplicateLabels() = true;
+        text->size() = 16.0f;
+        text->fill()->color() = Color::White;
+        text->halo()->color() = Color::DarkGray;
+    }
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNodeOptions mapNodeOptions;
@@ -109,7 +122,15 @@ int main(int argc, char** argv)
         worldOpt.depthTestEnabled() = false;
         map->addModelLayer( new ModelLayer( "my features", worldOpt ) );
     }
-    else if (useGeom || useOverlay)
+    else if (useRaster)
+    {
+        AGGLiteOptions worldOpt;
+        worldOpt.featureOptions() = featureOpt;
+        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+        worldOpt.styles()->addStyle( style );
+        map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
+    }
+    else //if (useGeom || useOverlay)
     {
         FeatureGeomModelOptions worldOpt;
         worldOpt.featureOptions() = featureOpt;
@@ -121,14 +142,6 @@ int main(int argc, char** argv)
         ModelLayerOptions options( "my features", worldOpt );
         options.overlay() = useOverlay;
         map->addModelLayer( new ModelLayer(options) );
-    }
-    else // rasterize
-    {
-        AGGLiteOptions worldOpt;
-        worldOpt.featureOptions() = featureOpt;
-        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
-        worldOpt.styles()->addStyle( style );
-        map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
     }
 
     viewer.setSceneData( mapNode );

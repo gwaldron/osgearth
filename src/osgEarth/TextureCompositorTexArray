@@ -44,19 +44,31 @@ namespace osgEarth
 
         bool supportsLayerUpdate() const { return true; }
 
-        GeoImage prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const;
+        GeoImage prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
+        {
+            return prepareImage(layerImage, tileExtent, textureSize() );
+        }
 
+        GeoImage prepareSecondaryImage( const GeoImage& layerImage, const GeoExtent& tileExtent ) const
+        {
+            return prepareImage(layerImage, tileExtent, textureSize() / 2);
+        }
+
+    protected:
+        GeoImage prepareImage( const GeoImage& layerImage, const GeoExtent& tileExtent, unsigned size ) const;
+    public:
         void applyLayerUpdate( 
             osg::StateSet* stateSet,
             UID layerUID, 
             const GeoImage& preparedImage,
-            const GeoExtent& tileExtent,
-            const TextureLayout& layout ) const;
+            const TileKey& tileKey,
+            const TextureLayout& layout,
+            osg::StateSet* parentStateSet ) const;
 
         osg::Shader* createSamplerFunction( UID layerUID, const std::string& functionName, osg::Shader::Type type, const TextureLayout& layout ) const;
+        static inline unsigned textureSize() { return 256; }
 
     private:
-        bool _lodBlending;
         float _lodTransitionTime;
     };
 }

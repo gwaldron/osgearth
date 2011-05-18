@@ -30,16 +30,19 @@ namespace osgEarth { namespace Drivers
     class FeatureGeomModelOptions : public FeatureModelSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
-
+        /** Z offset to apply to feature geoemtry */
         optional<double>& heightOffset() { return _heightOffset; }
         const optional<double>& heightOffset() const { return _heightOffset; }
+
+        /** Whether to cluster feature geometries together for speed */
+        optional<bool>& clustering() { return _clustering; }
+        const optional<bool>& clustering() const { return _clustering; }
 
     public:
         FeatureGeomModelOptions( const ConfigOptions& options =ConfigOptions() ) :
             FeatureModelSourceOptions( options ),
-            _heightOffset( 0.0 )
+            _heightOffset( 0.0 ),
+            _clustering( true )
         {
             setDriver( "feature_geom" );
             fromConfig( _conf );
@@ -48,8 +51,8 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureModelSourceOptions::getConfig();
-            conf.updateIfSet( "url", _url );
             conf.updateIfSet( "height_offset", _heightOffset );
+            conf.updateIfSet( "clustering", _clustering );
             return conf;
         }
 
@@ -61,12 +64,13 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "url", _url );
             conf.getIfSet( "height_offset", _heightOffset );
+            conf.getIfSet( "clustering", _clustering );
         }
 
-        optional<std::string> _url;
         optional<double> _heightOffset;
+        optional<bool>   _clustering;
+        optional<float>  _scale;
     };
 
 } } // namespace osgEarth::Drivers

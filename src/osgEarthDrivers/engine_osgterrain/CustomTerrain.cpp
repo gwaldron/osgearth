@@ -16,6 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#if 0
 #include "CustomTerrain"
 #include "CustomTile"
 #include "TransparentLayer"
@@ -104,6 +105,11 @@ void
 CustomTerrain::releaseGLObjectsForTiles(osg::State* state)
 {
     OpenThreads::ScopedLock<Mutex> lock( _tilesToReleaseMutex );
+
+    //if ( _tilesToRelease.size() > 0 )
+    //{
+    //    OE_INFO << "Releasing " << _tilesToRelease.size() << " tiles" << std::endl;
+    //}
 
     while( _tilesToRelease.size() > 0 )
     {
@@ -399,10 +405,14 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
                 if ( tile->getNumParents() == 0 && tile->getHasBeenTraversed() )
                 {
                     _tilesToShutDown.push_back( tile );
+                    
+                    // i is incremented prior to calling erase, but i's previous value goes to erase,
+                    // maintaining validity
                     _tiles.erase( i++ );
                 }
                 else
                     ++i;
+
             }
         }
 
@@ -430,37 +440,42 @@ CustomTerrain::traverse( osg::NodeVisitor &nv )
             }
         }
 
-        // update the frame stamp on the task services. This is necessary to support 
-        // automatic request cancelation for image requests.
+//        OE_NOTICE << "Tiles = " << _tiles.size() << std::endl;
+
+        if ( _loadingPolicy.mode() == LoadingPolicy::MODE_SEQUENTIAL || _loadingPolicy.mode() == LoadingPolicy::MODE_PREEMPTIVE )
         {
-            ScopedLock<Mutex> lock( _taskServiceMutex );
-            for (TaskServiceMap::iterator i = _taskServices.begin(); i != _taskServices.end(); ++i)
+            // update the frame stamp on the task services. This is necessary to support 
+            // automatic request cancelation for image requests.
             {
-                i->second->setStamp( stamp );
-            }
-        }
-
-        // next, go through the live tiles and process update-traversal requests. This
-        // requires a read-lock on the master tiles table.
-        TileList updatedTiles;
-        {
-            Threading::ScopedReadLock tileTableReadLock( _tilesMutex );
-
-            for( TileTable::const_iterator i = _tiles.begin(); i != _tiles.end(); ++i )
-            {
-                CustomTile* tile = i->second.get();
-
-                // update the neighbor list for each tile.
-                refreshFamily( _update_mapf.getMapInfo(), tile->getKey(), tile->getFamily(), true );
-
-                if ( tile->getUseLayerRequests() ) // i.e., sequential or preemptive mode
+                ScopedLock<Mutex> lock( _taskServiceMutex );
+                for (TaskServiceMap::iterator i = _taskServices.begin(); i != _taskServices.end(); ++i)
                 {
-                    tile->servicePendingElevationRequests( _update_mapf, stamp, true );                   
-                    tile->serviceCompletedRequests( _update_mapf, true );
-                    //if ( tileModified && _terrainCallbacks.size() > 0 )
-                    //{
-                    //    updatedTiles.push_back( tile );
-                    //}
+                    i->second->setStamp( stamp );
+                }
+            }
+
+            // next, go through the live tiles and process update-traversal requests. This
+            // requires a read-lock on the master tiles table.
+            TileList updatedTiles;
+            {
+                Threading::ScopedReadLock tileTableReadLock( _tilesMutex );
+
+                for( TileTable::const_iterator i = _tiles.begin(); i != _tiles.end(); ++i )
+                {
+                    CustomTile* tile = i->second.get();
+
+                    // update the neighbor list for each tile.
+                    refreshFamily( _update_mapf.getMapInfo(), tile->getKey(), tile->getFamily(), true );
+
+                    if ( tile->getUseLayerRequests() ) // i.e., sequential or preemptive mode
+                    {
+                        tile->servicePendingElevationRequests( _update_mapf, stamp, true );                   
+                        tile->serviceCompletedRequests( _update_mapf, true );
+                        //if ( tileModified && _terrainCallbacks.size() > 0 )
+                        //{
+                        //    updatedTiles.push_back( tile );
+                        //}
+                    }
                 }
             }
         }
@@ -662,3 +677,4 @@ CustomTerrain::updateTaskServiceThreads( const MapFrame& mapf )
         getImageryTaskService( itr->get()->getUID() )->setNumThreads( imageThreads );
     }
 }
+#endif

@@ -1,0 +1,94 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_DRAGGERS
+#define OSGEARTHUTIL_DRAGGERS
+
+#include <osg/ShapeDrawable>
+#include <osgEarthUtil/Common>
+
+
+#include <osgManipulator/Dragger>
+#include <osgManipulator/Command>
+
+namespace osgEarth { namespace Util {
+
+
+class OSGEARTHUTIL_EXPORT TranslateCommand : public osgManipulator::MotionCommand
+{
+public:
+    TranslateCommand();
+    inline const osg::Vec3d& getTranslation() const { return _translation;}
+    inline void setTranslation( const osg::Vec3d &translation ) { _translation = translation;}
+    virtual osgManipulator::MotionCommand* createCommandInverse();
+
+    virtual osg::Matrix getMotionMatrix() const;
+
+protected:
+    virtual ~TranslateCommand();
+    osg::Vec3d _translation;
+};
+
+class OSGEARTHUTIL_EXPORT IntersectingDragger : public osgManipulator::Dragger
+{
+public:
+    IntersectingDragger();
+
+    virtual void setupDefaultGeometry();
+
+    /** Handle pick events on dragger and generate TranslateInLine commands. */
+    virtual bool handle(const osgManipulator::PointerInfo& pi, const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
+
+    void setNode(osg::Node* node) { _node = node;}
+    osg::Node* getNode() const { return _node;}
+
+    /** Set/Get color for dragger. */
+    inline void setColor(const osg::Vec4& color) { _color = color; }
+
+    inline const osg::Vec4& getColor() const { return _color; }
+
+    /** Set/Get pick color for dragger. Pick color is color of the dragger when picked.
+    It gives a visual feedback to show that the dragger has been picked. */
+    inline void setPickColor(const osg::Vec4& color) { _pickColor = color; }
+    inline const osg::Vec4& getPickColor() const { return _pickColor; }    
+
+    virtual bool IntersectingDragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+
+protected:
+
+    bool getHit(const osg::Vec3d &start, const osg::Vec3d &end, osg::Vec3d &intersection);
+    void setDrawableColor(const osg::Vec4f& color);
+
+    virtual ~IntersectingDragger();
+
+    osg::Vec4                       _color;
+    osg::Vec4                       _pickColor;
+    osg::Vec3d                      _startPoint;
+    osg::Matrixd                    _localToWorld;
+    osg::Matrixd                    _worldToLocal;
+
+    osg::ref_ptr< osg::ShapeDrawable > _shapeDrawable;
+
+    osg::ref_ptr< osg::Node > _node;
+};
+
+
+} }
+
+
+#endif

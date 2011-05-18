@@ -1,0 +1,123 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H
+#define OSGEARTHFEATURES_EXTRUDE_GEOMETRY_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/Filter>
+#include <osgEarthSymbology/Expression>
+#include <osgEarthSymbology/Style>
+#include <osg/Geode>
+
+namespace osgEarth { namespace Features 
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Extrudes footprint geometry into 3D geometry
+     */
+    class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter : public Filter
+    {
+    public:
+        struct HeightCallback : public osg::Referenced
+        {
+            virtual float operator()( Feature* input, const FilterContext& cx ) =0;
+        };
+
+    public:
+        ExtrudeGeometryFilter();
+
+        /** Pushes a list of features through the filter. */
+        osg::Node* push( FeatureList& input, const FilterContext& context );
+
+        /**
+         * Sets the height above the footprint to which to extrude wall geometry
+         */
+        void setExtrusionHeight( float value ) { _height = value; }
+
+        /**
+         * Sets the name of the feature attribute holding the extrusion height.
+         * This will override a value set by setExtrusionHeight.
+         */
+        void setExtrusionAttribute( const std::string& value ) { _heightAttr = value; }
+
+        /**
+         * Sets an arithmetic expression to evaluate to determine the extrusion height.
+         */
+        void setExtrusionExpr( const NumericExpression& value ) { _heightExpr = value; }
+
+        /**
+         * Sets a callback that can return an extrusion height for a feature.
+         */
+        void setExtrusionHeightCallback( HeightCallback* callback );
+
+        /**
+         * Sets whether the cap (e.g. rooftop) should be flat, even if the footprint in not 
+         * (like a building on the side of a hill). Default = true.
+         */
+        void setFlatten( bool value ) { _flatten = value; }
+
+        /**
+         * Sets the color of the extruded geometry.
+         */
+        void setColor( const osg::Vec4f& value ) { _color = value; }
+
+        /**
+         * Sets the maximum wall angle that doesn't require a new normal vector
+         */
+        void setWallAngleThreshold( float angle_deg ) { _wallAngleThresh_deg = angle_deg; }
+
+    protected:
+        osg::ref_ptr<osg::Geode>     _geode;
+        optional<double>             _maxAngle_deg;
+        optional<bool>               _mergeGeometry;
+        bool                         _flatten;
+        osg::Vec4f                   _color;
+        float                        _wallAngleThresh_deg;
+        float                        _cosWallAngleThresh;
+        osg::ref_ptr<osg::StateSet>  _noTextureStateSet;
+
+        float                        _height;
+        optional<std::string>        _heightAttr;
+        optional<NumericExpression>  _heightExpr;
+        osg::ref_ptr<HeightCallback> _heightCallback;
+
+        void reset();
+        
+        bool pushFeature( 
+            Feature*             input, 
+            const FilterContext& context );
+
+        bool extrudeGeometry(
+            const Geometry*      input,
+            double               height,
+            bool                 uniformHeight,
+            osg::Geometry*       walls,
+            osg::Geometry*       top_cap,
+            osg::Geometry*       bottom_cap,
+            const osg::Vec4&     color,
+            const FilterContext& cx );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_BUILD_GEOMETRY_FILTER_H

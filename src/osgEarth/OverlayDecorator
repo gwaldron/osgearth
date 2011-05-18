@@ -75,6 +75,14 @@ namespace osgEarth
         void setMipmapping( bool value );
         bool getMipmapping() const { return _mipmapping; }
 
+        /**
+         * Whether to employ overlay warping. Warping can help increase the apparent
+         * resolution of the overlay image. But it can cause artifacts when you zoom
+         * in very close. Default = true
+         */
+        void setVertexWarping( bool value );
+        bool getVertexWarping() const { return _warping; }
+
 
     public: // TerrainDecorator
         virtual void onInstall( TerrainEngineNode* engine );
@@ -82,16 +90,6 @@ namespace osgEarth
 
     public: // osg::Node
         void traverse( osg::NodeVisitor& nv );
-        
-    public: //osg::Group overrides
-#if 0
-        virtual bool addChild( Node *child );
-        virtual bool insertChild( unsigned int index, Node *child );
-        virtual bool removeChildren(unsigned int pos,unsigned int numChildrenToRemove);
-        virtual bool replaceChild( Node *origChild, Node* newChild );
-        virtual bool setChild( unsigned  int i, Node* node );
-        virtual osg::BoundingSphere computeBound() const;
-#endif
 
     private:
         void updateRTTCamera( osg::NodeVisitor& nv );
@@ -101,7 +99,6 @@ namespace osgEarth
         void initRTTShaders( osg::StateSet* set );
 
     private:
-        //osg::ref_ptr<osg::Group>      _subgraphContainer;
         osg::ref_ptr<osg::Node>       _overlayGraph;
         osg::ref_ptr<osg::Camera>     _rttCamera;
         osg::ref_ptr<osg::Texture2D>  _projTexture;
@@ -115,16 +112,19 @@ namespace osgEarth
         bool                          _useShaders;
         bool                          _useWarping;
         float                         _warp;
+        bool                          _warping;
         bool                          _visualizeWarp;
         bool                          _isGeocentric;
         double                        _maxProjectedMapExtent;
         bool                          _mipmapping;
+        osg::Matrixd                  _rttViewMatrix;
+        osg::Matrixd                  _rttProjMatrix;
+        osg::Matrixd                  _projectorViewMatrix;
+        osg::Matrixd                  _projectorProjMatrix;
 
-        osg::Matrixd _rttViewMatrix, _rttProjMatrix;
-        osg::Matrixd _projectorViewMatrix, _projectorProjMatrix;
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
-        osg::ref_ptr<osgEarth::VirtualProgram> _vp;
-        osg::ref_ptr<TerrainEngineNode> _engine;
+        osg::ref_ptr<osgEarth::VirtualProgram>  _vp;
+        osg::ref_ptr<TerrainEngineNode>         _engine;
     };
 
 } // namespace osgEarth

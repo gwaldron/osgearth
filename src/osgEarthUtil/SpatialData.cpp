@@ -23,6 +23,7 @@
 #include <osg/Geometry>
 #include <osg/Depth>
 #include <osgText/Text>
+#include <sstream>
 
 #define LC "[GeoGraph] "
 
@@ -35,8 +36,12 @@ namespace
 {
     unsigned getIndex( const GeoExtent& cellExtent, const osg::Vec3d& point, unsigned xdim, unsigned ydim )
     {
-        unsigned col = osg::clampBelow( (unsigned)((double)xdim * ((point.x() - cellExtent.xMin()) / cellExtent.width())), xdim-1 );
-        unsigned row = osg::clampBelow( (unsigned)((double)ydim * ((point.y() - cellExtent.yMin()) / cellExtent.height())), ydim-1 );
+        double cw = cellExtent.width() / (double)xdim;
+        double ch = cellExtent.height() / (double)ydim;
+
+        unsigned col = osg::clampBelow( (unsigned)((point.x()-cellExtent.xMin())/cw), xdim-1 );
+        unsigned row = osg::clampBelow( (unsigned)((point.y()-cellExtent.yMin())/ch), ydim-1 );
+
         return row*xdim + col;
     }
 
@@ -399,6 +404,7 @@ GeoCell::insertObject( GeoObject* object )
             {
                 // should never ever happen..
                 OE_WARN << LC << "Object insertion failed" << std::endl;
+                return false;
             }
         }
         return true;
@@ -484,9 +490,6 @@ GeoCell::reindexObject( GeoObject* object )
         {
             // first remove from its current cell
             owner->removeObject( object );
-            //object->_cell = 0L;
-            //owner->_objects.erase( findObject(owner->_objects, object) );
-            //owner->adjustCount( -1 );
 
             GeoCell* cell = dynamic_cast<GeoCell*>( owner->getParent(0) );
             while( cell )

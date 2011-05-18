@@ -221,6 +221,8 @@ namespace osgEarth
          */
         void addMapCallback( MapCallback* callback ) const;
 
+        void removeMapCallback( MapCallback* callback );
+
         /**
          * Adds an image layer to the map.
          */
@@ -376,6 +378,7 @@ namespace osgEarth
             TERRAIN_LAYERS   = IMAGE_LAYERS | ELEVATION_LAYERS,
             MODEL_LAYERS     = 1 << 2,
             MASK_LAYERS      = 1 << 3,
+            MASKED_TERRAIN_LAYERS = TERRAIN_LAYERS | MASK_LAYERS,
             ENTIRE_MODEL     = 0xff
         };
 
@@ -414,6 +417,11 @@ namespace osgEarth
             : _profile( map->getProfile() ),
               _isGeocentric( map->isGeocentric() ),
               _isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ) { }
+
+        MapInfo( const MapInfo& rhs )
+            : _profile( rhs._profile ),
+              _isGeocentric( rhs._isGeocentric ),
+              _isCube( rhs._isCube ) { }              
         
         const Profile* getProfile() const { return _profile; }
 

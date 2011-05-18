@@ -26,29 +26,51 @@
 #include <ogr_spatialref.h>
 #include <algorithm>
 
+#define LC "[SpatialReference] "
+
 using namespace osgEarth;
 
 #define USE_CUSTOM_MERCATOR_TRANSFORM 1
 //#undef USE_CUSTOM_MERCATOR_TRANSFORM
 
+//------------------------------------------------------------------------
 
-static std::string
-getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
+namespace
 {
-    GDAL_SCOPED_LOCK;
-	const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
-    if ( val )
+    std::string
+    getOGRAttrValue( void* _handle, const std::string& name, int child_num, bool lowercase =false)
     {
-        std::string t = val;
-        if ( lowercase )
+        GDAL_SCOPED_LOCK;
+	    const char* val = OSRGetAttrValue( _handle, name.c_str(), child_num );
+        if ( val )
         {
-            std::transform( t.begin(), t.end(), t.begin(), ::tolower );
+            std::string t = val;
+            if ( lowercase )
+            {
+                std::transform( t.begin(), t.end(), t.begin(), ::tolower );
+            }
+            return t;
         }
-        return t;
+        return "";
     }
-    return "";
+
+    std::string&
+    replaceIn( std::string& s, const std::string& sub, const std::string& other)
+    {
+        if ( sub.empty() ) return s;
+        size_t b=0;
+        for( ; ; )
+        {
+            b = s.find( sub, b );
+            if ( b == s.npos ) break;
+            s.replace( b, sub.size(), other );
+            b += other.size();
+        }
+        return s;
+    }
 }
 
+//------------------------------------------------------------------------
 
 SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCache()
 {
@@ -71,7 +93,7 @@ SpatialReference::createFromPROJ4( const std::string& init, const std::string& i
 	}
 	else 
 	{
-        OE_WARN << "[osgEarth::SRS] Unable to create spatial reference from PROJ4: " << init << std::endl;
+        OE_WARN << LC << "Unable to create spatial reference from PROJ4: " << init << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
     return result;
@@ -92,7 +114,7 @@ SpatialReference::createCube()
 	}
 	else 
 	{
-        OE_WARN << "[osgEarth::SRS] Unable to create SRS: " << init << std::endl;
+        OE_WARN << LC << "Unable to create SRS: " << init << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
     return result;
@@ -115,7 +137,7 @@ SpatialReference::createFromWKT( const std::string& init, const std::string& ini
 	}
 	else 
 	{
-		OE_WARN << "[osgEarth::SRS] Unable to create spatial reference from WKT: " << init << std::endl;
+		OE_WARN << LC << "Unable to create spatial reference from WKT: " << init << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
     return result.release();
@@ -216,22 +238,6 @@ SpatialReference::createFromHandle( void* ogrHandle, bool xferOwnership )
     return srs;
 }
 
-
-LIKELY_UNUSED_FUNCTION static std::string&
-replaceIn( std::string& s, const std::string& sub, const std::string& other)
-{
-    if ( sub.empty() ) return s;
-    size_t b=0;
-    for( ; ; )
-    {
-        b = s.find( sub, b );
-        if ( b == s.npos ) break;
-        s.replace( b, sub.size(), other );
-        b += other.size();
-    }
-    return s;
-}
-
 SpatialReference*
 SpatialReference::validate()
 {
@@ -250,7 +256,7 @@ SpatialReference::validate()
         else
             replaceIn( new_wkt, "Lambert_Conformal_Conic", "Lambert_Conformal_Conic_1SP" );
 
-        OE_NOTICE << "Morphing Lambert_Conformal_Conic to 1SP/2SP" << std::endl;
+        OE_INFO << LC << "Morphing Lambert_Conformal_Conic to 1SP/2SP" << std::endl;
         
         return createFromWKT( new_wkt, _init_str, _name );
     }
@@ -260,13 +266,13 @@ SpatialReference::validate()
     {
         std::string new_wkt = getWKT();
         replaceIn( new_wkt, "Plate_Carree", "Equirectangular" );
-        OE_NOTICE << "[osgEarth::SRS] Morphing Plate_Carree to Equirectangular" << std::endl;
+        OE_INFO << LC << "Morphing Plate_Carree to Equirectangular" << std::endl;
         return createFromWKT( new_wkt, _init_str, _name ); //, input->getReferenceFrame() );
     }
     else if ( proj == "Equidistant_Cylindrical" )
     {
         std::string new_wkt = getWKT();
-        OE_NOTICE << "[osgEarth::SRS] Morphing Equidistant_Cylindrical to Equirectangular" << std::endl;
+        OE_INFO << LC << "Morphing Equidistant_Cylindrical to Equirectangular" << std::endl;
         replaceIn( new_wkt, "Equidistant_Cylindrical", "Equirectangular" );
         return createFromWKT( new_wkt, _init_str, _name );
     }
@@ -305,17 +311,22 @@ _owns_handle( ownsHandle )
 
 SpatialReference::~SpatialReference()
 {
-	if ( _handle && _owns_handle )
-	{
-      GDAL_SCOPED_LOCK;
+    if ( _handle )
+    {
+        GDAL_SCOPED_LOCK;
 
-      for (TransformHandleCache::iterator itr = _transformHandleCache.begin(); itr != _transformHandleCache.end(); ++itr)
-      {
-          OCTDestroyCoordinateTransformation(itr->second);
-      }
-      OSRDestroySpatialReference( _handle );
-	}
-	_handle = NULL;
+        for (TransformHandleCache::iterator itr = _transformHandleCache.begin(); itr != _transformHandleCache.end(); ++itr)
+        {
+            OCTDestroyCoordinateTransformation(itr->second);
+        }
+
+        if ( _owns_handle )
+        {
+            OSRDestroySpatialReference( _handle );
+        }
+
+        _handle = NULL;
+    }
 }
 
 bool
@@ -434,15 +445,18 @@ SpatialReference::getGeographicSRS() const
     {
         GDAL_SCOPED_LOCK;
 
-        void* new_handle = OSRNewSpatialReference( NULL );
-        int err = OSRCopyGeogCSFrom( new_handle, _handle );
-        if ( err == OGRERR_NONE )
+        if ( !_geo_srs.valid() ) // double-check pattern
         {
-            const_cast<SpatialReference*>(this)->_geo_srs = new SpatialReference( new_handle );
-        }
-        else
-        {
-            OSRDestroySpatialReference( new_handle );
+            void* new_handle = OSRNewSpatialReference( NULL );
+            int err = OSRCopyGeogCSFrom( new_handle, _handle );
+            if ( err == OGRERR_NONE )
+            {
+                const_cast<SpatialReference*>(this)->_geo_srs = new SpatialReference( new_handle );
+            }
+            else
+            {
+                OSRDestroySpatialReference( new_handle );
+            }
         }
     }
 
@@ -616,8 +630,8 @@ SpatialReference::transform(double x, double y,
 
     if ( !xform_handle )
     {
-        OE_WARN
-            << "SpatialReference: SRS xform not possible" << std::endl
+        OE_WARN << LC
+            << "SRS xform not possible" << std::endl
             << "    From => " << getName() << std::endl
             << "    To   => " << out_srs->getName() << std::endl;
         return false;
@@ -638,7 +652,7 @@ SpatialReference::transform(double x, double y,
     }
     else
     {
-        OE_WARN << "SRS: Failed to xform a point from "
+        OE_WARN << LC << "Failed to xform a point from "
             << getName() << " to " << out_srs->getName()
             << std::endl;
         result = false;
@@ -736,8 +750,8 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 
         if ( !xform_handle )
         {
-            OE_WARN
-                << "SpatialReference: SRS xform not possible" << std::endl
+            OE_WARN << LC
+                << "SRS xform not possible" << std::endl
                 << "    From => " << getName() << std::endl
                 << "    To   => " << out_srs->getName() << std::endl;
             return false;
@@ -759,14 +773,12 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     }
     else
     {
-        OE_WARN << "SpatialReference: Failed to xform a point from "
+        OE_WARN << LC << "Failed to xform a point from "
             << getName() << " to " << out_srs->getName()
             << std::endl;
     }
     return success;
 }
-
-
 
 bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
@@ -807,20 +819,118 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     return success;
 }
 
+bool 
+SpatialReference::transformToECEF(const osg::Vec3d& input,
+                                  osg::Vec3d&       output ) const
+{
+    double lat = input.y(), lon = input.x();
+    //osg::Vec3d geo( x, y, z );
+    
+    // first convert to lat/long if necessary:
+    if ( !isGeographic() )
+        transform( input.x(), input.y(), getGeographicSRS(), lon, lat );
+
+    // then convert to ECEF.
+    double z = input.z();
+    getGeographicSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+        osg::DegreesToRadians( lat ), osg::DegreesToRadians( lon ), z,
+        output.x(), output.y(), output.z() );
+
+    return true;
+}
+
+bool 
+SpatialReference::transformToECEF(osg::Vec3dArray*    points,
+                                  bool                ignoreErrors ) const
+{
+    if ( !points) return false;
+
+    const SpatialReference* geoSRS = getGeographicSRS();
+    const osg::EllipsoidModel* ellipsoid = geoSRS->getEllipsoid();
+
+    for( unsigned i=0; i<points->size(); ++i )
+    {
+        osg::Vec3d& p = (*points)[i];
+
+        if ( !isGeographic() )
+            transform( p.x(), p.y(), geoSRS, p.x(), p.y() );
+
+        ellipsoid->convertLatLongHeightToXYZ(
+            osg::DegreesToRadians( p.y() ), osg::DegreesToRadians( p.x() ), p.z(),
+            p.x(), p.y(), p.z() );
+    }
+
+    return true;
+}
+
+bool 
+SpatialReference::transformFromECEF(const osg::Vec3d& input,
+                                    osg::Vec3d&       output ) const
+{
+    // transform to lat/long:
+    osg::Vec3d geo;
+
+    getGeographicSRS()->getEllipsoid()->convertXYZToLatLongHeight(
+        input.x(), input.y(), input.z(),
+        geo.y(), geo.x(), geo.z() );
+
+    // then convert to the local SRS.
+    if ( isGeographic() )
+    {
+        output.set( osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()), geo.z() );
+    }
+    else
+    {
+        getGeographicSRS()->transform( 
+            osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()),
+            this,
+            output.x(), output.y() );
+        output.z() = geo.z();
+    }
+
+    return true;
+}
+
+bool 
+SpatialReference::transformFromECEF(osg::Vec3dArray* points,
+                                    bool             ignoreErrors ) const
+{
+    bool ok = true;
+
+    // first convert all the points to lat/long (in place):
+    for( unsigned i=0; i<points->size(); ++i )
+    {
+        osg::Vec3d& p = (*points)[i];
+        osg::Vec3d geo;
+        getGeographicSRS()->getEllipsoid()->convertXYZToLatLongHeight(
+            p.x(), p.y(), p.z(),
+            geo.y(), geo.x(), geo.z() );
+        geo.x() = osg::RadiansToDegrees( geo.x() );
+        geo.y() = osg::RadiansToDegrees( geo.y() );
+        p = geo;
+    }
+
+    // then convert them all to the local SRS if necessary.
+    if ( !isGeographic() )
+    {
+        ok = getGeographicSRS()->transformPoints( this, points, 0L, ignoreErrors );
+    }
+
+    return ok;
+}
 
 bool
 SpatialReference::transformExtent(const SpatialReference* to_srs,
-                                  double& in_out_xmin,
-                                  double& in_out_ymin,
-                                  double& in_out_xmax,
-                                  double& in_out_ymax,
-                                  void* context ) const
+                                  double&                 in_out_xmin,
+                                  double&                 in_out_ymin,
+                                  double&                 in_out_xmax,
+                                  double&                 in_out_ymax,
+                                  void*                   context ) const
 {
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
 
     int oks = 0;
-
 
     //Transform all points and take the maximum bounding rectangle the resulting points
     double llx, lly;
@@ -886,9 +996,13 @@ SpatialReference::init()
 {
     GDAL_SCOPED_LOCK;
 
-    // calls the internal version, which can be overriden by the developer.
-    // therefore do not call init() from the constructor!
-    _init();
+    // always double-check the _initialized flag after obtaining the lock.
+    if ( !_initialized )
+    {
+        // calls the internal version, which can be overriden by the developer.
+        // therefore do not call init() from the constructor!
+        _init();
+    }
 }
 
 void

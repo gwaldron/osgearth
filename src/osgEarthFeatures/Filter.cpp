@@ -20,22 +20,3 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
-
-FilterContext::FilterContext() :
-_isGeocentric( false ),
-_extent( GeoExtent() )
-{
-    //NOP
-}
-
-//FilterContext::FilterContext(const FilterContext& rhs) :
-//_extent( rhs._extent ),
-//_profile( rhs._profile ),
-//_isGeocentric( rhs._isGeocentric ),
-//_referenceFrame( rhs._referenceFrame ),
-//_inverseReferenceFrame( rhs._inverseReferenceFrame )
-//{
-//    //NOP
-//}
-
-//---------------------------------------------------------------------------

@@ -1,10 +1,9 @@
 
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES})
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
 
 SET(TARGET_SRC
-    CustomTerrain.cpp
-    CustomTile.cpp
     KeyNodeFactory.cpp
+    LODFactorCallback.cpp
     MultiPassTerrainTechnique.cpp
     OSGTerrainEngineNode.cpp    
     OSGTileFactory.cpp
@@ -12,17 +11,20 @@ SET(TARGET_SRC
     Plugin.cpp
     SerialKeyNodeFactory.cpp
     SinglePassTerrainTechnique.cpp    
+    StreamingTerrain.cpp
+    StreamingTile.cpp
+    Terrain.cpp
+    Tile.cpp
     TileBuilder.cpp
 )
 
 SET(TARGET_H
     Common
-    CustomTerrain
-    CustomTile
     CustomTerrainTechnique
     DynamicLODScaleCallback   
     FileLocationCallback
     KeyNodeFactory
+    LODFactorCallback
     MultiPassTerrainTechnique
     ParallelKeyNodeFactory
     OSGTerrainEngineNode
@@ -30,6 +32,10 @@ SET(TARGET_H
     OSGTileFactory
     SerialKeyNodeFactory
     SinglePassTerrainTechnique
+    StreamingTerrain
+    StreamingTile
+    Terrain
+    Tile
     TileBuilder
     TransparentLayer
 )

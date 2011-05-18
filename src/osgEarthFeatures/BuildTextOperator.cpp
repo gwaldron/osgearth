@@ -33,6 +33,8 @@
 #include <osg/PolygonOffset>
 #include <osg/ClusterCullingCallback>
 #include <osgText/Text>
+#include <osgUtil/IntersectionVisitor>
+#include <osgUtil/PolytopeIntersector>
 
 #define LC "[BuildTextOperator] "
 
@@ -103,6 +105,8 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
 
     bool removeDuplicateLabels = symbol->removeDuplicateLabels().isSet() ? symbol->removeDuplicateLabels().get() : false;
 
+    StringExpression contentExpr = *symbol->content();
+
     osg::Geode* result = new osg::Geode;
     for (FeatureList::const_iterator itr = features.begin(); itr != features.end(); ++itr)
     {
@@ -119,15 +123,16 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         else if (symbol->content().isSet())
         {
              //Get the text from the specified content and referenced attributes
-             std::string content = symbol->content().value();
-             text = parseAttributes(feature, content, symbol->contentAttributeDelimiter().value());
+             text = feature->eval( contentExpr );
+             //std::string content = symbol->content().value();
+             //text = parseAttributes(feature, content, symbol->contentAttributeDelimiter().value());
         }
-        else if (symbol->attribute().isSet())
-        {
-            //Get the text from the specified attribute
-            std::string attr = symbol->attribute().value();
-            text = feature->getAttr(attr);
-        }
+        //else if (symbol->attribute().isSet())
+        //{
+        //    //Get the text from the specified attribute
+        //    std::string attr = symbol->attribute().value();
+        //    text = feature->getAttr(attr);
+        //}
 
         if (text.empty()) continue;
 
@@ -242,9 +247,24 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
             t->setCullCallback( new CullPlaneCallback( position * context.inverseReferenceFrame() ) );
         }
 
-        result->addDrawable( t );
+        if (_hideClutter)
+		    {
+			      osg::BoundingBox tBound = t->getBound();
+			      osg::ref_ptr<osgUtil::PolytopeIntersector> intersector = new osgUtil::PolytopeIntersector(osgUtil::Intersector::MODEL, tBound.xMin(), tBound.yMin(), tBound.xMax(), tBound.yMax());
+			      osgUtil::IntersectionVisitor intersectVisitor(intersector.get());
+			      result->accept(intersectVisitor);
 
-        if (removeDuplicateLabels) labelNames.insert(text);
+			      if (!intersector->containsIntersections())
+			      {
+				        result->addDrawable( t );
+				        if (removeDuplicateLabels) labelNames.insert(text);
+			      }
+	      }
+	      else
+	      {
+		        result->addDrawable( t );
+		        if (removeDuplicateLabels) labelNames.insert(text);
+	      }
     }
     return result;
 }

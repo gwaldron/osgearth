@@ -17,8 +17,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "EarthFileSerializer"
+#include <osgDB/FileNameUtils>
+#include <osgEarth/FileUtils>
 
 using namespace osgEarth;
+
+
+void patchConfigUrlsImpl( Config & conf, const std::string & referenceURI )
+{
+	std::string url = conf.value("url");
+	if(!url.empty())
+	{
+		if(!osgDB::containsServerAddress(url))
+		{
+			std::string newurl = osgEarth::getFullPath(referenceURI, osgDB::convertFileNameToNativeStyle(url));
+			conf.update("url", newurl);
+		}
+	}
+	for(ConfigSet::iterator it = conf.children().begin(); it != conf.children().end(); it++)
+	{
+		Config & c = *it;
+		patchConfigUrlsImpl(c, referenceURI);
+	}
+}
+
+Config patchConfigUrls( const Config& conf, const std::string& referenceURI )
+{
+	Config ret = conf;
+	patchConfigUrlsImpl(ret, referenceURI);
+	return ret;
+}
 
 MapNode*
 EarthFileSerializer2::deserialize( const Config& conf, const std::string& referenceURI ) const
@@ -64,7 +92,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         Config layerDriverConf = *i;
         layerDriverConf.add( "default_tile_size", "256" );
 
-        ImageLayerOptions layerOpt( layerDriverConf );
+        ImageLayerOptions layerOpt( patchConfigUrls( layerDriverConf, referenceURI) );
         layerOpt.name() = layerDriverConf.value("name");
         //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
@@ -82,7 +110,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
             Config layerDriverConf = *i;
             layerDriverConf.add( "default_tile_size", "16" );
 
-            ElevationLayerOptions layerOpt( layerDriverConf );
+            ElevationLayerOptions layerOpt( patchConfigUrls( layerDriverConf, referenceURI) );
             layerOpt.name() = layerDriverConf.value( "name" );
             //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
@@ -96,7 +124,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     {
         const Config& layerDriverConf = *i;
 
-        ModelLayerOptions layerOpt( layerDriverConf );
+        ModelLayerOptions layerOpt( patchConfigUrls( layerDriverConf, referenceURI) );
         layerOpt.name() = layerDriverConf.value( "name" );
         layerOpt.driver() = ModelSourceOptions( layerDriverConf );
 
@@ -112,7 +140,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         if ( !layerDriverConf.hasValue("driver") )
             layerDriverConf.attr("driver") = "feature_geom";
 
-        ModelLayerOptions layerOpt( layerDriverConf );
+        ModelLayerOptions layerOpt( patchConfigUrls( layerDriverConf, referenceURI) );
         layerOpt.name() = layerDriverConf.value( "name" );
         layerOpt.driver() = ModelSourceOptions( layerDriverConf );
         layerOpt.overlay() = true; // forced on when "overlay" specified
@@ -121,7 +149,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     }
 
     // Mask layer:
-    Config maskLayerConf = conf.child( "mask" );
+    Config maskLayerConf = patchConfigUrls( conf.child( "mask" ), referenceURI);
     if ( !maskLayerConf.empty() )
     {
         MaskLayerOptions options(maskLayerConf);

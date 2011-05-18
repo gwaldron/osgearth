@@ -111,7 +111,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         Config layerDriverConf = *i;
         if ( !layerDriverConf.hasValue("driver") )
             layerDriverConf.attr("driver") = "feature_geom";
-        //const Config& layerDriverConf = *i;
 
         ModelLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value( "name" );

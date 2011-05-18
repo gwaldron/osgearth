@@ -121,13 +121,27 @@ _supportsQuadBufferStereo( false )
     if ( ::getenv( "OSGEARTH_DISABLE_ATI_WORKAROUNDS" ) != 0L )
         enableATIworkarounds = false;
 
+	bool disableQuadBufferStereoTest = false;
+    if ( ::getenv( "OSGEARTH_QUADBUFFER_DISABLE" ) != 0L )
+        disableQuadBufferStereoTest = true;
 	// first create a opengl context with quad buffer stereo enabled
-	MyGraphicsContext * mgc = new MyGraphicsContext(true);
-	_supportsQuadBufferStereo = mgc->valid();
+	MyGraphicsContext * mgc;
+	
+	if(!disableQuadBufferStereoTest)
+	{
+		mgc = new MyGraphicsContext(true);
+		_supportsQuadBufferStereo = mgc->valid();
+	}
+	else
+	{
+		mgc = NULL;
+		_supportsQuadBufferStereo = false;
+	}
 	if(!_supportsQuadBufferStereo)
 	{
 		// delete the old context
-		delete mgc;
+		if(mgc)
+			delete mgc;
 		// second try to create a new graphics context without quad buffer stereo
 		mgc = new MyGraphicsContext(false);
 	}

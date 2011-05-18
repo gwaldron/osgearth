@@ -269,7 +269,7 @@ bool IntersectingDragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                         hitr != intersections.end();
                         ++hitr)
                     {
-                        for (osg::NodePath::iterator itr = hitr->nodePath.begin();
+                        for (osg::NodePath::const_iterator itr = hitr->nodePath.begin();
                             itr != hitr->nodePath.end();
                             ++itr)
                         {

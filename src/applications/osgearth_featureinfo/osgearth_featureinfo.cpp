@@ -83,13 +83,35 @@ void printAllFeatures(FeatureSource* features)
     }
 }
 
+int
+usage( const std::string& msg )
+{
+    if ( !msg.empty() )
+    {
+        std::cout << msg << std::endl;
+    }
 
-//
-// NOTE: run this sample from the repo/tests directory.
-//
+    std::cout
+        << std::endl
+        << "USAGE: osgearth_featureinfo [options] filename" << std::endl
+        << std::endl
+        << "    --printfeatures                   ; Prints all features in the source" << std::endl
+        << "    --delete fid                      ; Deletes the given FID from the source." << std::endl
+        << "    --fid fid                         ; Displays the given FID." << std::endl
+        << std::endl;
+
+    return -1;
+}
+
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
+
+    if (argc < 2)
+    {
+        return usage("");
+    }
+
 
     std::vector< FeatureID > toDelete;
     int fid;
@@ -120,8 +142,7 @@ int main(int argc, char** argv)
 
     if (filename.empty())
     {
-        std::cout << "Please provide a filename" << std::endl;
-        return 1;
+        return usage( "Please provide a filename" );
     }
 
     bool write = toDelete.size() > 0;

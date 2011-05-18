@@ -280,43 +280,7 @@ public:
     const FeatureSchema& getSchema() const
     {
         return _schema;
-    }
-
-    static OGRGeometryH
-        encodePart( Geometry* geometry, OGRwkbGeometryType part_type )
-    {
-        OGRGeometryH part_handle = OGR_G_CreateGeometry( part_type );
-
-        for( int v = geometry->size()-1; v >= 0; v-- )
-        {
-            osg::Vec3d p = (*geometry)[v];
-            OGR_G_AddPoint( part_handle, p.x(), p.y(), p.z() );
-        }
-
-        return part_handle;
-    }
-
-
-    static OGRGeometryH
-        encodeShape( Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type )
-    {
-        OGRGeometryH shape_handle = OGR_G_CreateGeometry( shape_type );
-        if ( shape_handle )
-        {
-            GeometryIterator itr(geometry, true);
-            while (itr.hasMore())
-            {
-                Geometry* geom = itr.next();
-                OGRGeometryH part_handle = encodePart( geom, part_type );
-                if ( part_handle )
-                {
-                    OGR_G_AddGeometryDirectly( shape_handle, part_handle );
-                }
-            }
-        }
-        return shape_handle;
-    }
-
+    } 
 
     virtual bool insertFeature(Feature* feature)
     {
@@ -353,60 +317,11 @@ public:
             OGRFeatureDefnH def = ::OGR_L_GetLayerDefn( _layerHandle );
 
             OGRwkbGeometryType reported_type = OGR_FD_GetGeomType( def );
-            
-            OGRwkbGeometryType shape_type =
-                reported_type == wkbPolygon || reported_type == wkbMultiPolygon ? wkbPolygon :
-                reported_type == wkbPolygon25D || reported_type == wkbMultiPolygon25D? wkbPolygon25D :
-                reported_type == wkbLineString || reported_type == wkbMultiLineString? wkbMultiLineString :
-                reported_type == wkbLineString25D || reported_type == wkbMultiLineString25D? wkbMultiLineString25D :
-                reported_type == wkbPoint || reported_type == wkbMultiPoint? wkbMultiPoint :
-                reported_type == wkbPoint25D || reported_type == wkbMultiPoint25D? wkbMultiPoint25D :
-                wkbNone;
 
-            OGRwkbGeometryType part_type =
-                shape_type == wkbPolygon || shape_type == wkbPolygon25D? wkbLinearRing :
-                shape_type == wkbMultiLineString? wkbLineString :
-                shape_type == wkbMultiLineString25D? wkbLineString25D :
-                shape_type == wkbMultiPoint? wkbPoint :
-                shape_type == wkbMultiPoint25D? wkbPoint25D :
-                wkbNone;
-
-            MultiGeometry* multi = dynamic_cast<MultiGeometry*>(feature->getGeometry());
-
-
-            if ( multi )
+            OGRGeometryH ogr_geometry = OgrUtils::createOgrGeometry( feature->getGeometry(), reported_type );
+            if ( OGR_F_SetGeometryDirectly( feature_handle, ogr_geometry ) != OGRERR_NONE )
             {
-                OGRGeometryH group_handle = OGR_G_CreateGeometry( reported_type );
-                for (GeometryCollection::iterator itr = multi->getComponents().begin(); itr != multi->getComponents().end(); ++itr)
-                {
-                    OGRGeometryH shape_handle = encodeShape( itr->get(), shape_type, part_type );
-                    if ( shape_handle )
-                    {
-                        if ( OGR_G_AddGeometryDirectly( group_handle, shape_handle ) != OGRERR_NONE )
-                        {
-                            OE_WARN << LC << "OGR_G_AddGeometryDirectly failed!" << std::endl;
-                        }
-                    }
-                }
-               
-
-                // transfers ownership to the feature:
-                if ( OGR_F_SetGeometryDirectly( feature_handle, group_handle ) != OGRERR_NONE )
-                {
-                    OE_WARN << LC << "OGR_F_SetGeometryDirectly failed!" << std::endl;
-                }
-            }
-            else
-            {
-                OGRGeometryH shape_handle = encodeShape( feature->getGeometry(), shape_type, part_type );
-                if ( shape_handle )
-                {
-                    // transfers ownership to the feature:
-                    if ( OGR_F_SetGeometryDirectly( feature_handle, shape_handle ) != OGRERR_NONE )
-                    {
-                        OE_WARN << LC << "OGR_F_SetGeometryDirectly failed!" << std::endl;
-                    }
-                }
+                OE_WARN << LC << "OGR_F_SetGeometryDirectly failed!" << std::endl;
             }
 
             if ( OGR_L_CreateFeature( _layerHandle, feature_handle ) != OGRERR_NONE )

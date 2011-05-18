@@ -33,6 +33,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureTileSource
     Filter
     FilterContext
+	GeometryUtils
     LabelSource
 	OgrUtils
     OptimizerHints	
@@ -67,6 +68,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp
+	GeometryUtils.cpp
     LabelSource.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
@@ -77,6 +79,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TransformFilter.cpp
     VirtualFeatureSource.cpp
 )
+
+INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} )
 
 
 IF (WIN32)

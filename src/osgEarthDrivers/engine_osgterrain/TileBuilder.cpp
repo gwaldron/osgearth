@@ -410,10 +410,6 @@ TileBuilder::createTile(const TileKey&      key,
         hfLayer->setLocator( GeoLocator::createForKey(key, mapInfo) );
         repo._elevLayer = CustomElevLayer( hfLayer, true );
     }
-    else
-    {
-        out_hasRealData = true;
-    }
 
     // Now, if there are any color layers that did not get built, create them with an empty
     // image so the shaders have something to draw.

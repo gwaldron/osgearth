@@ -69,6 +69,17 @@ namespace osgEarth { namespace Features
 
     typedef unsigned long FeatureID;
 
+    enum AttributeType
+    {
+        ATTRTYPE_UNSPECIFIED,
+        ATTRTYPE_STRING,
+        ATTRTYPE_INT,
+        ATTRTYPE_DOUBLE,
+        ATTRTYPE_BOOL
+    };
+
+    typedef std::map< std::string, AttributeType > FeatureSchema;
+
     /**
      * Basic building block of vector feature data.
      */

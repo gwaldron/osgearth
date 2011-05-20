@@ -25,7 +25,7 @@
 #include <osgEarthFeatures/ScaleFilter>
 #include <osgEarthUtil/WFS>
 #include "WFSFeatureOptions"
-#include "GeometryUtils"
+#include <osgEarthFeatures/OgrUtils>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -82,6 +82,7 @@ std::string getTempName(const std::string& prefix="", const std::string& suffix=
         ss << prefix << "~" << rand() << suffix;
         if (!osgDB::fileExists(ss.str())) return ss.str();
     }
+    return "";
 }
 
 /**
@@ -176,36 +177,7 @@ public:
         delete[] buffer;
         fout.close();
     }
-
-    Feature* createFeature( OGRFeatureH handle )
-    {
-        long fid = OGR_F_GetFID( handle );
-
-        Feature* feature = new Feature( fid );
-
-        OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
-        if ( geomRef )
-        {
-            Symbology::Geometry* geom = GeometryUtils::createGeometry( geomRef );
-            feature->setGeometry( geom );
-        }
-
-        int numAttrs = OGR_F_GetFieldCount(handle); 
-        for (int i = 0; i < numAttrs; ++i) 
-        { 
-            void* field_handle_ref = OGR_F_GetFieldDefnRef( handle, i ); 
-            const char* field_name = OGR_Fld_GetNameRef( field_handle_ref ); 
-            const char* field_value= OGR_F_GetFieldAsString(handle, i); 
-            std::string name = std::string( field_name ); 
-            std::string value = std::string( field_value); 
-            //Make the name lower case 
-            std::transform( name.begin(), name.end(), name.begin(), ::tolower ); 
-            feature->setAttr(name, value); 
-        } 
-
-        return feature;
-    }
-
+    
     std::string getExtensionForMimeType(const std::string& mime)
     {
         //OGR is particular sometimes about the extension of files when it's reading them so it's good to have
@@ -260,7 +232,7 @@ public:
             {
                 if ( feat_handle )
                 {
-                    Feature* f = createFeature( feat_handle );
+                    Feature* f = OgrUtils::createFeature( feat_handle );
                     if ( f ) 
                     {
                         features.push_back( f );
@@ -323,9 +295,53 @@ public:
         return new FeatureListCursor( features );        
     }
 
+    virtual bool deleteFeature(FeatureID fid)
+    {
+        return false;
+    }
+
+    virtual int getFeatureCount() const
+    {
+        return -1;
+    }
+
+    virtual bool insertFeature(Feature* feature)
+    {
+        return false;
+    }
+
+    /**
+    * Gets the Feature with the given FID
+    * @returns
+    *     The Feature with the given FID or NULL if not found.
+    */
+    virtual Feature* getFeature( FeatureID fid )
+    {
+        return 0;
+    }
+
+    virtual bool isWritable() const
+    {
+        return false;
+    }
+
+    virtual const FeatureSchema& getSchema() const
+    {
+        //TODO:  Populate the schema from the DescribeFeatureType call
+        return _schema;
+    }
+
+    virtual osgEarth::Symbology::Geometry::Type getGeometryType() const
+    {
+        return Geometry::TYPE_UNKNOWN;
+    }
+
+
+
 private:
     const WFSFeatureOptions _options;  
     osg::ref_ptr< WFSCapabilities > _capabilities;
+    FeatureSchema _schema;
 };
 
 

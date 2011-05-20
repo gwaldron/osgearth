@@ -211,9 +211,11 @@ namespace osgEarth
         ModelLayer* getModelLayerAt( int index ) const;
 
         /**
-         * Gets the masking layer. At the moment, only one is supported.
+         * Copies references of the mask layers into the output list.
+         * This method is thread safe. It returns the map revision that was
+         * in effect when the data was copied.
          */
-        MaskLayer* getTerrainMaskLayer() const;
+        int getTerrainMaskLayers( MaskLayerVector& out_list ) const;
 
         /**
          * Adds a map layer callback to this map. This will be notified whenever layers are
@@ -279,15 +281,14 @@ namespace osgEarth
         void moveModelLayer( ModelLayer* layer, unsigned int newIndex );
 
         /**
-         * Set a layer to use as a terrain mask. The map engine will draw
-         * this layer using the stencil buffer.
+         * Adds a new layer to use as a terrain mask.
          */
-        void setTerrainMaskLayer( MaskLayer* layer );
+        void addTerrainMaskLayer( MaskLayer* layer );
 
         /**
          * Removed a terrain mask layer that was set with setTerrainMaskLayer().
          */
-        void removeTerrainMaskLayer();
+        void removeTerrainMaskLayer( MaskLayer* layer );
 
     public:
         /**
@@ -393,7 +394,7 @@ namespace osgEarth
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
-        osg::ref_ptr<MaskLayer> _terrainMaskLayer;
+        MaskLayerVector _terrainMaskLayers;
         MapCallbackList _mapCallbacks;
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
@@ -491,8 +492,8 @@ namespace osgEarth
         const ModelLayerVector& modelLayers() const { return _modelLayers; }
         ModelLayer* getModelLayerAt(int index) const { return _modelLayers[index].get(); }
 
-        /** The mask layer snapshot */
-        MaskLayer* getTerrainMaskLayer() const { return _maskLayer; }
+        /** The mask layer set snapshot */
+        const MaskLayerVector& terrainMaskLayers() const { return _maskLayers; }
 
         /** Gets the index of the layer in the layer stack snapshot. */
         int indexOf( ImageLayer* layer ) const;
@@ -529,7 +530,7 @@ namespace osgEarth
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
-        osg::ref_ptr<MaskLayer> _maskLayer;
+        MaskLayerVector _maskLayers;
         friend class Map;
     };
 

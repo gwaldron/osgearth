@@ -25,7 +25,7 @@
 #include <osgEarthFeatures/ScaleFilter>
 #include "OGRFeatureOptions"
 #include "FeatureCursorOGR"
-#include "GeometryUtils"
+#include <osgEarthFeatures/OgrUtils>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -52,7 +52,10 @@ public:
       _dsHandle( 0L ),
       _layerHandle( 0L ),
       _ogrDriverHandle( 0L ),
-      _options( options )
+      _options( options ),
+      _featureCount(-1),
+      _needsSync(false),
+      _writable(false)
     {
         _geometry = 
             _options.geometry().valid() ? _options.geometry().get() :
@@ -68,7 +71,16 @@ public:
 
         if ( _layerHandle )
         {
-            // OGR_L_SyncToDisk( _layerHandle ); // for writing only
+            if (_needsSync)
+            {
+                OGR_L_SyncToDisk( _layerHandle ); // for writing only
+                const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
+                std::stringstream buf;
+                buf << "REPACK " << name; 
+                std::string bufStr;
+                bufStr = buf.str();
+                OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
+            }
             _layerHandle = 0L;
         }
 
@@ -126,12 +138,16 @@ public:
             _ogrDriverHandle = OGRGetDriverByName( driverName.c_str() );
 
             // attempt to open the dataset:
-	        _dsHandle = OGROpenShared( _absUrl.c_str(), 0, &_ogrDriverHandle );
+            int openMode = _options.openWrite().isSet() && _options.openWrite().value() ? 1 : 0;
+
+	        _dsHandle = OGROpenShared( _absUrl.c_str(), openMode, &_ogrDriverHandle );
 	        if ( _dsHandle )
 	        {
+                if (openMode == 1) _writable = true;
+
 		        _layerHandle = OGR_DS_GetLayer( _dsHandle, 0 ); // default to layer 0 for now
                 if ( _layerHandle )
-                {
+                {                    
                     GeoExtent extent;
 
                     // extract the SRS and Extent:                
@@ -166,6 +182,48 @@ public:
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
 
                         OE_INFO << LC << "...done." << std::endl;
+                    }
+
+                    //Get the feature count
+                    _featureCount = OGR_L_GetFeatureCount( _layerHandle, 1 );
+
+                    initSchema();
+
+                    OGRwkbGeometryType wkbType = OGR_FD_GetGeomType( OGR_L_GetLayerDefn( _layerHandle ) );
+                    if (
+                        wkbType == wkbPolygon ||
+                        wkbType == wkbPolygon25D )
+                    {
+                        _geometryType = Geometry::TYPE_POLYGON;
+                    }
+                    else if (
+                        wkbType == wkbLineString ||
+                        wkbType == wkbLineString25D )
+                    {
+                        _geometryType = Geometry::TYPE_LINESTRING;
+                    }
+                    else if (
+                        wkbType == wkbLinearRing )
+                    {
+                        _geometryType = Geometry::TYPE_RING;
+                    }
+                    else if ( 
+                        wkbType == wkbPoint ||
+                        wkbType == wkbPoint25D )
+                    {
+                        _geometryType = Geometry::TYPE_POINTSET;
+                    }
+                    else if (
+                        wkbType == wkbGeometryCollection ||
+                        wkbType == wkbGeometryCollection25D ||
+                        wkbType == wkbMultiPoint ||
+                        wkbType == wkbMultiPoint25D ||
+                        wkbType == wkbMultiLineString ||
+                        wkbType == wkbMultiLineString25D ||
+                        wkbType == wkbMultiPolygon ||
+                        wkbType == wkbMultiPolygon25D )
+                    {
+                        _geometryType = Geometry::TYPE_MULTI;
                     }
                 }
 	        }
@@ -221,32 +279,120 @@ public:
         }
     }
 
-protected:
+    virtual bool deleteFeature(FeatureID fid)
+    {
+        if (_writable && _layerHandle)
+        {
+            if (OGR_L_DeleteFeature( _layerHandle, fid ) == OGRERR_NONE)
+            {
+                _needsSync = true;
+                return true;
+            }            
+        }
+        return false;
+    }
 
-    // closes any open OGR objects and releases the handles
-    bool cleanup()
+    virtual int getFeatureCount() const
+    {
+        return _featureCount;
+    }
+
+    virtual Feature* getFeature( FeatureID fid )
+    {
+        Feature* result = NULL;
+        OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
+        if (handle)
+        {
+            result = OgrUtils::createFeature( handle );
+            OGR_F_Destroy( handle );
+        }
+        return result;
+    }
+
+    virtual bool isWritable() const
+    {
+        return _writable;
+    }
+
+    const FeatureSchema& getSchema() const
+    {
+        return _schema;
+    } 
+
+    virtual bool insertFeature(Feature* feature)
     {
         OGR_SCOPED_LOCK;
-
-        if ( _layerHandle )
+        OGRFeatureH feature_handle = OGR_F_Create( OGR_L_GetLayerDefn( _layerHandle ) );
+        if ( feature_handle )
         {
-            // OGR_L_SyncToDisk( _layerHandle ); // for writing only
-            _layerHandle = 0L;
+            // assign the attributes:
+            int num_fields = OGR_F_GetFieldCount( feature_handle );
+            for( int i=0; i<num_fields; i++ )
+            {
+                OGRFieldDefnH field_handle_ref = OGR_F_GetFieldDefnRef( feature_handle, i );
+                std::string name = OGR_Fld_GetNameRef( field_handle_ref );
+                int field_index = OGR_F_GetFieldIndex( feature_handle, name.c_str() );
+                std::string value = feature->getAttr( name );
+                if (!value.empty())
+                {
+                    switch( OGR_Fld_GetType( field_handle_ref ) )
+                    {
+                    case OFTInteger:
+                        OGR_F_SetFieldInteger( feature_handle, field_index, as<int>(value, 0) );
+                        break;
+                    case OFTReal:
+                        OGR_F_SetFieldDouble( feature_handle, field_index, as<double>(value, 0.0) );
+                        break;
+                    case OFTString:
+                        OGR_F_SetFieldString( feature_handle, field_index, value.c_str() );
+                        break;                    
+                    }
+                }
+            }
+
+            // assign the geometry:
+            OGRFeatureDefnH def = ::OGR_L_GetLayerDefn( _layerHandle );
+
+            OGRwkbGeometryType reported_type = OGR_FD_GetGeomType( def );
+
+            OGRGeometryH ogr_geometry = OgrUtils::createOgrGeometry( feature->getGeometry(), reported_type );
+            if ( OGR_F_SetGeometryDirectly( feature_handle, ogr_geometry ) != OGRERR_NONE )
+            {
+                OE_WARN << LC << "OGR_F_SetGeometryDirectly failed!" << std::endl;
+            }
+
+            if ( OGR_L_CreateFeature( _layerHandle, feature_handle ) != OGRERR_NONE )
+            {
+                //TODO: handle error better
+                OE_WARN << LC << "OGR_L_CreateFeature failed!" << std::endl;
+                OGR_F_Destroy( feature_handle );
+                return false;
+            }
+
+            // clean up the feature
+            OGR_F_Destroy( feature_handle );
         }
-
-        if ( _dsHandle )
+        else
         {
-            OGRReleaseDataSource( _dsHandle );
-            _dsHandle = 0L;
+            //TODO: handle error better
+            OE_WARN << LC << "OGR_F_Create failed." << std::endl;
+            return false;
         }
 
         return true;
     }
 
+    virtual osgEarth::Symbology::Geometry::Type getGeometryType() const
+    {
+        return _geometryType;
+    }
+
+protected:
+
     // parses an explicit WKT geometry string into a Geometry.
     Symbology::Geometry* parseGeometry( const Config& geomConf )
     {
-        return GeometryUtils::createGeometryFromWKT( geomConf.value() );
+        return OgrUtils::createGeometryFromWKT( geomConf.value() );
     }
 
     // read the WKT geometry from a URL, then parse into a Geometry.
@@ -261,6 +407,23 @@ protected:
         return 0L;
     }
 
+    void initSchema()
+    {
+        OGRFeatureDefnH layerDef =  OGR_L_GetLayerDefn( _layerHandle );
+        for (int i = 0; i < OGR_FD_GetFieldCount( layerDef ); i++)
+        {
+            OGRFieldDefnH fieldDef = OGR_FD_GetFieldDefn( layerDef, i );
+            std::string name;
+            name = std::string( OGR_Fld_GetNameRef( fieldDef ) );
+            OGRFieldType ogrType = OGR_Fld_GetType( fieldDef );
+            _schema[ name ] = OgrUtils::getAttributeType( ogrType );
+        }
+    }
+
+
+
+
+
 private:
     std::string _absUrl;
     OGRDataSourceH _dsHandle;
@@ -268,6 +431,11 @@ private:
     OGRSFDriverH _ogrDriverHandle;
     osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
     const OGRFeatureOptions _options;
+    int _featureCount;
+    bool _needsSync;
+    bool _writable;
+    FeatureSchema _schema;
+    Geometry::Type _geometryType;
 };
 
 

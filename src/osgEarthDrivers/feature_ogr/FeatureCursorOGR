@@ -73,8 +73,7 @@ private:
     const FeatureFilterList& _filters;
 
 private:
-    void readChunk();
-    Feature* createFeature( OGRFeatureH handle );
+    void readChunk();    
 };
 
 

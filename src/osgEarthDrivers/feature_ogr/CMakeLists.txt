@@ -4,8 +4,7 @@ SET(TARGET_SRC
 )
 
 SET(TARGET_H
-    FeatureCursorOGR
-    GeometryUtils
+    FeatureCursorOGR    
     OGRFeatureOptions
 )
 

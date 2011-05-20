@@ -48,6 +48,10 @@ namespace osgEarth { namespace Features
         FeatureFilterList& filters() { return _filters; }
         const FeatureFilterList& filters() const { return _filters; }
 
+        optional<bool>& openWrite() { return _openWrite; }
+        const optional<bool>& openWrite() const { return _openWrite; }
+
+
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
         virtual Config getConfig() const;
@@ -62,6 +66,7 @@ namespace osgEarth { namespace Features
         void fromConfig( const Config& conf );
 
         FeatureFilterList _filters;
+        optional< bool > _openWrite;
     };
 
     /**
@@ -96,6 +101,49 @@ namespace osgEarth { namespace Features
          */
         virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query =Symbology::Query() ) =0;
 
+        /**
+         * Whether or not this FeatureSource is writeable.
+         */
+        virtual bool isWritable() const = 0;
+
+        /**
+         * Deletes the feature with the given FID
+         */
+        virtual bool deleteFeature(FeatureID fid) = 0;
+
+        /**
+         * Gets the number of features in this FeatureSource
+         * @return
+         *      The number of features or -1 if the number of features cannot be determined.
+         */
+        virtual int getFeatureCount() const = 0;
+
+        /**
+         * Gets the Feature with the given FID
+         * @return
+         *     The Feature with the given FID or NULL if not found.
+         */
+        virtual Feature* getFeature( FeatureID fid ) = 0;
+
+        /**
+         * Gets the FeatureSchema for this FeatureSource
+         */
+        virtual const FeatureSchema& getSchema() const = 0;
+
+        /**
+         * Inserts the given feature into the FeatureSource
+         * @return
+         *     True if the feature was inserted, false if not
+         */
+        virtual bool insertFeature(Feature* feature) = 0;
+
+        /**
+         * Gets the Geometry type of the FeatureSource
+         * @return
+         *      The Geometry type of the FeatureSource
+         */
+        virtual osgEarth::Symbology::Geometry::Type getGeometryType() const = 0;
+        
 
     public: // Styling
 

@@ -87,7 +87,9 @@ _backColor( osg::Vec4f(0,0,0,0) ),
 _foreColor( osg::Vec4f(1,1,1,1) ),
 _activeColor( osg::Vec4f(.4,.4,.4,1) ),
 _active( false ),
-_absorbEvents( false )
+_absorbEvents( false ),
+_hfill( false ),
+_vfill( false )
 {
     //nop
 }
@@ -189,6 +191,30 @@ Control::setVertAlign( const Alignment& value ) {
 }
 
 void
+Control::setHorizFill( bool hfill, float minWidth ) {
+    if ( hfill != _hfill || minWidth != _width.value() ) {
+        _hfill = hfill;
+        if ( hfill )
+            setWidth( minWidth );
+        else
+            _width.unset();
+        dirty();
+    }
+}
+
+void
+Control::setVertFill( bool vfill, float minHeight ) {
+    if ( vfill != _hfill || minHeight != _height.value() ) {
+        _vfill = vfill;
+        if ( vfill )
+            setHeight( minHeight );
+        else
+            _height.unset();
+        dirty();
+    }
+}
+
+void
 Control::setForeColor( const osg::Vec4f& value ) {
     if ( value != _foreColor.value() ) {
         _foreColor = value;
@@ -241,7 +267,10 @@ Control::dirty()
     _dirty = true;
     osg::ref_ptr<Control> parent;
     if ( getParent( parent ) )
+    {
         parent->dirty();
+        parent.release();
+    }
 }
 
 void
@@ -747,8 +776,7 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
         float rw = osg::round( _renderSize.x() - padding().x() );
         float rh = osg::round( _renderSize.y() - padding().y() );
 
-        float vph = cx._vp->height(); // - padding().bottom();
-        //float hy = vph - (_renderPos.y() + 0.5 * _renderSize.y());
+        float vph = cx._vp->height();
 
         osg::Vec3Array* verts = new osg::Vec3Array(8);
         g->setVertexArray( verts );
@@ -985,12 +1013,7 @@ Container::setChildHorizAlign( Alignment value )
     if ( !_childhalign.isSet() || _childhalign != value )
     {
         _childhalign = value;
-
-        for( ControlList::const_iterator i = children().begin(); i != children().end(); ++i )
-            if ( !i->get()->horizAlign().isSet() )
-                i->get()->setHorizAlign( value );
-
-        dirty();
+        applyChildAligns();
     }
 }
 
@@ -1000,10 +1023,25 @@ Container::setChildVertAlign( Alignment value )
     if ( !_childvalign.isSet() || _childvalign != value )
     {
         _childvalign = value;
+        applyChildAligns();
+    }
+}
 
-        for( ControlList::const_iterator i = children().begin(); i != children().end(); ++i )
-            if ( !i->get()->vertAlign().isSet() )
-                i->get()->setVertAlign( value );
+void
+Container::applyChildAligns()
+{
+    if ( _childhalign.isSet() || _childvalign.isSet() )
+    {
+        for( ControlList::iterator i = mutable_children().begin(); i != mutable_children().end(); ++i )
+        {
+            Control* child = i->get();
+
+            if ( _childvalign.isSet() && !child->vertAlign().isSet() )
+                child->setVertAlign( *_childvalign );
+
+            if ( _childhalign.isSet() && !child->horizAlign().isSet() )
+                child->setHorizAlign( *_childhalign );
+        }
 
         dirty();
     }
@@ -1026,6 +1064,45 @@ Container::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         // no need to set the output vars.
 
         //_dirty = false;  
+
+        // process "fill" controls
+        Control* hChild = 0L;
+        Control* vChild = 0L;
+        osg::Vec3f used;
+
+        for( ControlList::iterator i = mutable_children().begin(); i != mutable_children().end() && (!hChild || !vChild); ++i )
+        {
+            Control* child = i->get();
+            if ( child->horizFill() )
+                hChild = child;
+            else
+                used.x() += child->_renderSize.x();
+
+            if ( child->vertFill() )
+                vChild = child;
+            else
+                used.y() += child->_renderSize.y();
+        }
+
+        if ( hChild && hChild->_renderSize.x() < out_size.x() - used.x() )
+        {
+            hChild->_renderSize.x() = out_size.x() - used.x();
+        }
+
+        if ( vChild && vChild->_renderSize.y() < out_size.y() - used.y() )
+        {
+            vChild->_renderSize.y() = out_size.y() - used.y();
+        }
+    }
+}
+
+void
+Container::calcFill(const ControlContext& cx)
+{
+    for( ControlList::iterator i = mutable_children().begin(); i != mutable_children().end(); ++i )
+    {
+        Control* child = i->get();
+        child->calcFill( cx );
     }
 }
 
@@ -1083,6 +1160,8 @@ VBox::addControl( Control* control, int index )
     else
         _controls.insert( _controls.begin() + osg::minimum(index,(int)_controls.size()-1), control );
     control->setParent( this );
+
+    applyChildAligns();
     dirty();
 }
 
@@ -1117,6 +1196,9 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             _renderSize.x() + padding().left() + padding().right(),
             _renderSize.y() + padding().top() + padding().bottom() );
 
+        // process fills:
+
+
         out_size.set(
             _renderSize.x() + margin().left() + margin().right(),
             _renderSize.y() + margin().top() + margin().bottom() );
@@ -1127,6 +1209,35 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
     {
         out_size.set(0,0);
     }
+}
+
+void
+VBox::calcFill(const ControlContext& cx)
+{
+    float used_y = 0.0f;
+    Control* hc = 0L;
+    Control* vc = 0L;
+
+    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end() && (!hc || !vc); ++i )
+    {
+        Control* child = i->get();
+
+        if ( !hc && child->horizFill() )
+            hc = child;
+
+        if ( !vc && child->vertFill() )
+            vc = child;
+        else
+            used_y += child->renderSize().y();
+    }
+
+    if ( hc && renderWidth(hc) < (_renderSize.x() - (padding().left()+padding().right()) ) )
+        renderWidth(hc) = _renderSize.x() - (padding().left()+padding().right());
+
+    if ( vc && renderHeight(vc) < (_renderSize.y()-used_y-(padding().top()+padding().bottom())) )
+        renderHeight(vc) = _renderSize.y()-used_y-(padding().top()+padding().bottom());
+
+    Container::calcFill( cx );
 }
 
 void
@@ -1169,7 +1280,10 @@ HBox::addControl( Control* control, int index )
         _controls.push_back( control );
     else
         _controls.insert( _controls.begin() + osg::minimum(index,(int)_controls.size()-1), control );
+    
     control->setParent( this );
+    applyChildAligns();
+
     dirty();
 }
 
@@ -1210,6 +1324,37 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 
         Container::calcSize( cx, out_size );
     }
+}
+
+void
+HBox::calcFill(const ControlContext& cx)
+{
+    float used_x = 0.0f;
+    Control* hc = 0L;
+    Control* vc = 0L;
+
+    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end() && (!hc || !vc); ++i )
+    {
+        Control* child = i->get();
+
+        child->calcFill(cx);
+
+        if ( !hc && child->horizFill() )
+            hc = child;
+        else
+            used_x += child->renderSize().x();
+
+        if ( !vc && child->vertFill() )
+            vc = child;
+    }
+
+    if ( hc && renderWidth(hc) < (_renderSize.x() - used_x - (padding().left()+padding().right()) ) )
+        renderWidth(hc) = _renderSize.x() - used_x - (padding().left()+padding().right());
+
+    if ( vc && renderHeight(vc) < (_renderSize.y() - (padding().top()+padding().bottom())) )
+        renderHeight(vc) = _renderSize.y() - (padding().top()+padding().bottom());
+   
+    Container::calcFill( cx );
 }
 
 void
@@ -1263,6 +1408,7 @@ Grid::setControl( int col, int row, Control* child )
     _children.push_back( child );
 
     child->setParent( this );
+    applyChildAligns();
 
     dirty();
 }
@@ -1355,6 +1501,37 @@ Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
 
         Container::calcSize( cx, out_size );
     }
+}
+
+void
+Grid::calcFill(const ControlContext& cx)
+{
+    float used_x = 0.0f, used_y = 0.0f;
+    Control* hc = 0L;
+    Control* vc = 0L;
+
+    for( ControlList::const_iterator i = _children.begin(); i != _children.end() && (!hc || !vc); ++i )
+    {
+        Control* child = i->get();
+
+        if ( !hc && child->horizFill() )
+            hc = child;
+        else
+            used_x += child->renderSize().x();
+
+        if ( !vc && child->vertFill() )
+            vc = child;
+        else
+            used_y += child->renderSize().y();
+    }
+
+    if ( hc && renderWidth(hc) < (_renderSize.x()-used_x-(padding().left()+padding().right()) ) )
+        renderWidth(hc) = _renderSize.x()-used_x-(padding().left()+padding().right());
+
+    if ( vc && renderHeight(vc) < (_renderSize.y()-used_y-(padding().top()+padding().bottom())) )
+        renderHeight(vc) = _renderSize.y()-used_y-(padding().top()+padding().bottom());
+
+    Container::calcFill( cx );
 }
 
 void
@@ -1676,6 +1853,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                       // calculate the size of the control in screen space:
                       osg::Vec2f dummySize;
                       control->calcSize( context, dummySize );
+                      control->calcFill( context );
 
                       // only need to do this if the control has children ... (pos is always 0,0)
                       control->calcPos( context, osg::Vec2f(0,0), surfaceSize );
@@ -1834,7 +2012,7 @@ ControlCanvas::addControl( Control* control )
     osg::Geode* geode = new osg::Geode();
     _geodeTable[control] = geode;
     addChild( geode );
-    control->dirty();
+    control->dirty();    
     _controls.push_back( control );
 }
 
@@ -1920,6 +2098,7 @@ ControlCanvas::update()
         {
             osg::Vec2f size;
             control->calcSize( _context, size );
+            control->calcFill( _context );
 
             osg::Vec2f surfaceSize( _context._vp->width(), _context._vp->height() );
             control->calcPos( _context, osg::Vec2f(0,0), surfaceSize );

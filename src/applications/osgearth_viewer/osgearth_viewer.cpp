@@ -49,24 +49,37 @@ usage( const std::string& msg )
     return -1;
 }
 
-static Control* s_controlPanel;
+static Control* s_controlPanel  =0L;
+static SkyNode* s_sky           =0L;
+
+struct SkySliderHandler : public ControlEventHandler
+{
+    virtual void onValueChanged( class Control* control, float value )
+    {
+        s_sky->setDateTime( 2011, 3, 6, value );
+    }
+};
 
 osg::Node*
 createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
 {
     ControlCanvas* canvas = ControlCanvas::get( view );
 
+    VBox* main = new VBox();
+    main->setBackColor(0,0,0,0.5);
+    main->setMargin( 10 );
+    main->setPadding( 10 );
+    main->setSpacing( 10 );
+    main->setAbsorbEvents( true );
+    main->setVertAlign( Control::ALIGN_BOTTOM );
+
     // the outer container:
     Grid* g = new Grid();
-    g->setBackColor(0,0,0,0.5);
-    g->setMargin( 10 );
-    g->setPadding( 10 );
-    g->setSpacing( 10 );
+    g->setSpacing( 5 );
     g->setChildVertAlign( Control::ALIGN_CENTER );
-    g->setAbsorbEvents( true );
-    g->setVertAlign( Control::ALIGN_BOTTOM );
 
-    for( unsigned i=0; i<vps.size(); ++i )
+    unsigned i;
+    for( i=0; i<vps.size(); ++i )
     {
         const Viewpoint& vp = vps[i];
         std::stringstream buf;
@@ -74,10 +87,27 @@ createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
         g->setControl( 0, i, new LabelControl(buf.str(), 16.0f, osg::Vec4f(1,1,0,1)) );
         g->setControl( 1, i, new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName(), 16.0f) );
     }
+    main->addControl( g );
 
-    canvas->addControl( g );
+    // sky time slider:
+    HBox* skyBox = new HBox();
+    skyBox->setChildVertAlign( Control::ALIGN_CENTER );
+    skyBox->setSpacing( 10 );
+    skyBox->setHorizFill( true );
 
-    s_controlPanel = g;
+    skyBox->addControl( new LabelControl("Time: ", 16) );
+
+    HSliderControl* skySlider = new HSliderControl( 0.0f, 24.0f, 18.0f );
+    skySlider->setHeight( 12 );
+    skySlider->setHorizFill( true );
+    skySlider->addEventHandler( new SkySliderHandler );
+    skyBox->addControl( skySlider );
+
+    main->addControl( skyBox );
+    
+    canvas->addControl( main );
+
+    s_controlPanel = main;
     return canvas;
 }
 
@@ -175,13 +205,13 @@ main(int argc, char** argv)
             if ( useSky )
             {
                 double hours = skyConf.value( "hours", 12.0 );
-                SkyNode* sky = new SkyNode( mapNode->getMap() );
-                sky->setDateTime( 2011, 3, 6, hours );
-                sky->attach( &viewer );
-                root->addChild( sky );
-                if (animateSky)
+                s_sky = new SkyNode( mapNode->getMap() );
+                s_sky->setDateTime( 2011, 3, 6, hours );
+                s_sky->attach( &viewer );
+                root->addChild( s_sky );
+                if ( animateSky )
                 {
-                    sky->setUpdateCallback( new AnimateSunCallback());
+                    s_sky->setUpdateCallback( new AnimateSunCallback());
                 }
             }
 

@@ -37,6 +37,7 @@
 namespace osgEarth { namespace Features
 {   
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * Configuration options for creating a FeatureSource.
@@ -124,12 +125,13 @@ namespace osgEarth { namespace Features
          * @return
          *     The Feature with the given FID or NULL if not found.
          */
-        virtual Feature* getFeature( FeatureID fid ) = 0;
+        virtual Feature* getFeature( FeatureID fid ) { return 0L; }
 
         /**
-         * Gets the FeatureSchema for this FeatureSource
+         * Gets the FeatureSchema for this FeatureSource. If the schema doesn't
+         * publish a source, this might be empty.
          */
-        virtual const FeatureSchema& getSchema() const = 0;
+        virtual const FeatureSchema& getSchema() const;
 
         /**
          * Inserts the given feature into the FeatureSource
@@ -143,7 +145,7 @@ namespace osgEarth { namespace Features
          * @return
          *      The Geometry type of the FeatureSource
          */
-        virtual osgEarth::Symbology::Geometry::Type getGeometryType() const = 0;
+        virtual Geometry::Type getGeometryType() const { return Geometry::TYPE_UNKNOWN; }
 
 
     public: // Styling

@@ -142,13 +142,16 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     }
 
     // Mask layer:
-    Config maskLayerConf = conf.child( "mask" );
-    if ( !maskLayerConf.empty() )
+    ConfigSet masks = conf.children( "mask" );
+    for( ConfigSet::const_iterator i = masks.begin(); i != masks.end(); i++ )
     {
+        Config maskLayerConf = *i;
+
         MaskLayerOptions options(maskLayerConf);
         options.name() = maskLayerConf.value( "name" );
         options.driver() = MaskSourceOptions(options);
-        map->setTerrainMaskLayer( new MaskLayer(options) );
+
+        map->addTerrainMaskLayer( new MaskLayer(options) );
     }
 
     return new MapNode( map, mapNodeOptions );

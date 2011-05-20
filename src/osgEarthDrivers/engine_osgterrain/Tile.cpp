@@ -48,7 +48,6 @@ _locator( keyLocator ),
 _quickReleaseGLObjects( quickReleaseGLObjects ),
 _hasBeenTraversed( false ),
 _verticalScale( 1.0f ),
-_mask( 0L ),
 _parentTileSet( false ),
 _tileId( key.getTileId() ),
 _dirty( true )
@@ -356,5 +355,5 @@ _tileKey(tile->getKey())
     _elevationLayer = tile->getElevationLayer();
     _locator        = tile->getLocator();
     _sampleRatio    = tile->getTerrain()->getSampleRatio();
-    _mask           = tile->getTerrainMaskGeometry();
+    _masks          = MaskLayerVector(tile->getTerrainMasks());
 }

@@ -558,8 +558,8 @@ namespace osgEarth { namespace Util { namespace Controls
         void addNode( ControlNode* node );
 
     private:
-        typedef std::pair<float, ControlNode*> ControlNodePair;
-        typedef std::multimap<float, ControlNode*> ControlNodeCollection;
+        typedef std::pair<float, osg::ref_ptr<ControlNode> > ControlNodePair;
+        typedef std::multimap<float, osg::ref_ptr<ControlNode> > ControlNodeCollection;
         ControlNodeCollection _controlNodes;
 
         typedef std::pair<Control*, ControlNodeCollection::iterator> ControlIndexPair;

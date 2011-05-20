@@ -1620,92 +1620,105 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
     // reallocate it each time
     _taken.clear();
 
-    for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); ++i )
+    for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); ) 
     {
-        ControlNode* node = i->second;
+        ControlNode* node = i->second.get();
         osg::MatrixTransform* xform = _renderNodes[node];
 
-        ControlNode::PerViewData& nodeData = node->getData( context._view );
-        Control* control = node->getControl();
+        // check to see if the node as removed
+        bool nodeActive = node->getNumParents() > 0;
 
-        // if the context changed (e.g., viewport resize), we need to mark all nodes as dirty
-        // even if they're obscured...that way they will regenerate properly next time
-        if ( newContext )
+        if ( nodeActive )
         {
-            control->dirty();
-        }
+          ControlNode::PerViewData& nodeData = node->getData( context._view );
+          Control* control = node->getControl();
 
-        if ( nodeData._obscured == false )
+          // if the context changed (e.g., viewport resize), we need to mark all nodes as dirty
+          // even if they're obscured...that way they will regenerate properly next time
+          if ( newContext )
+          {
+              control->dirty();
+          }
+
+          if ( nodeData._obscured == false )
+          {
+              const osg::Vec2f& nPos = nodeData._screenPos; //node->getScreenPos( _view ); //_screenPos;
+              const osg::Vec2f& size = control->renderSize();
+
+              float x = nPos.x()-size.x()*0.5;
+              float y = nPos.y();
+              xform->setMatrix( osg::Matrixd::translate(x, y-context._vp->height(), 0) );
+
+              osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
+
+              for( std::vector<osg::BoundingBox>::iterator u = _taken.begin(); u != _taken.end(); ++u )
+              {
+                  if ( u->intersects( bbox ) )
+                  {
+                      nodeData._obscured = true;
+                      break;
+                  }
+              }
+
+              if ( nodeData._obscured == false )
+              {
+                  _taken.push_back( bbox );
+
+                  // the geode holding this node's geometry:
+                  osg::Geode* geode = static_cast<osg::Geode*>( xform->getChild(0) );
+
+                  // if the control changed, we need to rebuild its drawables:
+                  if ( control->isDirty() )
+                  {
+                      // clear out the geode:
+                      geode->removeDrawables( 0, geode->getNumDrawables() );
+
+                      // calculate the size of the control in screen space:
+                      osg::Vec2f dummySize;
+                      control->calcSize( context, dummySize );
+
+                      // only need to do this if the control has children ... (pos is always 0,0)
+                      control->calcPos( context, osg::Vec2f(0,0), surfaceSize );
+                   
+                      // build the drawables for the geode and insert them:
+                      DrawableList drawables;
+                      control->draw( context, drawables );
+
+                      for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
+                      {
+                          j->get()->setDataVariance( osg::Object::DYNAMIC );
+
+                          osg::StateSet* stateSet = j->get()->getOrCreateStateSet();
+                          stateSet->setRenderBinDetails( bin, "RenderBin" );
+                          geode->addDrawable( j->get() );
+                      }
+                  }
+
+                  // update the "visible time" uniform if it's changed. this will cause the
+                  // shader to "fade in" the label when it becomes visible.
+                  if ( !nodeData._uniform.valid() )
+                  {
+                      nodeData._uniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
+                      geode->getOrCreateStateSet()->addUniform( nodeData._uniform.get() );
+                  }
+
+                  float oldValue;
+                  nodeData._uniform->get( oldValue );
+                  if ( oldValue != nodeData._visibleTime )
+                      nodeData._uniform->set( nodeData._visibleTime );                
+              }
+          }
+          
+          // adjust the visibility based on whether the node is visible
+          xform->setNodeMask( nodeData._obscured ? 0 : ~0 );
+
+          ++i;
+        }
+        else
         {
-            const osg::Vec2f& nPos = nodeData._screenPos; //node->getScreenPos( _view ); //_screenPos;
-            const osg::Vec2f& size = control->renderSize();
-
-            float x = nPos.x()-size.x()*0.5;
-            float y = nPos.y();
-            xform->setMatrix( osg::Matrixd::translate(x, y-context._vp->height(), 0) );
-
-            osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
-
-            for( std::vector<osg::BoundingBox>::iterator u = _taken.begin(); u != _taken.end(); ++u )
-            {
-                if ( u->intersects( bbox ) )
-                {
-                    nodeData._obscured = true;
-                    break;
-                }
-            }
-
-            if ( nodeData._obscured == false )
-            {
-                _taken.push_back( bbox );
-
-                // the geode holding this node's geometry:
-                osg::Geode* geode = static_cast<osg::Geode*>( xform->getChild(0) );
-
-                // if the control changed, we need to rebuild its drawables:
-                if ( control->isDirty() )
-                {
-                    // clear out the geode:
-                    geode->removeDrawables( 0, geode->getNumDrawables() );
-
-                    // calculate the size of the control in screen space:
-                    osg::Vec2f dummySize;
-                    control->calcSize( context, dummySize );
-
-                    // only need to do this if the control has children ... (pos is always 0,0)
-                    control->calcPos( context, osg::Vec2f(0,0), surfaceSize );
-                 
-                    // build the drawables for the geode and insert them:
-                    DrawableList drawables;
-                    control->draw( context, drawables );
-
-                    for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
-                    {
-                        j->get()->setDataVariance( osg::Object::DYNAMIC );
-
-                        osg::StateSet* stateSet = j->get()->getOrCreateStateSet();
-                        stateSet->setRenderBinDetails( bin, "RenderBin" );
-                        geode->addDrawable( j->get() );
-                    }
-                }
-
-                // update the "visible time" uniform if it's changed. this will cause the
-                // shader to "fade in" the label when it becomes visible.
-                if ( !nodeData._uniform.valid() )
-                {
-                    nodeData._uniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
-                    geode->getOrCreateStateSet()->addUniform( nodeData._uniform.get() );
-                }
-
-                float oldValue;
-                nodeData._uniform->get( oldValue );
-                if ( oldValue != nodeData._visibleTime )
-                    nodeData._uniform->set( nodeData._visibleTime );                
-            }
+          _renderNodes.erase( node );
+          i = _controlNodes.erase( i );
         }
-        
-        // adjust the visibility based on whether the node is visible
-        xform->setNodeMask( nodeData._obscured ? 0 : ~0 );
     }
 
     _visibleNodes->clear();

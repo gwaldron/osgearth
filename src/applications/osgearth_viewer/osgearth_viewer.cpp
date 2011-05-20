@@ -38,6 +38,7 @@ int
 usage( const std::string& msg )
 {
     OE_NOTICE << msg << std::endl;
+    OE_NOTICE << std::endl;
     OE_NOTICE << "USAGE: osgearth_viewer [--graticule] [--autoclip] file.earth" << std::endl;
     OE_NOTICE << "   --graticule     : displays a lat/long grid in geocentric mode" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
@@ -47,7 +48,9 @@ usage( const std::string& msg )
         
     return -1;
 }
- 
+
+static Control* s_controlPanel;
+
 osg::Node*
 createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
 {
@@ -74,6 +77,7 @@ createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
 
     canvas->addControl( g );
 
+    s_controlPanel = g;
     return canvas;
 }
 
@@ -108,6 +112,10 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
                 XmlDocument xml( vp.getConfig() );
                 xml.store( std::cout );
                 std::cout << std::endl;
+            }
+            else if ( ea.getKey() == '?' )
+            {
+                s_controlPanel->setVisible( !s_controlPanel->visible() );
             }
         }
         return false;

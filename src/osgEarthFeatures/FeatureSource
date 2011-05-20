@@ -102,21 +102,22 @@ namespace osgEarth { namespace Features
         virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query =Symbology::Query() ) =0;
 
         /**
-         * Whether or not this FeatureSource is writeable.
+         * Whether this FeatureSource supports inserting and deleting features
          */
-        virtual bool isWritable() const = 0;
+        virtual bool isWritable() const { return false; }
 
         /**
          * Deletes the feature with the given FID
+         * @return True on success; false on failure or if the source is read-only
          */
-        virtual bool deleteFeature(FeatureID fid) = 0;
+        virtual bool deleteFeature(FeatureID fid) { return false; }
 
         /**
          * Gets the number of features in this FeatureSource
          * @return
          *      The number of features or -1 if the number of features cannot be determined.
          */
-        virtual int getFeatureCount() const = 0;
+        virtual int getFeatureCount() const { return -1; }
 
         /**
          * Gets the Feature with the given FID
@@ -135,7 +136,7 @@ namespace osgEarth { namespace Features
          * @return
          *     True if the feature was inserted, false if not
          */
-        virtual bool insertFeature(Feature* feature) = 0;
+        virtual bool insertFeature(Feature* feature) { return false; }
 
         /**
          * Gets the Geometry type of the FeatureSource
@@ -143,7 +144,7 @@ namespace osgEarth { namespace Features
          *      The Geometry type of the FeatureSource
          */
         virtual osgEarth::Symbology::Geometry::Type getGeometryType() const = 0;
-        
+
 
     public: // Styling
 

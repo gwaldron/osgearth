@@ -2,8 +2,7 @@ SET(TARGET_SRC
     FeatureSourceWFS.cpp    
 )
 
-SET(TARGET_H   
-	GeometryUtils
+SET(TARGET_H   	
     WFSFeatureOptions
 )
 

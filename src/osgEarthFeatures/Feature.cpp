@@ -103,7 +103,7 @@ Feature::setAttr( const std::string& name, const std::string& value )
 const std::string&
 Feature::getAttr( const std::string& name ) const
 {
-    AttributeTable::const_iterator i = _attrs.find(name);
+    AttributeTable::const_iterator i = _attrs.find(toLower(name));
     return i != _attrs.end()? i->second : EMPTY_STRING;
 }
 

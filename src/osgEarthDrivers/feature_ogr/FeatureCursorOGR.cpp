@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "FeatureCursorOGR"
-#include "GeometryUtils"
+#include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/Feature>
 #include <osgEarth/Registry>
 #include <algorithm>
@@ -160,7 +160,7 @@ FeatureCursorOGR::readChunk()
 
     if ( _nextHandleToQueue )
     {
-        Feature* f = createFeature( _nextHandleToQueue );
+        Feature* f = OgrUtils::createFeature( _nextHandleToQueue );
         if ( f ) 
         {
             _queue.push( f );
@@ -179,7 +179,7 @@ FeatureCursorOGR::readChunk()
         OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
         if ( handle )
         {
-            Feature* f = createFeature( handle );
+            Feature* f = OgrUtils::createFeature( handle );
             if ( f ) 
             {
                 _queue.push( f );
@@ -210,36 +210,5 @@ FeatureCursorOGR::readChunk()
     _nextHandleToQueue = OGR_L_GetNextFeature( _resultSetHandle );
 
     //OE_NOTICE << "read " << _queue.size() << " features ... " << std::endl;
-}
-
-// NOTE: ASSUMES that OGR_SCOPED_LOCK is already in effect upon entry!
-Feature*
-FeatureCursorOGR::createFeature( OGRFeatureH handle )
-{
-    long fid = OGR_F_GetFID( handle );
-
-    Feature* feature = new Feature( fid );
-
-    OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
-	if ( geomRef )
-	{
-        Symbology::Geometry* geom = GeometryUtils::createGeometry( geomRef );
-        feature->setGeometry( geom );
-	}
-
-    int numAttrs = OGR_F_GetFieldCount(handle); 
-    for (int i = 0; i < numAttrs; ++i) 
-    { 
-        void* field_handle_ref = OGR_F_GetFieldDefnRef( handle, i ); 
-        const char* field_name = OGR_Fld_GetNameRef( field_handle_ref ); 
-        const char* field_value= OGR_F_GetFieldAsString(handle, i); 
-        std::string name = std::string( field_name ); 
-        std::string value = std::string( field_value); 
-        //Make the name lower case 
-        std::transform( name.begin(), name.end(), name.begin(), ::tolower ); 
-        feature->setAttr(name, value); 
-    } 
-
-    return feature;
 }
 

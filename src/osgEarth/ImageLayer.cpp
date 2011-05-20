@@ -666,6 +666,13 @@ ImageLayer::createImageWrapper(const TileKey& key,
                 if ( source->hasDataInExtent( key.getExtent() ) )
                 {
                     result = source->createImage( key, _preCacheOp.get(), progress );
+
+                    // if no result was created, add this key to the blacklist.
+                    if ( result == 0L && (!progress || !progress->isCanceled()) )
+                    {
+                        //Add the tile to the blacklist
+                        source->getBlacklist()->add(key.getTileId());
+                    }
                 }
 
                 // otherwise, generate an empty image.
@@ -679,15 +686,7 @@ ImageLayer::createImageWrapper(const TileKey& key,
             {
                 // in this case, the source cannot service the LOD
                 result = NULL;
-            }
-
-            // if no result was created, add this key to the blacklist.
-            if ( result == 0L && (!progress || !progress->isCanceled()) )
-            {
-                //Add the tile to the blacklist
-                OE_DEBUG << LC << getName() << ": adding tile " << key.str() << " to the blacklist" << std::endl;
-                source->getBlacklist()->add(key.getTileId());
-            }
+            }            
         }
 
         // Cache is necessary:

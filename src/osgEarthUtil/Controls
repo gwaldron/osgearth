@@ -71,6 +71,8 @@ namespace osgEarth { namespace Util { namespace Controls
         float x() const { return _left + _right; }
         float y() const { return _top + _bottom; }
 
+        osg::Vec2f size() const { return osg::Vec2f(x(), y()); }
+
         osg::Vec2f offset() const { return osg::Vec2f( _left, _top ); }
 
     private:
@@ -392,8 +394,8 @@ namespace osgEarth { namespace Util { namespace Controls
         Frame* getFrame() const { return _frame.get(); }
         
         // space between children
-        void setSpacing( float value );
-        float spacing() const { return _spacing; }
+        void setChildSpacing( float value );
+        float childSpacing() const { return _spacing; }
 
         // horiz alignment to set on children (that do not already have alignment explicity set)
         void setChildHorizAlign( Alignment align );

@@ -56,7 +56,7 @@ createControlPanel( osgViewer::View* view )
     s_layerBox->setBackColor(0,0,0,0.5);
     s_layerBox->setMargin( 10 );
     s_layerBox->setPadding( 10 );
-    s_layerBox->setSpacing( 10 );
+    s_layerBox->setChildSpacing( 10 );
     s_layerBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_layerBox->setAbsorbEvents( true );
     s_layerBox->setVertAlign( Control::ALIGN_BOTTOM );
@@ -66,7 +66,7 @@ createControlPanel( osgViewer::View* view )
     s_imageBox->setBackColor(0,0,0,0.5);
     s_imageBox->setMargin( 10 );
     s_imageBox->setPadding( 10 );
-    s_imageBox->setSpacing( 10 );
+    s_imageBox->setChildSpacing( 10 );
     s_imageBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_imageBox->setAbsorbEvents( true );
     s_imageBox->setVertAlign( Control::ALIGN_BOTTOM );
@@ -76,7 +76,7 @@ createControlPanel( osgViewer::View* view )
     s_coordInfo->setBackColor(0,0,0,0.5);
     s_coordInfo->setMargin( 10 );
     s_coordInfo->setPadding( 10 );
-    s_coordInfo->setSpacing( 10 );
+    s_coordInfo->setChildSpacing( 10 );
     s_coordInfo->setChildVertAlign( Control::ALIGN_CENTER );
     s_coordInfo->setAbsorbEvents( true );
     s_coordInfo->setVertAlign( Control::ALIGN_TOP );
@@ -209,7 +209,7 @@ void addCoordInfo(ImageOverlay* overlay, ImageOverlay::ControlPoint point)
     //grid->setBackColor(0,0,0,0.5);
     grid->setMargin( 10 );
     grid->setPadding( 10 );
-    grid->setSpacing( 10 );
+    grid->setChildSpacing( 10 );
     grid->setChildVertAlign( Control::ALIGN_CENTER );
     grid->setAbsorbEvents( true );
     grid->setVertAlign( Control::ALIGN_BOTTOM );

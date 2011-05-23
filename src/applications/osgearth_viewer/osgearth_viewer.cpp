@@ -30,9 +30,11 @@
 #include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/Viewpoint>
+#include <osgEarthSymbology/Color>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Symbology;
 
 int
 usage( const std::string& msg )
@@ -49,35 +51,92 @@ usage( const std::string& msg )
     return -1;
 }
 
-static Control* s_controlPanel;
+static EarthManipulator* s_manip         = 0L;
+static Control*          s_controlPanel  =0L;
+static SkyNode*          s_sky           =0L;
+
+struct SkySliderHandler : public ControlEventHandler
+{
+    virtual void onValueChanged( class Control* control, float value )
+    {
+        s_sky->setDateTime( 2011, 3, 6, value );
+    }
+};
+
+struct ClickViewpointHandler : public ControlEventHandler
+{
+    ClickViewpointHandler( const Viewpoint& vp ) : _vp(vp) { }
+    Viewpoint _vp;
+
+    virtual void onClick( class Control* control, int buttonMask )
+    {
+        s_manip->setViewpoint( _vp, 4.5 );
+    }
+};
 
 osg::Node*
 createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
 {
     ControlCanvas* canvas = ControlCanvas::get( view );
 
-    // the outer container:
-    Grid* g = new Grid();
-    g->setBackColor(0,0,0,0.5);
-    g->setMargin( 10 );
-    g->setPadding( 10 );
-    g->setSpacing( 10 );
-    g->setChildVertAlign( Control::ALIGN_CENTER );
-    g->setAbsorbEvents( true );
-    g->setVertAlign( Control::ALIGN_BOTTOM );
+    VBox* main = new VBox();
+    main->setBackColor(0,0,0,0.5);
+    main->setMargin( 10 );
+    main->setPadding( 10 );
+    main->setChildSpacing( 10 );
+    main->setAbsorbEvents( true );
+    main->setVertAlign( Control::ALIGN_BOTTOM );
 
-    for( unsigned i=0; i<vps.size(); ++i )
+    if ( vps.size() > 0 )
     {
-        const Viewpoint& vp = vps[i];
-        std::stringstream buf;
-        buf << (i+1);
-        g->setControl( 0, i, new LabelControl(buf.str(), 16.0f, osg::Vec4f(1,1,0,1)) );
-        g->setControl( 1, i, new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName(), 16.0f) );
+        // the viewpoint container:
+        Grid* g = new Grid();
+        g->setChildSpacing( 0 );
+        g->setChildVertAlign( Control::ALIGN_CENTER );
+
+        unsigned i;
+        for( i=0; i<vps.size(); ++i )
+        {
+            const Viewpoint& vp = vps[i];
+            std::stringstream buf;
+            buf << (i+1);
+            Control* num = new LabelControl(buf.str(), 16.0f, osg::Vec4f(1,1,0,1));
+            num->setPadding( 4 );
+            g->setControl( 0, i, num );
+
+            Control* vpc = new LabelControl(vp.getName().empty() ? "<no name>" : vp.getName(), 16.0f);
+            vpc->setPadding( 4 );
+            vpc->setHorizFill( true );
+            vpc->setActiveColor( Color::Blue );
+            vpc->addEventHandler( new ClickViewpointHandler(vp) );
+            g->setControl( 1, i, vpc );
+        }
+        main->addControl( g );
     }
 
-    canvas->addControl( g );
+    // sky time slider:
+    if ( s_sky )
+    {
+        HBox* skyBox = new HBox();
+        skyBox->setChildVertAlign( Control::ALIGN_CENTER );
+        skyBox->setChildSpacing( 10 );
+        skyBox->setHorizFill( true );
 
-    s_controlPanel = g;
+        skyBox->addControl( new LabelControl("Time: ", 16) );
+
+        HSliderControl* skySlider = new HSliderControl( 0.0f, 24.0f, 18.0f );
+        skySlider->setBackColor( Color::Gray );
+        skySlider->setHeight( 12 );
+        skySlider->setHorizFill( true, 200 );
+        skySlider->addEventHandler( new SkySliderHandler );
+        skyBox->addControl( skySlider );
+
+        main->addControl( skyBox );
+    }
+    
+    canvas->addControl( main );
+
+    s_controlPanel = main;
     return canvas;
 }
 
@@ -94,8 +153,8 @@ struct AnimateSunCallback : public osg::NodeCallback
 
 struct ViewpointHandler : public osgGA::GUIEventHandler
 {
-    ViewpointHandler( const std::vector<Viewpoint>& viewpoints, EarthManipulator* manip )
-        : _viewpoints( viewpoints ), _manip( manip ){ }
+    ViewpointHandler( const std::vector<Viewpoint>& viewpoints )
+        : _viewpoints( viewpoints ) { }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
     {
@@ -104,11 +163,11 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
             int index = (int)ea.getKey() - (int)'1';
             if ( index >= 0 && index < (int)_viewpoints.size() )
             {
-                _manip->setViewpoint( _viewpoints[index], 4.5 );
+                s_manip->setViewpoint( _viewpoints[index], 4.5 );
             }
             else if ( ea.getKey() == 'v' )
             {
-                Viewpoint vp = _manip->getViewpoint();
+                Viewpoint vp = s_manip->getViewpoint();
                 XmlDocument xml( vp.getConfig() );
                 xml.store( std::cout );
                 std::cout << std::endl;
@@ -122,7 +181,6 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
     }
 
     std::vector<Viewpoint> _viewpoints;
-    EarthManipulator* _manip;
 };
 
 int
@@ -144,8 +202,8 @@ main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
     
-    EarthManipulator* manip = new EarthManipulator();
-    viewer.setCameraManipulator( manip );
+    s_manip = new EarthManipulator();
+    viewer.setCameraManipulator( s_manip );
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
@@ -175,13 +233,13 @@ main(int argc, char** argv)
             if ( useSky )
             {
                 double hours = skyConf.value( "hours", 12.0 );
-                SkyNode* sky = new SkyNode( mapNode->getMap() );
-                sky->setDateTime( 2011, 3, 6, hours );
-                sky->attach( &viewer );
-                root->addChild( sky );
-                if (animateSky)
+                s_sky = new SkyNode( mapNode->getMap() );
+                s_sky->setDateTime( 2011, 3, 6, hours );
+                s_sky->attach( &viewer );
+                root->addChild( s_sky );
+                if ( animateSky )
                 {
-                    sky->setUpdateCallback( new AnimateSunCallback());
+                    s_sky->setUpdateCallback( new AnimateSunCallback());
                 }
             }
 
@@ -203,17 +261,18 @@ main(int argc, char** argv)
         const ConfigSet children = externals.children("viewpoint");
         if ( children.size() > 0 )
         {
-            manip->getSettings()->setArcViewpointTransitions( true );
+            s_manip->getSettings()->setArcViewpointTransitions( true );
 
             for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
                 viewpoints.push_back( Viewpoint(*i) );
 
-            viewer.addEventHandler( new ViewpointHandler(viewpoints, manip) );
+            viewer.addEventHandler( new ViewpointHandler(viewpoints) );
             if ( jump )
-                manip->setViewpoint(viewpoints[0]);
-
-            root->addChild( createControlPanel(&viewer, viewpoints) );
+                s_manip->setViewpoint(viewpoints[0]);
         }
+
+        if ( viewpoints.size() > 0 || s_sky )
+            root->addChild( createControlPanel(&viewer, viewpoints) );
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

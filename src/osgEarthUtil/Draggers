@@ -67,7 +67,7 @@ public:
     inline void setPickColor(const osg::Vec4& color) { _pickColor = color; }
     inline const osg::Vec4& getPickColor() const { return _pickColor; }    
 
-    virtual bool IntersectingDragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+    virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
 
 protected:
 

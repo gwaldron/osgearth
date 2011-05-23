@@ -32,6 +32,7 @@
 #include "Tile"
 #include <list>
 #include <queue>
+#include <iterator>
 
 class TileFactory;
 class TerrainTechnique;

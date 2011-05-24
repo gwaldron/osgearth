@@ -136,3 +136,10 @@ VirtualFeatureSource::createFeatureProfile()
         return 0L;
 }
 
+const FeatureSchema&
+VirtualFeatureSource::getSchema() const
+{
+  static FeatureSchema s_emptySchema;
+
+  return _sources.size() > 0 ?_sources.front()._source->getSchema() : s_emptySchema;
+}

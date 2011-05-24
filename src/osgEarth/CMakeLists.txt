@@ -129,6 +129,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ShaderUtils.cpp
     SparseTexture2DArray.cpp
     SpatialReference.cpp
+    StringUtils.cpp
     TaskService.cpp
     TerrainLayer.cpp
     TerrainOptions.cpp

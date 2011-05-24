@@ -27,6 +27,7 @@
 #include <vector>
 #include <sstream>
 #include <iomanip>
+#include <map>
 #include <cctype>
 
 #ifdef __GNUC__
@@ -84,6 +85,38 @@ namespace osgEarth
         return ref.find( pattern ) == 0;
     }
 
+    /**
+     * Splits a string up into a vector of strings based on a set of 
+     * delimiters, quotes, and rules.
+     */
+    class OSGEARTH_EXPORT StringTokenizer
+    {
+    public:
+        StringTokenizer( const std::string& delims =" \t\r\n", const std::string& quotes ="'\"" );
+
+        void tokenize( const std::string& input, StringVector& output ) const;
+
+        bool& keepEmpties() { return _allowEmpties; }
+
+        bool& trimTokens() { return _trimTokens; }
+
+        void addDelim( char delim, bool keepAsToken =false );
+
+        void addDelims( const std::string& delims, bool keepAsTokens =false );
+
+        void addQuote( char delim, bool keepInToken =false );
+
+        void addQuotes( const std::string& delims, bool keepInTokens =false );
+        
+    private:
+        typedef std::map<char,bool> TokenMap;
+        TokenMap _delims;
+        TokenMap _quotes;
+        bool     _allowEmpties;
+        bool     _trimTokens;
+    };
+
+#if 0
     static 
     void tokenize( const std::string& input,
                    StringVector& output,
@@ -91,6 +124,7 @@ namespace osgEarth
                    const std::string& quotes ="'\"",
                    bool allowEmpties =true,
                    bool keepDelims   =false,
+                   bool keepQuotes   =false,
                    bool trimTokens   =true )
     {
         std::stringstream buf;
@@ -99,16 +133,24 @@ namespace osgEarth
         {
             char c = *i;    
             if ( quoted ) {
-                if ( quotes.find(c) != std::string::npos )
+                if ( quotes.find(c) != std::string::npos ) {
                     quoted = false;
-                else
+                    if ( keepQuotes ) 
+                        buf << c;
+                }
+                else {
                     buf << c;
+                }
             }
             else {
-                if ( quotes.find(c) != std::string::npos )
+                if ( quotes.find(c) != std::string::npos ) {
                     quoted = true;
-                else if ( delims.find(c) == std::string::npos )
+                    if ( keepQuotes )
+                        buf << c;
+                }
+                else if ( delims.find(c) == std::string::npos ) {
                     buf << c;
+                }
                 else {
                     std::string token = trimTokens ? trim(buf.str()) : buf.str();
                     if ( allowEmpties || !token.empty() )
@@ -125,6 +167,7 @@ namespace osgEarth
         if ( !last.empty() )
             output.push_back( last );
     }
+#endif
 
 #if 0
     /**
@@ -219,7 +262,7 @@ namespace osgEarth
     }
 
     /** Converts a string to a vec3f */
-    static osg::Vec3f
+    LIKELY_UNUSED_FUNCTION static osg::Vec3f
     stringToVec3f( const std::string& str, const osg::Vec3f& default_value )
     {
         std::stringstream buf(str);
@@ -236,7 +279,7 @@ namespace osgEarth
     }
 
     /** Converts a vec3f to a string */
-    static std::string
+    LIKELY_UNUSED_FUNCTION static std::string
     vec3fToString( const osg::Vec3f& v )
     {
         std::stringstream buf;

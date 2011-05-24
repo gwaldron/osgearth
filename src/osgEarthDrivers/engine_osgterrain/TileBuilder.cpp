@@ -138,23 +138,25 @@ struct BuildElevLayer
 
 struct AssembleTile
 {
-    void init(const TileKey& key, const MapInfo& mapInfo, const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo, osg::Vec3dArray* mask=0L )
+    void init(const TileKey& key, const MapInfo& mapInfo, const OSGTerrainOptions& opt, TileBuilder::SourceRepo& repo, const MaskLayerVector& masks=MaskLayerVector() )
     {
         _key     = key;
         _mapInfo = &mapInfo;
         _opt     = &opt;
         _repo    = &repo;
         _tile    = 0L;
-        _mask    = mask;
+        _masks.clear();
+        std::copy( masks.begin(), masks.end(), std::back_inserter(_masks) );
     }
 
     void execute()
     {
         _tile = new Tile( _key, GeoLocator::createForKey(_key, *_mapInfo), *_opt->quickReleaseGLObjects() );
         _tile->setVerticalScale( *_opt->verticalScale() );
+
         //_tile->setRequiresNormals( true );
         _tile->setDataVariance( osg::Object::DYNAMIC );
-        _tile->setTerrainMaskGeometry(_mask);
+        _tile->setTerrainMasks(_masks);
 
         // copy over the source data.
         _tile->setCustomColorLayers( _repo->_colorLayers );
@@ -172,7 +174,7 @@ struct AssembleTile
     const OSGTerrainOptions* _opt;
     TileBuilder::SourceRepo* _repo;
     Tile*                    _tile;
-    osg::Vec3dArray*         _mask;
+    MaskLayerVector          _masks;
 };
 
 //------------------------------------------------------------------------
@@ -432,14 +434,14 @@ TileBuilder::createTile(const TileKey&      key,
         }
     }
 
-    osg::Vec3dArray* maskBounds = 0L;
-    osgEarth::MaskLayer* mask = mapf.getTerrainMaskLayer();
-    if (mask)
-      maskBounds = mask->getOrCreateBoundary();
+    //osg::Vec3dArray* maskBounds = 0L;
+    //osgEarth::MaskLayer* mask = mapf.getTerrainMaskLayer();
+    //if (mask)
+    //  maskBounds = mask->getOrCreateBoundary();
 
     // Ready to create the actual tile.
     AssembleTile assemble;
-    assemble.init( key, mapInfo, _terrainOptions, repo, maskBounds );
+    assemble.init( key, mapInfo, _terrainOptions, repo, mapf.terrainMaskLayers() );
     assemble.execute();
 
     if (!out_hasRealData)

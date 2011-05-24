@@ -71,6 +71,8 @@ namespace osgEarth { namespace Util { namespace Controls
         float x() const { return _left + _right; }
         float y() const { return _top + _bottom; }
 
+        osg::Vec2f size() const { return osg::Vec2f(x(), y()); }
+
         osg::Vec2f offset() const { return osg::Vec2f( _left, _top ); }
 
     private:
@@ -148,6 +150,12 @@ namespace osgEarth { namespace Util { namespace Controls
         void setHorizAlign( const Alignment& value );
         const optional<Alignment>& horizAlign() const { return _halign; }
 
+        void setHorizFill( bool value, float minWidth =0.0f );
+        bool horizFill() const { return _hfill; }
+
+        void setVertFill( bool value, float minHeight =0.0f );
+        const bool vertFill() const { return _vfill; }
+
         void setVisible( bool value );
         const bool visible() const { return _visible; }
 
@@ -180,6 +188,7 @@ namespace osgEarth { namespace Util { namespace Controls
         bool isDirty() const { return _dirty; }
 
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context ) { }
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw    ( const ControlContext& context, DrawableList& out_drawables );
 
@@ -200,15 +209,16 @@ namespace osgEarth { namespace Util { namespace Controls
         // adjusts renderpos for alignment.
         void align();
 
-        // event handler
         friend class ControlCanvas;
         friend class Container;
+
         virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
 
         ControlEventHandlerList _eventHandlers;
 
     private:
         osgEarth::optional<float> _x, _y, _width, _height;
+        bool _hfill, _vfill;
         Gutter _margin;
         Gutter _padding;
         bool _visible;
@@ -384,8 +394,8 @@ namespace osgEarth { namespace Util { namespace Controls
         Frame* getFrame() const { return _frame.get(); }
         
         // space between children
-        void setSpacing( float value );
-        float spacing() const { return _spacing; }
+        void setChildSpacing( float value );
+        float childSpacing() const { return _spacing; }
 
         // horiz alignment to set on children (that do not already have alignment explicity set)
         void setChildHorizAlign( Alignment align );
@@ -406,17 +416,26 @@ namespace osgEarth { namespace Util { namespace Controls
 
     public:
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context );
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
 
     protected:
         virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
 
+        void applyChildAligns();
+        
+        //void setChildRenderSize( Control* child, float w, float h ) { child->_renderSize.set( w, h ); }
+        float& renderWidth(Control* child) { return child->_renderSize.x(); }
+        float& renderHeight(Control* child) { return child->_renderSize.y(); }
+
     private:
         osg::ref_ptr<Frame> _frame;
         float _spacing;
         optional<Alignment> _childhalign;
         optional<Alignment> _childvalign;
+        
+        ControlList& mutable_children() { return const_cast<ControlList&>(children()); }
     };
 
     /**
@@ -434,6 +453,7 @@ namespace osgEarth { namespace Util { namespace Controls
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context );
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
 
@@ -456,6 +476,7 @@ namespace osgEarth { namespace Util { namespace Controls
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context );
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
 
@@ -480,6 +501,7 @@ namespace osgEarth { namespace Util { namespace Controls
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
+        virtual void calcFill( const ControlContext& context );
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
 
@@ -558,8 +580,8 @@ namespace osgEarth { namespace Util { namespace Controls
         void addNode( ControlNode* node );
 
     private:
-        typedef std::pair<float, ControlNode*> ControlNodePair;
-        typedef std::multimap<float, ControlNode*> ControlNodeCollection;
+        typedef std::pair<float, osg::ref_ptr<ControlNode> > ControlNodePair;
+        typedef std::multimap<float, osg::ref_ptr<ControlNode> > ControlNodeCollection;
         ControlNodeCollection _controlNodes;
 
         typedef std::pair<Control*, ControlNodeCollection::iterator> ControlIndexPair;

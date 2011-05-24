@@ -32,6 +32,7 @@
 #include "Tile"
 #include <list>
 #include <queue>
+#include <iterator>
 
 class TileFactory;
 class TerrainTechnique;
@@ -89,8 +90,8 @@ public:
     void init();
 
     /** Gets or sets the terrain mask geometry. */
-    osg::Vec3dArray* getTerrainMaskGeometry() { return _mask.get(); }
-    void setTerrainMaskGeometry(osg::Vec3dArray* terrainMask) { _mask = terrainMask; }
+    const MaskLayerVector& getTerrainMasks() { return _masks; }
+    void setTerrainMasks(const MaskLayerVector& terrainMask) { _masks.clear(); std::copy( terrainMask.begin(), terrainMask.end(), std::back_inserter(_masks) ); }
 
     /** Whether OSG has traversed the tile at least once. */
     bool getHasBeenTraversed() const { return _hasBeenTraversed; }
@@ -153,7 +154,7 @@ protected:
     osgTerrain::TileID             _tileId;
     osg::ref_ptr<GeoLocator>       _locator;
     osg::observer_ptr<Terrain>     _terrain;
-    osg::ref_ptr<osg::Vec3dArray>  _mask;
+    MaskLayerVector                _masks;
 
     Threading::ReadWriteMutex _tileLayersMutex;
     ColorLayersByUID          _colorLayers;
@@ -184,7 +185,7 @@ public:
     osg::ref_ptr< osgTerrain::HeightFieldLayer > _elevationLayer;
     osg::ref_ptr< osgTerrain::Locator >          _locator;
     float                                        _sampleRatio;
-    osg::ref_ptr< osg::Vec3dArray >              _mask;
+    MaskLayerVector                              _masks;
 
     // convenience funciton to pull out a layer by its UID.
     bool getCustomColorLayer( UID layerUID, CustomColorLayer& out ) const {

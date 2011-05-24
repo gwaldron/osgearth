@@ -73,7 +73,7 @@ static osg::Node* createMenu( osgViewer::View* view )
     Grid* grid = new Grid();
     grid->setBackColor( 0, 0, 0, 0.5 );
     grid->setMargin( 5 );
-    grid->setSpacing( 3 );
+    grid->setChildSpacing( 3 );
     grid->setVertAlign( Control::ALIGN_BOTTOM );
     int row = 0;
 

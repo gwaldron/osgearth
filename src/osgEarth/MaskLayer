@@ -111,6 +111,8 @@ namespace osgEarth
 
         void copyOptions();
     };
+
+    typedef std::vector< osg::ref_ptr<MaskLayer> > MaskLayerVector;
 }
 
 #endif // OSGEARTH_MASK_LAYER_H

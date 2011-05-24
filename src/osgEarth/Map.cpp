@@ -208,9 +208,16 @@ Map::getNumModelLayers() const
     return _modelLayers.size();
 }
 
-MaskLayer*
-Map::getTerrainMaskLayer() const {
-    return _terrainMaskLayer.get();
+int
+Map::getTerrainMaskLayers( MaskLayerVector& out_list ) const
+{
+    out_list.reserve( _terrainMaskLayers.size() );
+
+    Threading::ScopedReadLock lock( const_cast<Map*>(this)->_mapDataMutex );
+    for( MaskLayerVector::const_iterator i = _terrainMaskLayers.begin(); i != _terrainMaskLayers.end(); ++i )
+        out_list.push_back( i->get() );
+
+    return _dataModelRevision;
 }
 
 void
@@ -715,14 +722,14 @@ Map::moveModelLayer( ModelLayer* layer, unsigned int newIndex )
 }
 
 void
-Map::setTerrainMaskLayer( MaskLayer* layer )
+Map::addTerrainMaskLayer( MaskLayer* layer )
 {
     if ( layer )
     {
         Revision newRevision;
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
-            _terrainMaskLayer = layer;
+            _terrainMaskLayers.push_back(layer);
             newRevision = ++_dataModelRevision;
         }
 
@@ -735,31 +742,32 @@ Map::setTerrainMaskLayer( MaskLayer* layer )
                 MapModelChange::ADD_MASK_LAYER, newRevision, layer) );
         }
     }
-    else
-    {
-        removeTerrainMaskLayer();
-    }
 }
 
 void
-Map::removeTerrainMaskLayer()
+Map::removeTerrainMaskLayer( MaskLayer* layer )
 {
-    if ( _terrainMaskLayer.valid() )
+    if ( layer )
     {
         Revision newRevision;
-
-        osg::ref_ptr<MaskLayer> layer = _terrainMaskLayer.get();
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
-            _terrainMaskLayer = 0L;
-            newRevision = ++_dataModelRevision;
+            for( MaskLayerVector::iterator i = _terrainMaskLayers.begin(); i != _terrainMaskLayers.end(); ++i )
+            {
+                if ( i->get() == layer )
+                {
+                    _terrainMaskLayers.erase( i );
+                    newRevision = ++_dataModelRevision;
+                    break;
+                }
+            }
         }
         
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_MASK_LAYER, newRevision, layer.get()) );
+                MapModelChange::REMOVE_MASK_LAYER, newRevision, layer) );
         }	
     }
 }
@@ -1168,7 +1176,10 @@ Map::sync( MapFrame& frame ) const
 
         if ( frame._parts & MASK_LAYERS )
         {
-            frame._maskLayer = _terrainMaskLayer.get();
+          if ( !frame._initialized )
+              frame._maskLayers.reserve( _terrainMaskLayers.size() );
+          frame._maskLayers.clear();
+          std::copy( _terrainMaskLayers.begin(), _terrainMaskLayers.end(), std::back_inserter(frame._maskLayers) );
         }
 
         // sync the revision numbers.
@@ -1264,7 +1275,8 @@ _copyValidDataOnly( src._copyValidDataOnly ),
 _mapDataModelRevision( src._mapDataModelRevision ),
 _imageLayers( src._imageLayers ),
 _elevationLayers( src._elevationLayers ),
-_modelLayers( src._modelLayers )
+_modelLayers( src._modelLayers ),
+_maskLayers( src._maskLayers )
 {
     //no sync required here; we copied the arrays etc
 }

@@ -163,6 +163,13 @@ FeatureSource::getFilters() const
     return _options.filters();
 }
 
+const FeatureSchema&
+FeatureSource::getSchema() const
+{
+    static FeatureSchema s_emptySchema;
+    return s_emptySchema;
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC

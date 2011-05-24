@@ -49,6 +49,22 @@ using namespace OpenThreads;
 
 // --------------------------------------------------------------------------
 
+namespace
+{
+  struct MaskRecord
+  {
+    osg::ref_ptr<osg::Vec3dArray> _boundary;
+    osg::Vec3d _ndcMin, _ndcMax;
+    osg::Geometry* _geom;
+
+    MaskRecord(osg::Vec3dArray* boundary, osg::Vec3d& ndcMin, osg::Vec3d& ndcMax, osg::Geometry* geom) : _boundary(boundary), _ndcMin(ndcMin), _ndcMax(ndcMax), _geom(geom) { }
+  };
+
+  typedef std::vector<MaskRecord> MaskRecordVector;
+}
+
+// --------------------------------------------------------------------------
+
 SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
 CustomTerrainTechnique(),
 _verticalScaleOverride(1.0f),
@@ -559,21 +575,59 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     skirt->setUseVertexBufferObjects(true);
     geode->addDrawable( skirt );
 
-    // see if we're using a Mask geometry:
-    osg::Vec3dArray* mask = tilef._mask.valid() ? tilef._mask.get() : 0L;
 
-    osg::Geometry* mask_skirt = 0L;
-    if ( mask )
+    //Find mask bounds in local coords and create a record for any mask relevant to this tile.
+    osg::ref_ptr<GeoLocator> geoLocator = _masterLocator->getGeographicFromGeocentric();
+
+    MaskRecordVector masks;
+    for (MaskLayerVector::const_iterator it = tilef._masks.begin(); it != tilef._masks.end(); ++it)
     {
-        mask_skirt = new osg::Geometry();
-        mask_skirt->setThreadSafeRefUnref(true);
-        mask_skirt->setDataVariance( osg::Object::DYNAMIC );
-        mask_skirt->setUseDisplayList(false);
-        mask_skirt->setUseVertexBufferObjects(true);
-        //mask_skirt->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
-        geode->addDrawable( mask_skirt);
+      osg::Vec3dArray* boundary = (*it)->getOrCreateBoundary();
+      osg::Vec3d min, max;
+      min = max = boundary->front();
+
+      for (osg::Vec3dArray::iterator it = boundary->begin(); it != boundary->end(); ++it)
+      {
+        if (it->x() < min.x())
+          min.x() = it->x();
+
+        if (it->y() < min.y())
+          min.y() = it->y();
+
+        if (it->x() > max.x())
+          max.x() = it->x();
+
+        if (it->y() > max.y())
+          max.y() = it->y();
+      }
+
+      osg::Vec3d min_ndc, max_ndc;
+      geoLocator->convertModelToLocal(min, min_ndc);
+      geoLocator->convertModelToLocal(max, max_ndc);
+
+      bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
+                      (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
+                      (min_ndc.x() < 1.0 && max_ndc.x() >= 1.0));
+
+      bool y_match = ((min_ndc.y() >= 0.0 && max_ndc.y() <= 1.0) ||
+                      (min_ndc.y() <= 0.0 && max_ndc.y() > 0.0) ||
+                      (min_ndc.y() < 1.0 && max_ndc.y() >= 1.0));
+
+      if (x_match && y_match)
+      {
+        osg::Geometry* mask_geom = new osg::Geometry();
+        mask_geom->setThreadSafeRefUnref(true);
+        mask_geom->setDataVariance( osg::Object::DYNAMIC );
+        mask_geom->setUseDisplayList(false);
+        mask_geom->setUseVertexBufferObjects(true);
+        //mask_geom->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
+        geode->addDrawable(mask_geom);
+
+        masks.push_back(MaskRecord(boundary, min_ndc, max_ndc, mask_geom));
+      }
     }
-            
+
+
     unsigned int numRows = 20;
     unsigned int numColumns = 20;
     
@@ -664,7 +718,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 r._skirtTexCoords = new osg::Vec2Array();
                 r._skirtTexCoords->reserve( numVerticesInSkirt );
 
-                if ( mask )
+                if ( masks.size() > 0 )
                     r._maskSkirtTexCoords = new osg::Vec2Array();
 
                 r._locator = locator;
@@ -678,8 +732,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 _texCompositor->assignTexCoordArray( surface, colorLayer.getUID(), r._texCoords.get() );
                 _texCompositor->assignTexCoordArray( skirt, colorLayer.getUID(), r._skirtTexCoords.get() );
 
-                if (mask)
-                    _texCompositor->assignTexCoordArray( mask_skirt, colorLayer.getUID(), r._maskSkirtTexCoords.get() );
+                for (MaskRecordVector::iterator mr = masks.begin(); mr != masks.end(); ++mr)
+                    _texCompositor->assignTexCoordArray( (*mr)._geom, colorLayer.getUID(), r._maskSkirtTexCoords.get() );
 
                 //surface->setTexCoordArray( renderLayers.size(), r._texCoords );
                 renderLayers.push_back( r );
@@ -711,37 +765,6 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
     // populate vertex and tex coord arrays    
     unsigned int i, j; //, k=0;
-
-    osg::ref_ptr<GeoLocator> geoLocator = _masterLocator->getGeographicFromGeocentric();
-
-    //Find the mask bounds in local coords
-    osg::Vec3d mask_min_ndc, mask_max_ndc;
-    if (mask)
-    {
-      osg::Vec3d min, max;
-      min = max = mask->front();
-
-      for (osg::Vec3dArray::iterator it = mask->begin(); it != mask->end(); ++it)
-      {
-        if (it->x() < min.x())
-          min.x() = it->x();
-
-        if (it->y() < min.y())
-          min.y() = it->y();
-
-        if (it->x() > max.x())
-          max.x() = it->x();
-
-        if (it->y() > max.y())
-          max.y() = it->y();
-      }
-
-      geoLocator->convertModelToLocal(min, mask_min_ndc);
-      geoLocator->convertModelToLocal(max, mask_max_ndc);
-
-      //std::cout << std::endl << "mask_min_ndc: " << mask_min_ndc << std::endl << "mask_max_ndc: " << mask_max_ndc << std::endl;
-    }
-
     for(j=0; j<numRows; ++j)
     {
         for(i=0; i<numColumns; ++i) // ++k)
@@ -763,12 +786,18 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             }
 
             //Invalidate if point falls within mask bounding box
-            if (validValue && mask &&
-                (ndc.x() >= mask_min_ndc.x() && ndc.x() <= mask_max_ndc.x() &&
-                 ndc.y() >= mask_min_ndc.y() && ndc.y() <= mask_max_ndc.y()))
+            if (validValue && masks.size() > 0)
             {
-              validValue = false;
-              indices[iv] = -2;
+              for (MaskRecordVector::iterator mr = masks.begin(); mr != masks.end(); ++mr)
+              {
+                if(ndc.x() >= (*mr)._ndcMin.x() && ndc.x() <= (*mr)._ndcMax.x() &&
+                   ndc.y() >= (*mr)._ndcMin.y() && ndc.y() <= (*mr)._ndcMax.y())
+                {
+                  validValue = false;
+                  indices[iv] = -2;
+                  break;
+                }
+              }
             }
             
             if (validValue)
@@ -829,113 +858,23 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     }
 
 
-    if (mask)
+    for (MaskRecordVector::iterator mr = masks.begin(); mr != masks.end(); ++mr)
     {
-      //Find mask skirt vertices
-      int min_i = -1, max_i = -1, min_j = -1, max_j = -1;
-      for(j=0; j<numRows; ++j)
-      {
-          for(i=0; i<numColumns; ++i)
-          {
-              unsigned int iv = j*numColumns + i;
+      int min_i = (int)floor((*mr)._ndcMin.x() * (double)(numColumns-1));
+      if (min_i < 0) min_i = 0;
+      if (min_i >= numColumns) min_i = numColumns - 1;
 
-              int n = 0;
-              if (indices[iv] >= 0)
-              {
-                if (j > 0)
-                {               
-                  if (i > 0 && indices[iv - numColumns - 1] == -2)
-                    n++;
-                  
-                  if (i < numColumns - 1 && indices[iv - numColumns + 1] == -2)
-                    n++;
-                }
+      int min_j = (int)floor((*mr)._ndcMin.y() * (double)(numRows-1));
+      if (min_j < 0) min_j = 0;
+      if (min_j >= numColumns) min_j = numColumns - 1;
 
-                if (j < numRows - 1)
-                {
-                  if (i > 0 && indices[iv + numColumns - 1] == -2)
-                    n++;
-                  
-                  if (i < numColumns - 1 && indices[iv + numColumns + 1] == -2)
-                    n++;
-                }
+      int max_i = (int)ceil((*mr)._ndcMax.x() * (double)(numColumns-1));
+      if (max_i < 0) max_i = 0;
+      if (max_i >= numColumns) max_i = numColumns - 1;
 
-                if (n == 1)
-                {
-                  if (i != 0 && i != numColumns - 1)
-                  {
-                    if (j > 0 && indices[iv - numColumns] == -2)
-                      n++;
-
-                    if (j < numRows - 1 && indices[iv + numColumns] == -2)
-                      n++;
-                  }
-                  
-                  if (j != 0 && j != numRows - 1)
-                  {
-                    if (i > 0 && indices[iv - 1] == -2)
-                      n++;
-
-                    if (i < numColumns - 1 && indices[iv + 1] == -2)
-                      n++; 
-                  }
-                }
-                else
-                {
-                  //Test for special case where mask only intersects a single row
-                  //or column along the edge of the tile.
-
-                  if (i == 0 || i == numColumns - 1)
-                  {
-                    if (j > 0 && indices[iv - numColumns] == -2)
-                      n++;
-
-                    if (j < numRows - 1 && indices[iv + numColumns] == -2)
-                      n++;
-                  }
-                  
-                  if(j == 0 || j == numRows - 1)
-                  {
-                    if (i > 0 && indices[iv - 1] == -2)
-                      n++;
-
-                    if (i < numColumns - 1 && indices[iv + 1] == -2)
-                      n++;
-                  }
-                }
-
-                if (n == 1)
-                {
-                    if (min_i == -1)
-                      min_i = i;
-                    else if (min_i != i && max_i == -1)
-                      max_i = i;
-
-                    if (min_j == -1)
-                      min_j = j;
-                    else if (min_j != j && max_j == -1)
-                      max_j = j;
-                }
-              }
-              else
-              {
-                //Test for tile corners that fall within the mask bounds
-                if ((i==0 && (j == 0 || j == numRows - 1)) ||
-                    (i == numColumns - 1 && (j == 0 || j == numRows - 1)))
-                {
-                  if (min_i == -1)
-                    min_i = i;
-                  else if (min_i != i && max_i == -1)
-                    max_i = i;
-
-                  if (min_j == -1)
-                    min_j = j;
-                  else if (min_j != j && max_j == -1)
-                    max_j = j;
-                }
-              }
-          }
-      }
+      int max_j = (int)ceil((*mr)._ndcMax.y() * (double)(numRows-1));
+      if (max_j < 0) max_j = 0;
+      if (max_j >= numColumns) max_j = numColumns - 1;
 
       if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
       {
@@ -946,7 +885,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         maskSkirtPoly->resize(num_i * 2 + num_j * 2 - 4);
         for (int i = 0; i < num_i; i++)
         {
-          int index = indices[min_j*numColumns + i + min_i];
+          //int index = indices[min_j*numColumns + i + min_i];
           {
             osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)min_j)/(double)(numRows-1), 0.0);
 
@@ -963,7 +902,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             (*maskSkirtPoly)[i] = ndc;
           }
 
-          index = indices[max_j*numColumns + i + min_i];
+          //index = indices[max_j*numColumns + i + min_i];
           {
             osg::Vec3d ndc( ((double)(i + min_i))/(double)(numColumns-1), ((double)max_j)/(double)(numRows-1), 0.0);
 
@@ -982,7 +921,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         }
         for (int j = 0; j < num_j - 2; j++)
         {
-          int index = indices[(min_j + j + 1)*numColumns + max_i];
+          //int index = indices[(min_j + j + 1)*numColumns + max_i];
           {
             osg::Vec3d ndc( ((double)max_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
 
@@ -999,7 +938,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             (*maskSkirtPoly)[j + num_i] = ndc;
           }
 
-          index = indices[(min_j + j + 1)*numColumns + min_i];
+          //index = indices[(min_j + j + 1)*numColumns + min_i];
           {
             osg::Vec3d ndc( ((double)min_i)/(double)(numColumns-1), ((double)(min_j + j + 1))/(double)(numRows-1), 0.0);
 
@@ -1019,7 +958,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
         //Create local polygon representing mask
         osg::ref_ptr<osgEarth::Symbology::Polygon> maskPoly = new osgEarth::Symbology::Polygon();
-        for (osg::Vec3dArray::iterator it = mask->begin(); it != mask->end(); ++it)
+        for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
         {
           osg::Vec3d local;
           geoLocator->convertModelToLocal(*it, local);
@@ -1038,6 +977,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 #endif
 
         osg::Vec3Array* outVerts = new osg::Vec3Array();
+
+        osg::Geometry* mask_skirt = (*mr)._geom;
         mask_skirt->setVertexArray(outVerts);
 
         bool multiParent = false;
@@ -1604,8 +1545,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     if ( skirt )
         MeshConsolidator::run( *skirt );
 
-    if ( mask_skirt )
-        MeshConsolidator::run( *mask_skirt );
+    for (MaskRecordVector::iterator mr = masks.begin(); mr != masks.end(); ++mr)
+        MeshConsolidator::run( *((*mr)._geom) );
     
    
     if (osgDB::Registry::instance()->getBuildKdTreesHint()==osgDB::ReaderWriter::Options::BUILD_KDTREES &&

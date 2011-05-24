@@ -628,6 +628,22 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
       }
     }
 
+    osg::Geometry* stitching_skirts = 0L;
+    osg::Vec3Array* ss_verts = 0L;
+    if (masks.size() > 0)
+    {
+      stitching_skirts = new osg::Geometry();
+      stitching_skirts->setThreadSafeRefUnref(true);
+      stitching_skirts->setDataVariance( osg::Object::DYNAMIC );
+      stitching_skirts->setUseDisplayList(false);
+      stitching_skirts->setUseVertexBufferObjects(true);
+      //stitching_skirts->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
+      geode->addDrawable( stitching_skirts);
+
+      ss_verts = new osg::Vec3Array();
+      stitching_skirts->setVertexArray(ss_verts);
+    }
+
 
     unsigned int numRows = 20;
     unsigned int numColumns = 20;
@@ -986,6 +1002,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         if (outPoly.valid())
           multiParent = outPoly->getType() == osgEarth::Symbology::Geometry::TYPE_MULTI;
         
+        std::vector<int> skirtIndices;
+
         osgEarth::Symbology::GeometryIterator i( outPoly, false );
         while( i.hasMore() )
         {
@@ -998,6 +1016,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             osg::Vec3Array* partVerts = part->toVec3Array();
             outVerts->insert(outVerts->end(), partVerts->begin(), partVerts->end());
             mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - partVerts->size(), partVerts->size()));
+            skirtIndices.push_back(outVerts->size());
 
             if (!multiParent)
             {
@@ -1011,6 +1030,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                   (*hit)->rewind(osgEarth::Symbology::Ring::ORIENTATION_CCW);
                   outVerts->insert(outVerts->end(), (*hit)->begin(), (*hit)->end());
                   mask_skirt->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON, outVerts->size() - (*hit)->size(), (*hit)->size()));
+                  skirtIndices.push_back(outVerts->size());
                 }
               }
             }
@@ -1216,6 +1236,38 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             (*it).set(model.x(), model.y(), model.z());
           }
 #endif
+        }
+      
+        //Create stitching skirts
+        osg::Vec3Array* msNormals = (osg::Vec3Array*)(mask_skirt->getNormalArray());
+        if (createSkirt && msNormals && skirtIndices.size() > 0)
+        {
+          ss_verts->reserve(ss_verts->size() + outVerts->size() * 4 + skirtIndices.size() * 2);
+
+          //Add a primative set for each continuous skirt strip
+          for (int p=0; p < skirtIndices.size(); p++)
+          {
+            int cursor = ss_verts->size();
+
+            int outStart = p == 0 ? 0 : skirtIndices[p-1];
+            for (int i=outStart; i < skirtIndices[p]; i++)
+            {
+              ss_verts->push_back((*outVerts)[i]);
+              ss_verts->push_back((*outVerts)[i] - (*msNormals)[i] * skirtHeight);
+            }
+            //Add the first vert again to complete the loop
+            ss_verts->push_back((*outVerts)[outStart]);
+            ss_verts->push_back((*outVerts)[outStart] - (*msNormals)[outStart] * skirtHeight);
+
+            //Now go back the opposite direction to create a skirt facing the other direction
+            for (int i=skirtIndices[p] - 1; i >= outStart; i--)
+            {
+              ss_verts->push_back((*outVerts)[i]);
+              ss_verts->push_back((*outVerts)[i] - (*msNormals)[i] * skirtHeight);
+            }
+
+            stitching_skirts->addPrimitiveSet(new osg::DrawArrays( GL_TRIANGLE_STRIP, cursor, ss_verts->size() - cursor));
+          }
         }
       }
     }

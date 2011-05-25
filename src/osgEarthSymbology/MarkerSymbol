@@ -26,6 +26,10 @@
 
 namespace osgEarth { namespace Symbology
 {
+    /**
+     * The MarkerSymbol describes replacement of geometry with "markers". A marker
+     * it another object like a 3D model (node) or an image.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT MarkerSymbol : public Symbol
     {
     public:

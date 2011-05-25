@@ -40,7 +40,16 @@ namespace osgEarth
         static const Units DEGREES;
         static const Units RADIANS;
 
-        enum Type { TYPE_LINEAR, TYPE_ANGULAR };
+        // temporal
+        static const Units DAYS;
+        static const Units HOURS;
+        static const Units MICROSECONDS;
+        static const Units MILLISECONDS;
+        static const Units MINUTES;
+        static const Units SECONDS;
+        static const Units WEEKS;
+
+        enum Type { TYPE_LINEAR, TYPE_ANGULAR, TYPE_TEMPORAL };
 
     public:
 

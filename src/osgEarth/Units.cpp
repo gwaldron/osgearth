@@ -31,15 +31,22 @@ _toBase( toBase )
     //nop
 }
 
-const Units Units::CENTIMETERS       ( "centimeters",    "cm", Units::TYPE_LINEAR, 0.01 );
-const Units Units::FEET_INTERNATIONAL( "feet (int'l)",   "ft", Units::TYPE_LINEAR, 0.3048 );
-const Units Units::FEET_US           ( "feet (us)",      "ft", Units::TYPE_LINEAR, 12.0/39.37);
-const Units Units::KILOMETERS        ( "kilometers",     "km", Units::TYPE_LINEAR, 1000.0 );
-const Units Units::METERS            ( "meters",         "m",  Units::TYPE_LINEAR, 1.0 );
-const Units Units::MILES             ( "miles",          "mi", Units::TYPE_LINEAR, 1609.334 );
-const Units Units::MILLIMETERS       ( "millimeters",    "mm", Units::TYPE_LINEAR, 0.001 );
-const Units Units::NAUTICAL_MILES    ( "nautical miles", "nm", Units::TYPE_LINEAR, 1852.0 );
+const Units Units::CENTIMETERS       ( "centimeters",    "cm",  Units::TYPE_LINEAR, 0.01 );
+const Units Units::FEET_INTERNATIONAL( "feet (int'l)",   "ft",  Units::TYPE_LINEAR, 0.3048 );
+const Units Units::FEET_US           ( "feet (us)",      "ft",  Units::TYPE_LINEAR, 12.0/39.37);
+const Units Units::KILOMETERS        ( "kilometers",     "km",  Units::TYPE_LINEAR, 1000.0 );
+const Units Units::METERS            ( "meters",         "m",   Units::TYPE_LINEAR, 1.0 );
+const Units Units::MILES             ( "miles",          "mi",  Units::TYPE_LINEAR, 1609.334 );
+const Units Units::MILLIMETERS       ( "millimeters",    "mm",  Units::TYPE_LINEAR, 0.001 );
+const Units Units::NAUTICAL_MILES    ( "nautical miles", "nm",  Units::TYPE_LINEAR, 1852.0 );
 
 const Units Units::DEGREES           ( "degrees",        "deg", Units::TYPE_ANGULAR, osg::PI/180.0 );
 const Units Units::RADIANS           ( "radians",        "rad", Units::TYPE_ANGULAR, 1.0 );
 
+const Units Units::DAYS              ( "days",           "d",   Units::TYPE_TEMPORAL, 1.0/86400.0 );
+const Units Units::HOURS             ( "hours",          "hr",  Units::TYPE_TEMPORAL, 1.0/3600.0 );
+const Units Units::MICROSECONDS      ( "microseconds",   "us",  Units::TYPE_TEMPORAL, 1000000.0 );
+const Units Units::MILLISECONDS      ( "milliseconds",   "ms",  Units::TYPE_TEMPORAL, 1000.0 );
+const Units Units::MINUTES           ( "minutes",        "min", Units::TYPE_TEMPORAL, 1.0/60.0 );
+const Units Units::SECONDS           ( "seconds",        "s",   Units::TYPE_TEMPORAL, 1.0 );
+const Units Units::WEEKS             ( "weeks",          "wk",  Units::TYPE_TEMPORAL, 1.0/604800.0 );

@@ -213,7 +213,7 @@ GeomCompiler::compile(FeatureCursor*        cursor,
 
     resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
 
-    osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
+    //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 
     return resultGroup.release();
 }

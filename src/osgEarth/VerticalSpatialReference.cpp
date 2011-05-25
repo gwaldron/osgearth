@@ -52,7 +52,7 @@ VerticalSpatialReference::create( const std::string& initString )
     else if ( s == "meters" || s == "metres" || s == "meter" || s == "metre" )
         return new VerticalSpatialReference( Units::METERS );
     else if ( startsWith( s, "feet" ) || startsWith( s, "foot" ) )
-        return new VerticalSpatialReference( Units::FEET_US );
+        return new VerticalSpatialReference( Units::FEET );
 
     return 0L;
 }

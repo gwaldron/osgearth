@@ -118,8 +118,9 @@ namespace osgEarth
         // Maks a new unit definition (SPEED)
         Units( const std::string& name, const std::string& abbr, const Units& distance, const Units& time );
 
-    private:
         Units() : _type(TYPE_INVALID) { }
+
+    private:
 
         static void convertSimple( const Units& from, const Units& to, double input, double& output ) {
             output = input * from._toBase / to._toBase;

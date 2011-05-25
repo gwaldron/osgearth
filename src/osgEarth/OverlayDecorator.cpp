@@ -22,6 +22,7 @@
 #include <osgEarth/TextureCompositor>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
+#include <osg/BlendFunc>
 #include <osg/ComputeBoundsVisitor>
 #include <osgShadow/ConvexPolyhedron>
 #include <osgUtil/LineSegmentIntersector>
@@ -250,6 +251,11 @@ OverlayDecorator::reinit()
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
             _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
+            // force disable GL_BLEND, because otherwise the RTT geom will blend with the transparent clear color
+            // of the RTT camera and produce low alpha values. TODO: look into another solution for this, since 
+            // doing this turns off all blending on the subgraph.
+            _rttCamera->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED );
+
             // texture coordinate generator:
             _texGenNode = new osg::TexGenNode();
             _texGenNode->setTextureUnit( *_textureUnit );
@@ -278,7 +284,7 @@ OverlayDecorator::reinit()
         _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
         _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
 
-        // decalling:
+        // decalling (note: this has no effect when using shaders.. remove? -gw)
         osg::TexEnv* env = new osg::TexEnv();
         env->setMode( osg::TexEnv::DECAL );
         _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
@@ -356,10 +362,9 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
                << "uniform sampler2D texture_0; \n"
                << "void main() \n"
                << "{\n"                              
-               << "    vec4 tex = texture2D(texture_0, gl_TexCoord[0].xy);\n"                                                   
+               << "    vec4 tex = texture2D(texture_0, gl_TexCoord[0].xy);\n"
                << "    vec3 mixed_color = mix(gl_Color.rgb, tex.rgb, tex.a);\n"
                << "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
-               //<< "    gl_FragColor = vec4(gl_Color) * tex;\n"                              
                << "}\n";
     
     std::string fragSource = fragBuf.str();
@@ -437,7 +442,7 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
     if ( _useWarping && !_visualizeWarp )
         buf  << "    texCoord = warpTexCoord( texCoord ); \n";
 
-    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"        
+    buf << "    vec4 texel = texture2D(osgearth_overlay_ProjTex, texCoord); \n"  
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 

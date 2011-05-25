@@ -1881,7 +1881,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
         else
         {
           _renderNodes.erase( node );
-          i = _controlNodes.erase( i );
+          _controlNodes.erase( i++ );
         }
     }
 

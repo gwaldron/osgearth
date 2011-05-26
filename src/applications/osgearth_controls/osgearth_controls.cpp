@@ -136,7 +136,7 @@ createControls( ControlCanvas* cs )
             ul->addControl( content );
 
             HBox* c2 = new HBox();
-            c2->setSpacing( 10 );
+            c2->setChildSpacing( 10 );
             {
                 HSliderControl* slider = new HSliderControl( 0, 100 );
                 slider->setBackColor( .6,0,0,1 );
@@ -153,10 +153,10 @@ createControls( ControlCanvas* cs )
 
             HBox* c3 = new HBox();
             c3->setHorizAlign( Control::ALIGN_CENTER );
-            c3->setSpacing( 10 );
+            c3->setChildSpacing( 10 );
             {
                 HBox* c4 = new HBox();
-                c4->setSpacing( 5 );
+                c4->setChildSpacing( 5 );
                 {
                     c4->addControl( new CheckBoxControl( true ) );
                     c4->addControl( new LabelControl( "Checkbox 1" ) );
@@ -164,7 +164,7 @@ createControls( ControlCanvas* cs )
                 c3->addControl( c4 );
 
                 HBox* c5 = new HBox();
-                c5->setSpacing( 5 );
+                c5->setChildSpacing( 5 );
                 {
                     c5->addControl( new CheckBoxControl( false ) );
                     c5->addControl( new LabelControl( "Checkbox 2" ) );
@@ -184,7 +184,7 @@ createControls( ControlCanvas* cs )
         bottom->setFrame( new RoundedFrame() );
         bottom->getFrame()->setBackColor(0,0,0,0.5);
         bottom->setMargin( 10 );
-        bottom->setSpacing( 145 );
+        bottom->setChildSpacing( 145 );
         bottom->setVertAlign( Control::ALIGN_BOTTOM );
         bottom->setHorizAlign( Control::ALIGN_CENTER );
 

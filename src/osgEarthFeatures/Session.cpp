@@ -115,8 +115,9 @@ Session::createMapFrame( Map::ModelParts parts ) const
 void
 Session::parseMarker(const std::string& marker, std::string& url, bool &isImage) const
 {    
+    StringTokenizer izer( "()" );
     StringVector tok;
-    osgEarth::tokenize( marker, tok, "()", "" );
+    izer.tokenize( marker, tok );
 
     if (tok.size() > 1)
     {

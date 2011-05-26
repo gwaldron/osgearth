@@ -55,6 +55,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "layout", _levels );
     conf.getObjIfSet( "paging", _levels ); // backwards compat.. to be deprecated
     conf.getObjIfSet( "gridding", _gridding ); // to be deprecated
+    conf.getObjIfSet( "feature_name", _featureNameExpr );
     conf.getIfSet( "lighting", _lit );
     conf.getIfSet( "max_granularity", _maxGranularity_deg );
     conf.getIfSet( "merge_geometry", _mergeGeometry );
@@ -78,6 +79,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "gridding", _gridding ); // to be deprecated
     conf.updateObjIfSet( "styles", _styles );
     conf.updateObjIfSet( "layout", _levels );
+    conf.updateObjIfSet( "feature_name", _featureNameExpr );
     conf.updateIfSet( "lighting", _lit );
     conf.updateIfSet( "max_granularity", _maxGranularity_deg );
     conf.updateIfSet( "merge_geometry", _mergeGeometry );
@@ -154,6 +156,12 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
     if ( !_factory.valid() )
         return 0L;
+
+    if ( !_features.valid() || !_features->getFeatureProfile() )
+    {
+        OE_WARN << LC << "Invalid feature source" << std::endl;
+        return 0L;
+    }
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
         _features.get(), 

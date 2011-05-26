@@ -70,6 +70,9 @@ namespace osgEarth { namespace Features
         optional<bool>& clusterCulling() { return _clusterCulling; }
         const optional<bool>& clusterCulling() const { return _clusterCulling; }
 
+        optional<StringExpression>& featureName() { return _featureNameExpr; }
+        const optional<StringExpression>& featureName() const { return _featureNameExpr; }
+
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
         osg::ref_ptr<FeatureSource>& featureSource() { return _featureSource; }
@@ -94,6 +97,7 @@ namespace osgEarth { namespace Features
         optional<FeatureDisplayLayout>  _levels;
         optional<GriddingPolicy> _gridding;
         optional<Symbology::Geometry::Type> _geomTypeOverride;
+        optional<StringExpression> _featureNameExpr;
         optional<bool> _lit;
         optional<double> _maxGranularity_deg;
         optional<bool> _mergeGeometry;

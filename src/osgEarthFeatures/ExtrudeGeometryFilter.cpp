@@ -456,6 +456,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
         pushFeature( i->get(), context );
 
     // BREAKS if you use VBOs - make sure they're disabled
+    // TODO: replace this with MeshConsolidator -gw
     osgUtil::Optimizer optimizer;
     optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
 

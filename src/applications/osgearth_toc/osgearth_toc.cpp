@@ -167,7 +167,7 @@ createControlPanel( osgViewer::View* view )
     s_layerBox->setBackColor(0,0,0,0.5);
     s_layerBox->setMargin( 10 );
     s_layerBox->setPadding( 10 );
-    s_layerBox->setSpacing( 10 );
+    s_layerBox->setChildSpacing( 10 );
     s_layerBox->setChildVertAlign( Control::ALIGN_CENTER );
     s_layerBox->setAbsorbEvents( true );
     s_layerBox->setVertAlign( Control::ALIGN_BOTTOM );

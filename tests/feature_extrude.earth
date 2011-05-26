@@ -25,9 +25,7 @@ Footprint Extrusion using the "feature_geom" driver.
              
         <clustering>true</clustering>
         
-        <!-- The stylesheet will describe how to render the feature data. In this case
-             we indicate model substitution with density-based scattering. The "density"
-             units are instances-per-sqkm. -->
+        <!-- The stylesheet will describe how to render the feature data. -->
              
         <styles>            
             <style type="text/css">

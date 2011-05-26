@@ -63,8 +63,10 @@ namespace osgEarth { namespace Features
 
     public: // FeatureSource
         virtual FeatureCursor* createFeatureCursor( const Query& query );
-		virtual void initialize( const std::string& referenceURI );
+        virtual void initialize( const std::string& referenceURI );
         virtual const FeatureProfile* createFeatureProfile();
+        virtual const FeatureSchema& getSchema() const;
+        virtual Feature* getFeature( FeatureID id ) { return 0L; }
 
     protected:
         FeatureSourceMappingVector _sources;

@@ -218,6 +218,12 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         
         osg::Geometry* osgGeom = new osg::Geometry();
 
+        if ( _featureNameExpr.isSet() )
+        {
+            const std::string& name = input->eval( _featureNameExpr.mutable_value() );
+            osgGeom->setName( name );
+        }
+
         osgGeom->setUseVertexBufferObjects( true );
         osgGeom->setUseDisplayList( false );
 

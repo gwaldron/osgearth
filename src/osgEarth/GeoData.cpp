@@ -50,6 +50,12 @@ osg::BoundingBoxImpl<osg::Vec3d>( xmin, ymin, -DBL_MAX, xmax, ymax, DBL_MAX )
     //nop
 }
 
+bool
+Bounds::isValid() const
+{
+    return xMin() <= xMax() && yMin() <= yMax();
+}
+
 bool 
 Bounds::contains(double x, double y ) const
 {

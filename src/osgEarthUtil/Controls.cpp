@@ -1673,18 +1673,17 @@ ControlNode::traverse( osg::NodeVisitor& nv )
 
         // if it's uninitialized, find the corresponding control canvas and 
         // cache a reference to its control node bin:
-        if ( !data._visibleNodes.valid() )
+        if ( !data._canvas.valid() )
         {
-            ControlCanvas* canvas = ControlCanvas::get( cv->getCurrentCamera()->getView(), true );
-            if ( canvas )
+            data._canvas = ControlCanvas::get( cv->getCurrentCamera()->getView(), true );
+            if ( data._canvas.valid() )
             {
-                ControlNodeBin* bin = canvas->getControlNodeBin();
+                ControlNodeBin* bin = static_cast<ControlCanvas*>(data._canvas.get())->getControlNodeBin();
                 bin->addNode( this );
-                data._visibleNodes = bin->getVisibleNodesVector();       
             }
         }
 
-        if ( data._visibleNodes.valid() )
+        if ( data._canvas.valid() )
         {
             // normal-cull it:
             // TODO: only do this in geocentric mode.....
@@ -1699,16 +1698,13 @@ ControlNode::traverse( osg::NodeVisitor& nv )
             else
             {
                 // calculate its screen position:
-                osg::Vec3f sp = s_zero * (*cv->getMVPW());
-                data._screenPos.set( sp.x(), sp.y() );
+                data._screenPos = s_zero * (*cv->getMVPW());
 
                 if ( data._obscured == true )
                 {
                     data._obscured = false;
                     data._visibleTime = cv->getFrameStamp()->getReferenceTime();
                 }
-
-                data._visibleNodes->push_back( this );
             }
         }
     }
@@ -1719,7 +1715,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
 ControlNode::PerViewData::PerViewData() :
 _obscured   ( true ),
 _visibleTime( 0.0 ),
-_screenPos  ( 0.0, 0.0 )
+_screenPos  ( 0.0, 0.0, 0.0 )
 {
     //nop
 }
@@ -1752,10 +1748,10 @@ namespace
 
 // ---------------------------------------------------------------------------
 
-ControlNodeBin::ControlNodeBin()
+ControlNodeBin::ControlNodeBin() :
+_sortByDistance( true )
 {
     _group = new Group();
-    _visibleNodes = new RefNodeVector();
 
     osg::Program* program = new osg::Program();
     program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
@@ -1783,7 +1779,34 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
     // reallocate it each time
     _taken.clear();
 
-    for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); ) 
+    ControlNodeCollection* drawList = 0L;
+    ControlNodeCollection byDepth;
+
+    if ( _sortByDistance )
+    {
+        for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); i++) 
+        {
+            ControlNode* node = i->second.get();
+            if ( node->getNumParents() == 0 )
+            {
+              _renderNodes.erase( node );
+              _controlNodes.erase( i );
+            }
+            else
+            {
+                ControlNode::PerViewData& nodeData = node->getData( context._view );
+                byDepth.insert( ControlNodePair(nodeData._screenPos.z(), node) );
+            }
+        }
+
+        drawList = &byDepth;
+    }
+    else
+    {
+        drawList = &_controlNodes;
+    }
+
+    for( ControlNodeCollection::iterator i = drawList->begin(); i != drawList->end(); ) 
     {
         ControlNode* node = i->second.get();
         osg::MatrixTransform* xform = _renderNodes[node];
@@ -1805,7 +1828,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 
           if ( nodeData._obscured == false )
           {
-              const osg::Vec2f& nPos = nodeData._screenPos; //node->getScreenPos( _view ); //_screenPos;
+              const osg::Vec3f& nPos = nodeData._screenPos;
               const osg::Vec2f& size = control->renderSize();
 
               float x = nPos.x()-size.x()*0.5;
@@ -1884,13 +1907,16 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
           _controlNodes.erase( i++ );
         }
     }
-
-    _visibleNodes->clear();
 }
 
 void
 ControlNodeBin::addNode( ControlNode* controlNode )
 {
+    // if we see a node with a non-zero priority, assume we're sorting
+    // by priority.
+    if ( controlNode->getPriority() != 0.0f )
+        _sortByDistance = false;
+
     // record the node in priority order.
     ControlNodeCollection::iterator ptr = _controlNodes.insert(
         ControlNodePair( -controlNode->getPriority(), controlNode ) );

@@ -23,10 +23,11 @@ This shows how to label point features with an attribute.
                    text-provider: overlay;
                    text-content:  [cntry_name];
                    text-priority: [pop_cntry];
-                   text-halo:     #000000;
+                   text-halo:     #3f3f7f;
                    text-font:     arial.ttf;
-                   text-size:     18;
+                   text-size:     16;
                    text-remove-duplicate-labels: true;
+                   altitide-clamping: terrain;
                 }     
             </style>
         </styles>

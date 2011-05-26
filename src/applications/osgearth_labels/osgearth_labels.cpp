@@ -168,11 +168,11 @@ createLabels( Map* map )
         osg::Vec3d centerPoint = geom->getBounds().center();
 
         osg::Vec3d mapPoint;
-        if ( !map->toMapPoint( centerPoint, featureProfile->getSRS(), mapPoint ) )
+        if ( !MapInfo(map).toMapPoint( centerPoint, featureProfile->getSRS(), mapPoint ) )
             continue;
 
         osg::Vec3d worldPoint;
-        if ( !map->mapPointToGeocentricPoint( mapPoint, worldPoint ) )
+        if ( !MapInfo(map).mapPointToGeocentricPoint( mapPoint, worldPoint ) )
             continue;
 
         // create the label and place it:

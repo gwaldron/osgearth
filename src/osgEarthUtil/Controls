@@ -550,11 +550,10 @@ namespace osgEarth { namespace Util { namespace Controls
         {
             PerViewData();
             bool                              _obscured;
-            osg::Vec2f                        _screenPos;
+            osg::Vec3f                        _screenPos;
             float                             _visibleTime;
             osg::ref_ptr<osg::Uniform>        _uniform;
-            osg::observer_ptr<RefNodeVector>  _visibleNodes;
-            osg::Matrixd                      _lastMVM;
+            osg::observer_ptr<osg::Camera>    _canvas;
         };
         typedef std::map<osg::View*,PerViewData> PerViewDataMap;
 
@@ -593,14 +592,11 @@ namespace osgEarth { namespace Util { namespace Controls
         RenderNodeTable _renderNodes;
 
         osg::ref_ptr<osg::Group>      _group;
-        //std::vector<osg::Node*>       _visibleNodes;
-        osg::ref_ptr<RefNodeVector>   _visibleNodes;
         std::vector<osg::BoundingBox> _taken;
+        bool                          _sortByDistance;
 
         friend class ControlCanvas;
         friend class ControlNode;
-
-        RefNodeVector* getVisibleNodesVector() { return _visibleNodes.get(); }
 
         void draw( const ControlContext& context, bool newContext, int bin );
         osg::Group* getControlGroup() const { return _group; }

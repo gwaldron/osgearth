@@ -60,6 +60,13 @@ public:
                 continue;
 
             osg::Vec3d centroid = geom->getBounds().center();
+            if ( context.isGeocentric() ) 
+            {
+                osg::Vec3d centroidMap;
+                context.getSession()->getMapInfo().geocentricPointToMapPoint( centroid, centroidMap );
+                centroidMap.z() = 0.0;
+                context.getSession()->getMapInfo().mapPointToGeocentricPoint( centroidMap, centroid );
+            }                
 
             const std::string& value = feature->eval( contentExpr );
 

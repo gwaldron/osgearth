@@ -1192,10 +1192,30 @@ Map::sync( MapFrame& frame ) const
 bool
 Map::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output ) const
 {
+    return MapInfo(this).toMapPoint(input, inputSRS, output);
+}
+
+bool
+Map::mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+{
+    return MapInfo(this).mapPointToGeocentricPoint(input, output);
+}
+
+bool
+Map::geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+{
+    return MapInfo(this).geocentricPointToMapPoint(input, output);
+}
+
+//------------------------------------------------------------------------
+
+bool
+MapInfo::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output ) const
+{
     if ( !inputSRS )
         return false;
 
-    const SpatialReference* mapSRS = getProfile()->getSRS();
+    const SpatialReference* mapSRS = _profile->getSRS();
 
     if ( inputSRS->isEquivalentTo( mapSRS ) )
     {
@@ -1210,9 +1230,9 @@ Map::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg:
 }
 
 bool
-Map::mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+MapInfo::mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 {
-    const SpatialReference* mapSRS = getProfile()->getSRS();
+    const SpatialReference* mapSRS =_profile->getSRS();
     if ( !mapSRS->isGeographic() )
         return false;
 
@@ -1224,9 +1244,9 @@ Map::mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) co
 }
 
 bool
-Map::geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+MapInfo::geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 {
-    const SpatialReference* mapSRS = getProfile()->getSRS();
+    const SpatialReference* mapSRS = _profile->getSRS();
     if ( !mapSRS->isGeographic() )
         return false;
 

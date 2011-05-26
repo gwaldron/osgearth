@@ -411,7 +411,7 @@ namespace osgEarth
      * A convenience class that combines a general geospatial profile and additional 
      * information about the map itself.
      */
-    class MapInfo
+    class OSGEARTH_EXPORT MapInfo
     {
     public:
         MapInfo( const Map* map )
@@ -430,8 +430,12 @@ namespace osgEarth
         bool isCube() const { return _isCube; }
         bool isPlateCarre() const { return !_isGeocentric && isGeographicSRS(); }
 
-        bool isProjectedSRS() const { return !isProjectedSRS(); }
+        bool isProjectedSRS() const { return !isGeographicSRS(); }
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }        
+        
+        bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
+        bool mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
 
     private:
         osg::ref_ptr<const Profile> _profile;

@@ -19,6 +19,7 @@
 #include <osgEarthFeatures/BuildTextOperator>
 #include <osgEarthFeatures/Annotation>
 #include <osgEarthSymbology/GeometrySymbol>
+#include <osgEarth/Utils>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
 #include <osg/Geometry>
@@ -37,22 +38,6 @@
 #include <osgUtil/PolytopeIntersector>
 
 #define LC "[BuildTextOperator] "
-
-namespace
-{
-    struct CullPlaneCallback : public osg::Drawable::CullCallback
-    {
-        osg::Vec3d _n;
-
-        CullPlaneCallback( const osg::Vec3d& planeNormal ) : _n(planeNormal) {
-            _n.normalize();
-        }
-
-        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const {
-            return nv && nv->getEyePoint() * _n <= 0;
-        }
-    };
-}
 
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
@@ -244,7 +229,7 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         if ( context.isGeocentric() )
         {
             // install a cluster culler
-            t->setCullCallback( new CullPlaneCallback( position * context.inverseReferenceFrame() ) );
+            t->setCullCallback( new CullDrawableByNormal(position * context.inverseReferenceFrame()) );
         }
 
         if (_hideClutter)

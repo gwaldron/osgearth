@@ -61,7 +61,7 @@ BuildTextFilter::push( FeatureList& input, const FilterContext& context )
         }
     }
 
-    else // default built-in behiavior
+    else // default built-in behiavior... to be deprecated
     {
         BuildTextOperator op;
         _result = op( input, text, context );

@@ -19,6 +19,8 @@
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarthSymbology/Expression>
 #include <osgEarthUtil/Controls>
+#include <osgEarth/Utils>
+#include <osg/ClusterCullingCallback>
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
 #include <set>
@@ -62,6 +64,7 @@ public:
             osg::Vec3d centroid = geom->getBounds().center();
             if ( context.isGeocentric() ) 
             {
+                // clamp the point to the ellipsoid in geocentric mode.
                 osg::Vec3d centroidMap;
                 context.getSession()->getMapInfo().geocentricPointToMapPoint( centroid, centroidMap );
                 centroidMap.z() = 0.0;
@@ -91,6 +94,11 @@ public:
 
                 osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrixd::translate(centroid) );
                 xform->addChild( node );
+
+                // for a geocentric map, do a simple dot product cull.
+                if ( context.isGeocentric() )
+                    xform->setCullCallback( new CullNodeByNormal(centroid) );
+
                 group->addChild( xform );
 
                 if ( skipDupes )

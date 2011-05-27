@@ -94,7 +94,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
     osg::Vec4Array* colors = new osg::Vec4Array( numVerts );
     walls->setColorArray( colors );
-    walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+    walls->setColorBinding( osg::Geometry::BIND_OVERALL ); //::BIND_PER_VERTEX );
 
     osg::Vec3Array* topVerts = NULL;
     osg::Vec4Array* topColors = NULL;

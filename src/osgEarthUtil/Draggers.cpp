@@ -116,7 +116,7 @@ IntersectingDragger::setDrawableColor(const osg::Vec4f& color)
 bool IntersectingDragger::handle(const osgManipulator::PointerInfo& pointer, const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
     // Check if the dragger node is in the nodepath.
-    if (!pointer.contains(this)) return false; 
+    //if (!pointer.contains(this)) return false; 
 
 
     switch (ea.getEventType())
@@ -259,7 +259,6 @@ bool IntersectingDragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
 
                 _pointer.reset();
 
-                //if (view->computeIntersections(ea.getX(),ea.getY(),intersections, this->getNodeMask()))
                 if (view->computeIntersections(ea.getX(),ea.getY(),intersections))
                 {
                     for(osgUtil::LineSegmentIntersector::Intersections::iterator hitr = intersections.begin();

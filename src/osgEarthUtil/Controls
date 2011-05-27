@@ -87,6 +87,7 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::ref_ptr<const osg::Viewport> _vp;
         unsigned int _viewContextID;
         std::queue< osg::ref_ptr<class Control> > _active;
+        const osg::FrameStamp* _frameStamp;
     };
 
     // base class for control events
@@ -552,6 +553,7 @@ namespace osgEarth { namespace Util { namespace Controls
             bool                              _obscured;
             osg::Vec3f                        _screenPos;
             float                             _visibleTime;
+            unsigned                          _visitFrame;
             osg::ref_ptr<osg::Uniform>        _uniform;
             osg::observer_ptr<osg::Camera>    _canvas;
         };
@@ -623,7 +625,7 @@ namespace osgEarth { namespace Util { namespace Controls
 
     public:
         // internal- no need to call directly
-        void update();
+        void update( const osg::FrameStamp* frameStamp );
 
         // internal - no need to call directly
         void setControlContext( const ControlContext& );

@@ -43,23 +43,6 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-namespace
-{
-    struct CullPlaneCallback : public osg::Drawable::CullCallback
-    {
-        osg::Vec3d _n;
-
-        CullPlaneCallback( const osg::Vec3d& planeNormal ) : _n(planeNormal) {
-            _n.normalize();
-        }
-
-        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const {
-            return nv && nv->getEyePoint() * _n <= 0;
-        }
-    };
-}
-
-
 BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style( style ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),

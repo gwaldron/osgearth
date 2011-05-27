@@ -26,6 +26,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/Utils>
 
 #define LC "[osgearth_labels] "
 
@@ -168,21 +169,18 @@ createLabels( Map* map )
         osg::Vec3d centerPoint = geom->getBounds().center();
 
         osg::Vec3d mapPoint;
-        if ( !MapInfo(map).toMapPoint( centerPoint, featureProfile->getSRS(), mapPoint ) )
+        if ( !map->toMapPoint( centerPoint, featureProfile->getSRS(), mapPoint ) )
             continue;
 
         osg::Vec3d worldPoint;
-        if ( !MapInfo(map).mapPointToGeocentricPoint( mapPoint, worldPoint ) )
+        if ( !map->mapPointToGeocentricPoint( mapPoint, worldPoint ) )
             continue;
 
         // create the label and place it:
         osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::translate(worldPoint) );
+        xform->setCullCallback( new CullNodeByNormal(worldPoint) );
         xform->addChild( new ControlNode(new LabelControl(text)) );
         labels->addChild( xform );
-
-        //LabelControl* label = new LabelControl( text );
-        //osg::MatrixTransform* xform = priorityBin->addControl( label, population );
-        //xform->setMatrix( osg::Matrix::translate(worldPoint) );
 
         ++count;
 

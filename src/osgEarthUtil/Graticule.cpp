@@ -25,6 +25,7 @@
 #include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarth/Registry>
 #include <osgEarth/FindNode>
+#include <osgEarth/Utils>
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/PagedLOD>
@@ -223,23 +224,6 @@ namespace
         osg::BoundingSphere _bs;
     };
 
-    struct CullPlaneCallback : public osg::NodeCallback
-    {
-        osg::Vec3d _n;
-        float _deviation;
-
-        CullPlaneCallback( const osg::Vec3d& planeNormal, float deviation =0.0f ) 
-            : _n(planeNormal), _deviation(deviation)
-        {
-            _n.normalize();
-        }
-
-        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-            if ( !nv || nv->getEyePoint() * _n > _deviation )
-                traverse(node,nv); 
-        }
-    };    
-
     osg::Node*
     createTextTransform(double x, double y, double value, 
                         const osg::EllipsoidModel* ell, 
@@ -292,9 +276,9 @@ namespace
         xform->setMatrix( L2W );
         xform->addChild( geode );     
 
-        // Note: the Transform already includes the rotation, so all we need to cluster cull
-        // is the local up vector.
-        xform->setCullCallback( new CullPlaneCallback( osg::Vec3d(0,0,1) ) );
+        // in geocentric mode, install a plane culler
+        if ( ell )
+            xform->setCullCallback( new CullNodeByNormal(pos) );
 
         return xform;
     }

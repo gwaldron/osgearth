@@ -1685,28 +1685,17 @@ ControlNode::traverse( osg::NodeVisitor& nv )
 
         if ( data._canvas.valid() )
         {
-            // normal-cull it:
-            // TODO: only do this in geocentric mode.....
-            osg::Matrixd local2world = osg::computeLocalToWorld( nv.getNodePath() );            
-            double dp = cv->getEyePoint() * local2world.getTrans();
+            // calculate its screen position:
+            data._screenPos = s_zero * (*cv->getMVPW());
 
-            if ( dp < 0.0 )
+            if ( data._obscured == true )
             {
-                data._obscured = true;
-            }
-
-            else
-            {
-                // calculate its screen position:
-                data._screenPos = s_zero * (*cv->getMVPW());
-
-                if ( data._obscured == true )
-                {
-                    data._obscured = false;
-                    data._visibleTime = cv->getFrameStamp()->getReferenceTime();
-                }
+                data._obscured = false;
+                data._visibleTime = cv->getFrameStamp()->getReferenceTime();
             }
         }
+
+        data._visitFrame = cv->getFrameStamp()->getFrameNumber();
     }
 
     // ControlNode has no children, so no point in calling traverse.
@@ -1826,7 +1815,14 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
               control->dirty();
           }
 
-          if ( nodeData._obscured == false )
+          bool visible;
+
+          if ( context._frameStamp->getFrameNumber() - nodeData._visitFrame > 2 )
+          {
+              visible = false;
+          }
+
+          else if ( nodeData._obscured == false )
           {
               const osg::Vec3f& nPos = nodeData._screenPos;
               const osg::Vec2f& size = control->renderSize();
@@ -1894,10 +1890,12 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                   if ( oldValue != nodeData._visibleTime )
                       nodeData._uniform->set( nodeData._visibleTime );                
               }
+
+              visible = !nodeData._obscured;
           }
           
-          // adjust the visibility based on whether the node is visible
-          xform->setNodeMask( nodeData._obscured ? 0 : ~0 );
+          // adjust the visibility
+          xform->setNodeMask( visible ? ~0 : 0 ); // ? 0 : ~0 );
 
           ++i;
         }
@@ -1973,12 +1971,6 @@ ControlCanvas::get( osg::View* view, bool installInSceneData )
 }
 
 // ---------------------------------------------------------------------------
-
-struct UpdateHook : public osg::NodeCallback {
-    void operator()(osg::Node* node, osg::NodeVisitor* nv ) {
-        static_cast<ControlCanvas*>(node)->update();
-    }
-};
 
 ControlCanvas::ControlCanvas( osgViewer::View* view ) :
 _contextDirty(true)
@@ -2100,8 +2092,10 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
 }
 
 void
-ControlCanvas::update()
+ControlCanvas::update( const osg::FrameStamp* frameStamp )
 {
+    _context._frameStamp = frameStamp;
+
     int bin = 999999;
     for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
@@ -2142,7 +2136,7 @@ ControlCanvas::traverse( osg::NodeVisitor& nv )
 {
     if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
-        update();
+        update( nv.getFrameStamp() );
     }
 
     osg::Camera::traverse( nv );

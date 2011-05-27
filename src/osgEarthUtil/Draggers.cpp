@@ -22,6 +22,7 @@
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarthUtil/Draggers>
+#include <osg/io_utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -96,10 +97,13 @@ IntersectingDragger::getHit(const osg::Vec3d& start, const osg::Vec3d &end, osg:
 
         if (lsi->containsIntersections())
         {
+            OE_DEBUG << "Got get hit at " << start << " to " << end << std::endl;
             intersection = lsi->getIntersections().begin()->getWorldIntersectPoint();
             return true;
         }
     }
+
+    OE_DEBUG << "Warning:  Couldn't get hit at " << start << " to " << end << std::endl;
     return false;
 }
 

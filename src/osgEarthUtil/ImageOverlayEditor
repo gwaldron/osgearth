@@ -30,6 +30,8 @@ namespace osgEarth { namespace Util
         void updateDraggers();
 
     protected:
+
+        ~ImageOverlayEditor();
         void addDragger( ImageOverlay::ControlPoint controlPoint );
 
         osg::ref_ptr< ImageOverlay > _overlay;

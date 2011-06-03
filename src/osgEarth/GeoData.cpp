@@ -759,6 +759,9 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
 
     osg::Image *result = new osg::Image();
     result->allocateImage(width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE);
+    //Initialize the image to be completely transparent
+    memset(result->data(), 0, result->getImageSizeInBytes());
+
     ImageUtils::PixelReader ra(result);
     const double dx = dest_extent.width() / (double)width;
     const double dy = dest_extent.height() / (double)height;
@@ -793,10 +796,13 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
             double src_x = srcPointsX[pixel];
             double src_y = srcPointsY[pixel];
 
-            //if ( src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax() )
-            //{
-            //    OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
-            //}
+            if ( src_x < src_extent.xMin() || src_x > src_extent.xMax() || src_y < src_extent.yMin() || src_y > src_extent.yMax() )
+            {
+                //If the sample point is outside of the bound of the source extent, increment the pixel and keep looping through.
+                //OE_WARN << LC << "ERROR: sample point out of bounds: " << src_x << ", " << src_y << std::endl;
+                pixel++;
+                continue;
+            }
 
             float px = (src_x - src_extent.xMin()) * xfac;
             float py = (src_y - src_extent.yMin()) * yfac;
@@ -908,6 +914,7 @@ manualReproject(const osg::Image* image, const GeoExtent& src_extent, const GeoE
     }
 
     delete[] srcPointsX;
+
     return result;
 }
 

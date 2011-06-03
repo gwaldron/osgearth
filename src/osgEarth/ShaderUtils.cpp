@@ -237,6 +237,17 @@ ArrayUniform::setElement( unsigned index, const osg::Matrix& value )
     }
 }
 
+void
+ArrayUniform::setElement( unsigned index, const osg::Vec3& value )
+{
+    if ( isValid() )
+    {
+        ensureCapacity( index+1 );
+        _uniform->setElement( index, value );
+        _uniformAlt->setElement( index, value );
+    }
+}
+
 bool 
 ArrayUniform::getElement( unsigned index, int& out_value ) const
 {
@@ -260,6 +271,13 @@ ArrayUniform::getElement( unsigned index, osg::Matrix& out_value ) const
 {
     return isValid() ? _uniform->getElement( index, out_value ) : false;
 }
+
+bool 
+ArrayUniform::getElement( unsigned index, osg::Vec3& out_value ) const
+{
+    return isValid() ? _uniform->getElement( index, out_value ) : false;
+}
+
 
 void
 ArrayUniform::ensureCapacity( unsigned newSize )

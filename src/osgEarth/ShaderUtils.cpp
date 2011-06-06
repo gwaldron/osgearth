@@ -205,6 +205,17 @@ ArrayUniform::setElement( unsigned index, int value )
 }
 
 void 
+ArrayUniform::setElement( unsigned index, unsigned value )
+{
+    if ( isValid() )
+    {
+        ensureCapacity( index+1 );
+        _uniform->setElement( index, value );
+        _uniformAlt->setElement( index, value );
+    }
+}
+
+void 
 ArrayUniform::setElement( unsigned index, bool value )
 {
     if ( isValid() )
@@ -255,6 +266,12 @@ ArrayUniform::getElement( unsigned index, int& out_value ) const
 }
 
 bool 
+ArrayUniform::getElement( unsigned index, unsigned& out_value ) const
+{
+    return isValid() ? _uniform->getElement( index, out_value ) : false;
+}
+
+bool 
 ArrayUniform::getElement( unsigned index, bool& out_value ) const
 {
     return isValid() ? _uniform->getElement( index, out_value ) : false;
@@ -296,11 +313,40 @@ ArrayUniform::ensureCapacity( unsigned newSize )
             _uniform    = new osg::Uniform( _uniform->getType(), _uniform->getName(), newSize );
             _uniformAlt = new osg::Uniform( _uniform->getType(), _uniform->getName() + "[0]", newSize );
 
-            for( unsigned i = 0; i < _oldUniform->getNumElements(); ++i )
+            switch( _oldUniform->getInternalArrayType(_oldUniform->getType()) )
             {
-                float value;
-                _oldUniform->getElement( i, value );
-                setElement( i, value );
+            case GL_FLOAT:
+              {
+                for( unsigned i = 0; i < _oldUniform->getNumElements(); ++i )
+                {
+                  float value;
+                  _oldUniform->getElement(i, value);
+                  setElement( i, value );
+                }
+              }
+              break;
+
+            case GL_INT:
+              {
+                for( unsigned i = 0; i < _oldUniform->getNumElements(); ++i )
+                {
+                  int value;
+                  _oldUniform->getElement(i, value);
+                  setElement( i, value );
+                }
+              }
+              break;
+
+            case GL_UNSIGNED_INT:
+              {
+                for( unsigned i = 0; i < _oldUniform->getNumElements(); ++i )
+                {
+                  unsigned value;
+                  _oldUniform->getElement(i, value);
+                  setElement( i, value );
+                }
+              }
+              break;
             }
 
             stateSet_safe->addUniform( _uniform.get() );

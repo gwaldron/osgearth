@@ -612,52 +612,21 @@ SpatialReference::transform(double x, double y,
         return true;
     }
 
-    GDAL_SCOPED_LOCK;
+        if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
 
-    preTransform(x, y, context);
-
-    void* xform_handle = NULL;
-    TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
-    if (itr != _transformHandleCache.end())
+    //Check for equivalence and return if the coordinate systems are the same.
+    if (isEquivalentTo(out_srs))
     {
-        //OE_DEBUG << "SpatialReference: using cached transform handle" << std::endl;
-        xform_handle = itr->second;
-    }
-    else
-    {
-        xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
-        const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
+        out_x = x;
+        out_y = y;
+        return true;
     }
 
-    if ( !xform_handle )
-    {
-        OE_WARN << LC
-            << "SRS xform not possible" << std::endl
-            << "    From => " << getName() << std::endl
-            << "    To   => " << out_srs->getName() << std::endl;
-        return false;
-    }
+    out_x = x;
+    out_y = y;
+    bool result = transformPoints(out_srs, &out_x, &out_y, 1, context);
 
-    double temp_x = x;
-    double temp_y = y;
-    double temp_z = 0.0;
-    bool result;
-
-    if ( OCTTransform( xform_handle, 1, &temp_x, &temp_y, &temp_z ) )
-    {
-        result = true;
-        out_x = temp_x;
-        out_y = temp_y;
-
-        out_srs->postTransform(out_x, out_y, context);
-    }
-    else
-    {
-        OE_WARN << LC << "Failed to xform a point from "
-            << getName() << " to " << out_srs->getName()
-            << std::endl;
-        result = false;
-    }
     return result;
 }
 
@@ -665,12 +634,11 @@ SpatialReference::transform(double x, double y,
 static bool
 mercatorToGeographic( double* x, double* y, int numPoints )
 {
-    const GeoExtent& merc = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
-
+    //const GeoExtent& merc = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();    
     for( int i=0; i<numPoints; i++ )
     {
-        double xr = -osg::PI + ((x[i]-merc.xMin())/merc.width())*2.0*osg::PI;
-        double yr = -osg::PI + ((y[i]-merc.yMin())/merc.height())*2.0*osg::PI;
+        double xr = -osg::PI + ((x[i]-MERC_MINX)/MERC_WIDTH)*2.0*osg::PI;
+        double yr = -osg::PI + ((y[i]-MERC_MINY)/MERC_HEIGHT)*2.0*osg::PI;
         x[i] = osg::RadiansToDegrees( xr );
         y[i] = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
     }
@@ -681,8 +649,7 @@ mercatorToGeographic( double* x, double* y, int numPoints )
 static bool
 geographicToMercator( double* x, double* y, int numPoints )
 {
-    const GeoExtent& merc = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();
-
+    //const GeoExtent& merc = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();    
     for( int i=0; i<numPoints; i++ )
     {
         double xr = (osg::DegreesToRadians(x[i]) - (-osg::PI)) / (2.0*osg::PI);
@@ -691,8 +658,8 @@ geographicToMercator( double* x, double* y, int numPoints )
         if ( oneMinusSinLat != 0.0 )
         {
             double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
-            x[i] = merc.xMin() + (xr * merc.width());
-            y[i] = merc.yMin() + (yr * merc.height());
+            x[i] = MERC_MINX + (xr * MERC_WIDTH);
+            y[i] = MERC_MINY + (yr * MERC_HEIGHT);
         }
     }
     return true;

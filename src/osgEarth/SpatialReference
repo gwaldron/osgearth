@@ -27,6 +27,15 @@
 
 namespace osgEarth
 {
+    //Definitions for the mercator extent
+    const double MERC_MINX = -2.00375e+007;
+    const double MERC_MINY = -2.00375e+007;
+    const double MERC_MAXX = 2.00375e+007;
+    const double MERC_MAXY = 2.00375e+007;
+    const double MERC_WIDTH = MERC_MAXX - MERC_MINX;
+    const double MERC_HEIGHT = MERC_MAXY - MERC_MINY;
+
+
     class OSGEARTH_EXPORT GeoLocator;
 
     /** 

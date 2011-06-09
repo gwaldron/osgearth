@@ -66,6 +66,13 @@ namespace osgEarth { namespace Features
         optional<bool>& mergeGeometry() { return _mergeGeometry; }
         const optional<bool>& mergeGeometry() const { return _mergeGeometry; }
 
+        /**
+         * Sets an expression to evaluate for setting the name of a Geometry. This only
+         * takes effect if mergeGeometry is false.
+         */
+        optional<StringExpression>& featureName() { return _featureNameExpr; }
+        const optional<StringExpression>& featureName() const { return _featureNameExpr; }
+
         /** Pushes a list of features through the filter. */
         FilterContext push( FeatureList& input, const FilterContext& context );
 
@@ -79,6 +86,7 @@ namespace osgEarth { namespace Features
         optional<Geometry::Type> _geomTypeOverride;
         optional<double> _maxAngle_deg;
         optional<bool> _mergeGeometry;
+        optional<StringExpression> _featureNameExpr;
         bool _hasPoints;
         bool _hasLines;
         bool _hasPolygons;

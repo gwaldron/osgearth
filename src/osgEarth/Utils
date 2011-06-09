@@ -155,6 +155,26 @@ namespace osgEarth
      */
     extern OSGEARTH_EXPORT void removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler* handler);
 
+
+    /**
+     * A simple culling-plane callback (a simpler version of ClusterCullingCallback)
+     */
+    struct CullNodeByNormal : public osg::NodeCallback {
+        osg::Vec3d _normal;
+        CullNodeByNormal( const osg::Vec3d& normal ) : _normal(normal) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            if ( nv->getEyePoint() * _normal > 0.0 )
+                traverse(node, nv);
+        }
+    };
+
+    struct CullDrawableByNormal : public osg::Drawable::CullCallback {
+        osg::Vec3d _normal;
+        CullDrawableByNormal( const osg::Vec3d& normal ) : _normal(normal) { }
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::State* state) const {
+            return nv && nv->getEyePoint() * _normal <= 0;
+        }
+    };
 }
 
 #endif // OSGEARTH_UTILS_H

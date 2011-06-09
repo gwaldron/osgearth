@@ -15,19 +15,29 @@ namespace osgEarth { namespace Util
     public:
         typedef std::map< ImageOverlay::ControlPoint, osg::ref_ptr< osgManipulator::Dragger > >  ControlPointDraggerMap;
 
-        ImageOverlayEditor(ImageOverlay* overlay, MapNode* mapNode);
+        ImageOverlayEditor(ImageOverlay* overlay, const osg::EllipsoidModel* ellipsoid, osg::Node* terrain);
 
         ControlPointDraggerMap& getDraggers() { return _draggers; }
-        osgEarth::MapNode* getMapNode()  { return _mapNode; }
+
+        const osg::EllipsoidModel* getEllipsoid() const { return _ellipsoid;}
+        void setEllipsoid( const osg::EllipsoidModel* ellipsoid) { _ellipsoid = ellipsoid; };
+
+        osg::Node* getTerrain() const { return _terrain.get(); }
+        void setTerrain( osg::Node* terrain) { _terrain = terrain;}
 
         ImageOverlay* getOverlay() { return _overlay;}
 
+        void updateDraggers();
+
     protected:
+
+        ~ImageOverlayEditor();
         void addDragger( ImageOverlay::ControlPoint controlPoint );
 
         osg::ref_ptr< ImageOverlay > _overlay;
-        osg::ref_ptr< osgEarth::MapNode > _mapNode;    
-        osg::ref_ptr< osgManipulator::DraggerCallback > _updateDraggersCallback;
+        osg::ref_ptr< const osg::EllipsoidModel > _ellipsoid;
+        osg::ref_ptr< osg::Node > _terrain;
+        osg::ref_ptr< osgEarth::Util::ImageOverlay::ImageOverlayCallback > _overlayCallback;
         ControlPointDraggerMap _draggers;
     };
 

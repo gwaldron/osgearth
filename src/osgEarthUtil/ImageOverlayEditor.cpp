@@ -1,6 +1,7 @@
 #include <osgEarthUtil/ImageOverlayEditor>
 
 #include <osg/Geode>
+#include <osg/io_utils>
 #include <osg/AutoTransform>
 #include <osg/ShapeDrawable>
 #include <osgViewer/Viewer>
@@ -82,7 +83,7 @@ public:
 };
 
 /***************************************************************************/
-class UpdateDraggersCallback : public osgManipulator::DraggerCallback
+/*class UpdateDraggersCallback : public osgManipulator::DraggerCallback
 {
 public:
     UpdateDraggersCallback(ImageOverlayEditor* editor)
@@ -92,51 +93,28 @@ public:
 
     virtual bool receive(const osgManipulator::MotionCommand& command)
     {
-        for (ImageOverlayEditor::ControlPointDraggerMap::iterator itr = _editor->getDraggers().begin(); itr != _editor->getDraggers().end(); ++itr)
-        {
-            //Get the location of the control point
-            osg::Vec2d location = _editor->getOverlay()->getControlPoint( itr->first );
-
-            osg::Matrixd matrix;
-
-            //Compute the geocentric location
-            osg::ref_ptr< const osg::EllipsoidModel > ellipsoid = _editor->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
-            osg::Vec3d geo_loc;
-            ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), 0, geo_loc.x(), geo_loc.y(), geo_loc.z());
-
-            osg::Vec3d up = geo_loc;
-            up.normalize();
-
-            double segOffset = 50000;
-
-            osg::Vec3d start = geo_loc + (up * segOffset);
-            osg::Vec3d end = geo_loc - (up * segOffset);
-
-            osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
-
-            osgUtil::IntersectionVisitor iv;
-            iv.setIntersector( i );
-            _editor->getMapNode()->accept( iv );
-
-            osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
-            if ( !results.empty() )
-            {
-                const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
-                geo_loc = result.getWorldIntersectPoint();
-            }
-
-            _editor->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromXYZ(geo_loc.x(), geo_loc.y(), geo_loc.z(), matrix);
-
-
-            itr->second.get()->setMatrix( matrix );                               
-
-        }
+        _editor->updateDraggers();
         return false;
     }
 
     friend class ImageOverlayEditor;
 
     ImageOverlayEditor* _editor;
+};*/
+
+struct OverlayCallback : public osgEarth::Util::ImageOverlay::ImageOverlayCallback
+{
+    OverlayCallback(ImageOverlayEditor *editor):
+_editor(editor)
+    {
+    }
+
+    virtual void onOverlayChanged()
+    {
+        _editor->updateDraggers();
+    }
+
+    ImageOverlayEditor* _editor;    
 };
 
 /***************************************************************************/
@@ -144,11 +122,13 @@ public:
 
 
 
-ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay, MapNode* mapNode):
+ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay, const osg::EllipsoidModel* ellipsoid, osg::Node* terrain):
 _overlay(overlay),
-_mapNode(mapNode)
+_ellipsoid(ellipsoid),
+_terrain(terrain)
 {   
-    _updateDraggersCallback = new UpdateDraggersCallback(this);
+    _overlayCallback = new OverlayCallback(this);
+    _overlay->addCallback( _overlayCallback );
     addDragger( ImageOverlay::CONTROLPOINT_CENTER );
     addDragger( ImageOverlay::CONTROLPOINT_LOWER_LEFT );
     addDragger( ImageOverlay::CONTROLPOINT_LOWER_RIGHT );
@@ -156,21 +136,70 @@ _mapNode(mapNode)
     addDragger( ImageOverlay::CONTROLPOINT_UPPER_RIGHT );
 }
 
+ImageOverlayEditor::~ImageOverlayEditor()
+{
+    _overlay->removeCallback( _overlayCallback );
+}
+
 void
 ImageOverlayEditor::addDragger( ImageOverlay::ControlPoint controlPoint )
-{
+{    
     osg::Vec2d location = _overlay->getControlPoint( controlPoint );
     osg::Matrixd matrix;
-    _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), 0, matrix);    
+    _ellipsoid->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), 0, matrix);    
 
     IntersectingDragger* dragger = new IntersectingDragger;
-    dragger->setNode( _mapNode );
+    dragger->setNode( _terrain );
     dragger->setupDefaultGeometry();
     dragger->setMatrix(matrix);
     dragger->setHandleEvents( true );
-    dragger->addDraggerCallback(new ImageOverlayDraggerCallback(_overlay, _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), controlPoint));
-    dragger->addDraggerCallback( this->_updateDraggersCallback.get() );
+    dragger->addDraggerCallback(new ImageOverlayDraggerCallback(_overlay, _ellipsoid, controlPoint));
 
     addChild(dragger);
     _draggers[ controlPoint ] = dragger;
+}
+
+void
+ImageOverlayEditor::updateDraggers()
+{
+    for (ImageOverlayEditor::ControlPointDraggerMap::iterator itr = getDraggers().begin(); itr != getDraggers().end(); ++itr)
+    {
+        //Get the location of the control point
+        osg::Vec2d location = getOverlay()->getControlPoint( itr->first );
+
+        osg::Matrixd matrix;
+
+        //Compute the geocentric location
+        osg::ref_ptr< const osg::EllipsoidModel > ellipsoid = getEllipsoid();
+        osg::Vec3d geo_loc;
+        ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), 0, geo_loc.x(), geo_loc.y(), geo_loc.z());
+
+        osg::Vec3d up = geo_loc;
+        up.normalize();
+
+        double segOffset = 50000;
+
+        osg::Vec3d start = geo_loc + (up * segOffset);
+        osg::Vec3d end = geo_loc - (up * segOffset);
+
+        osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( start, end );
+
+        osgUtil::IntersectionVisitor iv;
+        iv.setIntersector( i );
+        getTerrain()->accept( iv );
+
+        osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
+        if ( !results.empty() )
+        {
+            const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
+            geo_loc = result.getWorldIntersectPoint();
+        }
+
+
+        getEllipsoid()->computeLocalToWorldTransformFromXYZ(geo_loc.x(), geo_loc.y(), geo_loc.z(), matrix);
+
+
+        itr->second.get()->setMatrix( matrix );                               
+
+    }
 }

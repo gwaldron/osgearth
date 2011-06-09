@@ -26,6 +26,7 @@
 #include <osgEarthUtil/Controls>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarth/Utils>
 
 #define LC "[osgearth_labels] "
 
@@ -177,12 +178,9 @@ createLabels( Map* map )
 
         // create the label and place it:
         osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::translate(worldPoint) );
+        xform->setCullCallback( new CullNodeByNormal(worldPoint) );
         xform->addChild( new ControlNode(new LabelControl(text)) );
         labels->addChild( xform );
-
-        //LabelControl* label = new LabelControl( text );
-        //osg::MatrixTransform* xform = priorityBin->addControl( label, population );
-        //xform->setMatrix( osg::Matrix::translate(worldPoint) );
 
         ++count;
 

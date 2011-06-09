@@ -94,7 +94,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
     osg::Vec4Array* colors = new osg::Vec4Array( numVerts );
     walls->setColorArray( colors );
-    walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+    walls->setColorBinding( osg::Geometry::BIND_OVERALL ); //::BIND_PER_VERTEX );
 
     osg::Vec3Array* topVerts = NULL;
     osg::Vec4Array* topColors = NULL;
@@ -456,6 +456,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
         pushFeature( i->get(), context );
 
     // BREAKS if you use VBOs - make sure they're disabled
+    // TODO: replace this with MeshConsolidator -gw
     osgUtil::Optimizer optimizer;
     optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
 

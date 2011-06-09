@@ -87,17 +87,18 @@ namespace osgEarth
         //ArrayUniform( osg::StateSet* from, const std::string& name );
 
         void setElement( unsigned index, int value );
+        void setElement( unsigned index, unsigned value );
         void setElement( unsigned index, bool value );
         void setElement( unsigned index, float value );
         void setElement( unsigned index, const osg::Matrix& value );
+        void setElement( unsigned index, const osg::Vec3& value );
 
         bool getElement( unsigned index, int& out_value ) const;
+        bool getElement( unsigned index, unsigned& out_value ) const;
         bool getElement( unsigned index, bool& out_value ) const;
         bool getElement( unsigned index, float& out_value ) const;
         bool getElement( unsigned index, osg::Matrix& out_value ) const;
-
-        //void addTo( osg::StateSet* stateSet );
-        //void removeFrom( osg::StateSet* stateSet );
+        bool getElement( unsigned index, osg::Vec3& out_value ) const;
 
         bool isValid() const { return _uniform.valid() && _uniformAlt.valid(); }
         int getNumElements() const { return isValid() ? _uniform->getNumElements() : -1; }

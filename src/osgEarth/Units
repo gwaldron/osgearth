@@ -23,37 +23,81 @@
 
 namespace osgEarth
 {
-    class Units
+    class OSGEARTH_EXPORT Units
     {
     public:
         // linear
-        static const Units MILLIMETERS;
         static const Units CENTIMETERS;
-        static const Units FEET_INTERNATIONAL;
-        static const Units FEET_US;
+        static const Units DATA_MILES;
+        static const Units FATHOMS;
+        static const Units FEET;
+        static const Units FEET_US_SURVEY;  // http://www.wsdot.wa.gov/reference/metrics/foottometer.htm
+        static const Units INCHES;
+        static const Units KILOFEET;
         static const Units KILOMETERS;
+        static const Units KILOYARDS;
         static const Units METERS;
-        static const Units MILES;
+        static const Units MILES;           // statute miles
+        static const Units MILLIMETERS;
         static const Units NAUTICAL_MILES;
+        static const Units YARDS;
 
         // angular
+        static const Units BAM;
         static const Units DEGREES;
+        static const Units NATO_MILS; // http://www.convertworld.com/en/angle/Mil+(NATO).html
         static const Units RADIANS;
 
-        enum Type { TYPE_LINEAR, TYPE_ANGULAR };
+        // temporal
+        static const Units DAYS;
+        static const Units HOURS;
+        static const Units MICROSECONDS;
+        static const Units MILLISECONDS;
+        static const Units MINUTES;
+        static const Units SECONDS;
+        static const Units WEEKS;
+
+        // speed
+        static const Units FEET_PER_SECOND;
+        static const Units YARDS_PER_SECOND;
+        static const Units METERS_PER_SECOND;
+        static const Units KILOMETERS_PER_SECOND;
+        static const Units KILOMETERS_PER_HOUR;
+        static const Units MILES_PER_HOUR;
+        static const Units DATA_MILES_PER_HOUR;
+        static const Units KNOTS;
+
+        enum Type { TYPE_LINEAR, TYPE_ANGULAR, TYPE_TEMPORAL, TYPE_SPEED, TYPE_INVALID };
 
     public:
 
         static bool convert( const Units& from, const Units& to, double input, double& output ) {
-            if ( from._type == to._type )  {
-                output = input * from._toBase / to._toBase;
+            if ( canConvert(from, to) ) {
+                if ( from._type == TYPE_LINEAR || from._type == TYPE_ANGULAR || from._type == TYPE_TEMPORAL )
+                    convertSimple( from, to, input, output );
+                else if ( from._type == TYPE_SPEED )
+                    convertSpeed( from, to, input, output );
                 return true;
             }
             return false;
         }
 
+        static double convert( const Units& from, const Units& to, double input ) {
+            double output;
+            convert( from, to, input, output );
+            return output;
+        }
+
         static bool canConvert( const Units& from, const Units& to ) {
             return from._type == to._type;
+        }
+
+        bool convertTo( const Units& to, double input, double& output )  const {
+            return convert( *this, to, input, output );
+        }
+
+        double convertTo( const Units& to, double input ) const {
+            return convert( *this, to, input );
         }
         
         const std::string& getName() const { return _name; }
@@ -68,102 +112,31 @@ namespace osgEarth
 
     public:
 
-        // Make a new unit definition. if type == TYPE_LINEAR, toBase should convert to meters. If
-        // type == TYPE_ANGULAR, toBase should convert to radians.
+        // Make a new unit definition (LINEAR, ANGULAR, TEMPORAL)
         Units( const std::string& name, const std::string& abbr, const Type& type, double toBase );
 
+        // Maks a new unit definition (SPEED)
+        Units( const std::string& name, const std::string& abbr, const Units& distance, const Units& time );
+
+        Units() : _type(TYPE_INVALID) { }
+
     private:
+
+        static void convertSimple( const Units& from, const Units& to, double input, double& output ) {
+            output = input * from._toBase / to._toBase;
+        }
+        static void convertSpeed( const Units& from, const Units& to, double input, double& output ) {
+            double t = from._distance->convertTo( *to._distance, input );
+            output = to._time->convertTo( *from._time, input );
+        }
+
+
         std::string _name, _abbr;
         Type _type;
         double _toBase;
+        const Units* _distance;
+        const Units* _time;
     };
-
-#if 0
-    class Units
-    {
-    public:
-        static bool convert( const Units& from, const Units& to, double input, double& output ) {
-            return from.convertValue( to, input, output ); }
-
-        const std::string& getName() const { return _name; }
-        const std::string& getAbbr() const { return _abbr; }
-
-    public:
-        virtual bool isLinear() const =0;
-        virtual bool isAngular() const =0;
-        virtual bool operator == ( const Units& rhs ) const =0;
-        bool operator != ( const Units& rhs ) const { return !(operator==(rhs)); }
-
-    protected:
-        Units( const std::string& name, const std::string& abbr) 
-            : _name(name), _abbr(abbr) { }
-
-        virtual bool convertValue(const Units& to, double input, double& output) const =0;
-
-        std::string _name, _abbr;
-    };
-
-    class OSGEARTH_EXPORT LinearUnits : public Units
-    {
-    public:
-        static const LinearUnits MILLIMETERS;
-        static const LinearUnits CENTIMETERS;
-        static const LinearUnits FEET_INTERNATIONAL;
-        static const LinearUnits FEET_US;
-        static const LinearUnits KILOMETERS;
-        static const LinearUnits METERS;
-        static const LinearUnits MILES;
-        static const LinearUnits NAUTICAL_MILES;
-
-        bool convertValue( const Units& to, double input, double& output ) const {
-            if ( to.isLinear() ) {
-                output = input * _toMeters / static_cast<const LinearUnits&>(to)._toMeters;
-                return true;
-            }
-            return false;
-        }
-
-        bool operator == ( const Units& rhs ) const {
-            return rhs.isLinear() && _toMeters == static_cast<const LinearUnits&>(rhs)._toMeters; }
-
-        bool isLinear() const { return true; }
-        bool isAngular() const { return false; }
-
-    public:
-        LinearUnits( const std::string& name, const std::string& abbr, double toMeters );
-
-    protected:
-        double _toMeters;
-    };
-
-    class OSGEARTH_EXPORT AngularUnits : public Units
-    {
-    public:
-        static const AngularUnits DEGREES;
-        static const AngularUnits RADIANS;
-
-
-        bool convertValue( const Units& to, double input, double& output ) const {
-            if ( to.isAngular() ) {
-                output = input * _toMeters / static_cast<const AngularUnits&>(to)._toMeters;
-                return true;
-            }
-            return false;
-        }
-
-        bool operator == ( const Units& rhs ) const {
-            return rhs.isAngular() && _toRadians == static_cast<const AngularUnits&>(rhs)._toRadians; }
-
-        bool isLinear() const { return false; }
-        bool isAngular() const { return true; }
-
-    public:
-        AngularUnits( const std::string& name, const std::string& abbr, double toMeters );
-
-    protected:
-        double _toRadians;
-    };
-#endif
 }
 
 #endif // OSGEARTH_UNITS_H

@@ -120,11 +120,12 @@ Registry::getGlobalMercatorProfile() const
         {
             // automatically figure out proper mercator extents:
             const SpatialReference* srs = SpatialReference::create( "spherical-mercator" );
-            double e, dummy;
-            srs->getGeographicSRS()->transform( 180.0, 0.0, srs, e, dummy );
-            
+            //double e, dummy;
+            //srs->getGeographicSRS()->transform( 180.0, 0.0, srs, e, dummy );            
+            /*const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+                srs, -e, -e, e, e, 0L, 1, 1 );*/
             const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-                srs, -e, -e, e, e, 0L, 1, 1 );
+                srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 0L, 1, 1 );
         }
     }
     return _global_mercator_profile.get();

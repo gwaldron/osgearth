@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osg/MatrixTransform>
+#include <osgDB/WriteFile>
 
 #define LC "[GeomCompiler] "
 
@@ -170,6 +171,8 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             filter.maxGranularity() = *_options.maxGranularity();
         if ( _options.mergeGeometry().isSet() )
             filter.mergeGeometry() = *_options.mergeGeometry();
+        if ( _options.featureName().isSet() )
+            filter.featureName() = *_options.featureName();
         cx = filter.push( workingSet, cx );
 
         osg::Node* node = filter.getNode();
@@ -209,6 +212,8 @@ GeomCompiler::compile(FeatureCursor*        cursor,
     }
 
     resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
+
+    //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
 
     return resultGroup.release();
 }

@@ -239,8 +239,9 @@ GEOSUtils::exportGeometry( const geom::Geometry* input )
         Symbology::PointSet* part = new Symbology::PointSet( mp->getNumPoints() );
         for( unsigned int i=0; i < mp->getNumPoints(); i++ )
         {
-            geom::Point* p = (geom::Point*)( mp->getGeometryN(i) );
-            part->push_back( osg::Vec3d( p->getX(), p->getY(), 0 ) );
+            const geom::Point* p = dynamic_cast<const geom::Point*>( mp->getGeometryN(i) );
+            if ( p )
+                part->push_back( osg::Vec3d( p->getX(), p->getY(), 0 ) );
         }
         parts.push_back( part );
     }

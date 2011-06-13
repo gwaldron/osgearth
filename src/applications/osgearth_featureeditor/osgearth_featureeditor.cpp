@@ -26,6 +26,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarth/Utils>
 
 #include <osgEarthSymbology/Style>
 #include <osgEarthSymbology/GeometrySymbol>
@@ -38,6 +39,7 @@
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 #include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
 
+#include <osgEarthUtil/Controls>
 #include <osgEarthUtil/Draggers>
 
 using namespace osgEarth;
@@ -45,6 +47,8 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
+
 
 static int s_fid = 0;
 
@@ -123,9 +127,9 @@ public:
 };
 
 
-void addFeatureEditor(Feature* feature, FeatureSource* source, MapNode* mapNode, osg::Group* root)
+osg::Node* createFeatureEditor(Feature* feature, FeatureSource* source, MapNode* mapNode)
 {    
-    osg::Group* draggers = new osg::Group;
+    osg::Group* editor = new osg::Group; 
     //Create a dragger for each point
     for (int i = 0; i < feature->getGeometry()->size(); i++)
     {
@@ -141,16 +145,17 @@ void addFeatureEditor(Feature* feature, FeatureSource* source, MapNode* mapNode,
         dragger->setHandleEvents( true );        
         dragger->addDraggerCallback(new MoveFeatureDraggerCallback(feature, source, mapNode->getMap(), i) );
 
-        draggers->addChild(dragger);        
+        editor->addChild(dragger);        
     }
-    root->addChild( draggers );
+    return editor;   
 }
 
 
 
 struct AddPointHandler : public osgGA::GUIEventHandler 
 {
-    AddPointHandler(FeatureListSource* source, const osgEarth::SpatialReference* mapSRS):
+    AddPointHandler(Feature* feature, FeatureListSource* source, const osgEarth::SpatialReference* mapSRS):
+_feature(feature),
 _source( source ),
 _mapSRS( mapSRS )
 {
@@ -172,13 +177,11 @@ _mapSRS( mapSRS )
             double lat_deg = osg::RadiansToDegrees( lat_rad );
             double lon_deg = osg::RadiansToDegrees( lon_rad );
 
-            //Feature* feature = _source->getFeatures().front();
-            Feature* feature = _source->getFeature( 0 );
-            if (feature)
+            if (_feature.valid())            
             {
-                feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, 0) );
+                _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, 0) );
                 _source->dirty();
-                OE_NOTICE << "Added feature point at " << lon_deg << ", " << lat_deg << std::endl;                    
+                //OE_NOTICE << "Added feature point at " << lon_deg << ", " << lat_deg << std::endl;                    
             }
         }
     }
@@ -190,22 +193,83 @@ _mapSRS( mapSRS )
             osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
             addPoint( ea.getX(), ea.getY(), view );
         }
-        else if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
-        {
-            if (ea.getKey() == 'd')
-            {
-                _source->deleteFeature( 0 );
-            }
-        }
-
         return false;
     }
 
     osg::ref_ptr< FeatureListSource > _source;
+    osg::ref_ptr< Feature > _feature;
     osg::ref_ptr<const SpatialReference> _mapSRS;
 };
 
 
+
+static osg::ref_ptr< AddPointHandler > s_addPointHandler;
+static osg::ref_ptr< osg::Node > s_editor;
+static osg::ref_ptr< Feature > s_activeFeature;
+static osgViewer::Viewer* s_viewer;
+static osg::ref_ptr< osg::Group > s_root;
+static osg::ref_ptr< FeatureListSource > s_source;
+static osg::ref_ptr< MapNode > s_mapNode;
+
+Grid* createToolBar()
+{    
+    Grid* toolbar = new Grid();
+    toolbar->setBackColor(0,0,0,0.5);
+    toolbar->setMargin( 10 );
+    toolbar->setPadding( 10 );
+    toolbar->setChildSpacing( 10 );
+    toolbar->setChildVertAlign( Control::ALIGN_CENTER );
+    toolbar->setAbsorbEvents( true );
+    toolbar->setVertAlign( Control::ALIGN_TOP );    
+    return toolbar;    
+}
+
+struct AddVertsModeHandler : public ControlEventHandler
+{
+    AddVertsModeHandler( )
+    {
+    }
+
+    void onClick( Control* control, int mouseButtonMask ) {
+
+        //remove the editor if it's valid
+        if (s_editor.valid())
+        {
+            s_root->removeChild( s_editor );
+            s_editor = NULL;
+        }
+
+        //Add the new add point handler
+        if (!s_addPointHandler.valid() && s_activeFeature.valid())
+        {
+            s_addPointHandler = new AddPointHandler(s_activeFeature, s_source.get(), s_mapNode->getMap()->getProfile()->getSRS());
+            s_viewer->addEventHandler( s_addPointHandler.get() );
+        }        
+    }
+};
+
+struct EditModeHandler : public ControlEventHandler
+{
+    EditModeHandler( )
+    { 
+    }
+
+    void onClick( Control* control, int mouseButtonMask ) {
+        
+        //Remove the add point handler if it's valid
+        if (s_addPointHandler.valid())
+        {
+            osgEarth::removeEventHandler( s_viewer, s_addPointHandler.get() );
+            s_addPointHandler = NULL;
+        }        
+
+        if (!s_editor.valid() && s_activeFeature.valid())
+        {
+            s_editor = createFeatureEditor(s_activeFeature, s_source, s_mapNode);
+            s_root->addChild( s_editor );
+        }
+    }
+};
 
 
 //
@@ -215,13 +279,11 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    bool useRaster  = arguments.read("--rasterize");
     bool useOverlay = arguments.read("--overlay");
-    bool useStencil = arguments.read("--stencil");
-    bool useMem     = arguments.read("--mem");
-    bool useLabels  = arguments.read("--labels");
 
     osgViewer::Viewer viewer(arguments);
+
+    s_viewer = &viewer;
 
     // Start by creating the map:
     Map* map = new Map();
@@ -229,7 +291,7 @@ int main(int argc, char** argv)
     // Start with a basemap imagery layer; we'll be using the GDAL driver
     // to load a local GeoTIFF file:
     GDALOptions basemapOpt;
-    basemapOpt.url() = "c:/dev/osgEarth/osgearth-master/data/world.tif";
+    basemapOpt.url() = "../data/world.tif";
     map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
 
         
@@ -241,7 +303,7 @@ int main(int argc, char** argv)
     ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
     ls->stroke()->width() = 2.0f;
 
-    osg::ref_ptr< FeatureListSource > featureSource = new FeatureListSource();
+    s_source = new FeatureListSource();
     //Ring* line = new Ring();
     LineString* line = new LineString();
     line->push_back( osg::Vec3d(-60, 20, 0) );
@@ -250,8 +312,8 @@ int main(int argc, char** argv)
     line->push_back( osg::Vec3d(-60, 60, 0) );
     Feature *feature = new Feature(s_fid++);
     feature->setGeometry( line );
-
-    featureSource->insertFeature( feature );
+    s_source->insertFeature( feature );
+    s_activeFeature = feature;
 
 
 
@@ -259,11 +321,12 @@ int main(int argc, char** argv)
     MapNodeOptions mapNodeOptions;
     mapNodeOptions.enableLighting() = false;
 
-    MapNode* mapNode = new MapNode( map, mapNodeOptions );
+    s_mapNode = new MapNode( map, mapNodeOptions );
+    s_mapNode->setNodeMask( 0x01 );
     
 
     FeatureGeomModelOptions worldOpt;
-    worldOpt.featureSource() = featureSource;
+    worldOpt.featureSource() = s_source;
     worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
     worldOpt.styles()->addStyle( style );
     worldOpt.enableLighting() = false;
@@ -274,23 +337,39 @@ int main(int argc, char** argv)
     ModelLayer* layer = new ModelLayer(options);
     map->addModelLayer( layer );
 
+    s_root = new osg::Group;
+    s_root->addChild( s_mapNode );
 
-    osg::Group* root = new osg::Group;
-    root->addChild( mapNode );
+    //Setup the controls
+    ControlCanvas* canvas = ControlCanvas::get( &viewer );
+    s_root->addChild( canvas );
+    Grid *toolbar = createToolBar( );
+    canvas->addControl( toolbar );
+    canvas->setNodeMask( 0x1 << 1 );
+
+    int col = 0;
+    LabelControl* addVerts = new LabelControl("Add Verts");
+    toolbar->setControl(col++, 0, addVerts );    
+    addVerts->addEventHandler( new AddVertsModeHandler());
+    
+    LabelControl* edit = new LabelControl("Edit");
+    toolbar->setControl(col++, 0, edit );    
+    edit->addEventHandler(new EditModeHandler());
+
        
     
-    viewer.setSceneData( root );
+    viewer.setSceneData( s_root );
     viewer.setCameraManipulator( new EarthManipulator() );
 
-    if ( !useStencil && !useOverlay )
+    if ( !useOverlay )
         viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    //viewer.addEventHandler( new AddPointHandler(featureSource, map->getProfile()->getSRS()));
-    addFeatureEditor( feature, featureSource, mapNode, root );
+    //viewer.addEventHandler( new AddPointHandler(feature, featureSource, map->getProfile()->getSRS()));
+    //addFeatureEditor( feature, featureSource, mapNode, root );
 
     return viewer.run();
 }

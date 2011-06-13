@@ -50,6 +50,7 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "features", _featureOptions );
     //if ( conf.hasChild("features") )
     //    _featureOptions->merge( conf.child("features") );
+    _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
 
     conf.getObjIfSet( "styles", _styles );
     conf.getObjIfSet( "layout", _levels );
@@ -75,15 +76,21 @@ FeatureModelSourceOptions::getConfig() const
 {
     Config conf = ModelSourceOptions::getConfig();
 
-    conf.updateObjIfSet( "features", _featureOptions );
+    conf.updateObjIfSet( "features", _featureOptions );    
+    if (_featureSource.valid())
+    {
+        conf.addNonSerializable("feature_source", _featureSource);
+    }
+    //conf.updateObjIfSet( "feature_source", _featureSource);
     conf.updateObjIfSet( "gridding", _gridding ); // to be deprecated
     conf.updateObjIfSet( "styles", _styles );
     conf.updateObjIfSet( "layout", _levels );
-    conf.updateObjIfSet( "feature_name", _featureNameExpr );
+
     conf.updateIfSet( "lighting", _lit );
     conf.updateIfSet( "max_granularity", _maxGranularity_deg );
     conf.updateIfSet( "merge_geometry", _mergeGeometry );
     conf.updateIfSet( "cluster_culling", _clusterCulling );
+
 
     if ( _geomTypeOverride.isSet() ) {
         if ( _geomTypeOverride == Geometry::TYPE_LINESTRING )

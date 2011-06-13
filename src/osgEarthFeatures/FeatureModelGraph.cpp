@@ -167,18 +167,7 @@ _session( session )
     if ( _useTiledSource && options.levels().isSet() && options.levels()->getNumLevels() > 0 )
         _useTiledSource = false;
 
-    // if there's a display schema in place, set up for quadtree paging.
-    if ( options.levels().isSet() || _useTiledSource ) //_source->getFeatureProfile()->getTiled() )
-    {
-        setupPaging();
-    }
-    else
-    {
-        FeatureLevel defaultLevel( 0.0f, FLT_MAX );
-        osg::Node* node = build( defaultLevel, GeoExtent::INVALID, 0 );
-        if ( node )
-            this->addChild( node );
-    }
+    redraw();
 }
 
 FeatureModelGraph::~FeatureModelGraph()
@@ -653,7 +642,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
         cursor->fill( workingSet );
 
         CropFilter crop( 
-            _options.levels()->cropFeatures() == true ? 
+            _options.levels().isSet() && _options.levels()->cropFeatures() == true ? 
             CropFilter::METHOD_CROPPING : CropFilter::METHOD_CENTROID );
         context = crop.push( workingSet, context );
 
@@ -661,7 +650,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
         // extent to fit on the map), calculate the extent of the features in this tile and 
         // crop to the map extent if necessary. (Note, if cropFeatures was set to true, this is
         // already done)
-        if ( _featureExtentClamped && _options.levels()->cropFeatures() == false )
+        if ( _featureExtentClamped && _options.levels().isSet() && _options.levels()->cropFeatures() == false )
         {
             context.extent() = _usableFeatureExtent;
             CropFilter crop2( CropFilter::METHOD_CROPPING );
@@ -690,3 +679,36 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
 
     return styleGroup;
 }
+
+void
+FeatureModelGraph::traverse(osg::NodeVisitor& nv)
+{
+    if (_source->outOfSyncWith(_revision))
+    {
+        redraw();
+    }
+    osg::Group::traverse(nv);
+}
+
+void
+FeatureModelGraph::redraw()
+{
+    removeChildren( 0, getNumChildren() );
+    // if there's a display schema in place, set up for quadtree paging.
+    if ( _options.levels().isSet() || _useTiledSource ) //_source->getFeatureProfile()->getTiled() )
+    {
+        setupPaging();
+    }
+    else
+    {
+        FeatureLevel defaultLevel( 0.0f, FLT_MAX );
+        
+        //Remove all current children        
+        osg::Node* node = build( defaultLevel, GeoExtent::INVALID, 0 );
+        if ( node )
+            addChild( node );
+    }
+
+    _source->sync( _revision );
+}
+

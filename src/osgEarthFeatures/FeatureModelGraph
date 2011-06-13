@@ -69,6 +69,8 @@ namespace osgEarth { namespace Features
          */
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
 
+        virtual void traverse(osg::NodeVisitor& nv);
+
     protected:
         virtual ~FeatureModelGraph();
 
@@ -88,6 +90,8 @@ namespace osgEarth { namespace Features
             unsigned levelIndex, unsigned lod, unsigned tileX, unsigned tileY,
             const FeatureLevel* nextLevel, unsigned nextLOD, osg::Group* parent);
 
+        void redraw();
+
     private:
         FeatureModelSourceOptions        _options;
         osg::ref_ptr<FeatureSource>      _source;
@@ -102,6 +106,7 @@ namespace osgEarth { namespace Features
         GeoExtent                        _usableMapExtent;
         osg::BoundingSphered             _fullWorldBound;
         bool                             _useTiledSource;
+        osgEarth::Revision               _revision;
     };
 
 } } // namespace osgEarth::Features

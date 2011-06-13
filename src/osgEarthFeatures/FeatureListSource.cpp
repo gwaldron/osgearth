@@ -50,3 +50,38 @@ FeatureListSource::createFeatureProfile()
 {    
     return _profile;
 }
+
+bool
+FeatureListSource::deleteFeature(FeatureID fid)
+{
+    for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr) 
+    {
+        if (itr->get()->getFID() == fid)
+        {
+            _features.erase( itr );
+            dirty();
+            return true;
+        }
+    }
+    return false;
+}
+
+Feature*
+FeatureListSource::getFeature( FeatureID fid )
+{
+    for (FeatureList::iterator itr = _features.begin(); itr != _features.end(); ++itr) 
+    {
+        if (itr->get()->getFID() == fid)
+        {
+            return itr->get();
+        }
+    }
+    return NULL;
+}
+
+bool FeatureListSource::insertFeature(Feature* feature)
+{
+    _features.push_back( feature );
+    dirty();
+    return true;
+}

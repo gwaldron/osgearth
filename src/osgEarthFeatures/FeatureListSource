@@ -37,11 +37,11 @@ namespace osgEarth { namespace Features
 
         virtual FeatureCursor* createFeatureCursor( const Symbology::Query& query );
 
-        virtual bool isWritable() const { return false; }
-        virtual bool deleteFeature(FeatureID fid) { return false; }
+        virtual bool isWritable() const { return true; }
+        virtual bool deleteFeature(FeatureID fid);
         virtual int getFeatureCount() const { return _features.size(); }
-        virtual Feature* getFeature( FeatureID fid ) { return 0L; }        
-        virtual bool insertFeature(Feature* feature) { return false; }
+        virtual Feature* getFeature( FeatureID fid );
+        virtual bool insertFeature(Feature* feature);
         virtual Geometry::Type getGeometryType() const { return Geometry::TYPE_UNKNOWN; }
 
         FeatureList& getFeatures() { return _features; }

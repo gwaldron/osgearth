@@ -277,58 +277,62 @@ SinglePassTerrainTechnique::applyTileUpdates()
         if ( _pendingGeometryUpdate )
         {
             osg::Geode* frontGeode = getFrontGeode();
-            
-            if ( _texCompositor->requiresUnitTextureSpace() )
+
+            if (frontGeode)
             {
-                // in "unit-texture-space" mode, we can take the shortcut of just updating
-                // the geometry VBOs. The texture coordinates never change.
-                for( unsigned int i=0; i<_backGeode->getNumDrawables(); ++i )
+
+                if ( _texCompositor->requiresUnitTextureSpace() )
                 {
-                    osg::Geometry* backGeom = static_cast<osg::Geometry*>( _backGeode->getDrawable(i) );
-                    osg::Vec3Array* backVerts = static_cast<osg::Vec3Array*>( backGeom->getVertexArray() );
-
-                    osg::Geometry* frontGeom = static_cast<osg::Geometry*>( frontGeode->getDrawable(i) );
-                    osg::Vec3Array* frontVerts = static_cast<osg::Vec3Array*>( frontGeom->getVertexArray() );
-
-                    if ( backVerts->size() == frontVerts->size() )
+                    // in "unit-texture-space" mode, we can take the shortcut of just updating
+                    // the geometry VBOs. The texture coordinates never change.
+                    for( unsigned int i=0; i<_backGeode->getNumDrawables(); ++i )
                     {
-                        // simple VBO update:
-                        std::copy( backVerts->begin(), backVerts->end(), frontVerts->begin() );
-                        frontVerts->dirty();
+                        osg::Geometry* backGeom = static_cast<osg::Geometry*>( _backGeode->getDrawable(i) );
+                        osg::Vec3Array* backVerts = static_cast<osg::Vec3Array*>( backGeom->getVertexArray() );
 
-                        osg::Vec3Array* backNormals = static_cast<osg::Vec3Array*>( backGeom->getNormalArray() );
-                        if ( backNormals )
-                        {
-                            osg::Vec3Array* frontNormals = static_cast<osg::Vec3Array*>( frontGeom->getNormalArray() );
-                            std::copy( backNormals->begin(), backNormals->end(), frontNormals->begin() );
-                            frontNormals->dirty();
-                        }
+                        osg::Geometry* frontGeom = static_cast<osg::Geometry*>( frontGeode->getDrawable(i) );
+                        osg::Vec3Array* frontVerts = static_cast<osg::Vec3Array*>( frontGeom->getVertexArray() );
 
-                        osg::Vec2Array* backTexCoords = static_cast<osg::Vec2Array*>( backGeom->getTexCoordArray(0) );
-                        if ( backTexCoords )
+                        if ( backVerts->size() == frontVerts->size() )
                         {
-                            osg::Vec2Array* frontTexCoords = static_cast<osg::Vec2Array*>( frontGeom->getTexCoordArray(0) );
-                            std::copy( backTexCoords->begin(), backTexCoords->end(), frontTexCoords->begin() );
-                            frontTexCoords->dirty();
+                            // simple VBO update:
+                            std::copy( backVerts->begin(), backVerts->end(), frontVerts->begin() );
+                            frontVerts->dirty();
+
+                            osg::Vec3Array* backNormals = static_cast<osg::Vec3Array*>( backGeom->getNormalArray() );
+                            if ( backNormals )
+                            {
+                                osg::Vec3Array* frontNormals = static_cast<osg::Vec3Array*>( frontGeom->getNormalArray() );
+                                std::copy( backNormals->begin(), backNormals->end(), frontNormals->begin() );
+                                frontNormals->dirty();
+                            }
+
+                            osg::Vec2Array* backTexCoords = static_cast<osg::Vec2Array*>( backGeom->getTexCoordArray(0) );
+                            if ( backTexCoords )
+                            {
+                                osg::Vec2Array* frontTexCoords = static_cast<osg::Vec2Array*>( frontGeom->getTexCoordArray(0) );
+                                std::copy( backTexCoords->begin(), backTexCoords->end(), frontTexCoords->begin() );
+                                frontTexCoords->dirty();
+                            }
                         }
-                    }
-                    else
-                    {
-                        frontGeom->setVertexArray( backVerts );
-                        frontGeom->setTexCoordArray( 0, backGeom->getTexCoordArray( 0 ) ); // TODO: un-hard-code
-                        if ( backGeom->getNormalArray() )
-                            frontGeom->setNormalArray( backGeom->getNormalArray() );
+                        else
+                        {
+                            frontGeom->setVertexArray( backVerts );
+                            frontGeom->setTexCoordArray( 0, backGeom->getTexCoordArray( 0 ) ); // TODO: un-hard-code
+                            if ( backGeom->getNormalArray() )
+                                frontGeom->setNormalArray( backGeom->getNormalArray() );
+                        }
                     }
                 }
-            }
-            else
-            {
-                // copy the drawables from the back buffer to the front buffer. By doing this,
-                // we don't touch the front geode's stateset (which contains the textures) and
-                // therefore they don't get re-applied.
-                for( unsigned int i=0; i<_backGeode->getNumDrawables(); ++i )
+                else
                 {
-                    frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
+                    // copy the drawables from the back buffer to the front buffer. By doing this,
+                    // we don't touch the front geode's stateset (which contains the textures) and
+                    // therefore they don't get re-applied.
+                    for( unsigned int i=0; i<_backGeode->getNumDrawables(); ++i )
+                    {
+                        frontGeode->setDrawable( i, _backGeode->getDrawable( i ) );
+                    }
                 }
             }
 
@@ -349,15 +353,20 @@ SinglePassTerrainTechnique::applyTileUpdates()
         {
             const ImageLayerUpdate& update = _pendingImageLayerUpdates.front();
 
-            _texCompositor->applyLayerUpdate(
-                getFrontGeode()->getStateSet(),
-                update._layerUID,
-                update._image,
-                _tileKey,
-                update._isRealData ? parentStateSet : 0L );
+            osg::ref_ptr< osg::Geode > frontGeode = getFrontGeode();
+            if (frontGeode.valid())
+            {
+                _texCompositor->applyLayerUpdate(
+                    frontGeode->getStateSet(),
+                    update._layerUID,
+                    update._image,
+                    _tileKey,
+                    update._isRealData ? parentStateSet : 0L );
+            }
 
             _pendingImageLayerUpdates.pop();
             applied = true;
+
         }
     }
 

@@ -324,7 +324,7 @@ TextureCompositor::reserveTextureImageUnit( int& out_unit )
         return false;
     }
 
-    else // multipass... locked at unit 0.
+    else // multipass... all image layers are locked at unit 0
     {
         // search for an unused unit.
         for( unsigned i=1; i<maxUnits; ++i ) // start at 1 because unit 0 is always reserved

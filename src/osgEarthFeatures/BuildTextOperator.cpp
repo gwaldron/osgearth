@@ -18,7 +18,6 @@
  */
 #include <osgEarthFeatures/BuildTextOperator>
 #include <osgEarthFeatures/Annotation>
-#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarth/Utils>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>

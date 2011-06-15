@@ -27,7 +27,6 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
 
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>

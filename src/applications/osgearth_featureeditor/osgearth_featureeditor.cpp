@@ -29,7 +29,6 @@
 #include <osgEarth/Utils>
 
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/FeatureListSource>
 

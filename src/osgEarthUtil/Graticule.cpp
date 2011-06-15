@@ -22,7 +22,6 @@
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthSymbology/Geometry>
-#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarth/Registry>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>

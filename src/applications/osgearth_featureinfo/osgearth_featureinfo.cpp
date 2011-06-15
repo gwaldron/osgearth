@@ -61,7 +61,14 @@ void printFeature( Feature* feature )
     std::cout << "FID: " << feature->getFID() << std::endl;
     for (AttributeTable::const_iterator itr = feature->getAttrs().begin(); itr != feature->getAttrs().end(); ++itr)
     {
-        std::cout << indent << itr->first << "=" << itr->second << std::endl;
+        std::cout 
+            << indent 
+            << itr->first << "=" << itr->second.getString() << " ("
+            << (itr->second.first == ATTRTYPE_INT?    "integer" :
+                itr->second.first == ATTRTYPE_DOUBLE? "double" :
+                itr->second.first == ATTRTYPE_BOOL?   "bool" :
+                "string")
+            << ")" << std::endl;
     }
 
     //Print out the geometry

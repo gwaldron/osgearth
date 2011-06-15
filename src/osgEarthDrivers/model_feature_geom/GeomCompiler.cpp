@@ -131,6 +131,8 @@ GeomCompiler::compile(FeatureCursor*        cursor,
         {
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+            if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
+                clamp.setMaxZAttributeName( "__max_z");
             cx = clamp.push( workingSet, cx );
             clampRequired = false;
         }
@@ -142,7 +144,10 @@ GeomCompiler::compile(FeatureCursor*        cursor,
                 extrude.setExtrusionHeight( *extrusion->height() );
             if ( extrusion->heightExpression().isSet() )
                 extrude.setExtrusionExpr( *extrusion->heightExpression() );
-
+            
+            //extrude.setHeightReferenceFrame( *extrusion->heightReference() );
+            if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
+                extrude.setHeightOffsetExpression( NumericExpression("[__max_z]") );
             extrude.setFlatten( *extrusion->flatten() );
         }
         if ( polygon )

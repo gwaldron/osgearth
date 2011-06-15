@@ -149,13 +149,12 @@ createLabels( Map* map )
             continue;
 
         // we will display the country name:
-        std::string text = feature->getAttr( g_labelAttr );
+        std::string text = feature->getString( g_labelAttr );
         if ( text.empty() )
             continue;
 
         // and use the population to prioritize labels:
-        std::string populationStr = feature->getAttr( g_priorityAttr );
-        float population = osgEarth::as<float>( populationStr, 0.0f );
+        float population = feature->getDouble(g_priorityAttr, 0.0);
 
         // remove duplicate labels:
         if ( g_removeDupes )

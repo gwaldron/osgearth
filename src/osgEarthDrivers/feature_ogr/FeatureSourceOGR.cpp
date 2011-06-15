@@ -325,6 +325,8 @@ public:
         OGRFeatureH feature_handle = OGR_F_Create( OGR_L_GetLayerDefn( _layerHandle ) );
         if ( feature_handle )
         {
+            const AttributeTable& attrs = feature->getAttrs();
+
             // assign the attributes:
             int num_fields = OGR_F_GetFieldCount( feature_handle );
             for( int i=0; i<num_fields; i++ )
@@ -332,23 +334,42 @@ public:
                 OGRFieldDefnH field_handle_ref = OGR_F_GetFieldDefnRef( feature_handle, i );
                 std::string name = OGR_Fld_GetNameRef( field_handle_ref );
                 int field_index = OGR_F_GetFieldIndex( feature_handle, name.c_str() );
-                std::string value = feature->getAttr( name );
-                if (!value.empty())
+
+                AttributeTable::const_iterator a = attrs.find( toLower(name) );
+                if ( a != attrs.end() )
                 {
-                    switch( OGR_Fld_GetType( field_handle_ref ) )
+                    switch( OGR_Fld_GetType(field_handle_ref) )
                     {
                     case OFTInteger:
-                        OGR_F_SetFieldInteger( feature_handle, field_index, as<int>(value, 0) );
+                        OGR_F_SetFieldInteger( feature_handle, field_index, a->second.getInt(0) );
                         break;
                     case OFTReal:
-                        OGR_F_SetFieldDouble( feature_handle, field_index, as<double>(value, 0.0) );
+                        OGR_F_SetFieldDouble( feature_handle, field_index, a->second.getDouble(0.0) );
                         break;
                     case OFTString:
-                        OGR_F_SetFieldString( feature_handle, field_index, value.c_str() );
-                        break;                    
+                        OGR_F_SetFieldString( feature_handle, field_index, a->second.getString().c_str() );
+                        break;
                     }
                 }
             }
+
+            //    std::string value = feature->getAttr( name );
+            //    if (!value.empty())
+            //    {
+            //        switch( OGR_Fld_GetType( field_handle_ref ) )
+            //        {
+            //        case OFTInteger:
+            //            OGR_F_SetFieldInteger( feature_handle, field_index, as<int>(value, 0) );
+            //            break;
+            //        case OFTReal:
+            //            OGR_F_SetFieldDouble( feature_handle, field_index, as<double>(value, 0.0) );
+            //            break;
+            //        case OFTString:
+            //            OGR_F_SetFieldString( feature_handle, field_index, value.c_str() );
+            //            break;                    
+            //        }
+            //    }
+            //}
 
             // assign the geometry:
             OGRFeatureDefnH def = ::OGR_L_GetLayerDefn( _layerHandle );

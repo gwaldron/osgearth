@@ -73,7 +73,7 @@ static std::string parseAttributes(Feature*           feature,
             break;
         }
         // Add attribute and continue
-        out += feature->getAttr( content.substr(pos, d-pos) );
+        out += feature->getString( content.substr(pos, d-pos) );
         pos = d+1;
     }
 

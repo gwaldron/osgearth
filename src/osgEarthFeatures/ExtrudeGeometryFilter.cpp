@@ -343,12 +343,14 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
         Geometry* part = iter.next();
 
         osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
+        //walls->setUseVertexBufferObjects(true);
         
         osg::ref_ptr<osg::Geometry> rooflines = 0L;
         
         if ( part->getType() == Geometry::TYPE_POLYGON )
         {
             rooflines = new osg::Geometry();
+            //rooflines->setUseVertexBufferObjects(true);
 
             // prep the shapes by making sure all polys are open:
             static_cast<Polygon*>(part)->open();
@@ -433,7 +435,8 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
                 
                 // reorganize the drawable into a single triangle set.
                 // TODO: probably deprecate this once we start texturing rooftops
-                MeshConsolidator::run( *rooflines.get() );
+                // NOTE: MC is now called elsewhere.
+                //MeshConsolidator::run( *rooflines.get() );
 
                 // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
                 // TODO: why??
@@ -485,17 +488,21 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
 
     // BREAKS if you use VBOs - make sure they're disabled
     // TODO: replace this with MeshConsolidator -gw
-    osgUtil::Optimizer optimizer;
-    optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+    //osgUtil::Optimizer optimizer;
+    //optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+   
+    // convert everything to triangles and combine drawables.
+    MeshConsolidator::run( *_geode.get() );
 
+    // TODO: figure out whether these help
     //optimizer.optimize( _geode.get(), osgUtil::Optimizer::INDEX_MESH );
-
-    //TODO: figure out whether this helps
     //optimizer.optimize( _geode, osgUtil::Optimizer::VERTEX_PRETRANSFORM | osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
     
     // activate the VBOs after optimization
-    EnableVBO visitor;
-    _geode->accept( visitor );
+    // NOTE: testing reveals display lists to be faster, at least on my 250GTS.
+    //EnableVBO visitor;
+    //_geode->accept( visitor );
+
 
     return _geode.release();
 }

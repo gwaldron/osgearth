@@ -20,13 +20,13 @@
 #include <osgEarth/ModelSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarthFeatures/GeometryCompiler>
 
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
 
 #include "FeatureGeomModelOptions"
-#include "GeomCompiler"
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -49,7 +49,7 @@ namespace
                 const FilterContext&      context,
                 osg::ref_ptr<osg::Node>&  node )
         {
-            GeomCompiler compiler( _options );
+            GeometryCompiler compiler( _options.compilerOptions() );
             node = compiler.compile( features, style, context );
             return node.valid();
         }

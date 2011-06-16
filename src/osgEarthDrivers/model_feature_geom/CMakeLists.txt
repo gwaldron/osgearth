@@ -1,10 +1,8 @@
 SET(TARGET_SRC
-    FeatureGeomModelSource.cpp
-    GeomCompiler.cpp )
+    FeatureGeomModelSource.cpp )
     
 SET(TARGET_H
-    FeatureGeomModelOptions 
-    GeomCompiler)
+    FeatureGeomModelOptions )
     
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology)
 

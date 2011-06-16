@@ -20,6 +20,7 @@
 #define OSGEARTH_DRIVER_FEATURE_GEOM_MODEL_OPTIONS 1
 
 #include <osgEarth/Common>
+#include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/FeatureModelSource>
 
 namespace osgEarth { namespace Drivers
@@ -30,19 +31,12 @@ namespace osgEarth { namespace Drivers
     class FeatureGeomModelOptions : public FeatureModelSourceOptions // NO EXPORT; header only
     {
     public:
-        /** Z offset to apply to feature geoemtry */
-        optional<double>& heightOffset() { return _heightOffset; }
-        const optional<double>& heightOffset() const { return _heightOffset; }
-
-        /** Whether to cluster feature geometries together for speed */
-        optional<bool>& clustering() { return _clustering; }
-        const optional<bool>& clustering() const { return _clustering; }
+        GeometryCompilerOptions& compilerOptions() { return _compilerOptions; }
+        const GeometryCompilerOptions& compilerOptions() const { return _compilerOptions; }
 
     public:
         FeatureGeomModelOptions( const ConfigOptions& options =ConfigOptions() ) :
-            FeatureModelSourceOptions( options ),
-            _heightOffset( 0.0 ),
-            _clustering( true )
+            FeatureModelSourceOptions( options )
         {
             setDriver( "feature_geom" );
             fromConfig( _conf );
@@ -51,26 +45,28 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = FeatureModelSourceOptions::getConfig();
-            conf.updateIfSet( "height_offset", _heightOffset );
-            conf.updateIfSet( "clustering", _clustering );
+
+            // merges the configurations together, so you can still specify 
+            // compiler options at the model level
+            Config compilerConfig = _compilerOptions.getConfig();
+            conf.merge( compilerConfig );
+
             return conf;
         }
 
     protected:
         virtual void mergeConfig( const Config& conf ) {
             FeatureModelSourceOptions::mergeConfig( conf );
+            _compilerOptions.mergeConfig( conf );
             fromConfig( conf );
         }
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet( "height_offset", _heightOffset );
-            conf.getIfSet( "clustering", _clustering );
+            _compilerOptions.mergeConfig(conf);
         }
 
-        optional<double> _heightOffset;
-        optional<bool>   _clustering;
-        optional<float>  _scale;
+        GeometryCompilerOptions _compilerOptions;
     };
 
 } } // namespace osgEarth::Drivers

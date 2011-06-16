@@ -32,7 +32,7 @@ Footprint Extrusion using the "feature_geom" driver.
                 buildings {
                     extrusion-height:  15;
                     extrusion-flatten: true;
-                    fill:              #ff7f2f7f;
+                    fill:              #ff7f2fcf;
                     altitude-clamping: terrain;
                 }            
             </style>

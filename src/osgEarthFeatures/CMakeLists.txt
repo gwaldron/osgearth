@@ -34,6 +34,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureTileSource
     Filter
     FilterContext
+    GeometryCompiler
 	GeometryUtils
     LabelSource
 	OgrUtils
@@ -70,6 +71,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp
+    GeometryCompiler.cpp
 	GeometryUtils.cpp
     LabelSource.cpp
     OptimizerHints.cpp

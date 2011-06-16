@@ -207,8 +207,9 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
             osgGeom->setName( name );
         }
 
-        osgGeom->setUseVertexBufferObjects( true );
-        osgGeom->setUseDisplayList( false );
+        // NOTE: benchmarking reveals VBOs to be much slower (for static data, at least)
+        //osgGeom->setUseVertexBufferObjects( true );
+        //osgGeom->setUseDisplayList( false );
 
         if ( setWidth && width != 1.0f )
         {
@@ -261,7 +262,8 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
 
             // the tessellator results in a collection of trifans, strips, etc. This step will
             // consolidate those into one (or more if necessary) GL_TRIANGLES primitive.
-            MeshConsolidator::run( *osgGeom );
+            //NOTE: this now happens elsewhere 
+            //MeshConsolidator::run( *osgGeom );
 
             // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
             //osgGeom->setDataVariance( osg::Object::DYNAMIC );
@@ -320,8 +322,10 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
 
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
+    {
         if ( !push( i->get(), context ) )
             ok = false;
+    }
 
     // In a feature class with one point-per-feature, you end up with one geometry per point,
     // which results is (a) very bad performance and (b) geometries with a zero bbox that therefore
@@ -330,11 +334,13 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
     // to replace this filter anyway with something more highly optimized (a la osgGIS).
     //
     // however...seems that MERGE_GEOMETRY destroys almost everything except for points!!
-    if ( _mergeGeometry == true )
-    {
-        osgUtil::Optimizer optimizer;
-        optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
-    }
+    //if ( _mergeGeometry == true )
+    //{
+    //    osgUtil::Optimizer optimizer;
+    //    optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+    //}
+
+    MeshConsolidator::run( *_geode.get() );
 
     if ( ok )
     {

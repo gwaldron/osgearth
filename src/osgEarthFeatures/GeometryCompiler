@@ -1,0 +1,100 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_FEATURES_GEOMETRY_COMPILER_H
+#define OSGEARTH_FEATURES_GEOMETRY_COMPILER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthSymbology/Style>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    class OSGEARTHFEATURES_EXPORT GeometryCompilerOptions : public ConfigOptions
+    {
+    public:
+        GeometryCompilerOptions( const ConfigOptions& conf =ConfigOptions() );
+
+    public:
+        /** Maximum span of a generated edge, in degrees. Applicable to geocentric maps only */
+        optional<double>& maxGranularity() { return _maxGranularity_deg; }
+        const optional<double>& maxGranularity() const { return _maxGranularity_deg; }
+
+        /** Whether to merge geometry from multiple features */
+        optional<bool>& mergeGeometry() { return _mergeGeometry; }
+        const optional<bool>& mergeGeometry() const { return _mergeGeometry; }
+
+        /** Expression to evaluate to extract a feature's readable name */
+        optional<StringExpression>& featureName() { return _featureNameExpr; }
+        const optional<StringExpression>& featureName() const { return _featureNameExpr; }
+
+        /** Whether to cluster feature geometries together for speed */
+        optional<bool>& clustering() { return _clustering; }
+        const optional<bool>& clustering() const { return _clustering; }
+
+    public:
+        Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    private:
+        optional<double>            _maxGranularity_deg;
+        optional<bool>              _mergeGeometry;
+        optional<StringExpression>  _featureNameExpr;
+        optional<bool>              _clustering;
+
+        void fromConfig( const Config& conf );
+    };
+
+    /**
+     * Compiles a collection of features against a style.
+     */
+    class OSGEARTHFEATURES_EXPORT GeometryCompiler
+    {
+    public:
+
+        /** Constructs a new geometry compiler with default options. */
+        GeometryCompiler();
+
+        /** Constructs a new compiler with preconfigured options. */
+        GeometryCompiler( const GeometryCompilerOptions& options );
+        
+        /** Access the options read-only */
+        const GeometryCompilerOptions& options() const { return _options; }
+
+        /** Access the options for editing. */
+        GeometryCompilerOptions& options() { return _options; }
+
+    public:
+
+        /** Compiles a collection of features into an OSG scene graph. */
+        osg::Node* compile(
+            FeatureCursor*        input,
+            const Style&          style,
+            const FilterContext&  context);
+
+    protected:
+        GeometryCompilerOptions _options;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTH_FEATURES_GEOMETRY_COMPILER_H

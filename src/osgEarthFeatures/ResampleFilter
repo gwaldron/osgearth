@@ -68,13 +68,13 @@ namespace osgEarth { namespace Features
 
 
     public:
-        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
         optional<double> _minLen, _maxLen, _perturbThresh;
         optional<ResampleMode> _resampleMode;
 
-        bool push( Feature* input, const FilterContext& context );
+        bool push( Feature* input, FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

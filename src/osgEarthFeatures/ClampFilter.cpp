@@ -35,7 +35,7 @@ _ignoreZ( false )
 }
 
 FilterContext
-ClampFilter::push( FeatureList& features, const FilterContext& cx )
+ClampFilter::push( FeatureList& features, FilterContext& cx )
 {
     const Session* session = cx.getSession();
     if ( !session ) {

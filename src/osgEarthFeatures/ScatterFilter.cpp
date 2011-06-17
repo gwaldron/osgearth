@@ -185,7 +185,7 @@ ScatterFilter::lineScatter(const Geometry*         input,
 }
 
 FilterContext
-ScatterFilter::push(FeatureList& features, const FilterContext& context )
+ScatterFilter::push(FeatureList& features, FilterContext& context )
 {
     if ( !isSupported() ) {
         OE_WARN << LC << "support for this filter is not enabled" << std::endl;

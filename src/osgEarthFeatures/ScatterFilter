@@ -56,7 +56,7 @@ namespace osgEarth { namespace Features
 
     public:
         /** Processes a new feature list */
-        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
         void polyScatter(

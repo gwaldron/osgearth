@@ -45,10 +45,6 @@ namespace osgEarth { namespace Features
         void setMatrix( const osg::Matrixd& mat ) { _mat = mat; }
         const osg::Matrixd& getMatrix() const { return _mat; }
 
-        /** Height offset to apply after doing the SRS transformation. Output SRS units. */
-        //void setHeightOffset( double value ) { _heightOffset = value; }
-        //double getHeightOffset() const { return _heightOffset; }
-
         /** Whether to convert the transformed coordinates into geocentric (default = false ) */
         void setMakeGeocentric( bool value ) { _makeGeocentric = value; }
         bool getMakeGeocentric() const { return _makeGeocentric; }
@@ -59,17 +55,16 @@ namespace osgEarth { namespace Features
         bool getLocalizeCoordinates() const { return _localize; }
 
     public:
-        FilterContext push( FeatureList& features, const FilterContext& context );
+        FilterContext push( FeatureList& features, FilterContext& context );
 
     protected:
         osg::ref_ptr<const SpatialReference> _outputSRS;
         bool _makeGeocentric;
-        //double _heightOffset;
         osg::BoundingBoxd _bbox;
         bool _localize;
         osg::Matrixd _mat;
         
-        bool push( Feature* feature, const FilterContext& context );
+        bool push( Feature* feature, FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

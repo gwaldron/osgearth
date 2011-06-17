@@ -36,37 +36,32 @@ _scale( scale )
 }
 
 FilterContext
-ScaleFilter::push( FeatureList& input, const FilterContext& cx )
+ScaleFilter::push( FeatureList& input, FilterContext& cx )
 {
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
-        push( i->get(), cx );
+    {
+        Feature* input = i->get();
+        if ( input && input->getGeometry() )
+        {
+            Bounds envelope = input->getGeometry()->getBounds();
+
+            // now scale and shift everything
+            GeometryIterator scale_iter( input->getGeometry() );
+            while( scale_iter.hasMore() )
+            {
+                Geometry* geom = scale_iter.next();
+                for( osg::Vec3dArray::iterator v = geom->begin(); v != geom->end(); v++ )
+                {
+                    double xr = (v->x() - envelope.xMin()) / envelope.width();
+                    v->x() += (xr - 0.5) * _scale;
+
+                    double yr = (v->y() - envelope.yMin()) / envelope.height();
+                    v->y() += (yr - 0.5) * _scale;
+                }
+            }
+        }
+    }
 
     return cx;
 }
 
-bool
-ScaleFilter::push( Feature* input, const FilterContext& cx )
-{
-    if ( !input || !input->getGeometry() )
-        return true;
-
-    // first determine the feature's envelope.
-    Bounds envelope = input->getGeometry()->getBounds();
-
-    // now scale and shift everything
-    GeometryIterator scale_iter( input->getGeometry() );
-    while( scale_iter.hasMore() )
-    {
-        Geometry* geom = scale_iter.next();
-        for( osg::Vec3dArray::iterator v = geom->begin(); v != geom->end(); v++ )
-        {
-            double xr = (v->x() - envelope.xMin()) / envelope.width();
-            v->x() += (xr - 0.5) * _scale;
-
-            double yr = (v->y() - envelope.yMin()) / envelope.height();
-            v->y() += (yr - 0.5) * _scale;
-        }
-    }
-
-    return true;
-}

@@ -307,13 +307,13 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         HSliderControl( float min = 0.0f, float max = 100.0f, float value = 50.0f );
 
-        void setMin( float min );
+        void setMin( float min, bool notify =true );
         float getMin() const { return _min; }
 
-        void setMax( float max );
+        void setMax( float max, bool notify =true );
         float getMax() const { return _max; }
 
-        void setValue( float value );
+        void setValue( float value, bool notify =true );
         float getValue() const { return _value; }
 
     public: // Control

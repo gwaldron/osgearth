@@ -43,24 +43,8 @@ _toType( rhs._toType )
     //NOP
 }
 
-bool
-ConvertTypeFilter::push( Feature* input, const FilterContext& context )
-{
-    if ( !input || !input->getGeometry() )
-        return true;
-
-    if ( input->getGeometry()->getComponentType() == _toType )
-        return true;
-
-    Geometry* geom = input->getGeometry()->cloneAs( _toType );
-    input->setGeometry( geom );
-
-    return true;
-}
-
-
 FilterContext
-ConvertTypeFilter::push( FeatureList& input, const FilterContext& context )
+ConvertTypeFilter::push( FeatureList& input, FilterContext& context )
 {
     if ( !isSupported() )
     {
@@ -70,8 +54,13 @@ ConvertTypeFilter::push( FeatureList& input, const FilterContext& context )
 
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
-        if ( !push( i->get(), context ) )
-            ok = false;
+    {
+        Feature* input = i->get();
+        if ( input && input->getGeometry() && input->getGeometry()->getComponentType() != _toType )
+        {
+            input->setGeometry( input->getGeometry()->cloneAs(_toType) );
+        }
+    }
 
     return context;
 }

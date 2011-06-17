@@ -107,7 +107,7 @@ _localize( false )
 }
 
 bool
-TransformFilter::push( Feature* input, const FilterContext& context )
+TransformFilter::push( Feature* input, FilterContext& context )
 {
     if ( !input || !input->getGeometry() )
         return true;
@@ -155,7 +155,7 @@ TransformFilter::push( Feature* input, const FilterContext& context )
 }
 
 FilterContext
-TransformFilter::push( FeatureList& input, const FilterContext& incx )
+TransformFilter::push( FeatureList& input, FilterContext& incx )
 {
     _bbox = osg::BoundingBoxd();
 

@@ -23,8 +23,9 @@
 #include <osgEarth/StringUtils>
 
 #include <osg/Vec3f>
-#include <osgViewer/View>
+#include <osg/AutoTransform>
 #include <osgGA/GUIEventHandler>
+#include <osgViewer/View>
 
 #include <string>
 #include <list>
@@ -174,6 +175,27 @@ namespace osgEarth
         bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::State* state) const {
             return nv && nv->getEyePoint() * _normal <= 0;
         }
+    };
+
+    /**
+     * A pixel-based AutoTransform variant.
+     */
+    class OSGEARTH_EXPORT PixelAutoTransform : public osg::AutoTransform
+    {
+    public:
+        PixelAutoTransform();
+
+        /** 
+         * Sets the minimim width of the object, in pixels, when the scale
+         * factor is 1.0.
+         */
+        void setMinPixelWidth( double pixels ) { _minPixels = pixels; }
+
+    public: // override
+        void accept( osg::NodeVisitor& nv );
+
+    protected:
+        double _minPixels;
     };
 }
 

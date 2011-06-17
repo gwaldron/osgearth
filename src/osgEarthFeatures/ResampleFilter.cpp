@@ -51,7 +51,7 @@ _resampleMode(RESAMPLE_LINEAR)
 }
 
 bool
-ResampleFilter::push( Feature* input, const FilterContext& context )
+ResampleFilter::push( Feature* input, FilterContext& context )
 {
     if ( !input || !input->getGeometry() )
         return true;
@@ -172,7 +172,7 @@ ResampleFilter::push( Feature* input, const FilterContext& context )
 
 
 FilterContext
-ResampleFilter::push( FeatureList& input, const FilterContext& context )
+ResampleFilter::push( FeatureList& input, FilterContext& context )
 {
     if ( !isSupported() )
     {

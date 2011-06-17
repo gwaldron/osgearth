@@ -42,12 +42,10 @@ namespace osgEarth { namespace Features
         double& scale() { return _scale; }
 
     public:
-        virtual FilterContext push( FeatureList& input, const FilterContext& cx );
+        virtual FilterContext push( FeatureList& input, FilterContext& cx );
 
     protected:
         double _scale;
-
-        bool push( Feature* input, const FilterContext& cx );
     };
 
 } } // namespace osgEarth::Features

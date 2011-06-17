@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
+#include <osgEarthFeatures/MarkerFactory>
 #include <osgEarth/HTTPClient>
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -186,8 +187,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 }
 
 FilterContext
-SubstituteModelFilter::push(FeatureList&         features, 
-                            const FilterContext& context )
+SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 {
     if ( !isSupported() ) {
         OE_WARN << "SubstituteModelFilter support not enabled" << std::endl;
@@ -208,8 +208,11 @@ SubstituteModelFilter::push(FeatureList&         features,
     FilterContext newContext( context );
 
     // assemble the data for this pass
+    MarkerFactory mf(context.getSession());
+
     Data data;
-    data._model = newContext.getSession()->getModel( *symbol->url() );
+    data._model = mf.getOrCreateNode( symbol );
+
     if ( !data._model.valid() )
     {
         OE_WARN << LC << "Unable to load model from \"" << *symbol->url() << "\"" << std::endl;

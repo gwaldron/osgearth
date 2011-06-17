@@ -718,19 +718,20 @@ HSliderControl::fireValueChanged()
 }
 
 void
-HSliderControl::setValue( float value )
+HSliderControl::setValue( float value, bool notify )
 {
     value = osg::clampBetween( value, _min, _max );
     if ( value != _value )
     {
         _value = value;
-        fireValueChanged();
+        if ( notify )
+            fireValueChanged();
         dirty();
     }
 }
 
 void
-HSliderControl::setMin( float min )
+HSliderControl::setMin( float min, bool notify )
 {
     if ( min != _min )
     {
@@ -741,14 +742,15 @@ HSliderControl::setMin( float min )
         if ( _value < _min || _value > _max ) 
         {
             _value = _min;
-            fireValueChanged();
+            if ( notify )
+                fireValueChanged();
         }
         dirty();
     }
 }
 
 void
-HSliderControl::setMax( float max )
+HSliderControl::setMax( float max, bool notify )
 {
     if ( max != _max )
     {
@@ -759,7 +761,8 @@ HSliderControl::setMax( float max )
         if ( _value < _min || _value > _max )
         {
             _value = _max;
-            fireValueChanged();
+            if ( notify )
+                fireValueChanged();
         }
         dirty();
     }
@@ -1872,7 +1875,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                           j->get()->setDataVariance( osg::Object::DYNAMIC );
 
                           osg::StateSet* stateSet = j->get()->getOrCreateStateSet();
-                          stateSet->setRenderBinDetails( bin, "RenderBin" );
+                          stateSet->setRenderBinDetails( bin++, "RenderBin" );
                           geode->addDrawable( j->get() );
                       }
                   }
@@ -1988,9 +1991,10 @@ _contextDirty(true)
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 
     osg::StateSet* ss = getOrCreateStateSet();
-    ss->setMode( GL_LIGHTING, 0 );
-    ss->setMode( GL_BLEND, 1 );
+    ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+    ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::LEQUAL, 0, 1, false ) );
+    //ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
@@ -2117,7 +2121,7 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
             for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
             {
                 j->get()->setDataVariance( osg::Object::DYNAMIC );
-                j->get()->getOrCreateStateSet()->setRenderBinDetails( bin++, "RenderBin" );
+                j->get()->getOrCreateStateSet()->setRenderBinDetails( bin, "RenderBin" );
                 geode->addDrawable( j->get() );
             }
         }

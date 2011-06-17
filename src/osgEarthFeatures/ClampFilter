@@ -45,7 +45,7 @@ namespace osgEarth { namespace Features
         void setMaxZAttributeName( const std::string& value ) { _maxZAttrName = value; }
 
     public:
-        virtual FilterContext push( FeatureList& input, const FilterContext& cx );
+        virtual FilterContext push( FeatureList& input, FilterContext& cx );
 
     protected:
         bool _ignoreZ;

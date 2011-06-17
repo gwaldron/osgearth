@@ -37,6 +37,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
 	GeometryUtils
     LabelSource
+    MarkerFactory
 	OgrUtils
     OptimizerHints	
     ResampleFilter
@@ -74,6 +75,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryCompiler.cpp
 	GeometryUtils.cpp
     LabelSource.cpp
+    MarkerFactory.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp

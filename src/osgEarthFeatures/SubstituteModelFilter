@@ -66,7 +66,7 @@ namespace osgEarth { namespace Features
 
     public:
         /** Processes a new feature list */
-        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
 
         /** Gets the resulting OSG scene graph */
         osg::Node* getNode() const { return _result.get(); }

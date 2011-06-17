@@ -113,76 +113,15 @@ Session::createMapFrame( Map::ModelParts parts ) const
 }
 
 void
-Session::parseMarker(const std::string& marker, std::string& url, bool &isImage) const
-{    
-    StringTokenizer izer( "()" );
-    StringVector tok;
-    izer.tokenize( marker, tok );
-
-    if (tok.size() > 1)
-    {
-        if (tok[0].compare("model") == 0)
-        {         
-            isImage = false;
-            url = resolveURI( tok[1] );
-        }
-        else if (tok[0].compare("image") == 0)
-        {
-            url = resolveURI( tok[1] );
-            isImage = true;
-        }    
-    }
-    else
-    {
-        url = resolveURI( marker );
-        isImage = false;
-    }    
+Session::putResource( const std::string& uri, osg::Referenced* object )
+{
+    Threading::ScopedWriteLock lock( _resourceMutex );
+    _resourceMap[uri] = object;
 }
 
-
-osg::Node*
-Session::getModel( const std::string& url ) const
-{    
-    bool isImage;
-    std::string absurl;
-    parseMarker(url, absurl, isImage);
-
-    // first, check the local repo
-    {
-        Threading::ScopedReadLock sharedLock( const_cast<Session*>(this)->_modelsMutex );
-        ModelMap::const_iterator i = _models.find( absurl );
-        if ( i != _models.end() )
-            return i->second.get();
-    }
-
-    // next, try to load the model from its URL
-    osg::ref_ptr<osg::Node> node;
-    if (!isImage)
-    {
-        if ( HTTPClient::readNodeFile( absurl, node ) != HTTPClient::RESULT_OK )
-        {
-            OE_WARN << LC << "Failed to load model from \"" << url << "\"" << std::endl;
-            return 0L;
-        }
-    }
-    else
-    {
-        osg::ref_ptr< osg::Image > image;
-        if (HTTPClient::readImageFile( absurl, image ) != HTTPClient::RESULT_OK )
-        {
-            OE_WARN << LC << "Failed to load image from \"" << url << "\"" << std::endl;
-            return 0L;
-        }
-
-        node = buildImageModel( image.get() );
-    }
-
-    // add it to the local model cache for next time
-    {
-        Session* ncthis = const_cast<Session*>(this);
-        Threading::ScopedWriteLock exclusiveLock( ncthis->_modelsMutex );
-        ncthis->_models[absurl] = node.get();
-    }
-
-    return node.release();
+void
+Session::removeResource( const std::string& uri )
+{
+    Threading::ScopedWriteLock lock( _resourceMutex );
+    _resourceMap.erase( uri );
 }

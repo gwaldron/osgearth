@@ -31,7 +31,7 @@ _method( method )
 }
 
 FilterContext
-CropFilter::push( FeatureList& input, const FilterContext& context )
+CropFilter::push( FeatureList& input, FilterContext& context )
 {
     if ( !context.extent().isSet() )
     {

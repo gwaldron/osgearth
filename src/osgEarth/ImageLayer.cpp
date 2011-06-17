@@ -348,6 +348,7 @@ ImageLayer::initPreCacheOp()
     op->_processor.init( _options, layerInTargetProfile );
 
     _preCacheOp = op;
+
 }
 
 GeoImage
@@ -665,7 +666,11 @@ ImageLayer::createImageWrapper(const TileKey& key,
                 // source for an image.
                 if ( source->hasDataInExtent( key.getExtent() ) )
                 {
-                    result = source->createImage( key, _preCacheOp.get(), progress );
+                    //Take a reference to the preCacheOp, there is a potential for it to be
+                    //overwritten and deleted if this ImageLayer is added to another Map
+                    //while createImage is going on.
+                    osg::ref_ptr< TileSource::ImageOperation > op = _preCacheOp;
+                    result = source->createImage( key, op.get(), progress );
 
                     // if no result was created, add this key to the blacklist.
                     if ( result == 0L && (!progress || !progress->isCanceled()) )

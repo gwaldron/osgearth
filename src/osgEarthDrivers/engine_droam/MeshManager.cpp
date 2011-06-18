@@ -24,15 +24,16 @@
 
 struct ImageRequest : public osgEarth::TaskRequest
 {
-    ImageRequest( MapLayer* layer, const TileKey* key ) : _layer(layer), _key(key) { }
+    ImageRequest( ImageLayer* layer, const TileKey& key ) : _layer(layer), _key(key) { }
 
     void operator()( ProgressCallback* progress )
     {
-        _result = _layer->createImage( _key.get() );
+        _result = _layer->createImage( _key );
     }
 
-    osg::ref_ptr<MapLayer> _layer;
-    osg::ref_ptr<const TileKey> _key;
+    osg::ref_ptr<ImageLayer> _layer;
+    TileKey _key;
+    GeoImage _result;
 };
 
 // --------------------------------------------------------------------------
@@ -127,7 +128,7 @@ MeshManager::queueForImage( Diamond* d, float priority )
     if ( !d->_queuedForImage && !d->_imageRequest.valid() )
     {
         //OE_NOTICE << "REQ: " << d->_key->str() << " queueing request..." << std::endl;
-        d->_imageRequest = new ImageRequest( _map->getImageMapLayers()[0].get(), d->_key.get() );
+        d->_imageRequest = new ImageRequest( _map->getImageLayerAt(0), d->_key );
         _imageService->add( d->_imageRequest.get() );
         _imageQueue.push_back( DiamondJob( d, priority ) ); //.insert( DiamondJob( d, priority ) );
         d->_queuedForImage = true;

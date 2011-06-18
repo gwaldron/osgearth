@@ -34,47 +34,47 @@ GeodeticManifold::initialize( MeshManager* mesh )
     mesh->_minActiveLevel = 3;
 
     // Construct the "vertex diamonds".
-    _vd[0] = new Diamond(mesh, 0L, 0, "vd0"); // north pole 1
+    _vd[0] = new Diamond(mesh, TileKey(), 0, "vd0"); // north pole 1
     _vd[0]->setCoord( -90, 90, 0 );
 
-    _vd[1] = new Diamond(mesh, 0L, 0, "vd1"); // north pole 2
-    _vd[1]->setCoord( 90, -90, 0 );
+    _vd[1] = new Diamond(mesh, TileKey(), 0, "vd1"); // north pole 2
+    _vd[1]->setCoord( 90, 90, 0 );
 
-    _vd[2] = new Diamond(mesh, 0L, 0, "vd2"); // south pole 1
+    _vd[2] = new Diamond(mesh, TileKey(), 0, "vd2"); // south pole 1
     _vd[2]->setCoord( -90, -90, 0 );
 
-    _vd[3] = new Diamond(mesh, 0L, 0, "vd3"); // south pole 2
+    _vd[3] = new Diamond(mesh, TileKey(), 0, "vd3"); // south pole 2
     _vd[3]->setCoord( 90, -90, 0 );
 
-    _vd[4] = new Diamond(mesh, 0L, 0, "vd4");
+    _vd[4] = new Diamond(mesh, TileKey(), 0, "vd4");
     _vd[4]->setCoord( -180, 0, 0 );
 
-    _vd[5] = new Diamond(mesh, 0L, 0, "vd5");
+    _vd[5] = new Diamond(mesh, TileKey(), 0, "vd5");
     _vd[5]->setCoord( 0, 0, 0 );
 
     // The 4 "face diamonds":
-    _fd[0] = new Diamond(mesh, 0L, 0, "fd0");
+    _fd[0] = new Diamond(mesh, TileKey(), 0, "fd0");
     _fd[0]->setCoord( -90, 0, 0 );
     _fd[0]->_a[GDPARENT] = _vd[0].get();
     _fd[0]->_a[QUADTREE] = _vd[2].get();
     _fd[0]->_a[PARENT_L] = _vd[4].get();
     _fd[0]->_a[PARENT_R] = _vd[5].get();
 
-    _fd[1] = new Diamond(mesh, 0L, 0, "fd1");
+    _fd[1] = new Diamond(mesh, TileKey(), 0, "fd1");
     _fd[1]->setCoord( 90, 0, 0 );
     _fd[1]->_a[GDPARENT] = _vd[3].get();
     _fd[1]->_a[QUADTREE] = _vd[1].get();
     _fd[1]->_a[PARENT_L] = _vd[4].get();
     _fd[1]->_a[PARENT_R] = _vd[5].get();
 
-    _fd[2] = new Diamond(mesh, 0L, 0, "fd2"); // virtual north pole diamond
+    _fd[2] = new Diamond(mesh, TileKey(), 0, "fd2"); // virtual north pole diamond
     _fd[2]->setCoord( 0, 90, 0 );
     _fd[2]->_a[GDPARENT] = _vd[0].get();
     _fd[2]->_a[QUADTREE] = _vd[1].get();
     _fd[2]->_a[PARENT_L] = _vd[5].get();
     _fd[2]->_a[PARENT_R] = _vd[4].get();
 
-    _fd[3] = new Diamond(mesh, 0L, 0, "fd3"); // virtual south pole diamond
+    _fd[3] = new Diamond(mesh, TileKey(), 0, "fd3"); // virtual south pole diamond
     _fd[3]->setCoord( 0, -90, 0 );
     _fd[3]->_a[GDPARENT] = _vd[3].get();
     _fd[3]->_a[QUADTREE] = _vd[2].get();
@@ -82,7 +82,7 @@ GeodeticManifold::initialize( MeshManager* mesh )
     _fd[3]->_a[PARENT_R] = _vd[4].get();
 
     // the 8 "edge diamonds" (first with geometry)
-    _ed[0] = new Diamond(mesh, new TileKey(1,0,0,_profile.get()), 1, "ed0");
+    _ed[0] = new Diamond(mesh, TileKey(1,0,0,_profile.get()), 1, "ed0");
     _ed[0]->setCoord( -135, 45, 0 );
     _ed[0]->_a[GDPARENT] = _vd[0].get();
     _ed[0]->_a[QUADTREE] = _vd[4].get();
@@ -90,7 +90,7 @@ GeodeticManifold::initialize( MeshManager* mesh )
     _ed[0]->_a[PARENT_R] = _fd[0].get();
     _ed[0]->_orientation = 0;
 
-    _ed[1] = new Diamond(mesh, new TileKey(1,1,0,_profile.get()), 1, "ed1");
+    _ed[1] = new Diamond(mesh, TileKey(1,1,0,_profile.get()), 1, "ed1");
     _ed[1]->setCoord( -45, 45, 0 );
     _ed[1]->_a[GDPARENT] = _vd[0].get();
     _ed[1]->_a[QUADTREE] = _vd[5].get();
@@ -98,7 +98,7 @@ GeodeticManifold::initialize( MeshManager* mesh )
     _ed[1]->_a[PARENT_R] = _fd[2].get();
     _ed[1]->_orientation = 2;
 
-    _ed[2] = new Diamond(mesh, new TileKey(1,0,1,_profile.get()), 1, "ed2");
+    _ed[2] = new Diamond(mesh, TileKey(1,0,1,_profile.get()), 1, "ed2");
     _ed[2]->setCoord( -135, -45, 0 );
     _ed[2]->_a[GDPARENT] = _vd[2].get();
     _ed[2]->_a[QUADTREE] = _vd[4].get();
@@ -106,7 +106,7 @@ GeodeticManifold::initialize( MeshManager* mesh )
     _ed[2]->_a[PARENT_R] = _fd[3].get();
     _ed[2]->_orientation = 6;
 
-    _ed[3] = new Diamond(mesh, new TileKey(1,1,1,_profile.get()), 1, "ed3");
+    _ed[3] = new Diamond(mesh, TileKey(1,1,1,_profile.get()), 1, "ed3");
     _ed[3]->setCoord( -45, -45, 0 );
     _ed[3]->_a[GDPARENT] = _vd[2].get();
     _ed[3]->_a[QUADTREE] = _vd[5].get();
@@ -114,7 +114,7 @@ GeodeticManifold::initialize( MeshManager* mesh )
     _ed[3]->_a[PARENT_R] = _fd[0].get();
     _ed[3]->_orientation = 4;
 
-    _ed[4] = new Diamond(mesh, new TileKey(1,2,0,_profile.get()), 1, "ed4");
+    _ed[4] = new Diamond(mesh, TileKey(1,2,0,_profile.get()), 1, "ed4");
     _ed[4]->setCoord( 45, 45, 0 );
     _ed[4]->_a[GDPARENT] = _vd[1].get();
     _ed[4]->_a[QUADTREE] = _vd[5].get();
@@ -122,7 +122,7 @@ GeodeticManifold::initialize( MeshManager* mesh )
     _ed[4]->_a[PARENT_R] = _fd[1].get();
     _ed[4]->_orientation = 0;
     
-    _ed[5] = new Diamond(mesh, new TileKey(1,3,0,_profile.get()), 1, "ed5");
+    _ed[5] = new Diamond(mesh, TileKey(1,3,0,_profile.get()), 1, "ed5");
     _ed[5]->setCoord( 135, 45, 0 );
     _ed[5]->_a[GDPARENT] = _vd[1].get();
     _ed[5]->_a[QUADTREE] = _vd[4].get();
@@ -130,7 +130,7 @@ GeodeticManifold::initialize( MeshManager* mesh )
     _ed[5]->_a[PARENT_R] = _fd[2].get();
     _ed[5]->_orientation = 2;
 
-    _ed[6] = new Diamond(mesh, new TileKey(1,2,1,_profile.get()), 1, "ed6");
+    _ed[6] = new Diamond(mesh, TileKey(1,2,1,_profile.get()), 1, "ed6");
     _ed[6]->setCoord( 45, -45, 0 );
     _ed[6]->_a[GDPARENT] = _vd[3].get();
     _ed[6]->_a[QUADTREE] = _vd[5].get();
@@ -138,7 +138,7 @@ GeodeticManifold::initialize( MeshManager* mesh )
     _ed[6]->_a[PARENT_R] = _fd[3].get();
     _ed[6]->_orientation = 6;
 
-    _ed[7] = new Diamond(mesh, new TileKey(1,3,1,_profile.get()), 1, "ed7");
+    _ed[7] = new Diamond(mesh, TileKey(1,3,1,_profile.get()), 1, "ed7");
     _ed[7]->setCoord( 135, -45, 0 );
     _ed[7]->_a[GDPARENT] = _vd[3].get();
     _ed[7]->_a[QUADTREE] = _vd[4].get();

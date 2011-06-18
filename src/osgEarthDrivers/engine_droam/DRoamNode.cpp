@@ -19,12 +19,12 @@
 #include "DRoamNode"
 #include "CubeManifold"
 #include "GeodeticManifold"
-#include <osgEarth/EarthFile>
 #include <osgEarth/Cube>
 #include <osgEarthDrivers/tms/TMSOptions>
 
 using namespace osgEarth::Drivers;
 
+#undef USE_GEODETIC_MANIFOLD
 
 DRoamNode::DRoamNode( Map* map ) :
 _map( map )

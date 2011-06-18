@@ -247,6 +247,12 @@ _matrixRevision( -1 )
     setLocator( locator );
 }
 
+ObjectLocatorNode::ObjectLocatorNode( const SpatialReference* srs ) :
+_matrixRevision( -1 )
+{
+    setLocator( new ObjectLocator(srs) );
+}
+
 void
 ObjectLocatorNode::setLocator( ObjectLocator* locator )
 {

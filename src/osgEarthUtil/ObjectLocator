@@ -152,6 +152,7 @@ namespace osgEarth { namespace Util
     public:
         ObjectLocatorNode();
         ObjectLocatorNode( ObjectLocator* locator );
+        ObjectLocatorNode( const SpatialReference* srs );
         ObjectLocatorNode( const ObjectLocatorNode& rhs, const osg::CopyOp& =osg::CopyOp::SHALLOW_COPY );
         META_Node(osgEarthUtil, ObjectLocatorNode);
 

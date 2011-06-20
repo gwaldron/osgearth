@@ -61,6 +61,9 @@ namespace osgEarth { namespace Util
         int getMaxLevel() const { return _maxLevel;}
         void setMaxLevel( int maxLevel ) { _maxLevel = maxLevel; }
 
+        int getFirstLevel() const { return _firstLevel;}
+        void setFirstLevel( int firstLevel ) { _firstLevel = firstLevel; }
+
         bool getTiled() const { return _tiled;}
         void setTiled(bool tiled) { _tiled = tiled;}
         
@@ -72,6 +75,7 @@ namespace osgEarth { namespace Util
         GeoExtent   _extent;
         bool        _tiled;
         int         _maxLevel;
+        int         _firstLevel;
     };
 
     typedef std::vector< osg::ref_ptr< WFSFeatureType > > FeatureTypeList;

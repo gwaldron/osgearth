@@ -147,6 +147,7 @@ public:
                     if (featureType->getTiled())
                     {                        
                         result->setTiled( true );
+                        result->setFirstLevel( featureType->getFirstLevel() );
                         result->setMaxLevel( featureType->getMaxLevel() );
                         result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), featureType->getExtent().xMin(), featureType->getExtent().yMin(), featureType->getExtent().xMax(), featureType->getExtent().yMax(), 0, 1, 1) );
                     }

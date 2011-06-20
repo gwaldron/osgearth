@@ -2121,7 +2121,7 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
             for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
             {
                 j->get()->setDataVariance( osg::Object::DYNAMIC );
-                j->get()->getOrCreateStateSet()->setRenderBinDetails( bin, "RenderBin" );
+                j->get()->getOrCreateStateSet()->setRenderBinDetails( bin++, "RenderBin" );
                 geode->addDrawable( j->get() );
             }
         }

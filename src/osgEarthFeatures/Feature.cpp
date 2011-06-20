@@ -30,6 +30,7 @@ std::string EMPTY_STRING;
 
 FeatureProfile::FeatureProfile( const GeoExtent& extent ) :
 _extent( extent ),
+_firstLevel(0),
 _maxLevel(-1),
 _tiled(false)
 {
@@ -46,6 +47,18 @@ void
 FeatureProfile::setTiled(bool tiled)
 {
     _tiled = true;
+}
+
+int
+FeatureProfile::getFirstLevel() const
+{
+    return _firstLevel;
+}
+
+void
+FeatureProfile::setFirstLevel(int firstLevel )
+{
+    _firstLevel = firstLevel;
 }
 
 int

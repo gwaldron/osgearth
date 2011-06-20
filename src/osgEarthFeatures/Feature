@@ -52,6 +52,9 @@ namespace osgEarth { namespace Features
         bool getTiled() const;
         void setTiled(bool tiled);
 
+        int getFirstLevel() const;
+        void setFirstLevel(int firstLevel );
+
         int getMaxLevel() const;
         void setMaxLevel(int maxLevel);
 
@@ -62,6 +65,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr< const osgEarth::Profile > _profile;
         GeoExtent _extent;
         bool _tiled;
+        int _firstLevel;
         int _maxLevel;
     };
 

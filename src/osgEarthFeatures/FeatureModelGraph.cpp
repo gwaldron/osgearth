@@ -238,9 +238,9 @@ FeatureModelGraph::setupPaging()
             firstLOD = _options.levels()->chooseLOD( *firstLevel, bs.radius() );
         }
         else if (_source->getFeatureProfile()->getTiled())
-        {            
-            firstLOD = 0;
+        {                        
             firstLevel = &defaultTiledLevel;
+            firstLOD = _source->getFeatureProfile()->getFirstLevel();            
         }
         else
         {

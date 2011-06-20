@@ -84,11 +84,12 @@ namespace osgEarth { namespace Features
         
         osg::Group* createNodeForStyle(const Style& style, const Query& query);
        
-        osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent ) const;
+        osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent, const MapFrame* mapf ) const;
 
         void buildSubTiles(
             unsigned levelIndex, unsigned lod, unsigned tileX, unsigned tileY,
-            const FeatureLevel* nextLevel, unsigned nextLOD, osg::Group* parent);
+            const FeatureLevel* nextLevel, unsigned nextLOD, 
+            const MapFrame* mapFrame, osg::Group* parent);
 
         void redraw();
 

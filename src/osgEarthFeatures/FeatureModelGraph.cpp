@@ -21,6 +21,7 @@
 #include <osgEarthFeatures/CropFilter>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/NodeUtils>
+#include <osgEarth/ElevationQuery>
 #include <osg/PagedLOD>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
@@ -159,7 +160,7 @@ _session( session )
     _usableFeatureExtent = _usableMapExtent.transform( _source->getFeatureProfile()->getSRS() );
 
     // world-space bounds of the feature layer
-    _fullWorldBound = getBoundInWorldCoords( _usableMapExtent );
+    _fullWorldBound = getBoundInWorldCoords( _usableMapExtent, 0L );
 
     // whether to request tiles from the source (if available). if the source is tiled, but the
     // user manually specified schema levels, don't use the tiles.
@@ -176,10 +177,11 @@ FeatureModelGraph::~FeatureModelGraph()
 }
 
 osg::BoundingSphered
-FeatureModelGraph::getBoundInWorldCoords( const GeoExtent& extent ) const
+FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
+                                         const MapFrame*  mapf ) const
 {
     osg::Vec3d center, corner;
-
+    double z = 0.0;
     GeoExtent workingExtent;
 
     if ( extent.getSRS()->isEquivalentTo( _usableMapExtent.getSRS() ) )
@@ -192,8 +194,16 @@ FeatureModelGraph::getBoundInWorldCoords( const GeoExtent& extent ) const
     }
 
     workingExtent.getCentroid( center.x(), center.y() );
+    
+    if ( mapf )
+    {
+        ElevationQuery query( *mapf );
+        query.getElevation( center, mapf->getProfile()->getSRS(), center.z() );
+    }
+
     corner.x() = workingExtent.xMin();
     corner.y() = workingExtent.yMin();
+    corner.z() = z;
 
     if ( _session->getMapInfo().isGeocentric() )
     {
@@ -210,7 +220,9 @@ FeatureModelGraph::setupPaging()
     float maxRange = _options.levels().isSet() && _options.levels()->getNumLevels() > 0 ? _options.levels()->getMaxRange() : FLT_MAX;
     if ( maxRange > 0.0f )
     {
-        osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent );
+        MapFrame mapf = _session->createMapFrame();
+
+        osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent, &mapf );
 
         float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
 
@@ -237,7 +249,7 @@ FeatureModelGraph::setupPaging()
         }
 
         osg::Group* group = new osg::Group();
-        buildSubTiles( 0, 0, 0, 0, firstLevel, firstLOD, group );
+        buildSubTiles( 0, 0, 0, 0, firstLevel, firstLOD, &mapf, group );
 
         this->addChild( group );
     }
@@ -250,6 +262,7 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
                                  unsigned            tileY,
                                  const FeatureLevel* nextLevel,
                                  unsigned            nextLOD,
+                                 const MapFrame*     mapf,
                                  osg::Group*         parent)
 {
     // calculate how many subtiles there will be:
@@ -272,7 +285,7 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
         for( unsigned v = tileY; v < tileY+numTiles; ++v )
         {
             GeoExtent subtileFeatureExtent = s_getTileExtent( nextLOD, u, v, _usableFeatureExtent );
-            osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileFeatureExtent );
+            osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileFeatureExtent, mapf );
 
             std::stringstream buf;
             buf << _uid << "." << nextLevelIndex << "_" << u << "_" << v << ".osgearth_pseudo_fmg";
@@ -338,7 +351,8 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
             lod >= 0 ?
             s_getTileExtent( levelIndex, tileX, tileY, _usableFeatureExtent ) : GeoExtent::INVALID;
 
-        osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent );
+        MapFrame mapf = _session->createMapFrame();
+        osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent, &mapf );
 
         float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
 
@@ -361,7 +375,8 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
             unsigned nextLOD = lod+1;
             if ( nextLOD != ~0 )
             {
-                buildSubTiles( levelIndex+1, levelIndex, tileX, tileY, &nextLevel, nextLOD, group.get() );
+                MapFrame mapf = _session->createMapFrame();
+                buildSubTiles( levelIndex+1, levelIndex, tileX, tileY, &nextLevel, nextLOD, &mapf, group.get() );
 
                 // slap the geometry in there afterwards, if there is any
                 if ( geometry )
@@ -410,7 +425,8 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
                 unsigned nextLOD = _options.levels()->chooseLOD( *nextLevel, _fullWorldBound.radius() );
                 if ( nextLOD != ~0 )
                 {
-                    buildSubTiles( levelIndex+1, lod, tileX, tileY, nextLevel, nextLOD, group.get() );
+                    MapFrame mapf = _session->createMapFrame();
+                    buildSubTiles( levelIndex+1, lod, tileX, tileY, nextLevel, nextLOD, &mapf, group.get() );
 
                     // slap the geometry in there afterwards, if there is any
                     if ( geometry )

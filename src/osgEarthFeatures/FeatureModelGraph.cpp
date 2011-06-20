@@ -232,6 +232,8 @@ FeatureModelGraph::setupPaging()
         FeatureLevel defaultLevel( 0.0f, FLT_MAX );
         FeatureLevel defaultTiledLevel( 0.0f, bs.radius() * tileFactor );
 
+        int firstLevelIndex = 0;
+
         if (_options.levels().isSet() && _options.levels()->getNumLevels() > 0)
         {
             firstLevel = _options.levels()->getLevel( 0 );
@@ -241,6 +243,7 @@ FeatureModelGraph::setupPaging()
         {                        
             firstLevel = &defaultTiledLevel;
             firstLOD = _source->getFeatureProfile()->getFirstLevel();            
+            firstLevelIndex = firstLOD;
         }
         else
         {
@@ -249,7 +252,7 @@ FeatureModelGraph::setupPaging()
         }
 
         osg::Group* group = new osg::Group();
-        buildSubTiles( 0, 0, 0, 0, firstLevel, firstLOD, &mapf, group );
+        buildSubTiles(firstLevelIndex,  0, 0, 0, firstLevel, firstLOD, &mapf, group );
 
         this->addChild( group );
     }
@@ -273,6 +276,7 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
         tileY *= 2;
         numTiles *= 2;
     }
+    
 
     OE_DEBUG << LC 
         << "Building " << numTiles*numTiles << " plods for next level = " << nextLevelIndex

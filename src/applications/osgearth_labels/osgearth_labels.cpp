@@ -172,7 +172,7 @@ createLabels( Map* map )
             continue;
 
         osg::Vec3d worldPoint;
-        if ( !map->mapPointToGeocentricPoint( mapPoint, worldPoint ) )
+        if ( !map->mapPointToWorldPoint( mapPoint, worldPoint ) )
             continue;
 
         // create the label and place it:

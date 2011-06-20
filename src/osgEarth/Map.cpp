@@ -1196,15 +1196,15 @@ Map::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg:
 }
 
 bool
-Map::mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+Map::mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 {
-    return MapInfo(this).mapPointToGeocentricPoint(input, output);
+    return MapInfo(this).mapPointToWorldPoint(input, output);
 }
 
 bool
-Map::geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+Map::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 {
-    return MapInfo(this).geocentricPointToMapPoint(input, output);
+    return MapInfo(this).worldPointToMapPoint(input, output);
 }
 
 //------------------------------------------------------------------------
@@ -1230,33 +1230,37 @@ MapInfo::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, 
 }
 
 bool
-MapInfo::mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+MapInfo::mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 {
-    const SpatialReference* mapSRS =_profile->getSRS();
-    if ( !mapSRS->isGeographic() )
-        return false;
-
-    mapSRS->getEllipsoid()->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( input.y() ), osg::DegreesToRadians( input.x() ), input.z(),
-        output.x(), output.y(), output.z() );
-
+    if ( _isGeocentric )
+    {
+        _profile->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
+            osg::DegreesToRadians( input.y() ), osg::DegreesToRadians( input.x() ), input.z(),
+            output.x(), output.y(), output.z() );
+    }
+    else
+    {
+        output = input;
+    }
     return true;
 }
 
 bool
-MapInfo::geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+MapInfo::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 {
-    const SpatialReference* mapSRS = _profile->getSRS();
-    if ( !mapSRS->isGeographic() )
-        return false;
+    if ( _isGeocentric )
+    { 
+        _profile->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
+            input.x(), input.y(), input.z(),
+            output.y(), output.x(), output.z() );
 
-    mapSRS->getEllipsoid()->convertXYZToLatLongHeight(
-        input.x(), input.y(), input.z(),
-        output.y(), output.x(), output.z() );
-
-    output.y() = osg::RadiansToDegrees(output.y());
-    output.x() = osg::RadiansToDegrees(output.x());
-
+        output.y() = osg::RadiansToDegrees(output.y());
+        output.x() = osg::RadiansToDegrees(output.x());
+    }
+    else
+    {
+        output = input;
+    }
     return true;
 }
 

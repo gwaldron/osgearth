@@ -193,4 +193,6 @@ MarkerFactory::createFromURI( const std::string& uri ) const
         HTTPClient::readNodeFile( _session.valid()? _session->resolveURI(uri) : uri, node );
         return node.release();
     }
+
+    return 0L;
 }

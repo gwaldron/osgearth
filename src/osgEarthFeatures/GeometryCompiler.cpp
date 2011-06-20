@@ -184,8 +184,7 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
                 extrude.setExtrusionHeight( *extrusion->height() );
             if ( extrusion->heightExpression().isSet() )
                 extrude.setExtrusionExpr( *extrusion->heightExpression() );
-            
-            //extrude.setHeightReferenceFrame( *extrusion->heightReference() );
+
             if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
                 extrude.setHeightOffsetExpression( NumericExpression("[__max_z]") );
             extrude.setFlatten( *extrusion->flatten() );

@@ -269,10 +269,13 @@ MeshConsolidator::run( osg::Geode& geode )
                         newpset = remake( static_cast<osg::DrawElementsUByte*>(pset), numVerts, offset );
                     else if ( dynamic_cast<osg::DrawElementsUShort*>(pset) )
                         newpset = remake( static_cast<osg::DrawElementsUShort*>(pset), numVerts, offset );
-                    else
+                    else if ( dynamic_cast<osg::DrawElementsUInt*>(pset) )
                         newpset = remake( static_cast<osg::DrawElementsUInt*>(pset), numVerts, offset );
+                    else if ( dynamic_cast<osg::DrawArrays*>(pset) )
+                        newpset = new osg::DrawArrays( pset->getMode(), offset, geomVerts->size() );
 
-                    newPrimSets.push_back( newpset );
+                    if ( newpset )
+                        newPrimSets.push_back( newpset );
                 }
 
                 offset += geomVerts->size();

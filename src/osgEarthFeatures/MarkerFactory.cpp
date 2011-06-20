@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/MarkerFactory>
+#include <osgEarth/Utils>
 #include <osg/TextureRectangle>
 #include <osg/Depth>
 #include <osg/AutoTransform>
@@ -71,6 +72,8 @@ namespace
         osg::Geode* geode = new osg::Geode;
         geode->addDrawable( geometry );
 
+        //PixelAutoTransform* at = new PixelAutoTransform;
+        //at->setMinPixelWidth( width );
         osg::AutoTransform* at = new osg::AutoTransform;
         at->setAutoScaleToScreen( true );
         at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );

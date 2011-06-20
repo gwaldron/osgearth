@@ -87,6 +87,8 @@ namespace osgEarth
     public:
         StringTokenizer( const std::string& delims =" \t\r\n", const std::string& quotes ="'\"" );
 
+        StringTokenizer( const std::string& input, StringVector& output );
+
         void tokenize( const std::string& input, StringVector& output ) const;
 
         bool& keepEmpties() { return _allowEmpties; }

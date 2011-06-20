@@ -38,7 +38,7 @@ static osg::Image* createDebugImage()
 
 static int s_numDiamonds = 0;
 
-Diamond::Diamond( MeshManager* mesh, osgEarth::TileKey* key, Level level, const std::string& name ) :
+Diamond::Diamond( MeshManager* mesh, const osgEarth::TileKey& key, Level level, const std::string& name ) :
 osg::Referenced(true),
 _mesh( mesh ),
 _key( key ),
@@ -513,12 +513,12 @@ Diamond::refreshDrawable()
     osg::Vec2f offset( 0.0, 0.0 );
     double span = 1.0;
 
-    const TileKey* ssaKey = _currentStateSetOwner->_key.get();
+    const TileKey& ssaKey = _currentStateSetOwner->_key;
     if ( _level > _currentStateSetOwner->_level ) //_currentStateSetOwner != _targetStateSetOwner )
     {
         span = 1.0/(double)(1 << ((_level-_currentStateSetOwner->_level)/2));
-        offset.x() = (_key->getGeoExtent().xMin()-ssaKey->getGeoExtent().xMin())/ssaKey->getGeoExtent().width();
-        offset.y() = (_key->getGeoExtent().yMin()-ssaKey->getGeoExtent().yMin())/ssaKey->getGeoExtent().height();
+        offset.x() = (_key.getExtent().xMin()-ssaKey.getExtent().xMin())/ssaKey.getExtent().width();
+        offset.y() = (_key.getExtent().yMin()-ssaKey.getExtent().yMin())/ssaKey.getExtent().height();
     }
 
     int o = _orientation;
@@ -736,7 +736,7 @@ Diamond::getOrCreateChild( ChildIndex c )
     unsigned short whichParent = c <= 1 ? PARENT_R : PARENT_L;
     osg::ref_ptr<Diamond> qa = d->_a[whichParent].get(); // the common parent
 
-    Diamond* child = new Diamond( _mesh, 0L, d->_level+1 );
+    Diamond* child = new Diamond( _mesh, TileKey(), d->_level+1 );
     //Diamond* child = new Diamond( _mesh, 0L, d->_level+1,  " ("+_name+" + "+d0->_name+") " );
 
     //OE_NOTICE << "...neighbor: " << d0->_name << std::endl;   
@@ -806,7 +806,7 @@ Diamond::getOrCreateChild( ChildIndex c )
                 qa->q(2) == child ? 3 : 1;
         }
 
-        child->_key = qa->_key->createSubkey( quadrant );
+        child->_key = qa->_key.createChildKey( quadrant );
 
         child->_orientation = 
             quadrant == 1 ? 0 :

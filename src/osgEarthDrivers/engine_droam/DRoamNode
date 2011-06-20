@@ -24,7 +24,6 @@
 #include <osg/Geode>
 #include <osg/NodeVisitor>
 #include <osgEarth/Map>
-#include <osgEarth/MapEngine>
 
 /**
  * D-ROAM: A diamond-based continuous manifold terrain engine.
@@ -70,7 +69,6 @@ private:
     osg::ref_ptr<Manifold>            _manifold;
     osg::ref_ptr<MeshManager>         _mesh;
     osg::ref_ptr<osgEarth::Map>       _map;
-    osg::ref_ptr<osgEarth::MapEngine> _engine;
 
 private:
     void update( osg::NodeVisitor* nv );

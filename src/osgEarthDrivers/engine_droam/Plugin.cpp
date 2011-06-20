@@ -19,7 +19,7 @@
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/Registry>
-#include <osgEarth/EarthFile>
+#include <osgEarth/MapNode>
 #include <string>
 #include "DRoamNode"
 
@@ -40,16 +40,23 @@ public:
 
     virtual ReadResult readNode(const std::string& uri, const Options* options) const
     {
-        std::string earthFile = osgDB::getNameLessExtension( uri );
-        osgEarth::EarthFile ef;
-        if ( ef.readXML( earthFile ) )
+        if ( "osgearth_engine_droam" == osgDB::getFileExtension( uri ) )
         {
-            return ReadResult( new DRoamNode( ef.getMap() ) );
+            std::string earthFile = osgDB::getNameLessExtension( uri );
+
+            osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(earthFile);
+            osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode(node.get());
+            if ( mapNode )
+            {
+                return ReadResult( new DRoamNode( mapNode->getMap() ) );
+            }
+            else
+            {
+                return ReadResult::FILE_NOT_FOUND;
+            }
         }
         else
-        {
-            return ReadResult::FILE_NOT_FOUND;
-        }
+            return ReadResult::FILE_NOT_HANDLED;
     }           
 };
 

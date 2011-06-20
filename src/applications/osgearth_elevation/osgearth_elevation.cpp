@@ -31,22 +31,27 @@
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/MapNode>
 #include <osgEarth/FindNode>
+#include <osgEarth/ElevationQuery>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ElevationManager>
-#include <osgEarthDrivers/tms/TMSOptions>
+#include <osgEarthUtil/ObjectLocator>
 #include <sstream>
+#include <iomanip>
 
-using namespace osgEarth::Drivers;
+using namespace osgEarth;
+using namespace osgEarth::Util;
+
+static osgText::Text* s_flagText;
 
 static
-osg::MatrixTransform* createFlag()
+osg::Node* createFlag()
 {
     osg::Cylinder* c = new osg::Cylinder( osg::Vec3d(0,0,0), 2.0f, 250.f );
     osg::Geode* g = new osg::Geode();
     g->addDrawable( new osg::ShapeDrawable( c ) );
     osgText::Text* text = new osgText::Text();
     text->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
-    text->setCharacterSize( 72.f );
+    text->setCharacterSize( 24.f );
+    text->setFont( osgText::readFontFile("arial.ttf") );
     text->setBackdropType( osgText::Text::OUTLINE );
     text->setText( "00000000000000" );
     text->setAutoRotateToScreen( true );
@@ -57,31 +62,25 @@ osg::MatrixTransform* createFlag()
     at->setAutoScaleToScreen( true );
     at->addChild( g );
     at->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
-    osg::MatrixTransform* xf = new osg::MatrixTransform();
-    xf->addChild( at );
-    xf->setDataVariance( osg::Object::DYNAMIC );
-    return xf;
-}
-
-static void
-updateFlag( osg::MatrixTransform* xf, const osg::Matrix& mat, double elev )
-{
-    osg::Geode* g = static_cast<osg::Geode*>( xf->getChild(0)->asGroup()->getChild(0) );
-    std::stringstream buf;
-    buf << elev;
-	std::string bufStr;
-	bufStr = buf.str();
-    static_cast<osgText::Text*>( g->getDrawable(1) )->setText( bufStr );
-    xf->setMatrix( mat );
+    at->setDataVariance( osg::Object::DYNAMIC );
+    //osg::MatrixTransform* xf = new osg::MatrixTransform();
+    //xf->addChild( at );
+    //xf->setDataVariance( osg::Object::DYNAMIC );
+    s_flagText = text;
+    return at;
 }
 
 // An event handler that will print out the elevation at the clicked point
 struct QueryElevationHandler : public osgGA::GUIEventHandler 
 {
-    QueryElevationHandler(osgEarth::Util::ElevationManager* elevMan, 
-                          const osgEarth::SpatialReference* mapSRS,
-                          osg::MatrixTransform* flag )
-        : _mouseDown(false), _elevMan(elevMan), _flag(flag), _mapSRS(mapSRS) { }
+    QueryElevationHandler(const Map* map, ObjectLocator* flagLocator ) 
+        : _mouseDown( false ), 
+          _flagLocator(flagLocator), 
+          _query(map),
+          _mapSRS(map->getProfile()->getSRS())
+    {
+        _query.setMaxTilesToCache(10);
+    }
 
     void update( float x, float y, osgViewer::View* view )
     {
@@ -104,12 +103,22 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             double out_elevation = 0.0;
             double out_resolution = 0.0;
 
-            if ( _elevMan->getPlacementMatrix(
-                lon_deg, lat_deg, 0,
-                query_resolution, NULL,
-                out_mat, out_elevation, out_resolution ) )
+            bool ok = _query.getElevation( 
+                osg::Vec3d(lon_deg, lat_deg, 0), 
+                _mapSRS.get(), 
+                out_elevation, 
+                query_resolution, 
+                &out_resolution );
+
+            if ( ok )
             {
-                updateFlag( _flag.get(), out_mat, out_elevation );
+                _flagLocator->setPosition( osg::Vec3d(lon_deg, lat_deg, out_elevation) );
+
+                std::stringstream buf;
+                buf << std::fixed << std::setprecision(2) 
+                    << "Pos: " << lat_deg << ", " << lon_deg << std::endl
+                    << "Elv: " << out_elevation << "m";
+                s_flagText->setText( buf.str() );
             }
             else
             {
@@ -131,9 +140,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
         return false;
     }
 
-    bool _mouseDown;
-    osg::ref_ptr<osgEarth::Util::ElevationManager> _elevMan;
-    osg::ref_ptr<osg::MatrixTransform> _flag;
+    bool                                 _mouseDown;
+    ElevationQuery                       _query;
+    ObjectLocator*                       _flagLocator;
     osg::ref_ptr<const SpatialReference> _mapSRS;
 };
 
@@ -151,28 +160,16 @@ int main(int argc, char** argv)
 	osgEarth::MapNode* mapNode = NULL;
 
 	osg::Node* loadedNode = osgDB::readNodeFiles( arguments );
-	if (!loadedNode)
-	{
-		// load up a map with an elevation layer:
-		osgEarth::Map* map = new osgEarth::Map();
-
-		// Add some imagery
-		{
-			TMSOptions tms( "http://demo.pelicanmapping.com/rmweb/data/bluemarble-tms/tms.xml" );
-            map->addImageLayer( new osgEarth::ImageLayer( "BLUEMARBLE", tms ) );
-		}
-
-		// Add some elevation
-		{
-			TMSOptions tms( "http://demo.pelicanmapping.com/rmweb/data/srtm30_plus_tms/tms.xml" );
-            map->addElevationLayer( new osgEarth::ElevationLayer( "SRTM", tms ) );
-		}
-		mapNode = new osgEarth::MapNode( map );
-	}
-	else
-	{
+    if (loadedNode)
+    {
 		mapNode = findTopMostNodeOfType<osgEarth::MapNode>( loadedNode );
-	}
+    }
+
+    if ( !mapNode )
+    {
+        OE_WARN << "Unable to load earth file." << std::endl;
+        return -1;
+    }
 
     osg::Group* root = new osg::Group();
 
@@ -180,20 +177,19 @@ int main(int argc, char** argv)
     mapNode->setNodeMask( 0x01 );
     root->addChild( mapNode );
 
+    // the SRS of the map
+    const SpatialReference* mapSRS = mapNode->getMap()->getProfile()->getSRS();
+
     // A flag so we can see where we clicked
-    osg::MatrixTransform* flag = createFlag();
+    ObjectLocatorNode* flag = new ObjectLocatorNode( mapSRS );
+    flag->addChild( createFlag() );
     flag->setNodeMask( 0x02 );
     root->addChild( flag );
 
     viewer.setSceneData( root );
 
-    // AN elevation manager that is tied to the map node:
-    osgEarth::Util::ElevationManager* elevMan = new osgEarth::Util::ElevationManager( mapNode->getMap() );
-    elevMan->setTechnique( osgEarth::Util::ElevationManager::TECHNIQUE_PARAMETRIC );
-    elevMan->setMaxTilesToCache( 10 );
-
     // An event handler that will respond to mouse clicks:
-    viewer.addEventHandler( new QueryElevationHandler( elevMan, mapNode->getMap()->getProfile()->getSRS(), flag ) );
+    viewer.addEventHandler( new QueryElevationHandler( mapNode->getMap(), flag->getLocator() ) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

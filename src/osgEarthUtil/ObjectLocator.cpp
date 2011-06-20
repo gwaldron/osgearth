@@ -7,11 +7,36 @@ using namespace osgEarth::Util;
 
 /***************************************************************************/
 
+namespace
+{
+    void getHPRFromQuat(const osg::Quat& q, double& h, double& p, double& r)
+    {
+        osg::Matrixd rot(q);
+        p = asin(rot(1,2));
+        if( osg::equivalent(osg::absolute(p), osg::PI_2) )
+        {
+            r = 0.0;
+            h = atan2( rot(0,1), rot(0,0) );
+        }
+        else
+        {
+            r = atan2( rot(0,2), rot(2,2) );
+            h = atan2( rot(1,0), rot(1,1) );
+        }
+        h = osg::RadiansToDegrees(h);
+        p = osg::RadiansToDegrees(p);
+        r = osg::RadiansToDegrees(r);
+    }
+}
+
+/***************************************************************************/
+
 ObjectLocator::ObjectLocator(const osgEarth::SpatialReference* mapSRS) :
-_mapSRS( mapSRS ),
+_mapSRS             ( mapSRS ),
 _componentsToInherit( COMP_ALL ),
-_timestamp( 0.0 ),
-_isEmpty( true )
+_timestamp          ( 0.0 ),
+_isEmpty            ( true ),
+_rotOrder           ( HPR )
 {
     if ( !_mapSRS.valid() )
         OE_WARN << LC << "Illegal: cannot create an ObjectLocator with a NULL SRS." << std::endl;
@@ -19,7 +44,8 @@ _isEmpty( true )
 
 ObjectLocator::ObjectLocator(ObjectLocator* parentLoc, unsigned int inheritMask ) :
 _timestamp( 0.0 ),
-_isEmpty( false )
+_isEmpty  ( false ),
+_rotOrder ( HPR )
 {
     setParentLocator( parentLoc, inheritMask );
 }
@@ -30,73 +56,35 @@ ObjectLocator::isEmpty() const
     return _parentLoc.valid() ? _parentLoc->isEmpty() : _isEmpty;
 }
 
-static void
-getHPRFromQuat(const osg::Quat& q, double& h, double& p, double& r)
-{
-    osg::Matrixd rot(q);
-    p = asin(rot(1,2));
-    if( osg::equivalent(osg::absolute(p), osg::PI_2) )
-    {
-        r = 0.0;
-        h = atan2( rot(0,1), rot(0,0) );
-    }
-    else
-    {
-        r = atan2( rot(0,2), rot(2,2) );
-        h = atan2( rot(1,0), rot(1,1) );
-    }
-    h = osg::RadiansToDegrees(h);
-    p = osg::RadiansToDegrees(p);
-    r = osg::RadiansToDegrees(r);
-}
-
-
 void
 ObjectLocator::setParentLocator( ObjectLocator* newParent, unsigned int inheritMask )
 {
-    if ( newParent == this )
-    {
-        OE_WARN << LC << "Illegal state: Locator cannot self-parent" << std::endl;
-        return;
-    }
+  if ( newParent == this )
+  {
+      OE_WARN << LC << "Illegal state, locator cannot be its own parent." << std::endl;
+      return;
+  }
 
-    if ( newParent == 0L )
-    {
-        // when clearing the parent locator, reset the XYZ and HPR to the absolute
-        // values previously derived from the parent.
-        osg::Matrixd mat;
-        if ( getWorldMatrix( mat ) )
-        {
-            _xyz = mat.getTrans();
-            getHPRFromQuat( mat.getRotate(), _hpr[0], _hpr[1], _hpr[2] );
-            _isEmpty = false;
-        }
-        else
-        {
-            _isEmpty = true;
-        }
-    }
-    else
-    {
-        _isEmpty = false;
-    }
+  _parentLoc = newParent;
+  _componentsToInherit = inheritMask;
 
-    _parentLoc = newParent;
-    _componentsToInherit = inheritMask;
+  if ( newParent )
+  {
+    _mapSRS = newParent->getSRS();
+  }
 
-    if ( newParent )
-        _mapSRS = newParent->getSRS();
+  if ( !_mapSRS.valid() )
+  {
+      OE_WARN << "Illegal state, cannot create a Locator with a NULL srs" << std::endl;
+  }
 
-    if ( !_mapSRS.valid() )
-        OE_WARN << LC << "Illegal: cannot create an ObjectLocator with a NULL SRS." << std::endl;
-
-    dirty();
+  dirty();
 }
 
 void
-ObjectLocator::setPosition( const osg::Vec3d& xyz )
+ObjectLocator::setPosition( const osg::Vec3d& pos )
 {
-    _xyz = xyz;
+    _pos = pos;
     _isEmpty = false;
     dirty();
 }
@@ -109,16 +97,68 @@ ObjectLocator::setOrientation( const osg::Vec3d& hpr )
     dirty();
 }
 
-bool 
-ObjectLocator::getWorldMatrix( osg::Matrixd& output, unsigned int inherit ) const
+bool
+ObjectLocator::getLocatorPosition( osg::Vec3d& output ) const
 {
-    bool outputOK = true;
+    if ( !isValid() )
+        return false;
 
-    if ( isEmpty() )
+    output = _pos;
+
+    if ( _parentLoc.valid() && (_componentsToInherit & COMP_POSITION) != 0 )
     {
-        outputOK = false;
+        osg::Vec3d parentPos;
+        _parentLoc->getLocatorPosition( parentPos );
+        output += parentPos;
     }
-    else if ( _mapSRS.valid() )
+
+    return true;
+}
+
+bool
+ObjectLocator::getPositionMatrix( osg::Matrixd& output ) const
+{
+    osg::Vec3d pos;
+    if ( !getLocatorPosition(pos) )
+        return false;
+
+    _mapSRS->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
+        osg::DegreesToRadians(pos.y()),
+        osg::DegreesToRadians(pos.x()),
+        pos.z(),
+        output );
+
+    return true;
+}
+
+bool
+ObjectLocator::getLocatorOrientation( osg::Vec3d& output ) const
+{
+    if ( !isValid() )
+        return false;
+
+    output = _hpr;
+
+    if ( _parentLoc.valid() && (_componentsToInherit & COMP_ORIENTATION) != 0 )
+    {
+        osg::Vec3d parentHPR;
+        _parentLoc->getLocatorOrientation( parentHPR );
+        output += parentHPR;
+    }
+
+    return true;
+}
+
+bool
+ObjectLocator::getOrientationMatrix( osg::Matrixd& output, unsigned inherit ) const
+{
+    if ( !isValid() )
+        return false;
+
+    if ( (inherit & COMP_ORIENTATION) == 0 )
+        return true;
+
+    if ( _hpr[0] != 0.0 || _hpr[1] != 0.0 || _hpr[2] != 0.0 )
     {
         // first figure out the orientation
         osg::Quat azim_q;
@@ -133,49 +173,40 @@ ObjectLocator::getWorldMatrix( osg::Matrixd& output, unsigned int inherit ) cons
         if ( inherit & COMP_ROLL )
             roll_q = osg::Quat( osg::DegreesToRadians(_hpr[2]), osg::Vec3d(0,1,0) );
 
-        osg::Matrix rot = osg::Matrixd( azim_q * pitch_q * roll_q );
-        osg::Quat localRot = osg::Matrixd::inverse(rot).getRotate();
+        // these look backwards, but it's actually a fast way to avoid inverting a matrix
+        if ( _rotOrder == HPR )
+            output.set( roll_q.conj() * pitch_q.conj() * azim_q.conj() );
+        else if ( _rotOrder == RPH )
+            output.set( azim_q.conj() * pitch_q.conj() * roll_q.conj() );
 
-
-        if ( !_parentLoc.valid() )
-        {
-            // top-level locator is in absolute map coordinates.
-            osg::Matrixd local2World;
-
-            if ( inherit & COMP_POSITION )
-            {
-                _mapSRS->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
-                    osg::DegreesToRadians( _xyz[1] ), osg::DegreesToRadians( _xyz[0] ), _xyz[2],
-                    local2World );
-            }
-            output =
-                osg::Matrixd::rotate( localRot ) * 
-                local2World;        
-        }
-        else // if ( parentLoc_.valid() )
-        {
-            osg::Matrixd parentMat;
-            if ( _parentLoc->getWorldMatrix( parentMat, _componentsToInherit ) )
-            {
-                // offset locator is relative to the parent, and the pos/ori are in platform-local coords.
-                output = 
-                    osg::Matrixd::translate( _xyz ) * 
-                    osg::Matrixd::rotate( localRot ) *
-                    parentMat;
-            }
-            else
-            {
-                outputOK = false;
-            }
-        }
     }
-    else
+
+    if ( _parentLoc.valid() && (_componentsToInherit * COMP_ORIENTATION) != 0 )
     {
-        outputOK = false;
-        OE_WARN << LC << "Illegal state: No map SRS." << std::endl;
+        osg::Matrixd parentRot;
+        if ( _parentLoc->getOrientationMatrix(parentRot, _componentsToInherit) )
+            output = output * parentRot;
     }
 
-    return outputOK;
+    return true;
+}
+
+bool
+ObjectLocator::getLocatorMatrix( osg::Matrixd& output, unsigned comps ) const
+{
+    bool ok = true;
+    osg::Matrixd pos, rot;
+
+    if ( comps & COMP_POSITION )
+        if ( !getPositionMatrix(pos) )
+            ok = false;
+
+    if ( comps & COMP_ORIENTATION )
+        if ( !getOrientationMatrix(rot, comps) )
+            ok = false;
+
+    output = rot * pos;
+    return ok;
 }
 
 bool
@@ -216,6 +247,12 @@ _matrixRevision( -1 )
     setLocator( locator );
 }
 
+ObjectLocatorNode::ObjectLocatorNode( const SpatialReference* srs ) :
+_matrixRevision( -1 )
+{
+    setLocator( new ObjectLocator(srs) );
+}
+
 void
 ObjectLocatorNode::setLocator( ObjectLocator* locator )
 {
@@ -230,7 +267,7 @@ ObjectLocatorNode::update()
     if ( _locator.valid() && _locator->outOfSyncWith( _matrixRevision ) )
     {
         osg::Matrix mat;
-        if ( _locator->getWorldMatrix( mat ) )
+        if ( _locator->getLocatorMatrix( mat ) )
         {
             this->setMatrix( mat );
             this->dirtyBound();

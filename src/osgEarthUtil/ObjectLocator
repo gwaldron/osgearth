@@ -26,13 +26,19 @@ namespace osgEarth { namespace Util
             COMP_ALL            = COMP_POSITION | COMP_ORIENTATION
         };
 
+        /** The order in which rotation are calculated */
+        enum RotationOrder {
+            HPR,
+            RPH
+        };
+
     public:
 
         /**
          * Constructs a new locator that will generate positional matricies based on
-         * the specified SRS.
+         * the specified SRS and rotation order.
          */
-        ObjectLocator(const osgEarth::SpatialReference* mapSRS );
+        ObjectLocator( const osgEarth::SpatialReference* mapSRS );
 
         /**
          * Constucts a new relative locator that inherits the mask of specified
@@ -45,7 +51,7 @@ namespace osgEarth { namespace Util
          * this locator has a parent). Units conform to this Locator's SRS.
          */
         void setPosition( const osg::Vec3d& pos );
-        const osg::Vec3d& getPosition() const { return _xyz; }
+        const osg::Vec3d& getPosition() const { return _pos; }
 
         /**
          * Sets the absolute OR relative orientation of this locator (depending on whether
@@ -60,6 +66,12 @@ namespace osgEarth { namespace Util
          */
         void setTime( double t ) { _timestamp = t; }
         double getTime() const { return _timestamp; }
+
+        /**
+         * The order in which to calculate heading, pitch, and roll rotations
+         */
+        void setRotationOrder( RotationOrder value ) { _rotOrder = value; }
+        RotationOrder getRotationOrder() const { return _rotOrder; }
 
         /**
          * The optional parent locator. If a Locator has a parent, it inherits position and
@@ -80,13 +92,40 @@ namespace osgEarth { namespace Util
         /** Whether the locator contains a valid position/orientation. */
         bool isEmpty() const;
 
+        /** Whether this location contains valid data */
+        bool isValid() const { return !_isEmpty && _mapSRS.valid(); }
+
     public:
+
         /**
-         * Creates a position/orientation matrix for this locator. You can specifiy location
-         * components if you wish to only use part of the locator information in the matrix.
-         * This matrix is suitable for use in an osg::MatrixTransform.
+         * Gets the aggregate position represented by this locator,
+         * returning true upon success.
          */
-        virtual bool getWorldMatrix( osg::Matrixd& out_matrix, unsigned int comps =COMP_ALL ) const;
+        bool getLocatorPosition( osg::Vec3d& output ) const;
+
+        /**
+         * Gets the aggregate positioning matrix for this locator,
+         * returning true upon success.
+         */
+        bool getPositionMatrix( osg::Matrixd& output ) const;
+
+        /**
+         * Gets the aggregate orientation (HPR degrees) represented by this locator,
+         * returning true upon success.
+         */
+        bool getLocatorOrientation( osg::Vec3d& output ) const;
+
+        /**
+         * Gets the aggregate orientation matrix for this locator,
+         * returning true upon success.
+         */
+        bool getOrientationMatrix( osg::Matrixd& output, unsigned inherit =COMP_ALL ) const;
+
+        /**
+         * Gets a matrix that can be used to position and orient an object corresponding
+         * to this locator, returning true upon success.
+         */
+        bool getLocatorMatrix( osg::Matrixd& output, unsigned components =COMP_ALL ) const;
 
     public:
         //override
@@ -97,7 +136,8 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<const osgEarth::SpatialReference> _mapSRS;
         osg::ref_ptr<ObjectLocator> _parentLoc;
         unsigned int _componentsToInherit; // Locator::Components mask
-        osg::Vec3d _xyz;
+        RotationOrder _rotOrder;
+        osg::Vec3d _pos;
         osg::Vec3d _hpr;
         double _timestamp;
         bool _isEmpty;
@@ -112,6 +152,7 @@ namespace osgEarth { namespace Util
     public:
         ObjectLocatorNode();
         ObjectLocatorNode( ObjectLocator* locator );
+        ObjectLocatorNode( const SpatialReference* srs );
         ObjectLocatorNode( const ObjectLocatorNode& rhs, const osg::CopyOp& =osg::CopyOp::SHALLOW_COPY );
         META_Node(osgEarthUtil, ObjectLocatorNode);
 

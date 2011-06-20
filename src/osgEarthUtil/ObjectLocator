@@ -2,12 +2,14 @@
 #define OSGEARTH_UTIL_OBJECT_LOCATOR_H
 
 #include <osgEarthUtil/Common>
+#include <osgEarth/Map>
 #include <osgEarth/Revisioning>
-#include <osgEarth/SpatialReference>
 #include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     /**
      * ObjectLocator - a revisioned object that generates a positional matrix for a node.
      */
@@ -38,7 +40,7 @@ namespace osgEarth { namespace Util
          * Constructs a new locator that will generate positional matricies based on
          * the specified SRS and rotation order.
          */
-        ObjectLocator( const osgEarth::SpatialReference* mapSRS );
+        ObjectLocator( const osgEarth::Map* map );
 
         /**
          * Constucts a new relative locator that inherits the mask of specified
@@ -86,14 +88,14 @@ namespace osgEarth { namespace Util
         void setComponentsToInherit( unsigned int compMask );
         unsigned int getComponentsToInherit() const { return _componentsToInherit; }
 
-        /** Gets the SRS associated with this locator. */
-        const osgEarth::SpatialReference* getSRS() const { return _mapSRS.get(); }
+        /** Gets the map associated with this locator. */
+        const Map* getMap() const { return _map.get(); }
 
         /** Whether the locator contains a valid position/orientation. */
         bool isEmpty() const;
 
         /** Whether this location contains valid data */
-        bool isValid() const { return !_isEmpty && _mapSRS.valid(); }
+        bool isValid() const { return !_isEmpty && _map.valid(); }
 
     public:
 
@@ -133,7 +135,7 @@ namespace osgEarth { namespace Util
         virtual bool inSyncWith( int exRev ) const;
 
     private:
-        osg::ref_ptr<const osgEarth::SpatialReference> _mapSRS;
+        osg::observer_ptr<const osgEarth::Map> _map;
         osg::ref_ptr<ObjectLocator> _parentLoc;
         unsigned int _componentsToInherit; // Locator::Components mask
         RotationOrder _rotOrder;
@@ -152,7 +154,7 @@ namespace osgEarth { namespace Util
     public:
         ObjectLocatorNode();
         ObjectLocatorNode( ObjectLocator* locator );
-        ObjectLocatorNode( const SpatialReference* srs );
+        ObjectLocatorNode( const Map* map );
         ObjectLocatorNode( const ObjectLocatorNode& rhs, const osg::CopyOp& =osg::CopyOp::SHALLOW_COPY );
         META_Node(osgEarthUtil, ObjectLocatorNode);
 

@@ -31,15 +31,15 @@ namespace
 
 /***************************************************************************/
 
-ObjectLocator::ObjectLocator(const osgEarth::SpatialReference* mapSRS) :
-_mapSRS             ( mapSRS ),
+ObjectLocator::ObjectLocator(const osgEarth::Map* map) :
+_map                ( map ),
 _componentsToInherit( COMP_ALL ),
 _timestamp          ( 0.0 ),
 _isEmpty            ( true ),
 _rotOrder           ( HPR )
 {
-    if ( !_mapSRS.valid() )
-        OE_WARN << LC << "Illegal: cannot create an ObjectLocator with a NULL SRS." << std::endl;
+    if ( !_map.valid() )
+        OE_WARN << LC << "Illegal: cannot create an ObjectLocator with a NULL Map." << std::endl;
 }
 
 ObjectLocator::ObjectLocator(ObjectLocator* parentLoc, unsigned int inheritMask ) :
@@ -48,6 +48,7 @@ _isEmpty  ( false ),
 _rotOrder ( HPR )
 {
     setParentLocator( parentLoc, inheritMask );
+    _map = parentLoc->_map.get();
 }
 
 bool
@@ -59,26 +60,26 @@ ObjectLocator::isEmpty() const
 void
 ObjectLocator::setParentLocator( ObjectLocator* newParent, unsigned int inheritMask )
 {
-  if ( newParent == this )
-  {
-      OE_WARN << LC << "Illegal state, locator cannot be its own parent." << std::endl;
-      return;
-  }
+    if ( newParent == this )
+    {
+        OE_WARN << LC << "Illegal state, locator cannot be its own parent." << std::endl;
+        return;
+    }
 
-  _parentLoc = newParent;
-  _componentsToInherit = inheritMask;
+    _parentLoc = newParent;
+    _componentsToInherit = inheritMask;
 
-  if ( newParent )
-  {
-    _mapSRS = newParent->getSRS();
-  }
+    if ( newParent )
+    {
+        _map = newParent->_map.get();
+    }
 
-  if ( !_mapSRS.valid() )
-  {
-      OE_WARN << "Illegal state, cannot create a Locator with a NULL srs" << std::endl;
-  }
+    if ( !_map.valid() )
+    {
+        OE_WARN << "Illegal state, cannot create a Locator with a NULL srs" << std::endl;
+    }
 
-  dirty();
+    dirty();
 }
 
 void
@@ -122,11 +123,18 @@ ObjectLocator::getPositionMatrix( osg::Matrixd& output ) const
     if ( !getLocatorPosition(pos) )
         return false;
 
-    _mapSRS->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
-        osg::DegreesToRadians(pos.y()),
-        osg::DegreesToRadians(pos.x()),
-        pos.z(),
-        output );
+    if ( _map->isGeocentric() )
+    {
+        _map->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
+            osg::DegreesToRadians(pos.y()),
+            osg::DegreesToRadians(pos.x()),
+            pos.z(),
+            output );
+    }
+    else
+    {
+        output.makeTranslate(pos);
+    }
 
     return true;
 }
@@ -247,10 +255,10 @@ _matrixRevision( -1 )
     setLocator( locator );
 }
 
-ObjectLocatorNode::ObjectLocatorNode( const SpatialReference* srs ) :
+ObjectLocatorNode::ObjectLocatorNode( const Map* map ) :
 _matrixRevision( -1 )
 {
-    setLocator( new ObjectLocator(srs) );
+    setLocator( new ObjectLocator(map) );
 }
 
 void

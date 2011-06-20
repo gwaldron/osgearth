@@ -66,9 +66,9 @@ public:
             {
                 // clamp the point to the ellipsoid in geocentric mode.
                 osg::Vec3d centroidMap;
-                context.getSession()->getMapInfo().geocentricPointToMapPoint( centroid, centroidMap );
+                context.getSession()->getMapInfo().worldPointToMapPoint( centroid, centroidMap );
                 centroidMap.z() = 0.0;
-                context.getSession()->getMapInfo().mapPointToGeocentricPoint( centroidMap, centroid );
+                context.getSession()->getMapInfo().mapPointToWorldPoint( centroidMap, centroid );
             }                
 
             const std::string& value = feature->eval( contentExpr );

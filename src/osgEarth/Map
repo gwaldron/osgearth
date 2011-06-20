@@ -355,16 +355,14 @@ namespace osgEarth
         bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
 
         /**
-         * Convenience function to convert a point (in map coordinates) to geocentric coordinates.
-         * Only valid for geocentric maps.
+         * Convenience function to convert a point (in map coordinates) to world-space (XYZ) coordinates.
          */
-        bool mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
 
         /**
-         * Convenience function to convert a geocentric point to map coordinates.
-         * This is only valid for geocentric maps.
+         * Convenience function to convert a world-space (XYZ) point to map coordinates.
          */
-        bool geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.
@@ -434,8 +432,8 @@ namespace osgEarth
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }        
         
         bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
-        bool mapPointToGeocentricPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
-        bool geocentricPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
 
     private:
         osg::ref_ptr<const Profile> _profile;

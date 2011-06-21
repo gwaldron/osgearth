@@ -37,27 +37,6 @@ using namespace osgEarth::Drivers;
 
 namespace
 {
-    class GeomFeatureNodeFactory : public FeatureNodeFactory
-    {
-    public:
-        GeomFeatureNodeFactory( const FeatureGeomModelOptions& options )
-            : _options( options ) { }
-
-        bool createOrUpdateNode(       
-                FeatureCursor*            features,
-                const Style&              style,
-                const FilterContext&      context,
-                osg::ref_ptr<osg::Node>&  node )
-        {
-            GeometryCompiler compiler( _options.compilerOptions() );
-            node = compiler.compile( features, style, context );
-            return node.valid();
-        }
-
-    private:
-        FeatureGeomModelOptions _options;
-    };
-
     //------------------------------------------------------------------------
 
     /** The model source implementation for feature_geom */
@@ -82,7 +61,7 @@ namespace
         //override
         FeatureNodeFactory* createFeatureNodeFactory()
         {
-            return new GeomFeatureNodeFactory( _options );
+            return new GeomFeatureNodeFactory( _options.compilerOptions() );
         }
 
     private:

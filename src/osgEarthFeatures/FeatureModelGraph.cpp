@@ -139,7 +139,8 @@ _source ( source ),
 _options( options ),
 _factory( factory ),
 _styles ( styles ),
-_session( session )
+_session( session ),
+_dirty(false)
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
@@ -703,7 +704,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
 void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
-    if (_source->outOfSyncWith(_revision))
+    if (_source->outOfSyncWith(_revision) || _dirty)
     {
         redraw();
     }
@@ -730,5 +731,19 @@ FeatureModelGraph::redraw()
     }
 
     _source->sync( _revision );
+    _dirty = false;
+}
+
+const StyleSheet& 
+FeatureModelGraph::getStyles()
+{
+    return _styles;
+}
+
+void
+FeatureModelGraph::setStyle(const StyleSheet& styles)
+{
+    _styles = styles;
+    _dirty = true;
 }
 

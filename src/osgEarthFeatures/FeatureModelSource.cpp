@@ -179,3 +179,20 @@ FeatureModelSource::createNode( ProgressCallback* progress )
 
     return graph;
 }
+
+//------------------------------------------------------------------------
+GeomFeatureNodeFactory::GeomFeatureNodeFactory( const GeometryCompilerOptions& options )
+            : _options( options ) 
+{ 
+}
+
+bool GeomFeatureNodeFactory::createOrUpdateNode(       
+    FeatureCursor*            features,
+    const Style&              style,
+    const FilterContext&      context,
+    osg::ref_ptr<osg::Node>&  node )
+{
+    GeometryCompiler compiler( _options );
+    node = compiler.compile( features, style, context );
+    return node.valid();
+}

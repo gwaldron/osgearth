@@ -69,6 +69,10 @@ namespace osgEarth { namespace Features
          */
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
 
+        const StyleSheet& getStyles();
+        void setStyle(const StyleSheet& styles);
+
+
         virtual void traverse(osg::NodeVisitor& nv);
 
     protected:
@@ -108,6 +112,7 @@ namespace osgEarth { namespace Features
         osg::BoundingSphered             _fullWorldBound;
         bool                             _useTiledSource;
         osgEarth::Revision               _revision;
+        bool                             _dirty;
     };
 
 } } // namespace osgEarth::Features

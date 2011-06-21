@@ -31,6 +31,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/FeatureListSource>
+#include <osgEarthFeatures/GeometryCompiler>
 
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
@@ -47,6 +48,15 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+
+osg::Vec4
+randomColor()
+{
+    float r = (float)rand() / (float)RAND_MAX;
+    float g = (float)rand() / (float)RAND_MAX;
+    float b = (float)rand() / (float)RAND_MAX;
+    return osg::Vec4(r,g,b,1.0f);
+}
 
 
 static int s_fid = 0;
@@ -270,6 +280,38 @@ struct EditModeHandler : public ControlEventHandler
     }
 };
 
+struct ChangeStyleHandler : public ControlEventHandler
+{
+    ChangeStyleHandler( FeatureModelGraph * features, const StyleSheet& styleSheet):
+_features( features),
+_styleSheet(styleSheet)
+    { 
+    }
+
+    void onClick( Control* control, int mouseButtonMask ) {
+        _features->setStyle( _styleSheet );
+    }
+
+    osg::ref_ptr< FeatureModelGraph > _features;
+    StyleSheet _styleSheet;
+};
+
+StyleSheet buildStyleSheet( const osg::Vec4 &color, float width )
+{
+    // Define a style for the feature data. Since we are going to render the
+    // vectors as lines, configure the line symbolizer:
+    Style style;
+
+    LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
+    ls->stroke()->color() = color;
+    ls->stroke()->width() = width;
+    style.addSymbol( ls );
+
+    StyleSheet styleSheet;
+    styleSheet.addStyle( style );
+    return styleSheet;
+}
+
 
 //
 // NOTE: run this sample from the repo/tests directory.
@@ -322,22 +364,26 @@ int main(int argc, char** argv)
 
     s_mapNode = new MapNode( map, mapNodeOptions );
     s_mapNode->setNodeMask( 0x01 );
-    
-
-    FeatureGeomModelOptions worldOpt;
-    worldOpt.featureSource() = s_source;
-    worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
-    worldOpt.styles()->addStyle( style );
-    worldOpt.enableLighting() = false;
-    worldOpt.depthTestEnabled() = false;
-
-    ModelLayerOptions options( "my features", worldOpt );
-    options.overlay() = useOverlay;
-    ModelLayer* layer = new ModelLayer(options);
-    map->addModelLayer( layer );
+  
 
     s_root = new osg::Group;
     s_root->addChild( s_mapNode );
+
+    StyleSheet styleSheet;
+    styleSheet.addStyle( style );
+
+    FeatureModelGraph* graph = new FeatureModelGraph( 
+        s_source.get(), 
+        FeatureModelSourceOptions(), 
+        new GeomFeatureNodeFactory(),
+        styleSheet,
+        new Session( map ) );
+
+    graph->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    graph->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+
+
+    s_root->addChild( graph );
 
     //Setup the controls
     ControlCanvas* canvas = ControlCanvas::get( &viewer );
@@ -345,6 +391,8 @@ int main(int argc, char** argv)
     Grid *toolbar = createToolBar( );
     canvas->addControl( toolbar );
     canvas->setNodeMask( 0x1 << 1 );
+
+
 
     int col = 0;
     LabelControl* addVerts = new LabelControl("Add Verts");
@@ -355,7 +403,33 @@ int main(int argc, char** argv)
     toolbar->setControl(col++, 0, edit );    
     edit->addEventHandler(new EditModeHandler());
 
-       
+    unsigned int row = 0;
+    Grid *styleBar = createToolBar( );
+    styleBar->setPosition(0, 50);
+    canvas->addControl( styleBar );
+    
+    //Make a list of styles
+    styleBar->setControl(0, row++, new LabelControl("Styles") );    
+
+    int numStyles = 8;
+    for (unsigned int i = 0; i < numStyles; ++i)
+    {
+        float w = 50;
+        osg::Vec4 color = randomColor();
+
+        float widths[3] = {2, 4, 8};
+
+        unsigned int r = row++;
+        for (unsigned int j = 0; j < 3; j++) 
+        {
+            Control* l = new Control();            
+            l->setBackColor( color );
+            l->addEventHandler(new ChangeStyleHandler(graph, buildStyleSheet( color, widths[j] ) ));
+            l->setSize(w,5 * widths[j]);
+            styleBar->setControl(j, r, l);
+        }
+    }
+   
     
     viewer.setSceneData( s_root );
     viewer.setCameraManipulator( new EarthManipulator() );

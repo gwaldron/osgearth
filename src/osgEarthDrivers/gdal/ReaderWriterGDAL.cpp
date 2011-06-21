@@ -615,20 +615,23 @@ public:
       _warpedDS(NULL),
       _options(options),
       _maxDataLevel(30)
-    {
-        //nop
+    {    
     }
 
-    ~GDALTileSource()
-    {
+    virtual ~GDALTileSource()
+    {             
         GDAL_SCOPED_LOCK;
 
         if (_warpedDS != _srcDS)
         {
-            delete _warpedDS;
+            GDALClose( _warpedDS );
         }
+
         //Close the datasets if it exists
-        if (_srcDS) delete _srcDS;
+        if (_srcDS)
+        {     
+            GDALClose(_srcDS);
+        }
     }
 
 

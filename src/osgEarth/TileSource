@@ -348,7 +348,7 @@ namespace osgEarth
    
     protected:
 
-        ~TileSource();
+        virtual ~TileSource();
 
 		/**
 		 * Creates an image for the given TileKey.

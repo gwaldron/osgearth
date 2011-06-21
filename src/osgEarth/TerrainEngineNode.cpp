@@ -76,6 +76,21 @@ TerrainEngineNode::ImageLayerController::onEnabledChanged( TerrainLayer* layer )
         OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
 }
 
+TerrainEngineNode::~TerrainEngineNode()
+{
+    //Remove any callbacks added to the image layers
+    if (_map.valid())
+    {
+        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::~TerrainEngineNode" );
+        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        {
+            i->get()->removeCallback( _imageLayerController.get() );
+        }
+    }
+
+
+}
+
 // this handler adjusts the uniform set when a terrain layer's "opacity" value changes
 void
 TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )

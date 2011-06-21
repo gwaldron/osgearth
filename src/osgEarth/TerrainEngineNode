@@ -65,6 +65,8 @@ namespace osgEarth
 
         TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
 
+        virtual ~TerrainEngineNode();
+
     public: // osg::Node overrides
         virtual osg::BoundingSphere computeBound() const;
         virtual void traverse( osg::NodeVisitor& );

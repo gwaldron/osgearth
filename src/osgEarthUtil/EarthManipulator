@@ -145,6 +145,14 @@ namespace osgEarth { namespace Util
                        ((_modkey_mask|osgGA::GUIEventAdapter::MODKEY_NUM_LOCK) == (rhs._modkey_mask|osgGA::GUIEventAdapter::MODKEY_NUM_LOCK));
             }
 
+            inline bool operator < (const InputSpec& rhs) const {
+                if ( _event_type < rhs._event_type) return true;
+                else if ( _event_type > rhs._event_type ) return false;
+                else if ( _input_mask < rhs._input_mask ) return true;
+                else if ( _input_mask > rhs._input_mask ) return false;
+                else return ( _modkey_mask < rhs._modkey_mask );
+            }
+
             int _event_type;
             int _input_mask;
             int _modkey_mask;
@@ -161,7 +169,7 @@ namespace osgEarth { namespace Util
 
         struct Action
         {
-            Action( ActionType type );
+            Action( ActionType type =ACTION_NULL );
             Action( ActionType type, const ActionOptions& options );
             Action( const Action& rhs );
             ActionType _type;
@@ -459,7 +467,8 @@ namespace osgEarth { namespace Util
             friend class EarthManipulator;
 
             typedef std::pair<InputSpec,Action> ActionBinding;
-            typedef std::vector<ActionBinding> ActionBindings;
+            //typedef std::vector<ActionBinding> ActionBindings;
+            typedef std::map<InputSpec,Action> ActionBindings;
 
             // Gets the action bound to the provided input specification, or NullAction if there is
             // to matching binding.

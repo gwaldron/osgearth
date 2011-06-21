@@ -286,7 +286,10 @@ EarthManipulator::Settings::bind( const InputSpec& spec, const Action& action )
     InputSpecs specs;
     expandSpec( spec, specs );
     for( InputSpecs::const_iterator i = specs.begin(); i != specs.end(); i++ )
-        _bindings.push_back( ActionBinding( *i, action ) );
+    {
+        _bindings[*i] = action; //ActionBinding(*i, action);
+    }
+        //_bindings.push_back( ActionBinding( *i, action ) );
 }
 
 void
@@ -342,10 +345,12 @@ const EarthManipulator::Action&
 EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey_mask) const
 {
     InputSpec spec( event_type, input_mask, modkey_mask );
-    for( ActionBindings::const_iterator i = _bindings.begin(); i != _bindings.end(); i++ )
-        if ( i->first == spec )
-            return i->second;
-    return NullAction;
+    ActionBindings::const_iterator i = _bindings.find(spec);
+    return i != _bindings.end() ? i->second : NullAction;
+    //for( ActionBindings::const_iterator i = _bindings.begin(); i != _bindings.end(); i++ )
+    //    if ( i->first == spec )
+    //        return i->second;
+    //return NullAction;
 }
 
 void

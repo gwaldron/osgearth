@@ -29,6 +29,15 @@ _trimTokens  ( true )
     addQuotes( quotes );
 }
 
+StringTokenizer::StringTokenizer( const std::string& input, StringVector& output ) :
+_allowEmpties( true ),
+_trimTokens  ( true )
+{
+    addDelims( " \t\r\n" );
+    addQuotes( "'\"" );
+    tokenize( input, output );
+}
+
 void
 StringTokenizer::addDelim( char delim, bool keep )
 {
@@ -58,6 +67,8 @@ StringTokenizer::addQuotes( const std::string& quotes, bool keep )
 void
 StringTokenizer::tokenize( const std::string& input, StringVector& output ) const
 {
+    output.clear();
+
     std::stringstream buf;
     bool quoted = false;
     for( std::string::const_iterator i = input.begin(); i != input.end(); ++i )

@@ -73,6 +73,11 @@ GeometryCompilerOptions::mergeConfig( const Config& conf )
 
 //-----------------------------------------------------------------------
 
+GeometryCompiler::GeometryCompiler()
+{
+    //nop
+}
+
 GeometryCompiler::GeometryCompiler( const GeometryCompilerOptions& options ) :
 _options( options )
 {

@@ -169,6 +169,8 @@ _dirty(false)
     if ( _useTiledSource && options.levels().isSet() && options.levels()->getNumLevels() > 0 )
         _useTiledSource = false;
 
+    setNumChildrenRequiringUpdateTraversal( 1 );
+
     redraw();
 }
 
@@ -704,9 +706,12 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
 void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
-    if (_source->outOfSyncWith(_revision) || _dirty)
+    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
     {
-        redraw();
+        if (_source->outOfSyncWith(_revision) || _dirty)
+        {
+            redraw();
+        }
     }
     osg::Group::traverse(nv);
 }

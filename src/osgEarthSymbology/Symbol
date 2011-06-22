@@ -75,15 +75,19 @@ namespace osgEarth { namespace Symbology
         optional<float>& width() { return _width; }        
         const optional<float>& width() const { return _width; }
 
+        optional<unsigned short>& stipple() { return _stipple;}
+        const optional<unsigned short>& stipple() const { return _stipple; }
+
     public:
         virtual Config getConfig() const;            
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        osg::Vec4f              _color;
-        optional<LineCapStyle>  _lineCap;
-        optional<LineJoinStyle> _lineJoin;
-        optional<float>         _width;
+        osg::Vec4f               _color;
+        optional<LineCapStyle>   _lineCap;
+        optional<LineJoinStyle>  _lineJoin;
+        optional<float>          _width;
+        optional<unsigned short> _stipple;
     };
 
     //--------------------------------------------------------------------

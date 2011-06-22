@@ -1125,6 +1125,15 @@ Container::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa
     return handled ? handled : Control::handle( ea, aa, cx );
 }
 
+void
+Container::addControls( const ControlVector& controls )
+{
+    for( ControlVector::const_iterator i = controls.begin(); i != controls.end(); ++i )
+    {
+        addControl( i->get() );
+    }
+}
+
 // ---------------------------------------------------------------------------
 
 VBox::VBox()
@@ -1432,7 +1441,21 @@ void
 Grid::addControl( Control* control, int index )
 {
     // creates a new row and puts the control in its first column
-    setControl( _rows.size(), 0, control );
+    setControl( 0, _rows.size(), control );
+}
+
+void
+Grid::addControls( const ControlVector& controls )
+{
+    unsigned row = _rows.size();
+    unsigned col = 0;
+    for( ControlVector::const_iterator i = controls.begin(); i != controls.end(); ++i, ++col )
+    {
+        if ( i->valid() )
+        {
+            setControl( col, row, i->get() );
+        }
+    }
 }
 
 void

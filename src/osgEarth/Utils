@@ -191,11 +191,18 @@ namespace osgEarth
          */
         void setMinPixelWidth( double pixels ) { _minPixels = pixels; }
 
+        /**
+         * Forces a recalculation of the autoscale on the next traversal
+         * (this usually doesn't happen unless the camera moves)
+         */
+        void dirty();
+
     public: // override
         void accept( osg::NodeVisitor& nv );
 
     protected:
         double _minPixels;
+        bool   _dirty;
     };
 }
 

@@ -231,6 +231,8 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::ref_ptr<osg::Geometry> _geom;
     };
 
+    typedef std::vector< osg::ref_ptr<Control> > ControlVector;
+
     /**
      * Control that contains a text string, obviously
      */
@@ -409,6 +411,9 @@ namespace osgEarth { namespace Util { namespace Controls
         // default add function.
         virtual void addControl( Control* control, int index =-1 ) =0;
 
+        // default multiple-add function.
+        virtual void addControls( const ControlVector& controls );
+
         // access to the child list.
         virtual const ControlList& children() const =0;
 
@@ -495,10 +500,16 @@ namespace osgEarth { namespace Util { namespace Controls
 
         void setControl( int col, int row, Control* control );
 
+        unsigned getNumRows() const { return _rows.size(); }
+        unsigned getNumColumns() const { return _colWidths.size(); }
+
     public: // Container
         virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _children; }
         virtual void clearControls();
+
+        // adds the controls as a row at the bottom of the grid.
+        virtual void addControls( const ControlVector& controls );
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );

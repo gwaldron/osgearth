@@ -69,7 +69,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
 
             const osg::Matrix& projection = *(cs->getProjectionMatrix());
 
-            bool doUpdate = _firstTimeToInitEyePoint;
+            bool doUpdate = _firstTimeToInitEyePoint || _dirty;
             if ( !_firstTimeToInitEyePoint )
             {
                 osg::Vec3d dv = _previousEyePoint - eyePoint;
@@ -98,7 +98,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
             {            
                 if ( getAutoScaleToScreen() )
                 {
-                    double radius = getChild(0) ? getChild(0)->getBound().radius() : 0.48;
+                    double radius = getNumChildren() > 0 ? getChild(0)->getBound().radius() : 0.48;
 
                     double pixels = cs->pixelSize( getPosition(), radius );
 
@@ -122,10 +122,18 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 _matrixDirty = true;
             }
 
+            _dirty = false;
         }
     }
 
     // finally, skip AT's accept and do Transform.
     Transform::accept(nv);
 
+}
+
+void
+PixelAutoTransform::dirty()
+{
+    _dirty = true;
+    setCullingActive( false );
 }

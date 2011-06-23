@@ -98,7 +98,10 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
             {            
                 if ( getAutoScaleToScreen() )
                 {
-                    double radius = getNumChildren() > 0 ? getChild(0)->getBound().radius() : 0.48;
+                    double radius =
+                        _sizingNode.valid() ? _sizingNode->getBound().radius() :
+                        getNumChildren() > 0 ? getChild(0)->getBound().radius() : 
+                        0.48;
 
                     double pixels = cs->pixelSize( getPosition(), radius );
 

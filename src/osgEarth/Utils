@@ -189,7 +189,13 @@ namespace osgEarth
          * Sets the minimim width of the object, in pixels, when the scale
          * factor is 1.0.
          */
-        void setMinPixelWidth( double pixels ) { _minPixels = pixels; }
+        void setMinPixelWidthAtScaleOne( double pixels ) { _minPixels = pixels; }
+
+        /**
+         * Sets the node to use to calculate the screen size. If this is NULL,
+         * it will use the size of the first child node.
+         */
+        void setSizingNode( osg::Node* node ) { _sizingNode = node; dirty(); }
 
         /**
          * Forces a recalculation of the autoscale on the next traversal
@@ -203,6 +209,7 @@ namespace osgEarth
     protected:
         double _minPixels;
         bool   _dirty;
+        osg::observer_ptr<osg::Node> _sizingNode;
     };
 }
 

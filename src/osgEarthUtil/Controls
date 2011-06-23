@@ -123,17 +123,21 @@ namespace osgEarth { namespace Util { namespace Controls
 
         void setX( float value );
         const osgEarth::optional<float>& x() const { return _x; }
+        void clearX() { _x.unset(); dirty(); }
 
         void setY( float value );
         const osgEarth::optional<float>& y() const { return _y; }
+        void clearY() { _y.unset(); dirty(); }
 
         void setPosition( float x, float y );
 
         void setWidth( float value );
         const osgEarth::optional<float>& width() const { return _width; }
+        void clearWidth() { _width.unset(); dirty(); }
 
         void setHeight( float value );
         const osgEarth::optional<float>& height() const { return _height; }
+        void clearHeight() { _height.unset(); dirty(); }
 
         void setSize( float w, float h );
 
@@ -163,14 +167,17 @@ namespace osgEarth { namespace Util { namespace Controls
         void setForeColor( const osg::Vec4f& value );
         void setForeColor( float r, float g, float b, float a ) { setForeColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f> foreColor() const { return _foreColor; }
+        void clearForeColor() { _foreColor.unset(); dirty(); }
 
         void setBackColor( const osg::Vec4f& value );
         void setBackColor( float r, float g, float b, float a ) { setBackColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f>& backColor() const { return _backColor; }
+        void clearBackColor() { _backColor.unset(); dirty(); }
 
         void setActiveColor( const osg::Vec4f& value );
         void setActiveColor( float r, float g, float b, float a ) { setActiveColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f>& activeColor() const { return _activeColor; }
+        void clearActiveColor() { _activeColor.unset(); dirty(); }
 
         bool getParent( osg::ref_ptr<Control>& out ) const;
 

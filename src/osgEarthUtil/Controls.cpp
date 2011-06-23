@@ -775,7 +775,7 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
 
     if ( visible() == true )
     {
-        osg::Geometry* g = new osg::Geometry();
+        osg::ref_ptr<osg::Geometry> g = new osg::Geometry();
 
         float rx = osg::round( _renderPos.x() );
         float ry = osg::round( _renderPos.y() );
@@ -808,7 +808,7 @@ HSliderControl::draw( const ControlContext& cx, DrawableList& out )
             g->setColorArray( c );
             g->setColorBinding( osg::Geometry::BIND_OVERALL );
 
-            out.push_back( g );
+            out.push_back( g.get() );
         }
     }
 }
@@ -1485,6 +1485,7 @@ Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
         {
             for( int r=0; r<numRows; ++r )
             { 
+                //for( int c=0; c<_rows[r].size(); ++c )
                 for( int c=0; c<numCols; ++c )
                 {
                     Control* child = cell(c,r).get();
@@ -1530,7 +1531,7 @@ Grid::calcFill(const ControlContext& cx)
 
     for( int r=0; r<numRows; ++r )
     {
-        for( int c=0; c<numCols; ++c )
+        for( int c=0; c<numCols; ++c ) //<_rows[r].size(); ++c )
         {
             Control* child = cell(c,r).get();
             if ( child )
@@ -1558,7 +1559,7 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
 
     for( int r=0; r<numRows; ++r )
     {
-        for( int c=0; c<numCols; ++c )
+        for( int c=0; c<numCols; ++c ) //_rows[r].size(); ++c )
         {
             Control* child = cell(c,r).get();
             if ( child )
@@ -2019,6 +2020,10 @@ _contextDirty(true)
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::LEQUAL, 0, 1, false ) );
     //ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
 
+    // this is necessary b/c osgText puts things in this bin too and we can't override that
+    ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+    ss->setBinNumber(999999);
+
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
 
@@ -2027,8 +2032,6 @@ _contextDirty(true)
         OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
         _viewCanvasMap[view] = this;
     }
-
-    //this->setUpdateCallback( new UpdateHook );
 }
 
 ControlCanvas::~ControlCanvas()
@@ -2123,7 +2126,7 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
 {
     _context._frameStamp = frameStamp;
 
-    int bin = 999999;
+    int bin = 99999999;
     for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
         Control* control = i->get();
@@ -2144,7 +2147,7 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
             for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
             {
                 j->get()->setDataVariance( osg::Object::DYNAMIC );
-                j->get()->getOrCreateStateSet()->setRenderBinDetails( bin++, "RenderBin" );
+                j->get()->getOrCreateStateSet()->setBinNumber( bin++ );
                 geode->addDrawable( j->get() );
             }
         }

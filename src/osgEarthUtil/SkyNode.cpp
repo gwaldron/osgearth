@@ -693,6 +693,18 @@ SkyNode::setAmbientBrightness( float value, osg::View* view )
     }
 }
 
+float
+SkyNode::getAmbientBrightness( osg::View* view ) const
+{
+    if ( view )
+    {
+        PerViewDataMap::const_iterator i = _perViewData.find(view);
+        if ( i != _perViewData.end() )
+            return i->second._light->getAmbient().r();
+    }
+    return _defaultPerViewData._light->getAmbient().r();
+}
+
 void 
 SkyNode::setAmbientBrightness( PerViewData& data, float value )
 {

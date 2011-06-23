@@ -56,6 +56,9 @@ namespace osgEarth { namespace Symbology
         /** Evaluate the expression. */
         double eval() const;
 
+        /** Gets the expression string. */
+        const std::string& expr() const { return _src; }
+
     public:
         Config getConfig() const;
         void mergeConfig( const Config& conf );
@@ -102,6 +105,9 @@ namespace osgEarth { namespace Symbology
 
         /** Evaluate the expression. */
         const std::string& eval() const;
+
+        /** Gets the expression string. */
+        const std::string& expr() const { return _src; }
 
     public:
         Config getConfig() const;

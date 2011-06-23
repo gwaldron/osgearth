@@ -42,6 +42,7 @@ int main(int argc, char** argv)
 
     // create a surface to house the controls
     ControlCanvas* cs = ControlCanvas::get( &viewer );
+    root->addChild( cs );
 
     viewer.setSceneData( root );
     viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator );
@@ -125,7 +126,6 @@ createControls( ControlCanvas* cs )
     // a simple vbox with absolute positioning in the upper left with two text labels.
     {
         VBox* ul = new VBox();
-        ul->setFrame( new Frame() );
         ul->setPosition( 20, 20 );
         ul->setPadding( 10 );
         {

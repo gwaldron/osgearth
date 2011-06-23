@@ -26,6 +26,7 @@
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
+#include <osg/LineStipple>
 #include <osg/Point>
 #include <osg/Depth>
 #include <osg/PolygonOffset>
@@ -215,6 +216,17 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         {
             osgGeom->getOrCreateStateSet()->setAttributeAndModes(
                 new osg::LineWidth( width ), osg::StateAttribute::ON );
+        }
+
+        if (_hasLines)
+        {
+            const LineSymbol* line = myStyle.getSymbol<LineSymbol>();
+            if (line && line->stroke().isSet() && line->stroke()->stipple().isSet())
+            {
+                osg::LineStipple* lineStipple = new osg::LineStipple;
+                lineStipple->setPattern( *line->stroke()->stipple() );            
+                osgGeom->getOrCreateStateSet()->setAttributeAndModes( lineStipple, osg::StateAttribute::ON );
+            }
         }
         
         if (part->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(part)->getHoles().size() > 0 )

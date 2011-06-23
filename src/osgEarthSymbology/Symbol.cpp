@@ -56,6 +56,7 @@ Stroke::getConfig() const {
     conf.addIfSet("linecap", "square", _lineCap, LINECAP_SQUARE);
     conf.addIfSet("linecap", "round", _lineCap, LINECAP_ROUND);
     conf.addIfSet("width", _width);
+    conf.addIfSet("stipple", _stipple);
     return conf;
 }
 
@@ -66,6 +67,7 @@ Stroke::mergeConfig( const Config& conf ) {
     conf.getIfSet("linecap", "square", _lineCap, LINECAP_SQUARE);
     conf.getIfSet("linecap", "round", _lineCap, LINECAP_ROUND);
     conf.getIfSet("width", _width);
+    conf.getIfSet("stipple", _stipple);
 }
 
 //------------------------------------------------------------------------

@@ -235,7 +235,8 @@ Grid* createToolBar()
 
 struct AddVertsModeHandler : public ControlEventHandler
 {
-    AddVertsModeHandler( )
+    AddVertsModeHandler( FeatureModelGraph* featureGraph):
+_featureGraph( featureGraph )
     {
     }
 
@@ -246,6 +247,13 @@ struct AddVertsModeHandler : public ControlEventHandler
         {
             s_root->removeChild( s_editor );
             s_editor = NULL;
+
+            Style outStyle;
+            if (_featureGraph->getStyles().getDefaultStyle( outStyle))
+            {            
+                outStyle.getSymbol<LineSymbol>()->stroke()->stipple().unset();
+                _featureGraph->setStyle( _featureGraph->getStyles() );
+            }
         }
 
         //Add the new add point handler
@@ -255,11 +263,14 @@ struct AddVertsModeHandler : public ControlEventHandler
             s_viewer->addEventHandler( s_addPointHandler.get() );
         }        
     }
+
+    osg::ref_ptr< FeatureModelGraph > _featureGraph;
 };
 
 struct EditModeHandler : public ControlEventHandler
 {
-    EditModeHandler( )
+    EditModeHandler( FeatureModelGraph* featureGraph):
+_featureGraph( featureGraph )
     { 
     }
 
@@ -267,17 +278,25 @@ struct EditModeHandler : public ControlEventHandler
         
         //Remove the add point handler if it's valid
         if (s_addPointHandler.valid())
-        {
+        {            
             osgEarth::removeEventHandler( s_viewer, s_addPointHandler.get() );
             s_addPointHandler = NULL;
         }        
 
         if (!s_editor.valid() && s_activeFeature.valid())
         {
+            Style outStyle;
+            if (_featureGraph->getStyles().getDefaultStyle( outStyle))
+            {            
+                outStyle.getSymbol<LineSymbol>()->stroke()->stipple() =  0x00FF ;
+                _featureGraph->setStyle( _featureGraph->getStyles() );
+            }
             s_editor = createFeatureEditor(s_activeFeature, s_source, s_mapNode);
             s_root->addChild( s_editor );
         }
     }
+
+    osg::ref_ptr< FeatureModelGraph > _featureGraph;
 };
 
 struct ChangeStyleHandler : public ControlEventHandler
@@ -304,7 +323,7 @@ StyleSheet buildStyleSheet( const osg::Vec4 &color, float width )
 
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = color;
-    ls->stroke()->width() = width;
+    ls->stroke()->width() = width;    
     style.addSymbol( ls );
 
     StyleSheet styleSheet;
@@ -397,11 +416,11 @@ int main(int argc, char** argv)
     int col = 0;
     LabelControl* addVerts = new LabelControl("Add Verts");
     toolbar->setControl(col++, 0, addVerts );    
-    addVerts->addEventHandler( new AddVertsModeHandler());
+    addVerts->addEventHandler( new AddVertsModeHandler( graph ));
     
     LabelControl* edit = new LabelControl("Edit");
     toolbar->setControl(col++, 0, edit );    
-    edit->addEventHandler(new EditModeHandler());
+    edit->addEventHandler(new EditModeHandler( graph ));
 
     unsigned int row = 0;
     Grid *styleBar = createToolBar( );

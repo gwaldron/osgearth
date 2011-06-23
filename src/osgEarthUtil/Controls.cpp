@@ -2126,7 +2126,7 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
 {
     _context._frameStamp = frameStamp;
 
-    int bin = 99999999;
+    int bin = 0;
     for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
         Control* control = i->get();

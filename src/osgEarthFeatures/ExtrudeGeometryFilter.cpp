@@ -58,6 +58,7 @@ ExtrudeGeometryFilter::reset()
 bool
 ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        double                  height,
+                                       double                  heightOffset,
                                        bool                    flatten,
                                        osg::Geometry*          walls,
                                        osg::Geometry*          topCap,
@@ -121,7 +122,9 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
     double targetLen = -DBL_MAX;
     osg::Vec3d minLoc(DBL_MAX, DBL_MAX, DBL_MAX);
-
+    double minLoc_len = DBL_MAX;
+    osg::Vec3d maxLoc(0,0,0);
+    double maxLoc_len = 0;
 
     // Initial pass over the geometry does two things:
     // 1: Calculate the minimum Z across all parts.
@@ -141,8 +144,18 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 e_vec.normalize();
                 p_vec = p_vec + (e_vec * height);
 
-                if ( m_world.length() < minLoc.length() )
+                double m_world_len = m_world.length();
+                if ( m_world_len < minLoc_len )
+                {
                     minLoc = m_world;
+                    minLoc_len = m_world_len;
+                }
+
+                if ( m_world_len > maxLoc_len )
+                {
+                    maxLoc = m_world;
+                    maxLoc_len = m_world_len;
+                }
 
                 double p_ex_len = p_vec.length();
                 if ( p_ex_len > targetLen )
@@ -155,9 +168,16 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
                 if (m_world.z() < minLoc.z())
                     minLoc = m_world;
+
+                if ( m_world.z() > maxLoc.z())
+                    maxLoc = m_world;
             }
         }
     }
+
+    // apply the height offsets
+    height -= heightOffset;
+    targetLen -= heightOffset;
 
     // now generate the extruded geometry.
     ConstGeometryIterator iter( input );
@@ -174,7 +194,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         double   maxHeight = 0.0;
 
         if ( cx.isGeocentric() )
-            maxHeight = targetLen - minLoc.length();
+            maxHeight = targetLen - minLoc_len;
         else
             maxHeight = targetLen - minLoc.z();
 
@@ -194,7 +214,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             if ( cx.isGeocentric() )
             {
                 osg::Vec3d p_vec = m_world;
-
                 if ( flatten )
                 {
                     double p_len = p_vec.length();
@@ -324,12 +343,14 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
         Geometry* part = iter.next();
 
         osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
+        //walls->setUseVertexBufferObjects(true);
         
         osg::ref_ptr<osg::Geometry> rooflines = 0L;
         
         if ( part->getType() == Geometry::TYPE_POLYGON )
         {
             rooflines = new osg::Geometry();
+            //rooflines->setUseVertexBufferObjects(true);
 
             // prep the shapes by making sure all polys are open:
             static_cast<Polygon*>(part)->open();
@@ -343,7 +364,7 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
         }
         else if ( _heightAttr.isSet() )
         {
-            height = as<float>(input->getAttr(*_heightAttr), _height);
+            height = input->getDouble(*_heightAttr, _height);
         }
         else if ( _heightExpr.isSet() )
         {
@@ -354,7 +375,13 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
             height = _height;
         }
 
-        if ( extrudeGeometry( part, height, _flatten, walls.get(), rooflines.get(), 0L, _color, context ) )
+        float offset = 0.0;
+        if ( _heightOffsetExpr.isSet() )
+        {
+            offset = input->eval( _heightOffsetExpr.mutable_value() );
+        }
+
+        if ( extrudeGeometry( part, height, offset, _flatten, walls.get(), rooflines.get(), 0L, _color, context ) )
         {      
 #ifdef USE_TEX
             if ( skin )
@@ -400,15 +427,19 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
                 tess.retessellatePolygons( *(rooflines.get()) );
 
                 // generate default normals (no crease angle necessary; they are all pointing up)
+                // TODO do this manually; probably faster
                 osgUtil::SmoothingVisitor::smooth( *rooflines.get() );
 
                 // texture the rooflines if necessary
                 //applyOverlayTexturing( rooflines.get(), input, env );
                 
                 // reorganize the drawable into a single triangle set.
-                MeshConsolidator::run( *rooflines.get() );
+                // TODO: probably deprecate this once we start texturing rooftops
+                // NOTE: MC is now called elsewhere.
+                //MeshConsolidator::run( *rooflines.get() );
 
                 // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
+                // TODO: why??
                 rooflines->setDataVariance( osg::Object::DYNAMIC );
             }
 
@@ -457,17 +488,21 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
 
     // BREAKS if you use VBOs - make sure they're disabled
     // TODO: replace this with MeshConsolidator -gw
-    osgUtil::Optimizer optimizer;
-    optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+    //osgUtil::Optimizer optimizer;
+    //optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+   
+    // convert everything to triangles and combine drawables.
+    MeshConsolidator::run( *_geode.get() );
 
+    // TODO: figure out whether these help
     //optimizer.optimize( _geode.get(), osgUtil::Optimizer::INDEX_MESH );
-
-    //TODO: figure out whether this helps
     //optimizer.optimize( _geode, osgUtil::Optimizer::VERTEX_PRETRANSFORM | osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
     
     // activate the VBOs after optimization
-    EnableVBO visitor;
-    _geode->accept( visitor );
+    // NOTE: testing reveals display lists to be faster, at least on my 250GTS.
+    //EnableVBO visitor;
+    //_geode->accept( visitor );
+
 
     return _geode.release();
 }

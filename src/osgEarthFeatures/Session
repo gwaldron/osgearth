@@ -57,17 +57,6 @@ namespace osgEarth { namespace Features
         std::string resolveURI( const std::string& inputURI ) const;
 
         /**
-         * Gets the node for a named model. This method may check multiple locations to
-         * look for a shared object or load the model from its URL.
-         */
-        osg::Node* getModel(const std::string& url) const;
-
-        /**
-         * Puts a named model into the shared repository.
-         */
-        void putModel( const std::string& url, osg::Node* node );
-
-        /**
          * Gets the underlying map (frame) interface in this session
          */
         MapFrame createMapFrame( Map::ModelParts parts =Map::TERRAIN_LAYERS ) const;
@@ -87,17 +76,31 @@ namespace osgEarth { namespace Features
          */
         osg::Referenced* getBuildData() const { return _buildData.get(); }
 
+    public:
+        void putResource( const std::string& uri, osg::Referenced* object );
+
+        /**
+         * Gets a resource from the session cache.
+         */
+        template<typename T> T* getResource( const std::string& uri ) {
+            Threading::ScopedReadLock lock( _resourceMutex );
+            ResourceMap::const_iterator i = _resourceMap.find(uri);
+            return i != _resourceMap.end() ? dynamic_cast<T*>( i->second.get() ) : 0L;
+        }
+
+        void removeResource( const std::string& uri );
+
     private:
 
-        void parseMarker(const std::string& marker, std::string& url, bool &isImage) const;
+        //void parseMarker(const std::string& marker, std::string& url, bool &isImage) const;
 
         osg::ref_ptr<const Map> _map;
         MapInfo _mapInfo;
         std::string _referenceURI;
 
-        typedef std::map<std::string, osg::ref_ptr<osg::Node> > ModelMap;
-        ModelMap _models;
-        Threading::ReadWriteMutex _modelsMutex;
+        typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ResourceMap;
+        ResourceMap _resourceMap;
+        Threading::ReadWriteMutex _resourceMutex;
 
         osg::ref_ptr<osg::Referenced> _buildData;
     };

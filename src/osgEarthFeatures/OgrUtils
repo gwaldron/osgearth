@@ -303,13 +303,40 @@ struct OgrUtils
         for (int i = 0; i < numAttrs; ++i) 
         { 
             void* field_handle_ref = OGR_F_GetFieldDefnRef( handle, i ); 
+
+            // get the field name and convert to lower case:
             const char* field_name = OGR_Fld_GetNameRef( field_handle_ref ); 
-            const char* field_value= OGR_F_GetFieldAsString(handle, i); 
             std::string name = std::string( field_name ); 
-            std::string value = std::string( field_value); 
-            //Make the name lower case 
             std::transform( name.begin(), name.end(), name.begin(), ::tolower ); 
-            feature->setAttr(name, value); 
+
+            // get the field type and set the value appropriately
+            OGRFieldType field_type = OGR_Fld_GetType( field_handle_ref );
+            switch( field_type )
+            {
+                case OFTInteger:
+                    {
+                        int value = OGR_F_GetFieldAsInteger( handle, i );
+                        feature->set( name, value );
+                    }
+                    break;
+                case OFTReal:
+                    {
+                        double value = OGR_F_GetFieldAsDouble( handle, i );
+                        feature->set( name, value );
+                    }
+                    break;
+                default:
+                    {
+                        const char* value = OGR_F_GetFieldAsString(handle, i);
+                        feature->set( name, std::string(value) );
+                    }
+            }
+                                 
+            //const char* field_value= OGR_F_GetFieldAsString(handle, i); 
+            //std::string value = std::string( field_value); 
+            ////Make the name lower case 
+            //feature->set(name, value);
+            ////feature->setAttr(name, value); 
         } 
 
         return feature;

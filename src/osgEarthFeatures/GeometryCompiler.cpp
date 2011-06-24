@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "GeomCompiler"
+#include "GeometryCompiler"
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/ClampFilter>
@@ -27,22 +27,67 @@
 #include <osg/MatrixTransform>
 #include <osgDB/WriteFile>
 
-#define LC "[GeomCompiler] "
+#define LC "[GeometryCompiler] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-GeomCompiler::GeomCompiler( const FeatureGeomModelOptions& options ) :
+//-----------------------------------------------------------------------
+
+GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
+ConfigOptions( conf ),
+_maxGranularity_deg( 5.0 ),
+_mergeGeometry( false ),
+_clustering( true )
+{
+    fromConfig(_conf);
+}
+
+void
+GeometryCompilerOptions::fromConfig( const Config& conf )
+{
+    conf.getIfSet   ( "max_granularity", _maxGranularity_deg );
+    conf.getIfSet   ( "merge_geometry",  _mergeGeometry );
+    conf.getIfSet   ( "clustering",      _clustering );
+    conf.getObjIfSet( "feature_name",    _featureNameExpr );
+}
+
+Config
+GeometryCompilerOptions::getConfig() const
+{
+    Config conf = ConfigOptions::getConfig();
+    conf.addIfSet   ( "max_granularity", _maxGranularity_deg );
+    conf.addIfSet   ( "merge_geometry",  _mergeGeometry );
+    conf.addIfSet   ( "clustering",      _clustering );
+    conf.addObjIfSet( "feature_name",    _featureNameExpr );
+    return conf;
+}
+
+void
+GeometryCompilerOptions::mergeConfig( const Config& conf )
+{
+    ConfigOptions::mergeConfig( conf );
+    fromConfig( conf );
+}
+
+//-----------------------------------------------------------------------
+
+GeometryCompiler::GeometryCompiler()
+{
+    //nop
+}
+
+GeometryCompiler::GeometryCompiler( const GeometryCompilerOptions& options ) :
 _options( options )
 {
     //nop
 }
 
 osg::Node*
-GeomCompiler::compile(FeatureCursor*        cursor,
-                      const Style&          style,
-                      const FilterContext&  context)
+GeometryCompiler::compile(FeatureCursor*        cursor,
+                          const Style&          style,
+                          const FilterContext&  context)
 
 {
     if ( !context.profile() ) {
@@ -131,6 +176,8 @@ GeomCompiler::compile(FeatureCursor*        cursor,
         {
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+            if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
+                clamp.setMaxZAttributeName( "__max_z");
             cx = clamp.push( workingSet, cx );
             clampRequired = false;
         }
@@ -143,6 +190,8 @@ GeomCompiler::compile(FeatureCursor*        cursor,
             if ( extrusion->heightExpression().isSet() )
                 extrude.setExtrusionExpr( *extrusion->heightExpression() );
 
+            if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
+                extrude.setHeightOffsetExpression( NumericExpression("[__max_z]") );
             extrude.setFlatten( *extrusion->flatten() );
         }
         if ( polygon )

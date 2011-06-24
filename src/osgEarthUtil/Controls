@@ -123,17 +123,21 @@ namespace osgEarth { namespace Util { namespace Controls
 
         void setX( float value );
         const osgEarth::optional<float>& x() const { return _x; }
+        void clearX() { _x.unset(); dirty(); }
 
         void setY( float value );
         const osgEarth::optional<float>& y() const { return _y; }
+        void clearY() { _y.unset(); dirty(); }
 
         void setPosition( float x, float y );
 
         void setWidth( float value );
         const osgEarth::optional<float>& width() const { return _width; }
+        void clearWidth() { _width.unset(); dirty(); }
 
         void setHeight( float value );
         const osgEarth::optional<float>& height() const { return _height; }
+        void clearHeight() { _height.unset(); dirty(); }
 
         void setSize( float w, float h );
 
@@ -163,14 +167,17 @@ namespace osgEarth { namespace Util { namespace Controls
         void setForeColor( const osg::Vec4f& value );
         void setForeColor( float r, float g, float b, float a ) { setForeColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f> foreColor() const { return _foreColor; }
+        void clearForeColor() { _foreColor.unset(); dirty(); }
 
         void setBackColor( const osg::Vec4f& value );
         void setBackColor( float r, float g, float b, float a ) { setBackColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f>& backColor() const { return _backColor; }
+        void clearBackColor() { _backColor.unset(); dirty(); }
 
         void setActiveColor( const osg::Vec4f& value );
         void setActiveColor( float r, float g, float b, float a ) { setActiveColor( osg::Vec4f(r,g,b,a) ); }
         const osgEarth::optional<osg::Vec4f>& activeColor() const { return _activeColor; }
+        void clearActiveColor() { _activeColor.unset(); dirty(); }
 
         bool getParent( osg::ref_ptr<Control>& out ) const;
 
@@ -230,6 +237,8 @@ namespace osgEarth { namespace Util { namespace Controls
         bool _absorbEvents;
         osg::ref_ptr<osg::Geometry> _geom;
     };
+
+    typedef std::vector< osg::ref_ptr<Control> > ControlVector;
 
     /**
      * Control that contains a text string, obviously
@@ -307,13 +316,13 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         HSliderControl( float min = 0.0f, float max = 100.0f, float value = 50.0f );
 
-        void setMin( float min );
+        void setMin( float min, bool notify =true );
         float getMin() const { return _min; }
 
-        void setMax( float max );
+        void setMax( float max, bool notify =true );
         float getMax() const { return _max; }
 
-        void setValue( float value );
+        void setValue( float value, bool notify =true );
         float getValue() const { return _value; }
 
     public: // Control
@@ -409,6 +418,9 @@ namespace osgEarth { namespace Util { namespace Controls
         // default add function.
         virtual void addControl( Control* control, int index =-1 ) =0;
 
+        // default multiple-add function.
+        virtual void addControls( const ControlVector& controls );
+
         // access to the child list.
         virtual const ControlList& children() const =0;
 
@@ -495,10 +507,16 @@ namespace osgEarth { namespace Util { namespace Controls
 
         void setControl( int col, int row, Control* control );
 
+        unsigned getNumRows() const { return _rows.size(); }
+        unsigned getNumColumns() const { return _colWidths.size(); }
+
     public: // Container
         virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _children; }
         virtual void clearControls();
+
+        // adds the controls as a row at the bottom of the grid.
+        virtual void addControls( const ControlVector& controls );
 
     public: // Control        
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );

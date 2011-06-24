@@ -66,6 +66,14 @@ namespace osgEarth { namespace Symbology
         optional<unsigned>& randomSeed() { return _randomSeed; }
         const optional<unsigned>& randomSeed() const { return _randomSeed; }
 
+    public: // non-serialized properties (for programmatic use only)
+
+        void setImage( osg::Image* image ) { _image = image; }
+        osg::Image* getImage() const { return _image.get(); }
+
+        void setModel( osg::Node* node ) { _node = node; }
+        osg::Node* getNode() const { return _node.get(); }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -76,6 +84,9 @@ namespace osgEarth { namespace Symbology
         optional<float>       _density;
         optional<osg::Vec3f>  _scale;
         optional<unsigned>    _randomSeed;
+
+        osg::ref_ptr<osg::Image> _image;
+        osg::ref_ptr<osg::Node>  _node;
     };
 
 } } // namespace osgEarth::Symbology

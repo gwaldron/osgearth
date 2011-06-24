@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthFeatures/FeatureDisplayLayout>
+#include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
@@ -111,7 +112,7 @@ namespace osgEarth { namespace Features
      * a style definition. You will provide this to a FeatureModeGraph when
      * creating a feature node in a driver.
      */
-    class FeatureNodeFactory : public osg::Referenced
+    class OSGEARTHFEATURES_EXPORT FeatureNodeFactory : public osg::Referenced
     {
     public:
         /**
@@ -133,6 +134,21 @@ namespace osgEarth { namespace Features
             const Style& style,
             Session*     session ) { return new osg::Group(); }
     };
+
+    class OSGEARTHFEATURES_EXPORT GeomFeatureNodeFactory : public FeatureNodeFactory
+    {
+    public:
+        GeomFeatureNodeFactory( const GeometryCompilerOptions& options = GeometryCompilerOptions() );
+
+        bool createOrUpdateNode(       
+            FeatureCursor*            features,
+            const Style&              style,
+            const FilterContext&      context,
+            osg::ref_ptr<osg::Node>&  node );
+    private:
+        GeometryCompilerOptions _options;
+    };
+
 
     /**
      * A ModelSource that renders Feature data from a FeatureSource.

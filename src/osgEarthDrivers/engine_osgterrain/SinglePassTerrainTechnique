@@ -171,7 +171,11 @@ private:
     osg::StateSet* createStateSet( const TileFrame& tilef );
     void prepareImageLayerUpdate( int layerIndex, const TileFrame& tilef );
     //Threading::ReadWriteMutex& getMutex();
-    inline osg::Geode* getFrontGeode() const { return static_cast<osg::Geode*>( _transform->getChild(0) ); }
+    inline osg::Geode* getFrontGeode() const {
+        if (_transform.valid() && _transform->getNumChildren() > 0)
+            static_cast<osg::Geode*>( _transform->getChild(0) ); 
+        return NULL;
+    }
     osg::StateSet* getParentStateSet() const;
     //const CustomColorLayer* getLayerByUID( UID uid ) const;
     int getIndexOfColorLayerWithUID( UID uid ) const;

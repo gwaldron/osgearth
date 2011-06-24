@@ -30,6 +30,13 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ExtrusionSymbol : public Symbol
     {
     public:
+        enum HeightReference
+        {
+            HEIGHT_REFERENCE_Z,   // height is relative to feature Z (default)
+            HEIGHT_REFERENCE_MSL  // height is relative to MSL
+        };
+
+    public:
         ExtrusionSymbol( const Config& conf =Config() );
 
         /** Height to which to extrude geometry above the footprint */
@@ -39,6 +46,10 @@ namespace osgEarth { namespace Symbology
         /** Simple expression to evaluate to get height */
         optional<NumericExpression>& heightExpression() { return _heightExpr; }
         const optional<NumericExpression>& heightExpression() const { return _heightExpr; }
+
+        /** Reference frame in which height is expressed */
+        optional<HeightReference>& heightReference() { return _heightRef; }
+        const optional<HeightReference>& heightReference() const { return _heightRef; }
 
         /** Whether the top cap of the extruded geometry should be flat (default=true) */
         optional<bool>& flatten() { return _flatten; }
@@ -53,6 +64,7 @@ namespace osgEarth { namespace Symbology
         optional<float>             _height;
         optional<bool>              _flatten;
         optional<NumericExpression> _heightExpr;
+        optional<HeightReference>   _heightRef;
     };
 
 } } // namespace osgEarth::Symbology

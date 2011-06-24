@@ -56,12 +56,12 @@ struct RevisionedStateSet : public osgEarth::Revisioned<osg::StateSet>
 */
 struct Diamond : osg::Referenced
 {
-    Diamond( MeshManager* mesh, osgEarth::TileKey* key, Level level, const std::string& name ="" );
+    Diamond( MeshManager* mesh, const osgEarth::TileKey& key, Level level, const std::string& name ="" );
     ~Diamond();
 
     void activate();                    // call after the diamond is entirely initialized.
 
-    osg::ref_ptr<osgEarth::TileKey> _key;         // tile key corresponding to this diamond (geom diamonds only)
+    osgEarth::TileKey _key;             // tile key corresponding to this diamond (geom diamonds only)
     std::string _name;                  // name of this diamond (for debugging only-- remove later)
     Level _level;                       // subdivision level
     Orientation _orientation;           // orientation of the diamond

@@ -22,6 +22,7 @@
 #include <osg/TriangleIndexFunctor>
 #include <limits>
 #include <map>
+#include <iterator>
 
 #define LC "[MeshConsolidator] "
 
@@ -89,33 +90,36 @@ MeshConsolidator::run( osg::Geometry& geom )
         }
     }
 
-    unsigned numVerts = vertexArray->getNumElements();
-    osg::Geometry::PrimitiveSetList newPrimSets;
+    if ( triSets.size() > 0 )
+    {
+        unsigned numVerts = vertexArray->getNumElements();
+        osg::Geometry::PrimitiveSetList newPrimSets;
 
-    if ( numVerts < 0x100 )
-    {
-        osg::TriangleIndexFunctor< Collector<osg::DrawElementsUByte> > collector;
-        collector._newPrimSets = &newPrimSets;
-        collector._maxSize = 0xFF;
-        geom.accept( collector );
-    }
-    else if ( numVerts < 0x10000 )
-    {
-        osg::TriangleIndexFunctor< Collector<osg::DrawElementsUShort> > collector;
-        collector._newPrimSets = &newPrimSets;
-        collector._maxSize = 0xFFFF;
-        geom.accept( collector );
-    }
-    else
-    {
-        osg::TriangleIndexFunctor< Collector<osg::DrawElementsUInt> > collector;
-        collector._newPrimSets = &newPrimSets;
-        collector._maxSize = 0xFFFFFFFF;
-        geom.accept( collector );
-    }
+        if ( numVerts < 0x100 )
+        {
+            osg::TriangleIndexFunctor< Collector<osg::DrawElementsUByte> > collector;
+            collector._newPrimSets = &newPrimSets;
+            collector._maxSize = 0xFF;
+            geom.accept( collector );
+        }
+        else if ( numVerts < 0x10000 )
+        {
+            osg::TriangleIndexFunctor< Collector<osg::DrawElementsUShort> > collector;
+            collector._newPrimSets = &newPrimSets;
+            collector._maxSize = 0xFFFF;
+            geom.accept( collector );
+        }
+        else
+        {
+            osg::TriangleIndexFunctor< Collector<osg::DrawElementsUInt> > collector;
+            collector._newPrimSets = &newPrimSets;
+            collector._maxSize = 0xFFFFFFFF;
+            geom.accept( collector );
+        }
 
-    for( osg::Geometry::PrimitiveSetList::iterator i = newPrimSets.begin(); i != newPrimSets.end(); ++i )
-        nonTriSets.push_back( i->get() );
+        for( osg::Geometry::PrimitiveSetList::iterator i = newPrimSets.begin(); i != newPrimSets.end(); ++i )
+            nonTriSets.push_back( i->get() );
+    }
 
     geom.setPrimitiveSetList( nonTriSets );
 }
@@ -125,7 +129,7 @@ namespace
     template<typename FROM, typename TO>
     osg::PrimitiveSet* copy( FROM* src, unsigned offset )
     {
-        TO* newDE = new TO( GL_TRIANGLES );
+        TO* newDE = new TO( src->getMode() );
         newDE->reserve( src->size() );
         for( typename FROM::const_iterator i = src->begin(); i != src->end(); ++i )
             newDE->push_back( (*i) + offset );
@@ -156,7 +160,7 @@ MeshConsolidator::run( osg::Geode& geode )
     osg::Geometry::AttributeBinding newColorsBinding;
     osg::Geometry::AttributeBinding newNormalsBinding;
 
-    // first, triangulate all the geometries:
+    // first, triangulate all the geometries and count all the components:
     for( unsigned i=0; i<geode.getNumDrawables(); ++i )
     {
         osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
@@ -193,28 +197,24 @@ MeshConsolidator::run( osg::Geode& geode )
 
     osg::Vec3Array* newVerts = new osg::Vec3Array();
     newVerts->reserve( numVerts );
-    osg::Vec3Array::iterator newVertsIter = newVerts->begin();
 
     osg::Vec4Array* newColors =0L;
-    osg::Vec4Array::iterator newColorsIter;
     if ( numColors > 0 )
     {
         newColors = new osg::Vec4Array();
         newColors->reserve( numColors==numVerts? numColors : 1 );
         newColorsBinding = numColors==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
-        newColorsIter = newColors->begin();
     }
 
     osg::Vec3Array* newNormals =0L;
-    osg::Vec3Array::iterator newNormalsIter;
     if ( numNormals > 0 )
     {
         newNormals = new osg::Vec3Array();
         newNormals->reserve( numNormals==numVerts? numNormals : 1 );
         newNormalsBinding = numNormals==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
-        newNormalsIter = newNormals->begin();
     }
 
+    unsigned offset = 0;
     osg::Geometry::PrimitiveSetList newPrimSets;
 
     for( unsigned i=0; i<geode.getNumDrawables(); ++i )
@@ -226,8 +226,7 @@ MeshConsolidator::run( osg::Geode& geode )
             osg::Vec3Array* geomVerts = dynamic_cast<osg::Vec3Array*>( geom->getVertexArray() );
             if ( geomVerts )
             {
-                std::copy( geomVerts->begin(), geomVerts->end(), newVertsIter );
-                newVertsIter = newVerts->end();
+                std::copy( geomVerts->begin(), geomVerts->end(), std::back_inserter(*newVerts) );
 
                 if ( newColors )
                 {
@@ -236,12 +235,11 @@ MeshConsolidator::run( osg::Geode& geode )
                     {
                         if ( newColorsBinding == osg::Geometry::BIND_PER_VERTEX )
                         {
-                            std::copy( colors->begin(), colors->end(), newColorsIter );
-                            newColorsIter = newColors->end();
+                            std::copy( colors->begin(), colors->end(), std::back_inserter(*newColors) );
                         }
                         else if ( i == 0 ) // overall
                         {
-                            (*newColors)[0] = (*colors)[0];
+                            newColors->push_back( (*colors)[0] );
                         }
                     }
                 }
@@ -253,17 +251,14 @@ MeshConsolidator::run( osg::Geode& geode )
                     {
                         if ( newNormalsBinding == osg::Geometry::BIND_PER_VERTEX )
                         {
-                            std::copy( normals->begin(), normals->end(), newNormalsIter );
-                            newNormalsIter = newNormals->end();
+                            std::copy( normals->begin(), normals->end(), std::back_inserter(*newNormals) );
                         }
                         else if ( i == 0 ) // overall
                         {
-                            (*newNormals)[0] = (*normals)[0];
+                            newNormals->push_back( (*normals)[0] );
                         }
                     }
                 }
-
-                unsigned offset = (unsigned)(newVertsIter - geomVerts->begin());
 
                 for( unsigned j=0; j < geom->getNumPrimitiveSets(); ++j )
                 {
@@ -274,11 +269,16 @@ MeshConsolidator::run( osg::Geode& geode )
                         newpset = remake( static_cast<osg::DrawElementsUByte*>(pset), numVerts, offset );
                     else if ( dynamic_cast<osg::DrawElementsUShort*>(pset) )
                         newpset = remake( static_cast<osg::DrawElementsUShort*>(pset), numVerts, offset );
-                    else
+                    else if ( dynamic_cast<osg::DrawElementsUInt*>(pset) )
                         newpset = remake( static_cast<osg::DrawElementsUInt*>(pset), numVerts, offset );
+                    else if ( dynamic_cast<osg::DrawArrays*>(pset) )
+                        newpset = new osg::DrawArrays( pset->getMode(), offset, geomVerts->size() );
 
-                    newPrimSets.push_back( newpset );
+                    if ( newpset )
+                        newPrimSets.push_back( newpset );
                 }
+
+                offset += geomVerts->size();
             }
         }
     }

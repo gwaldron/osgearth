@@ -130,10 +130,14 @@ OSGTerrainEngineNode::~OSGTerrainEngineNode()
     unregisterEngine( _uid );
 
     if ( _update_mapf )
+    {
         delete _update_mapf;
+    }
 
     if ( _cull_mapf )
+    {
         delete _cull_mapf;
+    }
 }
 
 void

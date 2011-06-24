@@ -53,6 +53,7 @@ WFSCapabilities::getFeatureTypeByName(const std::string& name)
 #define ELEM_ABSTRACT "abstract"
 #define ELEM_TILED "tiled"
 #define ELEM_MAXLEVEL "maxlevel"
+#define ELEM_FIRSTLEVEL "firstlevel"
 #define ELEM_FORMAT "format"
 #define ELEM_NAME "name"
 #define ELEM_TITLE "title"
@@ -143,10 +144,16 @@ WFSCapabilitiesReader::read(std::istream &in)
                 featureType->setTiled( as<bool>(tiledStr, false) );
             }
 
-            std::string maxLevelStr = e_featureType->getSubElementText(ELEM_TILED);
+            std::string maxLevelStr = e_featureType->getSubElementText(ELEM_MAXLEVEL);
             if (maxLevelStr.compare("") != 0)
             {
                 featureType->setMaxLevel( as<int>(maxLevelStr, -1));
+            }
+
+            std::string firstLevelStr = e_featureType->getSubElementText(ELEM_FIRSTLEVEL);
+            if (firstLevelStr.compare("") != 0)
+            {
+                featureType->setFirstLevel( as<int>(firstLevelStr, 0));
             }
 
             osg::ref_ptr<XmlElement> e_bb = e_featureType->getSubElement( ELEM_LATLONGBOUNDINGBOX );

@@ -69,6 +69,12 @@ namespace osgEarth { namespace Features
          */
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
 
+        const StyleSheet& getStyles();
+        void setStyle(const StyleSheet& styles);
+
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
     protected:
         virtual ~FeatureModelGraph();
 
@@ -82,11 +88,14 @@ namespace osgEarth { namespace Features
         
         osg::Group* createNodeForStyle(const Style& style, const Query& query);
        
-        osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent ) const;
+        osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent, const MapFrame* mapf ) const;
 
         void buildSubTiles(
             unsigned levelIndex, unsigned lod, unsigned tileX, unsigned tileY,
-            const FeatureLevel* nextLevel, unsigned nextLOD, osg::Group* parent);
+            const FeatureLevel* nextLevel, unsigned nextLOD, 
+            const MapFrame* mapFrame, osg::Group* parent);
+
+        void redraw();
 
     private:
         FeatureModelSourceOptions        _options;
@@ -102,6 +111,8 @@ namespace osgEarth { namespace Features
         GeoExtent                        _usableMapExtent;
         osg::BoundingSphered             _fullWorldBound;
         bool                             _useTiledSource;
+        osgEarth::Revision               _revision;
+        bool                             _dirty;
     };
 
 } } // namespace osgEarth::Features

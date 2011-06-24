@@ -35,7 +35,7 @@ _ignoreZ( false )
 }
 
 FilterContext
-ClampFilter::push( FeatureList& features, const FilterContext& cx )
+ClampFilter::push( FeatureList& features, FilterContext& cx )
 {
     const Session* session = cx.getSession();
     if ( !session ) {
@@ -56,6 +56,7 @@ ClampFilter::push( FeatureList& features, const FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
+        double maxZ = -DBL_MAX;
         
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
@@ -71,6 +72,16 @@ ClampFilter::push( FeatureList& features, const FilterContext& cx )
                 // populate the elevations:
                 eq.getElevations( geom, mapSRS );
 
+                // find the maximum Z value
+                if ( !_maxZAttrName.empty() )
+                {
+                    for( Geometry::const_iterator i = geom->begin(); i != geom->end(); ++i )
+                    {
+                        if ( i->z() > maxZ )
+                            maxZ = i->z();
+                    }
+                }
+
                 // convert back to geocentric:
                 mapSRS->transformToECEF( geom );
                 cx.toLocal( geom );
@@ -82,6 +93,8 @@ ClampFilter::push( FeatureList& features, const FilterContext& cx )
                 eq.getElevations( geom, featureSRS );
             }
         }
+
+        feature->set( _maxZAttrName, maxZ );
     }
 
     return cx;

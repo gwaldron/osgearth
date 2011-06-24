@@ -41,11 +41,15 @@ namespace osgEarth { namespace Features
         void setIgnoreZ( bool value ) { _ignoreZ = value; }
         bool getIgnoreZ() const { return _ignoreZ; }
 
+        /** Sets the attribute name to which to write the maximum clamped Z value. */
+        void setMaxZAttributeName( const std::string& value ) { _maxZAttrName = value; }
+
     public:
-        virtual FilterContext push( FeatureList& input, const FilterContext& cx );
+        virtual FilterContext push( FeatureList& input, FilterContext& cx );
 
     protected:
         bool _ignoreZ;
+        std::string _maxZAttrName;
     };
 
 } } // namespace osgEarth::Features

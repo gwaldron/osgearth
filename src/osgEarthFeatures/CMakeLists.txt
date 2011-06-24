@@ -27,14 +27,17 @@ SET(LIB_PUBLIC_HEADERS
     FeatureDisplayLayout
     FeatureGeometryIndex
     FeatureGridder
+	FeatureListSource
     FeatureModelGraph
     FeatureModelSource    
     FeatureSource
     FeatureTileSource
     Filter
     FilterContext
+    GeometryCompiler
 	GeometryUtils
     LabelSource
+    MarkerFactory
 	OgrUtils
     OptimizerHints	
     ResampleFilter
@@ -62,14 +65,17 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureDisplayLayout.cpp
     FeatureGeometryIndex.cpp
     FeatureGridder.cpp
+	FeatureListSource.cpp
     FeatureModelGraph.cpp
-    FeatureModelSource.cpp
+    FeatureModelSource.cpp	
     FeatureSource.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp
+    GeometryCompiler.cpp
 	GeometryUtils.cpp
     LabelSource.cpp
+    MarkerFactory.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp

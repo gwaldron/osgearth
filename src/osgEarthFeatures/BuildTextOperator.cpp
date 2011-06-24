@@ -18,7 +18,6 @@
  */
 #include <osgEarthFeatures/BuildTextOperator>
 #include <osgEarthFeatures/Annotation>
-#include <osgEarthSymbology/GeometrySymbol>
 #include <osgEarth/Utils>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
@@ -73,7 +72,7 @@ static std::string parseAttributes(Feature*           feature,
             break;
         }
         // Add attribute and continue
-        out += feature->getAttr( content.substr(pos, d-pos) );
+        out += feature->getString( content.substr(pos, d-pos) );
         pos = d+1;
     }
 

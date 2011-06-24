@@ -24,7 +24,6 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Features
@@ -52,7 +51,7 @@ namespace osgEarth { namespace Features
         const optional<Method>& method() const { return _method; }
 
     public:
-        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
         optional<Method> _method;

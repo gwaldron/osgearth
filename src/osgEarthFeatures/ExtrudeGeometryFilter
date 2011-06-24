@@ -70,8 +70,13 @@ namespace osgEarth { namespace Features
          */
         void setExtrusionHeightCallback( HeightCallback* callback );
 
+        /** 
+         * Sets an expression to evaluate (for each feature) to determine a height offset value.
+         */
+        void setHeightOffsetExpression( const NumericExpression& value ) { _heightOffsetExpr = value; }
+
         /**
-         * Sets whether the cap (e.g. rooftop) should be flat, even if the footprint in not 
+         * Sets whether the cap (e.g. rooftop) should be flat, even if the footprint in not
          * (like a building on the side of a hill). Default = true.
          */
         void setFlatten( bool value ) { _flatten = value; }
@@ -100,6 +105,7 @@ namespace osgEarth { namespace Features
         optional<std::string>        _heightAttr;
         optional<NumericExpression>  _heightExpr;
         osg::ref_ptr<HeightCallback> _heightCallback;
+        optional<NumericExpression>  _heightOffsetExpr;
 
         void reset();
         
@@ -110,6 +116,7 @@ namespace osgEarth { namespace Features
         bool extrudeGeometry(
             const Geometry*      input,
             double               height,
+            double               offset,
             bool                 uniformHeight,
             osg::Geometry*       walls,
             osg::Geometry*       top_cap,

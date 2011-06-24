@@ -24,7 +24,6 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/GeometrySymbol>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Features
@@ -71,14 +70,14 @@ namespace osgEarth { namespace Features
         Stroke::LineCapStyle& capStyle() { return _capStyle; }
 
     public:
-        virtual FilterContext push( FeatureList& input, const FilterContext& context );
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
 
     protected:
         optional<double> _distance;
         int _numQuadSegs;
         Stroke::LineCapStyle _capStyle;
 
-        bool push( Feature* input, const FilterContext& context );
+        bool push( Feature* input, FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

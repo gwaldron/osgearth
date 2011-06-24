@@ -46,35 +46,35 @@ CubeManifold::initialize( MeshManager* mesh )
     // Construct the eight root "vertex diamonds". These are used only for their
     // vertex positions (as grandparents of the root edge diamonds). They have
     // no children or ancestors of their own.
-    _vd[0] = new Diamond(mesh, 0L, 0, "vd0"); // X, -Y, Z
+    _vd[0] = new Diamond(mesh, TileKey(), 0, "vd0"); // X, -Y, Z
     _vd[0]->setCoord( p(1, -1, 1) );
     _vd[0]->_childValence = 3;
 
-    _vd[1] = new Diamond(mesh, 0L, 0, "vd1"); // -X, Y, Z
+    _vd[1] = new Diamond(mesh, TileKey(), 0, "vd1"); // -X, Y, Z
     _vd[1]->setCoord( p(-1, 1, 1) );
     _vd[0]->_childValence = 3;
 
-    _vd[2] = new Diamond(mesh, 0L, 0, "vd2"); // -X, -Y, -Z
+    _vd[2] = new Diamond(mesh, TileKey(), 0, "vd2"); // -X, -Y, -Z
     _vd[2]->setCoord( p(-1, -1, -1) );
     _vd[0]->_childValence = 3;
 
-    _vd[3] = new Diamond(mesh, 0L, 0, "vd3"); // X, Y, -Z
+    _vd[3] = new Diamond(mesh, TileKey(), 0, "vd3"); // X, Y, -Z
     _vd[3]->setCoord( p(1, 1, -1) );
     _vd[0]->_childValence = 3;
 
-    _vd[4] = new Diamond(mesh, 0L, 0, "vd4"); // X, Y, Z
+    _vd[4] = new Diamond(mesh, TileKey(), 0, "vd4"); // X, Y, Z
     _vd[4]->setCoord( p(1, 1, 1) );
     _vd[0]->_childValence = 3;
 
-    _vd[5] = new Diamond(mesh, 0L, 0, "vd5"); // -X, -Y, Z
+    _vd[5] = new Diamond(mesh, TileKey(), 0, "vd5"); // -X, -Y, Z
     _vd[5]->setCoord( p(-1, -1, 1) );
     _vd[0]->_childValence = 3;
 
-    _vd[6] = new Diamond(mesh, 0L, 0, "vd6"); // X, -Y, -Z
+    _vd[6] = new Diamond(mesh, TileKey(), 0, "vd6"); // X, -Y, -Z
     _vd[6]->setCoord( p(1, -1, -1) );
     _vd[0]->_childValence = 3;
 
-    _vd[7] = new Diamond(mesh, 0L, 0, "vd7"); // -X, Y, -Z
+    _vd[7] = new Diamond(mesh, TileKey(), 0, "vd7"); // -X, Y, -Z
     _vd[7]->setCoord( p(-1, 1, -1) );
     _vd[0]->_childValence = 3;
 
@@ -86,7 +86,7 @@ CubeManifold::initialize( MeshManager* mesh )
 
     // The first 3 share vd0 as a common PARENT_L ancestor:
 
-    _fd[NEG_Y] = new Diamond(mesh, new TileKey(0,1,0,_profile.get()), 1, "fd -y"); // -Y face (-90=>0 long)
+    _fd[NEG_Y] = new Diamond(mesh, TileKey(0,1,0,_profile.get()), 1, "fd -y"); // -Y face (-90=>0 long)
     _fd[NEG_Y]->setCoord( p(0, -1, 0) );
     _fd[NEG_Y]->_a[PARENT_R] = _vd[2];
     _fd[NEG_Y]->_a[PARENT_L] = _vd[0];
@@ -94,7 +94,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[NEG_Y]->_a[GDPARENT] = _vd[6];
     _fd[NEG_Y]->_orientation = 6;
 
-    _fd[POS_X] = new Diamond(mesh, new TileKey(0,2,0,_profile.get()), 1, "fd +x"); // +X face (0=>90 long)
+    _fd[POS_X] = new Diamond(mesh, TileKey(0,2,0,_profile.get()), 1, "fd +x"); // +X face (0=>90 long)
     _fd[POS_X]->setCoord( p(1, 0, 0) );
     _fd[POS_X]->_a[PARENT_R] = _vd[3];
     _fd[POS_X]->_a[PARENT_L] = _vd[0];
@@ -102,7 +102,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[POS_X]->_a[GDPARENT] = _vd[4];
     _fd[POS_X]->_orientation = 0;
 
-    _fd[POS_Z] = new Diamond(mesh, new TileKey(0,4,0,_profile.get()), 1, "fd +z"); // +Z face (north polar)
+    _fd[POS_Z] = new Diamond(mesh, TileKey(0,4,0,_profile.get()), 1, "fd +z"); // +Z face (north polar)
     _fd[POS_Z]->setCoord( p(0, 0, 1) );
     _fd[POS_Z]->_a[PARENT_R] = _vd[1];
     _fd[POS_Z]->_a[PARENT_L] = _vd[0];
@@ -112,7 +112,7 @@ CubeManifold::initialize( MeshManager* mesh )
 
     // The next 3 share vd7 as a common QUADTREE ancestor:
 
-    _fd[POS_Y] = new Diamond(mesh, new TileKey(0,3,0,_profile.get()), 1, "fd +y"); // +Y face (90=>180 long)
+    _fd[POS_Y] = new Diamond(mesh, TileKey(0,3,0,_profile.get()), 1, "fd +y"); // +Y face (90=>180 long)
     _fd[POS_Y]->setCoord( p(0, 1, 0) );
     _fd[POS_Y]->_a[PARENT_R] = _vd[1];
     _fd[POS_Y]->_a[PARENT_L] = _vd[3];
@@ -120,7 +120,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[POS_Y]->_a[GDPARENT] = _vd[4];
     _fd[POS_Y]->_orientation = 2;
 
-    _fd[NEG_X] = new Diamond(mesh, new TileKey(0,0,0,_profile.get()), 1, "fd -x"); // -X face (-180=>-90 long)
+    _fd[NEG_X] = new Diamond(mesh, TileKey(0,0,0,_profile.get()), 1, "fd -x"); // -X face (-180=>-90 long)
     _fd[NEG_X]->setCoord( p(-1, 0, 0) );
     _fd[NEG_X]->_a[PARENT_R] = _vd[2];
     _fd[NEG_X]->_a[PARENT_L] = _vd[1];
@@ -128,7 +128,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _fd[NEG_X]->_a[GDPARENT] = _vd[5];
     _fd[NEG_X]->_orientation = 0;
 
-    _fd[NEG_Z] = new Diamond(mesh, new TileKey(0,5,0,_profile.get()), 1, "fd -z"); // -Z face (south polar)
+    _fd[NEG_Z] = new Diamond(mesh, TileKey(0,5,0,_profile.get()), 1, "fd -z"); // -Z face (south polar)
     _fd[NEG_Z]->setCoord( p(0, 0, -1) );
     _fd[NEG_Z]->_a[PARENT_R] = _vd[3];
     _fd[NEG_Z]->_a[PARENT_L] = _vd[2];
@@ -143,7 +143,7 @@ CubeManifold::initialize( MeshManager* mesh )
     // as its "quadtree" ancestor. That adds up to the 4 verts of the diamond.
 
     // GROUP OF THREE under the vd[0] "quadtree":
-    _ed[0] = new Diamond(mesh, 0L, 2, "ed0");
+    _ed[0] = new Diamond(mesh, TileKey(), 2, "ed0");
     _ed[0]->setCoord( p(0, -1, 1) );
     _ed[0]->_a[PARENT_R] = _fd[POS_Z];
     _ed[0]->_a[PARENT_L] = _fd[NEG_Y];
@@ -151,7 +151,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[0]->_a[GDPARENT] = _vd[5];
 //    _ed[0]->_color = RED;
 
-    _ed[1] = new Diamond(mesh, 0L, 2, "ed1");
+    _ed[1] = new Diamond(mesh, TileKey(), 2, "ed1");
     _ed[1]->setCoord( p(1, -1, 0 ) );
     _ed[1]->_a[PARENT_R] = _fd[NEG_Y];
     _ed[1]->_a[PARENT_L] = _fd[POS_X];
@@ -159,7 +159,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[1]->_a[GDPARENT] = _vd[6];
     //_ed[1]->_color = RED;
 
-    _ed[2] = new Diamond(mesh, 0L, 2, "ed2");
+    _ed[2] = new Diamond(mesh, TileKey(), 2, "ed2");
     _ed[2]->setCoord( p(1, 0, 1) );
     _ed[2]->_a[PARENT_R] = _fd[POS_X];
     _ed[2]->_a[PARENT_L] = _fd[POS_Z];
@@ -168,7 +168,7 @@ CubeManifold::initialize( MeshManager* mesh )
     //_ed[2]->_color = RED;
 
     // GROUP OF THREE under the vd[1] "quadtree":
-    _ed[3] = new Diamond(mesh, 0L, 2, "ed3");
+    _ed[3] = new Diamond(mesh, TileKey(), 2, "ed3");
     _ed[3]->setCoord( p(0, 1, 1) );
     _ed[3]->_a[PARENT_R] = _fd[POS_Z];
     _ed[3]->_a[PARENT_L] = _fd[POS_Y];
@@ -176,7 +176,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[3]->_a[GDPARENT] = _vd[4];
     //_ed[3]->_color = GREEN;
 
-    _ed[4] = new Diamond(mesh, 0L, 2, "ed4");
+    _ed[4] = new Diamond(mesh, TileKey(), 2, "ed4");
     _ed[4]->setCoord( p(-1, 1, 0) );
     _ed[4]->_a[PARENT_R] = _fd[POS_Y];
     _ed[4]->_a[PARENT_L] = _fd[NEG_X];
@@ -184,7 +184,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[4]->_a[GDPARENT] = _vd[7];
     //_ed[4]->_color = GREEN;
 
-    _ed[5] = new Diamond(mesh, 0L, 2, "ed5");
+    _ed[5] = new Diamond(mesh, TileKey(), 2, "ed5");
     _ed[5]->setCoord( p(-1, 0, 1) );
     _ed[5]->_a[PARENT_R] = _fd[NEG_X];
     _ed[5]->_a[PARENT_L] = _fd[POS_Z];
@@ -193,7 +193,7 @@ CubeManifold::initialize( MeshManager* mesh )
     //_ed[5]->_color = GREEN;
 
     // GROUP OF THREE under the vd[2] "quadtree":
-    _ed[6] = new Diamond(mesh, 0L, 2, "ed6");
+    _ed[6] = new Diamond(mesh, TileKey(), 2, "ed6");
     _ed[6]->setCoord( p(-1, -1, 0) );
     _ed[6]->_a[PARENT_R] = _fd[NEG_Y];
     _ed[6]->_a[PARENT_L] = _fd[NEG_X];
@@ -201,7 +201,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[6]->_a[GDPARENT] = _vd[5];
     //_ed[6]->_color = BLUE;
 
-    _ed[7] = new Diamond(mesh, 0L, 2, "ed7");
+    _ed[7] = new Diamond(mesh, TileKey(), 2, "ed7");
     _ed[7]->setCoord( p(-1, 0, -1) );
     _ed[7]->_a[PARENT_R] = _fd[NEG_X];
     _ed[7]->_a[PARENT_L] = _fd[NEG_Z];
@@ -209,7 +209,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[7]->_a[GDPARENT] = _vd[7];
     //_ed[7]->_color = BLUE;
 
-    _ed[8] = new Diamond(mesh, 0L, 2, "ed8");
+    _ed[8] = new Diamond(mesh, TileKey(), 2, "ed8");
     _ed[8]->setCoord( p(0, -1, -1) );
     _ed[8]->_a[PARENT_R] = _fd[NEG_Z];
     _ed[8]->_a[PARENT_L] = _fd[NEG_Y];
@@ -218,7 +218,7 @@ CubeManifold::initialize( MeshManager* mesh )
     //_ed[8]->_color = BLUE;
 
     // GROUP OF THREE under the vd[3] "quadtree":
-    _ed[9] = new Diamond(mesh, 0L, 2, "ed9");
+    _ed[9] = new Diamond(mesh, TileKey(), 2, "ed9");
     _ed[9]->setCoord( p(1, 1, 0) );
     _ed[9]->_a[PARENT_R] = _fd[POS_Y];
     _ed[9]->_a[PARENT_L] = _fd[POS_X];
@@ -226,7 +226,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[9]->_a[GDPARENT] = _vd[4];
     //_ed[9]->_color = YELLOW;
 
-    _ed[10] = new Diamond(mesh, 0L, 2, "ed10");
+    _ed[10] = new Diamond(mesh, TileKey(), 2, "ed10");
     _ed[10]->setCoord( p(1, 0, -1) );
     _ed[10]->_a[PARENT_R] = _fd[POS_X];
     _ed[10]->_a[PARENT_L] = _fd[NEG_Z];
@@ -234,7 +234,7 @@ CubeManifold::initialize( MeshManager* mesh )
     _ed[10]->_a[GDPARENT] = _vd[6];
     //_ed[10]->_color = YELLOW;
 
-    _ed[11] = new Diamond(mesh, 0L, 2, "ed11");
+    _ed[11] = new Diamond(mesh, TileKey(), 2, "ed11");
     _ed[11]->setCoord( p(0, 1, -1) );
     _ed[11]->_a[PARENT_R] = _fd[NEG_Z];
     _ed[11]->_a[PARENT_L] = _fd[POS_Y];

@@ -5,6 +5,7 @@ SET(TARGET_SRC
     CubeManifold.cpp
     Diamond.cpp
     DRoamNode.cpp
+    GeodeticManifold.cpp
     Manifold.cpp
     MeshManager.cpp
     Plugin.cpp
@@ -16,6 +17,7 @@ SET(TARGET_H
     CubeManifold
     Diamond
     DRoamNode
+    GeodeticManifold
     Manifold
     MeshManager
     AMRGeometry

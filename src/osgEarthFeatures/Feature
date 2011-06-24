@@ -52,6 +52,9 @@ namespace osgEarth { namespace Features
         bool getTiled() const;
         void setTiled(bool tiled);
 
+        int getFirstLevel() const;
+        void setFirstLevel(int firstLevel );
+
         int getMaxLevel() const;
         void setMaxLevel(int maxLevel);
 
@@ -62,12 +65,17 @@ namespace osgEarth { namespace Features
         osg::ref_ptr< const osgEarth::Profile > _profile;
         GeoExtent _extent;
         bool _tiled;
+        int _firstLevel;
         int _maxLevel;
     };
 
-    typedef std::map<std::string, std::string> AttributeTable;
-
-    typedef unsigned long FeatureID;
+    struct AttributeValueUnion
+    {
+        std::string stringValue;
+        double      doubleValue;
+        int         intValue;
+        bool        boolValue;
+    };
 
     enum AttributeType
     {
@@ -77,6 +85,20 @@ namespace osgEarth { namespace Features
         ATTRTYPE_DOUBLE,
         ATTRTYPE_BOOL
     };
+
+    struct OSGEARTHFEATURES_EXPORT AttributeValue : public std::pair<AttributeType,AttributeValueUnion>
+    {
+        std::string getString() const;
+        double getDouble( double defaultValue =0.0 ) const;
+        int getInt( int defaultValue =0 ) const;
+        bool getBool( bool defaultValue =false ) const;
+    };
+
+    typedef std::map<std::string, AttributeValue> AttributeTable;
+
+//    typedef std::map<std::string, std::string> AttributeTable;
+
+    typedef unsigned long FeatureID;
 
     typedef std::map< std::string, AttributeType > FeatureSchema;
 
@@ -97,21 +119,25 @@ namespace osgEarth { namespace Features
 
         FeatureID getFID() const;
 
-        void setGeometry( Symbology::Geometry* geom ) {
-            _geom = geom; }
+        void setGeometry( Symbology::Geometry* geom ) { _geom = geom; }
 
-        Symbology::Geometry* getGeometry() {
-            return _geom; }
+        Symbology::Geometry* getGeometry() { return _geom; }
 
-        const Symbology::Geometry* getGeometry() const {
-            return _geom; }
+        const Symbology::Geometry* getGeometry() const { return _geom; }
 
-        const AttributeTable& getAttrs() const {
-            return _attrs; }
+        const AttributeTable& getAttrs() const { return _attrs; }
 
-        void setAttr( const std::string& name, const std::string& value );
+        void set( const std::string& name, const std::string& value );
+        void set( const std::string& name, double value );
+        void set( const std::string& name, int value );
+        void set( const std::string& name, bool value );
 
-        const std::string& getAttr( const std::string& name ) const;        
+        bool hasAttr( const std::string& name ) const;
+
+        std::string getString( const std::string& name ) const;
+        double getDouble( const std::string& name, double defaultValue =0.0 ) const;
+        int getInt( const std::string& name, int defaultValue =0 ) const;
+        bool getBool( const std::string& name, bool defaultValue =false ) const;
 
         /** Embedded style. */
         optional<Style>& style() { return _style; }

@@ -17,45 +17,44 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_CONVERT_TYPE_FILTER_H
-#define OSGEARTHFEATURES_CONVERT_TYPE_FILTER_H 1
+#ifndef OSGEARTHFEATURES_MARKER_FACTORY_H
+#define OSGEARTHFEATURES_MARKER_FACTORY_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/Filter>
-#include <osg/Geode>
+#include <osgEarthFeatures/Session>
+#include <osgEarthSymbology/MarkerSymbol>
+#include <osg/Node>
 
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
-     * This filter will change geometry from one type to another.
+     * Creates OSG nodes from Marker symbols.
      */
-    class OSGEARTHFEATURES_EXPORT ConvertTypeFilter : public FeatureFilter
+    class OSGEARTHFEATURES_EXPORT MarkerFactory
     {
     public:
-        // Call this determine whether this filter is available.
-        static bool isSupported() { return true; }
+        /**
+         * Constructs a marker factory tied to the specified Session.
+         */
+        MarkerFactory(Session* session =0L);
 
-    public:
-        ConvertTypeFilter();
-        ConvertTypeFilter( const Symbology::Geometry::Type& toType );
-        ConvertTypeFilter( const ConvertTypeFilter& rhs );
+        osg::Node* getOrCreateNode( const MarkerSymbol* symbol, bool useCache =true );
 
-    public:
-        Symbology::Geometry::Type& toType() {
-            return _toType; }
-        const Symbology::Geometry::Type& toType() const {
-            return _toType; }
-
-    public:
-        virtual FilterContext push( FeatureList& input, FilterContext& context );
+        /**
+         * Generates a marker node for a given URI.
+         */
+        //osg::Node* getOrCreateNode( const std::string& markerURI, bool useCache =true );
 
     protected:
-        Symbology::Geometry::Type _toType;
+        osg::Node* createFromURI( const std::string& uri ) const;
+
+    protected:
+        osg::ref_ptr<Session> _session;
     };
 
 } } // namespace osgEarth::Features
 
-#endif // OSGEARTHFEATURES_CONVERT_TYPE_FILTER_H
+#endif // OSGEARTHFEATURES_MARKER_FACTORY_H

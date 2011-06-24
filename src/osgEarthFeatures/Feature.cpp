@@ -26,9 +26,11 @@ using namespace osgEarth::Symbology;
 static
 std::string EMPTY_STRING;
 
+//----------------------------------------------------------------------------
 
 FeatureProfile::FeatureProfile( const GeoExtent& extent ) :
 _extent( extent ),
+_firstLevel(0),
 _maxLevel(-1),
 _tiled(false)
 {
@@ -45,6 +47,18 @@ void
 FeatureProfile::setTiled(bool tiled)
 {
     _tiled = true;
+}
+
+int
+FeatureProfile::getFirstLevel() const
+{
+    return _firstLevel;
+}
+
+void
+FeatureProfile::setFirstLevel(int firstLevel )
+{
+    _firstLevel = firstLevel;
 }
 
 int
@@ -71,7 +85,57 @@ FeatureProfile::setProfile( const osgEarth::Profile* profile )
     _profile = profile;
 }
 
-/****************************************************************************/
+//----------------------------------------------------------------------------
+
+std::string
+AttributeValue::getString() const
+{
+    switch( first ) {
+        case ATTRTYPE_STRING: return second.stringValue;
+        case ATTRTYPE_DOUBLE: return osgEarth::toString(second.doubleValue);
+        case ATTRTYPE_INT:    return osgEarth::toString(second.intValue);
+        case ATTRTYPE_BOOL:   return osgEarth::toString(second.boolValue);
+    }
+    return EMPTY_STRING;
+}
+
+double
+AttributeValue::getDouble( double defaultValue ) const 
+{
+    switch( first ) {
+        case ATTRTYPE_STRING: return osgEarth::as<double>(second.stringValue, defaultValue);
+        case ATTRTYPE_DOUBLE: return second.doubleValue;
+        case ATTRTYPE_INT:    return (double)second.intValue;
+        case ATTRTYPE_BOOL:   return second.boolValue? 1.0 : 0.0;
+    }
+    return defaultValue;
+}
+
+int
+AttributeValue::getInt( int defaultValue ) const 
+{
+    switch( first ) {
+        case ATTRTYPE_STRING: return osgEarth::as<int>(second.stringValue, defaultValue);
+        case ATTRTYPE_DOUBLE: return (int)second.doubleValue;
+        case ATTRTYPE_INT:    return second.intValue;
+        case ATTRTYPE_BOOL:   return second.boolValue? 1 : 0;
+    }
+    return defaultValue;
+}
+
+bool
+AttributeValue::getBool( bool defaultValue ) const 
+{
+    switch( first ) {
+        case ATTRTYPE_STRING: return osgEarth::as<bool>(second.stringValue, defaultValue);
+        case ATTRTYPE_DOUBLE: return second.doubleValue != 0.0;
+        case ATTRTYPE_INT:    return second.intValue != 0;
+        case ATTRTYPE_BOOL:   return second.boolValue;
+    }
+    return defaultValue;
+}
+
+//----------------------------------------------------------------------------
 
 Feature::Feature( FeatureID fid ) :
 _fid( fid )
@@ -95,16 +159,69 @@ Feature::getFID() const
 }
 
 void
-Feature::setAttr( const std::string& name, const std::string& value )
+Feature::set( const std::string& name, const std::string& value )
 {
-    _attrs[name] = value;
+    AttributeValue& a = _attrs[name];
+    a.first = ATTRTYPE_STRING;
+    a.second.stringValue = value;
 }
 
-const std::string&
-Feature::getAttr( const std::string& name ) const
+void
+Feature::set( const std::string& name, double value )
+{
+    AttributeValue& a = _attrs[name];
+    a.first = ATTRTYPE_DOUBLE;
+    a.second.doubleValue = value;
+}
+
+void
+Feature::set( const std::string& name, int value )
+{
+    AttributeValue& a = _attrs[name];
+    a.first = ATTRTYPE_INT;
+    a.second.intValue = value;
+}
+
+void
+Feature::set( const std::string& name, bool value )
+{
+    AttributeValue& a = _attrs[name];
+    a.first = ATTRTYPE_BOOL;
+    a.second.boolValue = value;
+}
+
+bool
+Feature::hasAttr( const std::string& name ) const
+{
+    return _attrs.find(toLower(name)) != _attrs.end();
+}
+
+std::string
+Feature::getString( const std::string& name ) const
 {
     AttributeTable::const_iterator i = _attrs.find(toLower(name));
-    return i != _attrs.end()? i->second : EMPTY_STRING;
+    return i != _attrs.end()? i->second.getString() : EMPTY_STRING;
+}
+
+double
+Feature::getDouble( const std::string& name, double defaultValue ) const 
+{
+    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    return i != _attrs.end()? i->second.getDouble(defaultValue) : defaultValue;
+}
+
+int
+Feature::getInt( const std::string& name, int defaultValue ) const 
+{
+    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    return i != _attrs.end()? i->second.getInt(defaultValue) : defaultValue;
+}
+
+bool
+Feature::getBool( const std::string& name, bool defaultValue ) const 
+{
+    AttributeTable::const_iterator i = _attrs.find(toLower(name));
+    return i != _attrs.end()? i->second.getBool(defaultValue) : defaultValue;
 }
 
 double
@@ -112,7 +229,7 @@ Feature::eval( NumericExpression& expr ) const
 {
     const NumericExpression::Variables& vars = expr.variables();
     for( NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
-        expr.set( *i, osgEarth::as<double>(getAttr(i->first),0.0) );
+        expr.set( *i, getDouble(i->first, 0.0)); //osgEarth::as<double>(getAttr(i->first),0.0) );
     return expr.eval();
 }
 
@@ -121,6 +238,6 @@ Feature::eval( StringExpression& expr ) const
 {
     const StringExpression::Variables& vars = expr.variables();
     for( StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
-        expr.set( *i, getAttr(i->first) );
+        expr.set( *i, getString(i->first) ); //getAttr(i->first) );
     return expr.eval();
 }

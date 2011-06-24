@@ -231,6 +231,12 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
             extrusion->heightExpression() = NumericExpression(p->second);
         }
+        else if ( p->first == "extrusion-reference")
+        {
+            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
+            if      ( p->second == "z"   ) extrusion->heightReference() = ExtrusionSymbol::HEIGHT_REFERENCE_Z;
+            else if ( p->second == "msl" ) extrusion->heightReference() = ExtrusionSymbol::HEIGHT_REFERENCE_MSL;
+        }
         else if (p->first == "extrusion-flatten")
         {
             if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();

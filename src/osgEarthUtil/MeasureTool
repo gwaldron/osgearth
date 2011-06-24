@@ -1,0 +1,90 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHUTIL_MEASURETOOL_H
+#define OSGEARTHUTIL_MEASURETOOL_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/MapNode>
+#include <osgEarthFeatures/FeatureListSource>
+#include <osg/Group>
+#include <osgGA/GUIEventHandler>
+#include <osgViewer/View>
+
+#include <osgEarthFeatures/FeatureModelGraph>
+
+namespace osgEarth { namespace Util {
+
+    struct OSGEARTHUTIL_EXPORT MeasureToolHandler : public osgGA::GUIEventHandler 
+    {
+    public:
+
+        class MeasureToolEventHandler : public osg::Referenced
+        {
+        public:
+            virtual void onDistanceChanged(MeasureToolHandler* sender, double distance) {}
+        };
+
+        typedef std::list< osg::ref_ptr< MeasureToolEventHandler > > MeasureToolEventHandlerList;
+
+        enum Mode {
+            MODE_GREATCIRCLE,
+            MODE_RHUMB
+        };        
+
+
+        MeasureToolHandler( osg::Group* group, MapNode* mapNode );        
+        ~MeasureToolHandler();
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );        
+
+        bool getLocationAt(osgViewer::View* view, double x, double y, double &lon, double &lat);
+        
+        void clear();
+
+        void addEventHandler(MeasureToolEventHandler* handler );
+
+        void setMouseButton(int mouseButton);
+        int getMouseButton() const;
+
+        Mode getMode() const;
+        void setMode( Mode mode );
+
+        void setIsPath( bool path );
+        bool getIsPath() const;
+
+    private:
+        Mode _mode;
+        void fireDistanceChanged();
+        bool _lastPointTemporary;
+        bool _gotFirstLocation;
+        bool _finished;
+        bool _mouseDown;
+        float _mouseDownX, _mouseDownY;
+        int _mouseButton;
+        osg::ref_ptr< osg::Group > _group;
+        osg::ref_ptr< osgEarth::Features::FeatureModelGraph > _featureGraph;
+        osg::ref_ptr< osgEarth::Features::FeatureListSource > _features;
+        osg::ref_ptr< osgEarth::Features::Feature >  _feature;
+        MeasureToolEventHandlerList _eventHandlers;
+        bool _isPath;
+        osg::ref_ptr< MapNode > _mapNode;
+    };
+}}
+#endif

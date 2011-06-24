@@ -18,6 +18,7 @@ SET(LIB_PUBLIC_HEADERS
     Export
     Graticule
 	ImageOverlay	
+	MeasureTool
     ObjectPlacer
     ObjectLocator
     OceanSurfaceNode
@@ -37,6 +38,7 @@ SET(LIB_COMMON_FILES
     ElevationManager.cpp
     Graticule.cpp
 	ImageOverlay.cpp
+	MeasureTool.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
     OceanSurfaceNode.cpp

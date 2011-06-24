@@ -1,0 +1,157 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#include <osg/Notify>
+#include <osgGA/StateSetManipulator>
+#include <osgGA/GUIEventHandler>
+#include <osgViewer/Viewer>
+#include <osgViewer/ViewerEventHandlers>
+#include <osgEarth/MapNode>
+#include <osgEarth/XmlUtils>
+#include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/Controls>
+#include <osgEarthUtil/Graticule>
+#include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/Viewpoint>
+#include <osgEarthSymbology/Color>
+
+#include <osgEarthUtil/MeasureTool>
+
+using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Symbology;
+
+class MyMeasureToolCallback : public MeasureToolHandler::MeasureToolEventHandler
+{
+public:
+    MyMeasureToolCallback(LabelControl* label):
+      _label(label)
+    {
+    }
+
+    virtual void onDistanceChanged(MeasureToolHandler* sender, double distance)
+    {
+        std::stringstream ss;
+        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl;        
+        _label->setText( ss.str() );
+    }
+    LabelControl* _label;
+};
+
+struct TogglePathHandler : public ControlEventHandler
+{
+    TogglePathHandler( MeasureToolHandler* tool) :
+    _tool( tool )
+    { }
+
+    virtual void onValueChanged(Control* control, bool value) {
+        _tool->setIsPath( value );
+    }
+
+    osg::ref_ptr<MeasureToolHandler> _tool;
+};
+
+
+
+int
+main(int argc, char** argv)
+{
+    osg::ArgumentParser arguments(&argc,argv);
+    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+
+    // load the .earth file from the command line.
+    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
+    if (!earthNode)
+    {
+        OE_NOTICE << "Unable to load earth model." << std::endl;
+        return 1;
+    }
+
+    MapNode* mapNode = MapNode::findMapNode( earthNode );
+    if ( !mapNode )
+    {
+        OE_NOTICE << "Input file was not a .earth file" << std::endl;
+        return 1;
+    }
+
+
+    osgViewer::Viewer viewer(arguments);
+    
+    osgEarth::Util::EarthManipulator* earthManip = new EarthManipulator();
+    viewer.setCameraManipulator( earthManip );
+
+    osg::Group* root = new osg::Group();
+    root->addChild( earthNode );
+
+    //Create the MeasureToolHandler
+    MeasureToolHandler* measureTool = new MeasureToolHandler(root, mapNode);    
+    viewer.addEventHandler( measureTool );
+
+    //Create some controls to interact with the measuretool
+    ControlCanvas* canvas = new ControlCanvas( &viewer );
+    root->addChild( canvas );
+
+    Grid* grid = new Grid();
+    grid->setBackColor(0,0,0,0.5);
+    grid->setMargin( 10 );
+    grid->setPadding( 10 );
+    grid->setChildSpacing( 10 );
+    grid->setChildVertAlign( Control::ALIGN_CENTER );
+    grid->setAbsorbEvents( true );
+    grid->setVertAlign( Control::ALIGN_BOTTOM );
+    grid->setFrame(new RoundedFrame());
+
+    canvas->addControl( grid );
+
+    //Add a label to display the distance
+    // Add a text label:
+    LabelControl* label = new LabelControl();
+    label->setFont( osgText::readFontFile( "arialbd.ttf" ) );
+    label->setFontSize( 24.0f );
+    label->setHorizAlign( Control::ALIGN_LEFT );    
+    label->setText("Distance");
+    grid->setControl( 0, 0, label);
+
+    //Add a callback to update the label when the distance changes
+    measureTool->addEventHandler( new MyMeasureToolCallback(label) );
+
+    //Add a checkbox to control if we are doing path based measurement or just point to point
+    grid->setControl( 0, 1, new LabelControl("Path"));
+    CheckBoxControl* checkBox = new CheckBoxControl(false);
+    checkBox->setHorizAlign(Control::ALIGN_LEFT);
+    checkBox->addEventHandler( new TogglePathHandler(measureTool));
+    grid->setControl( 1, 1, checkBox);
+
+
+    
+
+   
+    viewer.setSceneData( root );
+
+    // add some stock OSG handlers:
+    viewer.addEventHandler(new osgViewer::StatsHandler());
+    viewer.addEventHandler(new osgViewer::WindowSizeHandler());
+    viewer.addEventHandler(new osgViewer::ThreadingHandler());
+    viewer.addEventHandler(new osgViewer::LODScaleHandler());
+    viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
+
+    return viewer.run();
+}

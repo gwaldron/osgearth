@@ -149,7 +149,8 @@ _attrs( rhs._attrs ),
 _style( rhs._style )
 {
     if ( rhs._geom.valid() )
-        _geom = dynamic_cast<Geometry*>( copyOp( rhs._geom.get() ) );
+        //_geom = dynamic_cast<Geometry*>( copyOp( rhs._geom.get() ) );
+        _geom = rhs._geom->clone();
 }
 
 FeatureID

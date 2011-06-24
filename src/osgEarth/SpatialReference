@@ -91,7 +91,8 @@ namespace osgEarth
          */
         virtual bool transformPoints(
             const SpatialReference* to_srs,
-            osg::Vec3dArray* points,
+            std::vector<osg::Vec3d>& points,
+            //osg::Vec3dArray* points,
             void* context =0L,
             bool ignore_errors =false) const;
 
@@ -109,8 +110,8 @@ namespace osgEarth
          * are transformed in place.
          */
         bool transformToECEF(
-            osg::Vec3dArray*    points,
-            bool                ignore_errors =false) const;
+            std::vector<osg::Vec3d>& points,
+            bool                     ignore_errors =false) const;
 
         /**
          * Transforms a point from geocentric/ECEF coordinates into this SRS (with a
@@ -125,8 +126,8 @@ namespace osgEarth
          * (with a height-above-ellipoid). The points are transformed in place.
          */
         bool transformFromECEF(
-            osg::Vec3dArray*    points,
-            bool                ignoreErrors =false) const;
+            std::vector<osg::Vec3d>& points,
+            bool                     ignoreErrors =false) const;
 
         /**
          * Transforms a spatial extent to another SRS. 

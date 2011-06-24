@@ -137,11 +137,11 @@ TransformFilter::push( Feature* input, FilterContext& context )
 
         // first transform the geometry to the output SRS:            
         if ( needsSRSXform )
-            context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom, false );
+            context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom->asVector(), false );
 
         // convert to ECEF if required:
         if ( _makeGeocentric )
-            _outputSRS->transformToECEF( geom, false );
+            _outputSRS->transformToECEF( geom->asVector(), false );
 
         // update the bounding box.
         if ( _localize )

@@ -109,13 +109,13 @@ GeometryRasterizer::draw( const Geometry* geom, const osg::Vec4f& c )
     ConstGeometryIterator gi( geomToRender.get() );
     while( gi.hasMore() )
     {
-        const Geometry* g = gi.next();
+        const Vec3dVector& g = gi.next()->asVector();
 
-        for( Geometry::const_iterator p = g->begin(); p != g->end(); p++ )
+        for( Vec3dVector::const_iterator p = g.begin(); p != g.end(); p++ )
         {
             const osg::Vec3d& p0 = *p;
 
-            if ( p == g->begin() )
+            if ( p == g.begin() )
                 state->_ras.move_to_d( p0.x(), p0.y() );
             else
                 state->_ras.line_to_d( p0.x(), p0.y() );

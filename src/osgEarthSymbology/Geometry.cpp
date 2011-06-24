@@ -37,9 +37,10 @@ using namespace geos::operation;
 #define LC "[Geometry] "
 
 
-Geometry::Geometry( const Geometry& rhs, const osg::CopyOp& op ) :
-osg::Vec3dArray( rhs, op )
+Geometry::Geometry( const Geometry& rhs ) :
+osgEarth::MixinVector<osg::Vec3d,osg::Referenced>( rhs )
 {
+    //nop
 }
 
 Geometry::Geometry( int capacity )
@@ -48,7 +49,7 @@ Geometry::Geometry( int capacity )
         reserve( capacity );
 }
 
-Geometry::Geometry( const osg::Vec3dArray* data )
+Geometry::Geometry( const Vec3dVector* data )
 {
     reserve( data->size() );
     insert( begin(), data->begin(), data->end() );
@@ -72,19 +73,19 @@ Geometry::getBounds() const
 Geometry*
 Geometry::cloneAs( const Geometry::Type& newType ) const
 {
-    if ( newType == getType() )
-        return static_cast<Geometry*>( clone() );
+    //if ( newType == getType() )        
+    //    return static_cast<Geometry*>( clone() );
     
     switch( newType )
     {
     case TYPE_POINTSET:
-        return new PointSet( (const osg::Vec3dArray*)this );
+        return new PointSet( &this->asVector() );
     case TYPE_LINESTRING:
-        return new LineString( (const osg::Vec3dArray*)this );
+        return new LineString( &this->asVector() );
     case TYPE_RING:
-        return new Ring( (const osg::Vec3dArray*)this );
+        return new Ring( &this->asVector() );
     case TYPE_POLYGON:
-        return new Polygon( (const osg::Vec3dArray*)this );
+        return new Polygon( &this->asVector() );
     default:
         break;
     }
@@ -99,8 +100,16 @@ Geometry::toVec3Array() const
     return result;
 }
 
+osg::Vec3dArray*
+Geometry::toVec3dArray() const 
+{
+    osg::Vec3dArray* result = new osg::Vec3dArray( this->size() );
+    std::copy( begin(), end(), result->begin() );
+    return result;
+}
+
 Geometry*
-Geometry::create( Type type, const osg::Vec3dArray* toCopy )
+Geometry::create( Type type, const Vec3dVector* toCopy )
 {
     Geometry* output = 0L;
     switch( type ) {
@@ -336,21 +345,21 @@ Geometry::delocalize( const osg::Vec3d& offset )
 
 //----------------------------------------------------------------------------
 
-PointSet::PointSet( const PointSet& rhs, const osg::CopyOp& op ) :
-Geometry( rhs, op )
+PointSet::PointSet( const PointSet& rhs ) :
+Geometry( rhs )
 {
     //nop
 }
 
 //----------------------------------------------------------------------------
 
-LineString::LineString( const LineString& rhs, const osg::CopyOp& op ) :
-Geometry( rhs, op )
+LineString::LineString( const LineString& rhs ) :
+Geometry( rhs )
 {
     //nop
 }
 
-LineString::LineString( const osg::Vec3dArray* data ) :
+LineString::LineString( const Vec3dVector* data ) :
 Geometry( data )
 {
     //nop
@@ -390,13 +399,13 @@ LineString::getSegment(double length, osg::Vec3d& start, osg::Vec3d& end)
 
 //----------------------------------------------------------------------------
 
-Ring::Ring( const Ring& rhs, const osg::CopyOp& op ) :
-Geometry( rhs, op )
+Ring::Ring( const Ring& rhs ) :
+Geometry( rhs )
 {
     //nop
 }
 
-Ring::Ring( const osg::Vec3dArray* data ) :
+Ring::Ring( const Vec3dVector* data ) :
 Geometry( data )
 {
     open();
@@ -407,7 +416,7 @@ Ring::cloneAs( const Geometry::Type& newType ) const
 {
     if ( newType == TYPE_LINESTRING )
     {
-        LineString* line = new LineString( (osg::Vec3dArray*)this );
+        LineString* line = new LineString( &this->asVector() );
         if ( line->size() > 1 && line->front() != line->back() )
             line->push_back( front() );
         return line;
@@ -520,15 +529,14 @@ Ring::contains2D( double x, double y ) const
 
 //----------------------------------------------------------------------------
 
-Polygon::Polygon( const Polygon& rhs, const osg::CopyOp& op ) :
-Ring( rhs, op )
+Polygon::Polygon( const Polygon& rhs ) :
+Ring( rhs )
 {
-    //_boundary = rhs._boundary.valid() ? osg::clone<Ring>( rhs._boundary.get(), op ) : 0L;
     for( RingCollection::const_iterator r = rhs._holes.begin(); r != rhs._holes.end(); ++r )
-        _holes.push_back( osg::clone<Ring>( r->get(), op ) );
+        _holes.push_back( new Ring(*r->get()) );
 }
 
-Polygon::Polygon( const osg::Vec3dArray* data ) :
+Polygon::Polygon( const Vec3dVector* data ) :
 Ring( data )
 {
     //nop
@@ -537,7 +545,7 @@ Ring( data )
 int
 Polygon::getTotalPointCount() const
 {
-    int total = Ring::getTotalPointCount(); //_boundary.valid() ? _boundary->size() : 0;
+    int total = Ring::getTotalPointCount();
     for( RingCollection::const_iterator i = _holes.begin(); i != _holes.end(); ++i )
         total += i->get()->getTotalPointCount();
     return total;
@@ -571,11 +579,11 @@ Polygon::open()
 
 //----------------------------------------------------------------------------
 
-MultiGeometry::MultiGeometry( const MultiGeometry& rhs, const osg::CopyOp& op ) :
-Geometry( rhs, op )
+MultiGeometry::MultiGeometry( const MultiGeometry& rhs ) :
+Geometry( rhs )
 {
     for( GeometryCollection::const_iterator i = rhs._parts.begin(); i != rhs._parts.end(); ++i )
-        _parts.push_back( osg::clone<Geometry>( i->get() ) );
+        _parts.push_back( i->get()->clone() ); //i->clone() ); //osg::clone<Geometry>( i->get() ) );
 }
 
 MultiGeometry::MultiGeometry( const GeometryCollection& parts ) :
@@ -756,8 +764,8 @@ ConstGeometryIterator::fetchNext()
 
 //----------------------------------------------------------------------------
 
-ConstSegmentIterator::ConstSegmentIterator( const osg::Vec3dArray* verts, bool closeLoop ) :
-_verts(verts),
+ConstSegmentIterator::ConstSegmentIterator( const Geometry* verts, bool closeLoop ) :
+_verts(&verts->asVector()),
 _closeLoop(closeLoop),
 _iter(verts->begin())
 {

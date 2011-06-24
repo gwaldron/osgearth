@@ -214,7 +214,7 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
         {
             GeometryIterator gi( geom );
             while( gi.hasMore() )
-                geomSRS->getGeographicSRS()->transformFromECEF( gi.next(), true );
+                geomSRS->getGeographicSRS()->transformFromECEF( gi.next()->asVector(), true );
 
             geomSRS = geomSRS->getGeographicSRS();
         }
@@ -237,7 +237,7 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
 
         // convert back to geocentric if necessary.
         if ( context.isGeocentric() )
-            context.profile()->getSRS()->getGeographicSRS()->transformToECEF( points, true );
+            context.profile()->getSRS()->getGeographicSRS()->transformToECEF( points->asVector(), true );
 
         // re-apply the localization frame.
         context.toLocal( points );

@@ -67,10 +67,10 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
             {
                 // convert to map coords:
                 cx.toWorld( geom );
-                mapSRS->transformFromECEF( geom );
+                mapSRS->transformFromECEF( geom->asVector() );
 
                 // populate the elevations:
-                eq.getElevations( geom, mapSRS );
+                eq.getElevations( geom->asVector(), mapSRS );
 
                 // find the maximum Z value
                 if ( !_maxZAttrName.empty() )
@@ -83,14 +83,14 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
                 }
 
                 // convert back to geocentric:
-                mapSRS->transformToECEF( geom );
+                mapSRS->transformToECEF( geom->asVector() );
                 cx.toLocal( geom );
             }
 
             else
             {
                 // clamps the entire array to the highest available resolution.
-                eq.getElevations( geom, featureSRS );
+                eq.getElevations( geom->asVector(), featureSRS );
             }
         }
 

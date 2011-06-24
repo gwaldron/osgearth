@@ -75,7 +75,7 @@ public:
                     Feature* f = cursor->nextFeature();
                     if ( f && f->getGeometry() )
                     {
-                        return f->getGeometry();
+                        return f->getGeometry()->toVec3dArray();
                     }
                 }
             }

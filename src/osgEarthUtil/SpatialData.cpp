@@ -248,7 +248,7 @@ GeoCell::generateBoundaryGeometry()
 {
     osg::Geometry* g = new osg::Geometry();
 
-    osg::Vec3dArray* v = new osg::Vec3dArray(10);
+    osg::Vec3Array* v = new osg::Vec3Array(10);
     for( unsigned i=0; i<10; ++i )
         (*v)[i] = _boundaryPoints[i];
     g->setVertexArray( v );

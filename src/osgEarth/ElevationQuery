@@ -105,10 +105,10 @@ namespace osgEarth
          * the original Z value.
          */
         bool getElevations(
-            osg::Vec3dArray*        points,
-            const SpatialReference* pointsSRS,
-            bool                    ignoreZ = true,
-            double                  desiredResolution =0.0 );
+            std::vector<osg::Vec3d>& points,
+            const SpatialReference*  pointsSRS,
+            bool                     ignoreZ = true,
+            double                   desiredResolution =0.0 );
 
         /**
          * Sets the technique to use for height determination. See the Technique

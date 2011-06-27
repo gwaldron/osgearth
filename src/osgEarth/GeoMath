@@ -17,6 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
+#ifndef OSGEARTH_GEOMATH_H
+#define OSGEARTH_GEOMATH_H 1
+
 #include <osgEarth/Common>
 #include <osg/CoordinateSystemNode>
 
@@ -159,4 +162,6 @@ namespace osgEarth
                                        double &out_latRad, double &out_lonRad,
                                        double radius = osg::WGS_84_RADIUS_EQUATOR);
     };
-} // namespace osgEarth
+};
+
+#endif

@@ -750,7 +750,8 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 
 bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
-                                  osg::Vec3dArray* points,
+                                  std::vector<osg::Vec3d>& points,
+                                  //osg::Vec3dArray* points,
                                   void* context,
                                   bool ignore_errors ) const
 {
@@ -760,14 +761,14 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     //Check for equivalence and return if the coordinate systems are the same.
     if (isEquivalentTo(out_srs)) return true;
 
-    int numPoints = points->size();
+    int numPoints = points.size();
     double* x = new double[numPoints];
     double* y = new double[numPoints];
 
     for( int i=0; i<numPoints; i++ )
     {
-        x[i] = (*points)[i].x();
-        y[i] = (*points)[i].y();
+        x[i] = points[i].x(); //(*points)[i].x();
+        y[i] = points[i].y(); //(*points)[i].y();
     }
 
     bool success = transformPoints( out_srs, x, y, numPoints, context, ignore_errors );
@@ -776,8 +777,8 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     {
         for( int i=0; i<numPoints; i++ )
         {
-            (*points)[i].x() = x[i];
-            (*points)[i].y() = y[i];
+            points[i].x() = x[i];
+            points[i].y() = y[i];
         }
     }
 
@@ -808,17 +809,18 @@ SpatialReference::transformToECEF(const osg::Vec3d& input,
 }
 
 bool 
-SpatialReference::transformToECEF(osg::Vec3dArray*    points,
-                                  bool                ignoreErrors ) const
+SpatialReference::transformToECEF(std::vector<osg::Vec3d>& points,
+                                  bool                     ignoreErrors ) const
 {
-    if ( !points) return false;
+    if ( points.size() == 0 )
+        return false;
 
     const SpatialReference* geoSRS = getGeographicSRS();
     const osg::EllipsoidModel* ellipsoid = geoSRS->getEllipsoid();
 
-    for( unsigned i=0; i<points->size(); ++i )
+    for( unsigned i=0; i<points.size(); ++i )
     {
-        osg::Vec3d& p = (*points)[i];
+        osg::Vec3d& p = points[i];
 
         if ( !isGeographic() )
             transform( p.x(), p.y(), geoSRS, p.x(), p.y() );
@@ -860,15 +862,15 @@ SpatialReference::transformFromECEF(const osg::Vec3d& input,
 }
 
 bool 
-SpatialReference::transformFromECEF(osg::Vec3dArray* points,
-                                    bool             ignoreErrors ) const
+SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points,
+                                    bool                     ignoreErrors ) const
 {
     bool ok = true;
 
     // first convert all the points to lat/long (in place):
-    for( unsigned i=0; i<points->size(); ++i )
+    for( unsigned i=0; i<points.size(); ++i )
     {
-        osg::Vec3d& p = (*points)[i];
+        osg::Vec3d& p = points[i];
         osg::Vec3d geo;
         getGeographicSRS()->getEllipsoid()->convertXYZToLatLongHeight(
             p.x(), p.y(), p.z(),

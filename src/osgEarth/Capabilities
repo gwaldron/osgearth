@@ -85,7 +85,7 @@ namespace osgEarth
 		const std::string & renderer() const { return _renderer; }
 		
         /** the version of the OpenGL implementation */
-		const std::string & version() const { return version; }
+		const std::string & version() const { return _version; }
 
     private:
         Capabilities();

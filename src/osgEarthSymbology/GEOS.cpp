@@ -45,7 +45,7 @@ using namespace geos::operation;
 
 static
 geom::CoordinateSequence*
-vec3dArray2CoordSeq( const osg::Vec3dArray* input, bool close, const geom::CoordinateSequenceFactory* factory )
+vec3dArray2CoordSeq( const Symbology::Geometry* input, bool close, const geom::CoordinateSequenceFactory* factory )
 {   
     bool needToClose = close && input->size() > 2 && input->front() != input->back();
 

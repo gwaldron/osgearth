@@ -173,7 +173,7 @@ private:
     //Threading::ReadWriteMutex& getMutex();
     inline osg::Geode* getFrontGeode() const {
         if (_transform.valid() && _transform->getNumChildren() > 0)
-            static_cast<osg::Geode*>( _transform->getChild(0) ); 
+            return static_cast<osg::Geode*>( _transform->getChild(0) ); 
         return NULL;
     }
     osg::StateSet* getParentStateSet() const;

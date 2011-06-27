@@ -307,6 +307,7 @@ Map::removeMapCallback( MapCallback* cb )
 void
 Map::addImageLayer( ImageLayer* layer )
 {
+    osgEarth::Registry::instance()->clearBlacklist();
     unsigned int index = -1;
     if ( layer )
     {
@@ -351,6 +352,7 @@ Map::addImageLayer( ImageLayer* layer )
 void
 Map::insertImageLayer( ImageLayer* layer, unsigned int index )
 {
+    osgEarth::Registry::instance()->clearBlacklist();
     if ( layer )
     {
         //Set options for the map from the layer
@@ -395,6 +397,7 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
 void
 Map::addElevationLayer( ElevationLayer* layer )
 {
+    osgEarth::Registry::instance()->clearBlacklist();
     unsigned int index = -1;
     if ( layer )
     {
@@ -437,6 +440,7 @@ Map::addElevationLayer( ElevationLayer* layer )
 void 
 Map::removeImageLayer( ImageLayer* layer )
 {
+    osgEarth::Registry::instance()->clearBlacklist();
     unsigned int index = -1;
 
     osg::ref_ptr<ImageLayer> layerToRemove = layer;
@@ -472,6 +476,7 @@ Map::removeImageLayer( ImageLayer* layer )
 void 
 Map::removeElevationLayer( ElevationLayer* layer )
 {
+    osgEarth::Registry::instance()->clearBlacklist();
     unsigned int index = -1;
 
     osg::ref_ptr<ElevationLayer> layerToRemove = layer;

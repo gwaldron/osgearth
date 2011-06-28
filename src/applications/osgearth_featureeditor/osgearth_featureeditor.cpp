@@ -41,6 +41,7 @@
 
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/Draggers>
+#include <osgEarthUtil/FeatureEditing>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -160,55 +161,6 @@ osg::Node* createFeatureEditor(Feature* feature, FeatureSource* source, MapNode*
 }
 
 
-
-struct AddPointHandler : public osgGA::GUIEventHandler 
-{
-    AddPointHandler(Feature* feature, FeatureListSource* source, const osgEarth::SpatialReference* mapSRS):
-_feature(feature),
-_source( source ),
-_mapSRS( mapSRS )
-{
-}
-
-    void addPoint( float x, float y, osgViewer::View* view )
-    {
-        osgUtil::LineSegmentIntersector::Intersections results;
-        if ( view->computeIntersections( x, y, results, 0x01 ) )
-        {
-            // find the first hit under the mouse:
-            osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-            osg::Vec3d point = first.getWorldIntersectPoint();
-            
-            // transform it to map coordinates:
-            double lat_rad, lon_rad, dummy;
-            _mapSRS->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, dummy );
-
-            double lat_deg = osg::RadiansToDegrees( lat_rad );
-            double lon_deg = osg::RadiansToDegrees( lon_rad );
-
-            if (_feature.valid())            
-            {
-                _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, 0) );
-                _source->dirty();
-                //OE_NOTICE << "Added feature point at " << lon_deg << ", " << lat_deg << std::endl;                    
-            }
-        }
-    }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
-        {
-            osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-            addPoint( ea.getX(), ea.getY(), view );
-        }
-        return false;
-    }
-
-    osg::ref_ptr< FeatureListSource > _source;
-    osg::ref_ptr< Feature > _feature;
-    osg::ref_ptr<const SpatialReference> _mapSRS;
-};
 
 
 

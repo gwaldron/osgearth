@@ -40,7 +40,7 @@
 #include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
 
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/Draggers>
+
 #include <osgEarthUtil/FeatureEditing>
 
 using namespace osgEarth;
@@ -61,104 +61,6 @@ randomColor()
 
 
 static int s_fid = 0;
-
-class MoveFeatureDraggerCallback : public osgManipulator::DraggerCallback
-{
-public:
-    MoveFeatureDraggerCallback(Feature* feature, FeatureSource* source, const Map* map, int point):
-      _feature(feature),
-      _source(source),
-      _map(map),
-      _point(point)
-      {}
-
-      osg::Vec2d getLocation(const osg::Matrixd& matrix)
-      {
-          osg::Vec3d trans = matrix.getTrans();
-          double lat, lon, height;
-          _map->getProfile()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
-          return osg::Vec2d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat));
-      }
-
-
-      virtual bool receive(const osgManipulator::MotionCommand& command)
-      {
-          switch (command.getStage())
-          {
-          case osgManipulator::MotionCommand::START:
-              {
-                  // Save the current matrix                  
-                  osg::Vec3d startLocation = (*_feature->getGeometry())[_point];
-                  double x, y, z;
-                  _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(startLocation.y()), osg::DegreesToRadians(startLocation.x()), 0, x, y, z);
-                  _startMotionMatrix = osg::Matrixd::translate(x, y, z);
-
-                  // Get the LocalToWorld and WorldToLocal matrix for this node.
-                  osg::NodePath nodePathToRoot;
-                  _localToWorld = osg::Matrixd::identity();
-                  _worldToLocal = osg::Matrixd::identity();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::MOVE:
-              {
-                  // Transform the command's motion matrix into local motion matrix.
-                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
-                      * command.getMotionMatrix()
-                      * command.getLocalToWorld() * _worldToLocal;
-
-                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
-                  osg::Vec2d location = getLocation( newMatrix );
-                  (*_feature->getGeometry())[_point] = osg::Vec3d(location.x(), location.y(), 0);
-                  _source->dirty();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::FINISH:
-              {
-                  return true;
-              }
-          case osgManipulator::MotionCommand::NONE:
-          default:
-              return false;
-          }
-      }
-
-
-      osg::ref_ptr<const Map>            _map;      
-      osg::ref_ptr< Feature > _feature;
-      osg::ref_ptr< FeatureSource > _source;
-
-      osg::Matrix _startMotionMatrix;
-      int _point;
-
-      osg::Matrix _localToWorld;
-      osg::Matrix _worldToLocal;
-};
-
-
-osg::Node* createFeatureEditor(Feature* feature, FeatureSource* source, MapNode* mapNode)
-{    
-    osg::Group* editor = new osg::Group; 
-    //Create a dragger for each point
-    for (int i = 0; i < feature->getGeometry()->size(); i++)
-    {
-        osg::Matrixd matrix;
-        double lat = (*feature->getGeometry())[i].y();
-        double lon = (*feature->getGeometry())[i].x();
-        mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), 0, matrix);    
-
-        IntersectingDragger* dragger = new IntersectingDragger;
-        dragger->setNode( mapNode->getTerrainEngine() );
-        dragger->setupDefaultGeometry();
-        dragger->setMatrix(matrix);
-        dragger->setHandleEvents( true );        
-        dragger->addDraggerCallback(new MoveFeatureDraggerCallback(feature, source, mapNode->getMap(), i) );
-
-        editor->addChild(dragger);        
-    }
-    return editor;   
-}
 
 
 
@@ -243,7 +145,7 @@ _featureGraph( featureGraph )
                 outStyle.getSymbol<LineSymbol>()->stroke()->stipple() =  0x00FF ;
                 _featureGraph->setStyle( _featureGraph->getStyles() );
             }
-            s_editor = createFeatureEditor(s_activeFeature, s_source, s_mapNode);
+            s_editor = new FeatureEditor(s_activeFeature, s_source, s_mapNode);
             s_root->addChild( s_editor );
         }
     }
@@ -382,7 +284,7 @@ int main(int argc, char** argv)
     //Make a list of styles
     styleBar->setControl(0, row++, new LabelControl("Styles") );    
 
-    int numStyles = 8;
+    unsigned int numStyles = 8;
     for (unsigned int i = 0; i < numStyles; ++i)
     {
         float w = 50;

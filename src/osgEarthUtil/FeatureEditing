@@ -47,7 +47,14 @@ namespace osgEarth { namespace Util {
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
+        /**
+         * Sets the mouse button used for adding new points
+         */
         void setMouseButton( osgGA::GUIEventAdapter::MouseButtonMask mouseButton);
+
+        /**
+         * Gets the mouse button used for adding new points
+         */
         osgGA::GUIEventAdapter::MouseButtonMask getMouseButton() const;
 
 
@@ -56,9 +63,36 @@ namespace osgEarth { namespace Util {
 
         osgGA::GUIEventAdapter::MouseButtonMask _mouseButton;
         bool _mouseDown;
+        bool _firstMove;
         osg::ref_ptr< osgEarth::Features::FeatureListSource > _source;
         osg::ref_ptr< osgEarth::Features::Feature > _feature;
         osg::ref_ptr<const SpatialReference> _mapSRS;
+    };
+
+    
+    /**
+     * Node you can add to your scene graph to edit the verts of a Feature's Geometry
+     */
+    class OSGEARTHUTIL_EXPORT FeatureEditor : public osg::Group
+    {
+    public:
+         /**
+         * Constructs a new FeatureEditor
+         * @param feature
+         *      The Feature to edit
+         * @param source
+         *      The FeatureSource that the Feature belongs to
+         * @param mapNode
+         *      The MapNode that is being displayed
+         */
+        FeatureEditor( osgEarth::Features::Feature* feature, osgEarth::Features::FeatureSource* source, osgEarth::MapNode* mapNode );
+
+    protected:
+        void init();
+
+        osg::ref_ptr< osgEarth::Features::Feature > _feature;
+        osg::ref_ptr< osgEarth::Features::FeatureSource > _source;
+        osg::ref_ptr< osgEarth::MapNode > _mapNode;
     };
 
 }}

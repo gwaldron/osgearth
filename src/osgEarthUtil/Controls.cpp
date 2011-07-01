@@ -1842,7 +1842,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
               control->dirty();
           }
 
-          bool visible;
+          bool visible = true;
 
           if ( context._frameStamp->getFrameNumber() - nodeData._visitFrame > 2 )
           {

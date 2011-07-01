@@ -208,6 +208,14 @@ Registry::blacklist(const std::string& filename)
     OE_DEBUG << "Blacklist size = " << _blacklistedFilenames.size() << std::endl;
 }
 
+void
+Registry::clearBlacklist()
+{
+    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    _blacklistedFilenames.clear();
+    OE_DEBUG << "Blacklist size = " << _blacklistedFilenames.size() << std::endl;
+}
+
 unsigned int
 Registry::getNumBlacklistedFilenames()
 {

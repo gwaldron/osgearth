@@ -40,7 +40,8 @@
 #include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
 
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/Draggers>
+
+#include <osgEarthUtil/FeatureEditing>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -61,154 +62,7 @@ randomColor()
 
 static int s_fid = 0;
 
-class MoveFeatureDraggerCallback : public osgManipulator::DraggerCallback
-{
-public:
-    MoveFeatureDraggerCallback(Feature* feature, FeatureSource* source, const Map* map, int point):
-      _feature(feature),
-      _source(source),
-      _map(map),
-      _point(point)
-      {}
 
-      osg::Vec2d getLocation(const osg::Matrixd& matrix)
-      {
-          osg::Vec3d trans = matrix.getTrans();
-          double lat, lon, height;
-          _map->getProfile()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
-          return osg::Vec2d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat));
-      }
-
-
-      virtual bool receive(const osgManipulator::MotionCommand& command)
-      {
-          switch (command.getStage())
-          {
-          case osgManipulator::MotionCommand::START:
-              {
-                  // Save the current matrix                  
-                  osg::Vec3d startLocation = (*_feature->getGeometry())[_point];
-                  double x, y, z;
-                  _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(startLocation.y()), osg::DegreesToRadians(startLocation.x()), 0, x, y, z);
-                  _startMotionMatrix = osg::Matrixd::translate(x, y, z);
-
-                  // Get the LocalToWorld and WorldToLocal matrix for this node.
-                  osg::NodePath nodePathToRoot;
-                  _localToWorld = osg::Matrixd::identity();
-                  _worldToLocal = osg::Matrixd::identity();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::MOVE:
-              {
-                  // Transform the command's motion matrix into local motion matrix.
-                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
-                      * command.getMotionMatrix()
-                      * command.getLocalToWorld() * _worldToLocal;
-
-                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
-                  osg::Vec2d location = getLocation( newMatrix );
-                  (*_feature->getGeometry())[_point] = osg::Vec3d(location.x(), location.y(), 0);
-                  _source->dirty();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::FINISH:
-              {
-                  return true;
-              }
-          case osgManipulator::MotionCommand::NONE:
-          default:
-              return false;
-          }
-      }
-
-
-      osg::ref_ptr<const Map>            _map;      
-      osg::ref_ptr< Feature > _feature;
-      osg::ref_ptr< FeatureSource > _source;
-
-      osg::Matrix _startMotionMatrix;
-      int _point;
-
-      osg::Matrix _localToWorld;
-      osg::Matrix _worldToLocal;
-};
-
-
-osg::Node* createFeatureEditor(Feature* feature, FeatureSource* source, MapNode* mapNode)
-{    
-    osg::Group* editor = new osg::Group; 
-    //Create a dragger for each point
-    for (int i = 0; i < feature->getGeometry()->size(); i++)
-    {
-        osg::Matrixd matrix;
-        double lat = (*feature->getGeometry())[i].y();
-        double lon = (*feature->getGeometry())[i].x();
-        mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), 0, matrix);    
-
-        IntersectingDragger* dragger = new IntersectingDragger;
-        dragger->setNode( mapNode->getTerrainEngine() );
-        dragger->setupDefaultGeometry();
-        dragger->setMatrix(matrix);
-        dragger->setHandleEvents( true );        
-        dragger->addDraggerCallback(new MoveFeatureDraggerCallback(feature, source, mapNode->getMap(), i) );
-
-        editor->addChild(dragger);        
-    }
-    return editor;   
-}
-
-
-
-struct AddPointHandler : public osgGA::GUIEventHandler 
-{
-    AddPointHandler(Feature* feature, FeatureListSource* source, const osgEarth::SpatialReference* mapSRS):
-_feature(feature),
-_source( source ),
-_mapSRS( mapSRS )
-{
-}
-
-    void addPoint( float x, float y, osgViewer::View* view )
-    {
-        osgUtil::LineSegmentIntersector::Intersections results;
-        if ( view->computeIntersections( x, y, results, 0x01 ) )
-        {
-            // find the first hit under the mouse:
-            osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-            osg::Vec3d point = first.getWorldIntersectPoint();
-            
-            // transform it to map coordinates:
-            double lat_rad, lon_rad, dummy;
-            _mapSRS->getEllipsoid()->convertXYZToLatLongHeight( point.x(), point.y(), point.z(), lat_rad, lon_rad, dummy );
-
-            double lat_deg = osg::RadiansToDegrees( lat_rad );
-            double lon_deg = osg::RadiansToDegrees( lon_rad );
-
-            if (_feature.valid())            
-            {
-                _feature->getGeometry()->push_back( osg::Vec3d(lon_deg, lat_deg, 0) );
-                _source->dirty();
-                //OE_NOTICE << "Added feature point at " << lon_deg << ", " << lat_deg << std::endl;                    
-            }
-        }
-    }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
-        {
-            osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-            addPoint( ea.getX(), ea.getY(), view );
-        }
-        return false;
-    }
-
-    osg::ref_ptr< FeatureListSource > _source;
-    osg::ref_ptr< Feature > _feature;
-    osg::ref_ptr<const SpatialReference> _mapSRS;
-};
 
 
 
@@ -291,7 +145,7 @@ _featureGraph( featureGraph )
                 outStyle.getSymbol<LineSymbol>()->stroke()->stipple() =  0x00FF ;
                 _featureGraph->setStyle( _featureGraph->getStyles() );
             }
-            s_editor = createFeatureEditor(s_activeFeature, s_source, s_mapNode);
+            s_editor = new FeatureEditor(s_activeFeature, s_source, s_mapNode);
             s_root->addChild( s_editor );
         }
     }
@@ -430,7 +284,7 @@ int main(int argc, char** argv)
     //Make a list of styles
     styleBar->setControl(0, row++, new LabelControl("Styles") );    
 
-    int numStyles = 8;
+    unsigned int numStyles = 8;
     for (unsigned int i = 0; i < numStyles; ++i)
     {
         float w = 50;

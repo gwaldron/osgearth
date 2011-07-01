@@ -25,6 +25,8 @@
 #include <osg/CullStack>
 #include <osg/Uniform>
 
+#include <osgEarth/MapNode>
+
 using namespace osgEarth;
 using namespace OpenThreads;
 
@@ -77,6 +79,8 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
 
         plod->setFileName( 1, uri );
         plod->setRange   ( 1, 0, minRange );
+
+        plod->setUserData( new MapNode::TileRangeData(minRange, maxRange) );
 
 #if USE_FILELOCATIONCALLBACK
         osgDB::Options* options = new osgDB::Options;

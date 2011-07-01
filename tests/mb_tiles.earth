@@ -1,0 +1,19 @@
+<!--
+osgEarth Sample
+
+This example shows how to access an MBTiles dataset.  The MBTiles datasets are very large so they are no in the osgEarth repository.  You can download samples from http://mapbox.com/#/
+-->
+
+<map name="MBTiles" type="geocentric" version="2">    
+   
+   <image driver="gdal" name="world-tiff">
+        <url>../data/world.tif</url>
+    </image>	
+	  
+    <!--Add the haiti mbtiles dataset.  You may need to change the path to point to your download location-->	  
+    <image name="haiti" driver="mbtiles">
+        <filename>../data/haiti-terrain-grey.mbtiles</filename>
+		<format>jpg</format>
+    </image>
+   
+</map>

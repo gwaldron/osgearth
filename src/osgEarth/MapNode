@@ -37,6 +37,20 @@ namespace osgEarth
     class OSGEARTH_EXPORT MapNode : public osg::Group
     {
     public:
+
+        class TileRangeData : public osg::Referenced
+        {
+        public:
+            TileRangeData(double minRange, double maxRange):
+              _minRange( minRange ),
+              _maxRange( maxRange )
+            {
+            }
+
+            double _minRange;
+            double _maxRange;
+        };
+
         /**
          * Creates an empty map node.
          */

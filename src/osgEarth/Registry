@@ -90,6 +90,11 @@ namespace osgEarth
         unsigned int getNumBlacklistedFilenames();
 
         /**
+         * Clears the blacklist
+         */
+        void clearBlacklist();
+
+        /**
          * The system wide default vertical spatial reference system.
          */
         const VerticalSpatialReference* getDefaultVSRS() const;

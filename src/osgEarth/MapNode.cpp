@@ -85,27 +85,34 @@ public:
       }
 
       virtual void apply(osg::PagedLOD& node)
-      {
-          for (unsigned int i = 0; i < node.getNumFileNames();)
+      {        
+          //The PagedLOD node will contain two filenames, the first is empty and is the actual geometry of the          
+          //tile and the second is the filename of the next tile.
+          if (node.getNumFileNames() > 1)
           {
-              const std::string &filename = node.getFileName(i);
+              //Get the child filename
+              const std::string &filename = node.getFileName(1);              
               if (osgEarth::Registry::instance()->isBlacklisted(filename))
               {
-                  OE_DEBUG << "Removing blacklisted child" << i << "  " << filename <<  std::endl;
-                  //Adjust the previous LOD's range so that it becomes the last child
-                  if (i > 0)
-                  {
-                      node.setRange(i-1, 0, FLT_MAX);
-                  }
-                  node.removeChildren(i, 1);
-                  _numRemoved++;
+                  //If the tile is blacklisted, we set the actual geometry, child 0, to always display
+                  //and the second child to never display
+                  node.setRange(0, 0, FLT_MAX);
+                  node.setRange(1, FLT_MAX, FLT_MAX);
               }
               else
               {
-                  i++;
+                  //If the child is not blacklisted, it is possible that it could have been blacklisted previously so reset the
+                  //ranges of both the first and second children.  This gives the second child another
+                  //chance to be traversed in case a layer was added that might have data.
+                  osg::ref_ptr< MapNode::TileRangeData > ranges = static_cast< MapNode::TileRangeData* >(node.getUserData());
+                  if (ranges)
+                  {
+                      node.setRange(0, ranges->_minRange, ranges->_maxRange);
+                      node.setRange(1, 0, ranges->_minRange);
+                  }                  
               }
+              
           }
-
           traverse(node);
       }
 
@@ -589,7 +596,8 @@ MapNode::traverse( osg::NodeVisitor& nv )
             //Only remove the blacklisted filenames if new filenames have been added since last time.
             _lastNumBlacklistedFilenames = numBlacklist;
             RemoveBlacklistedFilenamesVisitor v;
-            accept( v );
+            //accept( v );
+            _terrainEngine->accept( v );
         }
     }
 

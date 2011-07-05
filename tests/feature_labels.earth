@@ -27,7 +27,7 @@ This shows how to label point features with an attribute.
                    text-font:     arial.ttf;
                    text-size:     16;
                    text-remove-duplicate-labels: true;
-                   altitide-clamping: terrain;
+                   altitude-clamping: terrain;
                 }     
             </style>
         </styles>

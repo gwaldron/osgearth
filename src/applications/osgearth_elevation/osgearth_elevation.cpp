@@ -89,9 +89,10 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             // find the first hit under the mouse:
             osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
             osg::Vec3d point = first.getWorldIntersectPoint();
+            osg::Vec3d lla;
             
             // transform it to map coordinates:
-            _map->worldPointToMapPoint(point, point);
+            _map->worldPointToMapPoint(point, lla);
 
             // find the elevation at that map point:
             osg::Matrixd out_mat;
@@ -100,7 +101,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
             double out_resolution = 0.0;
 
             bool ok = _query.getElevation( 
-                point,
+                lla,
                 _map->getProfile()->getSRS(),
                 out_elevation, 
                 query_resolution, 
@@ -108,13 +109,16 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
             if ( ok )
             {
-                _flagLocator->setPosition( osg::Vec3d(point.x(), point.y(), out_elevation) );
+                _flagLocator->setPosition( osg::Vec3d(lla.x(), lla.y(), out_elevation) );
                 s_flagNode->setNodeMask( ~0 );
 
                 std::stringstream buf;
                 buf << std::fixed << std::setprecision(2) 
-                    << "Pos: " << point.x() << ", " << point.y() << std::endl
-                    << "Elv: " << out_elevation << "m";
+                    << "Pos: " << lla.x() << ", " << lla.y() << std::endl
+                    << "Elv: " << out_elevation << "m" << std::endl
+                    << "X:   " << point.x() << std::endl
+                    << "Y:   " << point.y() << std::endl
+                    << "Z:   " << point.z();
                 s_flagText->setText( buf.str() );
 
                 OE_NOTICE << buf.str() << std::endl;

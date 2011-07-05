@@ -625,7 +625,7 @@ MultiGeometry::cloneAs( const Geometry::Type& newType ) const
     MultiGeometry* multi = new MultiGeometry();
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
     {
-        Geometry* part = i->get()->cloneAs( newType );
+        Geometry* part = i->get()->cloneAs( i->get()->getType() );
         if ( part ) multi->getComponents().push_back( part );
     }
     return multi;

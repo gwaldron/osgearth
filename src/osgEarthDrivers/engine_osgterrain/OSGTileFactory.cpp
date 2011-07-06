@@ -85,7 +85,7 @@ _engineId( engineId ),
 _cull_thread_mapf( cull_thread_mapf ),
 _terrainOptions( props )
 {
-    LoadingPolicy::Mode mode = _terrainOptions.loadingPolicy()->mode().value();
+    //LoadingPolicy::Mode mode = _terrainOptions.loadingPolicy()->mode().value();
 }
 
 const OSGTerrainOptions& 

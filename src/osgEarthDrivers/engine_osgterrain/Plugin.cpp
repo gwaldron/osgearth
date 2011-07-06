@@ -94,8 +94,6 @@ public:
             OSGTerrainEngineNode* engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)engineID );
             if ( engineNode )
             {
-                osg::Timer_t start = osg::Timer::instance()->tick();
-
                 // assemble the key and create the node:
                 const Profile* profile = engineNode->getMap()->getProfile();
                 TileKey key( lod, x, y, profile );

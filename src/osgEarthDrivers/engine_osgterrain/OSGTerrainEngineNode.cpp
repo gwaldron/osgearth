@@ -363,8 +363,6 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
         result = _keyNodeFactory->createNode( key );
     }
 
-    osg::Timer_t end = osg::Timer::instance()->tick();
-
     if ( result )
     {
         _tileCount++;

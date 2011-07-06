@@ -91,7 +91,7 @@ osg::Referenced( true ),
 _map(map),
 _mapInfo(map)
 {
-    //nop
+	_referenceURI = map->getMapOptions().referenceURI().value();
 }
 
 void

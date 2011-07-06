@@ -265,7 +265,7 @@ TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoEx
         osg::ref_ptr<osg::Image> newImage = ImageUtils::convertToRGBA8( image );
         
         // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
-        if ( image->s() != textureSize || image->t() != textureSize )
+        if ( image->s() != (int)textureSize || image->t() != (int)textureSize )
         {
             osg::ref_ptr<osg::Image> resizedImage;
             if ( ImageUtils::resizeImage( newImage.get(), textureSize, textureSize, resizedImage ) )

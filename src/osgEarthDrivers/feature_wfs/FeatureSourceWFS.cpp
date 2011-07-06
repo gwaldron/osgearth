@@ -51,8 +51,6 @@ using namespace osgEarth::Drivers;
 std::string getTempPath()
 {
 #if defined(WIN32)  && !defined(__CYGWIN__)
-    BOOL fSuccess  = FALSE;
-
     TCHAR lpTempPathBuffer[MAX_PATH];    
 
     //  Gets the temp path env string (no guarantee it's a valid path).

@@ -370,7 +370,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
         osg::Group* geometry = build( level, tileExtent, &key );
         result = geometry;
 
-        if (lod < _source->getFeatureProfile()->getMaxLevel())
+        if ((int)lod < _source->getFeatureProfile()->getMaxLevel())
         {
             // see if there are any more levels. If so, build some pagedlods to bring the
             // next one in.
@@ -563,8 +563,6 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 
     if ( _source->hasEmbeddedStyles() )
     {
-        const FeatureProfile* profile = _source->getFeatureProfile();
-
         // each feature has its own style, so use that and ignore the style catalog.
         osg::ref_ptr<FeatureCursor> cursor = _source->createFeatureCursor( baseQuery );
         while( cursor->hasMore() )

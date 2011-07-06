@@ -1788,7 +1788,6 @@ _sortByDistance( true )
 void
 ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 {
-    const osg::Viewport* vp = context._vp;
     osg::Vec2f surfaceSize( context._vp->width(), context._vp->height() );
 
     // we don't really need to keep this list in the object, but that prevents it from having to

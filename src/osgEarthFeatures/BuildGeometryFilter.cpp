@@ -354,7 +354,10 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
     //    optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
     //}
 
-    MeshConsolidator::run( *_geode.get() );
+    if ( !_featureNameExpr.isSet() )
+    {
+        MeshConsolidator::run( *_geode.get() );
+    }
 
     if ( ok )
     {

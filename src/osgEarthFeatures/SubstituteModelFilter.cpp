@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/MarkerFactory>
+#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -44,7 +45,8 @@ namespace
 
 SubstituteModelFilter::SubstituteModelFilter( const Style& style ) :
 _style( style ),
-_cluster( false )
+_cluster( false ),
+_merge( true )
 {
     //NOP
 }
@@ -70,6 +72,14 @@ SubstituteModelFilter::pushFeature(Feature*                     input,
             xform->setDataVariance( osg::Object::STATIC );
             xform->addChild( data._model.get() );
             attachPoint->addChild( xform );
+
+            // name the feature if necessary
+            if ( !_featureNameExpr.empty() )
+            {
+                const std::string& name = input->eval( _featureNameExpr );
+                if ( !name.empty() )
+                    xform->setName( name );
+            }
         }
     }
 
@@ -153,9 +163,10 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 
             geode.dirtyBound();
 
-            // merge the geometry...
-            osgUtil::Optimizer opt;
-            opt.optimize( &geode, osgUtil::Optimizer::MERGE_GEOMETRY );
+            MeshConsolidator::run( geode );
+            //// merge the geometry...
+            //osgUtil::Optimizer opt;
+            //opt.optimize( &geode, osgUtil::Optimizer::MERGE_GEOMETRY );
 
 #if 0
 

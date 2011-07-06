@@ -593,48 +593,51 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     for (MaskLayerVector::const_iterator it = tilef._masks.begin(); it != tilef._masks.end(); ++it)
     {
       osg::Vec3dArray* boundary = (*it)->getOrCreateBoundary();
-      osg::Vec3d min, max;
-      min = max = boundary->front();
-
-      for (osg::Vec3dArray::iterator it = boundary->begin(); it != boundary->end(); ++it)
+      if ( boundary )
       {
-        if (it->x() < min.x())
-          min.x() = it->x();
+          osg::Vec3d min, max;
+          min = max = boundary->front();
 
-        if (it->y() < min.y())
-          min.y() = it->y();
+          for (osg::Vec3dArray::iterator it = boundary->begin(); it != boundary->end(); ++it)
+          {
+            if (it->x() < min.x())
+              min.x() = it->x();
 
-        if (it->x() > max.x())
-          max.x() = it->x();
+            if (it->y() < min.y())
+              min.y() = it->y();
 
-        if (it->y() > max.y())
-          max.y() = it->y();
-      }
+            if (it->x() > max.x())
+              max.x() = it->x();
 
-      osg::Vec3d min_ndc, max_ndc;
-      geoLocator->convertModelToLocal(min, min_ndc);
-      geoLocator->convertModelToLocal(max, max_ndc);
+            if (it->y() > max.y())
+              max.y() = it->y();
+          }
 
-      bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
-                      (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
-                      (min_ndc.x() < 1.0 && max_ndc.x() >= 1.0));
+          osg::Vec3d min_ndc, max_ndc;
+          geoLocator->convertModelToLocal(min, min_ndc);
+          geoLocator->convertModelToLocal(max, max_ndc);
 
-      bool y_match = ((min_ndc.y() >= 0.0 && max_ndc.y() <= 1.0) ||
-                      (min_ndc.y() <= 0.0 && max_ndc.y() > 0.0) ||
-                      (min_ndc.y() < 1.0 && max_ndc.y() >= 1.0));
+          bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
+                          (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
+                          (min_ndc.x() < 1.0 && max_ndc.x() >= 1.0));
 
-      if (x_match && y_match)
-      {
-        osg::Geometry* mask_geom = new osg::Geometry();
-        mask_geom->setThreadSafeRefUnref(true);
-        mask_geom->setDataVariance( osg::Object::DYNAMIC );
-        mask_geom->setUseDisplayList(false);
-        mask_geom->setUseVertexBufferObjects(true);
-        //mask_geom->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
-        geode->addDrawable(mask_geom);
+          bool y_match = ((min_ndc.y() >= 0.0 && max_ndc.y() <= 1.0) ||
+                          (min_ndc.y() <= 0.0 && max_ndc.y() > 0.0) ||
+                          (min_ndc.y() < 1.0 && max_ndc.y() >= 1.0));
 
-        masks.push_back(MaskRecord(boundary, min_ndc, max_ndc, mask_geom));
-      }
+          if (x_match && y_match)
+          {
+            osg::Geometry* mask_geom = new osg::Geometry();
+            mask_geom->setThreadSafeRefUnref(true);
+            mask_geom->setDataVariance( osg::Object::DYNAMIC );
+            mask_geom->setUseDisplayList(false);
+            mask_geom->setUseVertexBufferObjects(true);
+            //mask_geom->getOrCreateStateSet()->setAttribute(new osg::Point( 5.0f ), osg::StateAttribute::ON);
+            geode->addDrawable(mask_geom);
+
+            masks.push_back(MaskRecord(boundary, min_ndc, max_ndc, mask_geom));
+          }
+       }
     }
 
     osg::Geometry* stitching_skirts = 0L;

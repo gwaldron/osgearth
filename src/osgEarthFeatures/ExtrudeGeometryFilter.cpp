@@ -445,10 +445,20 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
 
             //applyFragmentName( new_fragment, input, env );
 
+            std::string name;
+            if ( !_featureNameExpr.empty() )
+                name = input->eval( _featureNameExpr );
+
             _geode->addDrawable( walls.get() );
+            if ( !name.empty() )
+                walls->setName( name );
 
             if ( rooflines.valid() )
+            {
                 _geode->addDrawable( rooflines.get() );
+                if ( !name.empty() )
+                    rooflines->setName( name );
+            }
         }   
     }
 
@@ -492,7 +502,10 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
     //optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
    
     // convert everything to triangles and combine drawables.
-    MeshConsolidator::run( *_geode.get() );
+    if ( _featureNameExpr.empty() )
+    {
+        MeshConsolidator::run( *_geode.get() );
+    }
 
     // TODO: figure out whether these help
     //optimizer.optimize( _geode.get(), osgUtil::Optimizer::INDEX_MESH );

@@ -33,6 +33,7 @@ Config
 AltitudeSymbol::getConfig() const
 {
     Config conf;
+    conf.key() = "altitude";
     conf.addIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
     conf.addIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
     conf.addIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );

@@ -90,6 +90,13 @@ namespace osgEarth { namespace Features
          * Sets the maximum wall angle that doesn't require a new normal vector
          */
         void setWallAngleThreshold( float angle_deg ) { _wallAngleThresh_deg = angle_deg; }
+        
+        /**
+         * Sets the expression to evaluate when setting a feature name.
+         * NOTE: setting this forces geometry-merging to OFF
+         */
+        void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
+        const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 
     protected:
         osg::ref_ptr<osg::Geode>     _geode;
@@ -106,6 +113,8 @@ namespace osgEarth { namespace Features
         optional<NumericExpression>  _heightExpr;
         osg::ref_ptr<HeightCallback> _heightCallback;
         optional<NumericExpression>  _heightOffsetExpr;
+        
+        StringExpression             _featureNameExpr;
 
         void reset();
         

@@ -59,6 +59,9 @@ namespace osgEarth { namespace Symbology
         /** Gets the expression string. */
         const std::string& expr() const { return _src; }
 
+        /** Whether the expression is empty */
+        bool empty() const { return _src.empty(); }
+
     public:
         Config getConfig() const;
         void mergeConfig( const Config& conf );
@@ -108,6 +111,9 @@ namespace osgEarth { namespace Symbology
 
         /** Gets the expression string. */
         const std::string& expr() const { return _src; }
+
+        /** Whether the expression is empty */
+        bool empty() const { return _src.empty(); }
 
     public:
         Config getConfig() const;

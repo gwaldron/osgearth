@@ -72,6 +72,14 @@ SubstituteModelFilter::pushFeature(Feature*                     input,
             xform->setDataVariance( osg::Object::STATIC );
             xform->addChild( data._model.get() );
             attachPoint->addChild( xform );
+
+            // name the feature if necessary
+            if ( !_featureNameExpr.empty() )
+            {
+                const std::string& name = input->eval( _featureNameExpr );
+                if ( !name.empty() )
+                    xform->setName( name );
+            }
         }
     }
 

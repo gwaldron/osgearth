@@ -68,6 +68,9 @@ namespace osgEarth { namespace Features
         void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
         const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
 
+        void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
+        const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
+
     public:
         /** Processes a new feature list */
         virtual FilterContext push( FeatureList& input, FilterContext& context );
@@ -81,6 +84,7 @@ namespace osgEarth { namespace Features
         bool                      _cluster;
         bool                      _merge;
         osg::Matrixd              _modelMatrix;
+        StringExpression          _featureNameExpr;
 
         struct Data {
             osg::ref_ptr<osg::Node> _model;

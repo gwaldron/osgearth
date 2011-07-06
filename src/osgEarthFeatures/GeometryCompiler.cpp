@@ -161,6 +161,8 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         sub.setClustering( *_options.clustering() );
         if ( marker->scale().isSet() )
             sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
+        if ( _options.featureName().isSet() )
+            sub.setFeatureNameExpr( *_options.featureName() );
 
         cx = sub.push( workingSet, cx );
 
@@ -189,9 +191,10 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
                 extrude.setExtrusionHeight( *extrusion->height() );
             if ( extrusion->heightExpression().isSet() )
                 extrude.setExtrusionExpr( *extrusion->heightExpression() );
-
             if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
                 extrude.setHeightOffsetExpression( NumericExpression("[__max_z]") );
+            if ( _options.featureName().isSet() )
+                extrude.setFeatureNameExpr( *_options.featureName() );
             extrude.setFlatten( *extrusion->flatten() );
         }
         if ( polygon )

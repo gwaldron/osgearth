@@ -60,6 +60,10 @@ namespace osgEarth { namespace Features
         void setClustering( bool value ) { _cluster = value; }
         bool getClustering() const { return _cluster; }
 
+        /** Whether to merge marker geometries into geodes */
+        void setMergeGeometry( bool value ) { _merge = value; }
+        bool getMergeGeometry() const { return _merge; }
+
         /** The matrix with which to transform each model instance after placement. */
         void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
         const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
@@ -75,6 +79,7 @@ namespace osgEarth { namespace Features
         Style                     _style;
         osg::ref_ptr<osg::Node>   _result;
         bool                      _cluster;
+        bool                      _merge;
         osg::Matrixd              _modelMatrix;
 
         struct Data {

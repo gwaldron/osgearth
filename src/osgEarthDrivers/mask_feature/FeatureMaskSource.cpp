@@ -28,6 +28,8 @@
 
 #include "FeatureMaskOptions"
 
+#define LC "[FeatureMaskDriver] "
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
@@ -38,7 +40,7 @@ class FeatureMaskSource : public MaskSource
 {
 public:
     FeatureMaskSource( const MaskSourceOptions& options )
-        : MaskSource( options ), _options( options )
+        : MaskSource( options ), _options( options ), _failed( false )
     {
         // the data source from which to pull features:
         if ( _options.featureSource().valid() )
@@ -65,25 +67,42 @@ public:
 
     osg::Vec3dArray* createBoundary( ProgressCallback* progress )
     {
-        if ( _features.valid() && _features->getFeatureProfile() )
+        if ( _failed )
+            return 0L;
+
+        if ( _features.valid() )
         {
-            osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
-            if ( cursor )
+            if ( _features->getFeatureProfile() )
             {
-                if ( cursor->hasMore() )
+                osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor();
+                if ( cursor )
                 {
-                    Feature* f = cursor->nextFeature();
-                    if ( f && f->getGeometry() )
+                    if ( cursor->hasMore() )
                     {
-                        return f->getGeometry()->toVec3dArray();
+                        Feature* f = cursor->nextFeature();
+                        if ( f && f->getGeometry() )
+                        {
+                            return f->getGeometry()->toVec3dArray();
+                        }
                     }
                 }
             }
+            else
+            {
+                OE_WARN << LC << "Failed to create boundary; feature source has no SRS" << std::endl;
+                _failed = true;
+            }
+        }
+        else
+        {
+            OE_WARN << LC << "Unable to create boundary; invalid feature source" << std::endl;
+            _failed = true;
         }
         return 0L;
     }
 
 private:
+    bool _failed;
     const FeatureMaskOptions _options;
     osg::ref_ptr<FeatureSource> _features;
 };

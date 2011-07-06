@@ -1,0 +1,22 @@
+<!-- 
+osgEarth Sample - Masking
+Demonstrates the use a a MaskLayer to cut out an area of the globe.
+-->
+
+<map version="2">
+    <image driver="gdal" name="world-tiff">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <!-- masks out the US State of Utah -->
+    <mask driver="feature" name="mask">
+        <features driver="ogr">
+            <geometry>
+                POLYGON(( -111.0466 42.0015 0, -111.0467 40.9979 0, -109.0501 41.0007 0, -109.0452 36.9991 0, -114.0506 37.0004 0, -114.0417 41.9937 0)) 
+            </geometry>
+        </features>
+        <profile>global-geodetic</profile>
+    </mask>
+    
+    <options lighting="false"/>
+</map>

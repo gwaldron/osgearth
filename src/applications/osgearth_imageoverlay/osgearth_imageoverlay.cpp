@@ -70,8 +70,8 @@ usage( const std::string& msg )
 {
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << "USAGE: osgearth_imageoverlay file.earth" << std::endl;
-    OE_NOTICE << "   --image xmin ymin xmax ymax     : An image to overlay and it's bounds" << std::endl;        
-    OE_NOTICE << "   --vert                          : Move individual verts when editing" << std::endl;
+    OE_NOTICE << "   --image <file> xmin ymin xmax ymax : An image to overlay and it's bounds" << std::endl;        
+    OE_NOTICE << "   --vert                             : Move individual verts when editing" << std::endl;
 
         
     return -1;

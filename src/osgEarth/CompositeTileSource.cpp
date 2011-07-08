@@ -262,7 +262,7 @@ CompositeTileSource::initialize( const std::string& referenceURI, const Profile*
         i != _options._components.end();
         ++i)
     {
-        TileSource* source = i->_tileSourceInstance.get();
+        TileSource* source = i->_tileSourceInstance->get(); //.get();
         if ( source )
         {
             osg::ref_ptr<const Profile> localOverrideProfile = overrideProfile;

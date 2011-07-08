@@ -538,7 +538,7 @@ EarthManipulator::reinitialize()
 bool
 EarthManipulator::established()
 {
-    if ( !_csn.valid() && _node.valid() )
+    if ( (!_csn.valid() || _csnObserverPath.empty()) && _node.valid() )
     {
         osg::ref_ptr<osg::Node> safeNode = _node.get();
         if ( !safeNode.valid() )
@@ -554,8 +554,9 @@ EarthManipulator::established()
             _csn = csn.get();
             _node = csn.get();
 
-            osg::NodePathList paths = csn->getParentalNodePaths();
-            _csnPath = paths[0];
+            _csnObserverPath.setNodePathTo( csn.get() );
+            //osg::NodePathList paths = csn->getParentalNodePaths();
+            //_csnPath = paths[0];
             //_csnPath.setNodePath( paths[0] );
 
             if ( !_homeViewpoint.isSet() )
@@ -616,12 +617,16 @@ EarthManipulator::getMyCoordinateFrame( const osg::Vec3d& position ) const
 {
     osg::CoordinateFrame coordinateFrame;
 
-    //osg::NodePath csnPath;
-    //bool hasPath = _csnPath.getNodePath( csnPath );
     osg::ref_ptr<osg::CoordinateSystemNode> csnSafe = _csn.get();
 
     if ( csnSafe.valid() )
     {
+        if ( _csnObserverPath.empty() )
+        {
+            const_cast<EarthManipulator*>(this)->_csnObserverPath.setNodePathTo( csnSafe.get() );
+            _csnObserverPath.getNodePath( const_cast<EarthManipulator*>(this)->_csnPath );
+        }
+
         osg::Vec3 local_position = position * osg::computeWorldToLocal( _csnPath );
 
         // get the coordinate frame in world coords.
@@ -660,6 +665,7 @@ EarthManipulator::setNode(osg::Node* node)
     {
         _node = node;
         _csn = 0L;
+        _csnObserverPath.clearNodePath();
         _csnPath.clear();
         reinitialize();
 

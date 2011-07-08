@@ -65,7 +65,7 @@ public: // MapCallback adapter functions
 public: // statics    
     static void registerEngine( OSGTerrainEngineNode* engineNode );
     static void unregisterEngine( UID uid );
-    static OSGTerrainEngineNode* getEngineByUID( UID uid );
+    static void getEngineByUID( UID uid, osg::ref_ptr<OSGTerrainEngineNode>& output );
 
 private:
     void init();

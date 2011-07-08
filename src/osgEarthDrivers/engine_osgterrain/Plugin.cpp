@@ -91,8 +91,9 @@ public:
             sscanf(tileDef.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &engineID);
 
             // find the appropriate engine:
-            OSGTerrainEngineNode* engineNode = OSGTerrainEngineNode::getEngineByUID( (UID)engineID );
-            if ( engineNode )
+            osg::ref_ptr<OSGTerrainEngineNode> engineNode;
+            OSGTerrainEngineNode::getEngineByUID( (UID)engineID, engineNode );
+            if ( engineNode.valid() )
             {
                 osg::Timer_t start = osg::Timer::instance()->tick();
 

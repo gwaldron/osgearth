@@ -723,10 +723,11 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     // intersect the viewing frustum:
     osgShadow::ConvexPolyhedron visiblePH;
 
-    // get the bounds of the model. 
+    // get the bounds of the overlay graph //model. 
     //const osg::BoundingSphere& bs = osg::Group::getBound();
     osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
-    this->accept(cbbv);
+    //this->accept(cbbv);
+    _overlayGraph->accept(cbbv);
     visiblePH.setToBoundingBox(cbbv.getBoundingBox());
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us

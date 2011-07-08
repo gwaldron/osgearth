@@ -116,7 +116,7 @@ namespace osgEarth
          * Gets a reference to the global task service manager.
          */
         TaskServiceManager* getTaskServiceManager() {
-            return _taskServiceManager; }
+            return _taskServiceManager.get(); }
 
         /**
          * Generates an instance-wide global unique ID.

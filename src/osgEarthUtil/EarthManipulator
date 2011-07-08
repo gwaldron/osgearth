@@ -752,7 +752,7 @@ namespace osgEarth { namespace Util
         //osg::ref_ptr<osg::Node> _node;
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
-        //osg::ObserverNodePath _csnPath;
+        osg::ObserverNodePath _csnObserverPath;
         osg::NodePath _csnPath;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;

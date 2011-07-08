@@ -64,7 +64,7 @@ namespace osgEarth
         const Revision& getRevision() const { return _modelRevision; }
         int getFirstIndex() const { return _firstIndex; }
         int getSecondIndex() const { return _secondIndex; }
-        Layer* getLayer() const { return _layer; }
+        Layer* getLayer() const { return _layer.get(); }
         ImageLayer* getImageLayer() const { return static_cast<ImageLayer*>(_layer.get()); }
         ElevationLayer* getElevationLayer() const { return static_cast<ElevationLayer*>(_layer.get()); }
         ModelLayer* getModelLayer() const { return static_cast<ModelLayer*>(_layer.get()); }
@@ -422,7 +422,7 @@ namespace osgEarth
               _isGeocentric( rhs._isGeocentric ),
               _isCube( rhs._isCube ) { }              
         
-        const Profile* getProfile() const { return _profile; }
+        const Profile* getProfile() const { return _profile.get(); }
 
         bool isGeocentric() const { return _isGeocentric; }
         bool isCube() const { return _isCube; }

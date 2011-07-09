@@ -92,6 +92,10 @@ namespace osgEarth
             return from._type == to._type;
         }
 
+        bool canConvert( const Units& to ) const {
+            return _type == to._type;
+        }
+
         bool convertTo( const Units& to, double input, double& output )  const {
             return convert( *this, to, input, output );
         }
@@ -136,6 +140,79 @@ namespace osgEarth
         double _toBase;
         const Units* _distance;
         const Units* _time;
+    };
+
+    struct Linear;
+
+    template<typename T>
+    class qualified_double
+    {
+    public:
+        qualified_double<T>( double value, const Units& units ) : _value(value), _units(units) { }
+
+        qualified_double<T>( const T& rhs ) : _value(rhs._value), _units(rhs._units) { }
+
+        T& operator = ( const T& rhs ) {
+            if ( _units.canConvert(rhs._units) )
+                _value = rhs.as(_units);
+            return static_cast<T&>(*this);
+        }
+
+        T operator + ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) ?
+                T(_value + rhs.as(_units), _units) :
+                T(0, Units());
+        }
+
+        T operator - ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) ? 
+                T(_value - rhs.as(_units), _units) :
+                T(0, Units());
+        }
+
+        bool operator == ( const T& rhs ) const {
+            return _units.canConvert( rhs._units ) && rhs.as(_units) == _value;
+        }
+
+        bool operator != ( const T& rhs ) const {
+            return !_units.canConvert(rhs._units) || rhs.as(_units) != _value;
+        }
+
+        bool operator < ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) && _value < rhs.as(_units);
+        }
+
+        bool operator > ( const T& rhs ) const {
+            return _units.canConvert(rhs._units) && _value > rhs.as(_units);
+        }
+
+        double as( const Units& convertTo ) const {
+            return _units.convertTo( convertTo, _value );
+        }
+
+    private:
+        double _value;
+        Units  _units;
+    };
+
+    struct Linear : public qualified_double<Linear> {
+        Linear() : qualified_double<Linear>(0, Units::METERS) { }
+        Linear(double value, const Units& units) : qualified_double<Linear>(value, units) { }
+    };
+
+    struct Angular : public qualified_double<Angular> {
+        Angular() : qualified_double<Angular>(0, Units::RADIANS) { }
+        Angular(double value, const Units& units) : qualified_double<Angular>(value, units) { }
+    };
+
+    struct Temporal : public qualified_double<Temporal> {
+        Temporal() : qualified_double<Temporal>(0, Units::SECONDS) { }
+        Temporal(double value, const Units& units) : qualified_double<Temporal>(value, units) { }
+    };
+
+    struct Speed : public qualified_double<Speed> {
+        Speed() : qualified_double<Speed>(0, Units::METERS_PER_SECOND) { }
+        Speed(double value, const Units& units) : qualified_double<Speed>(value, units) { }
     };
 }
 

@@ -45,7 +45,7 @@ _mapNode( mapNode )
     LineString* line = new LineString();
     _feature = new Feature(0);
     _feature->setGeometry( line );
-    _features->insertFeature( _feature );
+    _features->insertFeature( _feature.get() );
 
     //Define a style for the line
     Style style;

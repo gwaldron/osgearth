@@ -185,7 +185,7 @@ TransformFilter::push( FeatureList& input, FilterContext& incx )
         osg::Matrixd localizer;
         if ( _makeGeocentric )
         {
-            localizer = createGeocentricInvRefFrame( _bbox.center(), _outputSRS );
+            localizer = createGeocentricInvRefFrame( _bbox.center(), _outputSRS.get() );
             localizer.invert( localizer );
         }
         else

@@ -48,7 +48,7 @@ FeatureListSource::initialize( const std::string& referenceURI )
 const FeatureProfile*
 FeatureListSource::createFeatureProfile()
 {    
-    return _profile;
+    return _profile.get();
 }
 
 bool

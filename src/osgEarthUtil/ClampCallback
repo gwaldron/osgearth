@@ -56,7 +56,7 @@ namespace osgEarth { namespace Util
         /**
          *Gets the terrain node to clamp against
          */
-        osg::Node* getTerrainNode() const { return _terrainNode;}
+        osg::Node* getTerrainNode() const { return _terrainNode.get(); }
 
         /**
          * Gets the offset that should be applied after clamping along the world's up vector

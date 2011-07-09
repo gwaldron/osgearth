@@ -163,8 +163,8 @@ namespace osgEarth { namespace Util
          * The locator creates the positioning matrix for the component.
          */
         void setLocator( ObjectLocator* locator );
-        ObjectLocator* getLocator() { return _locator; }
-        const ObjectLocator* getLocator() const { return _locator; }
+        ObjectLocator* getLocator() { return _locator.get(); }
+        const ObjectLocator* getLocator() const { return _locator.get(); }
 
     public:
         /** Synchronizes the transform matrix with the locator. */

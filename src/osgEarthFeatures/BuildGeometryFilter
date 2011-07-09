@@ -77,7 +77,7 @@ namespace osgEarth { namespace Features
         FilterContext push( FeatureList& input, const FilterContext& context );
 
         /** Gets the resulting OSG scene graph */
-        osg::Node* getNode() const { return _result; }
+        osg::Node* getNode() const { return _result.get(); }
 
     protected:
         osg::ref_ptr<osg::Node> _result;

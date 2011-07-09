@@ -121,9 +121,9 @@ namespace osgEarth { namespace Features
 
         void setGeometry( Symbology::Geometry* geom ) { _geom = geom; }
 
-        Symbology::Geometry* getGeometry() { return _geom; }
+        Symbology::Geometry* getGeometry() { return _geom.get(); }
 
-        const Symbology::Geometry* getGeometry() const { return _geom; }
+        const Symbology::Geometry* getGeometry() const { return _geom.get(); }
 
         const AttributeTable& getAttrs() const { return _attrs; }
 

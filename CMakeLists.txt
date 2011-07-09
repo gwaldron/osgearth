@@ -137,6 +137,8 @@ SET(OSG_DIR "" CACHE PATH "set to base osg install path")
 SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
 
 FIND_PACKAGE(OSG)
+
+
 #FIND_PACKAGE(GDAL)
 
 ################################################################################
@@ -224,6 +226,8 @@ ENDIF(INSTALL_TO_OSG_DIR)
 INCLUDE(OsgEarthMacroUtils)
 
 DETECT_OSG_VERSION()
+
+SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
 
 # OE Core
 ADD_SUBDIRECTORY(src)

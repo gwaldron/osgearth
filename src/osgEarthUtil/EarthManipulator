@@ -28,12 +28,14 @@
 #include <utility>
 
 #if OSG_MIN_VERSION_REQUIRED(2,9,8)
-#include <osgGA/CameraManipulator>
-namespace osgGA {
-    typedef CameraManipulator MatrixManipulator;
-};
+#  include <osgGA/CameraManipulator>
+    namespace osgGA {
+        typedef CameraManipulator MatrixManipulator;
+    };
+#  include <osg/ObserverNodePath>
+#  define USE_OBSERVER_NODE_PATH 1
 #else
-#include <osgGA/MatrixManipulator>
+#  include <osgGA/MatrixManipulator>
 #endif
 
 namespace osgEarth { namespace Util
@@ -752,7 +754,9 @@ namespace osgEarth { namespace Util
         //osg::ref_ptr<osg::Node> _node;
         osg::observer_ptr<osg::Node> _node;
         osg::observer_ptr<osg::CoordinateSystemNode> _csn;
+#ifdef USE_OBSERVER_NODE_PATH
         osg::ObserverNodePath _csnObserverPath;
+#endif
         osg::NodePath _csnPath;
 
         osg::ref_ptr<const osgEarth::SpatialReference> _cached_srs;

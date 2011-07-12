@@ -22,6 +22,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureCursor>
+#include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthSymbology/Style>
 
 namespace osgEarth { namespace Features
@@ -51,6 +52,14 @@ namespace osgEarth { namespace Features
         optional<bool>& clustering() { return _clustering; }
         const optional<bool>& clustering() const { return _clustering; }
 
+        optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() { return _resampleMode;}
+        const optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() const { return _resampleMode;}
+
+        optional<double>& resampleMaxLength() { return _resampleMaxLength; }
+        const optional<double>& resampleMaxLength() const { return _resampleMaxLength;}
+
+
+
     public:
         Config getConfig() const;
         void mergeConfig( const Config& conf );
@@ -60,6 +69,8 @@ namespace osgEarth { namespace Features
         optional<bool>              _mergeGeometry;
         optional<StringExpression>  _featureNameExpr;
         optional<bool>              _clustering;
+        optional<osgEarth::Features::ResampleFilter::ResampleMode> _resampleMode;
+        optional<double>            _resampleMaxLength;
 
         void fromConfig( const Config& conf );
     };

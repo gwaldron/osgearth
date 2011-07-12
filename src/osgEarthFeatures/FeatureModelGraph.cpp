@@ -179,6 +179,12 @@ FeatureModelGraph::~FeatureModelGraph()
     osgEarthFeatureModelPseudoLoader::unregisterGraph( _uid );
 }
 
+void
+FeatureModelGraph::dirty()
+{
+    _dirty = true;
+}
+
 osg::BoundingSphered
 FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
                                          const MapFrame*  mapf ) const
@@ -736,7 +742,7 @@ FeatureModelGraph::redraw()
     }
 
     _source->sync( _revision );
-    _dirty = false;
+    dirty();
 }
 
 const StyleSheet& 
@@ -749,6 +755,6 @@ void
 FeatureModelGraph::setStyle(const StyleSheet& styles)
 {
     _styles = styles;
-    _dirty = true;
+    dirty();
 }
 

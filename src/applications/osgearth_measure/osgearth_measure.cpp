@@ -68,6 +68,26 @@ struct TogglePathHandler : public ControlEventHandler
     osg::ref_ptr<MeasureToolHandler> _tool;
 };
 
+struct ToggleModeHandler : public ControlEventHandler
+{
+    ToggleModeHandler( MeasureToolHandler* tool) :
+    _tool( tool )
+    { }
+
+    virtual void onValueChanged(Control* control, bool value) {
+        if (_tool->getMode() == MeasureToolHandler::MODE_GREATCIRCLE)
+        {
+            _tool->setMode( MeasureToolHandler::MODE_RHUMB);
+        }
+        else
+        {
+            _tool->setMode( MeasureToolHandler::MODE_GREATCIRCLE);
+        }        
+    }
+
+    osg::ref_ptr<MeasureToolHandler> _tool;
+};
+
 
 
 int
@@ -91,6 +111,8 @@ main(int argc, char** argv)
         return 1;
     }
 
+    earthNode->setNodeMask( 0x1 );
+
 
     osgViewer::Viewer viewer(arguments);
     
@@ -102,11 +124,13 @@ main(int argc, char** argv)
 
     //Create the MeasureToolHandler
     MeasureToolHandler* measureTool = new MeasureToolHandler(root, mapNode);    
+    measureTool->setIntersectionMask( 0x1 );
     viewer.addEventHandler( measureTool );
 
     //Create some controls to interact with the measuretool
     ControlCanvas* canvas = new ControlCanvas( &viewer );
     root->addChild( canvas );
+    canvas->setNodeMask( 0x1 << 1 );
 
     Grid* grid = new Grid();
     grid->setBackColor(0,0,0,0.5);
@@ -138,6 +162,13 @@ main(int argc, char** argv)
     checkBox->setHorizAlign(Control::ALIGN_LEFT);
     checkBox->addEventHandler( new TogglePathHandler(measureTool));
     grid->setControl( 1, 1, checkBox);
+
+    //Add a toggle to set the mode of the measuring tool
+    grid->setControl( 0, 2, new LabelControl("Great Circle"));
+    CheckBoxControl* mode = new CheckBoxControl(true);
+    mode->setHorizAlign(Control::ALIGN_LEFT);
+    mode->addEventHandler( new ToggleModeHandler(measureTool));
+    grid->setControl( 1, 2, mode);
 
 
     

@@ -57,6 +57,9 @@ namespace osgEarth { namespace Util {
          */
         osgGA::GUIEventAdapter::MouseButtonMask getMouseButton() const;
 
+        void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
+        osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
+
 
     private:
         bool addPoint( float x, float y, osgViewer::View* view );
@@ -67,6 +70,7 @@ namespace osgEarth { namespace Util {
         osg::ref_ptr< osgEarth::Features::FeatureListSource > _source;
         osg::ref_ptr< osgEarth::Features::Feature > _feature;
         osg::ref_ptr<const SpatialReference> _mapSRS;
+        osg::Node::NodeMask _intersectionMask;
     };
 
     

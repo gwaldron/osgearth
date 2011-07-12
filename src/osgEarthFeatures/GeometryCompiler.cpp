@@ -125,6 +125,17 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
     const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
+
+    if (_options.resampleMode().isSet())
+    {
+        ResampleFilter resample;
+        resample.resampleMode() = *_options.resampleMode();        
+        if (_options.resampleMaxLength().isSet())
+        {
+            resample.maxLength() = *_options.resampleMaxLength();
+        }                   
+        cx = resample.push( workingSet, cx );        
+    }
     
     // transform the features into the map profile
     TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   

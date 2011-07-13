@@ -1695,6 +1695,9 @@ ControlNode::traverse( osg::NodeVisitor& nv )
         static osg::Vec3d s_zero(0,0,0);
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
+        //setCullingActive( true );
+        //cv->setSmallFeatureCullingPixelSize(0);
+
         // pull up the per-view data for this view:
         PerViewData& data = _perViewData[cv->getCurrentCamera()->getView()];
 
@@ -1726,6 +1729,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
     }
 
     // ControlNode has no children, so no point in calling traverse.
+    osg::Node::traverse(nv);
 }
 
 ControlNode::PerViewData::PerViewData() :

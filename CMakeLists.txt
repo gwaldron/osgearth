@@ -270,6 +270,8 @@ IF(APPLE)
     ENDIF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
 
     OPTION(OSGEARTH_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" OFF)
+    OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
+    SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
 
 ENDIF(APPLE)
 

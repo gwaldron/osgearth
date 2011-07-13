@@ -742,7 +742,7 @@ FeatureModelGraph::redraw()
     }
 
     _source->sync( _revision );
-    dirty();
+    _dirty = false;
 }
 
 const StyleSheet& 

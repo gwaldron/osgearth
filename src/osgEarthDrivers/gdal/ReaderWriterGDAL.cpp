@@ -393,14 +393,10 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
     
     if (projectionRef)
     {
-        OE_NOTICE << "Setting projection to " << projectionRef << std::endl;
+        //OE_NOTICE << "Setting projection to " << projectionRef << std::endl;
         GDALSetProjection(hVRTDS, projectionRef);
     }
-    else
-    {
-        OE_NOTICE << "No projection" << std::endl;
-    }
-
+    
     double adfGeoTransform[6];
     adfGeoTransform[GEOTRSFRM_TOPLEFT_X] = minX;
     adfGeoTransform[GEOTRSFRM_WE_RES] = we_res;

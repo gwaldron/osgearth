@@ -31,7 +31,8 @@ _source( source ),
 _mapSRS( mapSRS ),
 _mouseDown( false ),
 _firstMove( false ),
-_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON )
+_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON ),
+_intersectionMask( 0xffffffff )
 {
 }
 
@@ -51,7 +52,7 @@ bool
 AddPointHandler::addPoint( float x, float y, osgViewer::View* view )
 {
     osgUtil::LineSegmentIntersector::Intersections results;
-    if ( view->computeIntersections( x, y, results, 0x01 ) )
+    if ( view->computeIntersections( x, y, results, _intersectionMask ) )
     {
         // find the first hit under the mouse:
         osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());

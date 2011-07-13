@@ -224,6 +224,16 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
         if (hDS)
         {
             const char* proj = GDALGetProjectionRef(hDS);
+            if (!proj || strlen(proj) == 0)
+            {                
+                std::string prjLocation = osgDB::getNameLessExtension( std::string(dsFileName) ) + std::string(".prj");
+                std::string wkt;
+                if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
+                {                    
+                    proj = CPLStrdup( wkt.c_str() );
+                }                
+            }
+
             GDALGetGeoTransform(hDS, psDatasetProperties[i].adfGeoTransform);
             if (psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_ROTATION_PARAM1] != 0 ||
                 psDatasetProperties[i].adfGeoTransform[GEOTRSFRM_ROTATION_PARAM2] != 0)
@@ -383,9 +393,10 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
     
     if (projectionRef)
     {
+        //OE_NOTICE << "Setting projection to " << projectionRef << std::endl;
         GDALSetProjection(hVRTDS, projectionRef);
     }
-
+    
     double adfGeoTransform[6];
     adfGeoTransform[GEOTRSFRM_TOPLEFT_X] = minX;
     adfGeoTransform[GEOTRSFRM_WE_RES] = we_res;

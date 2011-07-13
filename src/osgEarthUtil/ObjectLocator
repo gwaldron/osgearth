@@ -170,6 +170,8 @@ namespace osgEarth { namespace Util
         /** Synchronizes the transform matrix with the locator. */
         virtual void update();
 
+        virtual void traverse(osg::NodeVisitor &nv);
+
     private:
         osg::ref_ptr<ObjectLocator> _locator;
         osgEarth::Revision _matrixRevision;

@@ -72,6 +72,8 @@ namespace osgEarth { namespace Features
         const StyleSheet& getStyles();
         void setStyle(const StyleSheet& styles);
 
+        void dirty();
+
 
         virtual void traverse(osg::NodeVisitor& nv);
 

@@ -126,6 +126,17 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
 
+    if (_options.resampleMode().isSet())
+    {
+        ResampleFilter resample;
+        resample.resampleMode() = *_options.resampleMode();        
+        if (_options.resampleMaxLength().isSet())
+        {
+            resample.maxLength() = *_options.resampleMaxLength();
+        }                   
+        cx = resample.push( workingSet, cx );        
+    }    
+    
     bool clampRequired =
         altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
     

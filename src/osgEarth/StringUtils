@@ -28,6 +28,7 @@
 #include <sstream>
 #include <iomanip>
 #include <map>
+#include <ctype.h>
 
 namespace osgEarth
 {

@@ -62,21 +62,29 @@ public:
                 continue;
 
             osg::Vec3d centroid = geom->getBounds().center();
+            osg::Vec3d centroidWorld = context.toWorld( centroid );
+
+#if 0
             if ( context.isGeocentric() ) 
             {
                 // clamp the point to the ellipsoid in geocentric mode.
+                osg::Vec3d centroidWorld = context.toWorld( centroid );
                 osg::Vec3d centroidMap;
-                context.getSession()->getMapInfo().worldPointToMapPoint( centroid, centroidMap );
+                context.getSession()->getMapInfo().worldPointToMapPoint( centroidWorld, centroidMap );
                 centroidMap.z() = 0.0;
-                context.getSession()->getMapInfo().mapPointToWorldPoint( centroidMap, centroid );
+                context.getSession()->getMapInfo().mapPointToWorldPoint( centroidMap, centroidWorld );
+                centroid = context.toLocal( centroidWorld );
             }                
+#endif
 
             const std::string& value = feature->eval( contentExpr );
 
             if ( !value.empty() && (!skipDupes || used.find(value) == used.end()) )
             {
                 if ( !group )
+                {
                     group = new osg::Group();
+                }
 
                 double priority = feature->eval( priorityExpr );
 
@@ -97,7 +105,14 @@ public:
 
                 // for a geocentric map, do a simple dot product cull.
                 if ( context.isGeocentric() )
-                    xform->setCullCallback( new CullNodeByNormal(centroid) );
+                {
+                    // put the culler on a group. Cullers like this don't work on an Xform.
+                    osg::Vec3d labelNormal = context.toWorld(centroid);
+                    osg::Group* group = new osg::Group();
+                    group->setCullCallback( new CullNodeByNormal(labelNormal) );
+
+                    group->addChild( xform );
+                }
 
                 group->addChild( xform );
 

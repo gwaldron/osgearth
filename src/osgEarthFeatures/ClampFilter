@@ -41,6 +41,9 @@ namespace osgEarth { namespace Features
         void setIgnoreZ( bool value ) { _ignoreZ = value; }
         bool getIgnoreZ() const { return _ignoreZ; }
 
+        void setOffsetZ( double value ) { _offsetZ = value; }
+        double getOffsetZ() const { return _offsetZ; }
+
         /** Sets the attribute name to which to write the maximum clamped Z value. */
         void setMaxZAttributeName( const std::string& value ) { _maxZAttrName = value; }
 
@@ -49,6 +52,7 @@ namespace osgEarth { namespace Features
 
     protected:
         bool _ignoreZ;
+        double _offsetZ;
         std::string _maxZAttrName;
     };
 

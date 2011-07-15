@@ -1663,7 +1663,19 @@ namespace osgEarth { namespace Util { namespace Controls
             if ( node )
                 group->addChild( node );
             group->addChild( canvas );
+            
+            // must save the manipulator matrix b/c calling setSceneData causes
+            // the view to call home() on the manipulator.
+            osg::Matrixd savedMatrix;
+            osgGA::CameraManipulator* manip = view2->getCameraManipulator();
+            if ( manip )
+                savedMatrix = manip->getMatrix();
+
             view2->setSceneData( group );
+
+            // restore it
+            if ( manip )
+                manip->setByMatrix( savedMatrix );
         }
 
         osg::ref_ptr<ControlCanvas>     _canvas;
@@ -1694,6 +1706,9 @@ ControlNode::traverse( osg::NodeVisitor& nv )
     {
         static osg::Vec3d s_zero(0,0,0);
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+
+        //setCullingActive( true );
+        //cv->setSmallFeatureCullingPixelSize(0);
 
         // pull up the per-view data for this view:
         PerViewData& data = _perViewData[cv->getCurrentCamera()->getView()];
@@ -1726,6 +1741,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
     }
 
     // ControlNode has no children, so no point in calling traverse.
+    osg::Node::traverse(nv);
 }
 
 ControlNode::PerViewData::PerViewData() :

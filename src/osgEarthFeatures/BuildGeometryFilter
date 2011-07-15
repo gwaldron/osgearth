@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Annotation>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FeatureNode>
 #include <osgEarthSymbology/Style>
 #include <osg/Geode>
 
@@ -82,6 +83,7 @@ namespace osgEarth { namespace Features
     protected:
         osg::ref_ptr<osg::Node> _result;
         osg::ref_ptr<osg::Geode> _geode;
+		osg::ref_ptr<FeatureMultiNode> _featureNode;
         Style _style;
         optional<Geometry::Type> _geomTypeOverride;
         optional<double> _maxAngle_deg;

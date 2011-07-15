@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/MarkerFactory>
+#include <osgEarthFeatures/FeatureNode>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osg/Drawable>
@@ -67,7 +68,8 @@ SubstituteModelFilter::pushFeature(Feature*                     input,
         for( unsigned i=0; i<geom->size(); ++i )
         {
             const osg::Vec3d& point = (*geom)[i];
-            osg::MatrixTransform* xform = new osg::MatrixTransform();
+
+            FeatureNode* xform = new FeatureNode(NULL, input->getFID());
             xform->setMatrix( _modelMatrix * osg::Matrixd::translate( point ) );
             xform->setDataVariance( osg::Object::STATIC );
             xform->addChild( data._model.get() );
@@ -101,11 +103,12 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 {
     struct ClusterVisitor : public osg::NodeVisitor
     {
-        ClusterVisitor( const FeatureList& features, const osg::Matrixd& modelMatrix, FilterContext& cx )
-            : _features( features ),
+        ClusterVisitor( const FeatureList& features, const osg::Matrixd& modelMatrix, FeatureMultiNode * featureNode, FilterContext& cx )
+            : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+              _features( features ),
               _modelMatrix( modelMatrix ),
               _cx( cx ),
-              osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
+              _featureNode(featureNode)
         {
             //nop
         }
@@ -115,8 +118,13 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
             // save the geode's drawables..
             osg::Geode::DrawableList old_drawables = geode.getDrawableList();
 
+			OE_WARN << "ClusterVisitor geode " << &geode << " featureNode=" << _featureNode << " drawables=" << old_drawables.size() << std::endl;
+
             // ..and clear out the drawables list.
             geode.removeDrawables( 0, geode.getNumDrawables() );
+			// ... and remove all drawables from the feature node
+			for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
+				_featureNode->removeDrawable(i->get());
 
             // foreach each drawable that was originally in the geode...
             for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
@@ -154,6 +162,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
                                 
                                 // add the new cloned, translated drawable back to the geode.
                                 geode.addDrawable( newDrawable.get() );
+								_featureNode->addDrawable(newDrawable.get(), feature->getFID());
                             }
                         }
 
@@ -163,7 +172,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 
             geode.dirtyBound();
 
-            MeshConsolidator::run( geode );
+            //MeshConsolidator::run( geode );
             //// merge the geometry...
             //osgUtil::Optimizer opt;
             //opt.optimize( &geode, osgUtil::Optimizer::MERGE_GEOMETRY );
@@ -182,18 +191,24 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
     private:
         const FeatureList&   _features;
         FilterContext        _cx;
+		FeatureMultiNode *   _featureNode;
         osg::Matrixd         _modelMatrix;
     };
 
 
     // make a copy of the model:
 	osg::Node* clone = dynamic_cast<osg::Node*>( data._model->clone( osg::CopyOp::DEEP_COPY_ALL ) );
+	Session* session = cx.getSession();
+	FeatureSource * source = (session!=NULL)?session->getFeatureSource():NULL;
+	FeatureMultiNode * featureNode = new FeatureMultiNode(source);
 
     // ..and apply the clustering to the copy.
-	ClusterVisitor cv( features, _modelMatrix, cx );
+	ClusterVisitor cv( features, _modelMatrix, featureNode, cx );
 	clone->accept( cv );
 
-    attachPoint->addChild( clone );
+	featureNode->addChild(clone);
+
+    attachPoint->addChild( featureNode );
     return true;
 }
 

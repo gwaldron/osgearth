@@ -23,6 +23,7 @@ SET(LIB_PUBLIC_HEADERS
     CropFilter
     ExtrudeGeometryFilter
     Feature
+    FeatureNode
     FeatureCursor
     FeatureDisplayLayout
     FeatureGeometryIndex
@@ -61,6 +62,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CropFilter.cpp
     ExtrudeGeometryFilter.cpp
     Feature.cpp
+    FeatureNode.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
     FeatureGeometryIndex.cpp

@@ -58,6 +58,7 @@ BuildGeometryFilter::reset()
 {
     _result = 0L;
     _geode = new osg::Geode();
+	_featureNode = new FeatureMultiNode;
     _hasLines = false;
     _hasPoints = false;
     _hasPolygons = false;
@@ -111,6 +112,7 @@ BuildGeometryFilter::pushTextAnnotation( TextAnnotation* anno, const FilterConte
         t->setCullCallback( ccc );
     }
 
+	_featureNode->addDrawable(t, anno->getFID());
     _geode->addDrawable( t );
 
     return true;    
@@ -198,6 +200,8 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
                 }
             }
             break;
+		default:
+			break;
         }
         
         osg::Geometry* osgGeom = new osg::Geometry();
@@ -307,6 +311,8 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
         osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         // add the part to the geode.
+		_featureNode->addDrawable(osgGeom, input->getFID());
+
         _geode->addDrawable( osgGeom );
     }
     
@@ -376,7 +382,11 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
 
-        _result = _geode.release();
+		const osg::BoundingSphere& bs = _geode->getBound();
+
+		_featureNode->addChild(_geode.release());
+
+        _result = _featureNode;
 
         if ( context.hasReferenceFrame() )
         {

@@ -136,7 +136,11 @@ MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
                 _session->putResource( *symbol->url(), result );
             }
         }
+		else
+			result = NULL;
     }
+	else
+		result = NULL;
 
     return result;
 }

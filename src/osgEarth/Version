@@ -25,7 +25,7 @@
 extern "C" {
 
 #define OSGEARTH_MAJOR_VERSION    2
-#define OSGEARTH_MINOR_VERSION    0
+#define OSGEARTH_MINOR_VERSION    1
 #define OSGEARTH_PATCH_VERSION    0
 #define OSGEARTH_SOVERSION        0
 

@@ -19,7 +19,8 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthFeatures/FeatureNode>
-#include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarth/MeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osg/Drawable>
 #include <osg/Geode>
@@ -172,7 +173,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 
             geode.dirtyBound();
 
-            //MeshConsolidator::run( geode );
+            FeatureMeshConsolidator::run( geode, _featureNode );
             //// merge the geometry...
             //osgUtil::Optimizer opt;
             //opt.optimize( &geode, osgUtil::Optimizer::MERGE_GEOMETRY );

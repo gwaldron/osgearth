@@ -326,7 +326,7 @@ struct FeatureInfoHandler : public osgGA::GUIEventHandler
 				osgEarth::Features::FeatureID fid;
 				FeatureMultiNode * featureMultiNode = dynamic_cast<FeatureMultiNode *>(featureNode);
 				if(featureMultiNode)
-					fid = featureMultiNode->getFID(drawable);
+					fid = featureMultiNode->getFID(drawable, primIndex);
 				else
 					fid = featureNode->getFID();
 				std::string name;

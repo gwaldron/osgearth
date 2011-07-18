@@ -21,7 +21,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthSymbology/Geometry>
-
+#include <osgEarth/MeshConsolidator>
 
 namespace osgEarth { namespace Features {
 
@@ -29,6 +29,17 @@ namespace osgEarth { namespace Features {
     extern OSGEARTHFEATURES_EXPORT std::string geometryToJson( osgEarth::Symbology::Geometry * geometry );
     extern OSGEARTHFEATURES_EXPORT std::string geometryToKml( osgEarth::Symbology::Geometry * geometry );
     extern OSGEARTHFEATURES_EXPORT std::string geometryToGml( osgEarth::Symbology::Geometry * geometry );
+
+    class FeatureMultiNode;
+    /**
+     * Consolidates all the like-moded primitive sets in a geometry.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureMeshConsolidator : public osgEarth::MeshConsolidator
+    {
+    public:
+        static void run( osg::Geode& geode, FeatureMultiNode * featureNode );
+    };
+
 
 }}
 

@@ -50,6 +50,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskLayer
     MaskNode
     MaskSource
+    MeshConsolidator
     ModelLayer
     ModelSource
     NodeUtils
@@ -116,6 +117,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MaskLayer.cpp
     MaskNode.cpp
     MaskSource.cpp
+    MeshConsolidator.cpp
 	MimeTypes.cpp
 	ModelLayer.cpp
 	ModelSource.cpp

@@ -16,26 +16,49 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHSYMBOLOGY_MESH_CONSOLIDATOR
-#define OSGEARTHSYMBOLOGY_MESH_CONSOLIDATOR
+#ifndef OSGEARTH_MESH_CONSOLIDATOR
+#define OSGEARTH_MESH_CONSOLIDATOR
 
-#include <osgEarthSymbology/Common>
+#include <osgEarth/Common>
 #include <osg/Geode>
 #include <osg/Geometry>
 
-namespace osgEarth { namespace Symbology
-{
+namespace osgEarth { 
+
+
     /**
      * Consolidates all the like-moded primitive sets in a geometry.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT MeshConsolidator
+    class OSGEARTH_EXPORT MeshConsolidator
     {
     public:
         static void run( osg::Geometry& geom );
 
-        static void run( osg::Geode& geode );
+		static void run( osg::Geode& geode);
+
+	protected:
+		template<typename FROM, typename TO>
+		static osg::PrimitiveSet* copy( FROM* src, unsigned offset )
+		{
+			TO* newDE = new TO( src->getMode() );
+			newDE->reserve( src->size() );
+			for( typename FROM::const_iterator i = src->begin(); i != src->end(); ++i )
+				newDE->push_back( (*i) + offset );
+			return newDE;
+		}
+
+		template<typename FROM>
+		static osg::PrimitiveSet* remake( FROM* src, unsigned numVerts, unsigned offset )
+		{
+			if ( numVerts < 0x100 )
+				return copy<FROM,osg::DrawElementsUByte>( src, offset );
+			else if ( numVerts < 0x10000 )
+				return copy<FROM,osg::DrawElementsUShort>( src, offset );
+			else
+				return copy<FROM,osg::DrawElementsUInt>( src, offset );
+		}
     };
 
-} } // namespace osgEarth::Symbology
+} // namespace osgEarth
 
-#endif // OSGEARTHSYMBOLOGY_MESH_CONSOLIDATOR
+#endif // OSGEARTH_MESH_CONSOLIDATOR

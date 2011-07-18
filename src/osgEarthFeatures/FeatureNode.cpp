@@ -37,16 +37,16 @@ FeatureMultiNode::FeatureMultiNode(FeatureSource * featureSource)
 void FeatureMultiNode::addDrawable(osg::Drawable * drawable, FeatureID fid)
 {
 	//OE_DEBUG << LC << "addDrawable " << drawable << " fid=" << fid << std::endl;
-	_features.insert(DrawableFeatureIDMap::value_type(drawable, fid));
+	_drawables.insert(DrawableFeatureIDMap::value_type(drawable, fid));
 }
 
 void FeatureMultiNode::removeDrawable(osg::Drawable * drawable)
 {
-	DrawableFeatureIDMap::iterator it = _features.find(drawable);
-	if(it != _features.end())
+	DrawableFeatureIDMap::iterator it = _drawables.find(drawable);
+	if(it != _drawables.end())
 	{
 		//OE_DEBUG << LC << "FeatureMultiNode removeDrawable " << drawable << std::endl;
-		_features.erase(it);
+		_drawables.erase(it);
 	}
 	else
 	{
@@ -56,18 +56,77 @@ void FeatureMultiNode::removeDrawable(osg::Drawable * drawable)
 
 void FeatureMultiNode::clearDrawables()
 {
-	_features.clear();
+	_drawables.clear();
 }
 
 unsigned FeatureMultiNode::getNumDrawables() const
 {
-	return _features.size();
+	return _drawables.size();
 }
 
-FeatureID FeatureMultiNode::getFID(osg::Drawable * drawable) const
+void FeatureMultiNode::addPrimitiveSet(osg::PrimitiveSet * primitiveSet, FeatureID fid)
 {
-	DrawableFeatureIDMap::const_iterator it = _features.find(drawable);
-	FeatureID ret = (it != _features.end())?it->second:-1;
+	//OE_DEBUG << LC << "addDrawable " << drawable << " fid=" << fid << std::endl;
+	_primitiveSets.insert(PrimitiveSetFeatureIDMap::value_type(primitiveSet, fid));
+}
+
+void FeatureMultiNode::removePrimitiveSet(osg::PrimitiveSet * primitiveSet)
+{
+	PrimitiveSetFeatureIDMap::iterator it = _primitiveSets.find(primitiveSet);
+	if(it != _primitiveSets.end())
+	{
+		//OE_DEBUG << LC << "FeatureMultiNode removeDrawable " << drawable << std::endl;
+		_primitiveSets.erase(it);
+	}
+	else
+	{
+		//OE_DEBUG << LC << "FeatureMultiNode removeDrawable " << drawable  << " not found" << std::endl;
+	}
+}
+
+void FeatureMultiNode::clearPrimitiveSets()
+{
+	_primitiveSets.clear();
+}
+
+unsigned FeatureMultiNode::getNumPrimitiveSets() const
+{
+	return _primitiveSets.size();
+}
+
+FeatureID FeatureMultiNode::getFID(osg::PrimitiveSet * primitiveSet) const
+{
+	PrimitiveSetFeatureIDMap::const_iterator it = _primitiveSets.find(primitiveSet);
+	FeatureID ret = (it != _primitiveSets.end())?it->second:-1;
 	//OE_DEBUG << LC << "FeatureMultiNode getFID " << drawable << " fid=" << ret << std::endl;
+	return ret;
+}
+
+FeatureID FeatureMultiNode::getFID(osg::Drawable * drawable, int primitiveIndex) const
+{
+	FeatureID ret;
+	DrawableFeatureIDMap::const_iterator it = _drawables.find(drawable);
+	if(it != _drawables.end())
+		ret = it->second;
+	else if(primitiveIndex >= 0)
+	{
+		osg::Geometry * geometry = drawable->asGeometry();
+		const osg::Geometry::PrimitiveSetList & primSets = geometry->getPrimitiveSetList();
+		unsigned encounteredPrimities = 0;
+		ret = -1;
+		for(osg::Geometry::PrimitiveSetList::const_iterator it = primSets.begin(); it != primSets.end(); it++)
+		{
+			osg::PrimitiveSet * primitiveSet = (*it).get();
+			encounteredPrimities += primitiveSet->getNumPrimitives();
+			if(encounteredPrimities >= (unsigned)primitiveIndex)
+			{
+				PrimitiveSetFeatureIDMap::const_iterator it = _primitiveSets.find(primitiveSet);
+				ret = (it != _primitiveSets.end())?it->second:-1;
+				break;
+			}
+		}
+	}
+	else
+		ret = -1;
 	return ret;
 }

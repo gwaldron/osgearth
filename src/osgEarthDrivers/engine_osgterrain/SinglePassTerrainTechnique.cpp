@@ -35,12 +35,11 @@
 #include <osgUtil/SmoothingVisitor>
 
 #include <osgEarthSymbology/Geometry>
-#include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarth/MeshConsolidator>
 
 #include <sstream>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 #define LC "[SinglePassTechnique] "

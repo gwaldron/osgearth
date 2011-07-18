@@ -1,102 +1,131 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
-* Copyright 2008-2010 Pelican Mapping
-* http://osgearth.org
-*
-* osgEarth is free software; you can redistribute it and/or modify
-* it under the terms of the GNU Lesser General Public License as published by
-* the Free Software Foundation; either version 2 of the License, or
-* (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public License
-* along with this program.  If not, see <http://www.gnu.org/licenses/>
-*/
-
-#include <osgEarthFeatures/OgrUtils>
-#include <osgEarthFeatures/GeometryUtils>
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
 #include <osgEarthFeatures/FeatureNode>
+#include <osgEarth/MeshConsolidator>
+#include <osg/TriangleFunctor>
+#include <osg/TriangleIndexFunctor>
+#include <limits>
+#include <map>
+#include <iterator>
 
-using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
-std::string osgEarth::Features::geometryToWkt( Geometry* geometry )
+
+#define LC "[MeshConsolidator] "
+
+using namespace osgEarth;
+
+//------------------------------------------------------------------------
+
+namespace
 {
-    OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
-    std::string result;
-    if (g)
+    template<typename T>
+    struct Collector
     {
-        char* buf;   
-        if (OGR_G_ExportToWkt( g, &buf ) == OGRERR_NONE)
+        osg::Geometry::PrimitiveSetList* _newPrimSets;
+        unsigned _maxSize;
+        T* _current;
+
+        Collector() : _current(0L) { }
+
+        void operator()( unsigned i0, unsigned i1, unsigned i2 )
         {
-            result = std::string(buf);
-            OGRFree( buf );
+            if ( _current == 0L || _current->size() > _maxSize-3 )
+            {
+                _current = new T (GL_TRIANGLES);
+                _newPrimSets->push_back( _current );
+            }
+
+            _current->push_back( i0 );
+            _current->push_back( i1 );
+            _current->push_back( i2 );
         }
-        OGR_G_DestroyGeometry( g );
-    }
-    return result;
+    };
 }
 
-std::string osgEarth::Features::geometryToJson( Geometry* geometry )
-{
-    OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
-    std::string result;
-    if (g)
-    {
-        char* buf;   
-        buf = OGR_G_ExportToJson( g );
-        if (buf)
-        {
-            result = std::string(buf);
-            OGRFree( buf );
-        }
-        OGR_G_DestroyGeometry( g );
-    }
-    return result;
-}
-
-std::string osgEarth::Features::geometryToKml( Geometry* geometry )
-{
-    OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
-    std::string result;
-    if (g)
-    {
-        char* buf;   
-        buf = OGR_G_ExportToKML( g, 0);
-        if (buf)
-        {
-            result = std::string(buf);
-            OGRFree( buf );
-        }
-        OGR_G_DestroyGeometry( g );
-    }
-    return result;
-}
-
-std::string osgEarth::Features::geometryToGml( Geometry* geometry )
-{
-    OGRGeometryH g = OgrUtils::createOgrGeometry( geometry );
-    std::string result;
-    if (g)
-    {
-        char* buf;   
-        buf = OGR_G_ExportToGML( g );
-        if (buf)
-        {
-            result = std::string(buf);
-            OGRFree( buf );
-        }
-        OGR_G_DestroyGeometry( g );
-    }
-    return result;
-}
+//------------------------------------------------------------------------
 
 void
-FeatureMeshConsolidator::run( osg::Geode& geode, FeatureMultiNode * featureNode )
+MeshConsolidator::run( osg::Geometry& geom )
+{
+    osg::Array* vertexArray = geom.getVertexArray();
+    if ( !vertexArray )
+        return;
+
+    //TODO: support POLYGON, QUAD, QUADSTRIP, and LINE types.
+
+    osg::Geometry::PrimitiveSetList& primSets = geom.getPrimitiveSetList();
+    osg::Geometry::PrimitiveSetList  triSets, nonTriSets;
+
+    for( osg::Geometry::PrimitiveSetList::iterator i = primSets.begin(); i != primSets.end(); ++i )
+    {
+        osg::PrimitiveSet* pset = i->get();
+        switch( pset->getMode() )
+        {
+        case osg::PrimitiveSet::TRIANGLES:
+        case osg::PrimitiveSet::TRIANGLE_STRIP:
+        case osg::PrimitiveSet::TRIANGLE_FAN:
+        case osg::PrimitiveSet::QUADS:
+        case osg::PrimitiveSet::QUAD_STRIP:
+        case osg::PrimitiveSet::POLYGON:
+            triSets.push_back( pset );
+            break;
+
+        default:
+            nonTriSets.push_back( pset );
+        }
+    }
+
+    if ( triSets.size() > 0 )
+    {
+        unsigned numVerts = vertexArray->getNumElements();
+        osg::Geometry::PrimitiveSetList newPrimSets;
+
+        if ( numVerts < 0x100 )
+        {
+            osg::TriangleIndexFunctor< Collector<osg::DrawElementsUByte> > collector;
+            collector._newPrimSets = &newPrimSets;
+            collector._maxSize = 0xFF;
+            geom.accept( collector );
+        }
+        else if ( numVerts < 0x10000 )
+        {
+            osg::TriangleIndexFunctor< Collector<osg::DrawElementsUShort> > collector;
+            collector._newPrimSets = &newPrimSets;
+            collector._maxSize = 0xFFFF;
+            geom.accept( collector );
+        }
+        else
+        {
+            osg::TriangleIndexFunctor< Collector<osg::DrawElementsUInt> > collector;
+            collector._newPrimSets = &newPrimSets;
+            collector._maxSize = 0xFFFFFFFF;
+            geom.accept( collector );
+        }
+
+        for( osg::Geometry::PrimitiveSetList::iterator i = newPrimSets.begin(); i != newPrimSets.end(); ++i )
+            nonTriSets.push_back( i->get() );
+    }
+
+    geom.setPrimitiveSetList( nonTriSets );
+}
+void
+MeshConsolidator::run( osg::Geode& geode )
 {
 	unsigned numVerts = 0;
 	unsigned numColors = 0;
@@ -114,7 +143,7 @@ FeatureMeshConsolidator::run( osg::Geode& geode, FeatureMultiNode * featureNode 
 		if ( geom )
 		{
 			// optimize it into triangles first:
-			MeshConsolidator::run( *geom );
+			run( *geom );
 
 			osg::Array* verts = geom->getVertexArray();
 			if ( verts )
@@ -152,8 +181,6 @@ FeatureMeshConsolidator::run( osg::Geode& geode, FeatureMultiNode * featureNode 
 		newColors->reserve( numColors==numVerts? numColors : 1 );
 		newColorsBinding = numColors==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
 	}
-	else
-		newColorsBinding = osg::Geometry::BIND_OVERALL;
 
 	osg::Vec3Array* newNormals =0L;
 	if ( numNormals > 0 )
@@ -162,8 +189,6 @@ FeatureMeshConsolidator::run( osg::Geode& geode, FeatureMultiNode * featureNode 
 		newNormals->reserve( numNormals==numVerts? numNormals : 1 );
 		newNormalsBinding = numNormals==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
 	}
-	else
-		newNormalsBinding = osg::Geometry::BIND_OVERALL;
 
 	unsigned offset = 0;
 	osg::Geometry::PrimitiveSetList newPrimSets;
@@ -173,14 +198,6 @@ FeatureMeshConsolidator::run( osg::Geode& geode, FeatureMultiNode * featureNode 
 		osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
 		if ( geom )
 		{
-			FeatureID fid;
-			if(featureNode)
-			{
-				fid = featureNode->getFID(geom);
-				featureNode->removeDrawable(geom);
-			}
-			else
-				fid = FeatureID(-1);
 			// copy over the verts:
 			osg::Vec3Array* geomVerts = dynamic_cast<osg::Vec3Array*>( geom->getVertexArray() );
 			if ( geomVerts )
@@ -234,11 +251,7 @@ FeatureMeshConsolidator::run( osg::Geode& geode, FeatureMultiNode * featureNode 
 						newpset = new osg::DrawArrays( pset->getMode(), offset, geomVerts->size() );
 
 					if ( newpset )
-					{
 						newPrimSets.push_back( newpset );
-						if(featureNode)
-							featureNode->addPrimitiveSet(newpset, fid);
-					}
 				}
 
 				offset += geomVerts->size();

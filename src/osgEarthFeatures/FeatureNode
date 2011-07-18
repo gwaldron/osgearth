@@ -57,13 +57,22 @@ namespace osgEarth { namespace Features
 		void removeDrawable(osg::Drawable * drawable);
 		void clearDrawables();
 		unsigned getNumDrawables() const;
-		FeatureID getFID(osg::Drawable * drawable) const;
+
+		void addPrimitiveSet(osg::PrimitiveSet * pset, FeatureID fid);
+		void removePrimitiveSet(osg::PrimitiveSet * pset);
+		void clearPrimitiveSets();
+		unsigned getNumPrimitiveSets() const;
+		FeatureID getFID(osg::PrimitiveSet * pset) const;
+
+		FeatureID getFID(osg::Drawable * drawable, int primitiveIndex=-1) const;
 
         virtual const char* className() const { return "FeatureMultiNode"; }
         virtual const char* libraryName() const { return "osgEarthFeatures"; }
 	private:
 		typedef std::map< osg::ref_ptr<osg::Drawable>, FeatureID > DrawableFeatureIDMap;
-		DrawableFeatureIDMap _features;
+		typedef std::map< osg::ref_ptr<osg::PrimitiveSet>, FeatureID > PrimitiveSetFeatureIDMap;
+		DrawableFeatureIDMap _drawables;
+		PrimitiveSetFeatureIDMap _primitiveSets;
 	};
 
 } } // namespace osgEarth::Features

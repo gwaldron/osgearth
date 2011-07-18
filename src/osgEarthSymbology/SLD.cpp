@@ -109,7 +109,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!polygon) polygon = sc.getOrCreateSymbol<PolygonSymbol>();
             polygon->fill()->color().a() = as<float>( p->second, 1.0f );
 
-            if (!polygon) polygon = sc.getOrCreateSymbol<PolygonSymbol>();
+            if ( !point ) point = sc.getOrCreateSymbol<PointSymbol>();
             point->fill()->color().a() = as<float>( p->second, 1.0f );
 
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();

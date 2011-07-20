@@ -244,7 +244,7 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key, ProgressCallback
         _cacheProfile = mapProfile;
         if ( _tileSource->isOK() )
         {
-            _cache->storeProperties( _cacheSpec, _cacheProfile,  _tileSource->getPixelsPerTile() );
+            _cache->storeProperties( _cacheSpec, _cacheProfile.get(),  _tileSource->getPixelsPerTile() );
         }
     }
 

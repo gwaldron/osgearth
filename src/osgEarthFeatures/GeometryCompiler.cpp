@@ -125,16 +125,27 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
     const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
+
+    if (_options.resampleMode().isSet())
+    {
+        ResampleFilter resample;
+        resample.resampleMode() = *_options.resampleMode();        
+        if (_options.resampleMaxLength().isSet())
+        {
+            resample.maxLength() = *_options.resampleMaxLength();
+        }                   
+        cx = resample.push( workingSet, cx );        
+    }    
+    
+    bool clampRequired =
+        altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
     
     // transform the features into the map profile
     TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   
     xform.setLocalizeCoordinates( localize );
-    if ( altitude && altitude->verticalOffset().isSet() )
+    if ( altitude && altitude->verticalOffset().isSet() && !clampRequired )
         xform.setMatrix( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
     cx = xform.push( workingSet, cx );
-
-    bool clampRequired =
-        altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
 
     // model substitution
     if ( marker )
@@ -153,6 +164,7 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         {
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+            clamp.setOffsetZ( *altitude->verticalOffset() );
             cx = clamp.push( workingSet, cx );
             clampRequired = false;
         }
@@ -180,6 +192,7 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
             if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
                 clamp.setMaxZAttributeName( "__max_z");
+            clamp.setOffsetZ( *altitude->verticalOffset() );
             cx = clamp.push( workingSet, cx );
             clampRequired = false;
         }
@@ -214,6 +227,7 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         {
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+            clamp.setOffsetZ( *altitude->verticalOffset() );
             cx = clamp.push( workingSet, cx );
             clampRequired = false;
         }
@@ -238,6 +252,7 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         {
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+            clamp.setOffsetZ( *altitude->verticalOffset() );
             cx = clamp.push( workingSet, cx );
             clampRequired = false;
         }

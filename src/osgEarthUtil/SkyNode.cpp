@@ -598,7 +598,7 @@ SkyNode::SkyNode( Map* map, const std::string& starFile )
     _sunDistance = _innerRadius * 12000.0f;
 
     // make the ephemeris (note: order is important here)
-    makeAtmosphere( _ellipsoidModel );
+    makeAtmosphere( _ellipsoidModel.get() );
     makeSun();
     makeStars(starFile);
 }

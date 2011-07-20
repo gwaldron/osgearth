@@ -114,6 +114,7 @@ _featureGraph( featureGraph )
         if (!s_addPointHandler.valid() && s_activeFeature.valid())
         {
             s_addPointHandler = new AddPointHandler(s_activeFeature, s_source.get(), s_mapNode->getMap()->getProfile()->getSRS());
+            s_addPointHandler->setIntersectionMask( 0x1 );
             s_viewer->addEventHandler( s_addPointHandler.get() );
         }        
     }

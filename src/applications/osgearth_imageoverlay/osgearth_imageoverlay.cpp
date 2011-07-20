@@ -43,8 +43,6 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
 static Grid* s_layerBox = NULL;
-static Grid* s_imageBox = NULL;
-static Grid* s_coordInfo = NULL;
 
 osg::Node*
 createControlPanel( osgViewer::View* view )
@@ -61,30 +59,9 @@ createControlPanel( osgViewer::View* view )
     s_layerBox->setAbsorbEvents( true );
     s_layerBox->setVertAlign( Control::ALIGN_BOTTOM );
 
-    s_imageBox = new Grid();
-    s_imageBox->setHorizAlign(Control::ALIGN_RIGHT);
-    s_imageBox->setBackColor(0,0,0,0.5);
-    s_imageBox->setMargin( 10 );
-    s_imageBox->setPadding( 10 );
-    s_imageBox->setChildSpacing( 10 );
-    s_imageBox->setChildVertAlign( Control::ALIGN_CENTER );
-    s_imageBox->setAbsorbEvents( true );
-    s_imageBox->setVertAlign( Control::ALIGN_BOTTOM );
 
-    s_coordInfo = new Grid();
-    s_coordInfo->setHorizAlign(Control::ALIGN_LEFT);
-    s_coordInfo->setBackColor(0,0,0,0.5);
-    s_coordInfo->setMargin( 10 );
-    s_coordInfo->setPadding( 10 );
-    s_coordInfo->setChildSpacing( 10 );
-    s_coordInfo->setChildVertAlign( Control::ALIGN_CENTER );
-    s_coordInfo->setAbsorbEvents( true );
-    s_coordInfo->setVertAlign( Control::ALIGN_TOP );
 
-    canvas->addControl( s_layerBox );
-    canvas->addControl( s_imageBox );
-    canvas->addControl( s_coordInfo );
-
+    canvas->addControl( s_layerBox );    
     return canvas;
 }
 
@@ -93,9 +70,8 @@ usage( const std::string& msg )
 {
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << "USAGE: osgearth_imageoverlay file.earth" << std::endl;
-    OE_NOTICE << "   --image                         : The image to overlay" << std::endl;    
-    OE_NOTICE << "   --bounds xmin ymin xmax ymax    : The bounds of the overlay image" << std::endl;    
-    OE_NOTICE << "   --vert                          : Move individual verts when editing" << std::endl;
+    OE_NOTICE << "   --image <file> xmin ymin xmax ymax : An image to overlay and it's bounds" << std::endl;        
+    OE_NOTICE << "   --vert                             : Move individual verts when editing" << std::endl;
 
         
     return -1;
@@ -166,17 +142,6 @@ struct ChangeImageHandler : public ControlEventHandler
     osg::ref_ptr< ImageControl> _preview;
 };
 
-void addImage(osg::Image* image, ImageOverlay* overlay, ImageControl* preview)
-{
-    static unsigned int row = 0;
-    // Add an image:                
-    ImageControl* imageCon = new ImageControl( image );
-    imageCon->setSize( 128, 128 );
-    imageCon->setVertAlign( Control::ALIGN_CENTER );
-    s_imageBox->setControl( 0, row++, imageCon );     
-    imageCon->addEventHandler(new ChangeImageHandler(image, overlay, preview));
-}
-
 struct UpdateLabelCallback : public ImageOverlay::ImageOverlayCallback
 {
     UpdateLabelCallback(LabelControl* label, ImageOverlay* overlay, ImageOverlay::ControlPoint controlPoint):
@@ -201,57 +166,6 @@ struct UpdateLabelCallback : public ImageOverlay::ImageOverlayCallback
     ImageOverlay::ControlPoint _controlPoint;
 };
 
-void addCoordInfo(ImageOverlay* overlay, ImageOverlay::ControlPoint point)
-{
-
-    static unsigned int row = 0;
-    Grid *grid = new Grid();
-    //grid->setBackColor(0,0,0,0.5);
-    grid->setMargin( 10 );
-    grid->setPadding( 10 );
-    grid->setChildSpacing( 10 );
-    grid->setChildVertAlign( Control::ALIGN_CENTER );
-    grid->setAbsorbEvents( true );
-    grid->setVertAlign( Control::ALIGN_BOTTOM );
-
-    std::string name;
-    switch (point)
-    {
-    case ImageOverlay::CONTROLPOINT_CENTER:
-        name = "Center:";
-        break;
-    case ImageOverlay::CONTROLPOINT_LOWER_LEFT:
-        name = "Lower Left:";
-        break;
-    case ImageOverlay::CONTROLPOINT_LOWER_RIGHT:
-        name = "Lower Right:";
-        break;
-    case ImageOverlay::CONTROLPOINT_UPPER_LEFT:
-        name = "Upper Left:";
-        break;
-    case ImageOverlay::CONTROLPOINT_UPPER_RIGHT:
-        name = "Upper Right:";
-        break;
-    }
-
-    LabelControl* lbl = new LabelControl( name );      
-    lbl->setVertAlign( Control::ALIGN_CENTER );
-    grid->setControl(0, 0, lbl);
-
-
-
-    LabelControl* coords = new LabelControl(  );      
-    osg::Vec2d location = overlay->getControlPoint( point );
-    std::stringstream ss;
-    ss << location.y() << ", " << location.x();
-    coords->setText( ss.str() );
-    coords->setVertAlign( Control::ALIGN_CENTER );
-    grid->setControl(1, 0, coords);
-    overlay->addCallback(new UpdateLabelCallback(coords, overlay, point));
-
-    s_coordInfo->setControl( 0, row++, grid );  
-}
-
 
 
 int
@@ -261,13 +175,24 @@ main(int argc, char** argv)
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
 
-    //Read in the image to overlay
-    std::string imageFile = "../data/osgearth.gif";
-    while (arguments.read("--image", imageFile));
-    
-    //Read in the bounds
-    Bounds bounds(-100, 30, -90, 40);
-    while (arguments.read("--bounds", bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()));
+    std::vector< std::string > imageFiles;
+    std::vector< Bounds > imageBounds;
+
+    //Read in the image files
+    std::string filename;
+    Bounds bounds;
+    while (arguments.read("--image", filename, bounds.xMin(), bounds.yMin(), bounds.xMax(), bounds.yMax()))
+    {
+        imageFiles.push_back( filename );
+        imageBounds.push_back( bounds );
+    }
+
+    if (imageFiles.empty())
+    {
+      imageFiles.push_back("../data/osgearth.gif");
+      imageBounds.push_back( Bounds(-100, 30, -90, 40) );
+    }
+ 
 
     bool moveVert = arguments.read("--vert");
 
@@ -292,82 +217,75 @@ main(int argc, char** argv)
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
     {
-        //Read the image file and play it if it's a movie
-        osg::Image* image = osgDB::readImageFile(imageFile);
-        if (image)
+
+        for (unsigned int i = 0; i < imageFiles.size(); i++)
         {
-            osg::ImageStream* is = dynamic_cast<osg::ImageStream*>(image);
-            if (is)
+            std::string imageFile = imageFiles[i];
+            //Read the image file and play it if it's a movie
+            osg::Image* image = osgDB::readImageFile(imageFile);
+            if (image)
             {
-                is->play();
+                osg::ImageStream* is = dynamic_cast<osg::ImageStream*>(image);
+                if (is)
+                {
+                    is->play();
+                }
             }
-        }
 
-        //Create a new ImageOverlay and set it's bounds
-        //ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);        
-        ImageOverlay* overlay = new ImageOverlay();        
-        overlay->setImage( image );
-        overlay->setBounds(bounds);
+            //Create a new ImageOverlay and set it's bounds
+            //ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);        
+            ImageOverlay* overlay = new ImageOverlay();        
+            overlay->setImage( image );
+            overlay->setBounds(imageBounds[i]);
 
-        //Create a new ModelLayer so we can overlay it on the earth
-        osgEarth::ModelLayer* modelLayer = new osgEarth::ModelLayer("overlay",overlay);
-        modelLayer->setOverlay( true );
-        mapNode->getMap()->addModelLayer( modelLayer );
+            //Create a new ModelLayer so we can overlay it on the earth
+            osgEarth::ModelLayer* modelLayer = new osgEarth::ModelLayer("overlay",overlay);
+            modelLayer->setOverlay( true );
+            mapNode->getMap()->addModelLayer( modelLayer );
 
-        //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
+
+            //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially
 #if OSG_MIN_VERSION_REQUIRED(2,9,6)
-        osg::Node* editor = new ImageOverlayEditor( overlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
+            osg::Node* editor = new ImageOverlayEditor( overlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
 #else
-        //Just make an empty group for pre-2.9.6
-        osg::Node* editor = new osg::Group;
+            //Just make an empty group for pre-2.9.6
+            osg::Node* editor = new osg::Group;
 #endif
-        editor->setNodeMask( 0 );
-        root->addChild( editor );      
-
-        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_CENTER);
-        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_UPPER_LEFT);
-        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_UPPER_RIGHT);
-        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_LOWER_LEFT);
-        addCoordInfo(overlay, ImageOverlay::CONTROLPOINT_LOWER_RIGHT);
-
-        // Add an image preview
-        ImageControl* imageCon = new ImageControl( image );
-        imageCon->setSize( 64, 64 );
-        imageCon->setVertAlign( Control::ALIGN_CENTER );
-        s_layerBox->setControl( 0, 0, imageCon );            
+            editor->setNodeMask( 0 );
+            root->addChild( editor );      
+            
+            // Add an image preview
+            ImageControl* imageCon = new ImageControl( image );
+            imageCon->setSize( 64, 64 );
+            imageCon->setVertAlign( Control::ALIGN_CENTER );
+            s_layerBox->setControl( 0, i, imageCon );            
 
 
-        //Add some controls        
-        CheckBoxControl* enabled = new CheckBoxControl( true );
-        enabled->addEventHandler( new EnabledHandler(overlay) );
-        enabled->setVertAlign( Control::ALIGN_CENTER );
-        s_layerBox->setControl( 1, 0, enabled );
+            //Add some controls        
+            CheckBoxControl* enabled = new CheckBoxControl( true );
+            enabled->addEventHandler( new EnabledHandler(overlay) );
+            enabled->setVertAlign( Control::ALIGN_CENTER );
+            s_layerBox->setControl( 1, i, enabled );
 
-        //The overlay name
-        LabelControl* name = new LabelControl( osgDB::getSimpleFileName( imageFile) );      
-        name->setVertAlign( Control::ALIGN_CENTER );
-        s_layerBox->setControl( 2, 0, name );
+            //The overlay name
+            LabelControl* name = new LabelControl( osgDB::getSimpleFileName( imageFile) );      
+            name->setVertAlign( Control::ALIGN_CENTER );
+            s_layerBox->setControl( 2, i, name );
 
-        // an opacity slider
-        HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, overlay->getAlpha() );
-        opacity->setWidth( 125 );
-        opacity->setHeight( 12 );
-        opacity->setVertAlign( Control::ALIGN_CENTER );
-        opacity->addEventHandler( new OpacityHandler(overlay) );
-        s_layerBox->setControl( 3, 0, opacity );
+            // an opacity slider
+            HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, overlay->getAlpha() );
+            opacity->setWidth( 125 );
+            opacity->setHeight( 12 );
+            opacity->setVertAlign( Control::ALIGN_CENTER );
+            opacity->addEventHandler( new OpacityHandler(overlay) );
+            s_layerBox->setControl( 3, i, opacity );
 
-        // Add a text label:
-        LabelControl* edit = new LabelControl( "Edit" );        
-        edit->setVertAlign( Control::ALIGN_CENTER );
-        edit->addEventHandler(new EditHandler(overlay, &viewer, editor));
-        s_layerBox->setControl(4, 0, edit );
-
-
-        //Add some images that the user can tinker with
-        addImage(osgDB::readImageFile("../data/icon.png"), overlay, imageCon);
-        addImage(osgDB::readImageFile("../data/tree.gif"), overlay, imageCon);
-        addImage(osgDB::readImageFile("../data/osgearth.gif"), overlay, imageCon);
-        addImage(image, overlay, imageCon);
+            // Add a text label:
+            LabelControl* edit = new LabelControl( "Edit" );        
+            edit->setVertAlign( Control::ALIGN_CENTER );
+            edit->addEventHandler(new EditHandler(overlay, &viewer, editor));
+            s_layerBox->setControl(4, i, edit );
+        }        
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

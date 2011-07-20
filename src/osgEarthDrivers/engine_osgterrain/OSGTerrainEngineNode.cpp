@@ -89,13 +89,17 @@ OSGTerrainEngineNode::unregisterEngine( UID uid )
     }
 }
 
-OSGTerrainEngineNode*
-OSGTerrainEngineNode::getEngineByUID( UID uid )
+// since this method is called in a database pager thread, we use a ref_ptr output
+// parameter to avoid the engine node being destructed between the time we 
+// return it and the time it's accessed; this could happen if the user removed the
+// MapNode from the scene during paging.
+void
+OSGTerrainEngineNode::getEngineByUID( UID uid, osg::ref_ptr<OSGTerrainEngineNode>& output )
 {
     Threading::ScopedReadLock sharedLock( s_engineNodeCacheMutex );
     EngineNodeCache::const_iterator k = getEngineNodeCache().find( uid );
-    if (k != getEngineNodeCache().end()) return k->second.get();
-    return 0;
+    if (k != getEngineNodeCache().end())
+        output = k->second.get();
 }
 
 UID
@@ -347,6 +351,11 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 osg::Node*
 OSGTerrainEngineNode::createNode( const TileKey& key )
 {
+    // if the engine has been disconnected from the scene graph, bail out and don't
+    // create any more tiles
+    if ( getNumParents() == 0 )
+        return 0L;
+
     osg::Timer_t start = _timer.tick();
 
     osg::Node* result = 0L;

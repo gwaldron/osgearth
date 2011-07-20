@@ -45,7 +45,8 @@ public:
         unsigned int lod, x, y, id;
         sscanf(filename.c_str(), "%d_%d_%d.%d", (int*)&lod, (int*)&x, (int*)&y, (int*)&id);
 
-        osg::ref_ptr<OSGTerrainEngineNode> engine = OSGTerrainEngineNode::getEngineByUID( (UID)id );
+        osg::ref_ptr<OSGTerrainEngineNode> engine;
+        OSGTerrainEngineNode::getEngineByUID( (UID)id, engine );
 
         if ( engine.valid() )
         {

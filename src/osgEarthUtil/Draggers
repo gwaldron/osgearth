@@ -55,7 +55,7 @@ public:
     virtual bool handle(const osgManipulator::PointerInfo& pi, const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& us);
 
     void setNode(osg::Node* node) { _node = node;}
-    osg::Node* getNode() const { return _node;}
+    osg::Node* getNode() const { return _node.get(); }
 
     /** Set/Get color for dragger. */
     inline void setColor(const osg::Vec4& color) { _color = color; }

@@ -69,6 +69,9 @@ namespace osgEarth { namespace Util {
         void setIsPath( bool path );
         bool getIsPath() const;
 
+        void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
+        osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
+
     private:
         Mode _mode;
         void fireDistanceChanged();
@@ -84,7 +87,9 @@ namespace osgEarth { namespace Util {
         osg::ref_ptr< osgEarth::Features::Feature >  _feature;
         MeasureToolEventHandlerList _eventHandlers;
         bool _isPath;
+        osg::ref_ptr< osgEarth::Features::GeomFeatureNodeFactory > _factory;
         osg::ref_ptr< MapNode > _mapNode;
+        osg::Node::NodeMask _intersectionMask;
     };
 }}
 #endif

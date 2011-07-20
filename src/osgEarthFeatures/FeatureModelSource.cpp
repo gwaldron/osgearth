@@ -79,7 +79,7 @@ FeatureModelSourceOptions::getConfig() const
     conf.updateObjIfSet( "features", _featureOptions );    
     if (_featureSource.valid())
     {
-        conf.addNonSerializable("feature_source", _featureSource);
+        conf.addNonSerializable("feature_source", _featureSource.get());
     }
     //conf.updateObjIfSet( "feature_source", _featureSource);
     conf.updateObjIfSet( "gridding", _gridding ); // to be deprecated
@@ -175,7 +175,7 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         _options, 
         _factory.get(),
         *_options.styles(),
-        new Session( _map ) );
+        new Session( _map.get() ) );
 
     return graph;
 }

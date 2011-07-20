@@ -535,9 +535,9 @@ namespace
                 geom.removePrimitiveSet( 0 );
 
             // set the new VBO.
-            geom.setVertexArray( data._verts );
+            geom.setVertexArray( data._verts.get() );
 
-            geom.setTexCoordArray(0, data._texcoords );
+            geom.setTexCoordArray(0, data._texcoords.get() );
 
             if ( data._verts->size() < 256 )
                 populateTriangles<osg::DrawElementsUByte,GLubyte>( geom, done, maxElementsPerEBO );

@@ -43,14 +43,26 @@ namespace
     class MyConvexPolyhedron : public osgShadow::ConvexPolyhedron
     {
     public:       
-        bool
-        contains(const osg::BoundingSphere& bs) const
+        bool contains(const osg::BoundingSphere& bs) const
         {
             for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
             {
                 osg::Plane up = i->plane;
                 up.makeUnitLength();
                 if ( up.distance( bs.center() ) < -bs.radius() )
+                    return false;
+            }
+            return true;
+        }
+
+        bool contains(const osg::BoundingBox& box) const
+        {
+            for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
+            {
+                osg::Plane up = i->plane;
+                up.makeUnitLength();
+
+                if ( up.intersect(box) < 0 )
                     return false;
             }
             return true;
@@ -70,7 +82,8 @@ namespace
         CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
             : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
               _bbox(out_bbox),
-              _original( polytope )
+              _original( polytope ),
+              _coarse( true )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );
@@ -91,13 +104,31 @@ namespace
 
             if ( _polytopeStack.top().contains( bs ) )
             {
-                _bbox.expandBy(
-                    osg::BoundingSphere( bs.center() * _matrixStack.top(), bs.radius() ) );
+                if ( _coarse )
+                {
+                    _bbox.expandBy(
+                        osg::BoundingSphere( bs.center() * _matrixStack.top(), bs.radius() ) );
+                }
+                else
+                {
+                    for( unsigned i=0; i < node.getNumDrawables(); ++i )
+                    {
+                        applyDrawable( node.getDrawable(i) );
+                    }
+                }
+            }
+        }
 
-                //for( int i=0; i < node.getNumDrawables(); ++i )
-                //{
-                //    applyDrawable( node.getDrawable(i) );
-                //}
+        void applyDrawable( osg::Drawable* drawable )
+        {
+            const osg::BoundingBox& box = drawable->getBound();
+
+            if ( _polytopeStack.top().contains( box ) )
+            {
+                osg::Vec3d bmin = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
+                osg::Vec3d bmax = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
+                  
+                _bbox.expandBy( osg::BoundingBox(bmin, bmax) );
             }
         }
 
@@ -120,6 +151,7 @@ namespace
         MyConvexPolyhedron _original;
         std::stack<MyConvexPolyhedron> _polytopeStack;
         std::stack<osg::Matrixd> _matrixStack;
+        bool _coarse;
     };
 
     /**
@@ -712,7 +744,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
    
     // contruct the polyhedron representing the viewing frustum.
-    osgShadow::ConvexPolyhedron frustumPH;
+    //osgShadow::ConvexPolyhedron frustumPH;
+    MyConvexPolyhedron frustumPH;
     frustumPH.setToUnitFrustum( true, true );
     osg::Matrixd MVP = *cv->getModelViewMatrix() * projMatrix;
     osg::Matrixd inverseMVP;
@@ -723,11 +756,19 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     // intersect the viewing frustum:
     osgShadow::ConvexPolyhedron visiblePH;
 
-    // get the bounds of the model. 
+    // get the bounds of the overlay graph //model. 
+#if 0
     //const osg::BoundingSphere& bs = osg::Group::getBound();
     osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
-    this->accept(cbbv);
+    //this->accept(cbbv);
+    _overlayGraph->accept(cbbv);
     visiblePH.setToBoundingBox(cbbv.getBoundingBox());
+#else
+    osg::BoundingBox visibleOverlayBBox;
+    CoarsePolytopeIntersector cpi( frustumPH, visibleOverlayBBox );
+    _overlayGraph->accept( cpi );
+    visiblePH.setToBoundingBox( visibleOverlayBBox );
+#endif
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
     // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 

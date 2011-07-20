@@ -615,8 +615,8 @@ MapNode::onModelLayerOverlayChanged( ModelLayer* layer )
     if (node.valid())
     {
         //Remove it from the original parent and add it to the new parent
-        origParent->removeChild( node );
-        newParent->addChild( node );
+        origParent->removeChild( node.get() );
+        newParent->addChild( node.get() );
     }
 
     updateOverlayGraph();

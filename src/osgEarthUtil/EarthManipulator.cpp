@@ -538,7 +538,13 @@ EarthManipulator::reinitialize()
 bool
 EarthManipulator::established()
 {
-    if ( !_csn.valid() && _node.valid() )
+#ifdef USE_OBSERVER_NODE_PATH
+    bool needToReestablish = (!_csn.valid() || _csnObserverPath.empty()) && _node.valid();
+#else
+    bool needToReestablish = !_csn.valid() && _node.valid();
+#endif
+
+    if ( needToReestablish )
     {
         osg::ref_ptr<osg::Node> safeNode = _node.get();
         if ( !safeNode.valid() )
@@ -554,9 +560,9 @@ EarthManipulator::established()
             _csn = csn.get();
             _node = csn.get();
 
-            osg::NodePathList paths = csn->getParentalNodePaths();
-            _csnPath = paths[0];
-            //_csnPath.setNodePath( paths[0] );
+#if USE_OBSERVER_NODE_PATH
+            _csnObserverPath.setNodePathTo( csn.get() );
+#endif
 
             if ( !_homeViewpoint.isSet() )
             {
@@ -616,12 +622,20 @@ EarthManipulator::getMyCoordinateFrame( const osg::Vec3d& position ) const
 {
     osg::CoordinateFrame coordinateFrame;
 
-    //osg::NodePath csnPath;
-    //bool hasPath = _csnPath.getNodePath( csnPath );
     osg::ref_ptr<osg::CoordinateSystemNode> csnSafe = _csn.get();
 
     if ( csnSafe.valid() )
     {
+#ifdef USE_OBSERVER_NODE_PATH
+        if ( _csnObserverPath.empty() )
+        {
+            const_cast<EarthManipulator*>(this)->_csnObserverPath.setNodePathTo( csnSafe.get() );
+            _csnObserverPath.getNodePath( const_cast<EarthManipulator*>(this)->_csnPath );
+        }
+#else
+        const_cast<EarthManipulator*>(this)->_csnPath = csnSafe->getParentalNodePaths()[0];
+#endif
+
         osg::Vec3 local_position = position * osg::computeWorldToLocal( _csnPath );
 
         // get the coordinate frame in world coords.
@@ -660,6 +674,9 @@ EarthManipulator::setNode(osg::Node* node)
     {
         _node = node;
         _csn = 0L;
+#ifdef USE_OBSERVER_NODE_PATH
+        _csnObserverPath.clearNodePath();
+#endif
         _csnPath.clear();
         reinitialize();
 
@@ -1157,9 +1174,6 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
 bool
 EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
-    if ( ea.getHandled() )
-        return false;
-
     bool handled = false;
     
     // first order of business: make sure the CSN is established.

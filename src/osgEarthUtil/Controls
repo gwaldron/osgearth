@@ -619,7 +619,7 @@ namespace osgEarth { namespace Util { namespace Controls
         friend class ControlNode;
 
         void draw( const ControlContext& context, bool newContext, int bin );
-        osg::Group* getControlGroup() const { return _group; }
+        osg::Group* getControlGroup() const { return _group.get(); }
     };
 
     /**
@@ -680,7 +680,7 @@ namespace osgEarth { namespace Util { namespace Controls
         static OpenThreads::Mutex _viewCanvasMapMutex;
 
         /** Accesses the priority rendering bin for this canvas. */
-        ControlNodeBin* getControlNodeBin() { return _controlNodeBin; }
+        ControlNodeBin* getControlNodeBin() { return _controlNodeBin.get(); }
     };
 
 

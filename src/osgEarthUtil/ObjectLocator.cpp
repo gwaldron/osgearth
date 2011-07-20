@@ -226,19 +226,9 @@ ObjectLocator::inSyncWith( int exRev ) const
 
 /***************************************************************************/
 
-// Binds the update traversal to the udpate() method
-struct LocatorUpdateCallback : public osg::NodeCallback
-{
-    void operator()( osg::Node* node, osg::NodeVisitor* nv ) // override
-    {
-        static_cast<ObjectLocatorNode*>( node )->update();
-        traverse( node, nv );
-    }
-};
-
 ObjectLocatorNode::ObjectLocatorNode()
 {
-    //nop
+    setNumChildrenRequiringUpdateTraversal( 1 );
 }
 
 ObjectLocatorNode::ObjectLocatorNode( const ObjectLocatorNode& rhs, const osg::CopyOp& op ) :
@@ -246,18 +236,21 @@ osg::MatrixTransform( rhs, op ),
 _locator( rhs._locator.get() ),
 _matrixRevision( rhs._matrixRevision )
 {
+    setNumChildrenRequiringUpdateTraversal( 1 );
     setLocator( _locator.get() ); // to update the trav count
 }
 
 ObjectLocatorNode::ObjectLocatorNode( ObjectLocator* locator ) :
 _matrixRevision( -1 )
 {
+    setNumChildrenRequiringUpdateTraversal( 1 );
     setLocator( locator );
 }
 
 ObjectLocatorNode::ObjectLocatorNode( const Map* map ) :
 _matrixRevision( -1 )
 {
+    setNumChildrenRequiringUpdateTraversal( 1 );
     setLocator( new ObjectLocator(map) );
 }
 
@@ -265,8 +258,18 @@ void
 ObjectLocatorNode::setLocator( ObjectLocator* locator )
 {
     _locator = locator;
-    _matrixRevision = -1;
-    setUpdateCallback( _locator.valid() ? new LocatorUpdateCallback() : 0L );
+    _matrixRevision = -1;    
+}
+
+
+void
+ObjectLocatorNode::traverse(osg::NodeVisitor &nv)
+{
+    if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+    {
+        update();
+    }
+    osg::MatrixTransform::traverse( nv );
 }
 
 void

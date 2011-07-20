@@ -109,7 +109,7 @@ Session::resolveURI( const std::string& inputURI ) const
 MapFrame
 Session::createMapFrame( Map::ModelParts parts ) const
 {
-    return MapFrame( _map, parts );
+    return MapFrame( _map.get(), parts );
 }
 
 void

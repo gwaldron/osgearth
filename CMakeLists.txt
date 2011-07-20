@@ -147,6 +147,8 @@ SET(OSG_DIR "" CACHE PATH "set to base osg install path")
 SET(CMAKE_DEBUG_POSTFIX  "d" CACHE STRING "add a postfix, usually d on windows")
 
 FIND_PACKAGE(OSG)
+
+
 #FIND_PACKAGE(GDAL)
 
 ################################################################################
@@ -235,6 +237,8 @@ INCLUDE(OsgEarthMacroUtils)
 
 DETECT_OSG_VERSION()
 
+SET(OPENSCENEGRAPH_VERSION ${OPENSCENEGRAPH_MAJOR_VERSION}.${OPENSCENEGRAPH_MINOR_VERSION}.${OPENSCENEGRAPH_PATCH_VERSION})
+
 # OE Core
 ADD_SUBDIRECTORY(src)
 
@@ -276,6 +280,8 @@ IF(APPLE)
     ENDIF(NOT OSGEARTH_CONFIG_HAS_BEEN_RUN_BEFORE)
 
     OPTION(OSGEARTH_BUILD_APPLICATION_BUNDLES "Enable the building of applications and examples as OSX Bundles" OFF)
+    OPTION(OSGEARTH_BUILD_FRAMEWORKS "Compile frameworks instead of dylibs" OFF)
+    SET(OSGEARTH_BUILD_FRAMEWORKS_INSTALL_NAME_DIR "@executable_path/../Frameworks" CACHE STRING "Install name dir for compiled frameworks")
 
 ENDIF(APPLE)
 

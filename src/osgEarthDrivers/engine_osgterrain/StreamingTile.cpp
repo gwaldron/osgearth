@@ -830,8 +830,14 @@ StreamingTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLoc
                 }
                 else
                 {
-                    _elevRequest->setState( TaskRequest::STATE_IDLE );
-                    _elevRequest->reset();
+                    //We've tried to get the tile's elevation but couldn't.  Just mark the elevation layer as up to date and move on.
+                    _elevationLOD = _key.getLevelOfDetail();
+                    _elevationLayerUpToDate = true;
+
+                    //This code will retry indefinitely.  We need to have a way to limit the number of retries since
+                    //it will block neighbor tiles from loading.
+                    //_elevRequest->setState( TaskRequest::STATE_IDLE );
+                    //_elevRequest->reset();
                 }
             }
         }

@@ -391,7 +391,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     if (!_cacheProfile.valid() && _cache.valid() && _options.cacheEnabled() == true && _tileSource.valid())
     {
         _cacheProfile = cacheInMapProfile ? mapProfile : _profile.get();
-        _cache->storeProperties( _cacheSpec, _cacheProfile, _tileSource->getPixelsPerTile() );
+        _cache->storeProperties( _cacheSpec, _cacheProfile.get(), _tileSource->getPixelsPerTile() );
     }
 
 	if (cacheInMapProfile)

@@ -272,9 +272,9 @@ _dirty( true )
 
 StringExpression::StringExpression( const StringExpression& rhs ) :
 _src( rhs._src ),
+_infix( rhs._infix ),
 _vars( rhs._vars ),
 _value( rhs._value ),
-_infix( rhs._infix ),
 _dirty( rhs._dirty )
 {
     //nop

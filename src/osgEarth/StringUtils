@@ -28,7 +28,7 @@
 #include <sstream>
 #include <iomanip>
 #include <map>
-#include <cctype>
+#include <ctype.h>
 
 #ifdef __GNUC__
 #define LIKELY_UNUSED_FUNCTION __attribute__ ((unused))
@@ -233,7 +233,7 @@ namespace osgEarth
     toLower( const std::string& input )
     {
         std::string output = input;
-        std::transform( output.begin(), output.end(), output.begin(), std::tolower );
+        std::transform( output.begin(), output.end(), output.begin(), ::tolower );
         return output;
     }
 
@@ -403,7 +403,7 @@ namespace osgEarth
 
     // template specialization for string
     template<> inline std::string
-    as<std::string>( const std::string& str, const std::string& default_value )
+    as<std::string>( const std::string& str, const std::string& )
     {
         return str;
     }

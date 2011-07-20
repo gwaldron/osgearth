@@ -27,9 +27,9 @@ _halo( Stroke( 0.3, 0.3, 0.3, 1) ),
 //_font( "fonts/arial.ttf" ),
 _size( 16.0f ),
 //_contentAttributeDelimiter( "[]" ),
-_sizeMode( SIZEMODE_SCREEN ),
 _rotateToScreen( false ),
-_removeDuplicateLabels( false )
+_removeDuplicateLabels( false ),
+_sizeMode( SIZEMODE_SCREEN )
 {
     mergeConfig(conf);
 }

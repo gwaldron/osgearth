@@ -183,7 +183,6 @@ namespace
         }
 
 
-        bool made_geom = true;
         const SpatialReference* srs = context.profile()->getSRS();
 
         // total up all the points so we can pre-allocate the vertex arrays.
@@ -379,7 +378,7 @@ namespace
             densificationThreshold = *_options.densificationThreshold();
 
             // establish the shared build data (shared across compiles in the same session)
-            BuildData* buildData = getOrCreateBuildData( cx.getSession() );
+            //BuildData* buildData = getOrCreateBuildData( cx.getSession() );
 
             // Scan the geometry to see if it includes line data, since that will require buffering:
             bool hasLines = false;

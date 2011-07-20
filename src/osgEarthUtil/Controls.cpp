@@ -78,6 +78,8 @@ namespace
 
 Control::Control() :
 _x(0), _y(0), _width(1), _height(1),
+_hfill( false ),
+_vfill( false ),
 _margin( Gutter(0) ),
 _padding( Gutter(2) ),
 _visible( true ),
@@ -87,9 +89,7 @@ _backColor( osg::Vec4f(0,0,0,0) ),
 _foreColor( osg::Vec4f(1,1,1,1) ),
 _activeColor( osg::Vec4f(.4,.4,.4,1) ),
 _active( false ),
-_absorbEvents( false ),
-_hfill( false ),
-_vfill( false )
+_absorbEvents( false )
 {
     //nop
 }

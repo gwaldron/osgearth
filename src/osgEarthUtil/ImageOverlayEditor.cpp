@@ -15,8 +15,8 @@ class ImageOverlayDraggerCallback : public osgManipulator::DraggerCallback
 {
 public:
     ImageOverlayDraggerCallback(ImageOverlay* overlay, const osg::EllipsoidModel* ellipsoid, ImageOverlay::ControlPoint controlPoint):
-      _overlay(overlay),
           _ellipsoid(ellipsoid),
+          _overlay(overlay),
           _controlPoint(controlPoint)
       {}
 

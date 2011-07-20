@@ -25,7 +25,6 @@
 #include <climits>
 #include <queue>
 #include <map>
-#include <limits.h>
 
 #define LC "[MeshSubdivider] "
 

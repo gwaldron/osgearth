@@ -38,10 +38,10 @@ using namespace osgEarth::Symbology;
 ExtrudeGeometryFilter::ExtrudeGeometryFilter() :
 _maxAngle_deg( 5.0 ),
 _mergeGeometry( false ),
-_height( 10.0 ),
 _flatten( true ),
+_color( osg::Vec4f(1, 1, 1, 1) ),
 _wallAngleThresh_deg( 60.0 ),
-_color( osg::Vec4f(1, 1, 1, 1) )
+_height( 10.0 )
 {
     reset();
 }
@@ -74,7 +74,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     //Adjust the texture height so it is a multiple of the extrusion height
     bool   tex_repeats_y = skin? skin->getRepeatsVertically() : true;
 #else
-    double tex_width_m = 1.0;
     double tex_height_m = 1.0;
     bool   tex_repeats_y = true;
 #endif
@@ -492,7 +491,6 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
 {
     reset();
 
-    bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
         pushFeature( i->get(), context );
 

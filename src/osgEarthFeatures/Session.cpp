@@ -94,6 +94,10 @@ _mapInfo(map)
 	_referenceURI = map->getMapOptions().referenceURI().value();
 }
 
+Session::~Session()
+{
+}
+
 void
 Session::setReferenceURI( const std::string& referenceURI )
 {

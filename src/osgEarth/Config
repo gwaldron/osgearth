@@ -393,6 +393,7 @@ namespace osgEarth
             }
             return *this;
         }
+        virtual ~ConfigOptions() { }
 
         void merge( const ConfigOptions& rhs ) {
             _conf.merge( rhs._conf );
@@ -402,7 +403,7 @@ namespace osgEarth
         virtual Config getConfig() const { return _conf; }
 
     protected:
-        virtual void mergeConfig( const Config& conf ) { }
+        virtual void mergeConfig( const Config& ) { }
 
         Config _conf;
     };
@@ -415,6 +416,7 @@ namespace osgEarth
     public:
         DriverConfigOptions( const ConfigOptions& rhs =ConfigOptions() )
             : ConfigOptions( rhs ) { fromConfig( _conf ); }
+        virtual ~DriverConfigOptions() { }
 
         /** Gets or sets the name of the driver to load */
         void setDriver( const std::string& value ) { _driver = value; }

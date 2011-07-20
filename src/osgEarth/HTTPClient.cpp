@@ -664,7 +664,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
             OE_NOTICE << LC
                 << "NULL Content-Type (protocol violation) " 
                 << "URL=" << request.getURL() << std::endl;
-            return NULL;
+            return HTTPResponse();
         }
 
         // NOTE:

@@ -67,20 +67,21 @@ namespace
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
 CustomTerrainTechnique(),
+_debug( false ),
 _verticalScaleOverride(1.0f),
 _initCount(0),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
 _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
-_frontGeodeInstalled( false ),
-_debug( false )
+_frontGeodeInstalled( false )
 {
     this->setThreadSafeRefUnref(true);
 }
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& rhs, const osg::CopyOp& copyop):
 CustomTerrainTechnique( rhs, copyop ),
+_debug( rhs._debug ),
 _verticalScaleOverride( rhs._verticalScaleOverride ),
 _initCount( 0 ),
 _pendingFullUpdate( false ),
@@ -88,7 +89,6 @@ _pendingGeometryUpdate( false ),
 _optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _texCompositor( rhs._texCompositor.get() ),
 _frontGeodeInstalled( rhs._frontGeodeInstalled ),
-_debug( rhs._debug ),
 _parentTile( rhs._parentTile )
 {
     //NOP

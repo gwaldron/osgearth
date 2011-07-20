@@ -252,8 +252,8 @@ namespace osgEarth
         virtual void _init();
         virtual bool _isEquivalentTo( const SpatialReference* srs ) const;
 
-        virtual bool preTransform(double& x, double& y, void* context) const { return true; }
-        virtual bool postTransform(double& x, double& y, void* context) const { return true;}
+        virtual bool preTransform(double&, double&, void* ) const { return true; }
+        virtual bool postTransform(double&, double&, void* ) const { return true;}
         
 
 

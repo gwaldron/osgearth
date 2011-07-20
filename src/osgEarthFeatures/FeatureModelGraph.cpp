@@ -64,7 +64,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
 
         UID uid;
         unsigned levelIndex, x, y;
-        sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &levelIndex, &x, &y );
+        sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", (unsigned int*)&uid, (int*)&levelIndex, (int*)&x, (int*)&y );
 
         //OE_INFO << LC << "Page in: " << uri << std::endl;
 
@@ -105,7 +105,7 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader);
+REGISTER_OSGPLUGIN(osgearth_pseudo_fmg, osgEarthFeatureModelPseudoLoader)
 
 namespace
 {    
@@ -135,11 +135,11 @@ FeatureModelGraph::FeatureModelGraph(FeatureSource*                   source,
                                      FeatureNodeFactory*              factory,
                                      const StyleSheet&                styles,
                                      Session*                         session ) :
-_source ( source ),
 _options( options ),
+_source ( source ),
 _factory( factory ),
-_styles ( styles ),
 _session( session ),
+_styles ( styles ),
 _dirty(false)
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
@@ -386,7 +386,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
 
             // calculate the LOD of the next level:
             unsigned nextLOD = lod+1;
-            if ( nextLOD != ~0 )
+            if ( nextLOD != ~0u )
             {
                 MapFrame mapf = _session->createMapFrame();
                 buildSubTiles( levelIndex+1, levelIndex, tileX, tileY, &nextLevel, nextLOD, &mapf, group.get() );
@@ -436,7 +436,7 @@ FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, co
 
                 // calculate the LOD of the next level:
                 unsigned nextLOD = _options.levels()->chooseLOD( *nextLevel, _fullWorldBound.radius() );
-                if ( nextLOD != ~0 )
+                if ( nextLOD != ~0u )
                 {
                     MapFrame mapf = _session->createMapFrame();
                     buildSubTiles( levelIndex+1, lod, tileX, tileY, nextLevel, nextLOD, &mapf, group.get() );

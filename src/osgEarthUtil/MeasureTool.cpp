@@ -30,13 +30,13 @@ using namespace osgEarth::Features;
 
 
 MeasureToolHandler::MeasureToolHandler( osg::Group* group, osgEarth::MapNode* mapNode ):
-_mouseDown(false),
-_group(group),
-_gotFirstLocation(false),
-_lastPointTemporary(false),
-_finished(false),
 _mode( MODE_GREATCIRCLE ),
+_lastPointTemporary(false),
+_gotFirstLocation(false),
+_finished(false),
+_mouseDown(false),
 _mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
+_group(group),
 _isPath( false ),
 _mapNode( mapNode ),
 _intersectionMask(0xffffffff)

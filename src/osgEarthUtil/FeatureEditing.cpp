@@ -26,12 +26,12 @@ using namespace osgEarth::Features;
 
 /****************************************************************/
 AddPointHandler::AddPointHandler(Feature* feature, FeatureListSource* source, const osgEarth::SpatialReference* mapSRS):
-_feature(feature),
-_source( source ),
-_mapSRS( mapSRS ),
+_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON ),
 _mouseDown( false ),
 _firstMove( false ),
-_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON ),
+_source( source ),
+_feature(feature),
+_mapSRS( mapSRS ),
 _intersectionMask( 0xffffffff )
 {
 }

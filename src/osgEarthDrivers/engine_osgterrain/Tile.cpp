@@ -43,14 +43,14 @@ using namespace OpenThreads;
 //----------------------------------------------------------------------------
 
 Tile::Tile( const TileKey& key, GeoLocator* keyLocator, bool quickReleaseGLObjects ) :
-_key( key ),
-_locator( keyLocator ),
-_quickReleaseGLObjects( quickReleaseGLObjects ),
 _hasBeenTraversed( false ),
-_verticalScale( 1.0f ),
+_quickReleaseGLObjects( quickReleaseGLObjects ),
 _parentTileSet( false ),
+_dirty( true ),
+_key( key ),
 _tileId( key.getTileId() ),
-_dirty( true )
+_locator( keyLocator ),
+_verticalScale( 1.0f )
 {
     this->setThreadSafeRefUnref( true );
     this->setName( key.str() );

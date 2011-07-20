@@ -644,9 +644,12 @@ SkyNode::attach( osg::View* view, int lightNum )
     // creates the new per-view if it does not already exist
     PerViewData& data = _perViewData[view];
 
-    data._light = osg::clone( _defaultPerViewData._light.get() );
-    data._light->setLightNum( lightNum );
-    data._light->setAmbient( _defaultPerViewData._light->getAmbient() );
+	if(lightNum >= 0)
+	{
+		data._light = osg::clone( _defaultPerViewData._light.get() );
+		data._light->setLightNum( lightNum );
+		data._light->setAmbient( _defaultPerViewData._light->getAmbient() );
+	}
     data._lightPos = _defaultPerViewData._lightPos;
 
     // the cull callback has to be on a parent group-- won't work on the xforms themselves.
@@ -672,8 +675,11 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._cullContainer->addChild( _atmosphere.get() );
     data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
 
-    view->setLightingMode( osg::View::SKY_LIGHT );
-    view->setLight( data._light.get() );
+	if(lightNum >= 0)
+	{
+		view->setLightingMode( osg::View::SKY_LIGHT );
+		view->setLight( data._light.get() );
+	}
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
 }
 

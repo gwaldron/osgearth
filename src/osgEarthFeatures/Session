@@ -44,6 +44,7 @@ namespace osgEarth { namespace Features
          * Constructs a new Session that is tied to a map
          */
         Session( const Map* map );
+		virtual ~Session();
 
         /**
          * Sets the reference URI to use to expand relative paths and URLs.

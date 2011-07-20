@@ -26,15 +26,15 @@ FilterContext::FilterContext(Session*               session,
                              const GeoExtent&       workingExtent ) :
 _session( session ),
 _profile( profile ),
-_extent( workingExtent, workingExtent ),
-_isGeocentric( false )
+_isGeocentric( false ),
+_extent( workingExtent, workingExtent )
 {
     //NOP
 }
 
 FilterContext::FilterContext( const FilterContext& rhs ) :
-_profile( rhs._profile.get() ),
 _session( rhs._session.get() ),
+_profile( rhs._profile.get() ),
 _isGeocentric( rhs._isGeocentric ),
 _extent( rhs._extent ),
 _referenceFrame( rhs._referenceFrame ),

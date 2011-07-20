@@ -21,7 +21,7 @@
 #include <osg/Vec4ub>
 #include <sstream>
 #include <iomanip>
-#include <cctype>
+#include <ctype.h>
 
 using namespace osgEarth::Symbology;
 
@@ -64,7 +64,7 @@ osg::Vec4f( rhs )
 Color::Color( const std::string& html )
 {
     std::string t = html;
-    std::transform( t.begin(), t.end(), t.begin(), std::tolower );
+    std::transform( t.begin(), t.end(), t.begin(), ::tolower );
     osg::Vec4ub c(0,0,0,255);
     if ( t.length() >= 7 ) {
         c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;

@@ -181,8 +181,8 @@ struct AssembleTile
 
 TileBuilder::TileBuilder(const Map* map, const OSGTerrainOptions& terrainOptions, TaskService* service) :
 _map( map ),
-_terrainOptions( terrainOptions ),
-_service( service )
+_service( service ),
+_terrainOptions( terrainOptions )
 {
     //nop
 }

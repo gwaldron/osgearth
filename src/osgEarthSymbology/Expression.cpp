@@ -302,7 +302,7 @@ StringExpression::getConfig() const
 void
 StringExpression::init()
 {
-    StringTokenizer izer;
+    StringTokenizer izer("", "");
     izer.addDelims( "[]", true );
     izer.addQuotes( "'\"", false );
     izer.keepEmpties() = false;

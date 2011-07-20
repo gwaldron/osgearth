@@ -457,7 +457,7 @@ TileBuilder::createTile(const TileKey&      key,
         }
     }
 
-    if ( !out_hasRealData && repo._elevLayer.isFallbackData() )
+    if ( !out_hasRealData && !repo._elevLayer.isFallbackData() )
     {
         out_hasRealData = true;
     }

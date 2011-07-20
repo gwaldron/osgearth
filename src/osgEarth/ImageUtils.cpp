@@ -157,6 +157,11 @@ ImageUtils::resizeImage(const osg::Image* input,
         PixelReader read( input );
         PixelWriter write( output.get() );
 
+        unsigned int pixel_size_bytes = input->getRowSizeInBytes() / in_s;
+
+        unsigned char* dataOffset = output->getMipmapData(mipmapLevel);
+        unsigned int   dataRowSizeBytes = output->getRowSizeInBytes() >> mipmapLevel;
+
         for( unsigned int output_row=0; output_row < out_t; output_row++ )
         {
             // get an appropriate input row
@@ -246,6 +251,7 @@ namespace
         bool operator()( const osg::Vec4f& src, osg::Vec4f& dest )
         {
             float sa = _srcHasAlpha ? _a * src.a() : _a;
+            float da = _destHasAlpha ? dest.a() : 1.0f;
             dest.set(
                 dest.r()*(1.0f-sa) + src.r()*sa,
                 dest.g()*(1.0f-sa) + src.g()*sa,

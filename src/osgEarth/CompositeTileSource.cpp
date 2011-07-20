@@ -179,16 +179,45 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
         if ( progress && progress->isCanceled() )
             return 0L;
 
-        // check that this source is within the level bounds:
-        if (i->_imageLayerOptions->minLevel().value() > key.getLevelOfDetail() ||
-            i->_imageLayerOptions->maxLevel().value() < key.getLevelOfDetail() )
-        {
-            continue;
-        }
-
         TileSource* source = i->_tileSourceInstance->get();
         if ( source )
         {
+
+            //TODO:  This duplicates code in ImageLayer::isKeyValid.  Maybe should move that to TileSource::isKeyValid instead
+            int minLevel = 0;
+            int maxLevel = INT_MAX;
+            if (i->_imageLayerOptions->minLevel().isSet())
+            {
+                minLevel = i->_imageLayerOptions->minLevel().value();
+            }
+            else if (i->_imageLayerOptions->minLevelResolution().isSet())
+            {
+                minLevel = source->getProfile()->getLevelOfDetailForHorizResolution( i->_imageLayerOptions->minLevelResolution().value(), source->getPixelsPerTile());            
+            }
+
+            if (i->_imageLayerOptions->maxLevel().isSet())
+            {
+                maxLevel = i->_imageLayerOptions->maxLevel().value();
+            }
+            else if (i->_imageLayerOptions->maxLevelResolution().isSet())
+            {
+                maxLevel = source->getProfile()->getLevelOfDetailForHorizResolution( i->_imageLayerOptions->maxLevelResolution().value(), source->getPixelsPerTile());            
+            }
+
+
+
+
+            // check that this source is within the level bounds:
+            if (minLevel > key.getLevelOfDetail() ||
+                maxLevel < key.getLevelOfDetail() )
+            {
+                continue;
+            }
+
+
+
+
+
             if ( !source->getBlacklist()->contains( key.getTileId() ) )
             {
                 //Only try to get data if the source actually has data

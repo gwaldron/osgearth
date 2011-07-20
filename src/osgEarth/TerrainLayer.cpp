@@ -79,6 +79,8 @@ TerrainLayerOptions::getConfig() const
     conf.updateIfSet( "cacheid", _cacheId );
     conf.updateIfSet( "min_level", _minLevel );
     conf.updateIfSet( "max_level", _maxLevel );
+    conf.updateIfSet( "min_level_resolution", _minLevelResolution );
+    conf.updateIfSet( "max_level_resolution", _maxLevelResolution );
     conf.updateIfSet( "cache_enabled", _cacheEnabled );
     conf.updateIfSet( "cache_only", _cacheOnly );
     conf.updateIfSet( "cache_format", _cacheFormat );
@@ -97,7 +99,9 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     _name = conf.value("name");
     conf.getIfSet( "cacheid", _cacheId );
     conf.getIfSet( "min_level", _minLevel );
-    conf.getIfSet( "max_level", _maxLevel );
+    conf.getIfSet( "max_level", _maxLevel );        
+    conf.getIfSet( "min_level_resolution", _minLevelResolution );
+    conf.getIfSet( "max_level_resolution", _maxLevelResolution );
     conf.getIfSet( "cache_enabled", _cacheEnabled );
     conf.getIfSet( "cache_only", _cacheOnly );
     conf.getIfSet( "cache_format", _cacheFormat );
@@ -106,6 +110,7 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getObjIfSet( "profile", _profile );
     conf.getIfSet( "max_data_level", _maxDataLevel);
+
 
     if ( conf.hasValue("driver") )
         driver() = TileSourceOptions(conf);
@@ -367,8 +372,26 @@ TerrainLayer::isKeyValid(const TileKey& key) const
 {
 	if (!key.valid()) return false;
     const TerrainLayerOptions& opt = getTerrainLayerOptions();
-	if ( opt.minLevel().isSet() && (int)key.getLevelOfDetail() < opt.minLevel().value() ) return false;
+	
+    //Check to see if explicit levels of detail are set
+    if ( opt.minLevel().isSet() && (int)key.getLevelOfDetail() < opt.minLevel().value() ) return false;
 	if ( opt.maxLevel().isSet() && (int)key.getLevelOfDetail() > opt.maxLevel().value() ) return false;
+    
+    //Check to see if levels of detail based on resolution are set
+    if (opt.minLevelResolution().isSet())
+    {        
+        unsigned int minLevel = getProfile()->getLevelOfDetailForHorizResolution( opt.minLevelResolution().value(), getTileSize());
+        OE_DEBUG << "Computed min level of " << minLevel << std::endl;
+        if (key.getLevelOfDetail() < minLevel) return false;
+    }
+
+    if (opt.maxLevelResolution().isSet())
+    {        
+        unsigned int maxLevel = getProfile()->getLevelOfDetailForHorizResolution( opt.maxLevelResolution().value(), getTileSize());
+        OE_DEBUG << "Computed max level of " << maxLevel << std::endl;
+        if (key.getLevelOfDetail() > maxLevel) return false;
+    }
+
 	return true;
 }
 

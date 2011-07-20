@@ -66,10 +66,23 @@ namespace osgEarth
         const optional<int>& minLevel() const { return _minLevel; }
 
         /**
+         * Gets or sets the minimum level resolution for which this layer should generate data.
+         */
+        optional<double>& minLevelResolution() { return _minLevelResolution;}
+        const optional<double>& minLevelResolution() const { return _minLevelResolution; }
+
+
+        /**
          * The maximum level of detail for which this layer should generate data.
          */
         optional<int>& maxLevel() { return _maxLevel; }
         const optional<int>& maxLevel() const { return _maxLevel; }
+
+        /**
+         * The maximum level resolution for which this layer should generate data.
+         */
+        optional<double>& maxLevelResolution() { return _maxLevelResolution; }
+        const optional<double>& maxLevelResolution() const { return _maxLevelResolution; }
 
         /**
          * The maximum level that data should be queried for this layer.
@@ -151,6 +164,8 @@ namespace osgEarth
         optional<TileSourceOptions> _driver;
         optional<int> _minLevel;
         optional<int> _maxLevel;
+        optional<double> _minLevelResolution;
+        optional<double> _maxLevelResolution;
 		optional<std::string> _cacheFormat;
         optional<bool> _cacheEnabled;
 		optional<bool> _cacheOnly;

@@ -1174,9 +1174,6 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
 bool
 EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
-    if ( ea.getHandled() )
-        return false;
-
     bool handled = false;
     
     // first order of business: make sure the CSN is established.

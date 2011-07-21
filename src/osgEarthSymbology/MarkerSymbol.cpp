@@ -22,7 +22,7 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 MarkerSymbol::MarkerSymbol( const Config& conf ) :
-_placement( PLACEMENT_CENTROID ),
+_placement( PLACEMENT_VERTEX ),
 _density( 25.0f ),
 _scale( osg::Vec3f(1,1,1) ),
 _randomSeed( 0 )
@@ -36,7 +36,7 @@ MarkerSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "marker";
     conf.addIfSet( "url", _url );
-    conf.addIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
+    conf.addIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
     conf.addIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.addIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
     conf.addIfSet( "density", _density );
@@ -51,7 +51,7 @@ void
 MarkerSymbol::mergeConfig( const Config& conf )
 {
     conf.getIfSet( "url", _url );
-    conf.getIfSet( "placement", "centroid", _placement, PLACEMENT_CENTROID );
+    conf.getIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
     conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.getIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
     conf.getIfSet( "density", _density );

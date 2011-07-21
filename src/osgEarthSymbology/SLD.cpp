@@ -206,7 +206,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "marker-placement")
         {
             if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
-            if      (p->second == "centroid") marker->placement() = MarkerSymbol::PLACEMENT_CENTROID;
+            if      (p->second == "vertex")   marker->placement() = MarkerSymbol::PLACEMENT_VERTEX;
             else if (p->second == "interval") marker->placement() = MarkerSymbol::PLACEMENT_INTERVAL;
             else if (p->second == "random"  ) marker->placement() = MarkerSymbol::PLACEMENT_RANDOM;
         }

@@ -38,7 +38,7 @@ namespace osgEarth { namespace Symbology
          */
         enum Placement
         {
-            PLACEMENT_CENTROID,   /** Place a model at feature centroid */
+            PLACEMENT_VERTEX,     /** Place a model at each feature vertex */
             PLACEMENT_INTERVAL,   /** Place models at regular intervals within feature, according to density */
             PLACEMENT_RANDOM      /** Place models randomly within feature, according to density */
         };

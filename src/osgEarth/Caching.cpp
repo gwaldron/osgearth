@@ -249,6 +249,9 @@ DiskCache::setImage( const TileKey& key, const CacheSpec& spec, const osg::Image
 
     bool writingJpeg = (ext == "jpg" || ext == "jpeg");
 
+	osg::ref_ptr<osgDB::ReaderWriter::Options> op = new osgDB::ReaderWriter::Options();
+	op->setOptionString(_options.imageWriterPluginOptions().value());
+
 	//If we are trying to write a non RGB image to JPEG, convert it to RGB before we write it
     if ((image->getPixelFormat() != GL_RGB) && writingJpeg)
     {
@@ -256,7 +259,7 @@ DiskCache::setImage( const TileKey& key, const CacheSpec& spec, const osg::Image
 		osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8( image );
 		if (rgb.valid())
 		{
-			osgDB::writeImageFile(*rgb.get(), filename);
+			osgDB::writeImageFile(*rgb.get(), filename, op);
 		}
     }
     else

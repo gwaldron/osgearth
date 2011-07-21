@@ -96,7 +96,8 @@ namespace osgEarth
     public:
         DiskCacheOptions( const ConfigOptions& options =ConfigOptions() )
             : CacheOptions( options ),
-              _writeWorldFiles( false )
+              _writeWorldFiles( false ),
+			  _imageWriterPluginOptions("")
         {
             fromConfig( _conf );
         }
@@ -109,11 +110,15 @@ namespace osgEarth
         optional<bool>& writeWorldFiles() { return _writeWorldFiles; }
         const optional<bool>& writeWorldFiles() const { return _writeWorldFiles; }
 
+        optional<std::string>& imageWriterPluginOptions() { return _imageWriterPluginOptions; }
+        const optional<std::string>& imageWriterPluginOptions() const { return _imageWriterPluginOptions; }
+
     public:
         virtual Config getConfig() const {
             Config conf = CacheOptions::getConfig();
             conf.update("path", _path);
             conf.updateIfSet("write_world_files", _writeWorldFiles);
+            conf.updateIfSet("image_writer_plugin_options", _imageWriterPluginOptions);
             return conf;
         }
         virtual void mergeConfig( const Config& conf ) {
@@ -125,10 +130,13 @@ namespace osgEarth
         void fromConfig( const Config& conf ) {
             _path = conf.value("path");
             conf.getIfSet("write_world_files", _writeWorldFiles);
+            conf.getIfSet("image_writer_plugin_options", _imageWriterPluginOptions);
+			
         }
 
-        std::string    _path;
-        optional<bool> _writeWorldFiles;
+        std::string           _path;
+        optional<bool>        _writeWorldFiles;
+		optional<std::string> _imageWriterPluginOptions;
     };
 
     //----------------------------------------------------------------------

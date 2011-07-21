@@ -2018,6 +2018,8 @@ ControlCanvas::get( osg::View* view, bool installInSceneData )
 ControlCanvas::ControlCanvas( osgViewer::View* view ) :
 _contextDirty(true)
 {
+    this->setDataVariance( osg::Object::DYNAMIC );
+
     view->addEventHandler( new ViewportHandler(this) );
     view->addEventHandler( new ControlCanvasEventHandler(this) );
 
@@ -2034,7 +2036,6 @@ _contextDirty(true)
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::LEQUAL, 0, 1, false ) );
-    //ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
 
     // this is necessary b/c osgText puts things in this bin too and we can't override that
     ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );

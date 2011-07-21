@@ -51,6 +51,8 @@ public:
         StringExpression  contentExpr ( *text->content() );
         NumericExpression priorityExpr( *text->priority() );
 
+        const MapInfo& mi = context.getSession()->getMapInfo();
+
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
             const Feature* feature = i->get();
@@ -61,21 +63,18 @@ public:
             if ( !geom )
                 continue;
 
-            osg::Vec3d centroid = geom->getBounds().center();
-            osg::Vec3d centroidWorld = context.toWorld( centroid );
+            osg::Vec3d centroid      = geom->getBounds().center();
+            osg::Vec3d centroidWorld = context.toWorld(centroid);
 
-#if 0
-            if ( context.isGeocentric() ) 
+            if ( context.isGeocentric() && geom->getComponentType() != Geometry::TYPE_POINTSET )
             {
-                // clamp the point to the ellipsoid in geocentric mode.
-                osg::Vec3d centroidWorld = context.toWorld( centroid );
+                // "clamp" the centroid to the ellipsoid
                 osg::Vec3d centroidMap;
-                context.getSession()->getMapInfo().worldPointToMapPoint( centroidWorld, centroidMap );
+                mi.worldPointToMapPoint(centroidWorld, centroidMap);
                 centroidMap.z() = 0.0;
-                context.getSession()->getMapInfo().mapPointToWorldPoint( centroidMap, centroidWorld );
-                centroid = context.toLocal( centroidWorld );
-            }                
-#endif
+                mi.mapPointToWorldPoint(centroidMap, centroidWorld);
+                centroid = context.toLocal(centroidWorld);
+            }
 
             const std::string& value = feature->eval( contentExpr );
 
@@ -106,15 +105,14 @@ public:
                 // for a geocentric map, do a simple dot product cull.
                 if ( context.isGeocentric() )
                 {
-                    // put the culler on a group. Cullers like this don't work on an Xform.
                     osg::Vec3d labelNormal = context.toWorld(centroid);
-                    osg::Group* group = new osg::Group();
-                    group->setCullCallback( new CullNodeByNormal(labelNormal) );
-
+                    xform->setCullCallback( new CullNodeByHorizon(centroidWorld, mi.getProfile()->getSRS()->getEllipsoid()) );
                     group->addChild( xform );
                 }
-
-                group->addChild( xform );
+                else
+                {
+                    group->addChild( xform );
+                }
 
                 if ( skipDupes )
                     used.insert( value );

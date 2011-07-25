@@ -26,6 +26,7 @@
 #include <osg/AutoTransform>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
+#include <osgUtil/CullVisitor>
 
 #include <string>
 #include <list>
@@ -33,6 +34,7 @@
 
 namespace osgEarth
 {
+    class osg::EllipsoidModel;
 
     //------------------------------------------------------------------------
 
@@ -160,13 +162,10 @@ namespace osgEarth
     /**
      * A simple culling-plane callback (a simpler version of ClusterCullingCallback)
      */
-    struct CullNodeByNormal : public osg::NodeCallback {
+    struct OSGEARTH_EXPORT CullNodeByNormal : public osg::NodeCallback {
         osg::Vec3d _normal;
-        CullNodeByNormal( const osg::Vec3d& normal ) : _normal(normal) { }
-        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-            if ( nv->getEyePoint() * _normal > 0.0 )
-                traverse(node, nv);
-        }
+        CullNodeByNormal( const osg::Vec3d& normal );
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
     };
 
     struct CullDrawableByNormal : public osg::Drawable::CullCallback {
@@ -175,6 +174,13 @@ namespace osgEarth
         bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::State* state) const {
             return nv && nv->getEyePoint() * _normal <= 0;
         }
+    };
+
+    struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
+        osg::Vec3d _world;
+        double _r2;
+        CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model );
+        void operator()(osg::Node* node, osg::NodeVisitor* nv );
     };
 
     /**

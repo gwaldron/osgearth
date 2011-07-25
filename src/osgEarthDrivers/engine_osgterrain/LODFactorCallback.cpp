@@ -37,7 +37,8 @@ namespace osgEarth
 
         void LODFactorCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
         {
-            osg::PagedLOD* lod =  static_cast<osg::PagedLOD*>(node);
+            // test the type since this is not always a PagedLOD.
+            osg::PagedLOD* lod = static_cast<osg::PagedLOD*>(node);
             osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(nv);
             osg::LOD::RangeMode rangeMode = lod->getRangeMode();
             float requiredRange = 0.0f;
@@ -75,6 +76,7 @@ namespace osgEarth
                 = new osg::Uniform("osgearth_LODRangeFactor", rangeFactor);
             osg::ref_ptr<osg::StateSet> ss = new osg::StateSet;
             ss->addUniform(ufact.get());
+
             cv->pushStateSet(ss.get());
             traverse(node, nv);
             cv->popStateSet();

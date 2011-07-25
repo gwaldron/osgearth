@@ -74,8 +74,53 @@ struct ClickViewpointHandler : public ControlEventHandler
     }
 };
 
-osg::Node*
-createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
+struct MouseCoordsHandler : public osgGA::GUIEventHandler
+{
+    MouseCoordsHandler( LabelControl* label, const osgEarth::Map* map )
+        : _label( label ),
+          _map( map)
+        {}
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+        if (ea.getEventType() == ea.MOVE || ea.getEventType() == ea.DRAG)
+        {
+            osgUtil::LineSegmentIntersector::Intersections results;
+            if ( view->computeIntersections( ea.getX(), ea.getY(), results ) )
+            {
+                // find the first hit under the mouse:
+                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
+                osg::Vec3d point = first.getWorldIntersectPoint();
+                osg::Vec3d lla;
+
+                // transform it to map coordinates:
+                _map->worldPointToMapPoint(point, lla);
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(2) << "lat " << lla.y() << "° lon " << lla.x() << "° elev " << lla.z() << "m";
+                _label->setText( ss.str() );
+            }
+            else
+            {
+                //Clear the text
+                _label->setText( "" );
+            }
+        }
+        return false;
+    }
+
+    osg::ref_ptr< LabelControl > _label;
+    const Map*                   _map;
+};
+
+
+
+
+
+
+
+void
+createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
 {
     ControlCanvas* canvas = ControlCanvas::get( view );
 
@@ -137,8 +182,22 @@ createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
     canvas->addControl( main );
 
     s_controlPanel = main;
-    return canvas;
 }
+
+void addMouseCoords(osgViewer::Viewer* viewer, const osgEarth::Map* map)
+{
+    ControlCanvas* canvas = ControlCanvas::get( viewer );
+    LabelControl* mouseCoords = new LabelControl();
+    mouseCoords->setHorizAlign(Control::ALIGN_CENTER );
+    mouseCoords->setVertAlign(Control::ALIGN_BOTTOM );
+    mouseCoords->setBackColor(0,0,0,0.5);    
+    mouseCoords->setSize(400,50);
+    mouseCoords->setMargin( 10 );
+    canvas->addControl( mouseCoords );
+
+    viewer->addEventHandler( new MouseCoordsHandler(mouseCoords, map ) );
+}
+
 
 struct AnimateSunCallback : public osg::NodeCallback
 {
@@ -271,8 +330,13 @@ main(int argc, char** argv)
                 s_manip->setViewpoint(viewpoints[0]);
         }
 
+
+        //Add a control panel to the scene
+        root->addChild( ControlCanvas::get( &viewer ) );
         if ( viewpoints.size() > 0 || s_sky )
-            root->addChild( createControlPanel(&viewer, viewpoints) );
+            createControlPanel(&viewer, viewpoints);
+
+        addMouseCoords( &viewer, mapNode->getMap() );
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

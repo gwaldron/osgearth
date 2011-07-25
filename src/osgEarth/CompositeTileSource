@@ -19,6 +19,7 @@
 #ifndef OSGEARTH_COMPOSITE_TILE_SOURCE_H
 #define OSGEARTH_COMPOSITE_TILE_SOURCE_H 1
 
+#include <osgEarth/Common>
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageLayer>
 
@@ -27,7 +28,7 @@ namespace osgEarth
     /**
      * Use this class to configure a CompositeTileSource.
      */
-    class CompositeTileSourceOptions : public TileSourceOptions
+    class OSGEARTH_EXPORT CompositeTileSourceOptions : public TileSourceOptions
     {
     public:
         CompositeTileSourceOptions( const TileSourceOptions& options =TileSourceOptions() );

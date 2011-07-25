@@ -264,7 +264,7 @@ DiskCache::setImage( const TileKey& key, const CacheSpec& spec, const osg::Image
     }
     else
     {
-        osgDB::writeImageFile(*image, filename);
+        osgDB::writeImageFile(*image, filename, op);
     }
 }
 

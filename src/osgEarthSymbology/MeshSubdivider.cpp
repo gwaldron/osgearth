@@ -35,6 +35,15 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
+    // returns the geocentric bisection vector
+    osg::Vec3d
+    bisector( const osg::Vec3d& v0, const osg::Vec3d& v1 )
+    {
+        osg::Vec3d f = (v0+v1)*0.5;
+        f.normalize();
+        return f * 0.5*(v0.length() + v1.length());
+    }
+
     // convert geocenric coords to spherical geodetic coords in radians.
     void
     geocentricToGeodetic( const osg::Vec3d& g, osg::Vec2d& out_geod )
@@ -54,27 +63,36 @@ namespace
             out_mid.set( 0.5*((g0.x()+2*osg::PI)+g1.x()), 0.5*(g0.y()+g1.y()) );
         else
            out_mid.set( 0.5*(g0.x()+(g1.x()+2*osg::PI)), 0.5*(g0.y()+g1.y()) );
+
+        //GeoMath::midpoint(g0.y(), g0.x(), g1.y(), g1.x(), out_mid.y(), out_mid.x());
     }
 
     // finds the midpoint between two geocentric coordinates. We have to convert
     // back to geographic in order to get the correct interpolation. Spherical
     // conversion is good enough
     osg::Vec3d
-    geocentricMidpoint( const osg::Vec3d& v0, const osg::Vec3d& v1 )
+    geocentricMidpoint( const osg::Vec3d& v0, const osg::Vec3d& v1, GeoInterpolation interp )
     {
-        // geocentric to spherical:
-        osg::Vec2d g0, g1;
-        geocentricToGeodetic(v0, g0);
-        geocentricToGeodetic(v1, g1);
+        if ( interp == GEOINTERP_GREAT_CIRCLE )
+        {
+            return bisector(v0, v1);
+        }
+        else
+        {
+            // geocentric to spherical:
+            osg::Vec2d g0, g1;
+            geocentricToGeodetic(v0, g0);
+            geocentricToGeodetic(v1, g1);
 
-        osg::Vec2d mid;
-        geodeticMidpoint(g0, g1, mid);
+            osg::Vec2d mid;
+            geodeticMidpoint(g0, g1, mid);
 
-        double size = 0.5*(v0.length() + v1.length());
+            double size = 0.5*(v0.length() + v1.length());
 
-        // spherical to geocentric:
-        double sin_lat = sin(mid.y());
-        return osg::Vec3d( cos(mid.x())*sin_lat, sin(mid.x())*sin_lat, cos(mid.y()) ) * size;
+            // spherical to geocentric:
+            double sin_lat = sin(mid.y());
+            return osg::Vec3d( cos(mid.x())*sin_lat, sin(mid.x())*sin_lat, cos(mid.y()) ) * size;
+        }
     }
 
     // the approximate surface-distance between two geocentric points (spherical)
@@ -85,16 +103,7 @@ namespace
         geocentricToGeodetic(v0, g0);
         geocentricToGeodetic(v1, g1);
         return GeoMath::distance( v0.y(), v0.x(), v1.y(), v1.x() );
-    }    
-
-    // returns the geocentric bisection vector
-    osg::Vec3d
-    bisector( const osg::Vec3d& v0, const osg::Vec3d& v1 )
-    {
-        osg::Vec3d f = (v0+v1)*0.5;
-        f.normalize();
-        return f * 0.5*(v0.length() + v1.length());
-    }    
+    }
 
     // the angle between two 3d vectors
     double
@@ -342,11 +351,12 @@ namespace
      * the data in the Geometry object with the new vertex and primitive data.
      */
     void subdivideLines(
-        double granularity,
-        osg::Geometry& geom,
-        const osg::Matrixd& W2L, // world=>local xform
-        const osg::Matrixd& L2W, // local=>world xform
-        unsigned int maxElementsPerEBO )
+        double               granularity,
+        GeoInterpolation     interp,
+        osg::Geometry&       geom,
+        const osg::Matrixd&  W2L, // world=>local xform
+        const osg::Matrixd&  L2W, // local=>world xform
+        unsigned int         maxElementsPerEBO )
     {
         // collect all the line segments in the geometry.
         LineFunctor<LineData> data;
@@ -370,7 +380,7 @@ namespace
 
             if ( g0 > granularity )
             {
-                data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
+                data._verts->push_back( geocentricMidpoint(v0_w, v1_w, interp) * W2L );
                 GLuint i = data._verts->size()-1;
 
                 data._lines.push( Line( line._i0, i ) );
@@ -413,11 +423,12 @@ namespace
      * (c) Copyright 2010 Patrick Cozzi and Deron Ohlarik, MIT License.
      */
     void subdivideTriangles(
-        double granularity,
-        osg::Geometry& geom,
-        const osg::Matrixd& W2L, // world=>local xform
-        const osg::Matrixd& L2W, // local=>world xform
-        unsigned int maxElementsPerEBO )
+        double               granularity,
+        GeoInterpolation     interp,
+        osg::Geometry&       geom,
+        const osg::Matrixd&  W2L, // world=>local xform
+        const osg::Matrixd&  L2W, // local=>world xform
+        unsigned int         maxElementsPerEBO )
     {
         
         // collect all the triangled in the geometry.
@@ -464,7 +475,7 @@ namespace
                     GLuint i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
+                        data._verts->push_back( geocentricMidpoint(v0_w, v1_w, interp) * W2L );
                         data._texcoords->push_back( (t0 + t1) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
@@ -485,7 +496,7 @@ namespace
                     GLuint i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( geocentricMidpoint(v1_w, v2_w) * W2L );
+                        data._verts->push_back( geocentricMidpoint(v1_w, v2_w, interp) * W2L );
                         data._texcoords->push_back( (t1 + t2) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
@@ -506,7 +517,7 @@ namespace
                     GLuint i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( geocentricMidpoint(v2_w, v0_w) * W2L );
+                        data._verts->push_back( geocentricMidpoint(v2_w, v0_w, interp) * W2L );
                         data._texcoords->push_back( (t2 + t0) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
@@ -548,11 +559,12 @@ namespace
     }
 
     void subdivide(
-        double granularity,
-        osg::Geometry& geom,
-        const osg::Matrixd& W2L, // world=>local xform
-        const osg::Matrixd& L2W, // local=>world xform
-        unsigned int maxElementsPerEBO )
+        double               granularity,
+        GeoInterpolation     interp,
+        osg::Geometry&       geom,
+        const osg::Matrixd&  W2L, // world=>local xform
+        const osg::Matrixd&  L2W, // local=>world xform
+        unsigned int         maxElementsPerEBO )
     {
         GLenum mode = geom.getPrimitiveSet(0)->getMode();
 
@@ -561,11 +573,11 @@ namespace
 
         if ( mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP )
         {
-            subdivideLines( granularity, geom, W2L, L2W, maxElementsPerEBO );
+            subdivideLines( granularity, interp, geom, W2L, L2W, maxElementsPerEBO );
         }
         else
         {
-            subdivideTriangles( granularity, geom, W2L, L2W, maxElementsPerEBO );
+            subdivideTriangles( granularity, interp, geom, W2L, L2W, maxElementsPerEBO );
 
             //osgUtil::VertexCacheVisitor cacheOptimizer;
             //cacheOptimizer.optimizeVertices( geom );
@@ -591,10 +603,10 @@ _maxElementsPerEBO( INT_MAX )
 }
 
 void
-MeshSubdivider::run(double granularity, osg::Geometry& geom)
+MeshSubdivider::run(osg::Geometry& geom, double granularity, GeoInterpolation interp)
 {
     if ( geom.getNumPrimitiveSets() < 1 )
         return;
 
-    subdivide( granularity, geom, _world2local, _local2world, _maxElementsPerEBO );
+    subdivide( granularity, interp, geom, _world2local, _local2world, _maxElementsPerEBO );
 }

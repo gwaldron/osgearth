@@ -67,11 +67,11 @@ namespace osgEarth { namespace Symbology
 
         static std::string toString( Type t ) {
             return 
-                t == TYPE_POINTSET ? "pointset" :
+                t == TYPE_POINTSET ?   "pointset" :
                 t == TYPE_LINESTRING ? "linestring" :
-                t == TYPE_RING ? "ring" :
-                t == TYPE_POLYGON ? "polygon" :
-                t == TYPE_MULTI ? "multi" :
+                t == TYPE_RING ?       "ring" :
+                t == TYPE_POLYGON ?    "polygon" :
+                t == TYPE_MULTI ?      "multi" :
                 "unknown";
         }
 

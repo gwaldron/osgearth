@@ -123,14 +123,16 @@ namespace osgEarth
         void removeTerrainDecorator( osg::Group* decorator );
 
         /**
-         * Installs an OverlayNode atop the terrain engine.
+         * Accesses the group containing anything that will be "draped" on the terrain
+         * via the OverlayDecorator.
          */
-        void installOverlayNode( osgSim::OverlayNode* overlay );
-
+        osg::Group* getOverlayGroup() { return _overlayModels.get(); }
+        
         /**
-         * Removes an OverlayNode installed with installOverlayNode
+         * If you add or remove children to/fro the overlay group above, call this
+         * method to refresh the overlay graph.
          */
-        void uninstallOverlayNode( osgSim::OverlayNode* overlay );
+        void updateOverlayGraph();
 
         /**
          * Gets the engine properties associated with this node. The engine
@@ -205,10 +207,7 @@ namespace osgEarth
         osg::ref_ptr< MapCallback > _mapCallback;
     
         void init();
-        //void adjustUpdateTraversalCount( int delta );
         void adjustEventTraversalCount( int delta );
-
-        void updateOverlayGraph();
     };
 
 } // namespace osgEarth

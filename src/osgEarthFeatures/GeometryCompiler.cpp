@@ -51,6 +51,8 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "merge_geometry",  _mergeGeometry );
     conf.getIfSet   ( "clustering",      _clustering );
     conf.getObjIfSet( "feature_name",    _featureNameExpr );
+    conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
 }
 
 Config
@@ -61,6 +63,8 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "merge_geometry",  _mergeGeometry );
     conf.addIfSet   ( "clustering",      _clustering );
     conf.addObjIfSet( "feature_name",    _featureNameExpr );
+    conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     return conf;
 }
 
@@ -85,6 +89,26 @@ _options( options )
 }
 
 osg::Node*
+GeometryCompiler::compile(Feature*              feature,
+                          const Style&          style,
+                          const FilterContext&  context)
+{
+    if ( !context.profile() ) {
+        OE_WARN << LC << "Valid feature profile required" << std::endl;
+        return 0L;
+    }
+
+    if ( style.empty() ) {
+        OE_WARN << LC << "Non-empty style required" << std::endl;
+        return 0L;
+    }
+
+    FeatureList workingSet;
+    workingSet.push_back(feature);
+    return compile(workingSet, style, context);
+}
+
+osg::Node*
 GeometryCompiler::compile(FeatureCursor*        cursor,
                           const Style&          style,
                           const FilterContext&  context)
@@ -100,11 +124,19 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         return 0L;
     }
 
-    osg::ref_ptr<osg::Group> resultGroup = new osg::Group();
-
     // start by making a working copy of the feature set
     FeatureList workingSet;
     cursor->fill( workingSet );
+
+    return compile(workingSet, style, context);
+}
+
+osg::Node*
+GeometryCompiler::compile(FeatureList&          workingSet,
+                          const Style&          style,
+                          const FilterContext&  context)
+{
+    osg::ref_ptr<osg::Group> resultGroup = new osg::Group();
 
     // create a filter context that will track feature data through the process
     FilterContext sharedCX = context;
@@ -257,6 +289,8 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         BuildGeometryFilter filter( style );
         if ( _options.maxGranularity().isSet() )
             filter.maxGranularity() = *_options.maxGranularity();
+        if ( _options.geoInterp().isSet() )
+            filter.geoInterp() = *_options.geoInterp();
         if ( _options.mergeGeometry().isSet() )
             filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )

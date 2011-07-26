@@ -48,6 +48,7 @@ BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style( style ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
 _maxAngle_deg( 5.0 ),
+_geoInterp( GEOINTERP_RHUMB_LINE ),
 _mergeGeometry( false )
 {
     reset();
@@ -287,7 +288,10 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
 
             MeshSubdivider ms( context.referenceFrame(), context.inverseReferenceFrame() );
             //ms.setMaxElementsPerEBO( INT_MAX );
-            ms.run( threshold, *osgGeom );
+            if ( input->geoInterp().isSet() )
+                ms.run( *osgGeom, threshold, *input->geoInterp() );
+            else
+                ms.run( *osgGeom, threshold, *_geoInterp );
         }
 
         // set the color array. We have to do this last, otherwise it screws up any modifications
@@ -378,19 +382,21 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
 
         _result = _geode.release();
 
-        if ( context.hasReferenceFrame() )
-        {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( context.inverseReferenceFrame() );
-            delocalizer->addChild( _result.get() );
-            _result = delocalizer;
-        }
+        //if ( context.hasReferenceFrame() )
+        //{
+        //    osg::MatrixTransform* delocalizer = new osg::MatrixTransform( context.inverseReferenceFrame() );
+        //    delocalizer->addChild( _result.get() );
+        //    _result = delocalizer;
+        //}
     }
     else
     {
         _result = 0L;
     }
 
-    FilterContext outCx( context );
-    outCx.setReferenceFrame( osg::Matrixd::identity() ); // clear the ref frame.
-    return outCx;
+    return context;
+
+    //FilterContext outCx( context );
+    //outCx.setReferenceFrame( osg::Matrixd::identity() ); // clear the ref frame.
+    //return outCx;
 }

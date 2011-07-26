@@ -143,10 +143,18 @@ _fid( fid )
     //NOP
 }
 
+Feature::Feature( Geometry* geom, const Style& style, FeatureID fid ) :
+_geom ( geom ),
+_fid  ( fid )
+{
+    _style = style;
+}
+
 Feature::Feature( const Feature& rhs, const osg::CopyOp& copyOp ) :
 _fid( rhs._fid ),
 _attrs( rhs._attrs ),
-_style( rhs._style )
+_style( rhs._style ),
+_geoInterp( rhs._geoInterp )
 {
     if ( rhs._geom.valid() )
         //_geom = dynamic_cast<Geometry*>( copyOp( rhs._geom.get() ) );

@@ -35,6 +35,7 @@ ADD_SUBDIRECTORY(osgearth_elevation)
 ADD_SUBDIRECTORY(osgearth_features)
 ADD_SUBDIRECTORY(osgearth_featureinfo)
 ADD_SUBDIRECTORY(osgearth_map)
+ADD_SUBDIRECTORY(osgearth_annotation)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6")
 ADD_SUBDIRECTORY(osgearth_featureeditor)

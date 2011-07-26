@@ -1,0 +1,134 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_ANNOTATION
+#define OSGEARTHUTIL_ANNOTATION
+
+#include <osgEarth/MapNode>
+#include <osgEarth/GeoMath>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/Style>
+#include <osgEarthUtil/Common>
+#include <osgEarthUtil/Controls>
+#include <osg/MatrixTransform>
+
+namespace osgEarth { namespace Util { namespace Annotation
+{	
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
+    using namespace osgEarth::Util::Controls;
+
+    /**
+     * Base class for an annotation node. An annotation node is a scene
+     * graph element that renders some kind of map-space annotation.
+     */
+    class OSGEARTHUTIL_EXPORT AnnotationNode : public osg::MatrixTransform
+    {
+    public:
+        /**
+         * Sets the position of this annotation.
+         * @param pos Position data
+         * @param srs Spatial reference of the "pos" parameter. If you omit this,
+         *            it assumes your "pos" is in the same SRS as the Map.
+         */
+        void setPosition( const osg::Vec3d& pos, const SpatialReference* srs =0L );
+
+    protected:
+        AnnotationNode( MapNode* mapNode );
+
+        osg::observer_ptr<MapNode> _mapNode;
+    };
+
+    /** 
+     * A Placemark combines an 2D icon, a label, support for mouse interaction
+     * and a popup control.
+     */
+    class OSGEARTHUTIL_EXPORT PlacemarkNode : public AnnotationNode
+    {
+    public:
+        PlacemarkNode( MapNode* mapNode );
+        PlacemarkNode( const std::string& iconURI, const std::string& label, MapNode* mapNode );
+
+        void setIconURI( const std::string& value );
+        const std::string getIconURI() const { return _iconURI; }
+
+        void setText( const std::string& text );
+        const std::string& getText() const { return _text; }
+
+        void setPopupControl( Control* control );
+        Control* getPopupControl() const { return _popupControl; }
+
+    private:
+        std::string                _iconURI;
+        osg::ref_ptr<osg::Image>   _image;
+        std::string                _text;
+
+        osg::ref_ptr<Container>    _container;
+        osg::ref_ptr<ImageControl> _icon;
+        osg::ref_ptr<LabelControl> _label;
+        osg::ref_ptr<Control>      _popupControl;
+
+        void init();
+    };
+
+    /** 
+     * Base class for a Annotation that can be optionally "draped" on the MapNode terrain.
+     */
+    class OSGEARTHUTIL_EXPORT DrapeableNode : public AnnotationNode
+    {
+    public:
+        /**
+         * Sets the node that comprises the content of this drapeable.
+         */
+        void setNode( osg::Node* node );
+
+        /**
+         * Sets whether to drape the node content on the mapnode terrain.
+         */
+        void setDraped( bool value );
+        bool getDraped() const { return _draped; }
+
+    protected:
+        DrapeableNode( MapNode* mapNode, bool draped =false );
+
+    private:
+        bool _draped;
+        osg::ref_ptr<osg::Node> _node;
+    };
+
+    /**
+     * Annotation node that renders a Feature. The style should be assigned
+     * to the feature itself.
+     */
+    class OSGEARTHUTIL_EXPORT FeatureNode : public DrapeableNode
+    {
+    public:
+        FeatureNode( Feature* feature, MapNode* mapNode, bool draped =true );
+
+    protected:
+        osg::ref_ptr<Feature> _feature;
+
+        void init();
+    };
+
+} } } // namespace osgEarth::Util::Annotation
+
+#endif //OSGEARTHUTIL_ANNOTATION

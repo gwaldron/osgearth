@@ -557,6 +557,11 @@ namespace osgEarth { namespace Util { namespace Controls
         /** The draw priority of this control */
         float getPriority() const { return _priority; }
 
+        /** The point (in screen-space, relative to the lower-left of the control) that should anchor to the scene */
+        optional<osg::Vec2f>& anchorPoint() { return _anchor; }
+        const optional<osg::Vec2f>& anchorPoint() const { return _anchor; }
+
+
     public: // osg::Node overrides
 
         virtual void traverse( osg::NodeVisitor& nv );
@@ -580,6 +585,7 @@ namespace osgEarth { namespace Util { namespace Controls
         PerViewDataMap         _perViewData;
         osg::ref_ptr<Control>  _control;
         float                  _priority;
+        optional<osg::Vec2f>   _anchor;
 
         PerViewData& getData( osg::View* view ) { return _perViewData[view]; }
 

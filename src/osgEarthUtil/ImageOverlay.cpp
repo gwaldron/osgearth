@@ -110,7 +110,7 @@ ImageOverlay::init()
     geometry->setTexCoordArray(0, texcoords);
         
     MeshSubdivider ms;
-    ms.run(osg::DegreesToRadians(5.0), *geometry);            
+    ms.run(*geometry, osg::DegreesToRadians(5.0), GEOINTERP_RHUMB_LINE);
 
     _geode->removeDrawables(0, _geode->getNumDrawables() );
 

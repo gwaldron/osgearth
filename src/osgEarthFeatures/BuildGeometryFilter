@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/Annotation>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/GeoMath>
 #include <osg/Geode>
 
 namespace osgEarth { namespace Features 
@@ -59,6 +60,13 @@ namespace osgEarth { namespace Features
         const optional<double>& maxGranularity() const { return _maxAngle_deg; }
 
         /**
+         * The algorithm to use when interpolating between geodetic locations.
+         * The default is GEOINTERP_RHUMBLINE.
+         */
+        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
+        const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
+
+        /**
          * Whether to merge the geometries from mutliple features together. Doing this can
          * help performance by batching geometries together. The downside will be that individual
          * geometries are no longer addressable in the scene graph. Default is FALSE.
@@ -85,6 +93,7 @@ namespace osgEarth { namespace Features
         Style _style;
         optional<Geometry::Type> _geomTypeOverride;
         optional<double> _maxAngle_deg;
+        optional<GeoInterpolation> _geoInterp;
         optional<bool> _mergeGeometry;
         optional<StringExpression> _featureNameExpr;
         bool _hasPoints;

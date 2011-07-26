@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/FeatureCursor>
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/GeoMath>
 
 namespace osgEarth { namespace Features
 {
@@ -40,6 +41,10 @@ namespace osgEarth { namespace Features
         optional<double>& maxGranularity() { return _maxGranularity_deg; }
         const optional<double>& maxGranularity() const { return _maxGranularity_deg; }
 
+        /** Interpolation type to use for geodetic points */
+        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
+        const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
+
         /** Whether to merge geometry from multiple features */
         optional<bool>& mergeGeometry() { return _mergeGeometry; }
         const optional<bool>& mergeGeometry() const { return _mergeGeometry; }
@@ -52,6 +57,7 @@ namespace osgEarth { namespace Features
         optional<bool>& clustering() { return _clustering; }
         const optional<bool>& clustering() const { return _clustering; }
 
+        //todo: merge this with geoInterp()
         optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() { return _resampleMode;}
         const optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() const { return _resampleMode;}
 
@@ -65,12 +71,13 @@ namespace osgEarth { namespace Features
         void mergeConfig( const Config& conf );
 
     private:
-        optional<double>            _maxGranularity_deg;
-        optional<bool>              _mergeGeometry;
-        optional<StringExpression>  _featureNameExpr;
-        optional<bool>              _clustering;
+        optional<double>               _maxGranularity_deg;
+        optional<GeoInterpolation>     _geoInterp;
+        optional<bool>                 _mergeGeometry;
+        optional<StringExpression>     _featureNameExpr;
+        optional<bool>                 _clustering;
         optional<osgEarth::Features::ResampleFilter::ResampleMode> _resampleMode;
-        optional<double>            _resampleMaxLength;
+        optional<double>               _resampleMaxLength;
 
         void fromConfig( const Config& conf );
     };
@@ -99,6 +106,16 @@ namespace osgEarth { namespace Features
         /** Compiles a collection of features into an OSG scene graph. */
         osg::Node* compile(
             FeatureCursor*        input,
+            const Style&          style,
+            const FilterContext&  context);
+
+        osg::Node* compile(
+            Feature*              input,
+            const Style&          style,
+            const FilterContext&  context);
+
+        osg::Node* compile(
+            FeatureList&          mungeableInput,
             const Style&          style,
             const FilterContext&  context);
 

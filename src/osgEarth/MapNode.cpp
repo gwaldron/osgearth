@@ -558,26 +558,6 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
 }
 
 void
-MapNode::installOverlayNode( osgSim::OverlayNode* overlay )
-{
-    if ( _terrainEngine.valid() )
-    {
-        overlay->addChild( _terrainEngine.get() );
-        this->replaceChild( _terrainEngine.get(), overlay );
-    }
-}
-
-void
-MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
-{
-    if ( _terrainEngine.valid() )
-    {
-        osg::ref_ptr<osg::Node> overlayChild = overlay->getChild( 0 );
-        this->replaceChild( overlay, overlayChild.get() );
-    }
-}
-
-void
 MapNode::adjustEventTraversalCount( int delta )
 {
     int oldCount = this->getNumChildrenRequiringEventTraversal();

@@ -44,7 +44,7 @@ _intersectionMask(0xffffffff)
     //Initialize the feature source, which is just a single feature that we will use to draw the measuring line
     _features = new FeatureListSource();
     LineString* line = new LineString();
-    _feature = new Feature(0);
+    _feature = new Feature();
     _feature->setGeometry( line );
     _features->insertFeature( _feature.get() );
 

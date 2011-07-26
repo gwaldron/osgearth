@@ -90,8 +90,8 @@ public:
                 Controls::LabelControl* label = new Controls::LabelControl( value );
                 if ( text->fill().isSet() )
                     label->setForeColor( text->fill()->color() );
-                if ( text->halo().isSet() )
-                    label->setBackColor( text->halo()->color() );
+                //if ( text->halo().isSet() )
+                //    label->setBackColor( text->halo()->color() );
                 if ( text->size().isSet() )
                     label->setFontSize( *text->size() );
                 if ( text->font().isSet() )

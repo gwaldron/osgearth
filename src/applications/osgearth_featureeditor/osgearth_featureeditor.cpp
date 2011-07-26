@@ -178,8 +178,19 @@ StyleSheet buildStyleSheet( const osg::Vec4 &color, float width )
 
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = color;
-    ls->stroke()->width() = width;    
-    style.addSymbol( ls );
+    ls->stroke()->width() = width;  
+
+    MarkerSymbol* ms = style.getOrCreate<MarkerSymbol>();
+    ms->url() = "E:/devel/osgearth/2.x/repo/data/tree.osg";
+    ms->scale() = osg::Vec3(10000,10000,10000);
+
+    TextSymbol* ts = style.getOrCreate<TextSymbol>();
+    ts->provider() = "overlay";
+    ts->content() = StringExpression("Hello, world");
+    ts->size() = 32.0f;
+
+    AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
+    as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     StyleSheet styleSheet;
     styleSheet.addStyle( style );

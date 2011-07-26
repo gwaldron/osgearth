@@ -34,6 +34,45 @@ using namespace osgEarth::Util::Controls;
 
 #define LC "[Controls] "
 
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // ControlNodeBin shaders.
+
+    char* s_controlVertexShader =
+        "void main() \n"
+        "{ \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+        "    gl_FrontColor = gl_Color; \n"
+        "} \n";
+
+    char* s_imageControlFragmentShader =
+        "uniform sampler2D tex0; \n"
+        "uniform float visibleTime; \n"
+        "uniform float osg_FrameTime; \n"
+        "void main() \n"
+        "{ \n"
+        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
+        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"
+        "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
+        "} \n";
+
+    char* s_labelControlFragmentShader =
+        "uniform sampler2D tex0; \n"
+        "uniform float visibleTime; \n"
+        "uniform float osg_FrameTime; \n"
+        "void main() \n"
+        "{ \n"
+        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
+        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"       
+        "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
+        "} \n";
+}
+
+// ---------------------------------------------------------------------------
+
 namespace
 {
     void calculateRotatedSize( float w, float h, float angle_rad, float& out_w, float& out_h )
@@ -477,6 +516,15 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         // we have to create the drawable during the layout pass so we can calculate its size.
         LabelText* t = new LabelText();
 
+#if 1
+        // needs a special shader
+        // todo: doesn't work. why?
+        osg::Program* program = new osg::Program();
+        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+        t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+#endif
+
         t->setText( _text );
         // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
         t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
@@ -625,6 +673,8 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
     }
 }
 
+#undef IMAGECONTROL_TEXRECT
+
 void
 ImageControl::draw( const ControlContext& cx, DrawableList& out )
 {
@@ -671,19 +721,37 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         bool flip = _image->getOrigin()==osg::Image::TOP_LEFT;
 
         osg::Vec2Array* t = new osg::Vec2Array(4);
+
+#ifdef IMAGECONTROL_TEXRECT
+
         (*t)[0].set( 0, flip? 0: _image->t()-1 );
         (*t)[1].set( 0, flip? _image->t()-1: 0 );
         (*t)[2].set( _image->s()-1, flip? _image->t()-1: 0 );
         (*t)[3].set( _image->s()-1, flip? 0: _image->t()-1 );
+        osg::TextureRectangle* tex = new osg::TextureRectangle( _image.get() );
+
+#else
+
+        (*t)[0].set( 0, flip? 0 : 1 );
+        (*t)[1].set( 0, flip? 1 : 0 );
+        (*t)[2].set( 1, flip? 1 : 0 );
+        (*t)[3].set( 1, flip? 0 : 1 );
+        osg::Texture2D* tex = new osg::Texture2D( _image.get() );
+#endif
+
         g->setTexCoordArray( 0, t );
 
-        osg::TextureRectangle* texrec = new osg::TextureRectangle( _image.get() );
-        texrec->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-        texrec->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-        g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texrec, osg::StateAttribute::ON );
+        tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+        tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+        g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
 
         osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
+        
+        osg::Program* program = new osg::Program();
+        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
+        g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 
         out.push_back( g );
 
@@ -1754,42 +1822,16 @@ _screenPos  ( 0.0, 0.0, 0.0 )
 
 // ---------------------------------------------------------------------------
 
-namespace
-{
-    // ControlNodeBin shaders.
-
-    char* s_controlVertexShader =
-        "void main() \n"
-        "{ \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
-        "    gl_FrontColor = gl_Color; \n"
-        "} \n";
-
-    char* s_controlFragmentShader =
-        "uniform sampler2D tex0; \n"
-        "uniform float visibleTime; \n"
-        "uniform float osg_FrameTime; \n"
-        "void main() \n"
-        "{ \n"
-        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
-        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"       
-        "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
-        "} \n";
-}
-
-// ---------------------------------------------------------------------------
-
 ControlNodeBin::ControlNodeBin() :
 _sortByDistance( true )
 {
     _group = new Group();
 
+    osg::StateSet* stateSet = _group->getOrCreateStateSet();
+
     osg::Program* program = new osg::Program();
     program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
-
-    osg::StateSet* stateSet = _group->getOrCreateStateSet();
+    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
     stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
 
     osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "opacity" );
@@ -1798,7 +1840,7 @@ _sortByDistance( true )
 
     osg::Uniform* defaultVisibleTime = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
     defaultVisibleTime->set( 0.0f );
-    stateSet->addUniform( defaultVisibleTime );
+    stateSet->addUniform( defaultVisibleTime );    
 }
 
 void
@@ -1870,8 +1912,26 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
               const osg::Vec3f& nPos = nodeData._screenPos;
               const osg::Vec2f& size = control->renderSize();
 
-              float x = nPos.x()-size.x()*0.5;
-              float y = nPos.y();
+              // calculate the rendering offset based on alignment:
+              float x, y;
+
+              if ( node->anchorPoint().isSet() )
+              {
+                  //TODO!!
+              }
+              else
+              {
+                  x =
+                    control->horizAlign() == Control::ALIGN_LEFT  ? nPos.x() - size.x() :
+                    control->horizAlign() == Control::ALIGN_RIGHT ? nPos.x() :
+                    nPos.x() - size.x()*0.5;
+
+                  y =
+                    control->vertAlign() == Control::ALIGN_BOTTOM ? nPos.y() :
+                    control->vertAlign() == Control::ALIGN_TOP    ? nPos.y() + size.y() :
+                    nPos.y() + size.y()*0.5;
+              }
+
               xform->setMatrix( osg::Matrixd::translate(x, y-context._vp->height(), 0) );
 
               osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
@@ -1904,7 +1964,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                       control->calcFill( context );
 
                       // only need to do this if the control has children ... (pos is always 0,0)
-                      control->calcPos( context, osg::Vec2f(0,0), surfaceSize );
+                      control->calcPos( context, osg::Vec2f(0,0), size );
                    
                       // build the drawables for the geode and insert them:
                       DrawableList drawables;
@@ -1938,7 +1998,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
           }
           
           // adjust the visibility
-          xform->setNodeMask( visible ? ~0 : 0 ); // ? 0 : ~0 );
+          xform->setNodeMask( visible ? ~0 : 0 );
 
           ++i;
         }

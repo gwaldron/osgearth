@@ -296,7 +296,7 @@ GeoExtent::splitAcrossDateLine( GeoExtent& out_first, GeoExtent& out_second ) co
 GeoExtent
 GeoExtent::transform( const SpatialReference* to_srs ) const 
 {       
-    if ( isValid() && to_srs )
+    if ( _srs.valid() && to_srs )
     {
         double xmin = _xmin, ymin = _ymin;
         double xmax = _xmax, ymax = _ymax;

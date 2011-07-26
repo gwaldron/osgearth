@@ -44,8 +44,12 @@ FeatureNode::init()
         GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
         FeatureProfile* profile = new FeatureProfile(extent);
         FilterContext context( session, profile, extent );
-        
-        osg::Node* node = compiler.compile( _feature.get(), *_feature->style(), context );
+
+        //Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
+        //of the geometry when performing localization or converting to geocentric.
+        osg::ref_ptr< Feature > clone = new osgEarth::Features::Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
+
+        osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         setNode( node );
     }
 }

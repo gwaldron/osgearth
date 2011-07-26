@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Feature>
 
+using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
@@ -35,58 +36,38 @@ _group(group),
 _gotFirstLocation(false),
 _lastPointTemporary(false),
 _finished(false),
-_mode( MODE_GREATCIRCLE ),
+_geoInterpolation( GEOINTERP_GREAT_CIRCLE ),
 _mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
 _isPath( false ),
 _mapNode( mapNode ),
 _intersectionMask(0xffffffff)
 {
-    //Initialize the feature source, which is just a single feature that we will use to draw the measuring line
-    _features = new FeatureListSource();
     LineString* line = new LineString();
     _feature = new Feature();
     _feature->setGeometry( line );
-    _features->insertFeature( _feature.get() );
+    _feature->geoInterp() = _geoInterpolation;    
 
     //Define a style for the line
     Style style;
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = osg::Vec4f( 1,0,0,1 );
     ls->stroke()->width() = 2.0f;   
-    StyleSheet styleSheet;
-    styleSheet.addStyle( style );
 
+    _feature->style() = style;
 
-    _factory = new GeomFeatureNodeFactory();
-    _factory->_options.resampleMode() = ResampleFilter::RESAMPLE_GREATCIRCLE;
-    //2 degrees in meters
-    _factory->_options.resampleMaxLength() = 111319.0 * 2.0;
-
-
-    //Initialize the FeatureModelGraph which will actually display our features
-    _featureGraph = new FeatureModelGraph( 
-        _features.get(), 
-        FeatureModelSourceOptions(), 
-        _factory.get(),
-        styleSheet,
-        new Session( _mapNode->getMap() ) );    
+    _featureNode = new FeatureNode( _mapNode, _feature.get(), false);
+    
 
     //Disable lighting and depth testing for the feature graph
-    _featureGraph->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    _featureGraph->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+    _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    _featureNode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
-    _group->addChild (_featureGraph.get() );
+    _group->addChild (_featureNode.get() );
 }
 
 MeasureToolHandler::~MeasureToolHandler()
 {
-    if (_group.valid()) _group->removeChild( _featureGraph.get() );
-}
-
-MeasureToolHandler::Mode
-MeasureToolHandler::getMode() const
-{
-    return _mode;
+    if (_group.valid()) _group->removeChild( _featureNode.get() );
 }
 
 void
@@ -102,22 +83,23 @@ MeasureToolHandler::setIsPath( bool path )
 }
 
 
-void
-MeasureToolHandler::setMode( Mode mode )
+GeoInterpolation
+MeasureToolHandler::getGeoInterpolation() const
 {
-    if (_mode != mode) {
-        _mode = mode;
-        if (mode == MODE_GREATCIRCLE)
-        {
-            _factory->_options.resampleMode() = ResampleFilter::RESAMPLE_GREATCIRCLE;
-        }
-        else if (mode == MODE_RHUMB)
-        {
-               _factory->_options.resampleMode() = ResampleFilter::RESAMPLE_RHUMB;
-        }
-        _featureGraph->dirty();
+    return _geoInterpolation;
+}
+
+void
+MeasureToolHandler::setGeoInterpolation( GeoInterpolation geoInterpolation )
+{
+    if (_geoInterpolation != geoInterpolation)
+    {
+        _geoInterpolation = geoInterpolation;
+        _feature->geoInterp() = _geoInterpolation;
+        _featureNode->init();
     }
 }
+
 
 bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {    
@@ -161,7 +143,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                     {                     
                         _feature->getGeometry()->push_back( osg::Vec3d( lon, lat, 0 ) );
                     }
-                    _features->dirty();
+                    _featureNode->init();
                     //_gotFirstLocation = false;
                     //_finished = true;
                     if (_finished || !_isPath) {
@@ -196,7 +178,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                 {
                     _feature->getGeometry()->back() = osg::Vec3d( lon, lat, 0 );
                 }
-                _features->dirty();
+                _featureNode->init();
                 fireDistanceChanged();
             }
         }
@@ -226,7 +208,8 @@ void MeasureToolHandler::clear()
 {
     //Clear the locations    
     _feature->getGeometry()->clear();
-    _features->dirty();
+    //_features->dirty();
+    _featureNode->init();
     fireDistanceChanged();
 }
 
@@ -285,11 +268,11 @@ getRhumbDistance( osgEarth::Symbology::Geometry* geometry)
 void MeasureToolHandler::fireDistanceChanged()
 {
     double distance = 0;
-    if (_mode == MODE_GREATCIRCLE)
+    if (_geoInterpolation == GEOINTERP_GREAT_CIRCLE)
     {
         distance = getGreatCircleDistance( _feature->getGeometry() );
     }
-    else if (_mode == MODE_RHUMB) 
+    else if (_geoInterpolation == GEOINTERP_RHUMB_LINE) 
     {
         distance = getRhumbDistance( _feature->getGeometry() );
     }

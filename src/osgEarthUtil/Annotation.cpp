@@ -20,6 +20,7 @@
 #include <osgEarthUtil/Annotation>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Utils>
+#include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthFeatures/GeometryCompiler>
 
 using namespace osgEarth;
@@ -27,20 +28,25 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util::Annotation;
 using namespace osgEarth::Util::Controls;
-using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
-AnnotationNode::AnnotationNode( MapNode* mapNode ) :
+PlacemarkNode::PlacemarkNode( MapNode* mapNode ) :
 _mapNode( mapNode )
 {
-    this->setCullCallback( new CullNodeByHorizon(
-        osg::Vec3d(0,0,1),
-        _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()) );
+    init();
+}
+
+PlacemarkNode::PlacemarkNode(MapNode* mapNode, const std::string& iconURI, const std::string& text ) :
+_mapNode( mapNode ),
+_iconURI( iconURI ),
+_text   ( text )
+{
+    init();
 }
 
 void
-AnnotationNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
+PlacemarkNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
 {
     if ( _mapNode.valid() )
     {
@@ -68,25 +74,13 @@ AnnotationNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs 
     }
 }
 
-//------------------------------------------------------------------------
-
-PlacemarkNode::PlacemarkNode( MapNode* mapNode ) :
-AnnotationNode( mapNode )
-{
-    //nop
-}
-
-PlacemarkNode::PlacemarkNode(const std::string& iconURI, const std::string& text, MapNode* mapNode ) :
-AnnotationNode( mapNode ),
-_iconURI( iconURI ),
-_text   ( text )
-{
-    init();
-}
-
 void
 PlacemarkNode::init()
 {
+    this->setCullCallback( new CullNodeByHorizon(
+        osg::Vec3d(0,0,1),
+        _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()) );
+
     _label = new LabelControl(_text);
 
     osg::ref_ptr<osg::Image> image;
@@ -141,8 +135,8 @@ void PlacemarkNode::setText( const std::string& text )
 //------------------------------------------------------------------------
 
 DrapeableNode::DrapeableNode( MapNode* mapNode, bool draped ) :
-AnnotationNode( mapNode ),
-_draped( draped )
+_mapNode( mapNode ),
+_draped ( draped )
 {
     //nop
 }
@@ -197,7 +191,7 @@ DrapeableNode::setNode( osg::Node* node )
 
 //------------------------------------------------------------------------
 
-FeatureNode::FeatureNode( Feature* feature, MapNode* mapNode, bool draped ) :
+FeatureNode::FeatureNode( MapNode* mapNode, Feature* feature, bool draped ) :
 DrapeableNode( mapNode, draped ),
 _feature     ( feature )
 {
@@ -207,11 +201,10 @@ _feature     ( feature )
 void
 FeatureNode::init()
 {
-    GeometryCompilerOptions options;
-    GeometryCompiler compiler( options );
-
     if ( _feature.valid() && _feature->getGeometry() )
     {
+        GeometryCompilerOptions options;
+        GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
         GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
         FeatureProfile* profile = new FeatureProfile(extent);
@@ -219,5 +212,35 @@ FeatureNode::init()
         
         osg::Node* node = compiler.compile( _feature.get(), *_feature->style(), context );
         setNode( node );
+    }
+}
+
+void
+FeatureNode::setFeature( Feature* feature )
+{
+    _feature = feature;
+    init();
+}
+
+//------------------------------------------------------------------------
+
+CircleNode::CircleNode(MapNode*          mapNode,
+                       const osg::Vec3d& center,
+                       const Linear&     radius,
+                       const Style&      style,
+                       bool              draped,
+                       unsigned          numSegments) :
+FeatureNode( mapNode, 0L, draped )
+{
+    if ( mapNode )
+    {
+        GeometryFactory factory( mapNode->getMap() );
+        Geometry* geom = factory.createCircle(center, radius, numSegments);
+        if ( geom )
+        {
+            Feature* feature = new Feature( geom, style );
+            feature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+            setFeature( feature );
+        }
     }
 }

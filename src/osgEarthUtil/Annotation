@@ -36,13 +36,16 @@ namespace osgEarth { namespace Util { namespace Annotation
     using namespace osgEarth::Symbology;
     using namespace osgEarth::Util::Controls;
 
-    /**
-     * Base class for an annotation node. An annotation node is a scene
-     * graph element that renders some kind of map-space annotation.
+    /** 
+     * A Placemark combines an 2D icon, a label, support for mouse interaction
+     * and a popup control.
      */
-    class OSGEARTHUTIL_EXPORT AnnotationNode : public osg::MatrixTransform
+    class OSGEARTHUTIL_EXPORT PlacemarkNode : public osg::MatrixTransform
     {
     public:
+        PlacemarkNode( MapNode* mapNode );
+        PlacemarkNode( MapNode* mapNode, const std::string& iconURI, const std::string& label );
+
         /**
          * Sets the position of this annotation.
          * @param pos Position data
@@ -51,28 +54,21 @@ namespace osgEarth { namespace Util { namespace Annotation
          */
         void setPosition( const osg::Vec3d& pos, const SpatialReference* srs =0L );
 
-    protected:
-        AnnotationNode( MapNode* mapNode );
-
-        osg::observer_ptr<MapNode> _mapNode;
-    };
-
-    /** 
-     * A Placemark combines an 2D icon, a label, support for mouse interaction
-     * and a popup control.
-     */
-    class OSGEARTHUTIL_EXPORT PlacemarkNode : public AnnotationNode
-    {
-    public:
-        PlacemarkNode( MapNode* mapNode );
-        PlacemarkNode( const std::string& iconURI, const std::string& label, MapNode* mapNode );
-
+        /**
+         * Location of the icon image to load
+         */
         void setIconURI( const std::string& value );
         const std::string getIconURI() const { return _iconURI; }
 
+        /**
+         * Text label content
+         */
         void setText( const std::string& text );
         const std::string& getText() const { return _text; }
 
+        /**
+         * Control to pop up when the user clicks on the placemark (TODO)
+         */
         void setPopupControl( Control* control );
         Control* getPopupControl() const { return _popupControl; }
 
@@ -86,13 +82,15 @@ namespace osgEarth { namespace Util { namespace Annotation
         osg::ref_ptr<LabelControl> _label;
         osg::ref_ptr<Control>      _popupControl;
 
+        osg::observer_ptr<MapNode> _mapNode;
+
         void init();
     };
 
     /** 
      * Base class for a Annotation that can be optionally "draped" on the MapNode terrain.
      */
-    class OSGEARTHUTIL_EXPORT DrapeableNode : public AnnotationNode
+    class OSGEARTHUTIL_EXPORT DrapeableNode : public osg::Group
     {
     public:
         /**
@@ -108,6 +106,7 @@ namespace osgEarth { namespace Util { namespace Annotation
 
     protected:
         DrapeableNode( MapNode* mapNode, bool draped =false );
+        osg::observer_ptr<MapNode> _mapNode;
 
     private:
         bool _draped;
@@ -121,11 +120,28 @@ namespace osgEarth { namespace Util { namespace Annotation
     class OSGEARTHUTIL_EXPORT FeatureNode : public DrapeableNode
     {
     public:
-        FeatureNode( Feature* feature, MapNode* mapNode, bool draped =true );
+        FeatureNode( MapNode* mapNode, Feature* feature, bool draped =true );
+
+        void setFeature( Feature* feature );
 
     protected:
         osg::ref_ptr<Feature> _feature;
 
+        void init();
+    };
+
+    class OSGEARTHUTIL_EXPORT CircleNode : public FeatureNode
+    {
+    public:
+        CircleNode( 
+            MapNode*          mapNode,
+            const osg::Vec3d& center,
+            const Linear&     radius,
+            const Style&      style,
+            bool              draped =true,
+            unsigned          numSegments =0);
+
+    protected:
         void init();
     };
 

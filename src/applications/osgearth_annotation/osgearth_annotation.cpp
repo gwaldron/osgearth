@@ -20,7 +20,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Annotation>
-#include <osgEarthUtil/FeatureFactory>
+#include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -59,12 +59,12 @@ main(int argc, char** argv)
     root->addChild( annoGroup );
 
     // a Placemark combines a 2D icon with a text label.
-    PlacemarkNode* newYork = new PlacemarkNode("../data/placemark32.png", "New York", mapNode);
+    PlacemarkNode* newYork = new PlacemarkNode(mapNode, "../data/placemark32.png", "New York");
     newYork->setPosition( osg::Vec3d(-74, 40.714, 0) );
     annoGroup->addChild( newYork );
 
     // a Placemark combines a 2D icon with a text label.
-    PlacemarkNode* tokyo = new PlacemarkNode("../data/placemark32.png", "Tokyo", mapNode);
+    PlacemarkNode* tokyo = new PlacemarkNode(mapNode, "../data/placemark32.png", "Tokyo");
     tokyo->setPosition( osg::Vec3d(139.75, 35.685, 0) );
     annoGroup->addChild( tokyo );
 
@@ -75,30 +75,49 @@ main(int argc, char** argv)
     geom->push_back( osg::Vec3d(-60, 60, 0) );
     geom->push_back( osg::Vec3d(0,   60, 0) );
     Style geomStyle;
-    geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = osg::Vec4(1,1,0,1);
+
+    geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Yellow;
     geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
-    FeatureNode* gnode = new FeatureNode(new Feature(geom, geomStyle), mapNode, true);
+
+    FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geomStyle), true);
     annoGroup->addChild( gnode );
 
     // another line, this time using great-circle interpolation (flight path from New York to Tokyo)
     Geometry* path = new LineString();
     path->push_back( osg::Vec3d(-74, 40.714, 0) );    // New York
     path->push_back( osg::Vec3d(139.75, 35.685, 0) ); // Tokyo
+
     Style pathStyle;
-    pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = osg::Vec4(1,0,0,1);
+    pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
     pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 10.0f;
+
     Feature* pathFeature = new Feature(path, pathStyle);
     pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
-    FeatureNode* pathNode = new FeatureNode(pathFeature, mapNode, true);
+    FeatureNode* pathNode = new FeatureNode(mapNode, pathFeature, true);
     annoGroup->addChild( pathNode );
 
-    // a circle annotation.
-    FeatureFactory fact( mapNode->getMap() );
-    Feature* circle = fact.createCircle( osg::Vec3d(-120, 35, 0), Linear(600, Units::KILOMETERS) );
-    circle->style()->getOrCreate<PolygonSymbol>()->fill()->color() = osg::Vec4(0,0,1,0.6);
-    FeatureNode* cnode = new FeatureNode(circle, mapNode, true);
-    annoGroup->addChild( cnode );
-    
+    // a circle around New Orleans
+    Style circleStyle;
+    circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
+    CircleNode* circle = new CircleNode( mapNode, osg::Vec3d(-90.25, 29.98, 0), Linear(600, Units::KILOMETERS), circleStyle );
+    annoGroup->addChild( circle );
+
+    // an extruded polygon roughly the shape of Utah
+    Geometry* utah = new Polygon();
+    utah->push_back( osg::Vec3d(-114.052, 37, 0) );
+    utah->push_back( osg::Vec3d(-109.054, 37, 0) );
+    utah->push_back( osg::Vec3d(-109.054, 41, 0) );
+    utah->push_back( osg::Vec3d(-111.04, 41, 0) );
+    utah->push_back( osg::Vec3d(-111.08, 42.059, 0) );
+    utah->push_back( osg::Vec3d(-114.08, 42.024, 0) );
+
+    Style utahStyle;
+    utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
+    utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
+
+    Feature* utahFeature = new Feature(utah, utahStyle);
+    FeatureNode* utahNode = new FeatureNode(mapNode, utahFeature, false);
+    annoGroup->addChild( utahNode );
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);

@@ -283,8 +283,10 @@ OverlayDecorator::reinit()
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
             _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
+            //_rttCamera->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
             //Enable blending on the RTT camera with pre-multiplied alpha.
-            osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+            //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+            osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             _rttCamera->getOrCreateStateSet()->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
                 
 
@@ -317,9 +319,9 @@ OverlayDecorator::reinit()
         _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
 
         // decalling (note: this has no effect when using shaders.. remove? -gw)
-        osg::TexEnv* env = new osg::TexEnv();
-        env->setMode( osg::TexEnv::DECAL );
-        _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
+        //osg::TexEnv* env = new osg::TexEnv();
+        //env->setMode( osg::TexEnv::DECAL );
+        //_subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
         
         // set up the shaders
         if ( _useShaders )
@@ -396,6 +398,7 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
                << "{\n"                              
                << "    vec4 tex = texture2D(texture_0, gl_TexCoord[0].xy);\n"
                << "    vec3 mixed_color = mix(gl_Color.rgb, tex.rgb, tex.a);\n"
+               //<< "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
                << "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
                << "}\n";
     

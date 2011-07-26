@@ -156,3 +156,26 @@ FeatureNode( mapNode, 0L, draped )
 }
 
 //------------------------------------------------------------------------
+
+EllipseNode::EllipseNode(MapNode*          mapNode,
+                         const osg::Vec3d& center,
+                         const Linear&     radiusMajor,
+                         const Linear&     radiusMinor,
+                         const Angular&    rotationAngle,
+                         const Style&      style,
+                         bool              draped,
+                         unsigned          numSegments) :
+FeatureNode( mapNode, 0L, draped )
+{
+    if ( mapNode )
+    {
+        GeometryFactory factory( mapNode->getMap() );
+        Geometry* geom = factory.createEllipse(center, radiusMajor, radiusMinor, rotationAngle, numSegments);
+        if ( geom )
+        {
+            Feature* feature = new Feature( geom, style );
+            feature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+            setFeature( feature );
+        }
+    }
+}

@@ -80,3 +80,66 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
 
     return geom;
 }
+
+Geometry*
+GeometryFactory::createEllipse(const osg::Vec3d& center,
+                               const Linear&     radiusMajor,
+                               const Linear&     radiusMinor,
+                               const Angular&    rotationAngle,
+                               unsigned          numSegments)
+{
+    Polygon* geom = new Polygon();
+
+    if ( numSegments == 0 )
+    {
+        // automatically calculate
+        double ravgM = 0.5*(radiusMajor.as(Units::METERS) + radiusMinor.as(Units::METERS));
+        double segLen = ravgM / 8.0;
+        double circumference = 2*osg::PI*ravgM;
+        numSegments = (unsigned)::ceil(circumference / segLen);
+    }
+    
+    bool isGeodetic = _map.valid() && _map->getProfile()->getSRS()->isGeographic();
+    double segAngle = 2.0*osg::PI/(double)numSegments;
+
+    if ( isGeodetic )
+    {
+        double earthRadius = _map->getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+        double lat = osg::DegreesToRadians(center.y());
+        double lon = osg::DegreesToRadians(center.x());
+        double a = radiusMajor.as(Units::METERS);
+        double b = radiusMinor.as(Units::METERS);
+        double g = rotationAngle.as(Units::RADIANS) - osg::PI_2;
+
+        for( unsigned i=0; i<numSegments; ++i )
+        {
+            double angle = segAngle * (double)i;
+            double t = angle - osg::PI_2;
+            double clat, clon;
+
+            double rA = (b*b-a*a)*cos(2*t - 2*g) + a*a + b*b;
+            double q = sqrt(2.0)*a*b*sqrt(rA);
+            double r = q/rA;
+
+            GeoMath::destination( lat, lon, angle, r, clat, clon, earthRadius );
+            geom->push_back( osg::Vec3d(osg::RadiansToDegrees(clon), osg::RadiansToDegrees(clat), center.z()) );
+        }
+    }
+    else
+    {
+#if 0
+        double rM = radius.as(Units::METERS);
+
+        for( unsigned i=0; i<numSegments; ++i )
+        {
+            double angle = segAngle * (double)i;
+            double x, y;
+            x = center.x() + sin(angle)*rM;
+            y = center.y() + cos(angle)*rM;
+            geom->push_back( osg::Vec3d(x, y, center.z()) );
+        }
+#endif
+    }
+
+    return geom;
+}

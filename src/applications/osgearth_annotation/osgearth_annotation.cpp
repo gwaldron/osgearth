@@ -99,8 +99,25 @@ main(int argc, char** argv)
     // a circle around New Orleans
     Style circleStyle;
     circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
-    CircleNode* circle = new CircleNode( mapNode, osg::Vec3d(-90.25, 29.98, 0), Linear(600, Units::KILOMETERS), circleStyle );
+    CircleNode* circle = new CircleNode( 
+        mapNode, 
+        osg::Vec3d(-90.25, 29.98, 0), 
+        Linear(600, Units::KILOMETERS), 
+        circleStyle );
     annoGroup->addChild( circle );
+
+    // an ellipse around Miami
+    Style ellipseStyle;
+    ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
+    EllipseNode* ellipse = new EllipseNode(
+        mapNode, 
+        osg::Vec3d(-80.28,25.82,0), 
+        Linear(200, Units::MILES),
+        Linear(100, Units::MILES),
+        Angular(45, Units::DEGREES),
+        ellipseStyle,
+        true);
+    annoGroup->addChild( ellipse );
 
     // an extruded polygon roughly the shape of Utah
     Geometry* utah = new Polygon();

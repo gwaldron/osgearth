@@ -50,6 +50,21 @@ namespace osgEarth { namespace Symbology
             const Linear&     radius,
             unsigned          numSegments =0);
 
+        /**
+         * Creates a ellipse geometry.
+         * @param center Center point (must be in map SRS if a map was provided in ctor)
+         * @param radiusMajor Major radius (X-axis) length
+         * @param radiusMinor Minor radius (Y-axis) length
+         * @param rotationAngle with respect to the X-axis
+         * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         */
+        Geometry* createEllipse(
+            const osg::Vec3d& center,
+            const Linear&     radiusMajor,
+            const Linear&     radiusMinor,
+            const Angular&    rotationAngle,
+            unsigned          numSegments =0);
+
     protected:
         osg::ref_ptr<const Map> _map;
     };

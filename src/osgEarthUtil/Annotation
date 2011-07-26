@@ -101,6 +101,20 @@ namespace osgEarth { namespace Util { namespace Annotation
             unsigned          numSegments =0);
     };
 
+    class OSGEARTHUTIL_EXPORT EllipseNode : public FeatureNode
+    {
+    public:
+        EllipseNode( 
+            MapNode*          mapNode,
+            const osg::Vec3d& center,
+            const Linear&     radiusMajor,
+            const Linear&     radiusMinor,
+            const Angular&    rotationAngle,
+            const Style&      style,
+            bool              draped =true,
+            unsigned          numSegments =0);
+    };
+
 } } } // namespace osgEarth::Util::Annotation
 
 #endif //OSGEARTHUTIL_ANNOTATION

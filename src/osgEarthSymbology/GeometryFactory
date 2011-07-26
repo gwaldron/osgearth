@@ -1,0 +1,59 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHSYMBOLOGY_GEOMETRY_FACTORY
+#define OSGEARTHSYMBOLOGY_GEOMETRY_FACTORY
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Geometry>
+#include <osgEarth/Map>
+
+/**
+ * A collection of utilities for creating geometric features
+ */
+namespace osgEarth { namespace Symbology
+{
+    using namespace osgEarth;
+
+    class OSGEARTHSYMBOLOGY_EXPORT GeometryFactory
+    {
+    public:
+        /**
+         * Constructs the factory.
+         * @param map If you provide a map, geometries will be in the coordinate system of that map.
+         */
+        GeometryFactory( const Map* map );
+
+        /**
+         * Creates a circle geometry.
+         * @param center Center point (must be in map SRS if a map was provided in ctor)
+         * @param radius Circle radius
+         * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         */
+        Geometry* createCircle( 
+            const osg::Vec3d& center,
+            const Linear&     radius,
+            unsigned          numSegments =0);
+
+    protected:
+        osg::ref_ptr<const Map> _map;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_GEOMETRY_FACTORY

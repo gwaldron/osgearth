@@ -134,96 +134,6 @@ void PlacemarkNode::setText( const std::string& text )
 
 //------------------------------------------------------------------------
 
-DrapeableNode::DrapeableNode( MapNode* mapNode, bool draped ) :
-_mapNode( mapNode ),
-_draped ( draped )
-{
-    //nop
-}
-
-void
-DrapeableNode::setDraped( bool value )
-{
-    if ( _draped != value )
-    {
-        osg::ref_ptr<osg::Node> save = _node.get();
-        if ( save.valid() )
-            setNode( 0L );
-
-        _draped = value;
-
-        if ( save.valid() )
-            setNode( save.get() );
-    }
-}
-
-void
-DrapeableNode::setNode( osg::Node* node )
-{
-    if ( _node.valid() )
-    {
-        if ( _draped && _mapNode.valid() )
-        {
-            _mapNode->getOverlayGroup()->removeChild( _node.get() );
-            _mapNode->updateOverlayGraph();
-        }
-        else
-        {
-            this->removeChild( _node.get() );
-        }
-    }
-
-    _node = node;
-
-    if ( _node.valid() )
-    {
-        if ( _draped && _mapNode.valid() )
-        {
-            _mapNode->getOverlayGroup()->addChild( _node.get() );
-            _mapNode->updateOverlayGraph();
-        }
-        else
-        {
-            this->addChild( _node.get() );
-        }
-    }
-}
-
-//------------------------------------------------------------------------
-
-FeatureNode::FeatureNode( MapNode* mapNode, Feature* feature, bool draped ) :
-DrapeableNode( mapNode, draped ),
-_feature     ( feature )
-{
-    init();
-}
-
-void
-FeatureNode::init()
-{
-    if ( _feature.valid() && _feature->getGeometry() )
-    {
-        GeometryCompilerOptions options;
-        GeometryCompiler compiler( options );
-        Session* session = new Session( _mapNode->getMap() );
-        GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
-        FeatureProfile* profile = new FeatureProfile(extent);
-        FilterContext context( session, profile, extent );
-        
-        osg::Node* node = compiler.compile( _feature.get(), *_feature->style(), context );
-        setNode( node );
-    }
-}
-
-void
-FeatureNode::setFeature( Feature* feature )
-{
-    _feature = feature;
-    init();
-}
-
-//------------------------------------------------------------------------
-
 CircleNode::CircleNode(MapNode*          mapNode,
                        const osg::Vec3d& center,
                        const Linear&     radius,
@@ -244,3 +154,5 @@ FeatureNode( mapNode, 0L, draped )
         }
     }
 }
+
+//------------------------------------------------------------------------

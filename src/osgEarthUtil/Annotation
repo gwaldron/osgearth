@@ -22,7 +22,9 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/GeoMath>
+#include <osgEarth/DrapeableNode>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureNode>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
 #include <osgEarthUtil/Common>
@@ -87,49 +89,6 @@ namespace osgEarth { namespace Util { namespace Annotation
         void init();
     };
 
-    /** 
-     * Base class for a Annotation that can be optionally "draped" on the MapNode terrain.
-     */
-    class OSGEARTHUTIL_EXPORT DrapeableNode : public osg::Group
-    {
-    public:
-        /**
-         * Sets the node that comprises the content of this drapeable.
-         */
-        void setNode( osg::Node* node );
-
-        /**
-         * Sets whether to drape the node content on the mapnode terrain.
-         */
-        void setDraped( bool value );
-        bool getDraped() const { return _draped; }
-
-    protected:
-        DrapeableNode( MapNode* mapNode, bool draped =false );
-        osg::observer_ptr<MapNode> _mapNode;
-
-    private:
-        bool _draped;
-        osg::ref_ptr<osg::Node> _node;
-    };
-
-    /**
-     * Annotation node that renders a Feature. The style should be assigned
-     * to the feature itself.
-     */
-    class OSGEARTHUTIL_EXPORT FeatureNode : public DrapeableNode
-    {
-    public:
-        FeatureNode( MapNode* mapNode, Feature* feature, bool draped =true );
-
-        void setFeature( Feature* feature );
-
-    protected:
-        osg::ref_ptr<Feature> _feature;
-
-        void init();
-    };
-
     class OSGEARTHUTIL_EXPORT CircleNode : public FeatureNode
     {
     public:
@@ -140,9 +99,6 @@ namespace osgEarth { namespace Util { namespace Annotation
             const Style&      style,
             bool              draped =true,
             unsigned          numSegments =0);
-
-    protected:
-        void init();
     };
 
 } } } // namespace osgEarth::Util::Annotation

@@ -29,7 +29,8 @@ SET(LIB_PUBLIC_HEADERS
     FeatureGridder
 	FeatureListSource
     FeatureModelGraph
-    FeatureModelSource    
+    FeatureModelSource
+    FeatureNode
     FeatureSource
     FeatureTileSource
     Filter
@@ -67,7 +68,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureGridder.cpp
 	FeatureListSource.cpp
     FeatureModelGraph.cpp
-    FeatureModelSource.cpp	
+    FeatureModelSource.cpp
+    FeatureNode.cpp
     FeatureSource.cpp
     FeatureTileSource.cpp
     Filter.cpp

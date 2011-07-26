@@ -75,13 +75,13 @@ struct ToggleModeHandler : public ControlEventHandler
     { }
 
     virtual void onValueChanged(Control* control, bool value) {
-        if (_tool->getMode() == MeasureToolHandler::MODE_GREATCIRCLE)
+        if (_tool->getGeoInterpolation() == GEOINTERP_GREAT_CIRCLE)
         {
-            _tool->setMode( MeasureToolHandler::MODE_RHUMB);
+            _tool->setGeoInterpolation( GEOINTERP_RHUMB_LINE);
         }
         else
         {
-            _tool->setMode( MeasureToolHandler::MODE_GREATCIRCLE);
+            _tool->setGeoInterpolation( GEOINTERP_GREAT_CIRCLE);
         }        
     }
 

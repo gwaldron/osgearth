@@ -22,7 +22,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
-#include <osgEarthFeatures/FeatureListSource>
+#include <osgEarthFeatures/FeatureNode>
 #include <osg/Group>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
@@ -43,11 +43,6 @@ namespace osgEarth { namespace Util {
 
         typedef std::list< osg::ref_ptr< MeasureToolEventHandler > > MeasureToolEventHandlerList;
 
-        enum Mode {
-            MODE_GREATCIRCLE,
-            MODE_RHUMB
-        };        
-
 
         MeasureToolHandler( osg::Group* group, MapNode* mapNode );        
         ~MeasureToolHandler();
@@ -63,8 +58,8 @@ namespace osgEarth { namespace Util {
         void setMouseButton(int mouseButton);
         int getMouseButton() const;
 
-        Mode getMode() const;
-        void setMode( Mode mode );
+        GeoInterpolation getGeoInterpolation() const;
+        void setGeoInterpolation( GeoInterpolation geoInterpolation );
 
         void setIsPath( bool path );
         bool getIsPath() const;
@@ -73,7 +68,7 @@ namespace osgEarth { namespace Util {
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
 
     private:
-        Mode _mode;
+        GeoInterpolation _geoInterpolation;
         void fireDistanceChanged();
         bool _lastPointTemporary;
         bool _gotFirstLocation;
@@ -82,9 +77,10 @@ namespace osgEarth { namespace Util {
         float _mouseDownX, _mouseDownY;
         int _mouseButton;
         osg::ref_ptr< osg::Group > _group;
-        osg::ref_ptr< osgEarth::Features::FeatureModelGraph > _featureGraph;
-        osg::ref_ptr< osgEarth::Features::FeatureListSource > _features;
+
+        osg::ref_ptr< osgEarth::Features::FeatureNode > _featureNode;
         osg::ref_ptr< osgEarth::Features::Feature >  _feature;
+
         MeasureToolEventHandlerList _eventHandlers;
         bool _isPath;
         osg::ref_ptr< osgEarth::Features::GeomFeatureNodeFactory > _factory;

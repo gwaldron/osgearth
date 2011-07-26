@@ -40,9 +40,10 @@ namespace osgEarth { namespace Features
 
         void setFeature( Feature* feature );
 
+        void init();
+
     protected:
         osg::ref_ptr<Feature> _feature;
-        void init();
     };
 
 } } // namespace osgEarth::Features

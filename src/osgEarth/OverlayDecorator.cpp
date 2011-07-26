@@ -283,10 +283,10 @@ OverlayDecorator::reinit()
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
             _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
-            // force disable GL_BLEND, because otherwise the RTT geom will blend with the transparent clear color
-            // of the RTT camera and produce low alpha values. TODO: look into another solution for this, since 
-            // doing this turns off all blending on the subgraph.
-            _rttCamera->getOrCreateStateSet()->setMode( GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE | osg::StateAttribute::PROTECTED );
+            //Enable blending on the RTT camera with pre-multiplied alpha.
+            osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
+            _rttCamera->getOrCreateStateSet()->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+                
 
             // texture coordinate generator:
             _texGenNode = new osg::TexGenNode();

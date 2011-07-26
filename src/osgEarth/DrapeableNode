@@ -42,6 +42,9 @@ namespace osgEarth
         void setDraped( bool value );
         bool getDraped() const { return _draped; }
 
+    public:
+        virtual void traverse(osg::NodeVisitor& nv );
+
     protected:
         DrapeableNode( MapNode* mapNode, bool draped =false );
         osg::observer_ptr<MapNode> _mapNode;

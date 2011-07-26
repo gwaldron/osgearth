@@ -903,6 +903,14 @@ _value( value )
     setHeight( 16 );
 }
 
+CheckBoxControl::CheckBoxControl( bool value, ControlEventHandler* handler ) :
+_value( value )
+{
+    this->addEventHandler( handler );
+    setWidth( 16 );
+    setHeight( 16 );
+}
+
 void
 CheckBoxControl::fireValueChanged()
 {

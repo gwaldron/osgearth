@@ -345,6 +345,7 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         CheckBoxControl( bool checked =false );
+        CheckBoxControl( bool checked, ControlEventHandler* callback );
 
         void setValue( bool value );
         bool getValue() const { return _value; }

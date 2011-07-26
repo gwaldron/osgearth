@@ -127,18 +127,21 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
     }
     else
     {
-#if 0
-        double rM = radius.as(Units::METERS);
+        double a = radiusMajor.as(Units::METERS);
+        double b = radiusMinor.as(Units::METERS);
+        double g = rotationAngle.as(Units::RADIANS) - osg::PI_2;
+        double sing = sin(g), cosg = cos(g);
 
         for( unsigned i=0; i<numSegments; ++i )
         {
             double angle = segAngle * (double)i;
-            double x, y;
-            x = center.x() + sin(angle)*rM;
-            y = center.y() + cos(angle)*rM;
+            double t = angle - osg::PI_2;
+            double cost = cos(t), sint = sin(t);
+            double x = center.x() + a*cost*cosg - b*sint*sing;
+            double y = center.y() + a*cost*sing + b*sint*cosg;
+
             geom->push_back( osg::Vec3d(x, y, center.z()) );
         }
-#endif
     }
 
     return geom;

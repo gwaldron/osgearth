@@ -27,6 +27,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Util::Annotation;
 
 int
@@ -35,6 +36,15 @@ usage( char** argv )
     OE_WARN << "Usage: " << argv[0] << " <earthfile>" << std::endl;
     return -1;
 }
+
+struct ToggleNode : public ControlEventHandler {
+    ToggleNode( osg::Node* node ) : _node( node ) { }
+    void onValueChanged( Control* src, bool value ) {
+        if ( _node.valid() )
+            _node->setNodeMask( value ? ~0 : 0 );
+    }
+    osg::observer_ptr<osg::Node> _node;
+};
 
 int
 main(int argc, char** argv)
@@ -140,6 +150,28 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
+
+    // make a little HUD to toggle stuff:
+    VBox* vbox = new VBox();
+    vbox->setBackColor( Color(Color::Black, 0.5) );
+    vbox->setVertAlign( Control::ALIGN_TOP );
+    vbox->addControl( new LabelControl("Annotation Example", 22.0f, Color::Yellow) );
+    Grid* grid = new Grid();
+    vbox->addControl( grid );
+    grid->setChildSpacing( 5 );
+    grid->setChildHorizAlign( Control::ALIGN_LEFT );
+    grid->setChildVertAlign( Control::ALIGN_CENTER );
+    grid->setControl( 0, 0, new CheckBoxControl(true, new ToggleNode(gnode)) );
+    grid->setControl( 1, 0, new LabelControl("Line geoemtry") );
+    grid->setControl( 0, 1, new CheckBoxControl(true, new ToggleNode(pathNode)) );
+    grid->setControl( 1, 1, new LabelControl("Red flight path") );
+    grid->setControl( 0, 2, new CheckBoxControl(true, new ToggleNode(circle)) );
+    grid->setControl( 1, 2, new LabelControl("Blue circle") );
+    grid->setControl( 0, 3, new CheckBoxControl(true, new ToggleNode(ellipse)) );
+    grid->setControl( 1, 3, new LabelControl("Orange ellipse") );
+    grid->setControl( 0, 4, new CheckBoxControl(true, new ToggleNode(utahNode)) );
+    grid->setControl( 1, 4, new LabelControl("Extruded state") );
+    ControlCanvas::get(&viewer,true)->addControl(vbox);
 
     // add some stock OSG handlers:
     viewer.getDatabasePager()->setDoPreCompile( true );

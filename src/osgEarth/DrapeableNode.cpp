@@ -23,6 +23,22 @@ using namespace osgEarth;
 
 //------------------------------------------------------------------------
 
+namespace 
+{
+    struct CullByFrameNumber : public osg::NodeCallback
+    {
+        unsigned _frame;
+        CullByFrameNumber() : _frame(0) { }
+        void operator()( osg::Node* node, osg::NodeVisitor* nv )
+        {
+            if ( nv->getFrameStamp()->getFrameNumber() - _frame <= 1 )
+                traverse(node, nv);
+        }
+    };
+}
+
+//------------------------------------------------------------------------
+
 DrapeableNode::DrapeableNode( MapNode* mapNode, bool draped ) :
 _mapNode( mapNode ),
 _draped ( draped )
@@ -55,6 +71,7 @@ DrapeableNode::setNode( osg::Node* node )
         {
             _mapNode->getOverlayGroup()->removeChild( _node.get() );
             _mapNode->updateOverlayGraph();
+            _node->setCullCallback( 0L );
         }
         else
         {
@@ -68,6 +85,7 @@ DrapeableNode::setNode( osg::Node* node )
     {
         if ( _draped && _mapNode.valid() )
         {
+            _node->setCullCallback( new CullByFrameNumber() );
             _mapNode->getOverlayGroup()->addChild( _node.get() );
             _mapNode->updateOverlayGraph();
         }
@@ -76,4 +94,15 @@ DrapeableNode::setNode( osg::Node* node )
             this->addChild( _node.get() );
         }
     }
+}
+
+void
+DrapeableNode::traverse( osg::NodeVisitor& nv )
+{
+    if ( _draped && nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR && _node.valid() )
+    {
+        CullByFrameNumber* cb = static_cast<CullByFrameNumber*>(_node->getCullCallback());
+        cb->_frame = nv.getFrameStamp()->getFrameNumber();
+    }
+    osg::Group::traverse( nv );
 }

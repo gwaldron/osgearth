@@ -121,9 +121,6 @@ ImageLayerOptions::getConfig() const
     conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
     
-    //Merge the TileSource options
-    if (driver().isSet()) conf.merge( driver()->getConfig() );
-
     return conf;
 }
 

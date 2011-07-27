@@ -90,6 +90,9 @@ TerrainLayerOptions::getConfig() const
     conf.updateObjIfSet( "profile", _profile );
     conf.updateIfSet( "max_data_level", _maxDataLevel);
 
+    //Merge the TileSource options
+    if (driver().isSet()) conf.merge( driver()->getConfig() );
+
     return conf;
 }
 

@@ -144,7 +144,7 @@ FeatureNode( mapNode, 0L, draped )
 {
     if ( mapNode )
     {
-        GeometryFactory factory( mapNode->getMap() );
+        GeometryFactory factory( mapNode->getMap()->getProfile()->getSRS() );
         Geometry* geom = factory.createCircle(center, radius, numSegments);
         if ( geom )
         {
@@ -189,7 +189,7 @@ FeatureNode( mapNode, 0L, draped )
 {
     if ( mapNode )
     {
-        GeometryFactory factory( mapNode->getMap() );
+        GeometryFactory factory( mapNode->getMap()->getProfile()->getSRS() );
         Geometry* geom = factory.createEllipse(center, radiusMajor, radiusMinor, rotationAngle, numSegments);
         if ( geom )
         {

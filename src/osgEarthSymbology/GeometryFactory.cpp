@@ -24,8 +24,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
-GeometryFactory::GeometryFactory( const Map* map ) :
-_map( map )
+GeometryFactory::GeometryFactory( const SpatialReference* srs ) :
+_srs( srs )
 {
     //nop
 }
@@ -35,6 +35,12 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
                               const Linear&     radius,
                               unsigned          numSegments)
 {
+    if ( !_srs.valid() )
+    {
+        OE_WARN << LC << "ILLEGAL: Invalid SRS, cannot create geometry" << std::endl;
+        return 0L;
+    }
+
     Polygon* geom = new Polygon();
 
     if ( numSegments == 0 )
@@ -45,12 +51,11 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
         numSegments = (unsigned)::ceil(circumference / segLen);
     }
     
-    bool isGeodetic = _map.valid() && _map->getProfile()->getSRS()->isGeographic();
     double segAngle = (2.0*osg::PI)/(double)numSegments;
 
-    if ( isGeodetic )
+    if ( _srs->isGeographic() )
     {
-        double earthRadius = _map->getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
         double lat = osg::DegreesToRadians(center.y());
         double lon = osg::DegreesToRadians(center.x());
         double rM  = radius.as(Units::METERS);
@@ -88,6 +93,12 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
                                const Angular&    rotationAngle,
                                unsigned          numSegments)
 {
+    if ( !_srs.valid() )
+    {
+        OE_WARN << LC << "ILLEGAL: Invalid SRS, cannot create geometry" << std::endl;
+        return 0L;
+    }
+
     Polygon* geom = new Polygon();
 
     if ( numSegments == 0 )
@@ -99,12 +110,11 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
         numSegments = (unsigned)::ceil(circumference / segLen);
     }
     
-    bool isGeodetic = _map.valid() && _map->getProfile()->getSRS()->isGeographic();
     double segAngle = 2.0*osg::PI/(double)numSegments;
 
-    if ( isGeodetic )
+    if ( _srs->isGeographic() )
     {
-        double earthRadius = _map->getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
         double lat = osg::DegreesToRadians(center.y());
         double lon = osg::DegreesToRadians(center.x());
         double a = radiusMajor.as(Units::METERS);

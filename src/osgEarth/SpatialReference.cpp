@@ -234,6 +234,23 @@ SpatialReference::create( const std::string& init )
         srs = createCube();
     }
 
+    // custom srs for an LTP:
+    else if ( low.find( "ltp-enu:" ) == 0 )
+    {
+        StringVector tokens;
+        StringTokenizer(low, tokens, ":", "");
+        if ( tokens.size() == 3 )
+        {
+            StringVector rt;
+            StringTokenizer(tokens[1], rt);
+            if ( rt.size() == 3 )
+            {
+                osg::Vec3d refPt( as<double>(rt[0],0.0), as<double>(rt[1],0.0), as<double>(rt[2],0.0) );
+                srs = createLTP( refPt );
+            }
+        }
+    }
+
     else if ( low.find( "+" ) == 0 )
     {
         srs = createFromPROJ4( low, init );
@@ -447,7 +464,8 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs ) const
         isSouthPolar()  != rhs->isSouthPolar()  ||
         isContiguous()  != rhs->isContiguous()  ||
         isUserDefined() != rhs->isUserDefined() ||
-        isCube()        != rhs->isCube() )
+        isCube()        != rhs->isCube()        ||
+        isLTP()         != rhs->isLTP() )
     {
         return false;
     }

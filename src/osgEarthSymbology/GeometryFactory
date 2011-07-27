@@ -21,7 +21,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Geometry>
-#include <osgEarth/Map>
+#include <osgEarth/SpatialReference>
 
 /**
  * A collection of utilities for creating geometric features
@@ -35,9 +35,9 @@ namespace osgEarth { namespace Symbology
     public:
         /**
          * Constructs the factory.
-         * @param map If you provide a map, geometries will be in the coordinate system of that map.
+         * @param srs The spatial reference in which to create the geometry.
          */
-        GeometryFactory( const Map* map );
+        GeometryFactory( const SpatialReference* srs );
 
         /**
          * Creates a circle geometry.
@@ -66,7 +66,8 @@ namespace osgEarth { namespace Symbology
             unsigned          numSegments =0);
 
     protected:
-        osg::ref_ptr<const Map> _map;
+
+        osg::ref_ptr<const SpatialReference> _srs;
     };
 
 } } // namespace osgEarth::Symbology

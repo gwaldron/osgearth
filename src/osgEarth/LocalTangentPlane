@@ -48,6 +48,8 @@ namespace osgEarth
     protected: // SpatialReference overrides
 
         void _init();
+        
+        bool _isEquivalentTo( const SpatialReference* srs ) const;
 
     private:
 

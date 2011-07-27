@@ -184,6 +184,9 @@ namespace osgEarth
         /** Tests whether this SRS is a Unified Cube projection (osgEarth-internal) */
         virtual bool isCube() const;
 
+        /** Tests whether this SRS is a Local Tangent Plane projection (osgEarth-internal) */
+        virtual bool isLTP() const { return _is_ltp; }
+
         /** Gets the readable name of this SRS. */
         const std::string& getName() const;
 
@@ -244,6 +247,7 @@ namespace osgEarth
         bool _is_cube;
         bool _is_contiguous;
         bool _is_user_defined;
+        bool _is_ltp;
         std::string _name;
         std::string _wkt;
         std::string _proj4;

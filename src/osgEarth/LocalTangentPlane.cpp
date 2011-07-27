@@ -33,7 +33,7 @@ LTPSpatialReference::LTPSpatialReference( void* handle, const osg::Vec3d& worldP
 SpatialReference( handle, "OSGEARTH", "ltp-enu", "ENU Local Tangent Plane" ),
 _worldPointLLA  ( worldPointLLA )
 {
-    //nop
+    //todo, set proper init string
 }
 
 void
@@ -43,6 +43,7 @@ LTPSpatialReference::_init()
 
     _is_user_defined = true;
     _is_contiguous   = true;
+    _is_ltp          = true;
     _is_geographic   = false;
     _name            = "ENU Local Tangent Plane";
 
@@ -79,4 +80,13 @@ LTPSpatialReference::postTransform(double& x, double& y, double& z, void* contex
     osg::Vec3d local = world * _world2local;
     x = local.x(), y = local.y(), z = local.z();
     return true;
+}
+
+bool
+LTPSpatialReference::_isEquivalentTo( const SpatialReference* srs ) const
+{
+    return 
+        srs->isLTP() && 
+        _worldPointLLA == static_cast<const LTPSpatialReference*>(srs)->_worldPointLLA ;
+    // todo: check the reference ellipsoids
 }

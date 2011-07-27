@@ -39,6 +39,7 @@ FeatureNode::init()
     if ( _feature.valid() && _feature->getGeometry() )
     {
         GeometryCompilerOptions options;
+        options.maxGranularity() = 1.0;
         GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
         GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());

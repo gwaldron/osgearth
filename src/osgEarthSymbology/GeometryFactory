@@ -35,9 +35,10 @@ namespace osgEarth { namespace Symbology
     public:
         /**
          * Constructs the factory.
-         * @param srs The spatial reference in which to create the geometry.
+         * @param srs The spatial reference in which to create the geometry, or NULL to
+         *            create simple localized geometry.
          */
-        GeometryFactory( const SpatialReference* srs );
+        GeometryFactory( const SpatialReference* srs =0L );
 
         /**
          * Creates a circle geometry.

@@ -183,6 +183,15 @@ namespace osgEarth
         void operator()(osg::Node* node, osg::NodeVisitor* nv );
     };
 
+    struct OSGEARTH_EXPORT CullNodeByFrameNumber : public osg::NodeCallback {
+        unsigned _frame;
+        CullNodeByFrameNumber() : _frame(0) { }
+        void operator()( osg::Node* node, osg::NodeVisitor* nv ) {
+            if ( nv->getFrameStamp()->getFrameNumber() - _frame <= 1 )
+                traverse(node, nv);
+        }
+    };
+
     /**
      * A pixel-based AutoTransform variant.
      */

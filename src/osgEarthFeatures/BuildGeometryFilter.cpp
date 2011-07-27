@@ -381,13 +381,6 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
         }
 
         _result = _geode.release();
-
-        //if ( context.hasReferenceFrame() )
-        //{
-        //    osg::MatrixTransform* delocalizer = new osg::MatrixTransform( context.inverseReferenceFrame() );
-        //    delocalizer->addChild( _result.get() );
-        //    _result = delocalizer;
-        //}
     }
     else
     {
@@ -395,8 +388,4 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
     }
 
     return context;
-
-    //FilterContext outCx( context );
-    //outCx.setReferenceFrame( osg::Matrixd::identity() ); // clear the ref frame.
-    //return outCx;
 }

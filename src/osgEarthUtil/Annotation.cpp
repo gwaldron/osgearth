@@ -22,6 +22,7 @@
 #include <osgEarth/Utils>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/BuildGeometryFilter>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -134,17 +135,49 @@ void PlacemarkNode::setText( const std::string& text )
 
 //------------------------------------------------------------------------
 
-CircleNode::CircleNode(MapNode*          mapNode,
-                       const osg::Vec3d& center,
-                       const Linear&     radius,
-                       const Style&      style,
-                       bool              draped,
-                       unsigned          numSegments) :
+GeometryNode::GeometryNode(Geometry*    geom,
+                           const Style& style) :
+_geom ( geom ),
+_style( style )
+{
+    init();
+}
+
+void
+GeometryNode::init()
+{
+    this->removeChildren( 0, this->getNumChildren() );
+
+    FeatureList features;
+    features.push_back( new Feature(_geom.get(), _style) );
+    BuildGeometryFilter bg;
+    bg.push( features, FilterContext() );
+    osg::Node* node = bg.getNode();
+
+    this->addChild( node );
+}
+
+//------------------------------------------------------------------------
+
+// options:
+// - geodetic, draped
+// - projected
+// - localized
+
+CircleNode::CircleNode(MapNode*                mapNode,
+                       const osg::Vec3d&       center,
+                       const Linear&           radius,
+                       const Style&            style,
+                       bool                    draped,
+                       unsigned                numSegments) :
 FeatureNode( mapNode, 0L, draped )
 {
     if ( mapNode )
     {
-        GeometryFactory factory( mapNode->getMap()->getProfile()->getSRS() );
+        const SpatialReference* targetSRS = mapNode->getMap()->getProfile()->getSRS();
+
+        GeometryFactory factory( targetSRS );
+
         Geometry* geom = factory.createCircle(center, radius, numSegments);
         if ( geom )
         {

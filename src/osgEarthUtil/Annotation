@@ -89,30 +89,48 @@ namespace osgEarth { namespace Util { namespace Annotation
         void init();
     };
 
+    /**
+     * Simple node that renders a Geometry into a scene graph node. The coordinates
+     * of the geometry are explicit; there is no association with spatial reference
+     * or a map. You can use this object to create a geometry for use in a local
+     * tangent plane coordinate system.
+     */
+    class OSGEARTHUTIL_EXPORT GeometryNode : public osg::MatrixTransform
+    {
+    public:
+        GeometryNode( Geometry* geom, const Style& style );
+
+    protected:
+        void init();
+
+        osg::ref_ptr<Geometry> _geom;
+        Style                  _style;
+    };
+
     class OSGEARTHUTIL_EXPORT CircleNode : public FeatureNode
     {
     public:
         CircleNode( 
-            MapNode*          mapNode,
-            const osg::Vec3d& center,
-            const Linear&     radius,
-            const Style&      style,
-            bool              draped =true,
-            unsigned          numSegments =0);
+            MapNode*                mapNode,
+            const osg::Vec3d&       center,
+            const Linear&           radius,
+            const Style&            style,
+            bool                    draped      =true,
+            unsigned                numSegments =0 );
     };
 
     class OSGEARTHUTIL_EXPORT EllipseNode : public FeatureNode
     {
     public:
         EllipseNode( 
-            MapNode*          mapNode,
-            const osg::Vec3d& center,
-            const Linear&     radiusMajor,
-            const Linear&     radiusMinor,
-            const Angular&    rotationAngle,
-            const Style&      style,
-            bool              draped =true,
-            unsigned          numSegments =0);
+            MapNode*                mapNode,
+            const osg::Vec3d&       center,
+            const Linear&           radiusMajor,
+            const Linear&           radiusMinor,
+            const Angular&          rotationAngle,
+            const Style&            style,
+            bool                    draped      =true,
+            unsigned                numSegments =0 );
     };
 
 } } } // namespace osgEarth::Util::Annotation

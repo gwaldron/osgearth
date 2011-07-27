@@ -426,7 +426,7 @@ CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, doubl
 }
 
 bool
-CubeSpatialReference::preTransform(double& x, double& y, void* context) const
+CubeSpatialReference::preTransform(double& x, double& y, double& z, void* context) const
 {
     // Convert the incoming points from cube => face => lat/long.
     int face;
@@ -449,7 +449,7 @@ CubeSpatialReference::preTransform(double& x, double& y, void* context) const
 }
 
 bool
-CubeSpatialReference::postTransform(double& x, double& y, void* context) const
+CubeSpatialReference::postTransform(double& x, double& y, double& z, void* context) const
 {
     //Convert the incoming points from lat/lon back to face coordinates
     int face;

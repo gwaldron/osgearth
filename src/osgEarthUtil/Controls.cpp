@@ -1011,7 +1011,11 @@ Frame::draw( const ControlContext& cx, DrawableList& out )
         geom->push_back( osg::Vec3d( _renderSize.x()-1, _renderSize.y()-1, 0 ) );
         geom->push_back( osg::Vec3d( 0, _renderSize.y()-1, 0 ) );
 
-        GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y() );
+        Style style;
+        LineSymbol* line = style.getOrCreate<LineSymbol>();
+        line->stroke()->color() = Color::White;
+        line->stroke()->width() = 2.5f;
+        GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y(), style );
         ras.draw( geom.get() );
 
         osg::Image* image = ras.finalize();

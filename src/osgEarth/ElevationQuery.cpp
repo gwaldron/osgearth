@@ -155,7 +155,7 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
     osg::Vec3d mapPoint = point;
     if ( pointSRS && !pointSRS->isEquivalentTo( _mapf.getProfile()->getSRS() ) )
     {
-        if ( !pointSRS->transform( point.x(), point.y(), _mapf.getProfile()->getSRS(), mapPoint.x(), mapPoint.y() ) )
+        if ( !pointSRS->transform2D( point.x(), point.y(), _mapf.getProfile()->getSRS(), mapPoint.x(), mapPoint.y() ) )
         {
             OE_WARN << LC << "Fail: coord transform failed" << std::endl;
             return false;

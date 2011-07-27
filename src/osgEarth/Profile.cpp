@@ -188,7 +188,7 @@ Profile::create(const std::string& srsInitString,
         // automatically figure out proper mercator extents:
         GDAL_SCOPED_LOCK;
         double e, dummy;
-        srs->getGeographicSRS()->transform( 180.0, 0.0, srs.get(), e, dummy );
+        srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs.get(), e, dummy );
         return Profile::create( srs.get(), -e, -e, e, e, vsrs.get(), numTilesWideAtLod0, numTilesHighAtLod0 );
     }
     else

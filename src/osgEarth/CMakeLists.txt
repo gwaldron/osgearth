@@ -44,6 +44,7 @@ SET(LIB_PUBLIC_HEADERS
     JsonUtils
     Layer
     Locators
+    LocalTangentPlane
     Map
     MapNode
     MapNodeOptions
@@ -111,6 +112,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     JsonUtils.cpp
     Layer.cpp
     Locators.cpp
+    LocalTangentPlane.cpp
     Map.cpp
     MapNode.cpp
     MapNodeOptions.cpp

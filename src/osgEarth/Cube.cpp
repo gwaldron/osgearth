@@ -522,8 +522,8 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
         if ( crosses_pole ) // full x extent.
         {
             bool north = face == 4; // else south
-            to_srs->getGeographicSRS()->transform( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
-            to_srs->getGeographicSRS()->transform( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
+            to_srs->getGeographicSRS()->transform2D( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
+            to_srs->getGeographicSRS()->transform2D( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
         }
 
         else
@@ -563,8 +563,8 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
             }
             else
             {
-                bool ok1 = transform( lonmin, latmin, to_srs, in_out_xmin, in_out_ymin, context );
-                bool ok2 = transform( lonmax, latmax, to_srs, in_out_xmax, in_out_ymax, context );
+                bool ok1 = transform2D( lonmin, latmin, to_srs, in_out_xmin, in_out_ymin, context );
+                bool ok2 = transform2D( lonmax, latmax, to_srs, in_out_xmax, in_out_ymax, context );
                 ok = ok1 && ok2;
             }
         }

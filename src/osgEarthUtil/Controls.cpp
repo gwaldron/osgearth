@@ -1279,6 +1279,8 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 VBox::calcFill(const ControlContext& cx)
 {
+    Container::calcFill( cx );
+
     float used_x = padding().x();
     float used_y = padding().y() - childSpacing();
 
@@ -1289,7 +1291,7 @@ VBox::calcFill(const ControlContext& cx)
     {
         Control* child = i->get();
 
-        child->calcFill(cx);
+        //child->calcFill(cx);
 
         used_y += child->margin().y() + childSpacing();
         if ( !hc && child->horizFill() )
@@ -1310,7 +1312,7 @@ VBox::calcFill(const ControlContext& cx)
     if ( vc && renderHeight(vc) < (_renderSize.y() - used_y) )
         renderHeight(vc) = _renderSize.y() - used_y;
    
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 }
 
 void
@@ -1320,12 +1322,15 @@ VBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 
     osg::Vec2f childCursor = _renderPos;
 
+    osg::Vec2f renderArea = _renderSize - padding().size();
+
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
         Control* child = i->get();
-        //child->calcPos( cx, childCursor, _renderSize );
-        child->calcPos( cx, childCursor, _renderSize - padding().size() ); // GW1
-        childCursor.y() += child->margin().top() + child->renderSize().y() + child->margin().bottom() + childSpacing();
+        child->calcPos( cx, childCursor, renderArea ); // GW1
+        float deltaY = child->margin().top() + child->renderSize().y() + child->margin().bottom() + childSpacing();
+        childCursor.y() += deltaY;
+        renderArea.y() -= deltaY;
     }
 }
 
@@ -1403,6 +1408,8 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 HBox::calcFill(const ControlContext& cx)
 {
+    Container::calcFill( cx );
+
     float used_x = padding().x() - childSpacing();
     float used_y = padding().y();
 
@@ -1413,7 +1420,7 @@ HBox::calcFill(const ControlContext& cx)
     {
         Control* child = i->get();
 
-        child->calcFill(cx);
+        //child->calcFill(cx);
 
         used_x += child->margin().x() + childSpacing();
         if ( !hc && child->horizFill() )
@@ -1434,7 +1441,7 @@ HBox::calcFill(const ControlContext& cx)
     if ( vc && renderHeight(vc) < (_renderSize.y() - used_y) )
         renderHeight(vc) = _renderSize.y() - used_y;
    
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 }
 
 void
@@ -1443,16 +1450,25 @@ HBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
     Container::calcPos( cx, cursor, parentSize );
 
     osg::Vec2f childCursor = _renderPos;
-        //_renderPos.x() + padding().left(),
-        //_renderPos.y() + padding().top() );
 
+#if 0
     // collect all the members
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
         Control* child = i->get();
-        //child->calcPos( cx, childCursor, _renderSize );
         child->calcPos( cx, childCursor, _renderSize - padding().size() ); // GW1
         childCursor.x() += child->margin().left() + child->renderSize().x() + child->margin().right() + childSpacing();
+    }
+#endif
+
+    osg::Vec2f renderArea = _renderSize - padding().size();
+    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+    {
+        Control* child = i->get();
+        child->calcPos( cx, childCursor, renderArea );
+        float deltaX = child->margin().left() + child->renderSize().x() + child->margin().right() + childSpacing();
+        childCursor.x() += deltaX;
+        renderArea.x() -= deltaX;        
     }
 }
 
@@ -1602,6 +1618,8 @@ Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
 void
 Grid::calcFill(const ControlContext& cx)
 {
+    Container::calcFill( cx );
+
     int numRows = _rows.size();
     int numCols = numRows > 0 ? _rows[0].size() : 0;
 
@@ -1610,6 +1628,7 @@ Grid::calcFill(const ControlContext& cx)
         for( int c=0; c<numCols; ++c ) //<_rows[r].size(); ++c )
         {
             Control* child = cell(c,r).get();
+
             if ( child )
             {
                 if ( child->horizFill() )
@@ -1620,7 +1639,7 @@ Grid::calcFill(const ControlContext& cx)
         }
     }
 
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 }
 
 void
@@ -1635,7 +1654,7 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
 
     for( int r=0; r<numRows; ++r )
     {
-        for( int c=0; c<numCols; ++c ) //_rows[r].size(); ++c )
+        for( int c=0; c<numCols; ++c )
         {
             Control* child = cell(c,r).get();
             if ( child )

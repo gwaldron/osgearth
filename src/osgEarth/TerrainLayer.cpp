@@ -90,8 +90,8 @@ TerrainLayerOptions::getConfig() const
     conf.updateObjIfSet( "profile", _profile );
     conf.updateIfSet( "max_data_level", _maxDataLevel);
 
-    if ( driver().isSet() )
-        conf.merge( driver()->getConfig() );
+    //Merge the TileSource options
+    if (driver().isSet()) conf.merge( driver()->getConfig() );
 
     return conf;
 }
@@ -113,6 +113,7 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getObjIfSet( "profile", _profile );
     conf.getIfSet( "max_data_level", _maxDataLevel);
+
 
     if ( conf.hasValue("driver") )
         driver() = TileSourceOptions(conf);

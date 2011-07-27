@@ -63,6 +63,7 @@ CompositeTileSourceOptions::add( TileSource* source, const ImageLayerOptions& op
     Component c;
     c._tileSourceInstance = source;
     c._imageLayerOptions = options;
+    _components.push_back( c );
 }
 
 Config 

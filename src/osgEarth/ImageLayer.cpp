@@ -90,7 +90,7 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
     conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
     conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);   
 }
 
 Config
@@ -120,7 +120,7 @@ ImageLayerOptions::getConfig() const
     conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
     conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
     conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-
+    
     return conf;
 }
 

@@ -119,7 +119,10 @@ int main(int argc, char** argv)
     { 
         GDALOptions gdalOpt; 
         gdalOpt.url() = files[i];
-        compositeOpt.add( gdalOpt); 
+        ImageLayerOptions ilo(files[i], gdalOpt);
+        //Set the transparent color on each image        
+        //ilo.transparentColor() = osg::Vec4ub(255, 255, 206, 0); 
+        compositeOpt.add( ilo );
         OE_NOTICE << "Added file " << files[i] << std::endl;
     } 
 

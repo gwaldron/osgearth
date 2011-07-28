@@ -52,6 +52,21 @@ namespace osgEarth { namespace Symbology
             unsigned          numSegments =0);
 
         /**
+         * Creates an arc geometry.
+         * @param center Center point (must be in map SRS if a map was provided in ctor)
+         * @param radius Arc radius
+         * @param start  Starting angle of the arc
+         * @param end    Ending angle of the arc
+         * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         */
+        Geometry* createArc(
+            const osg::Vec3d& center,
+            const Linear&     radius,
+            const Angular&    startAngle,
+            const Angular&    endAngle,
+            unsigned          numSegments =0);
+
+        /**
          * Creates a ellipse geometry.
          * @param center Center point (must be in map SRS if a map was provided in ctor)
          * @param radiusMajor Major radius (X-axis) length

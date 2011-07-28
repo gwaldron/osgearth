@@ -134,6 +134,9 @@ namespace osgEarth { namespace Util { namespace Annotation
         osg::ref_ptr<osg::Group> _parent;
     };
 
+    /** 
+     * Renders a circle that can drape on a MapNode terrain.    
+     */
     class OSGEARTHUTIL_EXPORT CircleNode : public FeatureNode
     {
     public:
@@ -146,6 +149,9 @@ namespace osgEarth { namespace Util { namespace Annotation
             unsigned                numSegments =0 );
     };
 
+    /** 
+     * Renders a circle that can drape on a MapNode terrain.    
+     */
     class OSGEARTHUTIL_EXPORT EllipseNode : public FeatureNode
     {
     public:

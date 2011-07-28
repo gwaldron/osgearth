@@ -163,7 +163,6 @@ GeometryNode::init()
     BuildGeometryFilter bg;
     bg.push( features, FilterContext() );
     osg::Node* node = bg.getNode();
-
     setNode( node );
 }
 
@@ -197,26 +196,6 @@ FeatureNode( mapNode, 0L, draped )
         }
     }
 }
-
-#if 0
-CircleNode::CircleNode(MapNode*          mapNode,
-                       const osg::Vec3d& center,
-                       const Linear&     radius,
-                       const Style&      style,
-                       bool              draped,
-                       bool              localPlane,
-                       unsigned          numSegments)
-{
-    GeometryFactory factory( mapNode->getMap(), GeometryFactory::TYPE_GEODETIC );
-    if ( localPlane )
-    {
-        Geometry* geom = factory.createCircle(center, radius, numSegments, GeometryFactory::TYPE_LOCALIZED);
-        if ( geom )
-        {
-            GeometryCompiler compiler;
-            compiler.compile(
-}
-#endif
 
 //------------------------------------------------------------------------
 

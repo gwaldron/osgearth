@@ -740,6 +740,8 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
 
         g->setTexCoordArray( 0, t );
 
+        tex->setResizeNonPowerOfTwoHint(false);
+
         tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
         tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
         g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );

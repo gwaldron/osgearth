@@ -83,7 +83,7 @@ DrapeableNode::setDraped( bool value )
 void
 DrapeableNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( _draped && nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR && _node.valid() )
+    if ( _draped && nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR && _node.valid() && _mapNode.valid() )
     {
         CullNodeByFrameNumber* cb = static_cast<CullNodeByFrameNumber*>(_node->getCullCallback());
         cb->_frame = nv.getFrameStamp()->getFrameNumber();

@@ -96,6 +96,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
+    DrapeableNode.cpp
     EGM.cpp
     ElevationLayer.cpp
     ElevationQuery.cpp

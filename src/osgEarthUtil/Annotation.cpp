@@ -137,8 +137,20 @@ void PlacemarkNode::setText( const std::string& text )
 
 GeometryNode::GeometryNode(Geometry*    geom,
                            const Style& style) :
-_geom ( geom ),
-_style( style )
+DrapeableNode( NULL ),
+_geom        ( geom ),
+_style       ( style )
+{
+    init();
+}
+
+GeometryNode::GeometryNode(MapNode*     mapNode,
+                           Geometry*    geom,
+                           const Style& style,
+                           bool         draped ) :
+DrapeableNode( mapNode, draped ),
+_geom        ( geom ),
+_style       ( style )
 {
     init();
 }
@@ -146,15 +158,13 @@ _style( style )
 void
 GeometryNode::init()
 {
-    this->removeChildren( 0, this->getNumChildren() );
-
     FeatureList features;
     features.push_back( new Feature(_geom.get(), _style) );
     BuildGeometryFilter bg;
     bg.push( features, FilterContext() );
     osg::Node* node = bg.getNode();
 
-    this->addChild( node );
+    setNode( node );
 }
 
 //------------------------------------------------------------------------

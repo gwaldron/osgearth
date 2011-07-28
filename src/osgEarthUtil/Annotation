@@ -95,16 +95,43 @@ namespace osgEarth { namespace Util { namespace Annotation
      * or a map. You can use this object to create a geometry for use in a local
      * tangent plane coordinate system.
      */
-    class OSGEARTHUTIL_EXPORT GeometryNode : public osg::MatrixTransform
+    class OSGEARTHUTIL_EXPORT GeometryNode : public DrapeableNode
     {
     public:
         GeometryNode( Geometry* geom, const Style& style );
 
+        GeometryNode( MapNode* mapNode, Geometry* geom, const Style& style, bool draped =true );
+
+        /**
+         * Gets or creates a parent node for the internal draped node. Typically you
+         * would use this to install a Transform node atop the draped node.
+         */
+        template<typename T>
+        T* getOrCreateParent()
+        {
+            if ( _parent.valid() )
+            {
+                return static_cast<T*>( _parent.get() );
+            }
+            else
+            {
+                T* p = new T();
+                _parent = p;
+                if ( getNode() )
+                {
+                    p->addChild( getNode() );
+                    setNode( _parent.get() );
+                }
+                return p;
+            }
+        }
+
     protected:
         void init();
 
-        osg::ref_ptr<Geometry> _geom;
-        Style                  _style;
+        osg::ref_ptr<Geometry>   _geom;
+        Style                    _style;
+        osg::ref_ptr<osg::Group> _parent;
     };
 
     class OSGEARTHUTIL_EXPORT CircleNode : public FeatureNode

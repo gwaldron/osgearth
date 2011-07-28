@@ -63,6 +63,15 @@ public:
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         MaskSource::initialize( referenceURI, map );
+
+        if ( _features.valid() )
+        {
+            _features->initialize( referenceURI );
+        } 
+        else
+        {
+            OE_WARN << LC << "No FeatureSource; nothing will be rendered (" << getName() << ")" << std::endl;
+        }
     }
 
     osg::Vec3dArray* createBoundary( ProgressCallback* progress )

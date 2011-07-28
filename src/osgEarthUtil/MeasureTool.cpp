@@ -231,50 +231,17 @@ void MeasureToolHandler::addEventHandler(MeasureToolEventHandler* handler )
     _eventHandlers.push_back( handler );
 }
 
-static double getGreatCircleDistance( osgEarth::Symbology::Geometry* geometry )
-{
-    double length = 0;
-    
-    if (geometry && geometry->size() > 1)
-    {
-        for (unsigned int i = 0; i < geometry->size()-1; ++i)
-        {
-            const osg::Vec3d& current = (*geometry)[i];
-            const osg::Vec3d& next    = (*geometry)[i+1];
-            length += GeoMath::distance(osg::DegreesToRadians(current.y()), osg::DegreesToRadians(current.x()),
-            osg::DegreesToRadians(next.y()), osg::DegreesToRadians(next.x()));
-        }
-    }
-    return length;
-}
-
-static double
-getRhumbDistance( osgEarth::Symbology::Geometry* geometry)
-{
-    double length = 0;
-    if (geometry && geometry->size() > 1)
-    {
-        for (unsigned int i = 0; i < geometry->size()-1; ++i)
-        {
-            const osg::Vec3d& current = (*geometry)[i];
-            const osg::Vec3d& next    = (*geometry)[i+1];
-            length += GeoMath::rhumbDistance(osg::DegreesToRadians(current.y()), osg::DegreesToRadians(current.x()),
-                                             osg::DegreesToRadians(next.y()), osg::DegreesToRadians(next.x()));                                             
-        }
-    }
-    return length;
-}
 
 void MeasureToolHandler::fireDistanceChanged()
 {
     double distance = 0;
     if (_geoInterpolation == GEOINTERP_GREAT_CIRCLE)
     {
-        distance = getGreatCircleDistance( _feature->getGeometry() );
+        distance = GeoMath::distance(_feature->getGeometry()->asVector());
     }
     else if (_geoInterpolation == GEOINTERP_RHUMB_LINE) 
     {
-        distance = getRhumbDistance( _feature->getGeometry() );
+        distance = GeoMath::rhumbDistance(_feature->getGeometry()->asVector());
     }
     for (MeasureToolEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i)
     {

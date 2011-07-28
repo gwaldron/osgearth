@@ -68,7 +68,7 @@ struct ClickViewpointHandler : public ControlEventHandler
     ClickViewpointHandler( const Viewpoint& vp ) : _vp(vp) { }
     Viewpoint _vp;
 
-    virtual void onClick( class Control* control, int buttonMask )
+    virtual void onClick( class Control* control )
     {
         s_manip->setViewpoint( _vp, 4.5 );
     }

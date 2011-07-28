@@ -94,8 +94,22 @@ namespace osgEarth { namespace Util { namespace Controls
     class ControlEventHandler : public osg::Referenced
     {
     public:
-        virtual void onClick( class Control* control, int mouseButtonMask ) { }
-        virtual void onValueChanged( class Control* control, float value ) { }
+        /** Click event. */
+        virtual void onClick( class Control* control ) { }
+
+        /** Click event with mouse button mask (see osgGA::GUIEventAdapter::MouseButtonMask) */
+        virtual void onClick( class Control* control, int mouseButtonMask ) { onClick(control); }
+
+        /** Click event with click position (negative values mean you're in the left or top padding) */
+        virtual void onClick( class Control* control, const osg::Vec2f& pos, int mouseButtonMask ) { onClick(control, mouseButtonMask); }
+
+        /** Value event (double) */
+        virtual void onValueChanged( class Control* control, double value ) { }
+
+        /** Value event (float, sliders etc.) */
+        virtual void onValueChanged( class Control* control, float value ) { onValueChanged(control, (double)value); }
+
+        /** Value event (boolean, checkboxes etc.) */
         virtual void onValueChanged( class Control* control, bool value ) { }
     };
 

@@ -437,12 +437,13 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
             }
         }
         else 
-        {
+        {            
             if ( ea.getEventType() == osgGA::GUIEventAdapter::RELEASE )
             {
                 for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
                 {
-                    i->get()->onClick( this, ea.getButtonMask() );
+                    osg::Vec2f relXY( ea.getX() - _renderPos.x(), cx._vp->height() - ea.getY() - _renderPos.y() );
+                    i->get()->onClick( this, relXY, ea.getButtonMask() );
                 }
             }
         }
@@ -548,13 +549,11 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             osg::Matrix m = t->getATMatrix( cx._viewContextID );
             _bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() ) * m;
             _bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() ) * m;
-            //_renderSize.set( _bmax.x() - _bmin.x(), _bmax.y() - _bmin.y() );
         }
         else
         {
             _bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() );
             _bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() );
-            //_renderSize.set( bbox.xMax()-bbox.xMin(), bbox.yMax()-bbox.yMin() );
         }
 
         _renderSize.set(

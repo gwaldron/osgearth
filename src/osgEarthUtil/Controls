@@ -100,17 +100,20 @@ namespace osgEarth { namespace Util { namespace Controls
         /** Click event with mouse button mask (see osgGA::GUIEventAdapter::MouseButtonMask) */
         virtual void onClick( class Control* control, int mouseButtonMask ) { onClick(control); }
 
-        /** Click event with click position (negative values mean you're in the left or top padding) */
+        /** Click event with click position (negative values mean you're in the left/top padding) */
         virtual void onClick( class Control* control, const osg::Vec2f& pos, int mouseButtonMask ) { onClick(control, mouseButtonMask); }
 
-        /** Value event (double) */
-        virtual void onValueChanged( class Control* control, double value ) { }
-
-        /** Value event (float, sliders etc.) */
-        virtual void onValueChanged( class Control* control, float value ) { onValueChanged(control, (double)value); }
-
-        /** Value event (boolean, checkboxes etc.) */
+        /** Value events */
         virtual void onValueChanged( class Control* control, bool value ) { }
+        virtual void onValueChanged( class Control* control, double value ) { }
+        virtual void onValueChanged( class Control* control, float value ) { onValueChanged(control, (double)value); }
+        virtual void onValueChanged( class Control* control, int value ) { onValueChanged(control, (double)value); }
+        virtual void onValueChanged( class Control* control, const osg::Vec3f& value ) { }
+        virtual void onValueChanged( class Control* control, const osg::Vec2f& value ) { onValueChanged(control, osg::Vec3f(value.x(),value.y(),0.0f)); }
+        virtual void onValueChanged( class Control* control, const osg::Vec3d& value ) { }
+        virtual void onValueChanged( class Control* control, const osg::Vec2d& value ) { onValueChanged(control, osg::Vec3d(value.x(),value.y(),0.0)); }
+        virtual void onValueChanged( class Control* control, const std::string& value ) { }
+        virtual void onValueChanged( class Control* control, void* value ) { }
     };
 
     typedef std::list< osg::ref_ptr<ControlEventHandler> > ControlEventHandlerList;

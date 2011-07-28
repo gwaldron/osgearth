@@ -93,8 +93,7 @@ namespace osgEarth
         CompositeTileSourceOptions _options;
         bool _initialized;
         bool _dynamic;
-        
-        osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
+       
 
         CompositeTileSourceOptions::ComponentVector _components;
     };

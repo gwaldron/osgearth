@@ -558,14 +558,14 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         }
 
         _renderSize.set(
-            padding().left() + (_bmax.x() - _bmin.x()) + padding().right(),
-            padding().left() + (_bmax.y() - _bmin.y()) + padding().right() );
+            (_bmax.x() - _bmin.x()) + padding().x(),
+            (_bmax.y() - _bmin.y()) + padding().y() );
 
         _drawable = t;
 
         out_size.set(
-            margin().left() + margin().right() + _renderSize.x(),
-            margin().top() + margin().bottom() + _renderSize.y() );
+            margin().x() + _renderSize.x(),
+            margin().y() + _renderSize.y() );
     }
     else
     {

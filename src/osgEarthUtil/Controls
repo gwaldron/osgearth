@@ -106,12 +106,12 @@ namespace osgEarth { namespace Util { namespace Controls
         /** Value events */
         virtual void onValueChanged( class Control* control, bool value ) { }
         virtual void onValueChanged( class Control* control, double value ) { }
-        virtual void onValueChanged( class Control* control, float value ) { onValueChanged(control, (double)value); }
-        virtual void onValueChanged( class Control* control, int value ) { onValueChanged(control, (double)value); }
+        virtual void onValueChanged( class Control* control, float value ) { }
+        virtual void onValueChanged( class Control* control, int value ) { }
         virtual void onValueChanged( class Control* control, const osg::Vec3f& value ) { }
-        virtual void onValueChanged( class Control* control, const osg::Vec2f& value ) { onValueChanged(control, osg::Vec3f(value.x(),value.y(),0.0f)); }
+        virtual void onValueChanged( class Control* control, const osg::Vec2f& value ) { }
         virtual void onValueChanged( class Control* control, const osg::Vec3d& value ) { }
-        virtual void onValueChanged( class Control* control, const osg::Vec2d& value ) { onValueChanged(control, osg::Vec3d(value.x(),value.y(),0.0)); }
+        virtual void onValueChanged( class Control* control, const osg::Vec2d& value ) { }
         virtual void onValueChanged( class Control* control, const std::string& value ) { }
         virtual void onValueChanged( class Control* control, void* value ) { }
     };

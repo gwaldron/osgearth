@@ -252,7 +252,7 @@ namespace osgEarth
     colorToString( const osg::Vec4ub& c )
     {
         std::stringstream ss;
-        ss << c.r() << " " << c.g() << " " << c.b() << " " << c.a();
+        ss << (int)c.r() << " " << (int)c.g() << " " << (int)c.b() << " " << (int)c.a();
         std::string ssStr;
         ssStr = ss.str();
         return ssStr;

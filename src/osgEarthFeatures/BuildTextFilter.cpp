@@ -45,7 +45,7 @@ BuildTextFilter::push( FeatureList& input, const FilterContext& context )
     }
 
     // if a provider is set, load the plugin and create the node.
-    if ( text->provider().isSet() )
+    if ( !text->provider()->empty() && !text->provider().isSetTo("legacy") )
     {
         LabelSourceOptions options;
         options.setDriver( *text->provider() );
@@ -61,7 +61,7 @@ BuildTextFilter::push( FeatureList& input, const FilterContext& context )
         }
     }
 
-    else // default built-in behiavior... to be deprecated
+    else // legacy behavior... will be deprecated.
     {
         BuildTextOperator op;
         _result = op( input, text, context );

@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildTextOperator>
-#include <osgEarthFeatures/Annotation>
 #include <osgEarth/Utils>
 #include <osgDB/ReadFile>
 #include <osgDB/ReaderWriter>
@@ -98,25 +97,11 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         if (!feature->getGeometry()) continue;
 
         std::string text;
-        //If the feature is a TextAnnotation, just get the value from it
-        TextAnnotation* annotation = dynamic_cast<TextAnnotation*>(feature);
-        if (annotation)
+        if (symbol->content().isSet())
         {
-            text = annotation->text();
+            //Get the text from the specified content and referenced attributes
+            text = feature->eval( contentExpr );
         }
-        else if (symbol->content().isSet())
-        {
-             //Get the text from the specified content and referenced attributes
-             text = feature->eval( contentExpr );
-             //std::string content = symbol->content().value();
-             //text = parseAttributes(feature, content, symbol->contentAttributeDelimiter().value());
-        }
-        //else if (symbol->attribute().isSet())
-        //{
-        //    //Get the text from the specified attribute
-        //    std::string attr = symbol->attribute().value();
-        //    text = feature->getAttr(attr);
-        //}
 
         if (text.empty()) continue;
 
@@ -175,10 +160,10 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
             }
             else
             {
-              position = geom->getBounds().center();
+                position = geom->getBounds().center();
             }
         }
-        
+
         osgText::Text* t = new osgText::Text();
         t->setText( text );
 
@@ -190,7 +175,7 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
 
         t->setFont( font );
         t->setAutoRotateToScreen( rotateToScreen );
-        
+
         TextSymbol::SizeMode sizeMode = symbol->sizeMode().isSet() ? symbol->sizeMode().get() : TextSymbol::SIZEMODE_SCREEN;
         if (sizeMode == TextSymbol::SIZEMODE_SCREEN) {
             t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
@@ -204,10 +189,10 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         //TODO:  We need to do something to account for autotransformed text that is under a LOD.  Setting the initial bound works sometimes but not all the time.
         if (rotateToScreen)
         {
-            //Set the initial bound so that OSG will traverse the text even if it's under an LOD.
-            osg::BoundingBox bb;
-            bb.expandBy( osg::BoundingSphere(position, size));
-            t->setInitialBound( bb);
+        //Set the initial bound so that OSG will traverse the text even if it's under an LOD.
+        osg::BoundingBox bb;
+        bb.expandBy( osg::BoundingSphere(position, size));
+        t->setInitialBound( bb);
         }*/
         //t->setCharacterSizeMode( osgText::TextBase::OBJECT_COORDS_WITH_MAXIMUM_SCREEN_SIZE_CAPPED_BY_FONT_HEIGHT );
         //t->setCharacterSize( 300000.0f );
@@ -232,23 +217,23 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         }
 
         if (_hideClutter)
-		    {
-			      osg::BoundingBox tBound = t->getBound();
-			      osg::ref_ptr<osgUtil::PolytopeIntersector> intersector = new osgUtil::PolytopeIntersector(osgUtil::Intersector::MODEL, tBound.xMin(), tBound.yMin(), tBound.xMax(), tBound.yMax());
-			      osgUtil::IntersectionVisitor intersectVisitor(intersector.get());
-			      result->accept(intersectVisitor);
+        {
+            osg::BoundingBox tBound = t->getBound();
+            osg::ref_ptr<osgUtil::PolytopeIntersector> intersector = new osgUtil::PolytopeIntersector(osgUtil::Intersector::MODEL, tBound.xMin(), tBound.yMin(), tBound.xMax(), tBound.yMax());
+            osgUtil::IntersectionVisitor intersectVisitor(intersector.get());
+            result->accept(intersectVisitor);
 
-			      if (!intersector->containsIntersections())
-			      {
-				        result->addDrawable( t );
-				        if (removeDuplicateLabels) labelNames.insert(text);
-			      }
-	      }
-	      else
-	      {
-		        result->addDrawable( t );
-		        if (removeDuplicateLabels) labelNames.insert(text);
-	      }
+            if (!intersector->containsIntersections())
+            {
+                result->addDrawable( t );
+                if (removeDuplicateLabels) labelNames.insert(text);
+            }
+        }
+        else
+        {
+            result->addDrawable( t );
+            if (removeDuplicateLabels) labelNames.insert(text);
+        }
     }
     return result;
 }

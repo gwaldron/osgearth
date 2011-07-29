@@ -12,7 +12,6 @@ SET(LIB_NAME osgEarthFeatures)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
-    Annotation  
     BufferFilter
     BuildGeometryFilter  
     BuildTextFilter
@@ -52,7 +51,6 @@ SET(LIB_PUBLIC_HEADERS
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
-    Annotation.cpp
     BufferFilter.cpp
     BuildGeometryFilter.cpp 
     BuildTextFilter.cpp

@@ -162,6 +162,11 @@ namespace osgEarth
 
         qualified_double<T>( const T& rhs ) : _value(rhs._value), _units(rhs._units) { }
 
+        void set( double value, const Units& units ) {
+            _value = value;
+            _units = units;
+        }
+
         T& operator = ( const T& rhs ) {
             if ( _units.canConvert(rhs._units) )
                 _value = rhs.as(_units);

@@ -17,6 +17,7 @@ SET(LIB_PUBLIC_HEADERS
     EarthManipulator
     ElevationManager
     Export
+    Formatters
     Graticule
 	ImageOverlay	
 	MeasureTool
@@ -38,6 +39,7 @@ SET(LIB_COMMON_FILES
     Controls.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
+    Formatters.cpp
     Graticule.cpp
 	ImageOverlay.cpp
 	MeasureTool.cpp

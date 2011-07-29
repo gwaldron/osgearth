@@ -38,10 +38,14 @@ _mapNode( mapNode )
     init();
 }
 
-PlacemarkNode::PlacemarkNode(MapNode* mapNode, const std::string& iconURI, const std::string& text ) :
+PlacemarkNode::PlacemarkNode(MapNode*           mapNode, 
+                             const std::string& iconURI, 
+                             const std::string& text,
+                             const Style&       style) :
 _mapNode( mapNode ),
 _iconURI( iconURI ),
-_text   ( text )
+_text   ( text ),
+_style  ( style )
 {
     init();
 }
@@ -83,6 +87,19 @@ PlacemarkNode::init()
         _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()) );
 
     _label = new LabelControl(_text);
+
+    TextSymbol* s = _style.get<TextSymbol>();
+    if ( s )
+    {
+        if ( s->font().isSet() )
+            _label->setFont( osgText::readFontFile( *s->font() ) );
+        if ( s->size().isSet() )
+            _label->setFontSize( *s->size() );
+        if ( s->fill().isSet() )
+            _label->setForeColor( s->fill()->color() );
+        if ( s->halo().isSet() )
+            _label->setHaloColor( s->halo()->color() );
+    }
 
     osg::ref_ptr<osg::Image> image;
     if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )

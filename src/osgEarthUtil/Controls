@@ -281,6 +281,9 @@ namespace osgEarth { namespace Util { namespace Controls
         void setFontSize( float value );
         float fontSize() const { return _fontSize; }
 
+        void setHaloColor( const osg::Vec4f& value );
+        const optional<osg::Vec4f>& haloColor() const { return _haloColor; }
+
     public: // Control
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
         //virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
@@ -292,6 +295,7 @@ namespace osgEarth { namespace Util { namespace Controls
         float _fontSize;
         osg::ref_ptr<osgText::Text> _drawable;
         osg::Vec3 _bmin, _bmax;
+        optional<osg::Vec4f> _haloColor;
     };
 
     /**
@@ -622,6 +626,9 @@ namespace osgEarth { namespace Util { namespace Controls
         /** Registers a control node with this bin. */
         void addNode( ControlNode* node );
 
+        /** Whether to fade-in controls when they appear in view (default=true) */
+        void setFading( bool value );
+
     private:
         typedef std::pair<float, osg::ref_ptr<ControlNode> > ControlNodePair;
         typedef std::multimap<float, osg::ref_ptr<ControlNode> > ControlNodeCollection;
@@ -638,6 +645,8 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::ref_ptr<osg::Group>      _group;
         std::vector<osg::BoundingBox> _taken;
         bool                          _sortByDistance;
+        bool                          _fading;
+        bool                          _sortingEnabled;
 
         friend class ControlCanvas;
         friend class ControlNode;
@@ -664,6 +673,9 @@ namespace osgEarth { namespace Util { namespace Controls
 
         /** gets the top-most control that intersects the specified position. */
         Control* getControlAtMouse( float x, float y ) const;
+
+        /** Toggles whether ControlNodes are allowed to overlap. */
+        void setAllowControlNodeOverlap( bool value );
 
     public:
         // internal- no need to call directly

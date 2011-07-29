@@ -510,6 +510,15 @@ LabelControl::setFontSize( float value )
 }
 
 void
+LabelControl::setHaloColor( const osg::Vec4f& value )
+{
+    if ( !_haloColor.isSet() || *_haloColor != value ) {
+        _haloColor = value;
+        dirty();
+    }
+}
+
+void
 LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
@@ -536,10 +545,11 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         if ( _font.valid() )
             t->setFont( _font.get() );
 
-        if ( backColor().isSet() )
+        if ( haloColor().isSet() )
         {
             t->setBackdropType( osgText::Text::OUTLINE );
-            t->setBackdropColor( backColor().value() );
+            t->setBackdropOffset( 0.03 );
+            t->setBackdropColor( haloColor().value() );
         }
 
         osg::BoundingBox bbox = t->getTextBB();
@@ -1855,7 +1865,9 @@ _screenPos  ( 0.0, 0.0, 0.0 )
 // ---------------------------------------------------------------------------
 
 ControlNodeBin::ControlNodeBin() :
-_sortByDistance( true )
+_sortingEnabled( true ),
+_sortByDistance( true ),
+_fading        ( true )
 {
     _group = new Group();
 
@@ -1876,6 +1888,12 @@ _sortByDistance( true )
 }
 
 void
+ControlNodeBin::setFading( bool value )
+{
+    _fading = value;
+}
+
+void
 ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 {
     const osg::Viewport* vp = context._vp.get();
@@ -1888,7 +1906,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
     ControlNodeCollection* drawList = 0L;
     ControlNodeCollection byDepth;
 
-    if ( _sortByDistance )
+    if ( _sortingEnabled && _sortByDistance )
     {
         for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); i++) 
         {
@@ -1967,19 +1985,23 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
               xform->setMatrix( osg::Matrixd::translate(x, y-context._vp->height(), 0) );
 
               osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
-
-              for( std::vector<osg::BoundingBox>::iterator u = _taken.begin(); u != _taken.end(); ++u )
+              if ( _sortingEnabled )
               {
-                  if ( u->intersects( bbox ) )
+                  // prevent overlap.
+                  for( std::vector<osg::BoundingBox>::iterator u = _taken.begin(); u != _taken.end(); ++u )
                   {
-                      nodeData._obscured = true;
-                      break;
+                      if ( u->intersects( bbox ) )
+                      {
+                          nodeData._obscured = true;
+                          break;
+                      }
                   }
               }
 
               if ( nodeData._obscured == false )
               {
-                  _taken.push_back( bbox );
+                  if ( _sortingEnabled )
+                    _taken.push_back( bbox );
 
                   // the geode holding this node's geometry:
                   osg::Geode* geode = static_cast<osg::Geode*>( xform->getChild(0) );
@@ -2012,18 +2034,21 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                       }
                   }
 
-                  // update the "visible time" uniform if it's changed. this will cause the
-                  // shader to "fade in" the label when it becomes visible.
-                  if ( !nodeData._uniform.valid() )
+                  if ( _fading )
                   {
-                      nodeData._uniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
-                      geode->getOrCreateStateSet()->addUniform( nodeData._uniform.get() );
-                  }
+                      // update the "visible time" uniform if it's changed. this will cause the
+                      // shader to "fade in" the label when it becomes visible.
+                      if ( !nodeData._uniform.valid() )
+                      {
+                          nodeData._uniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
+                          geode->getOrCreateStateSet()->addUniform( nodeData._uniform.get() );
+                      }
 
-                  float oldValue;
-                  nodeData._uniform->get( oldValue );
-                  if ( oldValue != nodeData._visibleTime )
-                      nodeData._uniform->set( nodeData._visibleTime );                
+                      float oldValue;
+                      nodeData._uniform->get( oldValue );
+                      if ( oldValue != nodeData._visibleTime )
+                          nodeData._uniform->set( nodeData._visibleTime );
+                  }
               }
 
               visible = !nodeData._obscured;
@@ -2147,6 +2172,12 @@ ControlCanvas::~ControlCanvas()
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
     _viewCanvasMap.erase( _context._view );
+}
+
+void
+ControlCanvas::setAllowControlNodeOverlap( bool value )
+{
+    getControlNodeBin()->_sortingEnabled = !value;
 }
 
 void

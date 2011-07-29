@@ -200,6 +200,8 @@ namespace osgEarth
             return _units.convertTo( convertTo, _value );
         }
 
+        const Units& getUnits() const { return _units; }
+
     private:
         double _value;
         Units  _units;

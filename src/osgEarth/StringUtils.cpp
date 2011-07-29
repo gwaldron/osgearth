@@ -32,9 +32,11 @@ _trimTokens  ( true )
 StringTokenizer::StringTokenizer(const std::string& input, 
                                  StringVector&      output,
                                  const std::string& delims, 
-                                 const std::string& quotes ) :
-_allowEmpties( true ),
-_trimTokens  ( true )
+                                 const std::string& quotes,
+                                 bool               allowEmpties,
+                                 bool               trimTokens ) :
+_allowEmpties( allowEmpties ),
+_trimTokens  ( trimTokens )
 {
     addDelims( delims );
     addQuotes( quotes );

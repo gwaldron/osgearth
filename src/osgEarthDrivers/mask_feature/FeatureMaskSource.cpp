@@ -20,6 +20,7 @@
 #include <osgEarth/MaskSource>
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
+#include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/FeatureSource>
 
 #include <osgDB/FileNameUtils>
@@ -74,7 +75,7 @@ public:
         }
     }
 
-    osg::Vec3dArray* createBoundary( ProgressCallback* progress )
+    osg::Vec3dArray* createBoundary( const SpatialReference* srs, ProgressCallback* progress )
     {
         if ( _failed )
             return 0L;
@@ -91,6 +92,18 @@ public:
                         Feature* f = cursor->nextFeature();
                         if ( f && f->getGeometry() )
                         {
+                            // Init a filter to tranform feature in desired SRS 
+                            if (!srs->isEquivalentTo(_features->getFeatureProfile()->getSRS())) {
+                                FilterContext cx;
+                                cx.profile() = new FeatureProfile(_features->getFeatureProfile()->getExtent());
+                                cx.isGeocentric() = _features->getFeatureProfile()->getSRS()->isGeographic();
+
+                                TransformFilter xform( srs );
+                                FeatureList featureList;
+                                featureList.push_back(f);
+                                cx = xform.push(featureList, cx);
+                            }
+
                             return f->getGeometry()->toVec3dArray();
                         }
                     }

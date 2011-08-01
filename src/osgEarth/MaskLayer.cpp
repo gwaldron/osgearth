@@ -113,7 +113,7 @@ MaskLayer::initialize( const std::string& referenceURI, const Map* map )
 }
 
 osg::Vec3dArray*
-MaskLayer::getOrCreateBoundary( ProgressCallback* progress )
+MaskLayer::getOrCreateBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
 {
     if ( _maskSource.valid() )
     {
@@ -125,7 +125,10 @@ MaskLayer::getOrCreateBoundary( ProgressCallback* progress )
 
         if ( !_boundary.valid() )
         {
-            _boundary = _maskSource->createBoundary( progress );
+			_boundary = _maskSource->createBoundary( srs, progress );
+
+			for (osg::Vec3dArray::iterator vIt = _boundary->begin(); vIt != _boundary->end(); ++vIt)
+				vIt->z() = vIt->z() * heightScale;
 
             _maskSource->sync( _maskSourceRev );
         }

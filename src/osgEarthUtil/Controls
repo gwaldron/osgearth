@@ -708,6 +708,9 @@ namespace osgEarth { namespace Util { namespace Controls
         friend struct ControlCanvasEventHandler;
         friend class ControlNode;
 
+        ControlCanvas( osgViewer::View* view, bool registerCanvas );
+        void init( osgViewer::View* view, bool registerCanvas );
+
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 
         // a static registry of canvases in the scene graph.

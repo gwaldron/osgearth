@@ -2119,7 +2119,7 @@ ControlCanvas::get( osg::View* view, bool installInSceneData )
         osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(view);
         if ( view2 )
         {
-            canvas = new ControlCanvas( view2 );
+            canvas = new ControlCanvas( view2, false );
             _viewCanvasMap[view] = canvas;
 
             if ( installInSceneData )
@@ -2134,6 +2134,18 @@ ControlCanvas::get( osg::View* view, bool installInSceneData )
 
 ControlCanvas::ControlCanvas( osgViewer::View* view ) :
 _contextDirty(true)
+{
+    init( view, true );
+}
+
+ControlCanvas::ControlCanvas( osgViewer::View* view, bool registerCanvas ) :
+_contextDirty( true )
+{
+    init( view, registerCanvas );
+}
+
+void
+ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
 {
     this->setDataVariance( osg::Object::DYNAMIC );
 
@@ -2162,6 +2174,7 @@ _contextDirty(true)
     this->addChild( _controlNodeBin->getControlGroup() );
 
     // register this canvas.
+    if ( registerCanvas )
     {
         OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
         _viewCanvasMap[view] = this;

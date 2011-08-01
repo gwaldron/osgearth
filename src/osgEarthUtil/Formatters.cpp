@@ -19,6 +19,7 @@
 #include <osgEarthUtil/Formatters>
 #include <iomanip>
 #include <sstream>
+#include <cstdio>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;

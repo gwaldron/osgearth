@@ -24,6 +24,7 @@
 #include <osgEarth/Config>
 #include <osgEarth/Progress>
 #include <osgEarth/Revisioning>
+#include <osgEarth/SpatialReference>
 #include <osg/Referenced>
 
 namespace osgEarth
@@ -62,7 +63,7 @@ namespace osgEarth
         /**
          * Subclass implements this method to create the boundary geometry.
          */
-        virtual osg::Vec3dArray* createBoundary( ProgressCallback* progress =0L ) =0;
+        virtual osg::Vec3dArray* createBoundary( const SpatialReference* srs, ProgressCallback* progress =0L ) =0;
 
     public:
 		virtual void initialize( const std::string& referenceURI, const Map* map ) { }

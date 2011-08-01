@@ -74,7 +74,7 @@ public:
         }
     }
 
-    osg::Vec3dArray* createBoundary( ProgressCallback* progress )
+    osg::Vec3dArray* createBoundary( const SpatialReference* srs, ProgressCallback* progress )
     {
         if ( _failed )
             return 0L;

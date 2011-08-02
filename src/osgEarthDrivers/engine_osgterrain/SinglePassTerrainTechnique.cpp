@@ -586,6 +586,11 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     skirt->setUseVertexBufferObjects(true);
     geode->addDrawable( skirt );
 
+	osg::ref_ptr<GeoLocator> geoLocator = _masterLocator;
+	// Avoid coordinates conversion when GEOCENTRIC, so get a GEOGRAPHIC version of Locator 
+	if (_masterLocator->getCoordinateSystemType() == osgTerrain::Locator::GEOCENTRIC) {
+		geoLocator = _masterLocator->getGeographicFromGeocentric();
+	}
 
 	float scaleHeight = 
 		_verticalScaleOverride != 1.0? _verticalScaleOverride :
@@ -626,8 +631,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
           }
 
           osg::Vec3d min_ndc, max_ndc;
-          _masterLocator->convertModelToLocal(min, min_ndc);
-          _masterLocator->convertModelToLocal(max, max_ndc);
+          geoLocator->convertModelToLocal(min, min_ndc);
+          geoLocator->convertModelToLocal(max, max_ndc);
 
           bool x_match = ((min_ndc.x() >= 0.0 && max_ndc.x() <= 1.0) ||
                           (min_ndc.x() <= 0.0 && max_ndc.x() > 0.0) ||
@@ -1010,7 +1015,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         for (osg::Vec3dArray::iterator it = (*mr)._boundary->begin(); it != (*mr)._boundary->end(); ++it)
         {
           osg::Vec3d local;
-          _masterLocator->convertModelToLocal(*it, local);
+          geoLocator->convertModelToLocal(*it, local);
           maskPoly->push_back(local);
         }
 

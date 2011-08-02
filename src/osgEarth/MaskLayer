@@ -96,7 +96,7 @@ namespace osgEarth
          * Gets the geometric boundary polygon representing the area of the
          * terrain to mask out.
          */
-        osg::Vec3dArray* getOrCreateBoundary( ProgressCallback* progress =0L );
+        osg::Vec3dArray* getOrCreateBoundary( float heightScale = 1.0, const SpatialReference* srs = NULL, ProgressCallback* progress =0L );
 
     public:
 

@@ -106,7 +106,7 @@ _featureGraph( featureGraph )
             if (_featureGraph->getStyles().getDefaultStyle( outStyle))
             {            
                 outStyle.getSymbol<LineSymbol>()->stroke()->stipple().unset();
-                _featureGraph->setStyle( _featureGraph->getStyles() );
+                _featureGraph->setStyles( _featureGraph->getStyles() );
             }
         }
 
@@ -144,7 +144,7 @@ _featureGraph( featureGraph )
             if (_featureGraph->getStyles().getDefaultStyle( outStyle))
             {            
                 outStyle.getSymbol<LineSymbol>()->stroke()->stipple() =  0x00FF ;
-                _featureGraph->setStyle( _featureGraph->getStyles() );
+                _featureGraph->setStyles( _featureGraph->getStyles() );
             }
             s_editor = new FeatureEditor(s_activeFeature, s_source, s_mapNode);
             s_root->addChild( s_editor );
@@ -163,7 +163,7 @@ _styleSheet(styleSheet)
     }
 
     void onClick( Control* control, int mouseButtonMask ) {
-        _features->setStyle( _styleSheet );
+        _features->setStyles( _styleSheet );
     }
 
     osg::ref_ptr< FeatureModelGraph > _features;
@@ -178,16 +178,7 @@ StyleSheet buildStyleSheet( const osg::Vec4 &color, float width )
 
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = color;
-    ls->stroke()->width() = width;  
-
-    MarkerSymbol* ms = style.getOrCreate<MarkerSymbol>();
-    ms->url() = "E:/devel/osgearth/2.x/repo/data/tree.osg";
-    ms->scale() = osg::Vec3(10000,10000,10000);
-
-    TextSymbol* ts = style.getOrCreate<TextSymbol>();
-    ts->provider() = "overlay";
-    ts->content() = StringExpression("Hello, world");
-    ts->size() = 32.0f;
+    ls->stroke()->width() = width;
 
     AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
     as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
@@ -212,25 +203,32 @@ int main(int argc, char** argv)
     s_viewer = &viewer;
 
     // Start by creating the map:
-    Map* map = new Map();
+    s_mapNode = MapNode::load(arguments);
+    if ( !s_mapNode )
+    {
+        Map* map = new Map();
 
-    // Start with a basemap imagery layer; we'll be using the GDAL driver
-    // to load a local GeoTIFF file:
-    GDALOptions basemapOpt;
-    basemapOpt.url() = "../data/world.tif";
-    map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+        // Start with a basemap imagery layer; we'll be using the GDAL driver
+        // to load a local GeoTIFF file:
+        GDALOptions basemapOpt;
+        basemapOpt.url() = "../data/world.tif";
+        map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+
+        // That's it, the map is ready; now create a MapNode to render the Map:
+        MapNodeOptions mapNodeOptions;
+        mapNodeOptions.enableLighting() = false;
+
+        s_mapNode = new MapNode( map, mapNodeOptions );
+    }
+    s_mapNode->setNodeMask( 0x01 );
 
         
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
-    Style style;
-
-    LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
-    ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
-    ls->stroke()->width() = 2.0f;
+    StyleSheet styleSheet = buildStyleSheet( Color::Yellow, 2.0f );
 
     s_source = new FeatureListSource();
-    //Ring* line = new Ring();
+
     LineString* line = new LineString();
     line->push_back( osg::Vec3d(-60, 20, 0) );
     line->push_back( osg::Vec3d(-120, 20, 0) );
@@ -240,33 +238,19 @@ int main(int argc, char** argv)
     feature->setGeometry( line );
     s_source->insertFeature( feature );
     s_activeFeature = feature;
-
-
-
-    // That's it, the map is ready; now create a MapNode to render the Map:
-    MapNodeOptions mapNodeOptions;
-    mapNodeOptions.enableLighting() = false;
-
-    s_mapNode = new MapNode( map, mapNodeOptions );
-    s_mapNode->setNodeMask( 0x01 );
   
-
     s_root = new osg::Group;
     s_root->addChild( s_mapNode );
-
-    StyleSheet styleSheet;
-    styleSheet.addStyle( style );
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
         s_source.get(), 
         FeatureModelSourceOptions(), 
         new GeomFeatureNodeFactory(),
         styleSheet,
-        new Session( map ) );
+        new Session(s_mapNode->getMap()) );
 
     graph->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     graph->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-
 
     s_root->addChild( graph );
 

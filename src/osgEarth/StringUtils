@@ -79,6 +79,15 @@ namespace osgEarth
     }
 
     /**
+     * True is "ref" ends with "pattern"
+     */
+    static
+    bool endsWith( const std::string& ref, const std::string& pattern )
+    {
+        return ref.find( pattern ) == ref.length()-pattern.length();
+    }
+
+    /**
      * Splits a string up into a vector of strings based on a set of 
      * delimiters, quotes, and rules.
      */

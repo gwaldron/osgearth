@@ -82,6 +82,11 @@ namespace osgEarth
          */
         MapNode( Map* map, const MapNodeOptions& options );
 
+        /**
+         * Attempts to load a MapNOde from a ".earth" file in the arguments list
+         */
+        static MapNode* load( class osg::ArgumentParser& arguments );
+
     public:
 
         virtual const char* libraryName() const { return "osgEarth"; }

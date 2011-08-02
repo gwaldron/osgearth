@@ -752,7 +752,7 @@ FeatureModelGraph::getStyles()
 }
 
 void
-FeatureModelGraph::setStyle(const StyleSheet& styles)
+FeatureModelGraph::setStyles(const StyleSheet& styles)
 {
     _styles = styles;
     dirty();

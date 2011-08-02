@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/OverlayDecorator>
+#include <osg/ArgumentParser>
 #include <osg/PagedLOD>
 
 using namespace osgEarth;
@@ -118,6 +119,25 @@ public:
 
       unsigned int _numRemoved;
 };
+
+//---------------------------------------------------------------------------
+
+MapNode*
+MapNode::load(osg::ArgumentParser& args)
+{
+    for( unsigned i=1; i<args.argc(); ++i )
+    {
+        if ( args[i] && endsWith(args[i], ".earth") )
+        {
+            osg::ref_ptr<osg::Node> output;
+            if ( HTTPClient::readNodeFile( args[i], output ) == HTTPClient::RESULT_OK )
+            {
+                return dynamic_cast<MapNode*>( output.release() );
+            }
+        }
+    }    
+    return 0L;
+}
 
 //---------------------------------------------------------------------------
 

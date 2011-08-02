@@ -70,7 +70,7 @@ namespace osgEarth { namespace Features
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
 
         const StyleSheet& getStyles();
-        void setStyle(const StyleSheet& styles);
+        void setStyles(const StyleSheet& styles);
 
         void dirty();
 

@@ -100,6 +100,13 @@ MeasureToolHandler::setGeoInterpolation( GeoInterpolation geoInterpolation )
     }
 }
 
+void
+MeasureToolHandler::setLineStyle( const Style& style )
+{
+     _feature->style() = style;
+     _featureNode->init();
+}
+
 
 bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {    

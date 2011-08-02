@@ -155,6 +155,10 @@ main(int argc, char** argv)
 
     //Add a callback to update the label when the distance changes
     measureTool->addEventHandler( new MyMeasureToolCallback(label) );
+    
+    Style style;
+    style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Yellow;
+    measureTool->setLineStyle(style);
 
     //Add a checkbox to control if we are doing path based measurement or just point to point
     grid->setControl( 0, 1, new LabelControl("Path"));

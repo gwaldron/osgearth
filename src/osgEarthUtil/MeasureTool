@@ -23,13 +23,16 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
 #include <osgEarthFeatures/FeatureNode>
+#include <osgEarthSymbology/Style>
 #include <osg/Group>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 
 #include <osgEarthFeatures/FeatureModelGraph>
 
-namespace osgEarth { namespace Util {
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth::Symbology;
 
     struct OSGEARTHUTIL_EXPORT MeasureToolHandler : public osgGA::GUIEventHandler 
     {
@@ -63,6 +66,10 @@ namespace osgEarth { namespace Util {
 
         void setIsPath( bool path );
         bool getIsPath() const;
+
+        /** Sets the style of the measurment line (to something other than the default) */
+        void setLineStyle( const Style& style );
+        const Style& getLineStyle() const { return _feature->style().value(); }
 
         void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}

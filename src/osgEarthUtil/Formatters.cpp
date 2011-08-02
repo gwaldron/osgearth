@@ -24,26 +24,35 @@
 using namespace osgEarth;
 using namespace osgEarth::Util;
 
-#define LC "[CoordFormatter] "
+#define LC "[LatLongFormatter] "
 
-CoordFormatter::CoordFormatter( const Options& options ) :
-_options( options ),
-_prec   ( 4 )
+LatLongFormatter::LatLongFormatter(const AngularFormat& defaultFormat,
+                                   unsigned             options ) :
+_defaultFormat( defaultFormat ),
+_options      ( options ),
+_prec         ( 4 )
 {
-    //nop
+    if ( _defaultFormat == FORMAT_DEFAULT )
+    {
+        _defaultFormat = FORMAT_DEGREES_MINUTES_SECONDS;
+    }
 }
 
 std::string
-CoordFormatter::format( const Angular& angle, const AngularFormat& format )
+LatLongFormatter::format( const Angular& angle, const AngularFormat& format )
 {
     std::stringstream buf;
     std::string result;
     std::string space = _options & USE_SPACES ? " " : "";
 
+    AngularFormat f =
+        format == FORMAT_DEFAULT ? _defaultFormat :
+        format;
+
     if ( _prec > 0 )
         buf << std::setprecision(_prec);
 
-    switch( format )
+    switch( f )
     {
     case FORMAT_DECIMAL_DEGREES:
         {
@@ -64,7 +73,7 @@ CoordFormatter::format( const Angular& angle, const AngularFormat& format )
                 mf = 0.0;
             }
             if ( _options & USE_SYMBOLS )
-                buf << d << "°" << space << mf << "'";
+                buf << d << "\xb0" << space << mf << "'";
             else if ( _options & USE_COLONS )
                 buf << d << ":" << mf;
             else
@@ -78,7 +87,7 @@ CoordFormatter::format( const Angular& angle, const AngularFormat& format )
             int    d  = (int)floor(df);
             double mf = 60.0*(df-(double)d);
             int    m  = (int)floor(mf);
-            double sf = 60.0*(mf-(double)d);
+            double sf = 60.0*(mf-(double)m);
             if ( sf == 60.0 ) {
                 m += 1;
                 sf = 0.0;
@@ -88,7 +97,7 @@ CoordFormatter::format( const Angular& angle, const AngularFormat& format )
                 }
             }
             if ( _options & USE_SYMBOLS )
-                buf << d << "°" << space << m << "'" << space << sf << "\"";
+                buf << d << "\xb0" << space << m << "'" << space << sf << "\"";
             else if ( _options & USE_COLONS )
                 buf << d << ":" << m << ":" << sf;
             else
@@ -102,15 +111,15 @@ CoordFormatter::format( const Angular& angle, const AngularFormat& format )
 }
 
 bool
-CoordFormatter::parseAngle( const std::string& input, Angular& out_value )
+LatLongFormatter::parseAngle( const std::string& input, Angular& out_value )
 {
     const char* c = input.c_str();
 
     double d=0.0, m=0.0, s=0.0;
 
     if (sscanf(c, "%lf:%lf:%lf",     &d, &m, &s) == 3 ||
-        sscanf(c, "%lf°%lf'%lf\"",   &d, &m, &s) == 3 ||
-        sscanf(c, "%lf° %lf' %lf\"", &d, &m ,&s) == 3 ||
+        sscanf(c, "%lf\xb0%lf'%lf\"",   &d, &m, &s) == 3 ||
+        sscanf(c, "%lf\xb0 %lf' %lf\"", &d, &m ,&s) == 3 ||
         sscanf(c, "%lfd %lf' %lf\"", &d, &m, &s) == 3 ||
         sscanf(c, "%lfd %lfm %lfs",  &d, &m, &s) == 3 ||
         sscanf(c, "%lf %lf' %lf\"",  &d, &m, &s) == 3 )
@@ -120,8 +129,8 @@ CoordFormatter::parseAngle( const std::string& input, Angular& out_value )
     }
     else if (
         sscanf(c, "%lf:%lf",   &d, &m) == 2 ||
-        sscanf(c, "%lf° %lf'", &d, &m) == 2 ||
-        sscanf(c, "%lf°%lf'",  &d, &m) == 2 ||
+        sscanf(c, "%lf\xb0 %lf'", &d, &m) == 2 ||
+        sscanf(c, "%lf\xb0%lf'",  &d, &m) == 2 ||
         sscanf(c, "%lfd %lf'", &d, &m) == 2 ||
         sscanf(c, "%lfd %lfm", &d, &m) == 2 ||
         sscanf(c, "%lfd%lf'",  &d, &m) == 2 ||
@@ -131,7 +140,7 @@ CoordFormatter::parseAngle( const std::string& input, Angular& out_value )
         return true;
     }
     else if (
-        sscanf(c, "%lf°", &d) == 1 ||
+        sscanf(c, "%lf\xb0", &d) == 1 ||
         sscanf(c, "%lfd", &d) == 1 ||
         sscanf(c, "%lf",  &d) == 1 )
     {

@@ -56,7 +56,7 @@ const Units Units::FATHOMS           ( "fathoms",        "fm",  Units::TYPE_LINE
 const Units Units::KILOFEET          ( "kilofeet",       "kf",  Units::TYPE_LINEAR, 304.8 );
 const Units Units::KILOYARDS         ( "kiloyards",      "ky",  Units::TYPE_LINEAR, 914.4 );
 
-const Units Units::DEGREES           ( "degrees",        "º",   Units::TYPE_ANGULAR, 0.017453292519943295 );
+const Units Units::DEGREES           ( "degrees",        "\xb0",Units::TYPE_ANGULAR, 0.017453292519943295 );
 const Units Units::RADIANS           ( "radians",        "rad", Units::TYPE_ANGULAR, 1.0 );
 const Units Units::BAM               ( "BAM",            "bam", Units::TYPE_ANGULAR, 6.283185307179586476925286766559 );
 const Units Units::NATO_MILS         ( "mils",           "mil", Units::TYPE_ANGULAR, 9.8174770424681038701957605727484e-4 );

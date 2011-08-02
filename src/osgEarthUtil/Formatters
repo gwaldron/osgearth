@@ -24,23 +24,26 @@
 
 namespace osgEarth { namespace Util
 {
-    class OSGEARTHUTIL_EXPORT CoordFormatter
+    class OSGEARTHUTIL_EXPORT LatLongFormatter
     {
     public:
         enum AngularFormat {
+            FORMAT_DEFAULT,
             FORMAT_DECIMAL_DEGREES,
             FORMAT_DEGREES_DECIMAL_MINUTES,
             FORMAT_DEGREES_MINUTES_SECONDS
         };
 
         enum Options {
-            USE_SYMBOLS     = 1 << 0,   // whether to use symbols (e.g., ° ' ")
+            USE_SYMBOLS     = 1 << 0,   // whether to use symbols
             USE_COLONS      = 1 << 1,   // whether to separate components with colons
             USE_SPACES      = 1 << 2    // whether to separate components with spaces
         };
 
     public:
-        CoordFormatter( const Options& options =USE_SYMBOLS );
+        LatLongFormatter(          
+            const AngularFormat& defaultFormat =FORMAT_DEGREES_MINUTES_SECONDS,
+            unsigned             optionsMask   =(USE_SYMBOLS | USE_SPACES) );
 
         /**
          * Sets the output precision for decimal numbers  (default is 4)
@@ -55,7 +58,7 @@ namespace osgEarth { namespace Util
         /** 
          * Formats an angle into one of the supported angular formats
          */
-        std::string format( const Angular& angle, const AngularFormat& format );
+        std::string format( const Angular& angle, const AngularFormat& format =FORMAT_DEFAULT );
 
         /**
          * Parses a string into an angle (returning false if parsing fails).
@@ -63,8 +66,9 @@ namespace osgEarth { namespace Util
         bool parseAngle( const std::string& input, Angular& out_value );
 
     protected:
-        Options _options;
-        int     _prec;
+        unsigned      _options;
+        AngularFormat _defaultFormat;
+        int           _prec;
     };
 
 } } // namespace osgEarth::Util

@@ -30,6 +30,7 @@
 #include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/Viewpoint>
+#include <osgEarthUtil/Formatters>
 #include <osgEarthSymbology/Color>
 
 using namespace osgEarth::Util;
@@ -44,16 +45,18 @@ usage( const std::string& msg )
     OE_NOTICE << "USAGE: osgearth_viewer [--graticule] [--autoclip] file.earth" << std::endl;
     OE_NOTICE << "   --graticule     : displays a lat/long grid in geocentric mode" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
-    OE_NOTICE << "   --animateSky    : animates the sun across the sky" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
     OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
+    OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
+    
         
     return -1;
 }
 
-static EarthManipulator* s_manip         = 0L;
+static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
+static bool              s_dms           =false;
 
 struct SkySliderHandler : public ControlEventHandler
 {
@@ -96,8 +99,18 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
 
                 // transform it to map coordinates:
                 _map->worldPointToMapPoint(point, lla);
+
+                LatLongFormatter::AngularFormat fFormat = s_dms?
+                    LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS :
+                    LatLongFormatter::FORMAT_DECIMAL_DEGREES;
+                
+                LatLongFormatter f( fFormat );
+
                 std::stringstream ss;
-                ss << std::fixed << std::setprecision(2) << "lat " << lla.y() << "° lon " << lla.x() << "° elev " << lla.z() << "m";
+                ss 
+                    << "Lat: " << f.format(Angular(lla.y(),Units::DEGREES)) << "  "
+                    << "Lon: " << f.format(Angular(lla.x(),Units::DEGREES));
+
                 _label->setText( ss.str() );
             }
             else
@@ -112,10 +125,6 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
     osg::ref_ptr< LabelControl > _label;
     const Map*                   _map;
 };
-
-
-
-
 
 
 
@@ -198,18 +207,6 @@ void addMouseCoords(osgViewer::Viewer* viewer, const osgEarth::Map* map)
     viewer->addEventHandler( new MouseCoordsHandler(mouseCoords, map ) );
 }
 
-
-struct AnimateSunCallback : public osg::NodeCallback
-{
-    void operator()( osg::Node* node, osg::NodeVisitor* nv )
-    {
-        SkyNode* skyNode = static_cast<SkyNode*>(node);
-        double hours = fmod( osg::Timer::instance()->time_s()/4.0, 24.0 );
-        skyNode->setDateTime( 2011, 6, 6, hours );
-        OE_INFO << "TIME: " << hours << std::endl;
-    }
-};
-
 struct ViewpointHandler : public osgGA::GUIEventHandler
 {
     ViewpointHandler( const std::vector<Viewpoint>& viewpoints )
@@ -250,9 +247,9 @@ main(int argc, char** argv)
 
     bool useGraticule = arguments.read( "--graticule" );
     bool useAutoClip  = arguments.read( "--autoclip" );
-    bool animateSky   = arguments.read( "--animateSky");
-    bool useSky       = arguments.read( "--sky" ) || animateSky;
+    bool useSky       = arguments.read( "--sky" );
     bool jump         = arguments.read( "--jump" );
+    s_dms             = arguments.read( "--dms" );
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -296,10 +293,6 @@ main(int argc, char** argv)
                 s_sky->setDateTime( 2011, 3, 6, hours );
                 s_sky->attach( &viewer );
                 root->addChild( s_sky );
-                if ( animateSky )
-                {
-                    s_sky->setUpdateCallback( new AnimateSunCallback());
-                }
             }
 
             if ( externals.hasChild("autoclip") )

@@ -96,7 +96,7 @@ public:
                             if (!srs->isEquivalentTo(_features->getFeatureProfile()->getSRS())) {
                                 FilterContext cx;
                                 cx.profile() = new FeatureProfile(_features->getFeatureProfile()->getExtent());
-                                cx.isGeocentric() = _features->getFeatureProfile()->getSRS()->isGeographic();
+                                //cx.isGeocentric() = _features->getFeatureProfile()->getSRS()->isGeographic();
 
                                 TransformFilter xform( srs );
                                 FeatureList featureList;

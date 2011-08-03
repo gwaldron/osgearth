@@ -259,12 +259,12 @@ DiskCache::setImage( const TileKey& key, const CacheSpec& spec, const osg::Image
 		osg::ref_ptr<osg::Image> rgb = ImageUtils::convertToRGB8( image );
 		if (rgb.valid())
 		{
-			osgDB::writeImageFile(*rgb.get(), filename, op);
+			osgDB::writeImageFile(*rgb.get(), filename, op.get());
 		}
     }
     else
     {
-        osgDB::writeImageFile(*image, filename, op);
+        osgDB::writeImageFile(*image, filename, op.get());
     }
 }
 

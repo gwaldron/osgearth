@@ -134,8 +134,8 @@ struct ChangeImageHandler : public ControlEventHandler
       _preview(preview){ }
 
     void onClick( Control* control, int mouseButtonMask ) {
-        _overlay->setImage( _image );
-        _preview->setImage( _image );
+        _overlay->setImage( _image.get() );
+        _preview->setImage( _image.get() );
     }
     ImageOverlay* _overlay;
     osg::ref_ptr< osg::Image > _image;

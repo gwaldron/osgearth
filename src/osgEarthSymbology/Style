@@ -74,7 +74,7 @@ namespace osgEarth { namespace Symbology
         {
             for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
             {
-                Symbol* symbol = *it;
+                Symbol* symbol = (*it).get();
                 T* s = dynamic_cast<T*>(symbol);
                 if (s)
                     return s;
@@ -89,7 +89,7 @@ namespace osgEarth { namespace Symbology
         {
             for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
             {
-                Symbol* symbol = *it;
+                Symbol* symbol = (*it).get();
                 const T* s = dynamic_cast<const T*>(symbol);
                 if (s)
                     return s;

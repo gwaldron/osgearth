@@ -55,7 +55,7 @@ _intersectionMask(0xffffffff)
 
     _feature->style() = style;
 
-    _featureNode = new FeatureNode( _mapNode, _feature.get(), false);
+    _featureNode = new FeatureNode( _mapNode.get(), _feature.get(), false);
     
 
     //Disable lighting and depth testing for the feature graph

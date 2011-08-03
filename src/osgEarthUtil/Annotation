@@ -78,7 +78,7 @@ namespace osgEarth { namespace Util { namespace Annotation
          * Control to pop up when the user clicks on the placemark (TODO)
          */
         void setPopupControl( Control* control );
-        Control* getPopupControl() const { return _popupControl; }
+        Control* getPopupControl() const { return _popupControl.get(); }
 
     private:
         std::string                _iconURI;

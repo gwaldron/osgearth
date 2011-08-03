@@ -128,7 +128,7 @@ _ellipsoid(ellipsoid),
 _terrain(terrain)
 {   
     _overlayCallback = new OverlayCallback(this);
-    _overlay->addCallback( _overlayCallback );
+    _overlay->addCallback( _overlayCallback.get() );
     addDragger( ImageOverlay::CONTROLPOINT_CENTER );
     addDragger( ImageOverlay::CONTROLPOINT_LOWER_LEFT );
     addDragger( ImageOverlay::CONTROLPOINT_LOWER_RIGHT );
@@ -138,7 +138,7 @@ _terrain(terrain)
 
 ImageOverlayEditor::~ImageOverlayEditor()
 {
-    _overlay->removeCallback( _overlayCallback );
+    _overlay->removeCallback( _overlayCallback.get() );
 }
 
 void
@@ -149,11 +149,11 @@ ImageOverlayEditor::addDragger( ImageOverlay::ControlPoint controlPoint )
     _ellipsoid->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), 0, matrix);    
 
     IntersectingDragger* dragger = new IntersectingDragger;
-    dragger->setNode( _terrain );
+    dragger->setNode( _terrain.get() );
     dragger->setupDefaultGeometry();
     dragger->setMatrix(matrix);
     dragger->setHandleEvents( true );
-    dragger->addDraggerCallback(new ImageOverlayDraggerCallback(_overlay, _ellipsoid, controlPoint));
+    dragger->addDraggerCallback(new ImageOverlayDraggerCallback(_overlay.get(), _ellipsoid.get(), controlPoint));
 
     addChild(dragger);
     _draggers[ controlPoint ] = dragger;

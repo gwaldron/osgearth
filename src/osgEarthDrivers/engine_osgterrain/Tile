@@ -110,7 +110,7 @@ public:
     float getVerticalScale() const { return _verticalScale; }
     void setVerticalScale( float verticalScale );
 
-    osgTerrain::Locator* getLocator() const { return _locator; }
+    osgTerrain::Locator* getLocator() const { return _locator.get(); }
 
     const osgTerrain::TileID& getTileId() const { return _tileId; }
 

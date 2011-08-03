@@ -77,7 +77,12 @@ namespace osgEarth { namespace Util
     //------------------------------------------------------------------------
 
     /**
-     * Formats coordinate data as MGRS and parses MGRS strings.
+     * Formats coordinate data as MGRS.
+     *
+     * NOTE: This class does not yet handle the special UTM zone exceptions for
+     *       southwest Norway (zone 32V) and Svalbard (31X, 33X, 35X, 37X).
+     *
+     * See: http://en.wikipedia.org/wiki/Military_grid_reference_system
      */
     class OSGEARTHUTIL_EXPORT MGRSFormatter
     {
@@ -118,7 +123,7 @@ namespace osgEarth { namespace Util
 
     private:
         osg::ref_ptr<const SpatialReference> _refSRS;
-        bool                                 _useAA;
+        bool                                 _useAL;
         Precision                            _precision;
         unsigned                             _options;
     };

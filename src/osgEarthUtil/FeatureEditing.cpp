@@ -268,7 +268,7 @@ FeatureEditor::init()
         dragger->setupDefaultGeometry();
         dragger->setMatrix(matrix);
         dragger->setHandleEvents( true );        
-        dragger->addDraggerCallback(new MoveFeatureDraggerCallback(_feature, _source, _mapNode->getMap(), i) );
+        dragger->addDraggerCallback(new MoveFeatureDraggerCallback(_feature.get(), _source.get(), _mapNode->getMap(), i) );
 
         addChild(dragger);        
     }

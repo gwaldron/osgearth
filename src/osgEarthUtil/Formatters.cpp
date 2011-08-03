@@ -180,17 +180,17 @@ _options  ( options )
     {
         _refSRS = referenceSRS->getGeographicSRS();
         
-        // use the "AA" lettering scheme for these older datum ellipsoids.
+        // use the "AL" lettering scheme for these older datum ellipsoids.
         std::string eName = _refSRS->getEllipsoid()->getName();
-        _useAA = 
-            eName.find("bessel") != std::string::npos ||
-            eName.find("clark")  != std::string::npos ||
-            eName.find("clrk")   != std::string::npos;
+        _useAL = 
+            eName.find("bessel") == std::string::npos ||
+            eName.find("clark")  == std::string::npos ||
+            eName.find("clrk")   == std::string::npos;
     }
     else
     {
         _refSRS = SpatialReference::create( "wgs84" );
-        _useAA = false;
+        _useAL = false;
     }
 }
 
@@ -281,10 +281,10 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
         x = utmX - xWest;
 
         // find the vertical SQID offset (100KM increments) from the equator:
-        unsigned ySetOffset = 5 * (set % 2);
+        unsigned ySetOffset = 5 * (zone % 2); //(set % 2);
         int sqEquatorOffset = (int)floor(utmY/100000.0);
-        int absOffset = sqEquatorOffset + (10 * UTM_ROW_ALPHABET_SIZE);
-        if ( !_useAA )
+        int absOffset = ySetOffset + sqEquatorOffset + (10 * UTM_ROW_ALPHABET_SIZE);
+        if ( _useAL )
             absOffset += 10;
         sqid[1] = UTM_ROW_ALPHABET[absOffset % UTM_ROW_ALPHABET_SIZE];
         y = utmY - (100000.0*(double)sqEquatorOffset);

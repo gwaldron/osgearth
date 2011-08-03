@@ -819,7 +819,7 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
     if (_transform.valid())
     {
         _transform->removeChildren( 0, _transform->getNumChildren() );
-        _transform->addChild(_passes);
+        _transform->addChild(_passes.get());
     }
 
     typedef std::map<int, osg::ref_ptr<osg::Geode> > OrderedGeodes;
@@ -833,7 +833,7 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
     if ( tilef._colorLayers.size() == 0 )
     {
         // if there's no data, just make a placeholder pass
-		osg::Geode* geode = createPass(0, 0L, masterLocator, centerModel, prototype);
+		osg::Geode* geode = createPass(0, 0L, masterLocator, centerModel, prototype.get());
 		_passes->addChild( geode );
 	}
     else

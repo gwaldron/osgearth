@@ -19,13 +19,13 @@ namespace osgEarth { namespace Util
 
         ControlPointDraggerMap& getDraggers() { return _draggers; }
 
-        const osg::EllipsoidModel* getEllipsoid() const { return _ellipsoid;}
+        const osg::EllipsoidModel* getEllipsoid() const { return _ellipsoid.get();}
         void setEllipsoid( const osg::EllipsoidModel* ellipsoid) { _ellipsoid = ellipsoid; };
 
         osg::Node* getTerrain() const { return _terrain.get(); }
         void setTerrain( osg::Node* terrain) { _terrain = terrain;}
 
-        ImageOverlay* getOverlay() { return _overlay;}
+        ImageOverlay* getOverlay() { return _overlay.get();}
 
         void updateDraggers();
 

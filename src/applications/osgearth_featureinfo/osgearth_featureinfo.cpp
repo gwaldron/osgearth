@@ -86,7 +86,7 @@ void printAllFeatures(FeatureSource* features)
     while (cursor->hasMore())
     {
         osg::ref_ptr< Feature > feature = cursor->nextFeature();
-        printFeature( feature );
+        printFeature( feature.get() );
     }
 }
 

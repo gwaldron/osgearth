@@ -99,7 +99,7 @@ _featureGraph( featureGraph )
         //remove the editor if it's valid
         if (s_editor.valid())
         {
-            s_root->removeChild( s_editor );
+            s_root->removeChild( s_editor.get() );
             s_editor = NULL;
 
             Style outStyle;
@@ -113,7 +113,7 @@ _featureGraph( featureGraph )
         //Add the new add point handler
         if (!s_addPointHandler.valid() && s_activeFeature.valid())
         {
-            s_addPointHandler = new AddPointHandler(s_activeFeature, s_source.get(), s_mapNode->getMap()->getProfile()->getSRS());
+            s_addPointHandler = new AddPointHandler(s_activeFeature.get(), s_source.get(), s_mapNode->getMap()->getProfile()->getSRS());
             s_addPointHandler->setIntersectionMask( 0x1 );
             s_viewer->addEventHandler( s_addPointHandler.get() );
         }        
@@ -146,8 +146,8 @@ _featureGraph( featureGraph )
                 outStyle.getSymbol<LineSymbol>()->stroke()->stipple() =  0x00FF ;
                 _featureGraph->setStyles( _featureGraph->getStyles() );
             }
-            s_editor = new FeatureEditor(s_activeFeature, s_source, s_mapNode);
-            s_root->addChild( s_editor );
+            s_editor = new FeatureEditor(s_activeFeature.get(), s_source.get(), s_mapNode.get());
+            s_root->addChild( s_editor.get() );
         }
     }
 
@@ -240,7 +240,7 @@ int main(int argc, char** argv)
     s_activeFeature = feature;
   
     s_root = new osg::Group;
-    s_root->addChild( s_mapNode );
+    s_root->addChild( s_mapNode.get() );
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
         s_source.get(), 
@@ -300,7 +300,7 @@ int main(int argc, char** argv)
     }
    
     
-    viewer.setSceneData( s_root );
+    viewer.setSceneData( s_root.get() );
     viewer.setCameraManipulator( new EarthManipulator() );
 
     if ( !useOverlay )

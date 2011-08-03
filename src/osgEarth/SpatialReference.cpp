@@ -417,6 +417,14 @@ SpatialReference::getEllipsoid() const
 }
 
 const std::string&
+SpatialReference::getDatumName() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _datum;
+}
+
+const std::string&
 SpatialReference::getWKT() const 
 {
     if ( !_initialized )
@@ -1055,6 +1063,9 @@ SpatialReference::_init()
     double semi_minor_axis = OSRGetSemiMinor( _handle, &err );
     _ellipsoid = new osg::EllipsoidModel( semi_major_axis, semi_minor_axis );
 
+    // try to get an ellipsoid name:
+    _ellipsoid->setName( getOGRAttrValue(_handle, "SPHEROID", 0, true) );
+
     // extract the projection:
     if ( _name.empty() || _name == "unnamed" )
     {
@@ -1111,6 +1122,9 @@ SpatialReference::_init()
         _proj4 = proj4buf;
         OGRFree( proj4buf );
     }
+
+    // Try to extract the datum
+    _datum = getOGRAttrValue( _handle, "DATUM", 0, true );
 
     _initialized = true;
 }

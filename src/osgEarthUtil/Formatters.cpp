@@ -150,3 +150,132 @@ LatLongFormatter::parseAngle( const std::string& input, Angular& out_value )
 
     return false;
 }
+
+//------------------------------------------------------------------------
+
+#undef LC
+#define LC "[MGRSFormatter] "
+
+namespace
+{
+    static char*    GZD_ALPHABET     = "CDEFGHJKLMNPQRSTUVWXX";    // 2 X's because X is a 12 degree high grid zone
+    static char*    UTM_COL_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    static char*    UTM_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUV";
+    static unsigned UTM_ROW_ALPHABET_SIZE = 20;
+
+    static char*    UPS_COL_ALPHABET = "ABCFGHJKLPQRSTUXYZ";        // omit I, O, D, E, M, N, V, W
+    static char*    UPS_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // omit I, O
+    static unsigned UPS_ROW_ALPHABET_SIZE = 24;
+}
+
+MGRSFormatter::MGRSFormatter( const SpatialReference* referenceSRS )
+{
+    if ( referenceSRS )
+    {
+        _refSRS = referenceSRS->getGeographicSRS();
+        
+        // use the "AA" lettering scheme for these older datum ellipsoids.
+        std::string eName = _refSRS->getEllipsoid()->getName();
+        _useAA = 
+            eName.find("bessel") != std::string::npos ||
+            eName.find("clark")  != std::string::npos ||
+            eName.find("clrk")   != std::string::npos;
+    }
+    else
+    {
+        _refSRS = SpatialReference::create( "wgs84" );
+        _useAA = false;
+    }
+}
+
+std::string
+MGRSFormatter::format( double latDeg, double lonDeg ) const
+{
+    unsigned    zone;
+    char        gzd;
+    unsigned    x=0, y=0;
+    char        sqid[3];
+
+    sqid[0] = '?';
+    sqid[1] = '?';
+    sqid[2] = 0;
+
+    if ( latDeg >= 84.0 ) // north polar
+    {
+        zone = 0;
+        gzd = lonDeg < 0.0 ? 'Y' : 'Z';
+
+        osg::ref_ptr<const SpatialReference> ups = SpatialReference::create("+proj=ups +north");
+        if ( !ups.valid() )
+        {
+            OE_WARN << LC << "Failed to create UPS-NORTH SRS" << std::endl;
+            return "";
+        }
+
+        double upsX, upsY;
+        if ( _refSRS->transform2D( lonDeg, latDeg, ups.get(), upsX, upsY ) == false )
+        {
+            OE_WARN << LC << "Failed to transform lat/long to UPS-NORTH" << std::endl;
+            return "";
+        }
+
+
+    }
+
+    else if ( latDeg <= -80.0 ) // south polar
+    {
+        zone = 0;
+        gzd = lonDeg < 0.0 ? 'A' : 'B';
+    }
+
+    else // UTM
+    {
+        // figure out the grid zone designator
+        unsigned gzdIndex = ((unsigned)(latDeg+80.0))/8;
+        gzd = GZD_ALPHABET[gzdIndex];
+
+        // figure out the UTM zone:
+        zone = (unsigned)floor((lonDeg+180.0)/6.0);   // [0..59]
+        bool north = latDeg >= 0.0;
+
+        // convert the input coordinates to UTM:
+        // yes, always use +north so we get Y relative to equator
+        std::stringstream buf;
+        buf << "+proj=utm +zone=" << (zone+1) << " +north +units=m";
+        osg::ref_ptr<SpatialReference> utm = SpatialReference::create( buf.str() );
+
+        double utmX, utmY;
+        if ( _refSRS->transform2D( lonDeg, latDeg, utm.get(), utmX, utmY ) == false )
+        {
+            OE_WARN << LC << "Error transforming lat/long into UTM" << std::endl;
+            return "";
+        }
+
+        // the alphabet set:
+        unsigned set = zone % 6; // [0..5]
+
+        // find the horizontal SQID offset (100KM increments) from the central meridian:
+        unsigned xSetOffset = 8 * (set % 3);
+        double xMeridianOffset = utmX - 500000.0;
+        int sqMeridianOffset = xMeridianOffset >= 0.0 ? (int)floor(xMeridianOffset/100000.0) : -(int)floor(1.0-(xMeridianOffset/100000.0));
+        unsigned indexOffset = (4 + sqMeridianOffset);
+        sqid[0] = UTM_COL_ALPHABET[xSetOffset + indexOffset];
+        double xWest = 500000.0 + (100000.0*(double)sqMeridianOffset);
+        x = utmX - xWest;
+
+        // find the vertical SQID offset (100KM increments) from the equator:
+        unsigned ySetOffset = 5 * (set % 2);
+        int sqEquatorOffset = (int)floor(utmY/100000.0);
+        int absOffset = sqEquatorOffset + (10 * UTM_ROW_ALPHABET_SIZE);
+        if ( !_useAA )
+            absOffset += 10;
+        sqid[1] = UTM_ROW_ALPHABET[absOffset % UTM_ROW_ALPHABET_SIZE];
+        y = utmY - (100000.0*(double)sqEquatorOffset);
+    }
+
+    std::stringstream buf;
+    buf << (zone+1) << gzd << " " << sqid << " " << x << " " << y;
+    std::string result;
+    result = buf.str();
+    return result;
+}

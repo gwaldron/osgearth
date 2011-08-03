@@ -20,10 +20,13 @@
 #define OSGEARTH_UTIL_FORMATTERS_H
 
 #include <osgEarthUtil/Common>
+#include <osgEarth/SpatialReference>
 #include <osgEarth/Units>
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     class OSGEARTHUTIL_EXPORT LatLongFormatter
     {
     public:
@@ -69,6 +72,26 @@ namespace osgEarth { namespace Util
         unsigned      _options;
         AngularFormat _defaultFormat;
         int           _prec;
+    };
+
+
+    /**
+     * Formats coordinate data as MGRS and parses MGRS strings.
+     */
+    class OSGEARTHUTIL_EXPORT MGRSFormatter
+    {
+    public:
+        MGRSFormatter(
+            const SpatialReference* refSRS =0L );
+
+        /**
+         * Formats a lat/lon to an MGRS string.
+         */
+        std::string format( double latDeg, double lonDeg ) const;
+
+    private:
+        osg::ref_ptr<const SpatialReference> _refSRS;
+        bool                                 _useAA;
     };
 
 } } // namespace osgEarth::Util

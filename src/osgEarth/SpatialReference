@@ -213,6 +213,9 @@ namespace osgEarth
         /** Gets the string that was used to initialize this SRS */
         const std::string& getInitString() const;
 
+        /** Gets the datum identifier of this SRS (or empty string if not available) */
+        const std::string& getDatumName() const;
+
         /** Tests this SRS for equivalence with another. */
         virtual bool isEquivalentTo( const SpatialReference* rhs ) const;
 
@@ -265,6 +268,7 @@ namespace osgEarth
         std::string _init_type;
         std::string _init_str;
         std::string _init_str_lc;
+        std::string _datum;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference> _geo_srs;
 

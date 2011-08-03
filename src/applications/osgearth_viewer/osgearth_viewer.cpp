@@ -48,6 +48,7 @@ usage( const std::string& msg )
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
     OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
     OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
+    OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
     
         
     return -1;
@@ -57,6 +58,7 @@ static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
 static bool              s_dms           =false;
+static bool              s_mgrs          =false;
 
 struct SkySliderHandler : public ControlEventHandler
 {
@@ -100,16 +102,25 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
                 // transform it to map coordinates:
                 _map->worldPointToMapPoint(point, lla);
 
-                LatLongFormatter::AngularFormat fFormat = s_dms?
-                    LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS :
-                    LatLongFormatter::FORMAT_DECIMAL_DEGREES;
-                
-                LatLongFormatter f( fFormat );
-
                 std::stringstream ss;
-                ss 
-                    << "Lat: " << f.format(Angular(lla.y(),Units::DEGREES)) << "  "
-                    << "Lon: " << f.format(Angular(lla.x(),Units::DEGREES));
+
+                if ( s_mgrs )
+                {
+                    MGRSFormatter f;
+                    ss << "MGRS: " << f.format(lla.y(), lla.x()) << "   ";
+                }
+                 // lat/long
+                {
+                    LatLongFormatter::AngularFormat fFormat = s_dms?
+                        LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS :
+                        LatLongFormatter::FORMAT_DECIMAL_DEGREES;
+                    
+                    LatLongFormatter f( fFormat );
+
+                    ss 
+                        << "Lat: " << f.format(Angular(lla.y(),Units::DEGREES)) << "  "
+                        << "Lon: " << f.format(Angular(lla.x(),Units::DEGREES));
+                }
 
                 _label->setText( ss.str() );
             }
@@ -250,6 +261,7 @@ main(int argc, char** argv)
     bool useSky       = arguments.read( "--sky" );
     bool jump         = arguments.read( "--jump" );
     s_dms             = arguments.read( "--dms" );
+    s_mgrs            = arguments.read( "--mgrs" );
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );

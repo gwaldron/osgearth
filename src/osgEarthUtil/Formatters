@@ -74,6 +74,7 @@ namespace osgEarth { namespace Util
         int           _prec;
     };
 
+    //------------------------------------------------------------------------
 
     /**
      * Formats coordinate data as MGRS and parses MGRS strings.
@@ -81,17 +82,45 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT MGRSFormatter
     {
     public:
+        enum Precision
+        {
+            PRECISION_100000M = 100000,     // i.e., omit the numerical offsets altogether
+            PRECISION_10000M  = 10000,
+            PRECISION_1000M   = 1000,
+            PRECISION_100M    = 100,
+            PRECISION_10M     = 10,
+            PRECISION_1M      = 1
+        };
+
+        enum Options
+        {
+            USE_SPACES        = 0 << 1
+        };
+
+    public:
+        /**
+         * Initialized an MGRS formatter. 
+         *
+         * @param precision Precision with which to print the MGRS string (see Precision above)
+         * @param refSRS    Reference geographic SRS for MGRS encoding. Older datums
+         *                  (Clark and Bessel) change the N/S lettering scheme. Default=WGS84.
+         * @param options   Formatting options (see Options above)
+         */
         MGRSFormatter(
-            const SpatialReference* refSRS =0L );
+            Precision               precision =PRECISION_1M,
+            const SpatialReference* refSRS    =0L,
+            unsigned                options   =0);
 
         /**
-         * Formats a lat/lon to an MGRS string.
+         * Formats a lat/lon (in degrees) as an MGRS string.
          */
         std::string format( double latDeg, double lonDeg ) const;
 
     private:
         osg::ref_ptr<const SpatialReference> _refSRS;
         bool                                 _useAA;
+        Precision                            _precision;
+        unsigned                             _options;
     };
 
 } } // namespace osgEarth::Util

@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <sstream>
 #include <cstdio>
+#include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
@@ -164,11 +165,16 @@ namespace
     static unsigned UTM_ROW_ALPHABET_SIZE = 20;
 
     static char*    UPS_COL_ALPHABET = "ABCFGHJKLPQRSTUXYZ";        // omit I, O, D, E, M, N, V, W
+    static unsigned UPS_COL_ALPHABET_SIZE = 18;
     static char*    UPS_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // omit I, O
     static unsigned UPS_ROW_ALPHABET_SIZE = 24;
 }
 
-MGRSFormatter::MGRSFormatter( const SpatialReference* referenceSRS )
+MGRSFormatter::MGRSFormatter(Precision               precision,
+                             const SpatialReference* referenceSRS,
+                             unsigned                options ) :
+_precision( precision ),
+_options  ( options )
 {
     if ( referenceSRS )
     {
@@ -195,37 +201,48 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
     char        gzd;
     unsigned    x=0, y=0;
     char        sqid[3];
+    std::string space;
+
+    if ( _options & USE_SPACES )
+        space = " ";
 
     sqid[0] = '?';
     sqid[1] = '?';
     sqid[2] = 0;
 
-    if ( latDeg >= 84.0 ) // north polar
+    if ( latDeg >= 84.0 || latDeg <= -80.0 ) // polar projection
     {
+        bool isNorth = latDeg > 0.0;
         zone = 0;
-        gzd = lonDeg < 0.0 ? 'Y' : 'Z';
+        gzd = isNorth ? (lonDeg < 0.0 ? 'Y' : 'Z') : (lonDeg < 0.0? 'A' : 'B');
 
-        osg::ref_ptr<const SpatialReference> ups = SpatialReference::create("+proj=ups +north");
+        osg::ref_ptr<const SpatialReference> ups = isNorth?
+            SpatialReference::create( "+proj=stere +lat_ts=90 +lat_0=90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0" ) :
+            SpatialReference::create( "+proj=stere +lat_ts=-90 +lat_0=-90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0" );
+
         if ( !ups.valid() )
         {
-            OE_WARN << LC << "Failed to create UPS-NORTH SRS" << std::endl;
+            OE_WARN << LC << "Failed to create UPS SRS" << std::endl;
             return "";
         }
 
         double upsX, upsY;
         if ( _refSRS->transform2D( lonDeg, latDeg, ups.get(), upsX, upsY ) == false )
         {
-            OE_WARN << LC << "Failed to transform lat/long to UPS-NORTH" << std::endl;
+            OE_WARN << LC << "Failed to transform lat/long to UPS" << std::endl;
             return "";
         }
 
+        int sqXOffset = upsX >= 0.0 ? (int)floor(upsX/100000.0) : -(int)floor(1.0-(upsX/100000.0));
+        int sqYOffset = upsY >= 0.0 ? (int)floor(upsY/100000.0) : -(int)floor(1.0-(upsY/100000.0));
 
-    }
+        int alphaOffset = isNorth ? 7 : 12;
 
-    else if ( latDeg <= -80.0 ) // south polar
-    {
-        zone = 0;
-        gzd = lonDeg < 0.0 ? 'A' : 'B';
+        sqid[0] = UPS_COL_ALPHABET[ (UPS_COL_ALPHABET_SIZE+sqXOffset) % UPS_COL_ALPHABET_SIZE ];
+        sqid[1] = UPS_ROW_ALPHABET[alphaOffset + sqYOffset];
+
+        x = upsX - (100000.0*(double)sqXOffset);
+        y = upsY - (100000.0*(double)sqYOffset);
     }
 
     else // UTM
@@ -274,7 +291,31 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
     }
 
     std::stringstream buf;
-    buf << (zone+1) << gzd << " " << sqid << " " << x << " " << y;
+
+    if ( (unsigned)_precision > PRECISION_1M )
+    {
+        x /= (unsigned)_precision;
+        y /= (unsigned)_precision;
+    }
+
+    buf << (zone+1) << gzd << space << sqid;
+
+    if ( (unsigned)_precision < PRECISION_100000M )
+    {
+        int sigdigs =
+            _precision == PRECISION_10000M ? 1 :
+            _precision == PRECISION_1000M  ? 2 :
+            _precision == PRECISION_100M   ? 3 :
+            _precision == PRECISION_10M    ? 4 :
+            5;
+
+        buf << space
+            << std::setfill('0')
+            << std::setw(sigdigs) << x
+            << space
+            << std::setw(sigdigs) << y;
+    }
+
     std::string result;
     result = buf.str();
     return result;

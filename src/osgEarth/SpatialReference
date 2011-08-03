@@ -300,37 +300,6 @@ namespace osgEarth
 
         SpatialReference* validate();
     };
-
-
-    class /*OSGEARTH_EXPORT*/ GeoVec3d : public osg::Vec3d
-    {
-    public:
-        GeoVec3d( const SpatialReference* srs ) 
-            : osg::Vec3d(0,0,0), _srs(srs) { }
-        GeoVec3d( double x, double y, const SpatialReference* srs )
-            : osg::Vec3d(x,y,0), _srs(srs) { }
-        GeoVec3d( double x, double y, double z, const SpatialReference* srs )
-            : osg::Vec3d(x,y,z), _srs(srs) { }
-        GeoVec3d( const osg::Vec3d& rhs, const SpatialReference* srs )
-            : osg::Vec3d(rhs), _srs(srs) { }
-        GeoVec3d( const GeoVec3d& rhs ) // copy
-            : osg::Vec3d(rhs), _srs(rhs._srs) { }
-
-        const SpatialReference* srs() const { return _srs; }
-
-        bool isValid() const { return _srs.valid(); }
-
-        GeoVec3d transform( const SpatialReference* toSRS ) const {
-            GeoVec3d result( *this );
-            if (!_srs->transform( x(), y(), z(), toSRS, result.x(), result.y(), result.z()) )
-                result._srs = 0L;
-            return result;                
-        }
-
-    protected:
-        osg::ref_ptr<const SpatialReference> _srs;
-    };
-
 }
 
 

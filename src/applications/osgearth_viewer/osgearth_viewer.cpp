@@ -106,7 +106,7 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
 
                 if ( s_mgrs )
                 {
-                    MGRSFormatter f;
+                    MGRSFormatter f( MGRSFormatter::PRECISION_1M );
                     ss << "MGRS: " << f.format(lla.y(), lla.x()) << "   ";
                 }
                  // lat/long

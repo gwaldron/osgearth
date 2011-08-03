@@ -1025,7 +1025,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 #if 1
         //Do a diff on the polygons to get the actual mask skirt
         osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly;
-        maskSkirtPoly->difference(maskPoly, outPoly);
+        maskSkirtPoly->difference(maskPoly.get(), outPoly);
 #else
         osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly = maskSkirtPoly;
 #endif
@@ -1041,7 +1041,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         
         std::vector<int> skirtIndices;
 
-        osgEarth::Symbology::GeometryIterator i( outPoly, false );
+        osgEarth::Symbology::GeometryIterator i( outPoly.get(), false );
         while( i.hasMore() )
         {
           osgEarth::Symbology::Geometry* part = i.next();

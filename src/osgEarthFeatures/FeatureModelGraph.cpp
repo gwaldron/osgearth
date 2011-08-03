@@ -591,10 +591,10 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
                 if ( !group->containsNode( styleGroup ) )
                     group->addChild( styleGroup );                
 
-                if ( _factory->createOrUpdateNode( cursor, *feature->style(), context, node ) )
+                if ( _factory->createOrUpdateNode( cursor.get(), *feature->style(), context, node ) )
                 {
                     if ( node.valid() )
-                        styleGroup->addChild( node );
+                        styleGroup->addChild( node.get() );
                 }
             }
         }

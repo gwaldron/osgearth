@@ -272,7 +272,7 @@ int main(int argc, char** argv)
     // assemble the rest of the scene graph and go
     osgViewer::Viewer viewer(arguments);
 
-    group->addChild( loadedModel );
+    group->addChild( loadedModel.get() );
     group->addChild( createMenu(&viewer) );
     viewer.setSceneData(group);
     

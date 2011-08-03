@@ -247,6 +247,7 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+    osgViewer::Viewer viewer(arguments);
 
     bool useGraticule = arguments.read( "--graticule" );
     bool useAutoClip  = arguments.read( "--autoclip" );
@@ -258,8 +259,6 @@ main(int argc, char** argv)
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
         return usage( "Unable to load earth model." );
-
-    osgViewer::Viewer viewer(arguments);
     
     s_manip = new EarthManipulator();
     viewer.setCameraManipulator( s_manip );

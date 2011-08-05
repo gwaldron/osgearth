@@ -27,19 +27,31 @@ namespace osgEarth { namespace Symbology
 {
     using namespace osgEarth;
 
+    /**
+     * Symbol that directs the GeometryCompiler to create extruded 3D geometry
+     * from 2D vector data.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT ExtrusionSymbol : public Symbol
     {
     public:
         enum HeightReference
         {
-            HEIGHT_REFERENCE_Z,   // height is relative to feature Z (default)
-            HEIGHT_REFERENCE_MSL  // height is relative to MSL
+            /** Means that the "height" value as provided in this symbol is expressed
+                relative to the Z of the input geometry. This is the usual way to extrude
+                geometry- extrude up from the geometry's base Z height. (default.) */
+            HEIGHT_REFERENCE_Z,
+
+            /** Means the "height" value is expressed in absolute terms, i.e., relative to 
+                MSL (mean sea level, which is usually the map's ellipsoid). If your height
+                value is an absolute elevation, use this to "extrude down" to the terrain. */
+            HEIGHT_REFERENCE_MSL
         };
 
     public:
         ExtrusionSymbol( const Config& conf =Config() );
 
-        /** Height to which to extrude geometry above the footprint */
+        /** Height to which to extrude geometry above the footprint (for HEIGHT_REFERENCE_Z)
+            or above MSL (for HEIGHT_REFERENCE_MSL) */
         optional<float>& height() { return _height; }
         const optional<float>& height() const { return _height; }
 

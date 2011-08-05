@@ -66,8 +66,6 @@ MeshConsolidator::run( osg::Geometry& geom )
     if ( !vertexArray )
         return;
 
-    //TODO: support POLYGON, QUAD, QUADSTRIP, and LINE types.
-
     osg::Geometry::PrimitiveSetList& primSets = geom.getPrimitiveSetList();
     osg::Geometry::PrimitiveSetList  triSets, nonTriSets;
 

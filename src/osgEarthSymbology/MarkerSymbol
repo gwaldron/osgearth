@@ -38,9 +38,15 @@ namespace osgEarth { namespace Symbology
          */
         enum Placement
         {
-            PLACEMENT_VERTEX,     /** Place a model at each feature vertex */
-            PLACEMENT_INTERVAL,   /** Place models at regular intervals within feature, according to density */
-            PLACEMENT_RANDOM      /** Place models randomly within feature, according to density */
+            /** Places a model instance at each feature point. */
+            PLACEMENT_VERTEX,
+
+            /** Places model instances at regular intervals within/along the feature geometry,
+                according to density. */
+            PLACEMENT_INTERVAL,
+
+            /** Scatters model instances randomly within/along feature, according to density. */
+            PLACEMENT_RANDOM
         };
 
     public:
@@ -50,7 +56,7 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& url() { return _url; }
         const optional<std::string>& url() const { return _url; }
 
-        /** How to map feature geometry to model placement. (default is CENTROID) */
+        /** How to map feature geometry to model placement. (default is PLACEMENT_VERTEX) */
         optional<Placement>& placement() { return _placement; }
         const optional<Placement>& placement() const { return _placement; }
 
@@ -68,9 +74,11 @@ namespace osgEarth { namespace Symbology
 
     public: // non-serialized properties (for programmatic use only)
 
+        /** Explicit image to use for 2D icon placemet */
         void setImage( osg::Image* image ) { _image = image; }
         osg::Image* getImage() const { return _image.get(); }
 
+        /** Explicit model to use for model placement */
         void setModel( osg::Node* node ) { _node = node; }
         osg::Node* getNode() const { return _node.get(); }
 

@@ -27,9 +27,9 @@
 namespace osgEarth { namespace Symbology
 {
     /**
-     * Subdivides a geocentric geometry mesh to the specified granularity.
-     * This class will densify a geocentric primitive to more accurately conform
-     * to the ellipsoidal surface of the earth.
+     * Recursively subdivides (tesselates) a geocentric geometry mesh to the specified
+     * granularity. This class will densify a geocentric primitive to more accurately
+     * conform to the ellipsoidal surface of the earth, for example.
      */
     class OSGEARTHSYMBOLOGY_EXPORT MeshSubdivider
     {

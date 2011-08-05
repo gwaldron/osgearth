@@ -63,18 +63,23 @@ namespace osgEarth { namespace Symbology
         Stroke( float r, float g, float b, float a );
         Stroke( const Config& conf ) { mergeConfig(conf); }
 
+        /** Line color. */
         osg::Vec4f& color() { return _color; }
         const osg::Vec4f& color() const { return _color; }
 
+        /** Capping of line ends. */
         optional<LineCapStyle>& lineCap() { return _lineCap; }
         const optional<LineCapStyle>& lineCap() const { return _lineCap; }
 
+        /** How to render line joints in a LineString. */
         optional<LineJoinStyle>& lineJoin() { return _lineJoin; }
         const optional<LineJoinStyle>& lineJoin() const { return _lineJoin; }
 
+        /** Line rendering width. */
         optional<float>& width() { return _width; }        
         const optional<float>& width() const { return _width; }
 
+        /** Stippling pattern. */
         optional<unsigned short>& stipple() { return _stipple;}
         const optional<unsigned short>& stipple() const { return _stipple; }
 

@@ -35,9 +35,16 @@ namespace osgEarth { namespace Symbology
          */
         enum Clamping
         {
-            CLAMP_NONE,                 /** Perform no clamping */
-            CLAMP_TO_TERRAIN,           /** Clamp to the terrain, ignoring feature's existing Z */
-            CLAMP_RELATIVE_TO_TERRAIN   /** Clamp to terrain, offset by feature's existing Z */
+            /** Do not clamp Z values to the terrain (but still apply the offset, if applicable) */
+            CLAMP_NONE,
+
+            /** Sample the terrain under the point, and set the feature's Z to the terrain height,
+                ignoring and discarding the feature's original Z value. */
+            CLAMP_TO_TERRAIN,
+
+            /** Sample the terrain under the point, and ADD the terrain height to the feature's 
+                pre-existing Z value. */
+            CLAMP_RELATIVE_TO_TERRAIN
         };
 
     public:

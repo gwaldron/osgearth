@@ -27,6 +27,11 @@ namespace osgEarth { namespace Symbology
 {
     /**
      * Consolidates all the like-moded primitive sets in a geometry.
+     *
+     * This utility will attempt to extract all similar primitives (e.g., all triangles)
+     * from a geometry and regroups them into a smaller number of primitive sets. For
+     * example, if you have a geometry with triangle strips, fans, and triangles, it will
+     * combines them into one a minimal number of primitive sets containing GL_TRIANGLES.
      */
     class OSGEARTHSYMBOLOGY_EXPORT MeshConsolidator
     {

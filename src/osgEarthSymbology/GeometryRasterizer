@@ -28,7 +28,7 @@
 namespace osgEarth { namespace Symbology
 {
     /**
-     * A query filter that you can use to limit a set of symbology to process.
+     * Draws geometry onto an Image canvas using software path-rendering.
      */
     class OSGEARTHSYMBOLOGY_EXPORT GeometryRasterizer
     {

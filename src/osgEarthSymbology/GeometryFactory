@@ -30,6 +30,9 @@ namespace osgEarth { namespace Symbology
 {
     using namespace osgEarth;
 
+    /**
+     * Convenience class for building simple tessellated Geometry shapes.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT GeometryFactory
     {
     public:

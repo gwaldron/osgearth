@@ -1364,8 +1364,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     surface->addPrimitiveSet(elements.get());
     
     osg::ref_ptr<osg::Vec3Array> skirtVectors = new osg::Vec3Array( *normals );
-    
-    if (!normals)
+
+          if (!normals)
         createSkirt = false;
     
     // New separated skirts.
@@ -1373,7 +1373,10 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     {        
         // build the verts first:
         osg::Vec3Array* skirtVerts = new osg::Vec3Array();
+        osg::Vec3Array* skirtNormals = new osg::Vec3Array();
+
         skirtVerts->reserve( numVerticesInSkirt );
+        skirtNormals->reserve( numVerticesInSkirt );
         
         Indices skirtBreaks;
         skirtBreaks.push_back(0);
@@ -1396,6 +1399,9 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             {
               skirtVerts->push_back( (*surfaceVerts)[orig_i] );
               skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+              skirtNormals->push_back( (*normals)[orig_i] );             
+              skirtNormals->push_back( (*normals)[orig_i] );             
+
 
               if ( _texCompositor->requiresUnitTextureSpace() )
               {
@@ -1427,6 +1433,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             {
               skirtVerts->push_back( (*surfaceVerts)[orig_i] );
               skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+              skirtNormals->push_back( (*normals)[orig_i] );             
+              skirtNormals->push_back( (*normals)[orig_i] );             
 
               if ( _texCompositor->requiresUnitTextureSpace() )
               {
@@ -1458,6 +1466,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             {
               skirtVerts->push_back( (*surfaceVerts)[orig_i] );
               skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+              skirtNormals->push_back( (*normals)[orig_i] );             
+              skirtNormals->push_back( (*normals)[orig_i] );             
 
               if ( _texCompositor->requiresUnitTextureSpace() )
               {
@@ -1488,7 +1498,9 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             else
             {
               skirtVerts->push_back( (*surfaceVerts)[orig_i] );
-              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );
+              skirtVerts->push_back( (*surfaceVerts)[orig_i] - ((*skirtVectors)[orig_i])*skirtHeight );              
+              skirtNormals->push_back( (*normals)[orig_i] );             
+              skirtNormals->push_back( (*normals)[orig_i] );             
 
               if ( _texCompositor->requiresUnitTextureSpace() )
               {
@@ -1508,14 +1520,15 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         }
 
         skirt->setVertexArray( skirtVerts );
+        skirt->setNormalArray( skirtNormals );
+        skirt->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
 
         //Add a primative set for each continuous skirt strip
         skirtBreaks.push_back(skirtVerts->size());
         for (int p=1; p < skirtBreaks.size(); p++)
           skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
     }
-
-
+    
     bool recalcNormals = elevationLayer != NULL;
 
     //Clear out the normals
@@ -1692,6 +1705,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             nitr->normalize();
         }
     }
+
+  
 
     MeshConsolidator::run( *surface );
 

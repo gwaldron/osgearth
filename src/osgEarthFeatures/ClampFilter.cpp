@@ -73,7 +73,7 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
                 mapSRS->transformFromECEF( geom->asVector() );
 
                 // populate the elevations:
-                eq.getElevations( geom->asVector(), mapSRS, true, _maxRes );
+                eq.getElevations( geom->asVector(), mapSRS, _ignoreZ, _maxRes );
 
                 // find the maximum Z value
                 if ( !_maxZAttrName.empty() || _offsetZ != 0.0 || _scaleZ != 1.0 )
@@ -96,7 +96,7 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
             else
             {
                 // clamps the entire array to the highest available resolution.
-                eq.getElevations( geom->asVector(), featureSRS );
+                eq.getElevations( geom->asVector(), featureSRS, _ignoreZ, _maxRes );
 
                 if ( _offsetZ != 0.0 )
                 {

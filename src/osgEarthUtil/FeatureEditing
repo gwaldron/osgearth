@@ -91,8 +91,44 @@ namespace osgEarth { namespace Util {
          */
         FeatureEditor( osgEarth::Features::Feature* feature, osgEarth::Features::FeatureSource* source, osgEarth::MapNode* mapNode );
 
+        /**
+         *Gets the color of the draggers when they are selected
+         */
+        const osg::Vec4f& getPickColor() const;
+
+        /**
+         *Sets the color of the draggers when they are selected
+         */
+        void setPickColor( const osg::Vec4f& pickColor );
+
+        /**
+         *Gets the color of the draggers
+         */
+        const osg::Vec4f& getColor() const;
+
+        /**
+         *Sets the color of the draggers
+         */
+        void setColor( const osg::Vec4f& color );
+
+
+        /**
+         *Gets the dragger size
+         */
+        float getSize() const;
+
+        /**
+         *Sets the dragger size
+         */
+        void setSize( float size );
+
+
     protected:
         void init();
+
+        osg::Vec4f _pickColor;
+        osg::Vec4f _color;
+        float _size;
 
         osg::ref_ptr< osgEarth::Features::Feature > _feature;
         osg::ref_ptr< osgEarth::Features::FeatureSource > _source;

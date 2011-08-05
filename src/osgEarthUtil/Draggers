@@ -67,6 +67,16 @@ public:
     inline void setPickColor(const osg::Vec4& color) { _pickColor = color; }
     inline const osg::Vec4& getPickColor() const { return _pickColor; }    
 
+    /**
+     * Gets the size of the dragger
+     */
+    inline float getSize() const { return _size;}
+
+    /**
+     * Sets the size of the dragger
+     */
+    inline void setSize( float size ) { _size = size; }
+
     virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
 
 protected:
@@ -79,6 +89,7 @@ protected:
     osg::Vec4                       _color;
     osg::Vec4                       _pickColor;
     osg::Vec3d                      _startPoint;
+    float                           _size;
     osg::Matrixd                    _localToWorld;
     osg::Matrixd                    _worldToLocal;
 

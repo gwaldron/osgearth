@@ -54,9 +54,17 @@ namespace osgEarth { namespace Symbology
         optional<Clamping>& clamping() { return _clamping; }
         const optional<Clamping>& clamping() const { return _clamping; }
 
-        /** Vertical offset of geometry before clamping */
+        /** Terrain resolution at which to perform clamping (in map units) */
+        optional<float>& clampingResolution() { return _clampingResolution; }
+        const optional<float>& clampingResolution() const { return _clampingResolution; }
+
+        /** Vertical offset of geometry after clamping */
         optional<float>& verticalOffset() { return _verticalOffset; }
         const optional<float>& verticalOffset() const { return _verticalOffset; }
+
+        /** Vertical scale factor to apply to geometry's Z after clamping. */
+        optional<float>& verticalScale() { return _verticalScale; }
+        const optional<float>& verticalScale() const { return _verticalScale; }
 
     public:
         virtual Config getConfig() const;
@@ -64,7 +72,9 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<Clamping> _clamping;
+        optional<float>    _clampingResolution;
         optional<float>    _verticalOffset;
+        optional<float>    _verticalScale;
     };
 
 } } // namespace osgEarth::Symbology

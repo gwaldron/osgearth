@@ -200,6 +200,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
             clamp.setOffsetZ( *altitude->verticalOffset() );
+            clamp.setScaleZ ( *altitude->verticalScale() );
+            clamp.setMaxResolution( *altitude->clampingResolution() );
             markerCX = clamp.push( workingSet, markerCX );
 
             // don't set this; we changed the input data.
@@ -239,6 +241,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
                 clamp.setMaxZAttributeName( "__max_z");
             clamp.setOffsetZ( *altitude->verticalOffset() );
+            clamp.setScaleZ ( *altitude->verticalScale() );
+            clamp.setMaxResolution( *altitude->clampingResolution() );
             sharedCX = clamp.push( workingSet, sharedCX );
             clampRequired = false;
         }
@@ -282,6 +286,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
             clamp.setOffsetZ( *altitude->verticalOffset() );
+            clamp.setScaleZ ( *altitude->verticalScale() );
+            clamp.setMaxResolution( *altitude->clampingResolution() );
             sharedCX = clamp.push( workingSet, sharedCX );
             clampRequired = false;
         }
@@ -317,6 +323,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             ClampFilter clamp;
             clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
             clamp.setOffsetZ( *altitude->verticalOffset() );
+            clamp.setScaleZ ( *altitude->verticalScale() );
+            clamp.setMaxResolution( *altitude->clampingResolution() );
             sharedCX = clamp.push( workingSet, sharedCX );
             clampRequired = false;
         }
@@ -336,21 +344,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             resultGroup->addChild( node );
         }
     }
-
-    //else // insufficient symbology
-    //{
-    //    OE_WARN << LC << "Insufficient symbology; no geometry created" << std::endl;
-    //}
-
-#if 0
-    // install the localization transform if necessary.
-    if ( cx.hasReferenceFrame() )
-    {
-        osg::MatrixTransform* delocalizer = new osg::MatrixTransform( cx.inverseReferenceFrame() );
-        delocalizer->addChild( resultGroup.get() );
-        resultGroup = delocalizer;
-    }
-#endif
 
     resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
 

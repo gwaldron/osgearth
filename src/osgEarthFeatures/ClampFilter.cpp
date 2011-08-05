@@ -30,7 +30,9 @@ using namespace osgEarth::Symbology;
 
 ClampFilter::ClampFilter() :
 _ignoreZ( false ),
-_offsetZ( 0.0 )
+_offsetZ( 0.0f ),
+_scaleZ ( 1.0f ),
+_maxRes ( 0.0f )
 {
     //NOP
 }
@@ -71,13 +73,14 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
                 mapSRS->transformFromECEF( geom->asVector() );
 
                 // populate the elevations:
-                eq.getElevations( geom->asVector(), mapSRS );
+                eq.getElevations( geom->asVector(), mapSRS, true, _maxRes );
 
                 // find the maximum Z value
-                if ( !_maxZAttrName.empty() || _offsetZ != 0.0 )
+                if ( !_maxZAttrName.empty() || _offsetZ != 0.0 || _scaleZ != 1.0 )
                 {
                     for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
                     {
+                        i->z() *= _scaleZ;
                         i->z() += _offsetZ;
 
                         if ( i->z() > maxZ )
@@ -99,6 +102,7 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
                 {
                     for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
                     {
+                        i->z() *= _scaleZ;
                         i->z() += _offsetZ;
                     }
                 }

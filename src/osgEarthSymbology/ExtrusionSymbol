@@ -47,6 +47,10 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>& heightExpression() { return _heightExpr; }
         const optional<NumericExpression>& heightExpression() const { return _heightExpr; }
 
+        /** Attribute name to get height */
+		optional<std::string>& heightAttribute() { return _heightAttr; }
+		const optional<std::string>& heightAttribute() const { return _heightAttr; }
+
         /** Reference frame in which height is expressed */
         optional<HeightReference>& heightReference() { return _heightRef; }
         const optional<HeightReference>& heightReference() const { return _heightRef; }
@@ -64,6 +68,7 @@ namespace osgEarth { namespace Symbology
         optional<float>             _height;
         optional<bool>              _flatten;
         optional<NumericExpression> _heightExpr;
+        optional<std::string>        _heightAttr;
         optional<HeightReference>   _heightRef;
     };
 

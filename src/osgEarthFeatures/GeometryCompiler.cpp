@@ -250,6 +250,8 @@ GeometryCompiler::compile(FeatureList&          workingSet,
                 extrude.setExtrusionHeight( *extrusion->height() );
             if ( extrusion->heightExpression().isSet() )
                 extrude.setExtrusionExpr( *extrusion->heightExpression() );
+            if ( extrusion->heightAttribute().isSet() )
+                extrude.setExtrusionAttribute( *extrusion->heightAttribute() );
             if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
                 extrude.setHeightOffsetExpression( NumericExpression("[__max_z]") );
             if ( _options.featureName().isSet() )

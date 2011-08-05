@@ -1537,9 +1537,15 @@ Grid::expandToInclude( int col, int row )
     while( (int)_rows.size() <= row )
         _rows.push_back( Row() );
 
+    int maxCol = col;
+    for( RowVector::iterator i = _rows.begin(); i != _rows.end(); ++i ) {
+        if ( ((int)i->size())-1 > maxCol )
+            maxCol = ((int)i->size())-1;
+    }
+
     for( RowVector::iterator i = _rows.begin(); i != _rows.end(); ++i ) {
         Row& row = *i;
-        while( (int)row.size() <= col )
+        while( (int)row.size() <= maxCol )
             row.push_back( 0L );
     }
 }

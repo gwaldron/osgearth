@@ -20,6 +20,7 @@
 #include <osgEarth/SpatialReference>
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
+#include <osgEarth/LocalTangentPlane>
 #include <OpenThreads/ScopedLock>
 #include <osg/Notify>
 #include <ogr_api.h>
@@ -120,6 +121,42 @@ SpatialReference::createCube()
     return result;
 }
 
+SpatialReference*
+SpatialReference::createLTP( const osg::Vec3d& refPointLLA, const SpatialReference* geoSRS )
+{
+    GDAL_SCOPED_LOCK;
+
+    void* handle = OSRNewSpatialReference( NULL );
+    bool ok = false;
+    SpatialReference* result = 0L;
+
+    if ( geoSRS )
+    {
+        std::string init = geoSRS->getGeographicSRS()->getWKT();
+        char buf[4096];
+        char* buf_ptr = &buf[0];
+	    strcpy( buf, init.c_str() );
+        ok = ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE );
+    }
+    else 
+    {
+        std::string init = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
+        ok = ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE );
+    }
+
+    if ( ok )
+    {
+        result = new LTPSpatialReference( handle, refPointLLA );
+    }
+    else
+    {
+        OE_WARN << LC << "Unable to create LTP SRS" << std::endl;
+        if ( handle )
+		    OSRDestroySpatialReference( handle );
+    }
+
+    return result;
+}
 
 SpatialReference*
 SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
@@ -195,6 +232,23 @@ SpatialReference::create( const std::string& init )
     else if ( low == "unified-cube" )
     {
         srs = createCube();
+    }
+
+    // custom srs for an LTP:
+    else if ( low.find( "ltp-enu:" ) == 0 )
+    {
+        StringVector tokens;
+        StringTokenizer(low, tokens, ":", "");
+        if ( tokens.size() == 3 )
+        {
+            StringVector rt;
+            StringTokenizer(tokens[1], rt);
+            if ( rt.size() == 3 )
+            {
+                osg::Vec3d refPt( as<double>(rt[0],0.0), as<double>(rt[1],0.0), as<double>(rt[2],0.0) );
+                srs = createLTP( refPt );
+            }
+        }
     }
 
     else if ( low.find( "+" ) == 0 )
@@ -363,6 +417,14 @@ SpatialReference::getEllipsoid() const
 }
 
 const std::string&
+SpatialReference::getDatumName() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _datum;
+}
+
+const std::string&
 SpatialReference::getWKT() const 
 {
     if ( !_initialized )
@@ -410,7 +472,8 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs ) const
         isSouthPolar()  != rhs->isSouthPolar()  ||
         isContiguous()  != rhs->isContiguous()  ||
         isUserDefined() != rhs->isUserDefined() ||
-        isCube()        != rhs->isCube() )
+        isCube()        != rhs->isCube()        ||
+        isLTP()         != rhs->isLTP() )
     {
         return false;
     }
@@ -596,9 +659,9 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
 }
 
 bool
-SpatialReference::transform(double x, double y, 
+SpatialReference::transform(double x, double y, double z,
                             const SpatialReference* out_srs, 
-                            double& out_x, double& out_y,
+                            double& out_x, double& out_y, double& out_z,
                             void* context ) const
 {        
     if ( !_initialized )
@@ -609,47 +672,36 @@ SpatialReference::transform(double x, double y,
     {
         out_x = x;
         out_y = y;
-        return true;
-    }
-
-        if ( !_initialized )
-        const_cast<SpatialReference*>(this)->init();
-
-    //Check for equivalence and return if the coordinate systems are the same.
-    if (isEquivalentTo(out_srs))
-    {
-        out_x = x;
-        out_y = y;
+        out_z = z;
         return true;
     }
 
     out_x = x;
     out_y = y;
-    bool result = transformPoints(out_srs, &out_x, &out_y, 1, context);
+    bool result = transformPoints(out_srs, &out_x, &out_y, &out_z, 1, context);
 
     return result;
 }
 
 // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
 static bool
-mercatorToGeographic( double* x, double* y, int numPoints )
+mercatorToGeographic( double* x, double* y, double* z, int numPoints )
 {
-    //const GeoExtent& merc = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();    
     for( int i=0; i<numPoints; i++ )
     {
         double xr = -osg::PI + ((x[i]-MERC_MINX)/MERC_WIDTH)*2.0*osg::PI;
         double yr = -osg::PI + ((y[i]-MERC_MINY)/MERC_HEIGHT)*2.0*osg::PI;
         x[i] = osg::RadiansToDegrees( xr );
         y[i] = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
+        // z doesn't change
     }
     return true;
 }
 
 // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
 static bool
-geographicToMercator( double* x, double* y, int numPoints )
+geographicToMercator( double* x, double* y, double* z, int numPoints )
 {
-    //const GeoExtent& merc = osgEarth::Registry::instance()->getGlobalMercatorProfile()->getExtent();    
     for( int i=0; i<numPoints; i++ )
     {
         double xr = (osg::DegreesToRadians(x[i]) - (-osg::PI)) / (2.0*osg::PI);
@@ -660,6 +712,7 @@ geographicToMercator( double* x, double* y, int numPoints )
             double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
             x[i] = MERC_MINX + (xr * MERC_WIDTH);
             y[i] = MERC_MINY + (yr * MERC_HEIGHT);
+            // z doesn't change
         }
     }
     return true;
@@ -667,7 +720,7 @@ geographicToMercator( double* x, double* y, int numPoints )
 
 bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
-                                  double* x, double* y,
+                                  double* x, double* y, double* z,
                                   unsigned int numPoints,
                                   void* context,
                                   bool ignore_errors ) const
@@ -676,11 +729,19 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
         const_cast<SpatialReference*>(this)->init();
 
     //Check for equivalence and return if the coordinate systems are the same.
-    if (isEquivalentTo(out_srs)) return true;
+    if (isEquivalentTo(out_srs))
+        return true;
 
-    for (unsigned int i = 0; i < numPoints; ++i)
+    if ( z )
     {
-        preTransform(x[i], y[i], context);
+        for (unsigned int i = 0; i < numPoints; ++i)
+            preTransform(x[i], y[i], z[i], context);
+    }
+    else
+    {
+        double dummyZ = 0.0;
+        for (unsigned int i = 0; i < numPoints; ++i)
+            preTransform(x[i], y[i], dummyZ, context);
     }
     
     bool success = false;
@@ -689,12 +750,12 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 
     if ( isGeographic() && out_srs->isMercator() )
     {
-        success = geographicToMercator( x, y, numPoints );
+        success = geographicToMercator( x, y, z, numPoints );
     }
 
     else if ( isMercator() && out_srs->isGeographic() )
     {
-        success = mercatorToGeographic( x, y, numPoints );
+        success = mercatorToGeographic( x, y, z, numPoints );
     }
 
     else
@@ -725,18 +786,27 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
             return false;
         }
 
-        double* temp_z = new double[numPoints];
-        success = OCTTransform( xform_handle, numPoints, x, y, temp_z ) > 0;
-        delete[] temp_z;
+        //double* temp_z = new double[numPoints];
+        //success = OCTTransform( xform_handle, numPoints, x, y, temp_z ) > 0;
+        //delete[] temp_z;
+        
+        success = OCTTransform( xform_handle, numPoints, x, y, z ) > 0;
 
         // END GDAL_SCOPE_LOCK
     }
 
     if ( success || ignore_errors )
     {
-        for (unsigned int i = 0; i < numPoints; ++i)
+        if ( z )
         {
-            out_srs->postTransform(x[i], y[i], context);
+            for (unsigned int i = 0; i < numPoints; ++i)
+                out_srs->postTransform(x[i], y[i], z[i], context);
+        }
+        else
+        {
+            double dummyZ = 0.0;
+            for (unsigned int i = 0; i < numPoints; ++i)
+                out_srs->postTransform(x[i], y[i], dummyZ, context);
         }
     }
     else
@@ -751,7 +821,6 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
 bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
                                   std::vector<osg::Vec3d>& points,
-                                  //osg::Vec3dArray* points,
                                   void* context,
                                   bool ignore_errors ) const
 {
@@ -759,19 +828,22 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
         const_cast<SpatialReference*>(this)->init();
 
     //Check for equivalence and return if the coordinate systems are the same.
-    if (isEquivalentTo(out_srs)) return true;
+    if (isEquivalentTo(out_srs)) 
+        return true;
 
     int numPoints = points.size();
     double* x = new double[numPoints];
     double* y = new double[numPoints];
+    double* z = new double[numPoints];
 
     for( int i=0; i<numPoints; i++ )
     {
-        x[i] = points[i].x(); //(*points)[i].x();
-        y[i] = points[i].y(); //(*points)[i].y();
+        x[i] = points[i].x();
+        y[i] = points[i].y();
+        z[i] = points[i].z();
     }
 
-    bool success = transformPoints( out_srs, x, y, numPoints, context, ignore_errors );
+    bool success = transformPoints( out_srs, x, y, z, numPoints, context, ignore_errors );
 
     if ( success )
     {
@@ -779,11 +851,13 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
         {
             points[i].x() = x[i];
             points[i].y() = y[i];
+            points[i].z() = z[i];
         }
     }
 
     delete[] x;
     delete[] y;
+    delete[] z;
 
     return success;
 }
@@ -792,17 +866,16 @@ bool
 SpatialReference::transformToECEF(const osg::Vec3d& input,
                                   osg::Vec3d&       output ) const
 {
-    double lat = input.y(), lon = input.x();
-    //osg::Vec3d geo( x, y, z );
+    double lat = input.y(), lon = input.x(), alt = input.z();
     
     // first convert to lat/long if necessary:
     if ( !isGeographic() )
-        transform( input.x(), input.y(), getGeographicSRS(), lon, lat );
+        transform( input.x(), input.y(), input.z(), getGeographicSRS(), lon, lat, alt );
 
     // then convert to ECEF.
-    double z = input.z();
+    //double z = input.z();
     getGeographicSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( lat ), osg::DegreesToRadians( lon ), z,
+        osg::DegreesToRadians( lat ), osg::DegreesToRadians( lon ), alt,
         output.x(), output.y(), output.z() );
 
     return true;
@@ -815,7 +888,7 @@ SpatialReference::transformToECEF(std::vector<osg::Vec3d>& points,
     if ( points.size() == 0 )
         return false;
 
-    const SpatialReference* geoSRS = getGeographicSRS();
+    const SpatialReference*    geoSRS    = getGeographicSRS();
     const osg::EllipsoidModel* ellipsoid = geoSRS->getEllipsoid();
 
     for( unsigned i=0; i<points.size(); ++i )
@@ -823,7 +896,7 @@ SpatialReference::transformToECEF(std::vector<osg::Vec3d>& points,
         osg::Vec3d& p = points[i];
 
         if ( !isGeographic() )
-            transform( p.x(), p.y(), geoSRS, p.x(), p.y() );
+            transform( p.x(), p.y(), p.z(), geoSRS, p.x(), p.y(), p.z() );
 
         ellipsoid->convertLatLongHeightToXYZ(
             osg::DegreesToRadians( p.y() ), osg::DegreesToRadians( p.x() ), p.z(),
@@ -852,10 +925,10 @@ SpatialReference::transformFromECEF(const osg::Vec3d& input,
     else
     {
         getGeographicSRS()->transform( 
-            osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()),
+            osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()), geo.z(),
             this,
-            output.x(), output.y() );
-        output.z() = geo.z();
+            output.x(), output.y(), output.z() );
+        //output.z() = geo.z();
     }
 
     return true;
@@ -907,18 +980,19 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
     double ulx, uly;
     double urx, ury;
     double lrx, lry;
+    double dummyZ = 0;
 
     //Lower Left
-    oks += transform( in_out_xmin, in_out_ymin, to_srs, llx, lly, context ) == true;
+    oks += transform( in_out_xmin, in_out_ymin, 0, to_srs, llx, lly, dummyZ, context ) == true;
 
     //Upper Left
-    oks += transform( in_out_xmin, in_out_ymax, to_srs, ulx, uly, context ) == true;
+    oks += transform( in_out_xmin, in_out_ymax, 0, to_srs, ulx, uly, dummyZ, context ) == true;
 
     //Upper Right
-    oks += transform( in_out_xmax, in_out_ymax, to_srs, urx, ury, context ) == true;
+    oks += transform( in_out_xmax, in_out_ymax, 0, to_srs, urx, ury, dummyZ, context ) == true;
 
     //Lower Right
-    oks += transform( in_out_xmax, in_out_ymin, to_srs, lrx, lry, context ) == true;
+    oks += transform( in_out_xmax, in_out_ymin, 0, to_srs, lrx, lry, dummyZ, context ) == true;
 
 
     if (oks == 4)
@@ -932,13 +1006,12 @@ SpatialReference::transformExtent(const SpatialReference* to_srs,
     return false;
 }
 
-bool SpatialReference::transformExtentPoints(
-            const SpatialReference* to_srs,
-            double in_xmin, double in_ymin,
-            double in_xmax, double in_ymax,
-            double* x, double *y,
-            unsigned int numx, unsigned int numy,
-            void* context, bool ignore_errors ) const
+bool SpatialReference::transformExtentPoints(const SpatialReference* to_srs,
+                                             double in_xmin, double in_ymin,
+                                             double in_xmax, double in_ymax,
+                                             double* x, double* y,
+                                             unsigned int numx, unsigned int numy,
+                                             void* context, bool ignore_errors ) const
 {
     const double dx = (in_xmax - in_xmin) / (numx - 1);
     const double dy = (in_ymax - in_ymin) / (numy - 1);
@@ -958,7 +1031,7 @@ bool SpatialReference::transformExtentPoints(
             pixel++;     
         }
     }
-    return transformPoints(to_srs, x, y, numx * numy, context, ignore_errors);
+    return transformPoints(to_srs, x, y, 0L, numx * numy, context, ignore_errors);
 }
 
 void
@@ -989,6 +1062,9 @@ SpatialReference::_init()
     double semi_major_axis = OSRGetSemiMajor( _handle, &err );
     double semi_minor_axis = OSRGetSemiMinor( _handle, &err );
     _ellipsoid = new osg::EllipsoidModel( semi_major_axis, semi_minor_axis );
+
+    // try to get an ellipsoid name:
+    _ellipsoid->setName( getOGRAttrValue(_handle, "SPHEROID", 0, true) );
 
     // extract the projection:
     if ( _name.empty() || _name == "unnamed" )
@@ -1046,6 +1122,9 @@ SpatialReference::_init()
         _proj4 = proj4buf;
         OGRFree( proj4buf );
     }
+
+    // Try to extract the datum
+    _datum = getOGRAttrValue( _handle, "DATUM", 0, true );
 
     _initialized = true;
 }

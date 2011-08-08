@@ -385,7 +385,7 @@ namespace
             bool hasLines = false;
             for( FeatureList::const_iterator i = featureList.begin(); i != featureList.end(); ++i )
             {
-                Feature* feature = *i;
+                Feature* feature = (*i).get();
                 Geometry* geom = feature->getGeometry();
                 if ( geom && 
                      ( geom->getComponentType() == Geometry::TYPE_LINESTRING ||
@@ -433,7 +433,7 @@ namespace
 
             for( FeatureList::iterator i = featureList.begin(); i != featureList.end(); ++i )
             {
-                Feature* feature = *i;
+                Feature* feature = (*i).get();
                 Geometry* geom = feature->getGeometry();
                 osg::Node* volume = createVolume( geom, -extrusionDistance, extrusionDistance * 2.0, cx );
 

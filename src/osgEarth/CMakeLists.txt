@@ -26,6 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     CompositeTileSource
     Config
     Cube
+    DrapeableNode
     ElevationLayer
     ElevationQuery
     Export
@@ -43,6 +44,7 @@ SET(LIB_PUBLIC_HEADERS
     JsonUtils
     Layer
     Locators
+    LocalTangentPlane
     Map
     MapNode
     MapNodeOptions
@@ -95,6 +97,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
+    DrapeableNode.cpp
     EGM.cpp
     ElevationLayer.cpp
     ElevationQuery.cpp
@@ -110,6 +113,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     JsonUtils.cpp
     Layer.cpp
     Locators.cpp
+    LocalTangentPlane.cpp
     Map.cpp
     MapNode.cpp
     MapNodeOptions.cpp

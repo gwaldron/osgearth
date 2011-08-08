@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
+#include <osg/CoordinateSystemNode>
 
 using namespace osgEarth;
 
@@ -28,6 +29,63 @@ void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler*
     if (itr != view->getEventHandlers().end())
     {
         view->getEventHandlers().erase(itr);
+    }
+}
+
+//------------------------------------------------------------------------
+
+CullNodeByHorizon::CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model ) :
+_world(world),
+_r2(model->getRadiusPolar() * model->getRadiusPolar())
+{
+    //nop
+}
+
+void
+CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if ( nv )
+    {
+        osg::Vec3d eye, center, up;
+        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
+        cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
+
+        double d2 = eye.length2();
+        double horiz2 = d2 - _r2;
+
+        double dist2 = (_world-eye).length2();
+
+        if ( dist2 < horiz2 )
+        {
+            traverse(node, nv);
+        }
+    }
+}
+
+//------------------------------------------------------------------------
+
+CullNodeByNormal::CullNodeByNormal( const osg::Vec3d& normal )
+{
+    _normal = normal;
+    //_normal.normalize();
+}
+
+void
+CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osg::Vec3d eye, center, up;
+    osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
+
+    cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
+
+    eye.normalize();
+    osg::Vec3d normal = _normal;
+    normal.normalize();
+
+    double dotProduct = eye * normal;
+    if ( dotProduct > 0.0 )
+    {
+        traverse(node, nv);
     }
 }
 

@@ -68,20 +68,43 @@ namespace osgEarth
          */
         static SpatialReference* createFromHandle( void* ogrHandle, bool xferOwnership =false );
 
+        /**
+         * Creates a new LTP (Local tangent plane) SRS centered around the
+         * specified world point.
+         *
+         * @param worldPointLLA   Reference center point, in Lon/Lat/Alt degrees.
+         * @param referenceGeoSRS Reference geographic SRS (or NULL to use WGS84 by default)
+         */
+        static SpatialReference* createLTP( 
+            const osg::Vec3d&       worldPointLLA,
+            const SpatialReference* referenceGeoSRS =0L );
+
     public:
-        /** Transform a point to another SRS. */
+        /** 
+         * Transform a point to another SRS.
+         */
         virtual bool transform(
+            double x, double y, double z,
+            const SpatialReference* to_srs,
+            double& out_x, double& out_y, double& out_z,
+            void* context =0L ) const;
+
+        bool transform2D(
             double x, double y,
             const SpatialReference* to_srs,
             double& out_x, double& out_y,
-            void* context =0L ) const;
+            void* context =0L ) const
+        {
+            double dummyZ;
+            return transform(x, y, dummyZ, to_srs, out_x, out_y, dummyZ, context);
+        }
 
         /**
-         * Transforms an array of 2D points from this SRS to another SRS.
+         * Transforms an array of 3D points from this SRS to another SRS.
          */
         virtual bool transformPoints(
             const SpatialReference* to_srs, 
-            double* x, double *y,
+            double* x, double* y, double* z,
             unsigned int numPoints,
             void* context =0L,
             bool ignore_errors =false) const;
@@ -90,9 +113,8 @@ namespace osgEarth
          * Transforms an array of points from this SRS to another SRS.
          */
         virtual bool transformPoints(
-            const SpatialReference* to_srs,
+            const SpatialReference*  to_srs,
             std::vector<osg::Vec3d>& points,
-            //osg::Vec3dArray* points,
             void* context =0L,
             bool ignore_errors =false) const;
 
@@ -102,8 +124,6 @@ namespace osgEarth
         bool transformToECEF(
             const osg::Vec3d& input,
             osg::Vec3d& output ) const;
-            //double x, double y, double z,
-            //double& out_x, double& out_y, double& out_z ) const;
 
         /**
          * Transforms an array of points to geocentric/ECEF coordinates. The points
@@ -146,7 +166,7 @@ namespace osgEarth
             const SpatialReference* to_srs,
             double in_xmin, double in_ymin,
             double in_xmax, double in_ymax,
-            double* x, double *y,
+            double* x, double* y,
             unsigned int numx, unsigned int numy,
             void* context = 0L, bool ignore_errors = false ) const;
         
@@ -175,6 +195,9 @@ namespace osgEarth
         /** Tests whether this SRS is a Unified Cube projection (osgEarth-internal) */
         virtual bool isCube() const;
 
+        /** Tests whether this SRS is a Local Tangent Plane projection (osgEarth-internal) */
+        virtual bool isLTP() const { return _is_ltp; }
+
         /** Gets the readable name of this SRS. */
         const std::string& getName() const;
 
@@ -189,6 +212,9 @@ namespace osgEarth
 
         /** Gets the string that was used to initialize this SRS */
         const std::string& getInitString() const;
+
+        /** Gets the datum identifier of this SRS (or empty string if not available) */
+        const std::string& getDatumName() const;
 
         /** Tests this SRS for equivalence with another. */
         virtual bool isEquivalentTo( const SpatialReference* rhs ) const;
@@ -235,12 +261,14 @@ namespace osgEarth
         bool _is_cube;
         bool _is_contiguous;
         bool _is_user_defined;
+        bool _is_ltp;
         std::string _name;
         std::string _wkt;
         std::string _proj4;
         std::string _init_type;
         std::string _init_str;
         std::string _init_str_lc;
+        std::string _datum;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference> _geo_srs;
 
@@ -252,8 +280,8 @@ namespace osgEarth
         virtual void _init();
         virtual bool _isEquivalentTo( const SpatialReference* srs ) const;
 
-        virtual bool preTransform(double& x, double& y, void* context) const { return true; }
-        virtual bool postTransform(double& x, double& y, void* context) const { return true;}
+        virtual bool preTransform(double& x, double& y, double& z, void* context) const { return true; }
+        virtual bool postTransform(double& x, double& y, double& z, void* context) const { return true;}
         
 
 
@@ -269,9 +297,9 @@ namespace osgEarth
 
         static SpatialReference* createCube();
 
+
         SpatialReference* validate();
     };
-
 }
 
 

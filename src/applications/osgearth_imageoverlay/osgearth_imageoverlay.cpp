@@ -134,8 +134,8 @@ struct ChangeImageHandler : public ControlEventHandler
       _preview(preview){ }
 
     void onClick( Control* control, int mouseButtonMask ) {
-        _overlay->setImage( _image );
-        _preview->setImage( _image );
+        _overlay->setImage( _image.get() );
+        _preview->setImage( _image.get() );
     }
     ImageOverlay* _overlay;
     osg::ref_ptr< osg::Image > _image;
@@ -234,14 +234,11 @@ main(int argc, char** argv)
 
             //Create a new ImageOverlay and set it's bounds
             //ImageOverlay* overlay = new ImageOverlay(mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), image);        
-            ImageOverlay* overlay = new ImageOverlay();        
+            ImageOverlay* overlay = new ImageOverlay(mapNode);
             overlay->setImage( image );
             overlay->setBounds(imageBounds[i]);
 
-            //Create a new ModelLayer so we can overlay it on the earth
-            osgEarth::ModelLayer* modelLayer = new osgEarth::ModelLayer("overlay",overlay);
-            modelLayer->setOverlay( true );
-            mapNode->getMap()->addModelLayer( modelLayer );
+            root->addChild( overlay );
 
 
             //Create a new ImageOverlayEditor and set it's node mask to 0 to hide it initially

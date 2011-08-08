@@ -35,9 +35,16 @@ namespace osgEarth { namespace Symbology
          */
         enum Clamping
         {
-            CLAMP_NONE,                 /** Perform no clamping */
-            CLAMP_TO_TERRAIN,           /** Clamp to the terrain, ignoring feature's existing Z */
-            CLAMP_RELATIVE_TO_TERRAIN   /** Clamp to terrain, offset by feature's existing Z */
+            /** Do not clamp Z values to the terrain (but still apply the offset, if applicable) */
+            CLAMP_NONE,
+
+            /** Sample the terrain under the point, and set the feature's Z to the terrain height,
+                ignoring and discarding the feature's original Z value. */
+            CLAMP_TO_TERRAIN,
+
+            /** Sample the terrain under the point, and ADD the terrain height to the feature's 
+                pre-existing Z value. */
+            CLAMP_RELATIVE_TO_TERRAIN
         };
 
     public:
@@ -47,9 +54,17 @@ namespace osgEarth { namespace Symbology
         optional<Clamping>& clamping() { return _clamping; }
         const optional<Clamping>& clamping() const { return _clamping; }
 
-        /** Vertical offset of geometry before clamping */
+        /** Terrain resolution at which to perform clamping (in map units) */
+        optional<float>& clampingResolution() { return _clampingResolution; }
+        const optional<float>& clampingResolution() const { return _clampingResolution; }
+
+        /** Vertical offset of geometry after clamping */
         optional<float>& verticalOffset() { return _verticalOffset; }
         const optional<float>& verticalOffset() const { return _verticalOffset; }
+
+        /** Vertical scale factor to apply to geometry's Z after clamping. */
+        optional<float>& verticalScale() { return _verticalScale; }
+        const optional<float>& verticalScale() const { return _verticalScale; }
 
     public:
         virtual Config getConfig() const;
@@ -57,7 +72,9 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<Clamping> _clamping;
+        optional<float>    _clampingResolution;
         optional<float>    _verticalOffset;
+        optional<float>    _verticalScale;
     };
 
 } } // namespace osgEarth::Symbology

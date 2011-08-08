@@ -3,6 +3,8 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/GeoData>
+#include <osgEarth/DrapeableNode>
+
 #include <osg/Group>
 #include <osg/Geometry>
 #include <osg/Image>
@@ -10,7 +12,7 @@
 
 namespace osgEarth { namespace Util
 {
-    class OSGEARTHUTIL_EXPORT ImageOverlay : public osg::Group
+    class OSGEARTHUTIL_EXPORT ImageOverlay : public DrapeableNode
     {
     public:    
         
@@ -22,12 +24,8 @@ namespace osgEarth { namespace Util
             CONTROLPOINT_UPPER_LEFT,
             CONTROLPOINT_UPPER_RIGHT
         };
-
-        ImageOverlay();
-        ImageOverlay(const osg::EllipsoidModel* ellipsoid, osg::Image* image);
-
-        const osg::EllipsoidModel* getEllipsoid() const { return _ellipsoid.get(); }
-        void setEllipsoid(const osg::EllipsoidModel* ellipsoid);
+        
+        ImageOverlay(MapNode* mapNode, osg::Image* image = NULL);
 
         void setCorners(const osg::Vec2d& lowerLeft, const osg::Vec2d& lowerRight, 
                         const osg::Vec2d& upperLeft, const osg::Vec2d& upperRight);
@@ -89,7 +87,6 @@ namespace osgEarth { namespace Util
         osg::Vec2d _upperRight;
         osg::Vec2d _upperLeft;
         osg::ref_ptr< osg::Image > _image;
-        osg::ref_ptr< const osg::EllipsoidModel > _ellipsoid;
         bool _dirty;
         OpenThreads::Mutex _mutex;
         osg::Geode* _geode;

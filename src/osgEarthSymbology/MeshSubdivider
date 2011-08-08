@@ -20,15 +20,16 @@
 #define OSGEARTHSYMBOLOGY_MESH_SUBDIVIDER
 
 #include <osgEarthSymbology/Common>
+#include <osgEarth/GeoMath>
 #include <osg/Geometry>
 #include <osg/PrimitiveSet>
 
 namespace osgEarth { namespace Symbology
 {
     /**
-     * Subdivides a geocentric geometry mesh to the specified granularity.
-     * This class will densify a geocentric primitive to more accurately conform
-     * to the ellipsoidal surface of the earth.
+     * Recursively subdivides (tesselates) a geocentric geometry mesh to the specified
+     * granularity. This class will densify a geocentric primitive to more accurately
+     * conform to the ellipsoidal surface of the earth, for example.
      */
     class OSGEARTHSYMBOLOGY_EXPORT MeshSubdivider
     {
@@ -60,7 +61,10 @@ namespace osgEarth { namespace Symbology
          * Note! This utility currently does nothing with repsect to the geometry's
          * color or texture attributes, so it is best used prior to setting those.
          */
-        void run(double granurality_radians, osg::Geometry& geom);
+        void run(
+            osg::Geometry&   geom, 
+            double           granurality_radians,
+            GeoInterpolation interp =GEOINTERP_RHUMB_LINE );
 
     protected:
         osg::Matrixd _local2world, _world2local;

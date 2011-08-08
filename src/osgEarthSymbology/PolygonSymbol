@@ -28,11 +28,15 @@
 
 namespace osgEarth { namespace Symbology
 {
+    /**
+     * Symbol that describes how to render a polygonal geometry.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT PolygonSymbol : public Symbol
     {
     public:
         PolygonSymbol( const Config& conf =Config() );
 
+        /** Polygon fill properties. */
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }
 

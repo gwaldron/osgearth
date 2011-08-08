@@ -94,9 +94,26 @@ namespace osgEarth { namespace Util { namespace Controls
     class ControlEventHandler : public osg::Referenced
     {
     public:
-        virtual void onClick( class Control* control, int mouseButtonMask ) { }
-        virtual void onValueChanged( class Control* control, float value ) { }
+        /** Click event. */
+        virtual void onClick( class Control* control ) { }
+
+        /** Click event with mouse button mask (see osgGA::GUIEventAdapter::MouseButtonMask) */
+        virtual void onClick( class Control* control, int mouseButtonMask ) { onClick(control); }
+
+        /** Click event with click position (negative values mean you're in the left/top padding) */
+        virtual void onClick( class Control* control, const osg::Vec2f& pos, int mouseButtonMask ) { onClick(control, mouseButtonMask); }
+
+        /** Value events */
         virtual void onValueChanged( class Control* control, bool value ) { }
+        virtual void onValueChanged( class Control* control, double value ) { }
+        virtual void onValueChanged( class Control* control, float value ) { }
+        virtual void onValueChanged( class Control* control, int value ) { }
+        virtual void onValueChanged( class Control* control, const osg::Vec3f& value ) { }
+        virtual void onValueChanged( class Control* control, const osg::Vec2f& value ) { }
+        virtual void onValueChanged( class Control* control, const osg::Vec3d& value ) { }
+        virtual void onValueChanged( class Control* control, const osg::Vec2d& value ) { }
+        virtual void onValueChanged( class Control* control, const std::string& value ) { }
+        virtual void onValueChanged( class Control* control, void* value ) { }
     };
 
     typedef std::list< osg::ref_ptr<ControlEventHandler> > ControlEventHandlerList;
@@ -264,6 +281,9 @@ namespace osgEarth { namespace Util { namespace Controls
         void setFontSize( float value );
         float fontSize() const { return _fontSize; }
 
+        void setHaloColor( const osg::Vec4f& value );
+        const optional<osg::Vec4f>& haloColor() const { return _haloColor; }
+
     public: // Control
         virtual void calcSize( const ControlContext& context, osg::Vec2f& out_size );
         //virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
@@ -275,6 +295,7 @@ namespace osgEarth { namespace Util { namespace Controls
         float _fontSize;
         osg::ref_ptr<osgText::Text> _drawable;
         osg::Vec3 _bmin, _bmax;
+        optional<osg::Vec4f> _haloColor;
     };
 
     /**
@@ -345,6 +366,7 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         CheckBoxControl( bool checked =false );
+        CheckBoxControl( bool checked, ControlEventHandler* callback );
 
         void setValue( bool value );
         bool getValue() const { return _value; }
@@ -557,6 +579,11 @@ namespace osgEarth { namespace Util { namespace Controls
         /** The draw priority of this control */
         float getPriority() const { return _priority; }
 
+        /** The point (in screen-space, relative to the lower-left of the control) that should anchor to the scene */
+        optional<osg::Vec2f>& anchorPoint() { return _anchor; }
+        const optional<osg::Vec2f>& anchorPoint() const { return _anchor; }
+
+
     public: // osg::Node overrides
 
         virtual void traverse( osg::NodeVisitor& nv );
@@ -580,6 +607,7 @@ namespace osgEarth { namespace Util { namespace Controls
         PerViewDataMap         _perViewData;
         osg::ref_ptr<Control>  _control;
         float                  _priority;
+        optional<osg::Vec2f>   _anchor;
 
         PerViewData& getData( osg::View* view ) { return _perViewData[view]; }
 
@@ -598,6 +626,9 @@ namespace osgEarth { namespace Util { namespace Controls
         /** Registers a control node with this bin. */
         void addNode( ControlNode* node );
 
+        /** Whether to fade-in controls when they appear in view (default=true) */
+        void setFading( bool value );
+
     private:
         typedef std::pair<float, osg::ref_ptr<ControlNode> > ControlNodePair;
         typedef std::multimap<float, osg::ref_ptr<ControlNode> > ControlNodeCollection;
@@ -614,6 +645,8 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::ref_ptr<osg::Group>      _group;
         std::vector<osg::BoundingBox> _taken;
         bool                          _sortByDistance;
+        bool                          _fading;
+        bool                          _sortingEnabled;
 
         friend class ControlCanvas;
         friend class ControlNode;
@@ -640,6 +673,9 @@ namespace osgEarth { namespace Util { namespace Controls
 
         /** gets the top-most control that intersects the specified position. */
         Control* getControlAtMouse( float x, float y ) const;
+
+        /** Toggles whether ControlNodes are allowed to overlap. */
+        void setAllowControlNodeOverlap( bool value );
 
     public:
         // internal- no need to call directly
@@ -671,6 +707,9 @@ namespace osgEarth { namespace Util { namespace Controls
     private:
         friend struct ControlCanvasEventHandler;
         friend class ControlNode;
+
+        ControlCanvas( osgViewer::View* view, bool registerCanvas );
+        void init( osgViewer::View* view, bool registerCanvas );
 
         bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
 

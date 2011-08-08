@@ -56,7 +56,8 @@ TranslateCommand::~TranslateCommand()
     
 
 IntersectingDragger::IntersectingDragger():
-osgManipulator::Dragger()
+osgManipulator::Dragger(),
+_size(5.0f)
 {
     setColor(osg::Vec4(0.0f, 1.0f, 0.0f, 1.0f));
     setPickColor(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f));
@@ -70,7 +71,7 @@ void
 IntersectingDragger::setupDefaultGeometry()
 {
     //Build the handle
-    osg::Sphere* shape = new osg::Sphere(osg::Vec3(0,0,0), 5);   
+    osg::Sphere* shape = new osg::Sphere(osg::Vec3(0,0,0), _size);   
     osg::Geode* geode = new osg::Geode();
     _shapeDrawable = new osg::ShapeDrawable( shape );    
     geode->addDrawable( _shapeDrawable.get() );

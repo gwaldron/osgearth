@@ -96,8 +96,6 @@ namespace osgEarth { namespace Features
 
     typedef std::map<std::string, AttributeValue> AttributeTable;
 
-//    typedef std::map<std::string, std::string> AttributeTable;
-
     typedef unsigned long FeatureID;
 
     typedef std::map< std::string, AttributeType > FeatureSchema;
@@ -109,6 +107,8 @@ namespace osgEarth { namespace Features
     {
     public:
         Feature( FeatureID fid =0L );
+
+        Feature( Geometry* geom, const Style& style =Style(), FeatureID fid =0L );
 
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
@@ -143,6 +143,10 @@ namespace osgEarth { namespace Features
         optional<Style>& style() { return _style; }
         const optional<Style>& style() const { return _style; }
 
+        /** Geodetic interpolation method. */
+        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
+        const optional<GeoInterpolation>& geomInterp() const { return _geoInterp; }
+
         /** populates the variables of an expression with attribute values and evals the expression. */
         double eval( NumericExpression& expr ) const;
         
@@ -150,10 +154,11 @@ namespace osgEarth { namespace Features
         const std::string& eval( StringExpression& expr ) const;
 
     protected:
-        FeatureID _fid;
+        FeatureID                         _fid;
         osg::ref_ptr<Symbology::Geometry> _geom;
-        AttributeTable _attrs;
-        optional<Style> _style;
+        AttributeTable                    _attrs;
+        optional<Style>                   _style;
+        optional<GeoInterpolation>        _geoInterp;
     };
 
     typedef std::list< osg::ref_ptr<Feature> > FeatureList;

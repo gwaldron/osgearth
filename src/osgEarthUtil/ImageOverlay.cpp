@@ -18,28 +18,16 @@ void clampLatitude(osg::Vec2d& l)
     l.y() = osg::clampBetween( l.y(), -90.0, 90.0);
 }
 
-ImageOverlay::ImageOverlay():
-_lowerLeft(10,10),
-_lowerRight(20, 10),
-_upperRight(20,20),
-_upperLeft(10, 20),
-_ellipsoid(new osg::EllipsoidModel()),
-_dirty(false),
-_alpha(1.0f)
-{
-    postCTOR();
-}
-
-ImageOverlay::ImageOverlay(const osg::EllipsoidModel* ellipsoid, osg::Image* image):
+ImageOverlay::ImageOverlay(MapNode* mapNode, osg::Image* image):
+DrapeableNode(mapNode, true),
 _lowerLeft(10,10),
 _lowerRight(20, 10),
 _upperRight(20,20),
 _upperLeft(10, 20),
 _image(image),
-_ellipsoid(ellipsoid),
 _dirty(false),
 _alpha(1.0f)
-{    
+{        
     postCTOR();
 }
 
@@ -47,7 +35,9 @@ void
 ImageOverlay::postCTOR()
 {
     _geode = new osg::Geode;
-    addChild( _geode );    
+    //addChild( _geode );    
+
+    setNode( _geode );
 
     init();    
     setNumChildrenRequiringUpdateTraversal( 1 );    
@@ -61,16 +51,17 @@ ImageOverlay::init()
     double height = 0;
     osg::Geometry* geometry = new osg::Geometry();
     osg::Vec3d ll;
-    _ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_lowerLeft.y()), osg::DegreesToRadians(_lowerLeft.x()), height, ll.x(), ll.y(), ll.z());
+    const osg::EllipsoidModel* ellipsoid = _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
+    ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_lowerLeft.y()), osg::DegreesToRadians(_lowerLeft.x()), height, ll.x(), ll.y(), ll.z());
 
     osg::Vec3d lr;
-    _ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_lowerRight.y()), osg::DegreesToRadians(_lowerRight.x()), height, lr.x(), lr.y(), lr.z());
+    ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_lowerRight.y()), osg::DegreesToRadians(_lowerRight.x()), height, lr.x(), lr.y(), lr.z());
 
     osg::Vec3d ur;
-    _ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_upperRight.y()), osg::DegreesToRadians(_upperRight.x()), height, ur.x(), ur.y(), ur.z());
+    ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_upperRight.y()), osg::DegreesToRadians(_upperRight.x()), height, ur.x(), ur.y(), ur.z());
 
     osg::Vec3d ul;
-    _ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_upperLeft.y()), osg::DegreesToRadians(_upperLeft.x()), height, ul.x(), ul.y(), ul.z());
+    ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_upperLeft.y()), osg::DegreesToRadians(_upperLeft.x()), height, ul.x(), ul.y(), ul.z());
 
 
     osg::Vec3Array* verts = new osg::Vec3Array(4);
@@ -110,7 +101,7 @@ ImageOverlay::init()
     geometry->setTexCoordArray(0, texcoords);
         
     MeshSubdivider ms;
-    ms.run(osg::DegreesToRadians(5.0), *geometry);            
+    ms.run(*geometry, osg::DegreesToRadians(5.0), GEOINTERP_RHUMB_LINE);
 
     _geode->removeDrawables(0, _geode->getNumDrawables() );
 
@@ -135,17 +126,6 @@ void ImageOverlay::setImage( osg::Image* image )
         dirty();        
     }
 }
-
-void
-ImageOverlay::setEllipsoid(const osg::EllipsoidModel* ellipsoid)
-{
-    if (_ellipsoid != ellipsoid)
-    {
-        _ellipsoid = ellipsoid;
-        dirty();
-    }
-}
-
 
 float
 ImageOverlay::getAlpha() const
@@ -362,12 +342,12 @@ ImageOverlay::setControlPoint(ControlPoint controlPoint, double lon_deg, double 
 
 void
 ImageOverlay::traverse(osg::NodeVisitor &nv)
-{ 
+{     
     if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR && _dirty)
     {
         init();        
     }
-    osg::Group::traverse(nv);
+    DrapeableNode::traverse(nv);
 }
 
 void ImageOverlay::dirty()

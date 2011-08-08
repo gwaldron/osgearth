@@ -27,6 +27,9 @@
 
 namespace osgEarth { namespace Symbology
 {
+    /**
+     * Symbol that describes how to render text labels.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT TextSymbol : public Symbol
     {
     public:
@@ -48,51 +51,55 @@ namespace osgEarth { namespace Symbology
 
         TextSymbol( const Config& conf =Config() );
 
+        /** Text fill color. */
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }
 
+        /** Text outline color. */
         optional<Stroke>& halo() { return _halo; }
         const optional<Stroke>& halo() const { return _halo; }
 
+        /** Name of text font. */
         optional<std::string>& font() { return _font; }
         const optional<std::string>& font() const { return _font; }
 
-        //optional<std::string>& content() { return _content; }
-        //const optional<std::string>& content() const { return _content; }
-
+        /** Actual text to render (if applicable) */
         optional<StringExpression>& content() { return _content; }
         const optional<StringExpression>& content() const { return _content; }
 
+        /** Priority of the label (applicable when the renderer sorts labels) */
         optional<NumericExpression>& priority() { return _priority; }
         const optional<NumericExpression>& priority() const { return _priority; }
 
-        //optional<std::string>& contentAttributeDelimiter() { return _contentAttributeDelimiter; }
-        //const optional<std::string>& contentAttributeDelimiter() const { return _contentAttributeDelimiter; }
-
-        //optional<std::string>& attribute() { return _attribute; }
-        //const optional<std::string>& attribute() const { return _attribute; }
-
+        /** Font size. */
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
 
+        /** Whether the text should face the screen (be 2D) */
         optional<bool>& rotateToScreen() { return _rotateToScreen; }
         const optional<bool>& rotateToScreen() const { return _rotateToScreen; }
 
+        /** Pixel offset from the center point. */
         optional<osg::Vec2s>& pixelOffset() { return _pixelOffset; }
         const optional<osg::Vec2s>& pixelOffset() const { return _pixelOffset; }
 
+        /** Whether to remove duplicates when drawing multiple labels. */
         optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
         const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }
 
+        /** Whether the size() property refers to pixels or scene units */
         optional<SizeMode>& sizeMode() { return _sizeMode; }
         const optional<SizeMode>& sizeMode() const { return _sizeMode; }
 
+        /** */
         optional<LineOrientation>& lineOrientation() { return _lineOrientation; }
         const optional<LineOrientation>& lineOrientation() const { return _lineOrientation; }
 
+        /** Whether to render text relative to line data */
         optional<LinePlacement>& linePlacement() { return _linePlacement; }
         const optional<LinePlacement>& linePlacement() const { return _linePlacement; }
 
+        /** Label generation provider to use */
         optional<std::string>& provider() { return _provider; }
         const optional<std::string>& provider() const { return _provider; }
 
@@ -107,8 +114,6 @@ namespace osgEarth { namespace Symbology
         optional<float>             _size;
         optional<StringExpression>  _content;
         optional<NumericExpression> _priority;
-        //optional<std::string>      _contentAttributeDelimiter;
-        //optional<std::string>      _attribute;
         optional<bool>              _rotateToScreen;
         optional<bool>              _removeDuplicateLabels;
         optional<SizeMode>          _sizeMode;

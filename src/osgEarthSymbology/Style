@@ -38,9 +38,10 @@
 namespace osgEarth { namespace Symbology 
 {
     /**
-     * A Style is an unordered collection of Symbols.
+     * Style is an unordered collection of Symbols that describes how to render
+     * geometry and other objects.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT Style // : public osgEarth::Revisioned<osg::Object>
+    class OSGEARTHSYMBOLOGY_EXPORT Style
     {
     public:
         /** Constructs a new, empty style. */
@@ -74,7 +75,7 @@ namespace osgEarth { namespace Symbology
         {
             for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
             {
-                Symbol* symbol = *it;
+                Symbol* symbol = (*it).get();
                 T* s = dynamic_cast<T*>(symbol);
                 if (s)
                     return s;
@@ -89,7 +90,7 @@ namespace osgEarth { namespace Symbology
         {
             for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
             {
-                Symbol* symbol = *it;
+                Symbol* symbol = (*it).get();
                 const T* s = dynamic_cast<const T*>(symbol);
                 if (s)
                     return s;
@@ -125,9 +126,6 @@ namespace osgEarth { namespace Symbology
         std::string                 _origType;
         std::string                 _origData;
         optional<std::string>       _url;
-
-        //typedef std::map<std::string,osg::ref_ptr<Style> > StylesByName;
-        //StylesByName _subStyles;
     };
 
     typedef std::vector<Style> StyleList;

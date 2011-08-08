@@ -26,6 +26,15 @@
 namespace osgEarth
 {
     /**
+     * Types of interpolation between two geodetic locations.
+     */
+    enum GeoInterpolation
+    {
+        GEOINTERP_GREAT_CIRCLE,
+        GEOINTERP_RHUMB_LINE
+    };
+
+    /**
      * Useful calculations for lat/long points.
      * Converted from http://www.movable-type.co.uk/scripts/latlong.html
      */
@@ -50,6 +59,12 @@ namespace osgEarth
         static double distance(double lat1Rad, double lon1Rad,
                                double lat2Rad, double lon2Rad,
                                double radius = osg::WGS_84_RADIUS_EQUATOR);
+
+        /**
+         *Computes the distance covered by the given path in meters using the Haversine formula
+         *Assumes the points in Lon, Lat in degrees
+         */
+        static double distance(const std::vector< osg::Vec3d > &points, double radius = osg::WGS_84_RADIUS_EQUATOR);
 
         /**
          * Computes the initial bearing from one point to the next in radians
@@ -126,6 +141,14 @@ namespace osgEarth
         static double rhumbDistance(double lat1Rad, double lon1Rad,
                                     double lat2Rad, double lon2Rad,
                                     double radius = osg::WGS_84_RADIUS_EQUATOR);
+
+
+        /**
+        * Computes the distance between two points in meters following a rhumb line
+        * Assumes the points are in Lon, Lat in degrees
+        */
+        static double rhumbDistance(const std::vector< osg::Vec3d > &points, double radius = osg::WGS_84_RADIUS_EQUATOR);
+
 
         /**
          *Computes the bearing of the rhumb line between two points in radians

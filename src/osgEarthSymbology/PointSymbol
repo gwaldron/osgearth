@@ -24,14 +24,19 @@
 
 namespace osgEarth { namespace Symbology
 {
+    /**
+     * Symbol that describes how to render point geometries.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT PointSymbol : public Symbol
     {
     public:
         PointSymbol( const Config& conf =Config() );
 
+        /** Point fill properties. */
         optional<Fill>& fill() { return _fill; }
         const optional<Fill>& fill() const { return _fill; }
 
+        /** Point size property */
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
 

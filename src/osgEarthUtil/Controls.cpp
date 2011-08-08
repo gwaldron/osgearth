@@ -34,6 +34,45 @@ using namespace osgEarth::Util::Controls;
 
 #define LC "[Controls] "
 
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // ControlNodeBin shaders.
+
+    char* s_controlVertexShader =
+        "void main() \n"
+        "{ \n"
+        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+        "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+        "    gl_FrontColor = gl_Color; \n"
+        "} \n";
+
+    char* s_imageControlFragmentShader =
+        "uniform sampler2D tex0; \n"
+        "uniform float visibleTime; \n"
+        "uniform float osg_FrameTime; \n"
+        "void main() \n"
+        "{ \n"
+        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
+        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"
+        "    gl_FragColor = vec4(texel.rgb, texel.a * opacity); \n"
+        "} \n";
+
+    char* s_labelControlFragmentShader =
+        "uniform sampler2D tex0; \n"
+        "uniform float visibleTime; \n"
+        "uniform float osg_FrameTime; \n"
+        "void main() \n"
+        "{ \n"
+        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
+        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"       
+        "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
+        "} \n";
+}
+
+// ---------------------------------------------------------------------------
+
 namespace
 {
     void calculateRotatedSize( float w, float h, float angle_rad, float& out_w, float& out_h )
@@ -398,12 +437,13 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
             }
         }
         else 
-        {
+        {            
             if ( ea.getEventType() == osgGA::GUIEventAdapter::RELEASE )
             {
                 for( ControlEventHandlerList::const_iterator i = _eventHandlers.begin(); i != _eventHandlers.end(); ++i )
                 {
-                    i->get()->onClick( this, ea.getButtonMask() );
+                    osg::Vec2f relXY( ea.getX() - _renderPos.x(), cx._vp->height() - ea.getY() - _renderPos.y() );
+                    i->get()->onClick( this, relXY, ea.getButtonMask() );
                 }
             }
         }
@@ -470,12 +510,30 @@ LabelControl::setFontSize( float value )
 }
 
 void
+LabelControl::setHaloColor( const osg::Vec4f& value )
+{
+    if ( !_haloColor.isSet() || *_haloColor != value ) {
+        _haloColor = value;
+        dirty();
+    }
+}
+
+void
 LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 {
     if ( visible() == true )
     {
         // we have to create the drawable during the layout pass so we can calculate its size.
         LabelText* t = new LabelText();
+
+#if 1
+        // needs a special shader
+        // todo: doesn't work. why?
+        osg::Program* program = new osg::Program();
+        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
+        t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+#endif
 
         t->setText( _text );
         // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
@@ -487,10 +545,11 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         if ( _font.valid() )
             t->setFont( _font.get() );
 
-        if ( backColor().isSet() )
+        if ( haloColor().isSet() )
         {
             t->setBackdropType( osgText::Text::OUTLINE );
-            t->setBackdropColor( backColor().value() );
+            t->setBackdropOffset( 0.03 );
+            t->setBackdropColor( haloColor().value() );
         }
 
         osg::BoundingBox bbox = t->getTextBB();
@@ -500,24 +559,22 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
             osg::Matrix m = t->getATMatrix( cx._viewContextID );
             _bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() ) * m;
             _bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() ) * m;
-            //_renderSize.set( _bmax.x() - _bmin.x(), _bmax.y() - _bmin.y() );
         }
         else
         {
             _bmin = osg::Vec3( bbox.xMin(), bbox.yMin(), bbox.zMin() );
             _bmax = osg::Vec3( bbox.xMax(), bbox.yMax(), bbox.zMax() );
-            //_renderSize.set( bbox.xMax()-bbox.xMin(), bbox.yMax()-bbox.yMin() );
         }
 
         _renderSize.set(
-            padding().left() + (_bmax.x() - _bmin.x()) + padding().right(),
-            padding().left() + (_bmax.y() - _bmin.y()) + padding().right() );
+            (_bmax.x() - _bmin.x()) + padding().x(),
+            (_bmax.y() - _bmin.y()) + padding().y() );
 
         _drawable = t;
 
         out_size.set(
-            margin().left() + margin().right() + _renderSize.x(),
-            margin().top() + margin().bottom() + _renderSize.y() );
+            margin().x() + _renderSize.x(),
+            margin().y() + _renderSize.y() );
     }
     else
     {
@@ -625,6 +682,8 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
     }
 }
 
+#undef IMAGECONTROL_TEXRECT
+
 void
 ImageControl::draw( const ControlContext& cx, DrawableList& out )
 {
@@ -671,19 +730,39 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         bool flip = _image->getOrigin()==osg::Image::TOP_LEFT;
 
         osg::Vec2Array* t = new osg::Vec2Array(4);
+
+#ifdef IMAGECONTROL_TEXRECT
+
         (*t)[0].set( 0, flip? 0: _image->t()-1 );
         (*t)[1].set( 0, flip? _image->t()-1: 0 );
         (*t)[2].set( _image->s()-1, flip? _image->t()-1: 0 );
         (*t)[3].set( _image->s()-1, flip? 0: _image->t()-1 );
+        osg::TextureRectangle* tex = new osg::TextureRectangle( _image.get() );
+
+#else
+
+        (*t)[0].set( 0, flip? 0 : 1 );
+        (*t)[1].set( 0, flip? 1 : 0 );
+        (*t)[2].set( 1, flip? 1 : 0 );
+        (*t)[3].set( 1, flip? 0 : 1 );
+        osg::Texture2D* tex = new osg::Texture2D( _image.get() );
+#endif
+
         g->setTexCoordArray( 0, t );
 
-        osg::TextureRectangle* texrec = new osg::TextureRectangle( _image.get() );
-        texrec->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
-        texrec->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-        g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, texrec, osg::StateAttribute::ON );
+        tex->setResizeNonPowerOfTwoHint(false);
+
+        tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::NEAREST );
+        tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+        g->getOrCreateStateSet()->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
 
         osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
+        
+        osg::Program* program = new osg::Program();
+        program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
+        program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
+        g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 
         out.push_back( g );
 
@@ -835,6 +914,14 @@ _value( value )
     setHeight( 16 );
 }
 
+CheckBoxControl::CheckBoxControl( bool value, ControlEventHandler* handler ) :
+_value( value )
+{
+    this->addEventHandler( handler );
+    setWidth( 16 );
+    setHeight( 16 );
+}
+
 void
 CheckBoxControl::fireValueChanged()
 {
@@ -935,7 +1022,11 @@ Frame::draw( const ControlContext& cx, DrawableList& out )
         geom->push_back( osg::Vec3d( _renderSize.x()-1, _renderSize.y()-1, 0 ) );
         geom->push_back( osg::Vec3d( 0, _renderSize.y()-1, 0 ) );
 
-        GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y() );
+        Style style;
+        LineSymbol* line = style.getOrCreate<LineSymbol>();
+        line->stroke()->color() = Color::White;
+        line->stroke()->width() = 2.5f;
+        GeometryRasterizer ras( (int)_renderSize.x(), (int)_renderSize.y(), style );
         ras.draw( geom.get() );
 
         osg::Image* image = ras.finalize();
@@ -1203,6 +1294,8 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 VBox::calcFill(const ControlContext& cx)
 {
+    Container::calcFill( cx );
+
     float used_x = padding().x();
     float used_y = padding().y() - childSpacing();
 
@@ -1213,7 +1306,7 @@ VBox::calcFill(const ControlContext& cx)
     {
         Control* child = i->get();
 
-        child->calcFill(cx);
+        //child->calcFill(cx);
 
         used_y += child->margin().y() + childSpacing();
         if ( !hc && child->horizFill() )
@@ -1234,7 +1327,7 @@ VBox::calcFill(const ControlContext& cx)
     if ( vc && renderHeight(vc) < (_renderSize.y() - used_y) )
         renderHeight(vc) = _renderSize.y() - used_y;
    
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 }
 
 void
@@ -1244,12 +1337,15 @@ VBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
 
     osg::Vec2f childCursor = _renderPos;
 
+    osg::Vec2f renderArea = _renderSize - padding().size();
+
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
         Control* child = i->get();
-        //child->calcPos( cx, childCursor, _renderSize );
-        child->calcPos( cx, childCursor, _renderSize - padding().size() ); // GW1
-        childCursor.y() += child->margin().top() + child->renderSize().y() + child->margin().bottom() + childSpacing();
+        child->calcPos( cx, childCursor, renderArea ); // GW1
+        float deltaY = child->margin().top() + child->renderSize().y() + child->margin().bottom() + childSpacing();
+        childCursor.y() += deltaY;
+        renderArea.y() -= deltaY;
     }
 }
 
@@ -1327,6 +1423,8 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 HBox::calcFill(const ControlContext& cx)
 {
+    Container::calcFill( cx );
+
     float used_x = padding().x() - childSpacing();
     float used_y = padding().y();
 
@@ -1337,7 +1435,7 @@ HBox::calcFill(const ControlContext& cx)
     {
         Control* child = i->get();
 
-        child->calcFill(cx);
+        //child->calcFill(cx);
 
         used_x += child->margin().x() + childSpacing();
         if ( !hc && child->horizFill() )
@@ -1358,7 +1456,7 @@ HBox::calcFill(const ControlContext& cx)
     if ( vc && renderHeight(vc) < (_renderSize.y() - used_y) )
         renderHeight(vc) = _renderSize.y() - used_y;
    
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 }
 
 void
@@ -1367,16 +1465,25 @@ HBox::calcPos(const ControlContext& cx, const osg::Vec2f& cursor, const osg::Vec
     Container::calcPos( cx, cursor, parentSize );
 
     osg::Vec2f childCursor = _renderPos;
-        //_renderPos.x() + padding().left(),
-        //_renderPos.y() + padding().top() );
 
+#if 0
     // collect all the members
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
         Control* child = i->get();
-        //child->calcPos( cx, childCursor, _renderSize );
         child->calcPos( cx, childCursor, _renderSize - padding().size() ); // GW1
         childCursor.x() += child->margin().left() + child->renderSize().x() + child->margin().right() + childSpacing();
+    }
+#endif
+
+    osg::Vec2f renderArea = _renderSize - padding().size();
+    for( ControlList::const_iterator i = _controls.begin(); i != _controls.end(); ++i )
+    {
+        Control* child = i->get();
+        child->calcPos( cx, childCursor, renderArea );
+        float deltaX = child->margin().left() + child->renderSize().x() + child->margin().right() + childSpacing();
+        childCursor.x() += deltaX;
+        renderArea.x() -= deltaX;        
     }
 }
 
@@ -1430,9 +1537,15 @@ Grid::expandToInclude( int col, int row )
     while( (int)_rows.size() <= row )
         _rows.push_back( Row() );
 
+    int maxCol = col;
+    for( RowVector::iterator i = _rows.begin(); i != _rows.end(); ++i ) {
+        if ( ((int)i->size())-1 > maxCol )
+            maxCol = ((int)i->size())-1;
+    }
+
     for( RowVector::iterator i = _rows.begin(); i != _rows.end(); ++i ) {
         Row& row = *i;
-        while( (int)row.size() <= col )
+        while( (int)row.size() <= maxCol )
             row.push_back( 0L );
     }
 }
@@ -1526,6 +1639,8 @@ Grid::calcSize( const ControlContext& cx, osg::Vec2f& out_size )
 void
 Grid::calcFill(const ControlContext& cx)
 {
+    Container::calcFill( cx );
+
     int numRows = _rows.size();
     int numCols = numRows > 0 ? _rows[0].size() : 0;
 
@@ -1534,6 +1649,7 @@ Grid::calcFill(const ControlContext& cx)
         for( int c=0; c<numCols; ++c ) //<_rows[r].size(); ++c )
         {
             Control* child = cell(c,r).get();
+
             if ( child )
             {
                 if ( child->horizFill() )
@@ -1544,7 +1660,7 @@ Grid::calcFill(const ControlContext& cx)
         }
     }
 
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 }
 
 void
@@ -1559,7 +1675,7 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
 
     for( int r=0; r<numRows; ++r )
     {
-        for( int c=0; c<numCols; ++c ) //_rows[r].size(); ++c )
+        for( int c=0; c<numCols; ++c )
         {
             Control* child = cell(c,r).get();
             if ( child )
@@ -1754,42 +1870,18 @@ _screenPos  ( 0.0, 0.0, 0.0 )
 
 // ---------------------------------------------------------------------------
 
-namespace
-{
-    // ControlNodeBin shaders.
-
-    char* s_controlVertexShader =
-        "void main() \n"
-        "{ \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
-        "    gl_FrontColor = gl_Color; \n"
-        "} \n";
-
-    char* s_controlFragmentShader =
-        "uniform sampler2D tex0; \n"
-        "uniform float visibleTime; \n"
-        "uniform float osg_FrameTime; \n"
-        "void main() \n"
-        "{ \n"
-        "    float opacity = clamp( osg_FrameTime - visibleTime, 0.0, 1.0 ); \n"
-        "    vec4 texel = texture2D(tex0, gl_TexCoord[0].st); \n"       
-        "    gl_FragColor = vec4(gl_Color.rgb, texel.a * opacity); \n"
-        "} \n";
-}
-
-// ---------------------------------------------------------------------------
-
 ControlNodeBin::ControlNodeBin() :
-_sortByDistance( true )
+_sortingEnabled( true ),
+_sortByDistance( true ),
+_fading        ( true )
 {
     _group = new Group();
 
+    osg::StateSet* stateSet = _group->getOrCreateStateSet();
+
     osg::Program* program = new osg::Program();
     program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
-    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_controlFragmentShader ) );
-
-    osg::StateSet* stateSet = _group->getOrCreateStateSet();
+    program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_labelControlFragmentShader ) );
     stateSet->setAttributeAndModes( program, osg::StateAttribute::ON );
 
     osg::Uniform* defaultOpacity = new osg::Uniform( osg::Uniform::FLOAT, "opacity" );
@@ -1798,7 +1890,13 @@ _sortByDistance( true )
 
     osg::Uniform* defaultVisibleTime = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
     defaultVisibleTime->set( 0.0f );
-    stateSet->addUniform( defaultVisibleTime );
+    stateSet->addUniform( defaultVisibleTime );    
+}
+
+void
+ControlNodeBin::setFading( bool value )
+{
+    _fading = value;
 }
 
 void
@@ -1814,7 +1912,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
     ControlNodeCollection* drawList = 0L;
     ControlNodeCollection byDepth;
 
-    if ( _sortByDistance )
+    if ( _sortingEnabled && _sortByDistance )
     {
         for( ControlNodeCollection::iterator i = _controlNodes.begin(); i != _controlNodes.end(); i++) 
         {
@@ -1870,24 +1968,46 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
               const osg::Vec3f& nPos = nodeData._screenPos;
               const osg::Vec2f& size = control->renderSize();
 
-              float x = nPos.x()-size.x()*0.5;
-              float y = nPos.y();
+              // calculate the rendering offset based on alignment:
+              float x, y;
+
+              if ( node->anchorPoint().isSet() )
+              {
+                  //TODO!!
+              }
+              else
+              {
+                  x =
+                    control->horizAlign() == Control::ALIGN_LEFT  ? nPos.x() - size.x() :
+                    control->horizAlign() == Control::ALIGN_RIGHT ? nPos.x() :
+                    nPos.x() - size.x()*0.5;
+
+                  y =
+                    control->vertAlign() == Control::ALIGN_BOTTOM ? nPos.y() :
+                    control->vertAlign() == Control::ALIGN_TOP    ? nPos.y() + size.y() :
+                    nPos.y() + size.y()*0.5;
+              }
+
               xform->setMatrix( osg::Matrixd::translate(x, y-context._vp->height(), 0) );
 
               osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
-
-              for( std::vector<osg::BoundingBox>::iterator u = _taken.begin(); u != _taken.end(); ++u )
+              if ( _sortingEnabled )
               {
-                  if ( u->intersects( bbox ) )
+                  // prevent overlap.
+                  for( std::vector<osg::BoundingBox>::iterator u = _taken.begin(); u != _taken.end(); ++u )
                   {
-                      nodeData._obscured = true;
-                      break;
+                      if ( u->intersects( bbox ) )
+                      {
+                          nodeData._obscured = true;
+                          break;
+                      }
                   }
               }
 
               if ( nodeData._obscured == false )
               {
-                  _taken.push_back( bbox );
+                  if ( _sortingEnabled )
+                    _taken.push_back( bbox );
 
                   // the geode holding this node's geometry:
                   osg::Geode* geode = static_cast<osg::Geode*>( xform->getChild(0) );
@@ -1904,7 +2024,7 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                       control->calcFill( context );
 
                       // only need to do this if the control has children ... (pos is always 0,0)
-                      control->calcPos( context, osg::Vec2f(0,0), surfaceSize );
+                      control->calcPos( context, osg::Vec2f(0,0), size );
                    
                       // build the drawables for the geode and insert them:
                       DrawableList drawables;
@@ -1920,25 +2040,28 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                       }
                   }
 
-                  // update the "visible time" uniform if it's changed. this will cause the
-                  // shader to "fade in" the label when it becomes visible.
-                  if ( !nodeData._uniform.valid() )
+                  if ( _fading )
                   {
-                      nodeData._uniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
-                      geode->getOrCreateStateSet()->addUniform( nodeData._uniform.get() );
-                  }
+                      // update the "visible time" uniform if it's changed. this will cause the
+                      // shader to "fade in" the label when it becomes visible.
+                      if ( !nodeData._uniform.valid() )
+                      {
+                          nodeData._uniform = new osg::Uniform( osg::Uniform::FLOAT, "visibleTime" );
+                          geode->getOrCreateStateSet()->addUniform( nodeData._uniform.get() );
+                      }
 
-                  float oldValue;
-                  nodeData._uniform->get( oldValue );
-                  if ( oldValue != nodeData._visibleTime )
-                      nodeData._uniform->set( nodeData._visibleTime );                
+                      float oldValue;
+                      nodeData._uniform->get( oldValue );
+                      if ( oldValue != nodeData._visibleTime )
+                          nodeData._uniform->set( nodeData._visibleTime );
+                  }
               }
 
               visible = !nodeData._obscured;
           }
           
           // adjust the visibility
-          xform->setNodeMask( visible ? ~0 : 0 ); // ? 0 : ~0 );
+          xform->setNodeMask( visible ? ~0 : 0 );
 
           ++i;
         }
@@ -2002,7 +2125,7 @@ ControlCanvas::get( osg::View* view, bool installInSceneData )
         osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(view);
         if ( view2 )
         {
-            canvas = new ControlCanvas( view2 );
+            canvas = new ControlCanvas( view2, false );
             _viewCanvasMap[view] = canvas;
 
             if ( installInSceneData )
@@ -2018,6 +2141,20 @@ ControlCanvas::get( osg::View* view, bool installInSceneData )
 ControlCanvas::ControlCanvas( osgViewer::View* view ) :
 _contextDirty(true)
 {
+    init( view, true );
+}
+
+ControlCanvas::ControlCanvas( osgViewer::View* view, bool registerCanvas ) :
+_contextDirty( true )
+{
+    init( view, registerCanvas );
+}
+
+void
+ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
+{
+    this->setDataVariance( osg::Object::DYNAMIC );
+
     view->addEventHandler( new ViewportHandler(this) );
     view->addEventHandler( new ControlCanvasEventHandler(this) );
 
@@ -2034,7 +2171,6 @@ _contextDirty(true)
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
     ss->setAttributeAndModes( new osg::Depth( osg::Depth::LEQUAL, 0, 1, false ) );
-    //ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
 
     // this is necessary b/c osgText puts things in this bin too and we can't override that
     ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
@@ -2044,6 +2180,7 @@ _contextDirty(true)
     this->addChild( _controlNodeBin->getControlGroup() );
 
     // register this canvas.
+    if ( registerCanvas )
     {
         OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
         _viewCanvasMap[view] = this;
@@ -2054,6 +2191,12 @@ ControlCanvas::~ControlCanvas()
 {
     OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _viewCanvasMapMutex );
     _viewCanvasMap.erase( _context._view );
+}
+
+void
+ControlCanvas::setAllowControlNodeOverlap( bool value )
+{
+    getControlNodeBin()->_sortingEnabled = !value;
 }
 
 void

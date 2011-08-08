@@ -28,7 +28,7 @@
 namespace osgEarth { namespace Symbology
 {    
     /**
-     * Simple expression evaluator with variables.
+     * Simple numeric expression evaluator with variables.
      */
     class OSGEARTHSYMBOLOGY_EXPORT NumericExpression
     {
@@ -83,6 +83,9 @@ namespace osgEarth { namespace Symbology
 
     //--------------------------------------------------------------------
 
+    /**
+     * Simple string expression evaluator with variables.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT StringExpression
     {
     public:

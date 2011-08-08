@@ -24,12 +24,11 @@ using namespace osgEarth::Symbology;
 TextSymbol::TextSymbol( const Config& conf ) :
 _fill( Fill( 1, 1, 1, 1 ) ),
 _halo( Stroke( 0.3, 0.3, 0.3, 1) ),
-//_font( "fonts/arial.ttf" ),
 _size( 16.0f ),
-//_contentAttributeDelimiter( "[]" ),
 _sizeMode( SIZEMODE_SCREEN ),
 _rotateToScreen( false ),
-_removeDuplicateLabels( false )
+_removeDuplicateLabels( false ),
+_provider( "overlay" )
 {
     mergeConfig(conf);
 }
@@ -45,8 +44,6 @@ TextSymbol::getConfig() const
     conf.addIfSet( "size", _size );
     conf.addObjIfSet( "content", _content );
     conf.addObjIfSet( "priority", _priority );
-//    conf.addIfSet( "content_attribute_delim", _contentAttributeDelimiter );
-//    conf.addIfSet( "attribute", _attribute );
     conf.addIfSet( "rotate_to_screen", _rotateToScreen );
     conf.addIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
     conf.addIfSet( "size_mode", "screen", _sizeMode, SIZEMODE_SCREEN );
@@ -74,8 +71,6 @@ TextSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "size", _size );
     conf.getObjIfSet( "content", _content );
     conf.getObjIfSet( "priority", _priority );
-//    conf.getIfSet( "content_attribute_delim", _contentAttributeDelimiter );
-//    conf.getIfSet( "attribute", _attribute );
     conf.getIfSet( "rotate_to_screen", _rotateToScreen );
     conf.getIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
     conf.getIfSet( "size_mode", "screen", _sizeMode, SIZEMODE_SCREEN );

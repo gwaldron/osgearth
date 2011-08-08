@@ -55,10 +55,10 @@ int main(int argc, char** argv)
 
 struct MyClickHandler : public ControlEventHandler
 {
-    void onClick( Control* control, int mouseButtonMask )
+    void onClick( Control* control, const osg::Vec2f& pos, int mouseButtonMask )
     {
-        OE_NOTICE << "Thank you for clicking on " << typeid(control).name()
-                  << std::endl;
+        OE_NOTICE << "You clicked at (" << pos.x() << ", " << pos.y() << ") within the control."
+            << std::endl;
     }
 };
 
@@ -97,9 +97,10 @@ createControls( ControlCanvas* cs )
         center->setVertAlign( Control::ALIGN_CENTER );
 
         // Add an image:
-        osg::Image* image = osgDB::readImageFile( "http://osgearth.org/chrome/site/osgearth.gif" );
-        if ( image ) {
-            ImageControl* imageCon = new ImageControl( image );
+        osg::ref_ptr<osg::Image> image;
+        if ( HTTPClient::readImageFile("http://osgearth.org/chrome/site/osgearth.gif", image) == HTTPClient::RESULT_OK )
+        {
+            ImageControl* imageCon = new ImageControl( image.get() );
             imageCon->setHorizAlign( Control::ALIGN_CENTER );
             imageCon->setFixSizeForRotation( true );
             imageCon->addEventHandler( new ImageRotationHandler );

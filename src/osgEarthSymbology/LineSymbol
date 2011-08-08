@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_LINE_SYMBOL_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoMath>
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Symbol>
 #include <osg/Referenced>
@@ -28,11 +29,15 @@
 
 namespace osgEarth { namespace Symbology
 {
+    /** 
+     * Symbol that describes how to draw linear geometry.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT LineSymbol : public Symbol
     {
     public:
         LineSymbol(const Config& conf =Config());
 
+        /** Line stroking parameters */
         optional<Stroke>& stroke() { return _stroke; }
         const optional<Stroke>& stroke() const { return _stroke; }
 

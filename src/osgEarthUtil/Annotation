@@ -1,0 +1,178 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHUTIL_ANNOTATION
+#define OSGEARTHUTIL_ANNOTATION
+
+#include <osgEarth/MapNode>
+#include <osgEarth/GeoMath>
+#include <osgEarth/DrapeableNode>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/Style>
+#include <osgEarthUtil/Common>
+#include <osgEarthUtil/Controls>
+#include <osg/MatrixTransform>
+
+namespace osgEarth { namespace Util { namespace Annotation
+{	
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
+    using namespace osgEarth::Util::Controls;
+
+    /** 
+     * A Placemark combines an 2D icon, a label, support for mouse interaction
+     * and a popup control.
+     */
+    class OSGEARTHUTIL_EXPORT PlacemarkNode : public osg::MatrixTransform
+    {
+    public:
+        PlacemarkNode( MapNode* mapNode );
+        PlacemarkNode( MapNode* mapNode, const std::string& iconURI, const std::string& label, const Style& style =Style() );
+
+        /**
+         * Sets the position of this annotation.
+         * @param pos Position data
+         * @param srs Spatial reference of the "pos" parameter. If you omit this,
+         *            it assumes your "pos" is in the same SRS as the Map.
+         */
+        void setPosition( const osg::Vec3d& pos, const SpatialReference* srs =0L );
+
+        /**
+         * Location of the icon image to load
+         */
+        void setIconURI( const std::string& value );
+        const std::string getIconURI() const { return _iconURI; }
+
+        /**
+         * Text label content
+         */
+        void setText( const std::string& text );
+        const std::string& getText() const { return _text; }
+
+        /**
+         * Style (for text)
+         */
+        void setStyle( const Style& style );
+        const Style& getStyle() const { return _style; }
+
+        /**
+         * Control to pop up when the user clicks on the placemark (TODO)
+         */
+        void setPopupControl( Control* control );
+        Control* getPopupControl() const { return _popupControl.get(); }
+
+    private:
+        std::string                _iconURI;
+        osg::ref_ptr<osg::Image>   _image;
+        std::string                _text;
+        Style                      _style;
+
+        osg::ref_ptr<Container>    _container;
+        osg::ref_ptr<ImageControl> _icon;
+        osg::ref_ptr<LabelControl> _label;
+        osg::ref_ptr<Control>      _popupControl;
+
+        osg::observer_ptr<MapNode> _mapNode;
+
+        void init();
+    };
+
+    /**
+     * Simple node that renders a Geometry into a scene graph node. The coordinates
+     * of the geometry are explicit; there is no association with spatial reference
+     * or a map. You can use this object to create a geometry for use in a local
+     * tangent plane coordinate system.
+     */
+    class OSGEARTHUTIL_EXPORT GeometryNode : public DrapeableNode
+    {
+    public:
+        GeometryNode( Geometry* geom, const Style& style );
+
+        GeometryNode( MapNode* mapNode, Geometry* geom, const Style& style, bool draped =true );
+
+        /**
+         * Gets or creates a parent node for the internal draped node. Typically you
+         * would use this to install a Transform node atop the draped node.
+         */
+        template<typename T>
+        T* getOrCreateParent()
+        {
+            if ( _parent.valid() )
+            {
+                return static_cast<T*>( _parent.get() );
+            }
+            else
+            {
+                T* p = new T();
+                _parent = p;
+                if ( getNode() )
+                {
+                    p->addChild( getNode() );
+                    setNode( _parent.get() );
+                }
+                return p;
+            }
+        }
+
+    protected:
+        void init();
+
+        osg::ref_ptr<Geometry>   _geom;
+        Style                    _style;
+        osg::ref_ptr<osg::Group> _parent;
+    };
+
+    /** 
+     * Renders a circle that can drape on a MapNode terrain.    
+     */
+    class OSGEARTHUTIL_EXPORT CircleNode : public FeatureNode
+    {
+    public:
+        CircleNode( 
+            MapNode*                mapNode,
+            const osg::Vec3d&       center,
+            const Linear&           radius,
+            const Style&            style,
+            bool                    draped      =true,
+            unsigned                numSegments =0 );
+    };
+
+    /** 
+     * Renders a circle that can drape on a MapNode terrain.    
+     */
+    class OSGEARTHUTIL_EXPORT EllipseNode : public FeatureNode
+    {
+    public:
+        EllipseNode( 
+            MapNode*                mapNode,
+            const osg::Vec3d&       center,
+            const Linear&           radiusMajor,
+            const Linear&           radiusMinor,
+            const Angular&          rotationAngle,
+            const Style&            style,
+            bool                    draped      =true,
+            unsigned                numSegments =0 );
+    };
+
+} } } // namespace osgEarth::Util::Annotation
+
+#endif //OSGEARTHUTIL_ANNOTATION

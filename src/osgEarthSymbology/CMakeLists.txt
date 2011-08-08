@@ -21,6 +21,7 @@ SET(LIB_PUBLIC_HEADERS
     Expression
     ExtrusionSymbol
     Geometry
+    GeometryFactory
     GEOS
     GeometryRasterizer
     LineFunctor
@@ -46,6 +47,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Expression.cpp
     ExtrusionSymbol.cpp
     Geometry.cpp
+    GeometryFactory.cpp
     GEOS.cpp
     GeometryRasterizer.cpp
     LineSymbol.cpp

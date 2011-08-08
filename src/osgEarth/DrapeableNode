@@ -1,0 +1,62 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2011 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_DRAPEABLE_NODE_H
+#define OSGEARTH_DRAPEABLE_NODE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/MapNode>
+
+namespace osgEarth
+{
+    /**
+     * Base class for a node that can be "draped" on the MapNode terrain
+     * using the overlay decorator.
+     */
+    class OSGEARTH_EXPORT DrapeableNode : public osg::Group
+    {
+    public:
+        DrapeableNode( MapNode* mapNode =0L, bool draped =true );
+
+        /**
+         * The node to drape (or not) on the MapNode terrain.
+         */
+        void setNode( osg::Node* node );
+        osg::Node* getNode() const { return _node.get(); }
+
+        /**
+         * Whether to drape the node content on the mapnode terrain.
+         */
+        void setDraped( bool value );
+        bool getDraped() const { return _draped; }
+
+    public:
+        virtual void traverse( osg::NodeVisitor& nv );
+
+    protected:
+        osg::observer_ptr<MapNode> _mapNode;
+
+    private:
+        bool                       _draped;
+        osg::ref_ptr<osg::Node>    _node;
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_DRAPEABLE_NODE_H

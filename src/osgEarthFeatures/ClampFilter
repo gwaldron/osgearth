@@ -44,6 +44,13 @@ namespace osgEarth { namespace Features
         void setOffsetZ( double value ) { _offsetZ = value; }
         double getOffsetZ() const { return _offsetZ; }
 
+        void setScaleZ( double value ) { _scaleZ = value; }
+        double getScaleZ() const { return _scaleZ; }
+
+        /** Maximum terrain resolution to consider when clamping */
+        void setMaxResolution( double value ) { _maxRes = value; }
+        double getMaxResolution() const { return _maxRes; }
+
         /** Sets the attribute name to which to write the maximum clamped Z value. */
         void setMaxZAttributeName( const std::string& value ) { _maxZAttrName = value; }
 
@@ -52,7 +59,8 @@ namespace osgEarth { namespace Features
 
     protected:
         bool _ignoreZ;
-        double _offsetZ;
+        double _offsetZ, _scaleZ;
+        double _maxRes;
         std::string _maxZAttrName;
     };
 

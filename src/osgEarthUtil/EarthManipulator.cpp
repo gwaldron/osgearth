@@ -903,7 +903,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
             {
                 osg::Vec3d local = new_center;
                 // reproject the focal point if necessary:
-                vp_srs->transform( new_center.x(), new_center.y(), getSRS(), local.x(), local.y() );
+                vp_srs->transform2D( new_center.x(), new_center.y(), getSRS(), local.x(), local.y() );
                 new_center = local;
             }
 
@@ -1174,9 +1174,6 @@ EarthManipulator::updateCamera( osg::Camera* eventCamera )
 bool
 EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {
-    if ( ea.getHandled() )
-        return false;
-
     bool handled = false;
     
     // first order of business: make sure the CSN is established.

@@ -48,6 +48,7 @@ BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style( style ),
 _geomTypeOverride( Symbology::Geometry::TYPE_UNKNOWN ),
 _maxAngle_deg( 5.0 ),
+_geoInterp( GEOINTERP_RHUMB_LINE ),
 _mergeGeometry( false )
 {
     reset();
@@ -65,61 +66,7 @@ BuildGeometryFilter::reset()
 }
 
 bool
-BuildGeometryFilter::pushTextAnnotation( TextAnnotation* anno, const FilterContext& context )
-{
-    // find the centroid
-    osg::Vec3d centroid = anno->getGeometry()->getBounds().center();
-
-    osgText::Text* t = new osgText::Text();
-    t->setText( anno->text() );
-    t->setFont( "fonts/arial.ttf" );
-    t->setAutoRotateToScreen( true );
-    t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
-    t->setCharacterSize( 32.0f );
-    //t->setCharacterSizeMode( osgText::TextBase::OBJECT_COORDS_WITH_MAXIMUM_SCREEN_SIZE_CAPPED_BY_FONT_HEIGHT );
-    //t->setCharacterSize( 300000.0f );
-    t->setPosition( centroid );
-    t->setAlignment( osgText::TextBase::CENTER_CENTER );
-    t->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS), osg::StateAttribute::ON );
-    t->getOrCreateStateSet()->setRenderBinDetails( 99999, "RenderBin" );
-
-    // apply styling as appropriate:
-    osg::Vec4f textColor(1,1,1,1);
-    osg::Vec4f haloColor(0,0,0,1);
-
-    const TextSymbol* textSymbolizer = getStyle().getSymbol<TextSymbol>();
-    if ( textSymbolizer )
-    {
-        textColor = textSymbolizer->fill()->color();
-        if ( textSymbolizer->halo().isSet() )
-        {
-            haloColor = textSymbolizer->halo()->color();
-        }
-    }
-
-    t->setColor( textColor );
-    t->setBackdropColor( haloColor );
-    t->setBackdropType( osgText::Text::OUTLINE );
-
-    if ( context.isGeocentric() )
-    {
-        // install a cluster culler: note that the CCC control point and normal must be
-        // in world coordinates
-        const osg::EllipsoidModel* ellip = context.profile()->getSRS()->getEllipsoid();
-        osg::Vec3d cp = centroid * context.inverseReferenceFrame();
-        osg::Vec3d normal = ellip->computeLocalUpVector( cp.x(), cp.y(), cp.z() );
-        osg::ClusterCullingCallback* ccc = new osg::ClusterCullingCallback( cp, normal, 0.0f );
-        t->setCullCallback( ccc );
-    }
-
-	_featureNode->addDrawable(t, anno->getFID());
-    _geode->addDrawable( t );
-
-    return true;    
-}
-
-bool
-BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& context )
+BuildGeometryFilter::push( Feature* input, const FilterContext& context )
 {
     GeometryIterator parts( input->getGeometry(), false );
     while( parts.hasMore() )
@@ -291,7 +238,10 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
 
             MeshSubdivider ms( context.referenceFrame(), context.inverseReferenceFrame() );
             //ms.setMaxElementsPerEBO( INT_MAX );
-            ms.run( threshold, *osgGeom );
+            if ( input->geoInterp().isSet() )
+                ms.run( *osgGeom, threshold, *input->geoInterp() );
+            else
+                ms.run( *osgGeom, threshold, *_geoInterp );
         }
 
         // set the color array. We have to do this last, otherwise it screws up any modifications
@@ -317,17 +267,6 @@ BuildGeometryFilter::pushRegularFeature( Feature* input, const FilterContext& co
     }
     
     return true;
-}
-
-bool
-BuildGeometryFilter::push( Feature* input, const FilterContext& context )
-{
-    if ( !input || !input->getGeometry() )
-        return true;
-    else if ( dynamic_cast<TextAnnotation*>(input) )
-        return pushTextAnnotation( static_cast<TextAnnotation*>(input), context );
-    else
-        return pushRegularFeature( input, context );
 }
 
 FilterContext
@@ -387,20 +326,11 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
 		_featureNode->addChild(_geode.release());
 
         _result = _featureNode;
-
-        if ( context.hasReferenceFrame() )
-        {
-            osg::MatrixTransform* delocalizer = new osg::MatrixTransform( context.inverseReferenceFrame() );
-            delocalizer->addChild( _result.get() );
-            _result = delocalizer;
-        }
     }
     else
     {
         _result = 0L;
     }
 
-    FilterContext outCx( context );
-    outCx.setReferenceFrame( osg::Matrixd::identity() ); // clear the ref frame.
-    return outCx;
+    return context;
 }

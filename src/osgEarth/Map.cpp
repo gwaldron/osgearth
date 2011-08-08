@@ -1229,9 +1229,9 @@ MapInfo::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, 
     }
 
     return inputSRS->transform(
-        input.x(), input.y(),
+        input.x(), input.y(), input.z(),
         mapSRS,
-        output.x(), output.y() );
+        output.x(), output.y(), output.z() );
 }
 
 bool

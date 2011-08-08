@@ -89,17 +89,17 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
 
 #endif
         result = plod;
+        
+        if ( tileHasLodBlending )
+        {
+            // Make the LOD transition distance, and a measure of how
+            // close the tile is to an LOD change, to shaders.
+            result->addCullCallback(new Drivers::LODFactorCallback);
+        }
     }
     else
     {
         result = tile;
-    }
-
-    if ( tileHasLodBlending )
-    {
-        // Make the LOD transition distance, and a measure of how
-        // close the tile is to an LOD change, to shaders.
-        result->addCullCallback(new Drivers::LODFactorCallback);
     }
 
     // this cull callback dynamically adjusts the LOD scale based on distance-to-camera:

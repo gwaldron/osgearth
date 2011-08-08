@@ -23,7 +23,6 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureCursor>
-#include <osgEarthFeatures/Annotation>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Query>
 #include <osgEarthFeatures/Filter>

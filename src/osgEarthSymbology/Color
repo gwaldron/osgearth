@@ -25,21 +25,31 @@
 
 namespace osgEarth { namespace Symbology
 {
+    /**
+     * Pre-set colors (convenience class).
+     */
     struct OSGEARTHSYMBOLOGY_EXPORT Color : public osg::Vec4f
     {
+        /** Creates a new default color */
         Color() : osg::Vec4f(1,1,1,1) { }
 
+        /** Copy constructor */
         Color( const Color& rhs ) : osg::Vec4f(rhs) { }
 
+        /** Copy constructor with modified alpha value */
         Color( const Color& rhs, float a );
 
+        /** Component constructor */
         Color( float r, float g, float b, float a = 1.0f )
             : osg::Vec4f(r, g, b, a) { }
 
+        /** RGBA constructor */
         Color( unsigned rgba );
 
+        /** Construct a color from an HTML string (e.g., "#FF0004F") */
         Color( const std::string& html );
 
+        /** Encode the color at an HTML color string (e.g., "#FF004F78") */
         std::string toHTML() const;
 
         // built in colors
@@ -62,6 +72,7 @@ namespace osgEarth { namespace Symbology
         static Color Fuchsia;
         static Color Purple;
         static Color Orange;
+        static Color Cyan;
 
         static Color DarkGray;
     };

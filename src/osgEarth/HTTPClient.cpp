@@ -18,7 +18,7 @@
  */
 
 #include <curl/curl.h>
-#include <curl/types.h>
+//#include <curl/types.h>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgEarth/Version>

@@ -30,6 +30,7 @@
 #include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/Viewpoint>
+#include <osgEarthUtil/Formatters>
 #include <osgEarthSymbology/Color>
 #include <osgEarthFeatures/FeatureNode>
 #include <osgEarthFeatures/FeatureSource>
@@ -47,16 +48,20 @@ usage( const std::string& msg )
     OE_NOTICE << "USAGE: osgearth_viewer [--graticule] [--autoclip] file.earth" << std::endl;
     OE_NOTICE << "   --graticule     : displays a lat/long grid in geocentric mode" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
-    OE_NOTICE << "   --animateSky    : animates the sun across the sky" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
     OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
+    OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
+    OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
+    
         
     return -1;
 }
 
-static EarthManipulator* s_manip         = 0L;
+static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
+static bool              s_dms           =false;
+static bool              s_mgrs          =false;
 
 struct SkySliderHandler : public ControlEventHandler
 {
@@ -71,14 +76,74 @@ struct ClickViewpointHandler : public ControlEventHandler
     ClickViewpointHandler( const Viewpoint& vp ) : _vp(vp) { }
     Viewpoint _vp;
 
-    virtual void onClick( class Control* control, int buttonMask )
+    virtual void onClick( class Control* control )
     {
         s_manip->setViewpoint( _vp, 4.5 );
     }
 };
 
-osg::Node*
-createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
+struct MouseCoordsHandler : public osgGA::GUIEventHandler
+{
+    MouseCoordsHandler( LabelControl* label, const osgEarth::Map* map )
+        : _label( label ),
+          _map( map)
+        {}
+
+    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+    {
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+        if (ea.getEventType() == ea.MOVE || ea.getEventType() == ea.DRAG)
+        {
+            osgUtil::LineSegmentIntersector::Intersections results;
+            if ( view->computeIntersections( ea.getX(), ea.getY(), results ) )
+            {
+                // find the first hit under the mouse:
+                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
+                osg::Vec3d point = first.getWorldIntersectPoint();
+                osg::Vec3d lla;
+
+                // transform it to map coordinates:
+                _map->worldPointToMapPoint(point, lla);
+
+                std::stringstream ss;
+
+                if ( s_mgrs )
+                {
+                    MGRSFormatter f( MGRSFormatter::PRECISION_1M );
+                    ss << "MGRS: " << f.format(lla.y(), lla.x()) << "   ";
+                }
+                 // lat/long
+                {
+                    LatLongFormatter::AngularFormat fFormat = s_dms?
+                        LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS :
+                        LatLongFormatter::FORMAT_DECIMAL_DEGREES;
+                    
+                    LatLongFormatter f( fFormat );
+
+                    ss 
+                        << "Lat: " << f.format(Angular(lla.y(),Units::DEGREES)) << "  "
+                        << "Lon: " << f.format(Angular(lla.x(),Units::DEGREES));
+                }
+
+                _label->setText( ss.str() );
+            }
+            else
+            {
+                //Clear the text
+                _label->setText( "" );
+            }
+        }
+        return false;
+    }
+
+    osg::ref_ptr< LabelControl > _label;
+    const Map*                   _map;
+};
+
+
+
+void
+createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
 {
     ControlCanvas* canvas = ControlCanvas::get( view );
 
@@ -140,19 +205,21 @@ createControlPanel( osgViewer::View* view, const std::vector<Viewpoint>& vps )
     canvas->addControl( main );
 
     s_controlPanel = main;
-    return canvas;
 }
 
-struct AnimateSunCallback : public osg::NodeCallback
+void addMouseCoords(osgViewer::Viewer* viewer, const osgEarth::Map* map)
 {
-    void operator()( osg::Node* node, osg::NodeVisitor* nv )
-    {
-        SkyNode* skyNode = static_cast<SkyNode*>(node);
-        double hours = fmod( osg::Timer::instance()->time_s()/4.0, 24.0 );
-        skyNode->setDateTime( 2011, 6, 6, hours );
-        OE_INFO << "TIME: " << hours << std::endl;
-    }
-};
+    ControlCanvas* canvas = ControlCanvas::get( viewer );
+    LabelControl* mouseCoords = new LabelControl();
+    mouseCoords->setHorizAlign(Control::ALIGN_CENTER );
+    mouseCoords->setVertAlign(Control::ALIGN_BOTTOM );
+    mouseCoords->setBackColor(0,0,0,0.5);    
+    mouseCoords->setSize(400,50);
+    mouseCoords->setMargin( 10 );
+    canvas->addControl( mouseCoords );
+
+    viewer->addEventHandler( new MouseCoordsHandler(mouseCoords, map ) );
+}
 
 struct ViewpointHandler : public osgGA::GUIEventHandler
 {
@@ -354,19 +421,19 @@ main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+    osgViewer::Viewer viewer(arguments);
 
     bool useGraticule = arguments.read( "--graticule" );
     bool useAutoClip  = arguments.read( "--autoclip" );
-    bool animateSky   = arguments.read( "--animateSky");
-    bool useSky       = arguments.read( "--sky" ) || animateSky;
+    bool useSky       = arguments.read( "--sky" );
     bool jump         = arguments.read( "--jump" );
+    s_dms             = arguments.read( "--dms" );
+    s_mgrs            = arguments.read( "--mgrs" );
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
         return usage( "Unable to load earth model." );
-
-    osgViewer::Viewer viewer(arguments);
     
     s_manip = new EarthManipulator();
     viewer.setCameraManipulator( s_manip );
@@ -403,10 +470,6 @@ main(int argc, char** argv)
                 s_sky->setDateTime( 2011, 3, 6, hours );
                 s_sky->attach( &viewer );
                 root->addChild( s_sky );
-                if ( animateSky )
-                {
-                    s_sky->setUpdateCallback( new AnimateSunCallback());
-                }
             }
 
             if ( externals.hasChild("autoclip") )
@@ -437,8 +500,13 @@ main(int argc, char** argv)
                 s_manip->setViewpoint(viewpoints[0]);
         }
 
+
+        //Add a control panel to the scene
+        root->addChild( ControlCanvas::get( &viewer ) );
         if ( viewpoints.size() > 0 || s_sky )
-            root->addChild( createControlPanel(&viewer, viewpoints) );
+            createControlPanel(&viewer, viewpoints);
+
+        addMouseCoords( &viewer, mapNode->getMap() );
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

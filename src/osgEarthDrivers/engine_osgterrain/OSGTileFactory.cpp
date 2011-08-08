@@ -876,7 +876,7 @@ OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key
     // In a Plate Carre tesselation, scale the heightfield elevations from meters to degrees
     if ( isPlateCarre )
     {
-        HeightFieldUtils::scaleHeightFieldToDegrees( hf );
+        HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
     }
 
     osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf.get() );

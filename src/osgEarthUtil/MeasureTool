@@ -22,14 +22,17 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
-#include <osgEarthFeatures/FeatureListSource>
+#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthSymbology/Style>
 #include <osg/Group>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 
 #include <osgEarthFeatures/FeatureModelGraph>
 
-namespace osgEarth { namespace Util {
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth::Symbology;
 
     struct OSGEARTHUTIL_EXPORT MeasureToolHandler : public osgGA::GUIEventHandler 
     {
@@ -42,11 +45,6 @@ namespace osgEarth { namespace Util {
         };
 
         typedef std::list< osg::ref_ptr< MeasureToolEventHandler > > MeasureToolEventHandlerList;
-
-        enum Mode {
-            MODE_GREATCIRCLE,
-            MODE_RHUMB
-        };        
 
 
         MeasureToolHandler( osg::Group* group, MapNode* mapNode );        
@@ -63,17 +61,21 @@ namespace osgEarth { namespace Util {
         void setMouseButton(int mouseButton);
         int getMouseButton() const;
 
-        Mode getMode() const;
-        void setMode( Mode mode );
+        GeoInterpolation getGeoInterpolation() const;
+        void setGeoInterpolation( GeoInterpolation geoInterpolation );
 
         void setIsPath( bool path );
         bool getIsPath() const;
+
+        /** Sets the style of the measurment line (to something other than the default) */
+        void setLineStyle( const Style& style );
+        const Style& getLineStyle() const { return _feature->style().value(); }
 
         void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
 
     private:
-        Mode _mode;
+        GeoInterpolation _geoInterpolation;
         void fireDistanceChanged();
         bool _lastPointTemporary;
         bool _gotFirstLocation;
@@ -82,9 +84,10 @@ namespace osgEarth { namespace Util {
         float _mouseDownX, _mouseDownY;
         int _mouseButton;
         osg::ref_ptr< osg::Group > _group;
-        osg::ref_ptr< osgEarth::Features::FeatureModelGraph > _featureGraph;
-        osg::ref_ptr< osgEarth::Features::FeatureListSource > _features;
+
+        osg::ref_ptr< osgEarth::Features::FeatureNode > _featureNode;
         osg::ref_ptr< osgEarth::Features::Feature >  _feature;
+
         MeasureToolEventHandlerList _eventHandlers;
         bool _isPath;
         osg::ref_ptr< osgEarth::Features::GeomFeatureNodeFactory > _factory;

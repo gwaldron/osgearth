@@ -206,7 +206,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "marker-placement")
         {
             if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
-            if      (p->second == "centroid") marker->placement() = MarkerSymbol::PLACEMENT_CENTROID;
+            if      (p->second == "vertex")   marker->placement() = MarkerSymbol::PLACEMENT_VERTEX;
             else if (p->second == "interval") marker->placement() = MarkerSymbol::PLACEMENT_INTERVAL;
             else if (p->second == "random"  ) marker->placement() = MarkerSymbol::PLACEMENT_RANDOM;
         }
@@ -250,10 +250,20 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             else if (p->second == "terrain" ) altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
             else if (p->second == "relative") altitude->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
         }
+        else if (p->first == "altitude-resolution")
+        {
+            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
+            altitude->clampingResolution() = as<float>( p->second, 0.0f );
+        }
         else if (p->first == "altitude-offset")
         {
             if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
             altitude->verticalOffset() = as<float>( p->second, 0.0f );
+        }
+        else if (p->first == "altitude-scale")
+        {
+            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
+            altitude->verticalScale() = as<float>( p->second, 1.0f );
         }
     }
 

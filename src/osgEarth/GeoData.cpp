@@ -296,7 +296,7 @@ GeoExtent::splitAcrossDateLine( GeoExtent& out_first, GeoExtent& out_second ) co
 GeoExtent
 GeoExtent::transform( const SpatialReference* to_srs ) const 
 {       
-    if ( isValid() && to_srs )
+    if ( _srs.valid() && to_srs )
     {
         double xmin = _xmin, ymin = _ymin;
         double xmax = _xmax, ymax = _ymax;
@@ -332,7 +332,7 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     double local_x = x, local_y = y;
     if (srs &&
         !srs->isEquivalentTo( _srs.get() ) &&
-        !srs->transform(x, y, _srs.get(), local_x, local_y) )
+        !srs->transform2D(x, y, _srs.get(), local_x, local_y) )
     {
         return false;
     }
@@ -1004,7 +1004,7 @@ GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS,
 {
     double local_x = x, local_y = y;
 
-    if ( inputSRS && !inputSRS->transform(x, y, _extent.getSRS(), local_x, local_y) )
+    if ( inputSRS && !inputSRS->transform2D(x, y, _extent.getSRS(), local_x, local_y) )
         return false;
 
     if ( _extent.contains(local_x, local_y) )
@@ -1035,7 +1035,7 @@ GeoHeightField::getElevation(const osgEarth::SpatialReference* inputSRS,
                     lon_deg = local_x;
                 }
                 else {
-                    _extent.getSRS()->transform( x, y, inputSRS->getGeographicSRS(), lon_deg, lat_deg );
+                    _extent.getSRS()->transform2D( x, y, inputSRS->getGeographicSRS(), lon_deg, lat_deg );
                 }
 
                 if ( _vsrs->transform( outputVSRS, lat_deg, lon_deg, elevation, newElevation ) )

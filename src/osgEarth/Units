@@ -108,11 +108,21 @@ namespace osgEarth
 
         const std::string& getAbbr() const { return _abbr; }
 
+        const Type& getType() const { return _type; }
+
         bool operator == ( const Units& rhs ) const {
             return _type == rhs._type && _toBase == rhs._toBase; }
         
         bool operator != ( const Units& rhs ) const {
             return _type != rhs._type || _toBase != rhs._toBase; }
+
+        bool isLinear() const { return _type == TYPE_LINEAR; }
+
+        bool isAngular() const { return _type == TYPE_ANGULAR; }
+
+        bool isTemporal() const { return _type == TYPE_TEMPORAL; }
+
+        bool isSpeed() const { return _type == TYPE_SPEED; }
 
     public:
 
@@ -152,6 +162,11 @@ namespace osgEarth
 
         qualified_double<T>( const T& rhs ) : _value(rhs._value), _units(rhs._units) { }
 
+        void set( double value, const Units& units ) {
+            _value = value;
+            _units = units;
+        }
+
         T& operator = ( const T& rhs ) {
             if ( _units.canConvert(rhs._units) )
                 _value = rhs.as(_units);
@@ -189,6 +204,8 @@ namespace osgEarth
         double as( const Units& convertTo ) const {
             return _units.convertTo( convertTo, _value );
         }
+
+        const Units& getUnits() const { return _units; }
 
     private:
         double _value;

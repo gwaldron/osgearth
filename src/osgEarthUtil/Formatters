@@ -1,0 +1,133 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_FORMATTERS_H
+#define OSGEARTH_UTIL_FORMATTERS_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/SpatialReference>
+#include <osgEarth/Units>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    class OSGEARTHUTIL_EXPORT LatLongFormatter
+    {
+    public:
+        enum AngularFormat {
+            FORMAT_DEFAULT,
+            FORMAT_DECIMAL_DEGREES,
+            FORMAT_DEGREES_DECIMAL_MINUTES,
+            FORMAT_DEGREES_MINUTES_SECONDS
+        };
+
+        enum Options {
+            USE_SYMBOLS     = 1 << 0,   // whether to use symbols
+            USE_COLONS      = 1 << 1,   // whether to separate components with colons
+            USE_SPACES      = 1 << 2    // whether to separate components with spaces
+        };
+
+    public:
+        LatLongFormatter(          
+            const AngularFormat& defaultFormat =FORMAT_DEGREES_MINUTES_SECONDS,
+            unsigned             optionsMask   =(USE_SYMBOLS | USE_SPACES) );
+
+        /**
+         * Sets the output precision for decimal numbers  (default is 4)
+         */
+        void setPrecision( int value ) { _prec = value; }
+
+        /**
+         * Sets the formatting options
+         */
+        void setOptions( const Options& options ) { _options = options; }
+
+        /** 
+         * Formats an angle into one of the supported angular formats
+         */
+        std::string format( const Angular& angle, const AngularFormat& format =FORMAT_DEFAULT );
+
+        /**
+         * Parses a string into an angle (returning false if parsing fails).
+         */
+        bool parseAngle( const std::string& input, Angular& out_value );
+
+    protected:
+        unsigned      _options;
+        AngularFormat _defaultFormat;
+        int           _prec;
+    };
+
+    //------------------------------------------------------------------------
+
+    /**
+     * Formats coordinate data as MGRS.
+     *
+     * NOTE: This class does not yet handle the special UTM zone exceptions for
+     *       southwest Norway (zone 32V) and Svalbard (31X, 33X, 35X, 37X).
+     *
+     * See: http://en.wikipedia.org/wiki/Military_grid_reference_system
+     */
+    class OSGEARTHUTIL_EXPORT MGRSFormatter
+    {
+    public:
+        enum Precision
+        {
+            PRECISION_100000M = 100000,     // i.e., omit the numerical offsets altogether
+            PRECISION_10000M  = 10000,
+            PRECISION_1000M   = 1000,
+            PRECISION_100M    = 100,
+            PRECISION_10M     = 10,
+            PRECISION_1M      = 1
+        };
+
+        enum Options
+        {
+            USE_SPACES        = 0 << 1
+        };
+
+    public:
+        /**
+         * Initialized an MGRS formatter. 
+         *
+         * @param precision Precision with which to print the MGRS string (see Precision above)
+         * @param refSRS    Reference geographic SRS for MGRS encoding. Older datums
+         *                  (Clark and Bessel) change the N/S lettering scheme. Default=WGS84.
+         * @param options   Formatting options (see Options above)
+         */
+        MGRSFormatter(
+            Precision               precision =PRECISION_1M,
+            const SpatialReference* refSRS    =0L,
+            unsigned                options   =0);
+
+        /**
+         * Formats a lat/lon (in degrees) as an MGRS string.
+         */
+        std::string format( double latDeg, double lonDeg ) const;
+
+    private:
+        osg::ref_ptr<const SpatialReference> _refSRS;
+        bool                                 _useAL;
+        Precision                            _precision;
+        unsigned                             _options;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_FORMATTERS_H

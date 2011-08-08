@@ -191,9 +191,61 @@ public:
 FeatureEditor::FeatureEditor( Feature* feature, FeatureSource* source, MapNode* mapNode ):
 _feature( feature ),
 _source( source ),
-_mapNode( mapNode )
+_mapNode( mapNode ),
+_color(osg::Vec4(0.0f, 1.0f, 0.0f, 1.0f)),
+_pickColor(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f)),
+_size( 5.0f )
 {
     init();
+}
+
+
+const osg::Vec4f&
+FeatureEditor::getPickColor() const
+{
+    return _pickColor;
+}
+
+void
+FeatureEditor::setPickColor( const osg::Vec4f& pickColor )
+{
+    if (_pickColor != pickColor)
+    {
+        _pickColor = pickColor;
+        init();
+    }
+}
+
+const osg::Vec4f&
+FeatureEditor::getColor() const
+{
+    return _color;
+}
+
+void
+FeatureEditor::setColor( const osg::Vec4f& color )
+{
+    if (_color != color)
+    {
+        _color = color;
+        init();
+    }
+}        
+
+float
+FeatureEditor::getSize() const
+{
+    return _size;
+}
+
+void
+FeatureEditor::setSize( float size )
+{
+    if (_size != size)
+    {
+        _size = size;
+        init();
+    }
 }
 
 void
@@ -209,11 +261,14 @@ FeatureEditor::init()
         _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), 0, matrix);    
 
         IntersectingDragger* dragger = new IntersectingDragger;
+        dragger->setColor( _color );
+        dragger->setPickColor( _pickColor );
+        dragger->setSize( _size );
         dragger->setNode( _mapNode->getTerrainEngine() );
         dragger->setupDefaultGeometry();
         dragger->setMatrix(matrix);
         dragger->setHandleEvents( true );        
-        dragger->addDraggerCallback(new MoveFeatureDraggerCallback(_feature, _source, _mapNode->getMap(), i) );
+        dragger->addDraggerCallback(new MoveFeatureDraggerCallback(_feature.get(), _source.get(), _mapNode->getMap(), i) );
 
         addChild(dragger);        
     }

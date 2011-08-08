@@ -256,7 +256,7 @@ namespace
                 dest.r()*(1.0f-sa) + src.r()*sa,
                 dest.g()*(1.0f-sa) + src.g()*sa,
                 dest.b()*(1.0f-sa) + src.b()*sa,
-                dest.a() );
+                osg::maximum(sa, da) );             
             return true;
         }
     };
@@ -271,9 +271,9 @@ ImageUtils::mix(osg::Image* dest, const osg::Image* src, float a)
     PixelVisitor<MixImage> mixer;
     mixer._a = osg::clampBetween( a, 0.0f, 1.0f );
     mixer._srcHasAlpha = src->getPixelSizeInBits() == 32;
-    mixer._destHasAlpha = src->getPixelSizeInBits() == 32;
+    mixer._destHasAlpha = src->getPixelSizeInBits() == 32;    
 
-    mixer.accept( src, dest );
+    mixer.accept( src, dest );  
 
     return true;
 }

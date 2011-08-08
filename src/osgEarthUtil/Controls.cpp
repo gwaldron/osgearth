@@ -1821,6 +1821,7 @@ ControlNode::traverse( osg::NodeVisitor& nv )
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         static osg::Vec3d s_zero(0,0,0);
+        static osg::Vec4d s_zero_w(0,0,0,1);
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
         //setCullingActive( true );
@@ -1844,9 +1845,17 @@ ControlNode::traverse( osg::NodeVisitor& nv )
         if ( data._canvas.valid() )
         {
             // calculate its screen position:
-            data._screenPos = s_zero * (*cv->getMVPW());
+            //data._screenPos = s_zero * (*cv->getMVPW());
 
-            if ( data._obscured == true )
+            osg::Vec4d clip = s_zero_w * (*cv->getModelViewMatrix()) * (*cv->getProjectionMatrix());
+            osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );
+            data._screenPos = clip_ndc * cv->getWindowMatrix();
+
+            if ( clip_ndc.z() > 1.0 ) // node is behind the near clip plane
+            {
+                data._obscured = true;
+            }
+            else if ( data._obscured == true )
             {
                 data._obscured = false;
                 data._visibleTime = cv->getFrameStamp()->getReferenceTime();
@@ -1989,6 +1998,15 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
               }
 
               xform->setMatrix( osg::Matrixd::translate(x, y-context._vp->height(), 0) );
+
+              LabelControl* test = dynamic_cast<LabelControl*>(control);
+              if ( test && test->text() == "Rampur5" )
+              {
+                  OE_NOTICE 
+                      << (intptr_t)control << ": x=" << x << ", y=" << y << ", screen=" << nPos.x() << ", " << nPos.y() << ", " << nPos.z()
+                      << std::endl;
+              }
+
 
               osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
               if ( _sortingEnabled )

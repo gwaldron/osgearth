@@ -42,6 +42,7 @@ FeatureSourceOptions::fromConfig( const Config& conf )
     unsigned numResamples = 0;
 
     conf.getIfSet( "open_write", _openWrite );
+    conf.getObjIfSet( "profile", _profile );
 
     const ConfigSet& children = conf.children();
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
@@ -97,6 +98,7 @@ FeatureSourceOptions::getConfig() const
     Config conf = DriverConfigOptions::getConfig();
 
     conf.updateIfSet( "open_write", _openWrite );
+    conf.updateObjIfSet( "profile", _profile );
 
     //TODO: make each of these filters Configurable.
     for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )

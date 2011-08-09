@@ -58,7 +58,7 @@ LatLongFormatter::format( const Angular& angle, const AngularFormat& format )
     case FORMAT_DECIMAL_DEGREES:
         {
             if ( _options & USE_SYMBOLS )
-                buf << angle.as(Units::DEGREES) << "°";
+                buf << angle.as(Units::DEGREES) << "\xb0";
             else
                 buf << angle.as(Units::DEGREES);
         }

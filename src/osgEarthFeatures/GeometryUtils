@@ -30,14 +30,14 @@ namespace osgEarth { namespace Features {
     extern OSGEARTHFEATURES_EXPORT std::string geometryToKml( osgEarth::Symbology::Geometry * geometry );
     extern OSGEARTHFEATURES_EXPORT std::string geometryToGml( osgEarth::Symbology::Geometry * geometry );
 
-    class FeatureMultiNode;
+    class FeatureSourceMultiNode;
     /**
      * Consolidates all the like-moded primitive sets in a geometry.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureMeshConsolidator : public osgEarth::MeshConsolidator
+    class OSGEARTHFEATURES_EXPORT FeatureSourceMeshConsolidator : public osgEarth::MeshConsolidator
     {
     public:
-        static void run( osg::Geode& geode, FeatureMultiNode * featureNode );
+        static void run( osg::Geode& geode, FeatureSourceMultiNode * featureNode );
     };
 
 

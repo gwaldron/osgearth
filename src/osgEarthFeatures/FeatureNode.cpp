@@ -17,116 +17,47 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureNode>
-#include <algorithm>
-
-using namespace osgEarth;
-using namespace osgEarth::Features;
+#include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/Session>
 
 #define LC "[FeatureNode] "
 
-FeatureNode::FeatureNode(FeatureSource * featureSource, FeatureID fid)
-	: _featureSource(featureSource), _fid(fid)
+using namespace osgEarth;
+using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
+
+FeatureNode::FeatureNode( MapNode* mapNode, Feature* feature, bool draped ) :
+DrapeableNode( mapNode, draped ),
+_feature     ( feature )
 {
+    init();
 }
 
-FeatureMultiNode::FeatureMultiNode(FeatureSource * featureSource)
-	: FeatureNode(featureSource)
+void
+FeatureNode::init()
 {
+    if ( _feature.valid() && _feature->getGeometry() )
+    {
+        GeometryCompilerOptions options;
+        options.maxGranularity() = 1.0;
+        GeometryCompiler compiler( options );
+        Session* session = new Session( _mapNode->getMap() );
+        GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
+        FeatureProfile* profile = new FeatureProfile(extent);
+        FilterContext context( session, profile, extent );
+
+        //Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
+        //of the geometry when performing localization or converting to geocentric.
+        osg::ref_ptr< Feature > clone = new osgEarth::Features::Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
+
+        osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
+        setNode( node );
+    }
 }
 
-void FeatureMultiNode::addDrawable(osg::Drawable * drawable, FeatureID fid)
+void
+FeatureNode::setFeature( Feature* feature )
 {
-	//OE_DEBUG << LC << "addDrawable " << drawable << " fid=" << fid << std::endl;
-	_drawables.insert(DrawableFeatureIDMap::value_type(drawable, fid));
-}
-
-void FeatureMultiNode::removeDrawable(osg::Drawable * drawable)
-{
-	DrawableFeatureIDMap::iterator it = _drawables.find(drawable);
-	if(it != _drawables.end())
-	{
-		//OE_DEBUG << LC << "FeatureMultiNode removeDrawable " << drawable << std::endl;
-		_drawables.erase(it);
-	}
-	else
-	{
-		//OE_DEBUG << LC << "FeatureMultiNode removeDrawable " << drawable  << " not found" << std::endl;
-	}
-}
-
-void FeatureMultiNode::clearDrawables()
-{
-	_drawables.clear();
-}
-
-unsigned FeatureMultiNode::getNumDrawables() const
-{
-	return _drawables.size();
-}
-
-void FeatureMultiNode::addPrimitiveSet(osg::PrimitiveSet * primitiveSet, FeatureID fid)
-{
-	//OE_DEBUG << LC << "addDrawable " << drawable << " fid=" << fid << std::endl;
-	_primitiveSets.insert(PrimitiveSetFeatureIDMap::value_type(primitiveSet, fid));
-}
-
-void FeatureMultiNode::removePrimitiveSet(osg::PrimitiveSet * primitiveSet)
-{
-	PrimitiveSetFeatureIDMap::iterator it = _primitiveSets.find(primitiveSet);
-	if(it != _primitiveSets.end())
-	{
-		//OE_DEBUG << LC << "FeatureMultiNode removeDrawable " << drawable << std::endl;
-		_primitiveSets.erase(it);
-	}
-	else
-	{
-		//OE_DEBUG << LC << "FeatureMultiNode removeDrawable " << drawable  << " not found" << std::endl;
-	}
-}
-
-void FeatureMultiNode::clearPrimitiveSets()
-{
-	_primitiveSets.clear();
-}
-
-unsigned FeatureMultiNode::getNumPrimitiveSets() const
-{
-	return _primitiveSets.size();
-}
-
-FeatureID FeatureMultiNode::getFID(osg::PrimitiveSet * primitiveSet) const
-{
-	PrimitiveSetFeatureIDMap::const_iterator it = _primitiveSets.find(primitiveSet);
-	FeatureID ret = (it != _primitiveSets.end())?it->second:-1;
-	//OE_DEBUG << LC << "FeatureMultiNode getFID " << drawable << " fid=" << ret << std::endl;
-	return ret;
-}
-
-FeatureID FeatureMultiNode::getFID(osg::Drawable * drawable, int primitiveIndex) const
-{
-	FeatureID ret;
-	DrawableFeatureIDMap::const_iterator it = _drawables.find(drawable);
-	if(it != _drawables.end())
-		ret = it->second;
-	else if(primitiveIndex >= 0)
-	{
-		osg::Geometry * geometry = drawable->asGeometry();
-		const osg::Geometry::PrimitiveSetList & primSets = geometry->getPrimitiveSetList();
-		unsigned encounteredPrimities = 0;
-		ret = -1;
-		for(osg::Geometry::PrimitiveSetList::const_iterator it = primSets.begin(); it != primSets.end(); it++)
-		{
-			osg::PrimitiveSet * primitiveSet = (*it).get();
-			encounteredPrimities += primitiveSet->getNumPrimitives();
-			if(encounteredPrimities >= (unsigned)primitiveIndex)
-			{
-				PrimitiveSetFeatureIDMap::const_iterator it = _primitiveSets.find(primitiveSet);
-				ret = (it != _primitiveSets.end())?it->second:-1;
-				break;
-			}
-		}
-	}
-	else
-		ret = -1;
-	return ret;
+    _feature = feature;
+    init();
 }

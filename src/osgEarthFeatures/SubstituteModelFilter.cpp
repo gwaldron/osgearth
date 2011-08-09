@@ -18,7 +18,7 @@
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/MarkerFactory>
-#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthFeatures/FeatureSourceNode>
 #include <osgEarthFeatures/GeometryUtils>
 #include <osgEarth/MeshConsolidator>
 #include <osgEarth/HTTPClient>
@@ -70,7 +70,7 @@ SubstituteModelFilter::pushFeature(Feature*                     input,
         {
             const osg::Vec3d& point = (*geom)[i];
 
-            FeatureNode* xform = new FeatureNode(NULL, input->getFID());
+            FeatureSourceNode* xform = new FeatureSourceNode(NULL, input->getFID());
             xform->setMatrix( _modelMatrix * osg::Matrixd::translate( point ) );
             xform->setDataVariance( osg::Object::STATIC );
             xform->addChild( data._model.get() );
@@ -104,7 +104,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 {
     struct ClusterVisitor : public osg::NodeVisitor
     {
-        ClusterVisitor( const FeatureList& features, const osg::Matrixd& modelMatrix, FeatureMultiNode * featureNode, FilterContext& cx )
+        ClusterVisitor( const FeatureList& features, const osg::Matrixd& modelMatrix, FeatureSourceMultiNode * featureNode, FilterContext& cx )
             : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
               _features( features ),
               _modelMatrix( modelMatrix ),
@@ -173,7 +173,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 
             geode.dirtyBound();
 
-            FeatureMeshConsolidator::run( geode, _featureNode );
+            FeatureSourceMeshConsolidator::run( geode, _featureNode );
             //// merge the geometry...
             //osgUtil::Optimizer opt;
             //opt.optimize( &geode, osgUtil::Optimizer::MERGE_GEOMETRY );
@@ -192,7 +192,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
     private:
         const FeatureList&   _features;
         FilterContext        _cx;
-		FeatureMultiNode *   _featureNode;
+		FeatureSourceMultiNode * _featureNode;
         osg::Matrixd         _modelMatrix;
     };
 
@@ -201,7 +201,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 	osg::Node* clone = dynamic_cast<osg::Node*>( data._model->clone( osg::CopyOp::DEEP_COPY_ALL ) );
 	Session* session = cx.getSession();
 	FeatureSource * source = (session!=NULL)?session->getFeatureSource():NULL;
-	FeatureMultiNode * featureNode = new FeatureMultiNode(source);
+	FeatureSourceMultiNode * featureNode = new FeatureSourceMultiNode(source);
 
     // ..and apply the clustering to the copy.
 	ClusterVisitor cv( features, _modelMatrix, featureNode, cx );

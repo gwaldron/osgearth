@@ -32,7 +32,7 @@
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/Formatters>
 #include <osgEarthSymbology/Color>
-#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthFeatures/FeatureSourceNode>
 #include <osgEarthFeatures/FeatureSource>
 
 using namespace osgEarth::Util;
@@ -334,7 +334,6 @@ bool hitTestPolytope(osgViewer::View * view, unsigned traversalMask, float x, fl
 
 std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const osg::Node * node)
 {
-		const osg::StateSet * stateSet = (node!=NULL)?node->getStateSet():NULL;
 		os << "{this=" << (void*)node 
 			<< ";name=" << (node?node->getName():"<null>")
 			<< ";classname=" << (node?node->className():"<null>")
@@ -383,15 +382,15 @@ struct FeatureInfoHandler : public osgGA::GUIEventHandler
 		if(hit)
 		{
 			std::cout << "hit on " << path << std::endl;
-			FeatureNode * featureNode = NULL;
+			FeatureSourceNode * featureNode = NULL;
 			for(osg::NodePath::reverse_iterator it = path.rbegin(); !featureNode && it != path.rend(); it++)
-				featureNode = dynamic_cast<FeatureNode *>(*it);
+				featureNode = dynamic_cast<FeatureSourceNode *>(*it);
 
 			if(featureNode)
 			{
 				FeatureSource * featureSource = featureNode->getSource();
 				osgEarth::Features::FeatureID fid;
-				FeatureMultiNode * featureMultiNode = dynamic_cast<FeatureMultiNode *>(featureNode);
+				FeatureSourceMultiNode * featureMultiNode = dynamic_cast<FeatureSourceMultiNode *>(featureNode);
 				if(featureMultiNode)
 					fid = featureMultiNode->getFID(drawable, primIndex);
 				else

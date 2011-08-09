@@ -17,64 +17,35 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_FEATURENODE_H
-#define OSGEARTHFEATURES_FEATURENODE_H 1
+#ifndef OSGEARTHFEATURES_FEATURE_NODE_H
+#define OSGEARTHFEATURES_FEATURE_NODE_H 1
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
-#include <osg/MatrixTransform>
-#include <osg/ref_ptr>
-
-namespace osg {
-	class Drawable;
-}
+#include <osgEarth/DrapeableNode>
 
 namespace osgEarth { namespace Features
 {
-	class FeatureSource;
-	class OSGEARTHFEATURES_EXPORT FeatureNode : public osg::MatrixTransform
-	{
-	public:
-		FeatureNode(FeatureSource * featureSource=NULL, FeatureID fid=-1);
+    using namespace osgEarth;
 
-		FeatureSource * getSource() const { return _featureSource; }
-		FeatureID getFID() const { return _fid; }
+    /**
+     * A node that renders a single feature. This convenience node assumes
+     * that the geometry in the Feature is in the same SRS as the Map in the
+     * MapNode.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureNode : public DrapeableNode
+    {
+    public:
+        FeatureNode( MapNode* mapNode, Feature* feature, bool draped =true );
 
-        virtual const char* className() const { return "FeatureNode"; }
-        virtual const char* libraryName() const { return "osgEarthFeatures"; }
+        void setFeature( Feature* feature );
 
-	private:
-		FeatureSource * _featureSource;
-		FeatureID _fid;
-	};
+        void init();
 
-	class OSGEARTHFEATURES_EXPORT FeatureMultiNode : public FeatureNode
-	{
-	public:
-		FeatureMultiNode(FeatureSource * featureSource=NULL);
-	public:
-		void addDrawable(osg::Drawable * drawable, FeatureID fid);
-		void removeDrawable(osg::Drawable * drawable);
-		void clearDrawables();
-		unsigned getNumDrawables() const;
-
-		void addPrimitiveSet(osg::PrimitiveSet * pset, FeatureID fid);
-		void removePrimitiveSet(osg::PrimitiveSet * pset);
-		void clearPrimitiveSets();
-		unsigned getNumPrimitiveSets() const;
-		FeatureID getFID(osg::PrimitiveSet * pset) const;
-
-		FeatureID getFID(osg::Drawable * drawable, int primitiveIndex=-1) const;
-
-        virtual const char* className() const { return "FeatureMultiNode"; }
-        virtual const char* libraryName() const { return "osgEarthFeatures"; }
-	private:
-		typedef std::map< osg::ref_ptr<osg::Drawable>, FeatureID > DrawableFeatureIDMap;
-		typedef std::map< osg::ref_ptr<osg::PrimitiveSet>, FeatureID > PrimitiveSetFeatureIDMap;
-		DrawableFeatureIDMap _drawables;
-		PrimitiveSetFeatureIDMap _primitiveSets;
-	};
+    protected:
+        osg::ref_ptr<Feature> _feature;
+    };
 
 } } // namespace osgEarth::Features
 
-#endif // OSGEARTHFEATURES_FEATURENODE_H
+#endif // OSGEARTHFEATURES_FEATURE_NODE_H

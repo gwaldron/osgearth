@@ -59,7 +59,7 @@ BuildGeometryFilter::reset()
 {
     _result = 0L;
     _geode = new osg::Geode();
-	_featureNode = new FeatureMultiNode;
+	_featureNode = new FeatureSourceMultiNode;
     _hasLines = false;
     _hasPoints = false;
     _hasPolygons = false;
@@ -320,8 +320,6 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
                 _geode->getOrCreateStateSet()->setAttribute( 
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
-
-		const osg::BoundingSphere& bs = _geode->getBound();
 
 		_featureNode->addChild(_geode.release());
 

@@ -32,6 +32,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureModelSource
     FeatureNode
     FeatureSource
+	FeatureSourceNode
     FeatureTileSource
     Filter
     FilterContext
@@ -71,6 +72,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureModelSource.cpp
     FeatureNode.cpp
     FeatureSource.cpp
+	FeatureSourceNode.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp

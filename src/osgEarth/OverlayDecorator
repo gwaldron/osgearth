@@ -83,6 +83,14 @@ namespace osgEarth
         void setVertexWarping( bool value );
         bool getVertexWarping() const { return _warping; }
 
+        /**
+         * Whether to enable blending on the RTT camera graph. Default = true. You might
+         * want to disable this is you are draping polygons that cover a very large area
+         * and curve around the globe; sometimes they suffer from tessellation artifacts
+         * when draped.
+         */
+        void setOverlayBlending( bool value );
+        bool getOverlayBlending() const { return _rttBlending; }
 
     public: // TerrainDecorator
         virtual void onInstall( TerrainEngineNode* engine );
@@ -117,6 +125,7 @@ namespace osgEarth
         bool                          _isGeocentric;
         double                        _maxProjectedMapExtent;
         bool                          _mipmapping;
+        bool                          _rttBlending;
         osg::Matrixd                  _rttViewMatrix;
         osg::Matrixd                  _rttProjMatrix;
         osg::Matrixd                  _projectorViewMatrix;

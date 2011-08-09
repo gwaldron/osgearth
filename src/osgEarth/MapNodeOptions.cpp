@@ -36,6 +36,7 @@ _proxySettings( ProxySettings() ),
 _cacheOnly( false ),
 _enableLighting( true ),
 _overlayVertexWarping( false ),
+_overlayBlending( true ),
 _terrainOptions( 0L )
 {
     mergeConfig( conf );
@@ -46,6 +47,7 @@ _proxySettings( ProxySettings() ),
 _cacheOnly( false ),
 _enableLighting( true ),
 _overlayVertexWarping( false ),
+_overlayBlending( true ),
 _terrainOptions( 0L )
 {
     setTerrainOptions( to );
@@ -72,6 +74,7 @@ MapNodeOptions::getConfig() const
     conf.updateIfSet   ( "lighting",        _enableLighting );
     conf.updateIfSet   ( "terrain",         _terrainOptionsConf );
     conf.updateIfSet   ( "overlay_warping", _overlayVertexWarping );
+    conf.updateIfSet   ( "overlay_blending", _overlayBlending );
 
     return conf;
 }
@@ -81,10 +84,11 @@ MapNodeOptions::mergeConfig( const Config& conf )
 {
     ConfigOptions::mergeConfig( conf );
 
-    conf.getObjIfSet( "proxy",           _proxySettings );
-    conf.getIfSet   ( "cache_only",      _cacheOnly );
-    conf.getIfSet   ( "lighting",        _enableLighting );
-    conf.getIfSet   ( "overlay_warping", _overlayVertexWarping );
+    conf.getObjIfSet( "proxy",            _proxySettings );
+    conf.getIfSet   ( "cache_only",       _cacheOnly );
+    conf.getIfSet   ( "lighting",         _enableLighting );
+    conf.getIfSet   ( "overlay_warping",  _overlayVertexWarping );
+    conf.getIfSet   ( "overlay_blending", _overlayBlending );
 
     if ( conf.hasChild( "terrain" ) )
     {

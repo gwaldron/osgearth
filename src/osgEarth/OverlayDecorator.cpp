@@ -283,11 +283,17 @@ OverlayDecorator::reinit()
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
             _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
-            //_rttCamera->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+            if ( _rttBlending )
+            {
+                osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                _rttCamera->getOrCreateStateSet()->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+            }
+            else
+            {
+                _rttCamera->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+            }
             //Enable blending on the RTT camera with pre-multiplied alpha.
             //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-            osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-            _rttCamera->getOrCreateStateSet()->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
                 
 
             // texture coordinate generator:
@@ -540,6 +546,16 @@ OverlayDecorator::setVertexWarping( bool value )
     if ( value != _useWarping )
     {
         _useWarping = value;
+        reinit();
+    }
+}
+
+void
+OverlayDecorator::setOverlayBlending( bool value )
+{
+    if ( value != _rttBlending )
+    {
+        _rttBlending = value;
         reinit();
     }
 }

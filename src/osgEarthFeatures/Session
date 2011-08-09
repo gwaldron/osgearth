@@ -26,6 +26,7 @@
 
 namespace osgEarth { namespace Features
 {
+	class FeatureSource;
     /**
      * Session is a state object that exists throughout the life of one or more related
      * feature compilations.
@@ -44,6 +45,7 @@ namespace osgEarth { namespace Features
          * Constructs a new Session that is tied to a map
          */
         Session( const Map* map );
+		virtual ~Session();
 
         /**
          * Sets the reference URI to use to expand relative paths and URLs.
@@ -76,6 +78,9 @@ namespace osgEarth { namespace Features
          */
         osg::Referenced* getBuildData() const { return _buildData.get(); }
 
+		FeatureSource * getFeatureSource() const;
+		void setFeatureSource(FeatureSource * source);
+
     public:
         void putResource( const std::string& uri, osg::Referenced* object );
 
@@ -101,6 +106,7 @@ namespace osgEarth { namespace Features
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ResourceMap;
         ResourceMap _resourceMap;
         Threading::ReadWriteMutex _resourceMutex;
+		osg::ref_ptr<FeatureSource> _featureSource;
 
         osg::ref_ptr<osg::Referenced> _buildData;
     };

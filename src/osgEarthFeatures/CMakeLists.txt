@@ -22,6 +22,7 @@ SET(LIB_PUBLIC_HEADERS
     CropFilter
     ExtrudeGeometryFilter
     Feature
+    FeatureNode
     FeatureCursor
     FeatureDisplayLayout
     FeatureGeometryIndex
@@ -31,6 +32,7 @@ SET(LIB_PUBLIC_HEADERS
     FeatureModelSource
     FeatureNode
     FeatureSource
+	FeatureSourceNode
     FeatureTileSource
     Filter
     FilterContext
@@ -60,6 +62,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CropFilter.cpp
     ExtrudeGeometryFilter.cpp
     Feature.cpp
+    FeatureNode.cpp
     FeatureCursor.cpp
     FeatureDisplayLayout.cpp
     FeatureGeometryIndex.cpp
@@ -69,6 +72,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureModelSource.cpp
     FeatureNode.cpp
     FeatureSource.cpp
+	FeatureSourceNode.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp

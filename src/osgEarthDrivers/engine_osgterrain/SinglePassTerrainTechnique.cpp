@@ -35,12 +35,11 @@
 #include <osgUtil/SmoothingVisitor>
 
 #include <osgEarthSymbology/Geometry>
-#include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarth/MeshConsolidator>
 
 #include <sstream>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
 #define LC "[SinglePassTechnique] "
@@ -1174,7 +1173,8 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
               for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
               {
                 osg::Vec3d p1 = *mit;
-                osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
+                osgEarth::Symbology::Polygon::iterator mitEnd = maskPoly->end();
+                osg::Vec3d p3 = (mit == (--mitEnd)) ? maskPoly->front() : (*(mit + 1));
 
                 //Truncated vales to compensate for accuracy issues
                 double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;

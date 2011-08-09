@@ -692,6 +692,8 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
             osg::ref_ptr<osg::Node> node;
 
             osg::ref_ptr<FeatureCursor> newCursor = new FeatureListCursor(workingSet);
+			FeatureSource * oldFeatureSource = _session->getFeatureSource();
+			_session->setFeatureSource(_source.get());
 
             if ( _factory->createOrUpdateNode( newCursor.get(), style, context, node ) )
             {
@@ -702,6 +704,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
                 if ( node.valid() )
                     styleGroup->addChild( node.get() );
             }
+			_session->setFeatureSource(oldFeatureSource);
         }
     }
 

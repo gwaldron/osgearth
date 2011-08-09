@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarth/MeshConsolidator>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/MeshConsolidator>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/LineWidth>
@@ -59,6 +59,7 @@ BuildGeometryFilter::reset()
 {
     _result = 0L;
     _geode = new osg::Geode();
+	_featureNode = new FeatureSourceMultiNode;
     _hasLines = false;
     _hasPoints = false;
     _hasPolygons = false;
@@ -146,6 +147,8 @@ BuildGeometryFilter::push( Feature* input, const FilterContext& context )
                 }
             }
             break;
+		default:
+			break;
         }
         
         osg::Geometry* osgGeom = new osg::Geometry();
@@ -258,6 +261,8 @@ BuildGeometryFilter::push( Feature* input, const FilterContext& context )
         osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         // add the part to the geode.
+		_featureNode->addDrawable(osgGeom, input->getFID());
+
         _geode->addDrawable( osgGeom );
     }
     
@@ -316,7 +321,9 @@ BuildGeometryFilter::push( FeatureList& input, const FilterContext& context )
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
 
-        _result = _geode.release();
+		_featureNode->addChild(_geode.release());
+
+        _result = _featureNode;
     }
     else
     {

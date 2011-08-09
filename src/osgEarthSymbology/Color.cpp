@@ -21,6 +21,7 @@
 #include <osg/Vec4ub>
 #include <sstream>
 #include <iomanip>
+#include <ctype.h>
 
 using namespace osgEarth::Symbology;
 

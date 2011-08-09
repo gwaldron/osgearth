@@ -18,7 +18,7 @@
  */
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarth/MeshConsolidator>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/ClusterCullingCallback>
@@ -32,7 +32,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
-using namespace osgEarth::Symbology;
 
 
 ExtrudeGeometryFilter::ExtrudeGeometryFilter() :

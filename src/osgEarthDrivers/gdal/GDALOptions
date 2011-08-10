@@ -43,11 +43,15 @@ namespace osgEarth { namespace Drivers
         optional<unsigned int>& maxDataLevel() { return _maxDataLevel;}
         const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel;}
 
+        optional<bool>& interpolateImagery() { return _interpolateImagery;}
+        const optional<bool>& interpolateImagery() const { return _interpolateImagery;}
+
     public: // ctors
 
         GDALOptions( const TileSourceOptions& options =TileSourceOptions() ) :
             TileSourceOptions( options ),
-            _interpolation( INTERP_AVERAGE )
+            _interpolation( INTERP_AVERAGE ),
+            _interpolateImagery( false )
         {
             setDriver( "gdal" );
             fromConfig( _conf );
@@ -68,6 +72,8 @@ namespace osgEarth { namespace Drivers
             }
 
             conf.updateIfSet( "max_data_level", _maxDataLevel);
+
+            conf.updateIfSet( "interp_imagery", _interpolateImagery);
             return conf;
         }
 
@@ -84,11 +90,14 @@ namespace osgEarth { namespace Drivers
             else if ( in == "average" ) _interpolation = osgEarth::INTERP_AVERAGE;
             else if ( in == "bilinear" ) _interpolation = osgEarth::INTERP_BILINEAR;
             conf.getIfSet( "max_data_level", _maxDataLevel);
+
+            conf.getIfSet("interp_imagery", _interpolateImagery);
         }
 
         optional<std::string> _url;
         optional<std::string> _extensions;
         optional<ElevationInterpolation> _interpolation;
+        optional<bool> _interpolateImagery;
         optional<unsigned int> _maxDataLevel;
     };
 

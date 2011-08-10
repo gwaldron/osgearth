@@ -49,7 +49,7 @@ namespace osgEarth { namespace Util
             unsigned             optionsMask   =(USE_SYMBOLS | USE_SPACES) );
 
         /**
-         * Sets the output precision for decimal numbers  (default is 4)
+         * Sets the output precision for decimal numbers  (default is 5)
          */
         void setPrecision( int value ) { _prec = value; }
 
@@ -61,7 +61,10 @@ namespace osgEarth { namespace Util
         /** 
          * Formats an angle into one of the supported angular formats
          */
-        std::string format( const Angular& angle, const AngularFormat& format =FORMAT_DEFAULT );
+        std::string format(
+            const Angular&       angle,
+            int                  precision =-1, 
+            const AngularFormat& format    =FORMAT_DEFAULT);
 
         /**
          * Parses a string into an angle (returning false if parsing fails).

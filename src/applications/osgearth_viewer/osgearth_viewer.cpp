@@ -118,8 +118,8 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
                     LatLongFormatter f( fFormat );
 
                     ss 
-                        << "Lat: " << f.format(Angular(lla.y(),Units::DEGREES)) << "  "
-                        << "Lon: " << f.format(Angular(lla.x(),Units::DEGREES));
+                        << "Lat: " << f.format( Angular(lla.y(),Units::DEGREES), 4 ) << "  "
+                        << "Lon: " << f.format( Angular(lla.x(),Units::DEGREES), 5 );
                 }
 
                 _label->setText( ss.str() );

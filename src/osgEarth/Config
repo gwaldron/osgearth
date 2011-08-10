@@ -34,15 +34,6 @@ namespace osgEarth
 {
     typedef std::list<class Config> ConfigSet;
 
-    /**
-     * Probably to be deprecated
-     */
-    class Configurable : public osg::Referenced // marker interface class
-    {
-    public:
-        virtual class Config getConfig() const =0;
-        virtual void mergeConfig( const Config& conf ) =0;
-    };
 
     // general-purpose name/value pair set.
     struct Properties : public std::map<std::string,std::string> {

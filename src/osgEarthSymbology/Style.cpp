@@ -197,8 +197,7 @@ StyleSelector::getConfig() const
 
 /************************************************************************/
 
-StyleSheet::StyleSheet( const Config& conf ) :
-    Configurable()
+StyleSheet::StyleSheet( const Config& conf )
 {
     mergeConfig( conf );
 }

@@ -121,6 +121,7 @@ SpatialReference::createCube()
     return result;
 }
 
+#if 0
 SpatialReference*
 SpatialReference::createLTP( const osg::Vec3d& refPointLLA, const SpatialReference* geoSRS )
 {
@@ -157,6 +158,7 @@ SpatialReference::createLTP( const osg::Vec3d& refPointLLA, const SpatialReferen
 
     return result;
 }
+#endif
 
 SpatialReference*
 SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
@@ -232,23 +234,6 @@ SpatialReference::create( const std::string& init )
     else if ( low == "unified-cube" )
     {
         srs = createCube();
-    }
-
-    // custom srs for an LTP:
-    else if ( low.find( "ltp-enu:" ) == 0 )
-    {
-        StringVector tokens;
-        StringTokenizer(low, tokens, ":", "");
-        if ( tokens.size() == 3 )
-        {
-            StringVector rt;
-            StringTokenizer(tokens[1], rt);
-            if ( rt.size() == 3 )
-            {
-                osg::Vec3d refPt( as<double>(rt[0],0.0), as<double>(rt[1],0.0), as<double>(rt[2],0.0) );
-                srs = createLTP( refPt );
-            }
-        }
     }
 
     else if ( low.find( "+" ) == 0 )
@@ -525,6 +510,22 @@ SpatialReference::getGeographicSRS() const
     }
 
     return _geo_srs.get();
+}
+
+SpatialReference*
+SpatialReference::createTangentPlaneSRS( const osg::Vec3d& pos ) const
+{
+    SpatialReference* result = 0L;
+    osg::Vec3d lla;
+    if ( this->transform(pos, this->getGeographicSRS(), lla) )
+    {
+        result = new LTPSpatialReference( this->getGeographicSRS()->_handle, lla );
+    }
+    else
+    {
+        OE_WARN << LC << "Unable to create LTP SRS" << std::endl;
+    }
+    return result;
 }
 
 bool

@@ -179,7 +179,7 @@ namespace osgEarth { namespace Symbology
 
 
 
-    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet : public Configurable
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet
     {
     public:
         StyleSheet( const Config& conf =Config() );

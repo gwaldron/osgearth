@@ -68,17 +68,6 @@ namespace osgEarth
          */
         static SpatialReference* createFromHandle( void* ogrHandle, bool xferOwnership =false );
 
-        /**
-         * Creates a new LTP (Local tangent plane) SRS centered around the
-         * specified world point.
-         *
-         * @param worldPointLLA   Reference center point, in Lon/Lat/Alt degrees.
-         * @param referenceGeoSRS Reference geographic SRS (or NULL to use WGS84 by default)
-         */
-        static SpatialReference* createLTP( 
-            const osg::Vec3d&       worldPointLLA,
-            const SpatialReference* referenceGeoSRS =0L );
-
     public:
         /** 
          * Transform a point to another SRS.
@@ -88,6 +77,15 @@ namespace osgEarth
             const SpatialReference* to_srs,
             double& out_x, double& out_y, double& out_z,
             void* context =0L ) const;
+
+        bool transform(
+            const osg::Vec3d&       input,
+            const SpatialReference* to_srs,
+            osg::Vec3d&             output,
+            void*                   context =0L) const
+        {
+            return transform(input.x(), input.y(), input.z(), to_srs, output.x(), output.y(), output.z(), context);
+        }
 
         bool transform2D(
             double x, double y,
@@ -221,6 +219,11 @@ namespace osgEarth
 
         /** Gets a reference to this SRS's underlying geographic SRS. */
         const SpatialReference* getGeographicSRS() const;
+
+        /** Creates and returns a local trangent plane SRS at the given reference location.
+            The reference location is expressed in this object's SRS, but it tangent to
+            the globe at getGeographicSRS(). LTP units are in meters. */
+        SpatialReference* createTangentPlaneSRS( const osg::Vec3d& refPos ) const;
 
         /** Creates a new CSN based on this spatial reference. */
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;

@@ -57,16 +57,6 @@ namespace osgEarth
         optional<bool>& cacheOnly() { return _cacheOnly; }
         const optional<bool>& cacheOnly() const { return _cacheOnly; }
 
-        void setReferenceURI(const std::string& referenceURI)
-        {
-            _referenceURI = referenceURI;
-        }
-
-        const std::string& getReferenceURI() const
-        {
-            return _referenceURI;
-        }
-
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
@@ -77,6 +67,12 @@ namespace osgEarth
             ConfigOptions::mergeConfig( conf );            
             fromConfig( conf );
         }
+
+        /** INTERNAL FUNCTION
+            TODO: this most definitely should not be in the Options structure */
+        void setReferenceURI(const std::string& referenceURI) { _referenceURI = referenceURI; }
+        const std::string& getReferenceURI() const { return _referenceURI; }
+
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "cache_only", _cacheOnly );
@@ -110,6 +106,7 @@ namespace osgEarth
         optional<bool>& writeWorldFiles() { return _writeWorldFiles; }
         const optional<bool>& writeWorldFiles() const { return _writeWorldFiles; }
 
+        /** Options string to pass to an osgDB image plugin */
         optional<std::string>& imageWriterPluginOptions() { return _imageWriterPluginOptions; }
         const optional<std::string>& imageWriterPluginOptions() const { return _imageWriterPluginOptions; }
 

@@ -40,7 +40,8 @@ namespace osgEarth
      *
      * GEOMETRIC - EQ will create a temporary tesselated terrain tile and do an 
      *   intersection test (using osgUtil::IntersectionVisitor). This method is slower
-     *   but more visually correlated.
+     *   but more visually correlated. (TODO: not really true anymore. This method
+     *   will require a re-do in osgEarth 2.2 or 3.0)
      *
      * NOTE: EQ does NOT take into account rendering properties like vertical scale or
      * skirts. If you need a vertical scale, for example, simply scale the resulting

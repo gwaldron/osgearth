@@ -30,7 +30,7 @@ using namespace osgEarth;
 // --------------------------------------------------------------------------
 
 LTPSpatialReference::LTPSpatialReference( void* handle, const osg::Vec3d& worldPointLLA ) :
-SpatialReference( handle, "OSGEARTH", "ltp-enu", "ENU Local Tangent Plane" ),
+SpatialReference( handle, false ),
 _worldPointLLA  ( worldPointLLA )
 {
     //todo, set proper init string

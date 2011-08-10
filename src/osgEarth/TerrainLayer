@@ -195,16 +195,23 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayer : public Layer
     {
     protected:
-        TerrainLayer();
+        TerrainLayer( TerrainLayerOptions* options );
         
-        TerrainLayer( TileSource* tileSource );
+        TerrainLayer( TerrainLayerOptions* options, TileSource* tileSource );
 
     public:
 
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const =0;
+        /**
+         * The options data connected to this layer.
+         */
+        const TerrainLayerOptions& getTerrainLayerOptions() const {
+            return *_runtimeOptions; }
 
+        /**
+         * Whether to draw this layer.
+         */
         void setEnabled( bool value );
-        bool getEnabled() const { return _actualEnabled; }
+        bool getEnabled() const { return *_runtimeOptions->enabled(); }
 
         /**
          * Gets the readable name of the map layer.
@@ -237,7 +244,7 @@ namespace osgEarth
          */
         bool isDynamic() const;
 
-        const std::string& getCacheFormat() const {  return _actualCacheFormat; }
+        const std::string& getCacheFormat() const {  return *_runtimeOptions->cacheFormat(); }
 
     public: // methods
 
@@ -270,6 +277,12 @@ namespace osgEarth
          */
         virtual void setTargetProfileHint( const Profile* profile );
 
+        /**
+         * Whether this layer is in "cache only" mode (i.e. data will only be
+         * read from the cache and not from the tile source
+         */
+        bool isCacheOnly() const { return *_runtimeOptions->cacheOnly(); }
+
     protected:
 
 		virtual void initTileSource();
@@ -280,9 +293,9 @@ namespace osgEarth
 
         // these are called "actual" because they override the corresponding
         // init settings found in the TerrainLayerOptions.
-        bool         _actualEnabled;
-        std::string  _actualCacheFormat;
-        bool         _actualCacheOnly;
+        //bool         _actualEnabled;
+        //std::string  _actualCacheFormat;
+        //bool         _actualCacheOnly;
         
         osg::ref_ptr<TileSource> _tileSource;
 		osg::ref_ptr<Cache>      _cache;
@@ -291,18 +304,18 @@ namespace osgEarth
 		osg::ref_ptr< const Profile > _profile;
         osg::ref_ptr< const Profile > _cacheProfile;
 
-        optional<bool> _overrideCacheOnly;
+        //optional<bool> _overrideCacheOnly;
 
         bool _tileSourceInitialized;
 
         osg::ref_ptr<const Profile> _targetProfileHint;
 
     private:
-        std::string _name;
-        bool _cacheOnlyEnv;
-		unsigned int _tileSize;        
-        std::string _referenceURI;
-        OpenThreads::Mutex _initTileSourceMutex;
+        std::string          _name;
+		unsigned             _tileSize;        
+        std::string          _referenceURI;
+        OpenThreads::Mutex   _initTileSourceMutex;
+        TerrainLayerOptions* _runtimeOptions;
 
         void init();
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method ) =0;

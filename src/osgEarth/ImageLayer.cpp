@@ -170,7 +170,7 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
-        //OE_INFO << "Setting nodata image to \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
+        //OE_INFO << "Setting nodata image to \"" << _runtimeOptions.noDataImageFilename().value() << "\"" << std::endl;
         _noDataImage = osgDB::readImageFile( _options.noDataImageFilename().value() );
         if ( !_noDataImage.valid() )
         {
@@ -230,22 +230,22 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 //------------------------------------------------------------------------
 
 ImageLayer::ImageLayer( const ImageLayerOptions& options ) :
-TerrainLayer(),
-_options( options )
+TerrainLayer( &_runtimeOptions ),
+_runtimeOptions( options )
 {
     init();
 }
 
 ImageLayer::ImageLayer( const std::string& name, const TileSourceOptions& driverOptions ) :
-TerrainLayer(),
-_options( ImageLayerOptions(name, driverOptions) )
+TerrainLayer   ( &_runtimeOptions ),
+_runtimeOptions( ImageLayerOptions(name, driverOptions) )
 {
     init();
 }
 
 ImageLayer::ImageLayer( const ImageLayerOptions& options, TileSource* tileSource ) :
-TerrainLayer( tileSource ),
-_options( options )
+TerrainLayer   ( &_runtimeOptions, tileSource ),
+_runtimeOptions( options )
 {
     init();
 }
@@ -253,13 +253,7 @@ _options( options )
 void
 ImageLayer::init()
 {
-    // intialize the runtime actuals from the initialization options:
-    _actualOpacity     = _options.opacity().value();
-    _actualGamma       = _options.gamma().value();
-    _actualLODBlending = _options.lodBlending().value();
-
-    //TODO: probably should graduate this to the superclass.
-    _actualEnabled = _options.enabled().value();
+    //nop
 }
 
 void
@@ -299,21 +293,21 @@ ImageLayer::fireCallback( ImageLayerCallbackMethodPtr method )
 void
 ImageLayer::setOpacity( float value ) 
 {
-    _actualOpacity = osg::clampBetween( value, 0.0f, 1.0f );
+    _runtimeOptions.opacity() = osg::clampBetween( value, 0.0f, 1.0f );
     fireCallback( &ImageLayerCallback::onOpacityChanged );
 }
 
 void
 ImageLayer::setGamma( float value )
 {
-    _actualGamma = value;
+    _runtimeOptions.gamma() = value;
     fireCallback( &ImageLayerCallback::onGammaChanged );
 }
 
 void 
 ImageLayer::disableLODBlending()
 {
-    _actualLODBlending = false;
+    _runtimeOptions.lodBlending() = false;
 }
 
 void
@@ -345,7 +339,7 @@ ImageLayer::initPreCacheOp()
         _targetProfileHint->isEquivalentTo( getProfile() );
 
     ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();    
-    op->_processor.init( _options, layerInTargetProfile );
+    op->_processor.init( _runtimeOptions, layerInTargetProfile );
 
     _preCacheOp = op;
 
@@ -357,7 +351,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     GeoImage result;
 
 	//OE_NOTICE << "[osgEarth::MapLayer::createImage] " << key.str() << std::endl;
-	if ( !_actualCacheOnly && !getTileSource()  )
+	if ( !isCacheOnly() && !getTileSource()  )
 	{
 		OE_WARN << LC << "Error:  MapLayer does not have a valid TileSource, cannot create image " << std::endl;
 		return GeoImage::INVALID;
@@ -379,7 +373,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 		OE_DEBUG << LC << "Layer \"" << getName() << "\": Map and Layer profiles are equivalent " << std::endl;
 	}
 	//If the map profile and layer profile are in the same SRS but with different tiling scemes and exact cropping is not required, cache in the layer profile.
-    else if (mapProfile->getSRS()->isEquivalentTo( layerProfile->getSRS()) && _options.exactCropping() == false )
+    else if (mapProfile->getSRS()->isEquivalentTo( layerProfile->getSRS()) && _runtimeOptions.exactCropping() == false )
 	{
 		OE_DEBUG << LC << "Layer \"" << getName() << "\": Map and Layer profiles are in the same SRS and non-exact cropping is allowed, caching in layer profile." << std::endl;
 		cacheInMapProfile = false;
@@ -388,7 +382,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 	bool cacheInLayerProfile = !cacheInMapProfile;
 
     //Write the cache TMS file if it hasn't been written yet.
-    if (!_cacheProfile.valid() && _cache.valid() && _options.cacheEnabled() == true && _tileSource.valid())
+    if (!_cacheProfile.valid() && _cache.valid() && _runtimeOptions.cacheEnabled() == true && _tileSource.valid())
     {
         _cacheProfile = cacheInMapProfile ? mapProfile : _profile.get();
         _cache->storeProperties( _cacheSpec, _cacheProfile.get(), _tileSource->getPixelsPerTile() );
@@ -400,7 +394,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 	}
 
 	//If we are caching in the map profile, try to get the image immediately.
-    if (cacheInMapProfile && _cache.valid() && _options.cacheEnabled() == true )
+    if (cacheInMapProfile && _cache.valid() && _runtimeOptions.cacheEnabled() == true )
 	{
         osg::ref_ptr<const osg::Image> cachedImage;
         if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
@@ -436,9 +430,9 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
 
         //Scale the extent if necessary
         GeoExtent ext = key.getExtent();
-        if ( _options.edgeBufferRatio().isSet() )
+        if ( _runtimeOptions.edgeBufferRatio().isSet() )
         {
-            double ratio = _options.edgeBufferRatio().get();
+            double ratio = _runtimeOptions.edgeBufferRatio().get();
             ext.scale(ratio, ratio);
         }
 
@@ -584,7 +578,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
                 result = mosaic.reproject( 
                     key.getProfile()->getSRS(),
                     &key.getExtent(), 
-                    _options.reprojectedTileSize().value(), _options.reprojectedTileSize().value() );
+                    _runtimeOptions.reprojectedTileSize().value(), _runtimeOptions.reprojectedTileSize().value() );
             }
             else
             {
@@ -593,8 +587,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
                 GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key.getExtent() );
                 if ( clampedMapExt.isValid() )
 				{
-                    int size = _options.exactCropping() == true ? _options.reprojectedTileSize().value() : 0;
-                    result = mosaic.crop(clampedMapExt, _options.exactCropping().value(), size, size);
+                    int size = _runtimeOptions.exactCropping() == true ? _runtimeOptions.reprojectedTileSize().value() : 0;
+                    result = mosaic.crop(clampedMapExt, _runtimeOptions.exactCropping().value(), size, size);
 				}
                 else
                     result = GeoImage::INVALID;
@@ -615,7 +609,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
     }
 
 	//If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
-    if (result.valid() && _cache.valid() && _options.cacheEnabled() == true && cacheInMapProfile)
+    if (result.valid() && _cache.valid() && _runtimeOptions.cacheEnabled() == true && cacheInMapProfile)
 	{
 		OE_DEBUG << LC << "Layer \"" << getName() << "\" writing tile " << key.str() << " to cache " << std::endl;
 		_cache->setImage( key, _cacheSpec, result.getImage());
@@ -640,7 +634,7 @@ ImageLayer::createImageWrapper(const TileKey& key,
 
     // first check the cache.
     // TODO: find a way to avoid caching/checking when the LOD falls
-    if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
+    if (_cache.valid() && cacheInLayerProfile && _runtimeOptions.cacheEnabled() == true )
     {
         osg::ref_ptr<const osg::Image> cachedImage;
 		if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
@@ -650,7 +644,7 @@ ImageLayer::createImageWrapper(const TileKey& key,
     	}
     }
 
-	if ( !_actualCacheOnly )
+	if ( !isCacheOnly() )
 	{
         TileSource* source = getTileSource();
         if ( !source )
@@ -695,7 +689,7 @@ ImageLayer::createImageWrapper(const TileKey& key,
         }
 
         // Cache is necessary:
-        if ( result && _cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
+        if ( result && _cache.valid() && cacheInLayerProfile && _runtimeOptions.cacheEnabled() == true )
 		{
 			_cache->setImage( key, _cacheSpec, result );
 		}

@@ -92,8 +92,8 @@ namespace osgEarth
         ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource );
 
         /** Gets the initialization options with which the layer was created. */
-        const ElevationLayerOptions& getElevationLayerOptions() const { return _options; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _options; }
+        const ElevationLayerOptions& getElevationLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ElevationLayerCallback* cb );
@@ -109,7 +109,7 @@ namespace osgEarth
          * extents of that TileKey.
          */
         osg::HeightField* createHeightField(
-            const TileKey& key,
+            const TileKey&    key,
             ProgressCallback* progress =0L );
 
     protected:
@@ -121,7 +121,7 @@ namespace osgEarth
         virtual void initTileSource();
 
     private:
-        ElevationLayerOptions _options;
+        ElevationLayerOptions _runtimeOptions;
 
         ElevationLayerCallbackList _callbacks;
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method );

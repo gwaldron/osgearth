@@ -185,8 +185,8 @@ namespace osgEarth
         /**
          * Access to the initialization options used to create this image layer
          */
-        const ImageLayerOptions& getImageLayerOptions() const { return _options; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _options; }
+        const ImageLayerOptions& getImageLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ImageLayerCallback* cb );
@@ -200,13 +200,13 @@ namespace osgEarth
     public: // runtime properties
 
         void setOpacity( float opacity );
-        float getOpacity() const { return _actualOpacity; }
+        float getOpacity() const { return *_runtimeOptions.opacity(); }
 
         void setGamma( float gamma );
-        float getGamma() const { return _actualGamma; }
+        float getGamma() const { return *_runtimeOptions.gamma(); }
 
         void disableLODBlending();
-        bool isLODBlendingEnabled() const { return _actualLODBlending; }
+        bool isLODBlendingEnabled() const { return *_runtimeOptions.lodBlending(); }
 
     public: // methods
 
@@ -224,10 +224,12 @@ namespace osgEarth
 
         virtual void initTileSource();
     private:
-        ImageLayerOptions _options;
-        float _actualOpacity;
-        float _actualGamma;
-        bool  _actualLODBlending;
+        //const ImageLayerOptions _options;
+        ImageLayerOptions       _runtimeOptions;
+
+        //float _actualOpacity;
+        //float _actualGamma;
+        //bool  _actualLODBlending;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         

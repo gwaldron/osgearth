@@ -97,22 +97,22 @@ namespace
 //------------------------------------------------------------------------
 
 ElevationLayer::ElevationLayer( const ElevationLayerOptions& options ) :
-TerrainLayer(),
-_options( options )
+TerrainLayer   ( &_runtimeOptions ),
+_runtimeOptions( options )
 {
     init();
 }
 
 ElevationLayer::ElevationLayer( const std::string& name, const TileSourceOptions& driverOptions ) :
-TerrainLayer(),
-_options( ElevationLayerOptions(name, driverOptions) )
+TerrainLayer   ( &_runtimeOptions ),
+_runtimeOptions( ElevationLayerOptions(name, driverOptions) )
 {
     init();
 }
 
 ElevationLayer::ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource ) :
-TerrainLayer( tileSource ),
-_options( options )
+TerrainLayer   ( &_runtimeOptions, tileSource ),
+_runtimeOptions( options )
 {
     init();
 }
@@ -120,8 +120,7 @@ _options( options )
 void
 ElevationLayer::init()
 {
-    //TODO: probably should graduate this to the superclass.
-    _actualEnabled = _options.enabled().value();
+    //nop
 }
 
 std::string
@@ -232,14 +231,14 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key, ProgressCallback
         return 0L;
 	}
 
-	if ( !_actualCacheOnly && !getTileSource() )
+	if ( !isCacheOnly() && !getTileSource() )
 	{
 		OE_WARN << LC << "Error: ElevationLayer does not have a valid TileSource, cannot create heightfield " << std::endl;
 		return 0L;
 	}
 
     //Write the layer properties if they haven't been written yet.  Heightfields are always stored in the map profile.
-    if (!_cacheProfile.valid() && _cache.valid() && _options.cacheEnabled() == true && _tileSource.valid())
+    if (!_cacheProfile.valid() && _cache.valid() && _runtimeOptions.cacheEnabled() == true && _tileSource.valid())
     {
         _cacheProfile = mapProfile;
         if ( _tileSource->isOK() )
@@ -249,7 +248,7 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key, ProgressCallback
     }
 
 	//See if we can get it from the cache.
-	if (_cache.valid() && _options.cacheEnabled() == true )
+	if (_cache.valid() && _runtimeOptions.cacheEnabled() == true )
 	{
         osg::ref_ptr<const osg::HeightField> cachedHF;
 		if ( _cache->getHeightField( key, _cacheSpec, cachedHF ) )
@@ -262,7 +261,7 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key, ProgressCallback
 	}
 
     //in cache-only mode, if the cache fetch failed, bail out.
-    if ( result == 0L && _actualCacheOnly )
+    if ( result == 0L && isCacheOnly() )
     {
         return 0L;
     }
@@ -355,7 +354,7 @@ ElevationLayer::createHeightField(const osgEarth::TileKey& key, ProgressCallback
 		}
     
         //Write the result to the cache.
-        if (result && _cache.valid() && _options.cacheEnabled() == true )
+        if (result && _cache.valid() && _runtimeOptions.cacheEnabled() == true )
         {
             _cache->setHeightField( key, _cacheSpec, result );
         }

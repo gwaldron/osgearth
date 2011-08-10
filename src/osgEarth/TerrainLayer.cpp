@@ -155,8 +155,6 @@ TerrainLayer::setCache(Cache* cache)
     {
         _cache = cache;        
 
-        //const TerrainLayerOptions& opt = getTerrainLayerOptions();
-
         // Read properties from the cache if not already set
         if ( _cache.valid() && _runtimeOptions->cacheEnabled() == true )
         {
@@ -173,8 +171,9 @@ TerrainLayer::setCache(Cache* cache)
                 // system will generate a cacheId.
                 Config hashConf = _runtimeOptions->driver()->getConfig();
 
-                //TODO: this hash needs to include only the driver conf, not the outer layer conf.
-                //hashConf.remove("name");
+                // remove cache-control properties before hashing.
+                hashConf.remove( "cache_only" );
+                hashConf.remove( "cache_enabled" );
 
                 std::stringstream buf;
                 //OE_NOTICE << hashConf.toHashString() << std::endl;

@@ -10,6 +10,7 @@ if(COMMAND cmake_policy)
     cmake_policy(SET CMP0005 OLD)
 endif(COMMAND cmake_policy)
 
+
 PROJECT(OSGEARTH)
 
 SET(OSGEARTH_MAJOR_VERSION 2)
@@ -29,6 +30,7 @@ ENDIF()
 
 
 SET(OSGEARTH_VERSION ${OSGEARTH_MAJOR_VERSION}.${OSGEARTH_MINOR_VERSION}.${OSGEARTH_PATCH_VERSION})
+
 
 # We want to build SONAMES shared librariess
 SET(OSGEARTH_SONAMES TRUE)
@@ -293,3 +295,17 @@ CONFIGURE_FILE(
 ADD_CUSTOM_TARGET(uninstall
   "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake")
 
+
+
+
+#------------------------------------------------------------------------------
+# Packaging setup.
+
+SET(CPACK_PACKAGE_VERSION       ${OSGEARTH_VERSION}       )
+SET(CPACK_PACKAGE_VERSION_MAJOR ${OSGEARTH_MAJOR_VERSION} )
+SET(CPACK_PACKAGE_VERSION_MINOR ${OSGEARTH_MINOR_VERSION} )
+SET(CPACK_PACKAGE_VERSION_PATCH ${OSGEARTH_PATCH_VERSION} )
+SET(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}./LICENSE.txt )
+SET(CPACK_MONOLITHIC_INSTALL    1 )                                        # create a single, monolithic package.
+    
+INCLUDE(CPack)

@@ -182,18 +182,28 @@ _options  ( options )
     if ( referenceSRS )
     {
         _refSRS = referenceSRS->getGeographicSRS();
-        
+    }
+    else
+    {
+        _refSRS = SpatialReference::create( "wgs84" );
+    }
+
+    if ( options & FORCE_AA_SCHEME )
+    {
+        _useAL = false;
+    }
+    else if ( options & FORCE_AL_SCHEME )
+    {
+        _useAL = true;
+    }
+    else
+    {
         // use the "AL" lettering scheme for these older datum ellipsoids.
         std::string eName = _refSRS->getEllipsoid()->getName();
         _useAL = 
             eName.find("bessel") == std::string::npos ||
             eName.find("clark")  == std::string::npos ||
             eName.find("clrk")   == std::string::npos;
-    }
-    else
-    {
-        _refSRS = SpatialReference::create( "wgs84" );
-        _useAL = false;
     }
 }
 

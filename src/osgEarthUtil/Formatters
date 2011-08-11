@@ -102,7 +102,9 @@ namespace osgEarth { namespace Util
 
         enum Options
         {
-            USE_SPACES        = 0 << 1
+            USE_SPACES        = 1 << 0,     // insert spaces between MGRS elements
+            FORCE_AA_SCHEME   = 1 << 1,     // use the AA row lettering scheme regardless of ellipsoid
+            FORCE_AL_SCHEME   = 1 << 2      // use the AL row lettering scheme regardless of ellipsoid
         };
 
     public:
@@ -111,7 +113,7 @@ namespace osgEarth { namespace Util
          *
          * @param precision Precision with which to print the MGRS string (see Precision above)
          * @param refSRS    Reference geographic SRS for MGRS encoding. Older datums
-         *                  (Clark and Bessel) change the N/S lettering scheme. Default=WGS84.
+         *                  (Clark and Bessel) change the row lettering scheme. Default=WGS84.
          * @param options   Formatting options (see Options above)
          */
         MGRSFormatter(

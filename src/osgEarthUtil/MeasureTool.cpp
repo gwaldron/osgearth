@@ -97,6 +97,7 @@ MeasureToolHandler::setGeoInterpolation( GeoInterpolation geoInterpolation )
         _geoInterpolation = geoInterpolation;
         _feature->geoInterp() = _geoInterpolation;
         _featureNode->init();
+        fireDistanceChanged();
     }
 }
 
@@ -218,6 +219,9 @@ void MeasureToolHandler::clear()
     //_features->dirty();
     _featureNode->init();
     fireDistanceChanged();
+
+    _gotFirstLocation = false; 
+    _lastPointTemporary = false; 
 }
 
 void

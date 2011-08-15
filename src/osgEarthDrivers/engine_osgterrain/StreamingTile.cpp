@@ -888,7 +888,7 @@ StreamingTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLoc
         _tileGenRequest = new TileGenRequest( this, _tileUpdates.front() );
         _tileUpdates.pop();
         //OE_NOTICE << "tile (" << _key.str() << ") queuing new tile gen" << std::endl;
-        getStreamingTerrain()->getTileGenerationTaskSerivce()->add( _tileGenRequest.get() );
+        getStreamingTerrain()->getTileGenerationTaskService()->add( _tileGenRequest.get() );
     }
 
     return tileModified;

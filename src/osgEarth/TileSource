@@ -78,6 +78,9 @@ namespace osgEarth
         optional<int>& L2CacheSize() { return _L2CacheSize; }
         const optional<int>& L2CacheSize() const { return _L2CacheSize; }
 
+		optional<bool>& gdalAllowProjectionDifference() { return _gdalAllowProjectionDifference; }
+        const optional<bool>& gdalAllowProjectionDifference() const { return _gdalAllowProjectionDifference; }
+
     public:
         TileSourceOptions( const ConfigOptions& options =ConfigOptions() )
             : DriverConfigOptions( options ),
@@ -85,7 +88,8 @@ namespace osgEarth
               _noDataValue( (float)SHRT_MIN ),
               _noDataMinValue( -FLT_MAX ),
               _noDataMaxValue( FLT_MAX ),
-              _L2CacheSize( 16 )
+              _L2CacheSize( 16 ),
+			  _gdalAllowProjectionDifference(false)
         { 
             fromConfig( _conf );
         }
@@ -100,6 +104,7 @@ namespace osgEarth
             conf.updateIfSet( "blacklist_filename", _blacklistFilename);
             //conf.updateIfSet( "enable_l2_cache", _enableL2Cache );
             conf.updateIfSet( "l2_cache_size", _L2CacheSize );
+            conf.updateIfSet( "gdal_allow_projection_difference", _gdalAllowProjectionDifference );
             conf.updateObjIfSet( "profile", _profileOptions );
             return conf;
         }
@@ -119,6 +124,7 @@ namespace osgEarth
             conf.getIfSet( "blacklist_filename", _blacklistFilename);
             //conf.getIfSet( "enable_l2_cache", _enableL2Cache );
             conf.getIfSet( "l2_cache_size", _L2CacheSize );
+            conf.getIfSet( "gdal_allow_projection_difference", _gdalAllowProjectionDifference );
             conf.getObjIfSet( "profile", _profileOptions );
 
             // special handling of default tile size:
@@ -133,6 +139,7 @@ namespace osgEarth
         optional<ProfileOptions> _profileOptions;
         optional<std::string> _blacklistFilename;
         optional<int> _L2CacheSize;
+		optional<bool> _gdalAllowProjectionDifference;
         //optional<bool> _enableL2Cache;
     };
 

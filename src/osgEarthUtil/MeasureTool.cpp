@@ -70,6 +70,12 @@ MeasureToolHandler::~MeasureToolHandler()
     if (_group.valid()) _group->removeChild( _featureNode.get() );
 }
 
+bool
+MeasureToolHandler::getIsPath() const
+{
+    return _isPath;
+}
+
 void
 MeasureToolHandler::setIsPath( bool path ) 
 {

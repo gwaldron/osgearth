@@ -1693,9 +1693,12 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
 void
 Grid::draw( const ControlContext& cx, DrawableList& out )
 {
-    Container::draw( cx, out );
-    for( ControlList::const_iterator i = _children.begin(); i != _children.end(); ++i )
-        i->get()->draw( cx, out );
+    if (visible() == true)
+    {
+        Container::draw( cx, out );
+        for( ControlList::const_iterator i = _children.begin(); i != _children.end(); ++i )
+            i->get()->draw( cx, out );
+    }
 }
 
 // ---------------------------------------------------------------------------

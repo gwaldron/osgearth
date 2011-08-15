@@ -20,23 +20,13 @@
 #define OSGEARTHUTIL_EARTHMANIPULATOR
 
 #include <osgEarthUtil/Common>
+#include <osgEarth/Common>
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarth/MapNode>
 #include <osg/Timer>
 #include <map>
 #include <list>
 #include <utility>
-
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-#  include <osgGA/CameraManipulator>
-    namespace osgGA {
-        typedef CameraManipulator MatrixManipulator;
-    };
-#  include <osg/ObserverNodePath>
-#  define USE_OBSERVER_NODE_PATH 1
-#else
-#  include <osgGA/MatrixManipulator>
-#endif
 
 namespace osgEarth { namespace Util
 {

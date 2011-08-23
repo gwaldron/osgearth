@@ -500,45 +500,6 @@ struct MaskNodeFinder : public osg::NodeVisitor {
     std::list< osg::Group* > _groups;
 };
 
-#if 0
-void
-MapNode::onMaskLayerAdded( MaskLayer* layer )
-{
-    osg::Node* node = layer->getOrCreateNode();
-
-    if ( node && node->asGroup() )
-    {
-        int count = 0;
-        MaskNodeFinder f;
-        node->accept( f );
-        for( std::list<osg::Group*>::iterator i = f._groups.begin(); i != f._groups.end(); ++i )
-        {
-            (*i)->addChild( _terrainEngine );
-            count++;
-        }
-        this->replaceChild( _terrainEngine, node );
-        
-        OE_NOTICE<<"Installed terrain mask ("
-            <<count<< " mask nodes found)" << std::endl;
-
-        _maskLayerNode = node->asGroup();
-        dirtyBound();
-    }
-}
-
-void
-MapNode::onMaskLayerRemoved( MaskLayer* layer )
-{
-    if ( layer && _maskLayerNode )
-    {
-        osg::ref_ptr<osg::Node> child = _maskLayerNode->getChild( 0 );
-        this->replaceChild( _maskLayerNode, child.get() );
-        _maskLayerNode = 0L;
-        dirtyBound();
-    }
-}
-#endif
-
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)
 {    

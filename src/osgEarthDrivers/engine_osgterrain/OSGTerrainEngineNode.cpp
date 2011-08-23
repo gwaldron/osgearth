@@ -224,10 +224,14 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 osg::BoundingSphere
 OSGTerrainEngineNode::computeBound() const
 {
-    if ( _terrain )
+    if ( _terrain && _terrain->getNumChildren() > 0 )
+    {
         return _terrain->getBound();
+    }
     else
+    {
         return TerrainEngineNode::computeBound();
+    }
 }
 
 void

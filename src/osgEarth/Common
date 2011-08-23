@@ -102,4 +102,16 @@ namespace osgDB
 
 #endif // OSG_VERSION_LESS_THAN( 2, 9, 5 )
 
+#if OSG_MIN_VERSION_REQUIRED(2,9,8)
+#  include <osgGA/CameraManipulator>
+    namespace osgGA {
+        typedef CameraManipulator MatrixManipulator;
+    };
+#  include <osg/ObserverNodePath>
+#  define USE_OBSERVER_NODE_PATH 1
+#else
+#  include <osgGA/MatrixManipulator>
+#endif
+
+
 #endif // OSGEARTH_COMMON_H

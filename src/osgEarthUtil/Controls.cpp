@@ -26,6 +26,8 @@
 #include <osgText/Text>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
+#include <osg/Version>
+#include <osgEarth/Common>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -1693,9 +1695,12 @@ Grid::calcPos( const ControlContext& cx, const osg::Vec2f& cursor, const osg::Ve
 void
 Grid::draw( const ControlContext& cx, DrawableList& out )
 {
-    Container::draw( cx, out );
-    for( ControlList::const_iterator i = _children.begin(); i != _children.end(); ++i )
-        i->get()->draw( cx, out );
+    if (visible() == true)
+    {
+        Container::draw( cx, out );
+        for( ControlList::const_iterator i = _children.begin(); i != _children.end(); ++i )
+            i->get()->draw( cx, out );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1783,7 +1788,7 @@ namespace osgEarth { namespace Util { namespace Controls
             // must save the manipulator matrix b/c calling setSceneData causes
             // the view to call home() on the manipulator.
             osg::Matrixd savedMatrix;
-            osgGA::CameraManipulator* manip = view2->getCameraManipulator();
+            osgGA::MatrixManipulator* manip = view2->getCameraManipulator();
             if ( manip )
                 savedMatrix = manip->getMatrix();
 

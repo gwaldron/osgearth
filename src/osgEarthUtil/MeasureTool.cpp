@@ -70,6 +70,12 @@ MeasureToolHandler::~MeasureToolHandler()
     if (_group.valid()) _group->removeChild( _featureNode.get() );
 }
 
+bool
+MeasureToolHandler::getIsPath() const
+{
+    return _isPath;
+}
+
 void
 MeasureToolHandler::setIsPath( bool path ) 
 {
@@ -97,6 +103,7 @@ MeasureToolHandler::setGeoInterpolation( GeoInterpolation geoInterpolation )
         _geoInterpolation = geoInterpolation;
         _feature->geoInterp() = _geoInterpolation;
         _featureNode->init();
+        fireDistanceChanged();
     }
 }
 
@@ -218,6 +225,9 @@ void MeasureToolHandler::clear()
     //_features->dirty();
     _featureNode->init();
     fireDistanceChanged();
+
+    _gotFirstLocation = false; 
+    _lastPointTemporary = false; 
 }
 
 void

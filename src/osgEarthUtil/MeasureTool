@@ -74,7 +74,7 @@ namespace osgEarth { namespace Util
         void setIntersectionMask( osg::Node::NodeMask intersectionMask ) { _intersectionMask = intersectionMask; }
         osg::Node::NodeMask getIntersectionMask() const { return _intersectionMask;}
 
-    private:
+    protected:
         GeoInterpolation _geoInterpolation;
         void fireDistanceChanged();
         bool _lastPointTemporary;

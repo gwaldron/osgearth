@@ -34,7 +34,7 @@ SET(LIB_PUBLIC_HEADERS
     Query
     Resource
     ResourceLibrary
-    SkinResource
+    Skins
     StencilVolumeNode
     Style
     SLD
@@ -64,7 +64,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Query.cpp
     Resource.cpp
     ResourceLibrary.cpp
-    SkinResource.cpp
+    Skins.cpp
     StencilVolumeNode.cpp
     Style.cpp
     SLD.cpp

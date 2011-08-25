@@ -77,10 +77,14 @@ namespace osgEarth { namespace Features
         osg::Referenced* getBuildData() const { return _buildData.get(); }
 
     public:
+        /**
+         * @deprecated - in favor of the ResourceLibrary, coming soon.
+         */
         void putResource( const std::string& uri, osg::Referenced* object );
 
         /**
          * Gets a resource from the session cache.
+         * @deprecated - in favor of the ResourceLibrary, coming soon.
          */
         template<typename T> T* getResource( const std::string& uri ) {
             Threading::ScopedReadLock lock( _resourceMutex );

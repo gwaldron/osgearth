@@ -32,10 +32,14 @@ SET(LIB_PUBLIC_HEADERS
     PointSymbol
     PolygonSymbol
     Query
+    Resource
+    ResourceLibrary
+    SkinResource
     StencilVolumeNode
     Style
     SLD
     Symbol
+    Tags
     TextSymbol
 )
 
@@ -58,6 +62,9 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp
+    Resource.cpp
+    ResourceLibrary.cpp
+    SkinResource.cpp
     StencilVolumeNode.cpp
     Style.cpp
     SLD.cpp

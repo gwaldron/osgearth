@@ -75,7 +75,7 @@ ResourceLibrary::getSkins( SkinResourceVector& output ) const
 }
 
 void
-ResourceLibrary::getSkins( const SkinResourceQuery& q, SkinResourceVector& output ) const
+ResourceLibrary::getSkins( const SkinSymbol* q, SkinResourceVector& output ) const
 {
     Threading::ScopedReadLock shared(_mutex);
 
@@ -83,41 +83,41 @@ ResourceLibrary::getSkins( const SkinResourceQuery& q, SkinResourceVector& outpu
     {
         SkinResource* s = i->second.get();
         
-        if (q.objectHeight().isSet())
+        if (q->objectHeight().isSet())
         {
             if (s->minObjectHeight().isSet() && 
-                q.objectHeight().value() < s->minObjectHeight().value() )
+                q->objectHeight().value() < s->minObjectHeight().value() )
             {
                 continue;
             }
             if (s->maxObjectHeight().isSet() && 
-                q.objectHeight().value() > s->maxObjectHeight().value() )
+                q->objectHeight().value() > s->maxObjectHeight().value() )
             {
                 continue;
             }
         }
              
-        if (q.minObjectHeight().isSet() && 
+        if (q->minObjectHeight().isSet() && 
             s->maxObjectHeight().isSet() && 
-            q.minObjectHeight().value() > s->maxObjectHeight().value() )
+            q->minObjectHeight().value() > s->maxObjectHeight().value() )
         {
             continue;
         }
 
-        if (q.maxObjectHeight().isSet() && 
+        if (q->maxObjectHeight().isSet() && 
             s->minObjectHeight().isSet() &&
-            q.maxObjectHeight().value() < s->minObjectHeight().value() )
+            q->maxObjectHeight().value() < s->minObjectHeight().value() )
         {
             continue;
         }
 
-        if (q.repeatsVertically().isSet() && 
-            q.repeatsVertically().value() != s->repeatsVertically().value() )
+        if (q->repeatsVertically().isSet() && 
+            q->repeatsVertically().value() != s->repeatsVertically().value() )
         {
             continue;
         }
 
-        if (q.tags().size() > 0 && !s->containsTags(q.tags()) )
+        if (q->tags().size() > 0 && !s->containsTags(q->tags()) )
         {
             continue;
         }

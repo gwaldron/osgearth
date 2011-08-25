@@ -47,14 +47,25 @@ namespace osgEarth { namespace Symbology
         bool containsTag( const std::string& tag ) const {
             return _tags.find( normalize( tag )) != _tags.end();
         }
-        bool containsTags( const TagVector& tags ) const {
-            for( TagVector::const_iterator i = tags.begin(); i != tags.end(); i++ ) {
+
+        template<typename T>
+        bool containsTags( const T& tags ) const {
+            for( T::const_iterator i = tags.begin(); i != tags.end(); i++ ) {
                 if ( _tags.find( normalize( *i ) ) == _tags.end() )
                     return false;
             }
             return true;
         }
         const TagSet& tags() const { return _tags; }
+
+        template<typename T>
+        static std::string tagString(const T& tags) {
+            std::stringstream buf;
+            for( T::const_iterator i = tags.begin(); i != tags.end(); i++ )
+                buf << (i != tags.begin()? " " : "") << *i;
+            std::string result = buf.str();
+            return result;
+        }
 
         std::string tagString() const {
             std::stringstream buf;
@@ -64,9 +75,11 @@ namespace osgEarth { namespace Symbology
             return result;
         }
 
-    private:
+    protected:
         
         TagSet _tags;
+
+    private:
 
         std::string normalize( const std::string& input ) const {
             std::string output = input;

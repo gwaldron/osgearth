@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/SkinResource>
+#include <osgEarth/StringUtils>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -79,6 +80,51 @@ SkinResource::getConfig() const
 
 //---------------------------------------------------------------------------
 
+SkinSymbol::SkinSymbol( const Config& conf ) :
+_objHeight         ( 0 ),
+_minObjHeight      ( 0.0 ),
+_maxObjHeight      ( 0.0 ),
+_repeatsVertically ( false )
+{
+    if ( !conf.empty() )
+        mergeConfig( conf );
+}
+
+void 
+SkinSymbol::mergeConfig( const Config& conf )
+{
+    conf.getIfSet( "object_height",       _objHeight );
+    conf.getIfSet( "min_object_height",   _minObjHeight );
+    conf.getIfSet( "max_object_height",   _maxObjHeight );
+    conf.getIfSet( "repeats_vertically",  _repeatsVertically );
+
+    TagVector tags;
+    StringTokenizer( conf.value("tags"), tags, " ", "\'", false, true );
+    addTags( tags );
+}
+
+Config 
+SkinSymbol::getConfig() const
+{
+    Config conf = Symbol::getConfig();
+    conf.key() = "skin";
+
+    conf.addIfSet( "object_height",       _objHeight );
+    conf.addIfSet( "min_object_height",   _minObjHeight );
+    conf.addIfSet( "max_object_height",   _maxObjHeight );
+    conf.addIfSet( "repeats_vertically",  _repeatsVertically );
+
+    std::string tagString = Taggable::tagString(_tags);
+    if ( !tagString.empty() )
+        conf.attr("tags") = tagString;
+
+    return conf;
+}
+
+#if 0
+
+//---------------------------------------------------------------------------
+
 SkinResourceQuery::SkinResourceQuery() :
 _objHeight         ( 0 ),
 _minObjHeight      ( 0.0 ),
@@ -87,3 +133,5 @@ _repeatsVertically ( false )
 {
     //nop
 }
+
+#endif

@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Resource>
+#include <osgEarthSymbology/Symbol>
 #include <osgEarth/Config>
 #include <osg/TexEnv>
 
@@ -103,6 +104,45 @@ namespace osgEarth { namespace Symbology
      * Query object that you can use to search for applicable Skin resources from the 
      * ResourceLibrary.
      */
+    class OSGEARTHSYMBOLOGY_EXPORT SkinSymbol : public Taggable<Symbol>
+    {
+    public:
+        SkinSymbol( const Config& conf =Config() );
+
+    public: // query parameters
+
+        /** Object height in meters (must fall in the skin's min/max object height range to be accepted) */
+        optional<double>& objectHeight() { return _objHeight; }
+        const optional<double>& objectHeight() const { return _objHeight; }
+
+        /** Minimum acceptable real-world object height for which this image would make an appropriate texture */
+        optional<double>& minObjectHeight() { return _minObjHeight; }
+        const optional<double>& minObjectHeight() const { return _minObjHeight; }
+
+        /** Maximum acceptable real-world object height for which this image would make an appropriate texture */
+        optional<double>& maxObjectHeight() { return _maxObjHeight; }
+        const optional<double>& maxObjectHeight() const { return _minObjHeight; }
+
+        /** Whether this image is suitable for use as a vertically repeating texture */
+        optional<bool>& repeatsVertically() { return _repeatsVertically; }
+        const optional<bool>& repeatsVertically() const { return _repeatsVertically; }
+
+    public:
+        void mergeConfig(const Config& conf);
+        Config getConfig() const;
+
+    protected:
+        optional<double>  _objHeight;
+        optional<double>  _minObjHeight;
+        optional<double>  _maxObjHeight;
+        optional<bool>    _repeatsVertically;
+    };
+
+#if 0
+    /**
+     * Query object that you can use to search for applicable Skin resources from the 
+     * ResourceLibrary.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT SkinResourceQuery : public osg::Referenced
     {
     public:
@@ -138,7 +178,7 @@ namespace osgEarth { namespace Symbology
         optional<bool>    _repeatsVertically;
         TagVector         _tags;
     };
-
+#endif
 
     typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;
 

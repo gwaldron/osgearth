@@ -64,9 +64,10 @@ namespace osgEarth { namespace Symbology
         void getSkins( SkinResourceVector& output ) const;
 
         /**
-         * Returns a list of all Skin resources that match the specified criteria
+         * Returns a list of all Skin resources that match the criteria specified
+         * in the symbol.
          */
-        void getSkins( const SkinResourceQuery& query, SkinResourceVector& output ) const;
+        void getSkins( const SkinSymbol* symbol, SkinResourceVector& output ) const;
 
 
     public: // Model resource functions

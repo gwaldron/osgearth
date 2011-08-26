@@ -62,10 +62,6 @@ randomColor()
 
 static int s_fid = 0;
 
-
-
-
-
 static osg::ref_ptr< AddPointHandler > s_addPointHandler;
 static osg::ref_ptr< osg::Node > s_editor;
 static osg::ref_ptr< Feature > s_activeFeature;
@@ -89,8 +85,8 @@ Grid* createToolBar()
 
 struct AddVertsModeHandler : public ControlEventHandler
 {
-    AddVertsModeHandler( FeatureModelGraph* featureGraph):
-_featureGraph( featureGraph )
+    AddVertsModeHandler( FeatureModelGraph* featureGraph)
+        : _featureGraph( featureGraph )
     {
     }
 
@@ -106,7 +102,6 @@ _featureGraph( featureGraph )
             if ( style )
             {            
                 style->get<LineSymbol>()->stroke()->stipple().unset();
-                //_featureGraph->setStyles( _featureGraph->getStyles() );
                 _featureGraph->dirty();
             }
         }
@@ -125,8 +120,8 @@ _featureGraph( featureGraph )
 
 struct EditModeHandler : public ControlEventHandler
 {
-    EditModeHandler( FeatureModelGraph* featureGraph):
-_featureGraph( featureGraph )
+    EditModeHandler( FeatureModelGraph* featureGraph)
+        : _featureGraph( featureGraph )
     { 
     }
 
@@ -164,11 +159,11 @@ struct ChangeStyleHandler : public ControlEventHandler
     }
 
     void onClick( Control* control, int mouseButtonMask ) {
-        _features->setStyles( _styleSheet );
+        _features->setStyles( _styleSheet.get() );
     }
 
     osg::ref_ptr< FeatureModelGraph > _features;
-    StyleSheet*                       _styleSheet;
+    osg::ref_ptr< StyleSheet >        _styleSheet;
 };
 
 StyleSheet* buildStyleSheet( const osg::Vec4 &color, float width )
@@ -197,10 +192,7 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    bool useOverlay = arguments.read("--overlay");
-
     osgViewer::Viewer viewer(arguments);
-
     s_viewer = &viewer;
 
     // Start by creating the map:
@@ -304,16 +296,12 @@ int main(int argc, char** argv)
     
     viewer.setSceneData( s_root.get() );
     viewer.setCameraManipulator( new EarthManipulator() );
-
-    if ( !useOverlay )
-        viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
+    viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    //viewer.addEventHandler( new AddPointHandler(feature, featureSource, map->getProfile()->getSRS()));
-    //addFeatureEditor( feature, featureSource, mapNode, root );
 
     return viewer.run();
 }

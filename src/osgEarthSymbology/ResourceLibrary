@@ -30,15 +30,24 @@ namespace osgEarth { namespace Symbology
     /** 
      * ResourceLibrary manages a collection of external resources that a
      * build system can use the construct geometries.
+     *
+     * TODO: This class PROBABLY NEEDS the ability to share a mutex with
+     * whatever session is using it... like in osgGIS...
      */
     class OSGEARTHSYMBOLOGY_EXPORT ResourceLibrary : public osg::Referenced
     {
     public:
         /**
+         * Attempts to create and load a resource library from an XML
+         * resource catalog residing at the specified URL.
+         */         
+        static ResourceLibrary* create( const URI& uri );
+
+    public:
+        /**
          * Creates a new resource library
-         * @param mutex Mutex to use to synchronize access to the library.
          */
-        ResourceLibrary( Threading::ReadWriteMutex& mutex );
+        ResourceLibrary( const Config& conf =Config() );
 
         /**
          * Adds a resoure to the library.
@@ -74,9 +83,13 @@ namespace osgEarth { namespace Symbology
 
         //TODO
 
+    public: // serialization functions
+
+        void mergeConfig( const Config& conf );
+
     protected:
-        Threading::ReadWriteMutex& _mutex;
-        SkinResourceMap            _skins;
+        Threading::ReadWriteMutex _mutex;
+        SkinResourceMap           _skins;
     };
 
 

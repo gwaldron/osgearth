@@ -18,8 +18,11 @@
  */
 #include <osgEarthSymbology/ResourceLibrary>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/XmlUtils>
+#include <osgEarth/HTTPClient>
 #include <iterator>
 #include <algorithm>
+#include <fstream>
 
 #define LC "[ResourceLibrary] "
 
@@ -27,10 +30,69 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
-ResourceLibrary::ResourceLibrary( Threading::ReadWriteMutex& mutex ) :
-_mutex( mutex )
+//------------------------------------------------------------------------
+
+ResourceLibrary*
+ResourceLibrary::create( const URI& uri )
 {
-    //nop
+#if 0
+    std::string src;
+
+    HTTPClient::ResultCode result = HTTPClient::readString( uri.full(), src );
+    if ( result != HTTPClient::RESULT_OK )
+    {
+        OE_WARN << LC << "Failed to load resource library from \"" << uri.full() << "\" : "
+            << HTTPClient::getResultCodeString(result)
+            << std::endl;
+        return 0L;
+    }
+
+    std::stringstream buf( src );
+#endif
+
+    osg::ref_ptr<XmlDocument> xml = XmlDocument::load( uri ); // buf, uri.full() );
+    if ( !xml.valid() )
+    {
+        OE_WARN << LC << "Failed to parse XML for resource library \"" << uri.full() << "\"" << std::endl;
+        return 0L;
+    }
+
+    Config conf = xml->getConfig();
+
+    if ( conf.key() == "resources" )
+    {
+        return new ResourceLibrary( conf );
+    }
+    else
+    {
+        const Config& child = conf.child("resources");
+        if ( !child.empty() )
+            return new ResourceLibrary( child );
+    }
+
+    OE_WARN << LC << "Could not find top level 'resources' entry in resource library \""
+        << uri.full() << "\"; load failed." << std::endl;
+    return 0L;
+}
+
+//------------------------------------------------------------------------
+
+ResourceLibrary::ResourceLibrary( const Config& conf )
+{
+    mergeConfig( conf );
+}
+
+void
+ResourceLibrary::mergeConfig( const Config& conf )
+{
+    // read skins
+    const ConfigSet skins = conf.children( "skin" );
+    for( ConfigSet::const_iterator i = skins.begin(); i != skins.end(); ++i )
+    {
+        addResource( new SkinResource(*i) );
+    }
+
+    //todo: other types later..
 }
 
 void
@@ -60,7 +122,7 @@ ResourceLibrary::removeResource( Resource* resource )
 SkinResource*
 ResourceLibrary::getSkin( const std::string& name ) const
 {
-    Threading::ScopedReadLock shared(_mutex);
+    Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
     SkinResourceMap::const_iterator i = _skins.find( name );
     return i != _skins.end() ? i->second.get() : 0L;
 }
@@ -68,7 +130,7 @@ ResourceLibrary::getSkin( const std::string& name ) const
 void
 ResourceLibrary::getSkins( SkinResourceVector& output ) const
 {
-    Threading::ScopedReadLock shared(_mutex);
+    Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
     output.reserve( _skins.size() );
     for( SkinResourceMap::const_iterator i = _skins.begin(); i != _skins.end(); ++i )
         output.push_back( i->second.get() );
@@ -77,7 +139,7 @@ ResourceLibrary::getSkins( SkinResourceVector& output ) const
 void
 ResourceLibrary::getSkins( const SkinSymbol* q, SkinResourceVector& output ) const
 {
-    Threading::ScopedReadLock shared(_mutex);
+    Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
 
     for( SkinResourceMap::const_iterator i = _skins.begin(); i != _skins.end(); ++i )
     {

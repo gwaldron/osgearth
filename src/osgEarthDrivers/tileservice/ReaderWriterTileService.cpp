@@ -85,7 +85,7 @@ public:
 
         std::stringstream buf;
         //http://s0.tileservice.worldwindcentral.com/getTile?interface=map&version=1&dataset=bmng.topo.bathy.200401&level=0&x=0&y=0
-        buf << _options.url().value() << "interface=map&version=1"
+        buf << _options.url()->full() << "interface=map&version=1"
             << "&dataset=" << _options.dataset().value()
             << "&level=" << lod
             << "&x=" << x

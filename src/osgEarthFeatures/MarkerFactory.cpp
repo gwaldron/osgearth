@@ -123,7 +123,7 @@ MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
         {
             if ( _session.valid() && useCache )
             {
-                result = _session->getResource<osg::Node>( *symbol->url() );
+                result = _session->getResource<osg::Node>( symbol->url()->full() );
             }
 
             if ( !result )
@@ -133,7 +133,7 @@ MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
 
             if ( result && _session.valid() && useCache )
             {
-                _session->putResource( *symbol->url(), result );
+                _session->putResource( symbol->url()->full(), result );
             }
         }
     }
@@ -169,11 +169,11 @@ MarkerFactory::getOrCreateNode( const std::string& markerURI, bool useCache )
 #endif
 
 osg::Node*
-MarkerFactory::createFromURI( const std::string& uri ) const
+MarkerFactory::createFromURI( const URI& uri ) const
 {
     StringTokenizer izer( "()" );
     StringVector tok;
-    izer.tokenize( uri, tok );
+    izer.tokenize( *uri, tok );
 
     if (tok.size() > 1)
     {
@@ -193,7 +193,7 @@ MarkerFactory::createFromURI( const std::string& uri ) const
     else
     {
         osg::ref_ptr<osg::Node> node;
-        HTTPClient::readNodeFile( _session.valid()? _session->resolveURI(uri) : uri, node );
+        HTTPClient::readNodeFile( _session.valid()? _session->resolveURI(*uri) : *uri, node );
         return node.release();
     }
 

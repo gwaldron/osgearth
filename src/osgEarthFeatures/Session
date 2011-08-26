@@ -40,6 +40,8 @@ namespace osgEarth { namespace Features
      * Whereas a FilterContext exists thoughout the life of a single compilation, a Session
      * exists one level above this and governs any number of "related" compilations
      * (e.g., the compilation of many grid cells comprising a single feature layer).
+     *
+     * Session implements the URIResolver interface to resolve relative URIs.
      */
     class OSGEARTHFEATURES_EXPORT Session : public osg::Referenced
     {
@@ -53,12 +55,6 @@ namespace osgEarth { namespace Features
          * Sets the reference URI to use to expand relative paths and URLs.
          */
         void setReferenceURI( const std::string& referenceURI );
-
-        /**
-         * Resolves a URI based on the reference URI. You can use this method
-         * to create an absolute URI from a relative one, for example.
-         */
-        std::string resolveURI( const std::string& inputURI ) const;
 
         /**
          * Gets the underlying map (frame) interface in this session
@@ -83,6 +79,14 @@ namespace osgEarth { namespace Features
         /** The style sheet governing this session. */
         void setStyles( StyleSheet* value );
         StyleSheet* styles() const { return _styles.get(); }
+
+    public: // URIResolver
+        
+        /**
+         * Resolves a URI based on the reference URI. You can use this method
+         * to create an absolute URI from a relative one, for example.
+         */
+        std::string resolveURI( const std::string& inputURI ) const;
 
     public:
         void putResource( const std::string& uri, osg::Referenced* object );

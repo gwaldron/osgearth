@@ -73,9 +73,11 @@ ExtrudeGeometryFilter::setPropertiesFromStyle( const Style& style )
     {
         setColor( polygon->fill()->color() );
     }
+
+    _wallSkinSymbol = style.get<SkinSymbol>();
 }
 
-#undef USE_TEX
+#define USE_TEX 1
 
 bool
 ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
@@ -86,20 +88,15 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        osg::Geometry*          topCap,
                                        osg::Geometry*          bottomCap,
                                        const osg::Vec4&        color,
+                                       const SkinResource*     skin,
                                        const FilterContext&    cx )
 {
     bool made_geom = false;
 
-#ifdef USE_TEX
-    double tex_width_m = skin? skin->getTextureWidthMeters() : 1.0;
-    double tex_height_m = skin? skin->getTextureHeightMeters() : 1.0;
-    //Adjust the texture height so it is a multiple of the extrusion height
-    bool   tex_repeats_y = skin? skin->getRepeatsVertically() : true;
-#else
-    double tex_width_m = 1.0;
-    double tex_height_m = 1.0;
-    bool   tex_repeats_y = true;
-#endif
+    double tex_width_m   = skin ? *skin->imageWidth() : 1.0;
+    double tex_height_m  = skin ? *skin->imageHeight() : 1.0;
+    bool   tex_repeats_y = skin ? *skin->repeatsVertically() : false;
+    bool   useColor      = !skin || skin->texEnvMode() != osg::TexEnv::DECAL;
 
     bool isPolygon = input->getComponentType() == Geometry::TYPE_POLYGON;
 
@@ -110,14 +107,21 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     osg::Vec3Array* verts = new osg::Vec3Array( numVerts );
     walls->setVertexArray( verts );
 
-#ifdef USE_TEX
-    osg::Vec2Array* texcoords = new osg::Vec2Array( numVerts );
-    walls->setTexCoordArray( 0, texcoords );
-#endif
+    osg::Vec2Array* texcoords = 0L;
+    if ( skin )
+    { 
+        texcoords = new osg::Vec2Array( numVerts );
+        walls->setTexCoordArray( 0, texcoords );
+    }
 
-    osg::Vec4Array* colors = new osg::Vec4Array( numVerts );
-    walls->setColorArray( colors );
-    walls->setColorBinding( osg::Geometry::BIND_OVERALL ); //::BIND_PER_VERTEX );
+    osg::Vec4Array* colors = 0L;
+    if ( useColor )
+    {
+        colors = new osg::Vec4Array( 1 );
+        (*colors)[0] = color;
+        walls->setColorArray( colors );
+        walls->setColorBinding( osg::Geometry::BIND_OVERALL );
+    }
 
     osg::Vec3Array* topVerts = NULL;
     osg::Vec4Array* topColors = NULL;
@@ -126,9 +130,11 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         topVerts = new osg::Vec3Array( pointCount );
         topCap->setVertexArray( topVerts );
 
-        topColors = new osg::Vec4Array( pointCount );
+        //todo: use colors for cap? depends on whether there's a roof texture.
+        topColors = new osg::Vec4Array( 1 );
+        (*topColors)[0] = color;
         topCap->setColorArray( topColors );
-        topCap->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+        topCap->setColorBinding( osg::Geometry::BIND_OVERALL );
     }
 
     osg::Vec3Array* bottomVerts = NULL;
@@ -264,7 +270,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             // build the top and bottom caps
             if ( topCap )
             {
-                (*topColors)[topVertPtr]  = color;
+                //(*topColors)[topVertPtr]  = color;
                 (*topVerts)[topVertPtr++] = extrudeVec;
             }
             if ( bottomCap )
@@ -285,18 +291,18 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             int p;
 
             p = wallVertPtr; // ++
-            (*colors)[p] = color;
             (*verts)[p] = extrudeVec;
-#ifdef USE_TEX
-            (*texcoords)[p].set( part_len/tex_width_m, 0.0f );
-#endif
+            //if ( useColor )
+            //    (*colors)[p] = color;
+            if ( skin )
+                (*texcoords)[p].set( partLen/tex_width_m, 0.0f );
 
             p = wallVertPtr+1; // ++
-            (*colors)[p] = color;
             (*verts)[p] = *m;
-#ifdef USE_TEX
-            (*texcoords)[p].set( part_len/tex_width_m, h/tex_height_m_adj );
-#endif
+            //if ( useColor )
+            //    (*colors)[p] = color;
+            if ( skin )
+                (*texcoords)[p].set( partLen/tex_width_m, h/tex_height_m_adj );
 
             // form the 2 triangles
             if ( (m+1) == part->end() )
@@ -357,7 +363,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 }
 
 bool
-ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context )
+ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, const FilterContext& context )
 {
     GeometryIterator iter( input->getGeometry(), false );
     while( iter.hasMore() )
@@ -378,6 +384,7 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
             static_cast<Polygon*>(part)->open();
         }
 
+        // calculate the extrusion height:
         float height;
 
         if ( _heightCallback.valid() )
@@ -397,18 +404,65 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
             height = _height;
         }
 
+        // calculate the height offset from the base:
         float offset = 0.0;
         if ( _heightOffsetExpr.isSet() )
         {
             offset = input->eval( _heightOffsetExpr.mutable_value() );
         }
 
-        if ( extrudeGeometry( part, height, offset, _flatten, walls.get(), rooflines.get(), 0L, _color, context ) )
-        {      
-#ifdef USE_TEX
-            if ( skin )
+        // calculate the wall texturing:
+        SkinResource* wallSkin = 0L;
+        if ( _wallSkinSymbol.valid() )
+        {
+            if ( reslib )
             {
-                osg::StateSet* wall_ss = env->getResourceCache()->getStateSet( skin );
+                SkinSymbol querySymbol( *_wallSkinSymbol.get() );
+                querySymbol.objectHeight() = height;
+                SkinResourceVector candidates;
+                reslib->getSkins( &querySymbol, candidates );
+
+                if ( candidates.size() == 1 )
+                {
+                    wallSkin = candidates[0].get();
+                }
+                else if ( candidates.size() > 1 )
+                {
+                    // select on at random:
+                    int index = ::rand() % candidates.size();
+                    wallSkin = candidates[index].get();
+                }
+            }
+
+            else
+            {
+                // TEST.
+                static osg::ref_ptr<SkinResource> temp = new SkinResource();
+                temp->imageURI() = URI("e:/data/osgearth_resources/US/commercial/50storySteelGlassmodern1.jpg");
+                temp->imageWidth() = 27.0f;
+                temp->imageHeight() = 40.0f; // temp
+                temp->minObjectHeight() = 0.0f; //148.0f;
+                temp->maxObjectHeight() = 999.0f;
+                temp->repeatsVertically() = false;
+
+                wallSkin = temp.get();
+                //TODO: simple single texture?
+            }
+        }
+
+        // Create the extruded geometry!
+        if ( extrudeGeometry( part, height, offset, _flatten, walls.get(), rooflines.get(), 0L, _color, wallSkin, context ) )
+        {      
+            if ( wallSkin )
+            {
+                static osg::StateSet* wall_ss = 0L;
+
+                if ( wall_ss == 0L )
+                    wall_ss = wallSkin->createStateSet();
+
+                //todo: use a resource cache baby
+                //osg::StateSet* wall_ss = wallSkin->createStateSet( context.getSession() );
+                //osg::StateSet* wall_ss = env->getResourceCache()->getStateSet( wallSkin );
                 if ( wall_ss )
                 {
                     walls->setStateSet( wall_ss );
@@ -417,7 +471,6 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, const FilterContext& context
                 //env->getSession()->markResourceUsed( skin );
             }
             else
-#endif
             {
                 //There is no skin, so disable texturing for the walls to prevent other textures from being applied to the walls
                 if ( !_noTextureStateSet.valid() )
@@ -514,30 +567,37 @@ ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
 {
     reset();
 
+    // establish the active resource library, if applicable.
+    const StyleSheet* sheet = context.getSession()->styles();
+    ResourceLibrary*  lib = 0L;
+
+    if (sheet != 0L                            &&
+        _wallSkinSymbol.valid()                &&
+        _wallSkinSymbol->libraryName().isSet() )
+    {
+        lib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName() );
+        if ( !lib )
+        {
+            OE_WARN << LC << "Unable to load resource library '" << *_wallSkinSymbol->libraryName() << "'"
+                << "; extruded geometry will not be textured." << std::endl;
+        }
+    }
+
+    // push all the features through the extruder.
     bool ok = true;
     for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )
-        pushFeature( i->get(), context );
-
-    // BREAKS if you use VBOs - make sure they're disabled
-    // TODO: replace this with MeshConsolidator -gw
-    //osgUtil::Optimizer optimizer;
-    //optimizer.optimize( _geode.get(), osgUtil::Optimizer::MERGE_GEOMETRY );
+    {
+        pushFeature( i->get(), lib, context );
+    }
    
-    // convert everything to triangles and combine drawables.
+    // NOTE: **** GW commented out to test texturing ****
+#if 0
+    // convert everything to triangles and combine drawables.    
     if ( _featureNameExpr.empty() )
     {
         MeshConsolidator::run( *_geode.get() );
     }
-
-    // TODO: figure out whether these help
-    //optimizer.optimize( _geode.get(), osgUtil::Optimizer::INDEX_MESH );
-    //optimizer.optimize( _geode, osgUtil::Optimizer::VERTEX_PRETRANSFORM | osgUtil::Optimizer::VERTEX_POSTTRANSFORM );
-    
-    // activate the VBOs after optimization
-    // NOTE: testing reveals display lists to be faster, at least on my 250GTS.
-    //EnableVBO visitor;
-    //_geode->accept( visitor );
-
+#endif
 
     return _geode.release();
 }

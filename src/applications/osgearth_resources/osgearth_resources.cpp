@@ -29,7 +29,7 @@ using namespace osgEarth::Symbology;
 int
 main(int argc, char** argv)
 {
-    XmlDocument* xml = XmlDocument::load( std::ifstream("e:/data/osgearth_resources/US/catalog.xml") );
+    XmlDocument* xml = XmlDocument::load( URI("e:/data/osgearth_resources/US/catalog.xml") );
     Config conf = xml->getConfig();
 
     OE_NOTICE << conf.toString() << std::endl;

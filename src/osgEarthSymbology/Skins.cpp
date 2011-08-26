@@ -18,6 +18,11 @@
  */
 #include <osgEarthSymbology/Skins>
 #include <osgEarth/StringUtils>
+#include <osgEarth/ImageUtils>
+#include <osgEarth/HTTPClient>
+
+#include <osg/BlendFunc>
+#include <osg/Texture2D>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -40,8 +45,7 @@ _maxTexSpan       ( 1024 )
 void
 SkinResource::mergeConfig( const Config& conf )
 {
-    _imageURL = conf.value( "url" );
-
+    conf.getIfSet( "url",                 _imageURI );
     conf.getIfSet( "image_width",         _imageWidth );
     conf.getIfSet( "image_height",        _imageHeight );
     conf.getIfSet( "min_object_height",   _minObjHeight );
@@ -61,8 +65,7 @@ SkinResource::getConfig() const
     Config conf = Resource::getConfig();
     conf.key() = "skin";
 
-    conf.add( "url", _imageURL );
-
+    conf.updateIfSet( "url",                 _imageURI );
     conf.updateIfSet( "image_width",         _imageWidth );
     conf.updateIfSet( "image_height",        _imageHeight );
     conf.updateIfSet( "min_object_height",   _minObjHeight );
@@ -76,6 +79,57 @@ SkinResource::getConfig() const
     conf.updateIfSet( "texture_mode", "blend",    _texEnvMode, osg::TexEnv::BLEND );
 
     return conf;
+}
+
+osg::StateSet*
+SkinResource::createStateSet() const
+{
+    return createStateSet( createImage() );
+}
+
+osg::StateSet*
+SkinResource::createStateSet( osg::Image* image ) const
+{
+    osg::StateSet* stateSet = 0L;
+    if ( image )
+    {
+        stateSet = new osg::StateSet();
+
+        osg::Texture* tex = new osg::Texture2D( image );
+        tex->setWrap( osg::Texture::WRAP_S, osg::Texture::REPEAT );
+        tex->setWrap( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+        stateSet->setTextureAttributeAndModes( 0, tex, osg::StateAttribute::ON );
+
+        if ( _texEnvMode.isSet() )
+        {
+            osg::TexEnv* texenv = new osg::TexEnv();
+            texenv = new osg::TexEnv();
+            texenv->setMode( *_texEnvMode );
+            stateSet->setTextureAttribute( 0, texenv, osg::StateAttribute::ON );
+        }
+
+        if ( ImageUtils::hasAlphaChannel( image ) )
+        {
+            osg::BlendFunc* blendFunc = new osg::BlendFunc();
+            blendFunc->setFunction( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
+            stateSet->setAttributeAndModes( blendFunc, osg::StateAttribute::ON );
+            stateSet->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+        }
+    }
+
+    return stateSet;
+}
+
+osg::Image*
+SkinResource::createImage() const
+{
+    osg::ref_ptr<osg::Image> image;
+    if ( HTTPClient::readImageFile( _imageURI->full(), image ) != HTTPClient::RESULT_OK )
+    {
+        //TODO: hmm, perhaps create an "error image" here? or just return NULL
+        //      and let the caller do so.
+    }
+    return image.release();
 }
 
 //---------------------------------------------------------------------------

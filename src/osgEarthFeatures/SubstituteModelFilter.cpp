@@ -226,7 +226,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     if ( !data._model.valid() )
     {
-        OE_WARN << LC << "Unable to load model from \"" << *symbol->url() << "\"" << std::endl;
+        OE_WARN << LC << "Unable to load model from \"" << symbol->url()->full() << "\"" << std::endl;
         return newContext;
     }
 

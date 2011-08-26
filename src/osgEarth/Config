@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
+#include <osgEarth/URI>
 #include <osgDB/ReaderWriter>
 #include <osg/Version>
 #if OSG_MIN_VERSION_REQUIRED(2,9,5)
@@ -53,10 +54,16 @@ namespace osgEarth
     {
     public:
         Config() { }
+
         Config( const std::string& key ) : _key(key) { }
+
         Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ) { }
 
-        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children), _refMap(rhs._refMap) { }
+        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children), _refMap(rhs._refMap), _uriContext(rhs._uriContext) { }
+
+        /** Context for resolving relative URIs that occur in this Config */
+        void setURIContext( const URIContext& value );
+        const URIContext& uriContext() const { return _uriContext; }
 
         bool loadXML( std::istream& in );
 
@@ -80,7 +87,7 @@ namespace osgEarth
 
         std::string& attr( const std::string& name ) { return _attrs[name]; }
         
-        ConfigSet& children() { return _children; }
+        //ConfigSet& children() { return _children; }
         const ConfigSet& children() const { return _children; }
 
         const ConfigSet children( const std::string& key ) const {
@@ -150,6 +157,7 @@ namespace osgEarth
 
         void add( const std::string& key, const std::string& value ) {
             _children.push_back( Config( key, value ) );
+            _children.back().setURIContext( _uriContext );
         }
 
         void addChild( const Config& conf ) {
@@ -158,6 +166,7 @@ namespace osgEarth
 
         void add( const Config& conf ) {
             _children.push_back( conf );
+            _children.back().setURIContext( _uriContext );
         }
 
         void add( const std::string& key, const Config& conf ) {
@@ -168,7 +177,7 @@ namespace osgEarth
 
         void add( const ConfigSet& set ) {
             for( ConfigSet::const_iterator i = set.begin(); i != set.end(); i++ )
-                _children.push_back( *i );
+                add( *i );
         }
 
         template<typename T>
@@ -213,7 +222,8 @@ namespace osgEarth
 
         void update( const std::string& key, const std::string& value ) {
             remove(key);
-            _children.push_back( Config( key, value ) );
+            add( Config(key, value) );
+            //_children.push_back( Config( key, value ) );
         }
 
         void updateChild( const Config& conf ) {
@@ -222,7 +232,8 @@ namespace osgEarth
 
         void update( const Config& conf ) {
             remove(conf.key());
-            _children.push_back( conf );
+            add( conf );
+            //_children.push_back( conf );
         }
 
         void update( const std::string& key, const Config& conf ) {
@@ -330,6 +341,7 @@ namespace osgEarth
         std::string _defaultValue;
         Properties  _attrs;
         ConfigSet   _children;   
+        URIContext  _uriContext;
 
         RefMap _refMap;
     };
@@ -344,7 +356,6 @@ namespace osgEarth
         }
     }
 
-    // specialization for Config
     template<> inline
     void Config::updateIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
         if ( opt.isSet() ) {
@@ -355,11 +366,36 @@ namespace osgEarth
         }
     }
 
-    // specialization for Config.
     template<> inline
     bool Config::getIfSet<Config>( const std::string& key, optional<Config>& output ) const {
         if ( hasChild( key ) ) {
             output = child(key);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    // specializations for URI:
+    template <> inline
+    void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
+        if ( opt.isSet() ) {
+            add( Config(key, opt->base()) );
+        }
+    }
+
+    template<> inline
+    void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
+        if ( opt.isSet() ) {
+            remove(key);
+            add( Config(key, opt->base()) );
+        }
+    }
+
+    template<> inline
+    bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
+        if ( hasValue( key ) ) {
+            output = URI( value(key), _uriContext );
             return true;
         }
         else

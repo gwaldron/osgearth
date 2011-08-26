@@ -111,7 +111,7 @@ int main(int argc, char** argv)
 
     //Add a base layer
     GDALOptions basemapOpt;
-    basemapOpt.url() = "../data/world.tif";
+    basemapOpt.url() = URI("../data/world.tif");
     map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );    
 
     osgEarth::CompositeTileSourceOptions compositeOpt; 

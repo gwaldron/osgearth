@@ -156,7 +156,7 @@ WCS11Source::createRequest( const TileKey& key ) const
     double lon_interval = (lon_max-lon_min)/(double)(lon_samples-1);
     double lat_interval = (lat_max-lat_min)/(double)(lat_samples-1);
 
-    HTTPRequest req( _options.url().value() );
+    HTTPRequest req( _options.url()->full() );
 
     req.addParameter( "SERVICE",    "WCS" );
     req.addParameter( "VERSION",    "1.1.0" );

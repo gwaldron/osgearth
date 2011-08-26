@@ -81,6 +81,7 @@ SET(LIB_PUBLIC_HEADERS
     tinyxml.h 
     TMS
     Units
+    URI
     Utils
 	Version
     VerticalSpatialReference
@@ -150,6 +151,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     tinyxmlparser.cpp
     TMS.cpp
     Units.cpp
+    URI.cpp
     Utils.cpp
     Version.cpp
     VerticalSpatialReference.cpp

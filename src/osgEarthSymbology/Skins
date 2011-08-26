@@ -23,7 +23,7 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Resource>
 #include <osgEarthSymbology/Symbol>
-#include <osgEarth/Config>
+#include <osgEarth/URI>
 #include <osg/TexEnv>
 
 namespace osgEarth { namespace Symbology
@@ -36,24 +36,20 @@ namespace osgEarth { namespace Symbology
      */
     class OSGEARTHSYMBOLOGY_EXPORT SkinResource : public Resource
     {
-    protected:
-        /**
-         * Constructs a new skin query. This method may only be called by
-         * ResourceLibrary.
-         */
-        friend class ResourceLibrary;
+    public:
+        /** Constructs a new skin resource. */
         SkinResource( const Config& conf =Config() );
 
-    public:
         /**
          * Creates a new StateSet containing a Texture based on this Skin.
+         * Takes an optional URI context for relative URI resolution.
          */
-        osg::StateSet* createStateSet();
+        osg::StateSet* createStateSet() const;
 
     public:
-        /** Source URI of the actual texture image.  */
-        std::string& imageURL() { return _imageURL; }
-        const std::string& imageURL() const { return _imageURL; }
+        /** Source location of the actual texture image.  */
+        optional<URI>& imageURI() { return _imageURI; }
+        const optional<URI>& imageURI() const { return _imageURI; }
 
         /** Real-world width of the image, in meters */
         optional<float>& imageWidth() { return _imageWidth; }
@@ -89,7 +85,14 @@ namespace osgEarth { namespace Symbology
         void mergeConfig( const Config& conf );
 
     protected:
-        std::string                 _imageURL;
+
+        osg::StateSet* createStateSet( osg::Image* image ) const;
+
+        osg::Image* createImage() const;
+
+    protected:
+
+        optional<URI>               _imageURI;
         optional<float>             _imageWidth;
         optional<float>             _imageHeight;
         optional<float>             _minObjHeight;

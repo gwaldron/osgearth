@@ -168,27 +168,29 @@ public:
         if ( !_url.empty() )
         {
 			//If the path doesn't contain a server address, get the full path to the file.
-			if (!osgDB::containsServerAddress(_url))
+			if (!osgDB::containsServerAddress( *_url ))
 			{
-				_url = osgEarth::getFullPath(referenceURI, _url);
+                //todo: obselete..?
+                _url = URI(_url.full(), referenceURI);
+				//_url = osgEarth::getFullPath(referenceURI, _url);
 			}
 			
             osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
             //_rootNode = osgDB::readNodeFile( _url, localOptions.get() );
 
-            HTTPClient::ResultCode rc = HTTPClient::readNodeFile( _url, _rootNode, localOptions.get() );
+            HTTPClient::ResultCode rc = HTTPClient::readNodeFile( _url.full(), _rootNode, localOptions.get() );
 
             if ( rc == HTTPClient::RESULT_OK && _rootNode.valid() )
             {
                 _baseNameToUse = _options.baseName().value();
 
-                _path = osgDB::getFilePath(_url);
+                _path = osgDB::getFilePath( *_url );
                 if ( _baseNameToUse.empty() )
-                    _baseNameToUse = osgDB::getStrippedName(_url);
-                _extension = osgDB::getFileExtension(_url);
+                    _baseNameToUse = osgDB::getStrippedName( *_url );
+                _extension = osgDB::getFileExtension( *_url );
                 
-                OE_INFO << LC << "Loaded root "<<_url<<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
+                OE_INFO << LC << "Loaded root "<< _url.full() <<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
                 
                 std::string srs = _profile->getSRS()->getInitString(); //.srs();
                 
@@ -260,8 +262,8 @@ public:
             }
             else
             {
-                OE_WARN << LC << HTTPClient::getResultCodeString(rc) << ": " << _url << std::endl;
-                _url = "";
+                OE_WARN << LC << HTTPClient::getResultCodeString(rc) << ": " << *_url << std::endl;
+                _url = URI();
             }
         }
         else 
@@ -485,7 +487,7 @@ public:
     }
 
     const VPBOptions _options;
-    std::string _url;
+    URI _url;
     std::string _path;
     std::string _extension;
 
@@ -649,11 +651,11 @@ class VPBSourceFactory : public TileSourceDriver
 
             VPBOptions vpbOptions( getTileSourceOptions(options) );
 
-            std::string url = vpbOptions.url().value();
+            URI url = vpbOptions.url().value();
             if ( !url.empty() )
             {                
                 OpenThreads::ScopedLock<OpenThreads::Mutex> lock(vpbDatabaseMapMutex);
-                osg::observer_ptr<VPBDatabase>& db_ptr = vpbDatabaseMap[url]; //get or create
+                osg::observer_ptr<VPBDatabase>& db_ptr = vpbDatabaseMap[*url]; //get or create
                 
                 if (!db_ptr) db_ptr = new VPBDatabase( vpbOptions );
                 

@@ -30,8 +30,8 @@ namespace osgEarth { namespace Drivers
     class WFSFeatureOptions : public FeatureSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
         
         optional<Config>& geometryProfileOptions() { return _geometryProfileConf; }
         const optional<Config>& geometryProfileOptions() const { return _geometryProfileConf; }
@@ -78,11 +78,11 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "maxfeatures", _maxFeatures );
         }
 
-        optional<std::string> _url;        
+        optional<URI>         _url;        
         optional<std::string> _typename;
-        optional<Config> _geometryProfileConf;
+        optional<Config>      _geometryProfileConf;
         optional<std::string> _outputFormat;
-        optional<unsigned int > _maxFeatures;            
+        optional<unsigned>    _maxFeatures;            
     };
 
 } } // namespace osgEarth::Drivers

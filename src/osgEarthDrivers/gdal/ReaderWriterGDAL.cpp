@@ -78,15 +78,6 @@ using namespace std;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-//#define PROPERTY_URL            "url"
-//#define PROPERTY_TILE_SIZE      "tile_size"
-//#define PROPERTY_EXTENTSIONS    "extensions"
-//#define PROPERTY_INTERPOLATION  "interpolation"
-//#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
-
-//static OpenThreads::ReentrantMutex s_mutex;
-
-
 #define GEOTRSFRM_TOPLEFT_X            0
 #define GEOTRSFRM_WE_RES               1
 #define GEOTRSFRM_ROTATION_PARAM1      2
@@ -656,19 +647,20 @@ public:
             return;
         }
 
-        std::string path = _options.url().value();
+        URI uri = _options.url().value();
 
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
-        if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(referenceURI))
+
+        if (osgEarth::isRelativePath(uri.full()) && osgDB::containsServerAddress(referenceURI))
         {
-            path = osgDB::getFilePath(referenceURI) + std::string("/") + path;
+            uri = URI(osgDB::getFilePath(referenceURI) + std::string("/") + uri.full());
         }
 
         //If the path doesn't contain a server address, get the full path to the file.
-        if (!osgDB::containsServerAddress(path))
+        if (!osgDB::containsServerAddress(uri.full()))
         {
-            path = osgEarth::getFullPath(referenceURI, path);
+            uri = URI(uri.full(), referenceURI);
         }
 
         StringTokenizer izer( ";" );
@@ -683,7 +675,7 @@ public:
             OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
         }
         std::vector<std::string> files;
-        getFiles(path, exts, files);
+        getFiles(uri.full(), exts, files);
 
         OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
         for (unsigned int i = 0; i < files.size(); ++i)
@@ -741,7 +733,7 @@ public:
         if ( !src_srs.valid() )
         {
             // not found in the dataset; try loading a .prj file
-            std::string prjLocation = osgDB::getNameLessExtension( path ) + std::string(".prj");
+            std::string prjLocation = osgDB::getNameLessExtension( uri.full() ) + std::string(".prj");
             std::string wkt;
             if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
             {
@@ -750,7 +742,7 @@ public:
 
             if ( !src_srs.valid() )
             {
-                OE_WARN << LC << "Dataset has no spatial reference information: " << path << std::endl;
+                OE_WARN << LC << "Dataset has no spatial reference information: " << uri.full() << std::endl;
                 return;
             }
         }
@@ -873,7 +865,7 @@ public:
                 //_warpedDS->GetProjectionRef(),
                 _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
 
-            OE_INFO << LC << "" << path << " is projected, SRS = " 
+            OE_INFO << LC << "" << uri.full() << " is projected, SRS = " 
                 << warpedSRSWKT << std::endl;
                 //<< _warpedDS->GetProjectionRef() << std::endl;
         }
@@ -1287,7 +1279,7 @@ public:
             {
                 OE_WARN 
                     << LC << "Could not find red, green and blue bands or gray bands in "
-                    << _options.url().value()
+                    << _options.url()->full()
                     << ".  Cannot create image. " << std::endl;
 
                 return NULL;

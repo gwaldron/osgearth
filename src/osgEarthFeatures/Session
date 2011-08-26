@@ -21,11 +21,15 @@
 #define OSGEARTH_FEATURES_SESSION_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Map>
 
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
     /**
      * Session is a state object that exists throughout the life of one or more related
      * feature compilations.
@@ -43,7 +47,7 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new Session that is tied to a map
          */
-        Session( const Map* map );
+        Session( const Map* map, StyleSheet* styles =0L );
 
         /**
          * Sets the reference URI to use to expand relative paths and URLs.
@@ -76,10 +80,11 @@ namespace osgEarth { namespace Features
          */
         osg::Referenced* getBuildData() const { return _buildData.get(); }
 
+        /** The style sheet governing this session. */
+        void setStyles( StyleSheet* value );
+        StyleSheet* styles() const { return _styles.get(); }
+
     public:
-        /**
-         * @deprecated - in favor of the ResourceLibrary, coming soon.
-         */
         void putResource( const std::string& uri, osg::Referenced* object );
 
         /**
@@ -96,17 +101,16 @@ namespace osgEarth { namespace Features
 
     private:
 
-        //void parseMarker(const std::string& marker, std::string& url, bool &isImage) const;
-
-        osg::ref_ptr<const Map> _map;
-        MapInfo _mapInfo;
-        std::string _referenceURI;
-
+        // @deprecated
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ResourceMap;
-        ResourceMap _resourceMap;
-        Threading::ReadWriteMutex _resourceMutex;
 
-        osg::ref_ptr<osg::Referenced> _buildData;
+        ResourceMap                    _resourceMap;
+        Threading::ReadWriteMutex      _resourceMutex;
+        osg::ref_ptr<const Map>        _map;
+        MapInfo                        _mapInfo;
+        std::string                    _referenceURI;
+        osg::ref_ptr<osg::Referenced>  _buildData;
+        osg::ref_ptr<StyleSheet>       _styles;
     };
 
 } }

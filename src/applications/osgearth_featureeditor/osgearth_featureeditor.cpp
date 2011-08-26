@@ -102,11 +102,12 @@ _featureGraph( featureGraph )
             s_root->removeChild( s_editor.get() );
             s_editor = NULL;
 
-            Style outStyle;
-            if (_featureGraph->getStyles().getDefaultStyle( outStyle))
+            Style* style = _featureGraph->getStyles()->getDefaultStyle();
+            if ( style )
             {            
-                outStyle.getSymbol<LineSymbol>()->stroke()->stipple().unset();
-                _featureGraph->setStyles( _featureGraph->getStyles() );
+                style->get<LineSymbol>()->stroke()->stipple().unset();
+                //_featureGraph->setStyles( _featureGraph->getStyles() );
+                _featureGraph->dirty();
             }
         }
 
@@ -140,11 +141,11 @@ _featureGraph( featureGraph )
 
         if (!s_editor.valid() && s_activeFeature.valid())
         {
-            Style outStyle;
-            if (_featureGraph->getStyles().getDefaultStyle( outStyle))
-            {            
-                outStyle.getSymbol<LineSymbol>()->stroke()->stipple() =  0x00FF ;
-                _featureGraph->setStyles( _featureGraph->getStyles() );
+            Style* style = _featureGraph->getStyles()->getDefaultStyle();
+            if ( style )
+            {
+                style->get<LineSymbol>()->stroke()->stipple() = 0x00FF;
+                _featureGraph->dirty();
             }
             s_editor = new FeatureEditor(s_activeFeature.get(), s_source.get(), s_mapNode.get());
             s_root->addChild( s_editor.get() );
@@ -156,10 +157,10 @@ _featureGraph( featureGraph )
 
 struct ChangeStyleHandler : public ControlEventHandler
 {
-    ChangeStyleHandler( FeatureModelGraph * features, const StyleSheet& styleSheet):
-_features( features),
-_styleSheet(styleSheet)
-    { 
+    ChangeStyleHandler( FeatureModelGraph* features, StyleSheet* styleSheet) 
+        : _features( features), _styleSheet(styleSheet)
+    {
+        //nop
     }
 
     void onClick( Control* control, int mouseButtonMask ) {
@@ -167,10 +168,10 @@ _styleSheet(styleSheet)
     }
 
     osg::ref_ptr< FeatureModelGraph > _features;
-    StyleSheet _styleSheet;
+    StyleSheet*                       _styleSheet;
 };
 
-StyleSheet buildStyleSheet( const osg::Vec4 &color, float width )
+StyleSheet* buildStyleSheet( const osg::Vec4 &color, float width )
 {
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -180,11 +181,11 @@ StyleSheet buildStyleSheet( const osg::Vec4 &color, float width )
     ls->stroke()->color() = color;
     ls->stroke()->width() = width;
 
-    AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
-    as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    //AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
+    //as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
-    StyleSheet styleSheet;
-    styleSheet.addStyle( style );
+    StyleSheet* styleSheet = new StyleSheet();
+    styleSheet->addStyle( style );
     return styleSheet;
 }
 
@@ -225,7 +226,7 @@ int main(int argc, char** argv)
         
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
-    StyleSheet styleSheet = buildStyleSheet( Color::Yellow, 2.0f );
+    StyleSheet* styleSheet = buildStyleSheet( Color::Yellow, 2.0f );
 
     s_source = new FeatureListSource();
 
@@ -242,12 +243,13 @@ int main(int argc, char** argv)
     s_root = new osg::Group;
     s_root->addChild( s_mapNode.get() );
 
+    Session* session = new Session(s_mapNode->getMap(), styleSheet);
+
     FeatureModelGraph* graph = new FeatureModelGraph( 
         s_source.get(), 
         FeatureModelSourceOptions(), 
         new GeomFeatureNodeFactory(),
-        styleSheet,
-        new Session(s_mapNode->getMap()) );
+        session );
 
     graph->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     graph->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);

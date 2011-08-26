@@ -86,12 +86,14 @@ namespace
 
 //----------------------------------------------------------------------------
 
-Session::Session( const Map* map ) :
+Session::Session( const Map* map, StyleSheet* styles ) :
 osg::Referenced( true ),
-_map(map),
-_mapInfo(map)
+_map           ( map ),
+_mapInfo       ( map ),
+_styles        ( styles )
 {
-    //nop
+    if ( !_styles.valid() )
+        _styles = new StyleSheet();
 }
 
 void
@@ -124,4 +126,10 @@ Session::removeResource( const std::string& uri )
 {
     Threading::ScopedWriteLock lock( _resourceMutex );
     _resourceMap.erase( uri );
+}
+
+void
+Session::setStyles( StyleSheet* value )
+{
+    _styles = value ? value : new StyleSheet();
 }

@@ -133,16 +133,19 @@ namespace
 FeatureModelGraph::FeatureModelGraph(FeatureSource*                   source,
                                      const FeatureModelSourceOptions& options,
                                      FeatureNodeFactory*              factory,
-                                     const StyleSheet&                styles,
-                                     Session*                         session ) :
+                                     Session*                         session) :
 _source ( source ),
 _options( options ),
 _factory( factory ),
-_styles ( styles ),
 _session( session ),
-_dirty(false)
+_dirty  ( false )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
+
+    // install the stylesheet in the session if it doesn't already have one.
+    if ( !session->styles() )
+        session->setStyles( _options.styles().get() );
+
 
     osg::StateSet* stateSet = getOrCreateStateSet();
 
@@ -508,14 +511,13 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
             const StyleSelector& selector = *i;
 
             // fetch the selector's style:
-            Style selectorStyle;
-            _styles.getStyle( selector.getSelectedStyleName(), selectorStyle );
+            const Style* selectorStyle = _session->styles()->getStyle( selector.getSelectedStyleName() );
 
             // combine the selector's query, if it has one:
             Query selectorQuery = 
                 selector.query().isSet() ? query.combineWith( *selector.query() ) : query;
 
-            osg::Node* node = build( selectorStyle, selectorQuery, extent );
+            osg::Node* node = build( *selectorStyle, selectorQuery, extent );
             if ( node )
                 group->addChild( node );
         }
@@ -602,17 +604,18 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 
     else
     {
+        StyleSheet* styles = _session->styles();
+
         // if we have selectors, sort the features into style groups and create a node for each group.
-        if ( _styles.selectors().size() > 0 )
+        if ( styles->selectors().size() > 0 )
         {
-            for( StyleSelectorList::const_iterator i = _styles.selectors().begin(); i != _styles.selectors().end(); ++i )
+            for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
             {
                 // pull the selected style...
                 const StyleSelector& sel = *i;
 
                 // combine the selection style with the incoming base style:
-                Style selectedStyle;
-                _styles.getStyle( sel.getSelectedStyleName(), selectedStyle );
+                Style selectedStyle = *styles->getStyle( sel.getSelectedStyleName() );
                 Style combinedStyle = baseStyle.combineWith( selectedStyle );
 
                 // .. and merge it's query into the existing query
@@ -632,7 +635,7 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 
             // if there's no base style defined, choose a "default" style from the stylesheet.
             if ( baseStyle.empty() )
-                _styles.getDefaultStyle( combinedStyle );
+                combinedStyle = *styles->getDefaultStyle();
 
             osg::Group* styleGroup = createNodeForStyle( combinedStyle, baseQuery );
             if ( styleGroup && !group->containsNode(styleGroup) )
@@ -745,16 +748,9 @@ FeatureModelGraph::redraw()
     _dirty = false;
 }
 
-const StyleSheet& 
-FeatureModelGraph::getStyles()
-{
-    return _styles;
-}
-
 void
-FeatureModelGraph::setStyles(const StyleSheet& styles)
+FeatureModelGraph::setStyles( StyleSheet* styles )
 {
-    _styles = styles;
+    _session->setStyles( styles );
     dirty();
 }
-

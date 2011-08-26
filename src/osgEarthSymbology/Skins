@@ -100,6 +100,9 @@ namespace osgEarth { namespace Symbology
     };
 
 
+    typedef std::map<std::string, osg::ref_ptr<SkinResource> > SkinResourceMap;
+
+
     /**
      * Query object that you can use to search for applicable Skin resources from the 
      * ResourceLibrary.

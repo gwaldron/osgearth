@@ -52,16 +52,13 @@ namespace osgEarth { namespace Features
          *      Model source options
          * @param factory
          *      Node factory that will be invoked to compile feature data into nodes
-         * @param styles
-         *      Stylesheet for this graph
-         * @param sessoin
+         * @param session
          *      Session under which to create elements in this graph
          */
         FeatureModelGraph( 
             FeatureSource*                   source,
             const FeatureModelSourceOptions& options,
             FeatureNodeFactory*              factory,
-            const StyleSheet&                styles,
             Session*                         session );
 
         /**
@@ -69,8 +66,9 @@ namespace osgEarth { namespace Features
          */
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
 
-        const StyleSheet& getStyles();
-        void setStyles(const StyleSheet& styles);
+        StyleSheet* getStyles() { return _session->styles(); }
+
+        void setStyles( StyleSheet* styles );
 
         void dirty();
 
@@ -104,7 +102,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<FeatureSource>      _source;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
-        StyleSheet                       _styles;
+        //StyleSheet                       _styles;
         UID                              _uid;
         std::set<std::string>            _blacklist;
         Threading::ReadWriteMutex        _blacklistMutex;

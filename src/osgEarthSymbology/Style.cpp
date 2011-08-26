@@ -214,44 +214,72 @@ StyleSheet::removeStyle( const std::string& name )
     _styles.erase( name );
 }
 
-bool
-StyleSheet::getStyle( const std::string& name, Style& out_style, bool fallBackOnDefault ) const
+Style*
+StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault )
 {
-    StyleMap::const_iterator i = _styles.find( name );
+    StyleMap::iterator i = _styles.find( name );
     if ( i != _styles.end() ) {
-        out_style = i->second;
-        return true;
+        return &i->second;
     }
-    else if ( fallBackOnDefault && name.empty() && _styles.size() == 1 )
-    {
-        out_style = _styles.begin()->second;
-        return true;
+    else if ( fallBackOnDefault ) {
+        return getDefaultStyle();
     }
-    else
-    {
-        return false;
+    else {
+        return 0L;
     }
 }
 
-bool
-StyleSheet::getDefaultStyle( Style& out_style ) const
+const Style*
+StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
 {
-    if ( _styles.size() == 1 ) {
-        out_style = _styles.begin()->second;
-        return true;
+    StyleMap::const_iterator i = _styles.find( name );
+    if ( i != _styles.end() ) {
+        return &i->second;
     }
-    else if ( _styles.find( "default" ) != _styles.end() ) {
-        out_style = _styles.find( "default" )->second;
-        return true;
-    }
-    else if ( _styles.find( "" ) != _styles.end() ) {
-        out_style = _styles.find( "" )->second;
-        return true;
+    else if ( fallBackOnDefault ) {
+        return getDefaultStyle();
     }
     else {
-        return false;
+        return 0L;
     }
 }
+
+Style*
+StyleSheet::getDefaultStyle()
+{
+    if ( _styles.find( "default" ) != _styles.end() ) {
+        return &_styles.find( "default" )->second;
+    }
+    else if ( _styles.find( "" ) != _styles.end() ) {
+        return &_styles.find( "" )->second;
+    }
+    if ( _styles.size() > 0 ) {
+        return &_styles.begin()->second;
+    }
+    else {
+        // insert the empty style and return it.
+        _styles["default"] = _emptyStyle;
+        return &_styles.begin()->second;
+    }
+}
+
+const Style*
+StyleSheet::getDefaultStyle() const
+{
+    if ( _styles.size() == 1 ) {
+        return &_styles.begin()->second;
+    }
+    else if ( _styles.find( "default" ) != _styles.end() ) {
+        return &_styles.find( "default" )->second;
+    }
+    else if ( _styles.find( "" ) != _styles.end() ) {
+        return &_styles.find( "" )->second;
+    }
+    else {
+        return &_emptyStyle;
+    }
+}
+
 
 Config
 StyleSheet::getConfig() const

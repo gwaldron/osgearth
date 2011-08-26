@@ -21,7 +21,7 @@
 #define OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H 1
 
 #include <osgEarthSymbology/Common>
-#include <osgEarthSymbology/SkinResource>
+#include <osgEarthSymbology/Skins>
 #include <osgEarth/ThreadingUtils>
 #include <map>
 
@@ -74,18 +74,14 @@ namespace osgEarth { namespace Symbology
 
         //TODO
 
-
-    public: // serialization
-
-        //virtual Config getConfig() const;
-        //virtual void mergeConfig( const Config& conf );
-
     protected:
         Threading::ReadWriteMutex& _mutex;
-
-        typedef std::map<std::string, osg::ref_ptr<SkinResource> > SkinResourceMap;
-        SkinResourceMap _skins;
+        SkinResourceMap            _skins;
     };
+
+
+    typedef std::map< std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraryMap;
+
 
 } } // namespace osgEarth::Symbology
 

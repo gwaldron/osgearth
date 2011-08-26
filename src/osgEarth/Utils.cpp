@@ -183,6 +183,101 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                 _matrixDirty = true;
             }
 
+            if (_autoRotateMode==ROTATE_TO_SCREEN)
+            {
+                osg::Vec3d translation;
+                osg::Quat rotation;
+                osg::Vec3d scale;
+                osg::Quat so;
+
+                cs->getModelViewMatrix()->decompose( translation, rotation, scale, so );
+
+                setRotation(rotation.inverse());
+            }
+            else if (_autoRotateMode==ROTATE_TO_CAMERA)
+            {
+                osg::Vec3d PosToEye = _position - eyePoint;
+                osg::Matrix lookto = osg::Matrix::lookAt(
+                    osg::Vec3d(0,0,0), PosToEye, localUp);
+                osg::Quat q;
+                q.set(osg::Matrix::inverse(lookto));
+                setRotation(q);
+            }
+            else if (_autoRotateMode==ROTATE_TO_AXIS)
+            {
+                osg::Matrix matrix;
+                osg::Vec3 ev(eyePoint - _position);
+
+                switch(_cachedMode)
+                {
+                case(AXIAL_ROT_Z_AXIS):
+                    {
+                        ev.z() = 0.0f;
+                        float ev_length = ev.length();
+                        if (ev_length>0.0f)
+                        {
+                            //float rotation_zrotation_z = atan2f(ev.x(),ev.y());
+                            //mat.makeRotate(inRadians(rotation_z),0.0f,0.0f,1.0f);
+                            float inv = 1.0f/ev_length;
+                            float s = ev.x()*inv;
+                            float c = -ev.y()*inv;
+                            matrix(0,0) = c;
+                            matrix(1,0) = -s;
+                            matrix(0,1) = s;
+                            matrix(1,1) = c;
+                        }
+                        break;
+                    }
+                case(AXIAL_ROT_Y_AXIS):
+                    {
+                        ev.y() = 0.0f;
+                        float ev_length = ev.length();
+                        if (ev_length>0.0f)
+                        {
+                            //float rotation_zrotation_z = atan2f(ev.x(),ev.y());
+                            //mat.makeRotate(inRadians(rotation_z),0.0f,0.0f,1.0f);
+                            float inv = 1.0f/ev_length;
+                            float s = -ev.z()*inv;
+                            float c = ev.x()*inv;
+                            matrix(0,0) = c;
+                            matrix(2,0) = s;
+                            matrix(0,2) = -s;
+                            matrix(2,2) = c;
+                        }
+                        break;
+                    }
+                case(AXIAL_ROT_X_AXIS):
+                    {
+                        ev.x() = 0.0f;
+                        float ev_length = ev.length();
+                        if (ev_length>0.0f)
+                        {
+                            //float rotation_zrotation_z = atan2f(ev.x(),ev.y());
+                            //mat.makeRotate(inRadians(rotation_z),0.0f,0.0f,1.0f);
+                            float inv = 1.0f/ev_length;
+                            float s = -ev.z()*inv;
+                            float c = -ev.y()*inv;
+                            matrix(1,1) = c;
+                            matrix(2,1) = -s;
+                            matrix(1,2) = s;
+                            matrix(2,2) = c;
+                        }
+                        break;
+                    }
+                case(ROTATE_TO_AXIS): // need to implement 
+                    {
+                        float ev_side = ev*_side;
+                        float ev_normal = ev*_normal;
+                        float rotation = atan2f(ev_side,ev_normal);
+                        matrix.makeRotate(rotation,_axis);
+                        break;
+                    }
+                }
+                osg::Quat q;
+                q.set(matrix);
+                setRotation(q);
+            }
+
             _dirty = false;
         }
     }

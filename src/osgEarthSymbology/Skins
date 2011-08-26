@@ -56,20 +56,20 @@ namespace osgEarth { namespace Symbology
         const std::string& imageURL() const { return _imageURL; }
 
         /** Real-world width of the image, in meters */
-        optional<double>& imageWidth() { return _imageWidth; }
-        const optional<double>& imageWidth() const { return _imageWidth; }
+        optional<float>& imageWidth() { return _imageWidth; }
+        const optional<float>& imageWidth() const { return _imageWidth; }
 
         /** Real-world height of the image, in meters */
-        optional<double>& imageHeight() { return _imageHeight; }
-        const optional<double>& imageHeight() const { return _imageHeight; }
+        optional<float>& imageHeight() { return _imageHeight; }
+        const optional<float>& imageHeight() const { return _imageHeight; }
 
         /** Minimum acceptable real-world object height (meters) for which this image would make an appropriate texture */
-        optional<double>& minObjectHeight() { return _minObjHeight; }
-        const optional<double>& minObjectHeight() const { return _minObjHeight; }
+        optional<float>& minObjectHeight() { return _minObjHeight; }
+        const optional<float>& minObjectHeight() const { return _minObjHeight; }
 
         /** Maximum acceptable real-world object height (meters) for which this image would make an appropriate texture */
-        optional<double>& maxObjectHeight() { return _maxObjHeight; }
-        const optional<double>& maxObjectHeight() const { return _minObjHeight; }
+        optional<float>& maxObjectHeight() { return _maxObjHeight; }
+        const optional<float>& maxObjectHeight() const { return _minObjHeight; }
 
         /** Whether this image is suitable for use as a vertically repeating texture */
         optional<bool>& repeatsVertically() { return _repeatsVertically; }
@@ -90,10 +90,10 @@ namespace osgEarth { namespace Symbology
 
     protected:
         std::string                 _imageURL;
-        optional<double>            _imageWidth;
-        optional<double>            _imageHeight;
-        optional<double>            _minObjHeight;
-        optional<double>            _maxObjHeight;
+        optional<float>             _imageWidth;
+        optional<float>             _imageHeight;
+        optional<float>             _minObjHeight;
+        optional<float>             _maxObjHeight;
         optional<bool>              _repeatsVertically;
         optional<osg::TexEnv::Mode> _texEnvMode;
         optional<unsigned>          _maxTexSpan;
@@ -114,17 +114,21 @@ namespace osgEarth { namespace Symbology
 
     public: // query parameters
 
+        /** Name of the resource library to use with this symbol. */
+        optional<std::string>& libraryName() { return _libraryName; }
+        const optional<std::string>& libraryName() const { return _libraryName; }
+
         /** Object height in meters (must fall in the skin's min/max object height range to be accepted) */
-        optional<double>& objectHeight() { return _objHeight; }
-        const optional<double>& objectHeight() const { return _objHeight; }
+        optional<float>& objectHeight() { return _objHeight; }
+        const optional<float>& objectHeight() const { return _objHeight; }
 
         /** Minimum acceptable real-world object height for which this image would make an appropriate texture */
-        optional<double>& minObjectHeight() { return _minObjHeight; }
-        const optional<double>& minObjectHeight() const { return _minObjHeight; }
+        optional<float>& minObjectHeight() { return _minObjHeight; }
+        const optional<float>& minObjectHeight() const { return _minObjHeight; }
 
         /** Maximum acceptable real-world object height for which this image would make an appropriate texture */
-        optional<double>& maxObjectHeight() { return _maxObjHeight; }
-        const optional<double>& maxObjectHeight() const { return _minObjHeight; }
+        optional<float>& maxObjectHeight() { return _maxObjHeight; }
+        const optional<float>& maxObjectHeight() const { return _minObjHeight; }
 
         /** Whether this image is suitable for use as a vertically repeating texture */
         optional<bool>& repeatsVertically() { return _repeatsVertically; }
@@ -135,10 +139,11 @@ namespace osgEarth { namespace Symbology
         Config getConfig() const;
 
     protected:
-        optional<double>  _objHeight;
-        optional<double>  _minObjHeight;
-        optional<double>  _maxObjHeight;
-        optional<bool>    _repeatsVertically;
+        optional<std::string> _libraryName;
+        optional<float>       _objHeight;
+        optional<float>       _minObjHeight;
+        optional<float>       _maxObjHeight;
+        optional<bool>        _repeatsVertically;
     };
 
 #if 0

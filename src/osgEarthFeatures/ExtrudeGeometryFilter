@@ -44,10 +44,22 @@ namespace osgEarth { namespace Features
         };
 
     public:
+
+        /** Constructs a new filter that will extrude footprints */
         ExtrudeGeometryFilter();
 
-        /** Pushes a list of features through the filter. */
+        /**
+         * Pushes a list of features through the filter.
+         */
         osg::Node* push( FeatureList& input, const FilterContext& context );
+
+    public: // properties
+
+        /**
+         * Sets any applicable properties that appear in the style. If you have a Style,
+         * it is easier to call this versus calling each of the set* functions below.
+         */
+        void setPropertiesFromStyle( const Style& style );
 
         /**
          * Sets the height above the footprint to which to extrude wall geometry

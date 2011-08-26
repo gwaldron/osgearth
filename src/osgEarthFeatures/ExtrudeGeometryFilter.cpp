@@ -36,12 +36,12 @@ using namespace osgEarth::Symbology;
 
 
 ExtrudeGeometryFilter::ExtrudeGeometryFilter() :
-_maxAngle_deg( 5.0 ),
-_mergeGeometry( false ),
-_height( 10.0 ),
-_flatten( true ),
+_maxAngle_deg       ( 5.0 ),
+_mergeGeometry      ( false ),
+_height             ( 10.0 ),
+_flatten            ( true ),
 _wallAngleThresh_deg( 60.0 ),
-_color( osg::Vec4f(1, 1, 1, 1) )
+_color              ( osg::Vec4f(1, 1, 1, 1) )
 {
     reset();
 }
@@ -51,6 +51,28 @@ ExtrudeGeometryFilter::reset()
 {
     _geode = new osg::Geode();
     _cosWallAngleThresh = cos( _wallAngleThresh_deg );
+}
+
+void
+ExtrudeGeometryFilter::setPropertiesFromStyle( const Style& style )
+{
+    const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
+    if ( extrusion )
+    {
+        if ( extrusion->height().isSet() )
+            setExtrusionHeight( *extrusion->height() );
+        if ( extrusion->heightExpression().isSet() )
+            setExtrusionExpr( *extrusion->heightExpression() );
+        if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
+            setHeightOffsetExpression( NumericExpression("[__max_z]") );
+        setFlatten( *extrusion->flatten() );
+    }
+
+    const PolygonSymbol* polygon = style.get<PolygonSymbol>();
+    if ( polygon )
+    {
+        setColor( polygon->fill()->color() );
+    }
 }
 
 #undef USE_TEX

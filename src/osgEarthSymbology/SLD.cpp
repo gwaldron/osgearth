@@ -68,11 +68,14 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
     PointSymbol*     point     = 0L;
     TextSymbol*      text      = 0L;
     ExtrusionSymbol* extrusion = 0L;
-    MarkerSymbol*    marker     = 0L;
+    MarkerSymbol*    marker    = 0L;
     AltitudeSymbol*  altitude  = 0L;
+    SkinSymbol*      skin      = 0L;
 
     for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
     {
+        // ..... LineSymbol .....
+
         if ( p->first == CSS_STROKE )
         {
             if (!line) line = sc.getOrCreateSymbol<LineSymbol>();
@@ -93,6 +96,9 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!line) line = sc.getOrCreateSymbol<LineSymbol>();
             parseLineCap( p->second, line->stroke()->lineCap() );
         }
+
+        // ..... PolygonSymbol .....
+
         else if ( p->first == CSS_FILL )
         {
             if (!polygon) polygon = sc.getOrCreateSymbol<PolygonSymbol>();
@@ -115,11 +121,17 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
             text->fill()->color().a() = as<float>( p->second, 1.0f );
         }
+
+        // ..... PointSymbol .....
+
         else if (p->first == CSS_POINT_SIZE)
         {
             if ( !point ) point = sc.getOrCreateSymbol<PointSymbol>();
             point->size() = as<float>(p->second, 1.0f);
         }
+
+        // ..... TextSymbol .....
+
         else if (p->first == CSS_TEXT_SIZE)
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
@@ -187,16 +199,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             text->provider() = p->second;
         }
 
-        //else if (p->first == CSS_TEXT_CONTENT)
-        //{
-        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-        //    text->content() = p->second;
-        //}
-        //else if (p->first == CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER)
-        //{
-        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-        //    text->contentAttributeDelimiter() = p->second;
-        //}
+        // ..... MarkerSymbol .....
 
         else if (p->first == "marker")
         {
@@ -226,6 +229,8 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             marker->scale() = stringToVec3f(p->second, osg::Vec3f(1,1,1));
         }
 
+        // ..... ExtrusionSymbol .....
+                
         else if (p->first == "extrusion-height")
         {
             if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
@@ -242,6 +247,8 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
             extrusion->flatten() = as<bool>(p->second, true);
         }
+
+        // ..... AltitideSymbol .....
                 
         else if (p->first == "altitude-clamping")
         {
@@ -265,24 +272,36 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
             altitude->verticalScale() = as<float>( p->second, 1.0f );
         }
-    }
 
-#if 0
-    if (line)
-        sc.addSymbol(line);
-    if (polygon)
-        sc.addSymbol(polygon);
-    if (point)
-        sc.addSymbol(point);
-    if (text)
-        sc.addSymbol(text);
-    if (extrusion)
-        sc.addSymbol(extrusion);
-    if (marker)
-        sc.addSymbol(marker);
-    if (altitude)
-        sc.addSymbol(altitude);
-#endif
+        // ..... SkinSymbol .....
+
+        else if (p->first == "skin-library")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            if ( !p->second.empty() ) skin->libraryName() = p->second;
+        }
+        else if (p->first == "skin-repeats-vertically")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->repeatsVertically() = as<bool>( p->second, false );
+        }
+        else if (p->first == "skin-object-height")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->objectHeight() = as<float>( p->second, 0.0f );
+        }
+        else if (p->first == "skin-min-object-height")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->minObjectHeight() = as<float>( p->second, 0.0f );
+        }
+        else if (p->first == "skin-max-object-height")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->maxObjectHeight() = as<float>( p->second, 0.0f );
+        }
+
+    }
 
     return true;
 }

@@ -34,8 +34,13 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT ClampFilter : public FeatureFilter
     {
     public:
-        /** Constructs a new clamping filter */        
+        /** Constructs a new clamping filter */     
         ClampFilter();
+
+    public: // properties
+
+        /** Shortcut to set any properties that are represented in a style. */
+        void setPropertiesFromStyle( const Style& style );
 
         /** Whether to consider the pre-existing Z coordinate when clamping (default=false) */
         void setIgnoreZ( bool value ) { _ignoreZ = value; }

@@ -37,6 +37,26 @@ _maxRes ( 0.0f )
     //NOP
 }
 
+void
+ClampFilter::setPropertiesFromStyle( const Style& style )
+{
+    const AltitudeSymbol* altitude = style.get<AltitudeSymbol>();
+    if ( altitude )
+    {
+        setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+        setOffsetZ( *altitude->verticalOffset() );
+        setScaleZ ( *altitude->verticalScale() );
+        setMaxResolution( *altitude->clampingResolution() );
+    }
+
+    const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
+    if ( extrusion )
+    {
+        if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
+            setMaxZAttributeName( "__max_z");
+    }
+}
+
 FilterContext
 ClampFilter::push( FeatureList& features, FilterContext& cx )
 {

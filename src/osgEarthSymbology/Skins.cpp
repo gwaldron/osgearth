@@ -26,10 +26,10 @@ using namespace osgEarth::Symbology;
 
 SkinResource::SkinResource( const Config& conf ) :
 Resource          ( conf ),
-_imageWidth       ( 10.0 ),
-_imageHeight      ( 3.0 ),
-_minObjHeight     ( 0.0 ),
-_maxObjHeight     ( DBL_MAX ),
+_imageWidth       ( 10.0f ),
+_imageHeight      ( 3.0f ),
+_minObjHeight     ( 0.0f ),
+_maxObjHeight     ( FLT_MAX ),
 _repeatsVertically( false ),
 _texEnvMode       ( osg::TexEnv::MODULATE ),
 _maxTexSpan       ( 1024 )
@@ -81,9 +81,9 @@ SkinResource::getConfig() const
 //---------------------------------------------------------------------------
 
 SkinSymbol::SkinSymbol( const Config& conf ) :
-_objHeight         ( 0 ),
-_minObjHeight      ( 0.0 ),
-_maxObjHeight      ( 0.0 ),
+_objHeight         ( 0.0f ),
+_minObjHeight      ( 0.0f ),
+_maxObjHeight      ( FLT_MAX ),
 _repeatsVertically ( false )
 {
     if ( !conf.empty() )
@@ -93,6 +93,7 @@ _repeatsVertically ( false )
 void 
 SkinSymbol::mergeConfig( const Config& conf )
 {
+    conf.getIfSet( "library",             _libraryName );
     conf.getIfSet( "object_height",       _objHeight );
     conf.getIfSet( "min_object_height",   _minObjHeight );
     conf.getIfSet( "max_object_height",   _maxObjHeight );
@@ -109,6 +110,7 @@ SkinSymbol::getConfig() const
     Config conf = Symbol::getConfig();
     conf.key() = "skin";
 
+    conf.addIfSet( "library",             _libraryName );
     conf.addIfSet( "object_height",       _objHeight );
     conf.addIfSet( "min_object_height",   _minObjHeight );
     conf.addIfSet( "max_object_height",   _maxObjHeight );
@@ -120,18 +122,3 @@ SkinSymbol::getConfig() const
 
     return conf;
 }
-
-#if 0
-
-//---------------------------------------------------------------------------
-
-SkinResourceQuery::SkinResourceQuery() :
-_objHeight         ( 0 ),
-_minObjHeight      ( 0.0 ),
-_maxObjHeight      ( 0.0 ),
-_repeatsVertically ( false )
-{
-    //nop
-}
-
-#endif

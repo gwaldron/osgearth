@@ -198,10 +198,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( clampRequired )
         {
             ClampFilter clamp;
-            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-            clamp.setOffsetZ( *altitude->verticalOffset() );
-            clamp.setScaleZ ( *altitude->verticalScale() );
-            clamp.setMaxResolution( *altitude->clampingResolution() );
+            clamp.setPropertiesFromStyle( style );
             markerCX = clamp.push( workingSet, markerCX );
 
             // don't set this; we changed the input data.
@@ -209,9 +206,10 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         SubstituteModelFilter sub( style );
-        sub.setClustering( *_options.clustering() );
         if ( marker->scale().isSet() )
             sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
+
+        sub.setClustering( *_options.clustering() );
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
 
@@ -237,33 +235,17 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( clampRequired )
         {
             ClampFilter clamp;
-            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-            if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
-                clamp.setMaxZAttributeName( "__max_z");
-            clamp.setOffsetZ( *altitude->verticalOffset() );
-            clamp.setScaleZ ( *altitude->verticalScale() );
-            clamp.setMaxResolution( *altitude->clampingResolution() );
+            clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
             clampRequired = false;
         }
 
         ExtrudeGeometryFilter extrude;
-        if ( extrusion )
-        {
-            if ( extrusion->height().isSet() )
-                extrude.setExtrusionHeight( *extrusion->height() );
-            if ( extrusion->heightExpression().isSet() )
-                extrude.setExtrusionExpr( *extrusion->heightExpression() );
-            if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
-                extrude.setHeightOffsetExpression( NumericExpression("[__max_z]") );
-            if ( _options.featureName().isSet() )
-                extrude.setFeatureNameExpr( *_options.featureName() );
-            extrude.setFlatten( *extrusion->flatten() );
-        }
-        if ( polygon )
-        {
-            extrude.setColor( polygon->fill()->color() );
-        }
+        extrude.setPropertiesFromStyle( style );
+
+        // apply per-feature naming if requested.
+        if ( _options.featureName().isSet() )
+            extrude.setFeatureNameExpr( *_options.featureName() );
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
@@ -284,10 +266,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( clampRequired )
         {
             ClampFilter clamp;
-            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-            clamp.setOffsetZ( *altitude->verticalOffset() );
-            clamp.setScaleZ ( *altitude->verticalScale() );
-            clamp.setMaxResolution( *altitude->clampingResolution() );
+            clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
             clampRequired = false;
         }
@@ -321,10 +300,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( clampRequired )
         {
             ClampFilter clamp;
-            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-            clamp.setOffsetZ( *altitude->verticalOffset() );
-            clamp.setScaleZ ( *altitude->verticalScale() );
-            clamp.setMaxResolution( *altitude->clampingResolution() );
+            clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
             clampRequired = false;
         }

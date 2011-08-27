@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Map>
 
@@ -80,6 +81,7 @@ namespace osgEarth { namespace Features
         void setStyles( StyleSheet* value );
         StyleSheet* styles() const { return _styles.get(); }
 
+
     public: // URIResolver
         
         /**
@@ -108,8 +110,8 @@ namespace osgEarth { namespace Features
         // @deprecated
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ResourceMap;
 
-        ResourceMap                    _resourceMap;
-        Threading::ReadWriteMutex      _resourceMutex;
+        ResourceMap                    _resourceMap;   // deprecate
+        Threading::ReadWriteMutex      _resourceMutex; // deprecate
         osg::ref_ptr<const Map>        _map;
         MapInfo                        _mapInfo;
         std::string                    _referenceURI;

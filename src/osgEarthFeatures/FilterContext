@@ -46,6 +46,12 @@ namespace osgEarth { namespace Features
 
         FilterContext( const FilterContext& rhs );
 
+        /**
+         * Assigns a resource cache to use. One is created automatically if you
+         * don't assign one.
+         */
+        void setResourceCache( ResourceCache* value ) { _resourceCache = value; }
+
     public: // properties
 
         /**
@@ -116,6 +122,11 @@ namespace osgEarth { namespace Features
         }      
 
         /**
+         * Accesses the shared resource cache where filters can store data.
+         */
+        ResourceCache* resourceCache() { return _resourceCache.get(); }
+
+        /**
          * Hints to the OSG optimizer. Filters that use this context can explicity
          * ask to include or exclude optimizer options via this mechanism.
          */
@@ -125,13 +136,14 @@ namespace osgEarth { namespace Features
         std::string toString() const;
 
     protected:
-        osg::ref_ptr<Session> _session;
+        osg::ref_ptr<Session>              _session;
         osg::ref_ptr<const FeatureProfile> _profile;
-        bool _isGeocentric;
-        optional<GeoExtent> _extent;
-        osg::Matrixd _referenceFrame;
-        osg::Matrixd _inverseReferenceFrame;
-        OptimizerHints _optimizerHints;
+        bool                               _isGeocentric;
+        optional<GeoExtent>                _extent;
+        osg::Matrixd                       _referenceFrame;
+        osg::Matrixd                       _inverseReferenceFrame;
+        OptimizerHints                     _optimizerHints;
+        osg::ref_ptr<ResourceCache>        _resourceCache;
     };
 
 } } // namespace osgEarth::Features

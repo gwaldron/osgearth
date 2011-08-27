@@ -89,7 +89,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        osg::Geometry*          bottomCap,
                                        const osg::Vec4&        color,
                                        const SkinResource*     skin,
-                                       const FilterContext&    cx )
+                                       FilterContext&          cx )
 {
     bool made_geom = false;
 
@@ -363,7 +363,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 }
 
 bool
-ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, const FilterContext& context )
+ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, FilterContext& context )
 {
     GeometryIterator iter( input->getGeometry(), false );
     while( iter.hasMore() )
@@ -455,10 +455,7 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, con
         {      
             if ( wallSkin )
             {
-                static osg::StateSet* wall_ss = 0L;
-
-                if ( wall_ss == 0L )
-                    wall_ss = wallSkin->createStateSet();
+                osg::StateSet* wall_ss = context.resourceCache()->getStateSet( wallSkin );
 
                 //todo: use a resource cache baby
                 //osg::StateSet* wall_ss = wallSkin->createStateSet( context.getSession() );
@@ -563,7 +560,7 @@ namespace
 }
 
 osg::Node*
-ExtrudeGeometryFilter::push( FeatureList& input, const FilterContext& context )
+ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 {
     reset();
 

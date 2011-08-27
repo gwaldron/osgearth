@@ -51,7 +51,7 @@ namespace osgEarth { namespace Features
         /**
          * Pushes a list of features through the filter.
          */
-        osg::Node* push( FeatureList& input, const FilterContext& context );
+        osg::Node* push( FeatureList& input, FilterContext& context );
 
     public: // properties
 
@@ -141,7 +141,7 @@ namespace osgEarth { namespace Features
         bool pushFeature( 
             Feature*               input,
             ResourceLibrary*       reslib,
-            const FilterContext&   context );
+            FilterContext&         context );
 
         bool extrudeGeometry(
             const Geometry*      input,
@@ -153,7 +153,7 @@ namespace osgEarth { namespace Features
             osg::Geometry*       bottom_cap,
             const osg::Vec4&     color,
             const SkinResource*  skin,
-            const FilterContext& cx );
+            FilterContext&       cx );
     };
 
 } } // namespace osgEarth::Features

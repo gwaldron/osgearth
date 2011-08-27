@@ -24,22 +24,23 @@ using namespace osgEarth::Features;
 FilterContext::FilterContext(Session*               session,
                              const FeatureProfile*  profile,
                              const GeoExtent&       workingExtent ) :
-_session( session ),
-_profile( profile ),
-_extent( workingExtent, workingExtent ),
+_session     ( session ),
+_profile     ( profile ),
+_extent      ( workingExtent, workingExtent ),
 _isGeocentric( false )
 {
-    //NOP
+    _resourceCache = new ResourceCache();
 }
 
 FilterContext::FilterContext( const FilterContext& rhs ) :
-_profile( rhs._profile.get() ),
-_session( rhs._session.get() ),
-_isGeocentric( rhs._isGeocentric ),
-_extent( rhs._extent ),
-_referenceFrame( rhs._referenceFrame ),
+_profile              ( rhs._profile.get() ),
+_session              ( rhs._session.get() ),
+_isGeocentric         ( rhs._isGeocentric ),
+_extent               ( rhs._extent ),
+_referenceFrame       ( rhs._referenceFrame ),
 _inverseReferenceFrame( rhs._inverseReferenceFrame ),
-_optimizerHints( rhs._optimizerHints )
+_optimizerHints       ( rhs._optimizerHints ),
+_resourceCache        ( rhs._resourceCache )
 {
     //nop
 }

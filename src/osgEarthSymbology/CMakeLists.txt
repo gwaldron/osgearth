@@ -33,6 +33,7 @@ SET(LIB_PUBLIC_HEADERS
     PolygonSymbol
     Query
     Resource
+    ResourceCache
     ResourceLibrary
     Skins
     StencilVolumeNode
@@ -63,6 +64,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     PolygonSymbol.cpp
     Query.cpp
     Resource.cpp
+    ResourceCache.cpp
     ResourceLibrary.cpp
     Skins.cpp
     StencilVolumeNode.cpp

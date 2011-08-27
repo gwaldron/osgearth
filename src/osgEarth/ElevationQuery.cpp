@@ -226,7 +226,7 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         _tileCache.insert( key, tile.get() );
     }
 
-    OE_DEBUG << LC << "LRU Cache, hit ratio = " << _tileCache.getHitRatio() << std::endl;
+    OE_DEBUG << LC << "LRU Cache, hit ratio = " << _tileCache.getStats()._hitRatio << std::endl;
 
     // see what the actual resolution of the heightfield is.
     if ( out_actualResolution )

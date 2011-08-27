@@ -117,7 +117,11 @@ namespace osgEarth { namespace Features
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 
     protected:
-        osg::ref_ptr<osg::Geode>       _geode;
+        typedef std::map<osg::StateSet*, osg::ref_ptr<osg::Geode> > SortedGeodeMap;
+        SortedGeodeMap _geodes;
+
+        //osg::ref_ptr<osg::Geode>       _geode;
+
         optional<double>               _maxAngle_deg;
         optional<bool>                 _mergeGeometry;
         bool                           _flatten;

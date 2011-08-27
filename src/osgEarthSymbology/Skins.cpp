@@ -153,9 +153,7 @@ SkinSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "max_object_height",   _maxObjHeight );
     conf.getIfSet( "repeats_vertically",  _repeatsVertically );
 
-    TagVector tags;
-    StringTokenizer( conf.value("tags"), tags, " ", "\'", false, true );
-    addTags( tags );
+    addTags( conf.value("tags" ) );
 }
 
 Config 
@@ -170,9 +168,9 @@ SkinSymbol::getConfig() const
     conf.addIfSet( "max_object_height",   _maxObjHeight );
     conf.addIfSet( "repeats_vertically",  _repeatsVertically );
 
-    std::string tagString = Taggable::tagString(_tags);
-    if ( !tagString.empty() )
-        conf.attr("tags") = tagString;
+    std::string tagstring = this->tagString();
+    if ( !tagstring.empty() )
+        conf.attr("tags") = tagstring;
 
     return conf;
 }

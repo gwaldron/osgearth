@@ -280,6 +280,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!skin) skin = sc.getOrCreate<SkinSymbol>();
             if ( !p->second.empty() ) skin->libraryName() = p->second;
         }
+        else if (p->first == "skin-tags")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->addTags( p->second );
+        }
         else if (p->first == "skin-repeats-vertically")
         {
             if (!skin) skin = sc.getOrCreate<SkinSymbol>();

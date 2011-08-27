@@ -41,9 +41,11 @@ namespace osgEarth
     class CacheStats
     {
     public:
-        CacheStats( unsigned queries, float hitRatio )
-            : _queries(queries), _hitRatio(hitRatio) { }
+        CacheStats( unsigned entries, unsigned maxEntries, unsigned queries, float hitRatio )
+            : _entries(entries), _maxEntries(maxEntries), _queries(queries), _hitRatio(hitRatio) { }
 
+        unsigned _entries;
+        unsigned _maxEntries;
         unsigned _queries;
         float    _hitRatio;
     };
@@ -158,7 +160,8 @@ namespace osgEarth
         }
 
         CacheStats getStats() const {
-            return CacheStats( _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
+            return CacheStats(
+                _lru.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
         }
     };
 

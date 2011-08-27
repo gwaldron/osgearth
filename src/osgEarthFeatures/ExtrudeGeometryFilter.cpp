@@ -49,7 +49,7 @@ _color              ( osg::Vec4f(1, 1, 1, 1) )
 void
 ExtrudeGeometryFilter::reset()
 {
-    _geode = new osg::Geode();
+    //_geode = new osg::Geode();
     _cosWallAngleThresh = cos( _wallAngleThresh_deg );
 }
 
@@ -411,6 +411,8 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, Fil
             offset = input->eval( _heightOffsetExpr.mutable_value() );
         }
 
+        osg::StateSet* wallStateSet = 0L;
+
         // calculate the wall texturing:
         SkinResource* wallSkin = 0L;
         if ( _wallSkinSymbol.valid() )
@@ -436,16 +438,6 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, Fil
 
             else
             {
-                // TEST.
-                static osg::ref_ptr<SkinResource> temp = new SkinResource();
-                temp->imageURI() = URI("e:/data/osgearth_resources/US/commercial/50storySteelGlassmodern1.jpg");
-                temp->imageWidth() = 27.0f;
-                temp->imageHeight() = 40.0f; // temp
-                temp->minObjectHeight() = 0.0f; //148.0f;
-                temp->maxObjectHeight() = 999.0f;
-                temp->repeatsVertically() = false;
-
-                wallSkin = temp.get();
                 //TODO: simple single texture?
             }
         }
@@ -455,18 +447,18 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, Fil
         {      
             if ( wallSkin )
             {
-                osg::StateSet* wall_ss = context.resourceCache()->getStateSet( wallSkin );
+                wallStateSet = context.resourceCache()->getStateSet( wallSkin );
 
-                //todo: use a resource cache baby
-                //osg::StateSet* wall_ss = wallSkin->createStateSet( context.getSession() );
-                //osg::StateSet* wall_ss = env->getResourceCache()->getStateSet( wallSkin );
+#if 0
                 if ( wall_ss )
                 {
                     walls->setStateSet( wall_ss );
                 }
-                //env->getSession()->getResources()->getStateSet( skin ) );
-                //env->getSession()->markResourceUsed( skin );
+#endif
+                //wallGeodeKey = wall_ss;
             }
+
+#if 0 // note: this was originally in there to prevent rooftop textures from sliding down to the walls in osgGIS.
             else
             {
                 //There is no skin, so disable texturing for the walls to prevent other textures from being applied to the walls
@@ -478,6 +470,7 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, Fil
 
                 walls->setStateSet( _noTextureStateSet.get() );
             }
+#endif
 
             // generate per-vertex normals, altering the geometry as necessary to avoid
             // smoothing around sharp corners
@@ -521,13 +514,29 @@ ExtrudeGeometryFilter::pushFeature( Feature* input, ResourceLibrary* reslib, Fil
             if ( !_featureNameExpr.empty() )
                 name = input->eval( _featureNameExpr );
 
-            _geode->addDrawable( walls.get() );
+            // find the geode for the active stateset:
+            osg::Geode* geode = _geodes[wallStateSet].get();
+            if ( !geode ) {
+                geode = new osg::Geode();
+                geode->setStateSet( wallStateSet );
+                _geodes[wallStateSet] = geode;
+            }
+
+            geode->addDrawable( walls.get() );
             if ( !name.empty() )
                 walls->setName( name );
 
             if ( rooflines.valid() )
             {
-                _geode->addDrawable( rooflines.get() );
+                // For now, sort the rooftops into the "state-set-less" geode. Later these will
+                // sort into other geodes based on rooftop texturing
+                osg::Geode* noTexGeode = _geodes[0L].get();
+                if ( !noTexGeode ) {
+                    noTexGeode = new osg::Geode();
+                    _geodes[0L] = noTexGeode;
+                }
+                
+                noTexGeode->addDrawable( rooflines.get() );
                 if ( !name.empty() )
                     rooflines->setName( name );
             }
@@ -588,13 +597,29 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     }
    
     // NOTE: **** GW commented out to test texturing ****
-#if 0
+#if 1
     // convert everything to triangles and combine drawables.    
     if ( _featureNameExpr.empty() )
     {
-        MeshConsolidator::run( *_geode.get() );
+        for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
+            MeshConsolidator::run( *i->second.get() );
     }
 #endif
 
-    return _geode.release();
+    // combines geometries where the statesets are the same.
+    osg::Group* group = new osg::Group();
+    for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
+        group->addChild( i->second.get() );
+    _geodes.clear();
+
+    OE_INFO << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
+
+    //TODO
+    // running this after the MC reduces the primitive set count by a huge amount, but I
+    // have not figured out why yet.
+    osgUtil::Optimizer o;
+    o.optimize( group, osgUtil::Optimizer::MERGE_GEOMETRY ); // | osgUtil::Optimizer::SHARE_DUPLICATE_STATE );
+
+    return group;
+    //return _geode.release();
 }

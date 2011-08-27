@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_TAGS_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarth/StringUtils>
 #include <vector>
 #include <set>
 #include <algorithm>
@@ -40,6 +41,11 @@ namespace osgEarth { namespace Symbology
         void addTags( const TagVector& tags ) {
             for( TagVector::const_iterator i = tags.begin(); i != tags.end(); ++i )
                 _tags.insert( normalize(*i) );
+        }
+        void addTags( const std::string& tagString ) {
+            TagVector tags;
+            StringTokenizer( tagString, tags, " ", "\"'", false, true );
+            addTags( tags );
         }
         void removeTag( const std::string& tag ) {
             _tags.erase( normalize( tag ) );

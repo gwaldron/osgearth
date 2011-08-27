@@ -32,10 +32,7 @@ Resource::mergeConfig( const Config& conf )
 {
     _name = conf.attr( "name" );
 
-    std::string tagValue = conf.value( "tags" );
-    TagVector tags;
-    StringTokenizer( tagValue, tags, " ", "\'", false, true );
-    addTags( tags );
+    addTags( conf.value("tags") );
 }
 
 Config

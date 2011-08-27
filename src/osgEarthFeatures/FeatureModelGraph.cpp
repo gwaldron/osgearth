@@ -706,6 +706,13 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
                     styleGroup->addChild( node.get() );
             }
         }
+
+        CacheStats stats = context.resourceCache()->getSkinStats();
+        OE_INFO << LC << "Resource Cache skins: "
+            << " num=" << stats._entries << ", max=" << stats._maxEntries
+            << ", queries=" << stats._queries << ", hits=" << (100.0f*stats._hitRatio) << "%"
+            << std::endl;
+
     }
 
 

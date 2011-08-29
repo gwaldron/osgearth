@@ -173,8 +173,8 @@ ResourceLibrary::getSkins( const SkinSymbol* q, SkinResourceVector& output ) con
             continue;
         }
 
-        if (q->repeatsVertically().isSet() && 
-            q->repeatsVertically().value() != s->repeatsVertically().value() )
+        if (q->isTiled().isSet() && 
+            q->isTiled().value() != s->isTiled().value() )
         {
             continue;
         }

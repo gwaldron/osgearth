@@ -146,7 +146,7 @@ _dirty  ( false )
     if ( !session->styles() )
         session->setStyles( _options.styles().get() );
 
-
+    // initialize lighting on the graph, if necessary.
     osg::StateSet* stateSet = getOrCreateStateSet();
 
     if ( _options.enableLighting().isSet() )
@@ -499,7 +499,10 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
     // if there are none, just build once with the default style and query.
     if ( levelSelectors.size() == 0 )
     {
-        osg::Node* node = build( Style(), query, extent );
+        // attempt to glean the style from the feature source name:
+        Style style = *_session->styles()->getStyle( *_source->getFeatureSourceOptions().name() );
+
+        osg::Node* node = build( style, query, extent );
         if ( node )
             group->addChild( node );
     }

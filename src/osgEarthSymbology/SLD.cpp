@@ -233,19 +233,29 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
                 
         else if (p->first == "extrusion-height")
         {
-            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
             extrusion->heightExpression() = NumericExpression(p->second);
         }
         else if ( p->first == "extrusion-reference")
         {
-            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
             if      ( p->second == "z"   ) extrusion->heightReference() = ExtrusionSymbol::HEIGHT_REFERENCE_Z;
             else if ( p->second == "msl" ) extrusion->heightReference() = ExtrusionSymbol::HEIGHT_REFERENCE_MSL;
         }
         else if (p->first == "extrusion-flatten")
         {
-            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
             extrusion->flatten() = as<bool>(p->second, true);
+        }
+        else if (p->first == "extrusion-wall-style")
+        {
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
+            extrusion->wallStyleName() = p->second;
+        }
+        else if (p->first == "extrusion-roof-style")
+        {
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
+            extrusion->roofStyleName() = p->second;
         }
 
         // ..... AltitideSymbol .....
@@ -288,7 +298,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "skin-repeats-vertically")
         {
             if (!skin) skin = sc.getOrCreate<SkinSymbol>();
-            skin->repeatsVertically() = as<bool>( p->second, false );
+            skin->isTiled() = as<bool>( p->second, false );
         }
         else if (p->first == "skin-object-height")
         {

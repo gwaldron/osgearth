@@ -230,7 +230,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }
 
     // extruded geometry
-    if ( extrusion && ( line || polygon ) )
+    if ( extrusion ) //&& ( line || polygon ) )
     {
         if ( clampRequired )
         {
@@ -241,7 +241,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         ExtrudeGeometryFilter extrude;
-        extrude.setPropertiesFromStyle( style );
+        extrude.setStyle( style );
 
         // apply per-feature naming if requested.
         if ( _options.featureName().isSet() )

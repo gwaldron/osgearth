@@ -48,9 +48,6 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& geometryUrl() { return _geometryUrl; }
         const optional<std::string>& geometryUrl() const { return _geometryUrl; }
 
-        //optional<Config>& geometryProfileOptions() { return _geometryProfileConf; }
-        //const optional<Config>& geometryProfileOptions() const { return _geometryProfileConf; }
-
         // does not serialize
         osg::ref_ptr<Symbology::Geometry>& geometry() { return _geometry; }
         const osg::ref_ptr<Symbology::Geometry>& geometry() const { return _geometry; }

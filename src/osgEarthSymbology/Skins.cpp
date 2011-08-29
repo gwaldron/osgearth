@@ -35,7 +35,7 @@ _imageWidth       ( 10.0f ),
 _imageHeight      ( 3.0f ),
 _minObjHeight     ( 0.0f ),
 _maxObjHeight     ( FLT_MAX ),
-_repeatsVertically( false ),
+_isTiled( false ),
 _texEnvMode       ( osg::TexEnv::MODULATE ),
 _maxTexSpan       ( 1024 )
 {
@@ -50,7 +50,7 @@ SkinResource::mergeConfig( const Config& conf )
     conf.getIfSet( "image_height",        _imageHeight );
     conf.getIfSet( "min_object_height",   _minObjHeight );
     conf.getIfSet( "max_object_height",   _maxObjHeight );
-    conf.getIfSet( "repeats_vertically",  _repeatsVertically );
+    conf.getIfSet( "tiled",  _isTiled );
     conf.getIfSet( "max_texture_span",    _maxTexSpan );
 
     conf.getIfSet( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
@@ -70,7 +70,7 @@ SkinResource::getConfig() const
     conf.updateIfSet( "image_height",        _imageHeight );
     conf.updateIfSet( "min_object_height",   _minObjHeight );
     conf.updateIfSet( "max_object_height",   _maxObjHeight );
-    conf.updateIfSet( "repeats_vertically",  _repeatsVertically );
+    conf.updateIfSet( "tiled",  _isTiled );
     conf.updateIfSet( "max_texture_span",    _maxTexSpan );
 
     conf.updateIfSet( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
@@ -138,7 +138,7 @@ SkinSymbol::SkinSymbol( const Config& conf ) :
 _objHeight         ( 0.0f ),
 _minObjHeight      ( 0.0f ),
 _maxObjHeight      ( FLT_MAX ),
-_repeatsVertically ( false )
+_isTiled ( false )
 {
     if ( !conf.empty() )
         mergeConfig( conf );
@@ -151,7 +151,7 @@ SkinSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "object_height",       _objHeight );
     conf.getIfSet( "min_object_height",   _minObjHeight );
     conf.getIfSet( "max_object_height",   _maxObjHeight );
-    conf.getIfSet( "repeats_vertically",  _repeatsVertically );
+    conf.getIfSet( "tiled",  _isTiled );
 
     addTags( conf.value("tags" ) );
 }
@@ -166,7 +166,7 @@ SkinSymbol::getConfig() const
     conf.addIfSet( "object_height",       _objHeight );
     conf.addIfSet( "min_object_height",   _minObjHeight );
     conf.addIfSet( "max_object_height",   _maxObjHeight );
-    conf.addIfSet( "repeats_vertically",  _repeatsVertically );
+    conf.addIfSet( "tiled",  _isTiled );
 
     std::string tagstring = this->tagString();
     if ( !tagstring.empty() )

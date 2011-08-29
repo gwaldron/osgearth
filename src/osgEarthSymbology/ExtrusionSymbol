@@ -67,6 +67,13 @@ namespace osgEarth { namespace Symbology
         optional<bool>& flatten() { return _flatten; }
         const optional<bool>& flatten() const { return _flatten; }
 
+        /** Name of a style describing how to symbolize the extruded walls */
+        optional<std::string>& wallStyleName() { return _wallStyleName; }
+        const optional<std::string>& wallStyleName() const { return _wallStyleName; }
+
+        /** Name of a style describing how to symbolize the elevated rooftop */
+        optional<std::string>& roofStyleName() { return _roofStyleName; }
+        const optional<std::string>& roofStyleName() const { return _roofStyleName; }
         
     public:
         virtual Config getConfig() const;
@@ -77,6 +84,8 @@ namespace osgEarth { namespace Symbology
         optional<bool>              _flatten;
         optional<NumericExpression> _heightExpr;
         optional<HeightReference>   _heightRef;
+        optional<std::string>       _wallStyleName;
+        optional<std::string>       _roofStyleName;
     };
 
 } } // namespace osgEarth::Symbology

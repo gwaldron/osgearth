@@ -20,6 +20,7 @@
 #include <osgEarthSymbology/Expression>
 #include <osgEarthUtil/Controls>
 #include <osgEarth/Utils>
+#include <osgEarth/ECEF>
 #include <osg/ClusterCullingCallback>
 #include <osg/MatrixTransform>
 #include <osgDB/FileNameUtils>
@@ -52,6 +53,7 @@ public:
         NumericExpression priorityExpr( *text->priority() );
 
         const MapInfo& mi = context.getSession()->getMapInfo();
+        bool makeECEF = mi.isGeocentric();
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
@@ -63,9 +65,15 @@ public:
             if ( !geom )
                 continue;
 
-            osg::Vec3d centroid      = geom->getBounds().center();
-            osg::Vec3d centroidWorld = context.toWorld(centroid);
+            osg::Vec3d centroid  = geom->getBounds().center();
+            //osg::Vec3d centroidWorld = context.toWorld(centroid);
 
+            if ( makeECEF )
+            {
+                context.profile()->getSRS()->transformToECEF( centroid, centroid );
+            }
+
+#if 0
             if ( context.isGeocentric() && geom->getComponentType() != Geometry::TYPE_POINTSET )
             {
                 // "clamp" the centroid to the ellipsoid
@@ -75,6 +83,7 @@ public:
                 mi.mapPointToWorldPoint(centroidMap, centroidWorld);
                 centroid = context.toLocal(centroidWorld);
             }
+#endif
 
             const std::string& value = feature->eval( contentExpr );
 
@@ -103,10 +112,9 @@ public:
                 xform->addChild( node );
 
                 // for a geocentric map, do a simple dot product cull.
-                if ( context.isGeocentric() )
+                if ( makeECEF )
                 {
-                    osg::Vec3d labelNormal = context.toWorld(centroid);
-                    xform->setCullCallback( new CullNodeByHorizon(centroidWorld, mi.getProfile()->getSRS()->getEllipsoid()) );
+                    xform->setCullCallback( new CullNodeByHorizon(centroid, mi.getProfile()->getSRS()->getEllipsoid()) );
                     group->addChild( xform );
                 }
                 else

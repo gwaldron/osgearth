@@ -319,17 +319,15 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         }
 
         BuildTextFilter filter( style );
-        sharedCX = filter.push( workingSet, sharedCX );
-
-        osg::Node* node = filter.takeNode();
+        osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
         {
-            if ( sharedCX.hasReferenceFrame() )
-            {
-                osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
-                delocalizer->addChild( node );
-                node = delocalizer;
-            }
+            //if ( sharedCX.hasReferenceFrame() )
+            //{
+            //    osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
+            //    delocalizer->addChild( node );
+            //    node = delocalizer;
+            //}
             resultGroup->addChild( node );
         }
     }

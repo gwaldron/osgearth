@@ -2004,15 +2004,6 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 
               xform->setMatrix( osg::Matrixd::translate(x, y-context._vp->height(), 0) );
 
-              LabelControl* test = dynamic_cast<LabelControl*>(control);
-              if ( test && test->text() == "Rampur5" )
-              {
-                  OE_NOTICE 
-                      << (intptr_t)control << ": x=" << x << ", y=" << y << ", screen=" << nPos.x() << ", " << nPos.y() << ", " << nPos.z()
-                      << std::endl;
-              }
-
-
               osg::BoundingBox bbox( x, y, 0.0, x+size.x(), y+size.y(), 1.0 );
               if ( _sortingEnabled )
               {

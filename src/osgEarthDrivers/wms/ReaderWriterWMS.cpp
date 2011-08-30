@@ -37,6 +37,8 @@
 #include "TileService"
 #include "WMSOptions"
 
+#define LC "[WMS] "
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
@@ -61,11 +63,8 @@ public:
     {
         if ( _options.times().isSet() )
         {
-            StringTokenizer izer( ",", "" );
-            izer.keepEmpties() = false;
-            izer.tokenize( *_options.times(), _timesVec );
-            //osgEarth::tokenize( _options.times().value(), _timesVec, ",", "", false );
-            //osgEarth::split( _options.times().value(), ",", _timesVec, false );
+            StringTokenizer( *_options.times(), _timesVec, ",", "", false, true );
+            OE_INFO << LC << "WMS-T: found " << _timesVec.size() << " times." << std::endl;
         }
 
         // localize it since we might override them:

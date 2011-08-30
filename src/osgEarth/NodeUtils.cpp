@@ -116,7 +116,7 @@ namespace
             compute( v4 );
         }
 
-        void compute( const osg::Vec3& v, bool )
+        void compute( const osg::Vec3& v )
         {
             float dist = (v - _center).length2();
             if ( dist > *_maxRadius2 )

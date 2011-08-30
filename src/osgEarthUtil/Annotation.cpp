@@ -178,8 +178,8 @@ GeometryNode::init()
     FeatureList features;
     features.push_back( new Feature(_geom.get(), _style) );
     BuildGeometryFilter bg;
-    bg.push( features, FilterContext() );
-    osg::Node* node = bg.getNode();
+    osg::Node* node = bg.push( features, FilterContext() );
+    //osg::Node* node = bg.getNode();
     setNode( node );
 }
 

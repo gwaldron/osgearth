@@ -172,12 +172,21 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     bool clampRequired =
         altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
     
+    // first, apply a vertical offset if called for.
+    if ( altitude && altitude->verticalOffset().isSet() && !clampRequired )
+    {
+        TransformFilter xform( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
+        sharedCX = xform.push( workingSet, sharedCX );
+    }
+
+#if 0
     // transform the features into the map profile
     TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   
     xform.setLocalizeCoordinates( localize );
     if ( altitude && altitude->verticalOffset().isSet() && !clampRequired )
         xform.setMatrix( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
     sharedCX = xform.push( workingSet, sharedCX );
+#endif
 
     // model substitution
     if ( marker )
@@ -213,24 +222,22 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
 
-        markerCX = sub.push( workingSet, markerCX );
-
-        osg::Node* node = sub.getNode();
+        osg::Node* node = sub.push( workingSet, markerCX );
         if ( node )
         {
-            if ( markerCX.hasReferenceFrame() )
-            {
-                osg::MatrixTransform* delocalizer = new osg::MatrixTransform( markerCX.inverseReferenceFrame() );
-                delocalizer->addChild( node );
-                node = delocalizer;
-            }
+            //if ( markerCX.hasReferenceFrame() )
+            //{
+            //    osg::MatrixTransform* delocalizer = new osg::MatrixTransform( markerCX.inverseReferenceFrame() );
+            //    delocalizer->addChild( node );
+            //    node = delocalizer;
+            //}
 
             resultGroup->addChild( node );
         }
     }
 
     // extruded geometry
-    if ( extrusion ) //&& ( line || polygon ) )
+    if ( extrusion )
     {
         if ( clampRequired )
         {
@@ -249,15 +256,16 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
-        {
-            if ( sharedCX.hasReferenceFrame() )
-            {
-                osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
-                delocalizer->addChild( node );
-                node = delocalizer;
-            }
             resultGroup->addChild( node );
-        }
+        //{
+        //    if ( sharedCX.hasReferenceFrame() )
+        //    {
+        //        osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
+        //        delocalizer->addChild( node );
+        //        node = delocalizer;
+        //    }
+        //    resultGroup->addChild( node );
+        //}
     }
 
     // simple geometry
@@ -280,19 +288,24 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
-        sharedCX = filter.push( workingSet, sharedCX );
 
-        osg::Node* node = filter.getNode();
+        //sharedCX = filter.push( workingSet, sharedCX );
+        //osg::Node* node = filter.getNode();
+
+        osg::Node* node = filter.push( workingSet, sharedCX );
+
         if ( node )
-        {
-            if ( sharedCX.hasReferenceFrame() )
-            {
-                osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
-                delocalizer->addChild( node );
-                node = delocalizer;
-            }
             resultGroup->addChild( node );
-        }
+
+        //{
+        //    if ( sharedCX.hasReferenceFrame() )
+        //    {
+        //        osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
+        //        delocalizer->addChild( node );
+        //        node = delocalizer;
+        //    }
+        //    resultGroup->addChild( node );
+        //}
     }
 
     if ( text )

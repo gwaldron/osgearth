@@ -545,6 +545,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
                 GeoExtent geodeticExtent = ccExtent.transform( ccExtent.getSRS()->getGeographicSRS() );
                 if ( geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0 )
                 {
+#if 0
                     // get the geocentric tile center:
                     osg::Vec3d tileCenter;
                     ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
@@ -554,6 +555,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
                     osg::NodeCallback* ccc = ClusterCullerFactory::create( group.get(), centerECEF );
                     if ( ccc )
                         group->addCullCallback( ccc );
+#endif
                 }
             }
         }
@@ -711,7 +713,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
         }
 
         CacheStats stats = context.resourceCache()->getSkinStats();
-        OE_INFO << LC << "Resource Cache skins: "
+        OE_DEBUG << LC << "Resource Cache skins: "
             << " num=" << stats._entries << ", max=" << stats._maxEntries
             << ", queries=" << stats._queries << ", hits=" << (100.0f*stats._hitRatio) << "%"
             << std::endl;

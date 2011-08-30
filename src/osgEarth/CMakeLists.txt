@@ -27,6 +27,7 @@ SET(LIB_PUBLIC_HEADERS
     Config
     Cube
     DrapeableNode
+    ECEF
     ElevationLayer
     ElevationQuery
     Export
@@ -98,6 +99,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Config.cpp
     Cube.cpp
     DrapeableNode.cpp
+    ECEF.cpp
     EGM.cpp
     ElevationLayer.cpp
     ElevationQuery.cpp

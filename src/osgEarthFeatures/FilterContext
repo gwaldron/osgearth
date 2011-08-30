@@ -104,6 +104,16 @@ namespace osgEarth { namespace Features
         void toWorld( Geometry* geom ) const;
 
         /**
+         * Converts a context-local point to a map coordinate.
+         */
+        osg::Vec3d toMap( const osg::Vec3d& local ) const;
+
+        /**
+         * Converts a map coordinate to a context-local point.
+         */
+        osg::Vec3d fromMap( const osg::Vec3d& map ) const;
+
+        /**
          * Multiplying by the reference frame takes a point from world coords into local coords.
          */
         const osg::Matrixd& referenceFrame() const { return _referenceFrame; }

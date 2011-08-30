@@ -679,6 +679,7 @@ SpatialReference::transform(double x, double y, double z,
 
     out_x = x;
     out_y = y;
+    out_z = z;
     bool result = transformPoints(out_srs, &out_x, &out_y, &out_z, 1, context);
 
     return result;

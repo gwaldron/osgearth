@@ -75,6 +75,24 @@ FilterContext::toWorld( Geometry* geom ) const
     }
 }
 
+osg::Vec3d
+FilterContext::toMap( const osg::Vec3d& point ) const
+{
+    osg::Vec3d world = toWorld(point);
+    if ( _isGeocentric )
+        _extent->getSRS()->transformFromECEF( world, world );
+    return world;
+}
+
+osg::Vec3d
+FilterContext::fromMap( const osg::Vec3d& point ) const
+{
+    osg::Vec3d world;
+    if ( _isGeocentric )
+        _extent->getSRS()->transformToECEF( point, world );
+    return toLocal(world);
+}
+
 std::string
 FilterContext::toString() const
 {

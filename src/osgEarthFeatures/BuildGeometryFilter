@@ -35,18 +35,17 @@ namespace osgEarth { namespace Features
     /**
      * Builds geometry from a stream of input features.
      */
-    class OSGEARTHFEATURES_EXPORT BuildGeometryFilter
+    class OSGEARTHFEATURES_EXPORT BuildGeometryFilter : public FeaturesToNodeFilter
     {
     public:
         BuildGeometryFilter( const Style& style =Style() );
 
+        /** Pushes a list of features through the filter. */
+        osg::Node* push( FeatureList& input, FilterContext& context );
+
         /** The style to apply to feature geometry */
         const Style& getStyle() { return _style; }
         void setStyle(const Style& s) { _style = s; }
-
-        /** Override and change the geometry type of incoming features. */
-        //TODO: deprecate
-        optional<Geometry::Type>& geomTypeOverride() { return _geomTypeOverride; }
 
         /**
          * For geocentric data, sets the granularity of edges created by the filter. This
@@ -80,17 +79,10 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
-        /** Pushes a list of features through the filter. */
-        FilterContext push( FeatureList& input, const FilterContext& context );
-
-        /** Gets the resulting OSG scene graph */
-        osg::Node* getNode() const { return _result.get(); }
-
     protected:
         osg::ref_ptr<osg::Node> _result;
         osg::ref_ptr<osg::Geode> _geode;
         Style _style;
-        optional<Geometry::Type> _geomTypeOverride;
         optional<double> _maxAngle_deg;
         optional<GeoInterpolation> _geoInterp;
         optional<bool> _mergeGeometry;
@@ -98,9 +90,10 @@ namespace osgEarth { namespace Features
         bool _hasPoints;
         bool _hasLines;
         bool _hasPolygons;
+
         void reset();
         
-        bool push( Feature* input, const FilterContext& context );
+        bool process( FeatureList& input, const FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

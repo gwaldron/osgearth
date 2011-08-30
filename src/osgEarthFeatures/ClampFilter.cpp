@@ -71,7 +71,7 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
 
     const SpatialReference* mapSRS     = mapf.getProfile()->getSRS();
     const SpatialReference* featureSRS = cx.profile()->getSRS();
-    bool isGeocentric = session->getMapInfo().isGeocentric();
+    //bool isGeocentric = session->getMapInfo().isGeocentric();
 
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq( mapf );
@@ -86,7 +86,8 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
         {
             Geometry* geom = gi.next();
 
-            if ( isGeocentric )
+#if 0
+            if ( false ) // isGeocentric )
             {
                 // convert to map coords:
                 cx.toWorld( geom );
@@ -114,11 +115,12 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
             }
 
             else
+#endif
             {
                 // clamps the entire array to the highest available resolution.
                 eq.getElevations( geom->asVector(), featureSRS, _ignoreZ, _maxRes );
 
-                if ( _offsetZ != 0.0 )
+                if ( _offsetZ != 0.0 || _scaleZ != 1.0f )
                 {
                     for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
                     {

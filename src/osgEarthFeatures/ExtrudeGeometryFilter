@@ -35,7 +35,7 @@ namespace osgEarth { namespace Features
     /**
      * Extrudes footprint geometry into 3D geometry
      */
-    class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter : public Filter
+    class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter : public FeaturesToNodeFilter
     {
     public:
         struct HeightCallback : public osg::Referenced
@@ -101,7 +101,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<ResourceLibrary>       _wallResLib;
         osg::ref_ptr<ResourceLibrary>       _roofResLib;
 
-        void reset( const StyleSheet* sheet =0L );
+        void reset( const FilterContext& context );
         
         bool process( 
             FeatureList&    input,

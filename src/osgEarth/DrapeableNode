@@ -55,6 +55,7 @@ namespace osgEarth
     private:
         bool                       _draped;
         osg::ref_ptr<osg::Node>    _node;
+        osg::ref_ptr<osg::Group>   _nodeContainer;
     };
 
 } // namespace osgEarth

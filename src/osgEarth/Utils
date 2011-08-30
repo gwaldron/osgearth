@@ -32,10 +32,13 @@
 #include <list>
 #include <map>
 
-namespace osgEarth
+namespace osg
 {
-    class osg::EllipsoidModel;
+    class EllipsoidModel;
+}
 
+namespace osgEarth
+{    
     //------------------------------------------------------------------------
 
     /**

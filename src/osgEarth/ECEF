@@ -36,6 +36,16 @@ namespace osgEarth
             const osg::Vec3d& ecefRefPoint );
 
         /**
+         * Transforms a point into ECEF coordinates, localizes it with
+         * the provided world2local matrix, and puts the result in "output".
+         */
+        static void transformAndLocalize(
+            const osg::Vec3d&       input,
+            osg::Vec3d&             output,
+            const SpatialReference* srs,
+            const osg::Matrixd&     world2local =osg::Matrixd() );
+
+        /**
          * Transforms the points in "input" to ECEF coordinates, localizes them with
          * the provided world2local matrix, and puts the result in "output".
          */

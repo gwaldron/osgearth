@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osg/MatrixTransform>
+#include <osg/Timer>
 #include <osgDB/WriteFile>
 
 #define LC "[GeometryCompiler] "
@@ -136,6 +137,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
                           const Style&          style,
                           const FilterContext&  context)
 {
+#ifdef PROFILING
+    osg::Timer_t p_start = osg::Timer::instance()->tick();
+    unsigned p_features = workingSet.size();
+#endif
+
     osg::ref_ptr<osg::Group> resultGroup = new osg::Group();
 
     // create a filter context that will track feature data through the process
@@ -294,6 +300,13 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
+
+#ifdef PROFILING
+    osg::Timer_t p_end = osg::Timer::instance()->tick();
+    OE_INFO << LC
+        << "features = " << p_features <<
+        << " ,time = " << osg::Timer::instance()->delta_s(p_start, p_end) << " s." << std::endl;
+#endif
 
     return resultGroup.release();
 }

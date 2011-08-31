@@ -218,7 +218,8 @@ namespace osgEarth
     };
 
     struct Angular : public qualified_double<Angular> {
-        Angular() : qualified_double<Angular>(0, Units::RADIANS) { }
+        Angular() : qualified_double<Angular>(0, Units::DEGREES) { }
+        Angular(double value) : qualified_double<Angular>(value, Units::DEGREES) { }
         Angular(double value, const Units& units) : qualified_double<Angular>(value, units) { }
     };
 

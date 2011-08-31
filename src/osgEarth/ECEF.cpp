@@ -68,6 +68,18 @@ ECEF::createInverseRefFrame( const osg::Vec3d& input )
 }
 
 void
+ECEF::transformAndLocalize(const osg::Vec3d&       input,
+                           osg::Vec3d&             output,
+                           const SpatialReference* srs,
+                           const osg::Matrixd&     world2local)
+{
+    osg::Vec3d ecef;
+    srs->transformToECEF( input, ecef );
+    output = ecef * world2local;
+}
+
+
+void
 ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
                            osg::Vec3Array*                output,
                            const SpatialReference*        srs,

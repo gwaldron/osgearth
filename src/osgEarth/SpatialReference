@@ -20,6 +20,7 @@
 #define OSGEARTH_SPATIAL_REFERENCE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Units>
 #include <osg/Referenced>
 #include <osg/CoordinateSystemNode>
 #include <osg/Vec3>
@@ -224,6 +225,14 @@ namespace osgEarth
             The reference location is expressed in this object's SRS, but it tangent to
             the globe at getGeographicSRS(). LTP units are in meters. */
         SpatialReference* createTangentPlaneSRS( const osg::Vec3d& refPos ) const;
+
+        /** Creates a transverse mercator projection centered at the specified longitude. */
+        SpatialReference* createTransMercFromLongitude( const Angular& lon ) const;
+
+        /** Creates a UTM (universal transverse mercator) projection in the UTM zone
+            containing the specified longitude. NOTE: this is slightly faster than using
+            basic tmerc (transverse mercator) above. */
+        SpatialReference* createUTMFromLongitude( const Angular& lon ) const;
 
         /** Creates a new CSN based on this spatial reference. */
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;

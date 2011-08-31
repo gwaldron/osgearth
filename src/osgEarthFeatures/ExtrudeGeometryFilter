@@ -103,6 +103,11 @@ namespace osgEarth { namespace Features
 
         void reset( const FilterContext& context );
         
+        void addDrawable( 
+            osg::Drawable*     drawable, 
+            osg::StateSet*     stateSet, 
+            const std::string& name );
+        
         bool process( 
             FeatureList&    input,
             FilterContext&   context );

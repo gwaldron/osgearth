@@ -295,7 +295,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!skin) skin = sc.getOrCreate<SkinSymbol>();
             skin->addTags( p->second );
         }
-        else if (p->first == "skin-repeats-vertically")
+        else if (p->first == "skin-tiled")
         {
             if (!skin) skin = sc.getOrCreate<SkinSymbol>();
             skin->isTiled() = as<bool>( p->second, false );

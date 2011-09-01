@@ -29,8 +29,8 @@ namespace osgEarth { namespace Drivers
     class OSGOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         optional<bool>& convertLuminanceToRGBA() { return _lum2rgba; }
         const optional<bool>& convertLuminanceToRGBA() const { return _lum2rgba; }
@@ -70,7 +70,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("add_alpha", _addAlpha);
         }
 
-        optional<std::string> _url;
+        optional<URI>  _url;
         optional<bool> _lum2rgba;
         optional<bool> _addAlpha;
     };

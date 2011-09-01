@@ -75,7 +75,7 @@ public:
 
         char buf[2048];
         sprintf( buf, "%s/%s/%02d/%03d/%03d/%03d/%03d/%03d/%03d.%s",
-            _options.url()->c_str(),
+            _options.url()->full().c_str(),
             _options.layer()->c_str(),
             level,
             (tile_x / 1000000),

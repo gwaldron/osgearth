@@ -17,6 +17,54 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Filter>
+#include <osgEarth/ECEF>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
+
+void
+FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
+{
+    if ( context.getSession()->getMapInfo().isGeocentric() )
+    {
+        const SpatialReference* geogSRS = context.profile()->getSRS()->getGeographicSRS();
+        GeoExtent geodExtent = context.extent()->transform( geogSRS );
+        if ( geodExtent.width() < 180.0 )
+        {
+            osg::Vec3d centroid, centroidECEF;
+            geodExtent.getCentroid( centroid.x(), centroid.y() );
+            geogSRS->transformToECEF( centroid, centroidECEF );
+            _local2world = ECEF::createInverseRefFrame( centroidECEF );
+            _world2local.invert( _local2world );
+        }
+    }
+}
+
+osg::Node*
+FeaturesToNodeFilter::delocalize( osg::Node* node ) const
+{
+    if ( !_local2world.isIdentity() ) 
+        return delocalizeAsGroup( node );
+    else
+        return node;
+}
+
+osg::Group*
+FeaturesToNodeFilter::delocalizeAsGroup( osg::Node* node ) const
+{
+    osg::Group* group = createDelocalizeGroup();
+    if ( node )
+        group->addChild( node );
+    return group;
+}
+
+osg::Group*
+FeaturesToNodeFilter::createDelocalizeGroup() const
+{
+    osg::Group* group = _local2world.isIdentity() ?
+        new osg::Group() :
+        new osg::MatrixTransform( _local2world );
+
+    return group;
+}

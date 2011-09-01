@@ -31,8 +31,8 @@ namespace osgEarth { namespace Drivers
     {
     public: // properties
 
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         optional<std::string>& extensions() { return _extensions; }
         const optional<std::string>& extensions() const { return _extensions; }
@@ -94,11 +94,11 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("interp_imagery", _interpolateImagery);
         }
 
-        optional<std::string> _url;
-        optional<std::string> _extensions;
+        optional<URI>                    _url;
+        optional<std::string>            _extensions;
         optional<ElevationInterpolation> _interpolation;
-        optional<bool> _interpolateImagery;
-        optional<unsigned int> _maxDataLevel;
+        optional<bool>                   _interpolateImagery;
+        optional<unsigned>               _maxDataLevel;
     };
 
 } } // namespace osgEarth::Drivers

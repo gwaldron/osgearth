@@ -74,20 +74,20 @@ public:
 
         osg::ref_ptr<osg::Image> image;
 
-        std::string url = _options.url().value();
+        URI url = _options.url().value();
         if ( !url.empty() )
         {
-            url = osgEarth::getFullPath( referenceURI, url );
-            HTTPClient::ResultCode code = HTTPClient::readImageFile( url, image );
+            url = URI( url.full(), referenceURI ); // obselete?
+            HTTPClient::ResultCode code = HTTPClient::readImageFile( url.full(), image );
             if ( code != HTTPClient::RESULT_OK )
             {
-                OE_WARN << LC << "Failed to load data from \"" << url << "\", because: " << 
+                OE_WARN << LC << "Failed to load data from \"" << url.full() << "\", because: " << 
                     HTTPClient::getResultCodeString(code) << std::endl;
             }
         }
 
         if ( !image.valid() )
-            OE_WARN << LC << "Faild to load data from \"" << url << "\"" << std::endl;
+            OE_WARN << LC << "Faild to load data from \"" << url.full() << "\"" << std::endl;
 
         // calculate and store the maximum LOD for which to return data
         if ( image.valid() )
@@ -120,7 +120,7 @@ public:
             _image = GeoImage( image.get(), getProfile()->getExtent() );
         }
 
-        _extension = osgDB::getFileExtension( url );
+        _extension = osgDB::getFileExtension( url.full() );
     }
     
     //override

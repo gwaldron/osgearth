@@ -258,7 +258,7 @@ NumericExpression::eval() const
         const_cast<NumericExpression*>(this)->_dirty = false;
     }
 
-    return _value;
+    return !osg::isNaN( _value ) ? _value : 0.0;
 }
 
 //------------------------------------------------------------------------

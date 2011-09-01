@@ -38,8 +38,8 @@ namespace osgEarth { namespace Drivers
 
     public: // properties
 
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         optional<int>& primarySplitLevel() { return _primarySplitLevel; }
         const optional<int>& primarySplitLevel() const { return _primarySplitLevel; }
@@ -120,8 +120,9 @@ namespace osgEarth { namespace Drivers
             else if ( ds == "nested" ) _dirStruct = DS_NESTED;
         }
 
-        optional<std::string> _url, _baseName, _layerSetName;
-        optional<int> _primarySplitLevel, _secondarySplitLevel, _layer, _widthLod0, _heightLod0;
+        optional<URI>         _url;
+        optional<std::string> _baseName, _layerSetName;
+        optional<int>         _primarySplitLevel, _secondarySplitLevel, _layer, _widthLod0, _heightLod0;
         optional<DirectoryStructure> _dirStruct;
     };
 

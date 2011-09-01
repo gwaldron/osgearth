@@ -10,6 +10,11 @@ if(COMMAND cmake_policy)
     cmake_policy(SET CMP0005 OLD)
 endif(COMMAND cmake_policy)
 
+#
+# Set up CMake to use Solution Folders in VS.
+#
+SET_PROPERTY( GLOBAL PROPERTY USE_FOLDERS               ON )
+SET_PROPERTY( GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake Targets" )
 
 PROJECT(OSGEARTH)
 

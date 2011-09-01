@@ -1,0 +1,101 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H
+#define OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Skins>
+#include <osgEarth/ThreadingUtils>
+#include <map>
+
+namespace osgEarth { namespace Symbology
+{
+    /** 
+     * ResourceLibrary manages a collection of external resources that a
+     * build system can use the construct geometries.
+     *
+     * TODO: This class PROBABLY NEEDS the ability to share a mutex with
+     * whatever session is using it... like in osgGIS...
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT ResourceLibrary : public osg::Referenced
+    {
+    public:
+        /**
+         * Attempts to create and load a resource library from an XML
+         * resource catalog residing at the specified URL.
+         */         
+        static ResourceLibrary* create( const URI& uri );
+
+    public:
+        /**
+         * Creates a new resource library
+         */
+        ResourceLibrary( const Config& conf =Config() );
+
+        /**
+         * Adds a resoure to the library.
+         */
+        void addResource( Resource* resource );
+
+        /**
+         * Removes a resource from the library.
+         */
+        void removeResource( Resource* resource );
+
+
+    public: // Skin resource functions
+
+        /**
+         * Finds and returns a Skin resource by name.
+         */
+        SkinResource* getSkin( const std::string& name ) const;
+
+        /**
+         * Returns a list of all Skin resources.
+         */
+        void getSkins( SkinResourceVector& output ) const;
+
+        /**
+         * Returns a list of all Skin resources that match the criteria specified
+         * in the symbol.
+         */
+        void getSkins( const SkinSymbol* symbol, SkinResourceVector& output ) const;
+
+
+    public: // Model resource functions
+
+        //TODO
+
+    public: // serialization functions
+
+        void mergeConfig( const Config& conf );
+
+    protected:
+        Threading::ReadWriteMutex _mutex;
+        SkinResourceMap           _skins;
+    };
+
+
+    typedef std::map< std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraryMap;
+
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_RESOURCE_LIBRARY_H

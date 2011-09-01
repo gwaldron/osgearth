@@ -30,8 +30,8 @@ namespace osgEarth { namespace Drivers
     {
     public: // properties
 
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         optional<std::string>& identifier() { return _identifier; }
         const optional<std::string>& identifier() const { return _identifier; }
@@ -85,7 +85,8 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("range_subset", _rangeSubset);
         }
 
-        optional<std::string> _url, _identifier, _format, _elevationUnit, _srs, _rangeSubset;
+        optional<URI>         _url;
+        optional<std::string> _identifier, _format, _elevationUnit, _srs, _rangeSubset;
     };
 
 } } // namespace osgEarth::Drivers

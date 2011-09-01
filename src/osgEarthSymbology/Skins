@@ -1,0 +1,198 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H
+#define OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Resource>
+#include <osgEarthSymbology/Symbol>
+#include <osgEarth/URI>
+#include <osg/TexEnv>
+
+namespace osgEarth { namespace Symbology
+{
+    using namespace osgEarth;
+
+    /**
+     * A resource that points to a "skin", which is a Texture image paired with
+     * a collection of metadata that describes its suitability for use in a scene.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SkinResource : public Resource
+    {
+    public:
+        /** Constructs a new skin resource. */
+        SkinResource( const Config& conf =Config() );
+
+        /**
+         * Creates a new StateSet containing a Texture based on this Skin.
+         * Takes an optional URI context for relative URI resolution.
+         */
+        osg::StateSet* createStateSet() const;
+
+    public:
+        /** Source location of the actual texture image.  */
+        optional<URI>& imageURI() { return _imageURI; }
+        const optional<URI>& imageURI() const { return _imageURI; }
+
+        /** Real-world width of the image, in meters */
+        optional<float>& imageWidth() { return _imageWidth; }
+        const optional<float>& imageWidth() const { return _imageWidth; }
+
+        /** Real-world height of the image, in meters */
+        optional<float>& imageHeight() { return _imageHeight; }
+        const optional<float>& imageHeight() const { return _imageHeight; }
+
+        /** Minimum acceptable real-world object height (meters) for which this image would make an appropriate texture */
+        optional<float>& minObjectHeight() { return _minObjHeight; }
+        const optional<float>& minObjectHeight() const { return _minObjHeight; }
+
+        /** Maximum acceptable real-world object height (meters) for which this image would make an appropriate texture */
+        optional<float>& maxObjectHeight() { return _maxObjHeight; }
+        const optional<float>& maxObjectHeight() const { return _minObjHeight; }
+
+        /** Whether this image is suitable for use as a vertically repeating texture */
+        optional<bool>& isTiled() { return _isTiled; }
+        const optional<bool>& isTiled() const { return _isTiled; }
+
+        /** GL texture application mode */
+        optional<osg::TexEnv::Mode>& texEnvMode() { return _texEnvMode; }
+        const optional<osg::TexEnv::Mode>& texEnvMode() const { return _texEnvMode; }
+
+        /** The maximum allowable size of a texture (in either dimension) that uses this image. */
+        optional<unsigned> maxTextureSpan() { return _maxTexSpan; }
+        const optional<unsigned> maxTextureSpan() const { return _maxTexSpan; }
+
+    public: // serialization methods
+
+        virtual Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    protected:
+
+        osg::StateSet* createStateSet( osg::Image* image ) const;
+
+        osg::Image* createImage() const;
+
+    protected:
+
+        optional<URI>               _imageURI;
+        optional<float>             _imageWidth;
+        optional<float>             _imageHeight;
+        optional<float>             _minObjHeight;
+        optional<float>             _maxObjHeight;
+        optional<bool>              _isTiled;
+        optional<osg::TexEnv::Mode> _texEnvMode;
+        optional<unsigned>          _maxTexSpan;
+    };
+
+
+    typedef std::map<std::string, osg::ref_ptr<SkinResource> > SkinResourceMap;
+
+
+    /**
+     * Query object that you can use to search for applicable Skin resources from the 
+     * ResourceLibrary.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SkinSymbol : public Taggable<Symbol>
+    {
+    public:
+        SkinSymbol( const Config& conf =Config() );
+
+    public: // query parameters
+
+        /** Name of the resource library to use with this symbol. */
+        optional<std::string>& libraryName() { return _libraryName; }
+        const optional<std::string>& libraryName() const { return _libraryName; }
+
+        /** Object height in meters (must fall in the skin's min/max object height range to be accepted) */
+        optional<float>& objectHeight() { return _objHeight; }
+        const optional<float>& objectHeight() const { return _objHeight; }
+
+        /** Minimum acceptable real-world object height for which this image would make an appropriate texture */
+        optional<float>& minObjectHeight() { return _minObjHeight; }
+        const optional<float>& minObjectHeight() const { return _minObjHeight; }
+
+        /** Maximum acceptable real-world object height for which this image would make an appropriate texture */
+        optional<float>& maxObjectHeight() { return _maxObjHeight; }
+        const optional<float>& maxObjectHeight() const { return _minObjHeight; }
+
+        /** Whether this image is suitable for use as a vertically repeating texture */
+        optional<bool>& isTiled() { return _isTiled; }
+        const optional<bool>& isTiled() const { return _isTiled; }
+
+    public:
+        void mergeConfig(const Config& conf);
+        Config getConfig() const;
+
+    protected:
+        optional<std::string> _libraryName;
+        optional<float>       _objHeight;
+        optional<float>       _minObjHeight;
+        optional<float>       _maxObjHeight;
+        optional<bool>        _isTiled;
+    };
+
+#if 0
+    /**
+     * Query object that you can use to search for applicable Skin resources from the 
+     * ResourceLibrary.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT SkinResourceQuery : public osg::Referenced
+    {
+    public:
+        SkinResourceQuery();
+
+    public: // query parameters
+
+        /** Object height in meters (must fall in the skin's min/max object height range to be accepted) */
+        optional<double>& objectHeight() { return _objHeight; }
+        const optional<double>& objectHeight() const { return _objHeight; }
+
+        /** Minimum acceptable real-world object height for which this image would make an appropriate texture */
+        optional<double>& minObjectHeight() { return _minObjHeight; }
+        const optional<double>& minObjectHeight() const { return _minObjHeight; }
+
+        /** Maximum acceptable real-world object height for which this image would make an appropriate texture */
+        optional<double>& maxObjectHeight() { return _maxObjHeight; }
+        const optional<double>& maxObjectHeight() const { return _minObjHeight; }
+
+        /** Whether this image is suitable for use as a vertically repeating texture */
+        optional<bool>& isTiled() { return _isTiled; }
+        const optional<bool>& isTiled() const { return _isTiled; }
+
+        /** Adds a tag to the query */
+        void addTag( const std::string& tag ) { _tags.push_back(tag); }
+        const TagVector& tags() const { return _tags; }
+
+    protected:
+
+        optional<double>  _objHeight;
+        optional<double>  _minObjHeight;
+        optional<double>  _maxObjHeight;
+        optional<bool>    _isTiled;
+        TagVector         _tags;
+    };
+#endif
+
+    typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H

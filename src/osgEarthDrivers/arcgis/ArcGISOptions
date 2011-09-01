@@ -29,8 +29,8 @@ namespace osgEarth { namespace Drivers
     class ArcGISOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         optional<std::string>& token() { return _token; }
         const optional<std::string>& token() const { return _token; }
@@ -45,7 +45,7 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("url", _url);
+            conf.updateIfSet("url", _url );
             conf.updateIfSet("token", _token );
             return conf;
         }
@@ -61,7 +61,7 @@ namespace osgEarth { namespace Drivers
         }
 
     private:
-        optional<std::string> _url;
+        optional<URI>         _url;
         optional<std::string> _token;
     };
 

@@ -129,7 +129,14 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
         virtual ReadResult readNode(std::istream& in, const Options* options ) const
         {
-            osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in );
+            const std::string* value = static_cast<const std::string*>( 
+                options->getPluginData( "__ReaderWriterOsgEarth::ref_uri") );
+
+            URIContext uriContext;
+            if ( value )
+                uriContext = *value;
+
+            osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );
             if ( !doc.valid() )
                 return ReadResult::ERROR_IN_READING_FILE;
 

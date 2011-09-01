@@ -96,7 +96,7 @@ public:
     {
         if ( _options.url().isSet() )
         {
-            _source = osgEarth::getFullPath( referenceURI, _options.url().value() );
+            _source = osgEarth::getFullPath( referenceURI, _options.url()->full() );
         }
         else if ( _options.connection().isSet() )
         {

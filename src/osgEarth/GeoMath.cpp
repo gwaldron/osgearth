@@ -53,6 +53,22 @@ GeoMath::distance(const std::vector< osg::Vec3d > &points, double radius)
 }
 
 double
+GeoMath::distance(const osg::Vec3d& p1, const osg::Vec3d& p2, const SpatialReference* srs )
+{
+    if ( srs == 0L || srs->isProjected() )
+    {
+        return (p2-p1).length();
+    }
+    else
+    {
+        return distance(
+            osg::DegreesToRadians( p1.y() ), osg::DegreesToRadians( p1.x() ),
+            osg::DegreesToRadians( p2.y() ), osg::DegreesToRadians( p2.x() ),
+            srs->getEllipsoid()->getRadiusEquator() );
+    }
+}
+
+double
 GeoMath::bearing(double lat1Rad, double lon1Rad,
                  double lat2Rad, double lon2Rad)
 {

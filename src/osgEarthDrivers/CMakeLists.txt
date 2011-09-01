@@ -23,6 +23,9 @@ SET(TARGET_COMMON_LIBRARIES
     osgEarth
 )
 
+# Folder name for plugins
+SET(OSGEARTH_PLUGINS_FOLDER Plugins)
+
 ############################################################
 #
 #  NodeKit/Psudo loader plugins

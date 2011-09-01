@@ -78,6 +78,7 @@ namespace osgEarth { namespace Symbology
          */
         void getSkins( const SkinSymbol* symbol, SkinResourceVector& output ) const;
 
+
     public: // Model resource functions
 
         //TODO

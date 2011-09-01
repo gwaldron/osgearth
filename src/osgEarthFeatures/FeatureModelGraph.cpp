@@ -500,7 +500,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
     if ( levelSelectors.size() == 0 )
     {
         // attempt to glean the style from the feature source name:
-        Style style = *_session->styles()->getStyle( *_source->getFeatureSourceOptions().name() );
+        const Style style = *_session->styles()->getStyle( *_source->getFeatureSourceOptions().name() );
 
         osg::Node* node = build( style, query, extent );
         if ( node )
@@ -545,7 +545,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
                 GeoExtent geodeticExtent = ccExtent.transform( ccExtent.getSRS()->getGeographicSRS() );
                 if ( geodeticExtent.width() < 90.0 && geodeticExtent.height() < 90.0 )
                 {
-#if 0
+#if 1
                     // get the geocentric tile center:
                     osg::Vec3d tileCenter;
                     ccExtent.getCentroid( tileCenter.x(), tileCenter.y() );
@@ -609,7 +609,7 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 
     else
     {
-        StyleSheet* styles = _session->styles();
+        const StyleSheet* styles = _session->styles();
 
         // if we have selectors, sort the features into style groups and create a node for each group.
         if ( styles->selectors().size() > 0 )

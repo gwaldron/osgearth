@@ -47,14 +47,20 @@ ClampFilter::setPropertiesFromStyle( const Style& style )
         setOffsetZ( *altitude->verticalOffset() );
         setScaleZ ( *altitude->verticalScale() );
         setMaxResolution( *altitude->clampingResolution() );
+
+        if ( altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
+        {
+            _minZAttr = "__min_z";
+            _maxZAttr = "__max_z";
+        }
     }
 
-    const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
-    if ( extrusion )
-    {
-        if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
-            setMaxZAttributeName( "__max_z");
-    }
+    //const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
+    //if ( extrusion )
+    //{
+    //    if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
+    //        setMaxZAttributeName( "__max_z");
+    //}
 }
 
 FilterContext
@@ -71,7 +77,6 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
 
     const SpatialReference* mapSRS     = mapf.getProfile()->getSRS();
     const SpatialReference* featureSRS = cx.profile()->getSRS();
-    //bool isGeocentric = session->getMapInfo().isGeocentric();
 
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq( mapf );
@@ -80,58 +85,33 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
     {
         Feature* feature = i->get();
         double maxZ = -DBL_MAX;
+        double minZ = DBL_MAX;
         
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
         {
             Geometry* geom = gi.next();
 
-#if 0
-            if ( false ) // isGeocentric )
+            // clamps the entire array to the highest available resolution.
+            eq.getElevations( geom->asVector(), featureSRS, _ignoreZ, _maxRes );
+
+            if ( _offsetZ != 0.0 || _scaleZ != 1.0f || !_maxZAttr.empty() )
             {
-                // convert to map coords:
-                cx.toWorld( geom );
-                mapSRS->transformFromECEF( geom->asVector() );
-
-                // populate the elevations:
-                eq.getElevations( geom->asVector(), mapSRS, _ignoreZ, _maxRes );
-
-                // find the maximum Z value
-                if ( !_maxZAttrName.empty() || _offsetZ != 0.0 || _scaleZ != 1.0 )
+                for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
                 {
-                    for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
-                    {
-                        i->z() *= _scaleZ;
-                        i->z() += _offsetZ;
+                    i->z() *= _scaleZ;
+                    i->z() += _offsetZ;
 
-                        if ( i->z() > maxZ )
-                            maxZ = i->z();
-                    }
-                }
-
-                // convert back to geocentric:
-                mapSRS->transformToECEF( geom->asVector() );
-                cx.toLocal( geom );
-            }
-
-            else
-#endif
-            {
-                // clamps the entire array to the highest available resolution.
-                eq.getElevations( geom->asVector(), featureSRS, _ignoreZ, _maxRes );
-
-                if ( _offsetZ != 0.0 || _scaleZ != 1.0f )
-                {
-                    for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
-                    {
-                        i->z() *= _scaleZ;
-                        i->z() += _offsetZ;
-                    }
+                    if ( i->z() > maxZ )
+                        maxZ = i->z();
+                    if ( i->z() < minZ )
+                        minZ = i->z();
                 }
             }
         }
 
-        feature->set( _maxZAttrName, maxZ );
+        feature->set( "__min_z", minZ );
+        feature->set( "__max_z", maxZ );
     }
 
     return cx;

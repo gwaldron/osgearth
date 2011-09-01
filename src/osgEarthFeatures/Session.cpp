@@ -89,10 +89,11 @@ namespace
 Session::Session( const Map* map, StyleSheet* styles ) :
 osg::Referenced( true ),
 _map           ( map ),
-_mapInfo       ( map ),
-_styles        ( styles )
+_mapInfo       ( map )
 {
-    if ( !_styles.valid() )
+    if ( styles )
+        setStyles( styles );
+    else
         _styles = new StyleSheet();
 }
 

@@ -42,6 +42,11 @@ namespace osgEarth { namespace Symbology
                 ignoring and discarding the feature's original Z value. */
             CLAMP_TO_TERRAIN,
 
+            /** The feature has a attribute value that describes its height above "height zero",
+                which is typically the ellipsoid or MSL. While this will not actually modify the
+                feature's geometry, it will install ... */
+            CLAMP_ABSOLUTE,
+
             /** Sample the terrain under the point, and ADD the terrain height to the feature's 
                 pre-existing Z value. */
             CLAMP_RELATIVE_TO_TERRAIN

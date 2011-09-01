@@ -42,11 +42,9 @@ usage( const std::string& msg )
 {
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << std::endl;
-    OE_NOTICE << "USAGE: osgearth_viewer [--graticule] [--autoclip] file.earth" << std::endl;
-    OE_NOTICE << "   --graticule     : displays a lat/long grid in geocentric mode" << std::endl;
+    OE_NOTICE << "USAGE: osgearth_viewer [options] file.earth" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
-    OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
     OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
     OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
     
@@ -257,10 +255,8 @@ main(int argc, char** argv)
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
     osgViewer::Viewer viewer(arguments);
 
-    bool useGraticule = arguments.read( "--graticule" );
     bool useAutoClip  = arguments.read( "--autoclip" );
     bool useSky       = arguments.read( "--sky" );
-    bool jump         = arguments.read( "--jump" );
     s_dms             = arguments.read( "--dms" );
     s_mgrs            = arguments.read( "--mgrs" );
 
@@ -284,14 +280,6 @@ main(int argc, char** argv)
 
         if ( mapNode->getMap()->isGeocentric() )
         {
-            // the Graticule is a lat/long grid that overlays the terrain. It only works
-            // in a round-earth geocentric terrain.
-            if ( useGraticule )
-            {
-                graticule = new Graticule( mapNode->getMap() );
-                root->addChild( graticule );
-            }
-
             // Sky model.
             Config skyConf = externals.child( "sky" );
             if ( !skyConf.empty() )
@@ -330,8 +318,6 @@ main(int argc, char** argv)
                 viewpoints.push_back( Viewpoint(*i) );
 
             viewer.addEventHandler( new ViewpointHandler(viewpoints) );
-            if ( jump )
-                s_manip->setViewpoint(viewpoints[0]);
         }
 
 

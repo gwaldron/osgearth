@@ -110,10 +110,14 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
                 _heightExpr = *_extrusionSymbol->heightExpression();
             }
 
-            // account for MSL-relative height:
-            if ( _extrusionSymbol->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
+            // account for a "height" value that is relative to ZERO (MSL/HAE)
+            AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
+            if ( alt )
             {
-                _heightOffsetExpr = NumericExpression("[__max_z]");
+                if ( alt->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
+                {
+                    _heightOffsetExpr = NumericExpression( "[__min_z]" );
+                }
             }
             
             // attempt to extract the wall symbols:
@@ -539,7 +543,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( _wallResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
-                    querySymbol.objectHeight() = height;
+                    querySymbol.objectHeight() = height - offset;
                     SkinResourceVector candidates;
                     _wallResLib->getSkins( &querySymbol, candidates );
 
@@ -728,7 +732,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         group->addChild( i->second.get() );
     _geodes.clear();
 
-    OE_INFO << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
+    OE_DEBUG << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
 
     //TODO
     // running this after the MC reduces the primitive set count by a huge amount, but I

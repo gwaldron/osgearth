@@ -265,6 +265,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
             if      (p->second == "none"    ) altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
             else if (p->second == "terrain" ) altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            else if (p->second == "absolute") altitude->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
             else if (p->second == "relative") altitude->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
         }
         else if (p->first == "altitude-resolution")

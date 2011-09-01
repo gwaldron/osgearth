@@ -34,6 +34,7 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ExtrusionSymbol : public Symbol
     {
     public:
+        // @deprecated
         enum HeightReference
         {
             /** Means that the "height" value as provided in this symbol is expressed
@@ -60,6 +61,7 @@ namespace osgEarth { namespace Symbology
         const optional<NumericExpression>& heightExpression() const { return _heightExpr; }
 
         /** Reference frame in which height is expressed */
+        // @deprecated
         optional<HeightReference>& heightReference() { return _heightRef; }
         const optional<HeightReference>& heightReference() const { return _heightRef; }
 

@@ -21,6 +21,24 @@
 
 using namespace osgEarth;
 
+URI::URI()
+{
+    //nop
+}
+
+URI::URI( const std::string& location, const URIContext& context )
+{
+    _baseURI = location;
+    _fullURI = osgEarth::getFullPath( context, location );
+    _context = context;
+}
+
+URI::URI( const char* location )
+{
+    _baseURI = std::string(location);
+    _fullURI = _baseURI;
+}
+
 URI
 URI::append( const std::string& suffix ) const
 {
@@ -29,4 +47,31 @@ URI::append( const std::string& suffix ) const
     result._fullURI = _fullURI + suffix;
     result._context = _context;
     return result;
+}
+
+osg::Image*
+URI::readImage( ResultCode* code, const osgDB::Options* options ) const
+{
+    osg::ref_ptr<osg::Image> image;
+    ResultCode result = (ResultCode)HTTPClient::readImageFile( _fullURI, image, options );
+    if ( code ) *code = result;
+    return image.release();
+}
+
+osg::Node*
+URI::readNode( ResultCode* code, const osgDB::Options* options ) const
+{
+    osg::ref_ptr<osg::Node> node;
+    ResultCode result = (ResultCode)HTTPClient::readNodeFile( _fullURI, node, options );
+    if ( code ) *code = result;
+    return node.release();
+}
+
+std::string
+URI::readString( ResultCode* code ) const
+{
+    std::string str;
+    ResultCode result = (ResultCode)HTTPClient::readString( _fullURI, str );
+    if ( code ) *code = result;
+    return str;
 }

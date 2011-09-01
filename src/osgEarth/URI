@@ -21,6 +21,9 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/FileUtils>
+#include <osg/Image>
+#include <osg/Node>
+#include <osgDB/ReaderWriter>
 
 namespace osgEarth
 {
@@ -41,21 +44,19 @@ namespace osgEarth
         /**
          * Constructs an empty (and invalid) URI.
          */
-        URI() { }
+        URI();
 
         /** 
          * Construcst a new URI from a location and an optional context 
          */
-        URI( const std::string& location, const URIContext& context ="" ) {
-            _baseURI = location;
-            _fullURI = osgEarth::getFullPath( context, location );
-            _context = context;
-        }
+        URI( const std::string& location, const URIContext& context ="" );
 
-        URI( const char* location ) {
-            _baseURI = std::string(location);
-            _fullURI = _baseURI;
-        }
+        /**
+         * Constructs a new URI from a string.
+         */
+        URI( const char* location );
+
+    public:
 
         /** The base (possibly relative) location string. */
         const std::string& base() const { return _baseURI; }
@@ -74,6 +75,32 @@ namespace osgEarth
 
         /** Returns a copy of this URI with the suffix appended */
         URI append( const std::string& suffix ) const;
+
+    public: // convenience reader methods
+
+        /** Result codes for the read* methods. Call getLastResultCode() to fetch. */
+        enum ResultCode {
+            RESULT_OK,
+            RESULT_CANCELED,
+            RESULT_NOT_FOUND,
+            RESULT_SERVER_ERROR,
+            RESULT_TIMEOUT,
+            RESULT_NO_READER,
+            RESULT_READER_ERROR,
+            RESULT_UNKNOWN_ERROR
+        };
+
+        /** Reads an image from the URI. */
+        osg::Image* readImage(
+            ResultCode* out_code =0L, const osgDB::Options* options =0L ) const;
+
+        /** Reads a node from the URI. */
+        osg::Node* readNode(
+            ResultCode* out_code =0L, const osgDB::Options* options =0L ) const;
+
+        /** Reads a string from the URI. */
+        std::string readString(
+            ResultCode* out_code =0L ) const;
 
     public:
         /** Copier */

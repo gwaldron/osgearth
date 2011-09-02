@@ -78,6 +78,13 @@ namespace osgEarth { namespace Symbology
          */
         void getSkins( const SkinSymbol* symbol, SkinResourceVector& output ) const;
 
+        /**
+         * Returns a skin that matches the criteria specified in the symbol; the skin
+         * is selected deterministically based on the "randomizer" value and the symbol's
+         * "randomSeed" property.
+         */
+        SkinResource* getSkin( const SkinSymbol* symbol, unsigned randomizer =0 ) const;
+
 
     public: // Model resource functions
 
@@ -90,6 +97,8 @@ namespace osgEarth { namespace Symbology
     protected:
         Threading::ReadWriteMutex _mutex;
         SkinResourceMap           _skins;
+
+        bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;
     };
 
 

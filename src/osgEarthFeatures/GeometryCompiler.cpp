@@ -176,14 +176,18 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }    
     
     bool clampRequired =
-        altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
+        altitude && (
+            altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
+            altitude->verticalOffset().isSet() ||
+            altitude->verticalScale().isSet() );
+
     
     // first, apply a vertical offset if called for.
-    if ( altitude && altitude->verticalOffset().isSet() && !clampRequired )
-    {
-        TransformFilter xform( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
-        sharedCX = xform.push( workingSet, sharedCX );
-    }
+    //if ( altitude && altitude->verticalOffset().isSet() && !clampRequired )
+    //{
+    //    TransformFilter xform( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
+    //    sharedCX = xform.push( workingSet, sharedCX );
+    //}
 
     // model substitution
     if ( marker )

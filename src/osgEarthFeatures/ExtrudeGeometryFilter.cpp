@@ -544,19 +544,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
                     querySymbol.objectHeight() = height - offset;
-                    SkinResourceVector candidates;
-                    _wallResLib->getSkins( &querySymbol, candidates );
-
-                    if ( candidates.size() == 1 )
-                    {
-                        wallSkin = candidates[0].get();
-                    }
-                    else if ( candidates.size() > 1 )
-                    {
-                        // select one at random:
-                        int index = ::rand() % candidates.size();
-                        wallSkin = candidates[index].get();
-                    }
+                    wallSkin = _wallResLib->getSkin( &querySymbol, input->getFID() + 151 );
                 }
 
                 else
@@ -572,19 +560,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( _roofResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_roofSkinSymbol.get() );
-                    SkinResourceVector candidates;
-                    _roofResLib->getSkins( &querySymbol, candidates );
-
-                    if ( candidates.size() == 1 )
-                    {
-                        roofSkin = candidates[0].get();
-                    }
-                    else if ( candidates.size() > 1 )
-                    {
-                        // select one at random:
-                        int index = ::rand() % candidates.size();
-                        roofSkin = candidates[index].get();
-                    }
+                    roofSkin = _roofResLib->getSkin( &querySymbol, input->getFID() + 151 );
                 }
 
                 else

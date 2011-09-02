@@ -46,11 +46,11 @@ namespace osgEarth { namespace Features
         void setIgnoreZ( bool value ) { _ignoreZ = value; }
         bool getIgnoreZ() const { return _ignoreZ; }
 
-        void setOffsetZ( double value ) { _offsetZ = value; }
-        double getOffsetZ() const { return _offsetZ; }
+        //void setOffsetZ( double value ) { _offsetZ = value; }
+        //double getOffsetZ() const { return _offsetZ; }
 
-        void setScaleZ( double value ) { _scaleZ = value; }
-        double getScaleZ() const { return _scaleZ; }
+        //void setScaleZ( double value ) { _scaleZ = value; }
+        //double getScaleZ() const { return _scaleZ; }
 
         /** Maximum terrain resolution to consider when clamping */
         void setMaxResolution( double value ) { _maxRes = value; }
@@ -64,7 +64,8 @@ namespace osgEarth { namespace Features
 
     protected:
         bool _ignoreZ;
-        double _offsetZ, _scaleZ;
+        //double _offsetZ, _scaleZ;
+        osg::ref_ptr<const AltitudeSymbol> _altitude;
         double _maxRes;
         std::string _maxZAttr, _minZAttr;
     };

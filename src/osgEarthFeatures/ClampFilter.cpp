@@ -30,8 +30,8 @@ using namespace osgEarth::Symbology;
 
 ClampFilter::ClampFilter() :
 _ignoreZ( false ),
-_offsetZ( 0.0f ),
-_scaleZ ( 1.0f ),
+//_offsetZ( 0.0f ),
+//_scaleZ ( 1.0f ),
 _maxRes ( 0.0f )
 {
     //NOP
@@ -40,27 +40,21 @@ _maxRes ( 0.0f )
 void
 ClampFilter::setPropertiesFromStyle( const Style& style )
 {
-    const AltitudeSymbol* altitude = style.get<AltitudeSymbol>();
-    if ( altitude )
-    {
-        setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-        setOffsetZ( *altitude->verticalOffset() );
-        setScaleZ ( *altitude->verticalScale() );
-        setMaxResolution( *altitude->clampingResolution() );
+    _altitude = style.get<AltitudeSymbol>();
 
-        if ( altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
+    if ( _altitude )
+    {
+        setIgnoreZ( _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+        //setOffsetZ( *altitude->verticalOffset() );
+        //setScaleZ ( *altitude->verticalScale() );
+        setMaxResolution( *_altitude->clampingResolution() );
+
+        if ( _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
         {
             _minZAttr = "__min_z";
             _maxZAttr = "__max_z";
         }
     }
-
-    //const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
-    //if ( extrusion )
-    //{
-    //    if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
-    //        setMaxZAttributeName( "__max_z");
-    //}
 }
 
 FilterContext
@@ -81,11 +75,31 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
     // establish an elevation query interface based on the features' SRS.
     ElevationQuery eq( mapf );
 
+    NumericExpression scaleExpr;
+    if ( _altitude.valid() && _altitude->verticalScale().isSet() )
+        scaleExpr = *_altitude->verticalScale();
+
+    NumericExpression offsetExpr;
+    if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
+        offsetExpr = *_altitude->verticalOffset();
+
+    bool clamp =
+        _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
+        _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
         double maxZ = -DBL_MAX;
         double minZ = DBL_MAX;
+
+        double scaleZ = 1.0;
+        if ( _altitude.valid() && _altitude->verticalScale().isSet() )
+            scaleZ = feature->eval( scaleExpr );
+
+        double offsetZ = 0.0;
+        if ( _altitude.valid() && _altitude->verticalOffset().isSet() )
+            offsetZ = feature->eval( offsetExpr );
         
         GeometryIterator gi( feature->getGeometry() );
         while( gi.hasMore() )
@@ -93,14 +107,15 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
             Geometry* geom = gi.next();
 
             // clamps the entire array to the highest available resolution.
-            eq.getElevations( geom->asVector(), featureSRS, _ignoreZ, _maxRes );
+            if ( clamp )
+                eq.getElevations( geom->asVector(), featureSRS, _ignoreZ, _maxRes );
 
-            if ( _offsetZ != 0.0 || _scaleZ != 1.0f || !_maxZAttr.empty() )
+            if ( scaleZ != 1.0 || offsetZ != 0.0 || !_maxZAttr.empty() )
             {
                 for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
                 {
-                    i->z() *= _scaleZ;
-                    i->z() += _offsetZ;
+                    i->z() *= scaleZ;
+                    i->z() += offsetZ;
 
                     if ( i->z() > maxZ )
                         maxZ = i->z();
@@ -110,8 +125,10 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
             }
         }
 
-        feature->set( "__min_z", minZ );
-        feature->set( "__max_z", maxZ );
+        if ( !_minZAttr.empty() )
+            feature->set( _minZAttr, minZ );
+        if ( !_maxZAttr.empty() )
+            feature->set( _maxZAttr, maxZ );
     }
 
     return cx;

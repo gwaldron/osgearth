@@ -276,12 +276,12 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "altitude-offset")
         {
             if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
-            altitude->verticalOffset() = as<float>( p->second, 0.0f );
+            altitude->verticalOffset() = NumericExpression( p->second );
         }
         else if (p->first == "altitude-scale")
         {
             if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
-            altitude->verticalScale() = as<float>( p->second, 1.0f );
+            altitude->verticalScale() = NumericExpression( p->second );
         }
 
         // ..... SkinSymbol .....

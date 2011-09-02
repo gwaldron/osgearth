@@ -19,7 +19,7 @@
 #include "GeometryCompiler"
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/BuildTextFilter>
-#include <osgEarthFeatures/ClampFilter>
+#include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
@@ -175,7 +175,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         sharedCX = resample.push( workingSet, sharedCX );        
     }    
     
-    bool clampRequired =
+    bool altRequired =
         altitude && (
             altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
             altitude->verticalOffset().isSet() ||
@@ -183,7 +183,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     
     // first, apply a vertical offset if called for.
-    //if ( altitude && altitude->verticalOffset().isSet() && !clampRequired )
+    //if ( altitude && altitude->verticalOffset().isSet() && !altRequired )
     //{
     //    TransformFilter xform( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
     //    sharedCX = xform.push( workingSet, sharedCX );
@@ -205,14 +205,14 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             markerCX = scatter.push( workingSet, markerCX );
         }
 
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
+            AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             markerCX = clamp.push( workingSet, markerCX );
 
             // don't set this; we changed the input data.
-            //clampRequired = false;
+            //altRequired = false;
         }
 
         SubstituteModelFilter sub( style );
@@ -233,12 +233,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // extruded geometry
     if ( extrusion )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
+            AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         ExtrudeGeometryFilter extrude;
@@ -258,12 +258,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // simple geometry
     else if ( point || line || polygon )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
+            AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         BuildGeometryFilter filter( style );
@@ -285,12 +285,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if ( text )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
+            AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         BuildTextFilter filter( style );

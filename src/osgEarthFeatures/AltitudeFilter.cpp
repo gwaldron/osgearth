@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/ClampFilter>
+#include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/GeoData>
 
-#define LC "[ClampFilter] "
+#define LC "[AltitudeFilter] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -28,25 +28,21 @@ using namespace osgEarth::Symbology;
 
 //---------------------------------------------------------------------------
 
-ClampFilter::ClampFilter() :
+AltitudeFilter::AltitudeFilter() :
 _ignoreZ( false ),
-//_offsetZ( 0.0f ),
-//_scaleZ ( 1.0f ),
 _maxRes ( 0.0f )
 {
     //NOP
 }
 
 void
-ClampFilter::setPropertiesFromStyle( const Style& style )
+AltitudeFilter::setPropertiesFromStyle( const Style& style )
 {
     _altitude = style.get<AltitudeSymbol>();
 
     if ( _altitude )
     {
         setIgnoreZ( _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-        //setOffsetZ( *altitude->verticalOffset() );
-        //setScaleZ ( *altitude->verticalScale() );
         setMaxResolution( *_altitude->clampingResolution() );
 
         if ( _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
@@ -58,7 +54,7 @@ ClampFilter::setPropertiesFromStyle( const Style& style )
 }
 
 FilterContext
-ClampFilter::push( FeatureList& features, FilterContext& cx )
+AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 {
     const Session* session = cx.getSession();
     if ( !session ) {
@@ -106,9 +102,11 @@ ClampFilter::push( FeatureList& features, FilterContext& cx )
         {
             Geometry* geom = gi.next();
 
-            // clamps the entire array to the highest available resolution.
+            // clamps the entire array to the terrain using the specified resolution.
             if ( clamp )
+            {
                 eq.getElevations( geom->asVector(), featureSRS, _ignoreZ, _maxRes );
+            }
 
             if ( scaleZ != 1.0 || offsetZ != 0.0 || !_maxZAttr.empty() )
             {

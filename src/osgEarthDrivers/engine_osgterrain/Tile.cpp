@@ -359,6 +359,10 @@ _tileKey(tile->getKey())
     _colorLayers    = tile->_colorLayers;
     _elevationLayer = tile->getElevationLayer();
     _locator        = tile->getLocator();
-    _sampleRatio    = tile->getTerrain()->getSampleRatio();
+    osg::ref_ptr< Terrain > terrain = tile->getTerrain();
+    if (terrain.valid())
+    {
+        _sampleRatio  = terrain->getSampleRatio();
+    }
     _masks          = MaskLayerVector(tile->getTerrainMasks());
 }

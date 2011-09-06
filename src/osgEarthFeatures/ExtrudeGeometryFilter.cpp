@@ -61,8 +61,6 @@ namespace
         const osg::Vec3d& p1 = n.first.x() < n.second.x() ? n.first : n.second;
         const osg::Vec3d& p2 = n.first.x() < n.second.x() ? n.second : n.first;
 
-        //return atan2( p2.y()-p1.y(), p2.x()-p1.x() );
-        //return osg::PI_2 - atan2( p2.y()-p1.y(), p2.x()-p1.x() );
         return atan2( p2.x()-p1.x(), p2.y()-p1.y() );
     }
 }

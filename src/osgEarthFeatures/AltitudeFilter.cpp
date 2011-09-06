@@ -42,7 +42,10 @@ AltitudeFilter::setPropertiesFromStyle( const Style& style )
 
     if ( _altitude )
     {
-        setIgnoreZ( _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
+        setIgnoreZ( 
+            _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
+            _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE );
+
         setMaxResolution( *_altitude->clampingResolution() );
 
         if ( _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
@@ -80,8 +83,7 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
         offsetExpr = *_altitude->verticalOffset();
 
     bool clamp =
-        _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
-        _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        _altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {

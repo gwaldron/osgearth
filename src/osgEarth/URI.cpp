@@ -18,8 +18,49 @@
  */
 #include <osgEarth/URI>
 #include <osgEarth/HTTPClient>
+#include <osgDB/FileNameUtils>
+#include <fstream>
+#include <sstream>
 
 using namespace osgEarth;
+
+//------------------------------------------------------------------------
+
+URIStream::URIStream( const URI& uri ) :
+_fileStream( 0L )
+{
+    if ( osgDB::containsServerAddress(uri.full()) )
+    {
+        HTTPResponse res = HTTPClient::get( uri.full() );
+        if ( res.isOK() )
+        {
+            std::string buf = res.getPartAsString(0);
+            _bufStream.str(buf);
+        }
+    }
+    else
+    {
+        _fileStream = new std::ifstream( uri.full().c_str() );
+    }
+}
+
+URIStream::~URIStream()
+{
+    if ( _fileStream )
+        delete _fileStream;
+}
+
+URIStream::operator std::istream& ()
+{
+    static std::istringstream s_nullStream;
+
+    if ( _fileStream )
+        return *_fileStream;
+    else
+        return _bufStream;
+}
+
+//------------------------------------------------------------------------
 
 URI::URI()
 {
@@ -75,3 +116,4 @@ URI::readString( ResultCode* code ) const
     if ( code ) *code = result;
     return str;
 }
+

@@ -21,6 +21,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Utils>
 #include <osgEarthSymbology/GeometryFactory>
+#include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/BuildGeometryFilter>
 
@@ -99,11 +100,27 @@ PlacemarkNode::init()
             _label->setForeColor( s->fill()->color() );
         if ( s->halo().isSet() )
             _label->setHaloColor( s->halo()->color() );
+        if ( s->content().isSet() && _text.empty() )
+            _label->setText( s->content()->eval() );
     }
 
-    osg::ref_ptr<osg::Image> image;
-    if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )
-        _icon = new ImageControl( image.get() );
+    if ( !_iconURI.empty() )
+    {
+        osg::ref_ptr<osg::Image> image;
+        if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )
+            _icon = new ImageControl( image.get() );
+    }
+    else
+    {
+        MarkerSymbol* marker = _style.get<MarkerSymbol>();
+        if ( marker && marker->url().isSet() )
+        {
+            MarkerFactory mf;
+            osg::Image* image = mf.getOrCreateImage( marker, false );
+            if ( image )
+                _icon = new ImageControl( image );
+        }
+    }
 
     _container = new HBox();
     _container->setChildSpacing( 8 );

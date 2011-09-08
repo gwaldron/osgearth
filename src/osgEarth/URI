@@ -125,11 +125,6 @@ namespace osgEarth
         std::string readString(
             ResultCode* out_code =0L ) const;
 
-        /** Sets up a stream for reading. */
-        bool readStream(
-            URIStream& out_stream,
-            ResultCode* out_code =0L ) const;
-
     public:
         /** Copier */
         URI( const URI& rhs ) : _baseURI(rhs._baseURI), _fullURI(rhs._fullURI), _context(rhs._context) { }

@@ -8,14 +8,16 @@ IF(WIN32)
         SET(TARGET_EXTERNAL_LIBRARIES ws2_32 winmm)
     ENDIF(CURL_IS_STATIC)
 ENDIF(WIN32)
+    
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology osgEarthUtil)
 
 SET(TARGET_H
-    EarthFileSerializer)
+    KMLOptions
+    KMLReader )
 
 SET(TARGET_SRC
-    ReaderWriterOsgEarth.cpp
-    EarthFileSerializer1.cpp
-    EarthFileSerializer2.cpp)
+    ReaderWriterKML.cpp
+    KMLReader.cpp)
 
-SETUP_PLUGIN(earth)
+SETUP_PLUGIN(kml)
 

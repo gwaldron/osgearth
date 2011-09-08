@@ -141,32 +141,19 @@ MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
     return result;
 }
 
-#if 0
-osg::Node*
-MarkerFactory::getOrCreateNode( const std::string& markerURI, bool useCache )
+osg::Image*
+MarkerFactory::getOrCreateImage( const MarkerSymbol* symbol, bool useCache )
 {
-    osg::Node* result;
-
-    // try to retrieve it from the session cache.
-    if ( _session.valid() && useCache )
+    if ( symbol->getImage() )
     {
-        result = _session->getResource<osg::Node>( markerURI );
+        return symbol->getImage();
     }
-
-    if ( !result )
+    else if ( symbol->url().isSet() && !symbol->url()->empty() )
     {
-        result = createFromURI( markerURI );
-
-        // cache it in the session.
-        if ( result && _session.valid() && useCache )
-        {
-            _session->putResource( markerURI, result );
-        }
+        return createImageFromURI( *symbol->url() );
     }
-
-    return result;
+    return 0L;
 }
-#endif
 
 osg::Node*
 MarkerFactory::createFromURI( const URI& uri ) const
@@ -195,6 +182,22 @@ MarkerFactory::createFromURI( const URI& uri ) const
         osg::ref_ptr<osg::Node> node;
         HTTPClient::readNodeFile( _session.valid()? _session->resolveURI(*uri) : *uri, node );
         return node.release();
+    }
+
+    return 0L;
+}
+
+
+osg::Image*
+MarkerFactory::createImageFromURI( const URI& uri ) const
+{
+    StringVector tok;
+    StringTokenizer( *uri, tok, "()" );
+
+    if ( tok.size() > 0 )
+    {
+        URI imageURI( tok[tok.size()-1], uri.context() );
+        return imageURI.readImage();
     }
 
     return 0L;

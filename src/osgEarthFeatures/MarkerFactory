@@ -43,6 +43,9 @@ namespace osgEarth { namespace Features
 
         osg::Node* getOrCreateNode( const MarkerSymbol* symbol, bool useCache =true );
 
+        /** Tries to create a new image from the marker's image() URI if it has one */
+        osg::Image* getOrCreateImage( const MarkerSymbol* symbol, bool useCache =true );
+
         /**
          * Generates a marker node for a given URI.
          */
@@ -50,6 +53,7 @@ namespace osgEarth { namespace Features
 
     protected:
         osg::Node* createFromURI( const URI& uri ) const;
+        osg::Image* createImageFromURI( const URI& uri ) const;
 
     protected:
         osg::ref_ptr<Session> _session;

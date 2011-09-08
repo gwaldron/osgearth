@@ -194,9 +194,11 @@ namespace // KML IMPLEMENTATIONS
         if ( !conf.empty() )
         {
             MarkerSymbol* marker = style.getOrCreate<MarkerSymbol>();
-            std::string iconHref = conf.child("Icon").value("href");
+            std::string iconHref = conf.child("icon").value("href");
             if ( !iconHref.empty() )
-                marker->url() = iconHref;
+            {
+                marker->url() = URI( Stringify() << "image(" << iconHref << ")", conf.uriContext() );
+            }
 
             optional<float> scale;
             conf.getIfSet( "scale", scale );
@@ -211,6 +213,16 @@ namespace // KML IMPLEMENTATIONS
 
     void KMLLineStyle::scan( const Config& conf, Style& style )
     {
+        if ( !conf.empty() )
+        {
+            LineSymbol* line = style.getOrCreate<LineSymbol>();
+            if ( conf.hasValue("color") ) {
+                line->stroke()->color() = Color( Stringify() << "#" << conf.value("color"), Color::ABGR );
+            }
+            if ( conf.hasValue("width") ) {
+                line->stroke()->width() = as<float>( conf.value("width"), 1.0f );
+            }
+        }
     }
 
     void KMLPolyStyle::scan( const Config& conf, Style& style )
@@ -222,16 +234,16 @@ namespace // KML IMPLEMENTATIONS
         Style style( conf.value("id") );
 
         KMLIconStyle icon;
-        icon.scan( conf.child("IconStyle"), style );
+        icon.scan( conf.child("iconstyle"), style );
 
         KMLLabelStyle label;
-        label.scan( conf.child("LabelStyle"), style );
+        label.scan( conf.child("labelstyle"), style );
 
         KMLLineStyle line;
-        line.scan( conf.child("LineStyle"), style );
+        line.scan( conf.child("linestyle"), style );
 
         KMLPolyStyle poly;
-        poly.scan( conf.child("PolyStyle"), style );
+        poly.scan( conf.child("polystyle"), style );
 
         cx._sheet->addStyle( style ); 
     }
@@ -253,6 +265,7 @@ namespace // KML IMPLEMENTATIONS
     void KMLFolder::build( const Config& conf, KMLContext& cx )
     {
         osg::Group* group = new osg::Group();
+        group->setName( conf.value("name") );
         cx._groupStack.top()->addChild( group );
         cx._groupStack.push( group );
 
@@ -354,7 +367,13 @@ namespace // KML IMPLEMENTATIONS
     void KMLPlacemark::build( const Config& conf, KMLContext& cx )
     {
         PlacemarkNode* node = new PlacemarkNode( cx._mapNode );
-        
+
+        if ( conf.hasValue("styleurl") ) {
+            const Style* style = cx._sheet->getStyle( conf.value("styleurl"), false );
+            if ( style )
+                node->setStyle( *style );
+        }
+
         node->setText(
             conf.hasValue("name") ? conf.value("name") :
             conf.hasValue("description") ? conf.value("description" ) :

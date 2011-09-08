@@ -83,6 +83,9 @@ PlacemarkNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
 void
 PlacemarkNode::init()
 {
+    // remove any old stuff to make way for the new stuff.
+    this->removeChildren(0, this->getNumChildren());
+
     this->setCullCallback( new CullNodeByHorizon(
         osg::Vec3d(0,0,1),
         _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()) );
@@ -158,13 +161,21 @@ PlacemarkNode::setIconURI( const std::string& iconURI )
     }
 }
 
-void PlacemarkNode::setText( const std::string& text )
+void
+PlacemarkNode::setText( const std::string& text )
 {
     if ( text != _text )
     {
         _text = text;
         _label->setText( text );
     }
+}
+
+void
+PlacemarkNode::setStyle( const Style& style )
+{
+    _style = style;
+    init();
 }
 
 //------------------------------------------------------------------------

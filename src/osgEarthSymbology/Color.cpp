@@ -108,7 +108,7 @@ osg::Vec4f( rhs )
 }
 
 /** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
-Color::Color( const std::string& html )
+Color::Color( const std::string& html, Format format )
 {
     std::string t = html;
     std::transform( t.begin(), t.end(), t.begin(), ::tolower );
@@ -126,20 +126,35 @@ Color::Color( const std::string& html )
             c.a() |= t[8]<='9' ? (t[8]-'0')    : (10+(t[8]-'a'));
         }
     }
-    set( ((float)c.r())/255.0f, ((float)c.g())/255.0f, ((float)c.b())/255.0f, ((float)c.a())/255.0f );
+    float w = ((float)c.r())/255.0f;
+    float x = ((float)c.g())/255.0f;
+    float y = ((float)c.b())/255.0f;
+    float z = ((float)c.a())/255.0f;
+
+    if ( format == RGBA )
+        set( w, x, y, z );
+    else // ABGR
+        set( z, y, x, w );
 }
 
 /** Makes an HTML color ("#rrggbb" or "#rrggbbaa") from an OSG color. */
 std::string
-Color::toHTML() const
+Color::toHTML( Format format ) const
 {
+    float w, x, y, z;
+    if ( format == RGBA ) {
+        w = r(), x = g(), y = b(), z = a();
+    }
+    else { // ABGR
+        w = a(), x = b(), y = g(), z = r();
+    }
+
     std::stringstream buf;
     buf << "#";
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(r()*255.0f);
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(g()*255.0f);
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(b()*255.0f);
-    if ( a() < 1.0f )
-        buf << std::hex << std::setw(2) << std::setfill('0') << (int)(a()*255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(w*255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(x*255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(y*255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(z*255.0f);
     std::string ssStr = buf.str();
     return ssStr;
 }

@@ -152,7 +152,7 @@ main(int argc, char** argv)
     osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
     if ( image ) {
         imageOverlay = new ImageOverlay(mapNode, image);
-        //imageOverlay->setBounds( Bounds( -100.0, 50.0, -90.0, 55.0) );
+        imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
         annoGroup->addChild( imageOverlay );
     }
 

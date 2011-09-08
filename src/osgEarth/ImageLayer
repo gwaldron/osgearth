@@ -55,12 +55,6 @@ namespace osgEarth
         const optional<float>& opacity() const { return _opacity; }
 
         /**
-         * The initial gamma value for this layer's images
-         */
-        optional<double>& gamma() { return _gamma; }
-        const optional<double>& gamma() const { return _gamma; }
-
-        /**
          * The initial minimum camera range at which this layer is visible.
          */
         optional<float>& minVisibleRange() { return _minRange; }
@@ -111,7 +105,6 @@ namespace osgEarth
         void setDefaults();
 
 		optional<float>  _opacity;
-        optional<double> _gamma;
         optional<float>  _minRange;
         optional<float>  _maxRange;
 		optional<osg::Vec4ub> _transparentColor;
@@ -128,8 +121,7 @@ namespace osgEarth
      */
     struct ImageLayerCallback : public TerrainLayerCallback
     {
-        virtual void onOpacityChanged( class ImageLayer* layer ) { }
-        virtual void onGammaChanged( class ImageLayer* layer ) { }
+        virtual void onOpacityChanged( class ImageLayer* layer ) { }        
     };
 
     typedef void (ImageLayerCallback::*ImageLayerCallbackMethodPtr)(ImageLayer* layer);
@@ -201,10 +193,7 @@ namespace osgEarth
 
         void setOpacity( float opacity );
         float getOpacity() const { return *_runtimeOptions.opacity(); }
-
-        void setGamma( float gamma );
-        float getGamma() const { return *_runtimeOptions.gamma(); }
-
+        
         void disableLODBlending();
         bool isLODBlendingEnabled() const { return *_runtimeOptions.lodBlending(); }
 
@@ -227,8 +216,7 @@ namespace osgEarth
         //const ImageLayerOptions _options;
         ImageLayerOptions       _runtimeOptions;
 
-        //float _actualOpacity;
-        //float _actualGamma;
+        //float _actualOpacity;        
         //bool  _actualLODBlending;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;

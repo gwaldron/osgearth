@@ -55,6 +55,7 @@ namespace osgEarth
         std::string toString() const;
         bool isValid() const;
         bool isEmpty() const { return !isValid(); }
+        void transform( const SpatialReference* fromSRS, const SpatialReference* toSRS );
     };
 
     /**

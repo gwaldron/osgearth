@@ -29,8 +29,8 @@ namespace osgEarth { namespace Drivers
     class TMSOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         optional<std::string>& tmsType() { return _tmsType; }
         const optional<std::string>& tmsType() const { return _tmsType; }
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "tms_type", _tmsType );
         }
 
-        optional<std::string> _url;
+        optional<URI>         _url;
         optional<std::string> _tmsType;
         optional<std::string> _format;
     };

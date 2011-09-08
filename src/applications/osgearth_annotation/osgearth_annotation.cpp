@@ -20,6 +20,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Annotation>
+#include <osgEarthUtil/ImageOverlay>
+#include <osgEarthUtil/ImageOverlayEditor>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -146,6 +148,26 @@ main(int argc, char** argv)
     FeatureNode* utahNode = new FeatureNode(mapNode, utahFeature, false);
     annoGroup->addChild( utahNode );
 
+    // an image overlay
+    ImageOverlay* imageOverlay = 0L;
+    osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
+    if ( image ) {
+        imageOverlay = new ImageOverlay(mapNode, image);
+        imageOverlay->setBounds( Bounds( -100.0, 50.0, -90.0, 55.0) );
+
+        //Add an editor            
+        annoGroup->addChild( imageOverlay );
+        
+        osg::Node* editor = new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
+        root->addChild( editor );
+
+
+
+    }
+
+
+
+
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator() );
@@ -171,6 +193,10 @@ main(int argc, char** argv)
     grid->setControl( 1, 3, new LabelControl("Orange ellipse") );
     grid->setControl( 0, 4, new CheckBoxControl(true, new ToggleNode(utahNode)) );
     grid->setControl( 1, 4, new LabelControl("Extruded state") );
+    if ( imageOverlay ) {
+        grid->setControl( 0, 5, new CheckBoxControl(true, new ToggleNode(imageOverlay)) );
+        grid->setControl( 1, 5, new LabelControl("Image overlay") );
+    }
     ControlCanvas::get(&viewer,true)->addControl(vbox);
 
     // add some stock OSG handlers:

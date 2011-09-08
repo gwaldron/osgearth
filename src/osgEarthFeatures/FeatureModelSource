@@ -44,15 +44,11 @@ namespace osgEarth { namespace Features
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        optional<GriddingPolicy>& gridding() { return _gridding; }
-        const optional<GriddingPolicy>& gridding() const { return _gridding; }
+        //optional<Symbology::StyleSheet>& styles() { return _styles; }
+        //const optional<Symbology::StyleSheet>& styles() const { return _styles; }
 
-        optional<Symbology::StyleSheet>& styles() { return _styles; }
-        const optional<Symbology::StyleSheet>& styles() const { return _styles; }
-
-        /** deprecated - use the ConvertTypeFilter instead */
-        optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
-        const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
+        osg::ref_ptr<StyleSheet>& styles() { return _styles; }
+        const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
 
         /** Maximum span of a generated edge, in degrees. For geocentric maps only */
         optional<double>& maxGranularity() { return _maxGranularity_deg; }
@@ -62,6 +58,7 @@ namespace osgEarth { namespace Features
         optional<bool>& mergeGeometry() { return _mergeGeometry; }
         const optional<bool>& mergeGeometry() const { return _mergeGeometry; }
 
+        /** Whether to explicity set/clear GL lighting on the result */
         optional<bool>& enableLighting() { return _lit; }
         const optional<bool>& enableLighting() const { return _lit; }
 
@@ -73,6 +70,16 @@ namespace osgEarth { namespace Features
 
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
+
+    public: // deprecated
+
+        /** @deprecated - use levels() instead */
+        optional<GriddingPolicy>& gridding() { return _gridding; }
+        const optional<GriddingPolicy>& gridding() const { return _gridding; }
+
+        /** @deprecated - use the ConvertTypeFilter instead */
+        optional<Symbology::Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
+        const optional<Symbology::Geometry::Type>& geometryTypeOverride() const { return _geomTypeOverride; }
 
     public:
         /** A live feature source instance to use. Note, this does not serialize. */
@@ -94,17 +101,21 @@ namespace osgEarth { namespace Features
         void fromConfig( const Config& conf );
 
         optional<FeatureSourceOptions>  _featureOptions;
-        optional<Symbology::StyleSheet> _styles;
         optional<FeatureDisplayLayout>  _levels;
-        optional<GriddingPolicy> _gridding;
-        optional<Symbology::Geometry::Type> _geomTypeOverride;
-        optional<StringExpression> _featureNameExpr;
-        optional<bool> _lit;
-        optional<double> _maxGranularity_deg;
-        optional<bool> _mergeGeometry;
-        optional<bool> _clusterCulling;
+        optional<StringExpression>      _featureNameExpr;
+        optional<bool>                  _lit;
+        optional<double>                _maxGranularity_deg;
+        optional<bool>                  _mergeGeometry;
+        optional<bool>                  _clusterCulling;
 
-        osg::ref_ptr<FeatureSource> _featureSource;
+        osg::ref_ptr<StyleSheet>        _styles;
+        osg::ref_ptr<FeatureSource>     _featureSource;
+
+        /** @deprecated */
+        optional<GriddingPolicy>        _gridding;
+        optional<Geometry::Type>        _geomTypeOverride;
+        
+        //optional<Symbology::StyleSheet> _styles;
     };
 
     /**
@@ -145,6 +156,7 @@ namespace osgEarth { namespace Features
             const Style&              style,
             const FilterContext&      context,
             osg::ref_ptr<osg::Node>&  node );
+
     public:
         GeometryCompilerOptions _options;
     };
@@ -201,11 +213,10 @@ namespace osgEarth { namespace Features
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureModelSource() { }
 
-        //StyleSheet _styleCatalog;
-        osg::ref_ptr<FeatureSource> _features;
-        osg::ref_ptr<const osgEarth::Map> _map;
-        const FeatureModelSourceOptions _options;
-        osg::ref_ptr<FeatureNodeFactory> _factory;
+        osg::ref_ptr<FeatureSource>       _features;
+        osg::ref_ptr<const Map>           _map;
+        const FeatureModelSourceOptions   _options;
+        osg::ref_ptr<FeatureNodeFactory>  _factory;
 
     };
 

@@ -45,6 +45,10 @@ namespace osgEarth { namespace Features
     {
     public: // properties
 
+        /** Name of this feature source. */
+        optional<std::string> name() { return _name; }
+        const optional<std::string> name() const { return _name; }
+
         /** List of filteres to apply to features read from this source */
         FeatureFilterList& filters() { return _filters; }
         const FeatureFilterList& filters() const { return _filters; }
@@ -71,8 +75,9 @@ namespace osgEarth { namespace Features
     private:
         void fromConfig( const Config& conf );
 
-        FeatureFilterList _filters;
-        optional< bool > _openWrite;
+        FeatureFilterList        _filters;
+        optional<std::string>    _name;
+        optional< bool >         _openWrite;
         optional<ProfileOptions> _profile;
     };
 

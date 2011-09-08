@@ -1,0 +1,58 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_RESOURCE_CACHE_H
+#define OSGEARTHSYMBOLOGY_RESOURCE_CACHE_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Skins>
+#include <osgEarth/Utils>
+#include <osgEarth/ThreadingUtils>
+
+namespace osgEarth { namespace Symbology
+{
+    /**
+     * Caches the runtime objects created by resources, so we can avoid creating them
+     * each time they are referenced.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT ResourceCache : public osg::Referenced
+    {
+    public:
+        ResourceCache() { }
+
+        /**
+         * Fetches the StateSet implementation corresponding to a Skin.
+         */
+        osg::StateSet* getStateSet( SkinResource* skin );
+
+        /**
+         * Get the statistics collected from the skin cache.
+         */
+        const CacheStats getSkinStats() const { return _skinCache.getStats(); }
+
+    protected:
+
+        typedef LRUCache<SkinResource*, osg::ref_ptr<osg::StateSet> > SkinCache;
+        SkinCache _skinCache;
+        Threading::ReadWriteMutex _skinCacheMutex;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H

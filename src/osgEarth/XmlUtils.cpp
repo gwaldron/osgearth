@@ -19,6 +19,7 @@
 
 #include <osgEarth/XmlUtils>
 #include <osgEarth/StringUtils>
+#include <osgEarth/HTTPClient>
 #include <osg/Notify>
 #include "tinyxml.h"
 #include <algorithm>
@@ -226,7 +227,7 @@ XmlElement::getConfig() const
     {
         XmlNode* n = c->get();
         if ( n->isElement() )
-            conf.children().push_back( static_cast<const XmlElement*>(n)->getConfig() );
+            conf.add( static_cast<const XmlElement*>(n)->getConfig() );
     }
 
     conf.value() = getText();
@@ -247,11 +248,19 @@ XmlText::getValue() const
 }
 
 
+#if 0
 XmlDocument::XmlDocument( const std::string& _source_uri ) :
 XmlElement( "Document" ),
 source_uri( _source_uri )
 {
     //NOP
+}
+#endif
+
+XmlDocument::XmlDocument() :
+XmlElement( "Document" )
+{
+    //nop
 }
 
 XmlDocument::XmlDocument( const Config& conf ) :
@@ -265,106 +274,132 @@ XmlDocument::~XmlDocument()
     //NOP
 }
 
-
-static XmlAttributes
-getAttributes( const char** attrs )
+namespace
 {
-    XmlAttributes map;
-    const char** ptr = attrs;
-    while( *ptr != NULL )
+    XmlAttributes
+    getAttributes( const char** attrs )
     {
-        std::string name = *ptr++;
-        std::string value = *ptr++;
-        std::transform( name.begin(), name.end(), name.begin(), tolower );
-        map[name] = value;
+        XmlAttributes map;
+        const char** ptr = attrs;
+        while( *ptr != NULL )
+        {
+            std::string name = *ptr++;
+            std::string value = *ptr++;
+            std::transform( name.begin(), name.end(), name.begin(), tolower );
+            map[name] = value;
+        }
+        return map;
     }
-    return map;
-}
 
-void processNode(XmlElement* parent, TiXmlNode* node)
-{
-    XmlElement* new_element = 0;
-    switch (node->Type())
+    void processNode(XmlElement* parent, TiXmlNode* node)
     {
-    case TiXmlNode::TINYXML_ELEMENT:
+        XmlElement* new_element = 0;
+        switch (node->Type())
         {
-            TiXmlElement* element = node->ToElement();
-            std::string tag = element->Value();
-            std::transform( tag.begin(), tag.end(), tag.begin(), tolower);
-
-            //Get all the attributes
-            XmlAttributes attrs;
-            TiXmlAttribute* attr = element->FirstAttribute();
-            while (attr)
+        case TiXmlNode::TINYXML_ELEMENT:
             {
-                std::string name  = attr->Name();
-                std::string value = attr->Value();
-                std::transform( name.begin(), name.end(), name.begin(), tolower);
-                attrs[name] = value;
-                attr = attr->Next();
+                TiXmlElement* element = node->ToElement();
+                std::string tag = element->Value();
+                std::transform( tag.begin(), tag.end(), tag.begin(), tolower);
+
+                //Get all the attributes
+                XmlAttributes attrs;
+                TiXmlAttribute* attr = element->FirstAttribute();
+                while (attr)
+                {
+                    std::string name  = attr->Name();
+                    std::string value = attr->Value();
+                    std::transform( name.begin(), name.end(), name.begin(), tolower);
+                    attrs[name] = value;
+                    attr = attr->Next();
+                }
+
+                //All the element to the stack
+                new_element = new XmlElement( tag, attrs );
+                parent->getChildren().push_back( new_element );
             }
-
-            //All the element to the stack
-            new_element = new XmlElement( tag, attrs );
-            parent->getChildren().push_back( new_element );
-        }
-        break;
-    case TiXmlNode::TINYXML_TEXT:
-        {
-            TiXmlText* text = node->ToText();
-            std::string data( text->Value());
-            parent->getChildren().push_back( new XmlText( data ) );
-        }
-        break;
-    }    
-
-    XmlElement* new_parent = new_element ? new_element : parent;
-    TiXmlNode* child;
-    for (child = node->FirstChild(); child != 0; child = child->NextSibling())
-    {    
-        processNode( new_parent, child );
-    }
-}
-
-void
-removeDocType(std::string &xmlStr)
-{
-    //TinyXML has an issue with parsing DTDs.  See http://www.grinninglizard.com/tinyxmldocs/index.html
-    //We need to remove any !DOCTYPE block that appears in the XML before parsing to avoid errors.
-    std::string::size_type startIndex = xmlStr.find("<!DOCTYPE");
-    if (startIndex == xmlStr.npos) return;
-
-    std::string::size_type endIndex = startIndex;
-    int numChildElements = 0;
-    //We've found the first index of the <!DOCTYPE, now find the index of the closing >
-    while (endIndex < xmlStr.size())
-    {
-        endIndex+=1;
-        if (xmlStr[endIndex] == '<')
-        {
-            numChildElements++;
-        }
-        else if (xmlStr[endIndex] == '>')
-        {
-            if (numChildElements == 0)
+            break;
+        case TiXmlNode::TINYXML_TEXT:
             {
-                break;
+                TiXmlText* text = node->ToText();
+                std::string data( text->Value());
+                parent->getChildren().push_back( new XmlText( data ) );
             }
-            else
-            {
-                numChildElements--;
-            }
+            break;
+        }    
+
+        XmlElement* new_parent = new_element ? new_element : parent;
+        TiXmlNode* child;
+        for (child = node->FirstChild(); child != 0; child = child->NextSibling())
+        {    
+            processNode( new_parent, child );
         }
     }
 
-    //Now, replace the <!DOCTYPE> element with whitespace
-    xmlStr.erase(startIndex, endIndex - startIndex + 1);
-}
+    void
+    removeDocType(std::string &xmlStr)
+    {
+        //TinyXML has an issue with parsing DTDs.  See http://www.grinninglizard.com/tinyxmldocs/index.html
+        //We need to remove any !DOCTYPE block that appears in the XML before parsing to avoid errors.
+        std::string::size_type startIndex = xmlStr.find("<!DOCTYPE");
+        if (startIndex == xmlStr.npos) return;
 
+        std::string::size_type endIndex = startIndex;
+        int numChildElements = 0;
+        //We've found the first index of the <!DOCTYPE, now find the index of the closing >
+        while (endIndex < xmlStr.size())
+        {
+            endIndex+=1;
+            if (xmlStr[endIndex] == '<')
+            {
+                numChildElements++;
+            }
+            else if (xmlStr[endIndex] == '>')
+            {
+                if (numChildElements == 0)
+                {
+                    break;
+                }
+                else
+                {
+                    numChildElements--;
+                }
+            }
+        }
+
+        //Now, replace the <!DOCTYPE> element with whitespace
+        xmlStr.erase(startIndex, endIndex - startIndex + 1);
+    }
+}
 
 
 XmlDocument*
-XmlDocument::load( std::istream& in )
+XmlDocument::load( const std::string& location )
+{
+    return load( URI(location) );
+}
+
+XmlDocument*
+XmlDocument::load( const URI& uri )
+{
+    std::string buffer;
+    if ( HTTPClient::readString( uri.full(), buffer ) != HTTPClient::RESULT_OK )
+    {
+        return 0L;
+    }
+
+    std::stringstream buf(buffer);
+    XmlDocument* result = load(buf);
+
+    if ( result )
+        result->_sourceURI = uri;
+
+    return result;
+}
+
+
+XmlDocument*
+XmlDocument::load( std::istream& in, const URI& sourceURI )
 {
     TiXmlDocument xmlDoc;
 
@@ -391,8 +426,17 @@ XmlDocument::load( std::istream& in )
     {
         doc = new XmlDocument();
         processNode( doc,  xmlDoc.RootElement() );
+        doc->_sourceURI = sourceURI;
     }
     return doc;    
+}
+
+Config
+XmlDocument::getConfig() const
+{
+    Config conf = XmlElement::getConfig();
+    conf.setURIContext( _sourceURI.full() );
+    return conf;
 }
 
 #define INDENT 4

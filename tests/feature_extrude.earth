@@ -21,18 +21,18 @@ Footprint Extrusion using the "feature_geom" driver.
         
         <!-- The stylesheet will describe how to render the feature data. -->
              
-        <styles>            
+        <styles>
             <style type="text/css">
                 buildings {
                     extrusion-height:  15;
                     extrusion-flatten: true;
-                    fill:              #ff7f2fcf;
+                    fill:              #ff7f2f;
                     altitude-clamping: terrain;
                 }            
             </style>
         </styles>   
 
-        <lighting>true</lighting>        
+        <lighting>true</lighting>
     </model>
     
     
@@ -49,6 +49,7 @@ Footprint Extrusion using the "feature_geom" driver.
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
+    
     <elevation name="ReadyMap.org - Elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>

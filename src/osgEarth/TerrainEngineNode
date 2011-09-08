@@ -112,7 +112,6 @@ namespace osgEarth
 
             void onEnabledChanged( TerrainLayer* layer );
             void onOpacityChanged( ImageLayer* layer );
-            void onGammaChanged( ImageLayer* layer );
 
             ArrayUniform _layerOpacityUniform;
             ArrayUniform _layerEnabledUniform;

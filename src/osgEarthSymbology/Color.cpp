@@ -24,6 +24,53 @@
 
 using namespace osgEarth::Symbology;
 
+namespace
+{
+    void rgb2hsv( osg::Vec4f& c )
+    {
+        float minval = std::min( c.r(), std::min( c.g(), c.b() ) );
+        float maxval = std::max( c.r(), std::max( c.g(), c.b() ) );
+        float delta = maxval - minval;
+        float h = 0.0f, s = 0.0, v = maxval;
+        if ( delta != 0.0f )
+        {
+            s = delta / maxval;
+            float dr = (((maxval-c.r())/6.0f)+(delta/2.0f))/delta;
+            float dg = (((maxval-c.g())/6.0f)+(delta/2.0f))/delta;
+            float db = (((maxval-c.b())/6.0f)+(delta/2.0f))/delta;
+            if ( c.r() == maxval ) h = db - dg;
+            else if ( c.g() == maxval ) h = (1.0f/3.0f)+dr-db;
+            else if ( c.b() == maxval ) h = (2.0f/3.0f)+dg-dr;
+            if ( h < 0.0f ) h += 1.0f;
+            if ( h > 1.0f ) h -= 1.0f;
+        }
+        c.set( h, s, v, c.a() );
+    }
+
+    void hsv2rgb( osg::Vec4f& c )
+    {
+        float h = c[0], s = c[1], v = c[2];
+        if ( s == 0.0f ) {
+            c.r() = c.g() = c.b() = 1.0f;
+        }
+        else {
+            float vh = h*6.0f;
+            float vi = floor(vh);
+            float v1 = v * (1.0f - s);
+            float v2 = v * (1.0f - s * (vh-vi));
+            float v3 = v * (1.0f - s * (1.0f - (vh-vi)));
+            float vr, vg, vb;
+            if ( vi == 0.0f )      { vr = v,  vg = v3, vb = v1; }
+            else if ( vi == 1.0f ) { vr = v2, vg = v,  vb = v1; }
+            else if ( vi == 2.0f ) { vr = v1, vg = v,  vb = v3; }
+            else if ( vi == 3.0f ) { vr = v1, vb = v2, vb = v; }
+            else if ( vi == 4.0f ) { vr = v3, vg = v1, vb = v; }
+            else                   { vr = v,  vg = v1, vb = v2; }
+            c.set( vr, vg, vb, c.a() );
+        }
+    }
+}
+
 Color Color::White    ( 0xffffffff );
 Color Color::Silver   ( 0xc0c0c0ff );
 Color Color::Gray     ( 0x808080ff );
@@ -95,4 +142,14 @@ Color::toHTML() const
         buf << std::hex << std::setw(2) << std::setfill('0') << (int)(a()*255.0f);
     std::string ssStr = buf.str();
     return ssStr;
+}
+
+Color
+Color::brightness( float perc ) const
+{
+    Color c( *this );
+    rgb2hsv( c );
+    c.b() = osg::clampBetween( perc * c.b(), 0.0f, 1.0f );
+    hsv2rgb( c );
+    return c;
 }

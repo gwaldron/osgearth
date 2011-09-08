@@ -55,8 +55,8 @@ public:
     {
         const Profile* result = NULL;
 
-        std::string tmsPath = _options.url().value();
-        if ( tmsPath.empty() )
+        URI tmsURI = _options.url().value();
+        if ( tmsURI.empty() )
         {
             OE_WARN << LC << "Fail: TMS driver requires a valid \"url\" property" << std::endl;
             return;
@@ -64,19 +64,20 @@ public:
 
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the url together
-        if (osgEarth::isRelativePath(tmsPath) && osgDB::containsServerAddress(referenceURI))
+        if (osgEarth::isRelativePath(tmsURI.full()) && osgDB::containsServerAddress(referenceURI))
         {
-            tmsPath = osgDB::getFilePath(referenceURI) + std::string("/") + tmsPath;
+            tmsURI = URI( osgDB::getFilePath(referenceURI) + std::string("/") + tmsURI.full() );
         }
 
         //If the path doesn't contain a server address, get the full path to the file.
-        if (!osgDB::containsServerAddress(tmsPath))
+        if (!osgDB::containsServerAddress(tmsURI.full()))
         {
-            tmsPath = osgEarth::getFullPath(referenceURI, tmsPath);
+            tmsURI = URI( tmsURI.full(), referenceURI );
+            //tmsPath = osgEarth::getFullPath(referenceURI, tmsURI);
         }
 
 		// Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-    	_tileMap = TileMapReaderWriter::read( tmsPath, 0L ); //getOptions() );
+    	_tileMap = TileMapReaderWriter::read( tmsURI.full(), 0L ); //getOptions() );
 
 
 		//Take the override profile if one is given
@@ -85,7 +86,7 @@ public:
 		    OE_INFO << LC << "Using override profile " << overrideProfile->toString() << std::endl;				
 			result = overrideProfile;
 			_tileMap = TileMap::create( 
-                _options.url().value(), 
+                _options.url()->full(),
                 overrideProfile, 
                 _options.format().value(),
                 _options.tileSize().value(), 
@@ -99,8 +100,8 @@ public:
 			}
 			else
 			{
-		      OE_WARN << LC << "Error reading TMS TileMap, and no overrides set (url=" << tmsPath << ")" << std::endl;		
-			  return;
+                OE_WARN << LC << "Error reading TMS TileMap, and no overrides set (url=" << tmsURI.full() << ")" << std::endl;		
+			    return;
 			}
 		}
 

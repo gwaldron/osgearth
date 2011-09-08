@@ -194,16 +194,14 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
             for( StyleSelectorList::const_iterator i = styles->selectors().begin(); i != styles->selectors().end(); ++i )
             {
                 const StyleSelector& sel = *i;
-                Style style;
-                styles->getStyle( sel.getSelectedStyleName(), style );
-                queryAndRenderFeaturesForStyle( style, sel.query().value(), buildData.get(), key.getExtent(), image.get() );
+                const Style* style = styles->getStyle( sel.getSelectedStyleName() );
+                queryAndRenderFeaturesForStyle( *style, sel.query().value(), buildData.get(), key.getExtent(), image.get() );
             }
         }
         else
         {
-            Style style;
-            styles->getDefaultStyle( style );
-            queryAndRenderFeaturesForStyle( style, Query(), buildData.get(), key.getExtent(), image.get() );
+            const Style* style = styles->getDefaultStyle();
+            queryAndRenderFeaturesForStyle( *style, Query(), buildData.get(), key.getExtent(), image.get() );
         }
     }
     else

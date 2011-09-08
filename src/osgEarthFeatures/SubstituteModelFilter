@@ -46,7 +46,7 @@ namespace osgEarth { namespace Features
      *  - instancing (maybe)
      *  - texture collection and sharing (session based) when clustering
      */
-    class OSGEARTHFEATURES_EXPORT SubstituteModelFilter : public FeatureFilter
+    class OSGEARTHFEATURES_EXPORT SubstituteModelFilter : public FeaturesToNodeFilter
     {
     public:
         // Call this determine whether this filter is available.
@@ -73,14 +73,14 @@ namespace osgEarth { namespace Features
 
     public:
         /** Processes a new feature list */
-        virtual FilterContext push( FeatureList& input, FilterContext& context );
+        virtual osg::Node* push( FeatureList& input, FilterContext& context );
 
         /** Gets the resulting OSG scene graph */
-        osg::Node* getNode() const { return _result.get(); }
+        //osg::Node* getNode() const { return _result.get(); }
 
     protected:
         Style                     _style;
-        osg::ref_ptr<osg::Node>   _result;
+        //osg::ref_ptr<osg::Node>   _result;
         bool                      _cluster;
         bool                      _merge;
         osg::Matrixd              _modelMatrix;
@@ -90,7 +90,7 @@ namespace osgEarth { namespace Features
             osg::ref_ptr<osg::Node> _model;
         };
         
-        bool pushFeature( Feature* input, Data& data, osg::Group* ap, FilterContext& context );
+        bool process(const FeatureList& features, Data& data, osg::Group* ap, FilterContext& context );
 
         bool cluster(const FeatureList& features, Data& data, osg::Group* ap, FilterContext& context );
     };

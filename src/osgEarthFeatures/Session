@@ -21,11 +21,16 @@
 #define OSGEARTH_FEATURES_SESSION_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthSymbology/Style>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Map>
 
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
     /**
      * Session is a state object that exists throughout the life of one or more related
      * feature compilations.
@@ -36,6 +41,8 @@ namespace osgEarth { namespace Features
      * Whereas a FilterContext exists thoughout the life of a single compilation, a Session
      * exists one level above this and governs any number of "related" compilations
      * (e.g., the compilation of many grid cells comprising a single feature layer).
+     *
+     * Session implements the URIResolver interface to resolve relative URIs.
      */
     class OSGEARTHFEATURES_EXPORT Session : public osg::Referenced
     {
@@ -43,18 +50,12 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new Session that is tied to a map
          */
-        Session( const Map* map );
+        Session( const Map* map, StyleSheet* styles =0L );
 
         /**
          * Sets the reference URI to use to expand relative paths and URLs.
          */
         void setReferenceURI( const std::string& referenceURI );
-
-        /**
-         * Resolves a URI based on the reference URI. You can use this method
-         * to create an absolute URI from a relative one, for example.
-         */
-        std::string resolveURI( const std::string& inputURI ) const;
 
         /**
          * Gets the underlying map (frame) interface in this session
@@ -76,11 +77,25 @@ namespace osgEarth { namespace Features
          */
         osg::Referenced* getBuildData() const { return _buildData.get(); }
 
+        /** The style sheet governing this session. */
+        void setStyles( StyleSheet* value );
+        StyleSheet* styles() const { return _styles.get(); }
+
+
+    public: // URIResolver
+        
+        /**
+         * Resolves a URI based on the reference URI. You can use this method
+         * to create an absolute URI from a relative one, for example.
+         */
+        std::string resolveURI( const std::string& inputURI ) const;
+
     public:
         void putResource( const std::string& uri, osg::Referenced* object );
 
         /**
          * Gets a resource from the session cache.
+         * @deprecated - in favor of the ResourceLibrary, coming soon.
          */
         template<typename T> T* getResource( const std::string& uri ) {
             Threading::ScopedReadLock lock( _resourceMutex );
@@ -92,17 +107,16 @@ namespace osgEarth { namespace Features
 
     private:
 
-        //void parseMarker(const std::string& marker, std::string& url, bool &isImage) const;
-
-        osg::ref_ptr<const Map> _map;
-        MapInfo _mapInfo;
-        std::string _referenceURI;
-
+        // @deprecated
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ResourceMap;
-        ResourceMap _resourceMap;
-        Threading::ReadWriteMutex _resourceMutex;
 
-        osg::ref_ptr<osg::Referenced> _buildData;
+        ResourceMap                    _resourceMap;   // deprecate
+        Threading::ReadWriteMutex      _resourceMutex; // deprecate
+        osg::ref_ptr<const Map>        _map;
+        MapInfo                        _mapInfo;
+        std::string                    _referenceURI;
+        osg::ref_ptr<osg::Referenced>  _buildData;
+        osg::ref_ptr<StyleSheet>       _styles;
     };
 
 } }

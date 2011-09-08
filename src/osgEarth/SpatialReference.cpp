@@ -528,6 +528,34 @@ SpatialReference::createTangentPlaneSRS( const osg::Vec3d& pos ) const
     return result;
 }
 
+SpatialReference*
+SpatialReference::createTransMercFromLongitude( const Angular& lon ) const
+{
+    // note. using tmerc with +lat_0 <> 0 is sloooooow.
+    std::string datum = getDatumName();
+    std::stringstream buf;
+    buf << "+proj=tmerc +lat_0=0"
+        << " +lon_0=" << lon.as(Units::DEGREES)
+        << " +datum=" << (!datum.empty() ? "wgs84" : datum);
+    std::string projstr;
+    projstr = buf.str();
+    return create( projstr );
+}
+
+SpatialReference*
+SpatialReference::createUTMFromLongitude( const Angular& lon ) const
+{
+    // note. UTM is up to 10% faster than TMERC for the same meridian.
+    unsigned zone = 1 + (unsigned)floor((lon.as(Units::DEGREES)+180.0)/6.0);
+    std::string datum = getDatumName();
+    std::stringstream buf;
+    buf << "+proj=utm +zone=" << zone
+        << " +datum=" << (!datum.empty() ? "wgs84" : datum);
+    std::string projstr;
+    projstr = buf.str();
+    return create( projstr );
+}
+
 bool
 SpatialReference::isMercator() const
 {
@@ -679,6 +707,7 @@ SpatialReference::transform(double x, double y, double z,
 
     out_x = x;
     out_y = y;
+    out_z = z;
     bool result = transformPoints(out_srs, &out_x, &out_y, &out_z, 1, context);
 
     return result;

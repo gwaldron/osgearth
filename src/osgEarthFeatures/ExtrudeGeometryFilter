@@ -35,7 +35,7 @@ namespace osgEarth { namespace Features
     /**
      * Extrudes footprint geometry into 3D geometry
      */
-    class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter : public Filter
+    class OSGEARTHFEATURES_EXPORT ExtrudeGeometryFilter : public FeaturesToNodeFilter
     {
     public:
         struct HeightCallback : public osg::Referenced
@@ -44,47 +44,21 @@ namespace osgEarth { namespace Features
         };
 
     public:
+
+        /** Constructs a new filter that will extrude footprints */
         ExtrudeGeometryFilter();
 
-        /** Pushes a list of features through the filter. */
-        osg::Node* push( FeatureList& input, const FilterContext& context );
+        /**
+         * Sets the style that will govern the geometry generation.
+         */
+        void setStyle( const Style& style );
 
         /**
-         * Sets the height above the footprint to which to extrude wall geometry
+         * Pushes a list of features through the filter.
          */
-        void setExtrusionHeight( float value ) { _height = value; }
+        osg::Node* push( FeatureList& input, FilterContext& context );
 
-        /**
-         * Sets the name of the feature attribute holding the extrusion height.
-         * This will override a value set by setExtrusionHeight.
-         */
-        void setExtrusionAttribute( const std::string& value ) { _heightAttr = value; }
-
-        /**
-         * Sets an arithmetic expression to evaluate to determine the extrusion height.
-         */
-        void setExtrusionExpr( const NumericExpression& value ) { _heightExpr = value; }
-
-        /**
-         * Sets a callback that can return an extrusion height for a feature.
-         */
-        void setExtrusionHeightCallback( HeightCallback* callback );
-
-        /** 
-         * Sets an expression to evaluate (for each feature) to determine a height offset value.
-         */
-        void setHeightOffsetExpression( const NumericExpression& value ) { _heightOffsetExpr = value; }
-
-        /**
-         * Sets whether the cap (e.g. rooftop) should be flat, even if the footprint in not
-         * (like a building on the side of a hill). Default = true.
-         */
-        void setFlatten( bool value ) { _flatten = value; }
-
-        /**
-         * Sets the color of the extruded geometry.
-         */
-        void setColor( const osg::Vec4f& value ) { _color = value; }
+    public: // properties
 
         /**
          * Sets the maximum wall angle that doesn't require a new normal vector
@@ -99,28 +73,44 @@ namespace osgEarth { namespace Features
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
 
     protected:
-        osg::ref_ptr<osg::Geode>     _geode;
-        optional<double>             _maxAngle_deg;
-        optional<bool>               _mergeGeometry;
-        bool                         _flatten;
-        osg::Vec4f                   _color;
-        float                        _wallAngleThresh_deg;
-        float                        _cosWallAngleThresh;
-        osg::ref_ptr<osg::StateSet>  _noTextureStateSet;
 
-        float                        _height;
-        optional<std::string>        _heightAttr;
-        optional<NumericExpression>  _heightExpr;
-        osg::ref_ptr<HeightCallback> _heightCallback;
-        optional<NumericExpression>  _heightOffsetExpr;
-        
-        StringExpression             _featureNameExpr;
+        // a set of geodes indexed by stateset pointer, for pre-sorting geodes based on 
+        // their texture usage
+        typedef std::map<osg::StateSet*, osg::ref_ptr<osg::Geode> > SortedGeodeMap;
+        SortedGeodeMap                 _geodes;
+        osg::ref_ptr<osg::StateSet>    _noTextureStateSet;
 
-        void reset();
+        optional<double>               _maxAngle_deg;
+        optional<bool>                 _mergeGeometry;
+        float                          _wallAngleThresh_deg;
+        float                          _cosWallAngleThresh;
+        StringExpression               _featureNameExpr;
+        osg::ref_ptr<HeightCallback>   _heightCallback;
+        optional<NumericExpression>    _heightOffsetExpr;
+
+        Style                               _style;
+        bool                                _styleDirty;
+
+        NumericExpression                   _heightExpr;
+
+        osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
+        osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;
+        osg::ref_ptr<const PolygonSymbol>   _wallPolygonSymbol;
+        osg::ref_ptr<const SkinSymbol>      _roofSkinSymbol;
+        osg::ref_ptr<const PolygonSymbol>   _roofPolygonSymbol;
+        osg::ref_ptr<ResourceLibrary>       _wallResLib;
+        osg::ref_ptr<ResourceLibrary>       _roofResLib;
+
+        void reset( const FilterContext& context );
         
-        bool pushFeature( 
-            Feature*             input, 
-            const FilterContext& context );
+        void addDrawable( 
+            osg::Drawable*     drawable, 
+            osg::StateSet*     stateSet, 
+            const std::string& name );
+        
+        bool process( 
+            FeatureList&    input,
+            FilterContext&   context );
 
         bool extrudeGeometry(
             const Geometry*      input,
@@ -130,8 +120,11 @@ namespace osgEarth { namespace Features
             osg::Geometry*       walls,
             osg::Geometry*       top_cap,
             osg::Geometry*       bottom_cap,
-            const osg::Vec4&     color,
-            const FilterContext& cx );
+            const osg::Vec4&     wallColor,
+            const osg::Vec4&     roofColor,
+            const SkinResource*  wallSkin,
+            const SkinResource*  roofSkin,
+            FilterContext&       cx );
     };
 
 } } // namespace osgEarth::Features

@@ -30,8 +30,8 @@ namespace osgEarth { namespace Drivers
     class OGRFeatureOptions : public FeatureSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         optional<std::string>& connection() { return _connection; }
         const optional<std::string>& connection() const { return _connection; }
@@ -47,9 +47,6 @@ namespace osgEarth { namespace Drivers
 
         optional<std::string>& geometryUrl() { return _geometryUrl; }
         const optional<std::string>& geometryUrl() const { return _geometryUrl; }
-
-        //optional<Config>& geometryProfileOptions() { return _geometryProfileConf; }
-        //const optional<Config>& geometryProfileOptions() const { return _geometryProfileConf; }
 
         // does not serialize
         osg::ref_ptr<Symbology::Geometry>& geometry() { return _geometry; }
@@ -91,13 +88,13 @@ namespace osgEarth { namespace Drivers
             _geometry = conf.getNonSerializable<Symbology::Geometry>( "OGRFeatureOptions::geometry" );
         }
 
-        optional<std::string> _url;
-        optional<std::string> _connection;
-        optional<std::string> _ogrDriver;
-        optional<bool> _buildSpatialIndex;
-        optional<Config> _geometryConf;
-        optional<Config> _geometryProfileConf;
-        optional<std::string> _geometryUrl;
+        optional<URI>                     _url;
+        optional<std::string>             _connection;
+        optional<std::string>             _ogrDriver;
+        optional<bool>                    _buildSpatialIndex;
+        optional<Config>                  _geometryConf;
+        optional<Config>                  _geometryProfileConf;
+        optional<std::string>             _geometryUrl;
         osg::ref_ptr<Symbology::Geometry> _geometry;
     };
 

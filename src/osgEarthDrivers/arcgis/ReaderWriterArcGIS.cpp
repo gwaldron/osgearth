@@ -69,20 +69,20 @@ public:
         if ( _format.empty() )
             _format = "png";
 
-        std::string url = _options.url().value();
+        URI url = _options.url().value();
         //Add the token if necessary
         if (_options.token().isSet())
         {
             std::string token = _options.token().value();
             if (!token.empty())
             {
-                std::string sep = url.find( "?" ) == std::string::npos ? "?" : "&";
-                url = url + sep + "token=" + token;
+                std::string sep = url.full().find( "?" ) == std::string::npos ? "?" : "&";
+                url = url.append( sep + "token=" + token );
             }
         }
 
         // read metadata from the server
-        if ( !_map_service.init( url ) ) //, getOptions()) )
+        if ( !_map_service.init( url.full() ) ) //, getOptions()) )
         {
             OE_WARN << "[osgearth] [ArcGIS] map service initialization failed: "
                 << _map_service.getError() << std::endl;
@@ -169,7 +169,7 @@ public:
 
         if ( _map_service.isTiled() )
         {
-            buf << _options.url().value() << "/tile"
+            buf << _options.url()->full() << "/tile"
                 << "/" << level
                 << "/" << tile_y
                 << "/" << tile_x << "." << f;
@@ -179,7 +179,7 @@ public:
             const GeoExtent& ex = key.getExtent();
 
             buf << std::setprecision(16)
-                << _options.url().value() << "/export"
+                << _options.url()->full() << "/export"
                 << "?bbox=" << ex.xMin() << "," << ex.yMin() << "," << ex.xMax() << "," << ex.yMax()
                 << "&format=" << f 
                 << "&size=256,256"

@@ -29,6 +29,8 @@
 #include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/ResourceLibrary>
 
 #include <osgEarth/Config>
 #include <osgEarth/Revisioning>
@@ -125,16 +127,11 @@ namespace osgEarth { namespace Symbology
         SymbolList                  _symbols;
         std::string                 _origType;
         std::string                 _origData;
-        optional<std::string>       _url;
+        optional<URI>               _uri;
     };
 
-    typedef std::vector<Style> StyleList;
+    typedef std::vector<Style>           StyleList;
     typedef std::map<std::string, Style> StyleMap;
-
-
-    class OSGEARTHSYMBOLOGY_EXPORT StyleComponent
-    {
-    };
 
     /**
      * A style selector lets you classify styles based on rules, such as a
@@ -142,7 +139,7 @@ namespace osgEarth { namespace Symbology
      * same name as the selector, but you can override this by settings
      * the styleName property.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT StyleSelector : public StyleComponent
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSelector
     {
     public:
         StyleSelector( const Config& conf =Config() );
@@ -174,31 +171,61 @@ namespace osgEarth { namespace Symbology
         optional<Query>       _query;
     };
 
-    typedef std::list<StyleSelector> StyleSelectorList;
+    typedef std::list<StyleSelector>   StyleSelectorList;
     typedef std::vector<StyleSelector> StyleSelectorVector;
 
 
-
-    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet
+    /**
+     * A complete definition of style information.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet : public osg::Referenced
     {
     public:
+        /** Constructs a new style sheet, optionally from a Config serialization. */
         StyleSheet( const Config& conf =Config() );
 
+        /** Adds a style to this sheet. */
+        void addStyle( const Style& style );
+
+        /** Removes a style from this sheet. */
+        void removeStyle( const std::string& name );
+        
+        /** Gets a named style from this sheet. If the name isn't found, optionally falls back on the
+            "default" style */
+        Style* getStyle( const std::string& name, bool fallBackOnDefault =true );
+        const Style* getStyle( const std::string& name, bool fallBackOnDefault =true ) const;
+        //bool getStyle( const std::string& name, Style*& out_style, bool fallBackOnDefault =true );
+        //bool getStyle( const std::string& name, const Style*& out_style, bool fallBackOnDefault =true ) const;
+
+        /** Gets the default style in this sheet. */
+        Style* getDefaultStyle();
+        const Style* getDefaultStyle() const;
+        //bool getDefaultStyle( Style*& out_style );
+        //bool getDefaultStyle( const Style*& out_style ) const;
+
+        /** Selectors pick a style from the sheet based on some criteria. */
         StyleSelectorList& selectors() { return _selectors; }
         const StyleSelectorList& selectors() const { return _selectors; }
 
-        void addStyle( const Style& style );
-        void removeStyle( const std::string& name );
-        bool getStyle( const std::string& name, Style& out_style, bool fallBackOnDefault =true ) const;
-        bool getDefaultStyle( Style& out_style ) const;
+        /** Adds a resource library. */
+        void addResourceLibrary( const std::string& name, ResourceLibrary* library );
+
+        /** Gets a resource library by name. */
+        ResourceLibrary* getResourceLibrary( const std::string& name ) const;
+
+        /** Resource libraries in this sheet. */
+        const ResourceLibraryMap& resourceLibraries() const { return _libraries; }
+
+    public: // serialization functions
 
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        StyleSelectorList _selectors;
-        StyleMap _styles;
-        Style _emptyStyle;
+        ResourceLibraryMap _libraries;
+        StyleSelectorList  _selectors;
+        StyleMap           _styles;
+        Style              _emptyStyle;
     };
 
 } } // namespace osgEarth::Symbology

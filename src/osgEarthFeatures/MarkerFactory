@@ -49,7 +49,7 @@ namespace osgEarth { namespace Features
         //osg::Node* getOrCreateNode( const std::string& markerURI, bool useCache =true );
 
     protected:
-        osg::Node* createFromURI( const std::string& uri ) const;
+        osg::Node* createFromURI( const URI& uri ) const;
 
     protected:
         osg::ref_ptr<Session> _session;

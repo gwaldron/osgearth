@@ -52,9 +52,9 @@ namespace osgEarth { namespace Symbology
     public:
         MarkerSymbol( const Config& conf =Config() );
 
-        /** URL of the model to use for substitution. */
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        /** URI of the model to use for substitution. */
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         /** How to map feature geometry to model placement. (default is PLACEMENT_VERTEX) */
         optional<Placement>& placement() { return _placement; }
@@ -87,7 +87,7 @@ namespace osgEarth { namespace Symbology
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<std::string> _url;
+        optional<URI>         _url;
         optional<Placement>   _placement;
         optional<float>       _density;
         optional<osg::Vec3f>  _scale;

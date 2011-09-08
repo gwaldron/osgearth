@@ -32,8 +32,8 @@ using namespace osgEarth::Symbology;
 //------------------------------------------------------------------------
 
 ScatterFilter::ScatterFilter() :
-_density( 10.0f ),
-_random( true ),
+_density   ( 10.0f ),
+_random    ( true ),
 _randomSeed( 0 )
 {
     //NOP
@@ -55,7 +55,7 @@ ScatterFilter::polyScatter(const Geometry*         input,
         if ( !polygon )
             continue;
 
-        if ( context.isGeocentric() || context.profile()->getSRS()->isGeographic() )
+        if ( /*context.isGeocentric() ||*/ context.profile()->getSRS()->isGeographic() )
         {
             bounds = polygon->getBounds();
 
@@ -206,6 +206,7 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
 
         const SpatialReference* geomSRS = context.profile()->getSRS();
 
+#if 0
         // first, undo the localization frame if there is one.
         context.toWorld( geom );
 
@@ -218,6 +219,7 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
 
             geomSRS = geomSRS->getGeographicSRS();
         }
+#endif
 
         PointSet* points = new PointSet();
 
@@ -235,12 +237,14 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
             OE_WARN << LC << "Sorry, don't know how to scatter a PointSet yet" << std::endl;
         }
 
+#if 0
         // convert back to geocentric if necessary.
         if ( context.isGeocentric() )
             context.profile()->getSRS()->getGeographicSRS()->transformToECEF( points->asVector(), true );
 
         // re-apply the localization frame.
         context.toLocal( points );
+#endif
 
         // replace the source geometry with the scattered points.
         f->setGeometry( points );

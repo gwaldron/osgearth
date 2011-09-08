@@ -34,14 +34,16 @@ _style( style )
     //nop
 }
 
-FilterContext
-BuildTextFilter::push( FeatureList& input, const FilterContext& context )
+osg::Node*
+BuildTextFilter::push( FeatureList& input, FilterContext& context )
 {
+    osg::Node* result = 0L;
+
     const TextSymbol* text = _style.get<TextSymbol>();
     if ( !text )
     {
         OE_WARN << LC << "Insufficient symbology (no TextSymbol)" << std::endl;
-        return context;
+        return 0L;
     }
 
     // if a provider is set, load the plugin and create the node.
@@ -52,21 +54,20 @@ BuildTextFilter::push( FeatureList& input, const FilterContext& context )
         osg::ref_ptr<LabelSource> source = LabelSourceFactory::create( options );
         if ( source.valid() )
         {
-            _result = source->createNode( input, text, context );
+            result = source->createNode( input, text, context );
         }
         else
         {
             OE_WARN << LC << "FAIL, unable to load label provider \"" << (*text->provider()) << "\"" << std::endl;
-            return context;
+            return 0L;
         }
     }
 
     else // legacy behavior... will be deprecated.
     {
         BuildTextOperator op;
-        _result = op( input, text, context );
+        result = op( input, text, context );
     }
 
-    FilterContext outCx( context );
-    return outCx;
+    return result;
 }

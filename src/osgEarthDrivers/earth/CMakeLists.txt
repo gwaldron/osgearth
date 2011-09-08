@@ -19,3 +19,4 @@ SET(TARGET_SRC
 
 #### end var setup  ###
 SETUP_PLUGIN(earth)
+

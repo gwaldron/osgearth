@@ -106,13 +106,13 @@ public:
     //override
     void initialize( const std::string& referenceURI )
     {
-        char sep = _options.url()->find_first_of('?') == std::string::npos? '?' : '&';
+        char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
 
         std::string capUrl;
         if ( capUrl.empty() )
         {
             capUrl = 
-                _options.url().value() + 
+                _options.url()->full() +
                 sep + 
                 "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
         }
@@ -252,7 +252,7 @@ public:
     std::string createURL(const Symbology::Query& query)
     {
         std::stringstream buf;
-        buf << _options.url().get() << "?SERVICE=WFS&VERSION=1.0.0&REQUEST=getfeature";
+        buf << _options.url()->full() << "?SERVICE=WFS&VERSION=1.0.0&REQUEST=getfeature";
         buf << "&TYPENAME=" << _options.typeName().get();
         
         std::string outputFormat = "geojson";

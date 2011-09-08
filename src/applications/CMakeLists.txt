@@ -52,3 +52,6 @@ ADD_SUBDIRECTORY(osgearth_imageoverlay)
 
 
 #ADD_SUBDIRECTORY(osgearth_symbology)
+
+#testing
+add_subdirectory(osgearth_resources)

@@ -97,6 +97,14 @@ _localize( false )
     // nop
 }
 
+TransformFilter::TransformFilter( const osg::Matrixd& xform ) :
+_makeGeocentric( false ),
+_localize      ( false ),
+_mat           ( xform )
+{
+    //nop
+}
+
 TransformFilter::TransformFilter(const SpatialReference* outputSRS,
                                  bool outputGeocentric ) :
 _outputSRS( outputSRS ),

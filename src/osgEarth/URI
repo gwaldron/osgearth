@@ -1,0 +1,120 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_URI
+#define OSGEARTH_URI
+
+#include <osgEarth/Common>
+#include <osgEarth/FileUtils>
+#include <osg/Image>
+#include <osg/Node>
+#include <osgDB/ReaderWriter>
+
+namespace osgEarth
+{
+    class Config;
+
+    /**
+     * Context for resolving relative URIs.
+     */
+    typedef std::string URIContext;
+
+    /**
+     * Represents the location of a resource, providing the raw (original, possibly
+     * relative) and absolute forms.
+     */
+    class OSGEARTH_EXPORT URI
+    {
+    public:
+        /**
+         * Constructs an empty (and invalid) URI.
+         */
+        URI();
+
+        /** 
+         * Construcst a new URI from a location and an optional context 
+         */
+        URI( const std::string& location, const URIContext& context ="" );
+
+        /**
+         * Constructs a new URI from a string.
+         */
+        URI( const char* location );
+
+    public:
+
+        /** The base (possibly relative) location string. */
+        const std::string& base() const { return _baseURI; }
+
+        /** The fully qualified location string. */
+        const std::string& full() const { return _fullURI; }
+
+        /** The dereference operator also returns the fully qualified URI, since it's a common operation. */
+        const std::string& operator * () const { return _fullURI; }
+
+        /** Context with which this URI was created. */
+        const URIContext& context() const { return _context; }
+
+        /** Whether the URI is empty */
+        bool empty() const { return _baseURI.empty(); }
+
+        /** Returns a copy of this URI with the suffix appended */
+        URI append( const std::string& suffix ) const;
+
+    public: // convenience reader methods
+
+        /** Result codes for the read* methods. Call getLastResultCode() to fetch. */
+        enum ResultCode {
+            RESULT_OK,
+            RESULT_CANCELED,
+            RESULT_NOT_FOUND,
+            RESULT_SERVER_ERROR,
+            RESULT_TIMEOUT,
+            RESULT_NO_READER,
+            RESULT_READER_ERROR,
+            RESULT_UNKNOWN_ERROR
+        };
+
+        /** Reads an image from the URI. */
+        osg::Image* readImage(
+            ResultCode* out_code =0L, const osgDB::Options* options =0L ) const;
+
+        /** Reads a node from the URI. */
+        osg::Node* readNode(
+            ResultCode* out_code =0L, const osgDB::Options* options =0L ) const;
+
+        /** Reads a string from the URI. */
+        std::string readString(
+            ResultCode* out_code =0L ) const;
+
+    public:
+        /** Copier */
+        URI( const URI& rhs ) : _baseURI(rhs._baseURI), _fullURI(rhs._fullURI), _context(rhs._context) { }
+
+    public:
+        //TODO: methods to load data from the URI.
+
+    protected:
+        std::string _baseURI;
+        std::string _fullURI;
+        URIContext  _context;
+    };
+
+}
+
+#endif // OSGEARTH_URI

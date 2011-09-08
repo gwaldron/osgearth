@@ -27,6 +27,7 @@ SET(LIB_PUBLIC_HEADERS
     Config
     Cube
     DrapeableNode
+    ECEF
     ElevationLayer
     ElevationQuery
     Export
@@ -81,6 +82,7 @@ SET(LIB_PUBLIC_HEADERS
     tinyxml.h 
     TMS
     Units
+    URI
     Utils
 	Version
     VerticalSpatialReference
@@ -97,6 +99,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Config.cpp
     Cube.cpp
     DrapeableNode.cpp
+    ECEF.cpp
     EGM.cpp
     ElevationLayer.cpp
     ElevationQuery.cpp
@@ -150,6 +153,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     tinyxmlparser.cpp
     TMS.cpp
     Units.cpp
+    URI.cpp
     Utils.cpp
     Version.cpp
     VerticalSpatialReference.cpp

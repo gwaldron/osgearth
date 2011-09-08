@@ -34,8 +34,13 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT ClampFilter : public FeatureFilter
     {
     public:
-        /** Constructs a new clamping filter */        
+        /** Constructs a new clamping filter */     
         ClampFilter();
+
+    public: // properties
+
+        /** Shortcut to set any properties that are represented in a style. */
+        void setPropertiesFromStyle( const Style& style );
 
         /** Whether to consider the pre-existing Z coordinate when clamping (default=false) */
         void setIgnoreZ( bool value ) { _ignoreZ = value; }
@@ -52,7 +57,7 @@ namespace osgEarth { namespace Features
         double getMaxResolution() const { return _maxRes; }
 
         /** Sets the attribute name to which to write the maximum clamped Z value. */
-        void setMaxZAttributeName( const std::string& value ) { _maxZAttrName = value; }
+        //void setMaxZAttributeName( const std::string& value ) { _maxZAttrName = value; }
 
     public:
         virtual FilterContext push( FeatureList& input, FilterContext& cx );
@@ -61,7 +66,7 @@ namespace osgEarth { namespace Features
         bool _ignoreZ;
         double _offsetZ, _scaleZ;
         double _maxRes;
-        std::string _maxZAttrName;
+        std::string _maxZAttr, _minZAttr;
     };
 
 } } // namespace osgEarth::Features

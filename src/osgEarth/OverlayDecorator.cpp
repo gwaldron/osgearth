@@ -222,7 +222,8 @@ _useShaders( false ),
 _useWarping( false ),
 _warp( 1.0f ),
 _visualizeWarp( false ),
-_mipmapping( true )
+_mipmapping( true ),
+_rttBlending( true )
 {
     // nop
 }

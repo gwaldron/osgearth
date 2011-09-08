@@ -25,6 +25,11 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+//------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[Style] "
+
 Style::Style( const std::string& name ) :
 _name( name )
 {
@@ -36,7 +41,7 @@ _name    ( rhs._name ),
 _symbols ( rhs._symbols ),
 _origType( rhs._origType ),
 _origData( rhs._origData ),
-_url     ( rhs._url )
+_uri     ( rhs._uri )
 {
     //nop
 }
@@ -44,7 +49,6 @@ _url     ( rhs._url )
 void Style::addSymbol(Symbol* symbol)
 {
     _symbols.push_back(symbol);
-    //dirty();
 }
 
 
@@ -62,7 +66,6 @@ Style::combineWith( const Style& rhs ) const
 
     // next, merge in the symbology from the other style.
     newStyle.mergeConfig( rhs.getConfig(false) );
-    //SLDReader::readStyleFromCSSParams( rhs.getConfig(false), newStyle );
 
     if ( !this->empty() && !rhs.empty() )
         newStyle.setName( _name + ":" + rhs.getName() );
@@ -86,7 +89,8 @@ Style::mergeConfig( const Config& conf )
     if ( _name.empty() )
         _name = conf.key();
 
-    conf.getIfSet( "url", _url );
+    conf.getIfSet( "url", _uri ); // named "url" for back compat
+
     _origType = conf.value( "type" );
 
     if ( conf.value( "type" ) == "text/css" )
@@ -133,8 +137,6 @@ Style::mergeConfig( const Config& conf )
             }
         }
     }
-
-//    dirty();
 }
 
 Config
@@ -142,7 +144,8 @@ Style::getConfig( bool keepOrigType ) const
 {
     Config conf( "style" );
     conf.attr("name") = _name;
-    conf.addIfSet( "url", _url );
+
+    conf.addIfSet( "url", _uri );
     
     if ( _origType == "text/css" && keepOrigType )
     {
@@ -162,7 +165,10 @@ Style::getConfig( bool keepOrigType ) const
     return conf;
 }
 
-/************************************************************************/
+//------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[StyleSelector] "
 
 StyleSelector::StyleSelector( const Config& conf )
 {
@@ -194,8 +200,10 @@ StyleSelector::getConfig() const
     return conf;
 }
 
+//------------------------------------------------------------------------
 
-/************************************************************************/
+#undef  LC
+#define LC "[StyleSheet] "
 
 StyleSheet::StyleSheet( const Config& conf )
 {
@@ -214,43 +222,83 @@ StyleSheet::removeStyle( const std::string& name )
     _styles.erase( name );
 }
 
-bool
-StyleSheet::getStyle( const std::string& name, Style& out_style, bool fallBackOnDefault ) const
+Style*
+StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault )
 {
-    StyleMap::const_iterator i = _styles.find( name );
+    StyleMap::iterator i = _styles.find( name );
     if ( i != _styles.end() ) {
-        out_style = i->second;
-        return true;
+        return &i->second;
     }
-    else if ( fallBackOnDefault && name.empty() && _styles.size() == 1 )
-    {
-        out_style = _styles.begin()->second;
-        return true;
+    else if ( fallBackOnDefault ) {
+        return getDefaultStyle();
     }
-    else
-    {
-        return false;
+    else {
+        return 0L;
     }
 }
 
-bool
-StyleSheet::getDefaultStyle( Style& out_style ) const
+const Style*
+StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
 {
-    if ( _styles.size() == 1 ) {
-        out_style = _styles.begin()->second;
-        return true;
+    StyleMap::const_iterator i = _styles.find( name );
+    if ( i != _styles.end() ) {
+        return &i->second;
     }
-    else if ( _styles.find( "default" ) != _styles.end() ) {
-        out_style = _styles.find( "default" )->second;
-        return true;
-    }
-    else if ( _styles.find( "" ) != _styles.end() ) {
-        out_style = _styles.find( "" )->second;
-        return true;
+    else if ( fallBackOnDefault ) {
+        return getDefaultStyle();
     }
     else {
-        return false;
+        return 0L;
     }
+}
+
+Style*
+StyleSheet::getDefaultStyle()
+{
+    if ( _styles.find( "default" ) != _styles.end() ) {
+        return &_styles.find( "default" )->second;
+    }
+    else if ( _styles.find( "" ) != _styles.end() ) {
+        return &_styles.find( "" )->second;
+    }
+    if ( _styles.size() > 0 ) {
+        return &_styles.begin()->second;
+    }
+    else {
+        // insert the empty style and return it.
+        _styles["default"] = _emptyStyle;
+        return &_styles.begin()->second;
+    }
+}
+
+const Style*
+StyleSheet::getDefaultStyle() const
+{
+    if ( _styles.size() == 1 ) {
+        return &_styles.begin()->second;
+    }
+    else if ( _styles.find( "default" ) != _styles.end() ) {
+        return &_styles.find( "default" )->second;
+    }
+    else if ( _styles.find( "" ) != _styles.end() ) {
+        return &_styles.find( "" )->second;
+    }
+    else {
+        return &_emptyStyle;
+    }
+}
+
+void
+StyleSheet::addResourceLibrary( const std::string& name, ResourceLibrary* lib )
+{
+    _libraries[name] = lib;
+}
+
+ResourceLibrary*
+StyleSheet::getResourceLibrary( const std::string& name ) const
+{
+    ResourceLibraryMap::const_iterator i = _libraries.find( name );
+    return i != _libraries.end() ? i->second.get() : 0L;
 }
 
 Config
@@ -271,7 +319,32 @@ StyleSheet::getConfig() const
 void
 StyleSheet::mergeConfig( const Config& conf )
 {
-    // first read any style class definitions. either "class" or "selector" is allowed
+    // read in any resource library references
+    ConfigSet libraries = conf.children( "library" );
+    for( ConfigSet::iterator i = libraries.begin(); i != libraries.end(); ++i )
+    {
+        std::string name = i->value("name");
+        if ( name.empty() ) {
+            OE_WARN << LC << "Resource library missing required 'name' attribute" << std::endl;
+            continue;
+        }
+
+        URI uri( i->value("url"), i->uriContext() );
+        if ( uri.empty() ) {
+            OE_WARN << LC << "Resource library missing required 'url' element" << std::endl;
+            continue;
+        }
+
+        osg::ref_ptr<ResourceLibrary> reslib = ResourceLibrary::create( uri );
+        if ( !reslib.valid() ) {
+            OE_WARN << LC << "Resource library creation failed" << std::endl;
+            continue;
+        }
+
+        addResourceLibrary( name, reslib.get() );
+    }
+
+    // read any style class definitions. either "class" or "selector" is allowed
     ConfigSet selectors = conf.children( "selector" );
     if ( selectors.empty() ) selectors = conf.children( "class" );
     for( ConfigSet::iterator i = selectors.begin(); i != selectors.end(); ++i )
@@ -279,6 +352,7 @@ StyleSheet::mergeConfig( const Config& conf )
         _selectors.push_back( StyleSelector( *i ) );
     }
 
+    // read in the actual styles
     ConfigSet styles = conf.children( "style" );
     for( ConfigSet::iterator i = styles.begin(); i != styles.end(); ++i )
     {
@@ -291,17 +365,21 @@ StyleSheet::mergeConfig( const Config& conf )
 
             // if there's a URL, read the CSS from the URL:
             if ( styleConf.hasValue("url") )
-                HTTPClient::readString( styleConf.value("url"), cssString );
+            {
+                URI uri( styleConf.value("url"), styleConf.uriContext() );
+                HTTPClient::readString( uri.full(), cssString );
+            }
 
             // a CSS style definition can actually contain multiple styles. Read them
             // and create one style for each in the catalog.
             std::stringstream buf( cssString );
             Config css = CssUtils::readConfig( buf );
-            //OE_NOTICE << css.toString() << std::endl;
-            for(ConfigSet::const_iterator j = css.children().begin(); j != css.children().end(); ++j )
+            
+            const ConfigSet children = css.children();
+            for(ConfigSet::const_iterator j = children.begin(); j != children.end(); ++j )
             {
                 Style style( styleConf );
-                //Style* style = new Style( styleConf );
+                
                 if ( SLDReader::readStyleFromCSSParams( *j, style ) )
                     _styles[ j->key() ] = style;
             }            

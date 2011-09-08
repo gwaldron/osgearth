@@ -1,0 +1,71 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_ECEF_H
+#define OSGEARTH_ECEF_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/SpatialReference>
+#include <osg/Matrix>
+
+namespace osgEarth
+{
+    struct OSGEARTH_EXPORT ECEF
+    {
+        /**
+         * Creates a "localization" matrix for double-precision geocentric
+         * coordinates. The matrix is ceneterd at the specified ECEF reference point.
+         */
+        static osg::Matrixd createInverseRefFrame( 
+            const osg::Vec3d& ecefRefPoint );
+
+        /**
+         * Transforms a point into ECEF coordinates, localizes it with
+         * the provided world2local matrix, and puts the result in "output".
+         */
+        static void transformAndLocalize(
+            const osg::Vec3d&       input,
+            osg::Vec3d&             output,
+            const SpatialReference* srs,
+            const osg::Matrixd&     world2local =osg::Matrixd() );
+
+        /**
+         * Transforms the points in "input" to ECEF coordinates, localizes them with
+         * the provided world2local matrix, and puts the result in "output".
+         */
+        static void transformAndLocalize(
+            const std::vector<osg::Vec3d>& input,
+            osg::Vec3Array*                output,
+            const SpatialReference*        srs,
+            const osg::Matrixd&            world2local =osg::Matrixd() );
+
+        /**
+         * Transforms a point to ECEF, and at the same time returns a quaternion that
+         * rotates the point into the local tangent place at that point.
+         */
+        static void transformAndGetRotationMatrix(
+            const SpatialReference* input_srs,
+            const osg::Vec3d&       input,
+            osg::Vec3d&             out_ecef_point,
+            osg::Matrixd&           out_rotation );
+
+    };
+}
+
+#endif // OSGEARTH_ECEF_H

@@ -170,12 +170,13 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         return 0L;
     }
 
+    Session* session = new Session( _map.get(), _options.styles().get() );
+
     FeatureModelGraph* graph = new FeatureModelGraph( 
         _features.get(), 
         _options, 
         _factory.get(),
-        *_options.styles(),
-        new Session( _map.get() ) );
+        session );
 
     return graph;
 }

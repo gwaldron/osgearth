@@ -164,6 +164,12 @@ Bounds::toString() const {
     return result;
 }
 
+void
+Bounds::transform( const SpatialReference* from, const SpatialReference* to )
+{
+    from->transformExtent( to, _min.x(), _min.y(), _max.x(), _max.y() );
+}
+
 /*************************************************************/
 
 GeoExtent GeoExtent::INVALID = GeoExtent();

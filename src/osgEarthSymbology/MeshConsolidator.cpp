@@ -154,6 +154,7 @@ MeshConsolidator::run( osg::Geode& geode )
     unsigned numNormals = 0;
     unsigned numTexCoordArrays = 0;
     unsigned numVertAttribArrays = 0;
+    std::vector<unsigned> texCoordArrayUnits;
 
     osg::Geometry::AttributeBinding newColorsBinding;
     osg::Geometry::AttributeBinding newNormalsBinding;
@@ -179,14 +180,22 @@ MeshConsolidator::run( osg::Geode& geode )
             if ( normals )
                 numNormals += normals->getNumElements();
 
-            numTexCoordArrays += geom->getNumTexCoordArrays();
+            // NOTE!! tex/attrib array counts much already be equal.
+            if ( texCoordArrayUnits.size() == 0 )
+            {
+                for( unsigned u=0; u<32; ++u ) {
+                    if ( geom->getTexCoordArray(u) != 0L )
+                        texCoordArrayUnits.push_back( u );
+                }
+            }
+
             numVertAttribArrays += geom->getNumVertexAttribArrays();
         }
     }
 
     // bail if there are unsupported items in there.
     if (geode.getNumDrawables() < 2 ||
-        numTexCoordArrays       > 0 ||
+        //numTexCoordArrays       > 0 ||
         numVertAttribArrays     > 0 )
     {
         return;
@@ -210,6 +219,14 @@ MeshConsolidator::run( osg::Geode& geode )
         newNormals = new osg::Vec3Array();
         newNormals->reserve( numNormals==numVerts? numNormals : 1 );
         newNormalsBinding = numNormals==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
+    }
+
+    std::vector<osg::Vec2Array*> newTexCoordsArrays;
+    for( unsigned i=0; i<texCoordArrayUnits.size(); ++i )
+    {
+        osg::Vec2Array* newTexCoords = new osg::Vec2Array();
+        newTexCoords->reserve( numVerts );
+        newTexCoordsArrays.push_back( newTexCoords );
     }
 
     unsigned offset = 0;
@@ -258,6 +275,20 @@ MeshConsolidator::run( osg::Geode& geode )
                     }
                 }
 
+                if ( newTexCoordsArrays.size() > 0 )
+                {
+                    for( unsigned a=0; a<texCoordArrayUnits.size(); ++a )
+                    {
+                        unsigned unit = texCoordArrayUnits[a];
+                        osg::Vec2Array* texCoords = dynamic_cast<osg::Vec2Array*>( geom->getTexCoordArray(unit) );
+                        if ( texCoords )
+                        {
+                            osg::Vec2Array* newTexCoords = newTexCoordsArrays[a];
+                            std::copy( texCoords->begin(), texCoords->end(), std::back_inserter(*newTexCoords) );
+                        }
+                    }
+                }
+
                 for( unsigned j=0; j < geom->getNumPrimitiveSets(); ++j )
                 {
                     osg::PrimitiveSet* pset = geom->getPrimitiveSet(j);
@@ -296,6 +327,15 @@ MeshConsolidator::run( osg::Geode& geode )
     {
         newGeom->setNormalArray( newNormals );
         newGeom->setNormalBinding( newNormalsBinding );
+    }
+
+    if ( newTexCoordsArrays.size() > 0 )
+    {
+        for( unsigned a=0; a<texCoordArrayUnits.size(); ++a )
+        {
+            unsigned unit = texCoordArrayUnits[a];
+            newGeom->setTexCoordArray( unit, newTexCoordsArrays[a] );
+        }
     }
 
     newGeom->setPrimitiveSetList( newPrimSets );

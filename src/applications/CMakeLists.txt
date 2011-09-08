@@ -39,6 +39,7 @@ ADD_SUBDIRECTORY(osgearth_annotation)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6")
 ADD_SUBDIRECTORY(osgearth_featureeditor)
+ADD_SUBDIRECTORY(osgearth_featureeditor_v8)
 ENDIF()
 
 ADD_SUBDIRECTORY(osgearth_measure)

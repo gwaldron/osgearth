@@ -51,7 +51,6 @@ void
 ImageLayerOptions::setDefaults()
 {
     _opacity.init( 1.0f );
-    _gamma.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _minRange.init( -FLT_MAX );
     _maxRange.init( FLT_MAX );
@@ -70,7 +69,6 @@ ImageLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "nodata_image", _noDataImageFilename );
     conf.getIfSet( "opacity", _opacity );
-    conf.getIfSet( "gamma", _gamma );
     conf.getIfSet( "min_range", _minRange );
     conf.getIfSet( "max_range", _maxRange );
     conf.getIfSet( "lod_blending", _lodBlending );
@@ -99,7 +97,6 @@ ImageLayerOptions::getConfig() const
     Config conf = TerrainLayerOptions::getConfig();
     conf.updateIfSet( "nodata_image", _noDataImageFilename );
     conf.updateIfSet( "opacity", _opacity );
-    conf.updateIfSet( "gamma", _gamma );
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
     conf.updateIfSet( "lod_blending", _lodBlending );
@@ -295,13 +292,6 @@ ImageLayer::setOpacity( float value )
 {
     _runtimeOptions.opacity() = osg::clampBetween( value, 0.0f, 1.0f );
     fireCallback( &ImageLayerCallback::onOpacityChanged );
-}
-
-void
-ImageLayer::setGamma( float value )
-{
-    _runtimeOptions.gamma() = value;
-    fireCallback( &ImageLayerCallback::onGammaChanged );
 }
 
 void 

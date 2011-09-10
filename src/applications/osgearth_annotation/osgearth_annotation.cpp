@@ -21,6 +21,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Annotation>
 #include <osgEarthUtil/ImageOverlay>
+#include <osgEarthUtil/ImageOverlayEditor>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -152,9 +153,20 @@ main(int argc, char** argv)
     osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
     if ( image ) {
         imageOverlay = new ImageOverlay(mapNode, image);
-        //imageOverlay->setBounds( Bounds( -100.0, 50.0, -90.0, 55.0) );
+        imageOverlay->setBounds( Bounds( -100.0, 50.0, -90.0, 55.0) );
+
+        //Add an editor            
         annoGroup->addChild( imageOverlay );
+        
+        osg::Node* editor = new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
+        root->addChild( editor );
+
+
+
     }
+
+
+
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);

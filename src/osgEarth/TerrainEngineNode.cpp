@@ -106,13 +106,6 @@ TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
         OE_WARN << LC << "Odd, onOpacityChanged did not find layer" << std::endl;
 }
 
-// this handler adjusts the uniform set when an image layer's "gamma" value changes
-void
-TerrainEngineNode::ImageLayerController::onGammaChanged( ImageLayer* layer )
-{
-    //TODO
-}
-
 //------------------------------------------------------------------------
 
 TerrainEngineNode::TerrainEngineNode() :

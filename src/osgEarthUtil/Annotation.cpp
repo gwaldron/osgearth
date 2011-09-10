@@ -40,15 +40,17 @@ _mapNode( mapNode )
 }
 
 PlacemarkNode::PlacemarkNode(MapNode*           mapNode, 
-                             const std::string& iconURI, 
+                             const osg::Vec3d&  position,
+                             const URI&         iconURI, 
                              const std::string& text,
                              const Style&       style) :
-_mapNode( mapNode ),
-_iconURI( iconURI ),
-_text   ( text ),
-_style  ( style )
+_mapNode ( mapNode ),
+_iconURI ( iconURI ),
+_text    ( text ),
+_style   ( style )
 {
     init();
+    setPosition( position );
 }
 
 void
@@ -109,9 +111,9 @@ PlacemarkNode::init()
 
     if ( !_iconURI.empty() )
     {
-        osg::ref_ptr<osg::Image> image;
-        if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )
-            _icon = new ImageControl( image.get() );
+        osg::Image* image = _iconURI.readImage();
+        if ( image )
+            _icon = new ImageControl( image );
     }
     else
     {
@@ -147,18 +149,12 @@ PlacemarkNode::init()
 }
 
 void
-PlacemarkNode::setIconURI( const std::string& iconURI )
+PlacemarkNode::setIconURI( const URI& iconURI )
 {
-    if ( iconURI != _iconURI )
-    {
-        _iconURI = iconURI;
-        osg::ref_ptr<osg::Image> image;
-        if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )
-        {
-            _icon->setImage( image.get() );
-            // add if necessary?
-        }
-    }
+    _iconURI = iconURI;
+    osg::Image* image = _iconURI.readImage();
+    if ( image )
+        _icon->setImage( image );
 }
 
 void
@@ -206,6 +202,7 @@ GeometryNode::init()
     FeatureList features;
     features.push_back( new Feature(_geom.get(), _style) );
     BuildGeometryFilter bg;
+    // no worky.
     osg::Node* node = bg.push( features, FilterContext() );
     //osg::Node* node = bg.getNode();
     setNode( node );

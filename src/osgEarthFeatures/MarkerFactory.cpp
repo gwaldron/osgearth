@@ -202,3 +202,17 @@ MarkerFactory::createImageFromURI( const URI& uri ) const
 
     return 0L;
 }
+
+URI
+MarkerFactory::getRawURI( const MarkerSymbol* marker ) const
+{
+    if ( marker )
+    {
+        StringVector tok;
+        StringTokenizer( marker->url()->full(), tok, "()" );
+        if ( tok.size() > 0 )
+            return URI( tok[tok.size()-1], marker->url()->context() );
+    }
+    return URI();
+}
+

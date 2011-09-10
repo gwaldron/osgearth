@@ -46,7 +46,13 @@ namespace osgEarth { namespace Util { namespace Annotation
     {
     public:
         PlacemarkNode( MapNode* mapNode );
-        PlacemarkNode( MapNode* mapNode, const std::string& iconURI, const std::string& label, const Style& style =Style() );
+
+        PlacemarkNode( 
+            MapNode*           mapNode, 
+            const osg::Vec3d&  position,
+            const URI&         iconURI, 
+            const std::string& label     ="",
+            const Style&       style     =Style() );
 
         /**
          * Sets the position of this annotation.
@@ -59,8 +65,8 @@ namespace osgEarth { namespace Util { namespace Annotation
         /**
          * Location of the icon image to load
          */
-        void setIconURI( const std::string& value );
-        const std::string getIconURI() const { return _iconURI; }
+        void setIconURI( const URI& value );
+        const URI getIconURI() const { return _iconURI; }
 
         /**
          * Text label content
@@ -81,7 +87,7 @@ namespace osgEarth { namespace Util { namespace Annotation
         Control* getPopupControl() const { return _popupControl.get(); }
 
     private:
-        std::string                _iconURI;
+        URI                        _iconURI;
         osg::ref_ptr<osg::Image>   _image;
         std::string                _text;
         Style                      _style;

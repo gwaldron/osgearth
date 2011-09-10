@@ -23,6 +23,7 @@
 #include <osgEarth/Notify>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/TextureCompositor>
 #include <osgEarth/MapNode>
 #include <osgEarth/FindNode>
 

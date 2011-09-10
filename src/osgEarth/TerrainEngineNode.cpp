@@ -20,6 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 #include <osgEarth/FindNode>
+#include <osgEarth/TextureCompositor>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>

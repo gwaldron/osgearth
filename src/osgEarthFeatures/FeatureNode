@@ -22,11 +22,13 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/DrapeableNode>
 
 namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * A node that renders a single feature. This convenience node assumes
@@ -40,10 +42,13 @@ namespace osgEarth { namespace Features
 
         void setFeature( Feature* feature );
 
+        void setStyle( const Style& style );
+
         void init();
 
     protected:
         osg::ref_ptr<Feature> _feature;
+        optional<Style>       _style;
     };
 
 } } // namespace osgEarth::Features

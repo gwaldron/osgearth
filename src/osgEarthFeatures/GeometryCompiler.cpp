@@ -36,6 +36,15 @@ using namespace osgEarth::Symbology;
 
 //-----------------------------------------------------------------------
 
+namespace
+{
+    osg::ref_ptr<PointSymbol>   s_defaultPointSymbol   = new PointSymbol();
+    osg::ref_ptr<LineSymbol>    s_defaultLineSymbol    = new LineSymbol();
+    osg::ref_ptr<PolygonSymbol> s_defaultPolygonSymbol = new PolygonSymbol();
+}
+
+//-----------------------------------------------------------------------
+
 GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
 ConfigOptions( conf ),
 _maxGranularity_deg( 5.0 ),
@@ -99,10 +108,10 @@ GeometryCompiler::compile(Feature*              feature,
         return 0L;
     }
 
-    if ( style.empty() ) {
-        OE_WARN << LC << "Non-empty style required" << std::endl;
-        return 0L;
-    }
+    //if ( style.empty() ) {
+    //    OE_WARN << LC << "Non-empty style required" << std::endl;
+    //    return 0L;
+    //}
 
     FeatureList workingSet;
     workingSet.push_back(feature);
@@ -120,10 +129,10 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         return 0L;
     }
 
-    if ( style.empty() ) {
-        OE_WARN << LC << "Non-empty style required" << std::endl;
-        return 0L;
-    }
+    //if ( style.empty() ) {
+    //    OE_WARN << LC << "Non-empty style required" << std::endl;
+    //    return 0L;
+    //}
 
     // start by making a working copy of the feature set
     FeatureList workingSet;
@@ -164,6 +173,27 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
 
+    // if the style was empty, use some defaults based on the geometry type of the
+    // first feature.
+    if ( style.empty() && workingSet.size() > 0 )
+    {
+        Feature* first = workingSet.begin()->get();
+        Geometry* geom = first->getGeometry();
+        if ( geom )
+        {
+            switch( geom->getComponentType() )
+            {
+            case Geometry::TYPE_LINESTRING:
+            case Geometry::TYPE_RING:
+                line = s_defaultLineSymbol.get(); break;
+            case Geometry::TYPE_POINTSET:
+                point = s_defaultPointSymbol.get(); break;
+            case Geometry::TYPE_POLYGON:
+                polygon = s_defaultPolygonSymbol.get(); break;
+            }
+        }
+    }
+
     if (_options.resampleMode().isSet())
     {
         ResampleFilter resample;
@@ -180,14 +210,6 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
             altitude->verticalOffset().isSet() ||
             altitude->verticalScale().isSet() );
-
-    
-    // first, apply a vertical offset if called for.
-    //if ( altitude && altitude->verticalOffset().isSet() && !altRequired )
-    //{
-    //    TransformFilter xform( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
-    //    sharedCX = xform.push( workingSet, sharedCX );
-    //}
 
     // model substitution
     if ( marker )

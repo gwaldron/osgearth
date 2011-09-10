@@ -18,9 +18,12 @@
  */
 #include "KMLReader"
 #include <osgEarthSymbology/Color>
+#include <osgEarthFeatures/MarkerFactory>
+#include <osgEarthFeatures/FeatureNode>
 #include <osgEarthUtil/Annotation>
 #include <osgEarth/XMLUtils>
 #include <stack>
+#include <iterator>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -227,6 +230,32 @@ namespace // KML IMPLEMENTATIONS
 
     void KMLPolyStyle::scan( const Config& conf, Style& style )
     {
+        if ( !conf.empty() )
+        {
+            bool fill = true;
+            if ( conf.hasValue("fill") ) {
+                fill = as<int>(conf.value("fill"), 1) == 1;
+            }
+
+            bool outline = false;
+            if ( conf.hasValue("outline") ) {
+                outline = as<int>(conf.value("outline"), 0) == 1;
+            }
+
+            Color color(Color::White);
+            if ( conf.hasValue("color") ) {
+                color = Color( Stringify() << "#" << conf.value("color"), Color::ABGR );
+            }
+
+            if ( fill ) {
+                PolygonSymbol* poly = style.getOrCreate<PolygonSymbol>();
+                poly->fill()->color() = color;
+            }
+            else {
+                LineSymbol* line = style.getOrCreate<LineSymbol>();
+                line->stroke()->color() = color;
+            }
+        }
     }
 
     void KMLStyle::scan( const Config& conf, KMLContext& cx )
@@ -344,9 +373,42 @@ namespace // KML IMPLEMENTATIONS
         KMLGeometry::parseCoords( conf, cx );
     }
 
-    void KMLPolygon::parseCoords( const Config& conf, KMLContext& cx ) {
-        _geom = new Polygon();
-        KMLGeometry::parseCoords( conf, cx );
+    void KMLPolygon::parseCoords( const Config& conf, KMLContext& cx )
+    {
+        Polygon* poly = new Polygon();
+        
+        Config outerConf = conf.child("outerboundaryis");
+        if ( !outerConf.empty() )
+        {
+            Config outerRingConf = outerConf.child("linearring");
+            if ( !outerRingConf.empty() )
+            {
+                KMLLinearRing outer;
+                outer.parseCoords( outerRingConf, cx );
+                if ( outer._geom.valid() ) {
+                    dynamic_cast<Ring*>(outer._geom.get())->rewind( Ring::ORIENTATION_CCW );
+                    poly->reserve( outer._geom->size() );
+                    std::copy( outer._geom->begin(), outer._geom->end(), std::back_inserter(*poly) );
+                }
+            }
+
+            ConfigSet innerConfs = conf.children("innerboundaryis");
+            for( ConfigSet::const_iterator i = innerConfs.begin(); i != innerConfs.end(); ++i )
+            {
+                Config innerRingConf = i->child("linearring");
+                if ( !innerRingConf.empty() )
+                {
+                    KMLLinearRing inner;
+                    inner.parseCoords( innerRingConf, cx );
+                    if ( inner._geom.valid() ) {
+                        dynamic_cast<Ring*>(inner._geom.get())->rewind( Ring::ORIENTATION_CW );
+                        poly->getHoles().push_back( dynamic_cast<Ring*>(inner._geom.get()) );
+                    }
+                }
+            }
+        }
+
+        _geom = poly;
     }
 
     void KMLMultiGeometry::parseCoords( const Config& conf, KMLContext& cx ) {
@@ -366,27 +428,46 @@ namespace // KML IMPLEMENTATIONS
 
     void KMLPlacemark::build( const Config& conf, KMLContext& cx )
     {
-        PlacemarkNode* node = new PlacemarkNode( cx._mapNode );
-
-        if ( conf.hasValue("styleurl") ) {
-            const Style* style = cx._sheet->getStyle( conf.value("styleurl"), false );
-            if ( style )
-                node->setStyle( *style );
+        Style style;
+        if ( conf.hasValue("styleurl") )
+        {
+            const Style* ref_style = cx._sheet->getStyle( conf.value("styleurl"), false );
+            if ( ref_style )
+                style = *ref_style;
         }
 
-        node->setText(
-            conf.hasValue("name") ? conf.value("name") :
-            conf.hasValue("description") ? conf.value("description" ) :
-            "Unnamed" );
+        URI iconURI;
+        MarkerSymbol* marker = style.get<MarkerSymbol>();
+        if ( marker && marker->url().isSet() )
+        {
+            MarkerFactory mf;
+            iconURI = mf.getRawURI( marker );
+        }
 
+        std::string text = 
+            conf.hasValue("name") ? conf.value("name") :
+            conf.hasValue("description") ? conf.value("description") :
+            "Unnamed";
+
+        // read in the geometry:
+        osg::Vec3d position;
         KMLGeometry geometry;
         geometry.build(conf, cx);
         if ( geometry._geom.valid() && geometry._geom->size() > 0 )
         {
-            node->setPosition( (*geometry._geom)[0] );
+            position = geometry._geom->getBounds().center();
         }
 
-        cx._groupStack.top()->addChild( node );
+        PlacemarkNode* pmNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
+        cx._groupStack.top()->addChild( pmNode );
+
+        // if we have a non-single-point geometry, render it.
+        if ( geometry._geom.valid() && geometry._geom->size() != 1 )
+        {
+            FeatureNode* fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()) );
+            fNode->setStyle( style );
+            cx._groupStack.top()->addChild( fNode );
+        }
     }
 
     void KMLSchema::scan( const Config& conf, KMLContext& cx ) {

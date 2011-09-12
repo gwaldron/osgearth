@@ -110,11 +110,12 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 
             // account for a "height" value that is relative to ZERO (MSL/HAE)
             AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
-            if ( alt )
+            if ( alt && !_extrusionSymbol->heightExpression().isSet() )
             {
-                if ( alt->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
+                if (alt->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ||
+                    alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
                 {
-                    _heightOffsetExpr = NumericExpression( "[__min_z]" );
+                    _heightExpr = NumericExpression( "0-[__max_hat]" );
                 }
             }
             
@@ -185,7 +186,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
     // whether to convert the final geometry to localized ECEF
     bool makeECEF = cx.getSession()->getMapInfo().isGeocentric();
-
 
     bool made_geom = false;
 
@@ -296,6 +296,9 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     // Initial pass over the geometry does two things:
     // 1: Calculate the minimum Z across all parts.
     // 2: Establish a "target length" for extrusion
+
+    double absHeight = fabs(height);
+
     ConstGeometryIterator zfinder( input );
     while( zfinder.hasMore() )
     {
@@ -304,8 +307,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         {
             osg::Vec3d m_point = *m;
 
-            if ( m_point.z() + height > targetLen )
-                targetLen = m_point.z() + height;
+            if ( m_point.z() + absHeight > targetLen )
+                targetLen = m_point.z() + absHeight;
 
             if (m_point.z() < minLoc.z())
                 minLoc = m_point;
@@ -347,13 +350,26 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             osg::Vec3d basePt = *m;
             osg::Vec3d roofPt;
 
+            if ( height >= 0 )
+            {
+                if ( flatten )
+                    roofPt.set( basePt.x(), basePt.y(), targetLen );
+                else
+                    roofPt.set( basePt.x(), basePt.y(), basePt.z() + height );
+            }
+            else // height < 0
+            {
+                roofPt = *m;
+                basePt.z() += height;
+            }
+
             // add to the approprate vertex lists:
             int p = wallVertPtr;
 
-            if ( flatten )
-                roofPt.set( basePt.x(), basePt.y(), targetLen );
-            else
-                roofPt.set( basePt.x(), basePt.y(), basePt.z() + height );
+            //if ( flatten && height >= 0.0 )
+            //    roofPt.set( basePt.x(), basePt.y(), zOffset + targetLen );
+            //else
+            //    roofPt.set( basePt.x(), basePt.y(), zOffset + basePt.z() + absHeight );
 
             // figure out the rooftop texture coordinates before doing any
             // transformations:
@@ -515,9 +531,9 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             {
                 height = _heightCallback->operator()(input, context);
             }
-            else if ( _extrusionSymbol->heightExpression().isSet() )
+            else if ( _heightExpr.isSet() )
             {
-                height = input->eval( _heightExpr );
+                height = input->eval( _heightExpr.mutable_value() );
             }
             else
             {
@@ -541,7 +557,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( _wallResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
-                    querySymbol.objectHeight() = height - offset;
+                    querySymbol.objectHeight() = fabs(height) - offset;
                     wallSkin = _wallResLib->getSkin( &querySymbol, input->getFID() + 151 );
                 }
 

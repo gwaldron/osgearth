@@ -87,11 +87,10 @@ namespace osgEarth { namespace Features
         StringExpression               _featureNameExpr;
         osg::ref_ptr<HeightCallback>   _heightCallback;
         optional<NumericExpression>    _heightOffsetExpr;
+        optional<NumericExpression>    _heightExpr;
 
-        Style                               _style;
-        bool                                _styleDirty;
-
-        NumericExpression                   _heightExpr;
+        Style                          _style;
+        bool                           _styleDirty;
 
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
         osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;

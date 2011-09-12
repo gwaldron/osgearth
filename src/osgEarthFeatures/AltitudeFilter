@@ -42,10 +42,6 @@ namespace osgEarth { namespace Features
         /** Shortcut to set any properties that are represented in a style. */
         void setPropertiesFromStyle( const Style& style );
 
-        /** Whether to consider the pre-existing Z coordinate when clamping (default=false) */
-        void setIgnoreZ( bool value ) { _ignoreZ = value; }
-        bool getIgnoreZ() const { return _ignoreZ; }
-
         /** Maximum terrain resolution to consider when clamping */
         void setMaxResolution( double value ) { _maxRes = value; }
         double getMaxResolution() const { return _maxRes; }
@@ -55,9 +51,8 @@ namespace osgEarth { namespace Features
 
     protected:
         osg::ref_ptr<const AltitudeSymbol> _altitude;
-        bool                               _ignoreZ;
         double                             _maxRes;
-        std::string                        _maxZAttr, _minZAttr;
+        std::string                        _maxZAttr, _minZAttr, _terrainZAttr;
     };
 
 } } // namespace osgEarth::Features

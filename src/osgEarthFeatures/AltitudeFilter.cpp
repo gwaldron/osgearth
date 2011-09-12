@@ -29,7 +29,6 @@ using namespace osgEarth::Symbology;
 //---------------------------------------------------------------------------
 
 AltitudeFilter::AltitudeFilter() :
-_ignoreZ( false ),
 _maxRes ( 0.0f )
 {
     //NOP
@@ -39,20 +38,9 @@ void
 AltitudeFilter::setPropertiesFromStyle( const Style& style )
 {
     _altitude = style.get<AltitudeSymbol>();
-
     if ( _altitude )
     {
-        setIgnoreZ( 
-            _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
-            _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE );
-
         setMaxResolution( *_altitude->clampingResolution() );
-
-        if ( _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
-        {
-            _minZAttr = "__min_z";
-            _maxZAttr = "__max_z";
-        }
     }
 }
 
@@ -85,11 +73,20 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
     bool clamp =
         _altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
 
+    // whether to record a "minimum terrain" value
+    bool collectHATs =
+        _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN ||
+        _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE;
+
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
-        double maxZ = -DBL_MAX;
-        double minZ = DBL_MAX;
+        double maxGeomZ     = -DBL_MAX;
+        double minGeomZ     =  DBL_MAX;
+        double maxTerrainZ  = -DBL_MAX;
+        double minTerrainZ  =  DBL_MAX;
+        double minHAT       =  DBL_MAX;
+        double maxHAT       = -DBL_MAX;
 
         double scaleZ = 1.0;
         if ( _altitude.valid() && _altitude->verticalScale().isSet() )
@@ -107,28 +104,72 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
             // clamps the entire array to the terrain using the specified resolution.
             if ( clamp )
             {
-                eq.getElevations( geom->asVector(), featureSRS, _ignoreZ, _maxRes );
+                if ( collectHATs )
+                {
+                    std::vector<double> elevations;
+                    elevations.reserve( geom->size() );
+                    eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes );
+                    for( unsigned i=0; i<geom->size(); ++i )
+                    {
+                        double z = (*geom)[i].z() * scaleZ + offsetZ;
+                        double hat =
+                            _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ? z - elevations[i] :
+                            z;
+
+                        if ( hat > maxHAT )
+                            maxHAT = hat;
+                        if ( hat < minHAT )
+                            minHAT = hat;
+
+                        double elev = elevations[i];
+                        if ( elev > maxTerrainZ )
+                            maxTerrainZ = elev;
+                        if ( elev < minTerrainZ )
+                            minTerrainZ = elev;
+
+                        (*geom)[i].z() =
+                            _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ? z :
+                            z + elevations[i];
+                    }
+                }
+                else
+                {
+                    eq.getElevations( geom->asVector(), featureSRS, true, _maxRes );
+                }
             }
 
-            if ( scaleZ != 1.0 || offsetZ != 0.0 || !_maxZAttr.empty() )
+            for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
             {
-                for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
+                if ( !collectHATs )
                 {
                     i->z() *= scaleZ;
                     i->z() += offsetZ;
-
-                    if ( i->z() > maxZ )
-                        maxZ = i->z();
-                    if ( i->z() < minZ )
-                        minZ = i->z();
                 }
+
+                if ( i->z() > maxGeomZ )
+                    maxGeomZ = i->z();
+                if ( i->z() < minGeomZ )
+                    minGeomZ = i->z();
             }
         }
 
-        if ( !_minZAttr.empty() )
-            feature->set( _minZAttr, minZ );
-        if ( !_maxZAttr.empty() )
-            feature->set( _maxZAttr, maxZ );
+        if ( minHAT != DBL_MAX )
+        {
+            feature->set( "__min_hat", minHAT );
+            feature->set( "__max_hat", maxHAT );
+        }
+
+        if ( minGeomZ != DBL_MAX )
+        {
+            feature->set( "__min_geom_z", minGeomZ );
+            feature->set( "__max_geom_z", maxGeomZ );
+        }
+
+        if ( minTerrainZ != DBL_MAX )
+        {
+            feature->set( "__min_terrain_z", minTerrainZ );
+            feature->set( "__max_terrain_z", maxTerrainZ );
+        }
     }
 
     return cx;

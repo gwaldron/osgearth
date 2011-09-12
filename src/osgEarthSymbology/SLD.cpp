@@ -264,17 +264,17 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         }
         else if (p->first == "altitude-resolution")
         {
-            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
             altitude->clampingResolution() = as<float>( p->second, 0.0f );
         }
         else if (p->first == "altitude-offset")
         {
-            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
             altitude->verticalOffset() = NumericExpression( p->second );
         }
         else if (p->first == "altitude-scale")
         {
-            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
             altitude->verticalScale() = NumericExpression( p->second );
         }
 

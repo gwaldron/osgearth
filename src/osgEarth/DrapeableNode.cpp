@@ -19,6 +19,7 @@
 
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
+#include <osgEarth/FindNode>
 
 using namespace osgEarth;
 
@@ -31,10 +32,44 @@ _draped ( draped )
     // to "track" the traversal state of the DrapeableNode itself.
     _nodeContainer = new osg::Group();
     _nodeContainer->setCullCallback( new CullNodeByFrameNumber() );
+    _dirty = false;
+}
+
+void
+DrapeableNode::applyChanges()
+{
+    if ( _newNode.valid() )
+    {
+        setNodeImpl( _newNode.get() );
+        _newNode = 0L;
+    }
+    
+    if ( _newDraped != _draped )
+    {
+        bool oldDraped = _draped;
+        setDrapedImpl( _newDraped );
+        _newDraped = oldDraped;
+    }
 }
 
 void
 DrapeableNode::setNode( osg::Node* node )
+{
+    _newNode = node;
+    _dirty = true;
+    this->setNumChildrenRequiringUpdateTraversal( 1 );
+}
+
+void
+DrapeableNode::setDraped( bool draped )
+{
+    _newDraped = draped;
+    _dirty = true;
+    this->setNumChildrenRequiringUpdateTraversal( 1 );
+}
+
+void
+DrapeableNode::setNodeImpl( osg::Node* node )
 {
     if ( _node.valid() )
     {
@@ -68,7 +103,7 @@ DrapeableNode::setNode( osg::Node* node )
 }
 
 void
-DrapeableNode::setDraped( bool value )
+DrapeableNode::setDrapedImpl( bool value )
 {
     if ( _draped != value )
     {
@@ -92,5 +127,13 @@ DrapeableNode::traverse( osg::NodeVisitor& nv )
         CullNodeByFrameNumber* cb = static_cast<CullNodeByFrameNumber*>(_nodeContainer->getCullCallback());
         cb->_frame = nv.getFrameStamp()->getFrameNumber();
     }
+
+    if ( _dirty &&  nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        applyChanges();
+        _dirty = false;
+        this->setNumChildrenRequiringUpdateTraversal( 0 );
+    }
+
     osg::Group::traverse( nv );
 }

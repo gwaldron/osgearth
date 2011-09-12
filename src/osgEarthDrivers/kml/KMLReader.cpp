@@ -22,6 +22,7 @@
 #include <osgEarthFeatures/FeatureNode>
 #include <osgEarthUtil/Annotation>
 #include <osgEarth/XMLUtils>
+#include <osg/PagedLOD>
 #include <stack>
 #include <iterator>
 
@@ -73,6 +74,7 @@ namespace // KML PROTOTYPES
 
     struct KMLObject {
         virtual void scan( const Config& conf, KMLContext& cx ) { }
+        virtual void scan2( const Config& conf, KMLContext& cx ) { }
         virtual void build( const Config& conf, KMLContext& cx );
     };
 
@@ -100,13 +102,16 @@ namespace // KML PROTOTYPES
     };
 
     struct KMLStyleMap : public KMLStyleSelector {
-        virtual void scan( const Config& conf, KMLContext& cx );
+        virtual void scan2( const Config& conf, KMLContext& cx );
     };
 
     struct KMLGeometry : public KMLObject {
+        KMLGeometry() : _extrude(false), _tessellate(false) { }
         virtual void parseCoords( const Config& conf, KMLContext& cx );
-        virtual void build( const Config& conf, KMLContext& cx );
+        virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
+        virtual void build( const Config& conf, KMLContext& cx, Style& style );
         osg::ref_ptr<Geometry> _geom;
+        bool _extrude, _tessellate;
     };
 
     struct KMLPoint : public KMLGeometry {
@@ -120,12 +125,12 @@ namespace // KML PROTOTYPES
     };
 
     struct KMLLinearRing : public KMLGeometry {
-        //virtual void scan( const Config& conf, KMLContext& cx );
         virtual void parseCoords( const Config& conf, KMLContext& cx );
     };
 
     struct KMLPolygon : public KMLGeometry {
         //virtual void scan( const Config& conf, KMLContext& cx );
+        virtual void parseStyle( const Config& conf, KMLContext& cx, Style& style);
         virtual void parseCoords( const Config& conf, KMLContext& cx );
     };
 
@@ -178,6 +183,7 @@ namespace // KML PROTOTYPES
     };
 
     struct KMLNetworkLink : public KMLFeature {
+        virtual void build( const Config& conf, KMLContext& cx );
     };
 
     struct KMLSchema : public KMLObject {
@@ -277,6 +283,23 @@ namespace // KML IMPLEMENTATIONS
         cx._sheet->addStyle( style ); 
     }
 
+    void KMLStyleMap::scan2( const Config& conf, KMLContext& cx )
+    {
+        const Config& pair = conf.child("pair");
+        if ( !pair.empty() )
+        {
+            const std::string& url = pair.value("styleurl" );
+            if ( !url.empty() ) {
+                const Style* style = cx._sheet->getStyle( url );
+                if ( style ) {
+                    Style aliasStyle = *style;
+                    aliasStyle.setName( conf.value("id") );
+                    cx._sheet->addStyle( aliasStyle );
+                }
+            }
+        }
+    }
+
     void KMLContainer::scan( const Config& conf, KMLContext& cx )
     {
         KMLFeature::scan(conf, cx);
@@ -304,7 +327,7 @@ namespace // KML IMPLEMENTATIONS
         cx._groupStack.pop();
     }
 
-    void KMLGeometry::build( const Config& conf, KMLContext& cx )
+    void KMLGeometry::build( const Config& conf, KMLContext& cx, Style& style)
     {
         if ( conf.hasChild("point") ) {
             KMLPoint g;
@@ -323,6 +346,7 @@ namespace // KML IMPLEMENTATIONS
         }
         else if ( conf.hasChild("polygon") ) {
             KMLPolygon g;
+            g.parseStyle(conf.child("polygon"), cx, style);
             g.parseCoords(conf.child("polygon"), cx);
             _geom = g._geom.get();
         }
@@ -358,6 +382,36 @@ namespace // KML IMPLEMENTATIONS
         }
     }
 
+    void KMLGeometry::parseStyle( const Config& conf, KMLContext& cs, Style& style )
+    {
+        _extrude = conf.value("extrude") == "1";
+        _tessellate = conf.value("tessellate") == "1";
+
+        std::string am = conf.value("altitudemode");
+        if ( am.empty() || am == "clampToGround" )
+        {
+            AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
+            af->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            _extrude = false;
+        }
+        else if ( am == "relativeToGround" )
+        {
+            AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
+            af->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        }
+        else if ( am == "absolute" )
+        {
+            AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
+            af->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
+        }
+
+        if ( _extrude )
+        {
+            ExtrusionSymbol* es = style.getOrCreate<ExtrusionSymbol>();
+            es->flatten() = false;
+        }
+    }
+
     void KMLPoint::parseCoords( const Config& conf, KMLContext& cx ) {
         _geom = new PointSet();
         KMLGeometry::parseCoords( conf, cx );
@@ -371,6 +425,11 @@ namespace // KML IMPLEMENTATIONS
     void KMLLinearRing::parseCoords( const Config& conf, KMLContext& cx ) {
         _geom = new Ring();
         KMLGeometry::parseCoords( conf, cx );
+    }
+
+    void KMLPolygon::parseStyle(const Config& conf, KMLContext& cx, Style& style)
+    {
+        KMLGeometry::parseStyle(conf, cx, style);
     }
 
     void KMLPolygon::parseCoords( const Config& conf, KMLContext& cx )
@@ -401,8 +460,9 @@ namespace // KML IMPLEMENTATIONS
                     KMLLinearRing inner;
                     inner.parseCoords( innerRingConf, cx );
                     if ( inner._geom.valid() ) {
-                        dynamic_cast<Ring*>(inner._geom.get())->rewind( Ring::ORIENTATION_CW );
-                        poly->getHoles().push_back( dynamic_cast<Ring*>(inner._geom.get()) );
+                        Geometry* innerGeom = inner._geom.get();
+                        dynamic_cast<Ring*>(innerGeom)->rewind( Ring::ORIENTATION_CW );
+                        poly->getHoles().push_back( dynamic_cast<Ring*>(innerGeom) );
                     }
                 }
             }
@@ -452,25 +512,91 @@ namespace // KML IMPLEMENTATIONS
         // read in the geometry:
         osg::Vec3d position;
         KMLGeometry geometry;
-        geometry.build(conf, cx);
+        geometry.build(conf, cx, style);
         if ( geometry._geom.valid() && geometry._geom->size() > 0 )
         {
-            position = geometry._geom->getBounds().center();
+            Geometry* geom = geometry._geom.get();
+            position = geom->getBounds().center();
         }
 
-        PlacemarkNode* pmNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
-        cx._groupStack.top()->addChild( pmNode );
+        //PlacemarkNode* pmNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
+        //cx._groupStack.top()->addChild( pmNode );
 
         // if we have a non-single-point geometry, render it.
         if ( geometry._geom.valid() && geometry._geom->size() != 1 )
-        {
-            FeatureNode* fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()) );
+        {   
+            const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
+            const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+
+            bool draped =
+                ex == 0L &&
+                (alt && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+
+
+            FeatureNode* fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped );
             fNode->setStyle( style );
+            // drape if we're not extruding.
+            fNode->setDraped( draped );
             cx._groupStack.top()->addChild( fNode );
         }
     }
 
     void KMLSchema::scan( const Config& conf, KMLContext& cx ) {
+    }
+
+    void KMLNetworkLink::build( const Config& conf, KMLContext& cx )
+    {
+        std::string name = conf.value("name");
+        
+        // parse the bounds:
+        const Config& regionConf = conf.child("region");
+        if ( regionConf.empty() )
+            return;
+        const Config& llaBoxConf = regionConf.child("latlonaltbox");
+        if ( llaBoxConf.empty() )
+            return;
+        GeoExtent llaExtent(
+            cx._mapNode->getMap()->getProfile()->getSRS()->getGeographicSRS(),
+            conf.value<double>(regionConf.value("west"),  0.0),
+            conf.value<double>(regionConf.value("south"), 0.0),
+            conf.value<double>(regionConf.value("east"),  0.0),
+            conf.value<double>(regionConf.value("north"), 0.0) );
+        GeoExtent mapExtent = llaExtent.transform( cx._mapNode->getMap()->getProfile()->getSRS() );
+        double x, y;
+        mapExtent.getCentroid( x, y );
+        osg::Vec3d lodCenter;
+        cx._mapNode->getMap()->mapPointToWorldPoint( osg::Vec3d(x,y,0), lodCenter );
+
+        // parse the LOD ranges:
+        float minRange = 0, maxRange = 1e6;
+        const Config& lodConf = conf.child("lod");
+        if ( !lodConf.empty() ) 
+        {
+            // swapped
+            maxRange = conf.value<float>( "minlodpixels", maxRange );
+            minRange = conf.value<float>( "maxlodpixels", minRange );
+        }
+        
+        // parse the link:
+        const Config& linkConf = conf.child("link");
+        if ( linkConf.empty() )
+            return;
+        std::string href = linkConf.value("href");
+        if ( href.empty() )
+            return;
+
+        // build the node
+        osg::PagedLOD* plod = new osg::PagedLOD();
+        plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
+        if ( !endsWith(href, ".kml") )
+            href += "&.kml";
+        plod->setFileName( 0, href );
+        plod->setRange( 0, minRange, maxRange );
+        plod->setCenter( lodCenter );
+        osgDB::Options* options = new osgDB::Options();
+        options->setPluginData( "osgEarth::MapNode", cx._mapNode );
+        plod->setDatabaseOptions( options );
+        cx._groupStack.top()->addChild( plod );
     }
 
     void KMLDocument::scan( const Config& conf, KMLContext& cx ) {
@@ -538,7 +664,8 @@ KMLReader::read( const Config& conf )
     {
         KMLRoot kmlRoot;
         kmlRoot.scan( kml, cx );    // first pass
-        kmlRoot.build( kml, cx );   // second pass.
+        kmlRoot.scan2( kml, cx );   // second pass
+        kmlRoot.build( kml, cx );   // third pass.
     }
 
     return root;

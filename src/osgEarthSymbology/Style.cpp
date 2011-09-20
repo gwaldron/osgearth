@@ -51,6 +51,16 @@ void Style::addSymbol(Symbol* symbol)
     _symbols.push_back(symbol);
 }
 
+bool Style::removeSymbol(Symbol* symbol)
+{
+	SymbolList::iterator it = find(_symbols.begin(), _symbols.end(), symbol);
+	if (it == _symbols.end())
+		return false;
+		
+	_symbols.erase(it);
+	
+	return true;
+}
 
 Style::Style( const Config& conf )
 {

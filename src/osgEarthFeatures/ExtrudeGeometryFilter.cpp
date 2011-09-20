@@ -214,10 +214,16 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
     if ( useColor )
     {
-        osg::Vec4Array* colors = new osg::Vec4Array( 1 );
-        (*colors)[0] = wallColor;
+        // per-vertex colors are necessary if we are going to use the MeshConsolidator -gw
+        osg::Vec4Array* colors = new osg::Vec4Array();
+        colors->reserve( numVerts );
+        colors->assign( numVerts, wallColor );
         walls->setColorArray( colors );
-        walls->setColorBinding( osg::Geometry::BIND_OVERALL );
+        walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+        //osg::Vec4Array* colors = new osg::Vec4Array( 1 );
+        //(*colors)[0] = wallColor;
+        //walls->setColorArray( colors );
+        //walls->setColorBinding( osg::Geometry::BIND_OVERALL );
     }
 
     // set up rooftop tessellation and texturing, if necessary:
@@ -234,11 +240,16 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         roofVerts = new osg::Vec3Array( pointCount );
         roof->setVertexArray( roofVerts );
 
-        //todo: use colors for cap? depends on whether there's a roof texture.
-        osg::Vec4Array* roofColors = new osg::Vec4Array( 1 );
-        (*roofColors)[0] = roofColor;
+        // per-vertex colors are necessary if we are going to use the MeshConsolidator -gw
+        osg::Vec4Array* roofColors = new osg::Vec4Array();
+        roofColors->reserve( pointCount );
+        roofColors->assign( pointCount, roofColor );
         roof->setColorArray( roofColors );
-        roof->setColorBinding( osg::Geometry::BIND_OVERALL );
+        roof->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+        //osg::Vec4Array* roofColors = new osg::Vec4Array( 1 );
+        //(*roofColors)[0] = roofColor;
+        //roof->setColorArray( roofColors );
+        //roof->setColorBinding( osg::Geometry::BIND_OVERALL );
 
         if ( roofSkin )
         {
@@ -659,10 +670,14 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( !_featureNameExpr.empty() )
                     name = input->eval( _featureNameExpr );
 
+                //MeshConsolidator::run( *walls.get() );
                 addDrawable( walls.get(), wallStateSet, name );
 
                 if ( rooflines.valid() )
+                {
+                    //MeshConsolidator::run( *rooflines.get() );
                     addDrawable( rooflines.get(), roofStateSet, name );
+                }
             }   
         }
     }
@@ -717,7 +732,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     // push all the features through the extruder.
     bool ok = process( input, context );
 
-    // convert everything to triangles and combine drawables.    
+    // convert everything to triangles and combine drawables.
     if ( _mergeGeometry == true && _featureNameExpr.empty() )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )

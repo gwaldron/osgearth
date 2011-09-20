@@ -66,6 +66,27 @@ MeshConsolidator::run( osg::Geometry& geom )
     if ( !vertexArray )
         return;
 
+    // check that everything is bound per-vertex
+
+    if ( geom.getColorArray() != 0L && geom.getColorBinding() != osg::Geometry::BIND_PER_VERTEX )
+        return;
+
+    if ( geom.getNormalArray() != 0L && geom.getNormalBinding() != osg::Geometry::BIND_PER_VERTEX )
+        return;
+
+    if ( geom.getSecondaryColorArray() != 0L && geom.getSecondaryColorBinding() != osg::Geometry::BIND_PER_VERTEX )
+        return;
+
+    if ( geom.getVertexAttribArrayList().size() > 0 )
+    {
+        unsigned n = geom.getVertexAttribArrayList().size();
+        for( unsigned i=0; i<n; ++i ) 
+        {
+            if ( geom.getVertexAttribBinding( i ) != osg::Geometry::BIND_PER_VERTEX )
+                return;
+        }
+    }
+
     osg::Geometry::PrimitiveSetList& primSets = geom.getPrimitiveSetList();
     osg::Geometry::PrimitiveSetList  triSets, nonTriSets;
 

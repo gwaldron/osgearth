@@ -37,6 +37,8 @@
 #include "TileService"
 #include "WMSOptions"
 
+#define LC "[WMS] "
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
@@ -45,7 +47,9 @@ using namespace osgEarth::Drivers;
 // a shared reference time.
 class SyncImageSequence : public osg::ImageSequence {
 public:
-    SyncImageSequence() { }
+    SyncImageSequence()
+    { 
+    }
 
     virtual void update(osg::NodeVisitor* nv) {
         setReferenceTime( 0.0 );
@@ -61,11 +65,8 @@ public:
     {
         if ( _options.times().isSet() )
         {
-            StringTokenizer izer( ",", "" );
-            izer.keepEmpties() = false;
-            izer.tokenize( *_options.times(), _timesVec );
-            //osgEarth::tokenize( _options.times().value(), _timesVec, ",", "", false );
-            //osgEarth::split( _options.times().value(), ",", _timesVec, false );
+            StringTokenizer( *_options.times(), _timesVec, ",", "", false, true );
+            OE_INFO << LC << "WMS-T: found " << _timesVec.size() << " times." << std::endl;
         }
 
         // localize it since we might override them:
@@ -238,6 +239,12 @@ public:
         else
         {
             OE_INFO << "[osgEarth::WMS] No JPL/TileService spec found; assuming standard WMS" << std::endl;
+        }
+
+        //Use the override profile if one is passed in.
+        if (overrideProfile)
+        {
+            result = overrideProfile;
         }
 
         //TODO: won't need this for OSG 2.9+, b/c of mime-type support

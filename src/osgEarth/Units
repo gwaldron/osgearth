@@ -141,7 +141,7 @@ namespace osgEarth
         }
         static void convertSpeed( const Units& from, const Units& to, double input, double& output ) {
             double t = from._distance->convertTo( *to._distance, input );
-            output = to._time->convertTo( *from._time, input );
+            output = to._time->convertTo( *from._time, t );
         }
 
 

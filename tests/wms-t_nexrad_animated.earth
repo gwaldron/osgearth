@@ -16,6 +16,7 @@ US NEXRAD 45 minute radar returns overlaid on imagery.
         <layers>nexrad-n0r-wmst</layers>
         <tile_size>256</tile_size>
         <srs>EPSG:4326</srs>
+		<profile>global-geodetic</profile>
         <transparent>true</transparent>
         <times>
             2005-08-29T13:00:00Z,
@@ -32,8 +33,5 @@ US NEXRAD 45 minute radar returns overlaid on imagery.
     
     <options>
         <lighting>false</lighting>
-        <terrain>
-            <loading_policy mode="preemptive"/>
-        </terrain>
     </options>
 </map>

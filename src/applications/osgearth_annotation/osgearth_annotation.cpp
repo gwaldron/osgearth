@@ -21,6 +21,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Annotation>
 #include <osgEarthUtil/ImageOverlay>
+#include <osgEarthUtil/ImageOverlayEditor>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -70,13 +71,13 @@ main(int argc, char** argv)
     root->addChild( annoGroup );
 
     // a Placemark combines a 2D icon with a text label.
-    PlacemarkNode* newYork = new PlacemarkNode(
-        mapNode, osg::Vec3d(-74, 40.714, 0), URI("../data/placemark32.png"), "New York");
+    PlacemarkNode* newYork = new PlacemarkNode(mapNode, "../data/placemark32.png", "New York");
+    newYork->setPosition( osg::Vec3d(-74, 40.714, 0) );
     annoGroup->addChild( newYork );
 
     // a Placemark combines a 2D icon with a text label.
-    PlacemarkNode* tokyo = new PlacemarkNode(
-        mapNode, osg::Vec3d(139.75, 35.685, 0), URI("../data/placemark32.png"), "Tokyo");
+    PlacemarkNode* tokyo = new PlacemarkNode(mapNode, "../data/placemark32.png", "Tokyo");
+    tokyo->setPosition( osg::Vec3d(139.75, 35.685, 0) );
     annoGroup->addChild( tokyo );
 
     // a box that follows lines of latitude (rhumb line interpolation, the default)
@@ -152,9 +153,20 @@ main(int argc, char** argv)
     osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
     if ( image ) {
         imageOverlay = new ImageOverlay(mapNode, image);
-        imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
+        imageOverlay->setBounds( Bounds( -100.0, 50.0, -90.0, 55.0) );
+
+        //Add an editor            
         annoGroup->addChild( imageOverlay );
+        
+        osg::Node* editor = new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
+        root->addChild( editor );
+
+
+
     }
+
+
+
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);

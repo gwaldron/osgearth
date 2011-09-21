@@ -30,16 +30,19 @@ KML_Geometry::build( const Config& conf, KMLContext& cx, Style& style)
 {
     if ( conf.hasChild("point") ) {
         KML_Point g;
+        g.parseStyle(conf.child("point"), cx, style);
         g.parseCoords(conf.child("point"), cx);
         _geom = g._geom.get();
     }
     else if ( conf.hasChild("linestring") ) {
         KML_LineString g;
+        g.parseStyle(conf.child("linestring"), cx, style);
         g.parseCoords(conf.child("linestring"), cx);
         _geom = g._geom.get();
     }
     else if ( conf.hasChild("linearring") ) {
         KML_LinearRing g;
+        g.parseStyle(conf.child("linearring"), cx, style);
         g.parseCoords(conf.child("linearring"), cx);
         _geom = g._geom.get();
     }
@@ -51,11 +54,13 @@ KML_Geometry::build( const Config& conf, KMLContext& cx, Style& style)
     }
     else if ( conf.hasChild("multigeometry") ) {
         KML_MultiGeometry g;
+        g.parseStyle(conf.child("multigeometry"), cx, style);
         g.parseCoords(conf.child("multigeometry"), cx);
         _geom = g._geom.get();
     }
     else if ( conf.hasChild("model") ) {
         KML_Model g;
+        g.parseStyle(conf.child("model"), cx, style);
         g.parseCoords(conf.child("model"), cx);
         _geom = g._geom.get();
     }

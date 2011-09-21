@@ -18,40 +18,12 @@
  */
 #include "KML_NetworkLink"
 #include <osg/PagedLOD>
+#include <osg/ProxyNode>
 
 void
 KML_NetworkLink::build( const Config& conf, KMLContext& cx )
 {
     std::string name = conf.value("name");
-
-    // parse the bounds:
-    const Config& regionConf = conf.child("region");
-    if ( regionConf.empty() )
-        return;
-    const Config& llaBoxConf = regionConf.child("latlonaltbox");
-    if ( llaBoxConf.empty() )
-        return;
-    GeoExtent llaExtent(
-        cx._mapNode->getMap()->getProfile()->getSRS()->getGeographicSRS(),
-        conf.value<double>(regionConf.value("west"),  0.0),
-        conf.value<double>(regionConf.value("south"), 0.0),
-        conf.value<double>(regionConf.value("east"),  0.0),
-        conf.value<double>(regionConf.value("north"), 0.0) );
-    GeoExtent mapExtent = llaExtent.transform( cx._mapNode->getMap()->getProfile()->getSRS() );
-    double x, y;
-    mapExtent.getCentroid( x, y );
-    osg::Vec3d lodCenter;
-    cx._mapNode->getMap()->mapPointToWorldPoint( osg::Vec3d(x,y,0), lodCenter );
-
-    // parse the LOD ranges:
-    float minRange = 0, maxRange = 1e6;
-    const Config& lodConf = conf.child("lod");
-    if ( !lodConf.empty() ) 
-    {
-        // swapped
-        maxRange = conf.value<float>( "minlodpixels", maxRange );
-        minRange = conf.value<float>( "maxlodpixels", minRange );
-    }
 
     // parse the link:
     const Config& linkConf = conf.child("link");
@@ -61,16 +33,66 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
     if ( href.empty() )
         return;
 
-    // build the node
-    osg::PagedLOD* plod = new osg::PagedLOD();
-    plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
-    if ( !endsWith(href, ".kml") )
-        href += "&.kml";
-    plod->setFileName( 0, href );
-    plod->setRange( 0, minRange, maxRange );
-    plod->setCenter( lodCenter );
-    osgDB::Options* options = new osgDB::Options();
-    options->setPluginData( "osgEarth::MapNode", cx._mapNode );
-    plod->setDatabaseOptions( options );
-    cx._groupStack.top()->addChild( plod );
+    // "open" determines whether to load it immediately
+    bool open = conf.value<bool>("open", false);
+
+    // helps osgDB realize it's a KML file ...
+    if ( !endsWith(href, ".kml") ) href += "&.kml";
+
+    // if it's region-bound, parse it as a paged LOD:
+    const Config& regionConf = conf.child("region");
+    if ( !regionConf.empty() )
+    {
+        const Config& llaBoxConf = regionConf.child("latlonaltbox");
+        if ( llaBoxConf.empty() )
+            return;
+        GeoExtent llaExtent(
+            cx._mapNode->getMap()->getProfile()->getSRS()->getGeographicSRS(),
+            conf.value<double>(regionConf.value("west"),  0.0),
+            conf.value<double>(regionConf.value("south"), 0.0),
+            conf.value<double>(regionConf.value("east"),  0.0),
+            conf.value<double>(regionConf.value("north"), 0.0) );
+        GeoExtent mapExtent = llaExtent.transform( cx._mapNode->getMap()->getProfile()->getSRS() );
+        double x, y;
+        mapExtent.getCentroid( x, y );
+        osg::Vec3d lodCenter;
+        cx._mapNode->getMap()->mapPointToWorldPoint( osg::Vec3d(x,y,0), lodCenter );
+
+        // parse the LOD ranges:
+        float minRange = 0, maxRange = 1e6;
+        const Config& lodConf = conf.child("lod");
+        if ( !lodConf.empty() ) 
+        {
+            // swapped
+            maxRange = conf.value<float>( "minlodpixels", maxRange );
+            minRange = conf.value<float>( "maxlodpixels", minRange );
+        }
+
+        // build the node
+        osg::PagedLOD* plod = new osg::PagedLOD();
+        plod->setRangeMode( osg::LOD::PIXEL_SIZE_ON_SCREEN );
+
+        plod->setFileName( 0, href );
+        plod->setRange( 0, minRange, maxRange );
+        plod->setCenter( lodCenter );
+        osgDB::Options* options = new osgDB::Options();
+        options->setPluginData( "osgEarth::MapNode", cx._mapNode );
+        plod->setDatabaseOptions( options );
+        plod->setNodeMask( open ? ~0 : 0 );
+
+        cx._groupStack.top()->addChild( plod );
+    }
+
+    else 
+    {
+        osg::ProxyNode* proxy = new osg::ProxyNode();
+        proxy->setFileName( 0, href );
+        osgDB::Options* options = new osgDB::Options();
+        options->setPluginData( "osgEarth::MapNode", cx._mapNode );
+        proxy->setDatabaseOptions( options );
+        proxy->setNodeMask( open ? ~0 : 0 );
+
+        cx._groupStack.top()->addChild( proxy );
+    }
+
 }

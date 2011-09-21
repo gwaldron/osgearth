@@ -58,12 +58,9 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         position = geom->getBounds().center();
     }
 
-    PlacemarkNode* pmNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
-    cx._groupStack.top()->addChild( pmNode );
-
     // if we have a non-single-point geometry, render it.
     if ( geometry._geom.valid() && geometry._geom->size() != 1 )
-    {   
+    {
         const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
         const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
 
@@ -78,4 +75,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         fNode->setDraped( draped );
         cx._groupStack.top()->addChild( fNode );
     }
+
+    PlacemarkNode* pmNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
+    cx._groupStack.top()->addChild( pmNode );
 }

@@ -18,29 +18,21 @@
  */
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
+#include <osgDB/ObjectWrapper>
 #include "KMLOptions"
 #include "KMLReader"
 
+#define LC "[ReaderWriterKML] "
+
 using namespace osgEarth::Drivers;
 
-/**
- * The KML plugin that gets registered with OSG.
- */
-class KMLReaderWriter : public osgDB::ReaderWriter
+
+struct KMLReaderWriter : public osgDB::ReaderWriter
 {
-public:
-    KMLReaderWriter() { }
-
-    const char* className()
+    KMLReaderWriter()
     {
-        return "osgEarth KML reader/writer";
-    }
-
-    bool acceptsExtension(const std::string& extension) const
-    {
-        return
-            osgDB::equalCaseInsensitive( extension, "kml" );
-        //todo support kmz as well
+        supportsExtension( "kml", "KML" );
+        supportsExtension( "kmz", "KMZ" );
     }
 
     ReadResult readObject(const std::string& uri, const Options* options) const
@@ -48,19 +40,10 @@ public:
         return readNode( uri, options );
     }
 
-    WriteResult writeNode(const osg::Node& node, const std::string& fileName, const Options* options ) const
-    {
-        if ( !acceptsExtension( osgDB::getFileExtension(fileName) ) )
-            return WriteResult::FILE_NOT_HANDLED;
-
-        return WriteResult::NOT_IMPLEMENTED;
-    }
-
-    // Read from a URI
     ReadResult readNode(const std::string& uri, const Options* options) const
     {
-        std::string ext = osgDB::getFileExtension( uri );
-        if ( !acceptsExtension( ext ) )
+        std::string ext = osgDB::getLowerCaseFileExtension(uri);
+        if ( !acceptsExtension(ext) )
             return ReadResult::FILE_NOT_HANDLED;
 
         // propagate the source URI along to the stream reader
@@ -72,7 +55,6 @@ public:
         return readNode( in, options );
     }
 
-    // Read from a stream
     ReadResult readNode(std::istream& in, const Options* options ) const
     {
         // this plugin requires that you pass in a MapNode* in options.
@@ -94,4 +76,4 @@ public:
     }
 };
 
-REGISTER_OSGPLUGIN(kml, KMLReaderWriter)
+REGISTER_OSGPLUGIN( kml, KMLReaderWriter )

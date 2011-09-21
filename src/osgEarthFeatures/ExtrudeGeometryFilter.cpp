@@ -98,6 +98,7 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
         _roofSkinSymbol    = 0L;
         _roofPolygonSymbol = 0L;
         _extrusionSymbol   = 0L;
+        _outlineSymbol     = 0L;
 
         _extrusionSymbol = _style.get<ExtrusionSymbol>();
         if ( _extrusionSymbol.valid() )
@@ -139,7 +140,10 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
                     _roofSkinSymbol = roofStyle->get<SkinSymbol>();
                     _roofPolygonSymbol = roofStyle->get<PolygonSymbol>();
                 }
-            }       
+            }
+
+            // if there's a line symbol, use it to outline the extruded data.
+            _outlineSymbol = _style.get<LineSymbol>();
         }
 
         // backup plan for skin symbols:
@@ -174,8 +178,10 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        osg::Geometry*          walls,
                                        osg::Geometry*          roof,
                                        osg::Geometry*          base,
+                                       osg::Geometry*          outline,
                                        const osg::Vec4&        wallColor,
                                        const osg::Vec4&        roofColor,
+                                       const osg::Vec4&        outlineColor,
                                        const SkinResource*     wallSkin,
                                        const SkinResource*     roofSkin,
                                        FilterContext&          cx )
@@ -366,11 +372,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             // add to the approprate vertex lists:
             int p = wallVertPtr;
 
-            //if ( flatten && height >= 0.0 )
-            //    roofPt.set( basePt.x(), basePt.y(), zOffset + targetLen );
-            //else
-            //    roofPt.set( basePt.x(), basePt.y(), zOffset + basePt.z() + absHeight );
-
             // figure out the rooftop texture coordinates before doing any
             // transformations:
             if ( roofSkin )
@@ -514,6 +515,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             //walls->setUseVertexBufferObjects(true);
             
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
+            osg::ref_ptr<osg::Geometry> outlines  = 0L;
             
             if ( part->getType() == Geometry::TYPE_POLYGON )
             {
@@ -522,6 +524,12 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
                 // prep the shapes by making sure all polys are open:
                 static_cast<Polygon*>(part)->open();
+            }
+
+            // fire up the outline geometry if we have a line symbol.
+            if ( _outlineSymbol != 0L )
+            {
+                outlines = new osg::Geometry();
             }
 
             // calculate the extrusion height:
@@ -584,7 +592,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             }
 
             // calculate the colors:
-            osg::Vec4f wallColor(1,1,1,1), roofColor(1,1,1,1);
+            osg::Vec4f wallColor(1,1,1,1), roofColor(1,1,1,1), outlineColor(1,1,1,1);
 
             if ( _wallPolygonSymbol.valid() )
             {
@@ -594,13 +602,17 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             {
                 roofColor = _roofPolygonSymbol->fill()->color();
             }
+            if ( _outlineSymbol.valid() )
+            {
+                outlineColor = _outlineSymbol->stroke()->color();
+            }
 
             // Create the extruded geometry!
             if (extrudeGeometry( 
                     part, height, offset, 
                     *_extrusionSymbol->flatten(),
-                    walls.get(), rooflines.get(), 0L, 
-                    wallColor, roofColor,
+                    walls.get(), rooflines.get(), 0L, outlines.get(),
+                    wallColor, roofColor, outlineColor,
                     wallSkin, roofSkin,
                     context ) )
             {      

@@ -309,8 +309,9 @@ namespace
         return geode;
     }
 
-    struct BuildData : public osg::Referenced
+    struct BuildData // : public osg::Referenced
     {
+        //BuildData() { }
         BuildData( int renderBinStart ) : _renderBin( renderBinStart ) { }
         int _renderBin;
 
@@ -333,12 +334,14 @@ namespace
     {
     protected:
         const FeatureStencilModelOptions _options;
-        int _renderBinStart;
+        int                              _renderBinStart;
+        BuildData                        _buildData;
 
     public:
         StencilVolumeNodeFactory( const FeatureStencilModelOptions& options, int renderBinStart )
             : _options(options),
-              _renderBinStart( renderBinStart ) { }
+              _buildData( renderBinStart )
+        { }
 
         //override
         bool createOrUpdateNode(
@@ -377,9 +380,6 @@ namespace
             }
 
             densificationThreshold = *_options.densificationThreshold();
-
-            // establish the shared build data (shared across compiles in the same session)
-            BuildData* buildData = getOrCreateBuildData( cx.getSession() );
 
             // Scan the geometry to see if it includes line data, since that will require buffering:
             bool hasLines = false;
@@ -445,8 +445,6 @@ namespace
                 }
             }
 
-            //osg::Node* result = 0L;
-
             if ( volumes )
             {
                 // Resolve the localizing reference frame if necessary:
@@ -483,10 +481,10 @@ namespace
             }
             else
             {
-                BuildData* buildData = getOrCreateBuildData( session );
+                //BuildData* buildData = getOrCreateBuildData( session );
 
                 StencilVolumeNode* styleNode = 0L;
-                if ( !buildData->getStyleNode(style.getName(), styleNode) )
+                if ( !_buildData.getStyleNode(style.getName(), styleNode) )
                 {
                     OE_INFO << LC << "Create style group \"" << style.getName() << "\"" << std::endl;
 
@@ -516,24 +514,12 @@ namespace
                              osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
                     }
 
-                    buildData->_renderBin = styleNode->setBaseRenderBin( buildData->_renderBin );
-                    buildData->_styleGroups.push_back( BuildData::StyleGroup( style.getName(), styleNode ) );
+                    _buildData._renderBin = styleNode->setBaseRenderBin( _buildData._renderBin );
+                    _buildData._styleGroups.push_back( BuildData::StyleGroup( style.getName(), styleNode ) );
                 }
 
                 return styleNode;
             }
-        }
-
-        //private
-        BuildData* getOrCreateBuildData( Session* session )
-        {
-            // establish the shared build data (shared across compiles in the same session)
-            BuildData* buildData = dynamic_cast<BuildData*>( session->getBuildData() );
-            if ( !buildData ) {
-                buildData = new BuildData( _renderBinStart );
-                session->setBuildData( buildData );
-            }
-            return buildData;
         }
     };
 

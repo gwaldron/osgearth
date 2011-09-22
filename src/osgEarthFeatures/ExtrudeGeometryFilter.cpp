@@ -28,6 +28,8 @@
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>
 #include <osg/Version>
+#include <osg/LineWidth>
+#include <osg/PolygonOffset>
 #include <osgEarth/Version>
 
 #define LC "[ExtrudeGeometryFilter] "
@@ -300,6 +302,21 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         base->setVertexArray( baseVerts );
     }
 
+    osg::Vec3Array* outlineVerts = 0L;
+    if ( outline )
+    {
+        outlineVerts = new osg::Vec3Array( numVerts );
+        outline->setVertexArray( outlineVerts );
+
+        osg::Vec4Array* outlineColors = new osg::Vec4Array();
+        outlineColors->reserve( pointCount );
+        outlineColors->assign( pointCount, outlineColor );
+        outline->setColorArray( outlineColors );
+        outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+
+        outline->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    }
+
     unsigned wallVertPtr    = 0;
     unsigned roofVertPtr    = 0;
     unsigned baseVertPtr    = 0;
@@ -415,12 +432,21 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             }
 
             if ( base )
-                (*baseVerts)[baseVertPtr++] = basePt;
+                (*baseVerts)[baseVertPtr] = basePt;
             if ( roof )
-                (*roofVerts)[roofVertPtr++] = roofPt;
+                (*roofVerts)[roofVertPtr] = roofPt;
+
+            baseVertPtr++;
+            roofVertPtr++;
 
             (*verts)[p] = roofPt;
             (*verts)[p+1] = basePt;
+
+            if ( outline )
+            {
+                (*outlineVerts)[p] = roofPt;
+                (*outlineVerts)[p+1] = basePt;
+            }
             
             partLen += wallVertPtr > wallPartPtr ? ((*verts)[p] - (*verts)[p-2]).length() : 0.0;
             double h = tex_repeats_y ? -((*verts)[p] - (*verts)[p+1]).length() : -tex_height_m_adj;
@@ -473,6 +499,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 osg::PrimitiveSet::LINE_LOOP,
                 roofPartPtr, roofVertPtr - roofPartPtr ) );
         }
+
         if ( base )
         {
             // reverse the base verts:
@@ -483,6 +510,26 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             base->addPrimitiveSet( new osg::DrawArrays(
                 osg::PrimitiveSet::LINE_LOOP,
                 basePartPtr, baseVertPtr - basePartPtr ) );
+        }
+
+        if ( outline )
+        {
+            unsigned len = baseVertPtr - basePartPtr;
+
+            osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( GL_LINE_STRIP );
+            roofLine->reserveElements( len );
+            for( unsigned i=0; i<len; ++i )
+                roofLine->addElement( basePartPtr + i*2 );
+            outline->addPrimitiveSet( roofLine );
+
+            osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
+            wallLines->reserve( len*2 );
+            for( unsigned i=0; i<len; ++i )
+            {
+                wallLines->push_back( basePartPtr + i*2 );
+                wallLines->push_back( basePartPtr + i*2 + 1 );
+            }
+            outline->addPrimitiveSet( wallLines );
         }
     }
 
@@ -680,6 +727,11 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     //MeshConsolidator::run( *rooflines.get() );
                     addDrawable( rooflines.get(), roofStateSet, name );
                 }
+
+                if ( outlines.valid() )
+                {
+                    addDrawable( outlines.get(), 0L, name );
+                }
             }   
         }
     }
@@ -738,7 +790,9 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     if ( _mergeGeometry == true && _featureNameExpr.empty() )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
+        {
             MeshConsolidator::run( *i->second.get() );
+        }
     }
 
     // parent geometry with a delocalizer (if necessary)
@@ -746,8 +800,19 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     
     // combines geometries where the statesets are the same.
     for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
+    {
         group->addChild( i->second.get() );
+    }
     _geodes.clear();
+
+    // if we drew outlines, apply a poly offset too.
+    if ( _outlineSymbol.valid() )
+    {
+        osg::StateSet* groupStateSet = group->getOrCreateStateSet();
+        groupStateSet->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
+        if ( _outlineSymbol->stroke()->width().isSet() )
+            groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
+    }
 
     OE_DEBUG << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
 

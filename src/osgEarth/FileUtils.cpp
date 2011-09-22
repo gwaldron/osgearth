@@ -53,6 +53,10 @@ std::string osgEarth::getFullPath(const std::string& relativeTo, const std::stri
         return relativePath;
     }
 
+    //If they didn't specify a relative path, just return the relativeTo
+    if (relativePath.empty()) return relativeTo;
+
+
     //Note:  Modified from VPB
 
     //Concatinate the paths together

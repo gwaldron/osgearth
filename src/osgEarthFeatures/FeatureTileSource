@@ -41,8 +41,8 @@ namespace osgEarth { namespace Features
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        optional<StyleSheet>& styles() { return _styles; }
-        const optional<StyleSheet>& styles() const { return _styles; }
+        osg::ref_ptr<StyleSheet>& styles() { return _styles; }
+        const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
 
         //TODO: deprecate in favor of convert filter
         optional<Geometry::Type>& geometryTypeOverride() { return _geomTypeOverride; }
@@ -62,7 +62,7 @@ namespace osgEarth { namespace Features
         virtual void mergeConfig( const Config& conf );
 
         optional<FeatureSourceOptions> _featureOptions;
-        optional<StyleSheet>           _styles;
+        osg::ref_ptr<StyleSheet>       _styles;
         optional<Geometry::Type>       _geomTypeOverride;
         osg::ref_ptr<FeatureSource>    _featureSource;
 

@@ -118,6 +118,9 @@ namespace osgEarth { namespace Symbology
         /** Whether the expression is empty */
         bool empty() const { return _src.empty(); }
 
+        void setURIContext( const URIContext& uriContext ) { _uriContext = uriContext; }
+        const URIContext& uriContext() const { return _uriContext; }
+
     public:
         Config getConfig() const;
         void mergeConfig( const Config& conf );
@@ -132,6 +135,7 @@ namespace osgEarth { namespace Symbology
         Variables    _vars;
         std::string  _value;
         bool         _dirty;
+        URIContext   _uriContext;
 
         void init();
     };

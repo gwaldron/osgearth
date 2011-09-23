@@ -1,0 +1,54 @@
+<!--
+osgEarth Sample
+
+Shows how to use point model substitution with a model encoded in the shapefile.
+
+-->
+
+<map name="Model Demo" type="geocentric" version="2">
+      
+    <!-- Our features layer. The "feature_geom" driver will analyze the
+         style sheet and determine how to render the feature data. -->
+         
+    <model name="points" driver="feature_geom">
+                      
+        <features name="points" driver="ogr">
+            <url>../data/points.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+                
+        <styles>
+            <style type="text/css">
+                points {
+                   marker:              [model];
+                   marker-scale:        200;    
+                   altitude-clamping:   terrain;
+                   altitude-offset:     500;				   
+                }                                            
+            </style>
+        </styles>   
+	<clustering>false</clustering>	
+    <lighting>false</lighting>	
+    </model>
+    
+    
+    <options>
+        <lighting>false</lighting>
+        <cache type="tms">
+            <path>osgearth_cache</path>
+        </cache>
+		
+		<osg_file_paths>
+		  <url>../data</url>
+		</osg_file_paths>
+    </options> 
+    
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
+    </image>
+	
+    <external>	  
+        <viewpoint name="Models" heading="0" height="25.83" long="-81.124351" lat="25.426836 " pitch="-89.9" range="28262"/>        
+    </external>
+  
+</map>

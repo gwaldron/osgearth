@@ -203,8 +203,9 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 
         else if (p->first == "marker")
         {
-            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
+            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();            
             marker->url() = p->second;
+            marker->url()->setURIContext( conf.uriContext() );
         }
         else if (p->first == "marker-placement")
         {

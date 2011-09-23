@@ -384,6 +384,7 @@ StyleSheet::mergeConfig( const Config& conf )
             // and create one style for each in the catalog.
             std::stringstream buf( cssString );
             Config css = CssUtils::readConfig( buf );
+            css.setURIContext( styleConf.uriContext( ) );
             
             const ConfigSet children = css.children();
             for(ConfigSet::const_iterator j = children.begin(); j != children.end(); ++j )

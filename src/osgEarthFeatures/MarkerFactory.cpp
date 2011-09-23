@@ -122,21 +122,23 @@ MarkerFactory::getOrCreateNode( const Feature* feature, const MarkerSymbol* symb
         else if ( symbol->url().isSet() && !symbol->url()->empty() )
         {            
             StringExpression expr = symbol->url().get();
-            std::string fullURL = feature->eval( expr  );//symbol->url()->full();
-            OE_DEBUG << "Using model URL " << fullURL << std::endl;
+            std::string val = feature->eval( expr  );//symbol->url()->full();
+            URI uri( val, expr.uriContext() );
+
+            OE_DEBUG << "Using model URL " << uri.full() << std::endl;
             if ( _session.valid() && useCache )
             {
-                result = _session->getResource<osg::Node>( fullURL );
+                result = _session->getResource<osg::Node>( uri.full() );
             }
 
             if ( !result )
             {                
-                result = createFromURI( fullURL );
+                result = createFromURI( uri );
             }
 
             if ( result && _session.valid() && useCache )
             {
-                _session->putResource( fullURL, result );
+                _session->putResource( uri.full(), result );
             }
         }
     }

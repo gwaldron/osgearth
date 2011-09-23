@@ -275,7 +275,8 @@ _src( rhs._src ),
 _vars( rhs._vars ),
 _value( rhs._value ),
 _infix( rhs._infix ),
-_dirty( rhs._dirty )
+_dirty( rhs._dirty ),
+_uriContext( rhs._uriContext )
 {
     //nop
 }

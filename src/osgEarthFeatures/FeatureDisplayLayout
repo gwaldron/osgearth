@@ -39,12 +39,13 @@ namespace osgEarth { namespace Features
     public:
         FeatureLevel( const Config& config );
         FeatureLevel( float minRange, float maxRange );
-        //FeatureLevel( float minRange, float maxRange, const Query& query );
         FeatureLevel( float minRange, float maxRange, const StyleSelector& oneSelector );
 
         float minRange() const { return _minRange; }
         float maxRange() const { return _maxRange; }
-        //const optional<Query> query() const { return _query; }
+
+        //optional<unsigned>& lod() { return _lod; }
+        //const optional<unsigned>& lod() const { return _lod; }
 
         const StyleSelectorVector& selectors() const { return _selectors; }
 
@@ -54,10 +55,9 @@ namespace osgEarth { namespace Features
     protected:
         void fromConfig( const Config& conf );
 
-        float _minRange, _maxRange;
+        float               _minRange, _maxRange;
         StyleSelectorVector _selectors;
-        //optional<StyleSelector> _selector;
-        //optional<Query> _query;
+        optional<unsigned>  _lod;
     };
 
     /**

@@ -39,8 +39,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     MarkerSymbol* marker = style.get<MarkerSymbol>();
     if ( marker && marker->url().isSet() )
     {
-        MarkerFactory mf;
-        iconURI = mf.getRawURI( marker );
+        iconURI = marker->url()->expr();
     }
 
     std::string text = 

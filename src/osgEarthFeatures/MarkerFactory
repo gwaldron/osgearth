@@ -47,7 +47,7 @@ namespace osgEarth { namespace Features
         /** Tries to create a new image from the marker's image() URI if it has one */
         osg::Image* getOrCreateImage( const MarkerSymbol* symbol, bool useCache =true );
 
-        URI getRawURI( const MarkerSymbol* symbol ) const;
+        //URI getRawURI( const MarkerSymbol* symbol ) const;
 
         /**
          * Generates a marker node for a given URI.

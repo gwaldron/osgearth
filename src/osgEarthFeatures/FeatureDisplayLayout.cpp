@@ -53,6 +53,8 @@ FeatureLevel::fromConfig( const Config& conf )
         _minRange = conf.value( "min_range", 0.0f );
     if ( conf.hasValue( "max_range" ) )
         _maxRange = conf.value( "max_range", FLT_MAX );
+    
+    conf.getIfSet( "lod", _lod );
 
     const ConfigSet selectorsConf = conf.children( "selector" );
     for( ConfigSet::const_iterator i = selectorsConf.begin(); i != selectorsConf.end(); ++i )
@@ -67,6 +69,7 @@ FeatureLevel::getConfig() const
     Config conf( "level" );
     conf.add( "min_range", toString(_minRange) );
     conf.add( "max_range", toString(_maxRange) );
+    conf.addIfSet( "lod", _lod );
 
     for( StyleSelectorVector::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
     {

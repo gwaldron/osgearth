@@ -230,16 +230,20 @@ MeshConsolidator::run( osg::Geode& geode )
     if ( numColors > 0 )
     {
         newColors = new osg::Vec4Array();
-        newColors->reserve( numColors==numVerts? numColors : 1 );
-        newColorsBinding = numColors==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
+        newColors->reserve( numVerts );
+        newColorsBinding = osg::Geometry::BIND_PER_VERTEX;
+        //newColors->reserve( numColors==numVerts? numColors : 1 );
+        //newColorsBinding = numColors==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
     }
 
     osg::Vec3Array* newNormals =0L;
     if ( numNormals > 0 )
     {
         newNormals = new osg::Vec3Array();
-        newNormals->reserve( numNormals==numVerts? numNormals : 1 );
-        newNormalsBinding = numNormals==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
+        newNormals->reserve( numVerts );
+        newNormalsBinding = osg::Geometry::BIND_PER_VERTEX;
+        //newNormals->reserve( numNormals==numVerts? numNormals : 1 );
+        //newNormalsBinding = numNormals==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
     }
 
     std::vector<osg::Vec2Array*> newTexCoordsArrays;

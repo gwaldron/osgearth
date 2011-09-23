@@ -25,6 +25,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthDrivers/kml/KML>
 
 using namespace osgEarth::Util;
 

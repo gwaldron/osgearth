@@ -57,6 +57,9 @@ struct KMLReaderWriter : public osgDB::ReaderWriter
 
     ReadResult readNode(std::istream& in, const Options* options ) const
     {
+        if ( !options )
+            return ReadResult("Missing required MapNode option");
+
         // this plugin requires that you pass in a MapNode* in options.
         MapNode* mapNode = const_cast<MapNode*>(
             static_cast<const MapNode*>( options->getPluginData("osgEarth::MapNode")) );

@@ -303,18 +303,23 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     }
 
     osg::Vec3Array* outlineVerts = 0L;
+    osg::Vec3Array* outlineNormals = 0L;
     if ( outline )
     {
         outlineVerts = new osg::Vec3Array( numVerts );
         outline->setVertexArray( outlineVerts );
 
         osg::Vec4Array* outlineColors = new osg::Vec4Array();
-        outlineColors->reserve( pointCount );
-        outlineColors->assign( pointCount, outlineColor );
+        outlineColors->reserve( numVerts );
+        outlineColors->assign( numVerts, outlineColor );
         outline->setColorArray( outlineColors );
         outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-        outline->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+        // cop out, just point all the outline normals up. fix this later.
+        outlineNormals = new osg::Vec3Array();
+        outlineNormals->reserve( numVerts );
+        outlineNormals->assign( numVerts, osg::Vec3(0,0,1) );
+        outline->setNormalArray( outlineNormals );
     }
 
     unsigned wallVertPtr    = 0;
@@ -516,7 +521,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         {
             unsigned len = baseVertPtr - basePartPtr;
 
-            osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( GL_LINE_STRIP );
+            GLenum roofLineMode = isPolygon ? GL_LINE_LOOP : GL_LINE_STRIP;
+            osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( roofLineMode );
             roofLine->reserveElements( len );
             for( unsigned i=0; i<len; ++i )
                 roofLine->addElement( basePartPtr + i*2 );

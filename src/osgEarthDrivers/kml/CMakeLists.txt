@@ -12,9 +12,9 @@ ENDIF(WIN32)
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology osgEarthUtil)
 
 SET(TARGET_H
+    KML
     KMLOptions
     KMLReader
-    
     KML_Common
     KML_Container
     KML_Document
@@ -77,4 +77,4 @@ SET(TARGET_SRC
 
 SETUP_PLUGIN(kml)
 
-SET(LIB_PUBLIC_HEADERS KMLOptions)
+SET(LIB_PUBLIC_HEADERS KML KMLOptions)

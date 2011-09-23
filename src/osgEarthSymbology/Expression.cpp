@@ -87,6 +87,7 @@ NumericExpression::init()
         }
         else if ( t[i] == "(" ) infix.push_back( Atom(LPAREN,0.0) );
         else if ( t[i] == ")" ) infix.push_back( Atom(RPAREN,0.0) );
+        else if ( t[i] == "," ) infix.push_back( Atom(COMMA,0.0) );
         else if ( t[i] == "%" ) infix.push_back( Atom(MOD,0.0) );
         else if ( t[i] == "*" ) infix.push_back( Atom(MULT,0.0) );
         else if ( t[i] == "/" ) infix.push_back( Atom(DIV,0.0) );
@@ -123,6 +124,14 @@ NumericExpression::init()
                     break;
                 else
                     _rpn.push_back( top );
+            }
+        }
+        else if ( a.first == COMMA )
+        {
+            while( s.size() > 0 && s.top().first != LPAREN )
+            {
+                _rpn.push_back( s.top() );
+                s.pop();
             }
         }
         else if ( IS_OPERATOR(a) )

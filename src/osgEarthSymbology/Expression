@@ -67,7 +67,7 @@ namespace osgEarth { namespace Symbology
         void mergeConfig( const Config& conf );
 
     private:
-        enum Op { OPERAND, VARIABLE, ADD, SUB, MULT, DIV, MOD, MIN, MAX, LPAREN, RPAREN }; // in low-high precedence order
+        enum Op { OPERAND, VARIABLE, ADD, SUB, MULT, DIV, MOD, MIN, MAX, LPAREN, RPAREN, COMMA }; // in low-high precedence order
         typedef std::pair<Op,double> Atom;
         typedef std::vector<Atom> AtomVector;
         typedef std::stack<Atom> AtomStack;

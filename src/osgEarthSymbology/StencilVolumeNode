@@ -22,8 +22,10 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarth/MaskNode>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Group>
 #include <osg/Vec4>
+#include <queue>
 
 namespace osgEarth { namespace Symbology 
 {
@@ -62,8 +64,8 @@ namespace osgEarth { namespace Symbology
         // sets the render bins and returns the next available bin.
         int setBaseRenderBin( int bin );
 
-        // adds stenciling volume geometry
-        void addVolumes( osg::Node* node );
+        // adds stenciling volume geometry (safely during the next update traversal, if necessary)
+        void addVolumes( osg::Node* node, bool onNextUpdate =true );
    
     public: // utilties
 
@@ -93,6 +95,10 @@ namespace osgEarth { namespace Symbology
         osg::Group* _renderPass;
         bool _inverted;
         bool _preRenderChildrenToDepthBuffer;
+
+        Threading::Mutex _addVolumesMutex;
+        std::queue< osg::ref_ptr<osg::Node> > _volumesToAdd;
+        void addQueuedVolumes();
     };
 
 

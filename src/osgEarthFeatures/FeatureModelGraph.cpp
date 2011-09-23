@@ -40,9 +40,17 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
-    UID _uid = 0;
-    OpenThreads::Mutex _fmgMutex;
+    UID                               _uid         = 0;
+    Threading::ReadWriteMutex         _fmgMutex;
     std::map<UID, FeatureModelGraph*> _fmgRegistry;
+
+    static std::string s_makeURI( UID uid, unsigned lod, unsigned x, unsigned y ) 
+    {
+        std::stringstream buf;
+        buf << uid << "." << lod << "_" << x << "_" << y << ".osgearth_pseudo_fmg";
+        std::string str = buf.str();
+        return str;
+    }
 }
 
 struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
@@ -62,22 +70,29 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
         if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
             return ReadResult::FILE_NOT_HANDLED;
 
-        UID uid;
-        unsigned levelIndex, x, y;
-        sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &levelIndex, &x, &y );
+        //UID uid;
+        //unsigned levelIndex, x, y;
+        //sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &levelIndex, &x, &y );
+        //FeatureModelGraph* graph = getGraph(uid);
+        //if ( graph )
+        //    return ReadResult( graph->load( levelIndex, x, y, uri ) );
+        //else
+        //    return ReadResult::ERROR_IN_READING_FILE;
 
-        //OE_INFO << LC << "Page in: " << uri << std::endl;
+        UID uid;
+        unsigned lod, x, y;
+        sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &lod, &x, &y );
 
         FeatureModelGraph* graph = getGraph(uid);
         if ( graph )
-            return ReadResult( graph->load( levelIndex, x, y, uri ) );
+            return ReadResult( graph->load( lod, x, y, uri ) );
         else
             return ReadResult::ERROR_IN_READING_FILE;
     }
 
     static UID registerGraph( FeatureModelGraph* graph )
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+        Threading::ScopedWriteLock lock( _fmgMutex );
         UID key = ++_uid;
         _fmgRegistry[key] = graph;
         return key;
@@ -85,23 +100,15 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
 
     static void unregisterGraph( UID uid )
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+        Threading::ScopedWriteLock lock( _fmgMutex );
         _fmgRegistry.erase( uid );
     }
 
     static FeatureModelGraph* getGraph( UID uid ) 
     {
-        OpenThreads::ScopedLock<OpenThreads::Mutex> lock( _fmgMutex );
+        Threading::ScopedReadLock lock( _fmgMutex );
         std::map<UID, FeatureModelGraph*>::const_iterator i = _fmgRegistry.find( uid );
         return i != _fmgRegistry.end() ? i->second : 0L;
-    }
-
-    static std::string makeURI( UID uid ) 
-    {
-        std::stringstream buf;
-        buf << uid << ".osgearth_pseudo_fmg";
-        std::string str = buf.str();
-        return str;
     }
 };
 
@@ -134,11 +141,11 @@ FeatureModelGraph::FeatureModelGraph(FeatureSource*                   source,
                                      const FeatureModelSourceOptions& options,
                                      FeatureNodeFactory*              factory,
                                      Session*                         session) :
-_source ( source ),
-_options( options ),
-_factory( factory ),
-_session( session ),
-_dirty  ( false )
+_source   ( source ),
+_options  ( options ),
+_factory  ( factory ),
+_session  ( session ),
+_dirty    ( false )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
@@ -169,8 +176,27 @@ _dirty  ( false )
     // whether to request tiles from the source (if available). if the source is tiled, but the
     // user manually specified schema levels, don't use the tiles.
     _useTiledSource = _source->getFeatureProfile()->getTiled();
-    if ( _useTiledSource && options.levels().isSet() && options.levels()->getNumLevels() > 0 )
+
+    if ( options.levels().isSet() && options.levels()->getNumLevels() > 0 )
+    {
+        // the user provided a custom levels setup, so don't use the tiled source (which
+        // provides its own levels setup)
         _useTiledSource = false;
+
+        // for each custom level, calculate the best LOD match and store it in the level
+        // layout data. We will use this information later when constructing the SG in
+        // the pager.
+        for( unsigned i = 0; i < options.levels()->getNumLevels(); ++i )
+        {
+            const FeatureLevel* level = options.levels()->getLevel( i );
+            unsigned lod = options.levels()->chooseLOD( *level, _fullWorldBound.radius() );
+            _lodmap.resize( lod+1, 0L );
+            _lodmap[lod] = level;
+
+            OE_INFO << LC << "F.Level max=" << level->maxRange() << ", min=" << level->minRange()
+                << ", LOD=" << lod << std::endl;
+        }
+    }
 
     setNumChildrenRequiringUpdateTraversal( 1 );
 
@@ -209,8 +235,9 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
     
     if ( mapf )
     {
+        // note: use the lowest possible resolution to speed up queries
         ElevationQuery query( *mapf );
-        query.getElevation( center, mapf->getProfile()->getSRS(), center.z() );
+        query.getElevation( center, mapf->getProfile()->getSRS(), center.z(), DBL_MAX );
     }
 
     corner.x() = workingExtent.xMin();
@@ -229,84 +256,176 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 void
 FeatureModelGraph::setupPaging()
 {
-    float maxRange = _options.levels().isSet() && _options.levels()->getNumLevels() > 0 ? _options.levels()->getMaxRange() : FLT_MAX;
-    if ( maxRange > 0.0f )
-    {
-        MapFrame mapf = _session->createMapFrame();
+    // calculate the bounds of the full data extent:
+    MapFrame mapf = _session->createMapFrame();
+    osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent, &mapf );
 
-        osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent, &mapf );
+    // calculate the max range for the top-level PLOD:
+    float maxRange = bs.radius() * _options.levels()->tileSizeFactor().value();
 
-        float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
+    // build the URI for the top-level paged LOD:
+    std::string uri = s_makeURI( _uid, 0, 0, 0 );
 
-        const FeatureLevel* firstLevel = 0;
-        unsigned firstLOD = 0;
-
-        FeatureLevel defaultLevel( 0.0f, FLT_MAX );
-        FeatureLevel defaultTiledLevel( 0.0f, bs.radius() * tileFactor );
-
-        int firstLevelIndex = 0;
-
-        if (_options.levels().isSet() && _options.levels()->getNumLevels() > 0)
-        {
-            firstLevel = _options.levels()->getLevel( 0 );
-            firstLOD = _options.levels()->chooseLOD( *firstLevel, bs.radius() );
-        }
-        else if (_source->getFeatureProfile()->getTiled())
-        {                        
-            firstLevel = &defaultTiledLevel;
-            firstLOD = _source->getFeatureProfile()->getFirstLevel();            
-            firstLevelIndex = firstLOD;
-        }
-        else
-        {
-            firstLOD = 0;
-            firstLevel = &defaultLevel;
-        }
-
-        osg::Group* group = new osg::Group();
-        buildSubTiles(firstLevelIndex,  0, 0, 0, firstLevel, firstLOD, &mapf, group );
-
-        this->addChild( group );
-    }
+    // bulid the top level Paged LOD:
+    osg::PagedLOD* topPlod = new osg::PagedLOD();
+    topPlod->setCenter( bs.center() );
+    topPlod->setRadius( bs.radius() );
+    topPlod->setFileName( 0, uri );
+    topPlod->setRange( 0, 0, maxRange );
+    this->addChild( topPlod );
 }
 
-void
-FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
-                                 unsigned            lod,
-                                 unsigned            tileX,
-                                 unsigned            tileY,
-                                 const FeatureLevel* nextLevel,
-                                 unsigned            nextLOD,
-                                 const MapFrame*     mapf,
-                                 osg::Group*         parent)
+osg::Node*
+FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri )
 {
-    // calculate how many subtiles there will be:
-    unsigned numTiles = 1;
-    for( unsigned k = lod; k < nextLOD; ++k )
-    {
-        tileX *= 2;
-        tileY *= 2;
-        numTiles *= 2;
-    }
-    
+    OE_DEBUG << LC
+        << "load: " << lod << "_" << tileX << "_" << tileY << std::endl;
 
-    OE_DEBUG << LC 
-        << "Building " << numTiles*numTiles << " plods for next level = " << nextLevelIndex
-        << ", nextLOD = " << nextLOD
-        << std::endl;
+    osg::Group* result = 0L;
+    
+    if ( _useTiledSource )
+    {        
+        // A "tiled" source has a pre-generted tile hierarchy, but no range information.
+        // We will be calculating the LOD ranges here.
+
+        // The extent of this tile:
+        GeoExtent tileExtent = s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent );
+
+        // Calculate the bounds of this new tile:
+        MapFrame mapf = _session->createMapFrame();
+        osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent, &mapf );
+
+        // Apply the tile range multiplier to calculate a max camera range. The max range is
+        // the geographic radius of the tile times the multiplier.
+        float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
+        double maxRange =  tileBound.radius() * tileFactor;
+        FeatureLevel level( 0, maxRange );
+        
+        // Construct a tile key that will be used to query the source for this tile.
+        TileKey key(lod, tileX, tileY, _source->getFeatureProfile()->getProfile());
+        osg::Group* geometry = build( level, tileExtent, &key );
+        result = geometry;
+
+        if (lod < _source->getFeatureProfile()->getMaxLevel())
+        {
+            // see if there are any more levels. If so, build some pagedlods to bring the
+            // next level in.
+            FeatureLevel nextLevel(0, maxRange/2.0);
+
+            osg::ref_ptr<osg::Group> group = new osg::Group();
+
+            // calculate the LOD of the next level:
+            if ( lod+1 != ~0 )
+            {
+                MapFrame mapf = _session->createMapFrame();
+                buildSubTilePagedLODs( lod, tileX, tileY, &mapf, group.get() );
+
+                // slap the geometry in there afterwards, if there is any
+                if ( geometry )
+                    group->addChild( geometry );
+
+                result = group.release();
+            }   
+        }
+    }
+
+    else if ( !_options.levels().isSet() || _options.levels()->getNumLevels() == 0 )
+    {
+        // This is a non-tiled data source that has NO level details. In this case, 
+        // we simply want to load all features at once and make them visible at
+        // maximum camera range.
+        FeatureLevel all( 0.0f, FLT_MAX );
+        result = build( all, GeoExtent::INVALID, 0 );
+    }
+
+    else if ( lod < _lodmap.size() )
+    {
+        // This path computes the SG for a model graph with explicity-defined levels of
+        // detail. We already calculated the LOD level map in setupPaging(). If the
+        // current LOD points to an actual FeatureLevel, we build the geometry for that
+        // level in the tile.
+
+        osg::Group* geometry = 0L;
+        const FeatureLevel* level = _lodmap[lod];
+        if ( level )
+        {
+            // There exists a real data level at this LOD. So build the geometry that will
+            // represent this tile.
+            GeoExtent tileExtent = 
+                lod > 0 ?
+                s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent ) :
+                _usableFeatureExtent;
+
+            geometry = build( *level, tileExtent, 0 );
+            result = geometry;
+        }
+
+        if ( lod < _lodmap.size()-1 )
+        {
+            // There are more populated levels below this one. So build the subtile
+            // PagedLODs that will load them.
+            osg::ref_ptr<osg::Group> group = new osg::Group();
+
+            MapFrame mapf = _session->createMapFrame();
+            buildSubTilePagedLODs( lod, tileX, tileY, &mapf, group.get() );
+
+            if ( geometry )
+                group->addChild( geometry );
+
+            result = group.release();
+        }
+    }
+
+    if ( !result )
+    {
+        // If the read resulting in nothing, create an empty group so that the read
+        // (technically) succeeds and the pager won't try to load the null child
+        // over and over.
+        result = new osg::Group();
+    }
+    else
+    {
+        RemoveEmptyGroupsVisitor::run( result );
+    }
+
+    if ( result->getNumChildren() == 0 )
+    {
+        // if the result group contains no data, blacklist it so we never try to load it again.
+        Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
+        _blacklist.insert( uri );
+        OE_DEBUG << LC << "Blacklisting: " << uri << std::endl;
+    }
+
+    return result;
+}
+
+
+void
+FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
+                                         unsigned        parentTileX,
+                                         unsigned        parentTileY,
+                                         const MapFrame* mapf,
+                                         osg::Group*     parent)
+{
+    unsigned subtileLOD = parentLOD + 1;
+    unsigned subtileX = parentTileX * 2;
+    unsigned subtileY = parentTileY * 2;
 
     // make a paged LOD for each subtile:
-    for( unsigned u = tileX; u < tileX+numTiles; ++u )
+    for( unsigned u = subtileX; u <= subtileX + 1; ++u )
     {
-        for( unsigned v = tileY; v < tileY+numTiles; ++v )
+        for( unsigned v = subtileY; v <= subtileY + 1; ++v )
         {
-            GeoExtent subtileFeatureExtent = s_getTileExtent( nextLOD, u, v, _usableFeatureExtent );
+            GeoExtent subtileFeatureExtent = s_getTileExtent( subtileLOD, u, v, _usableFeatureExtent );
             osg::BoundingSphered subtile_bs = getBoundInWorldCoords( subtileFeatureExtent, mapf );
 
-            std::stringstream buf;
-            buf << _uid << "." << nextLevelIndex << "_" << u << "_" << v << ".osgearth_pseudo_fmg";
+            // Camera range for the PLODs. This should always be sufficient because
+            // the max range of a FeatureLevel below this will, by definition, have a max range
+            // less than or equal to this number -- based on how the LODs were chosen in 
+            // setupPaging.
+            float maxRange = subtile_bs.radius() * _options.levels()->tileSizeFactor().value();
 
-            std::string uri = buf.str();
+            std::string uri = s_makeURI( _uid, subtileLOD, u, v );
 
             // check the blacklist to make sure we haven't unsuccessfully tried
             // this URI before
@@ -331,152 +450,12 @@ FeatureModelGraph::buildSubTiles(unsigned            nextLevelIndex,
                 plod->setCenter  ( subtile_bs.center() );
                 plod->setRadius  ( subtile_bs.radius() );
                 plod->setFileName( 0, uri );
-                plod->setRange   ( 0, 0, nextLevel->maxRange() );
-
-                // don't fiddle with the priority here - we have closest-to-camera first.
-                //plod->setPriorityOffset( 0, -(float)nextLOD );
+                plod->setRange   ( 0, 0, maxRange );
 
                 parent->addChild( plod );
             }
         }
     }
-
-    // tree up the plods to cull a little more efficiently (not sure this actually works since
-    // we didn't set radii on the plods)
-    //osgUtil::Optimizer optimizer;
-    //optimizer.optimize( parent, osgUtil::Optimizer::SPATIALIZE_GROUPS );
-}
-
-osg::Node*
-FeatureModelGraph::load( unsigned levelIndex, unsigned tileX, unsigned tileY, const std::string& uri )
-{
-    // note: "level" is not the same as "lod". "level" is an index into the FeatureDisplayLayout
-    // levels list, which is sorted by maxRange.
-
-    OE_DEBUG << LC
-        << "load: " << levelIndex << "_" << tileX << "_" << tileY << std::endl;
-
-    osg::Group* result = 0L;
-    
-    if ( _useTiledSource )
-    {        
-        // Handle a tiled feature source:
-
-        unsigned int lod = levelIndex;
-        GeoExtent tileExtent = 
-            lod >= 0 ?
-            s_getTileExtent( levelIndex, tileX, tileY, _usableFeatureExtent ) : GeoExtent::INVALID;
-
-        MapFrame mapf = _session->createMapFrame();
-        osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent, &mapf );
-
-        float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
-
-        double maxRange =  tileBound.radius() * tileFactor;
-        FeatureLevel level( 0, maxRange );
-        
-        TileKey key(lod, tileX, tileY, _source->getFeatureProfile()->getProfile());
-        osg::Group* geometry = build( level, tileExtent, &key );
-        result = geometry;
-
-        if (lod < _source->getFeatureProfile()->getMaxLevel())
-        {
-            // see if there are any more levels. If so, build some pagedlods to bring the
-            // next one in.
-            FeatureLevel nextLevel(0, maxRange/2.0);
-
-            osg::ref_ptr<osg::Group> group = new osg::Group();
-
-            // calculate the LOD of the next level:
-            unsigned nextLOD = lod+1;
-            if ( nextLOD != ~0 )
-            {
-                MapFrame mapf = _session->createMapFrame();
-                buildSubTiles( levelIndex+1, levelIndex, tileX, tileY, &nextLevel, nextLOD, &mapf, group.get() );
-
-                // slap the geometry in there afterwards, if there is any
-                if ( geometry )
-                    group->addChild( geometry );
-
-                result = group.release();
-            }   
-        }
-    }
-
-    else if ( !_options.levels().isSet() || _options.levels()->getNumLevels() == 0 )
-    {
-        // no levels defined; just load all the features.
-        FeatureLevel all( 0.0f, FLT_MAX );
-        result = build( all, GeoExtent::INVALID, 0 );
-    }
-
-    else
-    {
-        const FeatureLevel* level = _options.levels()->getLevel( levelIndex );
-
-        if ( level )
-        {
-            unsigned lod = _options.levels()->chooseLOD( *level, _fullWorldBound.radius() );
-
-            OE_DEBUG << LC 
-                << "Choose LOD " << lod << " for level " << levelIndex 
-                << std::endl;
-
-            GeoExtent tileExtent = 
-                lod > 0 ?
-                s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent ) :
-                GeoExtent::INVALID;
-
-            osg::Group* geometry = build( *level, tileExtent, 0 );
-            result = geometry;
-
-            // see if there are any more levels. If so, build some pagedlods to bring the
-            // next one in.
-            const FeatureLevel* nextLevel = _options.levels()->getLevel( levelIndex+1 );
-            if ( nextLevel )
-            {
-                osg::ref_ptr<osg::Group> group = new osg::Group();
-
-                // calculate the LOD of the next level:
-                unsigned nextLOD = _options.levels()->chooseLOD( *nextLevel, _fullWorldBound.radius() );
-                if ( nextLOD != ~0 )
-                {
-                    MapFrame mapf = _session->createMapFrame();
-                    buildSubTiles( levelIndex+1, lod, tileX, tileY, nextLevel, nextLOD, &mapf, group.get() );
-
-                    // slap the geometry in there afterwards, if there is any
-                    if ( geometry )
-                        group->addChild( geometry );
-
-                    result = group.release();
-                }
-            }
-        }
-    }
-
-    // If the read resulting in nothing, do two things. First, blacklist the URI
-    // so that the next time we try to create a PagedLOD pointing at this URI, it
-    // will find it in the blacklist and not create said PagedLOD. Second, create
-    // an empty group so that the read (technically) succeeds and it doesn't try
-    // to load the null child over and over.
-    if ( !result )
-    {
-        result = new osg::Group();
-    }
-    else
-    {
-        RemoveEmptyGroupsVisitor::run( result );
-    }
-
-    if ( result->getNumChildren() == 0 )
-    {
-        Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
-        _blacklist.insert( uri );
-
-        OE_DEBUG << LC << "Blacklisting: " << uri << std::endl;
-    }
-
-    return result;
 }
 
 osg::Group*
@@ -594,14 +573,24 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
                 // note: gridding is not supported for embedded styles.
                 osg::ref_ptr<osg::Node> node;
 
+                // Get the Group that parents all features of this particular style. Note, this
+                // might be NULL if the factory does not support style groups.
                 osg::Group* styleGroup = _factory->getOrCreateStyleGroup(*feature->style(), _session.get());
-                if ( !group->containsNode( styleGroup ) )
-                    group->addChild( styleGroup );                
+                if ( styleGroup )
+                {
+                    if ( !group->containsNode( styleGroup ) )
+                        group->addChild( styleGroup );
+                }
 
                 if ( _factory->createOrUpdateNode( cursor.get(), *feature->style(), context, node ) )
                 {
                     if ( node.valid() )
-                        styleGroup->addChild( node.get() );
+                    {
+                        if ( styleGroup )
+                            styleGroup->addChild( node.get() );
+                        else
+                            group->addChild( node.get() );
+                    }
                 }
             }
         }

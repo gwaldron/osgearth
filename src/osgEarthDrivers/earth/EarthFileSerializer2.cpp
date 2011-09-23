@@ -134,6 +134,20 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         map->addTerrainMaskLayer( new MaskLayer(options) );
     }
 
+    
+    //Add any addition paths specified in the options/osg_file_paths element to the file path.  Useful for pointing osgEarth at resource folders.
+    Config osg_file_paths = conf.child( "options" ).child("osg_file_paths");
+    ConfigSet urls = osg_file_paths.children("url");
+    for (ConfigSet::const_iterator i = urls.begin(); i != urls.end(); i++) 
+    {
+        std::string path = osgEarth::getFullPath( referenceURI, (*i).value());
+        OE_DEBUG << "Adding OSG file path " << path << std::endl;
+        osgDB::Registry::instance()->getDataFilePathList().push_back( path );
+    }
+
+
+
+
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
 
     // External configs:

@@ -116,6 +116,7 @@ int main(int argc, char** argv)
         FeatureStencilModelOptions worldOpt;
         worldOpt.featureOptions() = featureOpt;
         worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+        worldOpt.styles() = new StyleSheet();
         worldOpt.styles()->addStyle( style );
         worldOpt.enableLighting() = false;
         worldOpt.depthTestEnabled() = false;
@@ -126,6 +127,7 @@ int main(int argc, char** argv)
         AGGLiteOptions worldOpt;
         worldOpt.featureOptions() = featureOpt;
         worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+        worldOpt.styles() = new StyleSheet();
         worldOpt.styles()->addStyle( style );
         map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
     }
@@ -134,6 +136,7 @@ int main(int argc, char** argv)
         FeatureGeomModelOptions worldOpt;
         worldOpt.featureOptions() = featureOpt;
         worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
+        worldOpt.styles() = new StyleSheet();
         worldOpt.styles()->addStyle( style );
         worldOpt.enableLighting() = false;
         worldOpt.depthTestEnabled() = false;

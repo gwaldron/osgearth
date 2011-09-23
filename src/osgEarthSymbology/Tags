@@ -54,20 +54,35 @@ namespace osgEarth { namespace Symbology
             return _tags.find( normalize( tag )) != _tags.end();
         }
 
-        template<typename T>
-        bool containsTags( const T& tags ) const {
-            for( T::const_iterator i = tags.begin(); i != tags.end(); i++ ) {
-                if ( _tags.find( normalize( *i ) ) == _tags.end() )
-                    return false;
+        bool containsTags( const TagSet& tags) const {
+            for( TagSet::const_iterator i = tags.begin(); i != tags.end(); i++ ) {
+               if ( _tags.find( normalize( *i ) ) == _tags.end() )
+                  return false;
             }
-            return true;
+            return true;            
         }
+
+        bool containsTags( const TagVector& tags) const {
+            for( TagVector::const_iterator i = tags.begin(); i != tags.end(); i++ ) {
+               if ( _tags.find( normalize( *i ) ) == _tags.end() )
+                  return false;
+            }
+            return true;            
+        }
+
         const TagSet& tags() const { return _tags; }
 
-        template<typename T>
-        static std::string tagString(const T& tags) {
+        static std::string tagString(const TagSet& tags) {
             std::stringstream buf;
-            for( T::const_iterator i = tags.begin(); i != tags.end(); i++ )
+            for( TagSet::const_iterator i = tags.begin(); i != tags.end(); i++ )
+                buf << (i != tags.begin()? " " : "") << *i;
+            std::string result = buf.str();
+            return result;
+        }
+
+        static std::string tagString(const TagVector& tags) {
+            std::stringstream buf;
+            for( TagVector::const_iterator i = tags.begin(); i != tags.end(); i++ )
                 buf << (i != tags.begin()? " " : "") << *i;
             std::string result = buf.str();
             return result;

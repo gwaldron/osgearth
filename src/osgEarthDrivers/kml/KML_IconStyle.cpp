@@ -27,7 +27,7 @@ KML_IconStyle::scan( const Config& conf, Style& style )
         std::string iconHref = conf.child("icon").value("href");
         if ( !iconHref.empty() )
         {
-            marker->url() = StringExpression( Stringify() << "image(" << iconHref << ")" );
+            marker->url() = StringExpression( iconHref );
             marker->url()->setURIContext( conf.uriContext() );
         }
 

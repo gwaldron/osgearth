@@ -213,7 +213,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
         SubstituteModelFilter sub( style );
         if ( marker->scale().isSet() )
+        {
+            //Turn on GL_NORMALIZE so lighting works properly
+            resultGroup->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON );
             sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
+        }
 
         sub.setClustering( *_options.clustering() );
         if ( _options.featureName().isSet() )

@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/Feature>
 #include <osgEarthSymbology/MarkerSymbol>
 #include <osg/Node>
 
@@ -41,7 +42,7 @@ namespace osgEarth { namespace Features
          */
         MarkerFactory(Session* session =0L);
 
-        osg::Node* getOrCreateNode( const MarkerSymbol* symbol, bool useCache =true );
+        osg::Node* getOrCreateNode( const Feature* feature, const MarkerSymbol* symbol, bool useCache =true );
 
         /**
          * Generates a marker node for a given URI.

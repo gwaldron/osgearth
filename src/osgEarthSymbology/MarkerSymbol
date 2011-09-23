@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Expression>
 #include <osg/Vec3f>
 
 namespace osgEarth { namespace Symbology
@@ -53,8 +54,8 @@ namespace osgEarth { namespace Symbology
         MarkerSymbol( const Config& conf =Config() );
 
         /** URI of the model to use for substitution. */
-        optional<URI>& url() { return _url; }
-        const optional<URI>& url() const { return _url; }
+        optional<StringExpression>& url() { return _url; }
+        const optional<StringExpression>& url() const { return _url; }        
 
         /** How to map feature geometry to model placement. (default is PLACEMENT_VERTEX) */
         optional<Placement>& placement() { return _placement; }
@@ -87,7 +88,7 @@ namespace osgEarth { namespace Symbology
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<URI>         _url;
+        optional<StringExpression>         _url;
         optional<Placement>   _placement;
         optional<float>       _density;
         optional<osg::Vec3f>  _scale;

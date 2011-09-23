@@ -91,7 +91,7 @@ _session( session )
 }
 
 osg::Node*
-MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
+MarkerFactory::getOrCreateNode( const Feature* feature, const MarkerSymbol* symbol, bool useCache )
 {
     osg::Node* result;
 
@@ -120,20 +120,23 @@ MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
             }
         }
         else if ( symbol->url().isSet() && !symbol->url()->empty() )
-        {
+        {            
+            StringExpression expr = symbol->url().get();
+            std::string fullURL = feature->eval( expr  );//symbol->url()->full();
+            OE_DEBUG << "Using model URL " << fullURL << std::endl;
             if ( _session.valid() && useCache )
             {
-                result = _session->getResource<osg::Node>( symbol->url()->full() );
+                result = _session->getResource<osg::Node>( fullURL );
             }
 
             if ( !result )
-            {
-                result = createFromURI( *symbol->url() );
+            {                
+                result = createFromURI( fullURL );
             }
 
             if ( result && _session.valid() && useCache )
             {
-                _session->putResource( symbol->url()->full(), result );
+                _session->putResource( fullURL, result );
             }
         }
     }

@@ -18,6 +18,7 @@
  */
 #include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarth/Registry>
+#include <osgEarth/FindNode>
 #include <osg/Stencil>
 #include <osg/StencilTwoSided>
 #include <osg/Depth>
@@ -131,12 +132,40 @@ StencilVolumeNode::setBaseRenderBin( int bin )
 }
 
 void
-StencilVolumeNode::addVolumes( osg::Node* node )
+StencilVolumeNode::addVolumes( osg::Node* node, bool onNextUpdate )
 {
-    if ( _stencilGroup1 )
-        _stencilGroup1->addChild( node );
-    if ( _stencilGroup2 )
-        _stencilGroup2->addChild( node );
+    if ( onNextUpdate )
+    {
+        Threading::ScopedMutexLock lock( _addVolumesMutex );
+        _volumesToAdd.push( node );
+        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    }
+    else
+    {
+        if ( _stencilGroup1 )
+            _stencilGroup1->addChild( node );
+        if ( _stencilGroup2 )
+            _stencilGroup2->addChild( node );
+    }
+}
+
+void
+StencilVolumeNode::addQueuedVolumes()
+{
+    Threading::ScopedMutexLock lock( _addVolumesMutex );
+    while( !_volumesToAdd.empty() )
+    {
+        osg::Node* node = _volumesToAdd.front().get();
+
+        if ( _stencilGroup1 )
+            _stencilGroup1->addChild( node );
+        if ( _stencilGroup2 )
+            _stencilGroup2->addChild( node );        
+
+        _volumesToAdd.pop();
+    }
+    
+    ADJUST_UPDATE_TRAV_COUNT( this, -1 );
 }
 
 /** Override all the osg::Group methods: */
@@ -184,6 +213,11 @@ StencilVolumeNode::computeBound() const {
 void
 StencilVolumeNode::traverse( osg::NodeVisitor& nv )
 {
+    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR && _volumesToAdd.size() > 0 )
+    {
+        addQueuedVolumes();
+    }
+
     _root->accept( nv );
 }
 

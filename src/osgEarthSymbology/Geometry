@@ -115,6 +115,11 @@ namespace osgEarth { namespace Symbology
         virtual Bounds getBounds() const;
 
         /**
+         * Whether the geometry is lines
+         */
+        bool isLinear() const { return getComponentType() == TYPE_LINESTRING || getComponentType() == TYPE_RING; }
+
+        /**
          * Runs a buffer (dialate/erode) operation on this geometry and returns the
          * result in the output parameter. Returns true if the op succeeded.
          */

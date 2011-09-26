@@ -24,15 +24,38 @@
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
+#include <iostream>
+#include <sstream>
 
 namespace osgEarth
 {
     class Config;
+    class URI;
 
     /**
      * Context for resolving relative URIs.
      */
     typedef std::string URIContext;
+
+    /**
+     * Stream container for reading a URI directly from a stream
+     */
+    class OSGEARTH_EXPORT URIStream
+    {
+    public:
+        URIStream( const URI& uri );
+
+        virtual ~URIStream();
+
+    public:
+        // auto-cast to istream
+        operator std::istream& ();
+
+    protected:
+        friend class URI;
+        std::istream*     _fileStream;
+        std::stringstream _bufStream;
+    };
 
     /**
      * Represents the location of a resource, providing the raw (original, possibly

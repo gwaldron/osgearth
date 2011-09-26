@@ -573,14 +573,24 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
                 // note: gridding is not supported for embedded styles.
                 osg::ref_ptr<osg::Node> node;
 
+                // Get the Group that parents all features of this particular style. Note, this
+                // might be NULL if the factory does not support style groups.
                 osg::Group* styleGroup = _factory->getOrCreateStyleGroup(*feature->style(), _session.get());
-                if ( !group->containsNode( styleGroup ) )
-                    group->addChild( styleGroup );                
+                if ( styleGroup )
+                {
+                    if ( !group->containsNode( styleGroup ) )
+                        group->addChild( styleGroup );
+                }
 
                 if ( _factory->createOrUpdateNode( cursor.get(), *feature->style(), context, node ) )
                 {
                     if ( node.valid() )
-                        styleGroup->addChild( node.get() );
+                    {
+                        if ( styleGroup )
+                            styleGroup->addChild( node.get() );
+                        else
+                            group->addChild( node.get() );
+                    }
                 }
             }
         }

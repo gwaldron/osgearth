@@ -25,7 +25,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
-#include <osgEarth/ShaderComposition>
+//#include <osgEarth/ShaderComposition>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
@@ -36,6 +36,8 @@
 
 namespace osgEarth
 {    
+    class ShaderFactory;
+
     /**
      * Application-wide global repository.
      */

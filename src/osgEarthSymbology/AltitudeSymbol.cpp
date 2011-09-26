@@ -24,9 +24,7 @@ using namespace osgEarth::Symbology;
 AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
 Symbol             ( ),
 _clamping          ( CLAMP_NONE ),
-_clampingResolution( 0.0f ),
-_verticalOffset    ( 0.0f ),
-_verticalScale     ( 1.0f )
+_clampingResolution( 0.0f )
 {
     mergeConfig( conf );
 }
@@ -36,24 +34,24 @@ AltitudeSymbol::getConfig() const
 {
     Config conf;
     conf.key() = "altitude";
-    conf.addIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
-    conf.addIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
-    conf.addIfSet( "clamping",  "absolute", _clamping, CLAMP_ABSOLUTE );
-    conf.addIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
-    conf.addIfSet( "clamping_resolution",   _clampingResolution );
-    conf.addIfSet( "vertical_offset",       _verticalOffset );
-    conf.addIfSet( "vertical_scale",        _verticalScale );
+    conf.addIfSet   ( "clamping",  "none",     _clamping, CLAMP_NONE );
+    conf.addIfSet   ( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
+    conf.addIfSet   ( "clamping",  "absolute", _clamping, CLAMP_ABSOLUTE );
+    conf.addIfSet   ( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
+    conf.addIfSet   ( "clamping_resolution",   _clampingResolution );
+    conf.addObjIfSet( "vertical_offset",       _verticalOffset );
+    conf.addObjIfSet( "vertical_scale",        _verticalScale );
     return conf;
 }
 
 void 
 AltitudeSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "clamping",  "none",     _clamping, CLAMP_NONE );
-    conf.getIfSet( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
-    conf.getIfSet( "clamping",  "absolute", _clamping, CLAMP_ABSOLUTE );
-    conf.getIfSet( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
-    conf.getIfSet( "clamping_resolution",   _clampingResolution );
-    conf.getIfSet( "vertical_offset",       _verticalOffset );
-    conf.getIfSet( "vertical_scale",        _verticalScale );
+    conf.getIfSet   ( "clamping",  "none",     _clamping, CLAMP_NONE );
+    conf.getIfSet   ( "clamping",  "terrain",  _clamping, CLAMP_TO_TERRAIN );
+    conf.getIfSet   ( "clamping",  "absolute", _clamping, CLAMP_ABSOLUTE );
+    conf.getIfSet   ( "clamping",  "relative", _clamping, CLAMP_RELATIVE_TO_TERRAIN );
+    conf.getIfSet   ( "clamping_resolution",   _clampingResolution );
+    conf.getObjIfSet( "vertical_offset",       _verticalOffset );
+    conf.getObjIfSet( "vertical_scale",        _verticalScale );
 }

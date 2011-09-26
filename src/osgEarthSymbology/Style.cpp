@@ -239,6 +239,10 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault )
     if ( i != _styles.end() ) {
         return &i->second;
     }
+    else if ( name.length() > 1 && name.at(0) == '#' ) {
+        std::string nameWithoutHash = name.substr( 1 );
+        return getStyle( nameWithoutHash, fallBackOnDefault );
+    }
     else if ( fallBackOnDefault ) {
         return getDefaultStyle();
     }
@@ -253,6 +257,10 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
     StyleMap::const_iterator i = _styles.find( name );
     if ( i != _styles.end() ) {
         return &i->second;
+    }
+    else if ( name.length() > 1 && name.at(0) == '#' ) {
+        std::string nameWithoutHash = name.substr( 1 );
+        return getStyle( nameWithoutHash, fallBackOnDefault );
     }
     else if ( fallBackOnDefault ) {
         return getDefaultStyle();

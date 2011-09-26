@@ -18,6 +18,7 @@
  */
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
+#include <osgEarth/ShaderComposition>
 #include <osg/Notify>
 #include <gdal_priv.h>
 #include <ogr_api.h>

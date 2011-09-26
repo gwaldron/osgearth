@@ -31,42 +31,28 @@ namespace osgEarth { namespace Features
     /**
      * Feature filter that will clamp incoming feature geometry to an elevation model.
      */
-    class OSGEARTHFEATURES_EXPORT ClampFilter : public FeatureFilter
+    class OSGEARTHFEATURES_EXPORT AltitudeFilter : public FeatureFilter
     {
     public:
         /** Constructs a new clamping filter */     
-        ClampFilter();
+        AltitudeFilter();
 
     public: // properties
 
         /** Shortcut to set any properties that are represented in a style. */
         void setPropertiesFromStyle( const Style& style );
 
-        /** Whether to consider the pre-existing Z coordinate when clamping (default=false) */
-        void setIgnoreZ( bool value ) { _ignoreZ = value; }
-        bool getIgnoreZ() const { return _ignoreZ; }
-
-        void setOffsetZ( double value ) { _offsetZ = value; }
-        double getOffsetZ() const { return _offsetZ; }
-
-        void setScaleZ( double value ) { _scaleZ = value; }
-        double getScaleZ() const { return _scaleZ; }
-
         /** Maximum terrain resolution to consider when clamping */
         void setMaxResolution( double value ) { _maxRes = value; }
         double getMaxResolution() const { return _maxRes; }
-
-        /** Sets the attribute name to which to write the maximum clamped Z value. */
-        //void setMaxZAttributeName( const std::string& value ) { _maxZAttrName = value; }
 
     public:
         virtual FilterContext push( FeatureList& input, FilterContext& cx );
 
     protected:
-        bool _ignoreZ;
-        double _offsetZ, _scaleZ;
-        double _maxRes;
-        std::string _maxZAttr, _minZAttr;
+        osg::ref_ptr<const AltitudeSymbol> _altitude;
+        double                             _maxRes;
+        std::string                        _maxZAttr, _minZAttr, _terrainZAttr;
     };
 
 } } // namespace osgEarth::Features

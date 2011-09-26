@@ -237,12 +237,6 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
             extrusion->heightExpression() = NumericExpression(p->second);
         }
-        else if ( p->first == "extrusion-reference")
-        {
-            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
-            if      ( p->second == "z"   ) extrusion->heightReference() = ExtrusionSymbol::HEIGHT_REFERENCE_Z;
-            else if ( p->second == "msl" ) extrusion->heightReference() = ExtrusionSymbol::HEIGHT_REFERENCE_MSL;
-        }
         else if (p->first == "extrusion-flatten")
         {
             if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
@@ -271,18 +265,18 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         }
         else if (p->first == "altitude-resolution")
         {
-            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
             altitude->clampingResolution() = as<float>( p->second, 0.0f );
         }
         else if (p->first == "altitude-offset")
         {
-            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
-            altitude->verticalOffset() = as<float>( p->second, 0.0f );
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
+            altitude->verticalOffset() = NumericExpression( p->second );
         }
         else if (p->first == "altitude-scale")
         {
-            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
-            altitude->verticalScale() = as<float>( p->second, 1.0f );
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
+            altitude->verticalScale() = NumericExpression( p->second );
         }
 
         // ..... SkinSymbol .....

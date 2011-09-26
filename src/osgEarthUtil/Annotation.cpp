@@ -21,6 +21,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Utils>
 #include <osgEarthSymbology/GeometryFactory>
+#include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/BuildGeometryFilter>
 
@@ -39,15 +40,17 @@ _mapNode( mapNode )
 }
 
 PlacemarkNode::PlacemarkNode(MapNode*           mapNode, 
-                             const std::string& iconURI, 
+                             const osg::Vec3d&  position,
+                             const URI&         iconURI, 
                              const std::string& text,
                              const Style&       style) :
-_mapNode( mapNode ),
-_iconURI( iconURI ),
-_text   ( text ),
-_style  ( style )
+_mapNode ( mapNode ),
+_iconURI ( iconURI ),
+_text    ( text ),
+_style   ( style )
 {
     init();
+    setPosition( position );
 }
 
 void
@@ -82,6 +85,9 @@ PlacemarkNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
 void
 PlacemarkNode::init()
 {
+    // remove any old stuff to make way for the new stuff.
+    this->removeChildren(0, this->getNumChildren());
+
     this->setCullCallback( new CullNodeByHorizon(
         osg::Vec3d(0,0,1),
         _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()) );
@@ -99,11 +105,27 @@ PlacemarkNode::init()
             _label->setForeColor( s->fill()->color() );
         if ( s->halo().isSet() )
             _label->setHaloColor( s->halo()->color() );
+        if ( s->content().isSet() && _text.empty() )
+            _label->setText( s->content()->eval() );
     }
 
-    osg::ref_ptr<osg::Image> image;
-    if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )
-        _icon = new ImageControl( image.get() );
+    if ( !_iconURI.empty() )
+    {
+        osg::Image* image = _iconURI.readImage();
+        if ( image )
+            _icon = new ImageControl( image );
+    }
+    else
+    {
+        MarkerSymbol* marker = _style.get<MarkerSymbol>();
+        if ( marker && marker->url().isSet() )
+        {
+            MarkerFactory mf;
+            osg::Image* image = mf.getOrCreateImage( marker, false );
+            if ( image )
+                _icon = new ImageControl( image );
+        }
+    }
 
     _container = new HBox();
     _container->setChildSpacing( 8 );
@@ -127,27 +149,29 @@ PlacemarkNode::init()
 }
 
 void
-PlacemarkNode::setIconURI( const std::string& iconURI )
+PlacemarkNode::setIconURI( const URI& iconURI )
 {
-    if ( iconURI != _iconURI )
-    {
-        _iconURI = iconURI;
-        osg::ref_ptr<osg::Image> image;
-        if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )
-        {
-            _icon->setImage( image.get() );
-            // add if necessary?
-        }
-    }
+    _iconURI = iconURI;
+    osg::Image* image = _iconURI.readImage();
+    if ( image )
+        _icon->setImage( image );
 }
 
-void PlacemarkNode::setText( const std::string& text )
+void
+PlacemarkNode::setText( const std::string& text )
 {
     if ( text != _text )
     {
         _text = text;
         _label->setText( text );
     }
+}
+
+void
+PlacemarkNode::setStyle( const Style& style )
+{
+    _style = style;
+    init();
 }
 
 //------------------------------------------------------------------------
@@ -178,7 +202,8 @@ GeometryNode::init()
     FeatureList features;
     features.push_back( new Feature(_geom.get(), _style) );
     BuildGeometryFilter bg;
-    FilterContext context;
+    // no worky.
+	FilterContext context;
     osg::Node* node = bg.push( features, context );
     //osg::Node* node = bg.getNode();
     setNode( node );

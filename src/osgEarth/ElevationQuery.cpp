@@ -126,6 +126,24 @@ ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
 }
 
 bool
+ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
+                              const SpatialReference*        pointsSRS,
+                              std::vector<double>&           out_elevations,
+                              double                         desiredResolution )
+{
+    sync();
+    for( osg::Vec3dArray::const_iterator i = points.begin(); i != points.end(); ++i )
+    {
+        double elevation;
+        if ( getElevationImpl( *i, pointsSRS, elevation, desiredResolution ) )
+        {
+            out_elevations.push_back( elevation );
+        }
+    }
+    return true;
+}
+
+bool
 ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
                                  const SpatialReference* pointSRS,
                                  double&                 out_elevation,

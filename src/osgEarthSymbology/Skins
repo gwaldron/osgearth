@@ -137,6 +137,10 @@ namespace osgEarth { namespace Symbology
         optional<bool>& isTiled() { return _isTiled; }
         const optional<bool>& isTiled() const { return _isTiled; }
 
+        /** Random number seed value (for picking a candidate) */
+        optional<unsigned> randomSeed() { return _randomSeed; }
+        const optional<unsigned> randomSeed() const { return _randomSeed; }
+
     public:
         void mergeConfig(const Config& conf);
         Config getConfig() const;
@@ -147,49 +151,8 @@ namespace osgEarth { namespace Symbology
         optional<float>       _minObjHeight;
         optional<float>       _maxObjHeight;
         optional<bool>        _isTiled;
+        optional<unsigned>    _randomSeed;
     };
-
-#if 0
-    /**
-     * Query object that you can use to search for applicable Skin resources from the 
-     * ResourceLibrary.
-     */
-    class OSGEARTHSYMBOLOGY_EXPORT SkinResourceQuery : public osg::Referenced
-    {
-    public:
-        SkinResourceQuery();
-
-    public: // query parameters
-
-        /** Object height in meters (must fall in the skin's min/max object height range to be accepted) */
-        optional<double>& objectHeight() { return _objHeight; }
-        const optional<double>& objectHeight() const { return _objHeight; }
-
-        /** Minimum acceptable real-world object height for which this image would make an appropriate texture */
-        optional<double>& minObjectHeight() { return _minObjHeight; }
-        const optional<double>& minObjectHeight() const { return _minObjHeight; }
-
-        /** Maximum acceptable real-world object height for which this image would make an appropriate texture */
-        optional<double>& maxObjectHeight() { return _maxObjHeight; }
-        const optional<double>& maxObjectHeight() const { return _minObjHeight; }
-
-        /** Whether this image is suitable for use as a vertically repeating texture */
-        optional<bool>& isTiled() { return _isTiled; }
-        const optional<bool>& isTiled() const { return _isTiled; }
-
-        /** Adds a tag to the query */
-        void addTag( const std::string& tag ) { _tags.push_back(tag); }
-        const TagVector& tags() const { return _tags; }
-
-    protected:
-
-        optional<double>  _objHeight;
-        optional<double>  _minObjHeight;
-        optional<double>  _maxObjHeight;
-        optional<bool>    _isTiled;
-        TagVector         _tags;
-    };
-#endif
 
     typedef std::vector< osg::ref_ptr<SkinResource> > SkinResourceVector;
 

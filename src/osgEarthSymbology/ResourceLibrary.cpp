@@ -35,21 +35,6 @@ using namespace OpenThreads;
 ResourceLibrary*
 ResourceLibrary::create( const URI& uri )
 {
-#if 0
-    std::string src;
-
-    HTTPClient::ResultCode result = HTTPClient::readString( uri.full(), src );
-    if ( result != HTTPClient::RESULT_OK )
-    {
-        OE_WARN << LC << "Failed to load resource library from \"" << uri.full() << "\" : "
-            << HTTPClient::getResultCodeString(result)
-            << std::endl;
-        return 0L;
-    }
-
-    std::stringstream buf( src );
-#endif
-
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load( uri ); // buf, uri.full() );
     if ( !xml.valid() )
     {
@@ -137,54 +122,72 @@ ResourceLibrary::getSkins( SkinResourceVector& output ) const
 }
 
 void
-ResourceLibrary::getSkins( const SkinSymbol* q, SkinResourceVector& output ) const
+ResourceLibrary::getSkins( const SkinSymbol* symbol, SkinResourceVector& output ) const
 {
     Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
 
     for( SkinResourceMap::const_iterator i = _skins.begin(); i != _skins.end(); ++i )
     {
-        SkinResource* s = i->second.get();
-        
-        if (q->objectHeight().isSet())
+        SkinResource* skin = i->second.get();
+        if ( matches(symbol, skin) )
         {
-            if (s->minObjectHeight().isSet() && 
-                q->objectHeight().value() < s->minObjectHeight().value() )
-            {
-                continue;
-            }
-            if (s->maxObjectHeight().isSet() && 
-                q->objectHeight().value() > s->maxObjectHeight().value() )
-            {
-                continue;
-            }
+            output.push_back( skin );
         }
-             
-        if (q->minObjectHeight().isSet() && 
-            s->maxObjectHeight().isSet() && 
-            q->minObjectHeight().value() > s->maxObjectHeight().value() )
-        {
-            continue;
-        }
-
-        if (q->maxObjectHeight().isSet() && 
-            s->minObjectHeight().isSet() &&
-            q->maxObjectHeight().value() < s->minObjectHeight().value() )
-        {
-            continue;
-        }
-
-        if (q->isTiled().isSet() && 
-            q->isTiled().value() != s->isTiled().value() )
-        {
-            continue;
-        }
-
-        if (q->tags().size() > 0 && !s->containsTags(q->tags()) )
-        {
-            continue;
-        }
-
-        // it's a good one.
-        output.push_back( s );
     }
+}
+
+SkinResource*
+ResourceLibrary::getSkin( const SkinSymbol* symbol, unsigned randomizer ) const
+{
+    SkinResourceVector candidates;
+    getSkins( symbol, candidates );
+    unsigned size = candidates.size();
+    return size == 0 ? 0L : 
+        size == 1 ? candidates[0].get() :
+        candidates[ (randomizer + *symbol->randomSeed()) % size ].get();
+}
+
+bool
+ResourceLibrary::matches( const SkinSymbol* q, SkinResource* s ) const
+{
+    if (q->objectHeight().isSet())
+    {
+        if (s->minObjectHeight().isSet() && 
+            q->objectHeight().value() < s->minObjectHeight().value() )
+        {
+            return false;
+        }
+        if (s->maxObjectHeight().isSet() && 
+            q->objectHeight().value() > s->maxObjectHeight().value() )
+        {
+            return false;
+        }
+    }
+
+    if (q->minObjectHeight().isSet() && 
+        s->maxObjectHeight().isSet() && 
+        q->minObjectHeight().value() > s->maxObjectHeight().value() )
+    {
+        return false;
+    }
+
+    if (q->maxObjectHeight().isSet() && 
+        s->minObjectHeight().isSet() &&
+        q->maxObjectHeight().value() < s->minObjectHeight().value() )
+    {
+        return false;
+    }
+
+    if (q->isTiled().isSet() && 
+        q->isTiled().value() != s->isTiled().value() )
+    {
+        return false;
+    }
+
+    if (q->tags().size() > 0 && !s->containsTags(q->tags()) )
+    {
+        return false;
+    }
+
+    return true;
 }

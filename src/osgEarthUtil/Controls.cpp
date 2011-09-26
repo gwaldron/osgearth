@@ -1296,7 +1296,7 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 VBox::calcFill(const ControlContext& cx)
 {
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 
     float used_x = padding().x();
     float used_y = padding().y() - childSpacing();
@@ -1307,8 +1307,6 @@ VBox::calcFill(const ControlContext& cx)
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end() && (!hc || !vc); ++i )
     {
         Control* child = i->get();
-
-        //child->calcFill(cx);
 
         used_y += child->margin().y() + childSpacing();
         if ( !hc && child->horizFill() )
@@ -1329,7 +1327,7 @@ VBox::calcFill(const ControlContext& cx)
     if ( vc && renderHeight(vc) < (_renderSize.y() - used_y) )
         renderHeight(vc) = _renderSize.y() - used_y;
    
-    //Container::calcFill( cx );
+    Container::calcFill( cx );
 }
 
 void
@@ -1425,7 +1423,7 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 HBox::calcFill(const ControlContext& cx)
 {
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 
     float used_x = padding().x() - childSpacing();
     float used_y = padding().y();
@@ -1458,7 +1456,7 @@ HBox::calcFill(const ControlContext& cx)
     if ( vc && renderHeight(vc) < (_renderSize.y() - used_y) )
         renderHeight(vc) = _renderSize.y() - used_y;
    
-    //Container::calcFill( cx );
+    Container::calcFill( cx );
 }
 
 void

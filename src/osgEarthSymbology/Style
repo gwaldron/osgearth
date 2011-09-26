@@ -194,17 +194,14 @@ namespace osgEarth { namespace Symbology
         void removeStyle( const std::string& name );
         
         /** Gets a named style from this sheet. If the name isn't found, optionally falls back on the
-            "default" style */
+            "default" style. Note: if the name has a hashtag prefix (e.g., "#name") it will search for
+            the name with and without the hash. (they are considered equivalent) */
         Style* getStyle( const std::string& name, bool fallBackOnDefault =true );
         const Style* getStyle( const std::string& name, bool fallBackOnDefault =true ) const;
-        //bool getStyle( const std::string& name, Style*& out_style, bool fallBackOnDefault =true );
-        //bool getStyle( const std::string& name, const Style*& out_style, bool fallBackOnDefault =true ) const;
 
         /** Gets the default style in this sheet. */
         Style* getDefaultStyle();
         const Style* getDefaultStyle() const;
-        //bool getDefaultStyle( Style*& out_style );
-        //bool getDefaultStyle( const Style*& out_style ) const;
 
         /** Selectors pick a style from the sheet based on some criteria. */
         StyleSelectorList& selectors() { return _selectors; }

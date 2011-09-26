@@ -85,7 +85,10 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
     case TYPE_RING:
         return new Ring( &this->asVector() );
     case TYPE_POLYGON:
-        return new Polygon( &this->asVector() );
+        if ( dynamic_cast<const Polygon*>(this) )
+            return new Polygon( *static_cast<const Polygon*>(this) );
+        else
+            return new Polygon( &this->asVector() );
     default:
         break;
     }

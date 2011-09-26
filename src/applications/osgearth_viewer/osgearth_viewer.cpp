@@ -32,10 +32,12 @@
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/Formatters>
 #include <osgEarthSymbology/Color>
+#include <osgEarthDrivers/kml/KML>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
+using namespace osgEarth::Drivers;
 
 int
 usage( const std::string& msg )
@@ -260,6 +262,9 @@ main(int argc, char** argv)
     s_dms             = arguments.read( "--dms" );
     s_mgrs            = arguments.read( "--mgrs" );
 
+    std::string kmlFile;
+    arguments.read( "--kml", kmlFile );
+
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
@@ -320,13 +325,20 @@ main(int argc, char** argv)
             viewer.addEventHandler( new ViewpointHandler(viewpoints) );
         }
 
-
-        //Add a control panel to the scene
+        // Add a control panel to the scene
         root->addChild( ControlCanvas::get( &viewer ) );
         if ( viewpoints.size() > 0 || s_sky )
             createControlPanel(&viewer, viewpoints);
 
         addMouseCoords( &viewer, mapNode->getMap() );
+
+        // Load a KML file if specified
+        if ( !kmlFile.empty() )
+        {
+            osg::Node* kml = KML::load( URI(kmlFile), mapNode );
+            if ( kml )
+                root->addChild( kml );
+        }
     }
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of

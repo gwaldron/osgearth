@@ -21,6 +21,7 @@
 #define OSGEARTHSYMBOLOGY_ALTITUDE_SYMBOL_H 1
 
 #include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/Expression>
 
 namespace osgEarth { namespace Symbology
 {
@@ -64,22 +65,22 @@ namespace osgEarth { namespace Symbology
         const optional<float>& clampingResolution() const { return _clampingResolution; }
 
         /** Vertical offset of geometry after clamping */
-        optional<float>& verticalOffset() { return _verticalOffset; }
-        const optional<float>& verticalOffset() const { return _verticalOffset; }
+        optional<NumericExpression>& verticalOffset() { return _verticalOffset; }
+        const optional<NumericExpression>& verticalOffset() const { return _verticalOffset; }
 
         /** Vertical scale factor to apply to geometry's Z after clamping. */
-        optional<float>& verticalScale() { return _verticalScale; }
-        const optional<float>& verticalScale() const { return _verticalScale; }
+        optional<NumericExpression>& verticalScale() { return _verticalScale; }
+        const optional<NumericExpression>& verticalScale() const { return _verticalScale; }
 
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<Clamping> _clamping;
-        optional<float>    _clampingResolution;
-        optional<float>    _verticalOffset;
-        optional<float>    _verticalScale;
+        optional<Clamping>           _clamping;
+        optional<float>              _clampingResolution;
+        optional<NumericExpression>  _verticalOffset;
+        optional<NumericExpression>  _verticalScale;
     };
 
 } } // namespace osgEarth::Symbology

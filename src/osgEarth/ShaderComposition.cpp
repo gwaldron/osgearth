@@ -129,8 +129,8 @@ VirtualProgram::removeShader( const std::string& shaderSemantic, osg::Shader::Ty
     _shaderMap.erase( ShaderMap::key_type( shaderSemantic, type ) );
 }
 
-static unsigned s_count = 0;
-static int s_fn = 0;
+static unsigned s_applies = 0;
+static int      s_framenum = 0;
 
 void
 VirtualProgram::apply( osg::State & state ) const

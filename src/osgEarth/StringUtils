@@ -123,114 +123,6 @@ namespace osgEarth
         bool     _trimTokens;
     };
 
-#if 0
-    static 
-    void tokenize( const std::string& input,
-                   StringVector& output,
-                   const std::string& delims =" \t\n\r", 
-                   const std::string& quotes ="'\"",
-                   bool allowEmpties =true,
-                   bool keepDelims   =false,
-                   bool keepQuotes   =false,
-                   bool trimTokens   =true )
-    {
-        std::stringstream buf;
-        bool quoted = false;
-        for( std::string::const_iterator i = input.begin(); i != input.end(); ++i )
-        {
-            char c = *i;    
-            if ( quoted ) {
-                if ( quotes.find(c) != std::string::npos ) {
-                    quoted = false;
-                    if ( keepQuotes ) 
-                        buf << c;
-                }
-                else {
-                    buf << c;
-                }
-            }
-            else {
-                if ( quotes.find(c) != std::string::npos ) {
-                    quoted = true;
-                    if ( keepQuotes )
-                        buf << c;
-                }
-                else if ( delims.find(c) == std::string::npos ) {
-                    buf << c;
-                }
-                else {
-                    std::string token = trimTokens ? trim(buf.str()) : buf.str();
-                    if ( allowEmpties || !token.empty() )
-                        output.push_back( token );
-                    
-                    if ( keepDelims )
-                        output.push_back( std::string(1, c) );
-
-                    buf.str("");
-                }
-            }       
-        }
-        std::string last = trimTokens ? trim(buf.str()) : buf.str();
-        if ( !last.empty() )
-            output.push_back( last );
-    }
-#endif
-
-#if 0
-    /**
-     * Tokenizes a string.
-     * http://stackoverflow.com/questions/53849/how-do-i-tokenize-a-string-in-c
-     */
-    class StringTokenizer 
-    {
-    public:
-        StringTokenizer(const std::string& s)
-            : _string(s), _offset(0), _delimiters(" \t\n\r") { }
-        StringTokenizer(const std::string& s, const std::string& delimiters)
-            : _string(s), _offset(0), _delimiters(delimiters) { }
-        bool nextToken() {
-            return nextToken( _delimiters ); }
-        bool nextToken(const std::string& delimiters) {
-            size_t i = _string.find_first_not_of(delimiters, _offset);
-            if (std::string::npos == i) {
-                _offset = _string.length();
-                return false;
-            }
-            size_t j = _string.find_first_of(delimiters, i);
-            if (std::string::npos == j) {
-                _token = _string.substr(i);
-                _offset = _string.length();
-                return true;
-            }
-            _token = _string.substr(i, j - i);
-            _offset = j;
-            return true;
-        }
-        std::string token() const { 
-            return trim( _token );
-        }
-    protected:
-        const std::string _string;
-        size_t _offset;
-        std::string _token;
-        std::string _delimiters;
-    };
-#endif
-
-#if 0
-    /**
-     * Splits "input" into one or more strings in "output" based on the delimiting character(s) in "delims".
-     */
-    static
-    void split( const std::string& input, const std::string& delims, std::vector<std::string>& output, bool allowEmpties =true )
-    {
-        StringTokenizer t(input, delims);
-        while( t.nextToken() )
-            if ( allowEmpties || !t.token().empty() )
-                output.push_back( t.token() );
-    }
-#endif
-
     /** Returns a lower-case version of the input string. */
     static std::string
     toLower( const std::string& input )
@@ -435,6 +327,42 @@ namespace osgEarth
     {
         return vec3fToString(value);
     }
+
+    struct Stringify
+    {
+        operator std::string () const
+        {
+            std::string result;
+            result = buf.str();
+            return result;
+        }
+
+        Stringify& operator << (bool val) { buf << val; return (*this); }
+        Stringify& operator << (short val) { buf << val; return (*this); }
+        Stringify& operator << (unsigned short val) { buf << val; return (*this); }
+        Stringify& operator << (int val) { buf << val; return (*this); }
+        Stringify& operator << (unsigned int val) { buf << val; return (*this); }
+        Stringify& operator << (long val) { buf << val; return (*this); }
+        Stringify& operator << (unsigned long val) { buf << val; return (*this); }
+        Stringify& operator << (float val) { buf << val; return (*this); }
+        Stringify& operator << (double val) { buf << val; return (*this); }
+        Stringify& operator << (long double val) { buf << val; return (*this); }
+        Stringify& operator << (const void* val) { buf << val; return (*this); }
+        Stringify& operator << (char val) { buf << val; return (*this); }
+        Stringify& operator << (signed char val) { buf << val; return (*this); }
+        Stringify& operator << (unsigned char val) { buf << val; return (*this); }
+        Stringify& operator << (const char* val) { buf << val; return (*this); }
+        Stringify& operator << (const signed char* val) { buf << val; return (*this); }
+        Stringify& operator << (const unsigned char* val) { buf << val; return (*this); }
+        Stringify& operator << (const std::string& val) { buf << val; return (*this); }
+        Stringify& operator << (std::streambuf* val) { buf << val; return (*this); }
+        Stringify& operator << (std::ostream& (*val)(std::ostream&)) { buf << val; return (*this); }
+        Stringify& operator << (std::ios& (*val)(std::ostream&)) { buf << val; return (*this); }
+        Stringify& operator << (std::ios_base& (*val)(std::ios_base&)) { buf << val; return (*this); }
+
+    protected:
+        std::stringstream buf;
+    };
 }
 
 #endif // OSGEARTH_STRING_UTILS_H

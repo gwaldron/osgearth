@@ -46,11 +46,16 @@ FeatureNode::init()
         FeatureProfile* profile = new FeatureProfile(extent);
         FilterContext context( session, profile, extent );
 
-        //Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
-        //of the geometry when performing localization or converting to geocentric.
+        // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
+        // of the geometry when performing localization or converting to geocentric.
         osg::ref_ptr< Feature > clone = new osgEarth::Features::Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
 
-        osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
+        osg::Node* node;
+        if ( _style.isSet() )
+            node = compiler.compile( clone.get(), *_style, context );
+        else
+            node = compiler.compile( clone.get(), *clone->style(), context );
+
         setNode( node );
     }
 }
@@ -59,5 +64,12 @@ void
 FeatureNode::setFeature( Feature* feature )
 {
     _feature = feature;
+    init();
+}
+
+void
+FeatureNode::setStyle( const Style& style )
+{
+    _style = style;
     init();
 }

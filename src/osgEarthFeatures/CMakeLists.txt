@@ -12,12 +12,12 @@ SET(LIB_NAME osgEarthFeatures)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
+    AltitudeFilter
     BufferFilter
     BuildGeometryFilter  
     BuildTextFilter
     BuildTextOperator
     Common
-    ClampFilter
     ConvertTypeFilter
     CropFilter
     ExtrudeGeometryFilter
@@ -51,11 +51,11 @@ SET(LIB_PUBLIC_HEADERS
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
+    AltitudeFilter.cpp
     BufferFilter.cpp
     BuildGeometryFilter.cpp 
     BuildTextFilter.cpp
     BuildTextOperator.cpp
-    ClampFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
     ExtrudeGeometryFilter.cpp

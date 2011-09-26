@@ -28,6 +28,8 @@
 #include <osgUtil/Optimizer>
 #include <osgUtil/SmoothingVisitor>
 #include <osg/Version>
+#include <osg/LineWidth>
+#include <osg/PolygonOffset>
 #include <osgEarth/Version>
 
 #define LC "[ExtrudeGeometryFilter] "
@@ -61,8 +63,6 @@ namespace
         const osg::Vec3d& p1 = n.first.x() < n.second.x() ? n.first : n.second;
         const osg::Vec3d& p2 = n.first.x() < n.second.x() ? n.second : n.first;
 
-        //return atan2( p2.y()-p1.y(), p2.x()-p1.x() );
-        //return osg::PI_2 - atan2( p2.y()-p1.y(), p2.x()-p1.x() );
         return atan2( p2.x()-p1.x(), p2.y()-p1.y() );
     }
 }
@@ -100,6 +100,7 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
         _roofSkinSymbol    = 0L;
         _roofPolygonSymbol = 0L;
         _extrusionSymbol   = 0L;
+        _outlineSymbol     = 0L;
 
         _extrusionSymbol = _style.get<ExtrusionSymbol>();
         if ( _extrusionSymbol.valid() )
@@ -112,11 +113,12 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 
             // account for a "height" value that is relative to ZERO (MSL/HAE)
             AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
-            if ( alt )
+            if ( alt && !_extrusionSymbol->heightExpression().isSet() )
             {
-                if ( alt->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE )
+                if (alt->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ||
+                    alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
                 {
-                    _heightOffsetExpr = NumericExpression( "[__min_z]" );
+                    _heightExpr = NumericExpression( "0-[__max_hat]" );
                 }
             }
             
@@ -140,7 +142,10 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
                     _roofSkinSymbol = roofStyle->get<SkinSymbol>();
                     _roofPolygonSymbol = roofStyle->get<PolygonSymbol>();
                 }
-            }       
+            }
+
+            // if there's a line symbol, use it to outline the extruded data.
+            _outlineSymbol = _style.get<LineSymbol>();
         }
 
         // backup plan for skin symbols:
@@ -175,8 +180,10 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        osg::Geometry*          walls,
                                        osg::Geometry*          roof,
                                        osg::Geometry*          base,
+                                       osg::Geometry*          outline,
                                        const osg::Vec4&        wallColor,
                                        const osg::Vec4&        roofColor,
+                                       const osg::Vec4&        outlineColor,
                                        const SkinResource*     wallSkin,
                                        const SkinResource*     roofSkin,
                                        FilterContext&          cx )
@@ -187,7 +194,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
     // whether to convert the final geometry to localized ECEF
     bool makeECEF = cx.getSession()->getMapInfo().isGeocentric();
-
 
     bool made_geom = false;
 
@@ -296,6 +302,26 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         base->setVertexArray( baseVerts );
     }
 
+    osg::Vec3Array* outlineVerts = 0L;
+    osg::Vec3Array* outlineNormals = 0L;
+    if ( outline )
+    {
+        outlineVerts = new osg::Vec3Array( numVerts );
+        outline->setVertexArray( outlineVerts );
+
+        osg::Vec4Array* outlineColors = new osg::Vec4Array();
+        outlineColors->reserve( numVerts );
+        outlineColors->assign( numVerts, outlineColor );
+        outline->setColorArray( outlineColors );
+        outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+
+        // cop out, just point all the outline normals up. fix this later.
+        outlineNormals = new osg::Vec3Array();
+        outlineNormals->reserve( numVerts );
+        outlineNormals->assign( numVerts, osg::Vec3(0,0,1) );
+        outline->setNormalArray( outlineNormals );
+    }
+
     unsigned wallVertPtr    = 0;
     unsigned roofVertPtr    = 0;
     unsigned baseVertPtr    = 0;
@@ -309,6 +335,9 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     // Initial pass over the geometry does two things:
     // 1: Calculate the minimum Z across all parts.
     // 2: Establish a "target length" for extrusion
+
+    double absHeight = fabs(height);
+
     ConstGeometryIterator zfinder( input );
     while( zfinder.hasMore() )
     {
@@ -317,8 +346,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         {
             osg::Vec3d m_point = *m;
 
-            if ( m_point.z() + height > targetLen )
-                targetLen = m_point.z() + height;
+            if ( m_point.z() + absHeight > targetLen )
+                targetLen = m_point.z() + absHeight;
 
             if (m_point.z() < minLoc.z())
                 minLoc = m_point;
@@ -360,13 +389,21 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             osg::Vec3d basePt = *m;
             osg::Vec3d roofPt;
 
+            if ( height >= 0 )
+            {
+                if ( flatten )
+                    roofPt.set( basePt.x(), basePt.y(), targetLen );
+                else
+                    roofPt.set( basePt.x(), basePt.y(), basePt.z() + height );
+            }
+            else // height < 0
+            {
+                roofPt = *m;
+                basePt.z() += height;
+            }
+
             // add to the approprate vertex lists:
             int p = wallVertPtr;
-
-            if ( flatten )
-                roofPt.set( basePt.x(), basePt.y(), targetLen );
-            else
-                roofPt.set( basePt.x(), basePt.y(), basePt.z() + height );
 
             // figure out the rooftop texture coordinates before doing any
             // transformations:
@@ -400,12 +437,21 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             }
 
             if ( base )
-                (*baseVerts)[baseVertPtr++] = basePt;
+                (*baseVerts)[baseVertPtr] = basePt;
             if ( roof )
-                (*roofVerts)[roofVertPtr++] = roofPt;
+                (*roofVerts)[roofVertPtr] = roofPt;
+
+            baseVertPtr++;
+            roofVertPtr++;
 
             (*verts)[p] = roofPt;
             (*verts)[p+1] = basePt;
+
+            if ( outline )
+            {
+                (*outlineVerts)[p] = roofPt;
+                (*outlineVerts)[p+1] = basePt;
+            }
             
             partLen += wallVertPtr > wallPartPtr ? ((*verts)[p] - (*verts)[p-2]).length() : 0.0;
             double h = tex_repeats_y ? -((*verts)[p] - (*verts)[p+1]).length() : -tex_height_m_adj;
@@ -458,6 +504,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 osg::PrimitiveSet::LINE_LOOP,
                 roofPartPtr, roofVertPtr - roofPartPtr ) );
         }
+
         if ( base )
         {
             // reverse the base verts:
@@ -468,6 +515,27 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             base->addPrimitiveSet( new osg::DrawArrays(
                 osg::PrimitiveSet::LINE_LOOP,
                 basePartPtr, baseVertPtr - basePartPtr ) );
+        }
+
+        if ( outline )
+        {
+            unsigned len = baseVertPtr - basePartPtr;
+
+            GLenum roofLineMode = isPolygon ? GL_LINE_LOOP : GL_LINE_STRIP;
+            osg::DrawElementsUInt* roofLine = new osg::DrawElementsUInt( roofLineMode );
+            roofLine->reserveElements( len );
+            for( unsigned i=0; i<len; ++i )
+                roofLine->addElement( basePartPtr + i*2 );
+            outline->addPrimitiveSet( roofLine );
+
+            osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
+            wallLines->reserve( len*2 );
+            for( unsigned i=0; i<len; ++i )
+            {
+                wallLines->push_back( basePartPtr + i*2 );
+                wallLines->push_back( basePartPtr + i*2 + 1 );
+            }
+            outline->addPrimitiveSet( wallLines );
         }
     }
 
@@ -511,6 +579,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             //walls->setUseVertexBufferObjects(true);
             
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
+            osg::ref_ptr<osg::Geometry> outlines  = 0L;
             
             if ( part->getType() == Geometry::TYPE_POLYGON )
             {
@@ -521,6 +590,12 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 static_cast<Polygon*>(part)->open();
             }
 
+            // fire up the outline geometry if we have a line symbol.
+            if ( _outlineSymbol != 0L )
+            {
+                outlines = new osg::Geometry();
+            }
+
             // calculate the extrusion height:
             float height;
 
@@ -528,9 +603,9 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             {
                 height = _heightCallback->operator()(input, context);
             }
-            else if ( _extrusionSymbol->heightExpression().isSet() )
+            else if ( _heightExpr.isSet() )
             {
-                height = input->eval( _heightExpr );
+                height = input->eval( _heightExpr.mutable_value() );
             }
             else
             {
@@ -554,20 +629,8 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( _wallResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
-                    querySymbol.objectHeight() = height - offset;
-                    SkinResourceVector candidates;
-                    _wallResLib->getSkins( &querySymbol, candidates );
-
-                    if ( candidates.size() == 1 )
-                    {
-                        wallSkin = candidates[0].get();
-                    }
-                    else if ( candidates.size() > 1 )
-                    {
-                        // select one at random:
-                        int index = ::rand() % candidates.size();
-                        wallSkin = candidates[index].get();
-                    }
+                    querySymbol.objectHeight() = fabs(height) - offset;
+                    wallSkin = _wallResLib->getSkin( &querySymbol, input->getFID() + 151 );
                 }
 
                 else
@@ -583,19 +646,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( _roofResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_roofSkinSymbol.get() );
-                    SkinResourceVector candidates;
-                    _roofResLib->getSkins( &querySymbol, candidates );
-
-                    if ( candidates.size() == 1 )
-                    {
-                        roofSkin = candidates[0].get();
-                    }
-                    else if ( candidates.size() > 1 )
-                    {
-                        // select one at random:
-                        int index = ::rand() % candidates.size();
-                        roofSkin = candidates[index].get();
-                    }
+                    roofSkin = _roofResLib->getSkin( &querySymbol, input->getFID() + 151 );
                 }
 
                 else
@@ -605,7 +656,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             }
 
             // calculate the colors:
-            osg::Vec4f wallColor(1,1,1,1), roofColor(1,1,1,1);
+            osg::Vec4f wallColor(1,1,1,1), roofColor(1,1,1,1), outlineColor(1,1,1,1);
 
             if ( _wallPolygonSymbol.valid() )
             {
@@ -615,13 +666,17 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             {
                 roofColor = _roofPolygonSymbol->fill()->color();
             }
+            if ( _outlineSymbol.valid() )
+            {
+                outlineColor = _outlineSymbol->stroke()->color();
+            }
 
             // Create the extruded geometry!
             if (extrudeGeometry( 
                     part, height, offset, 
                     *_extrusionSymbol->flatten(),
-                    walls.get(), rooflines.get(), 0L, 
-                    wallColor, roofColor,
+                    walls.get(), rooflines.get(), 0L, outlines.get(),
+                    wallColor, roofColor, outlineColor,
                     wallSkin, roofSkin,
                     context ) )
             {      
@@ -677,6 +732,11 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 {
                     //MeshConsolidator::run( *rooflines.get() );
                     addDrawable( rooflines.get(), roofStateSet, name );
+                }
+
+                if ( outlines.valid() )
+                {
+                    addDrawable( outlines.get(), 0L, name );
                 }
             }   
         }
@@ -736,7 +796,9 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     if ( _mergeGeometry == true && _featureNameExpr.empty() )
     {
         for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
+        {
             MeshConsolidator::run( *i->second.get() );
+        }
     }
 
     // parent geometry with a delocalizer (if necessary)
@@ -744,8 +806,19 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     
     // combines geometries where the statesets are the same.
     for( SortedGeodeMap::iterator i = _geodes.begin(); i != _geodes.end(); ++i )
+    {
         group->addChild( i->second.get() );
+    }
     _geodes.clear();
+
+    // if we drew outlines, apply a poly offset too.
+    if ( _outlineSymbol.valid() )
+    {
+        osg::StateSet* groupStateSet = group->getOrCreateStateSet();
+        groupStateSet->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
+        if ( _outlineSymbol->stroke()->width().isSet() )
+            groupStateSet->setAttributeAndModes( new osg::LineWidth(*_outlineSymbol->stroke()->width()), 1 );
+    }
 
     OE_DEBUG << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
 

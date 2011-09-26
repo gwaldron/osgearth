@@ -27,7 +27,7 @@ using namespace osgEarth;
 struct KML_Overlay : public KML_Feature
 {
     virtual void scan( const Config& conf, KMLContext& cx );
-    virtual void build( const Config& conf, KMLContext& cx );
+    virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
 };
 
 #endif // OSGEARTH_DRIVER_KML_KML_OVERLAY

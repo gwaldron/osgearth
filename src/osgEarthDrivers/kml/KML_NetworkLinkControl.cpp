@@ -27,5 +27,5 @@ KML_NetworkLinkControl::scan( const Config& conf, KMLContext& cx )
 void
 KML_NetworkLinkControl::build( const Config& conf, KMLContext& cx )
 {
-    KML_Object::build( conf, cx );
+    KML_Object::build( conf, cx, 0L );
 }

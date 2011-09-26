@@ -25,7 +25,7 @@ KML_Overlay::scan( const Config& conf, KMLContext& cx )
 }
 
 void
-KML_Overlay::build( const Config& conf, KMLContext& cx )
+KML_Overlay::build( const Config& conf, KMLContext& cx, osg::Node* working )
 {
-    KML_Feature::build( conf, cx );
+    KML_Feature::build( conf, cx, working );
 }

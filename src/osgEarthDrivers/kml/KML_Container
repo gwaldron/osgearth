@@ -31,9 +31,16 @@ struct KML_Container : public KML_Feature
         KML_Feature::scan(conf, cx);
     }
 
-    virtual void build( const Config& conf, KMLContext& cx )
+    virtual void scan2( const Config& conf, KMLContext& cx )
     {
-        KML_Feature::build(conf, cx);
+        KML_Feature::scan2(conf, cx);
+    }
+
+    virtual void build( const Config& conf, KMLContext& cx, osg::Node* working )
+    {
+        // assumes the top of the group stack has a new and valid Node.
+        // don't call this is there was an error in the subclass build() method
+        KML_Feature::build(conf, cx, working);
     }
 };
 

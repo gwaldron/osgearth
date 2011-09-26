@@ -30,6 +30,7 @@ SET(TARGET_H
     KML_Model
     KML_MultiGeometry
     KML_NetworkLinkControl
+    KML_Object
     KML_Overlay
     KML_PhotoOverlay
     KML_Point
@@ -61,6 +62,7 @@ SET(TARGET_SRC
     KML_MultiGeometry.cpp
     KML_NetworkLink.cpp
     KML_NetworkLinkControl.cpp
+    KML_Object.cpp
     KML_Overlay.cpp
     KML_PhotoOverlay.cpp
     KML_Placemark.cpp

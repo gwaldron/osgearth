@@ -27,5 +27,5 @@ KML_PhotoOverlay::scan( const Config& conf, KMLContext& cx )
 void
 KML_PhotoOverlay::build( const Config& conf, KMLContext& cx )
 {
-    KML_Overlay::build( conf, cx );
+    KML_Overlay::build( conf, cx, 0L );
 }

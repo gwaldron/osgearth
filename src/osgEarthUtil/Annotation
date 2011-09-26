@@ -29,6 +29,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/Viewpoint>
 #include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Util { namespace Annotation
@@ -37,6 +38,54 @@ namespace osgEarth { namespace Util { namespace Annotation
     using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
     using namespace osgEarth::Util::Controls;
+
+    /**
+     * Stores annotation metadata/extra information that can be stored in a node's
+     * UserData container.
+     */
+    class AnnotationData : public osg::Referenced
+    {
+    public:
+        AnnotationData()
+            : _viewpoint( 0L ) { }
+
+    public:
+        /**
+         * Readable name of the annotation.
+         */
+        void setName( const std::string& value ) { _name = value; }
+        const std::string& getName() const { return _name; }
+
+        /**
+         * Readable description of the annotation.
+         */
+        void setDescription( const std::string& value ) { _description = value; }
+        const std::string& getDescription() const { return _description; }
+
+        /**
+         * Viewpoint associated with this annotation.
+         */
+        void setViewpoint( const Viewpoint& vp ) {
+            if ( _viewpoint )
+                delete _viewpoint;
+            _viewpoint = new Viewpoint(vp);
+        }
+
+        const Viewpoint* getViewpoint() const {
+            return _viewpoint;
+        }
+
+    public:
+        virtual ~AnnotationData() {
+            if ( _viewpoint )
+                delete _viewpoint;
+        }
+
+    protected:
+        std::string _name;
+        std::string _description;
+        Viewpoint*  _viewpoint;
+    };
 
     /** 
      * A Placemark combines an 2D icon, a label, support for mouse interaction
@@ -150,7 +199,7 @@ namespace osgEarth { namespace Util { namespace Annotation
     /** 
      * Renders a circle that can drape on a MapNode terrain.    
      */
-    class OSGEARTHUTIL_EXPORT CircleNode : public FeatureNode
+    class OSGEARTHUTIL_EXPORT CircleNode : public FeatureNode 
     {
     public:
         CircleNode( 

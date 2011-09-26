@@ -23,14 +23,19 @@
 void 
 KML_Root::scan( const Config& conf, KMLContext& cx )
 {
-    KML_Object::scan(conf, cx);
     for_one( Document, scan, conf, cx );
     for_one( NetworkLinkControl, scan, conf, cx );
 }
 
 void
+KML_Root::scan2( const Config& conf, KMLContext& cx )
+{
+    for_one( Document, scan2, conf, cx );
+    for_one( NetworkLinkControl, scan2, conf, cx );
+}
+
+void
 KML_Root::build( const Config& conf, KMLContext& cx )
 {
-    KML_Object::build(conf, cx);
     for_one( Document, build, conf, cx );
 }

@@ -19,14 +19,17 @@
 #ifndef OSGEARTH_DRIVER_KML_KML_FEATURE
 #define OSGEARTH_DRIVER_KML_KML_FEATURE 1
 
-#include "KML_Common"
+#include "KML_Object"
 
 using namespace osgEarth;
 
 struct KML_Feature : public KML_Object
 {
     virtual void scan( const Config& conf, KMLContext& cx );
-    virtual void build( const Config& conf, KMLContext& cx );
+
+    virtual void scan2( const Config& conf, KMLContext& cx );
+
+    virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
 };
 
 #endif // OSGEARTH_DRIVER_KML_KML_FEATURE

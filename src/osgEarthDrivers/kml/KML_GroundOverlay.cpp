@@ -30,8 +30,6 @@ KML_GroundOverlay::scan( const Config& conf, KMLContext& cx )
 void
 KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
 {
-    KML_Overlay::build( conf, cx );
-
     // the URL of the overlay image
     std::string href = conf.child("icon").value("href");
     if ( href.empty() ) {
@@ -50,10 +48,7 @@ KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
     double south = llb.value<double>("south", 0.0);
     double east  = llb.value<double>("east", 0.0);
     double west  = llb.value<double>("west", 0.0);
-    double rotation = llb.value<double>("rotation", 0.0);
-
-    double sinr = sin(rotation), cosr = cos(rotation);
-    //todo: apply rotation
+    Angular rotation( llb.value<double>("rotation", 0.0), Units::DEGREES );
 
     osg::ref_ptr<osg::Image> image = URI(href).readImage();
     if ( !image.valid() ) {
@@ -62,6 +57,9 @@ KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
     }
 
     ImageOverlay* im = new ImageOverlay( cx._mapNode, image.get() );
-    im->setBoundsAndRotation( Bounds(west, south, east, north), Angular(rotation, Units::RADIANS) );
+    im->setBoundsAndRotation( Bounds(west, south, east, north), rotation );
     cx._groupStack.top()->addChild( im );
+
+    // superclass build always called last
+    KML_Overlay::build( conf, cx, im );
 }

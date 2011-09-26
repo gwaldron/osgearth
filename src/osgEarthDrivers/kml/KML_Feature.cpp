@@ -18,6 +18,9 @@
  */
 #include "KML_Feature"
 #include "KML_Style"
+#include <osgEarthUtil/Viewpoint>
+
+using namespace osgEarth::Util;
 
 void
 KML_Feature::scan( const Config& conf, KMLContext& cx )
@@ -27,7 +30,42 @@ KML_Feature::scan( const Config& conf, KMLContext& cx )
 }
 
 void
-KML_Feature::build( const Config& conf, KMLContext& cx )
+KML_Feature::scan2( const Config& conf, KMLContext& cx )
 {
-    KML_Object::build(conf, cx);
+    KML_Object::scan2(conf, cx);
+    for_many( Style, scan2, conf, cx );
+}
+
+void
+KML_Feature::build( const Config& conf, KMLContext& cx, osg::Node* working )
+{
+    KML_Object::build(conf, cx, working);
+
+    // subclass feature is built; now add feature level data if available
+    if ( working )
+    {
+        // parse the visibility to show/hide the item by default:
+        if ( conf.hasValue("visibility") )
+            working->setNodeMask( conf.value<bool>("visibility",true) == true ? ~0 : 0 );
+
+        // parse a "LookAt" element (stores a viewpoint)
+        AnnotationData* anno = getOrCreateAnnotationData(working);
+        
+        anno->setName( conf.value("name") );
+        anno->setDescription( conf.value("description") );
+
+        const Config& lookat = conf.child("lookat");
+        if ( !lookat.empty() )
+        {
+            Viewpoint vp(
+                lookat.value<double>("longitude", 0.0),
+                lookat.value<double>("latitude", 0.0),
+                lookat.value<double>("altitude", 0.0),
+                lookat.value<double>("heading", 0.0),
+                -lookat.value<double>("tilt", 45.0),
+                lookat.value<double>("range", 10000.0) );
+
+            anno->setViewpoint( vp );
+        }
+    }
 }

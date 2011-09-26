@@ -57,6 +57,9 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         position = geom->getBounds().center();
     }
 
+    FeatureNode*   fNode = 0L;
+    PlacemarkNode* pNode = 0L;
+
     // if we have a non-single-point geometry, render it.
     if ( geometry._geom.valid() && geometry._geom->size() != 1 )
     {
@@ -68,13 +71,25 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             (alt && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
 
 
-        FeatureNode* fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped );
+        fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped );
         fNode->setStyle( style );
         // drape if we're not extruding.
         fNode->setDraped( draped );
-        cx._groupStack.top()->addChild( fNode );
     }
 
-    PlacemarkNode* pmNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
-    cx._groupStack.top()->addChild( pmNode );
+    pNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
+
+    if ( fNode && pNode )
+    {
+        osg::Group* group = new osg::Group();
+        group->addChild( fNode );
+        group->addChild( pNode );
+        cx._groupStack.top()->addChild( group );
+        KML_Feature::build( conf, cx, group );
+    }
+    else if ( pNode )
+    {
+        cx._groupStack.top()->addChild( pNode );
+        KML_Feature::build( conf, cx, pNode );
+    }
 }

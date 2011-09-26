@@ -57,7 +57,7 @@ DrapeableNode::setNode( osg::Node* node )
 {
     _newNode = node;
     _dirty = true;
-    this->setNumChildrenRequiringUpdateTraversal( 1 );
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 }
 
 void
@@ -65,7 +65,7 @@ DrapeableNode::setDraped( bool draped )
 {
     _newDraped = draped;
     _dirty = true;
-    this->setNumChildrenRequiringUpdateTraversal( 1 );
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
 }
 
 void
@@ -132,7 +132,7 @@ DrapeableNode::traverse( osg::NodeVisitor& nv )
     {
         applyChanges();
         _dirty = false;
-        this->setNumChildrenRequiringUpdateTraversal( 0 );
+        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
     }
 
     osg::Group::traverse( nv );

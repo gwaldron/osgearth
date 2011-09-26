@@ -42,6 +42,7 @@ KMLReader::read( std::istream& in, const URIContext& context )
     Config config = xml->getConfig();
 
     osg::Node* node = read( config );
+    node->setName( context );
     return node;
 }
 

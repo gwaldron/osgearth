@@ -24,9 +24,12 @@
 
 using namespace osgEarth;
 
-struct KML_Document: public KML_Container
+struct KML_Document : public KML_Container
 {
-    virtual void scan( const Config& conf, KMLContext& cx );  
+    virtual void scan( const Config& conf, KMLContext& cx );
+
+    virtual void scan2( const Config& conf, KMLContext& cx );
+
     virtual void build( const Config& conf, KMLContext& cx );
 };
 

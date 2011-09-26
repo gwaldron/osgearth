@@ -27,5 +27,6 @@ KML_ScreenOverlay::scan( const Config& conf, KMLContext& cx )
 void
 KML_ScreenOverlay::build( const Config& conf, KMLContext& cx )
 {
-    KML_Overlay::build( conf, cx );
+    //todo
+    //KML_Overlay::build( conf, cx, 0L );
 }

@@ -27,6 +27,9 @@ using namespace osgEarth;
 struct KML_Folder : public KML_Container
 {
     virtual void scan( const Config& conf, KMLContext& cx );
+
+    virtual void scan2( const Config& conf, KMLContext& cx );
+
     virtual void build( const Config& conf, KMLContext& cx );
 };
 

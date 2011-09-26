@@ -31,10 +31,12 @@
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/Annotation>
 #include <osgEarthSymbology/Color>
 #include <osgEarthDrivers/kml/KML>
 
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Annotation;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
@@ -66,6 +68,20 @@ struct SkySliderHandler : public ControlEventHandler
     {
         s_sky->setDateTime( 2011, 3, 6, value );
     }
+};
+
+struct ToggleNodeHandler : public ControlEventHandler
+{
+    ToggleNodeHandler( osg::Node* node ) : _node(node) { }
+
+    virtual void onValueChanged( class Control* control, bool value )
+    {
+        osg::ref_ptr<osg::Node> safeNode = _node.get();
+        if ( safeNode.valid() )
+            safeNode->setNodeMask( value ? ~0 : 0 );
+    }
+
+    osg::observer_ptr<osg::Node> _node;
 };
 
 struct ClickViewpointHandler : public ControlEventHandler
@@ -204,6 +220,49 @@ createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
     s_controlPanel = main;
 }
 
+/**
+ * Visitor that builds a UI control for a loaded KML file.
+ */
+struct KMLUIBuilder : public osg::NodeVisitor
+{
+    KMLUIBuilder( ControlCanvas* canvas ) : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _canvas(canvas)
+    {
+        _grid = new Grid();
+        _grid->setAbsorbEvents( true );
+        _grid->setPadding( 5 );
+        _grid->setVertAlign( Control::ALIGN_TOP );
+        _grid->setHorizAlign( Control::ALIGN_LEFT );
+        _grid->setBackColor( Color(Color::Black,0.5) );
+        _canvas->addControl( _grid );
+    }
+
+    void apply( osg::Node& node )
+    {
+        AnnotationData* data = dynamic_cast<AnnotationData*>( node.getUserData() );
+        if ( data )
+        {
+            ControlVector row;
+            CheckBoxControl* cb = new CheckBoxControl( node.getNodeMask() != 0, new ToggleNodeHandler( &node ) );
+            cb->setSize( 12, 12 );
+            row.push_back( cb );
+            std::string name = data->getName().empty() ? "<unnamed>" : data->getName();
+            LabelControl* label = new LabelControl( name, 14.0f );
+            label->setMargin(Gutter(0,0,0,(this->getNodePath().size()-3)*20));
+            if ( data->getViewpoint() )
+            {
+                label->addEventHandler( new ClickViewpointHandler(*data->getViewpoint()) );
+                label->setActiveColor( Color::Blue );
+            }
+            row.push_back( label );
+            _grid->addControls( row );
+        }
+        traverse(node);
+    }
+
+    ControlCanvas* _canvas;
+    Grid*          _grid;
+};
+
 void addMouseCoords(osgViewer::Viewer* viewer, const osgEarth::Map* map)
 {
     ControlCanvas* canvas = ControlCanvas::get( viewer );
@@ -271,6 +330,7 @@ main(int argc, char** argv)
         return usage( "Unable to load earth model." );
     
     s_manip = new EarthManipulator();
+    s_manip->getSettings()->setArcViewpointTransitions( true );
     viewer.setCameraManipulator( s_manip );
 
     osg::Group* root = new osg::Group();
@@ -317,8 +377,6 @@ main(int argc, char** argv)
         const ConfigSet children = externals.children("viewpoint");
         if ( children.size() > 0 )
         {
-            s_manip->getSettings()->setArcViewpointTransitions( true );
-
             for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
                 viewpoints.push_back( Viewpoint(*i) );
 
@@ -330,14 +388,19 @@ main(int argc, char** argv)
         if ( viewpoints.size() > 0 || s_sky )
             createControlPanel(&viewer, viewpoints);
 
-        addMouseCoords( &viewer, mapNode->getMap() );
+        //addMouseCoords( &viewer, mapNode->getMap() );
 
         // Load a KML file if specified
         if ( !kmlFile.empty() )
         {
             osg::Node* kml = KML::load( URI(kmlFile), mapNode );
             if ( kml )
+            {
                 root->addChild( kml );
+
+                KMLUIBuilder uibuilder( ControlCanvas::get(&viewer) );
+                root->accept( uibuilder );                
+            }
         }
     }
 

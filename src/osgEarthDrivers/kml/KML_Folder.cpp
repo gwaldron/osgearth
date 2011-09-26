@@ -33,14 +33,21 @@ KML_Folder::scan( const Config& conf, KMLContext& cx )
 }
 
 void
+KML_Folder::scan2( const Config& conf, KMLContext& cx )
+{
+    KML_Container::scan2(conf, cx);
+    for_features( scan2, conf, cx );
+}
+
+void
 KML_Folder::build( const Config& conf, KMLContext& cx )
 {
+    // creates an empty group and pushes it on the stack.
     osg::Group* group = new osg::Group();
-    group->setName( conf.value("name") );
     cx._groupStack.top()->addChild( group );
     cx._groupStack.push( group );
 
-    KML_Container::build(conf, cx);
+    KML_Container::build(conf, cx, group);
     for_features(build, conf, cx);
 
     cx._groupStack.pop();

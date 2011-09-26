@@ -34,8 +34,23 @@ KML_Document::scan( const Config& conf, KMLContext& cx )
 }
 
 void
+KML_Document::scan2( const Config& conf, KMLContext& cx )
+{
+    KML_Container::scan2(conf, cx);
+    for_many    ( Schema, scan2, conf, cx );
+    for_features( scan2, conf, cx );
+}
+
+void
 KML_Document::build( const Config& conf, KMLContext& cx )
 {
-    KML_Container::build(conf, cx);
-    for_features( build, conf, cx );
+    // creates an empty group and pushes it on the stack.
+    osg::Group* group = new osg::Group();
+    cx._groupStack.top()->addChild( group );
+    cx._groupStack.push( group );
+
+    KML_Container::build(conf, cx, group);
+    for_features(build, conf, cx);
+
+    cx._groupStack.pop();
 }

@@ -234,6 +234,49 @@ void ImageOverlay::setBounds(const osgEarth::Bounds &extent)
 }
 
 void
+ImageOverlay::setBoundsAndRotation(const osgEarth::Bounds& b, const Angular& rot)
+{
+    osg::Vec2d ll( b.xMin(), b.yMin() );
+    osg::Vec2d ul( b.xMin(), b.yMax() );
+    osg::Vec2d ur( b.xMax(), b.yMax() );
+    osg::Vec2d lr( b.xMax(), b.yMin() );
+
+    double sinR = sin(-rot.as(Units::RADIANS)), cosR = cos(-rot.as(Units::RADIANS));
+
+    osg::Vec2d c( 0.5*(b.xMax()+b.xMin()), 0.5*(b.yMax()+b.yMin()) );
+
+    // there must be a better way, but my internet is down so i can't look it up with now..
+
+    osg::ref_ptr<SpatialReference> srs = SpatialReference::create("wgs84");
+    osg::ref_ptr<SpatialReference> utm = srs->createUTMFromLongitude( c.x() );
+
+    osg::Vec2d ll_utm, ul_utm, ur_utm, lr_utm, c_utm;
+    srs->transform2D( ll.x(), ll.y(), utm.get(), ll_utm.x(), ll_utm.y() );
+    srs->transform2D( ul.x(), ul.y(), utm.get(), ul_utm.x(), ul_utm.y() );
+    srs->transform2D( ur.x(), ur.y(), utm.get(), ur_utm.x(), ur_utm.y() );
+    srs->transform2D( lr.x(), lr.y(), utm.get(), lr_utm.x(), lr_utm.y() );
+    srs->transform2D( c.x(),  c.y(),  utm.get(), c_utm.x(),  c_utm.y()  );
+
+    osg::Vec2d llp( cosR*(ll_utm.x()-c_utm.x()) - sinR*(ll_utm.y()-c_utm.y()), sinR*(ll_utm.x()-c_utm.x()) + cosR*(ll_utm.y()-c_utm.y()) );
+    osg::Vec2d ulp( cosR*(ul_utm.x()-c_utm.x()) - sinR*(ul_utm.y()-c_utm.y()), sinR*(ul_utm.x()-c_utm.x()) + cosR*(ul_utm.y()-c_utm.y()) );
+    osg::Vec2d urp( cosR*(ur_utm.x()-c_utm.x()) - sinR*(ur_utm.y()-c_utm.y()), sinR*(ur_utm.x()-c_utm.x()) + cosR*(ur_utm.y()-c_utm.y()) );
+    osg::Vec2d lrp( cosR*(lr_utm.x()-c_utm.x()) - sinR*(lr_utm.y()-c_utm.y()), sinR*(lr_utm.x()-c_utm.x()) + cosR*(lr_utm.y()-c_utm.y()) );    
+
+    utm->transform2D( (llp+c_utm).x(), (llp+c_utm).y(), srs.get(), ll.x(), ll.y() );
+    utm->transform2D( (ulp+c_utm).x(), (ulp+c_utm).y(), srs.get(), ul.x(), ul.y() );
+    utm->transform2D( (urp+c_utm).x(), (urp+c_utm).y(), srs.get(), ur.x(), ur.y() );
+    utm->transform2D( (lrp+c_utm).x(), (lrp+c_utm).y(), srs.get(), lr.x(), lr.y() );
+
+    setCorners( ll, lr, ul, ur );
+
+    //osg::Vec2d llp = ll-c; ll.set( cosR*llp.x() - sinR*llp.y(), sinR*llp.x() + cosR*llp.y() );
+    //osg::Vec2d ulp = ul-c; ul.set( cosR*ulp.x() - sinR*ulp.y(), sinR*ulp.x() + cosR*ulp.y() );
+    //osg::Vec2d urp = ur-c; ur.set( cosR*urp.x() - sinR*urp.y(), sinR*urp.x() + cosR*urp.y() );
+    //osg::Vec2d lrp = lr-c; lr.set( cosR*lrp.x() - sinR*lrp.y(), sinR*lrp.x() + cosR*lrp.y() );    
+    //setCorners( c+ll, c+lr, c+ul, c+ur );
+}
+
+void
 ImageOverlay::setLowerLeft(double lon_deg, double lat_deg)
 {
     _lowerLeft = osg::Vec2d(lon_deg, lat_deg);

@@ -4,6 +4,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/Units>
 
 #include <osg/Group>
 #include <osg/Geometry>
@@ -61,6 +62,8 @@ namespace osgEarth { namespace Util
 
         osgEarth::Bounds getBounds() const;
         void setBounds(const osgEarth::Bounds& bounds);
+
+        void setBoundsAndRotation(const osgEarth::Bounds& bounds, const Angular& rotation);
 
         osg::Image* getImage() const;
         void setImage( osg::Image* image );

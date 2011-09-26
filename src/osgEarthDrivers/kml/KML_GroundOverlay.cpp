@@ -17,6 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "KML_GroundOverlay"
+#include <osgEarthUtil/ImageOverlay>
+
+using namespace osgEarth::Util;
 
 void
 KML_GroundOverlay::scan( const Config& conf, KMLContext& cx )
@@ -28,4 +31,37 @@ void
 KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
 {
     KML_Overlay::build( conf, cx );
+
+    // the URL of the overlay image
+    std::string href = conf.child("icon").value("href");
+    if ( href.empty() ) {
+        OE_WARN << LC << "GroundOverlay missing required Icon element" << std::endl;
+        return;
+    }
+
+    // the extent of the overlay image
+    const Config& llb = conf.child("latlonbox");
+    if ( llb.empty() ) {
+        OE_WARN << LC << "GroundOverlay missing required LatLonBox element" << std::endl;
+        return;
+    }
+
+    double north = llb.value<double>("north", 0.0);
+    double south = llb.value<double>("south", 0.0);
+    double east  = llb.value<double>("east", 0.0);
+    double west  = llb.value<double>("west", 0.0);
+    double rotation = llb.value<double>("rotation", 0.0);
+
+    double sinr = sin(rotation), cosr = cos(rotation);
+    //todo: apply rotation
+
+    osg::ref_ptr<osg::Image> image = URI(href).readImage();
+    if ( !image.valid() ) {
+        OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
+        return;
+    }
+
+    ImageOverlay* im = new ImageOverlay( cx._mapNode, image.get() );
+    im->setBoundsAndRotation( Bounds(west, south, east, north), Angular(rotation, Units::RADIANS) );
+    cx._groupStack.top()->addChild( im );
 }

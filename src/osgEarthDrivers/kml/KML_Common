@@ -24,6 +24,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarthSymbology/Style>
 
+#define LC "[KML] "
+
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 

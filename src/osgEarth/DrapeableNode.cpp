@@ -32,6 +32,7 @@ _draped ( draped )
     // to "track" the traversal state of the DrapeableNode itself.
     _nodeContainer = new osg::Group();
     _nodeContainer->setCullCallback( new CullNodeByFrameNumber() );
+    _nodeContainer->setStateSet( this->getOrCreateStateSet() ); // share the stateset
     _dirty = false;
 }
 

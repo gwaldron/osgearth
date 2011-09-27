@@ -25,7 +25,6 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
-//#include <osgEarth/ShaderComposition>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
@@ -124,6 +123,13 @@ namespace osgEarth
          * Generates an instance-wide global unique ID.
          */
         UID createUID();
+
+        /**
+         * Gets or sets the local root of the system default cache.
+         */
+        void setCacheDirectory( const std::string& dir );
+
+        const std::string& getCacheDirectory() const;
 
     protected:
         virtual ~Registry();

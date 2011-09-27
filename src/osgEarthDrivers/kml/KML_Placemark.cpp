@@ -18,6 +18,7 @@
  */
 #include "KML_Placemark"
 #include "KML_Geometry"
+#include "KML_Style"
 #include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthUtil/Annotation>
 
@@ -30,9 +31,17 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     Style style;
     if ( conf.hasValue("styleurl") )
     {
+        // process a "stylesheet" style
         const Style* ref_style = cx._sheet->getStyle( conf.value("styleurl"), false );
         if ( ref_style )
             style = *ref_style;
+    }
+    else if ( conf.hasChild("style") )
+    {
+        // process an "inline" style
+        KML_Style kmlStyle;
+        kmlStyle.scan( conf.child("style"), cx );
+        style = cx._activeStyle;
     }
 
     URI iconURI;
@@ -48,6 +57,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         "Unnamed";
 
     // read in the geometry:
+    bool isPoly = false;
+    bool isPoint = false;
     osg::Vec3d position;
     KML_Geometry geometry;
     geometry.build(conf, cx, style);
@@ -55,6 +66,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     {
         Geometry* geom = geometry._geom.get();
         position = geom->getBounds().center();
+        isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
+        isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
     }
 
     FeatureNode*   fNode = 0L;
@@ -67,17 +80,19 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
 
         bool draped =
-            ex == 0L &&
-            (alt && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+            (ex == 0L && alt == 0L && isPoly) ||
+            (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
 
-
+        // Make a feautre node; drape if we're not extruding.
         fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped );
         fNode->setStyle( style );
-        // drape if we're not extruding.
-        fNode->setDraped( draped );
+
+        if ( draped )
+            fNode->getOrCreateStateSet()->setMode(GL_LIGHTING, 1);
     }
 
-    pNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
+    if ( isPoint )
+        pNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
 
     if ( fNode && pNode )
     {
@@ -91,5 +106,10 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     {
         cx._groupStack.top()->addChild( pNode );
         KML_Feature::build( conf, cx, pNode );
+    }
+    else if ( fNode )
+    {
+        cx._groupStack.top()->addChild( fNode );
+        KML_Feature::build( conf, cx, fNode );
     }
 }

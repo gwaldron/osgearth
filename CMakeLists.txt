@@ -80,6 +80,10 @@ FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
 
+IF (ZLIB_FOUND)
+    FIND_PACKAGE(MiniZip)
+ENDIF (ZLIB_FOUND)
+
 IF(UNIX)
     # Not sure what this will do on Cygwin and Msys
     # Also, remember OS X X11 is a user installed option so it may not exist.

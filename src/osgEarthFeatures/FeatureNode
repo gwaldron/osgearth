@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/DrapeableNode>
+#include <osg/StateSet>
 
 namespace osgEarth { namespace Features
 {
@@ -47,8 +48,8 @@ namespace osgEarth { namespace Features
         void init();
 
     protected:
-        osg::ref_ptr<Feature> _feature;
-        optional<Style>       _style;
+        osg::ref_ptr<Feature>       _feature;
+        optional<Style>             _style;
     };
 
 } } // namespace osgEarth::Features

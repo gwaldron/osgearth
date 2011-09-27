@@ -39,5 +39,7 @@ KML_Style::scan( const Config& conf, KMLContext& cx )
     KML_PolyStyle poly;
     poly.scan( conf.child("polystyle"), style );
 
-    cx._sheet->addStyle( style ); 
+    cx._sheet->addStyle( style );
+
+    cx._activeStyle = style;
 }

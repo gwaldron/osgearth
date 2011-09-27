@@ -56,6 +56,9 @@ _caps( 0L )
 
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
+
+    
+        osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
 }
 
 Registry::~Registry()

@@ -16,25 +16,22 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_KML_KML_GEOMETRY
-#define OSGEARTH_DRIVER_KML_KML_GEOMETRY 1
-
 #include "KML_Object"
-#include <osgEarthSymbology/Geometry>
 
-using namespace osgEarth;
-using namespace osgEarth::Symbology;
-
-struct KML_Geometry : public KML_Object
+void
+KML_Object::build( const Config& conf, KMLContext& cx, osg::Node* working )
 {
-    KML_Geometry() : _extrude(false), _tessellate(false) { }
-    virtual void parseCoords( const Config& conf, KMLContext& cx );
-    virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
-    virtual void build( const Config& confParent, KMLContext& cx, Style& style );
-    osg::ref_ptr<Geometry> _geom;
-    bool _extrude, _tessellate;
-private:    
-    void buildChild( const Config& conf, KMLContext& cx, Style& style );
-};
+    //todo - read ID
+}
 
-#endif // OSGEARTH_DRIVER_KML_KML_GEOMETRY
+AnnotationData*
+KML_Object::getOrCreateAnnotationData( osg::Node* node )
+{
+    AnnotationData* data = dynamic_cast<AnnotationData*>( node->getUserData() );
+    if ( !data ) {
+        data = new AnnotationData();
+        node->setUserData( data );
+    }
+    return data;
+}
+

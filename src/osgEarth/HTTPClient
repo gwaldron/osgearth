@@ -253,6 +253,13 @@ namespace osgEarth
             std::string& output,
             ProgressCallback* callback =0);
 
+        /**
+         * Downloads a file directly to disk.
+         */
+        static bool download(
+            const std::string& uri,
+            const std::string& localPath );
+
     public:
 
         /**
@@ -301,7 +308,7 @@ namespace osgEarth
         /**
          * Convenience method for downloading a URL directly to a file
          */
-        bool downloadFile(const std::string& url, const std::string& filename);
+        bool doDownload(const std::string& url, const std::string& filename);
 
     private:
         void *_curl_handle;

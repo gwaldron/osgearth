@@ -22,5 +22,5 @@ void
 KML_MultiGeometry::parseCoords( const Config& conf, KMLContext& cx )
 {
     _geom = new MultiGeometry();
-    KML_Geometry::parseCoords( conf, cx );
+    //KML_Geometry::parseCoords( conf, cx );
 }

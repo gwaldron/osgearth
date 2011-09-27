@@ -506,6 +506,13 @@ HTTPClient::readString(const std::string& filename,
     return getClient().doReadString( filename, output, callback );
 }
 
+bool
+HTTPClient::download(const std::string& uri,
+                     const std::string& localPath)
+{
+    return getClient().doDownload( uri, localPath );
+}
+
 HTTPResponse
 HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
 {
@@ -728,7 +735,7 @@ HTTPClient::doGet( const std::string& url, const osgDB::ReaderWriter::Options* o
 }
 
 bool
-HTTPClient::downloadFile(const std::string &url, const std::string &filename)
+HTTPClient::doDownload(const std::string &url, const std::string &filename)
 {
     // download the data
     HTTPResponse response = this->doGet( HTTPRequest(url) );

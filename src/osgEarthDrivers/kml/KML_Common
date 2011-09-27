@@ -60,6 +60,7 @@ struct KMLContext
 {
     MapNode*                              _mapNode;
     osg::ref_ptr<StyleSheet>              _sheet;
+    Style                                 _activeStyle;
     std::stack<osg::ref_ptr<osg::Group> > _groupStack;
 };
 

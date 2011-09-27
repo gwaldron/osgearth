@@ -16,25 +16,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_KML_KML_GEOMETRY
-#define OSGEARTH_DRIVER_KML_KML_GEOMETRY 1
+#ifndef OSGEARTH_DRIVER_KML_KML_OBJECT
+#define OSGEARTH_DRIVER_KML_KML_OBJECT 1
 
-#include "KML_Object"
-#include <osgEarthSymbology/Geometry>
+#include "KML_Common"
+#include <osgEarthUtil/Annotation>
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Util::Annotation;
 
-struct KML_Geometry : public KML_Object
+struct KML_Object
 {
-    KML_Geometry() : _extrude(false), _tessellate(false) { }
-    virtual void parseCoords( const Config& conf, KMLContext& cx );
-    virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
-    virtual void build( const Config& confParent, KMLContext& cx, Style& style );
-    osg::ref_ptr<Geometry> _geom;
-    bool _extrude, _tessellate;
-private:    
-    void buildChild( const Config& conf, KMLContext& cx, Style& style );
+    virtual void scan( const Config& conf, KMLContext& cx ) { }
+    
+    virtual void scan2( const Config& conf, KMLContext& cx ) { }
+
+    virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
+
+protected:
+
+    AnnotationData* getOrCreateAnnotationData( osg::Node* node );
 };
 
-#endif // OSGEARTH_DRIVER_KML_KML_GEOMETRY
+#endif // OSGEARTH_DRIVER_KML_KML_OBJECT

@@ -25,43 +25,72 @@
 #include "KML_Model"
 #include <osgEarth/StringUtils>
 
-void
-KML_Geometry::build( const Config& conf, KMLContext& cx, Style& style)
+void 
+KML_Geometry::build( const Config& parentConf, KMLContext& cx, Style& style)
 {
-    if ( conf.hasChild("point") ) {
+    const ConfigSet& children = parentConf.children();
+    for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+    {
+        buildChild( *i, cx, style );
+    }
+}
+
+void
+KML_Geometry::buildChild( const Config& conf, KMLContext& cx, Style& style)
+{
+    if ( conf.key() == "point" )
+    {
         KML_Point g;
-        g.parseStyle(conf.child("point"), cx, style);
-        g.parseCoords(conf.child("point"), cx);
+        g.parseStyle(conf, cx, style);
+        g.parseCoords(conf, cx);
         _geom = g._geom.get();
     }
-    else if ( conf.hasChild("linestring") ) {
+    else if ( conf.key() == "linestring" )
+    {
         KML_LineString g;
-        g.parseStyle(conf.child("linestring"), cx, style);
-        g.parseCoords(conf.child("linestring"), cx);
+        g.parseStyle(conf, cx, style);
+        g.parseCoords(conf, cx);
         _geom = g._geom.get();
     }
-    else if ( conf.hasChild("linearring") ) {
+    else if ( conf.key() == "linearring" )
+    {
         KML_LinearRing g;
-        g.parseStyle(conf.child("linearring"), cx, style);
-        g.parseCoords(conf.child("linearring"), cx);
+        g.parseStyle(conf, cx, style);
+        g.parseCoords(conf, cx);
         _geom = g._geom.get();
     }
-    else if ( conf.hasChild("polygon") ) {
+    else if ( conf.key() == "polygon" )
+    {
         KML_Polygon g;
-        g.parseStyle(conf.child("polygon"), cx, style);
-        g.parseCoords(conf.child("polygon"), cx);
+        g.parseStyle(conf, cx, style);
+        g.parseCoords(conf, cx);
         _geom = g._geom.get();
     }
-    else if ( conf.hasChild("multigeometry") ) {
+    else if ( conf.key() == "multigeometry" )
+    {
         KML_MultiGeometry g;
-        g.parseStyle(conf.child("multigeometry"), cx, style);
-        g.parseCoords(conf.child("multigeometry"), cx);
+        g.parseStyle(conf, cx, style);
+        g.parseCoords(conf, cx);
+        const ConfigSet& mgChildren = conf.children();
+        
+        for( ConfigSet::const_iterator i = mgChildren.begin(); i != mgChildren.end(); ++i )
+        {
+            const Config& mgChild = *i;
+            Style subStyle = style;
+            KML_Geometry subGeom;
+            subGeom.parseStyle( mgChild, cx, subStyle );
+            subGeom.buildChild( mgChild, cx, style );
+            if ( subGeom._geom.valid() )
+                dynamic_cast<MultiGeometry*>(g._geom.get())->getComponents().push_back( subGeom._geom.get() );
+        }
+        //g.parseCoords(conf.child("multigeometry"), cx);
         _geom = g._geom.get();
     }
-    else if ( conf.hasChild("model") ) {
+    else if ( conf.key() == "model" )
+    {
         KML_Model g;
-        g.parseStyle(conf.child("model"), cx, style);
-        g.parseCoords(conf.child("model"), cx);
+        g.parseStyle(conf, cx, style);
+        g.parseCoords(conf, cx);
         _geom = g._geom.get();
     }
 }
@@ -90,23 +119,32 @@ KML_Geometry::parseCoords( const Config& conf, KMLContext& cx )
 }
 
 void
-KML_Geometry::parseStyle( const Config& conf, KMLContext& cs, Style& style )
+KML_Geometry::parseStyle( const Config& conf, KMLContext& cx, Style& style )
 {
     _extrude = conf.value("extrude") == "1";
     _tessellate = conf.value("tessellate") == "1";
 
     std::string am = conf.value("altitudemode");
-    if ( am.empty() || am == "clampToGround" )
+
+    // clampToGround is the default. We will be draping the geometry UNLESS tessellate is
+    // set to true.
+    if ( (am.empty() || am == "clampToGround") && _tessellate )
     {
         AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
         af->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
         _extrude = false;
     }
+
+    // "relativeToGround" means the coordinates' Z values are relative to the Z of the
+    // terrain at that point. NOTE: GE flattens rooftops in this mode when extrude=1,
+    // which seems wrong..
     else if ( am == "relativeToGround" )
     {
         AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();
         af->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
     }
+
+    // "absolute" means to treat the Z values as-is
     else if ( am == "absolute" )
     {
         AltitudeSymbol* af = style.getOrCreate<AltitudeSymbol>();

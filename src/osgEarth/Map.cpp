@@ -656,6 +656,9 @@ Map::removeModelLayer( ModelLayer* layer )
 {
     if ( layer )
     {
+        //Take a reference to the layer since we will be deleting it
+        osg::ref_ptr< ModelLayer > layerRef = layer;
+
         Revision newRevision;
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
@@ -673,7 +676,7 @@ Map::removeModelLayer( ModelLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); ++i )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_MODEL_LAYER, newRevision, layer) );
+                MapModelChange::REMOVE_MODEL_LAYER, newRevision, layerRef.get()) );
         }
     }
 }
@@ -753,6 +756,8 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
 {
     if ( layer )
     {
+        //Take a reference to the layer since we will be deleting it
+        osg::ref_ptr< MaskLayer > layerRef = layer;
         Revision newRevision;
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
@@ -771,7 +776,7 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_MASK_LAYER, newRevision, layer) );
+                MapModelChange::REMOVE_MASK_LAYER, newRevision, layerRef.get()) );
         }	
     }
 }

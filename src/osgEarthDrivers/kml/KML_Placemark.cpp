@@ -92,7 +92,19 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     }
 
     if ( isPoint )
-        pNode = new PlacemarkNode( cx._mapNode, position, iconURI, text, style );
+    {
+        osg::Image* image = iconURI.readImage();
+        if ( !image )
+        {
+            image = cx._options->defaultIconImage().get();
+            if ( !image )
+            {
+                image = cx._options->defaultIconURI()->readImage();
+            }
+        }
+
+        pNode = new PlacemarkNode( cx._mapNode, position, image, text, style );
+    }
 
     if ( fNode && pNode )
     {

@@ -22,6 +22,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/URI>
 #include <osgDB/ReaderWriter>
+#include "KMLOptions"
 
 #define LC "[KML] "
 
@@ -35,7 +36,7 @@ namespace osgEarth { namespace Drivers {
         /**
          * Loads KML from a URI.
          */
-        static osg::Node* load( const URI& uri, MapNode* mapNode )
+        static osg::Node* load( const URI& uri, MapNode* mapNode, const KMLOptions& kmlOptions =KMLOptions() )
         {
             if ( !mapNode ) {
                 OE_WARN << LC << "MapNode instance required" << std::endl;
@@ -43,6 +44,8 @@ namespace osgEarth { namespace Drivers {
             }
             osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
             options->setPluginData( "osgEarth::MapNode", mapNode );
+            options->setPluginData( "osgEarth::KMLOptions", (void*)&kmlOptions );
+
             return osgDB::readNodeFile( uri.full(), options.get() );
         }
     };

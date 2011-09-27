@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Common>
+#include <osgEarth/Units>
 #include <osg/Drawable>
 #include <osg/Geode>
 #include <osg/MatrixTransform>
@@ -310,8 +311,8 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::Image* getImage() const { return _image.get(); }
 
         /** Rotates the image. */
-        void setRotation( float rotation_deg );
-        float getRotation() const { return osg::RadiansToDegrees(_rotation_rad); }
+        void setRotation( const Angular& angle );
+        const Angular& getRotation() const { return _rotation; }
 
         /** Tells the control to fix its minimum size to account to rotation. Otherwise the
             control will auto-size its width/height based on the rotation angle. */
@@ -324,7 +325,7 @@ namespace osgEarth { namespace Util { namespace Controls
 
     private:
         osg::ref_ptr<osg::Image> _image;
-        float _rotation_rad;
+        Angular _rotation;
         bool _fixSizeForRot;
         osg::Geometry* _geom;
     };

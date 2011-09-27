@@ -24,8 +24,9 @@
 
 using namespace osgEarth;
 
-KMLReader::KMLReader( MapNode* mapNode ) :
-_mapNode( mapNode )
+KMLReader::KMLReader( MapNode* mapNode, const KMLOptions* options ) :
+_mapNode( mapNode ),
+_options( options )
 {
     //nop
 }
@@ -58,6 +59,7 @@ KMLReader::read( const Config& conf )
     cx._mapNode = _mapNode;
     cx._sheet = new StyleSheet();
     cx._groupStack.push( root );
+    cx._options = _options;
 
     const Config& kml = conf.child("kml");
     if ( !kml.empty() )

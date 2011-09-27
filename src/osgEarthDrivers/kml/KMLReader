@@ -24,14 +24,16 @@
 #include <osgEarth/MapNode>
 #include <osg/Node>
 #include <iostream>
+#include "KMLOptions"
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 
 class KMLReader
 {
 public:
     /** Initialized a KML reader that will work with the provided map node */
-    KMLReader( MapNode* mapNode );
+    KMLReader( MapNode* mapNode, const KMLOptions* options );
 
     /** Reads KML from a stream and returns a node */
     osg::Node* read( std::istream& in, const URIContext& context );
@@ -40,7 +42,8 @@ public:
     osg::Node* read( const Config& conf );
 
 private:
-    MapNode* _mapNode;
+    MapNode*          _mapNode;
+    const KMLOptions* _options;
 };
 
 #endif // OSGEARTH_DRIVER_KML_READER

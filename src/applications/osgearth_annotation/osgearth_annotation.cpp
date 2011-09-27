@@ -71,12 +71,18 @@ main(int argc, char** argv)
     root->addChild( annoGroup );
 
     // a Placemark combines a 2D icon with a text label.
-    PlacemarkNode* newYork = new PlacemarkNode(mapNode, osg::Vec3d(-74, 40.714, 0), "../data/placemark32.png", "New York");
-    annoGroup->addChild( newYork );
+    annoGroup->addChild( new PlacemarkNode(
+        mapNode, 
+        osg::Vec3d(-74, 40.714, 0), 
+        URI("../data/placemark32.png").readImage(),
+        "New York") );
 
     // a Placemark combines a 2D icon with a text label.
-    PlacemarkNode* tokyo = new PlacemarkNode(mapNode, osg::Vec3d(139.75, 35.685, 0), "../data/placemark32.png", "Tokyo");
-    annoGroup->addChild( tokyo );
+    annoGroup->addChild( new PlacemarkNode(
+        mapNode, 
+        osg::Vec3d(139.75, 35.685, 0), 
+        URI("../data/placemark32.png").readImage(),
+        "Tokyo" ) );
 
     // a box that follows lines of latitude (rhumb line interpolation, the default)
     Geometry* geom = new Ring();

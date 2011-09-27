@@ -33,51 +33,30 @@ using namespace osgEarth::Util::Controls;
 
 //------------------------------------------------------------------------
 
-PlacemarkNode::PlacemarkNode( MapNode* mapNode ) :
-_mapNode( mapNode )
-{
-    init();
-}
-
-PlacemarkNode::PlacemarkNode(MapNode*           mapNode, 
-                             const osg::Vec3d&  position,
-                             const URI&         iconURI, 
+PlacemarkNode::PlacemarkNode(MapNode*           mapNode,
+                             const osg::Vec3d&  mapPosition,
+                             osg::Image*        image,
                              const std::string& text,
-                             const Style&       style) :
-_mapNode ( mapNode ),
-_iconURI ( iconURI ),
-_text    ( text ),
-_style   ( style )
+                             const Style&       style ) :
+_mapNode( mapNode ),
+_image  ( image ),
+_text   ( text ),
+_style  ( style )
 {
     init();
-    setPosition( position );
+    setPosition( mapPosition );
 }
 
 void
-PlacemarkNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
+PlacemarkNode::setPosition( const osg::Vec3d& pos )
 {
     if ( _mapNode.valid() )
     {
-        if ( !srs )
+        osg::Vec3d world;
+        if ( _mapNode->getMap()->mapPointToWorldPoint(pos, world) )
         {
-            osg::Vec3d world;
-            if ( _mapNode->getMap()->mapPointToWorldPoint(pos, world) )
-            {
-                this->setMatrix( osg::Matrix::translate(world) );
-                static_cast<CullNodeByHorizon*>(this->getCullCallback())->_world = world;
-            }
-        }
-        else
-        {
-            osg::Vec3d map, world;
-            if ( _mapNode->getMap()->toMapPoint(pos, srs, map) )
-            {
-                if ( _mapNode->getMap()->mapPointToWorldPoint(map, world) )
-                {
-                    this->setMatrix( osg::Matrix::translate(world) );
-                    static_cast<CullNodeByHorizon*>(this->getCullCallback())->_world = world;
-                }
-            }
+            this->setMatrix( osg::Matrix::translate(world) );
+            static_cast<CullNodeByHorizon*>(this->getCullCallback())->_world = world;
         }
     }
 }
@@ -109,37 +88,28 @@ PlacemarkNode::init()
             _label->setText( s->content()->eval() );
     }
 
-    if ( !_iconURI.empty() )
-    {
-        osg::Image* image = _iconURI.readImage();
-        if ( image )
-            _icon = new ImageControl( image );
-    }
-    else
+    if ( !_image.valid() )
     {
         MarkerSymbol* marker = _style.get<MarkerSymbol>();
-        if ( marker && marker->url().isSet() )
+        if ( marker )
         {
-            MarkerFactory mf;
-            osg::Image* image = mf.getOrCreateImage( marker, false );
-            if ( image )
-                _icon = new ImageControl( image );
+            _image = marker->getImage();
+            if ( !_image.valid() && marker->url().isSet() )
+            {
+                _image = URI(marker->url()->expr()).readImage();
+            }
         }
     }
+    _icon = new ImageControl( _image.get() );
 
     _container = new HBox();
     _container->setChildSpacing( 8 );
     
-    if ( _icon.valid() )
-        _container->addControl( _icon.get() );
-
+    _container->addControl( _icon.get() );
     _container->addControl( _label.get() );
 
     _container->setHorizAlign( Control::ALIGN_RIGHT );
     _container->setVertAlign( Control::ALIGN_CENTER );
-
-    //temp:
-    //_container->setFrame( new Frame() );
 
     //todo: set up the "ANCHOR POINT" for the sweet spot
 
@@ -149,12 +119,14 @@ PlacemarkNode::init()
 }
 
 void
-PlacemarkNode::setIconURI( const URI& iconURI )
+PlacemarkNode::setIconImage( osg::Image* image )
 {
-    _iconURI = iconURI;
-    osg::Image* image = _iconURI.readImage();
     if ( image )
-        _icon->setImage( image );
+    {
+        _image = image;
+        if ( _icon.valid() )
+            _icon->setImage( image );
+    }
 }
 
 void
@@ -163,7 +135,8 @@ PlacemarkNode::setText( const std::string& text )
     if ( text != _text )
     {
         _text = text;
-        _label->setText( text );
+        if ( _label.valid() )
+            _label->setText( text );
     }
 }
 

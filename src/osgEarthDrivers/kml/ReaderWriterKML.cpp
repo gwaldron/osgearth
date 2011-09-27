@@ -30,7 +30,6 @@
 
 using namespace osgEarth::Drivers;
 
-
 #ifdef OSGEARTH_HAVE_MINIZIP
 
 #include "unzip.h"
@@ -160,6 +159,7 @@ namespace
 }
 #endif // OSGEARTH_HAVE_MINIZIP
 
+//---------------------------------------------------------------------------
 
 struct ReaderWriterKML : public osgDB::ReaderWriter
 {
@@ -220,6 +220,10 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         if ( !mapNode )
             return ReadResult("Missing required MapNode option");
 
+        // grab the KMLOptions if present
+        const KMLOptions* kmlOptions =
+            static_cast<const KMLOptions*>(options->getPluginData("osgEarth::KMLOptions") );
+
         // an optional URI context for resolving relative paths:
         URIContext uriContext;
         const std::string* cxValue = static_cast<const std::string*>( options->getPluginData( "osgEarth::ReaderWriterKML::ref_uri") );
@@ -227,7 +231,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
             uriContext = *cxValue;
 
         // fire up a KML reader and parse the data.
-        KMLReader reader( mapNode );
+        KMLReader reader( mapNode, kmlOptions );
         osg::Node* node = reader.read( in, uriContext );
         return ReadResult(node);
     }

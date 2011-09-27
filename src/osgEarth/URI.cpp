@@ -93,6 +93,10 @@ URI::append( const std::string& suffix ) const
 osg::Image*
 URI::readImage( ResultCode* code, const osgDB::Options* options ) const
 {
+    if ( empty() ) {
+        if ( code ) *code = ResultCode::RESULT_NOT_FOUND;
+        return 0L;
+    }
     osg::ref_ptr<osg::Image> image;
     ResultCode result = (ResultCode)HTTPClient::readImageFile( _fullURI, image, options );
     if ( code ) *code = result;
@@ -102,6 +106,10 @@ URI::readImage( ResultCode* code, const osgDB::Options* options ) const
 osg::Node*
 URI::readNode( ResultCode* code, const osgDB::Options* options ) const
 {
+    if ( empty() ) {
+        if ( code ) *code = ResultCode::RESULT_NOT_FOUND;
+        return 0L;
+    }
     osg::ref_ptr<osg::Node> node;
     ResultCode result = (ResultCode)HTTPClient::readNodeFile( _fullURI, node, options );
     if ( code ) *code = result;
@@ -111,6 +119,10 @@ URI::readNode( ResultCode* code, const osgDB::Options* options ) const
 std::string
 URI::readString( ResultCode* code ) const
 {
+    if ( empty() ) {
+        if ( code ) *code = ResultCode::RESULT_NOT_FOUND;
+        return 0L;
+    }
     std::string str;
     ResultCode result = (ResultCode)HTTPClient::readString( _fullURI, str );
     if ( code ) *code = result;

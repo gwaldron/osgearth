@@ -94,28 +94,27 @@ namespace osgEarth { namespace Util { namespace Annotation
     class OSGEARTHUTIL_EXPORT PlacemarkNode : public osg::MatrixTransform
     {
     public:
-        PlacemarkNode( MapNode* mapNode );
-
-        PlacemarkNode( 
-            MapNode*           mapNode, 
+        /**
+         * Constructs a new node (convenience function)
+         */
+        PlacemarkNode(
+            MapNode*           mapNode,
             const osg::Vec3d&  position,
-            const URI&         iconURI, 
-            const std::string& label     ="",
-            const Style&       style     =Style() );
+            osg::Image*        iconImage,
+            const std::string& labelText,
+            const Style&       style =Style() );
 
         /**
          * Sets the position of this annotation.
          * @param pos Position data
-         * @param srs Spatial reference of the "pos" parameter. If you omit this,
-         *            it assumes your "pos" is in the same SRS as the Map.
          */
-        void setPosition( const osg::Vec3d& pos, const SpatialReference* srs =0L );
+        void setPosition( const osg::Vec3d& mapPosition );
 
         /**
-         * Location of the icon image to load
+         * Image to use for the icon
          */
-        void setIconURI( const URI& value );
-        const URI getIconURI() const { return _iconURI; }
+        void setIconImage( osg::Image* image );
+        osg::Image* getIconImage() const { return _image.get(); }
 
         /**
          * Text label content
@@ -129,14 +128,7 @@ namespace osgEarth { namespace Util { namespace Annotation
         void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
 
-        /**
-         * Control to pop up when the user clicks on the placemark (TODO)
-         */
-        void setPopupControl( Control* control );
-        Control* getPopupControl() const { return _popupControl.get(); }
-
     private:
-        URI                        _iconURI;
         osg::ref_ptr<osg::Image>   _image;
         std::string                _text;
         Style                      _style;
@@ -144,7 +136,6 @@ namespace osgEarth { namespace Util { namespace Annotation
         osg::ref_ptr<Container>    _container;
         osg::ref_ptr<ImageControl> _icon;
         osg::ref_ptr<LabelControl> _label;
-        osg::ref_ptr<Control>      _popupControl;
 
         osg::observer_ptr<MapNode> _mapNode;
 

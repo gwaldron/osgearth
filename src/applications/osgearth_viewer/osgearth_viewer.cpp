@@ -393,7 +393,10 @@ main(int argc, char** argv)
         // Load a KML file if specified
         if ( !kmlFile.empty() )
         {
-            osg::Node* kml = KML::load( URI(kmlFile), mapNode );
+            KMLOptions kmlo;
+            kmlo.defaultIconURI() = "http://www.osgearth.org/chrome/site/pushpin_yellow.png";
+
+            osg::Node* kml = KML::load( URI(kmlFile), mapNode, kmlo );
             if ( kml )
             {
                 root->addChild( kml );
@@ -416,7 +419,6 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::ThreadingHandler());
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
 
     return viewer.run();
 }

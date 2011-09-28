@@ -120,7 +120,7 @@ _runtimeOptions( options )
 void
 ElevationLayer::init()
 {
-    //nop
+    _tileSize = 32;
 }
 
 std::string

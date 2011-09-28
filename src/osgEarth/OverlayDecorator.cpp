@@ -755,14 +755,26 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     // Remake the projection matrix with better hueristic for the far clipping plane.
     // (Jason's method)
     osg::Matrixd projMatrix = *cv->getProjectionMatrix();
-    double fovy, aspectRatio, zfar, znear;
-    cv->getProjectionMatrix()->getPerspective( fovy, aspectRatio, znear, zfar );
-    double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
-    maxDistance *= 1.5;
-    if (zfar - znear >= maxDistance)
-        zfar = znear + maxDistance;
-    projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
-   
+
+    // manually clamp the projection matrix to the calculated clip planes. This prevents
+    // any "leakage" from outside the subraph.
+    //double calcNear = cv->getCalculatedNearPlane();
+    //double calcFar  = cv->getCalculatedFarPlane();
+    //cv->clampProjectionMatrix( projMatrix, calcNear, calcFar );
+
+    //if ( _isGeocentric )
+    //{
+        // in geocentric mode, clamp the far clip plane to the horizon.
+        double fovy, aspectRatio, zfar, znear;
+        projMatrix.getPerspective( fovy, aspectRatio, znear, zfar );
+    
+        double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
+        maxDistance *= 1.5;
+        if (zfar - znear >= maxDistance)
+            zfar = znear + maxDistance;
+        projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
+    //}
+       
     // contruct the polyhedron representing the viewing frustum.
     //osgShadow::ConvexPolyhedron frustumPH;
     MyConvexPolyhedron frustumPH;
@@ -840,6 +852,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         eMax = std::min( eMax, new_eMax ); 
         _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
     }
+
+    //OE_NOTICE << LC << "EMIN = " << eMin << ", EMAX = " << eMax << std::endl;
 
     if ( _useWarping )
     {

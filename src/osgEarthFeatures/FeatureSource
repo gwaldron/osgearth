@@ -46,8 +46,8 @@ namespace osgEarth { namespace Features
     public: // properties
 
         /** Name of this feature source. */
-        optional<std::string> name() { return _name; }
-        const optional<std::string> name() const { return _name; }
+        optional<std::string>& name() { return _name; }
+        const optional<std::string>& name() const { return _name; }
 
         /** List of filteres to apply to features read from this source */
         FeatureFilterList& filters() { return _filters; }
@@ -58,8 +58,8 @@ namespace osgEarth { namespace Features
         const optional<bool>& openWrite() const { return _openWrite; }
 
         /** Explicitly overrides profile information contained in the actual data source. */
-        optional<ProfileOptions> profile() { return _profile; }
-        const optional<ProfileOptions> profile() const { return _profile; }
+        optional<ProfileOptions>& profile() { return _profile; }
+        const optional<ProfileOptions>& profile() const { return _profile; }
 
 
     public:

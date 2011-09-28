@@ -205,17 +205,26 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     bool isPolygon = input->getComponentType() == Geometry::TYPE_POLYGON;
 
     unsigned pointCount = input->getTotalPointCount();
-    unsigned numVerts = 2 * pointCount;
+    
+    // If we are extruding a polygon, and applying a wall texture, we need an extra
+    // point in the geometry in order to close the polygon and generate a unique
+    // texture coordinate for that final point.
+    bool isSkinnedPolygon = isPolygon && wallSkin != 0L;
+
+    // Total number of verts. Add 2 to close a polygon (necessary so the first and last
+    // points can have unique texture coordinates)
+
+    unsigned numVerts = 2 * pointCount + (isSkinnedPolygon? 2 : 0);
 
     // create all the OSG geometry components
     osg::Vec3Array* verts = new osg::Vec3Array( numVerts );
     walls->setVertexArray( verts );
 
-    osg::Vec2Array* texcoords = 0L;
+    osg::Vec2Array* wallTexcoords = 0L;
     if ( wallSkin )
     { 
-        texcoords = new osg::Vec2Array( numVerts );
-        walls->setTexCoordArray( 0, texcoords );
+        wallTexcoords = new osg::Vec2Array( numVerts );
+        walls->setTexCoordArray( 0, wallTexcoords );
     }
 
     if ( useColor )
@@ -458,8 +467,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             if ( wallSkin )
             {
-                (*texcoords)[p].set( partLen/tex_width_m, 0.0f );
-                (*texcoords)[p+1].set( partLen/tex_width_m, h/tex_height_m_adj );
+                (*wallTexcoords)[p].set( partLen/tex_width_m, 0.0f );
+                (*wallTexcoords)[p+1].set( partLen/tex_width_m, h/tex_height_m_adj );
             }
 
             // form the 2 triangles
@@ -468,13 +477,41 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 if ( isPolygon )
                 {
                     // end of the wall; loop around to close it off.
-                    idx->push_back(wallVertPtr); 
-                    idx->push_back(wallVertPtr+1);
-                    idx->push_back(wallPartPtr);
+                    if ( isSkinnedPolygon )
+                    {
+                        // if we requested an extra geometry point, that means we are generating
+                        // a polygon-closing line so we can have a unique texcoord for it. 
+                        idx->push_back(wallVertPtr);
+                        idx->push_back(wallVertPtr+1);
+                        idx->push_back(wallVertPtr+2);
 
-                    idx->push_back(wallVertPtr+1);
-                    idx->push_back(wallPartPtr+1);
-                    idx->push_back(wallPartPtr);
+                        idx->push_back(wallVertPtr+1);
+                        idx->push_back(wallVertPtr+3);
+                        idx->push_back(wallVertPtr+2);
+
+                        (*verts)[p+2] = (*verts)[wallPartPtr];
+                        (*verts)[p+3] = (*verts)[wallPartPtr+1];
+
+                        if ( wallSkin )
+                        {
+                            partLen += ((*verts)[p+2] - (*verts)[p]).length();
+                            double h = tex_repeats_y ? -((*verts)[p+2] - (*verts)[p+3]).length() : -tex_height_m_adj;
+                            (*wallTexcoords)[p+2].set( partLen/tex_width_m, 0.0f );
+                            (*wallTexcoords)[p+3].set( partLen/tex_width_m, h/tex_height_m_adj );
+                        }
+                    }
+                    else
+                    {
+                        // either not a poly, or no wall skin, so we can share the polygon-closing
+                        // loop point.
+                        idx->push_back(wallVertPtr); 
+                        idx->push_back(wallVertPtr+1);
+                        idx->push_back(wallPartPtr);
+
+                        idx->push_back(wallVertPtr+1);
+                        idx->push_back(wallPartPtr+1);
+                        idx->push_back(wallPartPtr);
+                    }
                 }
                 else
                 {

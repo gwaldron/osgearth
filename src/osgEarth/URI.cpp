@@ -94,7 +94,7 @@ osg::Image*
 URI::readImage( ResultCode* code, const osgDB::Options* options ) const
 {
     if ( empty() ) {
-        if ( code ) *code = ResultCode::RESULT_NOT_FOUND;
+        if ( code ) *code = RESULT_NOT_FOUND;
         return 0L;
     }
     osg::ref_ptr<osg::Image> image;
@@ -107,7 +107,7 @@ osg::Node*
 URI::readNode( ResultCode* code, const osgDB::Options* options ) const
 {
     if ( empty() ) {
-        if ( code ) *code = ResultCode::RESULT_NOT_FOUND;
+        if ( code ) *code = RESULT_NOT_FOUND;
         return 0L;
     }
     osg::ref_ptr<osg::Node> node;
@@ -120,7 +120,7 @@ std::string
 URI::readString( ResultCode* code ) const
 {
     if ( empty() ) {
-        if ( code ) *code = ResultCode::RESULT_NOT_FOUND;
+        if ( code ) *code = RESULT_NOT_FOUND;
         return 0L;
     }
     std::string str;

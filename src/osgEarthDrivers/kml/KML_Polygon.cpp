@@ -18,6 +18,7 @@
  */
 #include "KML_Polygon"
 #include "KML_LinearRing"
+#include <iterator>
 
 void
 KML_Polygon::parseStyle(const Config& conf, KMLContext& cx, Style& style)

@@ -55,6 +55,57 @@ namespace
             _current->push_back( i2 );
         }
     };
+
+    template<typename FROM, typename TO>
+    osg::PrimitiveSet* copy( FROM* src, unsigned offset )
+    {
+        TO* newDE = new TO( src->getMode() );
+        newDE->reserve( src->size() );
+        for( typename FROM::const_iterator i = src->begin(); i != src->end(); ++i )
+            newDE->push_back( (*i) + offset );
+        return newDE;
+    }
+
+    template<typename FROM>
+    osg::PrimitiveSet* remake( FROM* src, unsigned numVerts, unsigned offset )
+    {
+        if ( numVerts < 0x100 )
+            return copy<FROM,osg::DrawElementsUByte>( src, offset );
+        else if ( numVerts < 0x10000 )
+            return copy<FROM,osg::DrawElementsUShort>( src, offset );
+        else
+            return copy<FROM,osg::DrawElementsUInt>( src, offset );
+    }
+
+    bool canOptimize( osg::Geometry& geom )
+    {
+        osg::Array* vertexArray = geom.getVertexArray();
+        if ( !vertexArray )
+            return false;
+
+        // check that everything is bound per-vertex
+
+        if ( geom.getColorArray() != 0L && geom.getColorBinding() != osg::Geometry::BIND_PER_VERTEX )
+            return false;
+
+        if ( geom.getNormalArray() != 0L && geom.getNormalBinding() != osg::Geometry::BIND_PER_VERTEX )
+            return false;
+
+        if ( geom.getSecondaryColorArray() != 0L && geom.getSecondaryColorBinding() != osg::Geometry::BIND_PER_VERTEX )
+            return false;
+
+        if ( geom.getVertexAttribArrayList().size() > 0 )
+        {
+            unsigned n = geom.getVertexAttribArrayList().size();
+            for( unsigned i=0; i<n; ++i ) 
+            {
+                if ( geom.getVertexAttribBinding( i ) != osg::Geometry::BIND_PER_VERTEX )
+                    return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 //------------------------------------------------------------------------
@@ -62,30 +113,8 @@ namespace
 void
 MeshConsolidator::run( osg::Geometry& geom )
 {
-    osg::Array* vertexArray = geom.getVertexArray();
-    if ( !vertexArray )
+    if ( !canOptimize(geom) )
         return;
-
-    // check that everything is bound per-vertex
-
-    if ( geom.getColorArray() != 0L && geom.getColorBinding() != osg::Geometry::BIND_PER_VERTEX )
-        return;
-
-    if ( geom.getNormalArray() != 0L && geom.getNormalBinding() != osg::Geometry::BIND_PER_VERTEX )
-        return;
-
-    if ( geom.getSecondaryColorArray() != 0L && geom.getSecondaryColorBinding() != osg::Geometry::BIND_PER_VERTEX )
-        return;
-
-    if ( geom.getVertexAttribArrayList().size() > 0 )
-    {
-        unsigned n = geom.getVertexAttribArrayList().size();
-        for( unsigned i=0; i<n; ++i ) 
-        {
-            if ( geom.getVertexAttribBinding( i ) != osg::Geometry::BIND_PER_VERTEX )
-                return;
-        }
-    }
 
     osg::Geometry::PrimitiveSetList& primSets = geom.getPrimitiveSetList();
     osg::Geometry::PrimitiveSetList  triSets, nonTriSets;
@@ -111,6 +140,7 @@ MeshConsolidator::run( osg::Geometry& geom )
 
     if ( triSets.size() > 0 )
     {
+        osg::Array* vertexArray = geom.getVertexArray();
         unsigned numVerts = vertexArray->getNumElements();
         osg::Geometry::PrimitiveSetList newPrimSets;
 
@@ -143,30 +173,6 @@ MeshConsolidator::run( osg::Geometry& geom )
     geom.setPrimitiveSetList( nonTriSets );
 }
 
-namespace
-{
-    template<typename FROM, typename TO>
-    osg::PrimitiveSet* copy( FROM* src, unsigned offset )
-    {
-        TO* newDE = new TO( src->getMode() );
-        newDE->reserve( src->size() );
-        for( typename FROM::const_iterator i = src->begin(); i != src->end(); ++i )
-            newDE->push_back( (*i) + offset );
-        return newDE;
-    }
-
-    template<typename FROM>
-    osg::PrimitiveSet* remake( FROM* src, unsigned numVerts, unsigned offset )
-    {
-        if ( numVerts < 0x100 )
-            return copy<FROM,osg::DrawElementsUByte>( src, offset );
-        else if ( numVerts < 0x10000 )
-            return copy<FROM,osg::DrawElementsUShort>( src, offset );
-        else
-            return copy<FROM,osg::DrawElementsUInt>( src, offset );
-    }
-}
-
 void
 MeshConsolidator::run( osg::Geode& geode )
 {
@@ -186,6 +192,9 @@ MeshConsolidator::run( osg::Geode& geode )
         osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
         if ( geom )
         {
+            if ( !canOptimize(*geom) )
+                continue;
+
             // optimize it into triangles first:
             run( *geom );
 
@@ -257,11 +266,19 @@ MeshConsolidator::run( osg::Geode& geode )
     unsigned offset = 0;
     osg::Geometry::PrimitiveSetList newPrimSets;
 
+    std::vector<osg::ref_ptr<osg::Geometry> > nonOptimizedGeoms;
+
     for( unsigned i=0; i<geode.getNumDrawables(); ++i )
     {
         osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
         if ( geom )
         {
+            if ( !canOptimize(*geom) )
+            {
+                nonOptimizedGeoms.push_back(geom);
+                continue;
+            }
+
             // copy over the verts:
             osg::Vec3Array* geomVerts = dynamic_cast<osg::Vec3Array*>( geom->getVertexArray() );
             if ( geomVerts )
@@ -368,4 +385,6 @@ MeshConsolidator::run( osg::Geode& geode )
     // replace the geode's drawables
     geode.removeDrawables( 0, geode.getNumDrawables() );
     geode.addDrawable( newGeom );
+    for( std::vector<osg::ref_ptr<osg::Geometry> >::iterator i = nonOptimizedGeoms.begin(); i != nonOptimizedGeoms.end(); ++i )
+        geode.addDrawable( i->get() );
 }

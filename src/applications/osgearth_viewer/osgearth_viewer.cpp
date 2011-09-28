@@ -97,10 +97,12 @@ struct ClickViewpointHandler : public ControlEventHandler
 
 struct MouseCoordsHandler : public osgGA::GUIEventHandler
 {
-    MouseCoordsHandler( LabelControl* label, const osgEarth::Map* map )
+    MouseCoordsHandler( LabelControl* label, osgEarth::MapNode* mapNode )
         : _label( label ),
-          _map( map)
-        {}
+          _mapNode( mapNode )
+    {
+        _mapNodePath.push_back( mapNode->getTerrainEngine() );
+    }
 
     bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
     {
@@ -108,7 +110,7 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
         if (ea.getEventType() == ea.MOVE || ea.getEventType() == ea.DRAG)
         {
             osgUtil::LineSegmentIntersector::Intersections results;
-            if ( view->computeIntersections( ea.getX(), ea.getY(), results ) )
+            if ( view->computeIntersections( ea.getX(), ea.getY(), _mapNodePath, results ) )
             {
                 // find the first hit under the mouse:
                 osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
@@ -116,7 +118,7 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
                 osg::Vec3d lla;
 
                 // transform it to map coordinates:
-                _map->worldPointToMapPoint(point, lla);
+                _mapNode->getMap()->worldPointToMapPoint(point, lla);
 
                 std::stringstream ss;
 
@@ -150,7 +152,8 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
     }
 
     osg::ref_ptr< LabelControl > _label;
-    const Map*                   _map;
+    MapNode*                     _mapNode;
+    osg::NodePath                _mapNodePath;
 };
 
 
@@ -263,7 +266,7 @@ struct KMLUIBuilder : public osg::NodeVisitor
     Grid*          _grid;
 };
 
-void addMouseCoords(osgViewer::Viewer* viewer, const osgEarth::Map* map)
+void addMouseCoords(osgViewer::Viewer* viewer, osgEarth::MapNode* mapNode)
 {
     ControlCanvas* canvas = ControlCanvas::get( viewer );
     LabelControl* mouseCoords = new LabelControl();
@@ -274,7 +277,7 @@ void addMouseCoords(osgViewer::Viewer* viewer, const osgEarth::Map* map)
     mouseCoords->setMargin( 10 );
     canvas->addControl( mouseCoords );
 
-    viewer->addEventHandler( new MouseCoordsHandler(mouseCoords, map ) );
+    viewer->addEventHandler( new MouseCoordsHandler(mouseCoords, mapNode ) );
 }
 
 struct ViewpointHandler : public osgGA::GUIEventHandler
@@ -388,7 +391,7 @@ main(int argc, char** argv)
         if ( viewpoints.size() > 0 || s_sky )
             createControlPanel(&viewer, viewpoints);
 
-        //addMouseCoords( &viewer, mapNode->getMap() );
+        addMouseCoords( &viewer, mapNode );
 
         // Load a KML file if specified
         if ( !kmlFile.empty() )

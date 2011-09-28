@@ -760,10 +760,12 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
         
+#ifndef IMAGECONTROL_TEXRECT
         osg::Program* program = new osg::Program();
         program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
         program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
         g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+#endif
 
         out.push_back( g );
 

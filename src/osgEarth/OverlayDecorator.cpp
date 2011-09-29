@@ -43,7 +43,7 @@ namespace
     class MyConvexPolyhedron : public osgShadow::ConvexPolyhedron
     {
     public:       
-        bool contains(const osg::BoundingSphere& bs) const
+        bool intersects(const osg::BoundingSphere& bs) const
         {
             for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
             {
@@ -55,7 +55,7 @@ namespace
             return true;
         }
 
-        bool contains(const osg::BoundingBox& box) const
+        bool intersects(const osg::BoundingBox& box) const
         {
             for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
             {
@@ -92,7 +92,7 @@ namespace
         void apply( osg::Node& node )
         {
             const osg::BoundingSphere& bs = node.getBound();
-            if ( _polytopeStack.top().contains( bs ) )
+            if ( _polytopeStack.top().intersects( bs ) )
             {
                 traverse( node );
             }
@@ -102,7 +102,7 @@ namespace
         {
             const osg::BoundingSphere& bs = node.getBound();
 
-            if ( _polytopeStack.top().contains( bs ) )
+            if ( _polytopeStack.top().intersects( bs ) )
             {
                 if ( _coarse )
                 {
@@ -123,7 +123,7 @@ namespace
         {
             const osg::BoundingBox& box = drawable->getBound();
 
-            if ( _polytopeStack.top().contains( box ) )
+            if ( _polytopeStack.top().intersects( box ) )
             {
                 osg::Vec3d bmin = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
                 osg::Vec3d bmax = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
@@ -617,10 +617,6 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
     _rttCamera->setViewMatrix( _rttViewMatrix );
     _rttCamera->setProjectionMatrix( _rttProjMatrix );
 
-    // configure the Projector camera:
-    //osg::Matrix MVP = _projectorViewMatrix * _projectorProjMatrix;
-    //osg::Matrix MVPT = MVP * normalizeMatrix; //osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
-
     osg::Matrix MVPT = _projectorViewMatrix * _projectorProjMatrix * normalizeMatrix;
 
     //_texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR ); // moved to initialization
@@ -709,71 +705,48 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     double eMin = 0.1;
     double eMax = DBL_MAX;
 
+    // Save and reset the current near/far planes before traversing the subgraph.
+    // We do this because we want a projection matrix that includes ONLY the clip
+    // planes from the subgraph, and not anything traversed up to this point.
+    double zSavedNear = cv->getCalculatedNearPlane();
+    double zSavedFar  = cv->getCalculatedFarPlane();
+
+    cv->setCalculatedNearPlane( FLT_MAX );
+    cv->setCalculatedFarPlane( -FLT_MAX );
+
     // cull the subgraph here. This doubles as the subgraph's official cull traversal
     // and a gathering of its clip planes.
     cv->pushStateSet( _subgraphStateSet.get() );
     osg::Group::traverse( *cv );
     cv->popStateSet();
 
-#if 0
-    // --- FIRST PASS ------------------------
-    // First, intersect the view frustum with the overlay geometry. This will provide
-    // a maximum required extent for our ortho RTT camera. Depending on the layout of
-    // the geometry in the overlay graph, this may or may not be optimal ... we will
-    // work to refine it in later passes if necessary.
-
-    cv->computeNearPlane();
-    double znear = cv->getCalculatedNearPlane();
-    double zfar  = cv->getCalculatedFarPlane();
-    osg::Matrixd projMatrix = *cv->getProjectionMatrix();
-    cv->clampProjectionMatrixImplementation( projMatrix, znear, zfar );
-
-    // collect the bounds of overlay geometry that intersects the view frustum.
-    MyConvexPolyhedron viewPT;
-    viewPT.setToUnitFrustum( true, true );
-    osg::Matrixd viewMVP = (*cv->getModelViewMatrix()) * projMatrix;
-    viewPT.transform( osg::Matrix::inverse(viewMVP), viewMVP );
-
-    osg::BoundingBox viewbbox;
-    CoarsePolytopeIntersector cpi( viewPT, viewbbox );
-    _overlayGraph->accept( cpi );
-
-    //TODO: sometimes this viewbbox goes invalid even though there's clearly goemetry
-    //      in view. Happens when you zoom in really close. Need to investigate -gw
-    //OE_INFO << LC << "OV radius = " << viewbbox.radius() << std::endl;
-    if ( viewbbox.valid() )
-    {
-        getMinMaxExtentInSilhouette( from, rttLookVec, viewbbox, eMin, eMax );
-        eMax = osg::minimum( eMax, horizonDistanceInRTTPlane ); 
-    }
-
-    if ( !_isGeocentric )
-        eyeLen = zfar;
-#endif
-
-    // --- SECOND PASS --------------------
-    // Remake the projection matrix with better hueristic for the far clipping plane.
-    // (Jason's method)
+    // Pull a copy of the projection matrix; we will use this to calculate the optimum
+    // projected texture extent
     osg::Matrixd projMatrix = *cv->getProjectionMatrix();
 
-    // manually clamp the projection matrix to the calculated clip planes. This prevents
+    // Clamp the projection matrix to the newly calculated clip planes. This prevents
     // any "leakage" from outside the subraph.
-    //double calcNear = cv->getCalculatedNearPlane();
-    //double calcFar  = cv->getCalculatedFarPlane();
-    //cv->clampProjectionMatrix( projMatrix, calcNear, calcFar );
+    double zNear = cv->getCalculatedNearPlane();
+    double zFar  = cv->getCalculatedFarPlane();
+    cv->clampProjectionMatrix( projMatrix, zNear, zFar );
 
-    //if ( _isGeocentric )
-    //{
+    //OE_NOTICE << std::fixed << "zNear = " << zNear << ", zFar = " << zFar << std::endl;
+
+    if ( _isGeocentric )
+    {
         // in geocentric mode, clamp the far clip plane to the horizon.
-        double fovy, aspectRatio, zfar, znear;
-        projMatrix.getPerspective( fovy, aspectRatio, znear, zfar );
-    
         double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
         maxDistance *= 1.5;
-        if (zfar - znear >= maxDistance)
-            zfar = znear + maxDistance;
-        projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
-    //}
+        if (zFar - zNear >= maxDistance)
+            zFar = zNear + maxDistance;
+
+        cv->clampProjectionMatrix( projMatrix, zNear, zFar );
+    }
+
+    // restore the clip planes in the cull visitor, now that we have our subgraph
+    // projection matrix.
+    cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
+    cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
        
     // contruct the polyhedron representing the viewing frustum.
     //osgShadow::ConvexPolyhedron frustumPH;
@@ -788,19 +761,11 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     // intersect the viewing frustum:
     osgShadow::ConvexPolyhedron visiblePH;
 
-    // get the bounds of the overlay graph //model. 
-#if 0
-    //const osg::BoundingSphere& bs = osg::Group::getBound();
-    osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
-    //this->accept(cbbv);
-    _overlayGraph->accept(cbbv);
-    visiblePH.setToBoundingBox(cbbv.getBoundingBox());
-#else
+    // get the bounds of the overlay graph model. 
     osg::BoundingBox visibleOverlayBBox;
     CoarsePolytopeIntersector cpi( frustumPH, visibleOverlayBBox );
     _overlayGraph->accept( cpi );
     visiblePH.setToBoundingBox( visibleOverlayBBox );
-#endif
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
     // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 

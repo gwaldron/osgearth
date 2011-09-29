@@ -24,7 +24,7 @@
 #include <osgViewer/Viewer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
-#include <osgEarthSymbology/COlor>
+#include <osgEarthSymbology/Color>
 
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util::Controls;

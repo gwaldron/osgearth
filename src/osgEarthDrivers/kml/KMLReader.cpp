@@ -18,7 +18,7 @@
  */
 #include "KMLReader"
 #include "KML_Root"
-#include <osgEarth/XMLUtils>
+#include <osgEarth/XmlUtils>
 #include <stack>
 #include <iterator>
 

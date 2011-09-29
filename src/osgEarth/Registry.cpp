@@ -56,9 +56,10 @@ _caps( 0L )
 
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
-
-    
-        osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
+   
+    osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz", "kmz" );
 }
 
 Registry::~Registry()

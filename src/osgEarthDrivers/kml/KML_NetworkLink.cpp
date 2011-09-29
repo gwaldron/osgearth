@@ -26,9 +26,14 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
     std::string name = conf.value("name");
 
     // parse the link:
-    const Config& linkConf = conf.child("link");
+    Config linkConf = conf.child("link");
     if ( linkConf.empty() )
-        return;
+    {
+        // "url" seems to be acceptable as well
+        linkConf = conf.child("url");
+        if ( linkConf.empty() )
+            return;
+    }
     std::string href = linkConf.value("href");
     if ( href.empty() )
         return;
@@ -37,7 +42,8 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
     bool open = conf.value<bool>("open", false);
 
     // helps osgDB realize it's a KML file ...
-    if ( !endsWith(href, ".kml") ) href += "&.kml";
+    //if ( !endsWith(href, ".kml") && !endsWith(href, ".kmz") )
+    //    href += "&.kml";
 
     // if it's region-bound, parse it as a paged LOD:
     const Config& regionConf = conf.child("region");
@@ -90,7 +96,7 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         osgDB::Options* options = new osgDB::Options();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         proxy->setDatabaseOptions( options );
-        proxy->setNodeMask( open ? ~0 : 0 );
+        //proxy->setNodeMask( open ? ~0 : 0 );
 
         cx._groupStack.top()->addChild( proxy );
     }

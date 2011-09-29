@@ -24,7 +24,12 @@ KML_IconStyle::scan( const Config& conf, Style& style )
     if ( !conf.empty() )
     {
         MarkerSymbol* marker = style.getOrCreate<MarkerSymbol>();
+
+        // Icon/Href or just Icon are both valid
         std::string iconHref = conf.child("icon").value("href");
+        if ( iconHref.empty() )
+            iconHref = conf.value("icon");
+
         if ( !iconHref.empty() )
         {
             marker->url() = StringExpression( iconHref );

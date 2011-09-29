@@ -19,6 +19,7 @@
 #include <osgEarth/URI>
 #include <osgEarth/HTTPClient>
 #include <osgDB/FileNameUtils>
+#include <osgDB/ReadFile>
 #include <fstream>
 #include <sstream>
 
@@ -58,6 +59,28 @@ URIStream::operator std::istream& ()
         return *_fileStream;
     else
         return _bufStream;
+}
+
+//------------------------------------------------------------------------
+
+osg::Image*
+URIStreamProxy::readImage()
+{
+    osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
+    options->setPluginData( "osgEarth::URI", &_uri );
+    osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
+        osgDB::getLowerCaseFileExtension( _uri.base() ) );
+    return rw ? rw->readImage( _source, options ).takeImage() : 0L;
+}
+
+osg::Node*
+URIStreamProxy::readNode()
+{
+    osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
+    options->setPluginData( "osgEarth::URI", &_uri );
+    osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
+        osgDB::getLowerCaseFileExtension( _uri.base() ) );
+    return rw ? rw->readNode( _source, options ).takeNode() : 0L;
 }
 
 //------------------------------------------------------------------------
@@ -128,4 +151,3 @@ URI::readString( ResultCode* code ) const
     if ( code ) *code = result;
     return str;
 }
-

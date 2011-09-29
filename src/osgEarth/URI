@@ -138,6 +138,29 @@ namespace osgEarth
         URIContext  _context;
     };
 
+    /**
+     * Proxies another input stream and associates it with a source URI.
+     * This is a convenience way to pass along URI information with a
+     * stream.
+     */
+    class OSGEARTH_EXPORT URIStreamProxy
+    {
+    public:
+        URIStreamProxy( const URI& uri, std::istream& in )
+            : _uri( uri ), _source( in ) { }
+
+        const URI& getURI() const { return _uri; }
+
+        osg::Image* readImage();
+        osg::Node* readNode();
+
+    public:
+        operator std::istream& () { return _source; }
+
+    protected:
+        URI           _uri;
+        std::istream& _source;
+    };
 }
 
 #endif // OSGEARTH_URI

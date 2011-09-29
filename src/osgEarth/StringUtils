@@ -123,6 +123,19 @@ namespace osgEarth
         bool     _trimTokens;
     };
 
+    static std::string
+    joinStrings( const StringVector& input, char delim )
+    {
+        std::stringstream buf;
+        for( StringVector::const_iterator i = input.begin(); i != input.end(); ++i )
+        {
+            buf << *i;
+            if ( (i+1) != input.end() ) buf << delim;
+        }
+        std::string result = buf.str();
+        return result;
+    }
+
     /** Returns a lower-case version of the input string. */
     static std::string
     toLower( const std::string& input )

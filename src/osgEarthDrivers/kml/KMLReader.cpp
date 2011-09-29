@@ -43,7 +43,8 @@ KMLReader::read( std::istream& in, const URIContext& context )
     Config config = xml->getConfig();
 
     osg::Node* node = read( config );
-    node->setName( context );
+    node->setName( context.referrer() );
+
     return node;
 }
 
@@ -53,7 +54,7 @@ KMLReader::read( const Config& conf )
     osg::Group* root = new osg::Group();
     root->ref();
 
-    root->setName( conf.uriContext() );
+    root->setName( conf.uriContext().referrer() );
 
     KMLContext cx;
     cx._mapNode = _mapNode;

@@ -399,7 +399,7 @@ XmlDocument::load( const URI& uri )
 
 
 XmlDocument*
-XmlDocument::load( std::istream& in, const URI& sourceURI )
+XmlDocument::load( std::istream& in, const URIContext& uriContext )
 {
     TiXmlDocument xmlDoc;
 
@@ -426,7 +426,7 @@ XmlDocument::load( std::istream& in, const URI& sourceURI )
     {
         doc = new XmlDocument();
         processNode( doc,  xmlDoc.RootElement() );
-        doc->_sourceURI = sourceURI;
+        doc->_sourceURI = URI("", uriContext);
     }
     return doc;    
 }

@@ -44,6 +44,7 @@ namespace
         // get a handle on the file cache. This is a temporary setup just to get things
         // working.
         static Threading::Mutex s_fcMutex;
+
         static URIContext s_cache;
         if ( s_cache.empty() )
         {
@@ -52,9 +53,9 @@ namespace
             {
                 const char* osgCacheDir = ::getenv("OSG_FILE_CACHE");
                 if ( osgCacheDir )
-                    s_cache = std::string(osgCacheDir) + "/";
+                    s_cache = URIContext(std::string(osgCacheDir) + "/");
                 else
-                    s_cache = "osgearth_kmz_cache/";
+                    s_cache = URIContext("osgearth_kmz_cache/");
             }
         }
 
@@ -210,24 +211,26 @@ struct KMZArchive : public osgDB::Archive
         return true;
     }
 
-    virtual ReadResult readImage(const std::string& filename, const Options* =NULL) const
+    virtual ReadResult readImage(const std::string& filename, const Options* options =NULL) const
     {
         std::stringstream iobuf;
         if ( readToBuffer( filename, iobuf ) )
         {
-            URI fileURI( filename, _archiveURI.full() ); //todo: replace with archive designation in URIContext
-            return URIStreamProxy( fileURI, iobuf ).readImage();
+            osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
+                osgDB::getLowerCaseFileExtension( filename ) );
+            return rw ? rw->readImage( iobuf, options ) : ReadResult::FILE_NOT_HANDLED;
         }
         else return ReadResult::ERROR_IN_READING_FILE;
     }
 
-    virtual ReadResult readNode(const std::string& filename, const Options* =NULL) const
+    virtual ReadResult readNode(const std::string& filename, const Options* options =NULL) const
     {
         std::stringstream iobuf;
         if ( readToBuffer( filename, iobuf ) )
         {
-            URI fileURI( filename, _archiveURI.full() ); //todo: replace with archive designation in URIContext
-            return URIStreamProxy( fileURI, iobuf ).readNode();
+            osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
+                osgDB::getLowerCaseFileExtension( filename ) );
+            return rw ? rw->readNode( iobuf, options ) : ReadResult::FILE_NOT_HANDLED;
         }
         else return ReadResult::ERROR_IN_READING_FILE;
     }
@@ -279,25 +282,20 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
         if ( ext == "kmz" )
         {
-#ifdef SUPPORT_KMZ
-            osg::ref_ptr<KMZArchive>& kmz = const_cast<ReaderWriterKML*>(this)->_archive.get();
-            if ( !kmz.valid() )
-                kmz = new KMZArchive( URI(url) );
-
-            return kmz->readNode(kmz->getMasterFileName(), options);
-#else
-            OE_WARN << LC << "KMZ support is not enabled. You must build osgEarth with MINIZIP." << std::endl;
-            return ReadResult::ERROR_IN_READING_FILE;
-#endif // SUPPORT_KMZ
+            return readNodeFromKMZ( url, options );
         }
+        else
+        {
+            // propagate the source URI along to the stream reader
+            osg::ref_ptr<osgDB::Options> myOptions = options ?
+                new osgDB::Options( *options ) : new osgDB::Options();
 
-        // propagate the source URI along to the stream reader
-        osg::ref_ptr<osgDB::Options> myOptions = options ?
-            new osgDB::Options( *options ) : new osgDB::Options();
-        myOptions->setPluginData( "osgEarth::ReaderWriterKML::ref_uri", (void*)&url );
+            // propagate the URI context along to the stream reader.
+            URIContext(url).store( myOptions.get() );
 
-        URIStream in( url );
-        return readNode( in, options );
+            URIStream in( url );
+            return readNode( in, myOptions.get() );
+        }
     }
 
     ReadResult readNode(std::istream& in, const Options* options ) const
@@ -315,16 +313,63 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         const KMLOptions* kmlOptions =
             static_cast<const KMLOptions*>(options->getPluginData("osgEarth::KMLOptions") );
 
-        // an optional URI context for resolving relative paths:
-        URIContext uriContext;
-        const std::string* cxValue = static_cast<const std::string*>( options->getPluginData( "osgEarth::ReaderWriterKML::ref_uri") );
-        if ( cxValue )
-            uriContext = *cxValue;
+        // Grab the URIContext from the options (since we're reading from a stream)
+        URIContext uriContext( options );
 
         // fire up a KML reader and parse the data.
         KMLReader reader( mapNode, kmlOptions );
         osg::Node* node = reader.read( in, uriContext );
         return ReadResult(node);
+    }
+
+    ReadResult readNodeFromKMZ( const std::string& url, const Options* options ) const
+    {
+#ifdef SUPPORT_KMZ
+        
+        // first, break the url into its components. A KMZ url can have (a) just a KMZ file,
+        // (b) an internal file prepended to the KMZ filename with a '!' delimiter. For example:
+        //
+        // "archive.kmz" => loads "doc.kml" from "archive.kmz".
+        // "file.png|archive.kmz" => loads "file.png" from "archive.kmz".
+
+        StringVector parts;
+        StringTokenizer( url, parts, "|", "", false);
+
+        if ( parts.size() >= 1 )
+        {
+            std::string archivePart = parts[parts.size()-1];
+            std::string filePart;
+            if ( parts.size() >= 2 )
+            {
+                parts.resize( parts.size()-1 );
+                std::string filePart = joinStrings( parts, '|' );
+            }
+
+            osg::ref_ptr<KMZArchive>& kmz = const_cast<ReaderWriterKML*>(this)->_archive.get();
+            if ( !kmz.valid() )
+                kmz = new KMZArchive( URI(archivePart) );
+
+            // use the KMZ's "master filename" as a default if necessary.
+            if ( filePart.empty() )
+                filePart = kmz->getMasterFileName();
+
+            // propagate the URI context.            
+            osg::ref_ptr<osgDB::Options> myOptions = options ? new osgDB::Options( *options ) : new osgDB::Options();
+            URIContext(filePart, archivePart).store(myOptions.get());
+
+            // and read.
+            return kmz->readNode(filePart, myOptions.get());
+        }
+        else
+        {
+            OE_WARN << LC << "Illegal KMZ url: " << url << std::endl;
+            return ReadResult::FILE_NOT_FOUND;
+        }
+
+#else
+        OE_WARN << LC << "KMZ support is not enabled. You must build osgEarth with MINIZIP." << std::endl;
+        return ReadResult::ERROR_IN_READING_FILE;
+#endif // SUPPORT_KMZ
     }
 
 private:

@@ -63,24 +63,57 @@ URIStream::operator std::istream& ()
 
 //------------------------------------------------------------------------
 
-osg::Image*
-URIStreamProxy::readImage()
+void
+URIContext::toOsgPath( const std::string& relative, std::string& out ) const
 {
-    osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
-    options->setPluginData( "osgEarth::URI", &_uri );
-    osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
-        osgDB::getLowerCaseFileExtension( _uri.base() ) );
-    return rw ? rw->readImage( _source, options ).takeImage() : 0L;
+    out = osgEarth::getFullPath( _referrer, relative );
+    if ( !_archive.empty() )
+        out = out + "|" + _archive;
 }
 
-osg::Node*
-URIStreamProxy::readNode()
+URIContext
+URIContext::parent( const URIContext& sub ) const
 {
-    osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
-    options->setPluginData( "osgEarth::URI", &_uri );
-    osgDB::ReaderWriter* rw = osgDB::Registry::instance()->getReaderWriterForExtension(
-        osgDB::getLowerCaseFileExtension( _uri.base() ) );
-    return rw ? rw->readNode( _source, options ).takeNode() : 0L;
+    std::string newArchive;
+    if ( sub._archive.empty() && !_archive.empty() )
+        newArchive = _archive;
+    else if ( _archive.empty() && !sub._archive.empty() )
+        newArchive = sub._archive;
+    else if ( !_archive.empty() && !sub._archive.empty() )
+        newArchive = sub._archive + "|" + _archive;
+
+    return URIContext(
+        osgEarth::getFullPath( _referrer, sub._referrer ),
+        newArchive );
+}
+
+void
+URIContext::store( osgDB::Options* options )
+{
+    if ( options )
+    {
+        std::string encodedString = _archive.empty() ? _referrer : _referrer + "|" + _archive;
+        options->setPluginStringData( "osgEarth::URIContext", encodedString );
+    }
+}
+
+URIContext::URIContext( const osgDB::Options* options )
+{
+    if ( options )
+    {
+        std::string str = options->getPluginStringData( "osgEarth::URIContext" );
+        if ( !str.empty() )
+        {
+            int pos = str.find('|');
+            if ( pos == std::string::npos ) {
+                _referrer = str;
+            }
+            else {
+                _referrer = str.substr( 0, pos );
+                _archive = str.substr( pos + 1 );
+            }
+        }
+    }
 }
 
 //------------------------------------------------------------------------
@@ -90,11 +123,17 @@ URI::URI()
     //nop
 }
 
-URI::URI( const std::string& location, const URIContext& context )
+URI::URI( const std::string& location )
 {
     _baseURI = location;
-    _fullURI = osgEarth::getFullPath( context, location );
+    _fullURI = location;
+}
+
+URI::URI( const std::string& location, const URIContext& context )
+{
     _context = context;
+    _baseURI = location;
+    context.toOsgPath( location, _fullURI );
 }
 
 URI::URI( const char* location )

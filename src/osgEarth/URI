@@ -34,8 +34,67 @@ namespace osgEarth
 
     /**
      * Context for resolving relative URIs.
+     *
+     * This object provides "context" for a relative URI. In other words, it provides
+     * all of the information the system needs to resolve it to an absolute location from
+     * which OSG can load data.
+     *
+     * The context can come in one of two forms (or a combination of both):
+     *
+     * The "referrer" is the location of an object that "points" to the object in the 
+     * corresponding URI. The location conveyed by the URI will be relative to the location of
+     * its referrer. For example, a referrer of "http://server/folder/hello.xml" applied
+     * to the URI "there.jpg" will resolve to "http://server/folder/there.jpg". NOTE that referrer
+     * it not itself a location (like a folder); rather it's the object that referred to the URI
+     * being contextualized.
+     *
+     * The "archive" is the path to an archive object (like a zipfile, e.g.) that contains the
+     * target URI. The archive is a container inside which the referrer-target relationship
+     * exists. It's optional.
      */
-    typedef std::string URIContext;
+    class OSGEARTH_EXPORT URIContext
+    {
+    public:
+        /** Creates an empty context. */
+        URIContext() { }
+
+        /** Creates a context that specifies a referring object. */
+        URIContext( const std::string& referrer ) : _referrer(referrer) { }
+
+        /** Creates a context containing a referring object and an archive container. */
+        URIContext( const std::string& referrer, const std::string& archive ) : _referrer(referrer), _archive(archive) { }
+
+        /** Copy constructor. */
+        URIContext( const URIContext& rhs ) : _referrer(rhs._referrer), _archive(rhs._archive) { }
+
+        /** Serializes this context to an Options structure. This is useful when passing context information
+            to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
+            is the preferred way to communicate the context information. */
+        void store( osgDB::Options* options );
+
+        /** Creates a context from the serialized version in an Options structure (see above) */
+        URIContext( const osgDB::Options* options );
+
+        /** Returns the referring object. */
+        const std::string& referrer() const { return _referrer; }
+
+        /** Returns the archive object. */
+        const std::string& archive() const { return _archive; }
+
+        /** True if the context is empty */
+        bool empty() const { return _referrer.empty() && _archive.empty(); }
+
+        /** Parents the input context with the current object, placing the subContext's information
+            under it. Used to re-parent relative locations with a higher-level referrer object. */
+        URIContext parent( const URIContext& subContext ) const;
+
+        /** creates a string suitable for passing to an osgDB::ReaderWriter implementation */
+        void toOsgPath( const std::string& target, std::string& out ) const;
+
+    private:
+        friend class URI;
+        std::string _referrer, _archive;
+    };
 
     /**
      * Stream container for reading a URI directly from a stream
@@ -70,9 +129,14 @@ namespace osgEarth
         URI();
 
         /** 
-         * Construcst a new URI from a location and an optional context 
+         * Constructs a new URI from a location (typically an absolute url)
          */
-        URI( const std::string& location, const URIContext& context ="" );
+        URI( const std::string& location );
+        
+        /**
+         * Constructs a new URI from a location and an existing context.
+         */
+        URI( const std::string& location, const URIContext& context );
 
         /**
          * Constructs a new URI from a string.
@@ -136,30 +200,6 @@ namespace osgEarth
         std::string _baseURI;
         std::string _fullURI;
         URIContext  _context;
-    };
-
-    /**
-     * Proxies another input stream and associates it with a source URI.
-     * This is a convenience way to pass along URI information with a
-     * stream.
-     */
-    class OSGEARTH_EXPORT URIStreamProxy
-    {
-    public:
-        URIStreamProxy( const URI& uri, std::istream& in )
-            : _uri( uri ), _source( in ) { }
-
-        const URI& getURI() const { return _uri; }
-
-        osg::Image* readImage();
-        osg::Node* readNode();
-
-    public:
-        operator std::istream& () { return _source; }
-
-    protected:
-        URI           _uri;
-        std::istream& _source;
     };
 }
 

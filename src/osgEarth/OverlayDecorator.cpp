@@ -758,12 +758,12 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 
     // manually clamp the projection matrix to the calculated clip planes. This prevents
     // any "leakage" from outside the subraph.
-    //double calcNear = cv->getCalculatedNearPlane();
-    //double calcFar  = cv->getCalculatedFarPlane();
-    //cv->clampProjectionMatrix( projMatrix, calcNear, calcFar );
+    double calcNear = cv->getCalculatedNearPlane();
+    double calcFar  = cv->getCalculatedFarPlane();
+    cv->clampProjectionMatrix( projMatrix, calcNear, calcFar );
 
-    //if ( _isGeocentric )
-    //{
+    if ( _isGeocentric )
+    {
         // in geocentric mode, clamp the far clip plane to the horizon.
         double fovy, aspectRatio, zfar, znear;
         projMatrix.getPerspective( fovy, aspectRatio, znear, zfar );
@@ -773,7 +773,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         if (zfar - znear >= maxDistance)
             zfar = znear + maxDistance;
         projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
-    //}
+    }
        
     // contruct the polyhedron representing the viewing frustum.
     //osgShadow::ConvexPolyhedron frustumPH;

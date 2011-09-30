@@ -163,9 +163,8 @@ MarkerFactory::getOrCreateImage( const MarkerSymbol* symbol, bool useCache )
 osg::Node*
 MarkerFactory::createFromURI( const URI& uri ) const
 {
-    StringTokenizer izer( "()" );
     StringVector tok;
-    izer.tokenize( *uri, tok );
+    StringTokenizer( *uri, tok, "()" );
 
     if (tok.size() > 1)
     {

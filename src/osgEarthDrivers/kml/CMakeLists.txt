@@ -48,6 +48,7 @@ SET(TARGET_H
     KML_Style
     KML_StyleMap
     KML_StyleSelector
+    KMZArchive
 )
 
 SET(TARGET_SRC
@@ -80,6 +81,7 @@ SET(TARGET_SRC
     KML_ScreenOverlay.cpp
     KML_Style.cpp
     KML_StyleMap.cpp
+    KMZArchive.cpp
 )
     
 

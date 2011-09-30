@@ -41,7 +41,9 @@ namespace osgEarth
      * @returns
      *       The full path
      */
-    extern OSGEARTH_EXPORT std::string getFullPath(const std::string& relativeTo, const std::string& relativePath);
+    extern OSGEARTH_EXPORT std::string getFullPath(
+        const std::string& relativeTo, 
+        const std::string& relativePath );
 
     /**
      * Gets whether or not the given path contains a zip file within the path

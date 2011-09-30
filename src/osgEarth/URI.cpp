@@ -66,6 +66,7 @@ URIStream::operator std::istream& ()
 void
 URIContext::toOsgPath( const std::string& relative, std::string& out ) const
 {
+
     out = osgEarth::getFullPath( _referrer, relative );
     if ( !_archive.empty() )
         out = out + "|" + _archive;

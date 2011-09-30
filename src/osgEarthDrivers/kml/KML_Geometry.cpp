@@ -59,7 +59,7 @@ KML_Geometry::buildChild( const Config& conf, KMLContext& cx, Style& style)
         g.parseCoords(conf, cx);
         _geom = g._geom.get();
     }
-    else if ( conf.key() == "polygon" )
+    else if ( conf.key() == "polygon" || conf.key() == "gx:latlonquad" )
     {
         KML_Polygon g;
         g.parseStyle(conf, cx, style);

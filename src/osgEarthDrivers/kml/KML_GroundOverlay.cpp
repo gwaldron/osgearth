@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "KML_GroundOverlay"
+#include "KML_Geometry"
 #include <osgEarthUtil/ImageOverlay>
 
 using namespace osgEarth::Util;
@@ -37,28 +38,59 @@ KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
         return;
     }
 
+    ImageOverlay* im = 0L;
+
     // the extent of the overlay image
     const Config& llb = conf.child("latlonbox");
-    if ( llb.empty() ) {
-        OE_WARN << LC << "GroundOverlay missing required LatLonBox element" << std::endl;
+    if ( !llb.empty() )
+    {
+        double north = llb.value<double>("north", 0.0);
+        double south = llb.value<double>("south", 0.0);
+        double east  = llb.value<double>("east", 0.0);
+        double west  = llb.value<double>("west", 0.0);
+        Angular rotation( llb.value<double>("rotation", 0.0), Units::DEGREES );
+
+        osg::ref_ptr<osg::Image> image = URI(href, conf.uriContext()).readImage();
+        if ( !image.valid() ) {
+            OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
+            return;
+        }
+
+        im = new ImageOverlay( cx._mapNode, image.get() );
+        im->setBoundsAndRotation( Bounds(west, south, east, north), rotation );
+        cx._groupStack.top()->addChild( im );
+    }
+
+    else if ( conf.hasChild("gx:latlonquad") )
+    {
+        const Config& llq = conf.child("gx:latlonquad");
+        KML_Geometry g;
+        Style style;
+        g.buildChild( llq, cx, style );
+        if ( g._geom.valid() && g._geom->size() >= 4 )
+        {
+            osg::ref_ptr<osg::Image> image = URI(href, conf.uriContext()).readImage();
+            if ( !image.valid() ) {
+                OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
+                return;
+            }
+
+            const Geometry& p = *(g._geom.get());
+            im = new ImageOverlay( cx._mapNode, image.get() );
+            im->setCorners( 
+                osg::Vec2d( p[0].x(), p[0].y() ),
+                osg::Vec2d( p[1].x(), p[1].y() ),
+                osg::Vec2d( p[3].x(), p[3].y() ),
+                osg::Vec2d( p[2].x(), p[2].y() ) );
+            cx._groupStack.top()->addChild( im );
+        }
+    }
+
+    else {
+        OE_WARN << LC << "GroundOverlay missing required LatLonBox/gx:LatLonQuad element" << std::endl;
         return;
     }
 
-    double north = llb.value<double>("north", 0.0);
-    double south = llb.value<double>("south", 0.0);
-    double east  = llb.value<double>("east", 0.0);
-    double west  = llb.value<double>("west", 0.0);
-    Angular rotation( llb.value<double>("rotation", 0.0), Units::DEGREES );
-
-    osg::ref_ptr<osg::Image> image = URI(href).readImage();
-    if ( !image.valid() ) {
-        OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
-        return;
-    }
-
-    ImageOverlay* im = new ImageOverlay( cx._mapNode, image.get() );
-    im->setBoundsAndRotation( Bounds(west, south, east, north), rotation );
-    cx._groupStack.top()->addChild( im );
 
     // superclass build always called last
     KML_Overlay::build( conf, cx, im );

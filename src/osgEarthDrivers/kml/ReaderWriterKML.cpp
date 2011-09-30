@@ -23,6 +23,7 @@
 #include <osgDB/Registry>
 #include <osgDB/FileUtils>
 #include <osgDB/Archive>
+#include <osgEarth/Registry>
 #include <osgEarth/ThreadingUtils>
 
 #include "KMLOptions"
@@ -31,6 +32,7 @@
 
 #define LC "[ReaderWriterKML] "
 
+using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
 //---------------------------------------------------------------------------
@@ -62,23 +64,14 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         if ( !acceptsExtension(ext) )
             return ReadResult::FILE_NOT_HANDLED;
 
-        OE_INFO << LC << "Reading " << url << std::endl;
-        
-        // A new options object to pass along to the downstream reader.
-        osg::ref_ptr<osgDB::Options> myOptions = options ? new osgDB::Options( *options ) : new osgDB::Options();
-
         if ( ext == "kmz" )
         {
-            // disable archive caching b/c it will screw us up
-            osgDB::Options::CacheHintOptions noArchiveCaching = (osgDB::Options::CacheHintOptions)
-                ((int)myOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES);
-            myOptions->setObjectCacheHint( noArchiveCaching );
-
-            return osgDB::readNodeFile( url + "/doc.kml", myOptions.get() );
+            return URI(url + "/doc.kml").readNode( options );
         }
         else
         {
             // propagate the source URI along to the stream reader
+            osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
             URIContext(url).store( myOptions.get() );
             return readNode( URIStream(url), myOptions.get() );
         }

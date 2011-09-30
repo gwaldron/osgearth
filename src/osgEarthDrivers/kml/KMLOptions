@@ -21,17 +21,17 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/URI>
+#include <osgEarthSymbology/Style>
 #include <osg/Image>
 
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     class KMLOptions // NO EXPORT; header only
     {
     public:
-        KMLOptions() { }
-
         /** The default URI to use for placemarks that don't specify an icon. */
         optional<URI>& defaultIconURI() { return _defaultIconURI; }
         const optional<URI>& defaultIconURI() const { return _defaultIconURI; }
@@ -41,9 +41,17 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<osg::Image>& defaultIconImage() { return _defaultIconImage; }
         const osg::ref_ptr<osg::Image>& defaultIconImage() const { return _defaultIconImage; }
 
+        /** TextSymbol to use when no styles are set in the KML. */
+        osg::ref_ptr<TextSymbol>& defaultTextSymbol() { return _defaultTextSymbol; }
+        const osg::ref_ptr<TextSymbol>& defaultTextSymbol() const { return _defaultTextSymbol; }
+
+    public:
+        KMLOptions() { }
+
     protected:
         optional<URI>            _defaultIconURI;
         osg::ref_ptr<osg::Image> _defaultIconImage;
+        osg::ref_ptr<TextSymbol> _defaultTextSymbol;
     };
 
 } } // namespace osgEarth::Drivers

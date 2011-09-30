@@ -28,6 +28,7 @@
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
+#include <osgDB/ReaderWriter>
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
@@ -131,6 +132,17 @@ namespace osgEarth
 
         const std::string& getCacheDirectory() const;
 
+        /**
+         * Gets the default set of osgDB::Options to use.
+         */
+        const osgDB::Options* getDefaultOptions() const { return _defaultOptions.get(); }
+
+        /**
+         * Clones an options structure (fixing the archive caching), or creates
+         * a new one.
+         */
+        osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L ) const;
+
     protected:
         virtual ~Registry();
         Registry();
@@ -168,6 +180,8 @@ namespace osgEarth
 
         osg::ref_ptr< Capabilities > _caps;
         void initCapabilities();
+
+        osg::ref_ptr<osgDB::Options> _defaultOptions;
     };
 }
 

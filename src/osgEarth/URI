@@ -39,18 +39,12 @@ namespace osgEarth
      * all of the information the system needs to resolve it to an absolute location from
      * which OSG can load data.
      *
-     * The context can come in one of two forms (or a combination of both):
-     *
      * The "referrer" is the location of an object that "points" to the object in the 
      * corresponding URI. The location conveyed by the URI will be relative to the location of
      * its referrer. For example, a referrer of "http://server/folder/hello.xml" applied
      * to the URI "there.jpg" will resolve to "http://server/folder/there.jpg". NOTE that referrer
      * it not itself a location (like a folder); rather it's the object that referred to the URI
      * being contextualized.
-     *
-     * The "archive" is the path to an archive object (like a zipfile, e.g.) that contains the
-     * target URI. The archive is a container inside which the referrer-target relationship
-     * exists. It's optional.
      */
     class OSGEARTH_EXPORT URIContext
     {
@@ -61,11 +55,8 @@ namespace osgEarth
         /** Creates a context that specifies a referring object. */
         URIContext( const std::string& referrer ) : _referrer(referrer) { }
 
-        /** Creates a context containing a referring object and an archive container. */
-        URIContext( const std::string& referrer, const std::string& archive ) : _referrer(referrer), _archive(archive) { }
-
         /** Copy constructor. */
-        URIContext( const URIContext& rhs ) : _referrer(rhs._referrer), _archive(rhs._archive) { }
+        URIContext( const URIContext& rhs ) : _referrer(rhs._referrer) { }
 
         /** Serializes this context to an Options structure. This is useful when passing context information
             to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
@@ -78,22 +69,22 @@ namespace osgEarth
         /** Returns the referring object. */
         const std::string& referrer() const { return _referrer; }
 
-        /** Returns the archive object. */
-        const std::string& archive() const { return _archive; }
-
         /** True if the context is empty */
-        bool empty() const { return _referrer.empty() && _archive.empty(); }
+        bool empty() const { return _referrer.empty(); }
 
         /** Parents the input context with the current object, placing the subContext's information
             under it. Used to re-parent relative locations with a higher-level referrer object. */
-        URIContext parent( const URIContext& subContext ) const;
+        URIContext add( const URIContext& subContext ) const;
+
+        /** Returns a new context with the sub path appended to the current referrer path. */
+        URIContext add( const std::string& subPath ) const;
 
         /** creates a string suitable for passing to an osgDB::ReaderWriter implementation */
-        void toOsgPath( const std::string& target, std::string& out ) const;
+        std::string getOSGPath( const std::string& target ) const;
 
     private:
         friend class URI;
-        std::string _referrer, _archive;
+        std::string _referrer;
     };
 
     /**
@@ -179,11 +170,13 @@ namespace osgEarth
 
         /** Reads an image from the URI. */
         osg::Image* readImage(
-            ResultCode* out_code =0L, const osgDB::Options* options =0L ) const;
+            const osgDB::Options* options  =0L,
+            ResultCode*           out_code =0L ) const;
 
         /** Reads a node from the URI. */
         osg::Node* readNode(
-            ResultCode* out_code =0L, const osgDB::Options* options =0L ) const;
+            const osgDB::Options* options  =0L,
+            ResultCode*           out_code =0L ) const;
 
         /** Reads a string from the URI. */
         std::string readString(

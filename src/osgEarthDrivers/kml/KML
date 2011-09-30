@@ -21,6 +21,7 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/URI>
+#include <osgEarth/Registry>
 #include <osgDB/ReaderWriter>
 #include "KMLOptions"
 
@@ -42,7 +43,7 @@ namespace osgEarth { namespace Drivers {
                 OE_WARN << LC << "MapNode instance required" << std::endl;
                 return 0L;
             }
-            osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
+            osg::ref_ptr<osgDB::Options> options = Registry::instance()->cloneOrCreateOptions();
             options->setPluginData( "osgEarth::MapNode", mapNode );
             options->setPluginData( "osgEarth::KMLOptions", (void*)&kmlOptions );
 

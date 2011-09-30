@@ -18,12 +18,37 @@
  */
 #include <osgEarth/URI>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReadFile>
+#include <osgDB/ReaderWriter>
 #include <fstream>
 #include <sstream>
 
 using namespace osgEarth;
+
+//------------------------------------------------------------------------
+
+namespace
+{
+    /**
+     * "Fixes" the osgDB options by disabling the automatic archive caching. Archive caching
+     * screws up our URI resolution because with it on, osgDB remembers every archive file
+     * you open and effectively puts it in all future search paths :(
+     */
+    const osgDB::Options*
+    fixOptions( const osgDB::Options* input )
+    {
+        if ( input && input->getObjectCacheHint() == osgDB::Options::CACHE_NONE )
+        {
+            return input;
+        }
+        else
+        {
+            return Registry::instance()->cloneOrCreateOptions( input );
+        }
+    }
+}
 
 //------------------------------------------------------------------------
 
@@ -63,29 +88,22 @@ URIStream::operator std::istream& ()
 
 //------------------------------------------------------------------------
 
-void
-URIContext::toOsgPath( const std::string& relative, std::string& out ) const
+std::string
+URIContext::getOSGPath( const std::string& target ) const
 {
-
-    out = osgEarth::getFullPath( _referrer, relative );
-    if ( !_archive.empty() )
-        out = out + "|" + _archive;
+    return osgEarth::getFullPath( _referrer, target );
 }
 
 URIContext
-URIContext::parent( const URIContext& sub ) const
+URIContext::add( const URIContext& sub ) const
 {
-    std::string newArchive;
-    if ( sub._archive.empty() && !_archive.empty() )
-        newArchive = _archive;
-    else if ( _archive.empty() && !sub._archive.empty() )
-        newArchive = sub._archive;
-    else if ( !_archive.empty() && !sub._archive.empty() )
-        newArchive = sub._archive + "|" + _archive;
+    return URIContext( osgEarth::getFullPath(_referrer, sub._referrer) );
+}
 
-    return URIContext(
-        osgEarth::getFullPath( _referrer, sub._referrer ),
-        newArchive );
+URIContext
+URIContext::add( const std::string& sub ) const
+{
+    return URIContext(osgDB::concatPaths( _referrer, sub ));
 }
 
 void
@@ -93,8 +111,8 @@ URIContext::store( osgDB::Options* options )
 {
     if ( options )
     {
-        std::string encodedString = _archive.empty() ? _referrer : _referrer + "|" + _archive;
-        options->setPluginStringData( "osgEarth::URIContext", encodedString );
+        options->setDatabasePath( _referrer );
+        options->setPluginStringData( "osgEarth::URIContext::referrer", _referrer );
     }
 }
 
@@ -102,18 +120,7 @@ URIContext::URIContext( const osgDB::Options* options )
 {
     if ( options )
     {
-        std::string str = options->getPluginStringData( "osgEarth::URIContext" );
-        if ( !str.empty() )
-        {
-            int pos = str.find('|');
-            if ( pos == std::string::npos ) {
-                _referrer = str;
-            }
-            else {
-                _referrer = str.substr( 0, pos );
-                _archive = str.substr( pos + 1 );
-            }
-        }
+        _referrer = options->getPluginStringData( "osgEarth::URIContext::referrer" );
     }
 }
 
@@ -134,7 +141,7 @@ URI::URI( const std::string& location, const URIContext& context )
 {
     _context = context;
     _baseURI = location;
-    context.toOsgPath( location, _fullURI );
+    _fullURI = context.getOSGPath( _baseURI );
 }
 
 URI::URI( const char* location )
@@ -154,40 +161,47 @@ URI::append( const std::string& suffix ) const
 }
 
 osg::Image*
-URI::readImage( ResultCode* code, const osgDB::Options* options ) const
+URI::readImage( const osgDB::Options* options, ResultCode* out_code ) const
 {
     if ( empty() ) {
-        if ( code ) *code = RESULT_NOT_FOUND;
+        if ( out_code ) *out_code = RESULT_NOT_FOUND;
         return 0L;
     }
+
+    osg::ref_ptr<const osgDB::Options> myOptions = fixOptions(options);
+
     osg::ref_ptr<osg::Image> image;
-    ResultCode result = (ResultCode)HTTPClient::readImageFile( _fullURI, image, options );
-    if ( code ) *code = result;
+    ResultCode result = (ResultCode)HTTPClient::readImageFile( _fullURI, image, myOptions.get() );
+    if ( out_code ) *out_code = result;
     return image.release();
 }
 
 osg::Node*
-URI::readNode( ResultCode* code, const osgDB::Options* options ) const
+URI::readNode( const osgDB::Options* options, ResultCode* out_code ) const
 {
     if ( empty() ) {
-        if ( code ) *code = RESULT_NOT_FOUND;
+        if ( out_code ) *out_code = RESULT_NOT_FOUND;
         return 0L;
     }
+
+    osg::ref_ptr<const osgDB::Options> myOptions = fixOptions(options);
+
     osg::ref_ptr<osg::Node> node;
-    ResultCode result = (ResultCode)HTTPClient::readNodeFile( _fullURI, node, options );
-    if ( code ) *code = result;
+    ResultCode result = (ResultCode)HTTPClient::readNodeFile( _fullURI, node, myOptions.get() );
+    if ( out_code ) *out_code = result;
     return node.release();
 }
 
 std::string
-URI::readString( ResultCode* code ) const
+URI::readString( ResultCode* out_code ) const
 {
     if ( empty() ) {
-        if ( code ) *code = RESULT_NOT_FOUND;
+        if ( out_code ) *out_code = RESULT_NOT_FOUND;
         return 0L;
     }
+
     std::string str;
     ResultCode result = (ResultCode)HTTPClient::readString( _fullURI, str );
-    if ( code ) *code = result;
+    if ( out_code ) *out_code = result;
     return str;
 }

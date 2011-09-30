@@ -103,6 +103,12 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             }
         }
 
+        // apply the default text symbol for labeling, if necessary:
+        if ( !style.get<TextSymbol>() && cx._options->defaultTextSymbol().valid() )
+        {
+            style.addSymbol( cx._options->defaultTextSymbol().get() );
+        }
+
         pNode = new PlacemarkNode( cx._mapNode, position, image, text, style );
     }
 

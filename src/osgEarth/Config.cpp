@@ -35,7 +35,7 @@ Config::setURIContext( const URIContext& context )
     _uriContext = context;
     for( ConfigSet::iterator i = _children.begin(); i != _children.end(); i++ )
     { 
-        i->setURIContext( context.parent(i->_uriContext) );
+        i->setURIContext( context.add(i->_uriContext) );
         //URI newURI( i->uriContext(), context );
         //i->setURIContext( *newURI );
     }

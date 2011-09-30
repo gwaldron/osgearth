@@ -62,6 +62,11 @@ _caps( 0L )
     osgDB::Registry::instance()->addArchiveExtension( "kmz" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz", "kmz" );
+
+    // set up our default r/w options to NOT cache archives!
+    _defaultOptions = new osgDB::Options();
+    _defaultOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
+        ((int)_defaultOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
 }
 
 Registry::~Registry()
@@ -267,6 +272,21 @@ Registry::createUID()
     static Mutex s_uidGenMutex;
     ScopedLock<Mutex> lock( s_uidGenMutex );
     return (UID)( _uidGen++ );
+}
+
+osgDB::Options*
+Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
+{
+    osgDB::Options* newOptions = input ? input->cloneOptions() : new osgDB::Options();
+
+    // clear the CACHE_ARCHIVES flag because it is evil
+    if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )
+    {
+        newOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
+            ((int)newOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
+    }
+
+    return newOptions;
 }
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin

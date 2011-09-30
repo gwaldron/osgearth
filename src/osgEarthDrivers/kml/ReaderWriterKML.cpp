@@ -66,7 +66,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
         if ( ext == "kmz" )
         {
-            return URI(url + "/doc.kml").readNode( options );
+            return URI(url + "/.kml").readNode( options );
         }
         else
         {

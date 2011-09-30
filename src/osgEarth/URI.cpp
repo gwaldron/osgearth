@@ -25,6 +25,8 @@
 #include <fstream>
 #include <sstream>
 
+#define LC "[URI] "
+
 using namespace osgEarth;
 
 //------------------------------------------------------------------------
@@ -160,6 +162,23 @@ URI::append( const std::string& suffix ) const
     return result;
 }
 
+osg::Object*
+URI::readObject( const osgDB::Options* options, ResultCode* out_code ) const
+{
+    if ( empty() ) {
+        if ( out_code ) *out_code = RESULT_NOT_FOUND;
+        return 0L;
+    }
+
+    osg::ref_ptr<const osgDB::Options> myOptions = fixOptions(options);
+
+    osg::ref_ptr<osg::Object> object;
+    ResultCode result = (ResultCode)HTTPClient::readObjectFile( _fullURI, object, myOptions.get() );
+    if ( out_code ) *out_code = result;
+
+    return object.release();
+}
+
 osg::Image*
 URI::readImage( const osgDB::Options* options, ResultCode* out_code ) const
 {
@@ -170,9 +189,12 @@ URI::readImage( const osgDB::Options* options, ResultCode* out_code ) const
 
     osg::ref_ptr<const osgDB::Options> myOptions = fixOptions(options);
 
+    //OE_INFO << LC << "readImage: " << _fullURI << std::endl;
+
     osg::ref_ptr<osg::Image> image;
     ResultCode result = (ResultCode)HTTPClient::readImageFile( _fullURI, image, myOptions.get() );
     if ( out_code ) *out_code = result;
+
     return image.release();
 }
 

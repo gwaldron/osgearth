@@ -245,6 +245,16 @@ namespace osgEarth
             ProgressCallback* callback = 0 );
 
         /**
+         * Reads an object. Based on the structure of the URI, it will either try to fetch the
+         * data using HTTP or simply read the file from disk.
+         */
+        static ResultCode readObjectFile(
+            const std::string&                  url,
+            osg::ref_ptr<osg::Object>&          output,
+            const osgDB::ReaderWriter::Options* options = 0,
+            ProgressCallback*                   callback = 0);
+
+        /**
          * Reads a string. Based on the structure of the URI, it will either try to fetch the
          * data using HTTP or simply read the file from disk.
          */
@@ -287,6 +297,12 @@ namespace osgEarth
                             const osgDB::ReaderWriter::Options* options = 0,
                             ProgressCallback* callback = 0 ) const;
 
+        ResultCode doReadObjectFile(
+            const std::string&                  url,
+            osg::ref_ptr<osg::Object>&          output,
+            const osgDB::ReaderWriter::Options* options = 0,
+            ProgressCallback*                   callback = 0);
+
         ResultCode doReadImageFile(
             const std::string& filename,
             osg::ref_ptr<osg::Image>& output,
@@ -311,7 +327,7 @@ namespace osgEarth
         bool doDownload(const std::string& url, const std::string& filename);
 
     private:
-        void *_curl_handle;
+        void*       _curl_handle;
         std::string _previousPassword;
         long        _previousHttpAuthentication;
 

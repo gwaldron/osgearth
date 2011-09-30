@@ -538,6 +538,9 @@ OverlayDecorator::setMipmapping( bool value )
     {
         _mipmapping = value;
         reinit();
+
+        if ( _mipmapping )
+            OE_INFO << LC << "Overlay mipmapping " << (value?"enabled":"disabled") << std::endl;
     }
 }
 
@@ -548,6 +551,9 @@ OverlayDecorator::setVertexWarping( bool value )
     {
         _useWarping = value;
         reinit();
+        
+        if ( _useWarping )
+            OE_INFO << LC << "Vertex warping " << (value?"enabled":"disabled")<< std::endl;
     }
 }
 
@@ -558,6 +564,9 @@ OverlayDecorator::setOverlayBlending( bool value )
     {
         _rttBlending = value;
         reinit();
+        
+        if ( _rttBlending )
+            OE_INFO << LC << "Overlay blending " << (value?"enabled":"disabled")<< std::endl;
     }
 }
 

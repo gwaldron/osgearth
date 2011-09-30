@@ -168,6 +168,11 @@ namespace osgEarth
             RESULT_UNKNOWN_ERROR
         };
 
+        /** Reads an object from the URI. */
+        osg::Object* readObject(
+            const osgDB::Options* options  =0L,
+            ResultCode*           out_code =0L ) const;
+
         /** Reads an image from the URI. */
         osg::Image* readImage(
             const osgDB::Options* options  =0L,

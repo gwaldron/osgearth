@@ -93,7 +93,7 @@ _session( session )
 osg::Node*
 MarkerFactory::getOrCreateNode( const Feature* feature, const MarkerSymbol* symbol, bool useCache )
 {
-    osg::Node* result;
+    osg::Node* result =0L;
 
     if ( symbol )
     {
@@ -163,31 +163,28 @@ MarkerFactory::getOrCreateImage( const MarkerSymbol* symbol, bool useCache )
 osg::Node*
 MarkerFactory::createFromURI( const URI& uri ) const
 {
-    StringVector tok;
-    StringTokenizer( *uri, tok, "()" );
-
-    if (tok.size() > 1)
+    osg::ref_ptr<osg::Object> obj = uri.readObject();
+    if ( obj.valid() )
     {
-        if (tok[0].compare("model") == 0)
-        {         
-            osg::ref_ptr<osg::Node> node;
-            HTTPClient::readNodeFile( _session.valid()? _session->resolveURI(tok[1]) : tok[1], node );
-            return node.release();
-        }
-        else if (tok[0].compare("image") == 0)
+        if ( dynamic_cast<osg::Image*>( obj.get() ) )
         {
-            osg::ref_ptr<osg::Image> image;
-            HTTPClient::readImageFile( _session.valid()? _session->resolveURI(tok[1]) : tok[1], image );
-            return buildImageModel( image.get() );
-        }    
-    }
-    else
-    {
-        osg::ref_ptr<osg::Node> node;
-        HTTPClient::readNodeFile( _session.valid()? _session->resolveURI(*uri) : *uri, node );
-        return node.release();
+            return buildImageModel( dynamic_cast<osg::Image*>( obj.get() ) );
+        }
+        else if ( dynamic_cast<osg::Node*>( obj.get() ) )
+        {
+            return dynamic_cast<osg::Node*>( obj.release() );
+        }
     }
 
+    else // failing that, fall back on the old encoding format..
+    {
+        StringVector tok;
+        StringTokenizer( *uri, tok, "()" );
+        if (tok.size() >= 2)
+            return createFromURI( URI(tok[1]) );
+    }
+
+    // fail
     return 0L;
 }
 
@@ -206,17 +203,3 @@ MarkerFactory::createImageFromURI( const URI& uri ) const
 
     return 0L;
 }
-
-//URI
-//MarkerFactory::getRawURI( const MarkerSymbol* marker ) const
-//{
-//    if ( marker )
-//    {
-//        StringVector tok;
-//        StringTokenizer( marker->url()->full(), tok, "()" );
-//        if ( tok.size() > 0 )
-//            return URI( tok[tok.size()-1], marker->url()->context() );
-//    }
-//    return URI();
-//}
-

@@ -268,6 +268,8 @@ MeshConsolidator::run( osg::Geode& geode )
 
     std::vector<osg::ref_ptr<osg::Geometry> > nonOptimizedGeoms;
 
+    osg::StateSet* unifiedStateSet = 0L;
+
     for( unsigned i=0; i<geode.getNumDrawables(); ++i )
     {
         osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
@@ -278,6 +280,12 @@ MeshConsolidator::run( osg::Geode& geode )
                 nonOptimizedGeoms.push_back(geom);
                 continue;
             }
+
+            // merge in the stateset:
+            if ( unifiedStateSet == 0L )
+                unifiedStateSet = geom->getStateSet();
+            else if ( geom->getStateSet() )
+                unifiedStateSet->merge( *geom->getStateSet() );                
 
             // copy over the verts:
             osg::Vec3Array* geomVerts = dynamic_cast<osg::Vec3Array*>( geom->getVertexArray() );
@@ -381,6 +389,7 @@ MeshConsolidator::run( osg::Geode& geode )
     }
 
     newGeom->setPrimitiveSetList( newPrimSets );
+    newGeom->setStateSet( unifiedStateSet );
 
     // replace the geode's drawables
     geode.removeDrawables( 0, geode.getNumDrawables() );

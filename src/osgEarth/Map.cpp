@@ -242,18 +242,17 @@ Map::getProfile() const
 Cache*
 Map::getCache() const
 {
-    if ( !_cache.valid() && _mapOptions.cache().isSet() )
+    if ( !_cache.valid() )
     {
         Cache* cache = 0L;
 
         // if there's a cache override in the registry, install it now.
-	    if ( osgEarth::Registry::instance()->getCacheOverride() )
-	    {
-		    OE_INFO << LC << "Overriding map cache with global cache override" << std::endl;
-		    cache = osgEarth::Registry::instance()->getCacheOverride();
-	    }
+        if ( osgEarth::Registry::instance()->getCacheOverride() )
+        {
+            cache = osgEarth::Registry::instance()->getCacheOverride();
+        }
 
-        if ( !cache )
+        else if ( _mapOptions.cache().isSet() )
         {
             cache = CacheFactory::create( _mapOptions.cache().get() );
         }

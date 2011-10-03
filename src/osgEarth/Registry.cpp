@@ -19,6 +19,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/ShaderComposition>
+#include <osgEarth/Caching>
 #include <osg/Notify>
 #include <gdal_priv.h>
 #include <ogr_api.h>
@@ -31,6 +32,8 @@ using namespace OpenThreads;
 #define STR_GLOBAL_MERCATOR "global-mercator"
 #define STR_CUBE            "cube"
 #define STR_LOCAL           "local"
+
+#define LC "[Registry] "
 
 // from MimeTypes.cpp
 extern const char* builtinMimeTypeExtMappings[];
@@ -67,6 +70,16 @@ _caps( 0L )
     _defaultOptions = new osgDB::Options();
     _defaultOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
         ((int)_defaultOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
+
+    // see if there's a cache in the envvar
+    const char* cachePath = ::getenv("OSGEARTH_CACHE_PATH");
+    if ( cachePath )
+    {
+        TMSCacheOptions tmso;
+        tmso.setPath( std::string(cachePath) );
+        setCacheOverride( new TMSCache(tmso) );
+        OE_INFO << LC << "Setting cache (from env.var.) to " << tmso.path() << std::endl;
+    }
 }
 
 Registry::~Registry()

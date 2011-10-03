@@ -63,8 +63,8 @@ namespace osgEarth
         OpenThreads::ReentrantMutex& getGDALMutex();
 
         /** Global override of map caching settings. */
-		Cache* getCacheOverride() const;
-		void setCacheOverride( Cache* cacheOverride );
+        Cache* getCacheOverride() const;
+        void setCacheOverride( Cache* cacheOverride );
 
         /** Registers a mapping of a mime-type to an extension. A process fetching data
           * over HTTP can use this facility to determine the proper ReaderWriter to use

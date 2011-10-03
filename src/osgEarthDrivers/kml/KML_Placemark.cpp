@@ -62,7 +62,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     osg::Vec3d position;
     KML_Geometry geometry;
     geometry.build(conf, cx, style);
-    if ( geometry._geom.valid() && geometry._geom->size() > 0 )
+    if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 0 )
     {
         Geometry* geom = geometry._geom.get();
         position = geom->getBounds().center();
@@ -74,7 +74,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     PlacemarkNode* pNode = 0L;
 
     // if we have a non-single-point geometry, render it.
-    if ( geometry._geom.valid() && geometry._geom->size() != 1 )
+    if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 1 )
     {
         const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
         const AltitudeSymbol* alt = style.get<AltitudeSymbol>();

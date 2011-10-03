@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "KML_NetworkLink"
+#include <osgEarth/GeoMath>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 
@@ -52,26 +53,37 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         const Config& llaBoxConf = regionConf.child("latlonaltbox");
         if ( llaBoxConf.empty() )
             return;
+
         GeoExtent llaExtent(
             cx._mapNode->getMap()->getProfile()->getSRS()->getGeographicSRS(),
-            conf.value<double>(regionConf.value("west"),  0.0),
-            conf.value<double>(regionConf.value("south"), 0.0),
-            conf.value<double>(regionConf.value("east"),  0.0),
-            conf.value<double>(regionConf.value("north"), 0.0) );
-        GeoExtent mapExtent = llaExtent.transform( cx._mapNode->getMap()->getProfile()->getSRS() );
+            llaBoxConf.value<double>("west",  0.0),
+            llaBoxConf.value<double>("south", 0.0),
+            llaBoxConf.value<double>("east",  0.0),
+            llaBoxConf.value<double>("north", 0.0) );
+
         double x, y;
-        mapExtent.getCentroid( x, y );
+        llaExtent.getCentroid( x, y );
         osg::Vec3d lodCenter;
-        cx._mapNode->getMap()->mapPointToWorldPoint( osg::Vec3d(x,y,0), lodCenter );
+        llaExtent.getSRS()->transformToECEF( osg::Vec3d(x,y,0), lodCenter );
+        //cx._mapNode->getMap()->mapPointToWorldPoint( osg::Vec3d(x,y,0), lodCenter );
+
+        // figure the tile radius:
+        double d = 0.5 * GeoMath::distance(
+            osg::DegreesToRadians(llaExtent.yMin()), osg::DegreesToRadians(llaExtent.xMin()),
+            osg::DegreesToRadians(llaExtent.yMax()), osg::DegreesToRadians(llaExtent.xMax()) );
 
         // parse the LOD ranges:
         float minRange = 0, maxRange = 1e6;
-        const Config& lodConf = conf.child("lod");
+        const Config& lodConf = regionConf.child("lod");
         if ( !lodConf.empty() ) 
         {
             // swapped
-            maxRange = conf.value<float>( "minlodpixels", maxRange );
-            minRange = conf.value<float>( "maxlodpixels", minRange );
+            minRange = lodConf.value<float>( "minlodpixels", 0.0f );
+            if ( minRange < 0.0f )
+                minRange = 0.0f;
+            maxRange = lodConf.value<float>( "maxlodpixels", FLT_MAX );
+            if ( maxRange < 0.0f )
+                maxRange = FLT_MAX;
         }
 
         // build the node
@@ -81,10 +93,14 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         plod->setFileName( 0, href );
         plod->setRange( 0, minRange, maxRange );
         plod->setCenter( lodCenter );
+        plod->setRadius( d );
         osgDB::Options* options = new osgDB::Options();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         plod->setDatabaseOptions( options );
-        plod->setNodeMask( open ? ~0 : 0 );
+        //plod->setNodeMask( open ? ~0 : 0 );
+
+        OE_INFO << 
+            "PLOD: radius = " << d << ", minRange=" << minRange << ", maxRange=" << maxRange << std::endl;
 
         cx._groupStack.top()->addChild( plod );
     }

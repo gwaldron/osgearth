@@ -420,6 +420,8 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
         buf << xmlDoc.ErrorDesc() << " (row " << xmlDoc.ErrorRow() << ", col " << xmlDoc.ErrorCol() << ")";
         std::string str = buf.str();
         OE_WARN << "Error in XML document: " << str << std::endl;
+        if ( !uriContext.referrer().empty() )
+            OE_WARN << uriContext.referrer() << std::endl;
     }
 
     if ( !xmlDoc.Error() && xmlDoc.RootElement() )

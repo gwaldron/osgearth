@@ -252,9 +252,6 @@ HTTPResponse::getMimeType() const {
 #define QUOTE(X) QUOTE_(X)
 #define USER_AGENT "osgearth" QUOTE(OSGEARTH_MAJOR_VERSION) "." QUOTE(OSGEARTH_MINOR_VERSION)
 
-//typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> >    ThreadClientMap;        
-//static Threading::ReadWriteMutex   _threadClientMapMutex;
-//static ThreadClientMap             _threadClientMap;
 
 static optional<ProxySettings>     _proxySettings;
 static std::string                 _userAgent = USER_AGENT;
@@ -263,6 +260,7 @@ static std::string                 _userAgent = USER_AGENT;
 HTTPClient&
 HTTPClient::getClient()
 {
+#if 1
     static Threading::PerThread< osg::ref_ptr<HTTPClient> > s_clientPerThread;
 
     osg::ref_ptr<HTTPClient>& client = s_clientPerThread.get();
@@ -270,9 +268,11 @@ HTTPClient::getClient()
         client = new HTTPClient();
 
     return *client.get();
-}
+#else
+    typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> > ThreadClientMap;        
+    static Threading::ReadWriteMutex   _threadClientMapMutex;
+    static ThreadClientMap             _threadClientMap;
 
-#if 0
     OpenThreads::Thread* current = OpenThreads::Thread::CurrentThread();
 
     // first try the map:
@@ -293,8 +293,8 @@ HTTPClient::getClient()
         _threadClientMap[current] = client;
         return *client;
     }
-}
 #endif
+}
 
 HTTPClient::HTTPClient()
 {

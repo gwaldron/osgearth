@@ -21,6 +21,8 @@
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 
+#define LC "[KML_NetworkLink] "
+
 void
 KML_NetworkLink::build( const Config& conf, KMLContext& cx )
 {
@@ -42,10 +44,6 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
     // "open" determines whether to load it immediately
     bool open = conf.value<bool>("open", false);
 
-    // helps osgDB realize it's a KML file ...
-    //if ( !endsWith(href, ".kml") && !endsWith(href, ".kmz") )
-    //    href += "&.kml";
-
     // if it's region-bound, parse it as a paged LOD:
     const Config& regionConf = conf.child("region");
     if ( !regionConf.empty() )
@@ -65,7 +63,6 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         llaExtent.getCentroid( x, y );
         osg::Vec3d lodCenter;
         llaExtent.getSRS()->transformToECEF( osg::Vec3d(x,y,0), lodCenter );
-        //cx._mapNode->getMap()->mapPointToWorldPoint( osg::Vec3d(x,y,0), lodCenter );
 
         // figure the tile radius:
         double d = 0.5 * GeoMath::distance(
@@ -99,7 +96,7 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         plod->setDatabaseOptions( options );
         //plod->setNodeMask( open ? ~0 : 0 );
 
-        OE_INFO << 
+        OE_DEBUG << LC << 
             "PLOD: radius = " << d << ", minRange=" << minRange << ", maxRange=" << maxRange << std::endl;
 
         cx._groupStack.top()->addChild( plod );

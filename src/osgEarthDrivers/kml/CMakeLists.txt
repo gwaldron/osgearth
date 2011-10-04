@@ -84,7 +84,8 @@ SET(TARGET_SRC
     KMZArchive.cpp
 )
     
-
 SETUP_PLUGIN(kml)
 
+SET(LIB_NAME kml)
 SET(LIB_PUBLIC_HEADERS KML KMLOptions)
+INCLUDE(ModuleInstallOsgEarthDriverIncludes OPTIONAL)

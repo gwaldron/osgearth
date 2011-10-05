@@ -18,9 +18,9 @@
  */
 #include "KML_GroundOverlay"
 #include "KML_Geometry"
-#include <osgEarthUtil/ImageOverlay>
+#include <osgEarthAnnotation/ImageOverlay>
 
-using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
 
 void
 KML_GroundOverlay::scan( const Config& conf, KMLContext& cx )

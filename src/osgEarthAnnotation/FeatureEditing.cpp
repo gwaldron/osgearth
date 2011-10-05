@@ -17,10 +17,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarthUtil/FeatureEditing>
-#include <osgEarthUtil/Draggers>
+#include <osgEarthAnnotation/FeatureEditing>
+#include <osgEarthAnnotation/Draggers>
 
-using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
 

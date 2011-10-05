@@ -19,18 +19,20 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Annotation>
-#include <osgEarthUtil/ImageOverlay>
-#include <osgEarthUtil/ImageOverlayEditor>
+#include <osgEarthAnnotation/ImageOverlay>
+#include <osgEarthAnnotation/ImageOverlayEditor>
+#include <osgEarthAnnotation/CircleNode>
+#include <osgEarthAnnotation/EllipseNode>
+#include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 
 using namespace osgEarth;
+using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Util::Annotation;
 
 int
 usage( char** argv )
@@ -71,14 +73,14 @@ main(int argc, char** argv)
     root->addChild( annoGroup );
 
     // a Placemark combines a 2D icon with a text label.
-    annoGroup->addChild( new PlacemarkNode(
+    annoGroup->addChild( new PlaceNode(
         mapNode, 
         osg::Vec3d(-74, 40.714, 0), 
         URI("../data/placemark32.png").readImage(),
         "New York") );
 
     // a Placemark combines a 2D icon with a text label.
-    annoGroup->addChild( new PlacemarkNode(
+    annoGroup->addChild( new PlaceNode(
         mapNode, 
         osg::Vec3d(139.75, 35.685, 0), 
         URI("../data/placemark32.png").readImage(),

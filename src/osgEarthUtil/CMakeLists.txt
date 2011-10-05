@@ -9,7 +9,6 @@ SET(LIB_NAME osgEarthUtil)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS  
-    Annotation  
     AutoClipPlaneHandler
     Common
     Controls
@@ -19,7 +18,6 @@ SET(LIB_PUBLIC_HEADERS
     Export
     Formatters
     Graticule
-	ImageOverlay	
 	MeasureTool
     ObjectPlacer
     ObjectLocator
@@ -33,7 +31,6 @@ SET(LIB_PUBLIC_HEADERS
 )
 
 SET(LIB_COMMON_FILES
-    Annotation.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
@@ -41,7 +38,6 @@ SET(LIB_COMMON_FILES
     ElevationManager.cpp
     Formatters.cpp
     Graticule.cpp
-	ImageOverlay.cpp
 	MeasureTool.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
@@ -53,27 +49,10 @@ SET(LIB_COMMON_FILES
     WMS.cpp
 )
 
-IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6")
-SET(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS}
-    Draggers
-	FeatureEditing
-	ImageOverlayEditor
-	)
-	
-SET(LIB_COMMON_FILES ${LIB_COMMON_FILES} 
-    Draggers.cpp
-	FeatureEditing.cpp
-    ImageOverlayEditor.cpp
-    )
-ENDIF()
-
-
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}  
 	${LIB_COMMON_FILES}
 )
-
-
 
 INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})
 

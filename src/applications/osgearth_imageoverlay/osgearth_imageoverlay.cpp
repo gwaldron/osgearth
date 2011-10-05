@@ -33,12 +33,13 @@
 #include <osg/Version>
 #include <osgEarth/Version>
 
-#include <osgEarthUtil/ImageOverlay>
+#include <osgEarthAnnotation/ImageOverlay>
 #if OSG_MIN_VERSION_REQUIRED(2,9,6)
-#include <osgEarthUtil/ImageOverlayEditor>
+#include <osgEarthAnnotation/ImageOverlayEditor>
 #endif
 
 using namespace osgEarth;
+using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 

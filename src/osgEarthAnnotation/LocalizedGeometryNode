@@ -1,0 +1,86 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNO_LOCALIZED_GEOM_NODE_H
+#define OSGEARTH_ANNO_LOCALIZED_GEOM_NODE_H 1
+
+#include <osgEarthAnnotation/Common>
+#include <osgEarth/MapNode>
+#include <osgEarth/GeoMath>
+#include <osgEarth/DrapeableNode>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/Style>
+#include <osgEarthUtil/Controls>
+#include <osgEarthUtil/Viewpoint>
+#include <osg/MatrixTransform>
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Simple node that renders a Geometry into a scene graph node. The coordinates
+     * of the geometry are explicit; there is no association with spatial reference
+     * or a map. You can use this object to create a geometry for use in a local
+     * tangent plane coordinate system.
+     */
+    class OSGEARTHUTIL_EXPORT GeometryNode : public DrapeableNode
+    {
+    public:
+        GeometryNode( Geometry* geom, const Style& style );
+
+        GeometryNode( MapNode* mapNode, Geometry* geom, const Style& style, bool draped =true );
+
+        /**
+         * Gets or creates a parent node for the internal draped node. Typically you
+         * would use this to install a Transform node atop the draped node.
+         */
+        template<typename T>
+        T* getOrCreateParent()
+        {
+            if ( _parent.valid() )
+            {
+                return static_cast<T*>( _parent.get() );
+            }
+            else
+            {
+                T* p = new T();
+                _parent = p;
+                if ( getNode() )
+                {
+                    p->addChild( getNode() );
+                    setNode( _parent.get() );
+                }
+                return p;
+            }
+        }
+
+    protected:
+        void init();
+
+        osg::ref_ptr<Geometry>   _geom;
+        Style                    _style;
+        osg::ref_ptr<osg::Group> _parent;
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNO_LOCALIZED_GEOM_NODE_H

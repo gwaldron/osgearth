@@ -20,10 +20,11 @@
 #include "KML_Geometry"
 #include "KML_Style"
 #include <osgEarthFeatures/MarkerFactory>
-#include <osgEarthUtil/Annotation>
+#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthAnnotation/PlaceNode>
 
 using namespace osgEarth::Features;
-using namespace osgEarth::Util::Annotation;
+using namespace osgEarth::Annotation;
 
 void 
 KML_Placemark::build( const Config& conf, KMLContext& cx )
@@ -70,8 +71,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
     }
 
-    FeatureNode*   fNode = 0L;
-    PlacemarkNode* pNode = 0L;
+    FeatureNode* fNode = 0L;
+    PlaceNode*   pNode = 0L;
 
     // if we have a non-single-point geometry, render it.
     if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 1 )
@@ -109,7 +110,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             style.addSymbol( cx._options->defaultTextSymbol().get() );
         }
 
-        pNode = new PlacemarkNode( cx._mapNode, position, image, text, style );
+        pNode = new PlaceNode( cx._mapNode, position, image, text, style );
     }
 
     if ( fNode && pNode )

@@ -17,21 +17,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHUTIL_FEATUREEDITING_H
-#define OSGEARTHUTIL_FEATUREEDITING_H 1
+#ifndef OSGEARTHANNO_FEATURE_EDITING_H
+#define OSGEARTHANNO_FEATURE_EDITING_H 1
 
-#include <osgEarthUtil/Common>
+#include <osgEarthAnnotation/Common>
 #include <osgEarth/MapNode>
 #include <osgEarthFeatures/FeatureListSource>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 
-namespace osgEarth { namespace Util {
+namespace osgEarth { namespace Annotation {
 
     /**
      * AddPointHandler is a GUIEventHandler that allows you to append points to a Feature's Geometry
      */
-    struct OSGEARTHUTIL_EXPORT AddPointHandler : public osgGA::GUIEventHandler 
+    struct OSGEARTHANNO_EXPORT AddPointHandler : public osgGA::GUIEventHandler 
     {
     public:
         /**
@@ -77,7 +77,7 @@ namespace osgEarth { namespace Util {
     /**
      * Node you can add to your scene graph to edit the verts of a Feature's Geometry
      */
-    class OSGEARTHUTIL_EXPORT FeatureEditor : public osg::Group
+    class OSGEARTHANNO_EXPORT FeatureEditor : public osg::Group
     {
     public:
          /**
@@ -135,5 +135,6 @@ namespace osgEarth { namespace Util {
         osg::ref_ptr< osgEarth::MapNode > _mapNode;
     };
 
-}}
-#endif
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTHANNO_FEATURE_EDITING_H

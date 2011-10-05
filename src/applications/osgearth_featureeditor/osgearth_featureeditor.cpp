@@ -41,7 +41,7 @@
 
 #include <osgEarthUtil/Controls>
 
-#include <osgEarthUtil/FeatureEditing>
+#include <osgEarthAnnotation/FeatureEditing>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -49,6 +49,7 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Annotation;
 
 osg::Vec4
 randomColor()

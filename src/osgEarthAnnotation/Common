@@ -16,26 +16,16 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_DRIVER_KML_KML_OBJECT
-#define OSGEARTH_DRIVER_KML_KML_OBJECT 1
 
-#include "KML_Common"
-#include <osgEarthAnnotation/AnnotationData>
+#ifndef OSGEARTH_ANNOTATION_COMMON_H
+#define OSGEARTH_ANNOTATION_COMMON_H 1
 
-using namespace osgEarth;
-using namespace osgEarth::Annotation;
+#include <osgEarth/Common>
+#include <osgEarthAnnotation/Export>
 
-struct KML_Object
-{
-    virtual void scan( const Config& conf, KMLContext& cx ) { }
+// common utilities
+namespace osgEarth { namespace Annotation {
     
-    virtual void scan2( const Config& conf, KMLContext& cx ) { }
+} } // namespace osgEarth::Annotation
 
-    virtual void build( const Config& conf, KMLContext& cx, osg::Node* working );
-
-protected:
-
-    AnnotationData* getOrCreateAnnotationData( osg::Node* node );
-};
-
-#endif // OSGEARTH_DRIVER_KML_KML_OBJECT
+#endif // OSGEARTH_ANNOTATION_COMMON_H

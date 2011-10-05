@@ -9,7 +9,12 @@ IF(WIN32)
     ENDIF(CURL_IS_STATIC)
 ENDIF(WIN32)
     
-SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthFeatures osgEarthSymbology osgEarthUtil)
+set(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} 
+    osgEarthFeatures 
+    osgEarthSymbology 
+    osgEarthUtil
+    osgEarthAnnotation
+)
 
 IF( MINIZIP_FOUND )
     SET(TARGET_LIBRARIES_VARS ZLIB_LIBRARY MINIZIP_LIBRARY )

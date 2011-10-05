@@ -16,16 +16,15 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-
+#include <osgEarthAnnotation/Draggers>
 #include <osg/AutoTransform>
 #include <osgViewer/View>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
-#include <osgEarthUtil/Draggers>
 #include <osg/io_utils>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
 
 /**********************************************************/
 TranslateCommand::TranslateCommand():

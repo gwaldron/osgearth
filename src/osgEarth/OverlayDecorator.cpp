@@ -216,14 +216,14 @@ namespace
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_textureUnit( 1 ),
-_textureSize( 1024 ),
-_useShaders( false ),
-_useWarping( false ),
-_warp( 1.0f ),
+_textureUnit  ( 1 ),
+_textureSize  ( 1024 ),
+_useShaders   ( false ),
+_useWarping   ( false ),
+_warp         ( 1.0f ),
 _visualizeWarp( false ),
-_mipmapping( true ),
-_rttBlending( true )
+_mipmapping   ( true ),
+_rttBlending  ( true )
 {
     // nop
 }
@@ -596,8 +596,8 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
 
     if ( !_textureSize.isSet() )
     {
-        int maxSize = Registry::instance()->getCapabilities().getMaxTextureSize();
-        _textureSize.init( osg::minimum( 4096, maxSize ) );
+        unsigned maxSize = Registry::instance()->getCapabilities().getMaxFastTextureSize();
+        _textureSize.init( osg::minimum( 4096u, maxSize ) );
 
         OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
     }
@@ -908,7 +908,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
             _rttCamera->accept( nv );
             _texGenNode->accept( nv );
 
-            //_subgraphContainer->accept( nv );
             osg::Group::traverse( nv );
         }    
     }
@@ -925,44 +924,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
 
         if ( cv )
             cv->popStateSet();
-        //_subgraphContainer->accept( nv );
     }
 }
 
-
-#if 0
-/** Override all the osg::Group methods: */
-
-bool 
-OverlayDecorator::addChild( Node *child ) {
-    if ( !child ) return false;
-    dirtyBound();
-    return _subgraphContainer->addChild( child );
-}
-bool 
-OverlayDecorator::insertChild( unsigned int index, Node *child ) {
-    if ( !child ) return false;
-    dirtyBound();
-    return _subgraphContainer->insertChild( index, child );
-}
-bool 
-OverlayDecorator::removeChildren(unsigned int pos,unsigned int numChildrenToRemove) {
-    dirtyBound();
-    return _subgraphContainer->removeChildren( pos, numChildrenToRemove );
-}
-bool 
-OverlayDecorator::replaceChild( Node *origChild, Node* newChild ) {
-    dirtyBound();
-    return _subgraphContainer->replaceChild( origChild, newChild );
-}
-bool 
-OverlayDecorator::setChild( unsigned  int i, Node* node ) {
-    dirtyBound();
-    return _subgraphContainer->setChild( i, node );
-}
-
-osg::BoundingSphere
-OverlayDecorator::computeBound() const {
-    return _subgraphContainer->computeBound();
-}
-#endif

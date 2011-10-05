@@ -24,8 +24,10 @@
 using namespace osgEarth;
 
 DrapeableNode::DrapeableNode( MapNode* mapNode, bool draped ) :
-_mapNode( mapNode ), 
-_draped ( draped )
+_mapNode  ( mapNode ),
+_newDraped( draped ),
+_draped   ( false ),
+_dirty    ( false )
 {
     // create a container group that will house the culler. This culler
     // allows a draped node, which sits under the MapNode's OverlayDecorator,
@@ -33,23 +35,20 @@ _draped ( draped )
     _nodeContainer = new osg::Group();
     _nodeContainer->setCullCallback( new CullNodeByFrameNumber() );
     _nodeContainer->setStateSet( this->getOrCreateStateSet() ); // share the stateset
-    _dirty = false;
 }
 
 void
 DrapeableNode::applyChanges()
-{
+{    
+    if ( _newDraped != _draped )
+    {
+        setDrapedImpl( _newDraped );
+    }
+
     if ( _newNode.valid() )
     {
         setNodeImpl( _newNode.get() );
         _newNode = 0L;
-    }
-    
-    if ( _newDraped != _draped )
-    {
-        //bool oldDraped = _draped;
-        setDrapedImpl( _newDraped );
-        //_newDraped = oldDraped;
     }
 }
 
@@ -57,16 +56,22 @@ void
 DrapeableNode::setNode( osg::Node* node )
 {
     _newNode = node;
-    _dirty = true;
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    if ( !_dirty )
+    {
+        _dirty = true;
+        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    }
 }
 
 void
 DrapeableNode::setDraped( bool draped )
 {
     _newDraped = draped;
-    _dirty = true;
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    if ( !_dirty )
+    {
+        _dirty = true;
+        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    }
 }
 
 void
@@ -134,8 +139,8 @@ DrapeableNode::traverse( osg::NodeVisitor& nv )
         if ( _dirty )
         {
             applyChanges();
-            _dirty = false;
 
+            _dirty = false;
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
         }
 

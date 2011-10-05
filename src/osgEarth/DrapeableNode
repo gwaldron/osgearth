@@ -57,7 +57,7 @@ namespace osgEarth
         osg::ref_ptr<osg::Node>    _node;
         osg::ref_ptr<osg::Group>   _nodeContainer;
 
-        bool                    _dirty;
+        int                     _dirty;
         bool                    _newDraped;
         osg::ref_ptr<osg::Node> _newNode;
 

@@ -47,9 +47,9 @@ DrapeableNode::applyChanges()
     
     if ( _newDraped != _draped )
     {
-        bool oldDraped = _draped;
+        //bool oldDraped = _draped;
         setDrapedImpl( _newDraped );
-        _newDraped = oldDraped;
+        //_newDraped = oldDraped;
     }
 }
 
@@ -129,11 +129,21 @@ DrapeableNode::traverse( osg::NodeVisitor& nv )
         cb->_frame = nv.getFrameStamp()->getFrameNumber();
     }
 
-    if ( _dirty &&  nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
-        applyChanges();
-        _dirty = false;
-        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        if ( _dirty )
+        {
+            applyChanges();
+            _dirty = false;
+
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
+
+        // traverse the subgraph
+        if ( _nodeContainer.valid() && this->getNumChildrenRequiringUpdateTraversal() > 0 )
+        {
+            _nodeContainer->accept( nv );
+        }
     }
 
     osg::Group::traverse( nv );

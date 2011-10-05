@@ -21,6 +21,7 @@
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 
+#undef  LC
 #define LC "[KML_NetworkLink] "
 
 void

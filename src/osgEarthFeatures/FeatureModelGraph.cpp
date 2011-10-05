@@ -23,6 +23,7 @@
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ElevationQuery>
 #include <osg/PagedLOD>
+#include <osg/ProxyNode>
 #include <osgDB/FileNameUtils>
 #include <osgDB/ReaderWriter>
 #include <osgDB/WriteFile>
@@ -33,6 +34,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
+
+#undef USE_PROXY_NODE_FOR_TESTING
 
 //---------------------------------------------------------------------------
 
@@ -50,6 +53,23 @@ namespace
         buf << uid << "." << lod << "_" << x << "_" << y << ".osgearth_pseudo_fmg";
         std::string str = buf.str();
         return str;
+    }
+
+    osg::Group* createPagedNode( const osg::BoundingSphered& bs, const std::string& uri, float minRange, float maxRange )
+    {
+#ifdef USE_PROXY_NODE_FOR_TESTING
+        osg::ProxyNode* p = new osg::ProxyNode();
+        p->setCenter( bs.center() );
+        p->setRadius( bs.radius() );
+        p->setFileName( 0, uri );
+#else
+        osg::PagedLOD* p = new osg::PagedLOD();
+        p->setCenter( bs.center() );
+        p->setRadius( bs.radius() );
+        p->setFileName( 0, uri );
+        p->setRange( 0, minRange, maxRange );
+#endif
+        return p;
     }
 }
 
@@ -69,15 +89,6 @@ struct osgEarthFeatureModelPseudoLoader : public osgDB::ReaderWriter
     {
         if ( !acceptsExtension( osgDB::getLowerCaseFileExtension(uri) ) )
             return ReadResult::FILE_NOT_HANDLED;
-
-        //UID uid;
-        //unsigned levelIndex, x, y;
-        //sscanf( uri.c_str(), "%u.%d_%d_%d.%*s", &uid, &levelIndex, &x, &y );
-        //FeatureModelGraph* graph = getGraph(uid);
-        //if ( graph )
-        //    return ReadResult( graph->load( levelIndex, x, y, uri ) );
-        //else
-        //    return ReadResult::ERROR_IN_READING_FILE;
 
         UID uid;
         unsigned lod, x, y;
@@ -267,12 +278,8 @@ FeatureModelGraph::setupPaging()
     std::string uri = s_makeURI( _uid, 0, 0, 0 );
 
     // bulid the top level Paged LOD:
-    osg::PagedLOD* topPlod = new osg::PagedLOD();
-    topPlod->setCenter( bs.center() );
-    topPlod->setRadius( bs.radius() );
-    topPlod->setFileName( 0, uri );
-    topPlod->setRange( 0, 0, maxRange );
-    this->addChild( topPlod );
+    osg::Group* pagedNode = createPagedNode( bs, uri, 0.0f, maxRange );
+    this->addChild( pagedNode );
 }
 
 osg::Node*
@@ -443,16 +450,8 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     << "; radius = " << subtile_bs.radius()
                     << std::endl;
 
-                osg::PagedLOD* plod = new osg::PagedLOD();
-                plod->setName( uri );
-                // We don't really know the exact center/radius beforehand, since we have yet to generate any data,
-                // so approximate it by using the tile bounds...
-                plod->setCenter  ( subtile_bs.center() );
-                plod->setRadius  ( subtile_bs.radius() );
-                plod->setFileName( 0, uri );
-                plod->setRange   ( 0, 0, maxRange );
-
-                parent->addChild( plod );
+                osg::Group* pagedNode = createPagedNode( subtile_bs, uri, 0.0f, maxRange );
+                parent->addChild( pagedNode );
             }
         }
     }

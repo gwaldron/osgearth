@@ -278,11 +278,6 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             roofBounds = input->getBounds();
 
-            roofTexSpanX = roofSkin->imageWidth().isSet() ? *roofSkin->imageWidth() : roofSkin->imageHeight().isSet() ? *roofSkin->imageHeight() : 10.0;
-            if ( roofTexSpanX <= 0.0 ) roofTexSpanX = 10.0;
-            roofTexSpanY = roofSkin->imageHeight().isSet() ? *roofSkin->imageHeight() : roofSkin->imageWidth().isSet() ? *roofSkin->imageWidth() : 10.0;
-            if ( roofTexSpanY <= 0.0 ) roofTexSpanY = 10.0;
-
             // if our data is lat/long, we need to reproject the geometry and the bounds into a projected
             // coordinate system in order to properly generate tex coords.
             if ( srs->isGeographic() )
@@ -301,6 +296,20 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             
             sinR = sin(roofRotation);
             cosR = cos(roofRotation);
+
+            if ( !roofSkin->isTiled().value() )
+            {
+                //note: doesn't really work
+                roofTexSpanX = cosR*roofBounds.width() - sinR*roofBounds.height();
+                roofTexSpanY = sinR*roofBounds.width() + cosR*roofBounds.height();
+            }
+            else
+            {
+                roofTexSpanX = roofSkin->imageWidth().isSet() ? *roofSkin->imageWidth() : roofSkin->imageHeight().isSet() ? *roofSkin->imageHeight() : 10.0;
+                if ( roofTexSpanX <= 0.0 ) roofTexSpanX = 10.0;
+                roofTexSpanY = roofSkin->imageHeight().isSet() ? *roofSkin->imageHeight() : roofSkin->imageWidth().isSet() ? *roofSkin->imageWidth() : 10.0;
+                if ( roofTexSpanY <= 0.0 ) roofTexSpanY = 10.0;
+            }
         }
     }
 

@@ -276,7 +276,9 @@ OverlayDecorator::reinit()
             // set up the RTT camera:
             _rttCamera = new osg::Camera();
             _rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
-            _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
+            // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
+            // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
+            _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
             _rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
             _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
             _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );

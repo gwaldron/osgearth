@@ -20,6 +20,7 @@
 #include <osgEarth/NodeUtils>
 #include <osg/TemplatePrimitiveFunctor>
 #include <osg/Geode>
+#include <osg/CullSettings>
 #include <vector>
 
 using namespace osgEarth;
@@ -194,6 +195,40 @@ namespace
         float      _maxRadius2;
         std::vector<osg::Matrixd> _matrixStack;
     };
+
+    /**
+     * A customized CCC that works correctly under an RTT camera. The built-in one
+     * called getEyePoint() instead of getViewPoint() and therefore isn't compatible
+     * with osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT mode.
+     */
+    struct MyClusterCullingCallback : public osg::ClusterCullingCallback
+    {
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* , osg::State*) const
+        {
+            osg::CullSettings* cs = dynamic_cast<osg::CullSettings*>(nv);
+            if (cs && !(cs->getCullingMode() & osg::CullSettings::CLUSTER_CULLING))
+            {
+                return false;
+            }
+
+            if (_deviation<=-1.0f)
+            {
+                return false;
+            }
+
+            osg::Vec3 eye_cp = nv->getViewPoint() - _controlPoint;
+            float radius = eye_cp.length();
+
+            if (radius<_radius)
+            {
+                return false;
+            }
+
+            float deviation = (eye_cp * _normal)/radius;
+
+            return deviation < _deviation;
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -217,7 +252,7 @@ ClusterCullerFactory::create( osg::Node* node, const osg::Vec3d& centerECEF )
         ComputeVisitor cv;
         cv.run( node, centerECEF );
 
-        ccc = new osg::ClusterCullingCallback();
+        ccc = new MyClusterCullingCallback(); //osg::ClusterCullingCallback();
         ccc->set( cv._centerECEF, cv._normalECEF, 0.0f, sqrt(cv._maxRadius2) );
     }
     return ccc;

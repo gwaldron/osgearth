@@ -196,7 +196,7 @@ namespace osgEarth
 
     struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
         osg::Vec3d _world;
-        double _r2;
+        double _r, _r2;
         CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model );
         void operator()(osg::Node* node, osg::NodeVisitor* nv );
     };

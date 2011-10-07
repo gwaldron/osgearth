@@ -11,11 +11,14 @@ set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 set(LIB_PUBLIC_HEADERS  
     AnnotationData
     CircleNode
+    Common
     EllipseNode
     Export
     ImageOverlay
+    LocalizedNode
     LocalizedGeometryNode
     PlaceNode
+    TrackNode
 )
 
 set(LIB_COMMON_FILES
@@ -23,8 +26,10 @@ set(LIB_COMMON_FILES
     CircleNode.cpp
     EllipseNode.cpp
     ImageOverlay.cpp
+    LocalizedNode.cpp
     LocalizedGeometryNode.cpp
     PlaceNode.cpp
+    TrackNode.cpp
 )
 
 if( NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6" )

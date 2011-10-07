@@ -41,8 +41,8 @@ namespace osgEarth
          */
         static void transformAndLocalize(
             const osg::Vec3d&       input,
+            const SpatialReference* inputSRS,
             osg::Vec3d&             output,
-            const SpatialReference* srs,
             const osg::Matrixd&     world2local =osg::Matrixd() );
 
         /**
@@ -51,8 +51,8 @@ namespace osgEarth
          */
         static void transformAndLocalize(
             const std::vector<osg::Vec3d>& input,
+            const SpatialReference*        inputSRS,
             osg::Vec3Array*                output,
-            const SpatialReference*        srs,
             const osg::Matrixd&            world2local =osg::Matrixd() );
 
         /**
@@ -60,8 +60,8 @@ namespace osgEarth
          * rotates the point into the local tangent place at that point.
          */
         static void transformAndGetRotationMatrix(
-            const SpatialReference* input_srs,
             const osg::Vec3d&       input,
+            const SpatialReference* input_srs,
             osg::Vec3d&             out_ecef_point,
             osg::Matrixd&           out_rotation );
 

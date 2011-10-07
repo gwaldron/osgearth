@@ -18,38 +18,27 @@
 */
 
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthFeatures/BuildTextFilter>
+#include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
 
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
-                     const osg::Vec3d&  mapPosition,
+                     const osg::Vec3d&  position,
                      osg::Image*        image,
                      const std::string& text,
                      const Style&       style ) :
-_mapNode( mapNode ),
+LocalizedNode( mapNode, position ),
 _image  ( image ),
 _text   ( text ),
 _style  ( style )
 {
     init();
-    setPosition( mapPosition );
-}
-
-void
-PlaceNode::setPosition( const osg::Vec3d& pos )
-{
-    if ( _mapNode.valid() )
-    {
-        osg::Vec3d world;
-        if ( _mapNode->getMap()->mapPointToWorldPoint(pos, world) )
-        {
-            this->setMatrix( osg::Matrix::translate(world) );
-            static_cast<CullNodeByHorizon*>(this->getCullCallback())->_world = world;
-        }
-    }
 }
 
 void
@@ -58,25 +47,13 @@ PlaceNode::init()
     // remove any old stuff to make way for the new stuff.
     this->removeChildren(0, this->getNumChildren());
 
-    this->setCullCallback( new CullNodeByHorizon(
-        osg::Vec3d(0,0,1),
-        _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()) );
-
-    _label = new LabelControl(_text);
-
-    TextSymbol* s = _style.get<TextSymbol>();
-    if ( s )
+    LabelSourceOptions lso;
+    lso.setDriver( "overlay" );
+    osg::ref_ptr<LabelSource> ls = LabelSourceFactory::create( lso );
+    if ( ls.valid() )
     {
-        if ( s->font().isSet() )
-            _label->setFont( osgText::readFontFile( *s->font() ) );
-        if ( s->size().isSet() )
-            _label->setFontSize( *s->size() );
-        if ( s->fill().isSet() )
-            _label->setForeColor( s->fill()->color() );
-        if ( s->halo().isSet() )
-            _label->setHaloColor( s->halo()->color() );
-        if ( s->content().isSet() && _text.empty() )
-            _label->setText( s->content()->eval() );
+        osg::ref_ptr<osg::Node> labelNode = ls->createNode( _text, _style.get<TextSymbol>() );
+        _label = (LabelControl*)dynamic_cast<ControlNode*>(labelNode.get())->getControl();
     }
 
     if ( !_image.valid() )
@@ -106,7 +83,9 @@ PlaceNode::init()
 
     // wrap the other controls in a scene node.
     ControlNode* node = new ControlNode( _container.get() );
-    this->addChild( node );
+
+    this->getTransform()->addChild( node );
+    this->addChild( getTransform() );
 }
 
 void

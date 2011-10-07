@@ -55,6 +55,11 @@ namespace osgEarth { namespace Features
     public: // properties
 
         /**
+         * Whether this context contains complete georeferencing information.
+         */
+        bool isGeoreferenced() const { return _session.valid() && _profile.valid(); }
+
+        /**
          * Access to the Session under which this filter context operates
          */
         Session* getSession() { return _session.get(); }

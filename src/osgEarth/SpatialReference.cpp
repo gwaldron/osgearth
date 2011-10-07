@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/LocalTangentPlane>
+#include <osgEarth/ECEF>
 #include <OpenThreads/ScopedLock>
 #include <osg/Notify>
 #include <ogr_api.h>
@@ -685,6 +686,21 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
         locator->setTransform( getTransformFromExtents( xmin, ymin, xmax, ymax ) );
     }
     return locator;
+}
+
+void
+SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
+{
+    if ( isProjected() )
+    {
+        out_local2world = osg::Matrix::translate(xyz);
+    }
+    else
+    {
+        getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
+            osg::DegreesToRadians(xyz.y()), osg::DegreesToRadians(xyz.x()), xyz.z(),
+            out_local2world);
+    }
 }
 
 bool

@@ -17,8 +17,10 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthAnnotation/LocalizedGeometryNode>
+#include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
+#include <osgEarth/MapNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -27,24 +29,40 @@ using namespace osgEarth::Symbology;
 
 
 EllipseNode::EllipseNode(MapNode*          mapNode,
-                         const osg::Vec3d& center,
+                         const osg::Vec3d& position,
                          const Linear&     radiusMajor,
                          const Linear&     radiusMinor,
                          const Angular&    rotationAngle,
                          const Style&      style,
                          bool              draped,
                          unsigned          numSegments) :
-FeatureNode( mapNode, 0L, draped )
+LocalizedNode( mapNode, position )
 {
     if ( mapNode )
     {
-        GeometryFactory factory( mapNode->getMap()->getProfile()->getSRS() );
-        Geometry* geom = factory.createEllipse(center, radiusMajor, radiusMinor, rotationAngle, numSegments);
+        // construct a local-origin circle.
+        GeometryFactory factory;
+        Geometry* geom = factory.createEllipse(osg::Vec3d(0,0,0), radiusMajor, radiusMinor, rotationAngle, numSegments);
         if ( geom )
         {
-            Feature* feature = new Feature( geom, style );
-            feature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
-            setFeature( feature );
+            if ( draped )
+            {
+                DrapedGeometryNode* dg = new DrapedGeometryNode( mapNode, geom, style, getTransform() );
+                this->addChild( dg );
+            }
+            else
+            {
+                osg::ref_ptr<Feature> f = new Feature( geom );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                GeometryCompiler compiler;
+                FilterContext cx;
+                osg::Node* node = compiler.compile( f.get(), style, cx );
+                if ( node )
+                {
+                    getTransform()->addChild( node );
+                    this->addChild( getTransform() );
+                }
+            }
         }
     }
 }

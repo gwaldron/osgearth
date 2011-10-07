@@ -166,12 +166,7 @@ main(int argc, char** argv)
         
         osg::Node* editor = new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
         root->addChild( editor );
-
-
-
     }
-
-
 
 
     // initialize a viewer:
@@ -179,6 +174,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
+#if 0
     // make a little HUD to toggle stuff:
     VBox* vbox = new VBox();
     vbox->setBackColor( Color(Color::Black, 0.5) );
@@ -204,6 +200,7 @@ main(int argc, char** argv)
         grid->setControl( 1, 5, new LabelControl("Image overlay") );
     }
     ControlCanvas::get(&viewer,true)->addControl(vbox);
+#endif
 
     // add some stock OSG handlers:
     viewer.getDatabasePager()->setDoPreCompile( true );

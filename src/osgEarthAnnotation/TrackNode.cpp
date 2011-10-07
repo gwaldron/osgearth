@@ -17,38 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarthAnnotation/LocalizedGeometryNode>
-#include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthAnnotation/TrackNode>
 #include <osgEarth/Utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
-
-
-DrapedGeometryNode::DrapedGeometryNode(MapNode*     mapNode,
-                                       Geometry*    geom,
-                                       const Style& style,
-                                       osg::Group*  parent ) :
-DrapeableNode( mapNode, true )
-{
-    osg::ref_ptr<Feature> feature = new Feature( geom );
-
-    GeometryCompiler compiler;
-    FilterContext cx( new Session(mapNode->getMap()) );
-    osg::Node* node = compiler.compile( feature.get(), style, cx );
-    if ( node )
-    {
-        if ( parent )
-        {
-            parent->addChild( node );
-            setNode( parent );
-        }
-        else
-        {
-            setNode( node );
-        }
-    }
-
-    getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
-}

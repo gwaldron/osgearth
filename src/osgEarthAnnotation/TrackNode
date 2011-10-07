@@ -16,41 +16,33 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#ifndef OSGEARTH_ANNOTATION_TRACK_NODE_H
+#define OSGEARTH_ANNOTATION_TRACK_NODE_H 1
 
-#ifndef OSGEARTH_ANNOTATION_ELLIPSE_NODE_H
-#define OSGEARTH_ANNOTATION_ELLIPSE_NODE_H 1
-
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/Common>
+#include <osgEarth/MapNode>
 #include <osgEarthSymbology/Style>
-#include <osgEarth/Units>
+#include <osgEarthUtil/Controls>
+#include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
-    using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
+    using namespace osgEarth::Util::Controls;
 
-    // forward declares
-    class osgEarth::MapNode;
-    class osgEarth::Features::FeatureNode;
-
+#if 0
     /** 
-     * Renders an ellipse that can drape on a MapNode terrain.    
+     * TrackNode is a movable, single-point entity represented by an icon,
+     * optional placeable text labels, and optional localized geometry.
      */
-    class OSGEARTHANNO_EXPORT EllipseNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT TrackNode : public osg::MatrixTransform
     {
     public:
-        EllipseNode( 
-            MapNode*                mapNode,
-            const osg::Vec3d&       position,
-            const Linear&           radiusMajor,
-            const Linear&           radiusMinor,
-            const Angular&          rotationAngle,
-            const Style&            style,
-            bool                    draped      =true,
-            unsigned                numSegments =0 );
+        TrackNode( MapNode* mapNode );
     };
+#endif
 
 } } // namespace osgEarth::Annotation
 
-#endif // OSGEARTH_ANNOTATION_ELLIPSE_NODE_H
+#endif //OSGEARTH_ANNOTATION_TRACK_NODE_H

@@ -20,12 +20,9 @@
 #ifndef OSGEARTH_ANNOTATION_CIRCLE_NODE_H
 #define OSGEARTH_ANNOTATION_CIRCLE_NODE_H 1
 
-#include <osgEarthAnnotation/Common>
-#include <osgEarth/DrapeableNode>
-#include <osgEarth/MapNode>
-#include <osgEarth/Units>
-#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/Units>
 
 namespace osgEarth { namespace Annotation
 {	
@@ -33,19 +30,21 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
 
-    /** 
-     * Renders a circle that can drape on a MapNode terrain.    
-     */
-    class OSGEARTHANNO_EXPORT CircleNode : public FeatureNode 
+    // forward declares
+    class osgEarth::MapNode;
+    class osgEarth::Features::FeatureNode;
+
+
+    class OSGEARTHANNO_EXPORT CircleNode : public LocalizedNode
     {
     public:
-        CircleNode( 
-            MapNode*                mapNode,
-            const osg::Vec3d&       center,
-            const Linear&           radius,
-            const Style&            style,
-            bool                    draped      =true,
-            unsigned                numSegments =0 );
+        CircleNode(
+            MapNode*          mapNode,
+            const osg::Vec3d& position,
+            const Linear&     radius,
+            const Style&      style,
+            bool              draped      =true,
+            unsigned          numSegments =0 );
     };
 
 } } // namespace osgEarth::Annotation

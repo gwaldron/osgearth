@@ -81,7 +81,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     // could take a shortcut and just use the current extent's local2world matrix for this,
                     // but it the tile is big enough the up vectors won't be quite right.
                     osg::Matrixd rotation;
-                    ECEF::transformAndGetRotationMatrix( context.profile()->getSRS(), point, point, rotation );
+                    ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, rotation );
                     mat = rotation * _modelMatrix * osg::Matrixd::translate( point ) * _world2local;
                 }
                 else
@@ -166,7 +166,7 @@ struct ClusterVisitor : public osg::NodeVisitor
                             if ( makeECEF )
                             {
                                 osg::Matrixd rotation;
-                                ECEF::transformAndGetRotationMatrix( srs, point, point, rotation );
+                                ECEF::transformAndGetRotationMatrix( point, srs, point, rotation );
                                 mat = rotation * _modelMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                             }
                             else

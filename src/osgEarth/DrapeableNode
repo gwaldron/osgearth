@@ -61,6 +61,7 @@ namespace osgEarth
         bool                    _newDraped;
         osg::ref_ptr<osg::Node> _newNode;
 
+    protected:
         void applyChanges();
         void setNodeImpl( osg::Node* );
         void setDrapedImpl( bool );

@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_ANNOTATION_PLACE_NODE_H
 #define OSGEARTH_ANNOTATION_PLACE_NODE_H 1
 
-#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarth/MapNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarthUtil/Controls>
@@ -32,10 +32,10 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth::Util::Controls;
 
     /** 
-     * A Placemark combines an 2D icon, a label, support for mouse interaction
+     * A PlaceNode combines an 2D icon, a label, support for mouse interaction
      * and a popup control.
      */
-    class OSGEARTHANNO_EXPORT PlaceNode : public osg::MatrixTransform
+    class OSGEARTHANNO_EXPORT PlaceNode : public LocalizedNode
     {
     public:
         /**
@@ -47,12 +47,6 @@ namespace osgEarth { namespace Annotation
             osg::Image*        iconImage,
             const std::string& labelText,
             const Style&       style =Style() );
-
-        /**
-         * Sets the position of this annotation.
-         * @param pos Position data
-         */
-        void setPosition( const osg::Vec3d& mapPosition );
 
         /**
          * Image to use for the icon
@@ -80,8 +74,6 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<Container>    _container;
         osg::ref_ptr<ImageControl> _icon;
         osg::ref_ptr<LabelControl> _label;
-
-        osg::observer_ptr<MapNode> _mapNode;
 
         void init();
     };

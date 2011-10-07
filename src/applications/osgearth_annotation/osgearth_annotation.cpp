@@ -24,6 +24,7 @@
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/LabelNode>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -72,6 +73,7 @@ main(int argc, char** argv)
     osg::Group* annoGroup = new osg::Group();
     root->addChild( annoGroup );
 
+#if 0
     // a Placemark combines a 2D icon with a text label.
     annoGroup->addChild( new PlaceNode(
         mapNode, 
@@ -79,12 +81,35 @@ main(int argc, char** argv)
         URI("../data/placemark32.png").readImage(),
         "New York") );
 
+    annoGroup->addChild( new PlaceNode(
+        mapNode, 
+        osg::Vec3d(-74, 37.5, 0),
+        URI("../data/placemark32.png").readImage(),
+        "Washington, DC") );
+
+
     // a Placemark combines a 2D icon with a text label.
     annoGroup->addChild( new PlaceNode(
         mapNode, 
         osg::Vec3d(139.75, 35.685, 0), 
         URI("../data/placemark32.png").readImage(),
         "Tokyo" ) );
+#endif
+
+    annoGroup->addChild( new LabelNode(
+        mapNode,
+        osg::Vec3d(-74, 40.714, 0),
+        "New York") );
+
+    annoGroup->addChild( new LabelNode(
+        mapNode, 
+        osg::Vec3d(-77.04, 38.83, 0),
+        "Washington, DC") );
+
+    annoGroup->addChild( new LabelNode(
+        mapNode, 
+        osg::Vec3d(-71.03, 42.37, 0),
+        "Boston") );
 
     // a box that follows lines of latitude (rhumb line interpolation, the default)
     Geometry* geom = new Ring();

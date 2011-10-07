@@ -18,6 +18,7 @@
 */
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarth/FindNode>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
@@ -57,7 +58,8 @@ ImageOverlay::postCTOR()
     setNode( _geode );
 
     init();    
-    setNumChildrenRequiringUpdateTraversal( 1 );    
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    //setNumChildrenRequiringUpdateTraversal( 1 );    
 }
 
 void

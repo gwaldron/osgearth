@@ -34,10 +34,22 @@ namespace osgEarth { namespace Annotation
     class osgEarth::MapNode;
     class osgEarth::Features::FeatureNode;
 
-
+    /**
+     * Circle annotation.
+     */
     class OSGEARTHANNO_EXPORT CircleNode : public LocalizedNode
     {
     public:
+        /**
+         * Constructs a new circle annotation.
+         *
+         * @param mapNode     Map on which the circle will appear
+         * @param position    Location of the annotation, in map coordinates
+         * @param radius      Circle radius
+         * @param style       Style defining how the annotation will look
+         * @param draped      Whether to "drape" the annotation down on to the terrain
+         * @param numSegments Hint as to the tessellation of the annotation
+         */
         CircleNode(
             MapNode*          mapNode,
             const osg::Vec3d& position,

@@ -70,19 +70,32 @@ namespace osgEarth { namespace Annotation
          */
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
+
+
+    public:
+
+        virtual void traverse( osg::NodeVisitor& nv );
         
     protected:
         /**
          * Constructs a new LocalizedNode.
+         *
+         * @param mapNode MapNode upon which to localize the scene graph
+         * @param pos     Initial position of the node (map coords)
+         * @param is2D    Whether to autotransform the node to face/scale to the screen
          */
-        LocalizedNode( MapNode* mapNode, const osg::Vec3d& pos =osg::Vec3d(0,0,0) );
+        LocalizedNode( 
+            MapNode*          mapNode, 
+            const osg::Vec3d& pos      =osg::Vec3d(0,0,0), 
+            bool              is2D     =false );
 
-        osg::MatrixTransform* getTransform() { return _xform.get(); }
+        osg::Transform* getTransform() { return _xform.get(); }
 
     protected:
         osg::observer_ptr<MapNode> _mapNode;
         bool _horizonCulling;
-        osg::ref_ptr<osg::MatrixTransform> _xform;
+        osg::ref_ptr<osg::Transform> _xform;
+        bool _autoTransform;
     };
 
 

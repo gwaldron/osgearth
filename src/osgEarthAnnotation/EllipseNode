@@ -40,6 +40,18 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT EllipseNode : public LocalizedNode
     {
     public:
+        /**
+         * Constructs a new ellipse annotation.
+         *
+         * @param mapNode     Map on which the annotation will appear
+         * @param position    Location of the annotation, in map coordinates
+         * @param radiusMajor Length of 1/2 the major axis of the ellipse
+         * @param radiusMinor Length of 1/2 the minor axis of the ellipse
+         * @param rotation    Rotation angle of the ellipse
+         * @param style       Style defining how the annotation will look
+         * @param draped      Whether to "drape" the annotation down on to the terrain
+         * @param numSegments Hint as to the tessellation of the ellipse
+         */
         EllipseNode( 
             MapNode*                mapNode,
             const osg::Vec3d&       position,

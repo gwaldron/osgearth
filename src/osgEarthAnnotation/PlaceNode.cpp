@@ -18,9 +18,12 @@
 */
 
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/LabelNode>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
+#include <osgText/Text>
+#include <osg/ShapeDrawable>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -47,44 +50,9 @@ PlaceNode::init()
     // remove any old stuff to make way for the new stuff.
     this->removeChildren(0, this->getNumChildren());
 
-    LabelSourceOptions lso;
-    lso.setDriver( "overlay" );
-    osg::ref_ptr<LabelSource> ls = LabelSourceFactory::create( lso );
-    if ( ls.valid() )
-    {
-        osg::ref_ptr<osg::Node> labelNode = ls->createNode( _text, _style.get<TextSymbol>() );
-        _label = (LabelControl*)dynamic_cast<ControlNode*>(labelNode.get())->getControl();
-    }
+//    LabelNode* labelNode = new LabelNode( _text );
+//    getTransform()->addChild( labelNode );
 
-    if ( !_image.valid() )
-    {
-        MarkerSymbol* marker = _style.get<MarkerSymbol>();
-        if ( marker )
-        {
-            _image = marker->getImage();
-            if ( !_image.valid() && marker->url().isSet() )
-            {
-                _image = URI(marker->url()->expr()).readImage();
-            }
-        }
-    }
-    _icon = new ImageControl( _image.get() );
-
-    _container = new HBox();
-    _container->setChildSpacing( 8 );
-    
-    _container->addControl( _icon.get() );
-    _container->addControl( _label.get() );
-
-    _container->setHorizAlign( Control::ALIGN_RIGHT );
-    _container->setVertAlign( Control::ALIGN_CENTER );
-
-    //todo: set up the "ANCHOR POINT" for the sweet spot
-
-    // wrap the other controls in a scene node.
-    ControlNode* node = new ControlNode( _container.get() );
-
-    this->getTransform()->addChild( node );
     this->addChild( getTransform() );
 }
 

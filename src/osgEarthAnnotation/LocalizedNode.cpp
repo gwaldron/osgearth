@@ -24,18 +24,42 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
-LocalizedNode::LocalizedNode( MapNode* mapNode, const osg::Vec3d& pos ) :
+LocalizedNode::LocalizedNode(MapNode*          mapNode,
+                             const osg::Vec3d& pos,
+                             bool              is2D ) :
 _mapNode       ( mapNode ),
-_horizonCulling( false )
+_horizonCulling( false ),
+_autoTransform ( is2D )
 {
-    _xform = new osg::MatrixTransform();
+    if ( _autoTransform )
+    {
+        osg::AutoTransform* at = new osg::AutoTransform();
+        at->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
+        at->setAutoScaleToScreen( true );
+        at->setCullingActive( false ); // just for the first pass
+        _xform = at;
+    }
+    else
+    {
+        _xform = new osg::MatrixTransform();
+    }
     _xform->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 
     if ( mapNode )
     {
-        setHorizonCulling( true );
+        //setHorizonCulling( true );
         setPosition( pos );
     }
+}
+
+void
+LocalizedNode::traverse( osg::NodeVisitor& nv )
+{
+    if ( _autoTransform && nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+       _xform->setCullingActive( true );
+    }
+    osg::Group::traverse( nv );
 }
 
 bool
@@ -62,14 +86,17 @@ LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
         // update the transform:
         osg::Matrixd local2world;
         map->getProfile()->getSRS()->createLocal2World( mapPos, local2world );
-        _xform->setMatrix( local2world );
+
+        if ( _autoTransform )
+            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( local2world.getTrans() );
+        else
+            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( local2world );
 
         // and update the culler:
         CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
         if ( culler )
-        {
             culler->_world = local2world.getTrans();
-        }
+
         return true;
     }   
     else return false;
@@ -88,7 +115,13 @@ LocalizedNode::getPosition( const SpatialReference* srs ) const
     osg::ref_ptr<MapNode> mapNode = _mapNode.get();
     if ( mapNode.valid() )
     {
-        mapNode->getMap()->worldPointToMapPoint( _xform->getMatrix().getTrans(), output );
+        osg::Vec3d world;
+        if ( _autoTransform )
+            world = static_cast<osg::AutoTransform*>(_xform.get())->getPosition();
+        else
+            world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
+
+        mapNode->getMap()->worldPointToMapPoint( world, output );
         if ( srs )
         {
             mapNode->getMap()->getProfile()->getSRS()->transform( output, srs, output );
@@ -109,7 +142,12 @@ LocalizedNode::setHorizonCulling( bool value )
             osg::ref_ptr<MapNode> mapNode = _mapNode.get();
             if ( mapNode.valid() )
             {
-                osg::Vec3d world = _xform->getMatrix().getTrans();
+                osg::Vec3d world;
+                if ( _autoTransform )
+                    world = static_cast<osg::AutoTransform*>(_xform.get())->getPosition();
+                else
+                    world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
+
                 const osg::EllipsoidModel* em = mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
                 _xform->setCullCallback( new CullNodeByHorizon(world, em) );
             }

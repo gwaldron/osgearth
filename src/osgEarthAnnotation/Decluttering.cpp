@@ -56,7 +56,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             osg::BoundingBox box = drawable->getBound();
 
             // bring the drawable's bounding box into eye-space:
-            osg::Matrix mvp = (*leaf->_modelview.get());
+            osg::Matrix mvp = (*leaf->_modelview.get()) * (*leaf->_projection.get());
             box.set(
                 osg::Vec3(box.xMin(),box.yMin(),box.zMin()) * mvp,
                 osg::Vec3(box.xMax(),box.yMax(),box.zMax()) * mvp );

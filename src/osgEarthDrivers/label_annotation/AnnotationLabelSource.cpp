@@ -48,12 +48,12 @@ public:
      */
     osg::Node* createNode(
         const FeatureList&   input,
-        const TextSymbol*    text,
+        const TextSymbol*    symbol,
         const FilterContext& context )
     {
         osg::Group* group = new osg::Group();
 
-        StringExpression  contentExpr ( *text->content() );
+        StringExpression  contentExpr ( *symbol->content() );
         //NumericExpression priorityExpr( *text->priority() );
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
@@ -71,7 +71,8 @@ public:
             LabelNode* labelNode = new LabelNode(
                 context.getSession()->getMapInfo().getProfile()->getSRS(),
                 geom->getBounds().center(),
-                value );
+                value,
+                symbol );
 
             group->addChild( labelNode );
         }

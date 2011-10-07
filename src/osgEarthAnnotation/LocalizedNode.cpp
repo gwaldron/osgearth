@@ -28,7 +28,6 @@ LocalizedNode::LocalizedNode(const SpatialReference* mapSRS,
                              const osg::Vec3d&       pos,
                              bool                    is2D ) :
 _mapSRS        ( mapSRS ),
-//_mapNode       ( mapNode ),
 _horizonCulling( false ),
 _autoTransform ( is2D )
 {
@@ -48,7 +47,7 @@ _autoTransform ( is2D )
 
     if ( mapSRS )
     {
-        //setHorizonCulling( true );
+        setHorizonCulling( true );
         setPosition( pos );
     }
 }

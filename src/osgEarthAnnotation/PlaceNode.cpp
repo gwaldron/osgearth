@@ -37,7 +37,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position ),
+LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position, true ),
 _image  ( image ),
 _text   ( text ),
 _style  ( style )
@@ -50,9 +50,6 @@ PlaceNode::init()
 {
     // remove any old stuff to make way for the new stuff.
     this->removeChildren(0, this->getNumChildren());
-
-//    LabelNode* labelNode = new LabelNode( _text );
-//    getTransform()->addChild( labelNode );
 
     this->addChild( getTransform() );
 }

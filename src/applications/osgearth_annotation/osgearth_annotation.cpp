@@ -111,6 +111,11 @@ main(int argc, char** argv)
         osg::Vec3d(-71.03, 42.37, 0),
         "Boston") );
 
+    annoGroup->addChild( new LabelNode(
+        mapNode, 
+        osg::Vec3d(139.75, 35.685, 0), 
+        "Tokyo" ) );
+
     // a box that follows lines of latitude (rhumb line interpolation, the default)
     Geometry* geom = new Ring();
     geom->push_back( osg::Vec3d(0,   40, 0) );

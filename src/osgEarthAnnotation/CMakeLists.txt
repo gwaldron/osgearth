@@ -12,11 +12,11 @@ set(LIB_PUBLIC_HEADERS
     AnnotationData
     CircleNode
     Common
+    DrapeableGeometryNode
     EllipseNode
     Export
     ImageOverlay
     LocalizedNode
-    LocalizedGeometryNode
     PlaceNode
     TrackNode
 )
@@ -24,10 +24,10 @@ set(LIB_PUBLIC_HEADERS
 set(LIB_COMMON_FILES
     AnnotationData.cpp
     CircleNode.cpp
+    DrapeableGeometryNode.cpp
     EllipseNode.cpp
     ImageOverlay.cpp
     LocalizedNode.cpp
-    LocalizedGeometryNode.cpp
     PlaceNode.cpp
     TrackNode.cpp
 )

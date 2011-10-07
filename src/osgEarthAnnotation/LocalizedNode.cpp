@@ -29,6 +29,8 @@ _mapNode       ( mapNode ),
 _horizonCulling( false )
 {
     _xform = new osg::MatrixTransform();
+    _xform->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+
     if ( mapNode )
     {
         setHorizonCulling( true );

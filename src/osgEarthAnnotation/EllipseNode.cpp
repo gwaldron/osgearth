@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthAnnotation/LocalizedGeometryNode>
+#include <osgEarthAnnotation/DrapeableGeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/MapNode>

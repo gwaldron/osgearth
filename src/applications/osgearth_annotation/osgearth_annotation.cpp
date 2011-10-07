@@ -134,7 +134,7 @@ main(int argc, char** argv)
         Linear(100, Units::MILES),
         Angular(45, Units::DEGREES),
         ellipseStyle,
-        true);
+        false );
     annoGroup->addChild( ellipse );
 
     // an extruded polygon roughly the shape of Utah

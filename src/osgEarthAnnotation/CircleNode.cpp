@@ -18,7 +18,7 @@
 */
 
 #include <osgEarthAnnotation/CircleNode>
-#include <osgEarthAnnotation/LocalizedGeometryNode>
+#include <osgEarthAnnotation/DrapeableGeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/MapNode>

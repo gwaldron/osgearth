@@ -73,7 +73,7 @@ main(int argc, char** argv)
     osg::Group* annoGroup = new osg::Group();
     root->addChild( annoGroup );
 
-#if 0
+#if 1
     // a Placemark combines a 2D icon with a text label.
     annoGroup->addChild( new PlaceNode(
         mapNode, 
@@ -94,8 +94,7 @@ main(int argc, char** argv)
         osg::Vec3d(139.75, 35.685, 0), 
         URI("../data/placemark32.png").readImage(),
         "Tokyo" ) );
-#endif
-
+#else
     annoGroup->addChild( new LabelNode(
         mapNode,
         osg::Vec3d(-74, 40.714, 0),
@@ -115,6 +114,7 @@ main(int argc, char** argv)
         mapNode, 
         osg::Vec3d(139.75, 35.685, 0), 
         "Tokyo" ) );
+#endif
 
     // a box that follows lines of latitude (rhumb line interpolation, the default)
     Geometry* geom = new Ring();

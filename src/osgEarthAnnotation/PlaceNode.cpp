@@ -19,6 +19,7 @@
 
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
@@ -48,37 +49,75 @@ _style  ( style )
 void
 PlaceNode::init()
 {
-    // remove any old stuff to make way for the new stuff.
-    this->removeChildren(0, this->getNumChildren());
+    osg::Texture2D* texture = new osg::Texture2D();
+    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
+    texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
+    texture->setResizeNonPowerOfTwoHint(false);
+    texture->setImage( _image.get() );
 
+    // set up the drawstate.
+    osg::StateSet* dstate = new osg::StateSet;
+    dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
+    dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
+    dstate->setMode(GL_DEPTH_TEST, 0);
+    dstate->setMode(GL_BLEND, 1);
+    dstate->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+    dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);   
+
+
+    // set up the geoset.
+    osg::Geometry* geom = new osg::Geometry();
+    geom->setStateSet(dstate);
+
+    osg::Vec3Array* coords = new osg::Vec3Array(4);
+    (*coords)[0].set( -_image->s()/2.0, 0, 0 );
+    (*coords)[1].set( -_image->s()/2.0 + _image->s(), 0, 0 );
+    (*coords)[2].set( -_image->s()/2.0 + _image->s(), _image->t()-1, 0 );
+    (*coords)[3].set( -_image->s()/2.0, _image->t()-1, 0 );
+    geom->setVertexArray(coords);
+
+    osg::Vec2Array* tcoords = new osg::Vec2Array(4);
+    (*tcoords)[0].set(0, 0);
+    (*tcoords)[1].set(1, 0);
+    (*tcoords)[2].set(1, 1);
+    (*tcoords)[3].set(0, 1);
+    geom->setTexCoordArray(0,tcoords);
+
+    osg::Vec4Array* colors = new osg::Vec4Array(1);
+    (*colors)[0].set(1.0f,1.0f,1.0,1.0f);
+    geom->setColorArray(colors);
+    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+
+    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
+
+    osg::Drawable* text = LabelUtils::createText(
+        osg::Vec3( _image->s()/2.0, _image->t()/2.0, 0 ),
+        _text,
+        _style.get<TextSymbol>() );
+    text->setStateSet( dstate );
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( geom );
+    geode->addDrawable( text );
+
+    getTransform()->addChild( geode );
     this->addChild( getTransform() );
 }
 
 void
 PlaceNode::setIconImage( osg::Image* image )
 {
-    if ( image )
-    {
-        _image = image;
-        if ( _icon.valid() )
-            _icon->setImage( image );
-    }
+    //todo
 }
 
 void
 PlaceNode::setText( const std::string& text )
 {
-    if ( text != _text )
-    {
-        _text = text;
-        if ( _label.valid() )
-            _label->setText( text );
-    }
+    //todo
 }
 
 void
 PlaceNode::setStyle( const Style& style )
 {
-    _style = style;
-    init();
+    //todo
 }

@@ -82,7 +82,7 @@ LabelNode::init( const TextSymbol* symbol )
     // By default, osgText assigns a render bin; we need to negate that in order
     // to activate the decluttering.
     osg::StateSet* stateSet = t->getOrCreateStateSet();
-    stateSet->setRenderBinDetails( osg::StateSet::DEFAULT_BIN, OSGEARTH_DECLUTTER_BIN );
+    stateSet->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
     stateSet->setMode( GL_DEPTH_TEST, 0 );
 
     osg::Geode* geode = new osg::Geode();

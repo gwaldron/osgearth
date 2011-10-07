@@ -102,6 +102,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
     }
 };
 
+/**
+ * The actual custom render bin
+ */
 class osgEarthAnnotationDeclutterRenderBin : public osgUtil::RenderBin
 {
 public:
@@ -113,6 +116,10 @@ public:
 };
 const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECLUTTER_BIN;
 
+/**
+ * Proxy class that registers the custom render bin's prototype with the
+ * rendering system
+ */
 template<class T>
 struct osgEarthAnnotationRegisterRenderBinProxy
 {
@@ -131,6 +138,7 @@ struct osgEarthAnnotationRegisterRenderBinProxy
     osg::ref_ptr<T> _prototype;
 };
 
+/** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}
 static osgEarthAnnotationRegisterRenderBinProxy<osgEarthAnnotationDeclutterRenderBin> s_regbin(
     osgEarthAnnotationDeclutterRenderBin::BIN_NAME);

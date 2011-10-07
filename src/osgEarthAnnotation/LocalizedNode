@@ -85,14 +85,16 @@ namespace osgEarth { namespace Annotation
          * @param is2D    Whether to autotransform the node to face/scale to the screen
          */
         LocalizedNode( 
-            MapNode*          mapNode, 
+            const SpatialReference* mapSRS,
+            //MapNode*          mapNode, 
             const osg::Vec3d& pos      =osg::Vec3d(0,0,0), 
             bool              is2D     =false );
 
         osg::Transform* getTransform() { return _xform.get(); }
 
     protected:
-        osg::observer_ptr<MapNode> _mapNode;
+        osg::observer_ptr<const SpatialReference> _mapSRS;
+        //osg::observer_ptr<MapNode> _mapNode;
         bool _horizonCulling;
         osg::ref_ptr<osg::Transform> _xform;
         bool _autoTransform;

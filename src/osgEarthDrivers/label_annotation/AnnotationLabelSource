@@ -1,0 +1,74 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_FEATURE_SUB_MODEL_OPTIONS
+#define OSGEARTH_DRIVER_FEATURE_SUB_MODEL_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarthFeatures/FeatureModelSource>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+
+    class FeatureSubModelOptions : public FeatureModelSourceOptions // NO EXPORT; header only
+    {
+    public:
+        optional<std::string>& url() { return _url; }
+        const optional<std::string>& url() const { return _url; }
+
+        optional<double>& heightOffset() { return _heightOffset; }
+        const optional<double>& heightOffset() const { return _heightOffset; }
+
+    public:
+        FeatureSubModelOptions( const ConfigOptions& options =ConfigOptions() ) :
+            FeatureModelSourceOptions( options )
+        {
+            setDriver( "feature_geom" );
+            fromConfig( _conf );
+        }
+
+    public:
+        Config getConfig() const {
+            Config conf = FeatureModelSourceOptions::getConfig();
+            conf.updateIfSet( "url", _url );
+            conf.updateIfSet( "height_offset", _heightOffset );
+            return conf;
+        }
+
+    protected:
+        virtual void mergeConfig( const Config& conf ) {
+            FeatureModelSourceOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet( "url", _url );
+            conf.getIfSet( "height_offset", _heightOffset );
+        }
+
+        optional<std::string> _url;
+        optional<double> _heightOffset;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_FEATURE_SUB_MODEL_OPTIONS
+

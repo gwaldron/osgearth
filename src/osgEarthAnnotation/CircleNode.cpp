@@ -35,7 +35,7 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        const Style&       style,
                        bool               draped,
                        unsigned           numSegments) :
-LocalizedNode( mapNode, position )
+LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
 {
     if ( mapNode )
     {

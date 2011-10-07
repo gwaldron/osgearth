@@ -24,10 +24,11 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
-LocalizedNode::LocalizedNode(MapNode*          mapNode,
-                             const osg::Vec3d& pos,
-                             bool              is2D ) :
-_mapNode       ( mapNode ),
+LocalizedNode::LocalizedNode(const SpatialReference* mapSRS,
+                             const osg::Vec3d&       pos,
+                             bool                    is2D ) :
+_mapSRS        ( mapSRS ),
+//_mapNode       ( mapNode ),
 _horizonCulling( false ),
 _autoTransform ( is2D )
 {
@@ -45,7 +46,7 @@ _autoTransform ( is2D )
     }
     _xform->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 
-    if ( mapNode )
+    if ( mapSRS )
     {
         //setHorizonCulling( true );
         setPosition( pos );
@@ -69,8 +70,31 @@ LocalizedNode::setPosition( const osg::Vec3d& pos )
 }
 
 bool
-LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
+LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
 {
+    // first transform the point to the map's SRS:
+    osg::Vec3d mapPos = pos;
+    if ( posSRS && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
+        return false;
+
+    // update the transform:
+    osg::Matrixd local2world;
+    _mapSRS->createLocal2World( mapPos, local2world );
+
+    if ( _autoTransform )
+        static_cast<osg::AutoTransform*>(_xform.get())->setPosition( local2world.getTrans() );
+    else
+        static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( local2world );
+
+    // and update the culler:
+    CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
+    if ( culler )
+        culler->_world = local2world.getTrans();
+
+    return true;
+}
+
+#if 0
     osg::ref_ptr<MapNode> mapNode = _mapNode.get();
     if ( mapNode.valid() )
     {
@@ -101,6 +125,7 @@ LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
     }   
     else return false;
 }
+#endif
 
 osg::Vec3d
 LocalizedNode::getPosition() const
@@ -111,22 +136,19 @@ LocalizedNode::getPosition() const
 osg::Vec3d
 LocalizedNode::getPosition( const SpatialReference* srs ) const
 {
-    osg::Vec3d output;
-    osg::ref_ptr<MapNode> mapNode = _mapNode.get();
-    if ( mapNode.valid() )
-    {
-        osg::Vec3d world;
-        if ( _autoTransform )
-            world = static_cast<osg::AutoTransform*>(_xform.get())->getPosition();
-        else
-            world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
+    osg::Vec3d world;
+    if ( _autoTransform )
+        world = static_cast<osg::AutoTransform*>(_xform.get())->getPosition();
+    else
+        world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
 
-        mapNode->getMap()->worldPointToMapPoint( world, output );
-        if ( srs )
-        {
-            mapNode->getMap()->getProfile()->getSRS()->transform( output, srs, output );
-        }
-    }
+    osg::Vec3d output = world;
+    if ( _mapSRS->isGeographic() )
+        _mapSRS->transformFromECEF( world, output );
+
+    if ( srs )
+        _mapSRS->transform( output, srs, output );
+
     return output;
 }
 
@@ -139,18 +161,13 @@ LocalizedNode::setHorizonCulling( bool value )
 
         if ( _horizonCulling )
         {
-            osg::ref_ptr<MapNode> mapNode = _mapNode.get();
-            if ( mapNode.valid() )
-            {
-                osg::Vec3d world;
-                if ( _autoTransform )
-                    world = static_cast<osg::AutoTransform*>(_xform.get())->getPosition();
-                else
-                    world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
+            osg::Vec3d world;
+            if ( _autoTransform )
+                world = static_cast<osg::AutoTransform*>(_xform.get())->getPosition();
+            else
+                world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
 
-                const osg::EllipsoidModel* em = mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
-                _xform->setCullCallback( new CullNodeByHorizon(world, em) );
-            }
+            _xform->setCullCallback( new CullNodeByHorizon(world, _mapSRS->getEllipsoid()) );
         }
         else
         {

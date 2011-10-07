@@ -36,7 +36,8 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      osg::Image*        image,
                      const std::string& text,
                      const Style&       style ) :
-LocalizedNode( mapNode, position ),
+
+LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position ),
 _image  ( image ),
 _text   ( text ),
 _style  ( style )

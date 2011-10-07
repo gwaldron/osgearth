@@ -703,6 +703,24 @@ SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_loc
     }
 }
 
+void
+SpatialReference::createWorld2Local(const osg::Vec3d& xyz, osg::Matrixd& out_world2local ) const
+{
+    if ( isProjected() )
+    {
+        out_world2local = osg::Matrix::translate(-xyz);
+    }
+    else
+    {
+        osg::Matrix local2world;
+        getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
+            osg::DegreesToRadians(xyz.y()), osg::DegreesToRadians(xyz.x()), xyz.z(),
+            local2world);
+
+        out_world2local = osg::Matrix::inverse(local2world);
+    }
+}
+
 bool
 SpatialReference::transform(double x, double y, double z,
                             const SpatialReference* out_srs, 

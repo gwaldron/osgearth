@@ -54,9 +54,17 @@ ImageUtils::normalizeImage( osg::Image* image )
     if ( image->getDataType() == GL_UNSIGNED_BYTE )
     {
         if ( image->getPixelFormat() == GL_RGB )
-            image->setInternalTextureFormat( GL_RGB8 );
+#if defined(OSG_GLES1_AVAILABLE) || defined (OSG_GLES2_AVAILABLE)
+          image->setInternalTextureFormat(GL_RGB8_OES);
+#else
+          image->setInternalTextureFormat( GL_RGB8 );
+#endif
         else if ( image->getPixelFormat() == GL_RGBA )
+#if defined(OSG_GLES1_AVAILABLE) || defined (OSG_GLES2_AVAILABLE)
+          image->setInternalTextureFormat(GL_RGBA8_OES);
+#else
             image->setInternalTextureFormat( GL_RGBA8 );
+#endif
     }
 }
 
@@ -403,9 +411,14 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
     {
         GLenum texFormat = image->getInternalTextureFormat();
         if (dataType != GL_UNSIGNED_BYTE
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE)
+            || (pixelFormat == GL_RGB && texFormat == GL_RGB8_OES)
+            || (pixelFormat == GL_RGBA && texFormat == GL_RGBA8_OES))
+#else
             || (pixelFormat == GL_RGB && texFormat == GL_RGB8)
             || (pixelFormat == GL_RGBA && texFormat == GL_RGBA8))
-        return cloneImage(image);
+#endif
+          return cloneImage(image);
     }
     if ( !canConvert(image, pixelFormat, dataType) )
         return 0L;
@@ -414,9 +427,17 @@ ImageUtils::convert(const osg::Image* image, GLenum pixelFormat, GLenum dataType
     result->allocateImage(image->s(), image->t(), image->r(), pixelFormat, dataType);
 
     if ( pixelFormat == GL_RGB && dataType == GL_UNSIGNED_BYTE )
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE)
+        result->setInternalTextureFormat( GL_RGB8_OES );
+#else
         result->setInternalTextureFormat( GL_RGB8 );
+#endif
     else if ( pixelFormat == GL_RGBA && dataType == GL_UNSIGNED_BYTE )
+#if defined(OSG_GLES1_AVAILABLE) || defined(OSG_GLES2_AVAILABLE)
+        result->setInternalTextureFormat( GL_RGBA8_OES );
+#else
         result->setInternalTextureFormat( GL_RGBA8 );
+#endif
     else
         result->setInternalTextureFormat( pixelFormat );
 

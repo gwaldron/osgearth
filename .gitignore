@@ -1,0 +1,16 @@
+#ignore the following directories:
+*.app/
+build/
+Docs/html/
+.hg/
+.svn/
+
+#ignore the following files:
+.*
+*.a
+*.mode*
+*.o
+*.pbxuser
+
+#but do not ignore these files
+!.gitignore

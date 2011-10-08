@@ -54,9 +54,17 @@ ImageUtils::normalizeImage( osg::Image* image )
     if ( image->getDataType() == GL_UNSIGNED_BYTE )
     {
         if ( image->getPixelFormat() == GL_RGB )
-            image->setInternalTextureFormat( GL_RGB8 );
+#if defined(OSG_GLES1_AVAILABLE) || defined (OSG_GLES2_AVAILABLE)
+          image->setInternalTextureFormat(GL_RGB8_OES);
+#else
+          image->setInternalTextureFormat( GL_RGB8 );
+#endif
         else if ( image->getPixelFormat() == GL_RGBA )
+#if defined(OSG_GLES1_AVAILABLE) || defined (OSG_GLES2_AVAILABLE)
+          image->setInternalTextureFormat(GL_RGBA8_OES);
+#else
             image->setInternalTextureFormat( GL_RGBA8 );
+#endif
     }
 }
 

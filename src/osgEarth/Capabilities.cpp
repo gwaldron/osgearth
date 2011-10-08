@@ -150,6 +150,8 @@ _supportsMipmappedTextureUpdates( false )
 
         // Use the texture-proxy method to determine the maximum texture size 
         glGetIntegerv( GL_MAX_TEXTURE_SIZE, &_maxTextureSize );
+
+#if !(defined(OSG_GLES1_AVAILABLE) || defined (OSG_GLES2_AVAILABLE))
         for( int s = _maxTextureSize; s > 2; s >>= 1 )
         {
             glTexImage2D( GL_PROXY_TEXTURE_2D, 0, GL_RGBA8, s, s, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0L );
@@ -161,6 +163,7 @@ _supportsMipmappedTextureUpdates( false )
                 break;
             }
         }
+#endif
         OE_INFO << LC << "  Max texture size = " << _maxTextureSize << std::endl;
 
         glGetIntegerv( GL_MAX_LIGHTS, &_maxLights );

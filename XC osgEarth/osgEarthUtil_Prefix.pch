@@ -1,0 +1,28 @@
+//
+// Prefix header for all source files of the 'XC osgEarth' target in the 'XC osgEarth' project.
+//
+
+#include <OpenThreads/Condition>
+#include <OpenThreads/ReentrantMutex>
+#include <OpenThreads/ReadWriteMutex>
+#include <OpenThreads/Thread>
+
+#include <osg/ClusterCullingCallback>
+#include <osg/CoordinateSystemNode>
+#include <osg/ref_ptr>
+#include <osg/Referenced>
+#include <osg/Image>
+#include <osg/Node>
+#include <osg/Object>
+#include <osg/Shape>
+#include <osg/Timer>
+#include <osg/Vec3>
+#include <osg/Version>
+
+#include <osgDB/ReaderWriter>
+#include <osgDB/ReadFile>
+
+#include <osgSim/OverlayNode>
+
+#include <osgTerrain/Locator>
+#include <osgTerrain/TerrainTile>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   type = "1"
+   version = "1.0">
+   <FileBreakpoints>
+      <FileBreakpoint
+         shouldBeEnabled = "No"
+         ignoreCount = "0"
+         continueAfterRunningActions = "No"
+         isPathRelative = "0"
+         filePath = "/Users/Hartwig/Documents/C++-Programme/PublicLibs/osg/src/osgDB/FileUtils.cpp"
+         timestampString = "339545365.550244"
+         startingColumnNumber = "9223372036854775807"
+         endingColumnNumber = "9223372036854775807"
+         startingLineNumber = "327"
+         endingLineNumber = "327"
+         landmarkName = "osgDB::findFileInPath(const std::string&amp; filename, const FilePathList&amp; filepath,CaseSensitivity caseSensitivity)"
+         landmarkType = "5">
+      </FileBreakpoint>
+      <FileBreakpoint
+         shouldBeEnabled = "No"
+         ignoreCount = "0"
+         continueAfterRunningActions = "No"
+         isPathRelative = "0"
+         filePath = "/Users/Hartwig/Documents/C++-Programme/PublicLibs/osgearth/src/osgEarthDrivers/gdal/ReaderWriterGDAL.cpp"
+         timestampString = "339670742.832863"
+         startingColumnNumber = "9223372036854775807"
+         endingColumnNumber = "9223372036854775807"
+         startingLineNumber = "644"
+         endingLineNumber = "644"
+         landmarkName = "initialize( const std::string&amp; referenceURI, const Profile* overrideProfile)"
+         landmarkType = "5">
+      </FileBreakpoint>
+      <FileBreakpoint
+         shouldBeEnabled = "Yes"
+         ignoreCount = "0"
+         continueAfterRunningActions = "No"
+         isPathRelative = "0"
+         filePath = "/Users/Hartwig/Documents/C++-Programme/PublicLibs/osg/src/osgUtil/RenderStage.cpp"
+         timestampString = "339674450.179011"
+         startingColumnNumber = "9223372036854775807"
+         endingColumnNumber = "9223372036854775807"
+         startingLineNumber = "937"
+         endingLineNumber = "937"
+         landmarkName = "RenderStage::drawInner(osg::RenderInfo&amp; renderInfo,RenderLeaf*&amp; previous, bool&amp; doCopyTexture)"
+         landmarkType = "5">
+      </FileBreakpoint>
+      <FileBreakpoint
+         shouldBeEnabled = "Yes"
+         ignoreCount = "0"
+         continueAfterRunningActions = "No"
+         isPathRelative = "0"
+         filePath = "/Users/Hartwig/Documents/C++-Programme/PublicLibs/osg/src/osg/Geometry.cpp"
+         timestampString = "339764211.747682"
+         startingColumnNumber = "9223372036854775807"
+         endingColumnNumber = "9223372036854775807"
+         startingLineNumber = "1112"
+         endingLineNumber = "1112"
+         landmarkName = "Geometry::drawImplementation(RenderInfo&amp; renderInfo)"
+         landmarkType = "5">
+      </FileBreakpoint>
+   </FileBreakpoints>
+</Bucket>

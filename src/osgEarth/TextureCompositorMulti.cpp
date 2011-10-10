@@ -116,7 +116,8 @@ namespace
             << "{ \n"
             << "    vec3 color3 = color.rgb; \n"
             << "    vec4 texel; \n"
-            << "    float dmin, dmax, atten_min, atten_max, age; \n";
+            << "    float maxOpacity = 0.0; \n"
+            << "    float dmin, dmax, atten_min, atten_max, age; \n";           
 
         for( unsigned int i=0; i < order.size(); ++i )
         {
@@ -158,14 +159,20 @@ namespace
             {
                 buf << "            texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot <<"].st); \n";
             }
-                    
-            buf << "            color3 = mix(color3, texel.rgb, texel.a * osgearth_ImageLayerOpacity[" << i << "] * atten_max * atten_min); \n"
+            
+            buf << "            float opacity =  texel.a * osgearth_ImageLayerOpacity[" << i << "];\n"
+                << "            color3 = mix(color3, texel.rgb, opacity * atten_max * atten_min); \n"
+                << "            if (opacity > maxOpacity) {\n"
+                << "              maxOpacity = opacity;\n"
+                << "            }\n"                
                 << "        } \n"
                 << "    } \n";
         }
+        
+            buf << "    color = vec4(color3, maxOpacity);\n"
+                << "} \n";
 
-        buf << "    color = vec4(color3,color.a); \n"
-            << "} \n";
+
 
         std::string str = buf.str();
         //OE_INFO << std::endl << str;

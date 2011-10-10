@@ -19,6 +19,7 @@
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarth/Utils>
 #include <osgUtil/RenderBin>
+#include <set>
 
 #define LC "[Declutter] "
 
@@ -42,20 +43,40 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
     void sortImplementation(osgUtil::RenderBin* bin)
     {
         // first sort by depth
+        // todo: a variation on this might be to sort by "priority" or some other
+        // attribute found in the user data..?
         bin->sortFrontToBack();
 
         osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
-        std::vector<osg::BoundingBox> _used;
+        
+        // List of render leaves that pass the initial visibility test
+        osgUtil::RenderBin::RenderLeafList passed;
+        passed.reserve( leaves.size() );
 
-        for( osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); i != leaves.end(); )
+        // list of occlusion boxes
+        std::vector<osg::BoundingBox> used;
+
+        // Track the parent nodes of drawables that are obscured (and culled). Drawables
+        // with the same parent node are considered to be grouped and will be culled as 
+        // a group.
+        std::set<const osg::Node*> culledParents;
+
+        for( osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); i != leaves.end(); ++i )
         {
-            bool passed = true;
+            bool visible = true;
 
             osgUtil::RenderLeaf* leaf = *i;
             const osg::Drawable* drawable = leaf->getDrawable();
-            osg::BoundingBox box = drawable->getBound();
+
+            // if this leaf is already in a culled group, skip it.
+            if ( culledParents.find( drawable->getParent(0) ) != culledParents.end() )
+            {
+                continue;
+            }
 
             // bring the drawable's bounding box into eye-space:
+            osg::BoundingBox box = drawable->getBound();
+
             osg::Matrix mvp = (*leaf->_modelview.get()) * (*leaf->_projection.get());
             box.set(
                 osg::Vec3(box.xMin(),box.yMin(),box.zMin()) * mvp,
@@ -68,7 +89,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // weed out any drawables that are obscured by closer drawables.
             // TODO: think about a more efficient algorithm - right now we are just using
             // brute force to compare all bbox's
-            for( std::vector<osg::BoundingBox>::const_iterator j = _used.begin(); j != _used.end(); ++j )
+            for( std::vector<osg::BoundingBox>::const_iterator j = used.begin(); j != used.end(); ++j )
             {
                 // only need a 2D test since we're in clip space
                 bool isClear =
@@ -79,29 +100,37 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
                 if ( !isClear )
                 {
-                    passed = false;
+                    visible = false;
                     break;
                 }
             }
 
-            if ( passed )
+            if ( visible )
             {
-                _used.push_back( box );
-                ++i;
+                used.push_back( box );
+                passed.push_back( leaf );
             }
             else
             {
-                // removes it altogether...
-                i = leaves.erase( i );
+                culledParents.insert( drawable->getParent(0) );
 
 #if 0
                 // scales it down...
                 leaf->_modelview->set( osg::Matrix::scale(osg::Vec3(.1,.1,.1)) * (*leaf->_modelview.get()) );
                 ++i;
 #endif
-
             }
-        }        
+        }
+
+        leaves.clear();
+        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=passed.begin(); i != passed.end(); ++i )
+        {
+            osgUtil::RenderLeaf* leaf = *i;
+            if ( culledParents.find( leaf->getDrawable()->getParent(0) ) == culledParents.end() )
+            {
+                leaves.push_back( leaf );
+            }
+        }
     }
 };
 
@@ -118,28 +147,6 @@ public:
     }
 };
 const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECLUTTER_BIN;
-
-/**
- * Proxy class that registers the custom render bin's prototype with the
- * rendering system
- */
-template<class T>
-struct osgEarthAnnotationRegisterRenderBinProxy
-{
-    osgEarthAnnotationRegisterRenderBinProxy(const std::string& name)
-    {
-        _prototype = new T();
-        osgUtil::RenderBin::addRenderBinPrototype(name, _prototype.get());
-    }
-
-    ~osgEarthAnnotationRegisterRenderBinProxy()
-    {
-        osgUtil::RenderBin::removeRenderBinPrototype(_prototype.get());
-        _prototype = 0L;
-    }
-
-    osg::ref_ptr<T> _prototype;
-};
 
 /** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}

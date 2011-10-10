@@ -25,6 +25,7 @@
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
+#include <osgEarthFeatures/FeatureNode>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
@@ -32,6 +33,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 

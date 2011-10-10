@@ -86,6 +86,7 @@ SET(LIB_PUBLIC_HEADERS
     Utils
 	Version
     VerticalSpatialReference
+    Viewpoint
     XmlUtils
 )
 
@@ -157,6 +158,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Utils.cpp
     Version.cpp
     VerticalSpatialReference.cpp
+    Viewpoint.cpp
     XmlUtils.cpp
 )
 

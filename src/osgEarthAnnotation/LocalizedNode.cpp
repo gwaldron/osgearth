@@ -19,6 +19,8 @@
 
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarth/Utils>
+#include <osg/MatrixTransform>
+#include <osg/AutoTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;

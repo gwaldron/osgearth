@@ -22,17 +22,13 @@
 
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthSymbology/Style>
+#include <osgEarth/MapNode>
 #include <osgEarth/Units>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
-    using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
-
-    // forward declares
-    class osgEarth::MapNode;
-    class osgEarth::Features::FeatureNode;
 
     /**
      * Circle annotation.

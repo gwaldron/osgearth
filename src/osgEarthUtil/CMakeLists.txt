@@ -25,7 +25,6 @@ SET(LIB_PUBLIC_HEADERS
     SkyNode
     SpatialData
     StarData
-    Viewpoint
 	WFS
     WMS
 )
@@ -44,7 +43,6 @@ SET(LIB_COMMON_FILES
     OceanSurfaceNode.cpp
     SpatialData.cpp
     SkyNode.cpp
-    Viewpoint.cpp
 	WFS.cpp
     WMS.cpp
 )

@@ -20,21 +20,12 @@
 #define OSGEARTH_ANNO_LOCALIZED_NODE_H 1
 
 #include <osgEarthAnnotation/Common>
-#include <osgEarth/MapNode>
-#include <osgEarth/GeoMath>
-#include <osgEarth/DrapeableNode>
-#include <osgEarthFeatures/Feature>
-#include <osgEarthFeatures/FeatureNode>
-#include <osgEarthSymbology/Geometry>
-#include <osgEarthSymbology/Style>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/Viewpoint>
-#include <osg/MatrixTransform>
+#include <osgEarth/SpatialReference>
+#include <osg/Transform>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     /**
      * Base class for node that is localized at a specific geographic point.
@@ -80,13 +71,12 @@ namespace osgEarth { namespace Annotation
         /**
          * Constructs a new LocalizedNode.
          *
-         * @param mapNode MapNode upon which to localize the scene graph
+         * @param mapSRS  Spatial reference for position info
          * @param pos     Initial position of the node (map coords)
          * @param is2D    Whether to autotransform the node to face/scale to the screen
          */
         LocalizedNode( 
             const SpatialReference* mapSRS,
-            //MapNode*          mapNode, 
             const osg::Vec3d& pos      =osg::Vec3d(0,0,0), 
             bool              is2D     =false );
 
@@ -94,9 +84,8 @@ namespace osgEarth { namespace Annotation
 
     protected:
         osg::observer_ptr<const SpatialReference> _mapSRS;
-        //osg::observer_ptr<MapNode> _mapNode;
-        bool _horizonCulling;
         osg::ref_ptr<osg::Transform> _xform;
+        bool _horizonCulling;
         bool _autoTransform;
     };
 

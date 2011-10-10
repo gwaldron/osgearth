@@ -66,9 +66,11 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             if ( box.yMin() > box.yMax() ) std::swap( box.yMin(), box.yMax() );
 
             // weed out any drawables that are obscured by closer drawables.
+            // TODO: think about a more efficient algorithm - right now we are just using
+            // brute force to compare all bbox's
             for( std::vector<osg::BoundingBox>::const_iterator j = _used.begin(); j != _used.end(); ++j )
             {
-                // only need a 2D test:
+                // only need a 2D test since we're in clip space
                 bool isClear =
                     box.xMin() > j->xMax() ||
                     box.xMax() < j->xMin() ||
@@ -97,6 +99,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 leaf->_modelview->set( osg::Matrix::scale(osg::Vec3(.1,.1,.1)) * (*leaf->_modelview.get()) );
                 ++i;
 #endif
+
             }
         }        
     }

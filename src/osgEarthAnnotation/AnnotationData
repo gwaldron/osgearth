@@ -21,12 +21,11 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osg/Referenced>
-#include <osgEarthUtil/Viewpoint>
+#include <osgEarth/Viewpoint>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
-    using namespace osgEarth::Util;
 
     /**
      * Stores annotation metadata/extra information that can be stored in a node's

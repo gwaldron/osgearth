@@ -16,20 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHUTIL_VIEWPOINT
-#define OSGEARTHUTIL_VIEWPOINT
+#ifndef OSGEARTH_VIEWPOINT
+#define OSGEARTH_VIEWPOINT
 
-#include <osgEarthUtil/Common>
-#include <osgEarth/SpatialReference>
+#include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/SpatialReference>
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
     /**
      * Viewpoint data object. Stores a view configuration as a focal point
      * and the camera's position relative to that focal point.
      */
-    class OSGEARTHUTIL_EXPORT Viewpoint
+    class OSGEARTH_EXPORT Viewpoint
     {
     public:
         /**
@@ -195,6 +195,6 @@ namespace osgEarth { namespace Util
         bool _is_valid;
     };
 
-} } // namespace osgEarth::Util
+} // namespace osgEarth
 
-#endif // OSGEARTHUTIL_VIEWPOINT
+#endif // OSGEARTH_VIEWPOINT

@@ -16,6 +16,7 @@ set(LIB_PUBLIC_HEADERS
     DrapeableGeometryNode
     EllipseNode
     Export
+    GeometryNode
     ImageOverlay
     LabelNode
     LocalizedNode
@@ -29,6 +30,7 @@ set(LIB_COMMON_FILES
     Decluttering.cpp
     DrapeableGeometryNode.cpp
     EllipseNode.cpp
+    GeometryNode.cpp
     ImageOverlay.cpp
     LabelNode.cpp
     LocalizedNode.cpp
@@ -72,7 +74,6 @@ LINK_INTERNAL(${LIB_NAME}
     osgEarth
     osgEarthFeatures
     osgEarthSymbology
-    osgEarthUtil
 )
 
 LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGMANIPULATOR_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OPENTHREADS_LIBRARY)

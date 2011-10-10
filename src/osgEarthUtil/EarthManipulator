@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/Common>
-#include <osgEarthUtil/Viewpoint>
+#include <osgEarth/Viewpoint>
 #include <osgEarth/MapNode>
 #include <osg/Timer>
 #include <map>
@@ -30,6 +30,8 @@
 
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     /** 
      * A programmable manipulator suitable for use with geospatial terrains.
      *

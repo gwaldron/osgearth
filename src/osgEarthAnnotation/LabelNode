@@ -22,10 +22,12 @@
 
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthSymbology/TextSymbol>
+#include <osgEarth/MapNode>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     struct LabelUtils
     {

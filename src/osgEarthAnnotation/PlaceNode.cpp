@@ -91,7 +91,7 @@ PlaceNode::init()
     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
 
     osg::Drawable* text = LabelUtils::createText(
-        osg::Vec3( _image->s()/2.0, _image->t()/2.0, 0 ),
+        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ),
         _text,
         _style.get<TextSymbol>() );
     text->setStateSet( dstate );

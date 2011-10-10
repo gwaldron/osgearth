@@ -93,7 +93,8 @@ PlaceNode::init()
     osg::Drawable* text = LabelUtils::createText(
         osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ),
         _text,
-        _style.get<TextSymbol>() );
+        _style.get<TextSymbol>(),
+        true );
     text->setStateSet( dstate );
 
     osg::Geode* geode = new osg::Geode();

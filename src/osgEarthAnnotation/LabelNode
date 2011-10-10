@@ -34,7 +34,8 @@ namespace osgEarth { namespace Annotation
         static osg::Drawable* createText(
             const osg::Vec3&   positionOffset,
             const std::string& text,
-            const TextSymbol*  symbol );
+            const TextSymbol*  symbol,
+            bool               declutter );
     };
 
     /**
@@ -58,16 +59,6 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             const SpatialReference* mapSRS,
-            const osg::Vec3d&       position,
-            const std::string&      text,
-            const TextSymbol*       symbol =0L ); 
-
-        /**
-         * Constructs a reference-less label node (relative positioning); this is
-         * useful for creating a label that you will "attach" to another object that
-         * is already map referenced.
-         */
-        LabelNode(
             const osg::Vec3d&       position,
             const std::string&      text,
             const TextSymbol*       symbol =0L );

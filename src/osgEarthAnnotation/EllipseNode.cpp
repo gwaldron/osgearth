@@ -50,27 +50,3 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
         }
     }
 }
-
-#if 0
-            if ( draped )
-            {
-                GeometryNode* dg = new DrapedGeometryNode( mapNode, geom, style, getTransform() );
-                this->addChild( dg );
-            }
-            else
-            {
-                osg::ref_ptr<Feature> f = new Feature( geom );
-                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
-                GeometryCompiler compiler;
-                FilterContext cx;
-                osg::Node* node = compiler.compile( f.get(), style, cx );
-                if ( node )
-                {
-                    getTransform()->addChild( node );
-                    this->addChild( getTransform() );
-                }
-            }
-        }
-    }
-}
-#endif

@@ -30,7 +30,8 @@ using namespace osgEarth::Symbology;
 osg::Drawable* 
 LabelUtils::createText(const osg::Vec3&   positionOffset,
                        const std::string& text,
-                       const TextSymbol*  symbol )
+                       const TextSymbol*  symbol,
+                       bool               declutter)
 {
     osgText::Text* t = new osgText::Text();
     t->setText( text );
@@ -45,6 +46,9 @@ LabelUtils::createText(const osg::Vec3&   positionOffset,
         t->setBackdropColor( symbol->halo()->color() );
         t->setBackdropType( osgText::Text::OUTLINE );
     }
+    osg::StateSet* stateSet = t->getOrCreateStateSet();
+    stateSet->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+    stateSet->setMode( GL_DEPTH_TEST, 0 );
     return t;
 }
 
@@ -72,29 +76,19 @@ _text( text )
     init( symbol );
 }
 
-LabelNode::LabelNode(const osg::Vec3d&  position,
-                     const std::string& text,
-                     const TextSymbol*  symbol ) :
-
-LocalizedNode( 0L, position, true ),
-_text( text )
-{
-    init( symbol );
-}
-
 void
 LabelNode::init( const TextSymbol* symbol )
 {
     // The following setup will result is a proper dynamic bounding box for the text.
     // If you just use osgText's rotate-to-screen and SCREEN_COORDS setup, you do not
     // get a proper bounds.
-    osg::Drawable* t = LabelUtils::createText( osg::Vec3(0,0,0), _text, symbol );
+    osg::Drawable* t = LabelUtils::createText( osg::Vec3(0,0,0), _text, symbol, true );
 
     // By default, osgText assigns a render bin; we need to negate that in order
     // to activate the decluttering.
-    osg::StateSet* stateSet = t->getOrCreateStateSet();
-    stateSet->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
-    stateSet->setMode( GL_DEPTH_TEST, 0 );
+    //osg::StateSet* stateSet = t->getOrCreateStateSet();
+    //stateSet->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+    //stateSet->setMode( GL_DEPTH_TEST, 0 );
 
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( t );

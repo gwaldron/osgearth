@@ -69,7 +69,7 @@ LabelSourceFactory::create( const LabelSourceOptions& options )
         if ( labelSource )
         {
             //modelSource->setName( options.getName() );
-            OE_INFO << "Loaded LabelSource driver \"" << options.getDriver() << "\" OK" << std::endl;
+            //OE_INFO << "Loaded LabelSource driver \"" << options.getDriver() << "\" OK" << std::endl;
         }
         else
         {

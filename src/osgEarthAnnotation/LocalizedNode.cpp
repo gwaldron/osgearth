@@ -50,8 +50,9 @@ _autoTransform ( is2D )
     if ( mapSRS )
     {
         setHorizonCulling( true );
-        setPosition( pos );
     }
+    
+    setPosition( pos );
 }
 
 void
@@ -75,58 +76,35 @@ LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSR
 {
     // first transform the point to the map's SRS:
     osg::Vec3d mapPos = pos;
-    if ( posSRS && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
+    if ( posSRS && _mapSRS.valid() && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
         return false;
 
-    // update the transform:
-    osg::Matrixd local2world;
-    _mapSRS->createLocal2World( mapPos, local2world );
-
-    if ( _autoTransform )
-        static_cast<osg::AutoTransform*>(_xform.get())->setPosition( local2world.getTrans() );
-    else
-        static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( local2world );
-
-    // and update the culler:
     CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
-    if ( culler )
-        culler->_world = local2world.getTrans();
 
-    return true;
-}
-
-#if 0
-    osg::ref_ptr<MapNode> mapNode = _mapNode.get();
-    if ( mapNode.valid() )
+    // update the transform:
+    if ( !_mapSRS.valid() )
     {
-        Map* map = mapNode->getMap();
-
-        osg::Vec3d mapPos = pos;
-        if ( srs )
-        {
-            if ( ! map->toMapPoint( pos, srs, mapPos ) )
-                return false;
-        }
-
-        // update the transform:
+        if ( _autoTransform )
+            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( mapPos );
+        else
+            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( osg::Matrix::translate(pos) );
+    }
+    else
+    {
         osg::Matrixd local2world;
-        map->getProfile()->getSRS()->createLocal2World( mapPos, local2world );
+        _mapSRS->createLocal2World( mapPos, local2world );
 
         if ( _autoTransform )
             static_cast<osg::AutoTransform*>(_xform.get())->setPosition( local2world.getTrans() );
         else
             static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( local2world );
-
-        // and update the culler:
-        CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
+        
         if ( culler )
             culler->_world = local2world.getTrans();
+    }
 
-        return true;
-    }   
-    else return false;
+    return true;
 }
-#endif
 
 osg::Vec3d
 LocalizedNode::getPosition() const
@@ -143,20 +121,27 @@ LocalizedNode::getPosition( const SpatialReference* srs ) const
     else
         world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
 
-    osg::Vec3d output = world;
-    if ( _mapSRS->isGeographic() )
-        _mapSRS->transformFromECEF( world, output );
+    if ( _mapSRS.valid() )
+    {
+        osg::Vec3d output = world;
+        if ( _mapSRS->isGeographic() )
+            _mapSRS->transformFromECEF( world, output );
+    
+        if ( srs )
+            _mapSRS->transform( output, srs, output );
 
-    if ( srs )
-        _mapSRS->transform( output, srs, output );
-
-    return output;
+        return output;
+    }
+    else
+    {
+        return world;
+    }
 }
 
 void
 LocalizedNode::setHorizonCulling( bool value )
 {
-    if ( _horizonCulling != value )
+    if ( _horizonCulling != value && _mapSRS.valid() )
     {
         _horizonCulling = value;
 

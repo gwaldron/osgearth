@@ -29,7 +29,7 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
-    struct LabelUtils
+    struct OSGEARTHANNO_EXPORT LabelUtils
     {
         static osg::Drawable* createText(
             const osg::Vec3&   positionOffset,
@@ -43,17 +43,34 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT LabelNode : public LocalizedNode
     {
     public:
-        LabelNode(
-            const SpatialReference* mapSRS,
-            const osg::Vec3d&       position,
-            const std::string&      text,
-            const TextSymbol*       symbol =0L );
-
+        /**
+         * Constructs a label node that is positioned relative to a map.
+         */
         LabelNode(
             MapNode*                mapNode,
             const osg::Vec3d&       position,
             const std::string&      text,
             const TextSymbol*       symbol =0L ); 
+
+        /**
+         * Constructs a label node that is positioned relative to a map
+         * point (referneced by the spatial reference)
+         */
+        LabelNode(
+            const SpatialReference* mapSRS,
+            const osg::Vec3d&       position,
+            const std::string&      text,
+            const TextSymbol*       symbol =0L ); 
+
+        /**
+         * Constructs a reference-less label node (relative positioning); this is
+         * useful for creating a label that you will "attach" to another object that
+         * is already map referenced.
+         */
+        LabelNode(
+            const osg::Vec3d&       position,
+            const std::string&      text,
+            const TextSymbol*       symbol =0L );
 
     protected:
         void init( const TextSymbol* symbol );

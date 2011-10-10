@@ -32,18 +32,15 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth::Symbology;
 
     /**
-     * Simple node that renders a Geometry into a scene graph node. The coordinates
-     * of the geometry are explicit; there is no association with spatial reference
-     * or a map. You can use this object to create a geometry for use in a local
-     * tangent plane coordinate system.
+     * Simple node that renders a Geometry into a scene graph node.
      */
-    class OSGEARTHANNO_EXPORT GeometryNode : public DrapeableNode
+    class OSGEARTHANNO_EXPORT LocalGeometryNode : public DrapeableNode
     {
     public:
         /**
          * Constructs a new draped geometry node
          */
-        GeometryNode( 
+        LocalGeometryNode( 
             MapNode*     mapNode,
             Geometry*    geom, 
             const Style& style, 

@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarthAnnotation/DrapeableGeometryNode>
+#include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarth/Utils>
 
@@ -26,16 +26,17 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 
 
-DrapedGeometryNode::DrapedGeometryNode(MapNode*     mapNode,
-                                       Geometry*    geom,
-                                       const Style& style,
-                                       osg::Group*  parent ) :
-DrapeableNode( mapNode, true )
+LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
+                                     Geometry*    geom,
+                                     const Style& style,
+                                     bool         draped,
+                                     osg::Group*  parent ) :
+DrapeableNode( mapNode, draped )
 {
     osg::ref_ptr<Feature> feature = new Feature( geom );
 
     GeometryCompiler compiler;
-    FilterContext cx( new Session(mapNode->getMap()) );
+    FilterContext cx( 0L );
     osg::Node* node = compiler.compile( feature.get(), style, cx );
     if ( node )
     {

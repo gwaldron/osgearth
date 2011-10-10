@@ -18,7 +18,7 @@
 */
 
 #include <osgEarthAnnotation/CircleNode>
-#include <osgEarthAnnotation/DrapeableGeometryNode>
+#include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/MapNode>
@@ -35,18 +35,23 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        const Style&       style,
                        bool               draped,
                        unsigned           numSegments) :
+
 LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
 {
-    if ( mapNode )
+    // construct a local-origin circle.
+    GeometryFactory factory;
+    Geometry* geom = factory.createCircle(osg::Vec3d(0,0,0), radius, numSegments);
+    if ( geom )
     {
-        // construct a local-origin circle.
-        GeometryFactory factory;
-        Geometry* geom = factory.createCircle(osg::Vec3d(0,0,0), radius, numSegments);
-        if ( geom )
-        {
+        LocalGeometryNode* dg = new LocalGeometryNode( mapNode, geom, style, draped, getTransform() );
+        this->addChild( dg );
+    }
+}
+#if 0
+
             if ( draped )
             {
-                DrapedGeometryNode* dg = new DrapedGeometryNode( mapNode, geom, style, getTransform() );
+                GeometryNode* dg = new GeometryNode( mapNode, geom, style, draped, getTransform() );
                 this->addChild( dg );
             }
             else
@@ -64,3 +69,4 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
         }
     }
 }
+#endif

@@ -146,6 +146,17 @@ main(int argc, char** argv)
     FeatureNode* pathNode = new FeatureNode(mapNode, pathFeature, true);
     annoGroup->addChild( pathNode );
 
+    // a circle around New Orleans
+    Style circleStyle;
+    circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
+    CircleNode* circle = new CircleNode(
+        mapNode, 
+        osg::Vec3d( -90.25, 29.98, 0 ),
+        Linear(300, Units::KILOMETERS ),
+        circleStyle,
+        true );
+    annoGroup->addChild( circle );
+
     // an ellipse around Miami
     Style ellipseStyle;
     ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);

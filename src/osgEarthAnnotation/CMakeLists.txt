@@ -13,7 +13,6 @@ set(LIB_PUBLIC_HEADERS
     CircleNode
     Common
     Decluttering
-    DrapeableGeometryNode
     EllipseNode
     Export
     GeometryNode
@@ -28,7 +27,6 @@ set(LIB_COMMON_FILES
     AnnotationData.cpp
     CircleNode.cpp
     Decluttering.cpp
-    DrapeableGeometryNode.cpp
     EllipseNode.cpp
     GeometryNode.cpp
     ImageOverlay.cpp

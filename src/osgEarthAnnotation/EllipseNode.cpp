@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthAnnotation/DrapeableGeometryNode>
+#include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/MapNode>
@@ -45,9 +45,16 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
         Geometry* geom = factory.createEllipse(osg::Vec3d(0,0,0), radiusMajor, radiusMinor, rotationAngle, numSegments);
         if ( geom )
         {
+            LocalGeometryNode* dg = new LocalGeometryNode( mapNode, geom, style, draped, getTransform() );
+            this->addChild( dg );
+        }
+    }
+}
+
+#if 0
             if ( draped )
             {
-                DrapedGeometryNode* dg = new DrapedGeometryNode( mapNode, geom, style, getTransform() );
+                GeometryNode* dg = new DrapedGeometryNode( mapNode, geom, style, getTransform() );
                 this->addChild( dg );
             }
             else
@@ -66,3 +73,4 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
         }
     }
 }
+#endif

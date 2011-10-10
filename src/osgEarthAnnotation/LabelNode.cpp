@@ -72,6 +72,16 @@ _text( text )
     init( symbol );
 }
 
+LabelNode::LabelNode(const osg::Vec3d&  position,
+                     const std::string& text,
+                     const TextSymbol*  symbol ) :
+
+LocalizedNode( 0L, position, true ),
+_text( text )
+{
+    init( symbol );
+}
+
 void
 LabelNode::init( const TextSymbol* symbol )
 {

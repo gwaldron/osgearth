@@ -49,6 +49,8 @@ namespace osgEarth
     public:
         virtual void traverse( osg::NodeVisitor& nv );
 
+        virtual osg::BoundingSphere computeBound() const;
+
     protected:
         osg::observer_ptr<MapNode> _mapNode;
 

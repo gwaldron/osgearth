@@ -77,8 +77,8 @@ namespace osgEarth { namespace Annotation
          */
         LocalizedNode( 
             const SpatialReference* mapSRS,
-            const osg::Vec3d& pos      =osg::Vec3d(0,0,0), 
-            bool              is2D     =false );
+            const osg::Vec3d&       pos      =osg::Vec3d(0,0,0), 
+            bool                    is2D     =false );
 
         osg::Transform* getTransform() { return _xform.get(); }
 

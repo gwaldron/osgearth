@@ -611,6 +611,15 @@ MultiGeometry::getTotalPointCount() const
     return total;
 }
 
+unsigned
+MultiGeometry::getNumGeometries() const
+{
+    unsigned total = 0;
+    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+        total += i->get()->getNumGeometries();
+    return total;
+}
+
 Bounds
 MultiGeometry::getBounds() const
 {

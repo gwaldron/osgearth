@@ -92,6 +92,13 @@ namespace osgEarth { namespace Symbology
         virtual unsigned getNumComponents() const { return 1; }
 
         /**
+         * Gets the total number of geometries; it is the total of all parts of all
+         * components. Also can be seen as the number of Geometry objects that would
+         * be returned by a full GeometryIterator.
+         */
+        virtual unsigned getNumGeometries() const { return 1; }
+
+        /**
          * Converts this geometry to another type. This function will return "this" if
          * the type is the same, and will return NULL if the conversion is impossible.
          */
@@ -181,8 +188,6 @@ namespace osgEarth { namespace Symbology
         PointSet( const Vec3dVector* toCopy ) : Geometry( toCopy ) { }
         PointSet( const PointSet& rhs );
 
-        //META_Object( osgEarthSymbology, PointSet );
-
     public:
         virtual Type getType() const { return Geometry::TYPE_POINTSET; }
     };
@@ -196,8 +201,6 @@ namespace osgEarth { namespace Symbology
         LineString( int capacity =0 ) : Geometry( capacity ) { }
         LineString( const LineString& rhs );
         LineString( const Vec3dVector* toCopy );
-
-        //META_Object( osgEarthSymbology, LineString );
 
         double getLength() const;
         bool getSegment(double length, osg::Vec3d& start, osg::Vec3d& end);
@@ -225,8 +228,6 @@ namespace osgEarth { namespace Symbology
         Ring( int capacity =0 ) : Geometry( capacity ) { }
         Ring( const Ring& ring );
         Ring( const Vec3dVector* toCopy );
-
-        //META_Object( osgEarthSymbology, Ring );
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
@@ -264,12 +265,12 @@ namespace osgEarth { namespace Symbology
         Polygon( int capacity =0 ) : Ring( capacity ) { }
         Polygon( const Polygon& rhs );
         Polygon( const Vec3dVector* toCopy );
-
-        //META_Object( osgEarthSymbology, Polygon );
         
     public:
         virtual Type getType() const { return Geometry::TYPE_POLYGON; }
         virtual int getTotalPointCount() const;
+        
+        virtual unsigned getNumGeometries() const { return 1 + _holes.size(); }
 
         // tests whether the point falls withing the polygon (but not its holes)
         virtual bool contains2D( double x, double y ) const;
@@ -294,13 +295,13 @@ namespace osgEarth { namespace Symbology
         MultiGeometry( const GeometryCollection& parts );
         MultiGeometry( const MultiGeometry& rhs );
 
-        //META_Object( osgEarthSymbology, MultiGeometry );
-
     public:
         virtual Type getType() const { return Geometry::TYPE_MULTI; }        
         virtual Type getComponentType() const;
         virtual int getTotalPointCount() const;        
         virtual unsigned getNumComponents() const { return _parts.size(); }
+        
+        virtual unsigned getNumGeometries() const;
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;

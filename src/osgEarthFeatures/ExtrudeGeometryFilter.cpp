@@ -213,17 +213,16 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
     // Total number of verts. Add 2 to close a polygon (necessary so the first and last
     // points can have unique texture coordinates)
-
-    unsigned numVerts = 2 * pointCount + (isSkinnedPolygon? 2 : 0);
+    unsigned numWallVerts = 2 * pointCount + (isSkinnedPolygon? (2 * input->getNumGeometries()) : 0);
 
     // create all the OSG geometry components
-    osg::Vec3Array* verts = new osg::Vec3Array( numVerts );
+    osg::Vec3Array* verts = new osg::Vec3Array( numWallVerts );
     walls->setVertexArray( verts );
 
     osg::Vec2Array* wallTexcoords = 0L;
     if ( wallSkin )
     { 
-        wallTexcoords = new osg::Vec2Array( numVerts );
+        wallTexcoords = new osg::Vec2Array( numWallVerts );
         walls->setTexCoordArray( 0, wallTexcoords );
     }
 
@@ -231,8 +230,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     {
         // per-vertex colors are necessary if we are going to use the MeshConsolidator -gw
         osg::Vec4Array* colors = new osg::Vec4Array();
-        colors->reserve( numVerts );
-        colors->assign( numVerts, wallColor );
+        colors->reserve( numWallVerts );
+        colors->assign( numWallVerts, wallColor );
         walls->setColorArray( colors );
         walls->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
         //osg::Vec4Array* colors = new osg::Vec4Array( 1 );
@@ -324,19 +323,19 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     osg::Vec3Array* outlineNormals = 0L;
     if ( outline )
     {
-        outlineVerts = new osg::Vec3Array( numVerts );
+        outlineVerts = new osg::Vec3Array( numWallVerts );
         outline->setVertexArray( outlineVerts );
 
         osg::Vec4Array* outlineColors = new osg::Vec4Array();
-        outlineColors->reserve( numVerts );
-        outlineColors->assign( numVerts, outlineColor );
+        outlineColors->reserve( numWallVerts );
+        outlineColors->assign( numWallVerts, outlineColor );
         outline->setColorArray( outlineColors );
         outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
         // cop out, just point all the outline normals up. fix this later.
         outlineNormals = new osg::Vec3Array();
-        outlineNormals->reserve( numVerts );
-        outlineNormals->assign( numVerts, osg::Vec3(0,0,1) );
+        outlineNormals->reserve( numWallVerts );
+        outlineNormals->assign( numWallVerts, osg::Vec3(0,0,1) );
         outline->setNormalArray( outlineNormals );
     }
 
@@ -508,6 +507,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                             (*wallTexcoords)[p+2].set( partLen/tex_width_m, 0.0f );
                             (*wallTexcoords)[p+3].set( partLen/tex_width_m, h/tex_height_m_adj );
                         }
+
+                        wallVertPtr += 2;
                     }
                     else
                     {

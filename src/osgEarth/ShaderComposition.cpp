@@ -512,9 +512,9 @@ osg::Shader*
 ShaderFactory::createDefaultLightingFragmentShader() const
 {
     static char s_PerVertexLighting_FragmentShaderSource[] =
-        "void osgearth_frag_applyLighting( inout vec4 color )                            \n"
+        "void osgearth_frag_applyLighting( inout vec4 color )                       \n"
         "{                                                                          \n"
-        "    float alpha = color.a;\                                                \n"
+        "    float alpha = color.a;                                                 \n"
         "    color = color * gl_Color + gl_SecondaryColor;                          \n"
         "    color.a = alpha;                                                       \n"
         "}                                                                          \n";

@@ -48,24 +48,32 @@ namespace
 /**
  * A custom RenderLeaf sorting algorithm for decluttering objects.
  * It first sorts front-to-back so that objects closer to the camera get
- * priority. Then it goes through the drawables and removes any that 
- * try to occupy already occupied space (in eye space)
+ * priority. (You can replace this sorting algorithm with your own.)
+ * Then it goes through the drawables and removes any that try to occupy
+ * already occupied space (in eye space). Drawables with a common parent
+ * node (e.g., under the same Geode) are processed as a group.
  *
  * We can easily modify this to do other interesting things, like shift
  * objects around or scale them based on occlusion.
  *
  * To submit an object for decluttering, all you have to do is call
- * obj->getStateSet()->setRenderBinDetails( bin, OSGEARTH_DECLUTTER_BIN );
+ * obj->getStateSet()->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
  */
 struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 {
     DeclutterPriorityFunctor* _f;
 
+    /**
+     * Constructs the new sorter.
+     * @param f Custom declutter sorting predicate. Pass NULL to use the 
+     *          default sorter (sort by distance-to-camera).
+     */
     DeclutterSort( DeclutterPriorityFunctor* f = 0L ) : _f(f)
     {
         //nop
     }
 
+    // override
     void sortImplementation(osgUtil::RenderBin* bin)
     {
         osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
@@ -75,7 +83,6 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         {
             // if there's a custom sorting function installed
             bin->copyLeavesFromStateGraphListToRenderLeafList();
-
             std::sort( leaves.begin(), leaves.end(), SortContainer( *_f ) );
         }
         else
@@ -84,6 +91,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             bin->sortFrontToBack();
         }
 
+        // nothing to sort? bail out
         if ( leaves.size() == 0 )
             return;
         
@@ -100,10 +108,11 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         osg::Matrix windowMatrix = vp->computeWindowMatrix();
 
         // Track the parent nodes of drawables that are obscured (and culled). Drawables
-        // with the same parent node are considered to be grouped and will be culled as 
-        // a group.
+        // with the same parent node (typically a Geode) are considered to be grouped and
+        // will be culled as a group.
         std::set<const osg::Node*> culledParents;
 
+        // Go through each leaf and test for visibility.
         for( osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); i != leaves.end(); ++i )
         {
             bool visible = true;
@@ -118,8 +127,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 continue;
             }
 
+            // transform the bounding box of the drawable into window-space.
             osg::BoundingBox box = drawable->getBound();
-
             static osg::Vec4d s_zero_w(0,0,0,1);
             osg::Vec4d clip = s_zero_w * (*leaf->_modelview.get()) * (*leaf->_projection.get());
             osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );
@@ -145,8 +154,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     box.yMin() > j->second.yMax() ||
                     box.yMax() < j->second.yMin();
 
-                // if there's a conflict, and if the conflict isn't from the same drawable
-                // group (which is acceptable), then the leaf is culled.
+                // if there's an overlap (and the conflict isn't from the same drawable
+                // parent, which is acceptable), then the leaf is culled.
                 if ( !isClear && drawableParent != j->first )
                 {
                     visible = false;
@@ -156,20 +165,29 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
             if ( visible )
             {
+                // passed the test, so add the leaf's bbox to the "used" list, and add the leaf
+                // to the final draw list.
                 used.push_back( std::make_pair(drawableParent, box) );
                 passed.push_back( leaf );
+
+                // modify the leaf's modelview matrix to correctly position it in the 2D ortho
+                // projection when it's drawn later. (Note: we need a new RefMatrix since the
+                // original might be shared ... potential optimization here)
                 leaf->_modelview = new osg::RefMatrix( osg::Matrix::translate(
                     box.xMin() + offset.x(),
                     box.yMin() + offset.y(), 
                     0) );
-                //leaf->_modelview->makeTranslate(box.xMin(), box.yMin(), 0);
             }
             else
             {
+                // culled, so put the parent in the parents list so that any future leaves
+                // with the same parent will be trivially rejected
                 culledParents.insert( drawable->getParent(0) );
             }
         }
 
+        // copy the final draw list back into the bin, rejecting any leaves whose parents
+        // are in the cull list.
         leaves.clear();
         for( osgUtil::RenderBin::RenderLeafList::const_iterator i=passed.begin(); i != passed.end(); ++i )
         {
@@ -182,6 +200,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
     }
 };
 
+/**
+ * Custom draw routine for our declutter render bin.
+ */
 struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
 {
     /**
@@ -198,9 +219,9 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
         if (numToPop>1) --numToPop;
         unsigned int insertStateSetPosition = state.getStateSetStackSize() - numToPop;
 
-        if (bin->getStateSet()) // _stateset.valid())
+        if (bin->getStateSet())
         {
-            state.insertStateSet(insertStateSetPosition,bin->getStateSet());
+            state.insertStateSet(insertStateSetPosition, bin->getStateSet());
         }
 
         /* note: removed code that draws child bins (unsupported) */

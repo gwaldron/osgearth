@@ -20,8 +20,48 @@
 #define OSGEARTH_ANNOTATION_DECLUTTER_RENDER_BIN_H 1
 
 #include <osgEarthAnnotation/Common>
+#include <osg/Drawable>
+
+/**
+ * To apply the "decluttering" algorithm to a subgraph, call
+ *
+ * Node->getOrCreateStateSet()->setRenderBinDetails( binNumber, OSGEARTH_DECLUTTER_BIN )
+ */
 
 #define OSGEARTH_DECLUTTER_BIN "declutter"
 
+namespace osgEarth { namespace Annotation 
+{
+    struct DeclutterCullCallback : public osg::Drawable::CullCallback
+    {
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const;
+        osg::BoundingBox _screenBox;
+    };
+
+    /**
+     * Custom functor that compares two RenderLeaf's and returns TRUE if the left-hand one
+     * is higher priority, otherwise FALSE. You can call setDeclutterPriorityFunctor()
+     * to set a custom priority-sorting functor.
+     */
+    struct DeclutterPriorityFunctor : public osg::Referenced
+    {
+        virtual bool operator() ( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const =0;
+    };
+
+    struct Decluttering
+    {
+        /**
+         * Sets a functor to use to determine render leaf priority for declutter sorting.
+         */
+        static void setDeclutterPriorityFunctor( DeclutterPriorityFunctor* f );
+
+        /**
+         * Clears a custom priority functor that was set using setDeclutterPriorityFunctor,
+         * reverting to the default behavior (which is to sort by distance from the camera).
+         */
+        static void clearDeclutterPriorityFunctor();
+    };
+
+} } // namespace osgEarth::Annotation
 
 #endif //OSGEARTH_ANNOTATION_DECLUTTER_RENDER_BIN_H

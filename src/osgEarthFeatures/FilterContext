@@ -80,8 +80,8 @@ namespace osgEarth { namespace Features
         /**
          * Whether to assume a geocentric coordinate system for geographic profiles.
          */
-        bool isGeocentric() const { return _isGeocentric; }
-        bool& isGeocentric() { return _isGeocentric; }
+        //bool isGeocentric() const { return _isGeocentric; }
+        //bool& isGeocentric() { return _isGeocentric; }
 
         /**
          * Whether this context has a non-identity reference frame

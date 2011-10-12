@@ -22,6 +22,10 @@
 #include <osgEarthAnnotation/Common>
 #include <osgEarth/SpatialReference>
 #include <osg/Transform>
+#include <osg/Switch>
+#include <osg/AutoTransform>
+#include <osg/MatrixTransform>
+
 
 namespace osgEarth { namespace Annotation
 {	
@@ -89,6 +93,55 @@ namespace osgEarth { namespace Annotation
         bool _autoTransform;
     };
 
+
+    class OSGEARTHANNO_EXPORT OrthoNode : public osg::Switch
+    {
+    public:
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * of the current Map. Returns true upon success.
+         */
+        bool setPosition( const osg::Vec3d& pos );
+
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * passed in, and will be reprojected to Map coordinates.
+         * Returns true upon success.
+         */
+        bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs );
+
+        /**
+         * Gets the position (in map coordinates) of the node
+         */
+        osg::Vec3d getPosition() const;
+
+        /**
+         * Gets the position (in the requested coordinate system)
+         */
+        osg::Vec3d getPosition( const SpatialReference* srs ) const;
+
+        /**
+         * Enables or disable automatic horizon culling
+         */
+        void setHorizonCulling( bool value );
+        bool getHorizonCulling() const;
+
+    public: // osg::Node
+
+        virtual void traverse( osg::NodeVisitor& nv );
+
+    protected:
+        OrthoNode( const SpatialReference* mapSRS, const osg::Vec3d& position );
+
+        /** Attaches a child node to the transforms. */
+        void attach( osg::Node* transformChild );
+
+    private:
+        osg::observer_ptr<const SpatialReference> _mapSRS;
+        osg::ref_ptr<osg::AutoTransform>          _autoxform;
+        osg::ref_ptr<osg::MatrixTransform>        _matxform;
+        bool                                      _horizonCulling;
+    };
 
 } } // namespace osgEarth::Annotation
 

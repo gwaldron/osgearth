@@ -22,6 +22,7 @@
 #include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthFeatures/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/Decluttering>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
@@ -113,22 +114,34 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         pNode = new PlaceNode( cx._mapNode, position, image, text, style );
     }
 
+    osg::Group* parent =
+        cx._options->iconAndLabelGroup().valid() ?
+        cx._options->iconAndLabelGroup().get() :
+        cx._groupStack.top();
+
+
     if ( fNode && pNode )
     {
         osg::Group* group = new osg::Group();
         group->addChild( fNode );
         group->addChild( pNode );
-        cx._groupStack.top()->addChild( group );
+        parent->addChild( group );
         KML_Feature::build( conf, cx, group );
     }
     else if ( pNode )
     {
-        cx._groupStack.top()->addChild( pNode );
+        parent->addChild( pNode );
         KML_Feature::build( conf, cx, pNode );
     }
     else if ( fNode )
     {
-        cx._groupStack.top()->addChild( fNode );
+        parent->addChild( fNode );
         KML_Feature::build( conf, cx, fNode );
+    }
+
+    // apply decluttering if necessary
+    if ( pNode && cx._options->declutter() == true && !cx._options->iconAndLabelGroup().valid() )
+    {
+        pNode->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
     }
 }

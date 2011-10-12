@@ -19,12 +19,11 @@
 
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
 #include <osgText/Text>
-#include <osg/ShapeDrawable>
+#include <osg/Depth>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -38,7 +37,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position, true ),
+OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
 _image  ( image ),
 _text   ( text ),
 _style  ( style )
@@ -59,11 +58,8 @@ PlaceNode::init()
     osg::StateSet* dstate = new osg::StateSet;
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
     dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
-    dstate->setMode(GL_DEPTH_TEST, 0);
     dstate->setMode(GL_BLEND, 1);
-    dstate->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
     dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);   
-
 
     // set up the geoset.
     osg::Geometry* geom = new osg::Geometry();
@@ -93,16 +89,16 @@ PlaceNode::init()
     osg::Drawable* text = LabelUtils::createText(
         osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ),
         _text,
-        _style.get<TextSymbol>(),
-        true );
-    text->setStateSet( dstate );
+        _style.get<TextSymbol>() );
 
     osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( geom );
     geode->addDrawable( text );
+    geode->addDrawable( geom );
+    
+    osg::StateSet* stateSet = geode->getOrCreateStateSet();
+    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    getTransform()->addChild( geode );
-    this->addChild( getTransform() );
+    this->attach( geode );
 }
 
 void

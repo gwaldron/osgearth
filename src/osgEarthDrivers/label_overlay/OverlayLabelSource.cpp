@@ -81,7 +81,7 @@ public:
         bool makeECEF = false;
         if ( context.isGeoreferenced() )
         {
-            makeECEF = context.isGeocentric();
+            makeECEF = context.getSession()->getMapInfo().isGeocentric();
         }
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )

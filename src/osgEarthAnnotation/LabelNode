@@ -34,14 +34,13 @@ namespace osgEarth { namespace Annotation
         static osg::Drawable* createText(
             const osg::Vec3&   positionOffset,
             const std::string& text,
-            const TextSymbol*  symbol,
-            bool               declutter );
+            const TextSymbol*  symbol );
     };
 
     /**
      * Text labeling node.
      */
-    class OSGEARTHANNO_EXPORT LabelNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT LabelNode : public OrthoNode // LocalizedNode
     {
     public:
         /**

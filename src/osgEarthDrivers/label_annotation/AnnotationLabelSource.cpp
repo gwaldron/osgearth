@@ -18,7 +18,9 @@
  */
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/Decluttering>
 #include <osgDB/FileNameUtils>
+#include <osgUtil/Optimizer>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -52,6 +54,7 @@ public:
         const FilterContext& context )
     {
         osg::Group* group = new osg::Group();
+        group->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
 
         StringExpression  contentExpr ( *symbol->content() );
         //NumericExpression priorityExpr( *text->priority() );

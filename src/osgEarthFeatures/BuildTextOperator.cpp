@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #include <osgEarthFeatures/BuildTextOperator>
 #include <osgEarth/Utils>
 #include <osgDB/ReadFile>
@@ -237,3 +238,4 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
     }
     return result;
 }
+#endif

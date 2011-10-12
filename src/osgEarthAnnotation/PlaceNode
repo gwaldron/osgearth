@@ -35,7 +35,7 @@ namespace osgEarth { namespace Annotation
      * A PlaceNode combines an 2D icon, a label, support for mouse interaction
      * and a popup control.
      */
-    class OSGEARTHANNO_EXPORT PlaceNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT PlaceNode : public OrthoNode
     {
     public:
         /**

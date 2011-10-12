@@ -25,6 +25,7 @@
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/Decluttering>
 #include <osgEarthFeatures/FeatureNode>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
@@ -75,48 +76,33 @@ main(int argc, char** argv)
     osg::Group* annoGroup = new osg::Group();
     root->addChild( annoGroup );
 
-#if 1
+    // make a group for 2D items, and apply decluttering to it.
+    osg::Group* labelGroup = new osg::Group();
+    labelGroup->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+    annoGroup->addChild( labelGroup );
+
     // a Placemark combines a 2D icon with a text label.
-    annoGroup->addChild( new PlaceNode(
+    labelGroup->addChild( new PlaceNode(
         mapNode, 
         osg::Vec3d(-74, 40.714, 0), 
         URI("../data/placemark32.png").readImage(),
         "New York") );
 
-    annoGroup->addChild( new PlaceNode(
+    labelGroup->addChild( new PlaceNode(
         mapNode, 
-        osg::Vec3d(-74, 37.5, 0),
+        osg::Vec3d(-77.04, 38.85, 0),
         URI("../data/placemark32.png").readImage(),
         "Washington, DC") );
 
-
-    // a Placemark combines a 2D icon with a text label.
-    annoGroup->addChild( new PlaceNode(
-        mapNode, 
-        osg::Vec3d(139.75, 35.685, 0), 
-        URI("../data/placemark32.png").readImage(),
-        "Tokyo" ) );
-#else
-    annoGroup->addChild( new LabelNode(
-        mapNode,
-        osg::Vec3d(-74, 40.714, 0),
-        "New York") );
-
-    annoGroup->addChild( new LabelNode(
-        mapNode, 
-        osg::Vec3d(-77.04, 38.83, 0),
-        "Washington, DC") );
-
-    annoGroup->addChild( new LabelNode(
+    labelGroup->addChild( new LabelNode(
         mapNode, 
         osg::Vec3d(-71.03, 42.37, 0),
         "Boston") );
 
-    annoGroup->addChild( new LabelNode(
+    labelGroup->addChild( new LabelNode(
         mapNode, 
         osg::Vec3d(139.75, 35.685, 0), 
         "Tokyo" ) );
-#endif
 
     // a box that follows lines of latitude (rhumb line interpolation, the default)
     Geometry* geom = new Ring();

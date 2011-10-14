@@ -138,8 +138,8 @@ namespace osgEarth { namespace Symbology
         const optional<bool>& isTiled() const { return _isTiled; }
 
         /** Random number seed value (for picking a candidate) */
-        optional<unsigned> randomSeed() { return _randomSeed; }
-        const optional<unsigned> randomSeed() const { return _randomSeed; }
+        optional<unsigned>& randomSeed() { return _randomSeed; }
+        const optional<unsigned>& randomSeed() const { return _randomSeed; }
 
     public:
         void mergeConfig(const Config& conf);

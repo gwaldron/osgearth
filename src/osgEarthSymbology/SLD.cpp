@@ -311,6 +311,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!skin) skin = sc.getOrCreate<SkinSymbol>();
             skin->maxObjectHeight() = as<float>( p->second, 0.0f );
         }
+        else if (p->first == "skin-random-seed")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->randomSeed() = as<unsigned>( p->second, 0u );
+        }
 
     }
 

@@ -22,6 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Filter>
+#include <osgEarth/Random>
 
 namespace osgEarth { namespace Features
 {
@@ -63,18 +64,19 @@ namespace osgEarth { namespace Features
             const Geometry*         input,
             const SpatialReference* inputSRS,
             const FilterContext&    context, 
-            PointSet*               output) const;
+            PointSet*               output);
 
         void lineScatter(
             const Geometry*         input,
             const SpatialReference* inputSRS,
             const FilterContext&    context, 
-            PointSet*               output) const;
+            PointSet*               output);
 
     private:
         float    _density;
         bool     _random;
         unsigned _randomSeed;
+        Random   _prng;
     };
 
 } } // namespace osgEarth::Features

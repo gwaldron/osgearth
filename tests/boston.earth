@@ -53,19 +53,20 @@ to extruded buildings.
                     extrusion-flatten:     true;
                     extrusion-wall-style:  building-wall;
                     extrusion-roof-style:  building-rooftop;
-                    extrusion-random-seed: 1;
                     altitude-clamping:     none;
                 }            
                 building-wall {
-                    skin-library: us_resources;
-                    skin-tags:    building;
-                    fill:         #ffffff;
+                    skin-library:     us_resources;
+                    skin-tags:        building;
+                    skin-random-seed: 1;
+                    fill:             #ffffff;
                 }
                 building-rooftop {
-                    skin-library: us_resources;
-                    skin-tags:    rooftop;
-                    skin-tiled:   true;
-                    fill:         #ffffff;
+                    skin-library:     us_resources;
+                    skin-tags:        rooftop;
+                    skin-tiled:       true;
+                    skin-random-seed: 1;
+                    fill:             #ffffff;
                 }
             </style>
         </styles>

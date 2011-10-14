@@ -20,6 +20,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarth/Random>
 #include <iterator>
 #include <algorithm>
 #include <fstream>
@@ -137,14 +138,23 @@ ResourceLibrary::getSkins( const SkinSymbol* symbol, SkinResourceVector& output 
 }
 
 SkinResource*
-ResourceLibrary::getSkin( const SkinSymbol* symbol, unsigned randomizer ) const
+ResourceLibrary::getSkin( const SkinSymbol* symbol, Random& prng ) const
 {
     SkinResourceVector candidates;
     getSkins( symbol, candidates );
     unsigned size = candidates.size();
-    return size == 0 ? 0L : 
-        size == 1 ? candidates[0].get() :
-        candidates[ (randomizer + *symbol->randomSeed()) % size ].get();
+    if ( size == 0 )
+    {
+        return 0L;
+    }
+    else if ( size == 1 )
+    {
+        return candidates[0].get();
+    }
+    else
+    {
+        return candidates[ prng.next(size) ].get();
+    }
 }
 
 bool

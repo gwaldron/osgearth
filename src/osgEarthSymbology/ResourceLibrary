@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Random>
 #include <map>
 
 namespace osgEarth { namespace Symbology
@@ -79,11 +80,12 @@ namespace osgEarth { namespace Symbology
         void getSkins( const SkinSymbol* symbol, SkinResourceVector& output ) const;
 
         /**
-         * Returns a skin that matches the criteria specified in the symbol; the skin
-         * is selected deterministically based on the "randomizer" value and the symbol's
-         * "randomSeed" property.
+         * Returns a skin that matches the criteria specified in the symbol. The method
+         * will randomly select a suitable skin if there are more than one match. If the
+         * symbol contains a random seed, it will use that to seed the selection in order
+         * to provide consistency.
          */
-        SkinResource* getSkin( const SkinSymbol* symbol, unsigned randomizer =0 ) const;
+        SkinResource* getSkin( const SkinSymbol* symbol, Random& prng ) const;
 
 
     public: // Model resource functions
@@ -95,6 +97,8 @@ namespace osgEarth { namespace Symbology
         void mergeConfig( const Config& conf );
 
     protected:
+        typedef std::map< const Symbol*, Random > RandomMap;
+
         Threading::ReadWriteMutex _mutex;
         SkinResourceMap           _skins;
 

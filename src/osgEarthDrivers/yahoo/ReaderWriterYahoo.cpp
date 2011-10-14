@@ -50,8 +50,8 @@ public:
     osg::Image* createImage( const TileKey& key,
                              ProgressCallback* progress )
     {
-        //Return NULL if we are given a non-mercator key
-        if ( !key.isMercator() ) return 0;
+        //Return NULL if we are given a non global-mercator key
+        if ( !key.getProfile()->getProfileType() == Profile::TYPE_MERCATOR ) return 0;
 
         std::stringstream buf;
 

@@ -176,18 +176,3 @@ TileKey::createNeighborKey( TileKey::Direction dir ) const
 
     return TileKey( _lod, x, y, _profile.get() );
 }
-
-bool TileKey::isGeodetic() const
-{
-    return _profile->getProfileType() == Profile::TYPE_GEODETIC; //GLOBAL_GEODETIC;
-}
-
-bool TileKey::isMercator() const
-{
-    return _profile->getProfileType() == Profile::TYPE_MERCATOR; //GLOBAL_MERCATOR;
-}
-
-bool TileKey::isProjected() const
-{
-    return _profile->getProfileType() == Profile::TYPE_LOCAL; //PROJECTED;
-}

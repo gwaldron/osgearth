@@ -613,6 +613,10 @@ ExtrudeGeometryFilter::addDrawable( osg::Drawable* drawable, osg::StateSet* stat
 bool
 ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 {
+    // seed our random number generators
+    Random wallSkinPRNG( _wallSkinSymbol.valid()? *_wallSkinSymbol->randomSeed() : 0, Random::METHOD_FAST );
+    Random roofSkinPRNG( _roofSkinSymbol.valid()? *_roofSkinSymbol->randomSeed() : 0, Random::METHOD_FAST );
+
     for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
@@ -677,7 +681,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
                     querySymbol.objectHeight() = fabs(height) - offset;
-                    wallSkin = _wallResLib->getSkin( &querySymbol, input->getFID() + 151 );
+                    wallSkin = _wallResLib->getSkin( &querySymbol, wallSkinPRNG );
                 }
 
                 else
@@ -693,7 +697,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( _roofResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_roofSkinSymbol.get() );
-                    roofSkin = _roofResLib->getSkin( &querySymbol, input->getFID() + 151 );
+                    roofSkin = _roofResLib->getSkin( &querySymbol, roofSkinPRNG );
                 }
 
                 else

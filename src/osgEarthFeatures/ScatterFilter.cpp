@@ -34,7 +34,7 @@ using namespace osgEarth::Symbology;
 ScatterFilter::ScatterFilter() :
 _density   ( 10.0f ),
 _random    ( true ),
-_randomSeed( 0 )
+_randomSeed( 1 )
 {
     //NOP
 }
@@ -43,7 +43,7 @@ void
 ScatterFilter::polyScatter(const Geometry*         input,
                            const SpatialReference* inputSRS,
                            const FilterContext&    context,
-                           PointSet*               output ) const
+                           PointSet*               output )
 {
     Bounds bounds;
     double areaSqKm = 0.0;
@@ -85,11 +85,8 @@ ScatterFilter::polyScatter(const Geometry*         input,
             // be correct.
             for( unsigned j=0; j<numInstancesInBoundingRect; ++j )
             {
-                double rx = ((double)::rand()) / (double)RAND_MAX;
-                double ry = ((double)::rand()) / (double)RAND_MAX;
-
-                double x = bounds.xMin() + rx * bounds.width();
-                double y = bounds.yMin() + ry * bounds.height();
+                double x = bounds.xMin() + _prng.next() * bounds.width();
+                double y = bounds.yMin() + _prng.next() * bounds.height();
 
                 bool include = true;
 
@@ -127,7 +124,7 @@ void
 ScatterFilter::lineScatter(const Geometry*         input,
                            const SpatialReference* inputSRS,
                            const FilterContext&    context,
-                           PointSet*               output ) const
+                           PointSet*               output )
 {
     // calculate the number of instances per linear km.
     float instPerKm = sqrt( osg::clampAbove( 0.1f, _density ) );
@@ -176,7 +173,7 @@ ScatterFilter::lineScatter(const Geometry*         input,
 
                 for( unsigned n=0; n<numInstances; ++n )
                 {
-                    double offset = ((double)::rand()/(double)RAND_MAX) * seglen_native;
+                    double offset = _prng.next() * seglen_native;
                     output->push_back( p0 + unit*offset );
                 }
             }
@@ -193,8 +190,7 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
     }
 
     // seed the random number generator so the randomness is the same each time
-    // todo: control this seeding based on the feature source name, perhaps?
-    ::srand( _randomSeed );
+    _prng = Random( _randomSeed, Random::METHOD_FAST );
 
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
@@ -205,21 +201,6 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
             continue;
 
         const SpatialReference* geomSRS = context.profile()->getSRS();
-
-#if 0
-        // first, undo the localization frame if there is one.
-        context.toWorld( geom );
-
-        // convert to geodetic if necessary, and compute the approximate area in sq km
-        if ( context.isGeocentric() )
-        {
-            GeometryIterator gi( geom );
-            while( gi.hasMore() )
-                geomSRS->getGeographicSRS()->transformFromECEF( gi.next()->asVector(), true );
-
-            geomSRS = geomSRS->getGeographicSRS();
-        }
-#endif
 
         PointSet* points = new PointSet();
 
@@ -236,15 +217,6 @@ ScatterFilter::push(FeatureList& features, FilterContext& context )
         else {
             OE_WARN << LC << "Sorry, don't know how to scatter a PointSet yet" << std::endl;
         }
-
-#if 0
-        // convert back to geocentric if necessary.
-        if ( context.isGeocentric() )
-            context.profile()->getSRS()->getGeographicSRS()->transformToECEF( points->asVector(), true );
-
-        // re-apply the localization frame.
-        context.toLocal( points );
-#endif
 
         // replace the source geometry with the scattered points.
         f->setGeometry( points );

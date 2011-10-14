@@ -60,6 +60,7 @@ SET(LIB_PUBLIC_HEADERS
 	OverlayDecorator
     Profile
 	Progress
+	Random
     Registry
     Revisioning
     ShaderComposition
@@ -131,6 +132,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	OverlayDecorator.cpp
     Profile.cpp
 	Progress.cpp
+	Random.cpp
     Registry.cpp
     ShaderComposition.cpp
     ShaderUtils.cpp

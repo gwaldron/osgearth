@@ -51,6 +51,16 @@ void Style::addSymbol(Symbol* symbol)
     _symbols.push_back(symbol);
 }
 
+bool Style::removeSymbol(Symbol* symbol)
+{
+	SymbolList::iterator it = find(_symbols.begin(), _symbols.end(), symbol);
+	if (it == _symbols.end())
+		return false;
+		
+	_symbols.erase(it);
+	
+	return true;
+}
 
 Style::Style( const Config& conf )
 {
@@ -229,6 +239,10 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault )
     if ( i != _styles.end() ) {
         return &i->second;
     }
+    else if ( name.length() > 1 && name.at(0) == '#' ) {
+        std::string nameWithoutHash = name.substr( 1 );
+        return getStyle( nameWithoutHash, fallBackOnDefault );
+    }
     else if ( fallBackOnDefault ) {
         return getDefaultStyle();
     }
@@ -243,6 +257,10 @@ StyleSheet::getStyle( const std::string& name, bool fallBackOnDefault ) const
     StyleMap::const_iterator i = _styles.find( name );
     if ( i != _styles.end() ) {
         return &i->second;
+    }
+    else if ( name.length() > 1 && name.at(0) == '#' ) {
+        std::string nameWithoutHash = name.substr( 1 );
+        return getStyle( nameWithoutHash, fallBackOnDefault );
     }
     else if ( fallBackOnDefault ) {
         return getDefaultStyle();
@@ -393,6 +411,7 @@ StyleSheet::mergeConfig( const Config& conf )
             // and create one style for each in the catalog.
             std::stringstream buf( cssString );
             Config css = CssUtils::readConfig( buf );
+            css.setURIContext( styleConf.uriContext( ) );
             
             const ConfigSet children = css.children();
             for(ConfigSet::const_iterator j = children.begin(); j != children.end(); ++j )

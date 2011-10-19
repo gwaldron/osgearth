@@ -68,16 +68,6 @@ namespace osgEarth { namespace Features
          */
         const MapInfo& getMapInfo() const { return _mapInfo; }
 
-        /**
-         * Sets the user-defined build data for this session
-         */
-        void setBuildData( osg::Referenced* buildData ) { _buildData = buildData; }
-
-        /**
-         * Gets the user-defined build data for this session
-         */
-        osg::Referenced* getBuildData() const { return _buildData.get(); }
-
         /** The style sheet governing this session. */
         void setStyles( StyleSheet* value );
         StyleSheet* styles() const { return _styles.get(); }
@@ -118,7 +108,6 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const Map>        _map;
         MapInfo                        _mapInfo;
         std::string                    _referenceURI;
-        osg::ref_ptr<osg::Referenced>  _buildData;
         osg::ref_ptr<StyleSheet>       _styles;
         osg::ref_ptr<ScriptEngine>     _styleScriptEngine;
     };

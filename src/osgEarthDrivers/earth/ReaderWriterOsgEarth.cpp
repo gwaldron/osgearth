@@ -114,13 +114,14 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 if ( HTTPClient::readString( fileName, buf ) != HTTPClient::RESULT_OK )
                     return ReadResult::ERROR_IN_READING_FILE;
 
-                // since we're now passing off control to the stream, we have to pass along the
-                // reference URI as well. TODO: later it will probably be a better idea to have
-                // a search path for data referenced in the mapfile.
+                // Since we're now passing off control to the stream, we have to pass along the
+                // reference URI as well..
                 osg::ref_ptr<Options> myOptions = options ? 
                     static_cast<Options*>(options->clone(osg::CopyOp::DEEP_COPY_ALL)) : 
                     new Options();
-                myOptions->setPluginData( "__ReaderWriterOsgEarth::ref_uri", (void*)&fileName );
+
+                URIContext( fileName ).store( myOptions.get() );
+                //myOptions->setPluginData( "__ReaderWriterOsgEarth::ref_uri", (void*)&fileName );
 
                 std::stringstream in( buf );
                 return readNode( in, myOptions.get() );
@@ -129,12 +130,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
         virtual ReadResult readNode(std::istream& in, const Options* options ) const
         {
-            const std::string* value = static_cast<const std::string*>( 
-                options->getPluginData( "__ReaderWriterOsgEarth::ref_uri") );
-
-            URIContext uriContext;
-            if ( value )
-                uriContext = *value;
+            // pull the URI context from the options structure (since we're reading
+            // from an "anonymous" stream here)
+            URIContext uriContext( options );
 
             osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );
             if ( !doc.valid() )

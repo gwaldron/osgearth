@@ -35,7 +35,7 @@ MarkerSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "marker";
-    conf.addIfSet( "url", _url ); // backwards compat
+    conf.addObjIfSet( "url", _url ); // backwards compat
     conf.addIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
     conf.addIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.addIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
@@ -50,7 +50,7 @@ MarkerSymbol::getConfig() const
 void 
 MarkerSymbol::mergeConfig( const Config& conf )
 {
-    conf.getIfSet( "url", _url ); // backwards compat
+    conf.getObjIfSet( "url", _url ); // backwards compat
     conf.getIfSet( "placement", "vertex",   _placement, PLACEMENT_VERTEX );
     conf.getIfSet( "placement", "interval", _placement, PLACEMENT_INTERVAL );
     conf.getIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );

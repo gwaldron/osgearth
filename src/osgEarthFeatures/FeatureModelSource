@@ -44,9 +44,6 @@ namespace osgEarth { namespace Features
         optional<FeatureSourceOptions>& featureOptions() { return _featureOptions; }
         const optional<FeatureSourceOptions>& featureOptions() const { return _featureOptions; }
 
-        //optional<Symbology::StyleSheet>& styles() { return _styles; }
-        //const optional<Symbology::StyleSheet>& styles() const { return _styles; }
-
         osg::ref_ptr<StyleSheet>& styles() { return _styles; }
         const osg::ref_ptr<StyleSheet>& styles() const { return _styles; }
 

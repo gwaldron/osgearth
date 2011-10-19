@@ -135,10 +135,11 @@ SkinResource::createImage() const
 //---------------------------------------------------------------------------
 
 SkinSymbol::SkinSymbol( const Config& conf ) :
-_objHeight         ( 0.0f ),
-_minObjHeight      ( 0.0f ),
-_maxObjHeight      ( FLT_MAX ),
-_isTiled ( false )
+_objHeight    ( 0.0f ),
+_minObjHeight ( 0.0f ),
+_maxObjHeight ( FLT_MAX ),
+_isTiled      ( false ),
+_randomSeed   ( 0 )
 {
     if ( !conf.empty() )
         mergeConfig( conf );
@@ -151,7 +152,8 @@ SkinSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "object_height",       _objHeight );
     conf.getIfSet( "min_object_height",   _minObjHeight );
     conf.getIfSet( "max_object_height",   _maxObjHeight );
-    conf.getIfSet( "tiled",  _isTiled );
+    conf.getIfSet( "tiled",               _isTiled );
+    conf.getIfSet( "random_seed",         _randomSeed );
 
     addTags( conf.value("tags" ) );
 }
@@ -166,7 +168,8 @@ SkinSymbol::getConfig() const
     conf.addIfSet( "object_height",       _objHeight );
     conf.addIfSet( "min_object_height",   _minObjHeight );
     conf.addIfSet( "max_object_height",   _maxObjHeight );
-    conf.addIfSet( "tiled",  _isTiled );
+    conf.addIfSet( "tiled",               _isTiled );
+    conf.addIfSet( "random_seed",         _randomSeed );
 
     std::string tagstring = this->tagString();
     if ( !tagstring.empty() )

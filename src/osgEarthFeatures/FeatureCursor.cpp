@@ -35,22 +35,25 @@ FeatureCursor::fill( FeatureList& list )
 
 //---------------------------------------------------------------------------
 
-FeatureListCursor::FeatureListCursor( const FeatureList& features ) :
-_features( features )
+FeatureListCursor::FeatureListCursor( const FeatureList& features, bool clone ) :
+_features( features ),
+_clone   ( clone )
 {
     _iter = _features.begin();
 }
 
 bool
-FeatureListCursor::hasMore() const {
+FeatureListCursor::hasMore() const
+{
     return _iter != _features.end();
 }
 
 Feature*
-FeatureListCursor::nextFeature() {
+FeatureListCursor::nextFeature()
+{
     Feature* r = _iter->get();
     _iter++;
-    return r;
+    return _clone ? osg::clone(r, osg::CopyOp::DEEP_COPY_ALL) : r;
 }
 
 //---------------------------------------------------------------------------

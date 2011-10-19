@@ -1,0 +1,60 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_KML_OPTIONS
+#define OSGEARTH_DRIVER_KML_OPTIONS 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+#include <osgEarthSymbology/Style>
+#include <osg/Image>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    class KMLOptions // NO EXPORT; header only
+    {
+    public:
+        /** The default URI to use for placemarks that don't specify an icon. */
+        optional<URI>& defaultIconURI() { return _defaultIconURI; }
+        const optional<URI>& defaultIconURI() const { return _defaultIconURI; }
+
+        /** The default image to use for placemarks that don't specify an icon (you
+            can use this instead of the icon uri.) NOT Serializable. */
+        osg::ref_ptr<osg::Image>& defaultIconImage() { return _defaultIconImage; }
+        const osg::ref_ptr<osg::Image>& defaultIconImage() const { return _defaultIconImage; }
+
+        /** TextSymbol to use when no styles are set in the KML. */
+        osg::ref_ptr<TextSymbol>& defaultTextSymbol() { return _defaultTextSymbol; }
+        const osg::ref_ptr<TextSymbol>& defaultTextSymbol() const { return _defaultTextSymbol; }
+
+    public:
+        KMLOptions() { }
+
+    protected:
+        optional<URI>            _defaultIconURI;
+        osg::ref_ptr<osg::Image> _defaultIconImage;
+        osg::ref_ptr<TextSymbol> _defaultTextSymbol;
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_KML_OPTIONS
+

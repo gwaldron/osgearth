@@ -21,6 +21,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Utils>
 #include <osgEarthSymbology/GeometryFactory>
+#include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/BuildGeometryFilter>
 
@@ -32,49 +33,30 @@ using namespace osgEarth::Util::Controls;
 
 //------------------------------------------------------------------------
 
-PlacemarkNode::PlacemarkNode( MapNode* mapNode ) :
-_mapNode( mapNode )
-{
-    init();
-}
-
-PlacemarkNode::PlacemarkNode(MapNode*           mapNode, 
-                             const std::string& iconURI, 
+PlacemarkNode::PlacemarkNode(MapNode*           mapNode,
+                             const osg::Vec3d&  mapPosition,
+                             osg::Image*        image,
                              const std::string& text,
-                             const Style&       style) :
+                             const Style&       style ) :
 _mapNode( mapNode ),
-_iconURI( iconURI ),
+_image  ( image ),
 _text   ( text ),
 _style  ( style )
 {
     init();
+    setPosition( mapPosition );
 }
 
 void
-PlacemarkNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
+PlacemarkNode::setPosition( const osg::Vec3d& pos )
 {
     if ( _mapNode.valid() )
     {
-        if ( !srs )
+        osg::Vec3d world;
+        if ( _mapNode->getMap()->mapPointToWorldPoint(pos, world) )
         {
-            osg::Vec3d world;
-            if ( _mapNode->getMap()->mapPointToWorldPoint(pos, world) )
-            {
-                this->setMatrix( osg::Matrix::translate(world) );
-                static_cast<CullNodeByHorizon*>(this->getCullCallback())->_world = world;
-            }
-        }
-        else
-        {
-            osg::Vec3d map, world;
-            if ( _mapNode->getMap()->toMapPoint(pos, srs, map) )
-            {
-                if ( _mapNode->getMap()->mapPointToWorldPoint(map, world) )
-                {
-                    this->setMatrix( osg::Matrix::translate(world) );
-                    static_cast<CullNodeByHorizon*>(this->getCullCallback())->_world = world;
-                }
-            }
+            this->setMatrix( osg::Matrix::translate(world) );
+            static_cast<CullNodeByHorizon*>(this->getCullCallback())->_world = world;
         }
     }
 }
@@ -82,6 +64,9 @@ PlacemarkNode::setPosition( const osg::Vec3d& pos, const SpatialReference* srs )
 void
 PlacemarkNode::init()
 {
+    // remove any old stuff to make way for the new stuff.
+    this->removeChildren(0, this->getNumChildren());
+
     this->setCullCallback( new CullNodeByHorizon(
         osg::Vec3d(0,0,1),
         _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()) );
@@ -99,25 +84,32 @@ PlacemarkNode::init()
             _label->setForeColor( s->fill()->color() );
         if ( s->halo().isSet() )
             _label->setHaloColor( s->halo()->color() );
+        if ( s->content().isSet() && _text.empty() )
+            _label->setText( s->content()->eval() );
     }
 
-    osg::ref_ptr<osg::Image> image;
-    if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )
-        _icon = new ImageControl( image.get() );
+    if ( !_image.valid() )
+    {
+        MarkerSymbol* marker = _style.get<MarkerSymbol>();
+        if ( marker )
+        {
+            _image = marker->getImage();
+            if ( !_image.valid() && marker->url().isSet() )
+            {
+                _image = URI(marker->url()->expr()).readImage();
+            }
+        }
+    }
+    _icon = new ImageControl( _image.get() );
 
     _container = new HBox();
     _container->setChildSpacing( 8 );
     
-    if ( _icon.valid() )
-        _container->addControl( _icon.get() );
-
+    _container->addControl( _icon.get() );
     _container->addControl( _label.get() );
 
     _container->setHorizAlign( Control::ALIGN_RIGHT );
     _container->setVertAlign( Control::ALIGN_CENTER );
-
-    //temp:
-    //_container->setFrame( new Frame() );
 
     //todo: set up the "ANCHOR POINT" for the sweet spot
 
@@ -127,27 +119,32 @@ PlacemarkNode::init()
 }
 
 void
-PlacemarkNode::setIconURI( const std::string& iconURI )
+PlacemarkNode::setIconImage( osg::Image* image )
 {
-    if ( iconURI != _iconURI )
+    if ( image )
     {
-        _iconURI = iconURI;
-        osg::ref_ptr<osg::Image> image;
-        if ( HTTPClient::readImageFile(_iconURI, image) == HTTPClient::RESULT_OK )
-        {
-            _icon->setImage( image.get() );
-            // add if necessary?
-        }
+        _image = image;
+        if ( _icon.valid() )
+            _icon->setImage( image );
     }
 }
 
-void PlacemarkNode::setText( const std::string& text )
+void
+PlacemarkNode::setText( const std::string& text )
 {
     if ( text != _text )
     {
         _text = text;
-        _label->setText( text );
+        if ( _label.valid() )
+            _label->setText( text );
     }
+}
+
+void
+PlacemarkNode::setStyle( const Style& style )
+{
+    _style = style;
+    init();
 }
 
 //------------------------------------------------------------------------
@@ -178,7 +175,9 @@ GeometryNode::init()
     FeatureList features;
     features.push_back( new Feature(_geom.get(), _style) );
     BuildGeometryFilter bg;
-    osg::Node* node = bg.push( features, FilterContext() );
+    // no worky.
+	FilterContext context;
+    osg::Node* node = bg.push( features, context );
     //osg::Node* node = bg.getNode();
     setNode( node );
 }

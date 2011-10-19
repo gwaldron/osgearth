@@ -167,8 +167,7 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
-        //OE_INFO << "Setting nodata image to \"" << _runtimeOptions.noDataImageFilename().value() << "\"" << std::endl;
-        _noDataImage = osgDB::readImageFile( _options.noDataImageFilename().value() );
+        _noDataImage = URI(*_options.noDataImageFilename()).readImage();
         if ( !_noDataImage.valid() )
         {
             OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;

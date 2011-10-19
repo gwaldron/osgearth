@@ -24,11 +24,15 @@
 #include <osgViewer/Viewer>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Controls>
+#include <osgEarthSymbology/Color>
 
+using namespace osgEarth::Symbology;
 using namespace osgEarth::Util::Controls;
 
 
 void createControls( ControlCanvas* );
+ImageControl* s_imageControl;
+
 
 int main(int argc, char** argv)
 {
@@ -75,12 +79,11 @@ struct MySliderHandler : public ControlEventHandler
     }
 };
 
-struct ImageRotationHandler : public ControlEventHandler
+struct RotateImage : public ControlEventHandler
 {
-    void onClick( Control* control, int mbm )
+    void onValueChanged( Control* control, float value )
     {
-        ImageControl* imageControl = dynamic_cast<ImageControl*>(control);
-        imageControl->setRotation( imageControl->getRotation() + 10.0f );
+        s_imageControl->setRotation( value );
     }
 };
 
@@ -98,13 +101,13 @@ createControls( ControlCanvas* cs )
 
         // Add an image:
         osg::ref_ptr<osg::Image> image;
-        if ( HTTPClient::readImageFile("http://osgearth.org/chrome/site/osgearth.gif", image) == HTTPClient::RESULT_OK )
+        if ( HTTPClient::readImageFile("http://demo.pelicanmapping.com/rmweb/readymap_logo.png", image) == HTTPClient::RESULT_OK )
         {
-            ImageControl* imageCon = new ImageControl( image.get() );
-            imageCon->setHorizAlign( Control::ALIGN_CENTER );
-            imageCon->setFixSizeForRotation( true );
-            imageCon->addEventHandler( new ImageRotationHandler );
-            center->addControl( imageCon );
+            s_imageControl = new ImageControl( image.get() );
+            s_imageControl->setHorizAlign( Control::ALIGN_CENTER );
+            s_imageControl->setFixSizeForRotation( true );
+            //imageCon->addEventHandler( new ImageRotationHandler );
+            center->addControl( s_imageControl );
             center->setHorizAlign( Control::ALIGN_CENTER );
         }
 
@@ -116,10 +119,21 @@ createControls( ControlCanvas* cs )
         label->setMargin( 5 );
         center->addControl( label );
 
-        // Add another
-        LabelControl* label2 = new LabelControl( "(Click the osgEarth logo to rotate it)" );
-        label2->setHorizAlign( Control::ALIGN_CENTER );
-        center->addControl( label2 );
+        // Rotation slider
+        HBox* rotateBox = new HBox();
+        rotateBox->setChildVertAlign( Control::ALIGN_CENTER );
+        rotateBox->setHorizFill( true );
+        rotateBox->setBackColor( Color::Blue );
+        {
+            rotateBox->addControl( new LabelControl("Rotate: ") );
+
+            HSliderControl* rotateSlider = new HSliderControl( -180.0, 180.0, 0.0 );
+            rotateSlider->addEventHandler( new RotateImage() );
+            rotateSlider->setHeight( 8.0f );
+            rotateSlider->setHorizFill( true );
+            rotateBox->addControl( rotateSlider );
+        }
+        center->addControl( rotateBox );
 
         cs->addControl( center );
     }

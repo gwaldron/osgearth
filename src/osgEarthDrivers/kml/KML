@@ -1,0 +1,56 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_KML
+#define OSGEARTH_DRIVER_KML 1
+
+#include <osgEarth/MapNode>
+#include <osgEarth/URI>
+#include <osgEarth/Registry>
+#include <osgDB/ReaderWriter>
+#include "KMLOptions"
+
+#define LC "[KML] "
+
+namespace osgEarth { namespace Drivers {
+
+    using namespace osgEarth;
+
+    class KML // header-only (no export)
+    {
+    public:
+        /**
+         * Loads KML from a URI.
+         */
+        static osg::Node* load( const URI& uri, MapNode* mapNode, const KMLOptions& kmlOptions =KMLOptions() )
+        {
+            if ( !mapNode ) {
+                OE_WARN << LC << "MapNode instance required" << std::endl;
+                return 0L;
+            }
+            osg::ref_ptr<osgDB::Options> options = Registry::instance()->cloneOrCreateOptions();
+            options->setPluginData( "osgEarth::MapNode", mapNode );
+            options->setPluginData( "osgEarth::KMLOptions", (void*)&kmlOptions );
+
+            return uri.readNode( options.get() );
+        }
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_KML

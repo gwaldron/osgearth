@@ -24,15 +24,88 @@
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
+#include <iostream>
+#include <sstream>
 
 namespace osgEarth
 {
     class Config;
+    class URI;
 
     /**
      * Context for resolving relative URIs.
+     *
+     * This object provides "context" for a relative URI. In other words, it provides
+     * all of the information the system needs to resolve it to an absolute location from
+     * which OSG can load data.
+     *
+     * The "referrer" is the location of an object that "points" to the object in the 
+     * corresponding URI. The location conveyed by the URI will be relative to the location of
+     * its referrer. For example, a referrer of "http://server/folder/hello.xml" applied
+     * to the URI "there.jpg" will resolve to "http://server/folder/there.jpg". NOTE that referrer
+     * it not itself a location (like a folder); rather it's the object that referred to the URI
+     * being contextualized.
      */
-    typedef std::string URIContext;
+    class OSGEARTH_EXPORT URIContext
+    {
+    public:
+        /** Creates an empty context. */
+        URIContext() { }
+
+        /** Creates a context that specifies a referring object. */
+        URIContext( const std::string& referrer ) : _referrer(referrer) { }
+
+        /** Copy constructor. */
+        URIContext( const URIContext& rhs ) : _referrer(rhs._referrer) { }
+
+        /** Serializes this context to an Options structure. This is useful when passing context information
+            to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
+            is the preferred way to communicate the context information. */
+        void store( osgDB::Options* options );
+
+        /** Creates a context from the serialized version in an Options structure (see above) */
+        URIContext( const osgDB::Options* options );
+
+        /** Returns the referring object. */
+        const std::string& referrer() const { return _referrer; }
+
+        /** True if the context is empty */
+        bool empty() const { return _referrer.empty(); }
+
+        /** Parents the input context with the current object, placing the subContext's information
+            under it. Used to re-parent relative locations with a higher-level referrer object. */
+        URIContext add( const URIContext& subContext ) const;
+
+        /** Returns a new context with the sub path appended to the current referrer path. */
+        URIContext add( const std::string& subPath ) const;
+
+        /** creates a string suitable for passing to an osgDB::ReaderWriter implementation */
+        std::string getOSGPath( const std::string& target ) const;
+
+    private:
+        friend class URI;
+        std::string _referrer;
+    };
+
+    /**
+     * Stream container for reading a URI directly from a stream
+     */
+    class OSGEARTH_EXPORT URIStream
+    {
+    public:
+        URIStream( const URI& uri );
+
+        virtual ~URIStream();
+
+    public:
+        // auto-cast to istream
+        operator std::istream& ();
+
+    protected:
+        friend class URI;
+        std::istream*     _fileStream;
+        std::stringstream _bufStream;
+    };
 
     /**
      * Represents the location of a resource, providing the raw (original, possibly
@@ -47,9 +120,14 @@ namespace osgEarth
         URI();
 
         /** 
-         * Construcst a new URI from a location and an optional context 
+         * Constructs a new URI from a location (typically an absolute url)
          */
-        URI( const std::string& location, const URIContext& context ="" );
+        URI( const std::string& location );
+        
+        /**
+         * Constructs a new URI from a location and an existing context.
+         */
+        URI( const std::string& location, const URIContext& context );
 
         /**
          * Constructs a new URI from a string.
@@ -90,13 +168,20 @@ namespace osgEarth
             RESULT_UNKNOWN_ERROR
         };
 
+        /** Reads an object from the URI. */
+        osg::Object* readObject(
+            const osgDB::Options* options  =0L,
+            ResultCode*           out_code =0L ) const;
+
         /** Reads an image from the URI. */
         osg::Image* readImage(
-            ResultCode* out_code =0L, const osgDB::Options* options =0L ) const;
+            const osgDB::Options* options  =0L,
+            ResultCode*           out_code =0L ) const;
 
         /** Reads a node from the URI. */
         osg::Node* readNode(
-            ResultCode* out_code =0L, const osgDB::Options* options =0L ) const;
+            const osgDB::Options* options  =0L,
+            ResultCode*           out_code =0L ) const;
 
         /** Reads a string from the URI. */
         std::string readString(
@@ -114,7 +199,6 @@ namespace osgEarth
         std::string _fullURI;
         URIContext  _context;
     };
-
 }
 
 #endif // OSGEARTH_URI

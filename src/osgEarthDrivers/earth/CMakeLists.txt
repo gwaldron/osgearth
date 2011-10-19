@@ -17,6 +17,5 @@ SET(TARGET_SRC
     EarthFileSerializer1.cpp
     EarthFileSerializer2.cpp)
 
-#### end var setup  ###
 SETUP_PLUGIN(earth)
 

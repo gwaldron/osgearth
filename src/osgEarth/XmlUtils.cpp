@@ -399,7 +399,7 @@ XmlDocument::load( const URI& uri )
 
 
 XmlDocument*
-XmlDocument::load( std::istream& in, const URI& sourceURI )
+XmlDocument::load( std::istream& in, const URIContext& uriContext )
 {
     TiXmlDocument xmlDoc;
 
@@ -420,13 +420,15 @@ XmlDocument::load( std::istream& in, const URI& sourceURI )
         buf << xmlDoc.ErrorDesc() << " (row " << xmlDoc.ErrorRow() << ", col " << xmlDoc.ErrorCol() << ")";
         std::string str = buf.str();
         OE_WARN << "Error in XML document: " << str << std::endl;
+        if ( !uriContext.referrer().empty() )
+            OE_WARN << uriContext.referrer() << std::endl;
     }
 
     if ( !xmlDoc.Error() && xmlDoc.RootElement() )
     {
         doc = new XmlDocument();
         processNode( doc,  xmlDoc.RootElement() );
-        doc->_sourceURI = sourceURI;
+        doc->_sourceURI = URI("", uriContext);
     }
     return doc;    
 }

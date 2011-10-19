@@ -86,13 +86,10 @@ namespace osgEarth { namespace Features
         osg::Matrixd              _modelMatrix;
         StringExpression          _featureNameExpr;
 
-        struct Data {
-            osg::ref_ptr<osg::Node> _model;
-        };
         
-        bool process(const FeatureList& features, Data& data, osg::Group* ap, FilterContext& context );
+        bool process(const FeatureList& features, const MarkerSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
 
-        bool cluster(const FeatureList& features, Data& data, osg::Group* ap, FilterContext& context );
+        bool cluster(const FeatureList& features, const MarkerSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

@@ -53,11 +53,12 @@ _merge   ( true )
 }
 
 bool
-SubstituteModelFilter::process(const FeatureList&           features,
-                               SubstituteModelFilter::Data& data,
+SubstituteModelFilter::process(const FeatureList&           features,                               
+                               const MarkerSymbol*          symbol,
+                               Session*                     session,
                                osg::Group*                  attachPoint,
                                FilterContext&               context )
-{
+{    
     bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
 
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
@@ -91,7 +92,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
                 osg::MatrixTransform* xform = new osg::MatrixTransform();
                 xform->setMatrix( mat );
                 xform->setDataVariance( osg::Object::STATIC );
-                xform->addChild( data._model.get() );
+                MarkerFactory factory( session);
+                osg::ref_ptr< osg::Node > model = factory.getOrCreateNode( input, symbol );
+                if (model.get())
+                {
+                    xform->addChild( model.get() );
+                }
+
                 attachPoint->addChild( xform );
 
                 // name the feature if necessary
@@ -109,19 +116,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
 }
 
 
-//clustering:
-//  troll the external model for geodes. for each geode, create a geode in the target
-//  model. then, for each geometry in that geode, replicate it once for each instance of
-//  the model in the feature batch and transform the actual verts to a local offset
-//  relative to the tile centroid. Finally, reassemble all the geodes and optimize. 
-//  hopefully stateset sharing etc will work out. we may need to strip out LODs too.
-bool
-SubstituteModelFilter::cluster(const FeatureList&           features,
-                               SubstituteModelFilter::Data& data,
-                               osg::Group*                  attachPoint,
-                               FilterContext&               cx )
-{
-    struct ClusterVisitor : public osg::NodeVisitor
+
+
+struct ClusterVisitor : public osg::NodeVisitor
     {
         ClusterVisitor( const FeatureList& features, const osg::Matrixd& modelMatrix, FeaturesToNodeFilter* f2n, FilterContext& cx )
             : _features   ( features ),
@@ -218,14 +215,63 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
     };
 
 
-    // make a copy of the model:
-	osg::Node* clone = dynamic_cast<osg::Node*>( data._model->clone( osg::CopyOp::DEEP_COPY_ALL ) );
+typedef std::map< osg::ref_ptr< osg::Node >, FeatureList > MarkerToFeatures;
 
-    // ..and apply the clustering to the copy.
-	ClusterVisitor cv( features, _modelMatrix, this, cx );
-	clone->accept( cv );
+//clustering:
+//  troll the external model for geodes. for each geode, create a geode in the target
+//  model. then, for each geometry in that geode, replicate it once for each instance of
+//  the model in the feature batch and transform the actual verts to a local offset
+//  relative to the tile centroid. Finally, reassemble all the geodes and optimize. 
+//  hopefully stateset sharing etc will work out. we may need to strip out LODs too.
+bool
+SubstituteModelFilter::cluster(const FeatureList&           features,
+                               const MarkerSymbol*          symbol, 
+                               Session* session,
+                               osg::Group*                  attachPoint,
+                               FilterContext&               cx )
+{    
+    MarkerToFeatures markerToFeatures;
+    MarkerFactory factory( session);
+    for (FeatureList::const_iterator i = features.begin(); i != features.end(); ++i)
+    {
+        Feature* f = i->get();
+        osg::ref_ptr< osg::Node > model = factory.getOrCreateNode( f, symbol );
+        //Try to find the existing entry
+        if (model.valid())
+        {
+            MarkerToFeatures::iterator itr = markerToFeatures.find( model.get() );
+            if (itr == markerToFeatures.end())
+            {
+                markerToFeatures[ model.get() ].push_back( f );
+            }
+            else
+            {
+                itr->second.push_back( f );
+            }
+        }
+    }
 
-    attachPoint->addChild( clone );
+    /*
+    OE_NOTICE << "Sorted models into " << markerToFeatures.size() << " buckets" << std::endl;
+    for (MarkerToFeatures::iterator i = markerToFeatures.begin(); i != markerToFeatures.end(); ++i)
+    {
+        OE_NOTICE << "    Bucket has " << i->second.size() << " features" << std::endl;
+    }
+    */
+
+    //For each model, cluster the features that use that model
+
+    for (MarkerToFeatures::iterator i = markerToFeatures.begin(); i != markerToFeatures.end(); ++i)
+    {
+        osg::Node* clone = dynamic_cast<osg::Node*>( i->first->clone( osg::CopyOp::DEEP_COPY_ALL ) );
+
+        // ..and apply the clustering to the copy.
+        ClusterVisitor cv( i->second, _modelMatrix, this, cx );
+        clone->accept( cv );
+
+        attachPoint->addChild( clone );
+    }
+
     return true;
 }
 
@@ -250,19 +296,6 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     FilterContext newContext( context );
 
-    //TODO: use the resource cache fro this!!
-    // assemble the data for this pass
-    MarkerFactory mf( context.getSession() );
-
-    Data data;
-    data._model = mf.getOrCreateNode( symbol );
-
-    if ( !data._model.valid() )
-    {
-        OE_WARN << LC << "Unable to load model from \"" << symbol->url()->full() << "\"" << std::endl;
-        return 0L;
-    }
-
     computeLocalizers( context );
 
     osg::Group* group = createDelocalizeGroup(); //new osg::Group();
@@ -271,12 +304,12 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     if ( _cluster )
     {
-        ok = cluster( features, data, group, newContext );
+        ok = cluster( features, symbol, context.getSession(), group, newContext );
     }
 
     else
     {
-        process( features, data, group, newContext );
+        process( features, symbol, context.getSession(), group, newContext );
 
 #if 0
         // speeds things up a bit, at the expense of creating tons of geometry..

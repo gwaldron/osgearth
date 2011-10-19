@@ -252,14 +252,27 @@ HTTPResponse::getMimeType() const {
 #define QUOTE(X) QUOTE_(X)
 #define USER_AGENT "osgearth" QUOTE(OSGEARTH_MAJOR_VERSION) "." QUOTE(OSGEARTH_MINOR_VERSION)
 
-typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> >    ThreadClientMap;        
-static Threading::ReadWriteMutex   _threadClientMapMutex;
-static ThreadClientMap             _threadClientMap;
+
 static optional<ProxySettings>     _proxySettings;
 static std::string                 _userAgent = USER_AGENT;
 
-HTTPClient& HTTPClient::getClient()
+
+HTTPClient&
+HTTPClient::getClient()
 {
+#if 1
+    static Threading::PerThread< osg::ref_ptr<HTTPClient> > s_clientPerThread;
+
+    osg::ref_ptr<HTTPClient>& client = s_clientPerThread.get();
+    if ( !client.valid() )
+        client = new HTTPClient();
+
+    return *client.get();
+#else
+    typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> > ThreadClientMap;        
+    static Threading::ReadWriteMutex   _threadClientMapMutex;
+    static ThreadClientMap             _threadClientMap;
+
     OpenThreads::Thread* current = OpenThreads::Thread::CurrentThread();
 
     // first try the map:
@@ -280,6 +293,7 @@ HTTPClient& HTTPClient::getClient()
         _threadClientMap[current] = client;
         return *client;
     }
+#endif
 }
 
 HTTPClient::HTTPClient()
@@ -499,11 +513,27 @@ HTTPClient::readNodeFile(const std::string& filename,
 }
 
 HTTPClient::ResultCode
+HTTPClient::readObjectFile(const std::string&                  url,
+                           osg::ref_ptr<osg::Object>&          output,
+                           const osgDB::ReaderWriter::Options* options,
+                           ProgressCallback*                   callback )
+{
+    return getClient().doReadObjectFile( url, output, options, callback );
+}
+
+HTTPClient::ResultCode
 HTTPClient::readString(const std::string& filename,
                        std::string& output,
                        osgEarth::ProgressCallback* callback)
 {
     return getClient().doReadString( filename, output, callback );
+}
+
+bool
+HTTPClient::download(const std::string& uri,
+                     const std::string& localPath)
+{
+    return getClient().doDownload( uri, localPath );
 }
 
 HTTPResponse
@@ -728,7 +758,7 @@ HTTPClient::doGet( const std::string& url, const osgDB::ReaderWriter::Options* o
 }
 
 bool
-HTTPClient::downloadFile(const std::string &url, const std::string &filename)
+HTTPClient::doDownload(const std::string &url, const std::string &filename)
 {
     // download the data
     HTTPResponse response = this->doGet( HTTPRequest(url) );
@@ -759,6 +789,31 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
     } 
 }
 
+namespace
+{
+    osgDB::ReaderWriter*
+    getReader( const std::string& url, const HTTPResponse& response )
+    {
+        osgDB::ReaderWriter* reader = 0L;
+
+        // try to look up a reader by mime-type first:
+        std::string mimeType = response.getMimeType();
+        if ( !mimeType.empty() )
+        {
+            reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
+        }
+
+        if ( !reader )
+        {
+            // Try to find a reader by file extension.
+            std::string ext = osgDB::getFileExtension( url );
+            reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
+        }
+
+        return reader;
+    }
+}
+
 HTTPClient::ResultCode
 HTTPClient::doReadImageFile(const std::string& filename, 
                             osg::ref_ptr<osg::Image>& output,
@@ -773,25 +828,7 @@ HTTPClient::doReadImageFile(const std::string& filename,
 
         if (response.isOK())
         {
-            osgDB::ReaderWriter* reader = 0L;
-
-            // try to look up a reader by mime-type first:
-            std::string mimeType = response.getMimeType();
-            OE_DEBUG << LC << "Looking up extension for mime-type " << mimeType << std::endl;
-            if ( !mimeType.empty() )
-            {
-                reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
-            }
-
-            if ( !reader )
-            {
-                // Try to find a reader by file extension. If this fails, we will fetch the file
-                // anyway and try to get a reader via mime-type.
-                std::string ext = osgDB::getFileExtension( filename );
-                reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
-                //OE_NOTICE << "Reading " << filename << " with mime " << response.getMimeType() << std::endl;
-            }
-
+            osgDB::ReaderWriter* reader = getReader(filename, response);
             if (!reader)
             {
                 OE_WARN << LC << "Can't find an OSG plugin to read "<<filename<<std::endl;
@@ -866,24 +903,7 @@ HTTPClient::doReadNodeFile(const std::string& filename,
         HTTPResponse response = this->doGet(filename, options, callback);
         if (response.isOK())
         {
-            // Try to find a reader by file extension. If this fails, we will fetch the file
-            // anyway and try to get a reader via mime-type.
-            std::string ext = osgDB::getFileExtension( filename );
-            osgDB::ReaderWriter *reader =
-                osgDB::Registry::instance()->getReaderWriterForExtension( ext );
-
-            //If we didn't get a reader by extension, try to get it via mime type
-            if (!reader)
-            {
-                std::string mimeType = response.getMimeType();
-                OE_DEBUG << LC << "Looking up extension for mime-type " << mimeType << std::endl;
-                if ( mimeType.length() > 0 )
-                {
-                    reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
-                }
-            }
-
-            // if we still didn't get it, bad news
+            osgDB::ReaderWriter* reader = getReader(filename, response);
             if (!reader)
             {
                 OE_NOTICE<<LC<<"Error: No ReaderWriter for file "<<filename<<std::endl;
@@ -932,6 +952,71 @@ HTTPClient::doReadNodeFile(const std::string& filename,
     else
     {
         output = osgDB::readNodeFile( filename, options );
+        if ( !output.valid() )
+            result = RESULT_NOT_FOUND;
+    }
+
+    return result;
+}
+
+HTTPClient::ResultCode
+HTTPClient::doReadObjectFile(const std::string&                  url,
+                             osg::ref_ptr<osg::Object>&          output,
+                             const osgDB::ReaderWriter::Options* options,
+                             osgEarth::ProgressCallback*         callback)
+{
+    ResultCode result = RESULT_OK;
+
+    if ( osgDB::containsServerAddress( url ) )
+    {
+        HTTPResponse response = this->doGet(url, options, callback);
+        if ( response.isOK() )
+        {
+            osgDB::ReaderWriter* reader = getReader( url, response );
+            if ( !reader )
+            {
+                OE_WARN << LC << "Error: No ReaderWriter for file " << url << std::endl;
+                result = RESULT_NO_READER;
+            }
+            else
+            {
+                osgDB::ReaderWriter::ReadResult rr = reader->readObject( response.getPartStream(0), options );
+                if ( rr.validNode() )
+                {
+                    output = rr.takeObject();
+                }
+                else
+                {
+                    if ( rr.error() )
+                    {
+                        OE_WARN << LC << "HTTP Reader Error: " << rr.message() << std::endl;
+                    }
+                    result = RESULT_READER_ERROR;
+                }
+            }
+        }
+        else
+        {
+            result =
+                response.isCancelled() ? RESULT_CANCELED :
+                response.getCode() == HTTPResponse::NOT_FOUND ? RESULT_NOT_FOUND :
+                response.getCode() == HTTPResponse::SERVER_ERROR ? RESULT_SERVER_ERROR :
+                RESULT_UNKNOWN_ERROR;
+
+            //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+            if (HTTPClient::isRecoverable( result ) )
+            {
+                if (callback)
+                {
+                    OE_DEBUG << "Error in HTTPClient for " << url << " but it's recoverable" << std::endl;
+                    callback->setNeedsRetry( true );
+                }
+            }
+        }
+    }
+    else
+    {
+        output = osgDB::readObjectFile( url, options );
         if ( !output.valid() )
             result = RESULT_NOT_FOUND;
     }

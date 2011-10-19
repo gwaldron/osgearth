@@ -85,7 +85,10 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
     case TYPE_RING:
         return new Ring( &this->asVector() );
     case TYPE_POLYGON:
-        return new Polygon( &this->asVector() );
+        if ( dynamic_cast<const Polygon*>(this) )
+            return new Polygon( *static_cast<const Polygon*>(this) );
+        else
+            return new Polygon( &this->asVector() );
     default:
         break;
     }
@@ -605,6 +608,15 @@ MultiGeometry::getTotalPointCount() const
     int total = 0;
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
         total += i->get()->getTotalPointCount();
+    return total;
+}
+
+unsigned
+MultiGeometry::getNumGeometries() const
+{
+    unsigned total = 0;
+    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+        total += i->get()->getNumGeometries();
     return total;
 }
 

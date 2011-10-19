@@ -42,32 +42,36 @@ CssUtils::readConfig( std::istream& in )
     // tokenize the CSS into a config object..
     Config conf( "css" );
 
-    StringTokenizer outer( "{}", "'\"" );
+    StringTokenizer blockIzer( "{}", "" );
+    blockIzer.addQuotes( "'\"", true );
 
-    StringTokenizer inner( ":;", "'\"" );
-    inner.addQuotes( "()", true );
+    StringTokenizer propSetIzer( ";", "" );
+    propSetIzer.addQuotes( "'\"", true );
 
-    StringVector tok;
-    outer.tokenize( css, tok );
+    StringTokenizer propIzer( ":", "'\"" );
+    propIzer.addQuotes( "()", true );
 
-    for( unsigned i=0; i<tok.size(); )
+    StringVector blocks;
+    blockIzer.tokenize( css, blocks );
+
+    for( unsigned i=0; i<blocks.size(); )
     {
-        const std::string& name = tok[i++];
-        if ( i < tok.size() )
+        const std::string& name = blocks[i++];
+        if ( i < blocks.size() )
         {
             Config elementConf( name );
-            const std::string& props = tok[i++];
 
-            StringVector propsTok;
-            inner.tokenize( props, propsTok );
+            StringVector propSet;
+            propSetIzer.tokenize( blocks[i++], propSet );
             
-            for( unsigned j=0; j<propsTok.size(); )
+            for( unsigned j=0; j<propSet.size(); ++j )
             {
-                const std::string& key = propsTok[j++];
-                if ( j < propsTok.size() )
+                StringVector prop;
+                propIzer.tokenize( propSet[j], prop );
+
+                if ( prop.size() == 2 )
                 {
-                    const std::string& value = propsTok[j++];
-                    elementConf.attr(key) = value;
+                    elementConf.attr( prop[0] ) = prop[1];
                 }
             }
             conf.add( elementConf );

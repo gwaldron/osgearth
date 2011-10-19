@@ -87,17 +87,17 @@ namespace osgEarth { namespace Features
         StringExpression               _featureNameExpr;
         osg::ref_ptr<HeightCallback>   _heightCallback;
         optional<NumericExpression>    _heightOffsetExpr;
+        optional<NumericExpression>    _heightExpr;
 
-        Style                               _style;
-        bool                                _styleDirty;
-
-        NumericExpression                   _heightExpr;
+        Style                          _style;
+        bool                           _styleDirty;
 
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
         osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;
         osg::ref_ptr<const PolygonSymbol>   _wallPolygonSymbol;
         osg::ref_ptr<const SkinSymbol>      _roofSkinSymbol;
         osg::ref_ptr<const PolygonSymbol>   _roofPolygonSymbol;
+        osg::ref_ptr<const LineSymbol>      _outlineSymbol;
         osg::ref_ptr<ResourceLibrary>       _wallResLib;
         osg::ref_ptr<ResourceLibrary>       _roofResLib;
 
@@ -120,8 +120,10 @@ namespace osgEarth { namespace Features
             osg::Geometry*       walls,
             osg::Geometry*       top_cap,
             osg::Geometry*       bottom_cap,
+            osg::Geometry*       outline,
             const osg::Vec4&     wallColor,
             const osg::Vec4&     roofColor,
+            const osg::Vec4&     outlineColor,
             const SkinResource*  wallSkin,
             const SkinResource*  roofSkin,
             FilterContext&       cx );

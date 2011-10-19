@@ -25,10 +25,10 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
-#include <osgEarth/ShaderComposition>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
+#include <osgDB/ReaderWriter>
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
@@ -36,6 +36,8 @@
 
 namespace osgEarth
 {    
+    class ShaderFactory;
+
     /**
      * Application-wide global repository.
      */
@@ -61,8 +63,8 @@ namespace osgEarth
         OpenThreads::ReentrantMutex& getGDALMutex();
 
         /** Global override of map caching settings. */
-		Cache* getCacheOverride() const;
-		void setCacheOverride( Cache* cacheOverride );
+        Cache* getCacheOverride() const;
+        void setCacheOverride( Cache* cacheOverride );
 
         /** Registers a mapping of a mime-type to an extension. A process fetching data
           * over HTTP can use this facility to determine the proper ReaderWriter to use
@@ -123,6 +125,24 @@ namespace osgEarth
          */
         UID createUID();
 
+        /**
+         * Gets or sets the local root of the system default cache.
+         */
+        void setCacheDirectory( const std::string& dir );
+
+        const std::string& getCacheDirectory() const;
+
+        /**
+         * Gets the default set of osgDB::Options to use.
+         */
+        const osgDB::Options* getDefaultOptions() const { return _defaultOptions.get(); }
+
+        /**
+         * Clones an options structure (fixing the archive caching), or creates
+         * a new one.
+         */
+        osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L ) const;
+
     protected:
         virtual ~Registry();
         Registry();
@@ -160,6 +180,8 @@ namespace osgEarth
 
         osg::ref_ptr< Capabilities > _caps;
         void initCapabilities();
+
+        osg::ref_ptr<osgDB::Options> _defaultOptions;
     };
 }
 

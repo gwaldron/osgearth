@@ -91,9 +91,9 @@ _session( session )
 }
 
 osg::Node*
-MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
+MarkerFactory::getOrCreateNode( const Feature* feature, const MarkerSymbol* symbol, bool useCache )
 {
-    osg::Node* result;
+    osg::Node* result =0L;
 
     if ( symbol )
     {
@@ -120,20 +120,25 @@ MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
             }
         }
         else if ( symbol->url().isSet() && !symbol->url()->empty() )
-        {
+        {            
+            StringExpression expr = symbol->url().get();
+            std::string val = feature->eval( expr  );//symbol->url()->full();
+            URI uri( val, expr.uriContext() );
+
+            OE_DEBUG << "Using model URL " << uri.full() << std::endl;
             if ( _session.valid() && useCache )
             {
-                result = _session->getResource<osg::Node>( symbol->url()->full() );
+                result = _session->getResource<osg::Node>( uri.full() );
             }
 
             if ( !result )
-            {
-                result = createFromURI( *symbol->url() );
+            {                
+                result = createFromURI( uri );
             }
 
             if ( result && _session.valid() && useCache )
             {
-                _session->putResource( symbol->url()->full(), result );
+                _session->putResource( uri.full(), result );
             }
         }
     }
@@ -141,60 +146,59 @@ MarkerFactory::getOrCreateNode( const MarkerSymbol* symbol, bool useCache )
     return result;
 }
 
-#if 0
-osg::Node*
-MarkerFactory::getOrCreateNode( const std::string& markerURI, bool useCache )
+osg::Image*
+MarkerFactory::getOrCreateImage( const MarkerSymbol* symbol, bool useCache )
 {
-    osg::Node* result;
-
-    // try to retrieve it from the session cache.
-    if ( _session.valid() && useCache )
+    if ( symbol->getImage() )
     {
-        result = _session->getResource<osg::Node>( markerURI );
+        return symbol->getImage();
     }
-
-    if ( !result )
+    else if ( symbol->url().isSet() && !symbol->url()->empty() )
     {
-        result = createFromURI( markerURI );
-
-        // cache it in the session.
-        if ( result && _session.valid() && useCache )
-        {
-            _session->putResource( markerURI, result );
-        }
+        return createImageFromURI( symbol->url()->expr() );
     }
-
-    return result;
+    return 0L;
 }
-#endif
 
 osg::Node*
 MarkerFactory::createFromURI( const URI& uri ) const
 {
-    StringTokenizer izer( "()" );
-    StringVector tok;
-    izer.tokenize( *uri, tok );
-
-    if (tok.size() > 1)
+    osg::ref_ptr<osg::Object> obj = uri.readObject();
+    if ( obj.valid() )
     {
-        if (tok[0].compare("model") == 0)
-        {         
-            osg::ref_ptr<osg::Node> node;
-            HTTPClient::readNodeFile( _session.valid()? _session->resolveURI(tok[1]) : tok[1], node );
-            return node.release();
-        }
-        else if (tok[0].compare("image") == 0)
+        if ( dynamic_cast<osg::Image*>( obj.get() ) )
         {
-            osg::ref_ptr<osg::Image> image;
-            HTTPClient::readImageFile( _session.valid()? _session->resolveURI(tok[1]) : tok[1], image );
-            return buildImageModel( image.get() );
-        }    
+            return buildImageModel( dynamic_cast<osg::Image*>( obj.get() ) );
+        }
+        else if ( dynamic_cast<osg::Node*>( obj.get() ) )
+        {
+            return dynamic_cast<osg::Node*>( obj.release() );
+        }
     }
-    else
+
+    else // failing that, fall back on the old encoding format..
     {
-        osg::ref_ptr<osg::Node> node;
-        HTTPClient::readNodeFile( _session.valid()? _session->resolveURI(*uri) : *uri, node );
-        return node.release();
+        StringVector tok;
+        StringTokenizer( *uri, tok, "()" );
+        if (tok.size() >= 2)
+            return createFromURI( URI(tok[1]) );
+    }
+
+    // fail
+    return 0L;
+}
+
+
+osg::Image*
+MarkerFactory::createImageFromURI( const URI& uri ) const
+{
+    StringVector tok;
+    StringTokenizer( *uri, tok, "()" );
+
+    if ( tok.size() > 0 )
+    {
+        URI imageURI( tok[tok.size()-1], uri.context() );
+        return imageURI.readImage();
     }
 
     return 0L;

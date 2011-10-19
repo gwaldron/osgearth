@@ -334,8 +334,8 @@ _handle( handle ),
 _owns_handle( true ),
 _name( name ),
 _init_type( init_type ),
-_init_str( init_str )
-{
+_init_str( init_str ),
+ _is_ltp(false){
     _init_str_lc = init_str;
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
 }

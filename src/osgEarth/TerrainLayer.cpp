@@ -271,6 +271,13 @@ TerrainLayer::getMaxDataLevel() const
 	return 20;
 }
 
+unsigned
+TerrainLayer::getTileSize() const
+{
+    TileSource* ts = getTileSource();
+    return ts ? ts->getPixelsPerTile() : _tileSize;
+}
+
 bool
 TerrainLayer::isDynamic() const
 {

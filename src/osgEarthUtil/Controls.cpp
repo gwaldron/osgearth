@@ -605,7 +605,7 @@ LabelControl::draw( const ControlContext& cx, DrawableList& out )
 // ---------------------------------------------------------------------------
 
 ImageControl::ImageControl( osg::Image* image ) :
-_rotation_rad( 0.0f ),
+_rotation( 0.0, Units::RADIANS ),
 _fixSizeForRot( false )
 {
     setImage( image );
@@ -621,11 +621,10 @@ ImageControl::setImage( osg::Image* image )
 }
 
 void
-ImageControl::setRotation( float value_deg )
+ImageControl::setRotation( const Angular& angle )
 {
-    float rad = osg::DegreesToRadians(value_deg);
-    if ( _rotation_rad != rad ) {
-        _rotation_rad = rad;
+    if ( angle != _rotation ) {
+        _rotation = angle;
         dirty();
     }
 }
@@ -663,7 +662,7 @@ ImageControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         }
 
         //if there's a rotation angle, rotate
-        float rot = _fixSizeForRot ? osg::PI_4 : _rotation_rad;
+        float rot = _fixSizeForRot ? osg::PI_4 : _rotation.as(Units::RADIANS);
         if ( rot != 0.0f )
         {
             calculateRotatedSize( 
@@ -701,10 +700,10 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         osg::Vec3Array* verts = new osg::Vec3Array(4);
         g->setVertexArray( verts );
 
-        if ( _rotation_rad != 0.0f || _fixSizeForRot == true )
+        if ( _rotation.as(Units::RADIANS) != 0.0f || _fixSizeForRot == true )
         {
             osg::Vec2f rc( rx+_renderSize.x()/2, (vph-ry)-_renderSize.y()/2 );
-            float ra = osg::PI - _rotation_rad;
+            float ra = osg::PI - _rotation.as(Units::RADIANS);
 
             rx += 0.5*_renderSize.x() - 0.5*(float)_image->s();
             ry += 0.5*_renderSize.y() - 0.5*(float)_image->t();
@@ -761,10 +760,12 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
         osg::TexEnv* texenv = new osg::TexEnv( osg::TexEnv::MODULATE );
         g->getStateSet()->setTextureAttributeAndModes( 0, texenv, osg::StateAttribute::ON );
         
+#ifndef IMAGECONTROL_TEXRECT
         osg::Program* program = new osg::Program();
         program->addShader( new osg::Shader( osg::Shader::VERTEX, s_controlVertexShader ) );
         program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_imageControlFragmentShader ) );
         g->getStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
+#endif
 
         out.push_back( g );
 
@@ -1296,7 +1297,7 @@ VBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 VBox::calcFill(const ControlContext& cx)
 {
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 
     float used_x = padding().x();
     float used_y = padding().y() - childSpacing();
@@ -1307,8 +1308,6 @@ VBox::calcFill(const ControlContext& cx)
     for( ControlList::const_iterator i = _controls.begin(); i != _controls.end() && (!hc || !vc); ++i )
     {
         Control* child = i->get();
-
-        //child->calcFill(cx);
 
         used_y += child->margin().y() + childSpacing();
         if ( !hc && child->horizFill() )
@@ -1329,7 +1328,7 @@ VBox::calcFill(const ControlContext& cx)
     if ( vc && renderHeight(vc) < (_renderSize.y() - used_y) )
         renderHeight(vc) = _renderSize.y() - used_y;
    
-    //Container::calcFill( cx );
+    Container::calcFill( cx );
 }
 
 void
@@ -1425,7 +1424,7 @@ HBox::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
 void
 HBox::calcFill(const ControlContext& cx)
 {
-    Container::calcFill( cx );
+    //Container::calcFill( cx );
 
     float used_x = padding().x() - childSpacing();
     float used_y = padding().y();
@@ -1458,7 +1457,7 @@ HBox::calcFill(const ControlContext& cx)
     if ( vc && renderHeight(vc) < (_renderSize.y() - used_y) )
         renderHeight(vc) = _renderSize.y() - used_y;
    
-    //Container::calcFill( cx );
+    Container::calcFill( cx );
 }
 
 void

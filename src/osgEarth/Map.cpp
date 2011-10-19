@@ -242,18 +242,17 @@ Map::getProfile() const
 Cache*
 Map::getCache() const
 {
-    if ( !_cache.valid() && _mapOptions.cache().isSet() )
+    if ( !_cache.valid() )
     {
         Cache* cache = 0L;
 
         // if there's a cache override in the registry, install it now.
-	    if ( osgEarth::Registry::instance()->getCacheOverride() )
-	    {
-		    OE_INFO << LC << "Overriding map cache with global cache override" << std::endl;
-		    cache = osgEarth::Registry::instance()->getCacheOverride();
-	    }
+        if ( osgEarth::Registry::instance()->getCacheOverride() )
+        {
+            cache = osgEarth::Registry::instance()->getCacheOverride();
+        }
 
-        if ( !cache )
+        else if ( _mapOptions.cache().isSet() )
         {
             cache = CacheFactory::create( _mapOptions.cache().get() );
         }
@@ -656,6 +655,9 @@ Map::removeModelLayer( ModelLayer* layer )
 {
     if ( layer )
     {
+        //Take a reference to the layer since we will be deleting it
+        osg::ref_ptr< ModelLayer > layerRef = layer;
+
         Revision newRevision;
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
@@ -673,7 +675,7 @@ Map::removeModelLayer( ModelLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); ++i )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_MODEL_LAYER, newRevision, layer) );
+                MapModelChange::REMOVE_MODEL_LAYER, newRevision, layerRef.get()) );
         }
     }
 }
@@ -753,6 +755,8 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
 {
     if ( layer )
     {
+        //Take a reference to the layer since we will be deleting it
+        osg::ref_ptr< MaskLayer > layerRef = layer;
         Revision newRevision;
         {
             Threading::ScopedWriteLock lock( _mapDataMutex );
@@ -771,7 +775,7 @@ Map::removeTerrainMaskLayer( MaskLayer* layer )
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
         {
             i->get()->onMapModelChanged( MapModelChange(
-                MapModelChange::REMOVE_MASK_LAYER, newRevision, layer) );
+                MapModelChange::REMOVE_MASK_LAYER, newRevision, layerRef.get()) );
         }	
     }
 }

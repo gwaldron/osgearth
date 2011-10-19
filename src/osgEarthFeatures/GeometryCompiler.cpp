@@ -19,7 +19,7 @@
 #include "GeometryCompiler"
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/BuildTextFilter>
-#include <osgEarthFeatures/ClampFilter>
+#include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
@@ -33,6 +33,15 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
+
+//-----------------------------------------------------------------------
+
+namespace
+{
+    osg::ref_ptr<PointSymbol>   s_defaultPointSymbol   = new PointSymbol();
+    osg::ref_ptr<LineSymbol>    s_defaultLineSymbol    = new LineSymbol();
+    osg::ref_ptr<PolygonSymbol> s_defaultPolygonSymbol = new PolygonSymbol();
+}
 
 //-----------------------------------------------------------------------
 
@@ -99,10 +108,10 @@ GeometryCompiler::compile(Feature*              feature,
         return 0L;
     }
 
-    if ( style.empty() ) {
-        OE_WARN << LC << "Non-empty style required" << std::endl;
-        return 0L;
-    }
+    //if ( style.empty() ) {
+    //    OE_WARN << LC << "Non-empty style required" << std::endl;
+    //    return 0L;
+    //}
 
     FeatureList workingSet;
     workingSet.push_back(feature);
@@ -120,10 +129,10 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         return 0L;
     }
 
-    if ( style.empty() ) {
-        OE_WARN << LC << "Non-empty style required" << std::endl;
-        return 0L;
-    }
+    //if ( style.empty() ) {
+    //    OE_WARN << LC << "Non-empty style required" << std::endl;
+    //    return 0L;
+    //}
 
     // start by making a working copy of the feature set
     FeatureList workingSet;
@@ -164,6 +173,27 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
 
+    // if the style was empty, use some defaults based on the geometry type of the
+    // first feature.
+    if ( style.empty() && workingSet.size() > 0 )
+    {
+        Feature* first = workingSet.begin()->get();
+        Geometry* geom = first->getGeometry();
+        if ( geom )
+        {
+            switch( geom->getComponentType() )
+            {
+            case Geometry::TYPE_LINESTRING:
+            case Geometry::TYPE_RING:
+                line = s_defaultLineSymbol.get(); break;
+            case Geometry::TYPE_POINTSET:
+                point = s_defaultPointSymbol.get(); break;
+            case Geometry::TYPE_POLYGON:
+                polygon = s_defaultPolygonSymbol.get(); break;
+            }
+        }
+    }
+
     if (_options.resampleMode().isSet())
     {
         ResampleFilter resample;
@@ -175,15 +205,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         sharedCX = resample.push( workingSet, sharedCX );        
     }    
     
-    bool clampRequired =
-        altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
-    
-    // first, apply a vertical offset if called for.
-    if ( altitude && altitude->verticalOffset().isSet() && !clampRequired )
-    {
-        TransformFilter xform( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
-        sharedCX = xform.push( workingSet, sharedCX );
-    }
+    bool altRequired =
+        altitude && (
+            altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
+            altitude->verticalOffset().isSet() ||
+            altitude->verticalScale().isSet() );
 
     // model substitution
     if ( marker )
@@ -201,19 +227,23 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             markerCX = scatter.push( workingSet, markerCX );
         }
 
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
+            AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             markerCX = clamp.push( workingSet, markerCX );
 
             // don't set this; we changed the input data.
-            //clampRequired = false;
+            //altRequired = false;
         }
 
         SubstituteModelFilter sub( style );
         if ( marker->scale().isSet() )
+        {
+            //Turn on GL_NORMALIZE so lighting works properly
+            resultGroup->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON );
             sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
+        }
 
         sub.setClustering( *_options.clustering() );
         if ( _options.featureName().isSet() )
@@ -229,12 +259,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // extruded geometry
     if ( extrusion )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
+            AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         ExtrudeGeometryFilter extrude;
@@ -254,12 +284,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     // simple geometry
     else if ( point || line || polygon )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
+            AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         BuildGeometryFilter filter( style );
@@ -281,12 +311,12 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     if ( text )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
+            AltitudeFilter clamp;
             clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         BuildTextFilter filter( style );

@@ -139,7 +139,7 @@ namespace osgEarth
 
         static XmlDocument* load( const URI& uri );
         
-        static XmlDocument* load( std::istream& in, const URI& sourceURI =URI() );
+        static XmlDocument* load( std::istream& in, const URIContext& context =URIContext() );
 
         void store( std::ostream& out ) const;
 

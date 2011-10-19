@@ -282,6 +282,7 @@ public:
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
         std::string url = createURL( query );
+        OE_DEBUG << LC << "URL: " << url << std::endl;
         HTTPResponse response = HTTPClient::get(url);                
         FeatureList features;
         if (response.isOK())

@@ -19,22 +19,63 @@
 
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
+#include <osgEarth/FindNode>
 
 using namespace osgEarth;
 
 DrapeableNode::DrapeableNode( MapNode* mapNode, bool draped ) :
-_mapNode( mapNode ), 
-_draped ( draped )
+_mapNode  ( mapNode ),
+_newDraped( draped ),
+_draped   ( false ),
+_dirty    ( false )
 {
     // create a container group that will house the culler. This culler
     // allows a draped node, which sits under the MapNode's OverlayDecorator,
     // to "track" the traversal state of the DrapeableNode itself.
     _nodeContainer = new osg::Group();
     _nodeContainer->setCullCallback( new CullNodeByFrameNumber() );
+    _nodeContainer->setStateSet( this->getOrCreateStateSet() ); // share the stateset
+}
+
+void
+DrapeableNode::applyChanges()
+{    
+    if ( _newDraped != _draped )
+    {
+        setDrapedImpl( _newDraped );
+    }
+
+    if ( _newNode.valid() )
+    {
+        setNodeImpl( _newNode.get() );
+        _newNode = 0L;
+    }
 }
 
 void
 DrapeableNode::setNode( osg::Node* node )
+{
+    _newNode = node;
+    if ( !_dirty )
+    {
+        _dirty = true;
+        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    }
+}
+
+void
+DrapeableNode::setDraped( bool draped )
+{
+    _newDraped = draped;
+    if ( !_dirty )
+    {
+        _dirty = true;
+        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    }
+}
+
+void
+DrapeableNode::setNodeImpl( osg::Node* node )
 {
     if ( _node.valid() )
     {
@@ -68,7 +109,7 @@ DrapeableNode::setNode( osg::Node* node )
 }
 
 void
-DrapeableNode::setDraped( bool value )
+DrapeableNode::setDrapedImpl( bool value )
 {
     if ( _draped != value )
     {
@@ -92,5 +133,23 @@ DrapeableNode::traverse( osg::NodeVisitor& nv )
         CullNodeByFrameNumber* cb = static_cast<CullNodeByFrameNumber*>(_nodeContainer->getCullCallback());
         cb->_frame = nv.getFrameStamp()->getFrameNumber();
     }
+
+    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        if ( _dirty )
+        {
+            applyChanges();
+
+            _dirty = false;
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
+
+        // traverse the subgraph
+        if ( _nodeContainer.valid() && this->getNumChildrenRequiringUpdateTraversal() > 0 )
+        {
+            _nodeContainer->accept( nv );
+        }
+    }
+
     osg::Group::traverse( nv );
 }

@@ -232,7 +232,7 @@ namespace osgEarth
 		/**
 		 * Gets the tile size of the this MapLayer
 		 */
-        unsigned int getTileSize() const { return _tileSize; }
+        unsigned int getTileSize() const;
 
 		/**
 		 * Gets the maximum data level of this MapLayer
@@ -291,28 +291,19 @@ namespace osgEarth
 
     protected:
 
-        // these are called "actual" because they override the corresponding
-        // init settings found in the TerrainLayerOptions.
-        //bool         _actualEnabled;
-        //std::string  _actualCacheFormat;
-        //bool         _actualCacheOnly;
-        
         osg::ref_ptr<TileSource> _tileSource;
 		osg::ref_ptr<Cache>      _cache;
         CacheSpec                _cacheSpec;
 
-		osg::ref_ptr< const Profile > _profile;
-        osg::ref_ptr< const Profile > _cacheProfile;
-
-        //optional<bool> _overrideCacheOnly;
-
-        bool _tileSourceInitialized;
-
+		osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<const Profile> _cacheProfile;
         osg::ref_ptr<const Profile> _targetProfileHint;
+
+        bool                        _tileSourceInitialized;
+		unsigned                    _tileSize;        
 
     private:
         std::string          _name;
-		unsigned             _tileSize;        
         std::string          _referenceURI;
         OpenThreads::Mutex   _initTileSourceMutex;
         TerrainLayerOptions* _runtimeOptions;

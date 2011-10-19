@@ -293,6 +293,23 @@ namespace osgEarth { namespace Threading
 
 #endif
 
+    /** Template for per-thread data storage */
+    template<typename T>
+    struct PerThread
+    {
+        T& get() {
+            ScopedMutexLock lock(_mutex);
+            return _data[OpenThreads::Thread::CurrentThread()];
+        }
+        const T& get() const {
+            ScopedMutexLock lock(_mutex);
+            return _data[OpenThreads::Thread::CurrentThread()];
+        }
+    private:
+        std::map<OpenThreads::Thread*,T> _data;
+        OpenThreads::Mutex               _mutex;
+    };
+
 } } // namepsace osgEarth::Threading
 
 

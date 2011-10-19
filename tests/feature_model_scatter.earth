@@ -52,14 +52,14 @@ is randomized, but it is randomized exactly the same way each time.
         <styles>
             <style type="text/css">
                 parks-1 {
-                   marker:              model("../data/tree.osg");
+                   marker:              "../data/tree.ive";
                    marker-placement:    random;
                    marker-density:      1000;
                    marker-scale:        2;
                    altitude-clamping:   terrain;
                 }            
                 parks-2 {
-                   marker:              model("../data/tree.osg");
+                   marker:              "../data/tree.ive";
                    marker-placement:    random;
                    marker-density:      1000;
                    marker-scale:        2;
@@ -67,7 +67,7 @@ is randomized, but it is randomized exactly the same way each time.
                    marker-random-seed:  1;
                 }              
                 parks-3 {
-                   marker:              model("../data/tree.osg");
+                   marker:              "../data/tree.ive";
                    marker-placement:    random;
                    marker-density:      1000;
                    marker-scale:        2;

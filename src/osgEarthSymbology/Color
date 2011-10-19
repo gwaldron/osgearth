@@ -30,6 +30,11 @@ namespace osgEarth { namespace Symbology
      */
     struct OSGEARTHSYMBOLOGY_EXPORT Color : public osg::Vec4f
     {
+        enum Format {
+            RGBA,
+            ABGR
+        };
+
         /** Creates a new default color */
         Color() : osg::Vec4f(1,1,1,1) { }
 
@@ -50,10 +55,10 @@ namespace osgEarth { namespace Symbology
         Color( unsigned rgba );
 
         /** Construct a color from an HTML string (e.g., "#FF0004F") */
-        Color( const std::string& html );
+        Color( const std::string& html, Format format =RGBA );
 
         /** Encode the color at an HTML color string (e.g., "#FF004F78") */
-        std::string toHTML() const;
+        std::string toHTML( Format format =RGBA ) const;
 
         /** Lighten/darken the color by factor */
         Color brightness( float factor ) const;

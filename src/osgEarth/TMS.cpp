@@ -200,6 +200,9 @@ TileMap::createProfile() const
         }
     }
 
+
+    if (_profile_type == Profile::TYPE_GEODETIC) return osgEarth::Registry::instance()->getGlobalGeodeticProfile();
+    if (_profile_type == Profile::TYPE_MERCATOR) return osgEarth::Registry::instance()->getGlobalMercatorProfile();
     
 
     return Profile::create(
@@ -279,7 +282,7 @@ TileMap::intersectsKey(const TileKey& tilekey)
 
     bool inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
 
-    if (!inter && tilekey.isMercator())
+    if (!inter && tilekey.getProfile()->getSRS()->isMercator())
     {
         tilekey.getProfile()->getSRS()->transform2D(keyMinX, keyMinY, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMinX, keyMinY);
         tilekey.getProfile()->getSRS()->transform2D(keyMaxX, keyMaxY, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMaxX, keyMaxY);

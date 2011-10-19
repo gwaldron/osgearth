@@ -97,7 +97,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                 // name the feature if necessary
                 if ( !_featureNameExpr.empty() )
                 {
-                    const std::string& name = input->eval( _featureNameExpr );
+                    const std::string& name = input->eval( _featureNameExpr, &context );
                     if ( !name.empty() )
                         xform->setName( name );
                 }

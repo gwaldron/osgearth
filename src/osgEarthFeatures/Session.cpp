@@ -18,6 +18,8 @@
  */
 
 #include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/Script>
+#include <osgEarthFeatures/ScriptEngine>
 #include <osgEarth/FileUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
@@ -133,4 +135,16 @@ void
 Session::setStyles( StyleSheet* value )
 {
     _styles = value ? value : new StyleSheet();
+
+    // Go ahead and create the script engine for the StyleSheet
+    if (_styles && _styles->script())
+      _styleScriptEngine = ScriptEngineFactory::create(Script(_styles->script()->code, _styles->script()->language, _styles->script()->name));
+    else
+      _styleScriptEngine = 0L;
+}
+
+ScriptEngine*
+Session::getScriptEngine() const
+{
+  return _styleScriptEngine.get();
 }

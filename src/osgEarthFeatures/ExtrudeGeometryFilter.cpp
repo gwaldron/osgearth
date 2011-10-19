@@ -519,7 +519,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             }
             else if ( _extrusionSymbol->heightExpression().isSet() )
             {
-                height = input->eval( _heightExpr );
+                height = input->eval( _heightExpr, &context );
             }
             else
             {
@@ -657,7 +657,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
                 std::string name;
                 if ( !_featureNameExpr.empty() )
-                    name = input->eval( _featureNameExpr );
+                    name = input->eval( _featureNameExpr, &context );
 
                 addDrawable( walls.get(), wallStateSet, name );
 

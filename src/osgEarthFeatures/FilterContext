@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/OptimizerHints>
 #include <osgEarthFeatures/Session>
+#include <osgEarthSymbology/Geometry>
 #include <osgEarth/GeoData>
 #include <osg/Matrix>
 #include <list>
@@ -32,6 +33,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
     class Session;
+    class FeatureProfile;
 
     /**
      * Context within which a chain of filters is executed.

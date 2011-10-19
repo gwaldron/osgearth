@@ -44,6 +44,8 @@ SET(LIB_PUBLIC_HEADERS
     ScaleFilter
     Session
     ScatterFilter
+    Script
+    ScriptEngine
     SubstituteModelFilter
     TransformFilter
     VirtualFeatureSource
@@ -81,6 +83,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ScaleFilter.cpp
     Session.cpp
     ScatterFilter.cpp
+    ScriptEngine.cpp
     SubstituteModelFilter.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp

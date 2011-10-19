@@ -79,6 +79,7 @@ FIND_PACKAGE(LibZip)
 FIND_PACKAGE(GEOS)
 FIND_PACKAGE(Sqlite3)
 FIND_PACKAGE(ZLIB)
+FIND_PACKAGE(V8)
 
 IF(UNIX)
     # Not sure what this will do on Cygwin and Msys

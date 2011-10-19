@@ -344,6 +344,25 @@ StyleSheet::mergeConfig( const Config& conf )
         addResourceLibrary( name, reslib.get() );
     }
 
+    // read in any scripts
+    ConfigSet scripts = conf.children( "script" );
+    for( ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i )
+    {
+        // get the script code
+        std::string code = i->value();
+
+        // name is optional and unused at the moment
+        std::string name = i->value("name");
+
+        std::string lang = i->value("language");
+        if ( lang.empty() ) {
+            // default to javascript
+            lang = "javascript";
+        }
+
+        _script = new Script(code, lang, name);
+    }
+
     // read any style class definitions. either "class" or "selector" is allowed
     ConfigSet selectors = conf.children( "selector" );
     if ( selectors.empty() ) selectors = conf.children( "class" );

@@ -96,6 +96,30 @@ NumericExpression::init()
         else if ( t[i] == "max" ) infix.push_back( Atom(MAX,0.0) );
         else if ( t[i][0] >= '0' && t[i][0] <= '9' )
             infix.push_back( Atom(OPERAND,as<double>(t[i],0.0)) );
+        else if ( t[i] != "," && (i == 0 || t[i-1] != "["))
+        {
+          std::string var = t[i];
+          // If this is a call to a script function, store the entire function
+          // call in the variable string
+          if (i < t.size() - 1 && t[i+1] == "(")
+          {
+            int parenCount = 0;
+            do
+            {
+              ++i;
+              var += t[i];
+
+              if (t[i] == "(")
+                parenCount++;
+              else if (t[i] == ")")
+                parenCount--;
+
+            } while (i < t.size() - 1 && parenCount > 0);
+          }
+
+          infix.push_back( Atom(VARIABLE, 0.0) );
+          _vars.push_back( Variable(var, 0) );
+        }
 
         // note: do nothing for a comma
     }

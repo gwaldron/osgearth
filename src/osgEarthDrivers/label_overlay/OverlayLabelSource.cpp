@@ -85,7 +85,7 @@ public:
             }
 #endif
 
-            const std::string& value = feature->eval( contentExpr );
+            const std::string& value = feature->eval( contentExpr, &context );
 
             if ( !value.empty() && (!skipDupes || used.find(value) == used.end()) )
             {

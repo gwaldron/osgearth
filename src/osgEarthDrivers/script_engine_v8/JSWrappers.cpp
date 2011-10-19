@@ -1055,23 +1055,18 @@ JSGeoExtent::ContainsCallback(const v8::Arguments& args)
         return v8::Boolean::New(extent->contains(*bounds));
       }
     }
-    else if (args.Length() == 2 && args[0]->IsNumber() && args[1]->IsNumber())  // x and y
+    else if (args.Length() == 2 /*&& args[0]->IsNumber() && args[1]->IsNumber()*/)  // x and y
     {
-      v8::Local<v8::Number> x = args[0]->ToNumber();
-      v8::Local<v8::Number> y = args[1]->ToNumber();
-      return v8::Boolean::New(extent->contains(x->Value(), y->Value()));
+      return v8::Boolean::New(extent->contains(args[0]->NumberValue(), args[1]->NumberValue()));
     }
-    else if (args.Length() == 3 && args[0]->IsNumber() && args[1]->IsNumber() && args[2]->IsObject())  // x, y, and SpatialReference
+    else if (args.Length() == 3 && /*args[0]->IsNumber() && args[1]->IsNumber() &&*/ args[2]->IsObject())  // x, y, and SpatialReference
     {
       v8::Local<v8::Object> obj( v8::Object::Cast(*args[2]) );
 
       if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
       {
-        v8::Local<v8::Number> x = args[0]->ToNumber();
-        v8::Local<v8::Number> y = args[1]->ToNumber();
-
         osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(obj);
-        return v8::Boolean::New(extent->contains(x->Value(), y->Value(), srs));
+        return v8::Boolean::New(extent->contains(args[0]->NumberValue(), args[1]->NumberValue(), srs));
       }
     }
   }

@@ -48,7 +48,7 @@
 
   protected:
     static v8::Handle<v8::Value> logCallback(const v8::Arguments& args);
-    static v8::Handle<v8::Value> constructFeatureCallback(const v8::Arguments &args);
+    //static v8::Handle<v8::Value> constructFeatureCallback(const v8::Arguments &args);
     static v8::Handle<v8::Value> constructBoundsCallback(const v8::Arguments &args);
     static v8::Handle<v8::Value> constructVec3dCallback(const v8::Arguments &args);
     static v8::Handle<v8::Value> constructGeoExtentCallback(const v8::Arguments &args);

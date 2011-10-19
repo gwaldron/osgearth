@@ -522,7 +522,10 @@ JSFilterContext::GetObjectTemplate()
     template_instance->SetInternalFieldCount(1);
     template_instance->SetNamedPropertyHandler(PropertyCallback);
 
-    //template_instance->Set(v8::String::New("toLocal"),
+    template_instance->Set(v8::String::New("toLocal"), v8::FunctionTemplate::New(ToLocalCallback));
+    template_instance->Set(v8::String::New("toWorld"), v8::FunctionTemplate::New(ToWorldCallback));
+    template_instance->Set(v8::String::New("toMap"), v8::FunctionTemplate::New(ToMapCallback));
+    template_instance->Set(v8::String::New("fromMap"), v8::FunctionTemplate::New(FromMapCallback));
   }
 
   return template_instance;
@@ -539,14 +542,110 @@ JSFilterContext::PropertyCallback(v8::Local<v8::String> name, const v8::Accessor
   if (!context || prop.empty())
     return v8::Handle<v8::Value>();
 
+  if (prop == "session")
+    return JSSession::WrapSession(const_cast<Session*>(context->getSession()));
   if (prop == "profile")
     return JSFeatureProfile::WrapFeatureProfile(const_cast<FeatureProfile*>(context->profile().get()));
-  //if (prop == "y")
-  //  return v8::Number::New(v->y());
-  //if (prop == "z")
-  //  return v8::Number::New(v->z());
+  if (prop == "extent" && context->extent().isSet())
+    return JSGeoExtent::WrapGeoExtent(const_cast<osgEarth::GeoExtent*>(&context->extent().get()));
+  if (prop == "geocentric")
+    return v8::Boolean::New(context->isGeocentric());
 
   return v8::Handle<v8::Value>();
+}
+
+v8::Handle<v8::Value>
+JSFilterContext::ToLocalCallback(const v8::Arguments& args)
+{
+  FilterContext* context = V8Util::UnwrapObject<FilterContext>(args.Holder());
+
+  if (context && args.Length() == 1 && args[0]->IsObject())
+  {
+    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+
+    /*if (V8Util::CheckObjectType(obj, JSGeometry::GetObjectType()))  // Geometry
+    {
+      osgEarth::Symbology::Geometry* geometry = V8Util::UnwrapObject<osgEarth::Symbology::Geometry>(obj);
+
+      return 
+    }*/
+    
+    if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))  // Vec3d
+    {
+      osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
+      osg::Vec3d* local = new osg::Vec3d(context->toLocal(*vec));
+      return JSVec3d::WrapVec3d(local, true);
+    }
+  }
+
+  return v8::Undefined();
+}
+
+v8::Handle<v8::Value>
+JSFilterContext::ToWorldCallback(const v8::Arguments& args)
+{
+  FilterContext* context = V8Util::UnwrapObject<FilterContext>(args.Holder());
+
+  if (context && args.Length() == 1 && args[0]->IsObject())
+  {
+    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+
+    /*if (V8Util::CheckObjectType(obj, JSGeometry::GetObjectType()))  // Geometry
+    {
+      osgEarth::Symbology::Geometry* geometry = V8Util::UnwrapObject<osgEarth::Symbology::Geometry>(obj);
+
+      return 
+    }*/
+    
+    if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))  // Vec3d
+    {
+      osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
+      osg::Vec3d* world = new osg::Vec3d(context->toWorld(*vec));
+      return JSVec3d::WrapVec3d(world, true);
+    }
+  }
+
+  return v8::Undefined();
+}
+
+v8::Handle<v8::Value>
+JSFilterContext::ToMapCallback(const v8::Arguments& args)
+{
+  FilterContext* context = V8Util::UnwrapObject<FilterContext>(args.Holder());
+
+  if (context && args.Length() == 1 && args[0]->IsObject())
+  {
+    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    
+    if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))  // Vec3d
+    {
+      osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
+      osg::Vec3d* map = new osg::Vec3d(context->toMap(*vec));
+      return JSVec3d::WrapVec3d(map, true);
+    }
+  }
+
+  return v8::Undefined();
+}
+
+v8::Handle<v8::Value>
+JSFilterContext::FromMapCallback(const v8::Arguments& args)
+{
+  FilterContext* context = V8Util::UnwrapObject<FilterContext>(args.Holder());
+
+  if (context && args.Length() == 1 && args[0]->IsObject())
+  {
+    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    
+    if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))  // Vec3d
+    {
+      osg::Vec3d* map = V8Util::UnwrapObject<osg::Vec3d>(obj);
+      osg::Vec3d* local = new osg::Vec3d(context->fromMap(*map));
+      return JSVec3d::WrapVec3d(local, true);
+    }
+  }
+
+  return v8::Undefined();
 }
 
 void
@@ -554,6 +653,237 @@ JSFilterContext::FreeContextCallback(v8::Persistent<v8::Value> object, void *par
 {
   FilterContext* context = static_cast<FilterContext*>(parameter);
   delete context;
+
+  object.Dispose();
+  object.Clear();
+}
+
+// ---------------------------------------------------------------------------
+
+const std::string JSSession::_objectType = "JSSession";
+
+v8::Handle<v8::Object>
+JSSession::WrapSession(osgEarth::Features::Session* session, bool freeObject)
+{
+  v8::HandleScope handle_scope;
+
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(session, GetObjectTemplate());
+
+  if (freeObject)
+  {
+    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
+    weakRef.MakeWeak(session, FreeSessionCallback);
+  }
+
+  return handle_scope.Close(obj);
+}
+
+v8::Handle<v8::ObjectTemplate>
+JSSession::GetObjectTemplate()
+{
+  v8::HandleScope handle_scope;
+
+  static v8::Persistent<v8::ObjectTemplate> template_instance;
+
+  if (template_instance.IsEmpty())
+  {
+    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
+    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+    template_instance->SetInternalFieldCount(1);
+    template_instance->SetNamedPropertyHandler(PropertyCallback);
+
+    template_instance->Set(v8::String::New("resolveURI"), v8::FunctionTemplate::New(ResolveUriCallback));
+  }
+
+  return template_instance;
+}
+
+v8::Handle<v8::Value>
+JSSession::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+  Session* session = V8Util::UnwrapObject<Session>(info.Holder());
+
+  v8::String::Utf8Value utf8_value(name);
+  std::string prop(*utf8_value);
+
+  if (!session || prop.empty())
+    return v8::Handle<v8::Value>();
+
+  if (prop == "mapInfo")
+    return JSMapInfo::WrapMapInfo(const_cast<osgEarth::MapInfo*>(&session->getMapInfo()));
+
+  return v8::Handle<v8::Value>();
+}
+
+v8::Handle<v8::Value>
+JSSession::ResolveUriCallback(const v8::Arguments& args)
+{
+  Session* session = V8Util::UnwrapObject<Session>(args.Holder());
+
+  if (session && args.Length() == 1 && args[0]->IsString())
+  {
+    v8::String::Utf8Value utf8_value(args[0]->ToString());
+    std::string uri(*utf8_value);
+    return v8::String::New(session->resolveURI(uri).c_str());
+  }
+
+  return v8::Undefined();
+}
+
+void
+JSSession::FreeSessionCallback(v8::Persistent<v8::Value> object, void *parameter)
+{
+  Session* session = static_cast<Session*>(parameter);
+  delete session;
+
+  object.Dispose();
+  object.Clear();
+}
+
+// ---------------------------------------------------------------------------
+
+const std::string JSMapInfo::_objectType = "JSMapInfo";
+
+v8::Handle<v8::Object>
+JSMapInfo::WrapMapInfo(osgEarth::MapInfo* mapInfo, bool freeObject)
+{
+  v8::HandleScope handle_scope;
+
+  v8::Handle<v8::Object> obj = V8Util::WrapObject(mapInfo, GetObjectTemplate());
+
+  if (freeObject)
+  {
+    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(obj);
+    weakRef.MakeWeak(mapInfo, FreeMapInfoCallback);
+  }
+
+  return handle_scope.Close(obj);
+}
+
+v8::Handle<v8::ObjectTemplate>
+JSMapInfo::GetObjectTemplate()
+{
+  v8::HandleScope handle_scope;
+
+  static v8::Persistent<v8::ObjectTemplate> template_instance;
+
+  if (template_instance.IsEmpty())
+  {
+    template_instance = v8::Persistent<v8::ObjectTemplate>::New(v8::ObjectTemplate::New());
+    template_instance->Set(v8::String::New(V8_OBJECT_TYPE_PROPERTY), v8::String::New(GetObjectType().c_str()));
+    template_instance->SetInternalFieldCount(1);
+    template_instance->SetNamedPropertyHandler(PropertyCallback);
+
+    template_instance->Set(v8::String::New("toMapPoint"), v8::FunctionTemplate::New(ToMapCallback));
+    template_instance->Set(v8::String::New("mapPointToWorldPoint"), v8::FunctionTemplate::New(MapToWorldCallback));
+    template_instance->Set(v8::String::New("worldPointToMapPoint"), v8::FunctionTemplate::New(WorldToMapCallback));
+  }
+
+  return template_instance;
+}
+
+v8::Handle<v8::Value>
+JSMapInfo::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(info.Holder());
+
+  v8::String::Utf8Value utf8_value(name);
+  std::string prop(*utf8_value);
+
+  if (!mapInfo || prop.empty())
+    return v8::Handle<v8::Value>();
+
+  if (prop == "geocentric")
+    return v8::Boolean::New(mapInfo->isGeocentric());
+  if (prop == "cube")
+    return v8::Boolean::New(mapInfo->isCube());
+  if (prop == "plateCarre" || prop == "platecarre")
+    return v8::Boolean::New(mapInfo->isPlateCarre());
+  if (prop == "projectedSRS")
+    return v8::Boolean::New(mapInfo->isProjectedSRS());
+  if (prop == "geographicSRS")
+    return v8::Boolean::New(mapInfo->isGeographicSRS());
+
+  return v8::Handle<v8::Value>();
+}
+
+v8::Handle<v8::Value>
+JSMapInfo::ToMapCallback(const v8::Arguments& args)
+{
+  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(args.Holder());
+
+  if (mapInfo && args.Length() == 2 && args[0]->IsObject() && args[1]->IsObject()) // Vec3d & SpatialReference
+  {
+    v8::Local<v8::Object> obj0( v8::Object::Cast(*args[0]) );
+    v8::Local<v8::Object> obj1( v8::Object::Cast(*args[1]) );
+
+    if (V8Util::CheckObjectType(obj0, JSVec3d::GetObjectType()) && V8Util::CheckObjectType(obj1, JSSpatialReference::GetObjectType()))
+    {
+      osg::Vec3d* input = V8Util::UnwrapObject<osg::Vec3d>(obj0);
+      osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(obj1);
+
+      osg::Vec3d* out = new osg::Vec3d();
+      if (mapInfo->toMapPoint(*input, srs, *out))
+        return JSVec3d::WrapVec3d(out, true);
+
+      delete out;
+    }
+  }
+
+  return v8::Undefined();
+}
+
+v8::Handle<v8::Value>
+JSMapInfo::MapToWorldCallback(const v8::Arguments& args)
+{
+  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(args.Holder());
+
+  if (mapInfo && args.Length() == 1 && args[0]->IsObject()) // Vec3d
+  {
+    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
+    {
+      osg::Vec3d* input = V8Util::UnwrapObject<osg::Vec3d>(obj);
+
+      osg::Vec3d* out = new osg::Vec3d();
+      if (mapInfo->mapPointToWorldPoint(*input, *out))
+        return JSVec3d::WrapVec3d(out, true);
+
+      delete out;
+    }
+  }
+
+  return v8::Undefined();
+}
+
+v8::Handle<v8::Value>
+JSMapInfo::WorldToMapCallback(const v8::Arguments& args)
+{
+  osgEarth::MapInfo* mapInfo = V8Util::UnwrapObject<osgEarth::MapInfo>(args.Holder());
+
+  if (mapInfo && args.Length() == 1 && args[0]->IsObject()) // Vec3d
+  {
+    v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
+    if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
+    {
+      osg::Vec3d* input = V8Util::UnwrapObject<osg::Vec3d>(obj);
+
+      osg::Vec3d* out = new osg::Vec3d();
+      if (mapInfo->worldPointToMapPoint(*input, *out))
+        return JSVec3d::WrapVec3d(out, true);
+
+      delete out;
+    }
+  }
+
+  return v8::Undefined();
+}
+
+void
+JSMapInfo::FreeMapInfoCallback(v8::Persistent<v8::Value> object, void *parameter)
+{
+  Session* session = static_cast<Session*>(parameter);
+  delete session;
 
   object.Dispose();
   object.Clear();

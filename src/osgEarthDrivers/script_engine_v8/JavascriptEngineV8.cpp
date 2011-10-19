@@ -78,7 +78,7 @@ JavascriptEngineV8::createGlobalObjectTemplate()
   global->Set(v8::String::New("log"), v8::FunctionTemplate::New(logCallback));
 
   // add constructor callbacks for native objects
-  global->Set(v8::String::New("Feature"), v8::FunctionTemplate::New(constructFeatureCallback));
+  //global->Set(v8::String::New("Feature"), v8::FunctionTemplate::New(constructFeatureCallback));
   global->Set(v8::String::New("Bounds"), v8::FunctionTemplate::New(constructBoundsCallback));
   global->Set(v8::String::New("Vec3d"), v8::FunctionTemplate::New(constructVec3dCallback));
   global->Set(v8::String::New("GeoExtent"), v8::FunctionTemplate::New(constructGeoExtentCallback));
@@ -219,33 +219,33 @@ JavascriptEngineV8::call(const std::string& function, osgEarth::Features::Featur
 //----------------------------------------------------------------------------
 // Constructor callbacks for constructing native objects in javascript
 
-v8::Handle<v8::Value>
-JavascriptEngineV8::constructFeatureCallback(const v8::Arguments &args)
-{
-  if (!args.IsConstructCall()) 
-    return v8::ThrowException(v8::String::New("Cannot call constructor as function"));
- 
-	v8::HandleScope handle_scope;
- 
-  Feature* feature;
-  if (args.Length() == 0)
-  {
-    feature = new Feature();
-  }
-  else if (args.Length() == 1 && args[0]->IsUint32())
-  {
-    feature = new Feature(args[0]->Uint32Value());
-  }
-  else
-  {
-    //TODO: add support for other Feature constructors
-  }
-
-  if (feature)
-    return JSFeature::WrapFeature(feature, true);
-
-  return v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
-}
+//v8::Handle<v8::Value>
+//JavascriptEngineV8::constructFeatureCallback(const v8::Arguments &args)
+//{
+//  if (!args.IsConstructCall()) 
+//    return v8::ThrowException(v8::String::New("Cannot call constructor as function"));
+// 
+//	v8::HandleScope handle_scope;
+// 
+//  Feature* feature;
+//  if (args.Length() == 0)
+//  {
+//    feature = new Feature();
+//  }
+//  else if (args.Length() == 1 && args[0]->IsUint32())
+//  {
+//    feature = new Feature(args[0]->Uint32Value());
+//  }
+//  else
+//  {
+//    //TODO: add support for other Feature constructors
+//  }
+//
+//  if (feature)
+//    return JSFeature::WrapFeature(feature, true);
+//
+//  return v8::ThrowException(v8::String::New("Unsupported arguments in constructor call"));
+//}
 
 v8::Handle<v8::Value>
 JavascriptEngineV8::constructBoundsCallback(const v8::Arguments &args)
@@ -256,9 +256,10 @@ JavascriptEngineV8::constructBoundsCallback(const v8::Arguments &args)
 	v8::HandleScope handle_scope;
  
   osgEarth::Bounds* bounds;
-  if (args.Length() == 0)
-    bounds = new osgEarth::Bounds();
-  else if (args.Length() == 4)
+  //if (args.Length() == 0)
+  //  bounds = new osgEarth::Bounds();
+  //else
+  if (args.Length() == 4)
     bounds = new osgEarth::Bounds(args[0]->NumberValue(), args[1]->NumberValue(), args[2]->NumberValue(), args[3]->NumberValue());
 
   if (bounds)
@@ -306,18 +307,20 @@ JavascriptEngineV8::constructGeoExtentCallback(const v8::Arguments &args)
 	v8::HandleScope handle_scope;
 
   osgEarth::GeoExtent* extent;// = new osgEarth::GeoExtent(
-  if (args.Length() == 0)
-    extent = new osgEarth::GeoExtent();
-  else if (args.Length() == 1 && args[0]->IsObject())
+  //if (args.Length() == 0)
+  //  extent = new osgEarth::GeoExtent();
+  //else
+  if (args.Length() == 1 && args[0]->IsObject())
   {
     v8::Local<v8::Object> obj( v8::Object::Cast(*args[0]) );
 
-    if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
-    {
-      osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(obj);
-      extent = new osgEarth::GeoExtent(srs);
-    }
-    else if (V8Util::CheckObjectType(obj, JSGeoExtent::GetObjectType()))
+    //if (V8Util::CheckObjectType(obj, JSSpatialReference::GetObjectType()))
+    //{
+    //  osgEarth::SpatialReference* srs = V8Util::UnwrapObject<osgEarth::SpatialReference>(obj);
+    //  extent = new osgEarth::GeoExtent(srs);
+    //}
+    //else
+    if (V8Util::CheckObjectType(obj, JSGeoExtent::GetObjectType()))
     {
       osgEarth::GeoExtent* rhs = V8Util::UnwrapObject<osgEarth::GeoExtent>(obj);
       extent = new osgEarth::GeoExtent(*rhs);

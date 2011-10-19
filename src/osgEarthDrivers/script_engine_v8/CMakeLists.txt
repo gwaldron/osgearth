@@ -3,10 +3,14 @@ INCLUDE_DIRECTORIES( ${V8_INCLUDE_DIR} )
 
 SET(TARGET_SRC
     JavascriptEngineV8Factory.cpp
-    JavascriptEngineV8.cpp)
+    JavascriptEngineV8.cpp
+    JSWrappers.cpp
+)
 
 SET(TARGET_H
     JavascriptEngineV8
+    JSWrappers
+    V8Util
 )
 
 SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} ${V8_LIBRARY} osgEarthFeatures)

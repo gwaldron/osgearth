@@ -33,9 +33,14 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Symbol : public osg::Referenced
     {
     public:
-        Symbol();
+        Symbol( const Config& conf =Config() );
+
+        const URIContext& uriContext() const { return _uriContext; }
 
         virtual Config getConfig() const { return Config(); }
+
+    protected:
+        URIContext _uriContext;
     };
     typedef std::vector<osg::ref_ptr<Symbol> > SymbolList;
 

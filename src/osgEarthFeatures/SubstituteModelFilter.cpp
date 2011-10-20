@@ -66,7 +66,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         // evaluate the URI expression:
         StringExpression uriEx = *symbol->url();
-        URI markerURI = input->eval( uriEx );
+        URI markerURI( input->eval(uriEx), uriEx.uriContext() );
 
         GeometryIterator gi( input->getGeometry(), false );
         while( gi.hasMore() )
@@ -257,7 +257,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 
         // resolve the URI for the marker:
         StringExpression uriEx( *symbol->url() );
-        URI markerURI = f->eval( uriEx );
+        URI markerURI( f->eval( uriEx ), uriEx.uriContext() );
 
         // find and load the corresponding marker model. We're using the session-level
         // object store to cache models. This is thread-safe sine we are always going

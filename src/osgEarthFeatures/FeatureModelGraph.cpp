@@ -204,7 +204,8 @@ _dirty    ( false )
             _lodmap.resize( lod+1, 0L );
             _lodmap[lod] = level;
 
-            OE_INFO << LC << "F.Level max=" << level->maxRange() << ", min=" << level->minRange()
+            OE_INFO << LC << source->getName() 
+                << ": F.Level max=" << level->maxRange() << ", min=" << level->minRange()
                 << ", LOD=" << lod << std::endl;
         }
     }

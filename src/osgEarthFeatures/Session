@@ -53,9 +53,10 @@ namespace osgEarth { namespace Features
         Session( const Map* map, StyleSheet* styles =0L );
 
         /**
-         * Sets the reference URI to use to expand relative paths and URLs.
+         * URI Context for relative path resolution.
          */
-        void setReferenceURI( const std::string& referenceURI );
+        void setURIContext( const URIContext& value ) { _uriContext = value; }
+        const URIContext& uriContext() const { return _uriContext; }
 
         /**
          * Gets the underlying map (frame) interface in this session
@@ -81,7 +82,7 @@ namespace osgEarth { namespace Features
          * Resolves a URI based on the reference URI. You can use this method
          * to create an absolute URI from a relative one, for example.
          */
-        std::string resolveURI( const std::string& inputURI ) const;
+        //std::string resolveURI( const std::string& inputURI ) const;
 
     public:
         /**
@@ -111,9 +112,10 @@ namespace osgEarth { namespace Features
         ObjectMap                    _objMap;
         Threading::ReadWriteMutex    _objMapMutex;
 
+        URIContext                     _uriContext;
         osg::ref_ptr<const Map>        _map;
         MapInfo                        _mapInfo;
-        std::string                    _referenceURI;
+        //std::string                    _referenceURI;
         osg::ref_ptr<StyleSheet>       _styles;
     };
 

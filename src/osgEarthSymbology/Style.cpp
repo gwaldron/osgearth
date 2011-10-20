@@ -337,6 +337,8 @@ StyleSheet::getConfig() const
 void
 StyleSheet::mergeConfig( const Config& conf )
 {
+    _uriContext = conf.uriContext();
+
     // read in any resource library references
     ConfigSet libraries = conf.children( "library" );
     for( ConfigSet::iterator i = libraries.begin(); i != libraries.end(); ++i )

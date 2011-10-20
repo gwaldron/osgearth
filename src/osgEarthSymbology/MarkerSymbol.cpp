@@ -22,9 +22,10 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 MarkerSymbol::MarkerSymbol( const Config& conf ) :
-_placement( PLACEMENT_VERTEX ),
-_density( 25.0f ),
-_scale( osg::Vec3f(1,1,1) ),
+Symbol     ( conf ),
+_placement ( PLACEMENT_VERTEX ),
+_density   ( 25.0f ),
+_scale     ( osg::Vec3f(1,1,1) ),
 _randomSeed( 0 )
 {
     mergeConfig( conf );

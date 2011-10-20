@@ -187,6 +187,9 @@ namespace osgEarth { namespace Symbology
         /** Constructs a new style sheet, optionally from a Config serialization. */
         StyleSheet( const Config& conf =Config() );
 
+        /** Gets the context for relative path resolution */
+        const URIContext& uriContext() const { return _uriContext; }
+
         /** Adds a style to this sheet. */
         void addStyle( const Style& style );
 
@@ -222,6 +225,7 @@ namespace osgEarth { namespace Symbology
         virtual void mergeConfig( const Config& conf );
 
     protected:
+        URIContext         _uriContext;
         ResourceLibraryMap _libraries;
         StyleSelectorList  _selectors;
         StyleMap           _styles;

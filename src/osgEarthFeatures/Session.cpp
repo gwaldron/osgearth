@@ -44,6 +44,7 @@ _mapInfo       ( map )
         _styles = new StyleSheet();
 }
 
+#if 0
 void
 Session::setReferenceURI( const std::string& referenceURI )
 {
@@ -55,6 +56,7 @@ Session::resolveURI( const std::string& inputURI ) const
 {
     return osgEarth::getFullPath( _referenceURI, inputURI );
 }
+#endif
 
 MapFrame
 Session::createMapFrame( Map::ModelParts parts ) const

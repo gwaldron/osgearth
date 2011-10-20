@@ -4,6 +4,7 @@
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarth/FindNode>
 #include <osg/io_utils>
 #include <algorithm>
 
@@ -40,7 +41,7 @@ ImageOverlay::postCTOR()
     setNode( _geode );
 
     init();    
-    setNumChildrenRequiringUpdateTraversal( 1 );    
+    ADJUST_UPDATE_TRAV_COUNT( this, 1 );    
 }
 
 void

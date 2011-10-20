@@ -20,6 +20,8 @@
 #ifndef OSGEARTHFEATURES_MARKER_FACTORY_H
 #define OSGEARTHFEATURES_MARKER_FACTORY_H 1
 
+#if 0
+
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/Feature>
@@ -63,5 +65,7 @@ namespace osgEarth { namespace Features
     };
 
 } } // namespace osgEarth::Features
+
+#endif
 
 #endif // OSGEARTHFEATURES_MARKER_FACTORY_H

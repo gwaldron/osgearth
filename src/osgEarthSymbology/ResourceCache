@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/MarkerResource>
 #include <osgEarth/Utils>
 #include <osgEarth/ThreadingUtils>
 
@@ -30,11 +31,19 @@ namespace osgEarth { namespace Symbology
     /**
      * Caches the runtime objects created by resources, so we can avoid creating them
      * each time they are referenced.
+     *
+     * This object is intended for use by a FilterContext, and therefore will only
+     * run in an isolated thread. No thread-safety is required in that scenario.
      */
     class OSGEARTHSYMBOLOGY_EXPORT ResourceCache : public osg::Referenced
     {
     public:
-        ResourceCache() { }
+        /** 
+         * Constructs a new resource cache.
+         * @param threadSafe Whether to protect access to the cache so that you can
+         *        use it from multiple threads (default = false)
+         */
+        ResourceCache( bool threadSafe =false ) : _threadSafe(threadSafe) { }
 
         /**
          * Fetches the StateSet implementation corresponding to a Skin.
@@ -46,13 +55,22 @@ namespace osgEarth { namespace Symbology
          */
         const CacheStats getSkinStats() const { return _skinCache.getStats(); }
 
+        /**
+         * Gets a node corresponding to a marker.
+         */
+        osg::Node* getMarkerNode( MarkerResource* marker );
+
     protected:
+        bool                      _threadSafe;
+        Threading::ReadWriteMutex _mutex;
 
         typedef LRUCache<SkinResource*, osg::ref_ptr<osg::StateSet> > SkinCache;
         SkinCache _skinCache;
-        Threading::ReadWriteMutex _skinCacheMutex;
+
+        typedef LRUCache<MarkerResource*, osg::ref_ptr<osg::Node> > MarkerCache;
+        MarkerCache _markerCache;
     };
 
 } } // namespace osgEarth::Symbology
 
-#endif // OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H
+#endif // OSGEARTHSYMBOLOGY_RESOURCE_CACHE_H

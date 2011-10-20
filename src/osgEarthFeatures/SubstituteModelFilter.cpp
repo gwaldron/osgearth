@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
-#include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ECEF>
@@ -58,12 +57,16 @@ SubstituteModelFilter::process(const FeatureList&           features,
                                Session*                     session,
                                osg::Group*                  attachPoint,
                                FilterContext&               context )
-{    
+{
     bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
 
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
+
+        // evaluate the URI expression:
+        StringExpression uriEx = *symbol->url();
+        URI markerURI = input->eval( uriEx );
 
         GeometryIterator gi( input->getGeometry(), false );
         while( gi.hasMore() )
@@ -91,13 +94,27 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
                 osg::MatrixTransform* xform = new osg::MatrixTransform();
                 xform->setMatrix( mat );
-                xform->setDataVariance( osg::Object::STATIC );
-                MarkerFactory factory( session);
-                osg::ref_ptr< osg::Node > model = factory.getOrCreateNode( input, symbol );
-                if (model.get())
-                {
-                    xform->addChild( model.get() );
+                //xform->setDataVariance( osg::Object::STATIC ); // pointless
+
+                // get or create a marker resource for this URI.
+                // (TODO: later we'll expand this to support pulling marker resources from the
+                // resource library.)
+                MarkerResource* marker = 0L;
+                MarkerCache::Record rec = _markerCache.get( markerURI );
+                if ( rec.valid() ) {
+                    marker = rec.value();
                 }
+                else {
+                    marker = new MarkerResource();
+                    marker->uri() = markerURI;
+                    _markerCache.insert( markerURI, marker );
+                }
+
+                // how that we have a marker source, create a node for it
+                osg::Node* model = context.resourceCache()->getMarkerNode( marker );
+
+                if ( model )
+                    xform->addChild( model );
 
                 attachPoint->addChild( xform );
 
@@ -119,7 +136,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 
 struct ClusterVisitor : public osg::NodeVisitor
-    {
+{
         ClusterVisitor( const FeatureList& features, const osg::Matrixd& modelMatrix, FeaturesToNodeFilter* f2n, FilterContext& cx )
             : _features   ( features ),
               _modelMatrix( modelMatrix ),
@@ -215,7 +232,7 @@ struct ClusterVisitor : public osg::NodeVisitor
     };
 
 
-typedef std::map< osg::ref_ptr< osg::Node >, FeatureList > MarkerToFeatures;
+typedef std::map< osg::Node*, FeatureList > MarkerToFeatures;
 
 //clustering:
 //  troll the external model for geodes. for each geode, create a geode in the target
@@ -226,50 +243,63 @@ typedef std::map< osg::ref_ptr< osg::Node >, FeatureList > MarkerToFeatures;
 bool
 SubstituteModelFilter::cluster(const FeatureList&           features,
                                const MarkerSymbol*          symbol, 
-                               Session* session,
+                               Session*                     session,
                                osg::Group*                  attachPoint,
-                               FilterContext&               cx )
+                               FilterContext&               context )
 {    
     MarkerToFeatures markerToFeatures;
-    MarkerFactory factory( session);
+
+    // first, sort the features into buckets, each bucket corresponding to a
+    // unique marker.
     for (FeatureList::const_iterator i = features.begin(); i != features.end(); ++i)
     {
         Feature* f = i->get();
-        osg::ref_ptr< osg::Node > model = factory.getOrCreateNode( f, symbol );
-        //Try to find the existing entry
-        if (model.valid())
+
+        // resolve the URI for the marker:
+        StringExpression uriEx( *symbol->url() );
+        URI markerURI = f->eval( uriEx );
+
+        // find and load the corresponding marker model. We're using the session-level
+        // object store to cache models. This is thread-safe sine we are always going
+        // to CLONE the model before using it.
+        osg::Node* model = context.getSession()->getObject<osg::Node>( markerURI.full() );
+        if ( !model )
         {
-            MarkerToFeatures::iterator itr = markerToFeatures.find( model.get() );
+            osg::ref_ptr<MarkerResource> mres = new MarkerResource();
+            mres->uri() = markerURI;
+            model = mres->createNode();
+            if ( model )
+            {
+                context.getSession()->putObject( markerURI.full(), model );
+            }
+        }
+
+        if ( model )
+        {
+            MarkerToFeatures::iterator itr = markerToFeatures.find( model );
             if (itr == markerToFeatures.end())
-            {
-                markerToFeatures[ model.get() ].push_back( f );
-            }
+                markerToFeatures[ model ].push_back( f );
             else
-            {
                 itr->second.push_back( f );
-            }
         }
     }
 
-    /*
-    OE_NOTICE << "Sorted models into " << markerToFeatures.size() << " buckets" << std::endl;
+    //For each model, cluster the features that use that marker
     for (MarkerToFeatures::iterator i = markerToFeatures.begin(); i != markerToFeatures.end(); ++i)
     {
-        OE_NOTICE << "    Bucket has " << i->second.size() << " features" << std::endl;
-    }
-    */
+        osg::Node* prototype = i->first;
 
-    //For each model, cluster the features that use that model
+        // we're using the Session cache since we know we'll be cloning.
+        if ( prototype )
+        {
+            osg::Node* clone = osg::clone( prototype, osg::CopyOp::DEEP_COPY_ALL );
 
-    for (MarkerToFeatures::iterator i = markerToFeatures.begin(); i != markerToFeatures.end(); ++i)
-    {
-        osg::Node* clone = dynamic_cast<osg::Node*>( i->first->clone( osg::CopyOp::DEEP_COPY_ALL ) );
+            // ..and apply the clustering to the copy.
+            ClusterVisitor cv( i->second, _modelMatrix, this, context );
+            clone->accept( cv );
 
-        // ..and apply the clustering to the copy.
-        ClusterVisitor cv( i->second, _modelMatrix, this, cx );
-        clone->accept( cv );
-
-        attachPoint->addChild( clone );
+            attachPoint->addChild( clone );
+        }
     }
 
     return true;
@@ -298,7 +328,7 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
 
     computeLocalizers( context );
 
-    osg::Group* group = createDelocalizeGroup(); //new osg::Group();
+    osg::Group* group = createDelocalizeGroup();
 
     bool ok = true;
 

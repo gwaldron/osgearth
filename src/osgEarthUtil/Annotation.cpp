@@ -21,7 +21,6 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Utils>
 #include <osgEarthSymbology/GeometryFactory>
-#include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/BuildGeometryFilter>
 

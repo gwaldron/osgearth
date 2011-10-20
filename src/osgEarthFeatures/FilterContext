@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/OptimizerHints>
 #include <osgEarthFeatures/Session>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/GeoData>
 #include <osg/Matrix>
 #include <list>

@@ -44,6 +44,9 @@ namespace osgEarth { namespace Symbology
         /** Construct a new expression from the infix string. */
         NumericExpression( const std::string& expr );
 
+        /** Construct a new static expression from a value */
+        NumericExpression( double staticValue );
+
         /** Copy ctor. */
         NumericExpression( const NumericExpression& rhs );
 

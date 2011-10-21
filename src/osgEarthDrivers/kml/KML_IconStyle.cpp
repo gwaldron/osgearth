@@ -39,6 +39,6 @@ KML_IconStyle::scan( const Config& conf, Style& style )
         optional<float> scale;
         conf.getIfSet( "scale", scale );
         if ( scale.isSet() )
-            marker->scale() = osg::Vec3f(*scale, *scale, *scale);
+            marker->scale() = NumericExpression( *scale );
     }
 }

@@ -26,7 +26,7 @@ using namespace osgEarth::Symbology;
 #define LC "[Expression] "
 
 NumericExpression::NumericExpression( const std::string& expr ) : 
-_src( expr ),
+_src  ( expr ),
 _value( 0.0 ),
 _dirty( true )
 {
@@ -34,13 +34,21 @@ _dirty( true )
 }
 
 NumericExpression::NumericExpression( const NumericExpression& rhs ) :
-_src( rhs._src ),
-_rpn( rhs._rpn ),
-_vars( rhs._vars ),
+_src  ( rhs._src ),
+_rpn  ( rhs._rpn ),
+_vars ( rhs._vars ),
 _value( rhs._value ),
 _dirty( rhs._dirty )
 {
     //nop
+}
+
+NumericExpression::NumericExpression( double staticValue ) :
+_value( staticValue ),
+_dirty( false )
+{
+    _src = Stringify() << staticValue;
+    init();
 }
 
 NumericExpression::NumericExpression( const Config& conf )
@@ -53,6 +61,7 @@ void
 NumericExpression::mergeConfig( const Config& conf )
 {
     _src = conf.value();
+    init();
     _dirty = true;
 }
 
@@ -67,6 +76,8 @@ NumericExpression::getConfig() const
 void
 NumericExpression::init()
 {
+    _vars.clear();
+    _rpn.clear();
     StringTokenizer tokenizer( "", "" );
     tokenizer.addDelims( "[],()%*/+-", true );
     tokenizer.addQuotes( "'\"", true );
@@ -98,7 +109,7 @@ NumericExpression::init()
         else if ( t[i] == "-" ) infix.push_back( Atom(SUB,0.0) );
         else if ( t[i] == "min" ) infix.push_back( Atom(MIN,0.0) );
         else if ( t[i] == "max" ) infix.push_back( Atom(MAX,0.0) );
-        else if ( t[i][0] >= '0' && t[i][0] <= '9' )
+        else if ( (t[i][0] >= '0' && t[i][0] <= '9') || t[i][0] == '.' )
             infix.push_back( Atom(OPERAND,as<double>(t[i],0.0)) );
         else if ( t[i] != "," && (i == 0 || t[i-1] != "["))
         {

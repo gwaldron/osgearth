@@ -1,0 +1,67 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_MARKER_RESOURCE_H
+#define OSGEARTHSYMBOLOGY_MARKER_RESOURCE_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Resource>
+#include <osgEarthSymbology/Symbol>
+#include <osgEarthSymbology/MarkerSymbol>
+#include <osgEarth/URI>
+
+namespace osgEarth { namespace Symbology
+{
+    using namespace osgEarth;
+
+    /**
+     * A resource that points to a "marker", which is a model representing an object
+     * in the scene. Markers are used typically fro point-model subsitution and to
+     * manage externally referenced (or dynamically created) scene graph nodes.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT MarkerResource : public Resource
+    {
+    public:
+        /** Constructs a new marker resource. */
+        MarkerResource( const Config& conf =Config() );
+
+        /**
+         * Creates a new Node representing the marker.
+         */
+        osg::Node* createNode() const;
+
+    public:
+        /** Source location of the actual data to load.  */
+        optional<URI>& uri() { return _markerURI; }
+        const optional<URI>& uri() const { return _markerURI; }
+
+    public: // serialization methods
+
+        virtual Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    protected:
+        optional<URI>  _markerURI;
+
+        osg::Node* createNodeFromURI( const URI& uri ) const;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_MARKER_RESOURCE_H

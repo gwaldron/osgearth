@@ -26,9 +26,10 @@ SET(LIB_PUBLIC_HEADERS
     GeometryRasterizer
     LineFunctor
     LineSymbol
+    MarkerResource
+    MarkerSymbol
     MeshConsolidator
     MeshSubdivider
-    MarkerSymbol
     PointSymbol
     PolygonSymbol
     Query
@@ -57,9 +58,10 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GEOS.cpp
     GeometryRasterizer.cpp
     LineSymbol.cpp
+    MarkerResource.cpp
+    MarkerSymbol.cpp
     MeshConsolidator.cpp
     MeshSubdivider.cpp
-    MarkerSymbol.cpp
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp

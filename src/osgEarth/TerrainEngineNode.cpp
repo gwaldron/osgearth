@@ -306,7 +306,7 @@ TerrainEngineNode::updateImageUniforms()
         // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
         // "ghost" layers that used to exist at a given index, but no longer do.
         
-        _imageLayerController->_layerEnabledUniform.attach( "osgearth_ImageLayerEnabled", osg::Uniform::BOOL,  stateSet, 64 );
+        _imageLayerController->_layerEnabledUniform.attach( "osgearth_ImageLayerEnabled", osg::Uniform::BOOL,  stateSet, 16 );
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
 

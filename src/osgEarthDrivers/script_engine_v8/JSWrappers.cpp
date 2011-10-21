@@ -692,7 +692,9 @@ JSSession::GetObjectTemplate()
     template_instance->SetInternalFieldCount(1);
     template_instance->SetNamedPropertyHandler(PropertyCallback);
 
+#if 0
     template_instance->Set(v8::String::New("resolveURI"), v8::FunctionTemplate::New(ResolveUriCallback));
+#endif
   }
 
   return template_instance;
@@ -715,6 +717,7 @@ JSSession::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& 
   return v8::Handle<v8::Value>();
 }
 
+#if 0
 v8::Handle<v8::Value>
 JSSession::ResolveUriCallback(const v8::Arguments& args)
 {
@@ -729,6 +732,7 @@ JSSession::ResolveUriCallback(const v8::Arguments& args)
 
   return v8::Undefined();
 }
+#endif
 
 void
 JSSession::FreeSessionCallback(v8::Persistent<v8::Value> object, void *parameter)

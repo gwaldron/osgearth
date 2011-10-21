@@ -189,16 +189,13 @@ public:
                     // assuming we successfully opened the layer, build a spatial index if requested.
                     if ( _options.buildSpatialIndex() == true )
                     {
-                        OE_INFO << LC << "Building spatial index for " << getName() << " ..." << std::flush;
-
+                        OE_INFO << LC << "Building spatial index for " << getName() << std::endl;
                         std::stringstream buf;
                         const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
                         buf << "CREATE SPATIAL INDEX ON " << name; 
 					    std::string bufStr;
 					    bufStr = buf.str();
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
-
-                        OE_INFO << LC << "...done." << std::endl;
                     }
 
                     //Get the feature count

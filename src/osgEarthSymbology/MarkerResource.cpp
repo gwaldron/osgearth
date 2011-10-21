@@ -16,18 +16,21 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#if 0
-#include <osgEarthFeatures/MarkerFactory>
-#include <osgEarth/Utils>
-#include <osg/TextureRectangle>
-#include <osg/Depth>
+#include <osgEarthSymbology/MarkerResource>
+#include <osgEarth/StringUtils>
+#include <osgEarth/ImageUtils>
+
 #include <osg/AutoTransform>
+#include <osg/Depth>
+#include <osg/Geometry>
+#include <osg/TextureRectangle>
+
+#define LC "[MarkerResource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-//----------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 
 namespace
 {
@@ -83,86 +86,39 @@ namespace
     }
 }
 
-//----------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 
-MarkerFactory::MarkerFactory( Session* session ) :
-_session( session )
+MarkerResource::MarkerResource( const Config& conf ) :
+Resource( conf )
 {
-    //nop
+    mergeConfig( conf );
+}
+
+void
+MarkerResource::mergeConfig( const Config& conf )
+{
+    conf.getIfSet( "url", _markerURI );
+}
+
+Config
+MarkerResource::getConfig() const
+{
+    Config conf = Resource::getConfig();
+    conf.key() = "marker";
+
+    conf.updateIfSet( "url", _markerURI );
+
+    return conf;
 }
 
 osg::Node*
-MarkerFactory::getOrCreateNode( const Feature* feature, const MarkerSymbol* symbol, bool useCache )
+MarkerResource::createNode() const
 {
-    osg::Node* result =0L;
-
-    if ( symbol )
-    {
-        if ( symbol->getNode() )
-        {
-            result = symbol->getNode();
-        }
-        else if ( symbol->getImage() )
-        {
-            const std::string& fileName = symbol->getImage()->getFileName();
-            if ( !fileName.empty() && _session.valid() && useCache )
-            {
-                result = _session->getResource<osg::Node>( fileName );
-            }
-
-            if ( !result )
-            {
-                result = buildImageModel( symbol->getImage() );
-            }
-
-            if ( result && _session.valid() && useCache && !fileName.empty() )
-            {
-                _session->putResource(fileName, result);
-            }
-        }
-        else if ( symbol->url().isSet() && !symbol->url()->empty() )
-        {            
-            StringExpression expr = symbol->url().get();
-            std::string val = feature->eval( expr  );//symbol->url()->full();
-            URI uri( val, expr.uriContext() );
-
-            OE_DEBUG << "Using model URL " << uri.full() << std::endl;
-            if ( _session.valid() && useCache )
-            {
-                result = _session->getResource<osg::Node>( uri.full() );
-            }
-
-            if ( !result )
-            {                
-                result = createFromURI( uri );
-            }
-
-            if ( result && _session.valid() && useCache )
-            {
-                _session->putResource( uri.full(), result );
-            }
-        }
-    }
-
-    return result;
-}
-
-osg::Image*
-MarkerFactory::getOrCreateImage( const MarkerSymbol* symbol, bool useCache )
-{
-    if ( symbol->getImage() )
-    {
-        return symbol->getImage();
-    }
-    else if ( symbol->url().isSet() && !symbol->url()->empty() )
-    {
-        return createImageFromURI( symbol->url()->expr() );
-    }
-    return 0L;
+    return createNodeFromURI( _markerURI.value() );
 }
 
 osg::Node*
-MarkerFactory::createFromURI( const URI& uri ) const
+MarkerResource::createNodeFromURI( const URI& uri ) const
 {
     osg::ref_ptr<osg::Object> obj = uri.readObject();
     if ( obj.valid() )
@@ -182,7 +138,7 @@ MarkerFactory::createFromURI( const URI& uri ) const
         StringVector tok;
         StringTokenizer( *uri, tok, "()" );
         if (tok.size() >= 2)
-            return createFromURI( URI(tok[1]) );
+            return createNodeFromURI( URI(tok[1]) );
     }
 
     // fail
@@ -190,19 +146,3 @@ MarkerFactory::createFromURI( const URI& uri ) const
 }
 
 
-osg::Image*
-MarkerFactory::createImageFromURI( const URI& uri ) const
-{
-    StringVector tok;
-    StringTokenizer( *uri, tok, "()" );
-
-    if ( tok.size() > 0 )
-    {
-        URI imageURI( tok[tok.size()-1], uri.context() );
-        return imageURI.readImage();
-    }
-
-    return 0L;
-}
-
-#endif

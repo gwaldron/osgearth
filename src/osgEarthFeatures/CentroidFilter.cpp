@@ -16,32 +16,36 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/PointSymbol>
+#include <osgEarthFeatures/CentroidFilter>
+
+#define LC "[CentroidFilter] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
+using namespace osgEarth::Features;
 
-PointSymbol::PointSymbol( const Config& conf ) :
-Symbol( conf ),
-_fill ( Fill() ), 
-_size ( 1.0 )
+//------------------------------------------------------------------------
+
+CentroidFilter::CentroidFilter()
 {
-    mergeConfig(conf);
+    //NOP
 }
 
-Config 
-PointSymbol::getConfig() const
+FilterContext
+CentroidFilter::push(FeatureList& features, FilterContext& context )
 {
-    Config conf = Symbol::getConfig();
-    conf.key() = "point";
-    conf.addObjIfSet( "fill", _fill );
-    conf.addIfSet( "size", _size );
-    return conf;
-}
+    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
+    {
+        Feature* f = i->get();
+        
+        Geometry* geom = f->getGeometry();
+        if ( !geom )
+            continue;
 
-void 
-PointSymbol::mergeConfig( const Config& conf )
-{
-    conf.getObjIfSet( "fill", _fill );
-    conf.getIfSet( "size", _size );
+        PointSet* newGeom = new PointSet();
+        newGeom->push_back( geom->getBounds().center() );
+
+        f->setGeometry( newGeom );
+    }
+
+    return context;
 }

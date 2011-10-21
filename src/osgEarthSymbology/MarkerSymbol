@@ -39,6 +39,9 @@ namespace osgEarth { namespace Symbology
          */
         enum Placement
         {
+            /** Places one model instance at the centroid of the feature. */
+            PLACEMENT_CENTROID,
+
             /** Places a model instance at each feature point. */
             PLACEMENT_VERTEX,
 
@@ -57,7 +60,7 @@ namespace osgEarth { namespace Symbology
         optional<StringExpression>& url() { return _url; }
         const optional<StringExpression>& url() const { return _url; }        
 
-        /** How to map feature geometry to model placement. (default is PLACEMENT_VERTEX) */
+        /** How to map feature geometry to model placement. (default is PLACEMENT_CENTROID) */
         optional<Placement>& placement() { return _placement; }
         const optional<Placement>& placement() const { return _placement; }
 
@@ -66,8 +69,8 @@ namespace osgEarth { namespace Symbology
         const optional<float>& density() const { return _density; }
 
         /** Model instance scale factor */
-        optional<osg::Vec3f>& scale() { return _scale; }
-        const optional<osg::Vec3f>& scale() const { return _scale; }
+        optional<NumericExpression>& scale() { return _scale; }
+        const optional<NumericExpression>& scale() const { return _scale; }
 
         /** Seeding value for the randomizer */
         optional<unsigned>& randomSeed() { return _randomSeed; }
@@ -88,14 +91,14 @@ namespace osgEarth { namespace Symbology
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<StringExpression>         _url;
-        optional<Placement>   _placement;
-        optional<float>       _density;
-        optional<osg::Vec3f>  _scale;
-        optional<unsigned>    _randomSeed;
+        optional<StringExpression>   _url;
+        optional<NumericExpression>  _scale;
+        optional<Placement>          _placement;
+        optional<float>              _density;
+        optional<unsigned>           _randomSeed;
 
-        osg::ref_ptr<osg::Image> _image;
-        osg::ref_ptr<osg::Node>  _node;
+        osg::ref_ptr<osg::Image>     _image;
+        osg::ref_ptr<osg::Node>      _node;
     };
 
 } } // namespace osgEarth::Symbology

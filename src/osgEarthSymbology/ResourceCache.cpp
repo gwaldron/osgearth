@@ -24,28 +24,113 @@ using namespace osgEarth::Symbology;
 osg::StateSet*
 ResourceCache::getStateSet( SkinResource* skin )
 {
-    // first check if it exists
+    osg::StateSet* result = 0L;
+
+    if ( _threadSafe )
     {
-        Threading::ScopedReadLock shared( _skinCacheMutex );
-        SkinCache::Record rec = _skinCache.get( skin );
-        if ( rec.valid() )
-            return rec.value();
+        // first check if it exists
+        {
+            Threading::ScopedReadLock shared( _mutex );
+
+            SkinCache::Record rec = _skinCache.get( skin );
+            if ( rec.valid() )
+            {
+                result = rec.value();
+            }
+        }
+
+        // no? exclusive lock and create it.
+        if ( !result )
+        {
+            Threading::ScopedWriteLock exclusive( _mutex );
+            
+            // double check to avoid race condition
+            SkinCache::Record rec = _skinCache.get( skin );
+            if ( rec.valid() )
+            {
+                result = rec.value();
+            }
+            else
+            {
+                // still not there, make it.
+                result = skin->createStateSet();
+                if ( result )
+                    _skinCache.insert( skin, result );
+            }
+        }
     }
 
-    // no? exclusive lock and create it.
+    else
     {
-        Threading::ScopedWriteLock exclusive( _skinCacheMutex );
-        
-        // double check to avoid race condition
         SkinCache::Record rec = _skinCache.get( skin );
         if ( rec.valid() )
-            return rec.value();
-
-        // still not there, make it.
-        osg::StateSet* stateSet = skin->createStateSet();
-        if ( stateSet )
-            _skinCache.insert( skin, stateSet );
-
-        return stateSet;
+        {
+            result = rec.value();
+        }
+        else
+        {
+            result = skin->createStateSet();
+            if ( result )
+                _skinCache.insert( skin, result );
+        }
     }
+
+    return result;
+}
+
+osg::Node*
+ResourceCache::getMarkerNode( MarkerResource* marker )
+{
+    osg::Node* result = 0L;
+
+    if ( _threadSafe )
+    {
+        // first check if it exists
+        {
+            Threading::ScopedReadLock shared( _mutex );
+
+            MarkerCache::Record rec = _markerCache.get( marker );
+            if ( rec.valid() )
+            {
+                result = rec.value();
+            }
+        }
+
+        // no? exclusive lock and create it.
+        if ( !result )
+        {
+            Threading::ScopedWriteLock exclusive( _mutex );
+            
+            // double check to avoid race condition
+            MarkerCache::Record rec = _markerCache.get( marker );
+            if ( rec.valid() )
+            {
+                result = rec.value();
+            }
+            else
+            {
+                // still not there, make it.
+                result = marker->createNode();
+                if ( result )
+                    _markerCache.insert( marker, result );
+            }
+        }
+    }
+
+    else
+    {
+        MarkerCache::Record rec = _markerCache.get( marker );
+        if ( rec.valid() )
+        {
+            result = rec.value();
+        }
+        else
+        {
+            result = marker->createNode();
+            if ( result )
+                _markerCache.insert( marker, result );
+        }
+    }
+
+    return result;
 }

@@ -22,6 +22,7 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 TextSymbol::TextSymbol( const Config& conf ) :
+Symbol( conf ),
 _fill( Fill( 1, 1, 1, 1 ) ),
 _halo( Stroke( 0.3, 0.3, 0.3, 1) ),
 _size( 16.0f ),

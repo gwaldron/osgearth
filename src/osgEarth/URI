@@ -154,6 +154,10 @@ namespace osgEarth
         /** Returns a copy of this URI with the suffix appended */
         URI append( const std::string& suffix ) const;
 
+    public:
+
+        bool operator < ( const URI& rhs ) const { return _fullURI < rhs._fullURI; }
+
     public: // convenience reader methods
 
         /** Result codes for the read* methods. Call getLastResultCode() to fetch. */

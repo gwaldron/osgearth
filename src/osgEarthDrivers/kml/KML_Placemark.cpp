@@ -19,7 +19,6 @@
 #include "KML_Placemark"
 #include "KML_Geometry"
 #include "KML_Style"
-#include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthUtil/Annotation>
 
 using namespace osgEarth::Features;

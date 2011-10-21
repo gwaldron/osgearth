@@ -22,8 +22,9 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 ExtrusionSymbol::ExtrusionSymbol( const Config& conf ) :
-_height( 10.0 ),
-_flatten( true ),
+Symbol    ( conf ),
+_height   ( 10.0 ),
+_flatten  ( true ),
 _heightRef( HEIGHT_REFERENCE_Z )
 {
     if ( !conf.empty() )

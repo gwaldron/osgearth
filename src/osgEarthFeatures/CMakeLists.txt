@@ -17,6 +17,7 @@ SET(LIB_PUBLIC_HEADERS
     BuildGeometryFilter  
     BuildTextFilter
     BuildTextOperator
+    CentroidFilter
     Common
     ConvertTypeFilter
     CropFilter
@@ -37,7 +38,6 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
 	GeometryUtils
     LabelSource
-    MarkerFactory
 	OgrUtils
     OptimizerHints	
     ResampleFilter
@@ -58,6 +58,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     BuildGeometryFilter.cpp 
     BuildTextFilter.cpp
     BuildTextOperator.cpp
+    CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
     ExtrudeGeometryFilter.cpp
@@ -77,7 +78,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryCompiler.cpp
 	GeometryUtils.cpp
     LabelSource.cpp
-    MarkerFactory.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp

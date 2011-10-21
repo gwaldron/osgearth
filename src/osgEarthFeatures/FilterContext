@@ -24,6 +24,7 @@
 #include <osgEarthFeatures/OptimizerHints>
 #include <osgEarthFeatures/Session>
 #include <osgEarthSymbology/Geometry>
+#include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/GeoData>
 #include <osg/Matrix>
 #include <list>

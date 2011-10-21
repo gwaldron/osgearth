@@ -94,7 +94,7 @@ public:
                     group = new osg::Group();
                 }
 
-                double priority = feature->eval( priorityExpr );
+                double priority = feature->eval( priorityExpr, &context );
 
                 Controls::LabelControl* label = new Controls::LabelControl( value );
                 if ( text->fill().isSet() )

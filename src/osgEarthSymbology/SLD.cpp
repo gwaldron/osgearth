@@ -203,16 +203,17 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
 
         else if (p->first == "marker")
         {
-            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();            
+            if (!marker) marker = sc.getOrCreate<MarkerSymbol>();            
             marker->url() = p->second;
             marker->url()->setURIContext( conf.uriContext() );
         }
         else if (p->first == "marker-placement")
         {
-            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
+            if (!marker) marker = sc.getOrCreate<MarkerSymbol>();
             if      (p->second == "vertex")   marker->placement() = MarkerSymbol::PLACEMENT_VERTEX;
             else if (p->second == "interval") marker->placement() = MarkerSymbol::PLACEMENT_INTERVAL;
             else if (p->second == "random"  ) marker->placement() = MarkerSymbol::PLACEMENT_RANDOM;
+            else if (p->second == "centroid") marker->placement() = MarkerSymbol::PLACEMENT_CENTROID;
         }
         else if (p->first == "marker-density")
         {
@@ -227,7 +228,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
         else if (p->first == "marker-scale")
         {
             if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
-            marker->scale() = stringToVec3f(p->second, osg::Vec3f(1,1,1));
+            marker->scale() = NumericExpression(p->second);
         }
 
         // ..... ExtrusionSymbol .....

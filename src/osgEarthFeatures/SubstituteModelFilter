@@ -24,7 +24,8 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthSymbology/Style>
-#include <osg/Geode>
+#include <osgEarthSymbology/MarkerResource>
+#include <osgEarth/Utils>
 
 namespace osgEarth { namespace Features
 {
@@ -65,8 +66,8 @@ namespace osgEarth { namespace Features
         bool getMergeGeometry() const { return _merge; }
 
         /** The matrix with which to transform each model instance after placement. */
-        void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
-        const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
+        //void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
+        //const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
 
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
@@ -75,20 +76,17 @@ namespace osgEarth { namespace Features
         /** Processes a new feature list */
         virtual osg::Node* push( FeatureList& input, FilterContext& context );
 
-        /** Gets the resulting OSG scene graph */
-        //osg::Node* getNode() const { return _result.get(); }
-
     protected:
         Style                     _style;
-        //osg::ref_ptr<osg::Node>   _result;
         bool                      _cluster;
         bool                      _merge;
-        osg::Matrixd              _modelMatrix;
+        //osg::Matrixd              _modelMatrix;
         StringExpression          _featureNameExpr;
 
+        typedef LRUCache<URI, osg::ref_ptr<MarkerResource> > MarkerCache;
+        MarkerCache _markerCache;
         
         bool process(const FeatureList& features, const MarkerSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
-
         bool cluster(const FeatureList& features, const MarkerSymbol* symbol, Session* session, osg::Group* ap, FilterContext& context );
     };
 

@@ -257,7 +257,7 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
           if (result.success())
             val = result.asDouble();
           else
-            OE_DEBUG << LC << "Script value not found: : " << result.message() << std::endl;
+              OE_WARN << LC << "Script error:" << result.message() << std::endl;
         }
       }
 
@@ -289,7 +289,7 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
           if (result.success())
             val = result.asString();
           else
-            OE_DEBUG << LC << "Script value not found: " << result.message() << std::endl;
+              OE_WARN << LC << "Script error:" << result.message() << std::endl;
         }
       }
 

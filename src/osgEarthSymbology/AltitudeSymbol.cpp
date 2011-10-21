@@ -22,7 +22,7 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 AltitudeSymbol::AltitudeSymbol( const Config& conf ) :
-Symbol             ( ),
+Symbol             ( conf ),
 _clamping          ( CLAMP_NONE ),
 _clampingResolution( 0.0f )
 {

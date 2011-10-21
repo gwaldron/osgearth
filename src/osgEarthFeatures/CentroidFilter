@@ -16,32 +16,30 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthSymbology/PointSymbol>
 
-using namespace osgEarth;
-using namespace osgEarth::Symbology;
+#ifndef OSGEARTHFEATURES_CENTROID_FILTER_H
+#define OSGEARTHFEATURES_CENTROID_FILTER_H 1
 
-PointSymbol::PointSymbol( const Config& conf ) :
-Symbol( conf ),
-_fill ( Fill() ), 
-_size ( 1.0 )
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Filter>
+
+namespace osgEarth { namespace Features
 {
-    mergeConfig(conf);
-}
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
-Config 
-PointSymbol::getConfig() const
-{
-    Config conf = Symbol::getConfig();
-    conf.key() = "point";
-    conf.addObjIfSet( "fill", _fill );
-    conf.addIfSet( "size", _size );
-    return conf;
-}
+    /**
+     * Replaces each feature's geometry with a single-point centroid.
+     */
+    class OSGEARTHFEATURES_EXPORT CentroidFilter : public FeatureFilter
+    {
+    public:
+        CentroidFilter();
 
-void 
-PointSymbol::mergeConfig( const Config& conf )
-{
-    conf.getObjIfSet( "fill", _fill );
-    conf.getIfSet( "size", _size );
-}
+    public:
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_CENTROID_FILTER_H

@@ -48,8 +48,8 @@ CssUtils::readConfig( std::istream& in )
     StringTokenizer propSetIzer( ";", "" );
     propSetIzer.addQuotes( "'\"", true );
 
-    StringTokenizer propIzer( ":", "'\"" );
-    propIzer.addQuotes( "()", true );
+    StringTokenizer propIzer( ":", "" );
+    propIzer.addQuotes( "()'\"", true );
 
     StringVector blocks;
     blockIzer.tokenize( css, blocks );

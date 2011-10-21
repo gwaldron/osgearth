@@ -23,8 +23,9 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-static
-std::string EMPTY_STRING;
+#define LC "[Feature] "
+
+static std::string EMPTY_STRING;
 
 //----------------------------------------------------------------------------
 
@@ -255,6 +256,8 @@ Feature::eval( NumericExpression& expr, FilterContext const* context ) const
           ScriptResult result = engine->run(i->first, this, context);
           if (result.success())
             val = result.asDouble();
+          else
+            OE_DEBUG << LC << "Script value not found: : " << result.message() << std::endl;
         }
       }
 
@@ -284,17 +287,14 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
         {
           ScriptResult result = engine->run(i->first, this, context);
           if (result.success())
-          {
             val = result.asString();
-          }
-          //else
-          //{
-          //  OE_WARN << LC << "SCRIPT ERROR: " << result.message() << std::endl;
-          //}
+          else
+            OE_DEBUG << LC << "Script value not found: " << result.message() << std::endl;
         }
       }
 
-      expr.set( *i, val ); //getAttr(i->first) );
+      if (!val.empty())
+        expr.set( *i, val ); //getAttr(i->first) );
     }
 
     return expr.eval();

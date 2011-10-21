@@ -16,29 +16,30 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "KML_IconStyle"
 
-void
-KML_IconStyle::scan( const Config& conf, Style& style )
+#ifndef OSGEARTHFEATURES_CENTROID_FILTER_H
+#define OSGEARTHFEATURES_CENTROID_FILTER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Filter>
+
+namespace osgEarth { namespace Features
 {
-    if ( !conf.empty() )
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Replaces each feature's geometry with a single-point centroid.
+     */
+    class OSGEARTHFEATURES_EXPORT CentroidFilter : public FeatureFilter
     {
-        MarkerSymbol* marker = style.getOrCreate<MarkerSymbol>();
+    public:
+        CentroidFilter();
 
-        // Icon/Href or just Icon are both valid
-        std::string iconHref = conf.child("icon").value("href");
-        if ( iconHref.empty() )
-            iconHref = conf.value("icon");
+    public:
+        virtual FilterContext push( FeatureList& input, FilterContext& context );
+    };
 
-        if ( !iconHref.empty() )
-        {
-            marker->url() = StringExpression( iconHref );
-            marker->url()->setURIContext( conf.uriContext() );
-        }
+} } // namespace osgEarth::Features
 
-        optional<float> scale;
-        conf.getIfSet( "scale", scale );
-        if ( scale.isSet() )
-            marker->scale() = NumericExpression( *scale );
-    }
-}
+#endif // OSGEARTHFEATURES_CENTROID_FILTER_H

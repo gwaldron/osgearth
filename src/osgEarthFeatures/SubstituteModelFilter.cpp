@@ -20,6 +20,7 @@
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ECEF>
+#include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geode>
 #include <osg/MatrixTransform>
@@ -60,70 +61,109 @@ SubstituteModelFilter::process(const FeatureList&           features,
 {
     bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
 
+    // first, go through the features and build the model cache. Apply the model matrix' scale
+    // factor to any AutoTransforms directly (cloning them as necessary)
+    std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
+    //std::map< Feature*, osg::ref_ptr<osg::Node> > featureModels;
+
+    StringExpression  uriEx   = *symbol->url();
+    NumericExpression scaleEx = *symbol->scale();
+
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
 
-        // evaluate the URI expression:
+        // evaluate the marker URI expression:
         StringExpression uriEx = *symbol->url();
         URI markerURI( input->eval(uriEx), uriEx.uriContext() );
 
-        GeometryIterator gi( input->getGeometry(), false );
-        while( gi.hasMore() )
+        // find the corresponding marker in the cache
+        MarkerResource* marker = 0L;
+        MarkerCache::Record rec = _markerCache.get( markerURI );
+        if ( rec.valid() ) {
+            marker = rec.value();
+        }
+        else {
+            marker = new MarkerResource();
+            marker->uri() = markerURI;
+            _markerCache.insert( markerURI, marker );
+        }
+
+        // evalute the scale expression (if there is one)
+        float scale = 1.0f;
+        osg::Matrixd scaleMatrix;
+
+        if ( symbol->scale().isSet() )
         {
-            Geometry* geom = gi.next();
+            scale = input->eval( scaleEx );
+            if ( scale == 0.0 )
+                scale = 1.0;
+            scaleMatrix = osg::Matrix::scale( scale, scale, scale );
+        }
 
-            for( unsigned i=0; i<geom->size(); ++i )
+        // how that we have a marker source, create a node for it
+        std::pair<URI,float> key( markerURI, scale );
+        osg::ref_ptr<osg::Node>& model = uniqueModels[key];
+        if ( !model.valid() )
+        {
+            model = context.resourceCache()->getMarkerNode( marker );
+
+            if ( scale != 1.0f && dynamic_cast<osg::AutoTransform*>( model.get() ) )
             {
-                osg::Matrixd mat;
+                // clone the old AutoTransform, set the new scale, and copy over its children.
+                osg::AutoTransform* oldAT = dynamic_cast<osg::AutoTransform*>(model.get());
+                osg::AutoTransform* newAT = osg::clone( oldAT );
 
-                osg::Vec3d point = (*geom)[i];
-                if ( makeECEF )
+                // make a scaler and put it between the new AutoTransform and its kids
+                osg::MatrixTransform* scaler = new osg::MatrixTransform(osg::Matrix::scale(scale,scale,scale));
+                for( unsigned i=0; i<newAT->getNumChildren(); ++i )
+                    scaler->addChild( newAT->getChild(0) );
+                newAT->removeChildren(0, newAT->getNumChildren());
+                newAT->addChild( scaler );
+                model = newAT;
+            }
+        }
+
+        if ( model.valid() )
+        {
+            GeometryIterator gi( input->getGeometry(), false );
+            while( gi.hasMore() )
+            {
+                Geometry* geom = gi.next();
+
+                for( unsigned i=0; i<geom->size(); ++i )
                 {
-                    // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
-                    // could take a shortcut and just use the current extent's local2world matrix for this,
-                    // but it the tile is big enough the up vectors won't be quite right.
-                    osg::Matrixd rotation;
-                    ECEF::transformAndGetRotationMatrix( context.profile()->getSRS(), point, point, rotation );
-                    mat = rotation * _modelMatrix * osg::Matrixd::translate( point ) * _world2local;
-                }
-                else
-                {
-                    mat = _modelMatrix * osg::Matrixd::translate( point ) * _world2local;
-                }
+                    osg::Matrixd mat;
 
-                osg::MatrixTransform* xform = new osg::MatrixTransform();
-                xform->setMatrix( mat );
-                //xform->setDataVariance( osg::Object::STATIC ); // pointless
+                    osg::Vec3d point = (*geom)[i];
+                    if ( makeECEF )
+                    {
+                        // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
+                        // could take a shortcut and just use the current extent's local2world matrix for this,
+                        // but it the tile is big enough the up vectors won't be quite right.
+                        osg::Matrixd rotation;
+                        ECEF::transformAndGetRotationMatrix( context.profile()->getSRS(), point, point, rotation );
+                        mat = rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
+                    }
+                    else
+                    {
+                        mat = scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
+                    }
 
-                // get or create a marker resource for this URI.
-                // (TODO: later we'll expand this to support pulling marker resources from the
-                // resource library.)
-                MarkerResource* marker = 0L;
-                MarkerCache::Record rec = _markerCache.get( markerURI );
-                if ( rec.valid() ) {
-                    marker = rec.value();
-                }
-                else {
-                    marker = new MarkerResource();
-                    marker->uri() = markerURI;
-                    _markerCache.insert( markerURI, marker );
-                }
+                    osg::MatrixTransform* xform = new osg::MatrixTransform();
+                    xform->setMatrix( mat );
 
-                // how that we have a marker source, create a node for it
-                osg::Node* model = context.resourceCache()->getMarkerNode( marker );
+                    xform->addChild( model.get() );
 
-                if ( model )
-                    xform->addChild( model );
+                    attachPoint->addChild( xform );
 
-                attachPoint->addChild( xform );
-
-                // name the feature if necessary
-                if ( !_featureNameExpr.empty() )
-                {
-                    const std::string& name = input->eval( _featureNameExpr );
-                    if ( !name.empty() )
-                        xform->setName( name );
+                    // name the feature if necessary
+                    if ( !_featureNameExpr.empty() )
+                    {
+                        const std::string& name = input->eval( _featureNameExpr );
+                        if ( !name.empty() )
+                            xform->setName( name );
+                    }
                 }
             }
         }
@@ -137,9 +177,10 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 struct ClusterVisitor : public osg::NodeVisitor
 {
-        ClusterVisitor( const FeatureList& features, const osg::Matrixd& modelMatrix, FeaturesToNodeFilter* f2n, FilterContext& cx )
+        ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FilterContext& cx )
             : _features   ( features ),
-              _modelMatrix( modelMatrix ),
+              _symbol     ( symbol ),
+              //_modelMatrix( modelMatrix ),
               _f2n        ( f2n ),
               _cx         ( cx ),
               osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
@@ -151,6 +192,9 @@ struct ClusterVisitor : public osg::NodeVisitor
         {
             bool makeECEF = _cx.getSession()->getMapInfo().isGeocentric();
             const SpatialReference* srs = _cx.profile()->getSRS();
+
+            NumericExpression scaleEx = *_symbol->scale();
+            osg::Matrixd scaleMatrix;
 
             // save the geode's drawables..
             osg::Geode::DrawableList old_drawables = geode.getDrawableList();
@@ -170,6 +214,12 @@ struct ClusterVisitor : public osg::NodeVisitor
                 {
                     const Feature* feature = j->get();
 
+                    if ( _symbol->scale().isSet() )
+                    {
+                        double scale = feature->eval( scaleEx );
+                        scaleMatrix.makeScale( scale, scale, scale );
+                    }
+
                     ConstGeometryIterator gi( feature->getGeometry(), false );
                     while( gi.hasMore() )
                     {
@@ -184,11 +234,11 @@ struct ClusterVisitor : public osg::NodeVisitor
                             {
                                 osg::Matrixd rotation;
                                 ECEF::transformAndGetRotationMatrix( srs, point, point, rotation );
-                                mat = rotation * _modelMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
+                                mat = rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                             }
                             else
                             {
-                                mat = _modelMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
+                                mat = scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                             }
 
                             // clone the source drawable once for each input feature.
@@ -227,7 +277,8 @@ struct ClusterVisitor : public osg::NodeVisitor
     private:
         const FeatureList&    _features;
         FilterContext         _cx;
-        osg::Matrixd          _modelMatrix;
+        const MarkerSymbol*   _symbol;
+        //osg::Matrixd          _modelMatrix;
         FeaturesToNodeFilter* _f2n;
     };
 
@@ -295,7 +346,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
             osg::Node* clone = osg::clone( prototype, osg::CopyOp::DEEP_COPY_ALL );
 
             // ..and apply the clustering to the copy.
-            ClusterVisitor cv( i->second, _modelMatrix, this, context );
+            ClusterVisitor cv( i->second, symbol, this, context );
             clone->accept( cv );
 
             attachPoint->addChild( clone );

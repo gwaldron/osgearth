@@ -17,6 +17,7 @@ SET(LIB_PUBLIC_HEADERS
     BuildGeometryFilter  
     BuildTextFilter
     BuildTextOperator
+    CentroidFilter
     Common
     ConvertTypeFilter
     CropFilter
@@ -55,6 +56,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     BuildGeometryFilter.cpp 
     BuildTextFilter.cpp
     BuildTextOperator.cpp
+    CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
     ExtrudeGeometryFilter.cpp

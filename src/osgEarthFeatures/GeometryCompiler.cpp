@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/AltitudeFilter>
+#include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
@@ -226,6 +227,11 @@ GeometryCompiler::compile(FeatureList&          workingSet,
             scatter.setRandomSeed( *marker->randomSeed() );
             markerCX = scatter.push( workingSet, markerCX );
         }
+        else if ( marker->placement() == MarkerSymbol::PLACEMENT_CENTROID )
+        {
+            CentroidFilter centroid;
+            centroid.push( workingSet, markerCX );
+        }
 
         if ( altRequired )
         {
@@ -242,7 +248,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
         {
             //Turn on GL_NORMALIZE so lighting works properly
             resultGroup->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON );
-            sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
+            //sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
         }
 
         sub.setClustering( *_options.clustering() );

@@ -16,29 +16,36 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "KML_IconStyle"
+#include <osgEarthFeatures/CentroidFilter>
 
-void
-KML_IconStyle::scan( const Config& conf, Style& style )
+#define LC "[CentroidFilter] "
+
+using namespace osgEarth;
+using namespace osgEarth::Features;
+
+//------------------------------------------------------------------------
+
+CentroidFilter::CentroidFilter()
 {
-    if ( !conf.empty() )
+    //NOP
+}
+
+FilterContext
+CentroidFilter::push(FeatureList& features, FilterContext& context )
+{
+    for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
-        MarkerSymbol* marker = style.getOrCreate<MarkerSymbol>();
+        Feature* f = i->get();
+        
+        Geometry* geom = f->getGeometry();
+        if ( !geom )
+            continue;
 
-        // Icon/Href or just Icon are both valid
-        std::string iconHref = conf.child("icon").value("href");
-        if ( iconHref.empty() )
-            iconHref = conf.value("icon");
+        PointSet* newGeom = new PointSet();
+        newGeom->push_back( geom->getBounds().center() );
 
-        if ( !iconHref.empty() )
-        {
-            marker->url() = StringExpression( iconHref );
-            marker->url()->setURIContext( conf.uriContext() );
-        }
-
-        optional<float> scale;
-        conf.getIfSet( "scale", scale );
-        if ( scale.isSet() )
-            marker->scale() = NumericExpression( *scale );
+        f->setGeometry( newGeom );
     }
+
+    return context;
 }

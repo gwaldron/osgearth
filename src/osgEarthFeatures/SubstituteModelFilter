@@ -66,8 +66,8 @@ namespace osgEarth { namespace Features
         bool getMergeGeometry() const { return _merge; }
 
         /** The matrix with which to transform each model instance after placement. */
-        void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
-        const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
+        //void setModelMatrix( const osg::Matrixd& value ) { _modelMatrix = value; }
+        //const osg::Matrixd& getModelMatrix() const { return _modelMatrix; }
 
         void setFeatureNameExpr( const StringExpression& expr ) { _featureNameExpr = expr; }
         const StringExpression& getFeatureNameExpr() const { return _featureNameExpr; }
@@ -80,7 +80,7 @@ namespace osgEarth { namespace Features
         Style                     _style;
         bool                      _cluster;
         bool                      _merge;
-        osg::Matrixd              _modelMatrix;
+        //osg::Matrixd              _modelMatrix;
         StringExpression          _featureNameExpr;
 
         typedef LRUCache<URI, osg::ref_ptr<MarkerResource> > MarkerCache;

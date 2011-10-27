@@ -465,7 +465,7 @@ struct LabelText : public osgText::Text
 
 LabelControl::LabelControl(const std::string& text,
                            float fontSize,
-                           const osg::Vec4f& foreColor)
+                           const osg::Vec4f& foreColor) : _encoding(osgText::String::ENCODING_UNDEFINED)
 {
     setText( text );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
@@ -475,7 +475,7 @@ LabelControl::LabelControl(const std::string& text,
 }
 
 LabelControl::LabelControl(const std::string& text,
-                           const osg::Vec4f& foreColor)
+                           const osg::Vec4f& foreColor) : _encoding(osgText::String::ENCODING_UNDEFINED)
 {
     setText( text );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
@@ -491,6 +491,13 @@ LabelControl::setText( const std::string& value )
         _text = value;
         dirty();
     }
+}
+
+void
+LabelControl::setText( const std::string& value, osgText::String::Encoding encoding)
+{
+    setText(value);
+    _encoding = encoding;
 }
 
 void
@@ -537,7 +544,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 #endif
 
-        t->setText( _text );
+        t->setText( _text, _encoding );
         // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
         t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
         t->setCharacterSize( _fontSize );

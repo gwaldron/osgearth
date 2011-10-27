@@ -274,6 +274,7 @@ namespace osgEarth { namespace Util { namespace Controls
             const osg::Vec4f& foreColor );
 
         void setText( const std::string& value );
+        void setText( const std::string& value, osgText::String::Encoding encoding );
         const std::string& text() const { return _text; }
 
         void setFont( osgText::Font* font );
@@ -297,6 +298,7 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::ref_ptr<osgText::Text> _drawable;
         osg::Vec3 _bmin, _bmax;
         optional<osg::Vec4f> _haloColor;
+        osgText::String::Encoding _encoding;
     };
 
     /**

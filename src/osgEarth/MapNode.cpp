@@ -300,13 +300,11 @@ MapNode::init()
 
     dirtyBound();
 
-    // set the node up to initialize the terrain engine on the first update traversal.
-    // GW: no longer needed. terrain engine is post-initialized on demand now
-    // TODO: remove this comment after a while
-    //ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-
     // register for event traversals so we can deal with blacklisted filenames
     adjustEventTraversalCount( 1 );
+
+    //Go ahead and initialize the terrain engine
+    getTerrainEngine();
 }
 
 MapNode::~MapNode()

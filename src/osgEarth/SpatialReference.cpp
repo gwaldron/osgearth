@@ -335,7 +335,15 @@ _owns_handle( true ),
 _name( name ),
 _init_type( init_type ),
 _init_str( init_str ),
- _is_ltp(false){
+_is_geographic( false ),
+_is_mercator( false ),
+_is_north_polar( false ), 
+_is_south_polar( false ),
+_is_cube( false ),
+_is_contiguous( false ),
+_is_user_defined( false ),
+_is_ltp( false )
+{
     _init_str_lc = init_str;
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
 }

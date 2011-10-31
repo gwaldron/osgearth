@@ -1,0 +1,279 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_CACHE_H
+#define OSGEARTH_CACHE_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/TileKey>
+#include <osgEarth/ThreadingUtils>
+
+namespace osgEarth
+{    
+    /**
+     * Base class for Cache implementation options.
+     */
+    class CacheOptions : public DriverConfigOptions // no export (header only)
+    {
+    public:
+        CacheOptions( const ConfigOptions& options =ConfigOptions() )
+            : DriverConfigOptions( options )
+        { 
+            fromConfig( _conf ); 
+        }
+
+    public:
+        virtual Config getConfig() const {
+            return ConfigOptions::getConfig();
+        }
+        virtual void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );            
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            //nop
+        }
+    };
+
+//--------------------------------------------------------------------
+
+    /**
+     * CacheBin is a names container within a Cache. It allows different
+     * application modules to compartmentalize their data withing a single
+     * cache location.
+     */
+    class OSGEARTH_EXPORT CacheBin : public osg::Referenced
+    {
+    public:
+        /**
+         * Constructs a caching bin.
+         * @param binID  Name of this caching bin (unique withing a Cache)
+         * @param driver ReaderWriter that serializes data for this caching bin.
+         */
+        CacheBin( const std::string& binID );
+
+        /**
+         * The identifier (unique withing a Cache) of this bin.
+         */
+        const std::string& getID() const { return _binID; }
+
+        /**
+         * Reads an object from the cache bin.
+         * @param key    Lookup key to read
+         * @param maxAge Maximum age of the record; return 0L if expired.
+         */
+        virtual const osg::Object* readObject( const std::string& key, double maxAge =DBL_MAX ) =0;
+
+        /**
+         * Reads an image from the cache bin.
+         * @param key    Lookup key to read
+         * @param maxAge Maximum age of the record; return 0L if expired.
+         */
+        virtual const osg::Image* readImage( const std::string& key, double maxAge =DBL_MAX ) =0;
+
+        /**
+         * Writes an object to the cache bin.
+         * @param key    Lookup key to write to
+         * @param object Object to serialize to the cache
+         */
+        virtual bool write( const std::string& key, const osg::Object* object ) =0;
+
+        /**
+         * Checks whether a key exists in the cache.
+         * (Default implementation just tries to read the object)
+         */
+        virtual bool isCached( const std::string& key, double maxAge =DBL_MAX ) =0;
+
+        /**
+         * Reads custom metadata from the cache.
+         */
+        virtual Config readMetadata() { return Config(); }
+
+        /**
+         * Writes custom metadata to the cache.
+         */
+        virtual bool writeMetadata( const Config& meta ) { return false; }
+
+
+    protected:
+        std::string _binID;
+    };
+
+    typedef Threading::PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
+
+//--------------------------------------------------------------------
+
+    /**
+     * Cache is a container for local storage of keyed data elements.
+     */
+    class OSGEARTH_EXPORT Cache : public osg::Object
+    {
+    protected:
+        Cache( const CacheOptions& options =CacheOptions() );
+        Cache( const Cache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
+        META_Object( osgEarth, Cache );
+
+    public:
+        /**
+         * Whether this cache is valid and available for use
+         */
+        bool isOK() const { return _ok; }
+
+        /**
+         * Gets a caching bin within this cache.
+         * @param name Name of the caching bin
+         * @param rw   Read/write driver for the bin (can be null)
+         */
+        CacheBin* getBin( const std::string& name );
+
+        /**
+         * Creates (and returns a pointer to) a new Cache Bin.
+         * @param binID Name of the new bin
+         * @param rw    Read/write driver that will handle serialization for the bin
+         */
+        virtual CacheBin* addBin( const std::string& binID ) { return 0L; }
+
+        /**
+         * Removes a cache bin from the cache.
+         * @param bin Bin to remove.
+         */
+        virtual void removeBin( CacheBin* bin );
+
+        /** 
+         * Gets an Options structure representing this cache's configuration.
+         */
+        const CacheOptions& getCacheOptions() const { return _options; }
+
+    protected:
+        bool                  _ok;
+        CacheOptions          _options;
+        ThreadSafeCacheBinMap _bins;
+    };
+
+//--------------------------------------------------------------------
+    
+    /**
+     * Adapter to read/write tilekey-based images and heightfields from a Cache.
+     */
+    struct /*NO EXPORT*/ RasterCacheAdapter
+    {
+        RasterCacheAdapter( Cache* cache ) : _cache(cache) { }
+
+        bool getImage( const TileKey& key, const std::string& binID, osg::ref_ptr<const osg::Image>& output )
+        {
+            CacheBin* bin = _cache->getBin( binID );
+            if ( !bin ) return false;
+            output = dynamic_cast<const osg::Image*>( bin->readImage( key.str() ) );
+            return output.valid();
+        }
+
+        bool getHeightField( const TileKey& key, const std::string& binID, osg::ref_ptr<const osg::HeightField>& output )
+        {
+            CacheBin* bin = _cache->getBin( binID );
+            if ( !bin ) return false;
+            output = dynamic_cast<const osg::HeightField*>( bin->readObject( key.str() ) );
+            return output.valid();
+        }
+
+        bool isCached( const TileKey& key, const std::string& binID )
+        {
+            CacheBin* bin = _cache->getBin( binID );
+            if ( !bin ) return false;
+            return bin->isCached( key.str() );
+        }
+
+        bool setImage( const TileKey& key, const std::string& binID, const osg::Image* image )
+        {
+            CacheBin* bin = _cache->getBin( binID );
+            if ( !bin ) return false;
+            return bin->write( key.str(), image );
+        }
+
+        bool setHeightField( const TileKey& key, const std::string binID, const osg::HeightField* hf )
+        {
+            CacheBin* bin = _cache->getBin( binID );
+            if ( !bin ) return false;
+            return bin->write( key.str(), hf );
+        }
+
+        Cache* _cache;
+    };
+    
+    struct /*NO EXPORT*/ RasterCacheBinAdapter
+    {
+        RasterCacheBinAdapter( CacheBin* bin ) : _bin(bin) { }
+
+        bool getImage( const TileKey& key, osg::ref_ptr<const osg::Image>& output )
+        {
+            output = _bin->readImage( key.str() );
+            return output.valid();
+        }
+
+        bool getHeightField( const TileKey& key, osg::ref_ptr<const osg::HeightField>& output )
+        {
+            output = dynamic_cast<const osg::HeightField*>( _bin->readObject( key.str() ) );
+            return output.valid();
+        }
+
+        bool isCached( const TileKey& key )
+        {
+            return _bin->isCached( key.str() );
+        }
+
+        bool setImage( const TileKey& key, const osg::Image* image )
+        {
+            return _bin->write( key.str(), image );
+        }
+
+        bool setHeightField( const TileKey& key, const osg::HeightField* hf )
+        {
+            return _bin->write( key.str(), hf );
+        }
+
+        CacheBin* _bin;
+    };
+
+//----------------------------------------------------------------------
+
+    /**
+     * Base class for a cache driver plugin.
+     */
+    class OSGEARTH_EXPORT CacheDriver : public osgDB::ReaderWriter
+    {
+    public:
+        const CacheOptions& getCacheOptions( const osgDB::ReaderWriter::Options* options ) const;
+    };
+
+//----------------------------------------------------------------------
+
+    /** 
+     * Factory class that can load and instantiate a Cache implementation based on the
+     * information in the CacheOptions settings.
+     */
+    class OSGEARTH_EXPORT CacheFactory
+    {
+    public:
+        static Cache* create( const CacheOptions& options);
+    };
+}
+
+#endif // OSGEARTH_CACHE_H

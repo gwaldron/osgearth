@@ -27,7 +27,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
-#include <osgEarth/Caching>
+#include <osgEarth/MemCache>
 #include <osgEarth/Progress>
 #include <osgEarth/ThreadingUtils>
 

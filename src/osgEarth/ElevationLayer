@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/Caching>
 #include <osgEarth/Profile>
 #include <osgEarth/TileSource>
 #include <osgEarth/TerrainLayer>
@@ -114,7 +113,16 @@ namespace osgEarth
 
     protected:
         
-		virtual GeoHeightField createGeoHeightField( const TileKey& key, ProgressCallback* progress);
+        // creates a geoHF directly from the tile source
+		GeoHeightField createGeoHeightFieldFromTileSource( 
+            const TileKey&    key, 
+            ProgressCallback* progress);
+
+        // assembles tiles from a layer that is not in the same profile as the map, and
+        // returns a single tile in the map's profile.
+        GeoHeightField assembleGeoHeightFieldFromTileSource(
+            const TileKey&     key,
+            ProgressCallback*  progress );
         
         virtual std::string suggestCacheFormat() const;
 

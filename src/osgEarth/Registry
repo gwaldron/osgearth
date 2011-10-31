@@ -21,7 +21,6 @@
 #define OSGEARTH_REGISTRY 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Caching>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
@@ -36,6 +35,7 @@
 
 namespace osgEarth
 {    
+    class Cache;
     class ShaderFactory;
 
     /**
@@ -62,9 +62,9 @@ namespace osgEarth
         /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
         OpenThreads::ReentrantMutex& getGDALMutex();
 
-        /** Global override of map caching settings. */
-        Cache* getCacheOverride() const;
-        void setCacheOverride( Cache* cacheOverride );
+        /** The system-wide cache. */
+        Cache* getCache() const;
+        void setCache( Cache* cache );
 
         /** Registers a mapping of a mime-type to an extension. A process fetching data
           * over HTTP can use this facility to determine the proper ReaderWriter to use
@@ -164,7 +164,7 @@ namespace osgEarth
         // maps mime-types to extensions.
         MimeTypeExtensionMap _mimeTypeExtMap;
 
-		osg::ref_ptr<Cache> _cacheOverride;
+		osg::ref_ptr<Cache> _cache;
 
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;

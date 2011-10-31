@@ -24,7 +24,6 @@
 #include <osgEarth/Config>
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
-#include <osgEarth/Caching>
 #include <osgEarth/TerrainLayer>
 #include <osgEarth/ThreadingUtils>
 
@@ -206,18 +205,20 @@ namespace osgEarth
 
     protected:
 
-        osg::Image* createImageWrapper(
-            const TileKey& key,
-            bool cacheInLayerProfile,
-            ProgressCallback* progress );
+        // Fetches an image from the underlying TileSource whose data matches that of the
+        // key extent.
+        osg::Image* createImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+
+        // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
+        // returns a single tile. This is called by createImageFromTileSource() if the key profile
+        // doesn't match the layer profile.
+        osg::Image* assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+
 
         virtual void initTileSource();
-    private:
-        //const ImageLayerOptions _options;
-        ImageLayerOptions       _runtimeOptions;
 
-        //float _actualOpacity;        
-        //bool  _actualLODBlending;
+    private:
+        ImageLayerOptions _runtimeOptions;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         

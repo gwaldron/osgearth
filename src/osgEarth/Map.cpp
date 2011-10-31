@@ -41,7 +41,7 @@ MapCallback::onMapModelChanged( const MapModelChange& change )
     case MapModelChange::ADD_MASK_LAYER:
         onMaskLayerAdded( change.getMaskLayer() ); break;
     case MapModelChange::ADD_MODEL_LAYER:
-				onModelLayerAdded( change.getModelLayer(), change.getFirstIndex() ); break;
+        onModelLayerAdded( change.getModelLayer(), change.getFirstIndex() ); break;
     case MapModelChange::REMOVE_ELEVATION_LAYER:
         onElevationLayerRemoved( change.getElevationLayer(), change.getFirstIndex() ); break;
     case MapModelChange::REMOVE_IMAGE_LAYER:
@@ -245,16 +245,17 @@ Map::getCache() const
     if ( !_cache.valid() )
     {
         Cache* cache = 0L;
-
-        // if there's a cache override in the registry, install it now.
-        if ( osgEarth::Registry::instance()->getCacheOverride() )
-        {
-            cache = osgEarth::Registry::instance()->getCacheOverride();
-        }
-
-        else if ( _mapOptions.cache().isSet() )
+        
+        // if a cache is defined in the options, use that.
+        if ( _mapOptions.cache().isSet() )
         {
             cache = CacheFactory::create( _mapOptions.cache().get() );
+        }
+
+        // or, if there's a cache in the registry, install it now.
+        else if ( Registry::instance()->getCache() )
+        {
+            cache = Registry::instance()->getCache();
         }
 
         if ( cache )
@@ -271,7 +272,7 @@ Map::setCache( Cache* cache )
     if (_cache.get() != cache)
     {
         _cache = cache;
-        _cache->setReferenceURI( _mapOptions.referenceURI().value() );
+        //_cache->setReferenceURI( _mapOptions.referenceURI().value() );
 
         //Propagate the cache to any of our layers
         for (ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i)
@@ -310,21 +311,23 @@ Map::addImageLayer( ImageLayer* layer )
     unsigned int index = -1;
     if ( layer )
     {
-	    //Set options for the map from the layer
+	    // Set options for the map from the layer
 		layer->setReferenceURI( _mapOptions.referenceURI().value() );
 
-        //propagate the cache to the layer:
-        if ( _mapOptions.cache().isSet() && _mapOptions.cache()->cacheOnly().isSetTo( true ) )
+        // propagate the cache to the layer:
+        if (_mapOptions.cachePolicy().isSet())
 		{
-			layer->setCacheOnly( true );
+            layer->overrideCachePolicy( _mapOptions.cachePolicy().value() );
 		}
 
-		//Set the Cache for the MapLayer to our cache.
-		layer->setCache( this->getCache() );
+        // propagate the cache to the layer:
+        layer->setCache( this->getCache() );
 
         // Tell the layer the map profile, if possible:
         if ( _profile.valid() )
+        {
             layer->setTargetProfileHint( _profile.get() );
+        }
 
         int newRevision;
 
@@ -358,9 +361,9 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
         layer->setReferenceURI( _mapOptions.referenceURI().value() );
 
         //propagate the cache to the layer:
-        if ( _mapOptions.cache().isSet() && _mapOptions.cache()->cacheOnly().isSetTo( true ) )
+        if (_mapOptions.cachePolicy().isSet() )
         {
-            layer->setCacheOnly( true );
+            layer->overrideCachePolicy( *_mapOptions.cachePolicy() );
         }
 
         //Set the Cache for the MapLayer to our cache.
@@ -404,9 +407,9 @@ Map::addElevationLayer( ElevationLayer* layer )
 		layer->setReferenceURI( _mapOptions.referenceURI().value() );
 
         //propagate the cache to the layer:
-        if ( _mapOptions.cache().isSet() && _mapOptions.cache()->cacheOnly().isSetTo( true ) )
-		{
-			layer->setCacheOnly( true );
+        if ( _mapOptions.cachePolicy().isSet() )
+        {
+            layer->overrideCachePolicy( *_mapOptions.cachePolicy() );
 		}
 
 		//Set the Cache for the MapLayer to our cache.
@@ -1373,20 +1376,19 @@ MapFrame::getImageLayerByName( const std::string& name ) const
 bool
 MapFrame::isCached( const osgEarth::TileKey& key ) const
 {
-    const Profile* mapProfile = getProfile();
-
-    //Check the imagery layers
+    // Check the imagery layers
     for( ImageLayerVector::const_iterator i = imageLayers().begin(); i != imageLayers().end(); i++ )
     {
         ImageLayer* layer = i->get();
-        osg::ref_ptr< Cache > cache = layer->getCache();
-
-        if ( !cache.valid() || !layer->getProfile() ) 
+        
+        osg::ref_ptr<CacheBin> bin = layer->getCacheBin( key.getProfile() );
+        if ( !bin || !layer->getProfile() )
             return false;
 
+        RasterCacheBinAdapter rbin( bin );
         std::vector< TileKey > keys;
 
-        if ( mapProfile->isEquivalentTo( layer->getProfile() ) )
+        if ( key.getProfile()->isEquivalentTo( layer->getProfile() ) )
         {
             keys.push_back( key );
         }
@@ -1399,7 +1401,7 @@ MapFrame::isCached( const osgEarth::TileKey& key ) const
         {
             if ( layer->isKeyValid( keys[j] ) )
             {
-                if ( !cache->isCached( keys[j], layer->getCacheSpec() ) )
+                if ( !rbin.isCached( keys[j] ) )
                 {
                     return false;
                 }
@@ -1410,14 +1412,15 @@ MapFrame::isCached( const osgEarth::TileKey& key ) const
     for( ElevationLayerVector::const_iterator i = elevationLayers().begin(); i != elevationLayers().end(); ++i )
     {
         ElevationLayer* layer = i->get();
-        osg::ref_ptr< Cache > cache = layer->getCache();
 
-        if ( !cache.valid() || !layer->getProfile() )
+        osg::ref_ptr<CacheBin> bin = layer->getCacheBin( key.getProfile() );
+        if ( !bin.valid() || !layer->getProfile() )
             return false;
 
+        RasterCacheBinAdapter rbin( bin.get() );
         std::vector<TileKey> keys;
 
-        if ( mapProfile->isEquivalentTo( layer->getProfile() ) )
+        if ( key.getProfile()->isEquivalentTo( layer->getProfile() ) )
         {
             keys.push_back( key );
         }
@@ -1430,7 +1433,7 @@ MapFrame::isCached( const osgEarth::TileKey& key ) const
         {
             if ( layer->isKeyValid( keys[j] ) )
             {
-                if ( !cache->isCached( keys[j], layer->getCacheSpec() ) )
+                if ( !rbin.isCached( keys[j] ) )
                 {
                     return false;
                 }

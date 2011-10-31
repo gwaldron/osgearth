@@ -19,13 +19,15 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/ShaderComposition>
-#include <osgEarth/Caching>
+#include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
+#include <osgDB/Registry>
 #include <gdal_priv.h>
 #include <ogr_api.h>
 #include <stdlib.h>
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
 #define STR_GLOBAL_GEODETIC "global-geodetic"
@@ -39,11 +41,11 @@ using namespace OpenThreads;
 extern const char* builtinMimeTypeExtMappings[];
 
 Registry::Registry() :
-osg::Referenced(true),
-_gdal_registered( false ),
+osg::Referenced  ( true ),
+_gdal_registered ( false ),
 _numGdalMutexGets( 0 ),
-_uidGen( 0 ),
-_caps( 0L )
+_uidGen          ( 0 ),
+_caps            ( 0L )
 {
     OGRRegisterAll();
     GDALAllRegister();
@@ -75,10 +77,19 @@ _caps( 0L )
     const char* cachePath = ::getenv("OSGEARTH_CACHE_PATH");
     if ( cachePath )
     {
-        TMSCacheOptions tmso;
-        tmso.setPath( std::string(cachePath) );
-        setCacheOverride( new TMSCache(tmso) );
-        OE_INFO << LC << "Setting cache (from env.var.) to " << tmso.path() << std::endl;
+        FileSystemCacheOptions options;
+        options.rootPath() = std::string(cachePath);
+
+        osg::ref_ptr<Cache> cache = CacheFactory::create(options);
+        if ( cache->isOK() )
+        {
+            setCache( cache.get() );
+            OE_INFO << LC << "Setting cache location (from env.var.) to \"" << cachePath << "\"" << std::endl;
+        }
+        else
+        {
+            OE_WARN << LC << "FAILED to initialize cache from env.var." << std::endl;
+        }
     }
 }
 
@@ -86,7 +97,8 @@ Registry::~Registry()
 {
 }
 
-Registry* Registry::instance(bool erase)
+Registry* 
+Registry::instance(bool erase)
 {
     static osg::ref_ptr<Registry> s_registry = new Registry;
 
@@ -99,9 +111,10 @@ Registry* Registry::instance(bool erase)
     return s_registry.get(); // will return NULL on erase
 }
 
-void Registry::destruct()
+void 
+Registry::destruct()
 {
-    _cacheOverride = 0;
+    _cache = 0L;
 }
 
 
@@ -193,15 +206,15 @@ Registry::getDefaultVSRS() const
 }
 
 osgEarth::Cache*
-Registry::getCacheOverride() const
+Registry::getCache() const
 {
-	return _cacheOverride.get();
+	return _cache.get();
 }
 
 void
-Registry::setCacheOverride( osgEarth::Cache* cacheOverride )
+Registry::setCache( osgEarth::Cache* cache )
 {
-	_cacheOverride = cacheOverride;
+	_cache = cache;
 }
 
 void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)

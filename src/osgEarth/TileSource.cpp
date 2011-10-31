@@ -191,11 +191,14 @@ TileSource::getPixelsPerTile() const
 osg::Image*
 TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCallback* progress)
 {
+    RasterCacheAdapter rasterCache( _memCache.get() );
+
     // Try to get it from the memcache fist
     if (_memCache.valid())
     {
         osg::ref_ptr<const osg::Image> cachedImage;
-        if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
+        if ( rasterCache.getImage( key, "", cachedImage ) )
+        //if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
         {
             return ImageUtils::cloneImage(cachedImage.get());
         }
@@ -209,7 +212,8 @@ TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCall
     if ( newImage.valid() && _memCache.valid() )
     {
         // cache it to the memory cache.
-        _memCache->setImage( key, CacheSpec(), newImage.get() );
+        rasterCache.setImage( key, "", newImage.get() );
+        //_memCache->setImage( key, CacheSpec(), newImage.get() );
     }
 
     return newImage.release();
@@ -218,11 +222,13 @@ TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCall
 osg::HeightField*
 TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, ProgressCallback* progress )
 {
+    RasterCacheAdapter rasterCache( _memCache.get() );
+
     // Try to get it from the memcache first:
 	if (_memCache.valid())
 	{
         osg::ref_ptr<const osg::HeightField> cachedHF;
-		if ( _memCache->getHeightField( key, CacheSpec(), cachedHF ) )
+		if ( rasterCache.getHeightField( key, "", cachedHF ) )
         {
             return new osg::HeightField( *cachedHF.get() );
         }
@@ -235,7 +241,7 @@ TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, 
 
     if ( newHF.valid() && _memCache.valid() )
     {
-        _memCache->setHeightField( key, CacheSpec(), newHF.get() );
+        rasterCache.setHeightField( key, "", newHF.get() );
     }
 
     //TODO: why not just newHF.release()? -gw

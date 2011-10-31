@@ -29,6 +29,7 @@
 
 namespace osgEarth
 {
+    class CachePolicy;
     class Config;
     class URI;
 

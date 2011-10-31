@@ -413,6 +413,8 @@ namespace osgEarth
         ConfigOptions( const ConfigOptions& rhs )
             : _conf( rhs.getConfig() ) { }
 
+        const URIContext& uriContext() const { return _conf.uriContext(); }
+
         ConfigOptions& operator = ( const ConfigOptions& rhs ) {
             if ( this != &rhs ) {
                 _conf = rhs.getConfig();

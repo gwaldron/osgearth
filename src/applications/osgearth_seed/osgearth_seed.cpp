@@ -24,11 +24,10 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
+#include <osgEarth/Cache>
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
-
-#include <osgEarth/Caching>
 
 #include <iostream>
 #include <sstream>
@@ -165,7 +164,8 @@ list( osg::ArgumentParser& args )
         return message( "Earth file does not contain a cache." );
 
     std::cout 
-        << "Cache config = " << cache->getCacheOptions().getConfig().toString() << std::endl;
+        << "Cache config: " << std::endl
+        << cache->getCacheOptions().getConfig().toString() << std::endl;
 
     MapFrame mapf( mapNode->getMap() );
 
@@ -173,12 +173,22 @@ list( osg::ArgumentParser& args )
     std::copy( mapf.imageLayers().begin(), mapf.imageLayers().end(), std::back_inserter(layers) );
     std::copy( mapf.elevationLayers().begin(), mapf.elevationLayers().end(), std::back_inserter(layers) );
 
-    for( TerrainLayerVector::const_iterator i =layers.begin(); i != layers.end(); ++i )
+    for( TerrainLayerVector::iterator i =layers.begin(); i != layers.end(); ++i )
     {
         TerrainLayer* layer = i->get();
-        const CacheSpec& spec = layer->getCacheSpec();
-        std::cout
-            << "Layer = \"" << layer->getName() << "\", cacheId = " << spec.cacheId() << std::endl;
+        TerrainLayer::CacheBinMetadata meta;
+
+        if ( layer->getCacheBinMetadata( map->getProfile(), meta ) )
+        {
+            Config conf = meta.getConfig();
+            std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
+                << conf.toString() << std::endl;
+        }
+        else
+        {
+            std::cout << "Layer \"" << layer->getName() << "\": no cache information" 
+                << std::endl;
+        }
     }
 
     return 0;

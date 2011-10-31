@@ -19,7 +19,8 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
-    Caching
+    Cache
+    CachePolicy
 	CacheSeed
 	Capabilities
     Common
@@ -53,6 +54,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskLayer
     MaskNode
     MaskSource
+    MemCache
     ModelLayer
     ModelSource
     NodeUtils
@@ -111,7 +113,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
-    Caching.cpp
+    Cache.cpp
+    CachePolicy.cpp
     CacheSeed.cpp
 	Capabilities.cpp
     CompositeTileSource.cpp
@@ -142,6 +145,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MaskLayer.cpp
     MaskNode.cpp
     MaskSource.cpp
+    MemCache.cpp
 	MimeTypes.cpp
 	ModelLayer.cpp
 	ModelSource.cpp

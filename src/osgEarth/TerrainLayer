@@ -21,11 +21,12 @@
 #define OSGEARTH_TERRAIN_LAYER_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Layer>
+#include <osgEarth/Cache>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Config>
+#include <osgEarth/Layer>
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
-#include <osgEarth/Caching>
 #include <osgEarth/ThreadingUtils>
 
 namespace osgEarth
@@ -71,7 +72,6 @@ namespace osgEarth
         optional<double>& minLevelResolution() { return _minLevelResolution;}
         const optional<double>& minLevelResolution() const { return _minLevelResolution; }
 
-
         /**
          * The maximum level of detail for which this layer should generate data.
          */
@@ -89,8 +89,6 @@ namespace osgEarth
          */
         optional<unsigned int>& maxDataLevel() { return _maxDataLevel; }
         const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel; }
-
-
 
 		/**
 		 * Whether to render this layer with the map.
@@ -110,24 +108,6 @@ namespace osgEarth
         optional<unsigned int> reprojectedTileSize() { return _reprojectedTileSize; }
         const optional<unsigned int> reprojectedTileSize() const { return _reprojectedTileSize; }
 
-		/**
-		 * The format that this MapLayer should use when caching.
-		 */
-        optional<std::string>& cacheFormat() { return _cacheFormat; }
-        const optional<std::string>& cacheFormat() const { return _cacheFormat; }
-
-        /**
-         * Whether to cache this layer or not.
-         */
-        optional<bool>& cacheEnabled() { return _cacheEnabled; }
-        const optional<bool>& cacheEnabled() const { return _cacheEnabled; }
-
-		/**
-		 * Whether to try to run this MapLayer strictly from the cache only.
-		 */
-        optional<bool>& cacheOnly() { return _cacheOnly; }
-        const optional<bool>& cacheOnly() const { return _cacheOnly; }
-
         /**
          * Explicit cache ID to uniquely identify the cache that matched this
          * layer's tile source properties. This is usually automatically
@@ -135,6 +115,31 @@ namespace osgEarth
          */
         optional<std::string>& cacheId() { return _cacheId; }
         const optional<std::string>& cacheId() const { return _cacheId; }
+
+		/**
+		 * The format that this MapLayer should use when caching. This can be a mime type
+         * or a file extension.
+		 */
+        optional<std::string>& cacheFormat() { return _cacheFormat; }
+        const optional<std::string>& cacheFormat() const { return _cacheFormat; }
+
+        /**
+         * Caching policy to use for this layer.
+         */
+        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
+        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
+
+        /**
+         * Whether to cache this layer or not.
+         */
+        //optional<bool>& cacheEnabled() { return _cacheEnabled; }
+        //const optional<bool>& cacheEnabled() const { return _cacheEnabled; }
+
+		/**
+		 * Whether to try to run this MapLayer strictly from the cache only.
+		 */
+        //optional<bool>& cacheOnly() { return _cacheOnly; }
+        //const optional<bool>& cacheOnly() const { return _cacheOnly; }
         
         /**
          * The loading weight of this MapLayer (for threaded loading policies).
@@ -166,16 +171,18 @@ namespace osgEarth
         optional<int> _maxLevel;
         optional<double> _minLevelResolution;
         optional<double> _maxLevelResolution;
-		optional<std::string> _cacheFormat;
-        optional<bool> _cacheEnabled;
-		optional<bool> _cacheOnly;
         optional<float> _loadingWeight;
         optional<bool> _exactCropping;
 		optional<bool> _enabled;
 		optional<unsigned int> _reprojectedTileSize;
         optional<double> _edgeBufferRatio;
-        optional<std::string> _cacheId;
         optional<unsigned int> _maxDataLevel;
+
+        optional<std::string> _cacheId;
+		optional<std::string> _cacheFormat;
+        optional<CachePolicy> _cachePolicy;
+  //      optional<bool>        _cacheEnabled;
+		//optional<bool>        _cacheOnly;
     };
 
     /**
@@ -198,6 +205,8 @@ namespace osgEarth
         TerrainLayer( TerrainLayerOptions* options );
         
         TerrainLayer( TerrainLayerOptions* options, TileSource* tileSource );
+
+        virtual ~TerrainLayer();
 
     public:
 
@@ -244,30 +253,10 @@ namespace osgEarth
          */
         bool isDynamic() const;
 
-        const std::string& getCacheFormat() const {  return *_runtimeOptions->cacheFormat(); }
-
-    public: // methods
-
 		/**
 		 * Whether the given key is valid for this layer
 		 */
 		bool isKeyValid(const TileKey& key) const;
-
-		/**
-		 * Gets the Cache to be used on this TerrainLayer.
-		 */
-        Cache* getCache() const { return _cache.get(); }
-
-		/**
-		 * Sets the cache to be used on this MapLayer
-         * TODO: is it legal to set this at any time?
-		 */
-		void setCache( Cache* cache );
-
-        /**
-         * Gets the key that this layer uses to access the cache
-         */
-        const CacheSpec& getCacheSpec() const { return _cacheSpec; }
         
         /**
          * Gives the terrain layer a hint as to what the target profile of 
@@ -277,28 +266,81 @@ namespace osgEarth
          */
         virtual void setTargetProfileHint( const Profile* profile );
 
-        /**
-         * Whether this layer is in "cache only" mode (i.e. data will only be
-         * read from the cache and not from the tile source
+        /** 
+         * The cache bin for storing data generated by this layer
          */
-        bool isCacheOnly() const { return *_runtimeOptions->cacheOnly(); }
+        CacheBin* getCacheBin( const Profile* profile );
+        
+		/**
+		 * Gets the Cache to be used on this TerrainLayer.
+		 */
+        Cache* getCache() const { return _cache.get(); }
+
+        /**
+         * Convenience function to check for cache_only mode
+         */
+        bool isCacheOnly() const {
+            return _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY; 
+        }
+
+    public:
+        
+        /**
+         * Metadata about the terrain layer that is stored in the cache, and read
+         * when the cache is opened.
+         */
+        struct CacheBinMetadata
+        {
+            CacheBinMetadata() { }
+
+            CacheBinMetadata( const CacheBinMetadata& rhs ) :
+                _empty       ( rhs._empty ),
+                _sourceName  ( rhs._sourceName ),
+                _sourceDriver( rhs._sourceDriver ),
+                _profile     ( rhs._profile ),
+                _cacheBinId  ( rhs._cacheBinId ) { }
+
+            CacheBinMetadata( const Config& conf )
+            {
+                _empty = conf.empty();
+                Config top = conf.child("osgearth_cachebin");
+                top.getIfSet   ( "cachebin_id",   _cacheBinId );
+                top.getIfSet   ( "source_name",   _sourceName );
+                top.getIfSet   ( "source_driver", _sourceDriver );
+                top.getObjIfSet( "profile",       _profile );
+            }
+
+            Config getConfig() const
+            {
+                Config conf( "osgearth_cachebin" );
+                conf.addIfSet   ( "cachebin_id",   _cacheBinId );
+                conf.addIfSet   ( "source_name",   _sourceName );
+                conf.addIfSet   ( "source_driver", _sourceDriver );
+                conf.addObjIfSet( "profile",       _profile );
+                return conf;
+            }
+
+            bool                     _empty;
+            optional<std::string>    _cacheBinId;
+            optional<std::string>    _sourceName;
+            optional<std::string>    _sourceDriver;
+            optional<ProfileOptions> _profile;
+        };
+
+        /**
+         * Access to information about the cache 
+         */
+        bool getCacheBinMetadata( const Profile* profile, CacheBinMetadata& output );
 
     protected:
 
 		virtual void initTileSource();
 
-        virtual std::string suggestCacheFormat() const;
-
     protected:
 
-        osg::ref_ptr<TileSource> _tileSource;
-		osg::ref_ptr<Cache>      _cache;
-        CacheSpec                _cacheSpec;
-
+        osg::ref_ptr<TileSource>    _tileSource;
 		osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<const Profile> _cacheProfile;
         osg::ref_ptr<const Profile> _targetProfileHint;
-
         bool                        _tileSourceInitialized;
 		unsigned                    _tileSize;        
 
@@ -308,13 +350,33 @@ namespace osgEarth
         OpenThreads::Mutex   _initTileSourceMutex;
         TerrainLayerOptions* _runtimeOptions;
 
+		osg::ref_ptr<Cache>      _cache;
+
+        // maps profile signature to cache bin pointer.
+        struct CacheBinInfo
+        {
+            osg::ref_ptr<CacheBin>     _bin;
+            optional<CacheBinMetadata> _metadata;
+        };
+        typedef std::map< std::string, CacheBinInfo > CacheBinInfoMap; // indexed by profile signature
+        CacheBinInfoMap _cacheBins;
+        Threading::ReadWriteMutex _cacheBinsMutex;
+
         void init();
+        //void applyCacheFormat( CacheBin* bin, const std::string& format );
         virtual void fireCallback( TerrainLayerCallbackMethodPtr method ) =0;
 
         // methods accesible by Map:
         friend class Map;
         void setReferenceURI( const std::string& uri );
-        void setCacheOnly( bool value );
+
+        void overrideCachePolicy( const CachePolicy& policy );
+
+		/**
+		 * Sets the cache to be used on this MapLayer
+         * TODO: is it legal to set this at any time?
+		 */
+		void setCache( Cache* cache );
     };
 
     typedef std::vector<osg::ref_ptr<TerrainLayer> > TerrainLayerVector;

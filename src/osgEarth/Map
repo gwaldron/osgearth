@@ -21,7 +21,6 @@
 #define OSGEARTH_MAP_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Caching>
 #include <osgEarth/Profile>
 #include <osgEarth/MapOptions>
 #include <osgEarth/ImageLayer>

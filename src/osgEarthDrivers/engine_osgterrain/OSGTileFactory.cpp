@@ -23,7 +23,6 @@
 #include "TransparentLayer"
 
 #include <osgEarth/Map>
-#include <osgEarth/Caching>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>

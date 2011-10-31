@@ -18,10 +18,10 @@
  */
 
 #include <curl/curl.h>
-//#include <curl/types.h>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgEarth/Version>
+#include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/Notify>
@@ -815,10 +815,10 @@ namespace
 }
 
 HTTPClient::ResultCode
-HTTPClient::doReadImageFile(const std::string& filename, 
-                            osg::ref_ptr<osg::Image>& output,
-                            const osgDB::ReaderWriter::Options *options,
-                            osgEarth::ProgressCallback *callback)
+HTTPClient::doReadImageFile(const std::string&                  filename, 
+                            osg::ref_ptr<osg::Image>&           output,
+                            const osgDB::ReaderWriter::Options* options,
+                            osgEarth::ProgressCallback*         callback)
 {
     ResultCode result = RESULT_OK;
 

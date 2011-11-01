@@ -272,7 +272,6 @@ Map::setCache( Cache* cache )
     if (_cache.get() != cache)
     {
         _cache = cache;
-        //_cache->setReferenceURI( _mapOptions.referenceURI().value() );
 
         //Propagate the cache to any of our layers
         for (ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i)
@@ -345,7 +344,6 @@ Map::addImageLayer( ImageLayer* layer )
         {
             i->get()->onMapModelChanged( MapModelChange(
                 MapModelChange::ADD_IMAGE_LAYER, newRevision, layer, index) );
-            //i->get()->onImageLayerAdded( layer, index, newRevision );
         }	
     }	
 }

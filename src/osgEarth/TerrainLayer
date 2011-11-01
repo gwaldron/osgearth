@@ -128,18 +128,6 @@ namespace osgEarth
          */
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
-
-        /**
-         * Whether to cache this layer or not.
-         */
-        //optional<bool>& cacheEnabled() { return _cacheEnabled; }
-        //const optional<bool>& cacheEnabled() const { return _cacheEnabled; }
-
-		/**
-		 * Whether to try to run this MapLayer strictly from the cache only.
-		 */
-        //optional<bool>& cacheOnly() { return _cacheOnly; }
-        //const optional<bool>& cacheOnly() const { return _cacheOnly; }
         
         /**
          * The loading weight of this MapLayer (for threaded loading policies).
@@ -164,25 +152,23 @@ namespace osgEarth
         void fromConfig( const Config& conf );
         void setDefaults();
        
-        std::string _name;
-        optional<ProfileOptions> _profile;
+        std::string                 _name;
+        optional<ProfileOptions>    _profile;
         optional<TileSourceOptions> _driver;
-        optional<int> _minLevel;
-        optional<int> _maxLevel;
-        optional<double> _minLevelResolution;
-        optional<double> _maxLevelResolution;
-        optional<float> _loadingWeight;
-        optional<bool> _exactCropping;
-		optional<bool> _enabled;
-		optional<unsigned int> _reprojectedTileSize;
-        optional<double> _edgeBufferRatio;
-        optional<unsigned int> _maxDataLevel;
+        optional<int>               _minLevel;
+        optional<int>               _maxLevel;
+        optional<double>            _minLevelResolution;
+        optional<double>            _maxLevelResolution;
+        optional<float>             _loadingWeight;
+        optional<bool>              _exactCropping;
+		optional<bool>              _enabled;
+		optional<unsigned>          _reprojectedTileSize;
+        optional<double>            _edgeBufferRatio;
+        optional<unsigned>          _maxDataLevel;
 
-        optional<std::string> _cacheId;
-		optional<std::string> _cacheFormat;
-        optional<CachePolicy> _cachePolicy;
-  //      optional<bool>        _cacheEnabled;
-		//optional<bool>        _cacheOnly;
+        optional<std::string>       _cacheId;
+		optional<std::string>       _cacheFormat;
+        optional<CachePolicy>       _cachePolicy;
     };
 
     /**
@@ -294,29 +280,32 @@ namespace osgEarth
             CacheBinMetadata() { }
 
             CacheBinMetadata( const CacheBinMetadata& rhs ) :
-                _empty       ( rhs._empty ),
-                _sourceName  ( rhs._sourceName ),
-                _sourceDriver( rhs._sourceDriver ),
-                _profile     ( rhs._profile ),
-                _cacheBinId  ( rhs._cacheBinId ) { }
+                _empty        ( rhs._empty ),
+                _sourceName   ( rhs._sourceName ),
+                _sourceDriver ( rhs._sourceDriver ),
+                _sourceProfile( rhs._sourceProfile ),
+                _cacheProfile ( rhs._cacheProfile ),
+                _cacheBinId   ( rhs._cacheBinId ) { }
 
             CacheBinMetadata( const Config& conf )
             {
                 _empty = conf.empty();
                 Config top = conf.child("osgearth_cachebin");
-                top.getIfSet   ( "cachebin_id",   _cacheBinId );
-                top.getIfSet   ( "source_name",   _sourceName );
-                top.getIfSet   ( "source_driver", _sourceDriver );
-                top.getObjIfSet( "profile",       _profile );
+                top.getIfSet   ( "cachebin_id",    _cacheBinId );
+                top.getIfSet   ( "source_name",    _sourceName );
+                top.getIfSet   ( "source_driver",  _sourceDriver );
+                top.getObjIfSet( "source_profile", _sourceProfile );
+                top.getObjIfSet( "cache_profile",  _cacheProfile );
             }
 
             Config getConfig() const
             {
                 Config conf( "osgearth_cachebin" );
-                conf.addIfSet   ( "cachebin_id",   _cacheBinId );
-                conf.addIfSet   ( "source_name",   _sourceName );
-                conf.addIfSet   ( "source_driver", _sourceDriver );
-                conf.addObjIfSet( "profile",       _profile );
+                conf.addIfSet   ( "cachebin_id",    _cacheBinId );
+                conf.addIfSet   ( "source_name",    _sourceName );
+                conf.addIfSet   ( "source_driver",  _sourceDriver );
+                conf.addObjIfSet( "source_profile", _sourceProfile );
+                conf.addObjIfSet( "cache_profile",  _cacheProfile );
                 return conf;
             }
 
@@ -324,7 +313,8 @@ namespace osgEarth
             optional<std::string>    _cacheBinId;
             optional<std::string>    _sourceName;
             optional<std::string>    _sourceDriver;
-            optional<ProfileOptions> _profile;
+            optional<ProfileOptions> _sourceProfile;
+            optional<ProfileOptions> _cacheProfile;
         };
 
         /**

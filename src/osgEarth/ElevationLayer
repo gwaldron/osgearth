@@ -107,20 +107,20 @@ namespace osgEarth
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
          */
-        osg::HeightField* createHeightField(
+        GeoHeightField createHeightField(
             const TileKey&    key,
             ProgressCallback* progress =0L );
 
     protected:
         
         // creates a geoHF directly from the tile source
-		GeoHeightField createGeoHeightFieldFromTileSource( 
+        osg::HeightField* createHeightFieldFromTileSource( 
             const TileKey&    key, 
             ProgressCallback* progress);
 
         // assembles tiles from a layer that is not in the same profile as the map, and
         // returns a single tile in the map's profile.
-        GeoHeightField assembleGeoHeightFieldFromTileSource(
+        osg::HeightField* assembleHeightFieldFromTileSource(
             const TileKey&     key,
             ProgressCallback*  progress );
         

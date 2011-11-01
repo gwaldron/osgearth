@@ -308,9 +308,10 @@ TerrainLayer::getTileSource() const
 const Profile*
 TerrainLayer::getProfile() const
 {
-    if ( !_profile.valid() )
+    // NB: in cache-only mode, there IS NO layer profile.
+    if ( !_profile.valid() && !isCacheOnly() )
     {
-        if ( !isCacheOnly() && !_tileSourceInitialized )
+        if ( !_tileSourceInitialized )
         {
             // Call getTileSource to make sure the TileSource is initialized
             getTileSource();
@@ -384,10 +385,7 @@ TerrainLayer::getCacheBin( const Profile* profile )
         if ( i != _cacheBins.end() )
             return i->second._bin.get();
 
-        // then add. note, we cannot add a cache bin without a valid tile source!
-        if ( !getTileSource() )
-            return 0L;
-
+        // add the new bin:
         osg::ref_ptr<CacheBin> newBin = _cache->addBin( binId );
 
         // and configure:
@@ -395,30 +393,58 @@ TerrainLayer::getCacheBin( const Profile* profile )
         {
             // attempt to read the cache metadata:
             CacheBinMetadata meta( newBin->readMetadata() );
-            if ( meta._empty )
-            {
-                // no existing metadata; create some.
-                meta._cacheBinId   = binId;
-                meta._sourceName   = this->getName();
-                meta._sourceDriver = getTileSource()->getOptions().getDriver();
-                meta._profile      = profile->toProfileOptions();
 
-                // store it in the cache bin.
-                newBin->writeMetadata( meta.getConfig() );
-            }
-            
-            else // cache already exists:
+            if ( !meta._empty ) // cache exists
             {
-                // verify that the cache was created using the same driver as the live tilesource:
-                if ( *meta._sourceDriver != getTileSource()->getOptions().getDriver() )
+                // verify that the cache if compatible with the tile source:
+                if ( getTileSource() && getProfile() )
                 {
-                    OE_WARN << LC << "Cache was created with a different tile source driver (cache driver = "
-                        << *meta._sourceDriver << ", current driver = "
-                        << getTileSource()->getOptions().getDriver() 
-                        << ") ... disabling cache." 
-                        << std::endl;
+                    //todo: check the profile too
+                    if ( *meta._sourceDriver != getTileSource()->getOptions().getDriver() )
+                    {
+                        OE_WARN << LC << "Cache was created with a different driver or profile... disabling cache."
+                            << std::endl;
+                        _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
+                        return 0L;
+                    }
+                }   
 
-                    _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
+                else if ( isCacheOnly() && !_profile.valid() )
+                {
+                    // in cacheonly mode, create a profile from the first cache bin accessed
+                    // (they SHOULD all be the same...)
+                    _profile = Profile::create( *meta._sourceProfile );
+                }
+            }
+
+            else
+            {
+                // cache does not exist, so try to create it. A valid TileSource is necessary
+                // for this.
+                if ( getTileSource() && getProfile() )
+                {
+                    // no existing metadata; create some.
+                    meta._cacheBinId    = binId;
+                    meta._sourceName    = this->getName();
+                    meta._sourceDriver  = getTileSource()->getOptions().getDriver();
+                    meta._sourceProfile = getProfile()->toProfileOptions();
+                    meta._cacheProfile  = profile->toProfileOptions();
+
+                    // store it in the cache bin.
+                    newBin->writeMetadata( meta.getConfig() );
+                }
+                else if ( isCacheOnly() )
+                {
+                    OE_WARN << LC << "Failed to create a cache bin for layer \"" << getName()
+                        << "\" because cache_only mode is enabled and no existing cache could be found."
+                        << std::endl;
+                    return 0L;
+                }
+                else
+                {
+                    OE_WARN << LC << "Failed to create a cache bin for layer \"" << getName()
+                        << "\" because there is no valid tile source."
+                        << std::endl;
                     return 0L;
                 }
             }
@@ -581,20 +607,25 @@ TerrainLayer::isKeyValid(const TileKey& key) const
         return false;
     
     // Check to see if levels of detail based on resolution are set
-    if ( _runtimeOptions->minLevelResolution().isSet() )
-    {        
-        unsigned int minLevel = getProfile()->getLevelOfDetailForHorizResolution(
-            _runtimeOptions->minLevelResolution().value(), getTileSize() );
-        OE_DEBUG << "Computed min level of " << minLevel << std::endl;
-        if (key.getLevelOfDetail() < minLevel) return false;
-    }
+    if ( getProfile() )
+    {
+        if ( _runtimeOptions->minLevelResolution().isSet() )
+        {        
+            unsigned int minLevel = getProfile()->getLevelOfDetailForHorizResolution(
+                _runtimeOptions->minLevelResolution().value(), 
+                getTileSize() );
+            OE_DEBUG << "Computed min level of " << minLevel << std::endl;
+            if (key.getLevelOfDetail() < minLevel) 
+                return false;
+        }
 
-    if (_runtimeOptions->maxLevelResolution().isSet())
-    {        
-        unsigned int maxLevel = getProfile()->getLevelOfDetailForHorizResolution(
-            _runtimeOptions->maxLevelResolution().value(), getTileSize() );
-        OE_DEBUG << "Computed max level of " << maxLevel << std::endl;
-        if (key.getLevelOfDetail() > maxLevel) return false;
+        if (_runtimeOptions->maxLevelResolution().isSet())
+        {        
+            unsigned int maxLevel = getProfile()->getLevelOfDetailForHorizResolution(
+                _runtimeOptions->maxLevelResolution().value(), getTileSize() );
+            OE_DEBUG << "Computed max level of " << maxLevel << std::endl;
+            if (key.getLevelOfDetail() > maxLevel) return false;
+        }
     }
 
 	return true;

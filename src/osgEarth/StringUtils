@@ -241,6 +241,30 @@ namespace osgEarth
         return ssStr;
     }
 
+    /** Makes a valid filename, hopefully, out of a string (without touching slashes) */
+    static std::string
+    toLegalFileName( const std::string& input )
+    {
+        const std::string legal("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz_./\\");
+
+        std::string::size_type pos = input.find_first_not_of( legal );
+        if ( pos != std::string::npos )
+        {
+            std::stringstream buf;
+            for( pos = 0; pos < input.size(); ++pos )
+            {
+                if ( legal.find( input.at(pos) ) )
+                    buf << input.at(pos);
+                else
+                    buf << static_cast<unsigned>( input.at(pos) );
+            }
+            std::string result;
+            result = buf.str();
+            return result;
+        }
+        return input;
+    }
+
     /** MurmurHash 2.0 (http://sites.google.com/site/murmurhash/) */
     static unsigned int
     hashString( const std::string& input )

@@ -18,6 +18,7 @@
  */
 #include "FileSystemCache"
 #include <osgEarth/Cache>
+#include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/URI>
@@ -85,6 +86,7 @@ namespace
         bool                              _ok;
         std::string                       _metaPath;
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
+        osg::ref_ptr<osgDB::Options>      _rwOptions;
         Threading::ReadWriteMutex         _rwmutex;
     };
 }
@@ -95,8 +97,8 @@ namespace
 #undef  LC
 #define LC "[FileSystemCache] "
 
-#undef  OE_DEBUG
-#define OE_DEBUG OE_INFO
+//#undef  OE_DEBUG
+//#define OE_DEBUG OE_INFO
 
 namespace
 {
@@ -133,7 +135,7 @@ namespace
     _ok      ( true )
     {
         std::string binPath = osgDB::concatPaths( rootPath, binID );
-        _metaPath = osgDB::concatPaths( binPath, "cacheinfo.xml" );
+        _metaPath = osgDB::concatPaths( binPath, "osgearth_cacheinfo.xml" );
 
         OE_INFO << LC << "Initializing cache bin: " << _metaPath << std::endl;
         osgDB::makeDirectoryForFile( _metaPath );
@@ -145,30 +147,10 @@ namespace
         else
         {
             _rw = osgDB::Registry::instance()->getReaderWriterForExtension( "osgb" );
+#ifdef OSGEARTH_HAVE_ZLIB
+            _rwOptions = new osgDB::ReaderWriter::Options( "Compressor=zlib" );
+#endif
         }
-    }
-
-    std::string
-    toLegalFileName( const std::string& input )
-    {
-        const std::string legal("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz_./\\");
-
-        std::string::size_type pos = input.find_first_not_of( legal );
-        if ( pos != std::string::npos )
-        {
-            std::stringstream buf;
-            for( pos = 0; pos < input.size(); ++pos )
-            {
-                if ( legal.find( input.at(pos) ) )
-                    buf << input.at(pos);
-                else
-                    buf << static_cast<unsigned>( input.at(pos) );
-            }
-            std::string result;
-            result = buf.str();
-            return result;
-        }
-        return input;
     }
 
     const osg::Image*
@@ -184,7 +166,7 @@ namespace
         osgDB::ReaderWriter::ReadResult r;
         {
             ScopedReadLock sharedLock( _rwmutex );
-            r = _rw->readImage( fileURI.full() + ".osgb" ); //readObject( fileURI.full() + ".osgb" );
+            r = _rw->readImage( fileURI.full() + ".osgb", _rwOptions.get() );
         }
 
         if ( r.getImage() )
@@ -212,7 +194,7 @@ namespace
         osgDB::ReaderWriter::ReadResult r;
         {
             ScopedReadLock sharedLock( _rwmutex );
-            r = _rw->readObject( fileURI.full() + ".osgb" );
+            r = _rw->readObject( fileURI.full() + ".osgb", _rwOptions.get() );
         }
 
         if ( r.getObject() )
@@ -249,9 +231,9 @@ namespace
 
             // write it.        
             if ( dynamic_cast<const osg::Image*>(object) )
-                r = _rw->writeImage( *static_cast<const osg::Image*>(object), filename );
+                r = _rw->writeImage( *static_cast<const osg::Image*>(object), filename, _rwOptions.get() );
             else if ( dynamic_cast<const osg::Node*>(object) )
-                r = _rw->writeNode( *static_cast<const osg::Node*>(object), filename );
+                r = _rw->writeNode( *static_cast<const osg::Node*>(object), filename, _rwOptions.get() );
             else
                 r = _rw->writeObject( *object, filename );
         }

@@ -31,6 +31,10 @@ using namespace OpenThreads;
 
 #define LC "[ImageLayer] "
 
+// TESTING
+//#undef  OE_DEBUG
+//#define OE_DEBUG OE_INFO
+
 //------------------------------------------------------------------------
 
 ImageLayerOptions::ImageLayerOptions( const ConfigOptions& options ) :
@@ -159,8 +163,8 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
     _options = options;
     _layerInTargetProfile = layerInTargetProfile;
 
-    if ( _layerInTargetProfile )
-        OE_DEBUG << LC << "Good, the layer and map have the same profile." << std::endl;
+    //if ( _layerInTargetProfile )
+    //    OE_DEBUG << LC << "Good, the layer and map have the same profile." << std::endl;
 
     const osg::Vec4ub& ck= *_options.transparentColor();
     _chromaKey.set( ck.r() / 255.0f, ck.g() / 255.0f, ck.b() / 255.0f, 1.0 );
@@ -324,19 +328,20 @@ ImageLayer::initPreCacheOp()
 {
     bool layerInTargetProfile = 
         _targetProfileHint.valid() &&
-        getProfile() &&
+        getProfile()               &&
         _targetProfileHint->isEquivalentTo( getProfile() );
 
     ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();    
     op->_processor.init( _runtimeOptions, layerInTargetProfile );
 
     _preCacheOp = op;
-
 }
 
 GeoImage
 ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
 {
+    OE_DEBUG << LC << "Layer \"" << getName() << "\" create image for \"" << key.str() << "\"" << std::endl;
+
     GeoImage result;
 
     // If the layer is disabled, bail out.
@@ -355,34 +360,14 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
 		return GeoImage::INVALID;
 	}
 
-    // validate the existance of a valid layer profile.
-    if ( !getProfile() )
+    // validate the existance of a valid layer profile (unless we're in cache-only mode, in which
+    // case there is no layer profile)
+    if ( !isCacheOnly() && !getProfile() )
     {
 		OE_WARN << LC << "Could not establish a valid profile for Layer \"" << getName() << "\"" << std::endl;
         _runtimeOptions.enabled() = false;
         return GeoImage::INVALID;
 	}
-
-#if 0
-    // If we have a cache, write its profile is we haven't already.
-    // TODO: seems like we could do this elsewhere.. -gw
-    if (cacheBin                                          && 
-        _runtimeOptions.cachePolicy()->isCacheWriteable() &&
-        !_cacheBinMetadata.isSet()                        && 
-        _tileSource.valid() )
-    {
-        CacheBinMetadata metadata;
-        metadata._sourceName   = this->getName();
-        metadata._profile      = key.getProfile()->toProfileOptions(); // the map's profile
-        metadata._cacheFormat  = *_runtimeOptions.cacheFormat();
-        metadata._cacheId      = *_runtimeOptions.cacheId();
-
-        if ( getCacheBin()->writeMetadata( metadata.getConfig() ) )
-        {
-            _cacheBinMetadata = metadata;
-        }
-    }
-#endif
 
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
@@ -398,7 +383,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
         }
     }
     
-    // The data was not in the cache. If we are cache-only, fail:
+    // The data was not in the cache. If we are cache-only, fail sliently
     if ( isCacheOnly() )
     {
         return GeoImage::INVALID;
@@ -416,7 +401,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
 
 	// If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
     if ( result.valid() &&
-         cacheBin  && 
+         cacheBin       && 
          _runtimeOptions.cachePolicy()->isCacheWriteable() )
 	{
         RasterCacheBinAdapter ca( cacheBin );

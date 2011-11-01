@@ -83,7 +83,7 @@ struct RotateImage : public ControlEventHandler
 {
     void onValueChanged( Control* control, float value )
     {
-        s_imageControl->setRotation( value );
+        s_imageControl->setRotation( Angular(value) );
     }
 };
 

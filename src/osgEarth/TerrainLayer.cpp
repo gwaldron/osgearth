@@ -473,7 +473,8 @@ TerrainLayer::getCacheBinMetadata( const Profile* profile, CacheBinMetadata& out
 {
     // the cache bin ID is the cache IF concatenated with the profile signature.
     std::string binId = *_runtimeOptions->cacheId() + "_" + profile->getSignature();
-
+    CacheBin* bin = getCacheBin( profile );
+    if ( bin )
     {
         Threading::ScopedReadLock shared(_cacheBinsMutex);
         CacheBinInfoMap::iterator i = _cacheBins.find( binId );

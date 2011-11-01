@@ -147,15 +147,20 @@ CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
     key.getTileXY(x, y);
     lod = key.getLevelOfDetail();
 
+    bool gotData = true;
+
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-    	if ( _progress.valid() && _progress->reportProgress(0, 0, "Caching tile: " + key.str()) )
+        gotData = cacheTile( mapf, key );
+
+    	if ( _progress.valid() && _progress->isCanceled() )
 	        return; // Task has been cancelled by user
 
-        cacheTile( mapf, key );
+        if ( _progress.valid() && gotData && _progress->reportProgress(0, 0, "Cached tile: " + key.str()) )
+            return; // Canceled
     }
 
-    if (lod <= _maxLevel)
+    if ( gotData && lod <= _maxLevel )
     {
         TileKey k0 = key.createChildKey(0);
         TileKey k1 = key.createChildKey(1);
@@ -175,15 +180,19 @@ CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
     }
 }
 
-void
+bool
 CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
 {
+    bool gotData = false;
+
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
         ImageLayer* layer = i->get();
         if ( layer->isKeyValid( key ) )
         {
             GeoImage image = layer->createImage( key );
+            if ( image.valid() )
+                gotData = true;
         }
     }
 
@@ -191,5 +200,9 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
     {
         osg::ref_ptr<osg::HeightField> hf;
         mapf.getHeightField( key, false, hf );
+        if ( hf.valid() )
+            gotData = true;
     }
+
+    return gotData;
 }

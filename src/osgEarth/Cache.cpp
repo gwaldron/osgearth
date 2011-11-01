@@ -84,12 +84,12 @@ CacheFactory::create( const CacheOptions& options )
     }
     else if ( options.getDriver() == "tms" )
     {
-//        result = new TMSCache( options );
+        OE_WARN << LC << "Sorry, but TMS caching is no longer supported" << std::endl;
     }
-    else if ( options.getDriver() == "tilecache" )
-    {
-//        result = new DiskCache( options );
-    }
+//    else if ( options.getDriver() == "tilecache" )
+//    {
+////        result = new DiskCache( options );
+//    }
     else // try to load from a plugin
     {
         osg::ref_ptr<osgDB::ReaderWriter::Options> rwopt = new osgDB::ReaderWriter::Options();

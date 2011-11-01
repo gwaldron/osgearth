@@ -122,7 +122,7 @@ seed( osg::ArgumentParser& args )
     std::string cacheType;
     while (args.read("--cache-type", cacheType));
 
-    bool quiet = args.read("--quiet");
+    bool verbose = args.read("--verbose");
 
     //Read in the earth file.
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
@@ -137,7 +137,7 @@ seed( osg::ArgumentParser& args )
     seeder.setMinLevel( minLevel );
     seeder.setMaxLevel( maxLevel );
     seeder.setBounds( bounds );
-    if (!quiet)
+    if (verbose)
     {
         seeder.setProgressCallback(new ConsoleProgressCallback);
     }

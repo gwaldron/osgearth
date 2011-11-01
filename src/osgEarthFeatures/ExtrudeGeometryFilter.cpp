@@ -282,7 +282,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             if ( srs->isGeographic() )
             {
                 osg::Vec2d geogCenter = roofBounds.center2d();
-                roofProjSRS = srs->createUTMFromLongitude( geogCenter.x() );
+                roofProjSRS = srs->createUTMFromLongitude( Angular(geogCenter.x()) );
                 roofBounds.transform( srs, roofProjSRS.get() );
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
                 srs->transformPoints( roofProjSRS.get(), projectedInput->asVector() );

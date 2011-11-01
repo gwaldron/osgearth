@@ -266,7 +266,9 @@ namespace osgEarth
          * Convenience function to check for cache_only mode
          */
         bool isCacheOnly() const {
-            return _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY; 
+            return 
+                _runtimeOptions->cachePolicy().isSet() &&
+                _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY;
         }
 
     public:

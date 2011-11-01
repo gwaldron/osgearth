@@ -49,5 +49,10 @@ Config
 CachePolicy::getConfig() const
 {
     Config conf( "cache_policy" );
+    conf.addIfSet( "usage", "read_write", _usage, USAGE_READ_WRITE );
+    conf.addIfSet( "usage", "read_only",  _usage, USAGE_READ_ONLY );
+    conf.addIfSet( "usage", "cache_only", _usage, USAGE_CACHE_ONLY );
+    conf.addIfSet( "usage", "no_cache",   _usage, USAGE_NO_CACHE );
+    conf.addIfSet( "max_age", _maxAge );
     return conf;
 }

@@ -66,7 +66,8 @@ osg::Referenced   ( true ),
 _mapOptions       ( options ),
 _dataModelRevision( 0 )
 {            
-    if ( _mapOptions.cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY )
+    if (_mapOptions.cachePolicy().isSet() &&
+        _mapOptions.cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY )
     {
         OE_INFO << LC << "Cache-only mode activated" << std::endl;
     }

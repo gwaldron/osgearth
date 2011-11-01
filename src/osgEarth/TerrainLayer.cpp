@@ -212,56 +212,6 @@ TerrainLayer::setCache( Cache* cache )
             }
 
             _runtimeOptions->cacheId() = cacheId;
-
-#if 0
-            // cacheID established; create the bin that will hold our data:
-            _cacheBin = _cache->addBin( cacheId );
-
-            // attempt to read this layer's metadata from the cache.
-            Config mdConf = _cacheBin->readMetadata();
-            if ( !mdConf.empty() )
-            {
-                _cacheBinMetadata = CacheBinMetadata( mdConf );
-            }
-            
-            // if the cache contains a profile, there is already data in the cache so we have to
-            // make sure we don't corrupt it:
-            if ( _cacheBinMetadata.isSet() && _cacheBinMetadata->_profile.isSet() )
-            {
-                osg::ref_ptr<const Profile> metadataProfile = Profile::create( *_cacheBinMetadata->_profile );
-
-                // if there is a mismatch b/w the cache's profile and the layer's profile, disable the cache.
-                if (_profile.valid() &&
-                    metadataProfile.valid() &&
-                    !metadataProfile->isEquivalentTo( _profile.get() ) )
-                {
-                    OE_WARN << LC 
-                        << "Layer profile and cache's metadata profile are NOT equivalent - cache disabled" 
-                        << std::endl;
-                    _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
-                }
-
-                // otherwise, do nothing - assume the existing profile is good
-                else if ( !_profile.valid() && metadataProfile.valid() )
-                {
-                    _profile = metadataProfile.get();
-                }
-            }
-
-            // same goes for the cache format (i.e., mime-type or file extension):
-            if ( _cacheBinMetadata.isSet() && _cacheBinMetadata->_cacheFormat.isSet() )
-            {
-                if (_runtimeOptions->cacheFormat().isSet() &&
-                    _runtimeOptions->cacheFormat() != _cacheBinMetadata->_cacheFormat )
-                {
-                    OE_WARN << LC 
-                        << "Layer's requested cache format differs from that of the existing cache - "
-                        << "using existing cache's format." << std::endl;
-                }
-                
-                _runtimeOptions->cacheFormat() = _cacheBinMetadata->_cacheFormat;
-            }
-#endif
         }
     }
 
@@ -364,8 +314,11 @@ TerrainLayer::isDynamic() const
 CacheBin*
 TerrainLayer::getCacheBin( const Profile* profile )
 {
-    if ( _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE )
+    if (_runtimeOptions->cachePolicy().isSet() &&
+        _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE )
+    {
         return 0L;
+    }
 
     // the cache bin ID is the cache IF concatenated with the profile signature.
     std::string binId = *_runtimeOptions->cacheId() + "_" + profile->getSignature();

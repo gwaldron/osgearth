@@ -51,7 +51,8 @@ public:
                              ProgressCallback* progress )
     {
         //Return NULL if we are given a non global-mercator key
-        if ( !key.getProfile()->getProfileType() == Profile::TYPE_MERCATOR ) return 0;
+        //Not applicable
+        //if ( !key.getProfile()->getProfileType() == Profile::TYPE_MERCATOR ) return 0;
 
         std::stringstream buf;
 

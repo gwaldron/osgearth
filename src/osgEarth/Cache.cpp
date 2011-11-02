@@ -76,7 +76,7 @@ CacheFactory::create( const CacheOptions& options )
     }
     else if ( options.getDriver() == "tms" )
     {
-        OE_WARN << LC << "Sorry, but TMS caching is no longer supported" << std::endl;
+        OE_WARN << LC << "Sorry, but TMS caching is no longer supported; try \"filesystem\" instead" << std::endl;
     }
 //    else if ( options.getDriver() == "tilecache" )
 //    {

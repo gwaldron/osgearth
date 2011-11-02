@@ -80,9 +80,6 @@ to extruded buildings.
         <terrain>
             <sample_ratio>0.5</sample_ratio>
         </terrain>
-        <cache type="tms">
-            <path>osgearth_cache</path>
-        </cache>
     </options> 
     
     <external>

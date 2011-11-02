@@ -51,9 +51,9 @@ namespace osgEarth
         optional<Usage>& usage() { return _usage; }
         const optional<Usage>& usage() const { return _usage; }
 
-        /** Gets the age limit for a cache record */
-        optional<double>& maxAgeSeconds() { return _maxAge; }
-        const optional<double>& maxAgeSeconds() const { return _maxAge; }
+        /** Gets the age limit for a cache record (in seconds) */
+        optional<double>& maxAge() { return _maxAge; }
+        const optional<double>& maxAge() const { return _maxAge; }
 
     public: // convenience functions.
 

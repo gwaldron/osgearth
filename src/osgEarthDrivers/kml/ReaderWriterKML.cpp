@@ -48,17 +48,17 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 #endif // SUPPORT_KMZ
     }
 
-    ReadResult readObject(const std::string& url, const Options* options) const
+    ReadResult readObject(const std::string& url, const osgDB::Options* options) const
     {
         return readNode( url, options );
     }
 
-    ReadResult readObject(std::istream& in, const Options* options ) const
+    ReadResult readObject(std::istream& in, const osgDB::Options* options ) const
     {
         return readNode(in, options);
     }
 
-    ReadResult readNode(const std::string& url, const Options* options) const
+    ReadResult readNode(const std::string& url, const osgDB::Options* options) const
     {
         std::string ext = osgDB::getLowerCaseFileExtension(url);
         if ( !acceptsExtension(ext) )
@@ -66,7 +66,11 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
         if ( ext == "kmz" )
         {
-            return URI(url + "/.kml").readNode( options );
+            osg::ref_ptr<osg::Node> result;
+            if ( URI(url + "/.kml").readNode( result, options ) )
+                return ReadResult( result.get() );
+            else
+                return ReadResult();
         }
         else
         {
@@ -77,7 +81,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         }
     }
 
-    ReadResult readNode(std::istream& in, const Options* options ) const
+    ReadResult readNode(std::istream& in, const osgDB::Options* options ) const
     {
         if ( !options )
             return ReadResult("Missing required MapNode option");

@@ -72,7 +72,7 @@ _dataModelRevision( 0 )
     }
 
     // the map-side dbOptions object holds I/O information for all components.
-    _dbOptions = new osgDB::Options();
+    _dbOptions = osg::clone( Registry::instance()->getDefaultOptions() );
 
     // we do our own caching
     _dbOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );

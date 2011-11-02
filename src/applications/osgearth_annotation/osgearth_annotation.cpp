@@ -74,14 +74,14 @@ main(int argc, char** argv)
     annoGroup->addChild( new PlacemarkNode(
         mapNode, 
         osg::Vec3d(-74, 40.714, 0), 
-        URI("../data/placemark32.png").readImage(),
+        osgDB::readImageFile( "../data/placemark32.png" ),
         "New York") );
 
     // a Placemark combines a 2D icon with a text label.
     annoGroup->addChild( new PlacemarkNode(
         mapNode, 
         osg::Vec3d(139.75, 35.685, 0), 
-        URI("../data/placemark32.png").readImage(),
+        osgDB::readImageFile( "../data/placemark32.png" ),
         "Tokyo" ) );
 
     // a box that follows lines of latitude (rhumb line interpolation, the default)

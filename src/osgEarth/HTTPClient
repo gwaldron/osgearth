@@ -260,8 +260,8 @@ namespace osgEarth
          */
         static ResultCode readString(
             const std::string& uri,
-            std::string& output,
-            ProgressCallback* callback =0);
+            std::string&       output,
+            ProgressCallback*  callback =0);
 
         /**
          * Downloads a file directly to disk.

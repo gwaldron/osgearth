@@ -172,8 +172,7 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
-        _noDataImage = URI(*_options.noDataImageFilename()).readImage();
-        if ( !_noDataImage.valid() )
+        if ( ! URI( *_options.noDataImageFilename() ).readImage( _noDataImage ) )
         {
             OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
         }
@@ -375,12 +374,15 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
     if ( cacheBin && _runtimeOptions.cachePolicy()->isCacheReadable() )
     {
         RasterCacheBinAdapter bin( cacheBin );
-        osg::ref_ptr<const osg::Image> cachedImage;
+        osg::ref_ptr<osg::Image> cachedImage;
         if ( bin.getImage( key, cachedImage ) )
         {
-            result = GeoImage( ImageUtils::cloneImage(cachedImage.get()), key.getExtent() );
-            ImageUtils::normalizeImage( result.getImage() );
-            return result;
+            ImageUtils::normalizeImage( cachedImage.get() );
+            return GeoImage( cachedImage.get(), key.getExtent() );
+            // Cloning is no longer necessary..
+            //result = GeoImage( ImageUtils::cloneImage(cachedImage.get()), key.getExtent() );
+            //ImageUtils::normalizeImage( result.getImage() );
+            //return result;
         }
     }
     

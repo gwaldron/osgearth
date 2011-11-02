@@ -95,7 +95,7 @@ PlacemarkNode::init()
             _image = marker->getImage();
             if ( !_image.valid() && marker->url().isSet() )
             {
-                _image = URI(marker->url()->expr()).readImage();
+                URI(marker->url()->expr()).readImage( _image );
             }
         }
     }

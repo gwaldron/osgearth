@@ -78,8 +78,7 @@ public:
         //URI url = _options.url().value();
         if ( _options.url()->empty() ) //!url.empty() )
         {
-            URI::ResultCode code;
-            image = _options.url()->readImage( dbOptions, &code );
+            URI::ResultCode code = _options.url()->readImage( image, dbOptions );
             if ( !image.valid() )
             {
                 OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: " << 

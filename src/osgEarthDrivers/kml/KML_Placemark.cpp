@@ -92,13 +92,13 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
 
     if ( isPoint )
     {
-        osg::Image* image = iconURI.readImage();
-        if ( !image )
+        osg::ref_ptr<osg::Image> image;
+        if ( ! iconURI.readImage(image) )
         {
             image = cx._options->defaultIconImage().get();
             if ( !image )
             {
-                image = cx._options->defaultIconURI()->readImage();
+                cx._options->defaultIconURI()->readImage( image );
             }
         }
 

@@ -70,8 +70,9 @@ _caps            ( 0L )
 
     // set up our default r/w options to NOT cache archives!
     _defaultOptions = new osgDB::Options();
-    _defaultOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
-        ((int)_defaultOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
+    _defaultOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
+    //_defaultOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
+    //    ((int)_defaultOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
 
     // see if there's a cache in the envvar
     const char* cachePath = ::getenv("OSGEARTH_CACHE_PATH");

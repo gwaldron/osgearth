@@ -36,8 +36,9 @@ namespace osgEarth
 
     public: // Cache interface
 
-        // note: rw is unused by this object.
         virtual CacheBin* addBin( const std::string& binID );
+
+        virtual CacheBin* getOrCreateDefaultBin();
     
     private:
         MemCache( const MemCache& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }

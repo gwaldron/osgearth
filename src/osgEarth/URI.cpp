@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/URI>
+#include <osgEarth/Cache>
 #include <osgEarth/CacheBin>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
@@ -163,68 +164,200 @@ URI::append( const std::string& suffix ) const
     return result;
 }
 
-osg::Object*
-URI::readObject( const osgDB::Options* options, ResultCode* out_code ) const
+#if 0
+URI::ResultCode
+URI::readObject(osg::ref_ptr<osg::Object>& output,
+                const osgDB::Options*      dbOptions,
+                const CachePolicy&         cachePolicy ) const
 {
-    if ( empty() ) {
-        if ( out_code ) *out_code = RESULT_NOT_FOUND;
-        return 0L;
-    }
+    if ( empty() )
+        return RESULT_NOT_FOUND;
 
-    osg::ref_ptr<const osgDB::Options> myOptions = fixOptions(options);
+    osg::ref_ptr<const osgDB::Options> myDBOptions = fixOptions(dbOptions);
 
     osg::ref_ptr<osg::Object> object;
-    ResultCode result = (ResultCode)HTTPClient::readObjectFile( _fullURI, object, myOptions.get() );
+    ResultCode result = (ResultCode)HTTPClient::readObjectFile( _fullURI, object, myDBOptions.get() );
     if ( out_code ) *out_code = result;
 
     return object.release();
 }
+#endif
 
-osg::Image*
-URI::readImage( const osgDB::Options* options, ResultCode* out_code ) const
+namespace
 {
-    if ( empty() ) {
-        if ( out_code ) *out_code = RESULT_NOT_FOUND;
-        return 0L;
+    // extracts a CacheBin from the dboptions; if one cannot be found, fall back on the
+    // default CacheBin of a Cache found in the dboptions; failing that, call back on
+    // the default CacheBin of the registry-wide cache.
+    CacheBin* s_getCacheBin( const osgDB::Options* dbOptions )
+    {
+        CacheBin* bin = CacheBin::get( dbOptions );
+        if ( !bin )
+        {
+            Cache* cache = Cache::get( dbOptions );
+            if ( !cache )
+            {
+                cache = Registry::instance()->getCache();
+            }
+
+            if ( cache )
+            {
+                bin = cache->getOrCreateDefaultBin();
+            }
+        }
+        return bin;
     }
-
-    osg::ref_ptr<const osgDB::Options> myOptions = fixOptions(options);
-
-    //OE_INFO << LC << "readImage: " << _fullURI << std::endl;
-
-    osg::ref_ptr<osg::Image> image;
-    ResultCode result = (ResultCode)HTTPClient::readImageFile( _fullURI, image, myOptions.get() );
-    if ( out_code ) *out_code = result;
-
-    return image.release();
 }
 
-osg::Node*
-URI::readNode( const osgDB::Options* options, ResultCode* out_code ) const
+URI::ResultCode
+URI::readObject(osg::ref_ptr<osg::Object>& output,
+                const osgDB::Options*      dbOptions,
+                const CachePolicy&         cachePolicy ) const
 {
-    if ( empty() ) {
-        if ( out_code ) *out_code = RESULT_NOT_FOUND;
-        return 0L;
+    output = 0L;
+
+    if ( empty() )
+        return RESULT_NOT_FOUND;
+
+    ResultCode code   = RESULT_OK;
+    CacheBin*  bin    = 0L;
+
+    if ( cachePolicy.usage() != CachePolicy::USAGE_NO_CACHE )
+    {
+        bin = s_getCacheBin( dbOptions );
     }
 
-    osg::ref_ptr<const osgDB::Options> myOptions = fixOptions(options);
+    if ( bin && cachePolicy.isCacheReadable() )
+    {
+        bin->readObject( output, full(), *cachePolicy.maxAge() );
+    }
 
-    osg::ref_ptr<osg::Node> node;
-    ResultCode result = (ResultCode)HTTPClient::readNodeFile( _fullURI, node, myOptions.get() );
-    if ( out_code ) *out_code = result;
-    return node.release();
+    if ( !output.valid() )
+    {
+        code = (ResultCode)HTTPClient::readObjectFile( 
+            _fullURI, 
+            output, 
+            dbOptions ? dbOptions : Registry::instance()->getDefaultOptions() );
+
+        if ( code == RESULT_OK && output.valid() && bin && cachePolicy.isCacheWriteable() )
+        {
+            bin->write( full(), output.get() );
+        }
+    }
+
+    return code;
 }
 
-std::string
-URI::readString( const osgDB::Options* options, ResultCode* out_code ) const
+URI::ResultCode
+URI::readImage(osg::ref_ptr<osg::Image>& output,
+               const osgDB::Options*     dbOptions,
+               const CachePolicy&        cachePolicy ) const
 {
-    if ( empty() ) {
-        if ( out_code ) *out_code = RESULT_NOT_FOUND;
-        return 0L;
+    output = 0L;
+
+    if ( empty() )
+        return RESULT_NOT_FOUND;
+
+    ResultCode code   = RESULT_OK;
+    CacheBin*  bin    = 0L;
+
+    if ( cachePolicy.usage() != CachePolicy::USAGE_NO_CACHE )
+    {
+        bin = s_getCacheBin( dbOptions );
     }
 
-    std::string str;
-    ResultCode result = (ResultCode)HTTPClient::readString( _fullURI, str );
-    if ( out_code ) *out_code = result;
-    return str;
+    if ( bin && cachePolicy.isCacheReadable() )
+    {
+        bin->readImage( output, full(), *cachePolicy.maxAge() );
+    }
+
+    if ( !output.valid() )
+    {
+        code = (ResultCode)HTTPClient::readImageFile( 
+            _fullURI, 
+            output, 
+            dbOptions ? dbOptions : Registry::instance()->getDefaultOptions() );
+
+        if ( code == RESULT_OK && output.valid() && bin && cachePolicy.isCacheWriteable() )
+        {
+            bin->write( full(), output.get() );
+        }
+    }
+
+    return code;
+}
+
+URI::ResultCode
+URI::readNode(osg::ref_ptr<osg::Node>&  output,
+              const osgDB::Options*     dbOptions,
+              const CachePolicy&        cachePolicy ) const
+{
+    output = 0L;
+
+    if ( empty() )
+        return RESULT_NOT_FOUND;
+
+    ResultCode code   = RESULT_OK;
+    CacheBin*  bin    = 0L;
+
+    if ( cachePolicy.usage() != CachePolicy::USAGE_NO_CACHE )
+    {
+        bin = s_getCacheBin( dbOptions );
+    }
+
+    if ( bin && cachePolicy.isCacheReadable() )
+    {
+        bin->readObject( output, full(), *cachePolicy.maxAge() );
+    }
+
+    if ( !output.valid() )
+    {
+        code = (ResultCode)HTTPClient::readNodeFile(
+            _fullURI, 
+            output, 
+            dbOptions ? dbOptions : Registry::instance()->getDefaultOptions() );
+
+        if ( code == RESULT_OK && output.valid() && bin && cachePolicy.isCacheWriteable() )
+        {
+            bin->write( full(), output.get() );
+        }
+    }
+
+    return code;
+}
+
+URI::ResultCode
+URI::readString(std::string&              output,
+                const osgDB::Options*     dbOptions,
+                const CachePolicy&        cachePolicy ) const
+{
+    output.clear();
+
+    if ( empty() )
+        return RESULT_NOT_FOUND;
+
+    ResultCode code   = RESULT_OK;
+    CacheBin*  bin    = 0L;
+
+    if ( cachePolicy.usage() != CachePolicy::USAGE_NO_CACHE )
+    {
+        bin = s_getCacheBin( dbOptions );
+    }
+
+    bool cacheReadOK = false;
+    if ( bin && cachePolicy.isCacheReadable() )
+    {
+        cacheReadOK = bin->readString( output, full(), *cachePolicy.maxAge() );
+    }
+
+    if ( !cacheReadOK )
+    {
+        code = (ResultCode)HTTPClient::readString( _fullURI, output, 0L );
+
+        if ( code == RESULT_OK && output.size()>0 && bin && cachePolicy.isCacheWriteable() )
+        {
+            bin->write( full(), output );
+        }
+    }
+
+    return code;
 }

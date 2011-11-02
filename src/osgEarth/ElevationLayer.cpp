@@ -344,12 +344,16 @@ ElevationLayer::createHeightField(const TileKey&    key,
          _runtimeOptions.cachePolicy()->isCacheReadable() )
     {
         RasterCacheBinAdapter bin( cacheBin );
-        osg::ref_ptr<const osg::HeightField> cachedRaster;
+        osg::ref_ptr<osg::HeightField> cachedRaster;
         if ( bin.getHeightField( key, cachedRaster ) )
         {
-            result = new osg::HeightField( *cachedRaster.get() );
+            result = cachedRaster.release();
             if ( result )
                 fromCache = true;
+            ////TODO: no longer need to clone the result, I think
+            //result = new osg::HeightField( *cachedRaster.get() );
+            //if ( result )
+            //    fromCache = true;
         }
     }
 

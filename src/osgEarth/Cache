@@ -83,6 +83,13 @@ namespace osgEarth
          */
         CacheBin* getBin( const std::string& name );
 
+        /** 
+         * Gets the default caching bin within this cache. This may or may not
+         * be supported by the implementation, so be sure to check the result
+         * before using it.
+         */
+        CacheBin* getOrCreateDefaultBin() { return _defaultBin.get(); }
+
         /**
          * Creates (and returns a pointer to) a new Cache Bin.
          * @param binID Name of the new bin
@@ -95,6 +102,15 @@ namespace osgEarth
          * @param bin Bin to remove.
          */
         virtual void removeBin( CacheBin* bin );
+
+        /**
+         * Whether the objects returned by CacheBins in this Cache need to be cloned
+         * before use. This would be true in the case of a multi-threaded memory-cache,
+         * for example, where you don't want the actual item in the Cache to have outdie
+         * references to it. (Note: normal use of the Cache is via the URI class, which
+         * automatically does this for you.)
+         */
+        virtual bool cloneRequired() const { return true; }
 
         /** 
          * Gets an Options structure representing this cache's configuration.
@@ -111,14 +127,15 @@ namespace osgEarth
         /**
          * Fetch pointer from a osgDB::Options
          */
-        static Cache* from( const osgDB::Options* options ) {
+        static Cache* get( const osgDB::Options* options ) {
             return options ? const_cast<Cache*>( static_cast<const Cache*>( options->getPluginData("osgEarth::Cache") ) ) : 0L;
         }
 
     protected:
-        bool                  _ok;
-        CacheOptions          _options;
-        ThreadSafeCacheBinMap _bins;
+        bool                   _ok;
+        CacheOptions           _options;
+        ThreadSafeCacheBinMap  _bins;
+        osg::ref_ptr<CacheBin> _defaultBin;
     };
 
 //--------------------------------------------------------------------
@@ -130,20 +147,18 @@ namespace osgEarth
     {
         RasterCacheAdapter( Cache* cache ) : _cache(cache) { }
 
-        bool getImage( const TileKey& key, const std::string& binID, osg::ref_ptr<const osg::Image>& output )
+        bool getImage( const TileKey& key, const std::string& binID, osg::ref_ptr<osg::Image>& output )
         {
             CacheBin* bin = _cache->getBin( binID );
             if ( !bin ) return false;
-            output = dynamic_cast<const osg::Image*>( bin->readImage( key.str() ) );
-            return output.valid();
+            return bin->readImage( output, key.str() );
         }
 
-        bool getHeightField( const TileKey& key, const std::string& binID, osg::ref_ptr<const osg::HeightField>& output )
+        bool getHeightField( const TileKey& key, const std::string& binID, osg::ref_ptr<osg::HeightField>& output )
         {
             CacheBin* bin = _cache->getBin( binID );
             if ( !bin ) return false;
-            output = dynamic_cast<const osg::HeightField*>( bin->readObject( key.str() ) );
-            return output.valid();
+            return bin->readObject( output, key.str() );
         }
 
         bool isCached( const TileKey& key, const std::string& binID )
@@ -174,16 +189,14 @@ namespace osgEarth
     {
         RasterCacheBinAdapter( CacheBin* bin ) : _bin(bin) { }
 
-        bool getImage( const TileKey& key, osg::ref_ptr<const osg::Image>& output )
+        bool getImage( const TileKey& key, osg::ref_ptr<osg::Image>& output )
         {
-            output = _bin->readImage( key.str() );
-            return output.valid();
+            return _bin->readImage( output, key.str() );
         }
 
-        bool getHeightField( const TileKey& key, osg::ref_ptr<const osg::HeightField>& output )
+        bool getHeightField( const TileKey& key, osg::ref_ptr<osg::HeightField>& output )
         {
-            output = dynamic_cast<const osg::HeightField*>( _bin->readObject( key.str() ) );
-            return output.valid();
+            return _bin->readObject( output, key.str() );
         }
 
         bool isCached( const TileKey& key )

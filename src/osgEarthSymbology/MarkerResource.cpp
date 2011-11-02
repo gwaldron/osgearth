@@ -120,8 +120,8 @@ MarkerResource::createNode() const
 osg::Node*
 MarkerResource::createNodeFromURI( const URI& uri ) const
 {
-    osg::ref_ptr<osg::Object> obj = uri.readObject();
-    if ( obj.valid() )
+    osg::ref_ptr<osg::Object> obj;
+    if ( uri.readObject( obj ) )
     {
         if ( dynamic_cast<osg::Image*>( obj.get() ) )
         {

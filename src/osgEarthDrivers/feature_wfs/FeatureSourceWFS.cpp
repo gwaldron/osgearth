@@ -120,7 +120,7 @@ public:
                 sep + 
                 "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
           
-            Cache* cache = Cache::from(dbOptions);
+            Cache* cache = Cache::get(dbOptions);
             if ( cache )
             {
                 std::string binId = Stringify() << std::hex << hashString( _options.url()->full() );

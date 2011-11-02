@@ -199,11 +199,12 @@ TileSource::createImage(const TileKey&        key,
     // Try to get it from the memcache fist
     if (_memCache.valid())
     {
-        osg::ref_ptr<const osg::Image> cachedImage;
+        osg::ref_ptr<osg::Image> cachedImage;
         if ( rasterCache.getImage( key, "", cachedImage ) )
-        //if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
         {
-            return ImageUtils::cloneImage(cachedImage.get());
+            return cachedImage.release();
+            //// TODO: no longer need to clone the image, I think. -gw
+            //return ImageUtils::cloneImage(cachedImage.get());
         }
     }
 
@@ -233,10 +234,12 @@ TileSource::createHeightField(const TileKey&        key,
     // Try to get it from the memcache first:
 	if (_memCache.valid())
 	{
-        osg::ref_ptr<const osg::HeightField> cachedHF;
+        osg::ref_ptr<osg::HeightField> cachedHF;
 		if ( rasterCache.getHeightField( key, "", cachedHF ) )
         {
-            return new osg::HeightField( *cachedHF.get() );
+            return cachedHF.release();
+            ////TODO: no longer need to clone this, I think
+            //return new osg::HeightField( *cachedHF.get() );
         }
 	}
 

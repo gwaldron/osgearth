@@ -24,6 +24,7 @@
 #include <osgEarth/URI>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
+#include <fstream>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -52,6 +53,8 @@ namespace
 
         CacheBin* addBin( const std::string& binID );
 
+        CacheBin* getOrCreateDefaultBin();
+
     protected:
 
         void init();
@@ -70,11 +73,15 @@ namespace
 
     public: // CacheBin interface
 
-        const osg::Object* readObject( const std::string& key, double maxAge =DBL_MAX );
+        bool readObject( osg::ref_ptr<osg::Object>& output, const std::string& key, double maxAge =DBL_MAX );
 
-        const osg::Image* readImage( const std::string& key, double maxAge =DBL_MAX );
+        bool readImage( osg::ref_ptr<osg::Image>& output, const std::string& key, double maxAge =DBL_MAX );
+
+        bool readString( std::string& output, const std::string& key, double maxAge =DBL_MAX );
 
         bool write( const std::string& key, const osg::Object* object );
+
+        bool write( const std::string& key, const std::string& buffer );
 
         bool isCached( const std::string& key, double maxAge =DBL_MAX );
 
@@ -127,6 +134,21 @@ namespace
         return _bins.getOrCreate( name, new FileSystemCacheBin( name, _rootPath ) );
     }
 
+    CacheBin*
+    FileSystemCache::getOrCreateDefaultBin()
+    {
+        static Threading::Mutex s_defaultBinMutex;
+        if ( !_defaultBin.valid() )
+        {
+            Threading::ScopedMutexLock lock( s_defaultBinMutex );
+            if ( !_defaultBin.valid() ) // double-check
+            {
+                _defaultBin = new FileSystemCacheBin( "__default", _rootPath );
+            }
+        }
+        return _defaultBin.get();
+    }
+
     //------------------------------------------------------------------------
 
     FileSystemCacheBin::FileSystemCacheBin(const std::string&   binID,
@@ -153,8 +175,10 @@ namespace
         }
     }
 
-    const osg::Image*
-    FileSystemCacheBin::readImage( const std::string& key, double maxAge )
+    bool
+    FileSystemCacheBin::readImage(osg::ref_ptr<osg::Image>& output,
+                                  const std::string&        key,
+                                  double                    maxAge )
     {
         if ( !_ok ) return 0L;
 
@@ -178,11 +202,14 @@ namespace
             OE_DEBUG << LC << "Failed to read \"" << key << "\" from cache bin " << getID() << std::endl;
         }
 
-        return r.takeImage();
+        output = r.getImage();
+        return output.valid();
     }
 
-    const osg::Object*
-    FileSystemCacheBin::readObject( const std::string& key, double maxAge )
+    bool
+    FileSystemCacheBin::readObject(osg::ref_ptr<osg::Object>& output,
+                                   const std::string&         key,
+                                   double                     maxAge )
     {
         if ( !_ok ) return 0L;
 
@@ -206,7 +233,48 @@ namespace
             OE_DEBUG << LC << "Failed to read \"" << key << "\" from cache bin " << getID() << std::endl;
         }
 
-        return r.takeObject();
+        output = r.getObject();
+        return output.valid();
+    }
+
+    bool
+    FileSystemCacheBin::readString(std::string&        output,
+                                   const std::string&  key,
+                                   double              maxAge )
+    {
+        output.clear();
+
+        if ( !_ok ) return 0L;
+
+        //todo: handle maxAge
+
+        //todo: mangle "key" into a legal path name
+        URI fileURI( toLegalFileName(key), _metaPath );
+
+        {
+            ScopedReadLock sharedLock( _rwmutex );
+            std::ifstream infile( (fileURI.full() + ".dat").c_str() );
+            if ( infile.is_open() )
+            {
+                infile >> std::noskipws;
+                std::stringstream buf;
+                buf << infile.rdbuf();
+			    std::string bufStr;
+		        bufStr = buf.str();
+                output = bufStr;
+            }
+        }
+
+        if ( output.size() > 0 )
+        {
+            OE_DEBUG << LC << "Read \"" << key << "\" from cache bin " << getID() << std::endl;
+        }
+        else
+        {
+            OE_DEBUG << LC << "Failed to read \"" << key << "\" from cache bin " << getID() << std::endl;
+        }
+
+        return output.size() > 0;
     }
 
     bool
@@ -249,6 +317,50 @@ namespace
         }
 
         return r.success();
+    }
+
+    bool
+    FileSystemCacheBin::write(const std::string& key, const std::string& buffer )
+    {
+        // convert the key into a legal filename:
+        URI fileURI( toLegalFileName(key), _metaPath );
+
+        if ( buffer.size() == 0 )
+            return false;
+
+        bool ok = false;
+        {
+            // prevent cache contention:
+            ScopedWriteLock exclusiveLock( _rwmutex );
+
+            // make a home for it..
+            if ( !osgDB::fileExists( osgDB::getFilePath(fileURI.full()) ) )
+                osgDB::makeDirectoryForFile( fileURI.full() );
+
+            // tack on the extension
+            std::string filename = fileURI.full() + ".dat";
+
+            std::ofstream outfile( filename.c_str() );
+            if ( outfile.is_open() )
+            {
+                outfile << buffer;
+                outfile.flush();
+                outfile.close();
+                ok = true;
+            }
+        }
+
+        if ( ok )
+        {
+            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
+        }
+        else
+        {
+            OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin "
+                << getID() <<  std::endl;
+        }
+
+        return ok;
     }
 
     bool

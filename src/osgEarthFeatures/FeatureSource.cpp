@@ -144,7 +144,7 @@ _options( options )
 {    
     _dbOptions  = dbOptions;
     _uriContext = URIContext( dbOptions );
-    _cache      = Cache::from( dbOptions );
+    _cache      = Cache::get( dbOptions );
 }
 
 const FeatureProfile*

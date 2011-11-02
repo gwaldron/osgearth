@@ -143,10 +143,10 @@ namespace osgEarth
         void process( osg::ref_ptr<osg::Image>& image ) const;
 
     private:
-        ImageLayerOptions _options;
-        osg::Vec4f _chromaKey;
-        osg::ref_ptr<const osg::Image> _noDataImage;
-        bool _layerInTargetProfile;
+        ImageLayerOptions        _options;
+        osg::Vec4f               _chromaKey;
+        osg::ref_ptr<osg::Image> _noDataImage;
+        bool                     _layerInTargetProfile;
     };
 
     //--------------------------------------------------------------------

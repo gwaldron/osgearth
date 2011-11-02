@@ -47,7 +47,9 @@ namespace osgEarth { namespace Drivers {
             options->setPluginData( "osgEarth::MapNode", mapNode );
             options->setPluginData( "osgEarth::KMLOptions", (void*)&kmlOptions );
 
-            return uri.readNode( options.get() );
+            osg::ref_ptr<osg::Node> node;
+            uri.readNode( node, options.get() );
+            return node.release();
         }
     };
 

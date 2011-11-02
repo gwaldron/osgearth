@@ -73,10 +73,15 @@ WFSFeatureType::WFSFeatureType()
 /**************************************************************************************/
 
 WFSCapabilities* 
-WFSCapabilitiesReader::read( const URI& location, const osgDB::ReaderWriter::Options *options )
+WFSCapabilitiesReader::read( const URI& location, const osgDB::Options* dbOptions )
 {
-    std::stringstream buf( location.readString(0L) );
-    return read( buf );
+    std::string buffer;
+    if ( location.readString(buffer, dbOptions) )
+    {
+        std::stringstream buf(buffer);
+        return read(buf);
+    }
+    else return 0L;
 }
 
 #if 0

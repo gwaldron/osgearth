@@ -62,7 +62,7 @@ namespace osgEarth
         /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
         OpenThreads::ReentrantMutex& getGDALMutex();
 
-        /** The system-wide cache. */
+        /** The system-wide default cache. */
         Cache* getCache() const;
         void setCache( Cache* cache );
 

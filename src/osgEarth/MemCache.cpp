@@ -27,6 +27,14 @@ using namespace osgEarth;
 namespace
 {
     typedef LRUCache<std::string, osg::ref_ptr<const osg::Object> > MemCacheLRU;
+    
+    struct RefString : public osg::Object, public std::string
+    {
+        RefString() { }
+        RefString( const RefString& rhs, const osg::CopyOp& op ) { }
+        RefString( const std::string& in ) : std::string(in) { }
+        META_Object( osgEarth, RefString );
+    };
 
     struct MemCacheBin : public CacheBin
     {
@@ -37,16 +45,36 @@ namespace
             //nop
         }
 
-        const osg::Object* readObject( const std::string& key, double maxAge )
+        bool readObject(osg::ref_ptr<osg::Object>& output,
+                        const std::string&         key,
+                        double                     maxAge )
         {
             Threading::ScopedReadLock sharedLock( _mutex );
             MemCacheLRU::Record rec = _lru.get(key);
-            return rec.valid() ? rec.value().get() : 0L;
+            // clone required since the cache is in memory
+            output = rec.valid() ? osg::clone(rec.value().get(), osg::CopyOp::DEEP_COPY_ALL) : 0L;
+            return output.valid();
         }
 
-        const osg::Image* readImage( const std::string& key, double maxAge )
+        bool readImage(osg::ref_ptr<osg::Image>& output,
+                       const std::string&        key,
+                       double                    maxAge )
         {
-            return dynamic_cast<const osg::Image*>( readObject(key, maxAge) );
+            osg::ref_ptr<osg::Object> obj;
+            readObject( obj, key, maxAge );
+            output = dynamic_cast<osg::Image*>(obj.get());
+            return output.valid();
+        }
+
+        bool readString(std::string&        buffer,
+                        const std::string&  key,
+                        double              maxAge )
+        {
+            osg::ref_ptr<osg::Object> obj;
+            readObject( obj, key, maxAge );
+            RefString* r = dynamic_cast<RefString*>(obj.get());
+            if ( r ) buffer = *r;
+            return r != 0L;
         }
 
         bool write( const std::string& key, const osg::Object* object )
@@ -59,6 +87,13 @@ namespace
             }
             else
                 return false;
+        }
+
+        bool write( const std::string& key, const std::string& buffer )
+        {
+            Threading::ScopedWriteLock exclusiveLock( _mutex );
+            _lru.insert( key, new RefString(buffer) );
+            return true;
         }
 
         bool isCached( const std::string& key, double maxAge ) 
@@ -86,4 +121,22 @@ CacheBin*
 MemCache::addBin( const std::string& binID )
 {
     return _bins.getOrCreate( binID, new MemCacheBin(binID, _maxBinSize) );
+}
+
+CacheBin*
+MemCache::getOrCreateDefaultBin()
+{
+    static Threading::Mutex s_defaultBinMutex;
+
+    if ( !_defaultBin.valid() )
+    {
+        Threading::ScopedMutexLock lock( s_defaultBinMutex );
+        // double check
+        if ( !_defaultBin.valid() )
+        {
+            _defaultBin = new MemCacheBin("__default", _maxBinSize);
+        }
+    }
+
+    return _defaultBin.get();
 }

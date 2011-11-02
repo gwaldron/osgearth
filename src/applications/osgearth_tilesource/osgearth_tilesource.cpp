@@ -55,7 +55,7 @@ public:
         _geom->push_back( osg::Vec3(5, 250, 0) );
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile )
+    void initialize( const osgDB::Options* options, const Profile* overrideProfile )
     {
         if ( overrideProfile )
             setProfile( overrideProfile );
@@ -63,7 +63,7 @@ public:
             setProfile( Registry::instance()->getGlobalGeodeticProfile() );
     }
 
-    osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
+    osg::Image* createImage( const TileKey& key, const osgDB::Options* options, ProgressCallback* progress )
     {
         GeometryRasterizer rasterizer( 256, 256 );
         rasterizer.draw( _geom.get(), colors[key.getLevelOfDetail() % 4] );

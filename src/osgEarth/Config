@@ -21,7 +21,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
-#include <osgEarth/URI>
 #include <osgDB/ReaderWriter>
 #include <osg/Version>
 #if OSG_MIN_VERSION_REQUIRED(2,9,5)
@@ -33,6 +32,8 @@
 
 namespace osgEarth
 {
+    class URI;
+
     typedef std::list<class Config> ConfigSet;
 
 
@@ -53,17 +54,19 @@ namespace osgEarth
     class OSGEARTH_EXPORT Config
     {
     public:
-        Config() { }
+        Config() : _emptyConfig(0L) { }
 
-        Config( const std::string& key ) : _key(key) { }
+        Config( const std::string& key ) : _key(key), _emptyConfig(0L) { }
 
-        Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ) { }
+        Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ), _emptyConfig(0L) { }
 
-        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children), _refMap(rhs._refMap), _uriContext(rhs._uriContext) { }
+        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children), _refMap(rhs._refMap), _referrer(rhs._referrer), _emptyConfig(0L) { }
+
+        ~Config() { if ( _emptyConfig ) delete _emptyConfig; }
 
         /** Context for resolving relative URIs that occur in this Config */
-        void setURIContext( const URIContext& value );
-        const URIContext& uriContext() const { return _uriContext; }
+        void setReferrer( const std::string& value );
+        const std::string& referrer() const { return _referrer; }
 
         bool loadXML( std::istream& in );
 
@@ -116,7 +119,9 @@ namespace osgEarth
             }
         }
 
-        const Config& child( const std::string& key ) const;
+        Config child( const std::string& key ) const;
+
+        Config* mutable_child( const std::string& key );
 
         void merge( const Config& rhs );
 
@@ -157,7 +162,7 @@ namespace osgEarth
 
         void add( const std::string& key, const std::string& value ) {
             _children.push_back( Config( key, value ) );
-            _children.back().setURIContext( _uriContext );
+            _children.back().setReferrer( _referrer );
         }
 
         void addChild( const Config& conf ) {
@@ -166,7 +171,7 @@ namespace osgEarth
 
         void add( const Config& conf ) {
             _children.push_back( conf );
-            _children.back().setURIContext( _uriContext );
+            _children.back().setReferrer( _referrer );
         }
 
         void add( const std::string& key, const Config& conf ) {
@@ -341,7 +346,8 @@ namespace osgEarth
         std::string _defaultValue;
         Properties  _attrs;
         ConfigSet   _children;   
-        URIContext  _uriContext;
+        std::string _referrer;
+        Config*     _emptyConfig;
 
         RefMap _refMap;
     };
@@ -376,32 +382,6 @@ namespace osgEarth
             return false;
     }
 
-    // specializations for URI:
-    template <> inline
-    void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
-        if ( opt.isSet() ) {
-            add( Config(key, opt->base()) );
-        }
-    }
-
-    template<> inline
-    void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
-        if ( opt.isSet() ) {
-            remove(key);
-            add( Config(key, opt->base()) );
-        }
-    }
-
-    template<> inline
-    bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
-        if ( hasValue( key ) ) {
-            output = URI( value(key), _uriContext );
-            return true;
-        }
-        else
-            return false;
-    }
-
     /**
      * Base class for all serializable options classes.
      */
@@ -412,8 +392,8 @@ namespace osgEarth
             : _conf( conf ) { }
         ConfigOptions( const ConfigOptions& rhs )
             : _conf( rhs.getConfig() ) { }
-
-        const URIContext& uriContext() const { return _conf.uriContext(); }
+        
+        const std::string& referrer() const { return _conf.referrer(); }
 
         ConfigOptions& operator = ( const ConfigOptions& rhs ) {
             if ( this != &rhs ) {
@@ -429,6 +409,8 @@ namespace osgEarth
         }
 
         virtual Config getConfig() const { return _conf; }
+
+        Config newConfig() const { Config c; c.setReferrer(referrer()); return c; }
 
     protected:
         virtual void mergeConfig( const Config& conf ) { }
@@ -449,14 +431,9 @@ namespace osgEarth
         void setDriver( const std::string& value ) { _driver = value; }
         const std::string& getDriver() const { return _driver; }
 
-        ///** Gets or sets the name of the object */
-        //void setName( const std::string& value ) { _name = value; }
-        //const std::string& getName() const { return _name; }
-
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            //conf.attr("name") = _name;
             conf.attr("driver") = _driver;
             return conf;
         }
@@ -468,7 +445,6 @@ namespace osgEarth
 
     public:
         void fromConfig( const Config& conf ) {
-            //_name = conf.value( "name" );
             _driver = conf.value( "driver" );
             if ( _driver.empty() && conf.hasValue("type") )
                 _driver = conf.value("type");

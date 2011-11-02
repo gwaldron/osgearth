@@ -20,6 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/URI>
 #include <osgDB/WriteFile>
 #include <osg/Version>
 #include <OpenThreads/ScopedLock>
@@ -440,47 +441,6 @@ TerrainLayer::getCacheBinMetadata( const Profile* profile, CacheBinMetadata& out
     return false;
 }
 
-#if 0
-std::string
-TerrainLayer::suggestCacheFormat() const
-{
-    std::string ext = _tileSource.valid() ? _tileSource->getExtension() : "";
-    return !ext.empty() ? ext : "png";
-}
-
-void
-TerrainLayer::applyCacheFormat( CacheBin* bin, const std::string& format )
-{
-    if ( bin )
-    {
-        osgDB::ReaderWriter* rw = 0L;
-
-        std::string::size_type pos = format.find('/');
-        if ( pos != std::string::npos ) // it's a mime-type
-        {
-            rw = osgDB::Registry::instance()->getReaderWriterForMimeType( format );
-            if ( !rw )
-            {
-                rw = osgDB::Registry::instance()->getReaderWriterForExtension( format.substr( ++pos ) );
-            }
-        }
-        if ( !rw )
-        {
-            rw = osgDB::Registry::instance()->getReaderWriterForExtension( format );
-        }
-
-        if ( rw )
-        {
-            bin->setReaderWriter( rw );
-        }
-        else
-        {
-            OE_WARN << LC << "Cannot find a ReaderWriter for cache format \"" << format << "\"" << std::endl;
-        }
-    }
-}
-#endif
-
 void
 TerrainLayer::initTileSource()
 {	
@@ -506,7 +466,16 @@ TerrainLayer::initTileSource()
     // Initialize the profile with the context information:
 	if ( _tileSource.valid() )
 	{
-		_tileSource->initialize( _referenceURI, overrideProfile.get() );
+        // set up the URI options.
+        if ( !_dbOptions.valid() )
+        {
+            _dbOptions = new osgDB::Options();       
+            if ( _cache.valid() ) _cache->store( _dbOptions.get() );
+            URIContext( _runtimeOptions->referrer() ).store( _dbOptions.get() );
+        }
+
+        // intialize the tile source
+		_tileSource->initialize( _dbOptions.get(), overrideProfile.get() );
 
 		if ( _tileSource->isOK() )
 		{
@@ -518,12 +487,6 @@ TerrainLayer::initTileSource()
             _tileSource = NULL;
 		}
 	}
-    
-    // Set the cache format to the native format of the TileSource if it isn't already set.
-    //if ( _runtimeOptions->cacheFormat()->empty() )
-    //{
-    //    _runtimeOptions->cacheFormat() = suggestCacheFormat();
-    //}
 
     // Set the profile from the TileSource if possible:
     if ( _tileSource.valid() )
@@ -593,7 +556,7 @@ TerrainLayer::setEnabled( bool value )
 }
 
 void
-TerrainLayer::setReferenceURI( const std::string& uri )
+TerrainLayer::setDBOptions( const osgDB::Options* dbOptions )
 {
-    _referenceURI = uri;
+    _dbOptions = osg::clone( dbOptions );
 }

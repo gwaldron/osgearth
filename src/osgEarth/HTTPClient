@@ -197,7 +197,7 @@ namespace osgEarth
                 code == RESULT_CANCELED;
         }
 
-        static std::string getResultCodeString( ResultCode code )
+        static std::string getResultCodeString( unsigned code )
         {
             return
                 code == RESULT_OK ? "OK" :

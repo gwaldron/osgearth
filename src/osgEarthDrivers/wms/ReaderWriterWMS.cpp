@@ -75,7 +75,7 @@ public:
     }
 
     /** override */
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
     {
         osg::ref_ptr<const Profile> result;
 
@@ -321,13 +321,13 @@ public:
 
 
     /** override */
-    osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
+    osg::Image* createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Image> image;
 
         if ( _timesVec.size() > 1 )
         {
-            image = createImageSequence( key, progress );
+            image = createImageSequence( key, dbOptions, progress );
         }
         else
         {
@@ -353,7 +353,7 @@ public:
     }
 
     /** creates a 3D image from timestamped data. */
-    osg::Image* createImage3D( const TileKey& key, ProgressCallback* progress )
+    osg::Image* createImage3D( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Image> image;
 
@@ -419,7 +419,7 @@ public:
     //}
 
     /** creates a 3D image from timestamped data. */
-    osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
+    osg::Image* createImageSequence( const TileKey& key, const osgDB::Options* options, ProgressCallback* progress )
     {
         osg::ImageSequence* seq = new SyncImageSequence(); //osg::ImageSequence();
 
@@ -452,10 +452,9 @@ public:
 
 
     /** override */
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress)
     {
-        osg::Image* image = createImage(key, progress);
+        osg::Image* image = createImage(key, dbOptions, progress);
         if (!image)
         {
             OE_INFO << "[osgEarth::WMS] Failed to read heightfield from " << createURI(key) << std::endl;

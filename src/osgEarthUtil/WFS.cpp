@@ -73,8 +73,13 @@ WFSFeatureType::WFSFeatureType()
 /**************************************************************************************/
 
 WFSCapabilities* 
-WFSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWriter::Options *options )
+WFSCapabilitiesReader::read( const URI& location, const osgDB::ReaderWriter::Options *options )
 {
+    std::stringstream buf( location.readString(0L) );
+    return read( buf );
+}
+
+#if 0
     WFSCapabilities *caps = NULL;
     if ( osgDB::containsServerAddress( location ) )
     {
@@ -94,6 +99,7 @@ WFSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWri
     }
     return caps;
 }
+#endif
 
 WFSCapabilities*
 WFSCapabilitiesReader::read(std::istream &in)

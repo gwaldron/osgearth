@@ -25,7 +25,7 @@ using namespace osgEarth::Symbology;
 
 Symbol::Symbol( const Config& conf )
 {
-    _uriContext = conf.uriContext();
+    _uriContext = URIContext(conf.referrer());
 }
 
 //------------------------------------------------------------------------

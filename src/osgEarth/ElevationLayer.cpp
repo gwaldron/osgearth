@@ -212,7 +212,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         }
 
         // Make it from the source:
-        result = source->createHeightField( key, _preCacheOp.get(), progress );
+        result = source->createHeightField( key, _dbOptions.get(), _preCacheOp.get(), progress );
     }
 
     // Blacklist the tile if we can't get it and it wasn't cancelled

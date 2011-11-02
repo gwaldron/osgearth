@@ -46,7 +46,7 @@ MapOptions::fromConfig( const Config& conf )
 Config
 MapOptions::getConfig() const
 {
-    Config conf; // get a fresh one since this is a final object // = ConfigOptions::getConfig();
+    Config conf = ConfigOptions::newConfig();
 
     conf.updateIfSet   ( "name",         _name );
     conf.updateObjIfSet( "profile",      _profileOptions );

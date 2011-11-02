@@ -437,7 +437,7 @@ Config
 XmlDocument::getConfig() const
 {
     Config conf = XmlElement::getConfig();
-    conf.setURIContext( _sourceURI.full() );
+    conf.setReferrer( _sourceURI.full() );
     return conf;
 }
 

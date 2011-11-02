@@ -65,14 +65,14 @@ public:
             _format = "png";
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
         //Set the profile to global geodetic.
         setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
     }
 
     // override
-    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress)
     {
         //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
         //if ( dynamic_cast<const PlateCarreTileKey&>( key ) )
@@ -107,8 +107,7 @@ public:
     }
 
     // override
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress)
     {
         //TODO
         return NULL;

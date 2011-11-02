@@ -337,7 +337,7 @@ StyleSheet::getConfig() const
 void
 StyleSheet::mergeConfig( const Config& conf )
 {
-    _uriContext = conf.uriContext();
+    _uriContext = URIContext( conf.referrer() );
 
     // read in any resource library references
     ConfigSet libraries = conf.children( "library" );
@@ -349,7 +349,7 @@ StyleSheet::mergeConfig( const Config& conf )
             continue;
         }
 
-        URI uri( i->value("url"), i->uriContext() );
+        URI uri( i->value("url"), i->referrer() );
         if ( uri.empty() ) {
             OE_WARN << LC << "Resource library missing required 'url' element" << std::endl;
             continue;
@@ -386,7 +386,7 @@ StyleSheet::mergeConfig( const Config& conf )
             // if there's a URL, read the CSS from the URL:
             if ( styleConf.hasValue("url") )
             {
-                URI uri( styleConf.value("url"), styleConf.uriContext() );
+                URI uri( styleConf.value("url"), styleConf.referrer() );
                 HTTPClient::readString( uri.full(), cssString );
             }
 
@@ -394,7 +394,7 @@ StyleSheet::mergeConfig( const Config& conf )
             // and create one style for each in the catalog.
             std::stringstream buf( cssString );
             Config css = CssUtils::readConfig( buf );
-            css.setURIContext( styleConf.uriContext( ) );
+            css.setReferrer( styleConf.referrer() );
             
             const ConfigSet children = css.children();
             for(ConfigSet::const_iterator j = children.begin(); j != children.end(); ++j )

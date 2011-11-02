@@ -61,13 +61,13 @@ public:
     const MaskSourceOptions& getOptions() const { return _options; }
 
     //override
-    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
+    void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
     {
-        MaskSource::initialize( referenceURI, map );
+        MaskSource::initialize( dbOptions, map );
 
         if ( _features.valid() )
         {
-            _features->initialize( referenceURI );
+            _features->initialize( dbOptions );
         } 
         else
         {

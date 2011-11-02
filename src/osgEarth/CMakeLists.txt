@@ -20,6 +20,7 @@ SET(LIB_NAME osgEarth)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
     Cache
+    CacheBin
     CachePolicy
 	CacheSeed
 	Capabilities
@@ -28,6 +29,7 @@ SET(LIB_PUBLIC_HEADERS
     Config
     Cube
     DrapeableNode
+    DriverContext
     ECEF
     ElevationLayer
     ElevationQuery

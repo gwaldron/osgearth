@@ -55,8 +55,6 @@ namespace osgEarth { namespace Features
         virtual const char* className() const { return "FeatureListSource"; }
         virtual const char* libraryName() const { return "osgEarthFeatures"; }
 
-        virtual void initialize( const std::string& referenceURI );
-
     protected:
         virtual const FeatureProfile* createFeatureProfile();
 

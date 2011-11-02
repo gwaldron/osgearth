@@ -234,17 +234,19 @@ namespace osgEarth
     	 * Creates an image for the given TileKey
 		 */
         virtual osg::Image* createImage(
-            const TileKey& key,
-            ImageOperation* op =0L,
-            ProgressCallback* progress =0L );
+            const TileKey&        key,
+            const osgDB::Options* dbOptions =0L,
+            ImageOperation*       op        =0L,
+            ProgressCallback*     progress  =0L );
 
         /**
          * Creates a heightfield for the given TileKey
          */
         virtual osg::HeightField* createHeightField(
-            const TileKey& key,
-            HeightFieldOperation* prepOp =0L,
-            ProgressCallback* progress = 0L );     
+            const TileKey&        key,
+            const osgDB::Options* dbOptions =0L,
+            HeightFieldOperation* op        =0L,
+            ProgressCallback*     progress  =0L );     
 
     public:
 
@@ -331,20 +333,28 @@ namespace osgEarth
          */
         virtual bool isDynamic() const { return false; }
 
+		/**
+		 * Initializes the TileSource.
+         *
+         * This is the initialize() function called by the osgEarth engine. You can define it in 
+         * the implementation class to do initial startup of the TileSource. Be sure to call the base
+         * class initialize() method from your implementation.
+		 */
+        virtual void initialize( 
+            const osgDB::Options* dbOptions       =0L,
+            const Profile*        overrideProfile =0L ) =0;
 
+        /** The options used to construct this tile source. */
+        const TileSourceOptions& getOptions() const { return _options; }
+
+    public:
+
+        /* methods required by osg::Object */
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const TileSource*>(obj)!=NULL; }
         virtual const char* className() const { return "TileSource"; }
         virtual const char* libraryName() const { return "osgEarth"; }
-
-		/**
-		 * Initialize the TileSource.  The profile should be computed and set here using setProfile()
-		 */
-		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL) = 0;
-
-        const TileSourceOptions& getOptions() const {
-            return _options; }
    
     protected:
 
@@ -354,18 +364,35 @@ namespace osgEarth
 		 * Creates an image for the given TileKey.
          * The returned object is new and is the responsibility of the caller.
 		 */
-		virtual osg::Image* createImage( const TileKey& key, ProgressCallback* progress ) = 0;
+		virtual osg::Image* createImage( 
+            const TileKey&        key, 
+            const osgDB::Options* options,
+            ProgressCallback*     progress ) = 0;
 
         /**
          * Creates a heightfield for the given TileKey
          * The returned object is new and is the responsibility of the caller.
          */
-        virtual osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress );
+        virtual osg::HeightField* createHeightField( 
+            const TileKey&        key, 
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
 
 		/**
 		 * Called by subclasses to initialize their profile
 		 */
 		void setProfile( const Profile* profile );
+
+#if 0
+        /** The URI context (for resolving relative paths) */
+        const URIContext& uriContext() const { return _uriContext; }
+
+        /** The Cache passed in via the dbOptions */
+        Cache* getCache() const { return _cache.get(); }
+
+        /** The CacheBin passing in via the dbOptions */
+        //CacheBin* getCacheBin() const { return _cacheBin.get(); }         
+#endif
 
     private:
         osg::ref_ptr<const Profile> _profile;
@@ -382,6 +409,10 @@ namespace osgEarth
 
         DataExtentList _dataExtents;
         //osg::ref_ptr< RTree<unsigned int> > _dataExtentsIndex;
+
+        //osg::observer_ptr<Cache>    _cache;
+        //osg::observer_ptr<CacheBin> _cacheBin;
+        //URIContext                  _uriContext;
     };
 
     

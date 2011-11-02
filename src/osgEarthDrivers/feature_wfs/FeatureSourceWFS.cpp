@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#include "WFSFeatureOptions"
 
 #include <osgEarth/Registry>
 #include <osgEarth/FileUtils>
@@ -24,7 +25,6 @@
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
 #include <osgEarthUtil/WFS>
-#include "WFSFeatureOptions"
 #include <osgEarthFeatures/OgrUtils>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -93,31 +93,43 @@ std::string getTempName(const std::string& prefix="", const std::string& suffix=
 class WFSFeatureSource : public FeatureSource
 {
 public:
-    WFSFeatureSource( const WFSFeatureOptions& options ) : FeatureSource( options ),      
-      _options( options )
+    WFSFeatureSource(const WFSFeatureOptions& options ) :
+      FeatureSource( options ),
+      _options     ( options )
     {        
+        //nop
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
     virtual ~WFSFeatureSource()
     {               
+        //nop
     }
 
     //override
-    void initialize( const std::string& referenceURI )
+    void initialize( const osgDB::Options* dbOptions )
     {
-        char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
-
         std::string capUrl;
-        if ( capUrl.empty() )
+
+        if ( _options.url().isSet() )
         {
+            char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
+
             capUrl = 
                 _options.url()->full() +
                 sep + 
                 "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
+          
+            Cache* cache = Cache::from(dbOptions);
+            if ( cache )
+            {
+                std::string binId = Stringify() << std::hex << hashString( _options.url()->full() );
+                _cacheBin = cache->addBin( binId );
+            }
         }
 
-        _capabilities = WFSCapabilitiesReader::read( capUrl, 0L );
+        _capabilities = WFSCapabilitiesReader::read( capUrl, dbOptions ); //URI(capUrl, URIContext(_cacheBin.get())), 0L );
+        //_capabilities = WFSCapabilitiesReader::read( capUrl, 0L );
         if ( !_capabilities.valid() )
         {
             OE_WARN << "[osgEarth::WFS] Unable to read WFS GetCapabilities." << std::endl;
@@ -341,9 +353,10 @@ public:
 
 
 private:
-    const WFSFeatureOptions _options;  
+    const WFSFeatureOptions         _options;  
     osg::ref_ptr< WFSCapabilities > _capabilities;
-    FeatureSchema _schema;
+    FeatureSchema                   _schema;
+    osg::ref_ptr<CacheBin>          _cacheBin;
 };
 
 

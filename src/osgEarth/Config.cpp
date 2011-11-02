@@ -23,21 +23,13 @@
 
 using namespace osgEarth;
 
-Config& emptyConfig()
-{
-    static Config _emptyConfig;
-    return _emptyConfig;
-}
-
 void
-Config::setURIContext( const URIContext& context )
+Config::setReferrer( const std::string& referrer )
 {
-    _uriContext = context;
+    _referrer = referrer;
     for( ConfigSet::iterator i = _children.begin(); i != _children.end(); i++ )
     { 
-        i->setURIContext( context.add(i->_uriContext) );
-        //URI newURI( i->uriContext(), context );
-        //i->setURIContext( *newURI );
+        i->setReferrer( osgEarth::getFullPath(_referrer, i->_referrer) );
     }
 }
 
@@ -50,14 +42,28 @@ Config::loadXML( std::istream& in )
     return xml.valid();
 }
 
-const Config&
+Config
 Config::child( const std::string& childName ) const
 {
     for( ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
         if ( i->key() == childName )
             return *i;
     }
-    return emptyConfig();
+
+    Config emptyConf;
+    emptyConf.setReferrer( _referrer );
+    return emptyConf;
+}
+
+Config*
+Config::mutable_child( const std::string& childName )
+{
+    for( ConfigSet::iterator i = _children.begin(); i != _children.end(); i++ ) {
+        if ( i->key() == childName )
+            return &(*i);
+    }
+
+    return 0L;
 }
 
 void

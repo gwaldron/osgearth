@@ -60,14 +60,6 @@ Cache::removeBin( CacheBin* bin )
 
 //------------------------------------------------------------------------
 
-CacheBin::CacheBin( const std::string& binID ) :
-_binID( binID )
-{
-    //nop
-}
-
-//------------------------------------------------------------------------
-
 #undef  LC
 #define LC "[CacheFactory] "
 #define CACHE_OPTIONS_TAG "__osgEarth::CacheOptions"

@@ -106,7 +106,7 @@ namespace
     Cache( options )
     {
         FileSystemCacheOptions fsco( options );
-        _rootPath = URI( *fsco.rootPath(), options.uriContext() ).full();
+        _rootPath = URI( *fsco.rootPath(), options.referrer() ).full();
         init();
     }
 

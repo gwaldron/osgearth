@@ -81,7 +81,7 @@ public:
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
     {
         if ( overrideProfile )
             setProfile( overrideProfile );
@@ -89,7 +89,7 @@ public:
             setProfile( Profile::create("global-geodetic") );
     }
 
-    osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
+    osg::Image* createImage( const TileKey& key, const osgDB::Options* options, ProgressCallback* progress )
     {
         // first draw the colored outline:
         GeometryRasterizer rasterizer( 256, 256 );

@@ -570,9 +570,9 @@ namespace
         }
 
         //override
-        void initialize( const std::string& referenceURI, const Map* map )
+        void initialize( const osgDB::Options* dbOptions, const Map* map )
         {
-            FeatureModelSource::initialize( referenceURI, map );
+            FeatureModelSource::initialize( dbOptions, map );
         }
 
         //override

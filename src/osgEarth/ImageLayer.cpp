@@ -22,6 +22,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/URI>
 #include <osg/Version>
 #include <memory.h>
 #include <limits.h>
@@ -451,7 +452,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
-    osg::Image* result = source->createImage( key, op.get(), progress );
+    osg::Image* result = source->createImage( key, _dbOptions.get(), op.get(), progress );
     
     // If image creation failed (but was not intentionally canceled),
     // blacklist this tile for future requests.

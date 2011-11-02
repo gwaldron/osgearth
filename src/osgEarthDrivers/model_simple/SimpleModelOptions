@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/ModelSource>
+#include <osgEarth/URI>
 
 namespace osgEarth { namespace Drivers
 {

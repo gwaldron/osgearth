@@ -22,6 +22,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/URI>
 
 #include <osg/Notify>
 #include <osg/io_utils>
@@ -152,7 +153,7 @@ public:
     {
 	}
 	
-	void initialize( const std::string& referenceURI)
+    void initialize( const osgDB::Options* dbOptions )
 	{
         Threading::ScopedMutexLock lock( _initializeMutex );
 
@@ -167,13 +168,14 @@ public:
 
         if ( !_url.empty() )
         {
+#if 0 // OBE
 			//If the path doesn't contain a server address, get the full path to the file.
 			if (!osgDB::containsServerAddress( *_url ))
 			{
                 //todo: obselete..?
                 _url = URI(_url.full(), referenceURI);
-				//_url = osgEarth::getFullPath(referenceURI, _url);
 			}
+#endif
 			
             osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
@@ -518,19 +520,18 @@ class VPBSource : public TileSource
 {
 public:
     VPBSource( VPBDatabase* vpbDatabase, const VPBOptions& in_options ) : 
-        TileSource(in_options),
-        _vpbDatabase(vpbDatabase),
-        _options( in_options ),
-        _referenceUri()
+        TileSource   (in_options),
+        _vpbDatabase (vpbDatabase),
+        _options     ( in_options )
     {
         //nop
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
-	    _referenceUri = referenceURI;
+	    //_referenceUri = referenceURI;
 
-	    _vpbDatabase->initialize(referenceURI);
+	    _vpbDatabase->initialize( dbOptions );
 
 	    if ( overrideProfile)
 	    {
@@ -542,7 +543,7 @@ public:
 	    }
     }
     
-	osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress)
 	{
 		osg::Image * ret = NULL;
 		//TODO:  Make VPB driver use progress callback
@@ -598,9 +599,9 @@ public:
 		return ret;
 	}
 
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress
-                                         )
+    osg::HeightField* createHeightField( const TileKey&        key,
+                                         const osgDB::Options* dbOptions,
+                                         ProgressCallback*     progress )
     {
         osg::ref_ptr<osgTerrain::TerrainTile> tile;
         _vpbDatabase->getTerrainTile(key, progress, tile);
@@ -627,7 +628,7 @@ public:
 private:
     osg::ref_ptr<VPBDatabase> _vpbDatabase;
     const VPBOptions _options;
-	std::string	_referenceUri;
+	//std::string	_referenceUri;
 };
 
 

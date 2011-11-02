@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
+#include <osgEarth/URI>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -40,13 +41,14 @@ using namespace osgEarth::Drivers;
 class TileCacheSource : public TileSource
 {
 public:
-    TileCacheSource( const TileSourceOptions& options ) : TileSource( options ), _options( options )
+    TileCacheSource( const TileSourceOptions& options ) 
+        : TileSource( options ), _options( options )
     {
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
-        _configPath = referenceURI;
+        //_configPath = referenceURI;
 
 		if (overrideProfile)
 		{
@@ -60,8 +62,7 @@ public:
 		}            
     }
 
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress)
     {
         unsigned int level, tile_x, tile_y;
         level = key.getLevelOfDetail() +1;
@@ -87,6 +88,9 @@ public:
             _options.format()->c_str() );
 
        
+        URI path( buf );
+
+#if 0 // OBE
         std::string path = buf;
 
         //If we have a relative path and the map file contains a server address, just concat the server path and the cache together.
@@ -100,9 +104,10 @@ public:
         {
             path = osgEarth::getFullPath(_configPath, path);
         }
+#endif
         
         osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile(path, image, 0L, progress ); //getOptions(), progress );
+        HTTPClient::readImageFile(path.full(), image, dbOptions, progress ); //getOptions(), progress );
         return image.release();
 
         //if (osgDB::containsServerAddress(path))
@@ -120,7 +125,7 @@ public:
     }
 
 private:
-    std::string _configPath;
+    //std::string _configPath;
     const TileCacheOptions _options;
 };
 

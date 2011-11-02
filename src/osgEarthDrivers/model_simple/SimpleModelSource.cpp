@@ -37,30 +37,30 @@ public:
         : ModelSource( options ), _options(options) { }
 
     //override
-    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
+    void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
     {
-        ModelSource::initialize( referenceURI, map );
+        ModelSource::initialize( dbOptions, map );
         
         //todo: deprecate?
-        _url = URI(_options.url()->base(), referenceURI);
+        //_url = URI(_options.url()->base(), referenceURI);
         //_url = osgEarth::getFullPath( referenceURI, _options.url().value() );
     }
 
     // override
-    osg::Node* createNode( ProgressCallback* progress )
+    osg::Node* createNode( const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Node> result;
 
         // required if the model includes local refs, like PagedLOD or ProxyNode:
-        osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
-        options->getDatabasePathList().push_back( osgDB::getFilePath(*_url) );
+        osg::ref_ptr<osgDB::Options> localOptions = dbOptions ? new osgDB::Options(*dbOptions) : new osgDB::Options();
+        localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) ); //*_url) );
 
-        HTTPClient::readNodeFile( *_url, result, options.get(), progress ); //_settings.get(), progress );
+        HTTPClient::readNodeFile( _options.url()->full(), result, localOptions.get(), progress ); //_settings.get(), progress );
         return result.release();
     }
 
 protected:
-    URI _url;
+    //URI _url;
     const SimpleModelOptions _options;
 };
 

@@ -28,6 +28,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/ModelSource>
 #include <osgEarth/Map>
+#include <osgEarth/CachePolicy>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
 #include <list>
@@ -68,6 +69,10 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
+        /** Explicity caching policy for data from the underlying feature source */
+        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
+        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
+
     public: // deprecated
 
         /** @deprecated - use levels() instead */
@@ -104,6 +109,7 @@ namespace osgEarth { namespace Features
         optional<double>                _maxGranularity_deg;
         optional<bool>                  _mergeGeometry;
         optional<bool>                  _clusterCulling;
+        optional<CachePolicy>           _cachePolicy;
 
         osg::ref_ptr<StyleSheet>        _styles;
         osg::ref_ptr<FeatureSource>     _featureSource;
@@ -173,10 +179,12 @@ namespace osgEarth { namespace Features
     public:
 
         //override 
-        virtual void initialize( const std::string& referenceURI, const osgEarth::Map* map );
+        virtual void initialize( 
+            const osgDB::Options* dbOptions =0L,
+            const osgEarth::Map*  map       =0L );
 
         // override
-        virtual osg::Node* createNode( ProgressCallback* progress );
+        virtual osg::Node* createNode( const osgDB::Options* options, ProgressCallback* progress );
     
         virtual FeatureNodeFactory* createFeatureNodeFactory() =0;
 

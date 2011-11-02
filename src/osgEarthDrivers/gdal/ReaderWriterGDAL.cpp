@@ -21,6 +21,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/URI>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -637,7 +638,7 @@ public:
     }
 
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {   
         GDAL_SCOPED_LOCK;
 
@@ -649,6 +650,7 @@ public:
 
         URI uri = _options.url().value();
 
+#if 0 //OBE
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
 
@@ -662,6 +664,7 @@ public:
         {
             uri = URI(uri.full(), referenceURI);
         }
+#endif
 
         StringTokenizer izer( ";" );
         StringVector exts;
@@ -1016,8 +1019,9 @@ public:
         geoY = _geotransform[3] + _geotransform[4] * x + _geotransform[5] * y;
     }
 
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage( const TileKey&        key,
+                             const osgDB::Options* dbOptions,
+                             ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
@@ -1456,8 +1460,9 @@ public:
     }
 
 
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey&        key,
+                                         const osgDB::Options* dbOptions,
+                                         ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
@@ -1523,13 +1528,7 @@ private:
     osg::Vec2d _extentsMin;
     osg::Vec2d _extentsMax;
 
-    //std::string     _url;
-    //int             _tile_size;
-    //std::string     _extensions;
-    //ElevationInterpolation   _interpolation;
-
     const GDALOptions _options;
-    //osg::ref_ptr<const GDALOptions> _settings;
 
     unsigned int _maxDataLevel;
 };

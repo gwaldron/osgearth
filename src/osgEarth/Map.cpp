@@ -19,11 +19,10 @@
 #include <osgEarth/Map>
 #include <osgEarth/Registry>
 #include <osgEarth/TileSource>
-#include <OpenThreads/ScopedLock>
+#include <osgEarth/URI>
 #include <iterator>
 
 using namespace osgEarth;
-using namespace OpenThreads;
 
 #define LC "[Map] "
 
@@ -71,6 +70,15 @@ _dataModelRevision( 0 )
     {
         OE_INFO << LC << "Cache-only mode activated" << std::endl;
     }
+
+    // the map-side dbOptions object holds I/O information for all components.
+    _dbOptions = new osgDB::Options();
+
+    // we do our own caching
+    _dbOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
+    
+    // store the top-level referrer context in the options
+    URIContext( _mapOptions.referrer() ).store( _dbOptions );
 }
 
 bool
@@ -81,13 +89,15 @@ Map::isGeocentric() const
         _mapOptions.coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE;
 }
 
-const osgDB::ReaderWriter::Options*
-Map::getGlobalOptions() const {
+const osgDB::Options*
+Map::getGlobalOptions() const
+{
     return _globalOptions.get();
 }
 
 void
-Map::setGlobalOptions( const osgDB::ReaderWriter::Options* options ) {
+Map::setGlobalOptions( const osgDB::Options* options )
+{
     _globalOptions = options;
 }
 
@@ -274,15 +284,22 @@ Map::setCache( Cache* cache )
     {
         _cache = cache;
 
-        //Propagate the cache to any of our layers
+        if ( _cache.valid() )
+        {
+            _cache->store( _dbOptions.get() );
+        }
+
+        // Propagate the cache to any of our layers
         for (ImageLayerVector::iterator i = _imageLayers.begin(); i != _imageLayers.end(); ++i)
         {
-            i->get()->setCache( _cache.get() );
+            i->get()->setDBOptions( _dbOptions.get() );
+            //i->get()->setCache( _cache.get() );
         }
 
         for (ElevationLayerVector::iterator i = _elevationLayers.begin(); i != _elevationLayers.end(); ++i)
         {
-            i->get()->setCache( _cache.get() );
+            i->get()->setDBOptions( _dbOptions.get() );
+            //i->get()->setCache( _cache.get() );
         }
     }
 }
@@ -311,8 +328,8 @@ Map::addImageLayer( ImageLayer* layer )
     unsigned int index = -1;
     if ( layer )
     {
-	    // Set options for the map from the layer
-		layer->setReferenceURI( _mapOptions.referenceURI().value() );
+	    // Set the DB options for the map from the layer
+        layer->setDBOptions( _dbOptions.get() );
 
         // propagate the cache to the layer:
         if (_mapOptions.cachePolicy().isSet())
@@ -357,7 +374,7 @@ Map::insertImageLayer( ImageLayer* layer, unsigned int index )
     if ( layer )
     {
         //Set options for the map from the layer
-        layer->setReferenceURI( _mapOptions.referenceURI().value() );
+        layer->setDBOptions( _dbOptions.get() );
 
         //propagate the cache to the layer:
         if (_mapOptions.cachePolicy().isSet() )
@@ -403,7 +420,7 @@ Map::addElevationLayer( ElevationLayer* layer )
     if ( layer )
     {
 	    //Set options for the map from the layer
-		layer->setReferenceURI( _mapOptions.referenceURI().value() );
+		layer->setDBOptions( _dbOptions.get() );
 
         //propagate the cache to the layer:
         if ( _mapOptions.cachePolicy().isSet() )
@@ -619,7 +636,7 @@ Map::addModelLayer( ModelLayer* layer )
         }
 
         //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _mapOptions.referenceURI().get(), this ); //getReferenceURI(), this );        
+        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -643,7 +660,7 @@ Map::insertModelLayer( ModelLayer* layer, unsigned int index )
         }
 
         //TODO: deprecate this in favor of URIContext..
-        layer->initialize( _mapOptions.referenceURI().get(), this ); //getReferenceURI(), this );        
+        layer->initialize( _dbOptions.get(), this ); //getReferenceURI(), this );        
 
         // a seprate block b/c we don't need the mutex
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )
@@ -743,7 +760,7 @@ Map::addTerrainMaskLayer( MaskLayer* layer )
             newRevision = ++_dataModelRevision;
         }
 
-        layer->initialize( _mapOptions.referenceURI().value(), this );
+        layer->initialize( _dbOptions.get(), this );
 
         // a separate block b/c we don't need the mutex   
         for( MapCallbackList::iterator i = _mapCallbacks.begin(); i != _mapCallbacks.end(); i++ )

@@ -54,7 +54,7 @@ KMLReader::read( const Config& conf )
     osg::Group* root = new osg::Group();
     root->ref();
 
-    root->setName( conf.uriContext().referrer() );
+    root->setName( conf.referrer() );
 
     KMLContext cx;
     cx._mapNode = _mapNode;

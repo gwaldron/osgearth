@@ -21,6 +21,7 @@
 #define OSGEARTH_CACHE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/CacheBin>
 #include <osgEarth/Config>
 #include <osgEarth/TileKey>
 #include <osgEarth/ThreadingUtils>
@@ -56,71 +57,8 @@ namespace osgEarth
 
 //--------------------------------------------------------------------
 
-    /**
-     * CacheBin is a names container within a Cache. It allows different
-     * application modules to compartmentalize their data withing a single
-     * cache location.
-     */
-    class OSGEARTH_EXPORT CacheBin : public osg::Referenced
-    {
-    public:
-        /**
-         * Constructs a caching bin.
-         * @param binID  Name of this caching bin (unique withing a Cache)
-         * @param driver ReaderWriter that serializes data for this caching bin.
-         */
-        CacheBin( const std::string& binID );
-
-        /**
-         * The identifier (unique withing a Cache) of this bin.
-         */
-        const std::string& getID() const { return _binID; }
-
-        /**
-         * Reads an object from the cache bin.
-         * @param key    Lookup key to read
-         * @param maxAge Maximum age of the record; return 0L if expired.
-         */
-        virtual const osg::Object* readObject( const std::string& key, double maxAge =DBL_MAX ) =0;
-
-        /**
-         * Reads an image from the cache bin.
-         * @param key    Lookup key to read
-         * @param maxAge Maximum age of the record; return 0L if expired.
-         */
-        virtual const osg::Image* readImage( const std::string& key, double maxAge =DBL_MAX ) =0;
-
-        /**
-         * Writes an object to the cache bin.
-         * @param key    Lookup key to write to
-         * @param object Object to serialize to the cache
-         */
-        virtual bool write( const std::string& key, const osg::Object* object ) =0;
-
-        /**
-         * Checks whether a key exists in the cache.
-         * (Default implementation just tries to read the object)
-         */
-        virtual bool isCached( const std::string& key, double maxAge =DBL_MAX ) =0;
-
-        /**
-         * Reads custom metadata from the cache.
-         */
-        virtual Config readMetadata() { return Config(); }
-
-        /**
-         * Writes custom metadata to the cache.
-         */
-        virtual bool writeMetadata( const Config& meta ) { return false; }
-
-
-    protected:
-        std::string _binID;
-    };
-
     typedef Threading::PerObjectRefMap<std::string, CacheBin> ThreadSafeCacheBinMap;
 
-//--------------------------------------------------------------------
 
     /**
      * Cache is a container for local storage of keyed data elements.
@@ -162,6 +100,20 @@ namespace osgEarth
          * Gets an Options structure representing this cache's configuration.
          */
         const CacheOptions& getCacheOptions() const { return _options; }
+
+        /**
+         * Store this to an osgDB::Options
+         */
+        void store( osgDB::Options* options ) {
+            if ( options ) options->setPluginData( "osgEarth::Cache", this );
+        }
+
+        /**
+         * Fetch pointer from a osgDB::Options
+         */
+        static Cache* from( const osgDB::Options* options ) {
+            return options ? const_cast<Cache*>( static_cast<const Cache*>( options->getPluginData("osgEarth::Cache") ) ) : 0L;
+        }
 
     protected:
         bool                  _ok;

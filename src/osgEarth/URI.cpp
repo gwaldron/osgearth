@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/URI>
+#include <osgEarth/CacheBin>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgDB/FileNameUtils>
@@ -215,7 +216,7 @@ URI::readNode( const osgDB::Options* options, ResultCode* out_code ) const
 }
 
 std::string
-URI::readString( ResultCode* out_code ) const
+URI::readString( const osgDB::Options* options, ResultCode* out_code ) const
 {
     if ( empty() ) {
         if ( out_code ) *out_code = RESULT_NOT_FOUND;

@@ -21,6 +21,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/URI>
 #include <osgDB/FileNameUtils>
 
 #include <cstring>
@@ -62,7 +63,7 @@ public:
         //nop
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
         if ( !overrideProfile )
         {
@@ -74,20 +75,28 @@ public:
 
         osg::ref_ptr<osg::Image> image;
 
-        URI url = _options.url().value();
-        if ( !url.empty() )
+        //URI url = _options.url().value();
+        if ( _options.url()->empty() ) //!url.empty() )
         {
-            url = URI( url.full(), referenceURI ); // obselete?
-            HTTPClient::ResultCode code = HTTPClient::readImageFile( url.full(), image );
-            if ( code != HTTPClient::RESULT_OK )
+            URI::ResultCode code;
+            image = _options.url()->readImage( dbOptions, &code );
+            if ( !image.valid() )
             {
-                OE_WARN << LC << "Failed to load data from \"" << url.full() << "\", because: " << 
+                OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: " << 
                     HTTPClient::getResultCodeString(code) << std::endl;
             }
+#if 0
+            HTTPClient::ResultCode code = HTTPClient::readImageFile( _options.url()->full(), image );
+            if ( code != HTTPClient::RESULT_OK )
+            {
+                OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: " << 
+                    HTTPClient::getResultCodeString(code) << std::endl;
+            }
+#endif
         }
 
         if ( !image.valid() )
-            OE_WARN << LC << "Faild to load data from \"" << url.full() << "\"" << std::endl;
+            OE_WARN << LC << "Faild to load data from \"" << _options.url()->full() << "\"" << std::endl;
 
         // calculate and store the maximum LOD for which to return data
         if ( image.valid() )
@@ -120,7 +129,7 @@ public:
             _image = GeoImage( image.get(), getProfile()->getExtent() );
         }
 
-        _extension = osgDB::getFileExtension( url.full() );
+        _extension = osgDB::getFileExtension( _options.url()->full() );
     }
     
     //override
@@ -130,7 +139,7 @@ public:
     }
 
     osg::Image*
-    createImage( const TileKey& key, ProgressCallback* progress )
+    createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress )
     {
         if ( !_image.valid() || key.getLevelOfDetail() > getMaxDataLevel() )
             return NULL;

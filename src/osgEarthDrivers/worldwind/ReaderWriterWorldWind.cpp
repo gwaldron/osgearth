@@ -60,7 +60,7 @@ public:
     }
 
 public:
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
     {
         setProfile( Profile::create(
             "epsg:4326",
@@ -94,14 +94,14 @@ public:
     }
 
 public:
-    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, const osgDB::Options* options, ProgressCallback* progress)
     {
         // NYI - eventually, consolidate the "tileservice" plugin into this one //GW
         return NULL;
     }
 
 
-    osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress)
+    osg::HeightField* createHeightField(const TileKey& key, const osgDB::Options* options, ProgressCallback* progress)
     {
         if ( *_options.maxLOD() <= key.getLevelOfDetail()) return NULL;
         if ( !_options.elevationCachePath().isSet() ) return NULL;

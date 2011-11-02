@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "EarthFileSerializer"
+#include <osgEarth/FileUtils>
 
 using namespace osgEarth;
 
@@ -135,9 +136,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         OE_DEBUG << "Adding OSG file path " << path << std::endl;
         osgDB::Registry::instance()->getDataFilePathList().push_back( path );
     }
-
-
-
 
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
 

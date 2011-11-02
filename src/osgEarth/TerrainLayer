@@ -330,19 +330,20 @@ namespace osgEarth
 
     protected:
 
-        osg::ref_ptr<TileSource>    _tileSource;
-		osg::ref_ptr<const Profile> _profile;
-        osg::ref_ptr<const Profile> _targetProfileHint;
-        bool                        _tileSourceInitialized;
-		unsigned                    _tileSize;        
+        osg::ref_ptr<TileSource>       _tileSource;
+		osg::ref_ptr<const Profile>    _profile;
+        osg::ref_ptr<const Profile>    _targetProfileHint;
+        bool                           _tileSourceInitialized;
+		unsigned                       _tileSize;  
+        osg::ref_ptr<osgDB::Options>   _dbOptions;      
 
     private:
-        std::string          _name;
-        std::string          _referenceURI;
-        OpenThreads::Mutex   _initTileSourceMutex;
-        TerrainLayerOptions* _runtimeOptions;
+        std::string                    _name;
+        std::string                    _referenceURI;
+        OpenThreads::Mutex             _initTileSourceMutex;
+        TerrainLayerOptions*           _runtimeOptions;
 
-		osg::ref_ptr<Cache>      _cache;
+		osg::ref_ptr<Cache>            _cache;
 
         // maps profile signature to cache bin pointer.
         struct CacheBinInfo
@@ -351,8 +352,9 @@ namespace osgEarth
             optional<CacheBinMetadata> _metadata;
         };
         typedef std::map< std::string, CacheBinInfo > CacheBinInfoMap; // indexed by profile signature
-        CacheBinInfoMap _cacheBins;
-        Threading::ReadWriteMutex _cacheBinsMutex;
+
+        CacheBinInfoMap                _cacheBins;
+        Threading::ReadWriteMutex      _cacheBinsMutex;
 
         void init();
         //void applyCacheFormat( CacheBin* bin, const std::string& format );
@@ -360,7 +362,8 @@ namespace osgEarth
 
         // methods accesible by Map:
         friend class Map;
-        void setReferenceURI( const std::string& uri );
+        void setDBOptions( const osgDB::Options* dbOptions );
+        //void setReferenceURI( const std::string& uri );
 
         void overrideCachePolicy( const CachePolicy& policy );
 

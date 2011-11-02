@@ -36,19 +36,24 @@ class WCS11Source : public TileSource
 {
 public:
     WCS11Source( const TileSourceOptions& opt );
-    
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress = 0 );
-
-    osg::HeightField* createHeightField( const TileKey& key, 
-                                         ProgressCallback* progress = 0 );
-    
-    std::string getExtension() const;
 
 public: // TileSource interface
 
-    // override
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile);
+    void initialize(
+        const osgDB::Options* dbOptions,
+        const Profile*        overrideProfile );
+    
+    osg::Image* createImage( 
+        const TileKey&        key,
+        const osgDB::Options* dbOptions,
+        ProgressCallback*     progress );
+
+    osg::HeightField* createHeightField(
+        const TileKey&        key,
+        const osgDB::Options* dbOptions,
+        ProgressCallback*     progress );
+    
+    std::string getExtension() const;
 
 private:
     const WCSOptions _options;

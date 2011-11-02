@@ -317,13 +317,13 @@ namespace osgEarth
          *      See enum SamplePolicy in this class.
          */
         bool getHeightField(
-            const TileKey& key,
-            bool fallback,
+            const TileKey&                  key,
+            bool                            fallbackIfNeessary,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            bool* out_isFallback =0L,
-            ElevationInterpolation interpolation =INTERP_AVERAGE,
-            ElevationSamplePolicy samplePolicy =SAMPLE_FIRST_VALID,
-            ProgressCallback* progress = 0) const;
+            bool*                           out_isFallback =0L,
+            ElevationInterpolation          interpolation  =INTERP_AVERAGE,
+            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress       =0L)  const;
 
 		/**
 		 * Sets the Cache for this Map. Set to NULL for no cache.
@@ -380,6 +380,11 @@ namespace osgEarth
             ENTIRE_MODEL     = 0xff
         };
 
+        /**
+         * Gets the database options associated with this map.
+         */
+        const osgDB::Options* getDBOptions() const { return _dbOptions.get(); }
+
     protected:
 
         ~Map() { }
@@ -398,6 +403,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profile;
 		osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
+        osg::ref_ptr<osgDB::Options> _dbOptions;
 
     private:
         void calculateProfile();

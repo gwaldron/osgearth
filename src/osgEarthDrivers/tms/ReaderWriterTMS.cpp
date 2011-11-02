@@ -51,7 +51,8 @@ public:
     }
 
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize(const osgDB::Options* dbOptions,
+                    const Profile*        overrideProfile )
     {
         const Profile* result = NULL;
 
@@ -62,11 +63,12 @@ public:
             return;
         }
 
+#if 0 // obe..
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the url together
         if (osgEarth::isRelativePath(tmsURI.full()) && osgDB::containsServerAddress(referenceURI))
         {
-            tmsURI = URI( osgDB::getFilePath(referenceURI) + std::string("/") + tmsURI.full() );
+            tmsURI = URI( osgDB::getFilePath(_options) + std::string("/") + tmsURI.full() );
         }
 
         //If the path doesn't contain a server address, get the full path to the file.
@@ -75,6 +77,7 @@ public:
             tmsURI = URI( tmsURI.full(), referenceURI );
             //tmsPath = osgEarth::getFullPath(referenceURI, tmsURI);
         }
+#endif
 
 		// Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
     	_tileMap = TileMapReaderWriter::read( tmsURI.full(), 0L ); //getOptions() );
@@ -127,8 +130,9 @@ public:
     }
 
 
-    osg::Image* createImage(const osgEarth::TileKey& key,
-                            ProgressCallback* progress)
+    osg::Image* createImage(const TileKey&        key,
+                            const osgDB::Options* dbOptions,
+                            ProgressCallback*     progress )
     {
         if (_tileMap.valid() && key.getLevelOfDetail() <= getMaxDataLevel() )
         {

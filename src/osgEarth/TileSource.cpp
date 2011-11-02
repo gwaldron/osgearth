@@ -189,7 +189,10 @@ TileSource::getPixelsPerTile() const
 }
 
 osg::Image*
-TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCallback* progress)
+TileSource::createImage(const TileKey&        key,
+                        const osgDB::Options* dbOptions,
+                        ImageOperation*       prepOp, 
+                        ProgressCallback*     progress )
 {
     RasterCacheAdapter rasterCache( _memCache.get() );
 
@@ -204,7 +207,7 @@ TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCall
         }
     }
 
-    osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
+    osg::ref_ptr<osg::Image> newImage = createImage(key, dbOptions, progress);
 
     if ( prepOp )
         (*prepOp)( newImage );
@@ -220,7 +223,10 @@ TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCall
 }
 
 osg::HeightField*
-TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, ProgressCallback* progress )
+TileSource::createHeightField(const TileKey&        key,
+                              const osgDB::Options* dbOptions,
+                              HeightFieldOperation* prepOp, 
+                              ProgressCallback*     progress )
 {
     RasterCacheAdapter rasterCache( _memCache.get() );
 
@@ -234,7 +240,7 @@ TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, 
         }
 	}
 
-    osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
+    osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, dbOptions, progress );
 
     if ( prepOp )
         (*prepOp)( newHF );
@@ -249,10 +255,11 @@ TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, 
 }
 
 osg::HeightField*
-TileSource::createHeightField( const TileKey& key,
-                               ProgressCallback* progress)
+TileSource::createHeightField(const TileKey&        key,
+                              const osgDB::Options* dbOptions,
+                              ProgressCallback*     progress)
 {
-    osg::ref_ptr<osg::Image> image = createImage(key, progress);
+    osg::ref_ptr<osg::Image> image = createImage(key, dbOptions, progress);
     osg::HeightField* hf = 0;
     if (image.valid())
     {

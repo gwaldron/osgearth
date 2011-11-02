@@ -24,6 +24,8 @@
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Cache>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Map>
 
 namespace osgEarth { namespace Features
@@ -72,18 +74,6 @@ namespace osgEarth { namespace Features
         void setStyles( StyleSheet* value );
         StyleSheet* styles() const { return _styles.get(); }
 
-        ///** Session-global resource cache. Careful. */
-        //ResourceCache* resourceCache() { return _resourceCache.get(); }
-        //const ResourceCache* resourceCache() const { return _resourceCache.get(); }
-
-    public: // URIResolver
-        
-        /**
-         * Resolves a URI based on the reference URI. You can use this method
-         * to create an absolute URI from a relative one, for example.
-         */
-        //std::string resolveURI( const std::string& inputURI ) const;
-
     public:
         /**
          * Stores an object in the shared Session cache.
@@ -106,17 +96,17 @@ namespace osgEarth { namespace Features
 
     private:
 
-        //osg::ref_ptr<ResourceCache> _resourceCache;
-
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ObjectMap;
         ObjectMap                    _objMap;
         Threading::ReadWriteMutex    _objMapMutex;
 
-        URIContext                     _uriContext;
-        osg::ref_ptr<const Map>        _map;
-        MapInfo                        _mapInfo;
-        //std::string                    _referenceURI;
-        osg::ref_ptr<StyleSheet>       _styles;
+        URIContext                   _uriContext;
+        osg::ref_ptr<const Map>      _map;
+        MapInfo                      _mapInfo;
+        osg::ref_ptr<StyleSheet>     _styles;
+
+        osg::ref_ptr<Cache>          _cache;
+        CachePolicy                  _cachePolicy;
     };
 
 } }

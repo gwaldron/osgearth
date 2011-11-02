@@ -164,7 +164,9 @@ _dynamic( false )
 }
 
 osg::Image*
-CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress )
+CompositeTileSource::createImage(const TileKey&        key, 
+                                 const osgDB::Options* dbOptions,
+                                 ProgressCallback*     progress )
 {
     ImageMixVector images;
     images.reserve( _options._components.size() );
@@ -201,19 +203,12 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
                 maxLevel = source->getProfile()->getLevelOfDetailForHorizResolution( i->_imageLayerOptions->maxLevelResolution().value(), source->getPixelsPerTile());            
             }
 
-
-
-
             // check that this source is within the level bounds:
             if (minLevel > key.getLevelOfDetail() ||
                 maxLevel < key.getLevelOfDetail() )
             {
                 continue;
             }
-
-
-
-
 
             if ( !source->getBlacklist()->contains( key.getTileId() ) )
             {
@@ -227,10 +222,8 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
                         preCacheOp->_processor.init( i->_imageLayerOptions.value(), true );                        
                     }
 
-
-
                     ImageOpacityPair imagePair(
-                        source->createImage( key, preCacheOp.get(), progress ),
+                        source->createImage( key, dbOptions, preCacheOp.get(), progress ),
                         1.0f );
 
                     //If the image is not valid and the progress was not cancelled, blacklist
@@ -289,7 +282,8 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
 }
 
 void
-CompositeTileSource::initialize( const std::string& referenceURI, const Profile* overrideProfile )
+CompositeTileSource::initialize(const osgDB::Options* dbOptions, 
+                                const Profile*        overrideProfile )
 {
     osg::ref_ptr<const Profile> profile = overrideProfile;
 
@@ -306,7 +300,7 @@ CompositeTileSource::initialize( const std::string& referenceURI, const Profile*
             if ( opt.profile().isSet() )
                 localOverrideProfile = Profile::create( opt.profile().value() );
 
-            source->initialize( referenceURI, localOverrideProfile.get() );
+            source->initialize( dbOptions, localOverrideProfile.get() );
 
             if ( !profile.valid() )
             {

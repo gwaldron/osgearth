@@ -20,6 +20,7 @@
 #include <osgEarth/TileSource>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
+#include <osgEarth/URI>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -47,7 +48,9 @@ public:
     }
 
 public:
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( 
+        const osgDB::Options* dbOptions, 
+        const Profile*        overrideProfile)
     {
 		//Take on the override profile if one is given.
 		if (overrideProfile)
@@ -62,15 +65,20 @@ public:
     }
 
 public:
-    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
+    osg::Image* createImage(
+        const TileKey&        key,
+        const osgDB::Options* dbOptions,
+        ProgressCallback*     progress )
     {        
         osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile( createURI( key ), image, 0L, progress ); //getOptions(), progress );
+        HTTPClient::readImageFile( createURI( key ), image, 0L, progress );
         return image.release();
     }
 
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField(
+        const TileKey&        key,
+        const osgDB::Options* dbOptions,
+        ProgressCallback*     progress )
     {
         //NOP
         return NULL;

@@ -42,13 +42,15 @@ public:
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize(const osgDB::Options* dbOptions,
+                    const Profile*        overrideProfile )
     {
         setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );
     }
 
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress )
+    osg::Image* createImage(const TileKey&        key,
+                            const osgDB::Options* dbOptions,
+                            ProgressCallback*     progress )
     {
         //Return NULL if we are given a non global-mercator key
         //Not applicable
@@ -99,8 +101,9 @@ public:
         return image.release();
     }
 
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField(const TileKey&        key,
+                                        const osgDB::Options* dbOptions,
+                                        ProgressCallback*     progress )
     {
         //NI
         OE_WARN << "[Yahoo] Driver does not support heightfields" << std::endl;

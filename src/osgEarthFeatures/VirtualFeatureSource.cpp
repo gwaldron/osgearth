@@ -119,11 +119,11 @@ VirtualFeatureSource::createFeatureCursor( const Query& query )
 }
 
 void 
-VirtualFeatureSource::initialize( const std::string& referenceURI )
+VirtualFeatureSource::initialize( const osgDB::Options* dbOptions )
 {
     for( FeatureSourceMappingVector::iterator i = _sources.begin(); i != _sources.end(); ++i )
     {
-        i->_source->initialize( referenceURI );
+        i->_source->initialize( dbOptions );
     }
 }
 

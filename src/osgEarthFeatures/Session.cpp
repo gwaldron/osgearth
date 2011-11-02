@@ -36,27 +36,15 @@ Session::Session( const Map* map, StyleSheet* styles ) :
 osg::Referenced( true ),
 _map           ( map ),
 _mapInfo       ( map )
-//_resourceCache ( new ResourceCache(true) ) // make is thread-safe.
 {
     if ( styles )
         setStyles( styles );
     else
         _styles = new StyleSheet();
-}
 
-#if 0
-void
-Session::setReferenceURI( const std::string& referenceURI )
-{
-    _referenceURI = referenceURI;
+    _cache = map->getCache();
+    _cachePolicy = map->getMapOptions().cachePolicy().get();
 }
-
-std::string
-Session::resolveURI( const std::string& inputURI ) const
-{
-    return osgEarth::getFullPath( _referenceURI, inputURI );
-}
-#endif
 
 MapFrame
 Session::createMapFrame( Map::ModelParts parts ) const
@@ -67,13 +55,6 @@ Session::createMapFrame( Map::ModelParts parts ) const
 void
 Session::putObject( const std::string& key, osg::Referenced* object )
 {
-    //if ( dynamic_cast<osg::Node*>( object ) )
-    //{
-    //    OE_INFO << LC << "*** usage warning: storing an osg::Node in the Session cache is bad news;"
-    //        << " live graph iterators can be invalidated." 
-    //        << std::endl;
-    //}
-
     Threading::ScopedWriteLock lock( _objMapMutex );
     _objMap[key] = object;
 }

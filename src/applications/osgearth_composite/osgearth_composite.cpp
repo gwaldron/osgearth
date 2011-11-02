@@ -19,17 +19,19 @@
 
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
+#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgGA/GUIEventHandler>
-#include <osgEarth/Map>
-#include <osgEarth/MapNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarth/Utils>
-#include <osgEarth/CompositeTileSource>
-
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
+
+
+#include <osgEarth/CompositeTileSource>
+#include <osgEarth/Map>
+#include <osgEarth/MapNode>
+#include <osgEarth/Utils>
+#include <osgEarth/URI>
+#include <osgEarthUtil/EarthManipulator>
 
 #include <osgEarthDrivers/gdal/GDALOptions>
 

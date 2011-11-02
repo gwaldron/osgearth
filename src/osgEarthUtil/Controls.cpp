@@ -2251,7 +2251,17 @@ ControlCanvas::getControlAtMouse( float x, float y ) const
 bool
 ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
-    bool handled = false;
+	for (ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i)
+	{
+		Control* control = i->get();
+		if (control->isDirty())
+		{
+			aa.requestRedraw();
+			break;
+		}
+	}
+
+	bool handled = false;
     //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {

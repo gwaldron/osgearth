@@ -78,20 +78,13 @@ public:
         //URI url = _options.url().value();
         if ( _options.url()->empty() ) //!url.empty() )
         {
-            URI::ResultCode code = _options.url()->readImage( image, dbOptions );
+            URI::ResultCode code;
+            image = _options.url()->readImage( dbOptions, CachePolicy(), &code );
             if ( !image.valid() )
             {
                 OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: " << 
                     HTTPClient::getResultCodeString(code) << std::endl;
             }
-#if 0
-            HTTPClient::ResultCode code = HTTPClient::readImageFile( _options.url()->full(), image );
-            if ( code != HTTPClient::RESULT_OK )
-            {
-                OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: " << 
-                    HTTPClient::getResultCodeString(code) << std::endl;
-            }
-#endif
         }
 
         if ( !image.valid() )

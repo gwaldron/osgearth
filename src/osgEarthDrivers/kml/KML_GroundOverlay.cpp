@@ -50,8 +50,8 @@ KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
         double west  = llb.value<double>("west", 0.0);
         Angular rotation( llb.value<double>("rotation", 0.0), Units::DEGREES );
 
-        osg::ref_ptr<osg::Image> image;
-        if ( ! URI(href, conf.referrer()).readImage(image) )
+        osg::ref_ptr<osg::Image> image = URI(href, conf.referrer()).readImage();
+        if ( !image.valid() )
         {
             OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
             return;
@@ -70,8 +70,8 @@ KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
         g.buildChild( llq, cx, style );
         if ( g._geom.valid() && g._geom->size() >= 4 )
         {
-            osg::ref_ptr<osg::Image> image;
-            if ( ! URI(href, conf.referrer()).readImage(image) )
+            osg::ref_ptr<osg::Image> image = URI(href, conf.referrer()).readImage();
+            if ( !image.valid() )
             {
                 OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
                 return;

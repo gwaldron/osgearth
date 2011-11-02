@@ -53,12 +53,12 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
         return readNode( url, options );
     }
 
-    ReadResult readObject(std::istream& in, const osgDB::Options* options ) const
+    ReadResult readObject(std::istream& in, const osgDB::Options* dbOptions ) const
     {
-        return readNode(in, options);
+        return readNode(in, dbOptions);
     }
 
-    ReadResult readNode(const std::string& url, const osgDB::Options* options) const
+    ReadResult readNode(const std::string& url, const osgDB::Options* dbOptions) const
     {
         std::string ext = osgDB::getLowerCaseFileExtension(url);
         if ( !acceptsExtension(ext) )
@@ -66,16 +66,12 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
         if ( ext == "kmz" )
         {
-            osg::ref_ptr<osg::Node> result;
-            if ( URI(url + "/.kml").readNode( result, options ) )
-                return ReadResult( result.get() );
-            else
-                return ReadResult();
+            return URI(url + "/.kml").readNode( dbOptions );
         }
         else
         {
             // propagate the source URI along to the stream reader
-            osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
+            osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
             URIContext(url).store( myOptions.get() );
             return readNode( URIStream(url), myOptions.get() );
         }

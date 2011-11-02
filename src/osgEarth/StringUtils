@@ -32,6 +32,17 @@
 namespace osgEarth
 {
     typedef std::vector<std::string> StringVector;
+    
+    /**
+     * String wrapped in an osg::Object
+     */
+    struct StringObject : public osg::Object, public std::string
+    {
+        StringObject() { }
+        StringObject( const StringObject& rhs, const osg::CopyOp& op ) { }
+        StringObject( const std::string& in ) : std::string(in) { }
+        META_Object( osgEarth, StringObject );
+    };
 
     /** Replaces all the instances of "sub" with "other" in "s". */
     static std::string&

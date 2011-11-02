@@ -208,15 +208,18 @@ namespace
     }
 }
 
-URI::ResultCode
-URI::readObject(osg::ref_ptr<osg::Object>& output,
-                const osgDB::Options*      dbOptions,
-                const CachePolicy&         cachePolicy ) const
+osg::Object*
+URI::readObject(const osgDB::Options*      dbOptions,
+                const CachePolicy&         cachePolicy,
+                ResultCode*                out_code ) const
 {
-    output = 0L;
+    osg::ref_ptr<osg::Object> result;
 
     if ( empty() )
-        return RESULT_NOT_FOUND;
+    {
+        if ( out_code ) *out_code = RESULT_NOT_FOUND;
+        return 0L;
+    }
 
     ResultCode code   = RESULT_OK;
     CacheBin*  bin    = 0L;
@@ -228,34 +231,38 @@ URI::readObject(osg::ref_ptr<osg::Object>& output,
 
     if ( bin && cachePolicy.isCacheReadable() )
     {
-        bin->readObject( output, full(), *cachePolicy.maxAge() );
+        bin->readObject( result, full(), *cachePolicy.maxAge() );
     }
 
-    if ( !output.valid() )
+    if ( !result.valid() )
     {
         code = (ResultCode)HTTPClient::readObjectFile( 
             _fullURI, 
-            output, 
+            result, 
             dbOptions ? dbOptions : Registry::instance()->getDefaultOptions() );
 
-        if ( code == RESULT_OK && output.valid() && bin && cachePolicy.isCacheWriteable() )
+        if ( code == RESULT_OK && result.valid() && bin && cachePolicy.isCacheWriteable() )
         {
-            bin->write( full(), output.get() );
+            bin->write( full(), result.get() );
         }
     }
 
-    return code;
+    if ( out_code ) *out_code = code;
+    return result.release();
 }
 
-URI::ResultCode
-URI::readImage(osg::ref_ptr<osg::Image>& output,
-               const osgDB::Options*     dbOptions,
-               const CachePolicy&        cachePolicy ) const
+osg::Image*
+URI::readImage(const osgDB::Options*     dbOptions,
+               const CachePolicy&        cachePolicy,
+               ResultCode*               out_code ) const
 {
-    output = 0L;
+    osg::ref_ptr<osg::Image> result;
 
     if ( empty() )
-        return RESULT_NOT_FOUND;
+    {
+        if ( out_code ) *out_code = RESULT_NOT_FOUND;
+        return 0L;
+    }
 
     ResultCode code   = RESULT_OK;
     CacheBin*  bin    = 0L;
@@ -267,34 +274,38 @@ URI::readImage(osg::ref_ptr<osg::Image>& output,
 
     if ( bin && cachePolicy.isCacheReadable() )
     {
-        bin->readImage( output, full(), *cachePolicy.maxAge() );
+        bin->readImage( result, full(), *cachePolicy.maxAge() );
     }
 
-    if ( !output.valid() )
+    if ( !result.valid() )
     {
         code = (ResultCode)HTTPClient::readImageFile( 
             _fullURI, 
-            output, 
+            result, 
             dbOptions ? dbOptions : Registry::instance()->getDefaultOptions() );
 
-        if ( code == RESULT_OK && output.valid() && bin && cachePolicy.isCacheWriteable() )
+        if ( code == RESULT_OK && result.valid() && bin && cachePolicy.isCacheWriteable() )
         {
-            bin->write( full(), output.get() );
+            bin->write( full(), result.get() );
         }
     }
 
-    return code;
+    if ( out_code ) *out_code = code;
+    return result.release();
 }
 
-URI::ResultCode
-URI::readNode(osg::ref_ptr<osg::Node>&  output,
-              const osgDB::Options*     dbOptions,
-              const CachePolicy&        cachePolicy ) const
+osg::Node*
+URI::readNode(const osgDB::Options*     dbOptions,
+              const CachePolicy&        cachePolicy,
+              ResultCode*               out_code ) const
 {
-    output = 0L;
+    osg::ref_ptr<osg::Node> result;
 
     if ( empty() )
-        return RESULT_NOT_FOUND;
+    {
+        if ( out_code ) *out_code = RESULT_NOT_FOUND;
+        return 0L;
+    }
 
     ResultCode code   = RESULT_OK;
     CacheBin*  bin    = 0L;
@@ -306,34 +317,41 @@ URI::readNode(osg::ref_ptr<osg::Node>&  output,
 
     if ( bin && cachePolicy.isCacheReadable() )
     {
-        bin->readObject( output, full(), *cachePolicy.maxAge() );
+        osg::ref_ptr<osg::Object> obj;
+        bin->readObject( obj, full(), *cachePolicy.maxAge() );
+        result = dynamic_cast<osg::Node*>( obj.get() );
     }
 
-    if ( !output.valid() )
+    if ( !result.valid() )
     {
-        code = (ResultCode)HTTPClient::readNodeFile(
+        code = (ResultCode)HTTPClient::readNodeFile( 
             _fullURI, 
-            output, 
+            result, 
             dbOptions ? dbOptions : Registry::instance()->getDefaultOptions() );
 
-        if ( code == RESULT_OK && output.valid() && bin && cachePolicy.isCacheWriteable() )
+        if ( code == RESULT_OK && result.valid() && bin && cachePolicy.isCacheWriteable() )
         {
-            bin->write( full(), output.get() );
+            bin->write( full(), result.get() );
         }
     }
 
-    return code;
+    if ( out_code ) *out_code = code;
+    return result.release();
 }
 
-URI::ResultCode
-URI::readString(std::string&              output,
-                const osgDB::Options*     dbOptions,
-                const CachePolicy&        cachePolicy ) const
+std::string
+URI::readString(const osgDB::Options*     dbOptions,
+                const CachePolicy&        cachePolicy,
+                ResultCode*               out_code ) const
 {
-    output.clear();
+    std::string result;
+    //osg::ref_ptr<StringObject> result;
 
     if ( empty() )
-        return RESULT_NOT_FOUND;
+    {
+        if ( out_code ) *out_code = RESULT_NOT_FOUND;
+        return std::string("");
+    }
 
     ResultCode code   = RESULT_OK;
     CacheBin*  bin    = 0L;
@@ -346,18 +364,19 @@ URI::readString(std::string&              output,
     bool cacheReadOK = false;
     if ( bin && cachePolicy.isCacheReadable() )
     {
-        cacheReadOK = bin->readString( output, full(), *cachePolicy.maxAge() );
+        cacheReadOK = bin->readString( result, full(), *cachePolicy.maxAge() );
     }
 
     if ( !cacheReadOK )
     {
-        code = (ResultCode)HTTPClient::readString( _fullURI, output, 0L );
+        code = (ResultCode)HTTPClient::readString( _fullURI, result, 0L );
 
-        if ( code == RESULT_OK && output.size()>0 && bin && cachePolicy.isCacheWriteable() )
+        if ( code == RESULT_OK && bin && cachePolicy.isCacheWriteable() )
         {
-            bin->write( full(), output );
+            bin->write( full(), result );
         }
     }
 
-    return code;
+    if ( out_code ) *out_code = code;
+    return result;
 }

@@ -75,8 +75,8 @@ WFSFeatureType::WFSFeatureType()
 WFSCapabilities* 
 WFSCapabilitiesReader::read( const URI& location, const osgDB::Options* dbOptions )
 {
-    std::string buffer;
-    if ( location.readString(buffer, dbOptions) )
+    std::string buffer = location.readString(dbOptions);
+    if ( !buffer.empty() )
     {
         std::stringstream buf(buffer);
         return read(buf);

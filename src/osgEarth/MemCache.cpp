@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/MemCache>
+#include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
 
@@ -27,14 +28,6 @@ using namespace osgEarth;
 namespace
 {
     typedef LRUCache<std::string, osg::ref_ptr<const osg::Object> > MemCacheLRU;
-    
-    struct RefString : public osg::Object, public std::string
-    {
-        RefString() { }
-        RefString( const RefString& rhs, const osg::CopyOp& op ) { }
-        RefString( const std::string& in ) : std::string(in) { }
-        META_Object( osgEarth, RefString );
-    };
 
     struct MemCacheBin : public CacheBin
     {
@@ -72,7 +65,7 @@ namespace
         {
             osg::ref_ptr<osg::Object> obj;
             readObject( obj, key, maxAge );
-            RefString* r = dynamic_cast<RefString*>(obj.get());
+            StringObject* r = dynamic_cast<StringObject*>(obj.get());
             if ( r ) buffer = *r;
             return r != 0L;
         }
@@ -92,7 +85,7 @@ namespace
         bool write( const std::string& key, const std::string& buffer )
         {
             Threading::ScopedWriteLock exclusiveLock( _mutex );
-            _lru.insert( key, new RefString(buffer) );
+            _lru.insert( key, new StringObject(buffer) );
             return true;
         }
 

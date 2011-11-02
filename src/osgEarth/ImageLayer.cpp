@@ -172,7 +172,8 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
-        if ( ! URI( *_options.noDataImageFilename() ).readImage( _noDataImage ) )
+        _noDataImage = URI( *_options.noDataImageFilename() ).readImage();
+        if ( !_noDataImage.valid() )
         {
             OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
         }

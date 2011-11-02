@@ -397,7 +397,7 @@ main(int argc, char** argv)
         if ( !kmlFile.empty() )
         {
             KMLOptions kmlo;
-            URI("http://www.osgearth.org/chrome/site/pushpin_yellow.png").readImage( kmlo.defaultIconImage() );
+            kmlo.defaultIconImage() = URI("http://www.osgearth.org/chrome/site/pushpin_yellow.png").readImage();
 
             osg::Node* kml = KML::load( URI(kmlFile), mapNode, kmlo );
             if ( kml )

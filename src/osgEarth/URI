@@ -171,29 +171,25 @@ namespace osgEarth
             RESULT_UNKNOWN_ERROR
         };
 
-        /** Reads an object from the URI. */
-        ResultCode readObject( 
-            osg::ref_ptr<osg::Object>&   output,
-            const osgDB::Options*        dbOptions   =0L,
-            const CachePolicy&           cachePolicy =CachePolicy() ) const;
+        osg::Object* readObject(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ResultCode*           out_code    =0L ) const;
 
-        /** Reads an image from the URI. */
-        ResultCode readImage(
-            osg::ref_ptr<osg::Image>&    output,
-            const osgDB::Options*        dbOptions   =0L,
-            const CachePolicy&           cachePolicy =CachePolicy() ) const;
+        osg::Image* readImage(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ResultCode*           out_code    =0L ) const;
 
-        /** Reads a node from the URI. */
-        ResultCode readNode(
-            osg::ref_ptr<osg::Node>&     output,
-            const osgDB::Options*        dbOptions   =0L,
-            const CachePolicy&           cachePolicy =CachePolicy() ) const;
+        osg::Node* readNode(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ResultCode*           out_code    =0L ) const;
 
-        /** Reads a string from the URI. */
-        ResultCode readString(
-            std::string&                 output,
-            const osgDB::Options*        dbOptions   =0L,
-            const CachePolicy&           cachePolicy =CachePolicy() ) const;
+        std::string readString(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ResultCode*           out_code    =0L ) const;
 
     public:
 

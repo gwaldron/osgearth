@@ -40,9 +40,10 @@ public:
     void initialize( const std::string& referenceURI, const osgEarth::Map* map )
     {
         ModelSource::initialize( referenceURI, map );
-        
-        //todo: deprecate?
-        _url = URI(_options.url()->base(), referenceURI);
+                       
+        _url = *_options.url();        
+       
+        //_url = URI(_options.url()->base(), referenceURI);
         //_url = osgEarth::getFullPath( referenceURI, _options.url().value() );
     }
 

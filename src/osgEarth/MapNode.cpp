@@ -302,9 +302,6 @@ MapNode::init()
 
     // register for event traversals so we can deal with blacklisted filenames
     adjustEventTraversalCount( 1 );
-
-    //Go ahead and initialize the terrain engine
-    getTerrainEngine();
 }
 
 MapNode::~MapNode()

@@ -200,6 +200,37 @@ Map::getModelLayers( ModelLayerVector& out_list, bool validLayersOnly ) const
     return _dataModelRevision;
 }
 
+ModelLayer*
+Map::getModelLayerByName( const std::string& name ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    for( ModelLayerVector::const_iterator i = _modelLayers.begin(); i != _modelLayers.end(); ++i )
+        if ( i->get()->getName() == name )
+            return i->get();
+    return 0L;
+}
+
+ModelLayer*
+Map::getModelLayerByUID( UID layerUID ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    for( ModelLayerVector::const_iterator i = _modelLayers.begin(); i != _modelLayers.end(); ++i )
+        if ( i->get()->getUID() == layerUID )
+            return i->get();
+    return 0L;
+}
+
+
+ModelLayer*
+Map::getModelLayerAt( int index ) const
+{
+    Threading::ScopedReadLock( const_cast<Map*>(this)->_mapDataMutex );
+    if ( index >= 0 && index < (int)_modelLayers.size() )
+        return _modelLayers[index].get();
+    else
+        return 0L;
+}
+
 int
 Map::getNumModelLayers() const
 {

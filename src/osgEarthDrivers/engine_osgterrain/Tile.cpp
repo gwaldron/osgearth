@@ -286,7 +286,7 @@ Tile::traverse( osg::NodeVisitor& nv )
     {
         osg::ref_ptr<Tile> parentTile;
         //Take a reference
-        osg::ref_ptr< Terrain > terrain = _terrain;
+        osg::ref_ptr< Terrain > terrain = _terrain.get();
         if (terrain.valid())
         {
             terrain->getTile( _key.createParentKey().getTileId(), parentTile );

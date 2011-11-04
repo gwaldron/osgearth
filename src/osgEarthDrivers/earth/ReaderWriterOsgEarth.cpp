@@ -132,9 +132,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         {
             // pull the URI context from the options structure (since we're reading
             // from an "anonymous" stream here)
-            URIContext uriContext( options );
+            URIContext uriContext( options );            
 
-            osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );
+            osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );            
             if ( !doc.valid() )
                 return ReadResult::ERROR_IN_READING_FILE;
 
@@ -151,14 +151,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( !conf.empty() )
             {
                 // see if we were given a reference URI to use:
-                std::string refURI;
-                if ( options )
-                {
-                    const std::string* value = static_cast<const std::string*>( 
-                        options->getPluginData( "__ReaderWriterOsgEarth::ref_uri") );
-                    if ( value )
-                        refURI = *value;
-                }
+                std::string refURI = uriContext.referrer();                                
 
                 if ( conf.value("version") == "2" )
                 {

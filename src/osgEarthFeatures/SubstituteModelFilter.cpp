@@ -140,7 +140,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     {
                         // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
                         // could take a shortcut and just use the current extent's local2world matrix for this,
-                        // but it the tile is big enough the up vectors won't be quite right.
+                        // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd rotation;
                         ECEF::transformAndGetRotationMatrix( context.profile()->getSRS(), point, point, rotation );
                         mat = rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;

@@ -21,6 +21,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/Caching>
 #include <osg/Notify>
+#include <osg/Version>
 #include <gdal_priv.h>
 #include <ogr_api.h>
 #include <stdlib.h>
@@ -62,9 +63,11 @@ _caps( 0L )
 
     // activate KMZ support
     osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
-    osgDB::Registry::instance()->addArchiveExtension( "kmz" );
+    osgDB::Registry::instance()->addArchiveExtension( "kmz" );    
+#if OSG_MIN_VERSION_REQUIRED(3,0,0)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz", "kmz" );
+#endif
 
     // set up our default r/w options to NOT cache archives!
     _defaultOptions = new osgDB::Options();
@@ -290,7 +293,7 @@ Registry::createUID()
 osgDB::Options*
 Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
 {
-    osgDB::Options* newOptions = input ? input->cloneOptions() : new osgDB::Options();
+    osgDB::Options* newOptions = input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : new osgDB::Options();
 
     // clear the CACHE_ARCHIVES flag because it is evil
     if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )

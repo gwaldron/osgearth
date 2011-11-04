@@ -18,7 +18,6 @@
  */
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ObjectWrapper>
 #include <osgDB/FileCache>
 #include <osgDB/Registry>
 #include <osgDB/FileUtils>

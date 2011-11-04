@@ -90,8 +90,7 @@ namespace osgEarth { namespace Features
 
         //override
         virtual osg::Image* createImage(
-            const TileKey&        key, 
-            const osgDB::Options* options, 
+            const TileKey&        key,
             ProgressCallback*     progress );
 
     public: // properties:

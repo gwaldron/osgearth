@@ -45,12 +45,10 @@ public: // TileSource interface
     
     osg::Image* createImage( 
         const TileKey&        key,
-        const osgDB::Options* dbOptions,
         ProgressCallback*     progress );
 
     osg::HeightField* createHeightField(
         const TileKey&        key,
-        const osgDB::Options* dbOptions,
         ProgressCallback*     progress );
     
     std::string getExtension() const;

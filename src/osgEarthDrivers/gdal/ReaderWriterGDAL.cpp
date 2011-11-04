@@ -219,10 +219,10 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
             if (!proj || strlen(proj) == 0)
             {                
                 std::string prjLocation = osgDB::getNameLessExtension( std::string(dsFileName) ) + std::string(".prj");
-                std::string wkt;
-                if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
-                {                    
-                    proj = CPLStrdup( wkt.c_str() );
+                ReadResult r = URI(prjLocation).readString();
+                if ( r.succeeded() )
+                {
+                    proj = CPLStrdup( r.getString().c_str() );
                 }                
             }
 
@@ -737,10 +737,11 @@ public:
         {
             // not found in the dataset; try loading a .prj file
             std::string prjLocation = osgDB::getNameLessExtension( uri.full() ) + std::string(".prj");
-            std::string wkt;
-            if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
+
+            ReadResult r = URI(prjLocation).readString( 0L, CachePolicy::NO_CACHE );
+            if ( r.succeeded() )
             {
-                src_srs = SpatialReference::create( wkt );
+                src_srs = SpatialReference::create( r.getString() );
             }
 
             if ( !src_srs.valid() )
@@ -1020,7 +1021,6 @@ public:
     }
 
     osg::Image* createImage( const TileKey&        key,
-                             const osgDB::Options* dbOptions,
                              ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
@@ -1461,7 +1461,6 @@ public:
 
 
     osg::HeightField* createHeightField( const TileKey&        key,
-                                         const osgDB::Options* dbOptions,
                                          ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)

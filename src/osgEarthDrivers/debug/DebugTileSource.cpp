@@ -89,7 +89,7 @@ public:
             setProfile( Profile::create("global-geodetic") );
     }
 
-    osg::Image* createImage( const TileKey& key, const osgDB::Options* options, ProgressCallback* progress )
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
     {
         // first draw the colored outline:
         GeometryRasterizer rasterizer( 256, 256 );

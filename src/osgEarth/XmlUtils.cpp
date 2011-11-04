@@ -29,26 +29,7 @@
 
 using namespace osgEarth;
 
-
 static std::string EMPTY_VALUE = "";
-
-//std::string
-//osgEarth::trim( const std::string& in )
-//{
-//    std::string whitespace (" \t\f\v\n\r");
-//    // by Rodrigo C F Dias
-//    // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
-//    std::string str = in;
-//    std::string::size_type pos = str.find_last_not_of( whitespace );
-//    if(pos != std::string::npos) {
-//        str.erase(pos + 1);
-//        pos = str.find_first_not_of( whitespace );
-//        if(pos != std::string::npos) str.erase(0, pos);
-//    }
-//    else str.erase(str.begin(), str.end());
-//    return str;
-//}
-
 
 XmlNode::XmlNode()
 {
@@ -382,21 +363,19 @@ XmlDocument::load( const std::string& location )
 XmlDocument*
 XmlDocument::load( const URI& uri )
 {
-    std::string buffer;
-    if ( HTTPClient::readString( uri.full(), buffer ) != HTTPClient::RESULT_OK )
+    XmlDocument* result = 0L;
+
+    ReadResult r = uri.readString();
+    if ( r.succeeded() )
     {
-        return 0L;
+        std::stringstream buf( r.getString() );
+        result = load( buf );
+        if ( result )
+            result->_sourceURI = uri;
     }
-
-    std::stringstream buf(buffer);
-    XmlDocument* result = load(buf);
-
-    if ( result )
-        result->_sourceURI = uri;
 
     return result;
 }
-
 
 XmlDocument*
 XmlDocument::load( std::istream& in, const URIContext& uriContext )

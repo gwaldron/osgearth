@@ -190,25 +190,18 @@ TileSource::getPixelsPerTile() const
 
 osg::Image*
 TileSource::createImage(const TileKey&        key,
-                        const osgDB::Options* dbOptions,
                         ImageOperation*       prepOp, 
                         ProgressCallback*     progress )
 {
-    RasterCacheAdapter rasterCache( _memCache.get() );
-
     // Try to get it from the memcache fist
     if (_memCache.valid())
     {
-        osg::ref_ptr<osg::Image> cachedImage;
-        if ( rasterCache.getImage( key, "", cachedImage ) )
-        {
-            return cachedImage.release();
-            //// TODO: no longer need to clone the image, I think. -gw
-            //return ImageUtils::cloneImage(cachedImage.get());
-        }
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readImage( key.str() );
+        if ( r.succeeded() )
+            return r.releaseImage();
     }
 
-    osg::ref_ptr<osg::Image> newImage = createImage(key, dbOptions, progress);
+    osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
 
     if ( prepOp )
         (*prepOp)( newImage );
@@ -216,8 +209,7 @@ TileSource::createImage(const TileKey&        key,
     if ( newImage.valid() && _memCache.valid() )
     {
         // cache it to the memory cache.
-        rasterCache.setImage( key, "", newImage.get() );
-        //_memCache->setImage( key, CacheSpec(), newImage.get() );
+        _memCache->getOrCreateDefaultBin()->write( key.str(), newImage.get() );
     }
 
     return newImage.release();
@@ -225,32 +217,25 @@ TileSource::createImage(const TileKey&        key,
 
 osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
-                              const osgDB::Options* dbOptions,
                               HeightFieldOperation* prepOp, 
                               ProgressCallback*     progress )
 {
-    RasterCacheAdapter rasterCache( _memCache.get() );
-
     // Try to get it from the memcache first:
 	if (_memCache.valid())
 	{
-        osg::ref_ptr<osg::HeightField> cachedHF;
-		if ( rasterCache.getHeightField( key, "", cachedHF ) )
-        {
-            return cachedHF.release();
-            ////TODO: no longer need to clone this, I think
-            //return new osg::HeightField( *cachedHF.get() );
-        }
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readObject( key.str() );
+        if ( r.succeeded() )
+            return r.release<osg::HeightField>();
 	}
 
-    osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, dbOptions, progress );
+    osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
 
     if ( prepOp )
         (*prepOp)( newHF );
 
     if ( newHF.valid() && _memCache.valid() )
     {
-        rasterCache.setHeightField( key, "", newHF.get() );
+        _memCache->getOrCreateDefaultBin()->write( key.str(), newHF.get() );
     }
 
     //TODO: why not just newHF.release()? -gw
@@ -259,10 +244,10 @@ TileSource::createHeightField(const TileKey&        key,
 
 osg::HeightField*
 TileSource::createHeightField(const TileKey&        key,
-                              const osgDB::Options* dbOptions,
                               ProgressCallback*     progress)
 {
-    osg::ref_ptr<osg::Image> image = createImage(key, dbOptions, progress);
+    //osg::ref_ptr<osg::Image> image = createImage(key, dbOptions, progress);
+    osg::ref_ptr<osg::Image> image = createImage(key, progress);
     osg::HeightField* hf = 0;
     if (image.valid())
     {

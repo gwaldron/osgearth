@@ -123,13 +123,7 @@ SkinResource::createStateSet( osg::Image* image ) const
 osg::Image*
 SkinResource::createImage() const
 {
-    osg::ref_ptr<osg::Image> image;
-    if ( HTTPClient::readImageFile( _imageURI->full(), image ) != HTTPClient::RESULT_OK )
-    {
-        //TODO: hmm, perhaps create an "error image" here? or just return NULL
-        //      and let the caller do so.
-    }
-    return image.release();
+    return _imageURI->readImage().releaseImage();
 }
 
 //---------------------------------------------------------------------------

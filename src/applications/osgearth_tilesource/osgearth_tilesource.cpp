@@ -63,7 +63,7 @@ public:
             setProfile( Registry::instance()->getGlobalGeodeticProfile() );
     }
 
-    osg::Image* createImage( const TileKey& key, const osgDB::Options* options, ProgressCallback* progress )
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
     {
         GeometryRasterizer rasterizer( 256, 256 );
         rasterizer.draw( _geom.get(), colors[key.getLevelOfDetail() % 4] );

@@ -160,6 +160,8 @@ public:
         if ( _initialized )
             return;
 
+        _dbOptions = dbOptions;
+
         unsigned int numTilesWideAtLod0, numTilesHighAtLod0;
         _profile->getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
 
@@ -179,11 +181,11 @@ public:
 			
             osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
-            //_rootNode = osgDB::readNodeFile( _url, localOptions.get() );
 
-            HTTPClient::ResultCode rc = HTTPClient::readNodeFile( _url.full(), _rootNode, localOptions.get() );
+            ReadResult rc = _url.readNode( localOptions.get(), CachePolicy::NO_CACHE );
+            //HTTPClient::ResultCode rc = HTTPClient::readNodeFile( _url.full(), _rootNode, localOptions.get() );
 
-            if ( rc == HTTPClient::RESULT_OK && _rootNode.valid() )
+            if ( rc.succeeded() )
             {
                 _baseNameToUse = _options.baseName().value();
 
@@ -264,7 +266,7 @@ public:
             }
             else
             {
-                OE_WARN << LC << HTTPClient::getResultCodeString(rc) << ": " << *_url << std::endl;
+                OE_WARN << LC << rc.getResultCodeString() << ": " << *_url << std::endl;
                 _url = URI();
             }
         }
@@ -369,27 +371,18 @@ public:
             OE_DEBUG << LC << "file has been found in black list : "<<filename<<std::endl;
             insertTile(tileID, 0);
             return; //return 0;
-        }
-
-        //    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
-        //    if (_blacklistedFilenames.count(filename)==1)
-        //    {
-        //        OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
-        //        insertTile(tileID, 0);
-        //        return 0;
-        //    }
-        //}
-        
+        }        
 
         osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
         localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
 
         //osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename, localOptions.get());
-        osg::ref_ptr<osg::Node> node;
-        HTTPClient::ResultCode result = HTTPClient::readNodeFile( filename, node, localOptions.get(), progress );
-        if ( result == HTTPClient::RESULT_OK && node.valid() )
+        ReadResult r = URI(filename).readNode( localOptions.get(), CachePolicy::NO_CACHE, progress );
+        if ( r.succeeded() )
         {
+            osg::Node* node = r.getNode();
+
             //OE_INFO << LC << "Loaded model "<<filename<<std::endl;
             CollectTiles ct;
             node->accept(ct);
@@ -429,7 +422,7 @@ public:
         else
         {
             // in the case of an "unrecoverable" error, black-list the URL for this tile.
-            if ( ! HTTPClient::isRecoverable( result ) )
+            if ( ! HTTPClient::isRecoverable( r.code() ) )
             {
                 Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
                 _blacklistedFilenames.insert( filename );
@@ -513,6 +506,8 @@ public:
 
     bool _initialized;
     Threading::Mutex _initializeMutex;
+
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
     
 };
 
@@ -520,17 +515,16 @@ class VPBSource : public TileSource
 {
 public:
     VPBSource( VPBDatabase* vpbDatabase, const VPBOptions& in_options ) : 
-        TileSource   (in_options),
-        _vpbDatabase (vpbDatabase),
-        _options     ( in_options )
+        TileSource   ( in_options  ),
+        _vpbDatabase ( vpbDatabase ),
+        _options     ( in_options  )
     {
         //nop
     }
 
     void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
-	    //_referenceUri = referenceURI;
-
+        _dbOptions = dbOptions;
 	    _vpbDatabase->initialize( dbOptions );
 
 	    if ( overrideProfile)
@@ -543,7 +537,7 @@ public:
 	    }
     }
     
-    osg::Image* createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
 	{
 		osg::Image * ret = NULL;
 		//TODO:  Make VPB driver use progress callback
@@ -600,7 +594,6 @@ public:
 	}
 
     osg::HeightField* createHeightField( const TileKey&        key,
-                                         const osgDB::Options* dbOptions,
                                          ProgressCallback*     progress )
     {
         osg::ref_ptr<osgTerrain::TerrainTile> tile;
@@ -626,9 +619,9 @@ public:
     }
 
 private:
-    osg::ref_ptr<VPBDatabase> _vpbDatabase;
-    const VPBOptions _options;
-	//std::string	_referenceUri;
+    osg::ref_ptr<VPBDatabase>          _vpbDatabase;
+    const VPBOptions                   _options;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

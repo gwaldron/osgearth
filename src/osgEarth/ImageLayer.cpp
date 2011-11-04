@@ -172,7 +172,7 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
-        _noDataImage = URI( *_options.noDataImageFilename() ).readImage();
+        _noDataImage = URI( *_options.noDataImageFilename() ).readImage().getImage();
         if ( !_noDataImage.valid() )
         {
             OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
@@ -374,16 +374,11 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
     // map profile, we can try this first.
     if ( cacheBin && _runtimeOptions.cachePolicy()->isCacheReadable() )
     {
-        RasterCacheBinAdapter bin( cacheBin );
-        osg::ref_ptr<osg::Image> cachedImage;
-        if ( bin.getImage( key, cachedImage ) )
+        ReadResult r = cacheBin->readImage( key.str() );
+        if ( r.succeeded() )
         {
-            ImageUtils::normalizeImage( cachedImage.get() );
-            return GeoImage( cachedImage.get(), key.getExtent() );
-            // Cloning is no longer necessary..
-            //result = GeoImage( ImageUtils::cloneImage(cachedImage.get()), key.getExtent() );
-            //ImageUtils::normalizeImage( result.getImage() );
-            //return result;
+            ImageUtils::normalizeImage( r.getImage() );
+            return GeoImage( r.releaseImage(), key.getExtent() );
         }
     }
     
@@ -408,8 +403,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
          cacheBin       && 
          _runtimeOptions.cachePolicy()->isCacheWriteable() )
 	{
-        RasterCacheBinAdapter ca( cacheBin );
-        ca.setImage( key, result.getImage() );
+        cacheBin->write( key.str(), result.getImage() );
 	}
 
     return result;
@@ -455,7 +449,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
-    osg::Image* result = source->createImage( key, _dbOptions.get(), op.get(), progress );
+    osg::Image* result = source->createImage( key, op.get(), progress );
     
     // If image creation failed (but was not intentionally canceled),
     // blacklist this tile for future requests.

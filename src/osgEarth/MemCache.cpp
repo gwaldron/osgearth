@@ -27,7 +27,8 @@ using namespace osgEarth;
 
 namespace
 {
-    typedef LRUCache<std::string, osg::ref_ptr<const osg::Object> > MemCacheLRU;
+    typedef std::pair<osg::ref_ptr<const osg::Object>, Config> MemCacheEntry;
+    typedef LRUCache<std::string, MemCacheEntry> MemCacheLRU;
 
     struct MemCacheBin : public CacheBin
     {
@@ -38,62 +39,58 @@ namespace
             //nop
         }
 
-        bool readObject(osg::ref_ptr<osg::Object>& output,
-                        const std::string&         key,
-                        double                     maxAge )
+        ReadResult readObject(const std::string& key,
+                              double             maxAge )
         {
             Threading::ScopedReadLock sharedLock( _mutex );
             MemCacheLRU::Record rec = _lru.get(key);
             // clone required since the cache is in memory
-            output = rec.valid() ? osg::clone(rec.value().get(), osg::CopyOp::DEEP_COPY_ALL) : 0L;
-            return output.valid();
+
+            if ( rec.valid() )
+            {
+                return ReadResult( 
+                   osg::clone(rec.value().first.get(), osg::CopyOp::DEEP_COPY_ALL),
+                   rec.value().second );
+            }
+            else
+                return ReadResult();
         }
 
-        bool readImage(osg::ref_ptr<osg::Image>& output,
-                       const std::string&        key,
-                       double                    maxAge )
+        ReadResult readImage(const std::string& key,
+                             double             maxAge )
         {
-            osg::ref_ptr<osg::Object> obj;
-            readObject( obj, key, maxAge );
-            output = dynamic_cast<osg::Image*>(obj.get());
-            return output.valid();
+            return readObject( key, maxAge );
         }
 
-        bool readString(std::string&        buffer,
-                        const std::string&  key,
-                        double              maxAge )
+        ReadResult readString(const std::string& key,
+                              double             maxAge )
         {
-            osg::ref_ptr<osg::Object> obj;
-            readObject( obj, key, maxAge );
-            StringObject* r = dynamic_cast<StringObject*>(obj.get());
-            if ( r ) buffer = *r;
-            return r != 0L;
+            return readObject( key, maxAge );
         }
 
-        bool write( const std::string& key, const osg::Object* object )
+        bool write( const std::string& key, const osg::Object* object, const Config& meta )
         {
             Threading::ScopedWriteLock exclusiveLock( _mutex );
             if ( object ) 
             {
-                _lru.insert( key, object );
+                _lru.insert( key, std::make_pair(object, meta) );
                 return true;
             }
             else
                 return false;
         }
 
-        bool write( const std::string& key, const std::string& buffer )
+#if 0
+        bool writeString( const std::string& key, const std::string& buffer, const Config& meta )
         {
-            Threading::ScopedWriteLock exclusiveLock( _mutex );
-            _lru.insert( key, new StringObject(buffer) );
-            return true;
+            return write( key, new StringObject(buffer), meta );
         }
+#endif
 
         bool isCached( const std::string& key, double maxAge ) 
         {
             Threading::ScopedReadLock sharedLock( _mutex );
-            MemCacheLRU::Record rec = _lru.get(key);
-            return rec.valid();
+            return _lru.get(key).valid();
         }
 
     private:

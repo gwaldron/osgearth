@@ -94,14 +94,14 @@ public:
     }
 
 public:
-    osg::Image* createImage( const TileKey& key, const osgDB::Options* options, ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
     {
         // NYI - eventually, consolidate the "tileservice" plugin into this one //GW
         return NULL;
     }
 
 
-    osg::HeightField* createHeightField(const TileKey& key, const osgDB::Options* options, ProgressCallback* progress)
+    osg::HeightField* createHeightField(const TileKey& key, ProgressCallback* progress)
     {
         if ( *_options.maxLOD() <= key.getLevelOfDetail()) return NULL;
         if ( !_options.elevationCachePath().isSet() ) return NULL;

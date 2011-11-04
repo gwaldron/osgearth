@@ -120,16 +120,16 @@ MarkerResource::createNode() const
 osg::Node*
 MarkerResource::createNodeFromURI( const URI& uri ) const
 {
-    osg::ref_ptr<osg::Object> obj = uri.readObject();
-    if ( obj.valid() )
+    ReadResult r = uri.readObject();
+    if ( r.succeeded() )
     {
-        if ( dynamic_cast<osg::Image*>( obj.get() ) )
+        if ( r.getImage() )
         {
-            return buildImageModel( dynamic_cast<osg::Image*>( obj.get() ) );
+            return buildImageModel( r.getImage() );
         }
-        else if ( dynamic_cast<osg::Node*>( obj.get() ) )
+        else if ( r.getNode() )
         {
-            return dynamic_cast<osg::Node*>( obj.release() );
+            return r.releaseNode();
         }
     }
 

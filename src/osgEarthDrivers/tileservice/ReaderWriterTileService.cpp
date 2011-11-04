@@ -52,6 +52,8 @@ public:
         const osgDB::Options* dbOptions, 
         const Profile*        overrideProfile)
     {
+        _dbOptions = dbOptions;
+
 		//Take on the override profile if one is given.
 		if (overrideProfile)
 		{
@@ -67,24 +69,20 @@ public:
 public:
     osg::Image* createImage(
         const TileKey&        key,
-        const osgDB::Options* dbOptions,
         ProgressCallback*     progress )
     {        
-        osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile( createURI( key ), image, 0L, progress );
-        return image.release();
+        return URI( createURL(key) ).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).releaseImage();
     }
 
     osg::HeightField* createHeightField(
         const TileKey&        key,
-        const osgDB::Options* dbOptions,
         ProgressCallback*     progress )
     {
         //NOP
         return NULL;
     }
 
-    std::string createURI( const TileKey& key ) const
+    std::string createURL( const TileKey& key ) const
     {
         unsigned int x, y;
         key.getTileXY(x, y);
@@ -110,8 +108,9 @@ public:
     }
 
 private:
-    std::string _formatToUse;
-    const TileServiceOptions _options;
+    std::string                        _formatToUse;
+    const TileServiceOptions           _options;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

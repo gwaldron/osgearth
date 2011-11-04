@@ -22,6 +22,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/StringUtils>
 #include <osgEarth/URI>
 #include <osg/Referenced>
 #include <osg/ref_ptr>
@@ -34,8 +35,6 @@
 
 namespace osgEarth
 {
-    extern std::string trim( const std::string& in );
-
     class OSGEARTH_EXPORT XmlNode : public osg::Referenced
     {
     public:

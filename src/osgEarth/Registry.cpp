@@ -233,32 +233,33 @@ Registry::getReaderWriterForMimeType(const std::string& mimeType)
 }
 
 bool
-Registry::isBlacklisted(const std::string &filename)
+Registry::isBlacklisted(const std::string& filename)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    Threading::ScopedReadLock sharedLock(_blacklistMutex);
     return (_blacklistedFilenames.count(filename)==1);
 }
 
 void
 Registry::blacklist(const std::string& filename)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
-    _blacklistedFilenames.insert( filename );
+    {
+        Threading::ScopedWriteLock exclusiveLock(_blacklistMutex);
+        _blacklistedFilenames.insert( filename );
+    }
     OE_DEBUG << "Blacklist size = " << _blacklistedFilenames.size() << std::endl;
 }
 
 void
 Registry::clearBlacklist()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    Threading::ScopedWriteLock exclusiveLock(_blacklistMutex);
     _blacklistedFilenames.clear();
-    OE_DEBUG << "Blacklist size = " << _blacklistedFilenames.size() << std::endl;
 }
 
 unsigned int
 Registry::getNumBlacklistedFilenames()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    Threading::ScopedReadLock sharedLock(_blacklistMutex);
     return _blacklistedFilenames.size();
 }
 

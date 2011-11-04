@@ -164,8 +164,7 @@ _dynamic( false )
 }
 
 osg::Image*
-CompositeTileSource::createImage(const TileKey&        key, 
-                                 const osgDB::Options* dbOptions,
+CompositeTileSource::createImage(const TileKey&        key,
                                  ProgressCallback*     progress )
 {
     ImageMixVector images;
@@ -223,7 +222,7 @@ CompositeTileSource::createImage(const TileKey&        key,
                     }
 
                     ImageOpacityPair imagePair(
-                        source->createImage( key, dbOptions, preCacheOp.get(), progress ),
+                        source->createImage( key, preCacheOp.get(), progress ),
                         1.0f );
 
                     //If the image is not valid and the progress was not cancelled, blacklist

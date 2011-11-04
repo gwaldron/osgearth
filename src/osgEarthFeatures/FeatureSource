@@ -219,10 +219,7 @@ namespace osgEarth { namespace Features
         const URIContext& uriContext() const { return _uriContext; }
 
         /** The Cache passed in via the dbOptions */
-        Cache* getCache() const { return _cache.get(); }
-
-        /** The CacheBin passing in via the dbOptions */
-        //CacheBin* getCacheBin() const { return _cacheBin.get(); }         
+        Cache* getCache() const { return _cache.get(); }    
 
     private:
         const FeatureSourceOptions         _options;

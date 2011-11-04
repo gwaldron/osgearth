@@ -78,12 +78,15 @@ public:
         //URI url = _options.url().value();
         if ( _options.url()->empty() ) //!url.empty() )
         {
-            URI::ResultCode code;
-            image = _options.url()->readImage( dbOptions, CachePolicy(), &code );
-            if ( !image.valid() )
+            ReadResult r = _options.url()->readImage( dbOptions, CachePolicy::NO_CACHE );
+            if ( r.succeeded() )
             {
-                OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: " << 
-                    HTTPClient::getResultCodeString(code) << std::endl;
+                image = r.getImage();
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: "
+                    << r.getResultCodeString() << std::endl;
             }
         }
 
@@ -131,7 +134,7 @@ public:
     }
 
     osg::Image*
-    createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress )
+    createImage( const TileKey& key, ProgressCallback* progress )
     {
         if ( !_image.valid() || key.getLevelOfDetail() > getMaxDataLevel() )
             return NULL;
@@ -147,9 +150,9 @@ public:
     }
 
 private:
-    std::string _extension;
-    int _maxDataLevel;
-    GeoImage _image;
+    std::string      _extension;
+    int              _maxDataLevel;
+    GeoImage         _image;
     const OSGOptions _options;
 };
 

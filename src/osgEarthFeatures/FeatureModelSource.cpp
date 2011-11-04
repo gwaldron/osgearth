@@ -160,7 +160,7 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions,
 }
 
 osg::Node*
-FeatureModelSource::createNode( const osgDB::Options* dbOptions, ProgressCallback* progress )
+FeatureModelSource::createNode( ProgressCallback* progress )
 {
     if ( !_factory.valid() )
         _factory = createFeatureNodeFactory();

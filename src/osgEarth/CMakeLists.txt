@@ -29,7 +29,6 @@ SET(LIB_PUBLIC_HEADERS
     Config
     Cube
     DrapeableNode
-    DriverContext
     ECEF
     ElevationLayer
     ElevationQuery
@@ -45,6 +44,7 @@ SET(LIB_PUBLIC_HEADERS
     ImageLayer
     ImageMosaic
     ImageUtils
+    IOTypes
     JsonUtils
     Layer
     Locators
@@ -136,6 +136,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
+    IOTypes.cpp
     JsonUtils.cpp
     Layer.cpp
     Locators.cpp

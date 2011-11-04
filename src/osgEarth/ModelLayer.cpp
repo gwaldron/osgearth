@@ -141,7 +141,7 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
 
         if ( !_node.valid() )
         {
-            _node = _modelSource->createNode( _dbOptions.get(), progress );
+            _node = _modelSource->createNode( progress );
 
             if ( _runtimeOptions.enabled().isSet() )
                 setEnabled( *_runtimeOptions.enabled() );

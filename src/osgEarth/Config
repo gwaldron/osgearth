@@ -70,8 +70,16 @@ namespace osgEarth
 
         bool loadXML( std::istream& in );
 
+        std::string toJSON( bool pretty =false ) const;
+
+        bool fromJSON( const std::string& json );
+
         bool empty() const {
-            return _key.empty() && _defaultValue.empty() && _children.empty();
+            return _key.empty() && _defaultValue.empty() && _attrs.empty() && _children.empty();
+        }
+
+        bool isSimple() const {
+            return !_key.empty() && !_defaultValue.empty() && _attrs.empty() && _children.empty();
         }
 
         std::string& key() { return _key; }

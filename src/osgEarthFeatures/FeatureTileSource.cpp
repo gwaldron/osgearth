@@ -153,7 +153,7 @@ FeatureTileSource::setFeatureSource( FeatureSource* source )
 }
 
 osg::Image*
-FeatureTileSource::createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress )
+FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
 {
     if ( !_features.valid() || !_features->getFeatureProfile() )
         return 0L;
@@ -175,7 +175,7 @@ FeatureTileSource::createImage( const TileKey& key, const osgDB::Options* dbOpti
     {
         // Each feature has its own embedded style data, so use that:
         osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
-        while( cursor->hasMore() )
+        while( cursor.valid() && cursor->hasMore() )
         {
             Feature* feature = cursor->nextFeature();
             if ( feature )
@@ -247,7 +247,7 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
         // now copy the resulting feature set into a list, converting the data
         // types along the way if a geometry override is in place:
         FeatureList cellFeatures;
-        while( cursor->hasMore() )
+        while( cursor.valid() && cursor->hasMore() )
         {
             Feature* feature = cursor->nextFeature();
             Geometry* geom = feature->getGeometry();

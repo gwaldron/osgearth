@@ -559,7 +559,7 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 
         // each feature has its own style, so use that and ignore the style catalog.
         osg::ref_ptr<FeatureCursor> cursor = _source->createFeatureCursor( baseQuery );
-        while( cursor->hasMore() )
+        while( cursor.valid() && cursor->hasMore() )
         {
             Feature* feature = cursor->nextFeature();
             if ( feature )
@@ -654,7 +654,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
     // query the feature source:
     osg::ref_ptr<FeatureCursor> cursor = _source->createFeatureCursor( query );
 
-    if ( cursor->hasMore() )
+    if ( cursor.valid() && cursor->hasMore() )
     {
         Bounds cellBounds =
             query.bounds().isSet() ? *query.bounds() : extent.bounds();

@@ -212,7 +212,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
         }
 
         // Make it from the source:
-        result = source->createHeightField( key, _dbOptions.get(), _preCacheOp.get(), progress );
+        result = source->createHeightField( key, _preCacheOp.get(), progress );
     }
 
     // Blacklist the tile if we can't get it and it wasn't cancelled
@@ -340,20 +340,14 @@ ElevationLayer::createHeightField(const TileKey&    key,
     // First, attempt to read from the cache. Since the cached data is stored in the
     // map profile, we can try this first.
     bool fromCache = false;
-    if ( cacheBin && 
-         _runtimeOptions.cachePolicy()->isCacheReadable() )
+    if ( cacheBin && _runtimeOptions.cachePolicy()->isCacheReadable() )
     {
-        RasterCacheBinAdapter bin( cacheBin );
-        osg::ref_ptr<osg::HeightField> cachedRaster;
-        if ( bin.getHeightField( key, cachedRaster ) )
+        ReadResult r = cacheBin->readObject( key.str() );
+        if ( r.succeeded() )
         {
-            result = cachedRaster.release();
+            result = r.release<osg::HeightField>();
             if ( result )
                 fromCache = true;
-            ////TODO: no longer need to clone the result, I think
-            //result = new osg::HeightField( *cachedRaster.get() );
-            //if ( result )
-            //    fromCache = true;
         }
     }
 
@@ -382,8 +376,7 @@ ElevationLayer::createHeightField(const TileKey&    key,
          !fromCache    &&
          _runtimeOptions.cachePolicy()->isCacheWriteable() )
     {
-        RasterCacheBinAdapter bin( cacheBin );
-        bin.setHeightField( key, result );
+        cacheBin->write( key.str(), result );
     }
 
     if ( result )

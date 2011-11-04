@@ -87,9 +87,7 @@ namespace osgEarth
         /**
          * Subclass implements this method to create the mode node.
          */
-        virtual osg::Node* createNode(
-            const osgDB::Options* dbOptions =0L,
-            ProgressCallback*     progress  =0L ) =0;
+        virtual osg::Node* createNode( ProgressCallback* progress =0L ) =0;
 
 
     public: // META_Object specialization

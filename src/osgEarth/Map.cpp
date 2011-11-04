@@ -1372,11 +1372,7 @@ MapFrame::isCached( const TileKey& key ) const
         ImageLayer* layer = i->get();
         
         CacheBin* bin = layer->getCacheBin( key.getProfile() );
-        if ( !bin )
-            return false;
-
-        RasterCacheBinAdapter rbin( bin );
-        if ( !rbin.isCached( key ) )
+        if ( !bin || !bin->isCached( key.str() ) )
             return false;
     }
 
@@ -1385,11 +1381,7 @@ MapFrame::isCached( const TileKey& key ) const
         ElevationLayer* layer = i->get();
 
         CacheBin* bin = layer->getCacheBin( key.getProfile() );
-        if ( !bin )
-            return false;
-
-        RasterCacheBinAdapter rbin( bin );
-        if ( !rbin.isCached( key ) )
+        if ( !bin || !bin->isCached( key.str() ) )
             return false;
     }
 

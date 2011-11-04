@@ -140,6 +140,7 @@ namespace osgEarth
 
 //--------------------------------------------------------------------
     
+#if 0
     /**
      * Adapter to read/write tilekey-based images and heightfields from a Cache.
      */
@@ -184,19 +185,23 @@ namespace osgEarth
 
         Cache* _cache;
     };
-    
+
     struct /*NO EXPORT*/ RasterCacheBinAdapter
     {
         RasterCacheBinAdapter( CacheBin* bin ) : _bin(bin) { }
 
         bool getImage( const TileKey& key, osg::ref_ptr<osg::Image>& output )
         {
-            return _bin->readImage( output, key.str() );
+            ReadResult r = _bin->readImage( key.str() );
+            output = r.take<osg::Image>();
+            return output.valid();
         }
 
         bool getHeightField( const TileKey& key, osg::ref_ptr<osg::HeightField>& output )
         {
-            return _bin->readObject( output, key.str() );
+            ReadResult r = _bin->readObject( key.str() );
+            output = r.take<osg::HeightField>();
+            return output.valid();
         }
 
         bool isCached( const TileKey& key )
@@ -216,6 +221,7 @@ namespace osgEarth
 
         CacheBin* _bin;
     };
+#endif
 
 //----------------------------------------------------------------------
 

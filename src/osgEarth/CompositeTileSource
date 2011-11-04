@@ -82,8 +82,7 @@ namespace osgEarth
         
 		/** Creates a new image for the given key */
 		virtual osg::Image* createImage( 
-            const TileKey&        key, 
-            const osgDB::Options* dbOptions,
+            const TileKey&        key,
             ProgressCallback*     progress =0 );
 
         /** Whether one of the underlying tile source's is dynamic */

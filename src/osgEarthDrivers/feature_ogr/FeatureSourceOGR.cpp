@@ -434,10 +434,10 @@ protected:
     // read the WKT geometry from a URL, then parse into a Geometry.
     Symbology::Geometry* parseGeometryUrl( const std::string& geomUrl )
     {
-        std::string wkt;
-        if ( HTTPClient::readString( geomUrl, wkt ) == HTTPClient::RESULT_OK )
+        ReadResult r = URI(geomUrl).readString( 0L, CachePolicy::NO_CACHE );
+        if ( r.succeeded() )
         {
-            Config conf( "geometry", wkt );
+            Config conf( "geometry", r.getString() );
             return parseGeometry( conf );
         }
         return 0L;

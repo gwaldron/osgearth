@@ -40,6 +40,9 @@ namespace osgEarth
             USAGE_DEFAULT      = USAGE_READ_WRITE
         };
 
+        static CachePolicy NO_CACHE;
+        static CachePolicy CACHE_ONLY;
+
     public:
         /** constructs a default caching policy. */
         CachePolicy( const Usage& usage, double maxAgeSeconds =DBL_MAX );
@@ -63,6 +66,10 @@ namespace osgEarth
 
         bool isCacheWriteable() const {
             return *_usage == USAGE_READ_WRITE;
+        }
+
+        bool operator == ( const CachePolicy& rhs ) const {
+            return _usage == rhs._usage && _maxAge == rhs._maxAge;
         }
 
     public: // config

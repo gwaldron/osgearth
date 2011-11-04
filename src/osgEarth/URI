@@ -23,6 +23,8 @@
 #include <osgEarth/CacheBin>
 #include <osgEarth/CachePolicy>
 #include <osgEarth/FileUtils>
+#include <osgEarth/IOTypes>
+#include <osgEarth/Progress>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
@@ -31,8 +33,6 @@
 
 namespace osgEarth
 {
-    class CacheBin;
-    class CachePolicy;
     class URI;
 
     /**
@@ -154,42 +154,33 @@ namespace osgEarth
         /** Whether the URI is empty */
         bool empty() const { return _baseURI.empty(); }
 
+        /** Whether the object of the URI is cacheable. */
+        bool isRemote() const;
+
         /** Returns a copy of this URI with the suffix appended */
         URI append( const std::string& suffix ) const;
 
     public:
 
-        /** Result codes for the read* methods. Call getLastResultCode() to fetch. */
-        enum ResultCode {
-            RESULT_OK,
-            RESULT_CANCELED,
-            RESULT_NOT_FOUND,
-            RESULT_SERVER_ERROR,
-            RESULT_TIMEOUT,
-            RESULT_NO_READER,
-            RESULT_READER_ERROR,
-            RESULT_UNKNOWN_ERROR
-        };
-
-        osg::Object* readObject(
+        ReadResult readObject(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ResultCode*           out_code    =0L ) const;
+            ProgressCallback*     progress    =0L ) const;
 
-        osg::Image* readImage(
+        ReadResult readImage(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ResultCode*           out_code    =0L ) const;
+            ProgressCallback*     progress    =0L ) const;
 
-        osg::Node* readNode(
+        ReadResult readNode(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ResultCode*           out_code    =0L ) const;
+            ProgressCallback*     progress    =0L ) const;
 
-        std::string readString(
+        ReadResult readString(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ResultCode*           out_code    =0L ) const;
+            ProgressCallback*     progress    =0L ) const;
 
     public:
 

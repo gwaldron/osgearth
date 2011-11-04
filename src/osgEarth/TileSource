@@ -235,7 +235,7 @@ namespace osgEarth
 		 */
         virtual osg::Image* createImage(
             const TileKey&        key,
-            const osgDB::Options* dbOptions =0L,
+            //const osgDB::Options* dbOptions =0L,
             ImageOperation*       op        =0L,
             ProgressCallback*     progress  =0L );
 
@@ -244,7 +244,7 @@ namespace osgEarth
          */
         virtual osg::HeightField* createHeightField(
             const TileKey&        key,
-            const osgDB::Options* dbOptions =0L,
+            //const osgDB::Options* dbOptions =0L,
             HeightFieldOperation* op        =0L,
             ProgressCallback*     progress  =0L );     
 
@@ -337,8 +337,7 @@ namespace osgEarth
 		 * Initializes the TileSource.
          *
          * This is the initialize() function called by the osgEarth engine. You can define it in 
-         * the implementation class to do initial startup of the TileSource. Be sure to call the base
-         * class initialize() method from your implementation.
+         * the implementation class to do initial startup of the TileSource.
 		 */
         virtual void initialize( 
             const osgDB::Options* dbOptions       =0L,
@@ -366,7 +365,7 @@ namespace osgEarth
 		 */
 		virtual osg::Image* createImage( 
             const TileKey&        key, 
-            const osgDB::Options* options,
+            //const osgDB::Options* options,
             ProgressCallback*     progress ) = 0;
 
         /**
@@ -375,7 +374,7 @@ namespace osgEarth
          */
         virtual osg::HeightField* createHeightField( 
             const TileKey&        key, 
-            const osgDB::Options* dbOptions,
+            //const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
 
 		/**
@@ -383,20 +382,10 @@ namespace osgEarth
 		 */
 		void setProfile( const Profile* profile );
 
-#if 0
-        /** The URI context (for resolving relative paths) */
-        const URIContext& uriContext() const { return _uriContext; }
-
-        /** The Cache passed in via the dbOptions */
-        Cache* getCache() const { return _cache.get(); }
-
-        /** The CacheBin passing in via the dbOptions */
-        //CacheBin* getCacheBin() const { return _cacheBin.get(); }         
-#endif
-
     private:
+
         osg::ref_ptr<const Profile> _profile;
-        const TileSourceOptions _options;
+        const TileSourceOptions     _options;
 
         friend class Map;
         friend class MapEngine;
@@ -408,11 +397,6 @@ namespace osgEarth
 		osg::ref_ptr<MemCache> _memCache;
 
         DataExtentList _dataExtents;
-        //osg::ref_ptr< RTree<unsigned int> > _dataExtentsIndex;
-
-        //osg::observer_ptr<Cache>    _cache;
-        //osg::observer_ptr<CacheBin> _cacheBin;
-        //URIContext                  _uriContext;
     };
 
     

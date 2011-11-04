@@ -292,17 +292,16 @@ namespace osgEarth
             CacheBinMetadata( const Config& conf )
             {
                 _empty = conf.empty();
-                Config top = conf.child("osgearth_cachebin");
-                top.getIfSet   ( "cachebin_id",    _cacheBinId );
-                top.getIfSet   ( "source_name",    _sourceName );
-                top.getIfSet   ( "source_driver",  _sourceDriver );
-                top.getObjIfSet( "source_profile", _sourceProfile );
-                top.getObjIfSet( "cache_profile",  _cacheProfile );
+                conf.getIfSet   ( "cachebin_id",    _cacheBinId );
+                conf.getIfSet   ( "source_name",    _sourceName );
+                conf.getIfSet   ( "source_driver",  _sourceDriver );
+                conf.getObjIfSet( "source_profile", _sourceProfile );
+                conf.getObjIfSet( "cache_profile",  _cacheProfile );
             }
 
             Config getConfig() const
             {
-                Config conf( "osgearth_cachebin" );
+                Config conf( "osgearth_terrainlayer_cachebin" );
                 conf.addIfSet   ( "cachebin_id",    _cacheBinId );
                 conf.addIfSet   ( "source_name",    _sourceName );
                 conf.addIfSet   ( "source_driver",  _sourceDriver );

@@ -73,15 +73,17 @@ namespace
 
     public: // CacheBin interface
 
-        bool readObject( osg::ref_ptr<osg::Object>& output, const std::string& key, double maxAge =DBL_MAX );
+        ReadResult readObject( const std::string& key, double maxAge =DBL_MAX );
 
-        bool readImage( osg::ref_ptr<osg::Image>& output, const std::string& key, double maxAge =DBL_MAX );
+        ReadResult readImage( const std::string& key, double maxAge =DBL_MAX );
 
-        bool readString( std::string& output, const std::string& key, double maxAge =DBL_MAX );
+        ReadResult readNode( const std::string& key, double maxAge =DBL_MAX );
 
-        bool write( const std::string& key, const osg::Object* object );
+        ReadResult readString( const std::string& key, double maxAge =DBL_MAX );
 
-        bool write( const std::string& key, const std::string& buffer );
+        bool write( const std::string& key, const osg::Object* object, const Config& meta );
+
+        bool writeString( const std::string& key, const std::string& buffer, const Config& meta );
 
         bool isCached( const std::string& key, double maxAge =DBL_MAX );
 
@@ -96,6 +98,31 @@ namespace
         osg::ref_ptr<osgDB::Options>      _rwOptions;
         Threading::ReadWriteMutex         _rwmutex;
     };
+
+    void writeMeta( const std::string& fullPath, const Config& meta )
+    {
+        std::ofstream outmeta( fullPath.c_str() );
+        if ( outmeta.is_open() )
+        {
+            outmeta << meta.toJSON();
+            outmeta.flush();
+            outmeta.close();
+        }
+    }
+
+    void readMeta( const std::string& fullPath, Config& meta )
+    {
+        std::ifstream inmeta( fullPath.c_str() );
+        if ( inmeta.is_open() )
+        {
+            inmeta >> std::noskipws;
+            std::stringstream buf;
+            buf << inmeta.rdbuf();
+            std::string bufStr;
+            bufStr = buf.str();
+            meta.fromJSON( bufStr );
+        }
+    }
 }
 
 
@@ -157,7 +184,7 @@ namespace
     _ok      ( true )
     {
         std::string binPath = osgDB::concatPaths( rootPath, binID );
-        _metaPath = osgDB::concatPaths( binPath, "osgearth_cacheinfo.xml" );
+        _metaPath = osgDB::concatPaths( binPath, "osgearth_cacheinfo.json" );
 
         OE_INFO << LC << "Initializing cache bin: " << _metaPath << std::endl;
         osgDB::makeDirectoryForFile( _metaPath );
@@ -175,74 +202,99 @@ namespace
         }
     }
 
-    bool
-    FileSystemCacheBin::readImage(osg::ref_ptr<osg::Image>& output,
-                                  const std::string&        key,
-                                  double                    maxAge )
+    ReadResult
+    FileSystemCacheBin::readImage(const std::string& key, double maxAge)
     {
         if ( !_ok ) return 0L;
 
         //todo: handle maxAge
 
-        //todo: mangle "key" into a legal path name
+        // mangle "key" into a legal path name
         URI fileURI( toLegalFileName(key), _metaPath );
 
         osgDB::ReaderWriter::ReadResult r;
         {
             ScopedReadLock sharedLock( _rwmutex );
             r = _rw->readImage( fileURI.full() + ".osgb", _rwOptions.get() );
+            if ( r.success() )
+            {
+                // read metadata
+                Config meta;
+                std::string metafile = fileURI.full() + ".meta";
+                if ( osgDB::fileExists(metafile) )
+                    readMeta( metafile, meta );
+
+                return ReadResult( r.getImage(), meta );
+            }
         }
 
-        if ( r.getImage() )
-        {
-            OE_DEBUG << LC << "Read \"" << key << "\" from cache bin " << getID() << std::endl;
-        }
-        else
-        {
-            OE_DEBUG << LC << "Failed to read \"" << key << "\" from cache bin " << getID() << std::endl;
-        }
-
-        output = r.getImage();
-        return output.valid();
+        return ReadResult(); //error
     }
 
-    bool
-    FileSystemCacheBin::readObject(osg::ref_ptr<osg::Object>& output,
-                                   const std::string&         key,
-                                   double                     maxAge )
+    ReadResult
+    FileSystemCacheBin::readObject(const std::string& key, double maxAge)
     {
         if ( !_ok ) return 0L;
 
         //todo: handle maxAge
 
-        //todo: mangle "key" into a legal path name
+        // mangle "key" into a legal path name
         URI fileURI( toLegalFileName(key), _metaPath );
 
         osgDB::ReaderWriter::ReadResult r;
         {
             ScopedReadLock sharedLock( _rwmutex );
             r = _rw->readObject( fileURI.full() + ".osgb", _rwOptions.get() );
+            if ( r.success() )
+            {
+                // read metadata
+                Config meta;
+                std::string metafile = fileURI.full() + ".meta";
+                if ( osgDB::fileExists(metafile) )
+                    readMeta( metafile, meta );
+
+                // TODO: read metadata
+                return ReadResult( r.getImage(), meta );
+            }
         }
 
-        if ( r.getObject() )
-        {
-            OE_DEBUG << LC << "Read \"" << key << "\" from cache bin " << getID() << std::endl;
-        }
-        else
-        {
-            OE_DEBUG << LC << "Failed to read \"" << key << "\" from cache bin " << getID() << std::endl;
-        }
-
-        output = r.getObject();
-        return output.valid();
+        return ReadResult();
     }
 
-    bool
-    FileSystemCacheBin::readString(std::string&        output,
-                                   const std::string&  key,
-                                   double              maxAge )
+    ReadResult
+    FileSystemCacheBin::readNode(const std::string& key, double maxAge)
     {
-        output.clear();
+        if ( !_ok ) return 0L;
+
+        //todo: handle maxAge
+
+        // mangle "key" into a legal path name
+        URI fileURI( toLegalFileName(key), _metaPath );
+
+        osgDB::ReaderWriter::ReadResult r;
+        {
+            ScopedReadLock sharedLock( _rwmutex );
+            r = _rw->readNode( fileURI.full() + ".osgb", _rwOptions.get() );
+            if ( r.success() )
+            {            
+                // read metadata
+                Config meta;
+                std::string metafile = fileURI.full() + ".meta";
+                if ( osgDB::fileExists(metafile) )
+                    readMeta( metafile, meta );
+
+                return ReadResult( r.getImage(), meta );
+            }
+        }
+
+        return ReadResult();
+    }
+
+    ReadResult
+    FileSystemCacheBin::readString(const std::string& key, double maxAge)
+    {
+        Config      meta;
+        std::string output;
 
         if ( !_ok ) return 0L;
 
@@ -251,17 +303,24 @@ namespace
         //todo: mangle "key" into a legal path name
         URI fileURI( toLegalFileName(key), _metaPath );
 
+        bool readOK = false;
         {
             ScopedReadLock sharedLock( _rwmutex );
-            std::ifstream infile( (fileURI.full() + ".dat").c_str() );
+            std::ifstream infile( fileURI.full().c_str() );
             if ( infile.is_open() )
             {
                 infile >> std::noskipws;
                 std::stringstream buf;
                 buf << infile.rdbuf();
-			    std::string bufStr;
-		        bufStr = buf.str();
-                output = bufStr;
+		        output = buf.str();
+                readOK = true;
+            }
+            
+            // read metadata
+            std::string metafile = fileURI.full() + ".meta";
+            if ( osgDB::fileExists(metafile) )
+            {
+                readMeta( metafile, meta );
             }
         }
 
@@ -274,18 +333,18 @@ namespace
             OE_DEBUG << LC << "Failed to read \"" << key << "\" from cache bin " << getID() << std::endl;
         }
 
-        return output.size() > 0;
+        return readOK ? ReadResult( new StringObject(output), meta ) : ReadResult();
     }
 
     bool
-    FileSystemCacheBin::write( const std::string& key, const osg::Object* object )
+    FileSystemCacheBin::write( const std::string& key, const osg::Object* object, const Config& meta )
     {
-        if ( !_ok ) return false;
+        if ( !_ok || !object ) return false;
 
         // convert the key into a legal filename:
         URI fileURI( toLegalFileName(key), _metaPath );
 
-        osgDB::ReaderWriter::WriteResult r;
+        bool objWriteOK = false;
         {
             // prevent cache contention:
             ScopedWriteLock exclusiveLock( _rwmutex );
@@ -294,33 +353,62 @@ namespace
             if ( !osgDB::fileExists( osgDB::getFilePath(fileURI.full()) ) )
                 osgDB::makeDirectoryForFile( fileURI.full() );
 
-            // tack on the extension
-            std::string filename = fileURI.full() + ".osgb";
+            // write it.  
+            osgDB::ReaderWriter::WriteResult r;      
 
-            // write it.        
             if ( dynamic_cast<const osg::Image*>(object) )
+            {
+                std::string filename = fileURI.full() + ".osgb";
                 r = _rw->writeImage( *static_cast<const osg::Image*>(object), filename, _rwOptions.get() );
+                objWriteOK = r.success();
+            }
             else if ( dynamic_cast<const osg::Node*>(object) )
+            {
+                std::string filename = fileURI.full() + ".osgb";
                 r = _rw->writeNode( *static_cast<const osg::Node*>(object), filename, _rwOptions.get() );
+                objWriteOK = r.success();
+            }
+            else if ( dynamic_cast<const StringObject*>(object) )
+            {
+                const StringObject* so = static_cast<const StringObject*>( object );
+                std::ofstream outfile( fileURI.full().c_str() );
+                if ( outfile.is_open() )
+                {
+                    outfile << *so;
+                    outfile.flush();
+                    outfile.close();
+                    objWriteOK = true;
+                }
+            }
             else
+            {
+                std::string filename = fileURI.full() + ".osgb";
                 r = _rw->writeObject( *object, filename );
+                objWriteOK = r.success();
+            }
+
+            // write metadata
+            if ( !meta.empty() && objWriteOK )
+            {
+                std::string metaname = fileURI.full() + ".meta";
+                writeMeta( metaname, meta );
+            }
         }
 
-        if ( r.success() )
+        if ( objWriteOK )
         {
             OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
         }
         else
         {
-            OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin "
-                << getID() << "; message: " << r.message() << std::endl;
+            OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin " << getID() << std::endl;
         }
 
-        return r.success();
+        return objWriteOK;
     }
 
     bool
-    FileSystemCacheBin::write(const std::string& key, const std::string& buffer )
+    FileSystemCacheBin::writeString(const std::string& key, const std::string& buffer, const Config& meta )
     {
         // convert the key into a legal filename:
         URI fileURI( toLegalFileName(key), _metaPath );
@@ -347,6 +435,12 @@ namespace
                 outfile.flush();
                 outfile.close();
                 ok = true;
+            }
+
+            if ( !meta.empty() )
+            {
+                std::string metaname = fileURI.full() + ".meta";
+                writeMeta( metaname, meta );
             }
         }
 
@@ -378,12 +472,18 @@ namespace
         if ( !_ok ) return Config();
 
         ScopedReadLock sharedLock( _rwmutex );
-        osg::ref_ptr<XmlDocument> xml = XmlDocument::load( _metaPath );
-        if ( xml.valid() )
-        {
-            return xml->getConfig();
-        }        
-        return Config();
+        
+        Config conf;
+        conf.fromJSON( URI(_metaPath).readString(0L,CachePolicy::NO_CACHE).getString() );
+
+        return conf;
+
+        //osg::ref_ptr<XmlDocument> xml = XmlDocument::load( _metaPath );
+        //if ( xml.valid() )
+        //{
+        //    return xml->getConfig();
+        //}        
+        //return Config();
     }
 
     bool
@@ -392,11 +492,22 @@ namespace
         if ( !_ok ) return false;
 
         ScopedWriteLock exclusiveLock( _rwmutex );
-        XmlDocument xml( conf );
+
         std::fstream output( _metaPath.c_str(), std::ios_base::out );
         if ( output.is_open() )
-            xml.store( output );
-        return output.is_open();
+        {
+            output << conf.toJSON(true);
+            output.flush();
+            output.close();
+            return true;
+        }
+        return false;
+
+        //XmlDocument xml( conf );
+        //std::fstream output( _metaPath.c_str(), std::ios_base::out );
+        //if ( output.is_open() )
+        //    xml.store( output );
+        //return output.is_open();
     }
 }
 

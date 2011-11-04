@@ -356,7 +356,7 @@ TerrainLayer::getCacheBin( const Profile* profile )
                     //todo: check the profile too
                     if ( *meta._sourceDriver != getTileSource()->getOptions().getDriver() )
                     {
-                        OE_WARN << LC << "Cache was created with a different driver or profile... disabling cache."
+                        OE_WARN << LC << "Cache has an incompatible driver or profile... disabling"
                             << std::endl;
                         _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
                         return 0L;

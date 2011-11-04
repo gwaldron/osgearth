@@ -48,41 +48,44 @@ using namespace osgEarth::Drivers;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
-std::string getTempPath()
+namespace
 {
-#if defined(WIN32)  && !defined(__CYGWIN__)
-    BOOL fSuccess  = FALSE;
-
-    TCHAR lpTempPathBuffer[MAX_PATH];    
-
-    //  Gets the temp path env string (no guarantee it's a valid path).
-    DWORD dwRetVal = ::GetTempPath(MAX_PATH,          // length of the buffer
-                                   lpTempPathBuffer); // buffer for path     
-
-    if (dwRetVal > MAX_PATH || (dwRetVal == 0))
+    std::string getTempPath()
     {
-        OE_NOTICE << "GetTempPath failed" << std::endl;
-        return ".";
+    #if defined(WIN32)  && !defined(__CYGWIN__)
+        BOOL fSuccess  = FALSE;
+
+        TCHAR lpTempPathBuffer[MAX_PATH];    
+
+        //  Gets the temp path env string (no guarantee it's a valid path).
+        DWORD dwRetVal = ::GetTempPath(MAX_PATH,          // length of the buffer
+                                       lpTempPathBuffer); // buffer for path     
+
+        if (dwRetVal > MAX_PATH || (dwRetVal == 0))
+        {
+            OE_NOTICE << "GetTempPath failed" << std::endl;
+            return ".";
+        }
+
+        return std::string(lpTempPathBuffer);
+    #else
+        return "/tmp/";
+    #endif
     }
 
-    return std::string(lpTempPathBuffer);
-#else
-    return "/tmp/";
-#endif
-}
-
-std::string getTempName(const std::string& prefix="", const std::string& suffix="")
-{
-    //tmpname is kind of busted on Windows, it always returns a file of the form \blah which gets put in your root directory but
-    //oftentimes can't get opened by some drivers b/c it doesn't have a drive letter in front of it.
-    bool valid = false;
-    while (!valid)
+    std::string getTempName(const std::string& prefix="", const std::string& suffix="")
     {
-        std::stringstream ss;
-        ss << prefix << "~" << rand() << suffix;
-        if (!osgDB::fileExists(ss.str())) return ss.str();
+        //tmpname is kind of busted on Windows, it always returns a file of the form \blah which gets put in your root directory but
+        //oftentimes can't get opened by some drivers b/c it doesn't have a drive letter in front of it.
+        bool valid = false;
+        while (!valid)
+        {
+            std::stringstream ss;
+            ss << prefix << "~" << rand() << suffix;
+            if (!osgDB::fileExists(ss.str())) return ss.str();
+        }
+        return "";
     }
-    return "";
 }
 
 /**
@@ -109,6 +112,32 @@ public:
     //override
     void initialize( const osgDB::Options* dbOptions )
     {
+        _dbOptions = dbOptions ? osg::clone(dbOptions) : 0L;
+        if ( _dbOptions.valid() )
+        {
+            // Set up a Custom caching bin for this source:
+            Cache* cache = Cache::get( _dbOptions.get() );
+            if ( cache )
+            {
+                Config optionsConf = _options.getConfig();
+
+                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON()) << "_wfs";
+                _cacheBin = cache->addBin( binId );
+                
+                // write a metadata record just for reference purposes.. we don't actually use it
+                Config metadata = _cacheBin->readMetadata();
+                if ( metadata.empty() )
+                {
+                    _cacheBin->writeMetadata( optionsConf );
+                }
+
+                if ( _cacheBin.valid() )
+                {
+                    _cacheBin->store( _dbOptions.get() );
+                }
+            }
+        }
+
         std::string capUrl;
 
         if ( _options.url().isSet() )
@@ -119,17 +148,9 @@ public:
                 _options.url()->full() +
                 sep + 
                 "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
-          
-            Cache* cache = Cache::get(dbOptions);
-            if ( cache )
-            {
-                std::string binId = Stringify() << std::hex << hashString( _options.url()->full() );
-                _cacheBin = cache->addBin( binId );
-            }
         }
 
-        _capabilities = WFSCapabilitiesReader::read( capUrl, dbOptions ); //URI(capUrl, URIContext(_cacheBin.get())), 0L );
-        //_capabilities = WFSCapabilitiesReader::read( capUrl, 0L );
+        _capabilities = WFSCapabilitiesReader::read( capUrl, _dbOptions.get() );
         if ( !_capabilities.valid() )
         {
             OE_WARN << "[osgEarth::WFS] Unable to read WFS GetCapabilities." << std::endl;
@@ -140,6 +161,7 @@ public:
             OE_NOTICE << "[osgEarth::WFS] Got capabilities from " << capUrl << std::endl;
         }
     }
+
 
     /** Called once at startup to create the profile for this feature set. Successful profile
         creation implies that the datasource opened succesfully. */
@@ -174,6 +196,67 @@ public:
         return result;        
     }
 
+
+    bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
+    {
+        OGRSFDriverH   driver = 0L;
+
+        // find the right driver for the given mime type
+        if ( isJSON(mimeType) )
+        {
+            driver = OGRGetDriverByName( "GeoJSON" );
+        }
+        else if ( isGML(mimeType) )
+        {
+            driver = OGRGetDriverByName( "GML" );
+        }
+
+        // fail if we can't find an appropriate OGR driver:
+        if ( !driver )
+        {
+            OE_WARN << LC << "Error reading WFS response; cannot grok content-type \"" << mimeType << "\""
+                << std::endl;
+            return false;
+        }
+
+        OGRDataSourceH ds = OGROpen( buffer.c_str(), FALSE, &driver );
+        
+        if ( !ds )
+        {
+            OE_WARN << LC << "Error reading WFS response" << std::endl;
+            return false;
+        }
+
+        // read the feature data.
+        OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
+        if ( layer )
+        {
+            OGR_L_ResetReading(layer);                                
+            OGRFeatureH feat_handle;
+            while ((feat_handle = OGR_L_GetNextFeature( layer )) != NULL)
+            {
+                if ( feat_handle )
+                {
+                    Feature* f = OgrUtils::createFeature( feat_handle );
+                    if ( f ) 
+                    {
+                        features.push_back( f );
+                    }
+                    OGR_F_Destroy( feat_handle );
+                }
+            }
+        }
+
+        // Destroy the datasource
+        OGR_DS_Destroy( ds );
+        
+        return true;
+    }
+
+
+
+
+#if 0
     void saveResponse(HTTPResponse& response, const std::string& filename)
     {
         std::ofstream fout;
@@ -190,6 +273,7 @@ public:
         delete[] buffer;
         fout.close();
     }
+#endif
     
     std::string getExtensionForMimeType(const std::string& mime)
     {
@@ -216,6 +300,28 @@ public:
         return "";
     }
 
+    bool isGML( const std::string& mime ) const
+    {
+        return
+            (mime.compare("text/xml") == 0)                    ||
+            (mime.compare("text/xml; subtype=gml/2.1.2") == 0) ||
+            (mime.compare("text/xml; subtype=gml/3.1.1") == 0);
+    }
+
+
+    bool isJSON( const std::string& mime ) const
+    {
+        return
+            (mime.compare("application/json") == 0)         ||
+            (mime.compare("json") == 0)                     ||            
+
+            (mime.compare("application/x-javascript") == 0) ||
+            (mime.compare("text/javascript") == 0)          ||
+            (mime.compare("text/x-javascript") == 0)        ||
+            (mime.compare("text/x-json") == 0);
+    }
+
+#if 0
     void getFeatures(HTTPResponse &response, FeatureList& features)
     {        
         //OE_NOTICE << "mimetype=" << response.getMimeType() << std::endl;
@@ -260,6 +366,7 @@ public:
         //Remove the temporary file
         remove( name.c_str() );            
     }
+#endif
 
     std::string createURL(const Symbology::Query& query)
     {
@@ -290,38 +397,41 @@ public:
         return buf.str();
     }
 
-    //override
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
     {
+        FeatureCursor* result = 0L;
+
         std::string url = createURL( query );
+
+        // check the blacklist:
+        if ( Registry::instance()->isBlacklisted(url) )
+            return 0L;
+
         OE_DEBUG << LC << "URL: " << url << std::endl;
-        HTTPResponse response = HTTPClient::get(url);                
+        URI uri(url);
+
+        // read the data:
+        ReadResult r = uri.readString( _dbOptions.get() );
+
+        const std::string& buffer = r.getString();
+        const Config&      meta   = r.metadata();
+
+        bool dataOK = false;
+
         FeatureList features;
-        if (response.isOK())
+        if ( !buffer.empty() )
         {
-            getFeatures(response, features);            
-            std::string data = response.getPartAsString(0);        
+            // Get the mime-type from the metadata record if possible
+            const std::string& mimeType = r.metadata().value( IOMetadata::CONTENT_TYPE );
+            dataOK = getFeatures( buffer, mimeType, features );
         }
-        else
-        {
-            OE_INFO << "Error getting url " << url << std::endl;
-        }
-        return new FeatureListCursor( features );        
-    }
 
-    virtual bool deleteFeature(FeatureID fid)
-    {
-        return false;
-    }
+        result = dataOK ? new FeatureListCursor( features ) : 0L;
 
-    virtual int getFeatureCount() const
-    {
-        return -1;
-    }
+        if ( !result )
+            Registry::instance()->blacklist( url );
 
-    virtual bool insertFeature(Feature* feature)
-    {
-        return false;
+        return result;
     }
 
     /**
@@ -357,6 +467,7 @@ private:
     osg::ref_ptr< WFSCapabilities > _capabilities;
     FeatureSchema                   _schema;
     osg::ref_ptr<CacheBin>          _cacheBin;
+    osg::ref_ptr<osgDB::Options>    _dbOptions;
 };
 
 

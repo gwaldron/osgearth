@@ -321,13 +321,13 @@ public:
 
 
     /** override */
-    osg::Image* createImage( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress )
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Image> image;
 
         if ( _timesVec.size() > 1 )
         {
-            image = createImageSequence( key, dbOptions, progress );
+            image = createImageSequence( key, progress );
         }
         else
         {
@@ -353,7 +353,7 @@ public:
     }
 
     /** creates a 3D image from timestamped data. */
-    osg::Image* createImage3D( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress )
+    osg::Image* createImage3D( const TileKey& key, ProgressCallback* progress )
     {
         osg::ref_ptr<osg::Image> image;
 
@@ -393,35 +393,11 @@ public:
 
         return image.release();
     }
-    
-    ///** creates a 3D image from timestamped data. */
-    //osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
-    //{
-    //    osg::ImageSequence* seq = new osg::ImageSequence();
-
-    //    for( int r=0; r<_timesVec.size(); ++r )
-    //    {
-    //        std::string extraAttrs = "TIME=" + _timesVec[r];
-
-    //        std::string uri = createURI(key);
-    //        std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
-    //        uri = uri + delim + extraAttrs;
-    //        uri = uri + "&." + _formatToUse;
-
-    //        seq->addImageFile( uri );
-    //    }
-
-    //    seq->play();
-    //    seq->setLength( (double)_timesVec.size() );
-    //    seq->setLoopingMode( osg::ImageStream::LOOPING );
-    //    
-    //    return seq;
-    //}
 
     /** creates a 3D image from timestamped data. */
-    osg::Image* createImageSequence( const TileKey& key, const osgDB::Options* options, ProgressCallback* progress )
+    osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
     {
-        osg::ImageSequence* seq = new SyncImageSequence(); //osg::ImageSequence();
+        osg::ImageSequence* seq = new SyncImageSequence();
 
         seq->setLoopingMode( osg::ImageStream::LOOPING );
         seq->setLength( _options.secondsPerFrame().value() * (double)_timesVec.size() );
@@ -452,9 +428,9 @@ public:
 
 
     /** override */
-    osg::HeightField* createHeightField( const TileKey& key, const osgDB::Options* dbOptions, ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress)
     {
-        osg::Image* image = createImage(key, dbOptions, progress);
+        osg::Image* image = createImage(key, progress);
         if (!image)
         {
             OE_INFO << "[osgEarth::WMS] Failed to read heightfield from " << createURI(key) << std::endl;

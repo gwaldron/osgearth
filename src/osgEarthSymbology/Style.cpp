@@ -387,7 +387,7 @@ StyleSheet::mergeConfig( const Config& conf )
             if ( styleConf.hasValue("url") )
             {
                 URI uri( styleConf.value("url"), styleConf.referrer() );
-                HTTPClient::readString( uri.full(), cssString );
+                cssString = uri.readString().getString();
             }
 
             // a CSS style definition can actually contain multiple styles. Read them

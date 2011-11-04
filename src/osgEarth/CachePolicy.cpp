@@ -20,6 +20,14 @@
 
 using namespace osgEarth;
 
+//------------------------------------------------------------------------
+
+//statics
+CachePolicy CachePolicy::NO_CACHE( CachePolicy::USAGE_NO_CACHE );
+CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
+
+//------------------------------------------------------------------------
+
 CachePolicy::CachePolicy( const Usage& usage, double maxAge ) :
 _usage( usage ),
 _maxAge( maxAge )

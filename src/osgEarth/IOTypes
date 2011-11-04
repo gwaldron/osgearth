@@ -1,0 +1,148 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_IOTYPES_H
+#define OSGEARTH_IOTYPES_H 1
+
+#include <osgEarth/Config>
+
+/**
+ * A collectin of types used by the various I/O systems in osgEarth. These
+ * are extended variations on some of OSG's ReaderWriter types.
+ */
+namespace osgEarth
+{
+    /**
+     * String wrapped in an osg::Object (for I/O purposes)
+     */
+    struct StringObject : public osg::Object, public std::string
+    {
+        StringObject() { }
+        StringObject( const StringObject& rhs, const osg::CopyOp& op ) { }
+        StringObject( const std::string& in ) : std::string(in) { }
+        META_Object( osgEarth, StringObject );
+    };
+
+    /**
+     * Convenience metadata tags
+     */
+    struct OSGEARTH_EXPORT IOMetadata
+    {
+        static const std::string CONTENT_TYPE;
+    };
+
+    /**
+     * Return value from a read* method
+     */
+    struct /*no-export*/ ReadResult
+    {
+        /** Read result codes. */
+        enum Code
+        {
+            RESULT_OK,
+            RESULT_CANCELED,
+            RESULT_NOT_FOUND,
+            RESULT_SERVER_ERROR,
+            RESULT_TIMEOUT,
+            RESULT_NO_READER,
+            RESULT_READER_ERROR,
+            RESULT_UNKNOWN_ERROR
+        };
+
+        /** Construct a result with no object */
+        ReadResult( Code code =RESULT_NOT_FOUND )
+            : _code(code) { }
+
+        /** Construct a successful result */
+        ReadResult( osg::Object* result )
+            : _result(result), _code(RESULT_OK) { }
+
+        /** Construct a successful result with metadata */
+        ReadResult( osg::Object* result, const Config& meta )
+            : _result(result), _meta(meta), _code(RESULT_OK) { }
+
+        /** Copy construct */
+        ReadResult( const ReadResult& rhs )
+            : _result(rhs._result.get()), _meta(rhs._meta), _code(rhs._code) { }
+
+        /** Whether the read operation succeeded */
+        bool succeeded() const { return _code == RESULT_OK && _result.valid(); }
+
+        /** Whether the read operation failed */
+        bool failed() const { return _code != RESULT_OK; }
+
+        /** Whether the result contains an object */
+        bool empty() const { return !_result.valid(); }
+
+        /** The result code */
+        const Code& code() const { return _code; }
+
+        /** The result */
+        osg::Object* getObject() const { return _result.get(); }
+        osg::Image*  getImage()  const { return get<osg::Image>(); }
+        osg::Node*   getNode()   const { return get<osg::Node>(); }
+
+        /** The result, transfering ownership to the caller */
+        osg::Object* releaseObject() { return _result.release(); }
+        osg::Image*  releaseImage()  { return release<osg::Image>(); }
+        osg::Node*   releaseNode()   { return release<osg::Node>(); }
+
+        /** The metadata */
+        const Config& metadata() const { return _meta; }
+
+        /** The result, cast to a custom type */
+        template<typename T>
+        T* get() const { return dynamic_cast<T*>(_result.get()); }
+
+        /** The result, cast to a custom type and transfering ownership to the caller*/
+        template<typename T>
+        T* release() { return dynamic_cast<T*>(_result.get())? static_cast<T*>(_result.release()) : 0L; }
+
+        /** The result as a string */
+        const std::string& getString() const { return dynamic_cast<StringObject*>(_result.get()) ? *static_cast<StringObject*>(_result.get()) : _emptyString; }
+        
+        /** Gets a string describing the read result */
+        static std::string getResultCodeString( unsigned code )
+        {
+            return
+                code == RESULT_OK           ? "OK" :
+                code == RESULT_CANCELED     ? "Read canceled" :
+                code == RESULT_NOT_FOUND    ? "Target not found" :
+                code == RESULT_SERVER_ERROR ? "Server error" :
+                code == RESULT_TIMEOUT      ? "Read timed out" :
+                code == RESULT_NO_READER    ? "No suitable ReaderWriter found" :
+                code == RESULT_READER_ERROR ? "ReaderWriter error" :
+                "Unknown error";
+        }
+
+        std::string getResultCodeString() const
+        {
+            return getResultCodeString( _code );
+        }
+
+    protected:
+        Code                      _code;
+        osg::ref_ptr<osg::Object> _result;
+        Config                    _meta;
+        std::string               _emptyString;
+    };
+
+}
+
+#endif // OSGEARTH_IOTYPES_H

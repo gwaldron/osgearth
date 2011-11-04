@@ -68,7 +68,6 @@ WCS11Source::getExtension() const
 
 osg::Image*
 WCS11Source::createImage(const TileKey&        key,
-                         const osgDB::Options* dbOptions,
                          ProgressCallback*     progress)
 {
     HTTPRequest request = createRequest( key );
@@ -115,12 +114,11 @@ WCS11Source::createImage(const TileKey&        key,
 
 osg::HeightField*
 WCS11Source::createHeightField(const TileKey&        key,
-                               const osgDB::Options* dbOptions,
                                ProgressCallback*     progress)
 {
     osg::HeightField* field = NULL;
 
-    osg::ref_ptr<osg::Image> image = createImage( key, dbOptions, progress );
+    osg::ref_ptr<osg::Image> image = createImage( key, progress );
     if ( image.valid() )
     {        
         ImageToHeightFieldConverter conv;

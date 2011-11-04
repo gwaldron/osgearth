@@ -184,7 +184,7 @@ namespace osgEarth { namespace Features
             const osgEarth::Map*  map       =0L );
 
         // override
-        virtual osg::Node* createNode( const osgDB::Options* options, ProgressCallback* progress );
+        virtual osg::Node* createNode( ProgressCallback* progress );
     
         virtual FeatureNodeFactory* createFeatureNodeFactory() =0;
 

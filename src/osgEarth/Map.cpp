@@ -68,7 +68,7 @@ _dataModelRevision( 0 )
     if (_mapOptions.cachePolicy().isSet() &&
         _mapOptions.cachePolicy()->usage() == CachePolicy::USAGE_CACHE_ONLY )
     {
-        OE_INFO << LC << "Cache-only mode activated" << std::endl;
+        OE_INFO << LC << "CACHE-ONLY MODE activated from map" << std::endl;
     }
 
     // if the map was a cache policy set, make this the system-wide default, UNLESS

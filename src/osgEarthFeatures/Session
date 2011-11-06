@@ -52,7 +52,7 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new Session that is tied to a map
          */
-        Session( const Map* map, StyleSheet* styles =0L );
+        Session( const Map* map, StyleSheet* styles =0L, const osgDB::Options* dbOptions =0L );
 
         /**
          * URI Context for relative path resolution.
@@ -73,6 +73,9 @@ namespace osgEarth { namespace Features
         /** The style sheet governing this session. */
         void setStyles( StyleSheet* value );
         StyleSheet* styles() const { return _styles.get(); }
+
+        /** The I/O options for operations within this session */
+        const osgDB::Options* getDBOptions() const;
 
     public:
         /**
@@ -100,13 +103,11 @@ namespace osgEarth { namespace Features
         ObjectMap                    _objMap;
         Threading::ReadWriteMutex    _objMapMutex;
 
-        URIContext                   _uriContext;
-        osg::ref_ptr<const Map>      _map;
-        MapInfo                      _mapInfo;
-        osg::ref_ptr<StyleSheet>     _styles;
-
-        osg::ref_ptr<Cache>          _cache;
-        CachePolicy                  _cachePolicy;
+        URIContext                         _uriContext;
+        osg::ref_ptr<const Map>            _map;
+        MapInfo                            _mapInfo;
+        osg::ref_ptr<StyleSheet>           _styles;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
     };
 
 } }

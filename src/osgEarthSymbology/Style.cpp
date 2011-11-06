@@ -309,14 +309,42 @@ StyleSheet::getDefaultStyle() const
 void
 StyleSheet::addResourceLibrary( const std::string& name, ResourceLibrary* lib )
 {
-    _libraries[name] = lib;
+    Threading::ScopedWriteLock exclusive( _resLibsMutex );
+
+    _resLibs[name] = ResourceLibraryEntry( URI(), lib );
 }
 
 ResourceLibrary*
-StyleSheet::getResourceLibrary( const std::string& name ) const
+StyleSheet::getResourceLibrary( const std::string& name, const osgDB::Options* dbOptions ) const
 {
-    ResourceLibraryMap::const_iterator i = _libraries.find( name );
-    return i != _libraries.end() ? i->second.get() : 0L;
+    {
+        Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
+        ResourceLibraryEntries::const_iterator i = _resLibs.find( name );
+        if ( i == _resLibs.end() )
+            return 0L;
+        if ( i->second.second.valid() )
+            return i->second.second.get();
+    }
+
+    { 
+        // break the const and take an exclusive lock
+        StyleSheet* nc = const_cast<StyleSheet*>(this);
+        Threading::ScopedWriteLock exclusive( nc->_resLibsMutex );
+
+        // first, double check:
+        ResourceLibraryEntries::iterator i = nc->_resLibs.find( name );
+        if ( i->second.second.valid() )
+            return i->second.second.get();
+
+        // still not there, create it
+        const URI& uri = i->second.first;
+        ResourceLibrary* reslib = ResourceLibrary::create( uri, dbOptions );
+        if ( !reslib )
+            return 0L;
+
+        i->second.second = reslib;
+        return reslib;
+    }
 }
 
 Config
@@ -355,13 +383,9 @@ StyleSheet::mergeConfig( const Config& conf )
             continue;
         }
 
-        osg::ref_ptr<ResourceLibrary> reslib = ResourceLibrary::create( uri );
-        if ( !reslib.valid() ) {
-            OE_WARN << LC << "Resource library creation failed" << std::endl;
-            continue;
-        }
+        _resLibs[name] = ResourceLibraryEntry(uri, 0L);
 
-        addResourceLibrary( name, reslib.get() );
+        //addResourceLibrary( name, reslib.get() );
     }
 
     // read any style class definitions. either "class" or "selector" is allowed

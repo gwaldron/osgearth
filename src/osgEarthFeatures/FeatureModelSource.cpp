@@ -147,6 +147,8 @@ FeatureModelSource::initialize(const osgDB::Options* dbOptions,
 {
     ModelSource::initialize( dbOptions, map );
 
+    _dbOptions = dbOptions;
+
     if ( _features.valid() )
     {
         _features->initialize( dbOptions );
@@ -174,7 +176,10 @@ FeatureModelSource::createNode( ProgressCallback* progress )
         return 0L;
     }
 
-    Session* session = new Session( _map.get(), _options.styles().get() );
+    Session* session = new Session( 
+        _map.get(), 
+        _options.styles().get(),
+        _dbOptions.get() );
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
         _features.get(), 

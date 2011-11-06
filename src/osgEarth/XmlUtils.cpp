@@ -377,17 +377,17 @@ namespace
 
 
 XmlDocument*
-XmlDocument::load( const std::string& location )
+XmlDocument::load( const std::string& location, const osgDB::Options* dbOptions )
 {
-    return load( URI(location) );
+    return load( URI(location), dbOptions );
 }
 
 XmlDocument*
-XmlDocument::load( const URI& uri )
+XmlDocument::load( const URI& uri, const osgDB::Options* dbOptions )
 {
     XmlDocument* result = 0L;
 
-    ReadResult r = uri.readString();
+    ReadResult r = uri.readString( dbOptions );
     if ( r.succeeded() )
     {
         std::stringstream buf( r.getString() );

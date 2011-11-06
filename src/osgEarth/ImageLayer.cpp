@@ -153,13 +153,15 @@ namespace
 
 //------------------------------------------------------------------------
 
-ImageLayerTileProcessor::ImageLayerTileProcessor( const ImageLayerOptions& options )
+ImageLayerTileProcessor::ImageLayerTileProcessor(const ImageLayerOptions& options)
 {
-    init( options, false );
+    init( options, 0L, false );
 }
 
 void
-ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTargetProfile )
+ImageLayerTileProcessor::init(const ImageLayerOptions& options,
+                              const osgDB::Options*    dbOptions, 
+                              bool                     layerInTargetProfile )
 {
     _options = options;
     _layerInTargetProfile = layerInTargetProfile;
@@ -172,7 +174,7 @@ ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTar
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
-        _noDataImage = URI( *_options.noDataImageFilename() ).readImage().getImage();
+        _noDataImage = URI( *_options.noDataImageFilename() ).readImage(dbOptions).getImage();
         if ( !_noDataImage.valid() )
         {
             OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
@@ -333,7 +335,7 @@ ImageLayer::initPreCacheOp()
         _targetProfileHint->isEquivalentTo( getProfile() );
 
     ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();    
-    op->_processor.init( _runtimeOptions, layerInTargetProfile );
+    op->_processor.init( _runtimeOptions, _dbOptions.get(), layerInTargetProfile );
 
     _preCacheOp = op;
 }

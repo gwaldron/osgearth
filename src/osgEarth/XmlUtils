@@ -134,9 +134,9 @@ namespace osgEarth
         
         virtual ~XmlDocument();
 
-        static XmlDocument* load( const std::string& location );
+        static XmlDocument* load( const std::string& location, const osgDB::Options* dbOptions =0L );
 
-        static XmlDocument* load( const URI& uri );
+        static XmlDocument* load( const URI& uri, const osgDB::Options* dbOptions =0L );
         
         static XmlDocument* load( std::istream& in, const URIContext& context =URIContext() );
 

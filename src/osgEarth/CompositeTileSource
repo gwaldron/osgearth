@@ -94,9 +94,10 @@ namespace osgEarth
             const Profile*        overrideProfile );
 
     protected:
-        CompositeTileSourceOptions _options;
-        bool _initialized;
-        bool _dynamic;
+        CompositeTileSourceOptions         _options;
+        bool                               _initialized;
+        bool                               _dynamic;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
        
 
         CompositeTileSourceOptions::ComponentVector _components;

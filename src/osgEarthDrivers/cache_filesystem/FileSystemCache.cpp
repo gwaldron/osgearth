@@ -397,7 +397,7 @@ namespace
 
         if ( objWriteOK )
         {
-            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
+            OE_INFO << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
         }
         else
         {

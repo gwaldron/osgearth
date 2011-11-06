@@ -218,10 +218,11 @@ namespace osgEarth { namespace Features
         /** DTOR is protected to prevent this object from being allocated on the stack */
         virtual ~FeatureModelSource() { }
 
-        osg::ref_ptr<FeatureSource>       _features;
-        osg::ref_ptr<const Map>           _map;
-        const FeatureModelSourceOptions   _options;
-        osg::ref_ptr<FeatureNodeFactory>  _factory;
+        osg::ref_ptr<FeatureSource>        _features;
+        osg::ref_ptr<const Map>            _map;
+        const FeatureModelSourceOptions    _options;
+        osg::ref_ptr<FeatureNodeFactory>   _factory;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
 
     };
 

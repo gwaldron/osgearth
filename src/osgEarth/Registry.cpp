@@ -85,7 +85,7 @@ _caps            ( 0L )
         if ( cache->isOK() )
         {
             setCache( cache.get() );
-            OE_INFO << LC << "Setting cache location (from env.var.) to \"" << cachePath << "\"" << std::endl;
+            OE_INFO << LC << "CACHE PATH set from environment variable: \"" << cachePath << "\"" << std::endl;
         }
         else
         {
@@ -96,11 +96,13 @@ _caps            ( 0L )
     if ( ::getenv("OSGEARTH_CACHE_ONLY") )
     {
         _defaultCachePolicy = CachePolicy::CACHE_ONLY;
+        OE_INFO << LC << "CACHE-ONLY MODE set from environment variable" << std::endl;
     }
 
     if ( ::getenv("OSGEARTH_NO_CACHE") )
     {
         _defaultCachePolicy = CachePolicy::NO_CACHE;
+        OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
     }
 }
 
@@ -226,6 +228,8 @@ void
 Registry::setCache( osgEarth::Cache* cache )
 {
 	_cache = cache;
+    if ( cache )
+        cache->store( _defaultOptions.get() );
 }
 
 void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)

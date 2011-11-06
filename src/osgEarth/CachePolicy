@@ -76,6 +76,10 @@ namespace osgEarth
             return _usage == rhs._usage && _maxAge == rhs._maxAge;
         }
 
+        bool operator != ( const CachePolicy& rhs ) const {
+            return ! operator==(rhs);
+        }
+
     public: // config
         Config getConfig() const;
         void fromConfig( const Config& conf );

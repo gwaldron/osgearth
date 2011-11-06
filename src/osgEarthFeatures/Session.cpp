@@ -32,18 +32,26 @@ using namespace osgEarth::Features;
 
 //---------------------------------------------------------------------------
 
-Session::Session( const Map* map, StyleSheet* styles ) :
+Session::Session( const Map* map, StyleSheet* styles, const osgDB::Options* dbOptions ) :
 osg::Referenced( true ),
 _map           ( map ),
-_mapInfo       ( map )
+_mapInfo       ( map ),
+_dbOptions     ( dbOptions )
 {
     if ( styles )
         setStyles( styles );
     else
         _styles = new StyleSheet();
 
-    _cache = map->getCache();
-    _cachePolicy = map->getMapOptions().cachePolicy().get();
+    // if the caller did not provide a dbOptions, take it from the map.
+    if ( map && !dbOptions )
+        _dbOptions = map->getDBOptions();
+}
+
+const osgDB::Options*
+Session::getDBOptions() const
+{
+    return _dbOptions.get();
 }
 
 MapFrame

@@ -21,6 +21,14 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+ResourceCache::ResourceCache(const osgDB::Options* dbOptions,
+                             bool                  threadSafe ) :
+_dbOptions ( dbOptions ),
+_threadSafe( threadSafe )
+{
+    //nop
+}
+
 osg::StateSet*
 ResourceCache::getStateSet( SkinResource* skin )
 {
@@ -53,7 +61,7 @@ ResourceCache::getStateSet( SkinResource* skin )
             else
             {
                 // still not there, make it.
-                result = skin->createStateSet();
+                result = skin->createStateSet( _dbOptions.get() );
                 if ( result )
                     _skinCache.insert( skin, result );
             }
@@ -69,7 +77,7 @@ ResourceCache::getStateSet( SkinResource* skin )
         }
         else
         {
-            result = skin->createStateSet();
+            result = skin->createStateSet( _dbOptions.get() );
             if ( result )
                 _skinCache.insert( skin, result );
         }
@@ -110,7 +118,7 @@ ResourceCache::getMarkerNode( MarkerResource* marker )
             else
             {
                 // still not there, make it.
-                result = marker->createNode();
+                result = marker->createNode( _dbOptions.get() );
                 if ( result )
                     _markerCache.insert( marker, result );
             }
@@ -126,7 +134,7 @@ ResourceCache::getMarkerNode( MarkerResource* marker )
         }
         else
         {
-            result = marker->createNode();
+            result = marker->createNode( _dbOptions.get() );
             if ( result )
                 _markerCache.insert( marker, result );
         }

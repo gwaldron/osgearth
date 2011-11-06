@@ -88,7 +88,7 @@ namespace osgEarth
          * be supported by the implementation, so be sure to check the result
          * before using it.
          */
-        CacheBin* getOrCreateDefaultBin() { return _defaultBin.get(); }
+        virtual CacheBin* getOrCreateDefaultBin() { return _defaultBin.get(); }
 
         /**
          * Creates (and returns a pointer to) a new Cache Bin.

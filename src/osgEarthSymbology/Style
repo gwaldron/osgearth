@@ -214,10 +214,10 @@ namespace osgEarth { namespace Symbology
         void addResourceLibrary( const std::string& name, ResourceLibrary* library );
 
         /** Gets a resource library by name. */
-        ResourceLibrary* getResourceLibrary( const std::string& name ) const;
+        ResourceLibrary* getResourceLibrary( const std::string& name, const osgDB::Options* dbOptions ) const;
 
         /** Resource libraries in this sheet. */
-        const ResourceLibraryMap& resourceLibraries() const { return _libraries; }
+        //const ResourceLibraryMap& resourceLibraries() const { return _libraries; }
 
     public: // serialization functions
 
@@ -226,10 +226,16 @@ namespace osgEarth { namespace Symbology
 
     protected:
         URIContext         _uriContext;
-        ResourceLibraryMap _libraries;
+        //ResourceLibraryMap _libraries;
         StyleSelectorList  _selectors;
         StyleMap           _styles;
         Style              _emptyStyle;
+
+        typedef std::pair<URI, osg::ref_ptr<ResourceLibrary> > ResourceLibraryEntry;
+        typedef std::map<std::string, ResourceLibraryEntry> ResourceLibraryEntries;
+        ResourceLibraryEntries     _resLibs;
+        Threading::ReadWriteMutex  _resLibsMutex;
+
     };
 
 } } // namespace osgEarth::Symbology

@@ -177,10 +177,12 @@ namespace
     // the default CacheBin of the registry-wide cache.
     CacheBin* s_getCacheBin( const osgDB::Options* dbOptions )
     {
-        CacheBin* bin = CacheBin::get( dbOptions );
+        const osgDB::Options* o = dbOptions ? dbOptions : Registry::instance()->getDefaultOptions();
+
+        CacheBin* bin = CacheBin::get( o );
         if ( !bin )
         {
-            Cache* cache = Cache::get( dbOptions );
+            Cache* cache = Cache::get( o );
             if ( !cache )
             {
                 cache = Registry::instance()->getCache();
@@ -228,7 +230,7 @@ URI::readObject(const osgDB::Options* dbOptions,
         result = bin->readObject( full(), *cp.maxAge() );
     }
 
-    if ( result.empty() )
+    if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
     {
         if ( isRemote() )
         {
@@ -277,7 +279,7 @@ URI::readImage(const osgDB::Options* dbOptions,
         result = bin->readImage( full(), *cp.maxAge() );
     }
 
-    if ( result.empty() )
+    if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
     {
         if ( isRemote() )
         {
@@ -324,7 +326,7 @@ URI::readNode(const osgDB::Options* dbOptions,
         result = bin->readObject( full(), *cp.maxAge() );
     }
 
-    if ( result.empty() )
+    if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
     {
         if ( isRemote() )
         {
@@ -368,7 +370,7 @@ URI::readString(const osgDB::Options* dbOptions,
         result = bin->readString( full(), *cp.maxAge() );
     }
 
-    if ( result.empty() )
+    if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
     {
         if ( isRemote() )
         {

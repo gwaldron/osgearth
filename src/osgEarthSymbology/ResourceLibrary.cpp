@@ -36,6 +36,7 @@ using namespace OpenThreads;
 ResourceLibrary*
 ResourceLibrary::create( const URI& uri )
 {
+    // TODO: dboptions? cache policy?
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load( uri ); // buf, uri.full() );
     if ( !xml.valid() )
     {

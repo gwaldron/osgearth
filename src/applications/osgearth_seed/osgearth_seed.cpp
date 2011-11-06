@@ -165,7 +165,7 @@ list( osg::ArgumentParser& args )
 
     std::cout 
         << "Cache config: " << std::endl
-        << cache->getCacheOptions().getConfig().toString() << std::endl;
+        << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
     MapFrame mapf( mapNode->getMap() );
 
@@ -182,7 +182,7 @@ list( osg::ArgumentParser& args )
         {
             Config conf = meta.getConfig();
             std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
-                << conf.toString() << std::endl;
+                << conf.toJSON(true) << std::endl;
         }
         else
         {

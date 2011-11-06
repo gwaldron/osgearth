@@ -70,9 +70,6 @@ Config::mutable_child( const std::string& childName )
 void
 Config::merge( const Config& rhs ) 
 {
-    for( Properties::const_iterator a = rhs._attrs.begin(); a != rhs._attrs.end(); ++a )
-        _attrs[ a->first ] = a->second;
-
     for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
         addChild( *c );
 }
@@ -83,22 +80,17 @@ namespace
     {
         Json::Value value( Json::objectValue );
 
-        if ( conf.isSimple() ) //conf.attrs().size() == 0 && conf.children().size() == 0 )
+        if ( conf.isSimple() )
         {
             value[ conf.key() ] = conf.value();
         }
         else
         {
             if ( !conf.key().empty() )
-                value["_0_key"] = conf.key();
+                value["$key"] = conf.key();
 
             if ( !conf.value().empty() )
-                value["_1_value"] = conf.value();
-
-            for( Properties::const_iterator a = conf.attrs().begin(); a != conf.attrs().end(); ++a )
-            {
-                value[a->first] = a->second;
-            }
+                value["$value"] = conf.value();
 
             if ( conf.children().size() > 0 )
             {
@@ -113,7 +105,7 @@ namespace
                 }
 
                 if ( !children.empty() )
-                    value["_2_children"] = children;
+                    value["$children"] = children;
             }
         }
 
@@ -140,15 +132,15 @@ namespace
             for( Json::Value::Members::const_iterator i = members.begin(); i != members.end(); ++i )
             {
                 const Json::Value& value = json[*i];
-                if ( (*i) == "_0_key" )
+                if ( (*i) == "$key" )
                 {
                     conf.key() = value.asString();
                 }
-                else if ( (*i) == "_1_value" )
+                else if ( (*i) == "$value" )
                 {
                     conf.value() = value.asString();
                 }
-                else if ( (*i) == "_2_children" && value.isArray() )
+                else if ( (*i) == "$children" && value.isArray() )
                 {
                     json2conf( value, conf );
                 }
@@ -196,174 +188,4 @@ Config::fromJSON( const std::string& input )
         return true;
     }
     return false;
-}
-
-std::string
-Config::toString( int indent ) const
-{
-    std::stringstream buf;
-    buf << std::fixed;
-    for( int i=0; i<indent; i++ ) buf << "   ";
-    buf << "{ \"" << _key << "\" : ";
-    
-    bool hasValue = !_defaultValue.empty();
-    bool hasChildren = _attrs.empty() || _children.empty();
-
-    if ( hasValue && !hasChildren )
-    {
-        buf << "\"" << _defaultValue << "\"";
-    }
-    else
-    {
-        buf << "{ ";
-        bool first = true;
-        
-        if ( hasValue )
-        {
-            buf << "\"_value\" : " << _defaultValue << "\"";
-            first = false;
-        }
-        
-        for( Properties::const_iterator a = _attrs.begin(); a != _attrs.end(); a++ )
-        {
-            if ( !first ) buf << ", "; else first = false;
-
-            buf << "\"" << a->first << "\" : \"" << a->second << "\"";
-        }
-
-        if ( hasChildren )
-        {
-            if ( !first ) buf << ", "; else first = false;
-
-            buf << "\"_children\" : [";
-
-            for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); c++ )
-            {
-                if ( c != _children.begin() )
-                    buf << ", ";
-
-                buf << (*c).toString( indent+1 );
-            }
-
-            buf << " ]";
-        }
-
-        buf << " }";
-    }
-
-#if 0
-    buf << "\"" << _defaultValue << "\"";
-    if ( !_attrs.empty() ) {
-        buf << std::endl;
-        for( int i=0; i<indent+1; i++ ) buf << "  ";
-        buf << "attrs: [ ";
-        for( Properties::const_iterator a = _attrs.begin(); a != _attrs.end(); a++ )
-            buf << a->first << "=" << a->second << ", ";
-        buf << " ]";
-    }
-    if ( !_children.empty() ) {
-        for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); c++ )
-            buf << std::endl << (*c).toString( pretty, indent+1 );
-    }
-#endif
-
-    buf << " }";
-
-	std::string bufStr;
-	bufStr = buf.str();
-    return bufStr;
-}
-
-#if 0
-namespace
-{
-    void parseArray( const StringVector& tokens, StringVector::iterator& i, ConfigSet& set )    
-    {
-    }
-
-    void parseContents( const StringVector& tokens, StringVector::iterator& i, Config& conf )
-    {
-        while( i != tokens.end() && (*i) != "}" )
-        {
-            if ( *i == "\"_value\"" )
-            {
-            }
-            else if ( *i == "\"_children\"" )
-            {
-            }
-        }
-    }
-
-    void parseObject( const StringVector& tokens, StringVector::iterator& i, Config& conf )
-    {
-        while( i != tokens.end() && (*i) != "}" )
-        {
-            if (*i == ":")
-            {
-                ++i;
-                if ( i != tokens.end() )
-                {
-                    if ( *i == "{" )
-                    {
-                        parseContents( tokens, ++i, conf );
-                    }
-                    else
-                    {
-                        conf.value() = *i;
-                    }
-            }
-            else
-            {
-
-            }
-
-            ++i;
-        }
-    }
-}
-
-Config
-Config::fromString( const std::string& input )
-{
-    StringTokenizer izer("", "");
-    izer.addDelims( ":{}[]", true );
-    izer.addQuotes( "\"" );
-
-    StringVector tokens;
-    izer.tokenize( input, tokens );
-
-    Config conf;
-
-    if ( tokens.size() > 0 && tokens[0] == "{" )
-    {
-        StringVector::iterator i = tokens.begin();
-        parseObject( tokens, ++i, conf );
-    }
-    return conf;
-}
-#endif
-
-std::string
-Config::toHashString() const
-{
-    std::stringstream buf;
-    buf << std::fixed;
-    buf << "{" << (_key.empty()? "anonymous" : _key) << ":";
-    if ( !_defaultValue.empty() ) buf << _defaultValue;
-    if ( !_attrs.empty() ) {
-        buf << "[";
-        for( Properties::const_iterator a = _attrs.begin(); a != _attrs.end(); a++ )
-            buf << a->first << "=" << a->second << ",";
-        buf << "]";
-    }
-    if ( !_children.empty() ) {
-        for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); c++ )
-            buf << (*c).toHashString();
-    }
-
-    buf << "}";
-
-	std::string bufStr;
-	bufStr = buf.str();
-    return bufStr;
 }

@@ -74,7 +74,7 @@ TerrainLayerOptions::getConfig() const
 {
     Config conf = ConfigOptions::getConfig();
 
-    conf.attr("name") = _name;
+    conf.set("name", _name);
     conf.updateIfSet( "min_level", _minLevel );
     conf.updateIfSet( "max_level", _maxLevel );
     conf.updateIfSet( "min_level_resolution", _minLevelResolution );
@@ -205,11 +205,7 @@ TerrainLayer::setCache( Cache* cache )
                 hashConf.remove( "cache_enabled" );
                 hashConf.remove( "cache_policy" );
 
-                std::stringstream buf;
-                //OE_NOTICE << hashConf.toHashString() << std::endl;
-                buf << std::fixed << std::setfill('0') << std::hex
-                    << osgEarth::hashString( hashConf.toHashString() );
-                cacheId = buf.str();
+                cacheId = Stringify() << std::hex << osgEarth::hashString(hashConf.toJSON());
             }
 
             _runtimeOptions->cacheId() = cacheId;
@@ -221,15 +217,6 @@ TerrainLayer::setCache( Cache* cache )
         _cache = 0L; 
         _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
     }
-
-#if 0
-    if ( !_cache.valid() || !_cacheBin.valid() )
-    {
-        _cache = 0L;
-        _cacheBin = 0L;
-        _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_NO_CACHE;
-    }
-#endif
 }
 
 void
@@ -368,6 +355,9 @@ TerrainLayer::getCacheBin( const Profile* profile )
                     // in cacheonly mode, create a profile from the first cache bin accessed
                     // (they SHOULD all be the same...)
                     _profile = Profile::create( *meta._sourceProfile );
+
+                    // copy the max data level from the cache
+                    _runtimeOptions->maxDataLevel() = *meta._maxDataLevel;
                 }
             }
 
@@ -380,6 +370,7 @@ TerrainLayer::getCacheBin( const Profile* profile )
                     // no existing metadata; create some.
                     meta._cacheBinId    = binId;
                     meta._sourceName    = this->getName();
+                    meta._maxDataLevel  = getMaxDataLevel();
                     meta._sourceDriver  = getTileSource()->getOptions().getDriver();
                     meta._sourceProfile = getProfile()->toProfileOptions();
                     meta._cacheProfile  = profile->toProfileOptions();
@@ -501,13 +492,6 @@ TerrainLayer::initTileSource()
         OE_NOTICE << LC << "Could not initialize TileSource " << _name << ", but a cache exists. Setting layer to cache-only mode." << std::endl;
         _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_CACHE_ONLY;
     }
-
-	// check the environment to see if cache only should be enabled
-    if ( !isCacheOnly() && ::getenv("OSGEARTH_CACHE_ONLY") != 0 )
-	{
-        _runtimeOptions->cachePolicy()->usage() = CachePolicy::USAGE_CACHE_ONLY;
-        OE_INFO << LC << "Cache-only mode enabled (via env.var.)" << std::endl;
-	}
 
     _tileSourceInitialized = true;
 }

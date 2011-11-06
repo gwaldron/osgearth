@@ -71,6 +71,21 @@ _dataModelRevision( 0 )
         OE_INFO << LC << "Cache-only mode activated" << std::endl;
     }
 
+    // if the map was a cache policy set, make this the system-wide default, UNLESS
+    // there ALREADY IS a registry default, in which case THAT will override THIS one.
+    // (In other words, whichever one is set first wins.)
+    if ( _mapOptions.cachePolicy().isSet() )
+    {
+        if ( Registry::instance()->defaultCachePolicy().empty() )
+            Registry::instance()->setDefaultCachePolicy( *_mapOptions.cachePolicy() );
+        else
+            _mapOptions.cachePolicy() = Registry::instance()->defaultCachePolicy();
+    }
+    else if ( ! Registry::instance()->defaultCachePolicy().empty() )
+    {
+        _mapOptions.cachePolicy() = Registry::instance()->defaultCachePolicy();
+    }
+
     // the map-side dbOptions object holds I/O information for all components.
     _dbOptions = osg::clone( Registry::instance()->getDefaultOptions() );
 

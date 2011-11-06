@@ -254,7 +254,7 @@ namespace
                     readMeta( metafile, meta );
 
                 // TODO: read metadata
-                return ReadResult( r.getImage(), meta );
+                return ReadResult( r.getObject(), meta );
             }
         }
 
@@ -283,7 +283,7 @@ namespace
                 if ( osgDB::fileExists(metafile) )
                     readMeta( metafile, meta );
 
-                return ReadResult( r.getImage(), meta );
+                return ReadResult( r.getNode(), meta );
             }
         }
 

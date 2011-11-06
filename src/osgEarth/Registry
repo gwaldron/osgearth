@@ -21,6 +21,7 @@
 #define OSGEARTH_REGISTRY 1
 
 #include <osgEarth/Common>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
@@ -65,6 +66,10 @@ namespace osgEarth
         /** The system-wide default cache. */
         Cache* getCache() const;
         void setCache( Cache* cache );
+
+        /** The system-wide default cache policy */
+        const CachePolicy& defaultCachePolicy() const { return _defaultCachePolicy; }
+        void setDefaultCachePolicy( const CachePolicy& policy ) { _defaultCachePolicy = policy; }
 
         /** Registers a mapping of a mime-type to an extension. A process fetching data
           * over HTTP can use this facility to determine the proper ReaderWriter to use
@@ -147,7 +152,6 @@ namespace osgEarth
         virtual ~Registry();
         Registry();
 
-
         void destruct();
 
         OpenThreads::ReentrantMutex _gdal_mutex;
@@ -165,6 +169,7 @@ namespace osgEarth
         MimeTypeExtensionMap _mimeTypeExtMap;
 
 		osg::ref_ptr<Cache> _cache;
+        CachePolicy         _defaultCachePolicy;
 
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;

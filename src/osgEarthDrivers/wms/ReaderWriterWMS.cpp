@@ -296,10 +296,10 @@ public:
                 {
                     Config ex = se.child("serviceexceptionreport").child("serviceexception");
                     if ( !ex.empty() ) {
-                        OE_NOTICE << "WMS Service Exception: " << ex.value() << std::endl;
+                        OE_NOTICE << "WMS Service Exception: " << ex.toJSON(true) << std::endl;
                     }
                     else {
-                        OE_NOTICE << "WMS Response: " << se.toString() << std::endl;
+                        OE_NOTICE << "WMS Response: " << se.toJSON(true) << std::endl;
                     }
                 }
                 else {

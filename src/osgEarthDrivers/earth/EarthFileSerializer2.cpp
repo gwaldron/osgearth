@@ -102,8 +102,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     {
         Config layerDriverConf = *i;
         if ( !layerDriverConf.hasValue("driver") )
-            layerDriverConf.attr("driver") = "feature_geom";
-        //const Config& layerDriverConf = *i;
+            layerDriverConf.set("driver", "feature_geom");
 
         ModelLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value( "name" );
@@ -154,7 +153,7 @@ Config
 EarthFileSerializer2::serialize( MapNode* input ) const
 {
     Config mapConf("map");
-    mapConf.attr("version") = "2";
+    mapConf.set("version", "2");
 
     if ( !input || !input->getMap() )
         return mapConf;
@@ -172,8 +171,8 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     {
         ImageLayer* layer = i->get();
         Config layerConf = layer->getImageLayerOptions().getConfig();
-        layerConf.attr("name") = layer->getName();
-        layerConf.attr("driver") = layer->getImageLayerOptions().driver()->getDriver();
+        layerConf.set("name", layer->getName());
+        layerConf.set("driver", layer->getImageLayerOptions().driver()->getDriver());
         mapConf.add( "image", layerConf );
     }
 
@@ -181,8 +180,8 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     {
         ElevationLayer* layer = i->get();
         Config layerConf = layer->getElevationLayerOptions().getConfig();
-        layerConf.attr("name") = layer->getName();
-        layerConf.attr("driver") = layer->getElevationLayerOptions().driver()->getDriver();
+        layerConf.set("name", layer->getName());
+        layerConf.set("driver", layer->getElevationLayerOptions().driver()->getDriver());
         mapConf.add( "elevation", layerConf );
     }
 
@@ -190,9 +189,8 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     {
         ModelLayer* layer = i->get();
         Config layerConf = layer->getModelLayerOptions().getConfig(); //layer->getDriverConfig();
-        layerConf.attr("name") = layer->getName();
-        //layerConf.attr("driver") = layer->getDriverConfig().value("driver");
-        layerConf.attr("driver") = layer->getModelLayerOptions().driver()->getDriver();
+        layerConf.set("name", layer->getName());
+        layerConf.set("driver", layer->getModelLayerOptions().driver()->getDriver());
         mapConf.add( "model", layerConf );
     }
 

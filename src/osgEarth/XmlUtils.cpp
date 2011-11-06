@@ -50,19 +50,37 @@ XmlElement::XmlElement( const std::string& _name, const XmlAttributes& _attrs )
 XmlElement::XmlElement( const Config& conf )
 {
     name = conf.key();
-    for( Properties::const_iterator i = conf.attrs().begin(); i != conf.attrs().end(); i++ )
-        attrs[i->first] = i->second;
+
+    if ( !conf.value().empty() )
+    {
+        children.push_back( new XmlText(conf.value()) );
+    }
+
+    //for( Properties::const_iterator i = conf.attrs().begin(); i != conf.attrs().end(); i++ )
+    //    attrs[i->first] = i->second;
+
     for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
     {
-        if (!j->children().empty())
+        if ( j->isSimple() )
         {
-            children.push_back( new XmlElement( *j ) );
+            attrs[j->key()] = j->value();
         }
         else
         {
-            addSubElement(j->key(), j->attrs(), j->value());
+            children.push_back( new XmlElement(*j) );
         }
     }
+
+    
+    //    if ( !j->children().empty() )
+    //    {
+    //        children.push_back( new XmlElement( *j ) );
+    //    }
+    //    else
+    //    {
+    //        addSubElement(j->key(), j->attrs(), j->value());
+    //    }
+    //}
 }
 
 const std::string&
@@ -202,8 +220,12 @@ Config
 XmlElement::getConfig() const
 {
     Config conf( name );
+
     for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
-        conf.attr( a->first ) = a->second;
+    {
+        conf.set( a->first, a->second );
+    }
+
     for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
     {
         XmlNode* n = c->get();

@@ -167,7 +167,7 @@ SkinSymbol::getConfig() const
 
     std::string tagstring = this->tagString();
     if ( !tagstring.empty() )
-        conf.attr("tags") = tagstring;
+        conf.set("tags", tagstring);
 
     return conf;
 }

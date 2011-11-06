@@ -153,13 +153,13 @@ Config
 Style::getConfig( bool keepOrigType ) const
 {
     Config conf( "style" );
-    conf.attr("name") = _name;
+    conf.set("name", _name);
 
     conf.addIfSet( "url", _uri );
     
     if ( _origType == "text/css" && keepOrigType )
     {
-        conf.attr("type") = _origType;
+        conf.set("type", _origType);
         conf.value() = _origData;            
     }
     else

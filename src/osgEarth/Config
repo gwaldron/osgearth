@@ -60,7 +60,7 @@ namespace osgEarth
 
         Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ), _emptyConfig(0L) { }
 
-        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children), _refMap(rhs._refMap), _referrer(rhs._referrer), _emptyConfig(0L) { }
+        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _refMap(rhs._refMap), _referrer(rhs._referrer), _emptyConfig(0L) { }
 
         ~Config() { if ( _emptyConfig ) delete _emptyConfig; }
 
@@ -75,11 +75,11 @@ namespace osgEarth
         bool fromJSON( const std::string& json );
 
         bool empty() const {
-            return _key.empty() && _defaultValue.empty() && _attrs.empty() && _children.empty();
+            return _key.empty() && _defaultValue.empty() && _children.empty();
         }
 
         bool isSimple() const {
-            return !_key.empty() && !_defaultValue.empty() && _attrs.empty() && _children.empty();
+            return !_key.empty() && !_defaultValue.empty() && _children.empty();
         }
 
         std::string& key() { return _key; }
@@ -88,17 +88,6 @@ namespace osgEarth
         const std::string& value() const { return _defaultValue; }
         std::string& value() { return _defaultValue; }
 
-        Properties& attrs() { return _attrs; }
-        const Properties& attrs() const { return _attrs; }
-
-        std::string attr( const std::string& name ) const {
-            Properties::const_iterator i = _attrs.find(name);
-            return i != _attrs.end()? trim(i->second) : "";
-        }
-
-        std::string& attr( const std::string& name ) { return _attrs[name]; }
-        
-        //ConfigSet& children() { return _children; }
         const ConfigSet& children() const { return _children; }
 
         const ConfigSet children( const std::string& key ) const {
@@ -118,7 +107,6 @@ namespace osgEarth
         }
 
         void remove( const std::string& key ) {
-            _attrs.erase(key);            
             for(ConfigSet::iterator i = _children.begin(); i != _children.end(); ) {
                 if ( i->key() == key )
                     i = _children.erase( i );
@@ -256,6 +244,9 @@ namespace osgEarth
             add( temp );
         }
 
+        void set( const std::string& key, const std::string& value ) {
+            update( key, value );
+        }
 
         bool hasValue( const std::string& key ) const {
             return !value(key).empty();
@@ -263,16 +254,16 @@ namespace osgEarth
 
         const std::string value( const std::string& key ) const {
             std::string r = trim(child(key).value());
-            if ( r.empty() )
-                r = attr(key);
+            if ( r.empty() && _key == key )
+                r = _defaultValue;
             return r;
         }
 
         // populates a primitive value.
         template<typename T>
         T value( const std::string& key, T fallback ) const {
-            std::string r = attr(key);
-            if ( r.empty() && hasChild( key ) )
+            std::string r;
+            if ( hasChild( key ) )
                 r = child(key).value();
             return osgEarth::as<T>( r, fallback );
         }
@@ -284,8 +275,8 @@ namespace osgEarth
         // populates the output value iff the Config exists.
         template<typename T>
         bool getIfSet( const std::string& key, optional<T>& output ) const {
-            std::string r = attr(key);
-            if ( r.empty() && hasChild(key) )
+            std::string r;
+            if ( hasChild(key) )
                 r = child(key).value();
             if ( !r.empty() ) {
                 output = osgEarth::as<T>( r, output.defaultValue() );
@@ -327,9 +318,9 @@ namespace osgEarth
                 return false;
         }
 
-        std::string toString( int indent =0 ) const;
+        //std::string toString( int indent =0 ) const;
 
-        std::string toHashString() const;
+        //std::string toHashString() const;
 
         /** support for conveying non-serializable objects in a Config (in memory only) */
 
@@ -352,7 +343,6 @@ namespace osgEarth
     protected:
         std::string _key;
         std::string _defaultValue;
-        Properties  _attrs;
         ConfigSet   _children;   
         std::string _referrer;
         Config*     _emptyConfig;
@@ -442,7 +432,7 @@ namespace osgEarth
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            conf.attr("driver") = _driver;
+            conf.set("driver", _driver);
             return conf;
         }
 

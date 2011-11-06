@@ -275,7 +275,7 @@ _vsrs          ( vsrs )
         _vsrs = Registry::instance()->getDefaultVSRS();
 
     // gen the signature
-    _signature = Stringify() << std::hex << hashString( toProfileOptions().getConfig().toString() );
+    _signature = Stringify() << std::hex << hashString( toProfileOptions().getConfig().toJSON() );
 }
 
 Profile::Profile(const SpatialReference* srs,
@@ -300,7 +300,7 @@ _vsrs          ( vsrs )
         _vsrs = Registry::instance()->getDefaultVSRS();
 
     // gen the signature
-    _signature = Stringify() << std::hex << hashString( toProfileOptions().getConfig().toString() );
+    _signature = Stringify() << std::hex << hashString( toProfileOptions().getConfig().toJSON() );
 }
 
 Profile::ProfileType

@@ -60,6 +60,10 @@ namespace osgEarth
 
     public: // convenience functions.
 
+        bool empty() const {
+            return !_usage.isSet();
+        }
+
         bool isCacheReadable() const { 
             return *_usage == USAGE_READ_WRITE || *_usage == USAGE_CACHE_ONLY || *_usage == USAGE_READ_ONLY;
         }

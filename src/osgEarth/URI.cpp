@@ -216,14 +216,16 @@ URI::readObject(const osgDB::Options* dbOptions,
 
     CacheBin* bin = 0L;
 
-    if ( cachePolicy.usage() != CachePolicy::USAGE_NO_CACHE )
+    const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
+
+    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }
 
-    if ( bin && cachePolicy.isCacheReadable() )
+    if ( bin && cp.isCacheReadable() )
     {
-        result = bin->readObject( full(), *cachePolicy.maxAge() );
+        result = bin->readObject( full(), *cp.maxAge() );
     }
 
     if ( result.empty() )
@@ -240,7 +242,7 @@ URI::readObject(const osgDB::Options* dbOptions,
             result = ReadResult( osgDB::readObjectFile(full(), dbOptions) );
         }
 
-        if ( result.succeeded() && bin && cachePolicy.isCacheWriteable() )
+        if ( result.succeeded() && bin && cp.isCacheWriteable() )
         {
             bin->write( full(), result.getObject(), result.metadata() );
         }
@@ -263,14 +265,16 @@ URI::readImage(const osgDB::Options* dbOptions,
 
     CacheBin* bin = 0L;
 
-    if ( cachePolicy.usage() != CachePolicy::USAGE_NO_CACHE )
+    const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
+
+    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }
 
-    if ( bin && cachePolicy.isCacheReadable() )
+    if ( bin && cp.isCacheReadable() )
     {
-        result = bin->readImage( full(), *cachePolicy.maxAge() );
+        result = bin->readImage( full(), *cp.maxAge() );
     }
 
     if ( result.empty() )
@@ -287,7 +291,7 @@ URI::readImage(const osgDB::Options* dbOptions,
             result = ReadResult( osgDB::readImageFile( full(), dbOptions ) );
         }
 
-        if ( result.succeeded() && bin && cachePolicy.isCacheWriteable() )
+        if ( result.succeeded() && bin && cp.isCacheWriteable() )
         {
             bin->write( full(), result.get<osg::Image>(), result.metadata() );
         }
@@ -308,14 +312,16 @@ URI::readNode(const osgDB::Options* dbOptions,
 
     CacheBin* bin = 0L;
 
-    if ( cachePolicy.usage() != CachePolicy::USAGE_NO_CACHE )
+    const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
+
+    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }
 
-    if ( bin && cachePolicy.isCacheReadable() )
+    if ( bin && cp.isCacheReadable() )
     {
-        result = bin->readObject( full(), *cachePolicy.maxAge() );
+        result = bin->readObject( full(), *cp.maxAge() );
     }
 
     if ( result.empty() )
@@ -332,7 +338,7 @@ URI::readNode(const osgDB::Options* dbOptions,
             result = ReadResult( osgDB::readNodeFile(full(), dbOptions) );
         }
 
-        if ( result.succeeded() && bin && cachePolicy.isCacheWriteable() )
+        if ( result.succeeded() && bin && cp.isCacheWriteable() )
         {
             bin->write( full(), result.getObject(), result.metadata() );
         }
@@ -350,14 +356,16 @@ URI::readString(const osgDB::Options* dbOptions,
 
     CacheBin* bin = 0L;
 
-    if ( cachePolicy.usage() != CachePolicy::USAGE_NO_CACHE )
+    const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
+
+    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }
 
-    if ( bin && cachePolicy.isCacheReadable() )
+    if ( bin && cp.isCacheReadable() )
     {
-        result = bin->readString( full(), *cachePolicy.maxAge() );
+        result = bin->readString( full(), *cp.maxAge() );
     }
 
     if ( result.empty() )
@@ -383,7 +391,7 @@ URI::readString(const osgDB::Options* dbOptions,
             }
         }
 
-        if ( result.succeeded() && bin && cachePolicy.isCacheWriteable() )
+        if ( result.succeeded() && bin && cp.isCacheWriteable() )
         {
             bin->write( full(), result.getObject(), result.metadata() );
         }

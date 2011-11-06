@@ -39,6 +39,9 @@
 #include <windows.h>
 #endif
 
+//#undef  OE_DEBUG
+//#define OE_DEBUG OE_INFO
+
 #define LC "[WFS FeatureSource] "
 
 using namespace osgEarth;
@@ -158,7 +161,7 @@ public:
         }
         else
         {
-            OE_NOTICE << "[osgEarth::WFS] Got capabilities from " << capUrl << std::endl;
+            OE_INFO << "[osgEarth::WFS] Got capabilities from " << capUrl << std::endl;
         }
     }
 
@@ -253,27 +256,6 @@ public:
         return true;
     }
 
-
-
-
-#if 0
-    void saveResponse(HTTPResponse& response, const std::string& filename)
-    {
-        std::ofstream fout;
-        fout.open(filename.c_str(), std::ios::out | std::ios::binary);
-
-        std::istream& input_stream = response.getPartStream(0);
-        input_stream.seekg (0, std::ios::end);
-        int length = input_stream.tellg();
-        input_stream.seekg (0, std::ios::beg);
-
-        char *buffer = new char[length];
-        input_stream.read(buffer, length);
-        fout.write(buffer, length);
-        delete[] buffer;
-        fout.close();
-    }
-#endif
     
     std::string getExtensionForMimeType(const std::string& mime)
     {
@@ -303,9 +285,7 @@ public:
     bool isGML( const std::string& mime ) const
     {
         return
-            (mime.compare("text/xml") == 0)                    ||
-            (mime.compare("text/xml; subtype=gml/2.1.2") == 0) ||
-            (mime.compare("text/xml; subtype=gml/3.1.1") == 0);
+            startsWith(mime, "text/xml");
     }
 
 
@@ -320,53 +300,6 @@ public:
             (mime.compare("text/x-javascript") == 0)        ||
             (mime.compare("text/x-json") == 0);
     }
-
-#if 0
-    void getFeatures(HTTPResponse &response, FeatureList& features)
-    {        
-        //OE_NOTICE << "mimetype=" << response.getMimeType() << std::endl;
-        //TODO:  Handle more than just geojson...
-        std::string ext = getExtensionForMimeType(response.getMimeType());
-        //Save the response to a temp file            
-        std::string tmpPath = getTempPath();        
-        std::string name = getTempName(tmpPath, ext);
-        saveResponse(response, name );
-        //OE_NOTICE << "Saving to " << name << std::endl;        
-
-        //OGRDataSourceH ds = OGROpen(name.c_str(), FALSE, &driver);            
-        OGRDataSourceH ds = OGROpen(name.c_str(), FALSE, NULL);            
-        if (!ds)
-        {
-            OE_NOTICE << "Error opening data with contents " << std::endl
-                << response.getPartAsString(0) << std::endl;
-        }
-
-        OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
-        //Read all the features
-        if (layer)
-        {
-            OGR_L_ResetReading(layer);                                
-            OGRFeatureH feat_handle;
-            while ((feat_handle = OGR_L_GetNextFeature( layer )) != NULL)
-            {
-                if ( feat_handle )
-                {
-                    Feature* f = OgrUtils::createFeature( feat_handle );
-                    if ( f ) 
-                    {
-                        features.push_back( f );
-                    }
-                    OGR_F_Destroy( feat_handle );
-                }
-            }
-        }
-
-        //Destroy the datasource
-        OGR_DS_Destroy( ds );
-        //Remove the temporary file
-        remove( name.c_str() );            
-    }
-#endif
 
     std::string createURL(const Symbology::Query& query)
     {
@@ -407,7 +340,7 @@ public:
         if ( Registry::instance()->isBlacklisted(url) )
             return 0L;
 
-        OE_DEBUG << LC << "URL: " << url << std::endl;
+        OE_DEBUG << LC << url << std::endl;
         URI uri(url);
 
         // read the data:
@@ -426,6 +359,12 @@ public:
             dataOK = getFeatures( buffer, mimeType, features );
         }
 
+        if ( dataOK )
+        {
+            OE_DEBUG << LC << "Read " << features.size() << " features" << std::endl;
+        }
+
+        //result = new FeatureListCursor(features);
         result = dataOK ? new FeatureListCursor( features ) : 0L;
 
         if ( !result )

@@ -164,6 +164,11 @@ namespace osgEarth
         */
         int getMaxLevelOverride() const;
 
+        /**
+         * Gets the average time per query
+         */
+        double getAverageQueryTime() const { return _queries > 0.0 ? _totalTime/_queries : 0.0; }
+
     private:
         MapFrame _mapf;
         unsigned _maxCacheSize;
@@ -176,6 +181,8 @@ namespace osgEarth
         typedef LRUCache< TileKey, osg::ref_ptr<osgTerrain::TerrainTile> > TileCache;
         TileCache _tileCache;
 
+        double _queries;
+        double _totalTime;
 
     private:
         void postCTOR();

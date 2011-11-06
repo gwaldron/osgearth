@@ -92,6 +92,16 @@ _caps            ( 0L )
             OE_WARN << LC << "FAILED to initialize cache from env.var." << std::endl;
         }
     }
+
+    if ( ::getenv("OSGEARTH_CACHE_ONLY") )
+    {
+        _defaultCachePolicy = CachePolicy::CACHE_ONLY;
+    }
+
+    if ( ::getenv("OSGEARTH_NO_CACHE") )
+    {
+        _defaultCachePolicy = CachePolicy::NO_CACHE;
+    }
 }
 
 Registry::~Registry()

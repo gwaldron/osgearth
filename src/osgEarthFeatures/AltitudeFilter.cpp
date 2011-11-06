@@ -19,8 +19,12 @@
 #include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/GeoData>
+#include <osg/Timer>
 
 #define LC "[AltitudeFilter] "
+
+#undef OE_DEBUG
+#define OE_DEBUG OE_INFO
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -47,6 +51,8 @@ AltitudeFilter::setPropertiesFromStyle( const Style& style )
 FilterContext
 AltitudeFilter::push( FeatureList& features, FilterContext& cx )
 {
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
     const Session* session = cx.getSession();
     if ( !session ) {
         OE_WARN << LC << "No session - session is required for elevation clamping" << std::endl;
@@ -171,6 +177,10 @@ AltitudeFilter::push( FeatureList& features, FilterContext& cx )
             feature->set( "__max_terrain_z", maxTerrainZ );
         }
     }
+    
+    osg::Timer_t end = osg::Timer::instance()->tick();
+    OE_DEBUG << LC << "Time = " << osg::Timer::instance()->delta_s( start, end ) << std::endl;
+    OE_DEBUG << LC << "Avg EQ Time = " << eq.getAverageQueryTime() << std::endl;
 
     return cx;
 }

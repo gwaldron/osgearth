@@ -42,10 +42,10 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
         {
             if (child.key() == "cache")
             {
-                std::string type = child.attr("type");
+                std::string type = child.value("type");
                 if (type.empty()) type = "tms";
                 Config cacheConfig(child);
-                cacheConfig.attrs()["driver"] = type;
+                cacheConfig.set("driver", type );
                 mapOptionsConf.add( cacheConfig );
             }
             else

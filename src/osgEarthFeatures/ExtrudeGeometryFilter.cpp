@@ -658,7 +658,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             }
             else if ( _heightExpr.isSet() )
             {
-                height = input->eval( _heightExpr.mutable_value() );
+                height = input->eval( _heightExpr.mutable_value(), &context );
             }
             else
             {
@@ -669,7 +669,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             float offset = 0.0;
             if ( _heightOffsetExpr.isSet() )
             {
-                offset = input->eval( _heightOffsetExpr.mutable_value() );
+                offset = input->eval( _heightOffsetExpr.mutable_value(), &context );
             }
 
             osg::StateSet* wallStateSet = 0L;
@@ -776,7 +776,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
 
                 std::string name;
                 if ( !_featureNameExpr.empty() )
-                    name = input->eval( _featureNameExpr );
+                    name = input->eval( _featureNameExpr, &context );
 
                 //MeshConsolidator::run( *walls.get() );
                 addDrawable( walls.get(), wallStateSet, name );

@@ -21,7 +21,7 @@
 #define OSGEARTH_FEATURES_SESSION_H 1
 
 #include <osgEarthFeatures/Common>
-#include <osgEarthSymbology/ResourceCache>
+#include <osgEarthFeatures/ScriptEngine>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Map>
@@ -104,8 +104,10 @@ namespace osgEarth { namespace Features
 
         void removeObject( const std::string& key );
 
-    private:
+    public:
+      ScriptEngine* getScriptEngine() const;
 
+    private:
         //osg::ref_ptr<ResourceCache> _resourceCache;
 
         typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ObjectMap;
@@ -117,6 +119,7 @@ namespace osgEarth { namespace Features
         MapInfo                        _mapInfo;
         //std::string                    _referenceURI;
         osg::ref_ptr<StyleSheet>       _styles;
+        osg::ref_ptr<ScriptEngine>     _styleScriptEngine;
     };
 
 } }

@@ -23,6 +23,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
+#define LC "[Expression] "
+
 NumericExpression::NumericExpression( const std::string& expr ) : 
 _src  ( expr ),
 _value( 0.0 ),
@@ -76,9 +78,9 @@ NumericExpression::init()
 {
     _vars.clear();
     _rpn.clear();
-
-    StringTokenizer tokenizer( "", "'\"" );
+    StringTokenizer tokenizer( "", "" );
     tokenizer.addDelims( "[],()%*/+-", true );
+    tokenizer.addQuotes( "'\"", true );
     tokenizer.keepEmpties() = false;
 
     StringVector t;
@@ -109,6 +111,30 @@ NumericExpression::init()
         else if ( t[i] == "max" ) infix.push_back( Atom(MAX,0.0) );
         else if ( (t[i][0] >= '0' && t[i][0] <= '9') || t[i][0] == '.' )
             infix.push_back( Atom(OPERAND,as<double>(t[i],0.0)) );
+        else if ( t[i] != "," && (i == 0 || t[i-1] != "["))
+        {
+          std::string var = t[i];
+          // If this is a call to a script function, store the entire function
+          // call in the variable string
+          if (i < t.size() - 1 && t[i+1] == "(")
+          {
+            int parenCount = 0;
+            do
+            {
+              ++i;
+              var += t[i];
+
+              if (t[i] == "(")
+                parenCount++;
+              else if (t[i] == ")")
+                parenCount--;
+
+            } while (i < t.size() - 1 && parenCount > 0);
+          }
+
+          infix.push_back( Atom(VARIABLE, 0.0) );
+          _vars.push_back( Variable(var, 0) );
+        }
 
         // note: do nothing for a comma
     }
@@ -324,32 +350,85 @@ StringExpression::getConfig() const
 void
 StringExpression::init()
 {
-    StringTokenizer izer("", "");
-    izer.addDelims( "[]", true );
-    izer.addQuotes( "'\"", false );
-    izer.keepEmpties() = false;
-    izer.trimTokens() = false;
-
-    StringVector t;
-    izer.tokenize( _src, t );
-    //tokenize(_src, t, "[]", "'\"", false, true, false);
-
-    // identify tokens:
-    bool invar = false;
-    for( unsigned i=0; i<t.size(); ++i )
+    bool inQuotes = false;
+    int inVar = 0;
+    int startPos = 0;
+    for (int i=0; i < _src.length(); i++)
     {
-        if ( t[i] == "[" && !invar )
+      if (_src[i] == '"')
+      {
+        if (inQuotes)
         {
-            invar = true;
+          int length = i - startPos;
+          if (length > 0)
+            _infix.push_back( Atom(OPERAND, _src.substr(startPos, length)) );
+
+          inQuotes = false;
         }
-        else if ( t[i] == "]" && invar )
+        else if (!inVar)
         {
-            invar = false;
-            _infix.push_back( Atom(VARIABLE,"") );
-            _vars.push_back( Variable(t[i-1],0) );
+          inQuotes = true;
+          startPos = i + 1;
         }
-        else
-            _infix.push_back( Atom(OPERAND,t[i]) );
+      }
+      else if (_src[i] == '+' || _src[i] == ' ')
+      {
+        if (inVar == 1)
+        {
+          int length = i - startPos;
+
+          //Check for feature attribute access
+          if (length > 2 && _src[startPos] == '[' && _src[i - 1] == ']')
+          {
+            startPos++;
+            length -= 2;
+          }
+
+          if (length > 0)
+          {
+            std::string val = _src.substr(startPos, length);
+            _vars.push_back( Variable(val, _infix.size()) );
+            _infix.push_back( Atom(VARIABLE,val) );
+          }
+
+          inVar = 0;
+        }
+      }
+      else if ((_src[i] == '(' || _src[i] == '[') && inVar)
+      {
+        inVar++;
+      }
+      else if ((_src[i] == ')' || _src[i] == ']') && inVar > 1)
+      {
+        inVar--;
+      }
+      else
+      {
+        if (!inQuotes && !inVar)
+        {
+          inVar = 1;
+          startPos = i;
+        }
+      }
+    }
+
+    if (inVar == 1)
+    {
+      int length = _src.length() - startPos;
+
+      //Check for feature attribute access
+      if (length > 2 && _src[startPos] == '[' && _src[_src.length() - 1] == ']')
+      {
+        startPos++;
+        length -= 2;
+      }
+
+      if (length > 0)
+      {
+        std::string val = _src.substr(startPos, length);
+        _vars.push_back( Variable(val,_infix.size()) );
+        _infix.push_back( Atom(VARIABLE,val) );
+      }
     }
 }
 

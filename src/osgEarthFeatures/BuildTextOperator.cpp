@@ -101,7 +101,7 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         if (symbol->content().isSet())
         {
             //Get the text from the specified content and referenced attributes
-            text = feature->eval( contentExpr );
+            text = feature->eval( contentExpr, &context );
         }
 
         if (text.empty()) continue;

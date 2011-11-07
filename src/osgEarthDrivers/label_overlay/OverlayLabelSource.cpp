@@ -101,7 +101,7 @@ public:
                 context.profile()->getSRS()->transformToECEF( centroid, centroid );
             }
 
-            const std::string& value = feature->eval( contentExpr );
+            const std::string& value = feature->eval( contentExpr, &context );
 
             if ( !value.empty() && (!skipDupes || used.find(value) == used.end()) )
             {
@@ -110,7 +110,7 @@ public:
                     group = new osg::Group();
                 }
 
-                double priority = feature->eval( priorityExpr );
+                double priority = feature->eval( priorityExpr, &context );
 
                 Controls::LabelControl* label = new Controls::LabelControl( value );
                 if ( text->fill().isSet() )

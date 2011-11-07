@@ -164,7 +164,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 
             if ( _featureNameExpr.isSet() )
             {
-                const std::string& name = input->eval( _featureNameExpr.mutable_value() );
+                const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
                 osgGeom->setName( name );
             }
 

@@ -147,11 +147,18 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
             text->halo()->color() = htmlColorToVec4f( p->second );
         }
-        //else if (p->first == CSS_TEXT_ATTRIBUTE)
-        //{
-        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-        //    text->attribute() = p->second;
-        //}
+        else if (p->first == CSS_TEXT_REMOVE_DUPLICATE_LABELS)
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            if (p->second == "true") text->removeDuplicateLabels() = true;
+            else if (p->second == "false") text->removeDuplicateLabels() = false;
+        } 
+#if 0
+        else if (p->first == CSS_TEXT_ATTRIBUTE)
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            text->attribute() = p->second;
+        }
         else if (p->first == CSS_TEXT_ROTATE_TO_SCREEN)
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
@@ -164,12 +171,6 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (p->second == "screen") text->sizeMode() = TextSymbol::SIZEMODE_SCREEN;
             else if (p->second == "object") text->sizeMode() = TextSymbol::SIZEMODE_OBJECT;
         }
-        else if (p->first == CSS_TEXT_REMOVE_DUPLICATE_LABELS)
-        {
-            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            if (p->second == "true") text->removeDuplicateLabels() = true;
-            else if (p->second == "false") text->removeDuplicateLabels() = false;
-        } 
         else if (p->first == CSS_TEXT_LINE_ORIENTATION)
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
@@ -183,6 +184,7 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (p->second == "centroid") text->linePlacement() = TextSymbol::LINEPLACEMENT_CENTROID;
             else if (p->second == "along-line") text->linePlacement() = TextSymbol::LINEPLACEMENT_ALONG_LINE;
         }
+#endif
         else if (p->first == "text-content")
         {
             if (!text) text = sc.getOrCreate<TextSymbol>();

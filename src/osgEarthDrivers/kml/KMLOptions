@@ -45,13 +45,24 @@ namespace osgEarth { namespace Drivers
         osg::ref_ptr<TextSymbol>& defaultTextSymbol() { return _defaultTextSymbol; }
         const osg::ref_ptr<TextSymbol>& defaultTextSymbol() const { return _defaultTextSymbol; }
 
+        /** Automatically assign KML icons and labels to a decluttering bin */
+        optional<bool>& declutter() { return _declutter; }
+        const optional<bool>& declutter() const { return _declutter; }
+
+        /** Specify a group to which to add screen-space items (2D icons and labels) */
+        osg::ref_ptr<osg::Group> iconAndLabelGroup() { return _iconAndLabelGroup; }
+        const osg::ref_ptr<osg::Group> iconAndLabelGroup() const { return _iconAndLabelGroup; }
+
     public:
-        KMLOptions() { }
+        KMLOptions() :
+          _declutter( true ) { }
 
     protected:
         optional<URI>            _defaultIconURI;
         osg::ref_ptr<osg::Image> _defaultIconImage;
         osg::ref_ptr<TextSymbol> _defaultTextSymbol;
+        optional<bool>           _declutter;
+        osg::ref_ptr<osg::Group> _iconAndLabelGroup;
     };
 
 } } // namespace osgEarth::Drivers

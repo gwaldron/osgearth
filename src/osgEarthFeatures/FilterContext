@@ -56,6 +56,11 @@ namespace osgEarth { namespace Features
     public: // properties
 
         /**
+         * Whether this context contains complete georeferencing information.
+         */
+        bool isGeoreferenced() const { return _session.valid() && _profile.valid(); }
+
+        /**
          * Access to the Session under which this filter context operates
          */
         Session* getSession() { return _session.get(); }
@@ -76,8 +81,8 @@ namespace osgEarth { namespace Features
         /**
          * Whether to assume a geocentric coordinate system for geographic profiles.
          */
-        bool isGeocentric() const { return _isGeocentric; }
-        bool& isGeocentric() { return _isGeocentric; }
+        //bool isGeocentric() const { return _isGeocentric; }
+        //bool& isGeocentric() { return _isGeocentric; }
 
         /**
          * Whether this context has a non-identity reference frame

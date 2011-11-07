@@ -221,6 +221,12 @@ namespace osgEarth
         /** Gets a reference to this SRS's underlying geographic SRS. */
         const SpatialReference* getGeographicSRS() const;
 
+        /** Creates a localizer matrix based on a point in this SRS. */
+        void createLocal2World( const osg::Vec3d& point, osg::Matrixd& out_local2world ) const;
+
+        /** Create a de-localizer matrix based on a point in this SRS. */
+        void createWorld2Local( const osg::Vec3d& point, osg::Matrix& out_world2local ) const;
+
         /** Creates and returns a local trangent plane SRS at the given reference location.
             The reference location is expressed in this object's SRS, but it tangent to
             the globe at getGeographicSRS(). LTP units are in meters. */

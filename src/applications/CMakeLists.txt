@@ -19,6 +19,7 @@ SET(TARGET_COMMON_LIBRARIES
     osgEarthFeatures
     osgEarthUtil
     osgEarthSymbology
+    osgEarthAnnotation
 )
 
 SET(TARGET_DEFAULT_PREFIX "application_")
@@ -38,7 +39,7 @@ ADD_SUBDIRECTORY(osgearth_map)
 ADD_SUBDIRECTORY(osgearth_annotation)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6")
-ADD_SUBDIRECTORY(osgearth_featureeditor)
+    ADD_SUBDIRECTORY(osgearth_featureeditor)
 ENDIF()
 
 ADD_SUBDIRECTORY(osgearth_measure)
@@ -53,4 +54,4 @@ ADD_SUBDIRECTORY(osgearth_imageoverlay)
 #ADD_SUBDIRECTORY(osgearth_symbology)
 
 #testing
-add_subdirectory(osgearth_resources)
+#add_subdirectory(osgearth_resources)

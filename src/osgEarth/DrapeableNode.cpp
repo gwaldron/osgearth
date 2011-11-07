@@ -59,6 +59,7 @@ DrapeableNode::setNode( osg::Node* node )
     if ( !_dirty )
     {
         _dirty = true;
+        dirtyBound();
         ADJUST_UPDATE_TRAV_COUNT( this, 1 );
     }
 }
@@ -70,6 +71,7 @@ DrapeableNode::setDraped( bool draped )
     if ( !_dirty )
     {
         _dirty = true;
+        dirtyBound();
         ADJUST_UPDATE_TRAV_COUNT( this, 1 );
     }
 }
@@ -124,6 +126,22 @@ DrapeableNode::setDrapedImpl( bool value )
     }
 }
 
+osg::BoundingSphere
+DrapeableNode::computeBound() const
+{
+    if ( _newNode.valid() )
+    {
+        return _newNode->getBound();
+    }
+    else if ( _node.valid() )
+    {
+        return _node->getBound();
+    }
+    else
+    {
+        return osg::Group::computeBound();
+    }
+}
 
 void
 DrapeableNode::traverse( osg::NodeVisitor& nv )

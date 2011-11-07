@@ -69,44 +69,44 @@ ECEF::createInverseRefFrame( const osg::Vec3d& input )
 
 void
 ECEF::transformAndLocalize(const osg::Vec3d&       input,
+                           const SpatialReference* inputSRS,
                            osg::Vec3d&             output,
-                           const SpatialReference* srs,
                            const osg::Matrixd&     world2local)
 {
     osg::Vec3d ecef;
-    srs->transformToECEF( input, ecef );
+    inputSRS->transformToECEF( input, ecef );
     output = ecef * world2local;
 }
 
 
 void
 ECEF::transformAndLocalize(const std::vector<osg::Vec3d>& input,
+                           const SpatialReference*        inputSRS,
                            osg::Vec3Array*                output,
-                           const SpatialReference*        srs,
                            const osg::Matrixd&            world2local )
 {
     output->reserve( output->size() + input.size() );
     for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
     {
         osg::Vec3d ecef;
-        srs->transformToECEF( *i, ecef );
+        inputSRS->transformToECEF( *i, ecef );
         output->push_back( ecef * world2local );
     }
 }
 
 void
-ECEF::transformAndGetRotationMatrix(const SpatialReference* srs,
-                                    const osg::Vec3d&       input,
+ECEF::transformAndGetRotationMatrix(const osg::Vec3d&       input,
+                                    const SpatialReference* inputSRS,
                                     osg::Vec3d&             out_point,
                                     osg::Matrixd&           out_rotation )
 {
     osg::Vec3d geod_point;
-    if ( !srs->isGeographic() )
-        srs->transform( input, srs->getGeographicSRS(), geod_point );
+    if ( !inputSRS->isGeographic() )
+        inputSRS->transform( input, inputSRS->getGeographicSRS(), geod_point );
     else
         geod_point = input;
 
-    const osg::EllipsoidModel* em = srs->getEllipsoid();
+    const osg::EllipsoidModel* em = inputSRS->getEllipsoid();
     
     em->convertLatLongHeightToXYZ(
         osg::DegreesToRadians( geod_point.y() ),

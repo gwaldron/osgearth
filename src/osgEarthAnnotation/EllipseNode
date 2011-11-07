@@ -1,0 +1,64 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_ANNOTATION_ELLIPSE_NODE_H
+#define OSGEARTH_ANNOTATION_ELLIPSE_NODE_H 1
+
+#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthSymbology/Style>
+#include <osgEarth/Units>
+#include <osgEarth/MapNode>
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /** 
+     * Renders an ellipse that can drape on a MapNode terrain.    
+     */
+    class OSGEARTHANNO_EXPORT EllipseNode : public LocalizedNode
+    {
+    public:
+        /**
+         * Constructs a new ellipse annotation.
+         *
+         * @param mapNode     Map on which the annotation will appear
+         * @param position    Location of the annotation, in map coordinates
+         * @param radiusMajor Length of 1/2 the major axis of the ellipse
+         * @param radiusMinor Length of 1/2 the minor axis of the ellipse
+         * @param rotation    Rotation angle of the ellipse
+         * @param style       Style defining how the annotation will look
+         * @param draped      Whether to "drape" the annotation down on to the terrain
+         * @param numSegments Hint as to the tessellation of the ellipse
+         */
+        EllipseNode( 
+            MapNode*                mapNode,
+            const osg::Vec3d&       position,
+            const Linear&           radiusMajor,
+            const Linear&           radiusMinor,
+            const Angular&          rotationAngle,
+            const Style&            style,
+            bool                    draped      =true,
+            unsigned                numSegments =0 );
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNOTATION_ELLIPSE_NODE_H

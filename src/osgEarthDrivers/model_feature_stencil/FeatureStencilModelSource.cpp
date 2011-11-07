@@ -110,6 +110,8 @@ namespace
     {
         if ( !geom ) return 0L;
 
+        bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
+
         int numRings = 0;
 
         // start by offsetting the input data and counting the number of rings
@@ -123,7 +125,7 @@ namespace
                 {
                     for( osg::Vec3dArray::iterator j = part->begin(); j != part->end(); j++ )
                     {
-                        if ( context.isGeocentric() )
+                        if ( makeECEF )
                         {
                             osg::Vec3d world = context.toWorld( *j );
                             // TODO: get the proper up vector; this is spherical.. or does it really matter for
@@ -228,7 +230,7 @@ namespace
                 if ( srs )
                 {
                     osg::Vec3d m_world = context.toWorld( *m ); //*m * context.inverseReferenceFrame();
-                    if ( context.isGeocentric() )
+                    if ( makeECEF )
                     {
                         osg::Vec3d p_vec = m_world; // todo: not exactly right; spherical
 
@@ -429,8 +431,8 @@ namespace
 
             // Transform them into the map's SRS, localizing the verts along the way:
             TransformFilter xform( mi.getProfile()->getSRS() );
-            xform.setMakeGeocentric( mi.isGeocentric() );
-            xform.setLocalizeCoordinates( !mi.isGeocentric() );
+            //xform.setMakeGeocentric( mi.isGeocentric() );
+            //xform.setLocalizeCoordinates( !mi.isGeocentric() );
             cx = xform.push( featureList, cx );
 
             if ( mi.isGeocentric() )

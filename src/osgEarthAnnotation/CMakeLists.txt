@@ -1,0 +1,80 @@
+IF   (DYNAMIC_OSGEARTH)
+    ADD_DEFINITIONS(-DOSGEARTHANNO_LIBRARY)
+ELSE (DYNAMIC_OSGEARTH)
+    ADD_DEFINITIONS(-DOSGEARTHANNO_LIBRARY_STATIC)
+ENDIF(DYNAMIC_OSGEARTH)
+
+set(LIB_NAME osgEarthAnnotation)
+
+set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
+
+set(LIB_PUBLIC_HEADERS  
+    AnnotationData
+    CircleNode
+    Common
+    Decluttering
+    EllipseNode
+    Export
+    GeometryNode
+    ImageOverlay
+    LabelNode
+    LocalizedNode
+    PlaceNode
+    TrackNode
+)
+
+set(LIB_COMMON_FILES
+    AnnotationData.cpp
+    CircleNode.cpp
+    Decluttering.cpp
+    EllipseNode.cpp
+    GeometryNode.cpp
+    ImageOverlay.cpp
+    LabelNode.cpp
+    LocalizedNode.cpp
+    PlaceNode.cpp
+    TrackNode.cpp
+)
+
+if( NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6" )
+
+    set(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS}
+        Draggers
+	    FeatureEditing
+	    ImageOverlayEditor
+    )
+    	
+    set(LIB_COMMON_FILES ${LIB_COMMON_FILES} 
+        Draggers.cpp
+	    FeatureEditing.cpp
+        ImageOverlayEditor.cpp
+    )
+        
+endif()
+
+
+ADD_LIBRARY( ${LIB_NAME} SHARED
+    ${LIB_PUBLIC_HEADERS}  
+	${LIB_COMMON_FILES}
+)
+
+
+
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR})
+
+IF (WIN32)
+  LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
+ELSE(WIN32)
+  LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
+ENDIF(WIN32)
+
+LINK_INTERNAL(${LIB_NAME}
+    osgEarth
+    osgEarthFeatures
+    osgEarthSymbology
+)
+
+LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGMANIPULATOR_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OPENTHREADS_LIBRARY)
+LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
+
+INCLUDE(ModuleInstall OPTIONAL)

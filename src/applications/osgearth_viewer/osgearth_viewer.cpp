@@ -24,22 +24,22 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
-#include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/Formatters>
-#include <osgEarthUtil/Annotation>
 #include <osgEarthSymbology/Color>
+#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthDrivers/kml/KML>
 
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Annotation;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
+using namespace osgEarth::Annotation;
 
 int
 usage( const std::string& msg )

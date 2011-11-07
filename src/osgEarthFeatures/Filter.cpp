@@ -26,7 +26,7 @@ using namespace osgEarth::Features;
 void
 FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
 {
-    if ( context.getSession()->getMapInfo().isGeocentric() )
+    if ( context.isGeoreferenced() )
     {
         const SpatialReference* geogSRS = context.profile()->getSRS()->getGeographicSRS();
         GeoExtent geodExtent = context.extent()->transform( geogSRS );

@@ -1,0 +1,65 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_ANNO_IMAGE_OVERLAY_EDITOR_H
+#define OSGEARTH_ANNO_IMAGE_OVERLAY_EDITOR_H
+
+#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/ImageOverlay>
+#include <osgEarthAnnotation/Draggers>
+#include <osgEarth/MapNode>
+#include <osg/MatrixTransform>
+#include <osgGA/GUIEventHandler>
+
+namespace osgEarth { namespace Annotation
+{
+    class OSGEARTHANNO_EXPORT ImageOverlayEditor : public osg::Group
+    {
+    public:
+        typedef std::map< ImageOverlay::ControlPoint, osg::ref_ptr< osgManipulator::Dragger > >  ControlPointDraggerMap;
+
+        ImageOverlayEditor(ImageOverlay* overlay, const osg::EllipsoidModel* ellipsoid, osg::Node* terrain);
+
+        ControlPointDraggerMap& getDraggers() { return _draggers; }
+
+        const osg::EllipsoidModel* getEllipsoid() const { return _ellipsoid.get();}
+        void setEllipsoid( const osg::EllipsoidModel* ellipsoid) { _ellipsoid = ellipsoid; };
+
+        osg::Node* getTerrain() const { return _terrain.get(); }
+        void setTerrain( osg::Node* terrain) { _terrain = terrain;}
+
+        ImageOverlay* getOverlay() { return _overlay.get();}
+
+        void updateDraggers();
+
+    protected:
+
+        ~ImageOverlayEditor();
+        void addDragger( ImageOverlay::ControlPoint controlPoint );
+
+        osg::ref_ptr< ImageOverlay > _overlay;
+        osg::ref_ptr< const osg::EllipsoidModel > _ellipsoid;
+        osg::ref_ptr< osg::Node > _terrain;
+        osg::ref_ptr< ImageOverlay::ImageOverlayCallback > _overlayCallback;
+        ControlPointDraggerMap _draggers;
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNO_IMAGE_OVERLAY_EDITOR_H
+

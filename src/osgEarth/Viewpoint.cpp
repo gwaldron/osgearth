@@ -16,10 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthUtil/Viewpoint>
+#include <osgEarth/Viewpoint>
 #include <sstream>
 
-using namespace osgEarth::Util;
 using namespace osgEarth;
 
 

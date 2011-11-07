@@ -19,6 +19,7 @@
 #include "KMLReader"
 #include "KML_Root"
 #include <osgEarth/XmlUtils>
+#include <osgEarthAnnotation/Decluttering>
 #include <stack>
 #include <iterator>
 
@@ -61,6 +62,11 @@ KMLReader::read( const Config& conf )
     cx._sheet = new StyleSheet();
     cx._groupStack.push( root );
     cx._options = _options;
+
+    if ( cx._options->iconAndLabelGroup().valid() && cx._options->declutter() == true )
+    {
+        cx._options->iconAndLabelGroup()->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+    }
 
     const Config& kml = conf.child("kml");
     if ( !kml.empty() )

@@ -1,0 +1,148 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNO_LOCALIZED_NODE_H
+#define OSGEARTH_ANNO_LOCALIZED_NODE_H 1
+
+#include <osgEarthAnnotation/Common>
+#include <osgEarth/SpatialReference>
+#include <osg/Transform>
+#include <osg/Switch>
+#include <osg/AutoTransform>
+#include <osg/MatrixTransform>
+
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+
+    /**
+     * Base class for node that is localized at a specific geographic point.
+     */
+    class OSGEARTHANNO_EXPORT LocalizedNode : public osg::Group
+    {
+    public:
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * of the current Map. Returns true upon success.
+         */
+        bool setPosition( const osg::Vec3d& pos );
+
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * passed in, and will be reprojected to Map coordinates.
+         * Returns true upon success.
+         */
+        bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs );
+
+        /**
+         * Gets the position (in map coordinates) of the node
+         */
+        osg::Vec3d getPosition() const;
+
+        /**
+         * Gets the position (in the requested coordinate system)
+         */
+        osg::Vec3d getPosition( const SpatialReference* srs ) const;
+
+        /**
+         * Enables or disable automatic horizon culling
+         */
+        void setHorizonCulling( bool value );
+        bool getHorizonCulling() const;
+
+
+    public:
+
+        virtual void traverse( osg::NodeVisitor& nv );
+        
+    protected:
+        /**
+         * Constructs a new LocalizedNode.
+         *
+         * @param mapSRS  Spatial reference for position info
+         * @param pos     Initial position of the node (map coords)
+         * @param is2D    Whether to autotransform the node to face/scale to the screen
+         */
+        LocalizedNode( 
+            const SpatialReference* mapSRS,
+            const osg::Vec3d&       pos      =osg::Vec3d(0,0,0), 
+            bool                    is2D     =false );
+
+        osg::Transform* getTransform() { return _xform.get(); }
+
+    protected:
+        osg::observer_ptr<const SpatialReference> _mapSRS;
+        osg::ref_ptr<osg::Transform> _xform;
+        bool _horizonCulling;
+        bool _autoTransform;
+    };
+
+
+    class OSGEARTHANNO_EXPORT OrthoNode : public osg::Switch
+    {
+    public:
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * of the current Map. Returns true upon success.
+         */
+        bool setPosition( const osg::Vec3d& pos );
+
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * passed in, and will be reprojected to Map coordinates.
+         * Returns true upon success.
+         */
+        bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs );
+
+        /**
+         * Gets the position (in map coordinates) of the node
+         */
+        osg::Vec3d getPosition() const;
+
+        /**
+         * Gets the position (in the requested coordinate system)
+         */
+        osg::Vec3d getPosition( const SpatialReference* srs ) const;
+
+        /**
+         * Enables or disable automatic horizon culling
+         */
+        void setHorizonCulling( bool value );
+        bool getHorizonCulling() const;
+
+    public: // osg::Node
+
+        virtual void traverse( osg::NodeVisitor& nv );
+
+    protected:
+        OrthoNode( const SpatialReference* mapSRS, const osg::Vec3d& position );
+
+        /** Attaches a child node to the transforms. */
+        void attach( osg::Node* transformChild );
+
+    private:
+        osg::observer_ptr<const SpatialReference> _mapSRS;
+        osg::ref_ptr<osg::AutoTransform>          _autoxform;
+        osg::ref_ptr<osg::MatrixTransform>        _matxform;
+        bool                                      _horizonCulling;
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNO_LOCALIZED_NODE_H

@@ -20,10 +20,10 @@
 #define OSGEARTH_DRIVER_KML_KML_OBJECT 1
 
 #include "KML_Common"
-#include <osgEarthUtil/Annotation>
+#include <osgEarthAnnotation/AnnotationData>
 
 using namespace osgEarth;
-using namespace osgEarth::Util::Annotation;
+using namespace osgEarth::Annotation;
 
 struct KML_Object
 {

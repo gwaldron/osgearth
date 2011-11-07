@@ -25,10 +25,9 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgEarth/Map>
 #include <osgEarth/MapNode>
+#include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Viewpoint>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 

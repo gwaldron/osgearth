@@ -188,12 +188,14 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                                        const SkinResource*     roofSkin,
                                        FilterContext&          cx )
 {
-    //todo: establish reference frame for going to geocentric. This will ultimately
-    // passed in to the function.
-    const SpatialReference* srs = cx.extent()->getSRS();
+    bool makeECEF = false;
+    const SpatialReference* srs = 0L;
 
-    // whether to convert the final geometry to localized ECEF
-    bool makeECEF = cx.getSession()->getMapInfo().isGeocentric();
+    if ( cx.isGeoreferenced() )
+    {
+       srs = cx.extent()->getSRS();
+       makeECEF = cx.getSession()->getMapInfo().isGeocentric();
+    }
 
     bool made_geom = false;
 
@@ -279,7 +281,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             // if our data is lat/long, we need to reproject the geometry and the bounds into a projected
             // coordinate system in order to properly generate tex coords.
-            if ( srs->isGeographic() )
+            if ( srs && srs->isGeographic() )
             {
                 osg::Vec2d geogCenter = roofBounds.center2d();
                 roofProjSRS = srs->createUTMFromLongitude( Angular(geogCenter.x()) );
@@ -428,7 +430,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
             {
                 double xr, yr;
 
-                if ( srs->isGeographic() )
+                if ( srs && srs->isGeographic() )
                 {
                     osg::Vec3d projRoofPt;
                     srs->transform( roofPt, roofProjSRS.get(), projRoofPt );
@@ -449,8 +451,8 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 
             if ( makeECEF )
             {
-                ECEF::transformAndLocalize( basePt, basePt, srs, _world2local );
-                ECEF::transformAndLocalize( roofPt, roofPt, srs, _world2local );
+                ECEF::transformAndLocalize( basePt, srs, basePt, _world2local );
+                ECEF::transformAndLocalize( roofPt, srs, roofPt, _world2local );
             }
 
             if ( base )
@@ -812,7 +814,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     _wallResLib = 0L;
     _roofResLib = 0L;
 
-    const StyleSheet* sheet = context.getSession()->styles();
+    const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
 
     if ( sheet != 0L )
     {

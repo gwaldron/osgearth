@@ -103,15 +103,6 @@ namespace osgEarth
          */
         virtual void removeBin( CacheBin* bin );
 
-        /**
-         * Whether the objects returned by CacheBins in this Cache need to be cloned
-         * before use. This would be true in the case of a multi-threaded memory-cache,
-         * for example, where you don't want the actual item in the Cache to have outdie
-         * references to it. (Note: normal use of the Cache is via the URI class, which
-         * automatically does this for you.)
-         */
-        virtual bool cloneRequired() const { return true; }
-
         /** 
          * Gets an Options structure representing this cache's configuration.
          */
@@ -137,91 +128,6 @@ namespace osgEarth
         ThreadSafeCacheBinMap  _bins;
         osg::ref_ptr<CacheBin> _defaultBin;
     };
-
-//--------------------------------------------------------------------
-    
-#if 0
-    /**
-     * Adapter to read/write tilekey-based images and heightfields from a Cache.
-     */
-    struct /*NO EXPORT*/ RasterCacheAdapter
-    {
-        RasterCacheAdapter( Cache* cache ) : _cache(cache) { }
-
-        bool getImage( const TileKey& key, const std::string& binID, osg::ref_ptr<osg::Image>& output )
-        {
-            CacheBin* bin = _cache->getBin( binID );
-            if ( !bin ) return false;
-            return bin->readImage( output, key.str() );
-        }
-
-        bool getHeightField( const TileKey& key, const std::string& binID, osg::ref_ptr<osg::HeightField>& output )
-        {
-            CacheBin* bin = _cache->getBin( binID );
-            if ( !bin ) return false;
-            return bin->readObject( output, key.str() );
-        }
-
-        bool isCached( const TileKey& key, const std::string& binID )
-        {
-            CacheBin* bin = _cache->getBin( binID );
-            if ( !bin ) return false;
-            return bin->isCached( key.str() );
-        }
-
-        bool setImage( const TileKey& key, const std::string& binID, const osg::Image* image )
-        {
-            CacheBin* bin = _cache->getBin( binID );
-            if ( !bin ) return false;
-            return bin->write( key.str(), image );
-        }
-
-        bool setHeightField( const TileKey& key, const std::string binID, const osg::HeightField* hf )
-        {
-            CacheBin* bin = _cache->getBin( binID );
-            if ( !bin ) return false;
-            return bin->write( key.str(), hf );
-        }
-
-        Cache* _cache;
-    };
-
-    struct /*NO EXPORT*/ RasterCacheBinAdapter
-    {
-        RasterCacheBinAdapter( CacheBin* bin ) : _bin(bin) { }
-
-        bool getImage( const TileKey& key, osg::ref_ptr<osg::Image>& output )
-        {
-            ReadResult r = _bin->readImage( key.str() );
-            output = r.take<osg::Image>();
-            return output.valid();
-        }
-
-        bool getHeightField( const TileKey& key, osg::ref_ptr<osg::HeightField>& output )
-        {
-            ReadResult r = _bin->readObject( key.str() );
-            output = r.take<osg::HeightField>();
-            return output.valid();
-        }
-
-        bool isCached( const TileKey& key )
-        {
-            return _bin->isCached( key.str() );
-        }
-
-        bool setImage( const TileKey& key, const osg::Image* image )
-        {
-            return _bin->write( key.str(), image );
-        }
-
-        bool setHeightField( const TileKey& key, const osg::HeightField* hf )
-        {
-            return _bin->write( key.str(), hf );
-        }
-
-        CacheBin* _bin;
-    };
-#endif
 
 //----------------------------------------------------------------------
 

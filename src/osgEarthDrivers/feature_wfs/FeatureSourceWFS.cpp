@@ -103,7 +103,8 @@ public:
       FeatureSource( options ),
       _options     ( options )
     {        
-        //nop
+        _geojsonDriver = OGRGetDriverByName( "GeoJSON" );
+        _gmlDriver     = OGRGetDriverByName( "GML" );
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
@@ -202,27 +203,21 @@ public:
 
     bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
     {
-        OGRSFDriverH   driver = 0L;
-
         // find the right driver for the given mime type
-        if ( isJSON(mimeType) )
-        {
-            driver = OGRGetDriverByName( "GeoJSON" );
-        }
-        else if ( isGML(mimeType) )
-        {
-            driver = OGRGetDriverByName( "GML" );
-        }
+        OGRSFDriverH ogrDriver =
+            isJSON(mimeType) ? _geojsonDriver :
+            isGML(mimeType)  ? _gmlDriver :
+            0L;
 
         // fail if we can't find an appropriate OGR driver:
-        if ( !driver )
+        if ( !ogrDriver )
         {
             OE_WARN << LC << "Error reading WFS response; cannot grok content-type \"" << mimeType << "\""
                 << std::endl;
             return false;
         }
 
-        OGRDataSourceH ds = OGROpen( buffer.c_str(), FALSE, &driver );
+        OGRDataSourceH ds = OGROpen( buffer.c_str(), FALSE, &ogrDriver );
         
         if ( !ds )
         {
@@ -407,6 +402,7 @@ private:
     FeatureSchema                   _schema;
     osg::ref_ptr<CacheBin>          _cacheBin;
     osg::ref_ptr<osgDB::Options>    _dbOptions;
+    OGRSFDriverH                    _geojsonDriver, _gmlDriver;
 };
 
 

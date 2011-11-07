@@ -231,7 +231,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
                                          const MapFrame*  mapf ) const
 {
     osg::Vec3d center, corner;
-    double z = 0.0;
+    //double z = 0.0;
     GeoExtent workingExtent;
 
     if ( extent.getSRS()->isEquivalentTo( _usableMapExtent.getSRS() ) )
@@ -245,16 +245,18 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     workingExtent.getCentroid( center.x(), center.y() );
     
+    double centerZ;
     if ( mapf )
     {
         // note: use the lowest possible resolution to speed up queries
         ElevationQuery query( *mapf );
         query.getElevation( center, mapf->getProfile()->getSRS(), center.z(), DBL_MAX );
+        centerZ = center.z();
     }
 
     corner.x() = workingExtent.xMin();
     corner.y() = workingExtent.yMin();
-    corner.z() = z;
+    corner.z() = 0.0;
 
     if ( _session->getMapInfo().isGeocentric() )
     {
@@ -262,7 +264,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
         workingExtent.getSRS()->transformToECEF( corner, corner );
     }
 
-    return osg::BoundingSphered( center, (center-corner).length() );
+    return osg::BoundingSphered( center, (center-corner).length() + fabs(centerZ) );
 }
 
 void

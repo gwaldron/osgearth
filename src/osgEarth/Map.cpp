@@ -1067,9 +1067,11 @@ namespace
                 {
                     double geoY = miny + (dy * (double)r);
 
-                    //Collect elevations from all of the layers
+                    //Collect elevations from all of the layers. Iterate BACKWARDS because the last layer
+                    // is the highest priority.
                     std::vector<float> elevations;
-                    for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
+                    for( GeoHeightFieldVector::reverse_iterator itr = heightFields.rbegin(); itr != heightFields.rend(); ++itr )
+                    //for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                     {
                         const GeoHeightField& geoHF = *itr;
 
@@ -1080,6 +1082,9 @@ namespace
                             {
                                 elevations.push_back(elevation);
                             }
+                        }
+                        else {
+                            OE_WARN << LC << "Yep, got a NDV" << std::endl;
                         }
                     }
 

@@ -304,6 +304,7 @@ namespace
         URI fileURI( toLegalFileName(key), _metaPath );
 
         bool readOK = false;
+        if ( osgDB::fileExists( fileURI.full() ) )
         {
             ScopedReadLock sharedLock( _rwmutex );
             std::ifstream infile( fileURI.full().c_str() );
@@ -397,7 +398,7 @@ namespace
 
         if ( objWriteOK )
         {
-            OE_INFO << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
+            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
         }
         else
         {
@@ -477,13 +478,6 @@ namespace
         conf.fromJSON( URI(_metaPath).readString(0L,CachePolicy::NO_CACHE).getString() );
 
         return conf;
-
-        //osg::ref_ptr<XmlDocument> xml = XmlDocument::load( _metaPath );
-        //if ( xml.valid() )
-        //{
-        //    return xml->getConfig();
-        //}        
-        //return Config();
     }
 
     bool
@@ -502,12 +496,6 @@ namespace
             return true;
         }
         return false;
-
-        //XmlDocument xml( conf );
-        //std::fstream output( _metaPath.c_str(), std::ios_base::out );
-        //if ( output.is_open() )
-        //    xml.store( output );
-        //return output.is_open();
     }
 }
 

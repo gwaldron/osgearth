@@ -34,8 +34,8 @@
 
 #define LC "[HTTPClient] "
 
-#undef  OE_DEBUG
-#define OE_DEBUG OE_INFO
+//#undef  OE_DEBUG
+//#define OE_DEBUG OE_INFO
 
 using namespace osgEarth;
 

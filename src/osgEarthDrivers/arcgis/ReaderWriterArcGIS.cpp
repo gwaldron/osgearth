@@ -22,6 +22,8 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
+#include <osgEarth/URI>
+
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -90,8 +92,10 @@ public:
     }
 
     // override
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
+        _dbOptions = dbOptions;
+
         const Profile* profile = NULL;
 
         if ( _profileConf.isSet() )
@@ -152,8 +156,7 @@ public:
     }
 
     // override
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage(const TileKey& key, ProgressCallback* progress)
     {
         std::stringstream buf;
 
@@ -206,8 +209,7 @@ public:
         osg::ref_ptr<osg::Image> image;
 		std::string bufStr;
 		bufStr = buf.str();
-        HTTPClient::readImageFile( bufStr, image, 0L, progress ); //getOptions(), progress );
-        return image.release();
+        return URI(bufStr).readImage( 0L, CachePolicy::NO_CACHE, progress ).releaseImage();
     }
 
     // override
@@ -231,6 +233,7 @@ private:
     std::string _layer;
     std::string _format;
     MapService _map_service;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

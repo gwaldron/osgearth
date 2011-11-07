@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarth/Config>
+#include <osgEarth/URI>
 #include <osg/Referenced>
 #include <vector>
 

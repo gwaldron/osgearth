@@ -41,7 +41,7 @@ Footprint Extrusion using the "feature_geom" driver.
         <terrain>
             <sample_ratio>0.2</sample_ratio>
         </terrain>
-        <cache type="tms">
+        <cache type="filesystem">
             <path>osgearth_cache</path>
         </cache>
     </options> 

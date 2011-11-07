@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Feature>
+#include <osgEarth/StringUtils>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -24,8 +25,6 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
 #define LC "[Feature] "
-
-static std::string EMPTY_STRING;
 
 //----------------------------------------------------------------------------
 

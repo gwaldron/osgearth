@@ -24,11 +24,10 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Map>
+#include <osgEarth/Cache>
 #include <osgEarth/CacheSeed>
 #include <osgEarth/MapNode>
 #include <osgEarth/Registry>
-
-#include <osgEarth/Caching>
 
 #include <iostream>
 #include <sstream>
@@ -123,7 +122,7 @@ seed( osg::ArgumentParser& args )
     std::string cacheType;
     while (args.read("--cache-type", cacheType));
 
-    bool quiet = args.read("--quiet");
+    bool verbose = args.read("--verbose");
 
     //Read in the earth file.
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
@@ -138,7 +137,7 @@ seed( osg::ArgumentParser& args )
     seeder.setMinLevel( minLevel );
     seeder.setMaxLevel( maxLevel );
     seeder.setBounds( bounds );
-    if (!quiet)
+    if (verbose)
     {
         seeder.setProgressCallback(new ConsoleProgressCallback);
     }
@@ -165,7 +164,8 @@ list( osg::ArgumentParser& args )
         return message( "Earth file does not contain a cache." );
 
     std::cout 
-        << "Cache config = " << cache->getCacheOptions().getConfig().toString() << std::endl;
+        << "Cache config: " << std::endl
+        << cache->getCacheOptions().getConfig().toJSON(true) << std::endl;
 
     MapFrame mapf( mapNode->getMap() );
 
@@ -173,12 +173,22 @@ list( osg::ArgumentParser& args )
     std::copy( mapf.imageLayers().begin(), mapf.imageLayers().end(), std::back_inserter(layers) );
     std::copy( mapf.elevationLayers().begin(), mapf.elevationLayers().end(), std::back_inserter(layers) );
 
-    for( TerrainLayerVector::const_iterator i =layers.begin(); i != layers.end(); ++i )
+    for( TerrainLayerVector::iterator i =layers.begin(); i != layers.end(); ++i )
     {
         TerrainLayer* layer = i->get();
-        const CacheSpec& spec = layer->getCacheSpec();
-        std::cout
-            << "Layer = \"" << layer->getName() << "\", cacheId = " << spec.cacheId() << std::endl;
+        TerrainLayer::CacheBinMetadata meta;
+
+        if ( layer->getCacheBinMetadata( map->getProfile(), meta ) )
+        {
+            Config conf = meta.getConfig();
+            std::cout << "Layer \"" << layer->getName() << "\", cache metadata =" << std::endl
+                << conf.toJSON(true) << std::endl;
+        }
+        else
+        {
+            std::cout << "Layer \"" << layer->getName() << "\": no cache information" 
+                << std::endl;
+        }
     }
 
     return 0;

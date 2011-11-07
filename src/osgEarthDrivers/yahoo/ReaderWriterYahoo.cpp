@@ -19,6 +19,7 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
+#include <osgEarth/URI>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -42,16 +43,18 @@ public:
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize(const osgDB::Options* dbOptions,
+                    const Profile*        overrideProfile )
     {
         setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );
     }
 
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress )
+    osg::Image* createImage(const TileKey&        key,
+                            ProgressCallback*     progress )
     {
         //Return NULL if we are given a non global-mercator key
-        if ( !key.getProfile()->getProfileType() == Profile::TYPE_MERCATOR ) return 0;
+        //Not applicable
+        //if ( !key.getProfile()->getProfileType() == Profile::TYPE_MERCATOR ) return 0;
 
         std::stringstream buf;
 
@@ -92,14 +95,12 @@ public:
 		base = buf.str();
 
         OE_DEBUG << key.str() << "=" << base << std::endl;
-        
-        osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile( base, image, 0L, progress ); //getOptions(), progress );
-        return image.release();
+
+        return URI(base).readImage( 0L, CachePolicy::NO_CACHE ).releaseImage();
     }
 
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField(const TileKey&        key,
+                                        ProgressCallback*     progress )
     {
         //NI
         OE_WARN << "[Yahoo] Driver does not support heightfields" << std::endl;

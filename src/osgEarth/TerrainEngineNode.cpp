@@ -405,7 +405,6 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
     {
         TerrainOptions terrainOptions( options );
         result->validateTerrainOptions( terrainOptions );
-        //result->initialize( map, terrainOptions );
     }
     else
     {

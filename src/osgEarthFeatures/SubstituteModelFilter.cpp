@@ -318,7 +318,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         {
             osg::ref_ptr<MarkerResource> mres = new MarkerResource();
             mres->uri() = markerURI;
-            model = mres->createNode();
+            model = mres->createNode( context.getSession()->getDBOptions() );
             if ( model )
             {
                 context.getSession()->putObject( markerURI.full(), model );

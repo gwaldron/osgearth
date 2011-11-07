@@ -24,15 +24,15 @@
 #include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
 #include <osgEarth/Notify>
+#include <osgEarth/StringUtils>
 
 #include <v8.h>
 
+using namespace osgEarth;
 using namespace osgEarth::Features;
 
 #define LC "[JavascriptEngineV8] "
 
-static
-std::string EMPTY_STRING;
 
 //----------------------------------------------------------------------------
 

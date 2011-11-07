@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/TileSource>
+#include <osgEarth/URI>
 
 namespace osgEarth { namespace Drivers
 {

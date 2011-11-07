@@ -1,0 +1,93 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_CACHE_POLICY_H
+#define OSGEARTH_CACHE_POLICY_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+
+namespace osgEarth
+{
+    /**
+     * Policy for cache usage.
+     */
+    class OSGEARTH_EXPORT CachePolicy
+    {
+    public:
+        enum Usage
+        {
+            USAGE_READ_WRITE   = 0,  // read/write to the cache if one exists.
+            USAGE_CACHE_ONLY   = 1,  // treat the cache as the ONLY source of data.
+            USAGE_READ_ONLY    = 2,  // read from the cache, but don't write new data to it.
+            USAGE_NO_CACHE     = 3,  // neither read from or write to the cache
+            USAGE_DEFAULT      = USAGE_READ_WRITE
+        };
+
+        static CachePolicy NO_CACHE;
+        static CachePolicy CACHE_ONLY;
+
+    public:
+        /** constructs a default caching policy. */
+        CachePolicy( const Usage& usage, double maxAgeSeconds =DBL_MAX );
+
+        /** constructs a CachePolicy from a config options */
+        CachePolicy( const Config& conf =Config() );
+
+        /** Gets the usage policy */
+        optional<Usage>& usage() { return _usage; }
+        const optional<Usage>& usage() const { return _usage; }
+
+        /** Gets the age limit for a cache record (in seconds) */
+        optional<double>& maxAge() { return _maxAge; }
+        const optional<double>& maxAge() const { return _maxAge; }
+
+    public: // convenience functions.
+
+        bool empty() const {
+            return !_usage.isSet();
+        }
+
+        bool isCacheReadable() const { 
+            return *_usage == USAGE_READ_WRITE || *_usage == USAGE_CACHE_ONLY || *_usage == USAGE_READ_ONLY;
+        }
+
+        bool isCacheWriteable() const {
+            return *_usage == USAGE_READ_WRITE;
+        }
+
+        bool operator == ( const CachePolicy& rhs ) const {
+            return _usage == rhs._usage && _maxAge == rhs._maxAge;
+        }
+
+        bool operator != ( const CachePolicy& rhs ) const {
+            return ! operator==(rhs);
+        }
+
+    public: // config
+        Config getConfig() const;
+        void fromConfig( const Config& conf );
+
+    private:
+        optional<Usage>   _usage;
+        optional<double>  _maxAge;
+    };
+}
+
+#endif // OSGEARTH_CACHE_POLICY_H

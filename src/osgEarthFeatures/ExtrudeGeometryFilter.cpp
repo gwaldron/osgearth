@@ -820,7 +820,8 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
     {
         if ( _wallSkinSymbol.valid() && _wallSkinSymbol->libraryName().isSet() )
         {
-            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName() );
+            _wallResLib = sheet->getResourceLibrary( *_wallSkinSymbol->libraryName(), context.getDBOptions() );
+
             if ( !_wallResLib.valid() )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_wallSkinSymbol->libraryName() << "'"
@@ -830,7 +831,7 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 
         if ( _roofSkinSymbol.valid() && _roofSkinSymbol->libraryName().isSet() )
         {
-            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName() );
+            _roofResLib = sheet->getResourceLibrary( *_roofSkinSymbol->libraryName(), context.getDBOptions() );
             if ( !_roofResLib.valid() )
             {
                 OE_WARN << LC << "Unable to load resource library '" << *_roofSkinSymbol->libraryName() << "'"

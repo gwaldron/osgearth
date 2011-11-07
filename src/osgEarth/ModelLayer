@@ -135,11 +135,6 @@ namespace osgEarth
         const ModelLayerOptions& getModelLayerOptions() const { return _initOptions; }
 
         /**
-         * Gets the reference URI (for resolving relative paths)
-         */
-        const std::string& getReferenceURI() const { return _referenceURI; }
-
-        /**
          * Access the underlying model source.
          */
         ModelSource* getModelSource() const { return _modelSource.get(); }
@@ -173,24 +168,17 @@ namespace osgEarth
     public:
 
         // internal function
-        void initialize( const std::string& referenceURI, const Map* map );
+        void initialize( const osgDB::Options* options, const Map* map );
 
     private:
-        std::string _referenceURI;
-        osg::ref_ptr<ModelSource> _modelSource;
+        osg::ref_ptr<ModelSource>    _modelSource;
+        const ModelLayerOptions      _initOptions;
+        ModelLayerOptions            _runtimeOptions;
+        osg::ref_ptr< osg::Node >    _node;
+        osg::ref_ptr<osgDB::Options> _dbOptions;
+        Revision                     _modelSourceRev;
+        ModelLayerCallbackList       _callbacks;
 
-        const ModelLayerOptions _initOptions;
-        ModelLayerOptions       _runtimeOptions;
-
-        osg::ref_ptr< osg::Node > _node;
-
-        //optional<bool> _enabled;
-        //optional<bool> _lighting;
-        //optional<bool> _overlay;
-
-        Revision _modelSourceRev;
-
-        ModelLayerCallbackList _callbacks;
         virtual void fireCallback( ModelLayerCallbackMethodPtr method );
 
         void copyOptions();

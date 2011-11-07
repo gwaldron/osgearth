@@ -17,10 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #ifndef OSGEARTH_URI
-#define OSGEARTH_URI
+#define OSGEARTH_URI 1
 
 #include <osgEarth/Common>
+#include <osgEarth/CacheBin>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/FileUtils>
+#include <osgEarth/IOTypes>
+#include <osgEarth/Progress>
 #include <osg/Image>
 #include <osg/Node>
 #include <osgDB/ReaderWriter>
@@ -29,7 +33,6 @@
 
 namespace osgEarth
 {
-    class Config;
     class URI;
 
     /**
@@ -151,45 +154,37 @@ namespace osgEarth
         /** Whether the URI is empty */
         bool empty() const { return _baseURI.empty(); }
 
+        /** Whether the object of the URI is cacheable. */
+        bool isRemote() const;
+
         /** Returns a copy of this URI with the suffix appended */
         URI append( const std::string& suffix ) const;
 
     public:
 
+        ReadResult readObject(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
+        ReadResult readImage(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
+        ReadResult readNode(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
+        ReadResult readString(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
+    public:
+
         bool operator < ( const URI& rhs ) const { return _fullURI < rhs._fullURI; }
-
-    public: // convenience reader methods
-
-        /** Result codes for the read* methods. Call getLastResultCode() to fetch. */
-        enum ResultCode {
-            RESULT_OK,
-            RESULT_CANCELED,
-            RESULT_NOT_FOUND,
-            RESULT_SERVER_ERROR,
-            RESULT_TIMEOUT,
-            RESULT_NO_READER,
-            RESULT_READER_ERROR,
-            RESULT_UNKNOWN_ERROR
-        };
-
-        /** Reads an object from the URI. */
-        osg::Object* readObject(
-            const osgDB::Options* options  =0L,
-            ResultCode*           out_code =0L ) const;
-
-        /** Reads an image from the URI. */
-        osg::Image* readImage(
-            const osgDB::Options* options  =0L,
-            ResultCode*           out_code =0L ) const;
-
-        /** Reads a node from the URI. */
-        osg::Node* readNode(
-            const osgDB::Options* options  =0L,
-            ResultCode*           out_code =0L ) const;
-
-        /** Reads a string from the URI. */
-        std::string readString(
-            ResultCode* out_code =0L ) const;
 
     public:
         /** Copier */
@@ -203,6 +198,36 @@ namespace osgEarth
         std::string _fullURI;
         URIContext  _context;
     };
+
+    
+//------------------------------------------------------------------------
+
+    // Config specifialization for URI:
+
+    template <> inline
+    void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
+        if ( opt.isSet() ) {
+            add( Config(key, opt->base()) );
+        }
+    }
+
+    template<> inline
+    void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
+        if ( opt.isSet() ) {
+            remove(key);
+            add( Config(key, opt->base()) );
+        }
+    }
+
+    template<> inline
+    bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
+        if ( hasValue( key ) ) {
+            output = URI( value(key), _referrer );
+            return true;
+        }
+        else
+            return false;
+    }
 }
 
 #endif // OSGEARTH_URI

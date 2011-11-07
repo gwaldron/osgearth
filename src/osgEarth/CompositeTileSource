@@ -81,18 +81,23 @@ namespace osgEarth
     public: // TileSource overrides
         
 		/** Creates a new image for the given key */
-		virtual osg::Image* createImage( const TileKey& key, ProgressCallback* progress =0 );
+		virtual osg::Image* createImage( 
+            const TileKey&        key,
+            ProgressCallback*     progress =0 );
 
         /** Whether one of the underlying tile source's is dynamic */
         virtual bool isDynamic() const { return _dynamic; }
         
         /** Initializes the tile source */
-		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile =0L );
+		virtual void initialize( 
+            const osgDB::Options* dbOptions,
+            const Profile*        overrideProfile );
 
     protected:
-        CompositeTileSourceOptions _options;
-        bool _initialized;
-        bool _dynamic;
+        CompositeTileSourceOptions         _options;
+        bool                               _initialized;
+        bool                               _dynamic;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
        
 
         CompositeTileSourceOptions::ComponentVector _components;

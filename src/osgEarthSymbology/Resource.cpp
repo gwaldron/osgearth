@@ -30,8 +30,7 @@ Resource::Resource( const Config& conf )
 void
 Resource::mergeConfig( const Config& conf )
 {
-    _name = conf.attr( "name" );
-
+    _name = conf.value("name");
     addTags( conf.value("tags") );
 }
 
@@ -39,7 +38,7 @@ Config
 Resource::getConfig() const
 {
     Config conf( "resource" );
-    conf.attr( "name" ) = _name;
+    conf.set("name", _name );
 
     std::string tags = tagString();
     if ( !tags.empty() )

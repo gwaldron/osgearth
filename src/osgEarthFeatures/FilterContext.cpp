@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FilterContext>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -29,7 +30,7 @@ _profile     ( profile ),
 _extent      ( workingExtent, workingExtent ),
 _isGeocentric( false )
 {
-    _resourceCache = new ResourceCache();
+    _resourceCache = new ResourceCache( session ? session->getDBOptions() : 0L );
 }
 
 FilterContext::FilterContext( const FilterContext& rhs ) :
@@ -40,9 +41,15 @@ _extent               ( rhs._extent ),
 _referenceFrame       ( rhs._referenceFrame ),
 _inverseReferenceFrame( rhs._inverseReferenceFrame ),
 _optimizerHints       ( rhs._optimizerHints ),
-_resourceCache        ( rhs._resourceCache )
+_resourceCache        ( rhs._resourceCache.get() )
 {
     //nop
+}
+
+const osgDB::Options*
+FilterContext::getDBOptions() const
+{
+    return _session.valid() ? _session->getDBOptions() : 0L;
 }
 
 void

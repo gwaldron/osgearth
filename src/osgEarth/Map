@@ -21,7 +21,6 @@
 #define OSGEARTH_MAP_H 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Caching>
 #include <osgEarth/Profile>
 #include <osgEarth/MapOptions>
 #include <osgEarth/ImageLayer>
@@ -134,7 +133,7 @@ namespace osgEarth
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        int getImageLayers( ImageLayerVector& out_layers, bool validLayersOnly =false ) const;
+        Revision getImageLayers( ImageLayerVector& out_layers ) const; //, bool validLayersOnly =false ) const;
 
         /**
          * Gets the number of image layers in the map.
@@ -161,7 +160,7 @@ namespace osgEarth
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        int getElevationLayers( ElevationLayerVector& out_layers, bool validLayersOnly =false ) const;
+        Revision getElevationLayers( ElevationLayerVector& out_layers ) const; //, bool validLayersOnly =false ) const;
 
         /**
          * Gets the number of elevation layers in the map.
@@ -188,7 +187,7 @@ namespace osgEarth
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        int getModelLayers( ModelLayerVector& out_layers, bool validLayersOnly =false ) const;
+        Revision getModelLayers( ModelLayerVector& out_layers ) const;
 
         /**
          * Gets the number of model layers in the map.
@@ -318,13 +317,13 @@ namespace osgEarth
          *      See enum SamplePolicy in this class.
          */
         bool getHeightField(
-            const TileKey& key,
-            bool fallback,
+            const TileKey&                  key,
+            bool                            fallbackIfNeessary,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            bool* out_isFallback =0L,
-            ElevationInterpolation interpolation =INTERP_AVERAGE,
-            ElevationSamplePolicy samplePolicy =SAMPLE_FIRST_VALID,
-            ProgressCallback* progress = 0) const;
+            bool*                           out_isFallback =0L,
+            ElevationInterpolation          interpolation  =INTERP_AVERAGE,
+            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress       =0L)  const;
 
 		/**
 		 * Sets the Cache for this Map. Set to NULL for no cache.
@@ -381,6 +380,11 @@ namespace osgEarth
             ENTIRE_MODEL     = 0xff
         };
 
+        /**
+         * Gets the database options associated with this map.
+         */
+        const osgDB::Options* getDBOptions() const { return _dbOptions.get(); }
+
     protected:
 
         ~Map() { }
@@ -399,6 +403,7 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _profile;
 		osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
+        osg::ref_ptr<osgDB::Options> _dbOptions;
 
     private:
         void calculateProfile();
@@ -453,13 +458,6 @@ namespace osgEarth
          * Constructs a new map frame.
          */
         MapFrame( const Map* map, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
-
-        /**
-         * Constructs a map frame that only makes a copy of "valid" data items.
-         * Warning: if you ask to copyValidDataOnly, the indexOf() methods may not return
-         * values that correspond to the source data model!
-         */
-        MapFrame( const Map* map, bool copyValidDataOnly, Map::ModelParts parts =Map::TERRAIN_LAYERS, const std::string& name ="" );
 
         /**
          * A copy constructor with a new name (no sync happens)
@@ -527,7 +525,6 @@ namespace osgEarth
         std::string _name;
         MapInfo _mapInfo;
         Map::ModelParts _parts;
-        bool _copyValidDataOnly;
         Revision _mapDataModelRevision;
         ImageLayerVector _imageLayers;
         ElevationLayerVector _elevationLayers;

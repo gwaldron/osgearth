@@ -40,11 +40,6 @@ FeatureListSource::createFeatureCursor( const Symbology::Query& query )
     return new FeatureListCursor( cursorFeatures );
 }
 
-void
-FeatureListSource::initialize( const std::string& referenceURI )
-{
-}
-
 const FeatureProfile*
 FeatureListSource::createFeatureProfile()
 {    

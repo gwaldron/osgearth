@@ -30,7 +30,7 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace OpenThreads;
 
-FeatureSourceOptions::FeatureSourceOptions( const ConfigOptions& options ) :
+FeatureSourceOptions::FeatureSourceOptions(const ConfigOptions& options) :
 DriverConfigOptions( options )
 {
     fromConfig( _conf );
@@ -41,9 +41,10 @@ FeatureSourceOptions::fromConfig( const Config& conf )
 {
     unsigned numResamples = 0;
 
-    conf.getIfSet   ( "open_write", _openWrite );
-    conf.getIfSet   ( "name",       _name );
-    conf.getObjIfSet( "profile",    _profile );
+    conf.getIfSet   ( "open_write",   _openWrite );
+    conf.getIfSet   ( "name",         _name );
+    conf.getObjIfSet( "profile",      _profile );
+    conf.getObjIfSet( "cache_policy", _cachePolicy );
 
     const ConfigSet& children = conf.children();
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
@@ -98,9 +99,10 @@ FeatureSourceOptions::getConfig() const
 {
     Config conf = DriverConfigOptions::getConfig();
 
-    conf.updateIfSet   ( "open_write", _openWrite );
-    conf.updateIfSet   ( "name",       _name );
-    conf.updateObjIfSet( "profile",    _profile );
+    conf.updateIfSet   ( "open_write",   _openWrite );
+    conf.updateIfSet   ( "name",         _name );
+    conf.updateObjIfSet( "profile",      _profile );
+    conf.updateObjIfSet( "cache_policy", _cachePolicy );
 
     //TODO: make each of these filters Configurable.
     for( FeatureFilterList::const_iterator i = _filters.begin(); i != _filters.end(); ++i )
@@ -136,10 +138,13 @@ FeatureSourceOptions::getConfig() const
 
 //------------------------------------------------------------------------
 
-FeatureSource::FeatureSource( const ConfigOptions& options ) :
+FeatureSource::FeatureSource(const ConfigOptions&  options,
+                             const osgDB::Options* dbOptions) :
 _options( options )
 {    
-    //nop
+    _dbOptions  = dbOptions;
+    _uriContext = URIContext( dbOptions );
+    _cache      = Cache::get( dbOptions );
 }
 
 const FeatureProfile*

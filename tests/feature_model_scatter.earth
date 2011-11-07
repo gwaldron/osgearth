@@ -87,7 +87,7 @@ is randomized, but it is randomized exactly the same way each time.
     
     <options>
         <lighting>false</lighting>
-        <cache type="tms">
+        <cache type="filesystem">
             <path>osgearth_cache</path>
         </cache>
     </options> 

@@ -110,8 +110,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             else
             {
-                std::string buf;
-                if ( HTTPClient::readString( fileName, buf ) != HTTPClient::RESULT_OK )
+                osgEarth::ReadResult r = URI(fileName).readString( options, CachePolicy::NO_CACHE );
+                if ( r.failed() )
                     return ReadResult::ERROR_IN_READING_FILE;
 
                 // Since we're now passing off control to the stream, we have to pass along the
@@ -123,7 +123,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 URIContext( fileName ).store( myOptions.get() );
                 //myOptions->setPluginData( "__ReaderWriterOsgEarth::ref_uri", (void*)&fileName );
 
-                std::stringstream in( buf );
+                std::stringstream in( r.getString() );
                 return readNode( in, myOptions.get() );
             }
         }

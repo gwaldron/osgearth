@@ -100,14 +100,15 @@ namespace osgEarth
 
     public:
 
-        void initialize( const std::string& referenceURI, const Map* map );
+        void initialize( const osgDB::Options* dbOptions, const Map* map );
 
     private:
-        std::string _referenceURI;
-        MaskLayerOptions _initOptions, _runtimeOptions;
-        osg::ref_ptr<MaskSource> _maskSource;
-        Revision _maskSourceRev;
+        MaskLayerOptions              _initOptions;
+        MaskLayerOptions              _runtimeOptions;
+        osg::ref_ptr<MaskSource>      _maskSource;
+        Revision                      _maskSourceRev;
         osg::ref_ptr<osg::Vec3dArray> _boundary;
+        osg::ref_ptr<osgDB::Options>  _dbOptions;
 
         void copyOptions();
     };

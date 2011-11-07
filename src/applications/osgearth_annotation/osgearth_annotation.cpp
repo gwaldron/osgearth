@@ -81,17 +81,19 @@ main(int argc, char** argv)
     labelGroup->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
     annoGroup->addChild( labelGroup );
 
+    osg::Image* pushpin = osgDB::readImageFile( "../data/placemark32.png" );
+
     // a Placemark combines a 2D icon with a text label.
     labelGroup->addChild( new PlaceNode(
         mapNode, 
         osg::Vec3d(-74, 40.714, 0), 
-        URI("../data/placemark32.png").readImage(),
+        pushpin,
         "New York") );
 
     labelGroup->addChild( new PlaceNode(
         mapNode, 
         osg::Vec3d(-77.04, 38.85, 0),
-        URI("../data/placemark32.png").readImage(),
+        pushpin,
         "Washington, DC") );
 
     labelGroup->addChild( new LabelNode(
@@ -193,7 +195,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
-#if 0
+#if 1
     // make a little HUD to toggle stuff:
     VBox* vbox = new VBox();
     vbox->setBackColor( Color(Color::Black, 0.5) );

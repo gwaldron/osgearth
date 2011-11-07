@@ -97,9 +97,9 @@ MaskLayer::copyOptions()
 }
 
 void
-MaskLayer::initialize( const std::string& referenceURI, const Map* map )
+MaskLayer::initialize( const osgDB::Options* dbOptions, const Map* map )
 {
-    _referenceURI = referenceURI;
+    _dbOptions = osg::clone(dbOptions);
 
     if ( !_maskSource.valid() && _initOptions.driver().isSet() )
     {
@@ -108,7 +108,7 @@ MaskLayer::initialize( const std::string& referenceURI, const Map* map )
 
     if ( _maskSource.valid() )
     {
-        _maskSource->initialize( _referenceURI, map );
+        _maskSource->initialize( dbOptions, map );
     }
 }
 

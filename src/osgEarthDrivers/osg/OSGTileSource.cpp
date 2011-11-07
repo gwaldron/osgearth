@@ -21,6 +21,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/URI>
 #include <osgDB/FileNameUtils>
 
 #include <cstring>
@@ -62,7 +63,7 @@ public:
         //nop
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
         if ( !overrideProfile )
         {
@@ -74,20 +75,23 @@ public:
 
         osg::ref_ptr<osg::Image> image;
 
-        URI url = _options.url().value();
-        if ( !url.empty() )
+        //URI url = _options.url().value();
+        if ( _options.url()->empty() ) //!url.empty() )
         {
-            url = URI( url.full(), referenceURI ); // obselete?
-            HTTPClient::ResultCode code = HTTPClient::readImageFile( url.full(), image );
-            if ( code != HTTPClient::RESULT_OK )
+            ReadResult r = _options.url()->readImage( dbOptions, CachePolicy::NO_CACHE );
+            if ( r.succeeded() )
             {
-                OE_WARN << LC << "Failed to load data from \"" << url.full() << "\", because: " << 
-                    HTTPClient::getResultCodeString(code) << std::endl;
+                image = r.getImage();
+            }
+            else
+            {
+                OE_WARN << LC << "Failed to load data from \"" <<  _options.url()->full() << "\", because: "
+                    << r.getResultCodeString() << std::endl;
             }
         }
 
         if ( !image.valid() )
-            OE_WARN << LC << "Faild to load data from \"" << url.full() << "\"" << std::endl;
+            OE_WARN << LC << "Faild to load data from \"" << _options.url()->full() << "\"" << std::endl;
 
         // calculate and store the maximum LOD for which to return data
         if ( image.valid() )
@@ -120,7 +124,7 @@ public:
             _image = GeoImage( image.get(), getProfile()->getExtent() );
         }
 
-        _extension = osgDB::getFileExtension( url.full() );
+        _extension = osgDB::getFileExtension( _options.url()->full() );
     }
     
     //override
@@ -146,9 +150,9 @@ public:
     }
 
 private:
-    std::string _extension;
-    int _maxDataLevel;
-    GeoImage _image;
+    std::string      _extension;
+    int              _maxDataLevel;
+    GeoImage         _image;
     const OSGOptions _options;
 };
 

@@ -90,7 +90,7 @@ namespace osgEarth
         osg::ref_ptr<ProgressCallback> _progress;
 
         void processKey( const MapFrame& mapf, const TileKey& key ) const;
-        void cacheTile( const MapFrame& mapf, const TileKey& key ) const;
+        bool cacheTile( const MapFrame& mapf, const TileKey& key ) const;
     };
 }
 

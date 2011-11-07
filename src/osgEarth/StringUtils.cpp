@@ -18,6 +18,8 @@
  */
 
 #include <osgEarth/StringUtils>
+#include <osgDB/FileNameUtils>
+#include <ctype.h>
 
 using namespace osgEarth;
 
@@ -133,3 +135,225 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
         output.push_back( last );
 }
 
+//--------------------------------------------------------------------------
+
+const std::string osgEarth::EMPTY_STRING;
+
+std::string
+osgEarth::toLegalFileName( const std::string& input )
+{
+    //const std::string legal("ABCDEFGHIJKLMNOPQRSTUVQXYZabcdefghijklmnopqrstuvwxyz_./\\");
+    static const std::string illegal("*:<>|\"\'?&");
+
+    std::size_t pos = input.find("://");
+    pos = pos == std::string::npos ? 0 : pos+3;
+
+    std::stringstream buf;
+    for( ; pos < input.size(); ++pos )
+    {
+        std::string::const_reference c = input.at(pos);
+        if ( ::isprint(c) && !::isspace(c) && illegal.find(c) == std::string::npos )
+            buf << c;
+        else
+            buf << "{" << std::hex << static_cast<unsigned>(c) << "}";
+    }
+
+    std::string result;
+    result = buf.str();
+
+    return result;
+}
+
+/** MurmurHash 2.0 (http://sites.google.com/site/murmurhash/) */
+unsigned
+osgEarth::hashString( const std::string& input )
+{
+    const unsigned int m = 0x5bd1e995;
+    const int r = 24;
+    unsigned int len = input.length();
+    const char* data = input.c_str();
+    unsigned int h = m ^ len; // using "m" as the seed.
+
+    while(len >= 4)
+    {
+        unsigned int k = *(unsigned int *)data;
+        k *= m; 
+        k ^= k >> r; 
+        k *= m;     		
+        h *= m; 
+        h ^= k;
+        data += 4;
+        len -= 4;
+    }
+
+    switch(len)
+    {
+    case 3: h ^= data[2] << 16;
+    case 2: h ^= data[1] << 8;
+    case 1: h ^= data[0];
+        h *= m;
+    };
+
+    h ^= h >> 13;
+    h *= m;
+    h ^= h >> 15;
+
+    return h;
+}
+
+
+/** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
+osg::Vec4f
+osgEarth::htmlColorToVec4f( const std::string& html )
+{
+    std::string t = html;
+    std::transform( t.begin(), t.end(), t.begin(), ::tolower );
+    osg::Vec4ub c(0,0,0,255);
+    if ( t.length() >= 7 ) {
+        c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;
+        c.r() |= t[2]<='9' ? (t[2]-'0')    : (10+(t[2]-'a'));
+        c.g() |= t[3]<='9' ? (t[3]-'0')<<4 : (10+(t[3]-'a'))<<4;
+        c.g() |= t[4]<='9' ? (t[4]-'0')    : (10+(t[4]-'a'));
+        c.b() |= t[5]<='9' ? (t[5]-'0')<<4 : (10+(t[5]-'a'))<<4;
+        c.b() |= t[6]<='9' ? (t[6]-'0')    : (10+(t[6]-'a'));
+        if ( t.length() == 9 ) {
+            c.a() = 0;
+            c.a() |= t[7]<='9' ? (t[7]-'0')<<4 : (10+(t[7]-'a'))<<4;
+            c.a() |= t[8]<='9' ? (t[8]-'0')    : (10+(t[8]-'a'));
+        }
+    }
+    return osg::Vec4f( ((float)c.r())/255.0f, ((float)c.g())/255.0f, ((float)c.b())/255.0f, ((float)c.a())/255.0f );
+}
+
+/** Makes an HTML color ("#rrggbb" or "#rrggbbaa") from an OSG color. */
+std::string
+osgEarth::vec4fToHtmlColor( const osg::Vec4f& c )
+{
+    std::stringstream buf;
+    buf << "#";
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.r()*255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.g()*255.0f);
+    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.b()*255.0f);
+    if ( c.a() < 1.0f )
+        buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.a()*255.0f);
+    std::string ssStr = buf.str();
+    return ssStr;
+}
+
+/** Parses a color string in the form "255 255 255 255" (r g b a [0..255]) into an OSG color. */
+osg::Vec4ub
+osgEarth::stringToColor(const std::string& str, osg::Vec4ub default_value)
+{
+    osg::Vec4ub color = default_value;
+    std::istringstream strin(str);
+    int r, g, b, a;
+    if (strin >> r && strin >> g && strin >> b && strin >> a)
+    {
+        color.r() = (unsigned char)r;
+        color.g() = (unsigned char)g;
+        color.b() = (unsigned char)b;
+        color.a() = (unsigned char)a;
+    }
+    return color;
+}
+
+/** Creates a string in the form "255 255 255 255" (r g b a [0..255]) from a color */
+std::string
+osgEarth::colorToString( const osg::Vec4ub& c )
+{
+    std::stringstream ss;
+    ss << (int)c.r() << " " << (int)c.g() << " " << (int)c.b() << " " << (int)c.a();
+    std::string ssStr;
+    ssStr = ss.str();
+    return ssStr;
+}
+
+/** Converts a string to a vec3f */
+osg::Vec3f
+osgEarth::stringToVec3f( const std::string& str, const osg::Vec3f& default_value )
+{
+    std::stringstream buf(str);
+    osg::Vec3f out = default_value;
+    buf >> out.x();
+    if ( !buf.eof() ) {
+        buf >> out.y() >> out.z();
+    }
+    else {
+        out.y() = out.x();
+        out.z() = out.x();
+    }
+    return out;
+}
+
+/** Converts a vec3f to a string */
+std::string
+osgEarth::vec3fToString( const osg::Vec3f& v )
+{
+    std::stringstream buf;
+    buf << std::setprecision(6)
+        << v.x() << " " << v.y() << " " << v.z()
+        << std::endl;
+    std::string result;
+    result = buf.str();
+    return result;
+}
+
+
+/** Replaces all the instances of "sub" with "other" in "s". */
+std::string&
+osgEarth::replaceIn( std::string& s, const std::string& sub, const std::string& other)
+{
+    if ( sub.empty() ) return s;
+    size_t b=0;
+    for( ; ; )
+    {
+        b = s.find( sub, b );
+        if ( b == s.npos ) break;
+        s.replace( b, sub.size(), other );
+        b += other.size();
+    }
+    return s;
+}
+
+/**
+* Trims whitespace from the ends of a string.
+* by Rodrigo C F Dias
+* http://www.codeproject.com/KB/stl/stdstringtrim.aspx
+*/
+std::string 
+osgEarth::trim( const std::string& in )
+{
+    std::string whitespace (" \t\f\v\n\r");
+    std::string str = in;
+    std::string::size_type pos = str.find_last_not_of( whitespace );
+    if(pos != std::string::npos) {
+        str.erase(pos + 1);
+        pos = str.find_first_not_of( whitespace );
+        if(pos != std::string::npos) str.erase(0, pos);
+    }
+    else str.erase(str.begin(), str.end());
+    return str;
+}
+
+
+std::string
+osgEarth::joinStrings( const StringVector& input, char delim )
+{
+    std::stringstream buf;
+    for( StringVector::const_iterator i = input.begin(); i != input.end(); ++i )
+    {
+        buf << *i;
+        if ( (i+1) != input.end() ) buf << delim;
+    }
+    std::string result = buf.str();
+    return result;
+}
+
+/** Returns a lower-case version of the input string. */
+std::string
+osgEarth::toLower( const std::string& input )
+{
+    std::string output = input;
+    std::transform( output.begin(), output.end(), output.begin(), ::tolower );
+    return output;
+}

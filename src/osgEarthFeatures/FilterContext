@@ -153,6 +153,9 @@ namespace osgEarth { namespace Features
         /** Dump as a string */
         std::string toString() const;
 
+        /** Gets the DB Options associated with the context's session */
+        const osgDB::Options* getDBOptions() const;
+
     protected:
         osg::ref_ptr<Session>              _session;
         osg::ref_ptr<const FeatureProfile> _profile;

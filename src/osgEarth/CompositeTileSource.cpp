@@ -128,9 +128,9 @@ namespace
 //-----------------------------------------------------------------------
 
 CompositeTileSource::CompositeTileSource( const TileSourceOptions& options ) :
-_options( options ),
+_options    ( options ),
 _initialized( false ),
-_dynamic( false )
+_dynamic    ( false )
 {
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin(); 
         i != _options._components.end(); )
@@ -164,7 +164,8 @@ _dynamic( false )
 }
 
 osg::Image*
-CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress )
+CompositeTileSource::createImage(const TileKey&        key,
+                                 ProgressCallback*     progress )
 {
     ImageMixVector images;
     images.reserve( _options._components.size() );
@@ -201,19 +202,12 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
                 maxLevel = source->getProfile()->getLevelOfDetailForHorizResolution( i->_imageLayerOptions->maxLevelResolution().value(), source->getPixelsPerTile());            
             }
 
-
-
-
             // check that this source is within the level bounds:
             if (minLevel > key.getLevelOfDetail() ||
                 maxLevel < key.getLevelOfDetail() )
             {
                 continue;
             }
-
-
-
-
 
             if ( !source->getBlacklist()->contains( key.getTileId() ) )
             {
@@ -224,10 +218,8 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
                     if ( i->_imageLayerOptions.isSet() )
                     {
                         preCacheOp = new ImageLayerPreCacheOperation();
-                        preCacheOp->_processor.init( i->_imageLayerOptions.value(), true );                        
+                        preCacheOp->_processor.init( i->_imageLayerOptions.value(), _dbOptions.get(), true );                        
                     }
-
-
 
                     ImageOpacityPair imagePair(
                         source->createImage( key, preCacheOp.get(), progress ),
@@ -289,8 +281,10 @@ CompositeTileSource::createImage( const TileKey& key, ProgressCallback* progress
 }
 
 void
-CompositeTileSource::initialize( const std::string& referenceURI, const Profile* overrideProfile )
+CompositeTileSource::initialize(const osgDB::Options* dbOptions, 
+                                const Profile*        overrideProfile )
 {
+    _dbOptions = dbOptions;
     osg::ref_ptr<const Profile> profile = overrideProfile;
 
     for(CompositeTileSourceOptions::ComponentVector::iterator i = _options._components.begin();
@@ -306,7 +300,7 @@ CompositeTileSource::initialize( const std::string& referenceURI, const Profile*
             if ( opt.profile().isSet() )
                 localOverrideProfile = Profile::create( opt.profile().value() );
 
-            source->initialize( referenceURI, localOverrideProfile.get() );
+            source->initialize( dbOptions, localOverrideProfile.get() );
 
             if ( !profile.valid() )
             {

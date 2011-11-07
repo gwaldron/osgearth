@@ -1114,9 +1114,6 @@ namespace
                                 elevations.push_back(elevation);
                             }
                         }
-                        else {
-                            OE_WARN << LC << "Yep, got a NDV" << std::endl;
-                        }
                     }
 
                     float elevation = NO_DATA_VALUE;

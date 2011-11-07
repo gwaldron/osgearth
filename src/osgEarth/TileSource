@@ -83,8 +83,8 @@ namespace osgEarth
             : DriverConfigOptions( options ),
               _tileSize( 256 ),
               _noDataValue( (float)SHRT_MIN ),
-              _noDataMinValue( -FLT_MAX ),
-              _noDataMaxValue( FLT_MAX ),
+              _noDataMinValue( -32000.0f ),
+              _noDataMaxValue(  32000.0f ),
               _L2CacheSize( 16 )
         { 
             fromConfig( _conf );
@@ -98,7 +98,6 @@ namespace osgEarth
             conf.updateIfSet( "nodata_min", _noDataMinValue );
             conf.updateIfSet( "nodata_max", _noDataMaxValue );
             conf.updateIfSet( "blacklist_filename", _blacklistFilename);
-            //conf.updateIfSet( "enable_l2_cache", _enableL2Cache );
             conf.updateIfSet( "l2_cache_size", _L2CacheSize );
             conf.updateObjIfSet( "profile", _profileOptions );
             return conf;
@@ -117,7 +116,6 @@ namespace osgEarth
             conf.getIfSet( "nodata_min", _noDataMinValue );
             conf.getIfSet( "nodata_max", _noDataMaxValue );
             conf.getIfSet( "blacklist_filename", _blacklistFilename);
-            //conf.getIfSet( "enable_l2_cache", _enableL2Cache );
             conf.getIfSet( "l2_cache_size", _L2CacheSize );
             conf.getObjIfSet( "profile", _profileOptions );
 
@@ -235,7 +233,6 @@ namespace osgEarth
 		 */
         virtual osg::Image* createImage(
             const TileKey&        key,
-            //const osgDB::Options* dbOptions =0L,
             ImageOperation*       op        =0L,
             ProgressCallback*     progress  =0L );
 
@@ -244,7 +241,6 @@ namespace osgEarth
          */
         virtual osg::HeightField* createHeightField(
             const TileKey&        key,
-            //const osgDB::Options* dbOptions =0L,
             HeightFieldOperation* op        =0L,
             ProgressCallback*     progress  =0L );     
 

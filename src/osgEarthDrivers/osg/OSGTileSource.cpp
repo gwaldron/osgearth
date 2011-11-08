@@ -75,8 +75,7 @@ public:
 
         osg::ref_ptr<osg::Image> image;
 
-        //URI url = _options.url().value();
-        if ( _options.url()->empty() ) //!url.empty() )
+        if ( !_options.url()->empty() )
         {
             ReadResult r = _options.url()->readImage( dbOptions, CachePolicy::NO_CACHE );
             if ( r.succeeded() )

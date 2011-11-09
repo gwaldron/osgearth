@@ -22,7 +22,9 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 PointSymbol::PointSymbol( const Config& conf ) :
-_fill( Fill() ), _size(1.0)
+Symbol( conf ),
+_fill ( Fill() ), 
+_size ( 1.0 )
 {
     mergeConfig(conf);
 }

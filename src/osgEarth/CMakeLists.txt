@@ -19,13 +19,17 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
-    Caching
+    Cache
+    CacheBin
+    CachePolicy
 	CacheSeed
 	Capabilities
     Common
     CompositeTileSource
     Config
     Cube
+    DrapeableNode
+    ECEF
     ElevationLayer
     ElevationQuery
     Export
@@ -40,9 +44,11 @@ SET(LIB_PUBLIC_HEADERS
     ImageLayer
     ImageMosaic
     ImageUtils
+    IOTypes
     JsonUtils
     Layer
     Locators
+    LocalTangentPlane
     Map
     MapNode
     MapNodeOptions
@@ -50,6 +56,7 @@ SET(LIB_PUBLIC_HEADERS
     MaskLayer
     MaskNode
     MaskSource
+    MemCache
     ModelLayer
     ModelSource
     NodeUtils
@@ -57,6 +64,7 @@ SET(LIB_PUBLIC_HEADERS
 	OverlayDecorator
     Profile
 	Progress
+	Random
     Registry
     Revisioning
     ShaderComposition
@@ -75,25 +83,48 @@ SET(LIB_PUBLIC_HEADERS
     TileKey
     TileSource
     ThreadingUtils
-    tinystr.h
-    tinyxml.h 
     TMS
     Units
+    URI
     Utils
 	Version
     VerticalSpatialReference
+    Viewpoint
     XmlUtils
 )
+
+
+IF (NOT TINYXML_FOUND)
+    SET(LIB_PUBLIC_HEADERS
+        ${LIB_PUBLIC_HEADERS}
+        tinystr.h
+        tinyxml.h 
+    )
+ENDIF (NOT TINYXML_FOUND)
+
+IF (NOT TINYXML_FOUND)
+    SET(TINYXML_SRC
+        tinystr.cpp
+        tinyxml.cpp
+        tinyxmlerror.cpp
+        tinyxmlparser.cpp
+    )
+ENDIF (NOT TINYXML_FOUND)
+MESSAGE("${LIB_PUBLIC_HEADERS}")
 
 ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
-    Caching.cpp
+    ${TINYXML_SRC}
+    Cache.cpp
+    CachePolicy.cpp
     CacheSeed.cpp
 	Capabilities.cpp
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
+    DrapeableNode.cpp
+    ECEF.cpp
     EGM.cpp
     ElevationLayer.cpp
     ElevationQuery.cpp
@@ -106,9 +137,11 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ImageMosaic.cpp
     ImageToHeightFieldConverter.cpp
     ImageUtils.cpp
+    IOTypes.cpp
     JsonUtils.cpp
     Layer.cpp
     Locators.cpp
+    LocalTangentPlane.cpp
     Map.cpp
     MapNode.cpp
     MapNodeOptions.cpp
@@ -116,6 +149,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     MaskLayer.cpp
     MaskNode.cpp
     MaskSource.cpp
+    MemCache.cpp
 	MimeTypes.cpp
 	ModelLayer.cpp
 	ModelSource.cpp
@@ -124,6 +158,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	OverlayDecorator.cpp
     Profile.cpp
 	Progress.cpp
+	Random.cpp
     Registry.cpp
     ShaderComposition.cpp
     ShaderUtils.cpp
@@ -140,19 +175,21 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
-    tinystr.cpp
-    tinyxml.cpp
-    tinyxmlerror.cpp
-    tinyxmlparser.cpp
     TMS.cpp
     Units.cpp
+    URI.cpp
     Utils.cpp
     Version.cpp
     VerticalSpatialReference.cpp
+    Viewpoint.cpp
     XmlUtils.cpp
 )
 
 INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} ${CURL_INCLUDE_DIR} ${OSG_INCLUDE_DIR} )
+
+IF (TINYXML_FOUND)
+    INCLUDE_DIRECTORIES(${TINYXML_INCLUDE_DIR})
+ENDIF (TINYXML_FOUND)
 
 IF (WIN32)
   LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY} )
@@ -162,5 +199,11 @@ ENDIF(WIN32)
 
 LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OSGSHADOW_LIBRARY OPENTHREADS_LIBRARY CURL_LIBRARY GDAL_LIBRARY ZLIB_LIBRARY)
 LINK_CORELIB_DEFAULT(${LIB_NAME} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})
+
+IF (TINYXML_FOUND)
+    LINK_WITH_VARIABLES(${LIB_NAME} TINYXML_LIBRARY)
+    get_directory_property(output INCLUDE_DIRECTORIES)
+    message(STATUS ${output})
+ENDIF (TINYXML_FOUND)
 
 INCLUDE(ModuleInstall OPTIONAL)

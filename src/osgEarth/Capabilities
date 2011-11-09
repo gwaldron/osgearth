@@ -44,6 +44,9 @@ namespace osgEarth
         /** maximum supported size (in pixels) of a texture */
         int getMaxTextureSize() const { return _maxTextureSize; }
 
+        /** maximum texture size that doesn't cause a slowdown (vendor-specific) */
+        int getMaxFastTextureSize() const { return _maxFastTextureSize; }
+
         /** maximum number of openGL lights */
         int getMaxLights() const { return _maxLights; }
 
@@ -95,6 +98,7 @@ namespace osgEarth
         int  _maxGPUTextureUnits;
         int  _maxGPUTextureCoordSets;
         int  _maxTextureSize;
+        int  _maxFastTextureSize;
         int  _maxLights;
         bool _supportsGLSL;
         float _GLSLversion;

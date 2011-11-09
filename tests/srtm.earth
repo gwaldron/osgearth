@@ -16,10 +16,7 @@ The heightfield is draped with the NASA Blue Marble imagery.
   </heightfield>
   
   <options>
-      <terrain>
-          <vertical_scale>2</vertical_scale>
-          <loading_policy mode="sequential"/>
-      </terrain>
+    <cache_policy usage="cache_only"/>
   </options>
   
 </map>

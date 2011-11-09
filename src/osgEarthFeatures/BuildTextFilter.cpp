@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildTextFilter>
-#include <osgEarthFeatures/BuildTextOperator> // this should be in symbology -gw
+//#include <osgEarthFeatures/BuildTextOperator> // this should be in symbology -gw
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgText/Text>
@@ -34,39 +34,42 @@ _style( style )
     //nop
 }
 
-FilterContext
-BuildTextFilter::push( FeatureList& input, const FilterContext& context )
+osg::Node*
+BuildTextFilter::push( FeatureList& input, FilterContext& context )
 {
+    osg::Node* result = 0L;
+
     const TextSymbol* text = _style.get<TextSymbol>();
     if ( !text )
     {
         OE_WARN << LC << "Insufficient symbology (no TextSymbol)" << std::endl;
-        return context;
+        return 0L;
     }
 
     // if a provider is set, load the plugin and create the node.
-    if ( text->provider().isSet() )
+    if ( true ) //!text->provider()->empty() && !text->provider().isSetTo("legacy") )
     {
         LabelSourceOptions options;
         options.setDriver( *text->provider() );
         osg::ref_ptr<LabelSource> source = LabelSourceFactory::create( options );
         if ( source.valid() )
         {
-            _result = source->createNode( input, text, context );
+            result = source->createNode( input, text, context );
         }
         else
         {
             OE_WARN << LC << "FAIL, unable to load label provider \"" << (*text->provider()) << "\"" << std::endl;
-            return context;
+            return 0L;
         }
     }
 
-    else // default built-in behiavior... to be deprecated
+#if 0
+    else // legacy behavior... will be deprecated.
     {
         BuildTextOperator op;
-        _result = op( input, text, context );
+        result = op( input, text, context );
     }
+#endif
 
-    FilterContext outCx( context );
-    return outCx;
+    return result;
 }

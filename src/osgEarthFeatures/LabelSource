@@ -37,12 +37,11 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT LabelSourceOptions : public DriverConfigOptions
     {
     public:
-        LabelSourceOptions( const ConfigOptions& options =ConfigOptions() ) :
-              DriverConfigOptions( options )
-              
-              { fromConfig(_conf); }
-
-    public: // properties
+        LabelSourceOptions( const ConfigOptions& options =ConfigOptions() )
+            : DriverConfigOptions( options )
+        {
+            fromConfig(_conf);
+        }
 
     public:
         virtual Config getConfig() const;
@@ -74,6 +73,19 @@ namespace osgEarth { namespace Features
             const FeatureList&   input,
             const TextSymbol*    symbol,
             const FilterContext& context ) =0;
+
+        /**
+         * Creates a single labeling node.
+         *
+         * @param text     Text string to put in the label
+         * @param symbol   Style information for the label
+         *
+         * @return A scene graph node
+         */
+        virtual osg::Node* createNode(
+            const std::string&  text,
+            const TextSymbol*   textSymbol ) =0;
+
 
     public:
         

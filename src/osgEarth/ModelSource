@@ -100,8 +100,8 @@ namespace osgEarth
     public:
 		/** Initialize the NodeSource. */
 		virtual void initialize(
-            const std::string& referenceURI,
-            const Map* map ) { }
+            const osgDB::Options* dbOptions,
+            const Map*            map ) { }
 
         const ModelSourceOptions& getOptions() const {
             return _options; }

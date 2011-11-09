@@ -338,7 +338,7 @@ Graticule::createGridLevel( unsigned int levelNum ) const
 
             FilterContext cx;
             cx.profile() = new FeatureProfile( tex );
-            cx.isGeocentric() = _map->isGeocentric();
+            //cx.isGeocentric() = _map->isGeocentric();
 
             if ( _map->isGeocentric() )
             {
@@ -350,17 +350,17 @@ Graticule::createGridLevel( unsigned int levelNum ) const
             }
 
             TransformFilter xform( mapProfile->getSRS() );
-            xform.setMakeGeocentric( _map->isGeocentric() );
-            xform.setLocalizeCoordinates( true );
+            //xform.setMakeGeocentric( _map->isGeocentric() );
+            //xform.setLocalizeCoordinates( true );
             cx = xform.push( features, cx );
 
             osg::ref_ptr<osg::Node> output;
             BuildGeometryFilter bg;
             bg.setStyle( _lineStyle );
-            cx = bg.push( features, cx );
-            output = bg.getNode();
+            //cx = bg.push( features, cx );
+            output = bg.push( features, cx ); //.getNode();
 
-            if ( cx.isGeocentric() )
+            if ( _map->isGeocentric() )
             {
                 // get the geocentric control point:
                 double cplon, cplat, cpx, cpy, cpz;

@@ -1,4 +1,3 @@
-/* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2010 Pelican Mapping
  * http://osgearth.org
@@ -24,7 +23,6 @@
 #include <osgEarth/Config>
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
-#include <osgEarth/Caching>
 #include <osgEarth/TerrainLayer>
 #include <osgEarth/ThreadingUtils>
 
@@ -53,12 +51,6 @@ namespace osgEarth
 		 */
         optional<float>& opacity() { return _opacity; }
         const optional<float>& opacity() const { return _opacity; }
-
-        /**
-         * The initial gamma value for this layer's images
-         */
-        optional<double>& gamma() { return _gamma; }
-        const optional<double>& gamma() const { return _gamma; }
 
         /**
          * The initial minimum camera range at which this layer is visible.
@@ -111,7 +103,6 @@ namespace osgEarth
         void setDefaults();
 
 		optional<float>  _opacity;
-        optional<double> _gamma;
         optional<float>  _minRange;
         optional<float>  _maxRange;
 		optional<osg::Vec4ub> _transparentColor;
@@ -128,8 +119,7 @@ namespace osgEarth
      */
     struct ImageLayerCallback : public TerrainLayerCallback
     {
-        virtual void onOpacityChanged( class ImageLayer* layer ) { }
-        virtual void onGammaChanged( class ImageLayer* layer ) { }
+        virtual void onOpacityChanged( class ImageLayer* layer ) { }        
     };
 
     typedef void (ImageLayerCallback::*ImageLayerCallbackMethodPtr)(ImageLayer* layer);
@@ -147,15 +137,15 @@ namespace osgEarth
     public:
         ImageLayerTileProcessor( const ImageLayerOptions& options =ImageLayerOptions() );
 
-        void init( const ImageLayerOptions& options, bool layerInTargetProfile );
+        void init( const ImageLayerOptions& options, const osgDB::Options* dbOptions, bool layerInTargetProfile );
 
         void process( osg::ref_ptr<osg::Image>& image ) const;
 
     private:
-        ImageLayerOptions _options;
-        osg::Vec4f _chromaKey;
-        osg::ref_ptr<const osg::Image> _noDataImage;
-        bool _layerInTargetProfile;
+        ImageLayerOptions                  _options;
+        osg::Vec4f                         _chromaKey;
+        osg::ref_ptr<osg::Image>           _noDataImage;
+        bool                               _layerInTargetProfile;
     };
 
     //--------------------------------------------------------------------
@@ -185,8 +175,8 @@ namespace osgEarth
         /**
          * Access to the initialization options used to create this image layer
          */
-        const ImageLayerOptions& getImageLayerOptions() const { return _options; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _options; }
+        const ImageLayerOptions& getImageLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ImageLayerCallback* cb );
@@ -200,13 +190,10 @@ namespace osgEarth
     public: // runtime properties
 
         void setOpacity( float opacity );
-        float getOpacity() const { return _actualOpacity; }
-
-        void setGamma( float gamma );
-        float getGamma() const { return _actualGamma; }
-
+        float getOpacity() const { return *_runtimeOptions.opacity(); }
+        
         void disableLODBlending();
-        bool isLODBlendingEnabled() const { return _actualLODBlending; }
+        bool isLODBlendingEnabled() const { return *_runtimeOptions.lodBlending(); }
 
     public: // methods
 
@@ -217,17 +204,20 @@ namespace osgEarth
 
     protected:
 
-        osg::Image* createImageWrapper(
-            const TileKey& key,
-            bool cacheInLayerProfile,
-            ProgressCallback* progress );
+        // Fetches an image from the underlying TileSource whose data matches that of the
+        // key extent.
+        osg::Image* createImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+
+        // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
+        // returns a single tile. This is called by createImageFromTileSource() if the key profile
+        // doesn't match the layer profile.
+        osg::Image* assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+
 
         virtual void initTileSource();
+
     private:
-        ImageLayerOptions _options;
-        float _actualOpacity;
-        float _actualGamma;
-        bool  _actualLODBlending;
+        ImageLayerOptions _runtimeOptions;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         

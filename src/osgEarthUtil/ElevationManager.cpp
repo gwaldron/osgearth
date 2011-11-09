@@ -128,7 +128,7 @@ ElevationManager::getElevationImpl(double x, double y,
     double map_x = x, map_y = y;
     if ( srs && !srs->isEquivalentTo( _mapf.getProfile()->getSRS() ) )
     {
-        if ( !srs->transform( x, y, _mapf.getProfile()->getSRS(), map_x, map_y ) )
+        if ( !srs->transform2D( x, y, _mapf.getProfile()->getSRS(), map_x, map_y ) )
         {
             OE_WARN << LC << "Fail: coord transform failed" << std::endl;
             return false;
@@ -300,7 +300,7 @@ ElevationManager::getPlacementMatrix(double x, double y, double z,
     double map_x = x, map_y = y;
     if ( srs && !srs->isEquivalentTo( mapSRS ) )
     {
-        if ( !srs->transform( x, y, mapSRS, map_x, map_y ) )
+        if ( !srs->transform2D( x, y, mapSRS, map_x, map_y ) )
         {
             OE_WARN << LC << "getPlacementMatrix: coord transform failed" << std::endl;
             return false;

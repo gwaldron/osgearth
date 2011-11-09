@@ -21,13 +21,14 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/ShaderUtils>
-#include <osgEarth/TextureCompositor>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
 #include <osg/NodeCallback>
 
 namespace osgEarth
 {
+    class TextureCompositor;
+
     /**
      * TerrainEngineNode is the base class and interface for map engine implementations.
      *
@@ -112,7 +113,6 @@ namespace osgEarth
 
             void onEnabledChanged( TerrainLayer* layer );
             void onOpacityChanged( ImageLayer* layer );
-            void onGammaChanged( ImageLayer* layer );
 
             ArrayUniform _layerOpacityUniform;
             ArrayUniform _layerEnabledUniform;

@@ -41,7 +41,7 @@
 
 #include <osgEarthUtil/Controls>
 
-#include <osgEarthUtil/FeatureEditing>
+#include <osgEarthAnnotation/FeatureEditing>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -49,6 +49,7 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Annotation;
 
 osg::Vec4
 randomColor()
@@ -61,10 +62,6 @@ randomColor()
 
 
 static int s_fid = 0;
-
-
-
-
 
 static osg::ref_ptr< AddPointHandler > s_addPointHandler;
 static osg::ref_ptr< osg::Node > s_editor;
@@ -89,8 +86,8 @@ Grid* createToolBar()
 
 struct AddVertsModeHandler : public ControlEventHandler
 {
-    AddVertsModeHandler( FeatureModelGraph* featureGraph):
-_featureGraph( featureGraph )
+    AddVertsModeHandler( FeatureModelGraph* featureGraph)
+        : _featureGraph( featureGraph )
     {
     }
 
@@ -99,21 +96,21 @@ _featureGraph( featureGraph )
         //remove the editor if it's valid
         if (s_editor.valid())
         {
-            s_root->removeChild( s_editor );
+            s_root->removeChild( s_editor.get() );
             s_editor = NULL;
 
-            Style outStyle;
-            if (_featureGraph->getStyles().getDefaultStyle( outStyle))
+            Style* style = _featureGraph->getStyles()->getDefaultStyle();
+            if ( style )
             {            
-                outStyle.getSymbol<LineSymbol>()->stroke()->stipple().unset();
-                _featureGraph->setStyle( _featureGraph->getStyles() );
+                style->get<LineSymbol>()->stroke()->stipple().unset();
+                _featureGraph->dirty();
             }
         }
 
         //Add the new add point handler
         if (!s_addPointHandler.valid() && s_activeFeature.valid())
         {
-            s_addPointHandler = new AddPointHandler(s_activeFeature, s_source.get(), s_mapNode->getMap()->getProfile()->getSRS());
+            s_addPointHandler = new AddPointHandler(s_activeFeature.get(), s_source.get(), s_mapNode->getMap()->getProfile()->getSRS());
             s_addPointHandler->setIntersectionMask( 0x1 );
             s_viewer->addEventHandler( s_addPointHandler.get() );
         }        
@@ -124,8 +121,8 @@ _featureGraph( featureGraph )
 
 struct EditModeHandler : public ControlEventHandler
 {
-    EditModeHandler( FeatureModelGraph* featureGraph):
-_featureGraph( featureGraph )
+    EditModeHandler( FeatureModelGraph* featureGraph)
+        : _featureGraph( featureGraph )
     { 
     }
 
@@ -140,14 +137,14 @@ _featureGraph( featureGraph )
 
         if (!s_editor.valid() && s_activeFeature.valid())
         {
-            Style outStyle;
-            if (_featureGraph->getStyles().getDefaultStyle( outStyle))
-            {            
-                outStyle.getSymbol<LineSymbol>()->stroke()->stipple() =  0x00FF ;
-                _featureGraph->setStyle( _featureGraph->getStyles() );
+            Style* style = _featureGraph->getStyles()->getDefaultStyle();
+            if ( style )
+            {
+                style->get<LineSymbol>()->stroke()->stipple() = 0x00FF;
+                _featureGraph->dirty();
             }
-            s_editor = new FeatureEditor(s_activeFeature, s_source, s_mapNode);
-            s_root->addChild( s_editor );
+            s_editor = new FeatureEditor(s_activeFeature.get(), s_source.get(), s_mapNode.get());
+            s_root->addChild( s_editor.get() );
         }
     }
 
@@ -156,21 +153,21 @@ _featureGraph( featureGraph )
 
 struct ChangeStyleHandler : public ControlEventHandler
 {
-    ChangeStyleHandler( FeatureModelGraph * features, const StyleSheet& styleSheet):
-_features( features),
-_styleSheet(styleSheet)
-    { 
+    ChangeStyleHandler( FeatureModelGraph* features, StyleSheet* styleSheet) 
+        : _features( features), _styleSheet(styleSheet)
+    {
+        //nop
     }
 
     void onClick( Control* control, int mouseButtonMask ) {
-        _features->setStyle( _styleSheet );
+        _features->setStyles( _styleSheet.get() );
     }
 
     osg::ref_ptr< FeatureModelGraph > _features;
-    StyleSheet _styleSheet;
+    osg::ref_ptr< StyleSheet >        _styleSheet;
 };
 
-StyleSheet buildStyleSheet( const osg::Vec4 &color, float width )
+StyleSheet* buildStyleSheet( const osg::Vec4 &color, float width )
 {
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
@@ -178,11 +175,13 @@ StyleSheet buildStyleSheet( const osg::Vec4 &color, float width )
 
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
     ls->stroke()->color() = color;
-    ls->stroke()->width() = width;    
-    style.addSymbol( ls );
+    ls->stroke()->width() = width;
 
-    StyleSheet styleSheet;
-    styleSheet.addStyle( style );
+    //AltitudeSymbol* as = style.getOrCreate<AltitudeSymbol>();
+    //as->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
+    StyleSheet* styleSheet = new StyleSheet();
+    styleSheet->addStyle( style );
     return styleSheet;
 }
 
@@ -194,32 +193,36 @@ int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
 
-    bool useOverlay = arguments.read("--overlay");
-
     osgViewer::Viewer viewer(arguments);
-
     s_viewer = &viewer;
 
     // Start by creating the map:
-    Map* map = new Map();
+    s_mapNode = MapNode::load(arguments);
+    if ( !s_mapNode )
+    {
+        Map* map = new Map();
 
-    // Start with a basemap imagery layer; we'll be using the GDAL driver
-    // to load a local GeoTIFF file:
-    GDALOptions basemapOpt;
-    basemapOpt.url() = "../data/world.tif";
-    map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+        // Start with a basemap imagery layer; we'll be using the GDAL driver
+        // to load a local GeoTIFF file:
+        GDALOptions basemapOpt;
+        basemapOpt.url() = "../data/world.tif";
+        map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
+
+        // That's it, the map is ready; now create a MapNode to render the Map:
+        MapNodeOptions mapNodeOptions;
+        mapNodeOptions.enableLighting() = false;
+
+        s_mapNode = new MapNode( map, mapNodeOptions );
+    }
+    s_mapNode->setNodeMask( 0x01 );
 
         
     // Define a style for the feature data. Since we are going to render the
     // vectors as lines, configure the line symbolizer:
-    Style style;
-
-    LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
-    ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
-    ls->stroke()->width() = 2.0f;
+    StyleSheet* styleSheet = buildStyleSheet( Color::Yellow, 2.0f );
 
     s_source = new FeatureListSource();
-    //Ring* line = new Ring();
+
     LineString* line = new LineString();
     line->push_back( osg::Vec3d(-60, 20, 0) );
     line->push_back( osg::Vec3d(-120, 20, 0) );
@@ -229,33 +232,20 @@ int main(int argc, char** argv)
     feature->setGeometry( line );
     s_source->insertFeature( feature );
     s_activeFeature = feature;
-
-
-
-    // That's it, the map is ready; now create a MapNode to render the Map:
-    MapNodeOptions mapNodeOptions;
-    mapNodeOptions.enableLighting() = false;
-
-    s_mapNode = new MapNode( map, mapNodeOptions );
-    s_mapNode->setNodeMask( 0x01 );
   
-
     s_root = new osg::Group;
-    s_root->addChild( s_mapNode );
+    s_root->addChild( s_mapNode.get() );
 
-    StyleSheet styleSheet;
-    styleSheet.addStyle( style );
+    Session* session = new Session(s_mapNode->getMap(), styleSheet);
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
         s_source.get(), 
         FeatureModelSourceOptions(), 
         new GeomFeatureNodeFactory(),
-        styleSheet,
-        new Session( map ) );
+        session );
 
     graph->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     graph->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-
 
     s_root->addChild( graph );
 
@@ -305,18 +295,14 @@ int main(int argc, char** argv)
     }
    
     
-    viewer.setSceneData( s_root );
+    viewer.setSceneData( s_root.get() );
     viewer.setCameraManipulator( new EarthManipulator() );
-
-    if ( !useOverlay )
-        viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
+    viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    //viewer.addEventHandler( new AddPointHandler(feature, featureSource, map->getProfile()->getSRS()));
-    //addFeatureEditor( feature, featureSource, mapNode, root );
 
     return viewer.run();
 }

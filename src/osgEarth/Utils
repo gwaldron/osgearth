@@ -27,14 +27,32 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 #include <osgUtil/CullVisitor>
+#include <osgUtil/RenderBin>
 
 #include <string>
 #include <list>
 #include <map>
 
-namespace osgEarth
+namespace osg
 {
-    class osg::EllipsoidModel;
+    class EllipsoidModel;
+}
+
+namespace osgEarth
+{    
+    //------------------------------------------------------------------------
+
+    class CacheStats
+    {
+    public:
+        CacheStats( unsigned entries, unsigned maxEntries, unsigned queries, float hitRatio )
+            : _entries(entries), _maxEntries(maxEntries), _queries(queries), _hitRatio(hitRatio) { }
+
+        unsigned _entries;
+        unsigned _maxEntries;
+        unsigned _queries;
+        float    _hitRatio;
+    };
 
     //------------------------------------------------------------------------
 
@@ -145,8 +163,9 @@ namespace osgEarth
             return _max;
         }
 
-        float getHitRatio() const {
-            return _queries > 0 ? (float)_hits/(float)_queries : 0.0f;
+        CacheStats getStats() const {
+            return CacheStats(
+                _lru.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
         }
     };
 
@@ -178,9 +197,18 @@ namespace osgEarth
 
     struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
         osg::Vec3d _world;
-        double _r2;
+        double _r, _r2;
         CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model );
         void operator()(osg::Node* node, osg::NodeVisitor* nv );
+    };
+
+    struct OSGEARTH_EXPORT CullNodeByFrameNumber : public osg::NodeCallback {
+        unsigned _frame;
+        CullNodeByFrameNumber() : _frame(0) { }
+        void operator()( osg::Node* node, osg::NodeVisitor* nv ) {
+            if ( nv->getFrameStamp()->getFrameNumber() - _frame <= 1 )
+                traverse(node, nv);
+        }
     };
 
     /**
@@ -216,6 +244,28 @@ namespace osgEarth
         double _minPixels;
         bool   _dirty;
         osg::observer_ptr<osg::Node> _sizingNode;
+    };
+
+    /**
+     * Proxy class that registers the custom render bin's prototype with the
+     * rendering system
+     */
+    template<class T>
+    struct osgEarthAnnotationRegisterRenderBinProxy
+    {
+        osgEarthAnnotationRegisterRenderBinProxy(const std::string& name)
+        {
+            _prototype = new T();
+            osgUtil::RenderBin::addRenderBinPrototype(name, _prototype.get());
+        }
+
+        ~osgEarthAnnotationRegisterRenderBinProxy()
+        {
+            osgUtil::RenderBin::removeRenderBinPrototype(_prototype.get());
+            _prototype = 0L;
+        }
+
+        osg::ref_ptr<T> _prototype;
     };
 
     /**

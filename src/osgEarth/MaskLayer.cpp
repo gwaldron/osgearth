@@ -97,9 +97,9 @@ MaskLayer::copyOptions()
 }
 
 void
-MaskLayer::initialize( const std::string& referenceURI, const Map* map )
+MaskLayer::initialize( const osgDB::Options* dbOptions, const Map* map )
 {
-    _referenceURI = referenceURI;
+    _dbOptions = osg::clone(dbOptions);
 
     if ( !_maskSource.valid() && _initOptions.driver().isSet() )
     {
@@ -108,12 +108,12 @@ MaskLayer::initialize( const std::string& referenceURI, const Map* map )
 
     if ( _maskSource.valid() )
     {
-        _maskSource->initialize( _referenceURI, map );
+        _maskSource->initialize( dbOptions, map );
     }
 }
 
 osg::Vec3dArray*
-MaskLayer::getOrCreateBoundary( ProgressCallback* progress )
+MaskLayer::getOrCreateBoundary( float heightScale, const SpatialReference *srs, ProgressCallback* progress )
 {
     if ( _maskSource.valid() )
     {
@@ -125,7 +125,10 @@ MaskLayer::getOrCreateBoundary( ProgressCallback* progress )
 
         if ( !_boundary.valid() )
         {
-            _boundary = _maskSource->createBoundary( progress );
+			_boundary = _maskSource->createBoundary( srs, progress );
+
+			for (osg::Vec3dArray::iterator vIt = _boundary->begin(); vIt != _boundary->end(); ++vIt)
+				vIt->z() = vIt->z() * heightScale;
 
             _maskSource->sync( _maskSourceRev );
         }

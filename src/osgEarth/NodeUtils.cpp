@@ -20,6 +20,7 @@
 #include <osgEarth/NodeUtils>
 #include <osg/TemplatePrimitiveFunctor>
 #include <osg/Geode>
+#include <osg/CullSettings>
 #include <vector>
 
 using namespace osgEarth;
@@ -37,15 +38,41 @@ namespace
             _maxNormalLen = maxNormalLen;
         }
 
-        void operator()( const osg::Vec3 v1, ... )
+        void operator()( const osg::Vec3 &v1, bool)
+        {         
+            compute( v1 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, bool)
+        {         
+            compute( v1 );
+            compute( v2 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, const osg::Vec3& v3, bool)
+        {         
+            compute( v1 );
+            compute( v2 );
+            compute( v3 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, const osg::Vec3& v3, const osg::Vec3& v4, bool)
+        {         
+            compute( v1 );
+            compute( v2 );
+            compute( v3 );
+            compute( v4 );
+        }
+
+        void compute( const osg::Vec3& v )
         {
-            osg::Vec3d v1world = v1 * _local2world;
-            double v1len = v1world.length();
-            v1world.normalize();
+            osg::Vec3d vworld = v * _local2world;
+            double vlen = vworld.length();
+            vworld.normalize();
 
             // the dot product of the 2 vecs is the cos of the angle between them;
             // mult that be the vector length to get the new normal length.
-            float normalLen = fabs(_normal * v1world) * v1len;
+            float normalLen = fabs(_normal * vworld) * vlen;
 
             if ( normalLen < *_maxNormalLen )
                 *_maxNormalLen = normalLen;
@@ -64,12 +91,40 @@ namespace
             _maxRadius2 = maxRadius2;
         }
 
-        void operator()( const osg::Vec3 v1, ... )
+        void operator()( const osg::Vec3 &v1, bool )
+        {            
+            compute( v1 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, bool )
+        {            
+            compute( v1 );
+            compute( v2 );
+        }
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, const osg::Vec3 &v3, bool )
+        {            
+            compute( v1 );
+            compute( v2 );
+            compute( v3 );
+        }        
+
+        void operator()( const osg::Vec3 &v1, const osg::Vec3 &v2, const osg::Vec3 &v3, const osg::Vec3& v4, bool )
+        {            
+            compute( v1 );
+            compute( v2 );
+            compute( v3 );
+            compute( v4 );
+        }
+
+        void compute( const osg::Vec3& v )
         {
-            float dist = (v1 - _center).length2();
+            float dist = (v - _center).length2();
             if ( dist > *_maxRadius2 )
                 *_maxRadius2 = dist;
         }
+
+
 
         osg::Vec3 _center;
         float*    _maxRadius2;
@@ -140,6 +195,40 @@ namespace
         float      _maxRadius2;
         std::vector<osg::Matrixd> _matrixStack;
     };
+
+    /**
+     * A customized CCC that works correctly under an RTT camera. The built-in one
+     * called getEyePoint() instead of getViewPoint() and therefore isn't compatible
+     * with osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT mode.
+     */
+    struct MyClusterCullingCallback : public osg::ClusterCullingCallback
+    {
+        bool cull(osg::NodeVisitor* nv, osg::Drawable* , osg::State*) const
+        {
+            osg::CullSettings* cs = dynamic_cast<osg::CullSettings*>(nv);
+            if (cs && !(cs->getCullingMode() & osg::CullSettings::CLUSTER_CULLING))
+            {
+                return false;
+            }
+
+            if (_deviation<=-1.0f)
+            {
+                return false;
+            }
+
+            osg::Vec3 eye_cp = nv->getViewPoint() - _controlPoint;
+            float radius = eye_cp.length();
+
+            if (radius<_radius)
+            {
+                return false;
+            }
+
+            float deviation = (eye_cp * _normal)/radius;
+
+            return deviation < _deviation;
+        }
+    };
 }
 
 //------------------------------------------------------------------------
@@ -163,7 +252,7 @@ ClusterCullerFactory::create( osg::Node* node, const osg::Vec3d& centerECEF )
         ComputeVisitor cv;
         cv.run( node, centerECEF );
 
-        ccc = new osg::ClusterCullingCallback();
+        ccc = new MyClusterCullingCallback(); //osg::ClusterCullingCallback();
         ccc->set( cv._centerECEF, cv._normalECEF, 0.0f, sqrt(cv._maxRadius2) );
     }
     return ccc;

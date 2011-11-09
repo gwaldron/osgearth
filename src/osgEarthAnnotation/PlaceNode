@@ -1,0 +1,83 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNOTATION_PLACE_NODE_H
+#define OSGEARTH_ANNOTATION_PLACE_NODE_H 1
+
+#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarth/MapNode>
+#include <osgEarthSymbology/Style>
+#include <osgEarthUtil/Controls>
+#include <osg/MatrixTransform>
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+    using namespace osgEarth::Util::Controls;
+
+    /** 
+     * A PlaceNode combines an 2D icon, a label, support for mouse interaction
+     * and a popup control.
+     */
+    class OSGEARTHANNO_EXPORT PlaceNode : public OrthoNode
+    {
+    public:
+        /**
+         * Constructs a new node (convenience function)
+         */
+        PlaceNode(
+            MapNode*           mapNode,
+            const osg::Vec3d&  position,
+            osg::Image*        iconImage,
+            const std::string& labelText,
+            const Style&       style =Style() );
+
+        /**
+         * Image to use for the icon
+         */
+        void setIconImage( osg::Image* image );
+        osg::Image* getIconImage() const { return _image.get(); }
+
+        /**
+         * Text label content
+         */
+        void setText( const std::string& text );
+        const std::string& getText() const { return _text; }
+
+        /**
+         * Style (for text)
+         */
+        void setStyle( const Style& style );
+        const Style& getStyle() const { return _style; }
+
+    private:
+        osg::ref_ptr<osg::Image>   _image;
+        std::string                _text;
+        Style                      _style;
+
+        osg::ref_ptr<Container>    _container;
+        osg::ref_ptr<ImageControl> _icon;
+        osg::ref_ptr<LabelControl> _label;
+
+        void init();
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif //OSGEARTH_ANNOTATION_PLACE_NODE_H

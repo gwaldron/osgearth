@@ -50,13 +50,14 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureListCursor : public FeatureCursor
     {
     public:
-        FeatureListCursor( const FeatureList& input );
+        FeatureListCursor( const FeatureList& input, bool cloneFeatures =false );
         virtual bool hasMore() const;
         virtual Feature* nextFeature();
 
     protected:
-        FeatureList _features;
+        FeatureList           _features;
         FeatureList::iterator _iter;
+        bool                  _clone;
     };
 
     /**

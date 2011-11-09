@@ -12,13 +12,13 @@ SET(LIB_NAME osgEarthFeatures)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
-    Annotation  
+    AltitudeFilter
     BufferFilter
     BuildGeometryFilter  
     BuildTextFilter
     BuildTextOperator
+    CentroidFilter
     Common
-    ClampFilter
     ConvertTypeFilter
     CropFilter
     ExtrudeGeometryFilter
@@ -29,7 +29,8 @@ SET(LIB_PUBLIC_HEADERS
     FeatureGridder
 	FeatureListSource
     FeatureModelGraph
-    FeatureModelSource    
+    FeatureModelSource
+    FeatureNode
     FeatureSource
     FeatureTileSource
     Filter
@@ -37,13 +38,14 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
 	GeometryUtils
     LabelSource
-    MarkerFactory
 	OgrUtils
     OptimizerHints	
     ResampleFilter
     ScaleFilter
     Session
     ScatterFilter
+    Script
+    ScriptEngine
     SubstituteModelFilter
     TransformFilter
     VirtualFeatureSource
@@ -51,12 +53,12 @@ SET(LIB_PUBLIC_HEADERS
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
-    Annotation.cpp
+    AltitudeFilter.cpp
     BufferFilter.cpp
     BuildGeometryFilter.cpp 
     BuildTextFilter.cpp
     BuildTextOperator.cpp
-    ClampFilter.cpp
+    CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
     ExtrudeGeometryFilter.cpp
@@ -67,7 +69,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureGridder.cpp
 	FeatureListSource.cpp
     FeatureModelGraph.cpp
-    FeatureModelSource.cpp	
+    FeatureModelSource.cpp
+    FeatureNode.cpp
     FeatureSource.cpp
     FeatureTileSource.cpp
     Filter.cpp
@@ -75,12 +78,12 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryCompiler.cpp
 	GeometryUtils.cpp
     LabelSource.cpp
-    MarkerFactory.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
     Session.cpp
     ScatterFilter.cpp
+    ScriptEngine.cpp
     SubstituteModelFilter.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp

@@ -9,6 +9,7 @@ on the map using the overlay technique.
     
     <options>
         <lighting>false</lighting>
+        <overlay_blending>false</overlay_blending>
     </options>
 
     <image name="world" driver="gdal">

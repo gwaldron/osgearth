@@ -19,26 +19,20 @@ Footprint Extrusion using the "feature_geom" driver.
             <build_spatial_index>true</build_spatial_index>
         </features>
         
-        <!-- Clustering is a method of combining geometry in the scene graph to
-             improve performance. It is recommended when dealing with large numbers
-             of features. -->
-             
-        <clustering>true</clustering>
-        
         <!-- The stylesheet will describe how to render the feature data. -->
              
-        <styles>            
+        <styles>
             <style type="text/css">
                 buildings {
                     extrusion-height:  15;
                     extrusion-flatten: true;
-                    fill:              #ff7f2fcf;
+                    fill:              #ff7f2f;
                     altitude-clamping: terrain;
                 }            
             </style>
         </styles>   
 
-        <lighting>true</lighting>        
+        <lighting>true</lighting>
     </model>
     
     
@@ -47,7 +41,7 @@ Footprint Extrusion using the "feature_geom" driver.
         <terrain>
             <sample_ratio>0.2</sample_ratio>
         </terrain>
-        <cache type="tms">
+        <cache type="filesystem">
             <path>osgearth_cache</path>
         </cache>
     </options> 
@@ -55,6 +49,7 @@ Footprint Extrusion using the "feature_geom" driver.
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
+    
     <elevation name="ReadyMap.org - Elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>
     </elevation>

@@ -27,19 +27,32 @@ namespace osgEarth { namespace Symbology
 {
     using namespace osgEarth;
 
+    /**
+     * Symbol that directs the GeometryCompiler to create extruded 3D geometry
+     * from 2D vector data.
+     */
     class OSGEARTHSYMBOLOGY_EXPORT ExtrusionSymbol : public Symbol
     {
     public:
+        // @deprecated
         enum HeightReference
         {
-            HEIGHT_REFERENCE_Z,   // height is relative to feature Z (default)
-            HEIGHT_REFERENCE_MSL  // height is relative to MSL
+            /** Means that the "height" value as provided in this symbol is expressed
+                relative to the Z of the input geometry. This is the usual way to extrude
+                geometry- extrude up from the geometry's base Z height. (default.) */
+            HEIGHT_REFERENCE_Z,
+
+            /** Means the "height" value is expressed in absolute terms, i.e., relative to 
+                MSL (mean sea level, which is usually the map's ellipsoid). If your height
+                value is an absolute elevation, use this to "extrude down" to the terrain. */
+            HEIGHT_REFERENCE_MSL
         };
 
     public:
         ExtrusionSymbol( const Config& conf =Config() );
 
-        /** Height to which to extrude geometry above the footprint */
+        /** Height to which to extrude geometry above the footprint (for HEIGHT_REFERENCE_Z)
+            or above MSL (for HEIGHT_REFERENCE_MSL) */
         optional<float>& height() { return _height; }
         const optional<float>& height() const { return _height; }
 
@@ -48,6 +61,7 @@ namespace osgEarth { namespace Symbology
         const optional<NumericExpression>& heightExpression() const { return _heightExpr; }
 
         /** Reference frame in which height is expressed */
+        // @deprecated
         optional<HeightReference>& heightReference() { return _heightRef; }
         const optional<HeightReference>& heightReference() const { return _heightRef; }
 
@@ -55,6 +69,13 @@ namespace osgEarth { namespace Symbology
         optional<bool>& flatten() { return _flatten; }
         const optional<bool>& flatten() const { return _flatten; }
 
+        /** Name of a style describing how to symbolize the extruded walls */
+        optional<std::string>& wallStyleName() { return _wallStyleName; }
+        const optional<std::string>& wallStyleName() const { return _wallStyleName; }
+
+        /** Name of a style describing how to symbolize the elevated rooftop */
+        optional<std::string>& roofStyleName() { return _roofStyleName; }
+        const optional<std::string>& roofStyleName() const { return _roofStyleName; }
         
     public:
         virtual Config getConfig() const;
@@ -65,6 +86,8 @@ namespace osgEarth { namespace Symbology
         optional<bool>              _flatten;
         optional<NumericExpression> _heightExpr;
         optional<HeightReference>   _heightRef;
+        optional<std::string>       _wallStyleName;
+        optional<std::string>       _roofStyleName;
     };
 
 } } // namespace osgEarth::Symbology

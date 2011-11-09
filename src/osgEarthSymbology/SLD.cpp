@@ -68,211 +68,267 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
     PointSymbol*     point     = 0L;
     TextSymbol*      text      = 0L;
     ExtrusionSymbol* extrusion = 0L;
-    MarkerSymbol*    marker     = 0L;
+    MarkerSymbol*    marker    = 0L;
     AltitudeSymbol*  altitude  = 0L;
+    SkinSymbol*      skin      = 0L;
 
-    for(Properties::const_iterator p = conf.attrs().begin(); p != conf.attrs().end(); p++ )
+    for( ConfigSet::const_iterator kids = conf.children().begin(); kids != conf.children().end(); ++kids )
     {
-        if ( p->first == CSS_STROKE )
+        const Config& p = *kids;
+
+        // ..... LineSymbol .....
+
+        if ( p.key() == CSS_STROKE )
         {
             if (!line) line = sc.getOrCreateSymbol<LineSymbol>();
-            line->stroke()->color() = htmlColorToVec4f( p->second );
+            line->stroke()->color() = htmlColorToVec4f( p.value() );
         }
-        else if ( p->first == CSS_STROKE_OPACITY )
+        else if ( p.key() == CSS_STROKE_OPACITY )
         {
             if (!line) line = sc.getOrCreateSymbol<LineSymbol>();
-            line->stroke()->color().a() = as<float>( p->second, 1.0f );
+            line->stroke()->color().a() = as<float>( p.value(), 1.0f );
         }
-        else if ( p->first == CSS_STROKE_WIDTH )
+        else if ( p.key() == CSS_STROKE_WIDTH )
         {
             if (!line) line = sc.getOrCreateSymbol<LineSymbol>();
-            line->stroke()->width() = as<float>( p->second, 1.0f );
+            line->stroke()->width() = as<float>( p.value(), 1.0f );
         }
-        else if ( p->first == CSS_STROKE_LINECAP )
+        else if ( p.key() == CSS_STROKE_LINECAP )
         {
             if (!line) line = sc.getOrCreateSymbol<LineSymbol>();
-            parseLineCap( p->second, line->stroke()->lineCap() );
+            parseLineCap( p.value(), line->stroke()->lineCap() );
         }
-        else if ( p->first == CSS_FILL )
+
+        // ..... PolygonSymbol .....
+
+        else if ( p.key() == CSS_FILL )
         {
             if (!polygon) polygon = sc.getOrCreateSymbol<PolygonSymbol>();
-            polygon->fill()->color() = htmlColorToVec4f( p->second );
+            polygon->fill()->color() = htmlColorToVec4f( p.value() );
 
             if ( !point ) point = sc.getOrCreateSymbol<PointSymbol>();
-            point->fill()->color() = htmlColorToVec4f( p->second );
+            point->fill()->color() = htmlColorToVec4f( p.value() );
 
             if ( !text ) text = new TextSymbol();
-            text->fill()->color() = htmlColorToVec4f( p->second );
+            text->fill()->color() = htmlColorToVec4f( p.value() );
         }
-        else if ( p->first == CSS_FILL_OPACITY )
+        else if ( p.key() == CSS_FILL_OPACITY )
         {
             if (!polygon) polygon = sc.getOrCreateSymbol<PolygonSymbol>();
-            polygon->fill()->color().a() = as<float>( p->second, 1.0f );
+            polygon->fill()->color().a() = as<float>( p.value(), 1.0f );
 
             if ( !point ) point = sc.getOrCreateSymbol<PointSymbol>();
-            point->fill()->color().a() = as<float>( p->second, 1.0f );
+            point->fill()->color().a() = as<float>( p.value(), 1.0f );
 
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            text->fill()->color().a() = as<float>( p->second, 1.0f );
+            text->fill()->color().a() = as<float>( p.value(), 1.0f );
         }
-        else if (p->first == CSS_POINT_SIZE)
+
+        // ..... PointSymbol .....
+
+        else if (p.key() == CSS_POINT_SIZE)
         {
             if ( !point ) point = sc.getOrCreateSymbol<PointSymbol>();
-            point->size() = as<float>(p->second, 1.0f);
+            point->size() = as<float>(p.value(), 1.0f);
         }
-        else if (p->first == CSS_TEXT_SIZE)
+
+        // ..... TextSymbol .....
+
+        else if (p.key() == CSS_TEXT_SIZE)
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            text->size() = as<float>(p->second, 32.0f);
+            text->size() = as<float>(p.value(), 32.0f);
         }
-        else if (p->first == CSS_TEXT_FONT)
+        else if (p.key() == CSS_TEXT_FONT)
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            text->font() = p->second;
+            text->font() = p.value();
         }
-        else if (p->first == CSS_TEXT_HALO)
+        else if (p.key() == CSS_TEXT_HALO)
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            text->halo()->color() = htmlColorToVec4f( p->second );
+            text->halo()->color() = htmlColorToVec4f( p.value() );
         }
-        //else if (p->first == CSS_TEXT_ATTRIBUTE)
-        //{
-        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-        //    text->attribute() = p->second;
-        //}
-        else if (p->first == CSS_TEXT_ROTATE_TO_SCREEN)
+        else if (p.key() == CSS_TEXT_REMOVE_DUPLICATE_LABELS)
         {
             if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            if (p->second == "true") text->rotateToScreen() = true;
-            else if (p->second == "false") text->rotateToScreen() = false;
-        }
-        else if (p->first == CSS_TEXT_SIZE_MODE)
-        {
-            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            if (p->second == "screen") text->sizeMode() = TextSymbol::SIZEMODE_SCREEN;
-            else if (p->second == "object") text->sizeMode() = TextSymbol::SIZEMODE_OBJECT;
-        }
-        else if (p->first == CSS_TEXT_REMOVE_DUPLICATE_LABELS)
-        {
-            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            if (p->second == "true") text->removeDuplicateLabels() = true;
-            else if (p->second == "false") text->removeDuplicateLabels() = false;
+            if (p.value() == "true") text->removeDuplicateLabels() = true;
+            else if (p.value() == "false") text->removeDuplicateLabels() = false;
         } 
-        else if (p->first == CSS_TEXT_LINE_ORIENTATION)
-        {
-            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            if (p->second == "parallel") text->lineOrientation() = TextSymbol::LINEORIENTATION_PARALLEL;
-            else if (p->second == "horizontal") text->lineOrientation() = TextSymbol::LINEORIENTATION_HORIZONTAL;
-            else if (p->second == "perpendicular") text->lineOrientation() = TextSymbol::LINEORIENTATION_PERPENDICULAR;
-        }
-        else if (p->first == CSS_TEXT_LINE_PLACEMENT)
-        {
-            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            if (p->second == "centroid") text->linePlacement() = TextSymbol::LINEPLACEMENT_CENTROID;
-            else if (p->second == "along-line") text->linePlacement() = TextSymbol::LINEPLACEMENT_ALONG_LINE;
-        }
-        else if (p->first == "text-content")
-        {
-            if (!text) text = sc.getOrCreate<TextSymbol>();
-            text->content() = StringExpression( p->second );
-        }
-        else if (p->first == "text-priority")
-        {
-            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-            text->priority() = NumericExpression( p->second );
-        }
-        else if (p->first == "text-provider")
-        {
-            if (!text) text = sc.getOrCreate<TextSymbol>();
-            text->provider() = p->second;
-        }
-
-        //else if (p->first == CSS_TEXT_CONTENT)
-        //{
-        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-        //    text->content() = p->second;
-        //}
-        //else if (p->first == CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER)
-        //{
-        //    if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
-        //    text->contentAttributeDelimiter() = p->second;
-        //}
-
-        else if (p->first == "marker")
-        {
-            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
-            marker->url() = p->second;
-        }
-        else if (p->first == "marker-placement")
-        {
-            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
-            if      (p->second == "vertex")   marker->placement() = MarkerSymbol::PLACEMENT_VERTEX;
-            else if (p->second == "interval") marker->placement() = MarkerSymbol::PLACEMENT_INTERVAL;
-            else if (p->second == "random"  ) marker->placement() = MarkerSymbol::PLACEMENT_RANDOM;
-        }
-        else if (p->first == "marker-density")
-        {
-            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
-            marker->density() = as<float>(p->second, 1.0f);
-        }
-        else if (p->first == "marker-random-seed")
-        {
-            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
-            marker->randomSeed() = as<unsigned>(p->second, 0);
-        }
-        else if (p->first == "marker-scale")
-        {
-            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
-            marker->scale() = stringToVec3f(p->second, osg::Vec3f(1,1,1));
-        }
-
-        else if (p->first == "extrusion-height")
-        {
-            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
-            extrusion->heightExpression() = NumericExpression(p->second);
-        }
-        else if ( p->first == "extrusion-reference")
-        {
-            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
-            if      ( p->second == "z"   ) extrusion->heightReference() = ExtrusionSymbol::HEIGHT_REFERENCE_Z;
-            else if ( p->second == "msl" ) extrusion->heightReference() = ExtrusionSymbol::HEIGHT_REFERENCE_MSL;
-        }
-        else if (p->first == "extrusion-flatten")
-        {
-            if (!extrusion) extrusion = sc.getOrCreateSymbol<ExtrusionSymbol>();
-            extrusion->flatten() = as<bool>(p->second, true);
-        }
-                
-        else if (p->first == "altitude-clamping")
-        {
-            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
-            if      (p->second == "none"    ) altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
-            else if (p->second == "terrain" ) altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-            else if (p->second == "relative") altitude->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
-        }
-        else if (p->first == "altitude-offset")
-        {
-            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
-            altitude->verticalOffset() = as<float>( p->second, 0.0f );
-        }
-    }
-
 #if 0
-    if (line)
-        sc.addSymbol(line);
-    if (polygon)
-        sc.addSymbol(polygon);
-    if (point)
-        sc.addSymbol(point);
-    if (text)
-        sc.addSymbol(text);
-    if (extrusion)
-        sc.addSymbol(extrusion);
-    if (marker)
-        sc.addSymbol(marker);
-    if (altitude)
-        sc.addSymbol(altitude);
+        else if (p.key() == CSS_TEXT_ATTRIBUTE)
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            text->attribute() = p.value();
+        }
+        else if (p.key() == CSS_TEXT_ROTATE_TO_SCREEN)
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            if (p.value() == "true") text->rotateToScreen() = true;
+            else if (p.value() == "false") text->rotateToScreen() = false;
+        }
+        else if (p.key() == CSS_TEXT_SIZE_MODE)
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            if (p.value() == "screen") text->sizeMode() = TextSymbol::SIZEMODE_SCREEN;
+            else if (p.value() == "object") text->sizeMode() = TextSymbol::SIZEMODE_OBJECT;
+        }
+        else if (p.key() == CSS_TEXT_REMOVE_DUPLICATE_LABELS)
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            if (p.value() == "true") text->removeDuplicateLabels() = true;
+            else if (p.value() == "false") text->removeDuplicateLabels() = false;
+        } 
+        else if (p.key() == CSS_TEXT_LINE_ORIENTATION)
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            if (p.value() == "parallel") text->lineOrientation() = TextSymbol::LINEORIENTATION_PARALLEL;
+            else if (p.value() == "horizontal") text->lineOrientation() = TextSymbol::LINEORIENTATION_HORIZONTAL;
+            else if (p.value() == "perpendicular") text->lineOrientation() = TextSymbol::LINEORIENTATION_PERPENDICULAR;
+        }
+        else if (p.key() == CSS_TEXT_LINE_PLACEMENT)
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            if (p.value() == "centroid") text->linePlacement() = TextSymbol::LINEPLACEMENT_CENTROID;
+            else if (p.value() == "along-line") text->linePlacement() = TextSymbol::LINEPLACEMENT_ALONG_LINE;
+        }
 #endif
+        else if (p.key() == "text-content")
+        {
+            if (!text) text = sc.getOrCreate<TextSymbol>();
+            text->content() = StringExpression( p.value() );
+        }
+        else if (p.key() == "text-priority")
+        {
+            if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+            text->priority() = NumericExpression( p.value() );
+        }
+        else if (p.key() == "text-provider")
+        {
+            if (!text) text = sc.getOrCreate<TextSymbol>();
+            text->provider() = p.value();
+        }
+
+        // ..... MarkerSymbol .....
+
+        else if (p.key() == "marker")
+        {
+            if (!marker) marker = sc.getOrCreate<MarkerSymbol>();            
+            marker->url() = p.value();
+            marker->url()->setURIContext( conf.referrer() );
+        }
+        else if (p.key() == "marker-placement")
+        {
+            if (!marker) marker = sc.getOrCreate<MarkerSymbol>();
+            if      (p.value() == "vertex")   marker->placement() = MarkerSymbol::PLACEMENT_VERTEX;
+            else if (p.value() == "interval") marker->placement() = MarkerSymbol::PLACEMENT_INTERVAL;
+            else if (p.value() == "random"  ) marker->placement() = MarkerSymbol::PLACEMENT_RANDOM;
+            else if (p.value() == "centroid") marker->placement() = MarkerSymbol::PLACEMENT_CENTROID;
+        }
+        else if (p.key() == "marker-density")
+        {
+            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
+            marker->density() = as<float>(p.value(), 1.0f);
+        }
+        else if (p.key() == "marker-random-seed")
+        {
+            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
+            marker->randomSeed() = as<unsigned>(p.value(), 0);
+        }
+        else if (p.key() == "marker-scale")
+        {
+            if (!marker) marker = sc.getOrCreateSymbol<MarkerSymbol>();
+            marker->scale() = NumericExpression(p.value());
+        }
+
+        // ..... ExtrusionSymbol .....
+                
+        else if (p.key() == "extrusion-height")
+        {
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
+            extrusion->heightExpression() = NumericExpression(p.value());
+        }
+        else if (p.key() == "extrusion-flatten")
+        {
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
+            extrusion->flatten() = as<bool>(p.value(), true);
+        }
+        else if (p.key() == "extrusion-wall-style")
+        {
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
+            extrusion->wallStyleName() = p.value();
+        }
+        else if (p.key() == "extrusion-roof-style")
+        {
+            if (!extrusion) extrusion = sc.getOrCreate<ExtrusionSymbol>();
+            extrusion->roofStyleName() = p.value();
+        }
+
+        // ..... AltitideSymbol .....
+                
+        else if (p.key() == "altitude-clamping")
+        {
+            if (!altitude) altitude = sc.getOrCreateSymbol<AltitudeSymbol>();
+            if      (p.value() == "none"    ) altitude->clamping() = AltitudeSymbol::CLAMP_NONE;
+            else if (p.value() == "terrain" ) altitude->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+            else if (p.value() == "absolute") altitude->clamping() = AltitudeSymbol::CLAMP_ABSOLUTE;
+            else if (p.value() == "relative") altitude->clamping() = AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+        }
+        else if (p.key() == "altitude-resolution")
+        {
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
+            altitude->clampingResolution() = as<float>( p.value(), 0.0f );
+        }
+        else if (p.key() == "altitude-offset")
+        {
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
+            altitude->verticalOffset() = NumericExpression( p.value() );
+        }
+        else if (p.key() == "altitude-scale")
+        {
+            if (!altitude) altitude = sc.getOrCreate<AltitudeSymbol>();
+            altitude->verticalScale() = NumericExpression( p.value() );
+        }
+
+        // ..... SkinSymbol .....
+
+        else if (p.key() == "skin-library")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            if ( !p.value().empty() ) skin->libraryName() = p.value();
+        }
+        else if (p.key() == "skin-tags")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->addTags( p.value() );
+        }
+        else if (p.key() == "skin-tiled")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->isTiled() = as<bool>( p.value(), false );
+        }
+        else if (p.key() == "skin-object-height")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->objectHeight() = as<float>( p.value(), 0.0f );
+        }
+        else if (p.key() == "skin-min-object-height")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->minObjectHeight() = as<float>( p.value(), 0.0f );
+        }
+        else if (p.key() == "skin-max-object-height")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->maxObjectHeight() = as<float>( p.value(), 0.0f );
+        }
+        else if (p.key() == "skin-random-seed")
+        {
+            if (!skin) skin = sc.getOrCreate<SkinSymbol>();
+            skin->randomSeed() = as<unsigned>( p.value(), 0u );
+        }
+
+    }
 
     return true;
 }

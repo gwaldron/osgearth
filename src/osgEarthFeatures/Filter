@@ -22,7 +22,9 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FilterContext>
+#include <osg/Matrixd>
 #include <list>
+
 
 namespace osgEarth { namespace Features
 {
@@ -45,6 +47,34 @@ namespace osgEarth { namespace Features
     };
 
     typedef std::list< osg::ref_ptr<FeatureFilter> > FeatureFilterList;
+
+    /**
+     * Base class for a filter that converts features into an osg Node.
+     */
+    class OSGEARTHFEATURES_EXPORT FeaturesToNodeFilter : public Filter
+    {
+    public:
+        virtual osg::Node* push( FeatureList& input, FilterContext& context ) =0;
+
+    public:
+
+        const osg::Matrixd& local2world() const { return _local2world; }
+
+        const osg::Matrixd& world2local() const { return _world2local; }
+        
+    protected:
+
+        // computes the matricies required to localizer/delocalize double-precision coords
+        void computeLocalizers( const FilterContext& context );
+
+        /** Parents the node with a localizer group if necessary */
+        osg::Node*  delocalize( osg::Node* node ) const;
+        osg::Group* delocalizeAsGroup( osg::Node* node ) const;
+        osg::Group* createDelocalizeGroup() const;
+
+
+        osg::Matrixd _world2local, _local2world;   // for coordinate localization
+    };
 
 } } // namespace osgEarth::Features
 

@@ -426,7 +426,7 @@ CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, doubl
 }
 
 bool
-CubeSpatialReference::preTransform(double& x, double& y, void* context) const
+CubeSpatialReference::preTransform(double& x, double& y, double& z, void* context) const
 {
     // Convert the incoming points from cube => face => lat/long.
     int face;
@@ -449,7 +449,7 @@ CubeSpatialReference::preTransform(double& x, double& y, void* context) const
 }
 
 bool
-CubeSpatialReference::postTransform(double& x, double& y, void* context) const
+CubeSpatialReference::postTransform(double& x, double& y, double& z, void* context) const
 {
     //Convert the incoming points from lat/lon back to face coordinates
     int face;
@@ -522,8 +522,8 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
         if ( crosses_pole ) // full x extent.
         {
             bool north = face == 4; // else south
-            to_srs->getGeographicSRS()->transform( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
-            to_srs->getGeographicSRS()->transform( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
+            to_srs->getGeographicSRS()->transform2D( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
+            to_srs->getGeographicSRS()->transform2D( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
         }
 
         else
@@ -563,8 +563,8 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
             }
             else
             {
-                bool ok1 = transform( lonmin, latmin, to_srs, in_out_xmin, in_out_ymin, context );
-                bool ok2 = transform( lonmax, latmax, to_srs, in_out_xmax, in_out_ymax, context );
+                bool ok1 = transform2D( lonmin, latmin, to_srs, in_out_xmin, in_out_ymin, context );
+                bool ok2 = transform2D( lonmax, latmax, to_srs, in_out_xmax, in_out_ymax, context );
                 ok = ok1 && ok2;
             }
         }

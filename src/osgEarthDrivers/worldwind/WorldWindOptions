@@ -30,8 +30,8 @@ namespace osgEarth { namespace Drivers
     class WorldWindOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<int>& maxLOD() { return _maxLOD; }
-        const optional<int>& maxLOD() const { return _maxLOD; }
+        optional<unsigned>& maxLOD() { return _maxLOD; }
+        const optional<unsigned>& maxLOD() const { return _maxLOD; }
 
         optional<std::string>& elevationCachePath() { return _elevationCachePath; }
         const optional<std::string>& elevationCachePath() const { return _elevationCachePath; }
@@ -39,15 +39,11 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& elevationURL() { return _elevationURL; }
         const optional<std::string>& elevationURL() const { return _elevationURL; }
 
-        // image support NYI ... use the "tileservice" plugin instead
-        //optional<std::string>& imageURL() { return _imageURL; }
-        //const optional<std::string>& imageURL() const { return _imageURL; }
-
     public:
         WorldWindOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
-            _maxLOD( 11 ),
+            _maxLOD      ( 11 ),
             _elevationURL( "http://worldwind25.arc.nasa.gov/wwelevation/wwelevation.aspx?T=srtm30pluszip" ),
-            _imageURL( "http://s0.tileservice.worldwindcentral.com/getTile?" )
+            _imageURL    ( "http://s0.tileservice.worldwindcentral.com/getTile?" )
         {
             setDriver( "worldwind" );
             fromConfig( _conf );
@@ -56,9 +52,9 @@ namespace osgEarth { namespace Drivers
     public:
         Config getConfig() const {
             Config conf = TileSourceOptions::getConfig();
-            conf.updateIfSet("image_url", _imageURL);
-            conf.updateIfSet("elevation_url", _elevationURL);
-            conf.updateIfSet("max_lod", _maxLOD);
+            conf.updateIfSet("image_url",       _imageURL);
+            conf.updateIfSet("elevation_url",   _elevationURL);
+            conf.updateIfSet("max_lod",         _maxLOD);
             conf.updateIfSet("elevation_cache", _elevationCachePath);
             return conf;
         }
@@ -71,9 +67,9 @@ namespace osgEarth { namespace Drivers
 
     private:
         void fromConfig( const Config& conf ) {
-            conf.getIfSet("image_url", _imageURL);
-            conf.getIfSet("elevation_url", _elevationURL);
-            conf.getIfSet("max_lod", _maxLOD);
+            conf.getIfSet("image_url",       _imageURL);
+            conf.getIfSet("elevation_url",   _elevationURL);
+            conf.getIfSet("max_lod",         _maxLOD);
             conf.getIfSet("elevation_cache", _elevationCachePath);
             conf.getIfSet("worldwind_cache", _elevationCachePath); // back compat
         }
@@ -81,7 +77,7 @@ namespace osgEarth { namespace Drivers
         optional<std::string> _imageURL;
         optional<std::string> _elevationURL;
         optional<std::string> _elevationCachePath;
-        optional<int>         _maxLOD;
+        optional<unsigned>    _maxLOD;
     };
 
 } } // namespace osgEarth::Drivers

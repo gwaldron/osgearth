@@ -298,7 +298,7 @@ StreamingTerrain::getImageryTaskService(int layerId)
 }
 
 TaskService*
-StreamingTerrain::getTileGenerationTaskSerivce()
+StreamingTerrain::getTileGenerationTaskService()
 {
     TaskService* service = getTaskService( TILE_GENERATION_TASK_SERVICE_ID );
     if (!service)

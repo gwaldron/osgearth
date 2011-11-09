@@ -28,6 +28,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/SparseTexture2DArray>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/TileKey>
 
 using namespace osgEarth;
 
@@ -203,9 +204,9 @@ namespace
         {
             sampler = new osg::Uniform(osg::Uniform::SAMPLER_2D_ARRAY, str);
             sampler->set(unit);
-            ss->addUniform(sampler);
+            ss->addUniform(sampler.get());
         }
-        return sampler;
+        return sampler.get();
     }
 
     void assignImage(osg::Texture2DArray* texture, int slot, osg::Image* image)

@@ -38,16 +38,12 @@ namespace osgEarth { namespace Features
     public:
         TransformFilter();
         TransformFilter( const osg::Matrixd& xform );
-        TransformFilter( const SpatialReference* outputSRS, bool outputGeocentric =false );
+        TransformFilter( const SpatialReference* outputSRS );
 
         /** Transform matrix to apply to each point. If there's is also an SRS conversion,
             the matrix will be applied first. */
         void setMatrix( const osg::Matrixd& mat ) { _mat = mat; }
         const osg::Matrixd& getMatrix() const { return _mat; }
-
-        /** Whether to convert the transformed coordinates into geocentric (default = false ) */
-        void setMakeGeocentric( bool value ) { _makeGeocentric = value; }
-        bool getMakeGeocentric() const { return _makeGeocentric; }
 
         /** Whether to localize coordinates to the bounding box centroid (to avoid precision jitter
             when turning the data into OSG geometry) */
@@ -59,7 +55,6 @@ namespace osgEarth { namespace Features
 
     protected:
         osg::ref_ptr<const SpatialReference> _outputSRS;
-        bool _makeGeocentric;
         osg::BoundingBoxd _bbox;
         bool _localize;
         osg::Matrixd _mat;

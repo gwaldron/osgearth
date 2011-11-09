@@ -22,6 +22,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/URI>
+#include <osg/ArgumentParser>
 #include <osg/PagedLOD>
 
 using namespace osgEarth;
@@ -118,6 +120,25 @@ public:
 
       unsigned int _numRemoved;
 };
+
+//---------------------------------------------------------------------------
+
+MapNode*
+MapNode::load(osg::ArgumentParser& args)
+{
+    for( unsigned i=1; i<args.argc(); ++i )
+    {
+        if ( args[i] && endsWith(args[i], ".earth") )
+        {
+            ReadResult r = URI(args[i]).readNode();
+            if ( r.succeeded() )
+            {
+                return r.release<MapNode>();
+            }
+        }
+    }    
+    return 0L;
+}
 
 //---------------------------------------------------------------------------
 
@@ -240,6 +261,10 @@ MapNode::init()
     _overlayDecorator = new OverlayDecorator();
     if ( _mapNodeOptions.overlayVertexWarping().isSet() )
         _overlayDecorator->setVertexWarping( *_mapNodeOptions.overlayVertexWarping() );
+    if ( _mapNodeOptions.overlayBlending().isSet() )
+        _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
+    if ( _mapNodeOptions.overlayTextureSize().isSet() )
+        _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
     addTerrainDecorator( _overlayDecorator.get() );
 
     // install any pre-existing model layers:
@@ -276,11 +301,6 @@ MapNode::init()
 
     dirtyBound();
 
-    // set the node up to initialize the terrain engine on the first update traversal.
-    // GW: no longer needed. terrain engine is post-initialized on demand now
-    // TODO: remove this comment after a while
-    //ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-
     // register for event traversals so we can deal with blacklisted filenames
     adjustEventTraversalCount( 1 );
 }
@@ -291,10 +311,10 @@ MapNode::~MapNode()
 
     ModelLayerVector modelLayers;
     _map->getModelLayers( modelLayers );
-    //Remove our model callback from any of the model layers in the map
+    //Remove our model callback from any of the model layers in the map    
     for (osgEarth::ModelLayerVector::iterator itr = modelLayers.begin(); itr != modelLayers.end(); ++itr)
     {
-        itr->get()->removeCallback(_modelLayerCallback.get() );
+        this->onModelLayerRemoved( itr->get() );        
     }
 }
 
@@ -478,45 +498,6 @@ struct MaskNodeFinder : public osg::NodeVisitor {
     std::list< osg::Group* > _groups;
 };
 
-#if 0
-void
-MapNode::onMaskLayerAdded( MaskLayer* layer )
-{
-    osg::Node* node = layer->getOrCreateNode();
-
-    if ( node && node->asGroup() )
-    {
-        int count = 0;
-        MaskNodeFinder f;
-        node->accept( f );
-        for( std::list<osg::Group*>::iterator i = f._groups.begin(); i != f._groups.end(); ++i )
-        {
-            (*i)->addChild( _terrainEngine );
-            count++;
-        }
-        this->replaceChild( _terrainEngine, node );
-        
-        OE_NOTICE<<"Installed terrain mask ("
-            <<count<< " mask nodes found)" << std::endl;
-
-        _maskLayerNode = node->asGroup();
-        dirtyBound();
-    }
-}
-
-void
-MapNode::onMaskLayerRemoved( MaskLayer* layer )
-{
-    if ( layer && _maskLayerNode )
-    {
-        osg::ref_ptr<osg::Node> child = _maskLayerNode->getChild( 0 );
-        this->replaceChild( _maskLayerNode, child.get() );
-        _maskLayerNode = 0L;
-        dirtyBound();
-    }
-}
-#endif
-
 void
 MapNode::addTerrainDecorator(osg::Group* decorator)
 {    
@@ -554,26 +535,6 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
             g = g->getParent(0);
         }
         dirtyBound();
-    }
-}
-
-void
-MapNode::installOverlayNode( osgSim::OverlayNode* overlay )
-{
-    if ( _terrainEngine.valid() )
-    {
-        overlay->addChild( _terrainEngine.get() );
-        this->replaceChild( _terrainEngine.get(), overlay );
-    }
-}
-
-void
-MapNode::uninstallOverlayNode( osgSim::OverlayNode* overlay )
-{
-    if ( _terrainEngine.valid() )
-    {
-        osg::ref_ptr<osg::Node> overlayChild = overlay->getChild( 0 );
-        this->replaceChild( overlay, overlayChild.get() );
     }
 }
 

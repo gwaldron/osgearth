@@ -21,20 +21,27 @@ SET(LIB_PUBLIC_HEADERS
     Expression
     ExtrusionSymbol
     Geometry
+    GeometryFactory
     GEOS
     GeometryRasterizer
     LineFunctor
     LineSymbol
+    MarkerResource
+    MarkerSymbol
     MeshConsolidator
     MeshSubdivider
-    MarkerSymbol
     PointSymbol
     PolygonSymbol
     Query
+    Resource
+    ResourceCache
+    ResourceLibrary
+    Skins
     StencilVolumeNode
     Style
     SLD
     Symbol
+    Tags
     TextSymbol
 )
 
@@ -47,15 +54,21 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Expression.cpp
     ExtrusionSymbol.cpp
     Geometry.cpp
+    GeometryFactory.cpp
     GEOS.cpp
     GeometryRasterizer.cpp
     LineSymbol.cpp
+    MarkerResource.cpp
+    MarkerSymbol.cpp
     MeshConsolidator.cpp
     MeshSubdivider.cpp
-    MarkerSymbol.cpp
     PointSymbol.cpp
     PolygonSymbol.cpp
     Query.cpp
+    Resource.cpp
+    ResourceCache.cpp
+    ResourceLibrary.cpp
+    Skins.cpp
     StencilVolumeNode.cpp
     Style.cpp
     SLD.cpp

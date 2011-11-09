@@ -96,18 +96,19 @@ namespace osgEarth
          * Gets the geometric boundary polygon representing the area of the
          * terrain to mask out.
          */
-        osg::Vec3dArray* getOrCreateBoundary( ProgressCallback* progress =0L );
+        osg::Vec3dArray* getOrCreateBoundary( float heightScale = 1.0, const SpatialReference* srs = NULL, ProgressCallback* progress =0L );
 
     public:
 
-        void initialize( const std::string& referenceURI, const Map* map );
+        void initialize( const osgDB::Options* dbOptions, const Map* map );
 
     private:
-        std::string _referenceURI;
-        MaskLayerOptions _initOptions, _runtimeOptions;
-        osg::ref_ptr<MaskSource> _maskSource;
-        Revision _maskSourceRev;
+        MaskLayerOptions              _initOptions;
+        MaskLayerOptions              _runtimeOptions;
+        osg::ref_ptr<MaskSource>      _maskSource;
+        Revision                      _maskSourceRev;
         osg::ref_ptr<osg::Vec3dArray> _boundary;
+        osg::ref_ptr<osgDB::Options>  _dbOptions;
 
         void copyOptions();
     };

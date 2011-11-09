@@ -1,0 +1,233 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_URI
+#define OSGEARTH_URI 1
+
+#include <osgEarth/Common>
+#include <osgEarth/CacheBin>
+#include <osgEarth/CachePolicy>
+#include <osgEarth/FileUtils>
+#include <osgEarth/IOTypes>
+#include <osgEarth/Progress>
+#include <osg/Image>
+#include <osg/Node>
+#include <osgDB/ReaderWriter>
+#include <iostream>
+#include <sstream>
+
+namespace osgEarth
+{
+    class URI;
+
+    /**
+     * Context for resolving relative URIs.
+     *
+     * This object provides "context" for a relative URI. In other words, it provides
+     * all of the information the system needs to resolve it to an absolute location from
+     * which OSG can load data.
+     *
+     * The "referrer" is the location of an object that "points" to the object in the 
+     * corresponding URI. The location conveyed by the URI will be relative to the location of
+     * its referrer. For example, a referrer of "http://server/folder/hello.xml" applied
+     * to the URI "there.jpg" will resolve to "http://server/folder/there.jpg". NOTE that referrer
+     * it not itself a location (like a folder); rather it's the object that referred to the URI
+     * being contextualized.
+     */
+    class OSGEARTH_EXPORT URIContext
+    {
+    public:
+        /** Creates an empty context. */
+        URIContext() { }
+
+        /** Creates a context that specifies a referring object. */
+        URIContext( const std::string& referrer ) : _referrer(referrer) { }
+
+        /** Copy constructor. */
+        URIContext( const URIContext& rhs ) : _referrer(rhs._referrer) { }
+
+        /** Serializes this context to an Options structure. This is useful when passing context information
+            to an osgDB::ReaderWriter that takes a stream as input -- the stream is anonymous, therefore this
+            is the preferred way to communicate the context information. */
+        void store( osgDB::Options* options );
+
+        /** Creates a context from the serialized version in an Options structure (see above) */
+        URIContext( const osgDB::Options* options );
+
+        /** Returns the referring object. */
+        const std::string& referrer() const { return _referrer; }
+
+        /** True if the context is empty */
+        bool empty() const { return _referrer.empty(); }
+
+        /** Parents the input context with the current object, placing the subContext's information
+            under it. Used to re-parent relative locations with a higher-level referrer object. */
+        URIContext add( const URIContext& subContext ) const;
+
+        /** Returns a new context with the sub path appended to the current referrer path. */
+        URIContext add( const std::string& subPath ) const;
+
+        /** creates a string suitable for passing to an osgDB::ReaderWriter implementation */
+        std::string getOSGPath( const std::string& target ) const;
+
+    private:
+        friend class URI;
+        std::string _referrer;
+    };
+
+    /**
+     * Stream container for reading a URI directly from a stream
+     */
+    class OSGEARTH_EXPORT URIStream
+    {
+    public:
+        URIStream( const URI& uri );
+
+        virtual ~URIStream();
+
+    public:
+        // auto-cast to istream
+        operator std::istream& ();
+
+    protected:
+        friend class URI;
+        std::istream*     _fileStream;
+        std::stringstream _bufStream;
+    };
+
+    /**
+     * Represents the location of a resource, providing the raw (original, possibly
+     * relative) and absolute forms.
+     */
+    class OSGEARTH_EXPORT URI
+    {
+    public:
+        /**
+         * Constructs an empty (and invalid) URI.
+         */
+        URI();
+
+        /** 
+         * Constructs a new URI from a location (typically an absolute url)
+         */
+        URI( const std::string& location );
+        
+        /**
+         * Constructs a new URI from a location and an existing context.
+         */
+        URI( const std::string& location, const URIContext& context );
+
+        /**
+         * Constructs a new URI from a string.
+         */
+        URI( const char* location );
+
+    public:
+
+        /** The base (possibly relative) location string. */
+        const std::string& base() const { return _baseURI; }
+
+        /** The fully qualified location string. */
+        const std::string& full() const { return _fullURI; }
+
+        /** The dereference operator also returns the fully qualified URI, since it's a common operation. */
+        const std::string& operator * () const { return _fullURI; }
+
+        /** Context with which this URI was created. */
+        const URIContext& context() const { return _context; }
+
+        /** Whether the URI is empty */
+        bool empty() const { return _baseURI.empty(); }
+
+        /** Whether the object of the URI is cacheable. */
+        bool isRemote() const;
+
+        /** Returns a copy of this URI with the suffix appended */
+        URI append( const std::string& suffix ) const;
+
+    public:
+
+        ReadResult readObject(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
+        ReadResult readImage(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
+        ReadResult readNode(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
+        ReadResult readString(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
+    public:
+
+        bool operator < ( const URI& rhs ) const { return _fullURI < rhs._fullURI; }
+
+    public:
+        /** Copier */
+        URI( const URI& rhs ) : _baseURI(rhs._baseURI), _fullURI(rhs._fullURI), _context(rhs._context) { }
+
+    public:
+        //TODO: methods to load data from the URI.
+
+    protected:
+        std::string _baseURI;
+        std::string _fullURI;
+        URIContext  _context;
+    };
+
+    
+//------------------------------------------------------------------------
+
+    // Config specifialization for URI:
+
+    template <> inline
+    void Config::addIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
+        if ( opt.isSet() ) {
+            add( Config(key, opt->base()) );
+        }
+    }
+
+    template<> inline
+    void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
+        if ( opt.isSet() ) {
+            remove(key);
+            add( Config(key, opt->base()) );
+        }
+    }
+
+    template<> inline
+    bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
+        if ( hasValue( key ) ) {
+            output = URI( value(key), _referrer );
+            return true;
+        }
+        else
+            return false;
+    }
+}
+
+#endif // OSGEARTH_URI

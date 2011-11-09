@@ -21,14 +21,14 @@
 #define OSGEARTH_REGISTRY 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Caching>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
-#include <osgEarth/ShaderComposition>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
+#include <osgDB/ReaderWriter>
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
@@ -36,6 +36,9 @@
 
 namespace osgEarth
 {    
+    class Cache;
+    class ShaderFactory;
+
     /**
      * Application-wide global repository.
      */
@@ -60,9 +63,13 @@ namespace osgEarth
         /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
         OpenThreads::ReentrantMutex& getGDALMutex();
 
-        /** Global override of map caching settings. */
-		Cache* getCacheOverride() const;
-		void setCacheOverride( Cache* cacheOverride );
+        /** The system-wide default cache. */
+        Cache* getCache() const;
+        void setCache( Cache* cache );
+
+        /** The system-wide default cache policy */
+        const CachePolicy& defaultCachePolicy() const { return _defaultCachePolicy; }
+        void setDefaultCachePolicy( const CachePolicy& policy ) { _defaultCachePolicy = policy; }
 
         /** Registers a mapping of a mime-type to an extension. A process fetching data
           * over HTTP can use this facility to determine the proper ReaderWriter to use
@@ -123,10 +130,27 @@ namespace osgEarth
          */
         UID createUID();
 
+        /**
+         * Gets or sets the local root of the system default cache.
+         */
+        void setCacheDirectory( const std::string& dir );
+
+        const std::string& getCacheDirectory() const;
+
+        /**
+         * Gets the default set of osgDB::Options to use.
+         */
+        const osgDB::Options* getDefaultOptions() const { return _defaultOptions.get(); }
+
+        /**
+         * Clones an options structure (fixing the archive caching), or creates
+         * a new one.
+         */
+        osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L ) const;
+
     protected:
         virtual ~Registry();
         Registry();
-
 
         void destruct();
 
@@ -144,11 +168,12 @@ namespace osgEarth
         // maps mime-types to extensions.
         MimeTypeExtensionMap _mimeTypeExtMap;
 
-		osg::ref_ptr<Cache> _cacheOverride;
+		osg::ref_ptr<Cache> _cache;
+        CachePolicy         _defaultCachePolicy;
 
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;
-        OpenThreads::Mutex _blacklistMutex;
+        Threading::ReadWriteMutex _blacklistMutex;
 
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
@@ -160,6 +185,8 @@ namespace osgEarth
 
         osg::ref_ptr< Capabilities > _caps;
         void initCapabilities();
+
+        osg::ref_ptr<osgDB::Options> _defaultOptions;
     };
 }
 

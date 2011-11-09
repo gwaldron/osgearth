@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/TileKey>
+#include <osgEarth/StringUtils>
 
 using namespace osgEarth;
 
@@ -46,9 +47,7 @@ TileKey::TileKey( unsigned int lod, unsigned int tile_x, unsigned int tile_y, co
 
         _extent = GeoExtent( _profile->getSRS(), xmin, ymin, xmax, ymax );
 
-        std::stringstream buf;
-        buf << _lod << "_" << _x << "_" << _y;
-        _key = buf.str();
+        _key = Stringify() << _lod << "/" << _x << "/" << _y;
     }
     else
     {
@@ -175,19 +174,4 @@ TileKey::createNeighborKey( TileKey::Direction dir ) const
         _y;        
 
     return TileKey( _lod, x, y, _profile.get() );
-}
-
-bool TileKey::isGeodetic() const
-{
-    return _profile->getProfileType() == Profile::TYPE_GEODETIC; //GLOBAL_GEODETIC;
-}
-
-bool TileKey::isMercator() const
-{
-    return _profile->getProfileType() == Profile::TYPE_MERCATOR; //GLOBAL_MERCATOR;
-}
-
-bool TileKey::isProjected() const
-{
-    return _profile->getProfileType() == Profile::TYPE_LOCAL; //PROJECTED;
 }

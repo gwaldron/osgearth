@@ -55,11 +55,12 @@ public:
     }
 
     // override
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+      void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
         //Set the profile
         setProfile( osgEarth::Registry::instance()->getGlobalMercatorProfile() );
 
+#if 0
         //Open the database
         std::string filename = _options.filename().value();
 
@@ -68,12 +69,13 @@ public:
         {
             filename = osgEarth::getFullPath(referenceURI, filename);
         }
+#endif
 
         int flags = SQLITE_OPEN_READONLY;
-        int rc = sqlite3_open_v2( filename.c_str(), &_database, flags, 0L );
+        int rc = sqlite3_open_v2( _options.filename()->c_str(), &_database, flags, 0L );
         if ( rc != 0 )
         {
-            OE_WARN << LC << "Failed to open database \"" << filename << "\": " << sqlite3_errmsg(_database) << std::endl;
+            OE_WARN << LC << "Failed to open database \"" << *_options.filename() << "\": " << sqlite3_errmsg(_database) << std::endl;
             return;
         }
 

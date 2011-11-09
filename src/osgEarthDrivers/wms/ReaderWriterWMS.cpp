@@ -37,6 +37,8 @@
 #include "TileService"
 #include "WMSOptions"
 
+#define LC "[WMS] "
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
@@ -45,7 +47,9 @@ using namespace osgEarth::Drivers;
 // a shared reference time.
 class SyncImageSequence : public osg::ImageSequence {
 public:
-    SyncImageSequence() { }
+    SyncImageSequence()
+    { 
+    }
 
     virtual void update(osg::NodeVisitor* nv) {
         setReferenceTime( 0.0 );
@@ -61,11 +65,8 @@ public:
     {
         if ( _options.times().isSet() )
         {
-            StringTokenizer izer( ",", "" );
-            izer.keepEmpties() = false;
-            izer.tokenize( *_options.times(), _timesVec );
-            //osgEarth::tokenize( _options.times().value(), _timesVec, ",", "", false );
-            //osgEarth::split( _options.times().value(), ",", _timesVec, false );
+            StringTokenizer( *_options.times(), _timesVec, ",", "", false, true );
+            OE_INFO << LC << "WMS-T: found " << _timesVec.size() << " times." << std::endl;
         }
 
         // localize it since we might override them:
@@ -74,25 +75,25 @@ public:
     }
 
     /** override */
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
     {
         osg::ref_ptr<const Profile> result;
 
-        char sep = _options.url()->find_first_of('?') == std::string::npos? '?' : '&';
+        char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
 
-        std::string capUrl = _options.capabilitiesUrl().value();
+        URI capUrl = _options.capabilitiesUrl().value();
         if ( capUrl.empty() )
         {
-            capUrl = 
-                _options.url().value() + 
+            capUrl = URI(
+                _options.url()->full() + 
                 sep + 
                 "SERVICE=WMS" +
                 "&VERSION=" + _options.wmsVersion().value() +
-                "&REQUEST=GetCapabilities";
+                "&REQUEST=GetCapabilities" );
         }
 
         //Try to read the WMS capabilities
-        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl, 0L ); //getOptions() );
+        osg::ref_ptr<WMSCapabilities> capabilities = WMSCapabilitiesReader::read( capUrl.full(), 0L ); //getOptions() );
         if ( !capabilities.valid() )
         {
             OE_WARN << "[osgEarth::WMS] Unable to read WMS GetCapabilities." << std::endl;
@@ -100,7 +101,7 @@ public:
         }
         else
         {
-            OE_INFO << "[osgEarth::WMS] Got capabilities from " << capUrl << std::endl;
+            OE_INFO << "[osgEarth::WMS] Got capabilities from " << capUrl.full() << std::endl;
         }
 
         if ( _formatToUse.empty() && capabilities.valid() )
@@ -122,7 +123,7 @@ public:
 
         // first the mandatory keys:
         buf
-            << std::fixed << _options.url().value() << sep
+            << std::fixed << _options.url()->full() << sep
             << "SERVICE=WMS"
             << "&VERSION=" << _options.wmsVersion().value()
             << "&REQUEST=GetMap"
@@ -207,14 +208,15 @@ public:
 
         // JPL uses an experimental interface called TileService -- ping to see if that's what
         // we are trying to read:
-        std::string tsUrl = _options.tileServiceUrl().value();
-        if (tsUrl.empty() )
+        URI tsUrl = _options.tileServiceUrl().value();
+        if ( tsUrl.empty() )
         {
-            tsUrl = _options.url().value() + sep + std::string("request=GetTileService");
+            tsUrl = URI(
+                _options.url()->full() + sep + std::string("request=GetTileService") );
         }
 
-        OE_INFO << "[osgEarth::WMS] Testing for JPL/TileService at " << tsUrl << std::endl;
-        _tileService = TileServiceReader::read(tsUrl, 0L); //getOptions());
+        OE_INFO << "[osgEarth::WMS] Testing for JPL/TileService at " << tsUrl.full() << std::endl;
+        _tileService = TileServiceReader::read(tsUrl.full(), 0L); //getOptions());
         if (_tileService.valid())
         {
             OE_INFO << "[osgEarth::WMS] Found JPL/TileService spec" << std::endl;
@@ -231,12 +233,18 @@ public:
             if (patterns.size() > 0)
             {
                 result = _tileService->createProfile( patterns );
-				_prototype = _options.url().value() + sep + patterns[0].getPrototype();
+                _prototype = _options.url()->full() + sep + patterns[0].getPrototype();
             }
         }
         else
         {
             OE_INFO << "[osgEarth::WMS] No JPL/TileService spec found; assuming standard WMS" << std::endl;
+        }
+
+        //Use the override profile if one is passed in.
+        if (overrideProfile)
+        {
+            result = overrideProfile;
         }
 
         //TODO: won't need this for OSG 2.9+, b/c of mime-type support
@@ -288,10 +296,10 @@ public:
                 {
                     Config ex = se.child("serviceexceptionreport").child("serviceexception");
                     if ( !ex.empty() ) {
-                        OE_NOTICE << "WMS Service Exception: " << ex.value() << std::endl;
+                        OE_NOTICE << "WMS Service Exception: " << ex.toJSON(true) << std::endl;
                     }
                     else {
-                        OE_NOTICE << "WMS Response: " << se.toString() << std::endl;
+                        OE_NOTICE << "WMS Response: " << se.toJSON(true) << std::endl;
                     }
                 }
                 else {
@@ -385,35 +393,11 @@ public:
 
         return image.release();
     }
-    
-    ///** creates a 3D image from timestamped data. */
-    //osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
-    //{
-    //    osg::ImageSequence* seq = new osg::ImageSequence();
-
-    //    for( int r=0; r<_timesVec.size(); ++r )
-    //    {
-    //        std::string extraAttrs = "TIME=" + _timesVec[r];
-
-    //        std::string uri = createURI(key);
-    //        std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
-    //        uri = uri + delim + extraAttrs;
-    //        uri = uri + "&." + _formatToUse;
-
-    //        seq->addImageFile( uri );
-    //    }
-
-    //    seq->play();
-    //    seq->setLength( (double)_timesVec.size() );
-    //    seq->setLoopingMode( osg::ImageStream::LOOPING );
-    //    
-    //    return seq;
-    //}
 
     /** creates a 3D image from timestamped data. */
     osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
     {
-        osg::ImageSequence* seq = new SyncImageSequence(); //osg::ImageSequence();
+        osg::ImageSequence* seq = new SyncImageSequence();
 
         seq->setLoopingMode( osg::ImageStream::LOOPING );
         seq->setLength( _options.secondsPerFrame().value() * (double)_timesVec.size() );
@@ -444,8 +428,7 @@ public:
 
 
     /** override */
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress)
     {
         osg::Image* image = createImage(key, progress);
         if (!image)

@@ -1,0 +1,93 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_KML_KMZ_ARCHIVE
+#define OSGEARTH_DRIVER_KML_KMZ_ARCHIVE 1
+
+#ifdef OSGEARTH_HAVE_MINIZIP
+#    define SUPPORT_KMZ 1
+#endif
+
+#ifdef SUPPORT_KMZ
+
+#include <osgDB/Archive>
+#include <osgEarth/URI>
+#include "unzip.h"  // minizip
+
+using namespace osgEarth;
+
+
+struct KMZArchive : public osgDB::Archive
+{
+    KMZArchive( const URI& archiveURI );
+
+    virtual ~KMZArchive();
+
+    /** closes the archive */
+    void close();
+
+    /** Get the file name which represents the archived file.*/
+    std::string getArchiveFileName() const;
+
+    /** Get the file name which represents the master file recorded in the Archive.*/
+    std::string getMasterFileName() const ;
+
+    /** return true if file exists in archive.*/
+    bool fileExists(const std::string& filename) const;
+
+    /** return type of file. */
+    osgDB::FileType getFileType(const std::string& filename) const;
+
+    typedef osgDB::DirectoryContents FileNameList;
+
+    /** Get the full list of file names available in the archive.*/
+    bool getFileNames(FileNameList& fileNames) const;
+
+    /** return the contents of a directory.
+      * returns an empty array on any error.*/
+    osgDB::DirectoryContents getDirectoryContents(const std::string& dirName) const;
+
+    /** reads a file from the archive into an io buffer. */
+    bool readToBuffer( const std::string& fileInZip, std::ostream& iobuf ) const;
+
+    ReadResult readImage(const std::string& filename, const Options* options =NULL) const;
+
+    ReadResult readNode(const std::string& filename, const Options* options =NULL) const;
+
+    ReadResult readObject(const std::string& filename, const Options* options =NULL) const;
+
+    // stubs
+    ReadResult readShader(const std::string&, const Options* =NULL) const { return ReadResult::NOT_IMPLEMENTED; }
+    ReadResult readHeightField(const std::string&, const Options* =NULL) const { return ReadResult::NOT_IMPLEMENTED; }
+    WriteResult writeObject(const osg::Object&, const std::string&,const Options* =NULL) const { return WriteResult::NOT_IMPLEMENTED; }
+    WriteResult writeImage(const osg::Image&, const std::string&,const Options* =NULL) const { return WriteResult::NOT_IMPLEMENTED; }
+    WriteResult writeHeightField(const osg::HeightField&,const std::string&,const Options* =NULL) const { return WriteResult::NOT_IMPLEMENTED; }
+    WriteResult writeNode(const osg::Node&, const std::string&,const Options* =NULL) const { return WriteResult::NOT_IMPLEMENTED; }
+    WriteResult writeShader(const osg::Shader&, const std::string&, const Options* =NULL) const { return WriteResult::NOT_IMPLEMENTED; }
+
+private:
+    URI            _archiveURI;
+    unzFile        _uf;
+    void*          _buf;
+    unsigned       _bufsize;
+};
+
+
+#endif // SUPPORT_KMZ
+
+#endif // OSGEARTH_DRIVER_KML_KMZ_ARCHIVE

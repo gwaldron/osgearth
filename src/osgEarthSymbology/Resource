@@ -1,0 +1,55 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHSYMBOLOGY_RESOURCE_H
+#define OSGEARTHSYMBOLOGY_RESOURCE_H 1
+
+#include <osgEarthSymbology/Common>
+#include <osgEarthSymbology/Tags>
+#include <osgEarth/Config>
+
+namespace osgEarth { namespace Symbology
+{
+    /**
+     * Base class for a Resource, which is an external data element managed
+     * by a ResourceLibrary.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT Resource : public Taggable<osg::Referenced>
+    {
+    protected:
+        Resource( const Config& config =Config() );
+
+    public: // properties
+
+        /** Readable name of the resource. */
+        std::string& name() { return _name; }
+        const std::string& name() const { return _name; }
+
+    public: // serialization functions
+
+        virtual Config getConfig() const;
+        void mergeConfig( const Config& conf );
+
+    private:
+        std::string _name;
+    };
+
+} } // namespace osgEarth::Symbology
+
+#endif // OSGEARTHSYMBOLOGY_SKIN_RESOURCE_H

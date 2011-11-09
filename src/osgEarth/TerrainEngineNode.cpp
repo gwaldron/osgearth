@@ -20,6 +20,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
 #include <osgEarth/FindNode>
+#include <osgEarth/TextureCompositor>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
@@ -104,13 +105,6 @@ TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
         _layerOpacityUniform.setElement( layerNum, layer->getOpacity() );
     else
         OE_WARN << LC << "Odd, onOpacityChanged did not find layer" << std::endl;
-}
-
-// this handler adjusts the uniform set when an image layer's "gamma" value changes
-void
-TerrainEngineNode::ImageLayerController::onGammaChanged( ImageLayer* layer )
-{
-    //TODO
 }
 
 //------------------------------------------------------------------------
@@ -312,7 +306,7 @@ TerrainEngineNode::updateImageUniforms()
         // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
         // "ghost" layers that used to exist at a given index, but no longer do.
         
-        _imageLayerController->_layerEnabledUniform.attach( "osgearth_ImageLayerEnabled", osg::Uniform::BOOL,  stateSet, 64 );
+        _imageLayerController->_layerEnabledUniform.attach( "osgearth_ImageLayerEnabled", osg::Uniform::BOOL,  stateSet, 16 );
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
 
@@ -411,7 +405,6 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
     {
         TerrainOptions terrainOptions( options );
         result->validateTerrainOptions( terrainOptions );
-        //result->initialize( map, terrainOptions );
     }
     else
     {

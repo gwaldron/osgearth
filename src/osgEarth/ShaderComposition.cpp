@@ -129,6 +129,9 @@ VirtualProgram::removeShader( const std::string& shaderSemantic, osg::Shader::Ty
     _shaderMap.erase( ShaderMap::key_type( shaderSemantic, type ) );
 }
 
+static unsigned s_applies = 0;
+static int      s_framenum = 0;
+
 void
 VirtualProgram::apply( osg::State & state ) const
 {
@@ -235,7 +238,7 @@ VirtualProgram::apply( osg::State & state ) const
         }
 
         // finally, apply the program attribute.
-        state.applyAttribute( program );
+        program->apply( state );
     }
     else
     {
@@ -509,9 +512,11 @@ osg::Shader*
 ShaderFactory::createDefaultLightingFragmentShader() const
 {
     static char s_PerVertexLighting_FragmentShaderSource[] =
-        "void osgearth_frag_applyLighting( inout vec4 color )                            \n"
+        "void osgearth_frag_applyLighting( inout vec4 color )                       \n"
         "{                                                                          \n"
+        "    float alpha = color.a;                                                 \n"
         "    color = color * gl_Color + gl_SecondaryColor;                          \n"
+        "    color.a = alpha;                                                       \n"
         "}                                                                          \n";
 
     return new osg::Shader( osg::Shader::FRAGMENT, s_PerVertexLighting_FragmentShaderSource );

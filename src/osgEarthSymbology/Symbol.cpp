@@ -23,9 +23,9 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-Symbol::Symbol()
+Symbol::Symbol( const Config& conf )
 {
-    //NOP
+    _uriContext = URIContext(conf.referrer());
 }
 
 //------------------------------------------------------------------------

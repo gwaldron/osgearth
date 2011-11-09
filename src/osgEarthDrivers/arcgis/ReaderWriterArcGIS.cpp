@@ -22,6 +22,8 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
+#include <osgEarth/URI>
+
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -69,20 +71,20 @@ public:
         if ( _format.empty() )
             _format = "png";
 
-        std::string url = _options.url().value();
+        URI url = _options.url().value();
         //Add the token if necessary
         if (_options.token().isSet())
         {
             std::string token = _options.token().value();
             if (!token.empty())
             {
-                std::string sep = url.find( "?" ) == std::string::npos ? "?" : "&";
-                url = url + sep + "token=" + token;
+                std::string sep = url.full().find( "?" ) == std::string::npos ? "?" : "&";
+                url = url.append( sep + "token=" + token );
             }
         }
 
         // read metadata from the server
-        if ( !_map_service.init( url ) ) //, getOptions()) )
+        if ( !_map_service.init( url.full() ) ) //, getOptions()) )
         {
             OE_WARN << "[osgearth] [ArcGIS] map service initialization failed: "
                 << _map_service.getError() << std::endl;
@@ -90,8 +92,10 @@ public:
     }
 
     // override
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
+        _dbOptions = dbOptions;
+
         const Profile* profile = NULL;
 
         if ( _profileConf.isSet() )
@@ -152,8 +156,7 @@ public:
     }
 
     // override
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage(const TileKey& key, ProgressCallback* progress)
     {
         std::stringstream buf;
 
@@ -169,7 +172,7 @@ public:
 
         if ( _map_service.isTiled() )
         {
-            buf << _options.url().value() << "/tile"
+            buf << _options.url()->full() << "/tile"
                 << "/" << level
                 << "/" << tile_y
                 << "/" << tile_x << "." << f;
@@ -179,7 +182,7 @@ public:
             const GeoExtent& ex = key.getExtent();
 
             buf << std::setprecision(16)
-                << _options.url().value() << "/export"
+                << _options.url()->full() << "/export"
                 << "?bbox=" << ex.xMin() << "," << ex.yMin() << "," << ex.xMax() << "," << ex.yMax()
                 << "&format=" << f 
                 << "&size=256,256"
@@ -206,8 +209,7 @@ public:
         osg::ref_ptr<osg::Image> image;
 		std::string bufStr;
 		bufStr = buf.str();
-        HTTPClient::readImageFile( bufStr, image, 0L, progress ); //getOptions(), progress );
-        return image.release();
+        return URI(bufStr).readImage( 0L, CachePolicy::NO_CACHE, progress ).releaseImage();
     }
 
     // override
@@ -231,6 +233,7 @@ private:
     std::string _layer;
     std::string _format;
     MapService _map_service;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

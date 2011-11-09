@@ -18,25 +18,21 @@
 */
 
 #include <osgEarth/CacheSeed>
-#include <osgEarth/Caching>
 #include <OpenThreads/ScopedLock>
 #include <limits.h>
+
+#define LC "[CacheSeed] "
 
 using namespace osgEarth;
 using namespace OpenThreads;
 
 void CacheSeed::seed( Map* map )
 {
-    //Threading::ScopedReadLock lock( map->getMapDataMutex() );
-
-    if ( !map->getMapOptions().cache().isSet() )
-    //if (!map->getCache())
+    if ( !map->getCache() )
     {
-        OE_WARN << "Warning:  Map does not have a cache defined, please define a cache." << std::endl;
+        OE_WARN << LC << "Warning: No cache defined; aborting." << std::endl;
         return;
     }
-
-//    osg::ref_ptr<MapEngine> engine = new MapEngine(); //map->createMapEngine();
 
     std::vector<TileKey> keys;
     map->getProfile()->getRootKeys(keys);
@@ -60,25 +56,25 @@ void CacheSeed::seed( Map* map )
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
 		ImageLayer* layer = i->get();
-        TileSource* src = i->get()->getTileSource();
+        TileSource* src   = layer->getTileSource();
+
         const ImageLayerOptions& opt = layer->getImageLayerOptions();
 
-        if ( opt.cacheOnly() == true )
+        if ( layer->isCacheOnly() )
         {
-            OE_WARN << "Warning:  Cannot seed b/c Layer \"" << layer->getName() << "\" is cache only." << std::endl;
-            return;
+            OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" is set to cache-only; skipping." << std::endl;
         }
         else if (!src)
         {
-            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource." << std::endl;
+            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource; skipping." << std::endl;
         }
         else if ( !src->supportsPersistentCaching() )
         {
-            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
+            OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" does not support seeding; skipping." << std::endl;
         }
         else if ( !layer->getCache() )
         {
-            OE_NOTICE << "Notice: Layer \"" << layer->getName() << "\" has no persistent cache defined; skipping." << std::endl;
+            OE_WARN << LC << "Notice: Layer \"" << layer->getName() << "\" has no cache defined; skipping." << std::endl;
         }
         else
         {
@@ -94,25 +90,24 @@ void CacheSeed::seed( Map* map )
     for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); i++ )
     {
 		ElevationLayer* layer = i->get();
-        TileSource* src = i->get()->getTileSource();
+        TileSource*     src   = layer->getTileSource();
         const ElevationLayerOptions& opt = layer->getElevationLayerOptions();
 
-        if ( opt.cacheOnly().get())
+        if ( layer->isCacheOnly() )
         {
-            OE_WARN << "Warning:  Cannot seed b/c Layer \"" << layer->getName() << "\" is cache only." << std::endl;
-            return;
+            OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" is set to cache-only; skipping." << std::endl;
         }
         else if (!src)
         {
-            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource." << std::endl;
+            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" could not create TileSource; skipping." << std::endl;
         }
         else if ( !src->supportsPersistentCaching() )
         {
-            OE_WARN << "Warning: Layer \"" << layer->getName() << "\" does not support seeding." << std::endl;
+            OE_WARN << LC << "Warning: Layer \"" << layer->getName() << "\" does not support seeding; skipping." << std::endl;
         }
         else if ( !layer->getCache() )
         {
-            OE_NOTICE << "Notice: Layer \"" << src->getName() << "\" has no persistent cache defined; skipping." << std::endl;
+            OE_WARN << LC << "Notice: Layer \"" << layer->getName() << "\" has no cache defined; skipping." << std::endl;
         }
         else
         {
@@ -125,9 +120,9 @@ void CacheSeed::seed( Map* map )
 		}
     }
 
-    if (!hasCaches)
+    if ( !hasCaches )
     {
-        OE_NOTICE << "There are either no caches defined in the map, or no sources to cache. Exiting." << std::endl;
+        OE_WARN << LC << "There are either no caches defined in the map, or no sources to cache; aborting." << std::endl;
         return;
     }
 
@@ -136,7 +131,7 @@ void CacheSeed::seed( Map* map )
         _maxLevel = src_max_level;
     }
 
-    OE_NOTICE << "Maximum cache level will be " << _maxLevel << std::endl;
+    OE_NOTICE << LC << "Maximum cache level will be " << _maxLevel << std::endl;
 
     for (unsigned int i = 0; i < keys.size(); ++i)
     {
@@ -152,20 +147,20 @@ CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
     key.getTileXY(x, y);
     lod = key.getLevelOfDetail();
 
-//	osg::ref_ptr<osgEarth::VersionedTerrain> terrain = new osgEarth::VersionedTerrain( map, engine );
+    bool gotData = true;
 
     if ( _minLevel <= lod && _maxLevel >= lod )
     {
-//        OE_NOTICE << "Caching tile = " << key.str() << std::endl; //<< lod << " (" << x << ", " << y << ") " << std::endl;
-	if ( _progress.valid() && _progress->reportProgress(0, 0, "Caching tile: " + key.str()) )
-	    return; // Task has been cancelled by user
+        gotData = cacheTile( mapf, key );
 
-        cacheTile( mapf, key );
-  //      bool validData;
-		//osg::ref_ptr<osg::Node> node = engine->createTile( map, terrain.get(), key, true, false, false, validData );        
+    	if ( _progress.valid() && _progress->isCanceled() )
+	        return; // Task has been cancelled by user
+
+        if ( _progress.valid() && gotData && _progress->reportProgress(0, 0, "Cached tile: " + key.str()) )
+            return; // Canceled
     }
 
-    if (lod <= _maxLevel)
+    if ( gotData && lod <= _maxLevel )
     {
         TileKey k0 = key.createChildKey(0);
         TileKey k1 = key.createChildKey(1);
@@ -185,15 +180,19 @@ CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
     }
 }
 
-void
+bool
 CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
 {
+    bool gotData = false;
+
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); i++ )
     {
         ImageLayer* layer = i->get();
         if ( layer->isKeyValid( key ) )
         {
             GeoImage image = layer->createImage( key );
+            if ( image.valid() )
+                gotData = true;
         }
     }
 
@@ -201,5 +200,9 @@ CacheSeed::cacheTile(const MapFrame& mapf, const TileKey& key ) const
     {
         osg::ref_ptr<osg::HeightField> hf;
         mapf.getHeightField( key, false, hf );
+        if ( hf.valid() )
+            gotData = true;
     }
+
+    return gotData;
 }

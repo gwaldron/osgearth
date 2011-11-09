@@ -81,7 +81,7 @@ public:
     }
 
     // Yahoo! uses spherical mercator, but the top LOD is a 2x2 tile set.
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
     {
         if ( overrideProfile )
             setProfile( overrideProfile );
@@ -95,10 +95,24 @@ public:
         GeometryRasterizer rasterizer( 256, 256 );
         rasterizer.draw( _geom.get(), colors[key.getLevelOfDetail() % 4] );
         osg::Image* image = rasterizer.finalize();
-
+        
         // next render the tile key text:
-        std::stringstream buf;
-        buf << key.str();
+        std::stringstream buf;        
+        if (*_options.tms())
+        {
+            //Print out a TMS key for the TileKey
+            unsigned int tileX, tileY;
+            key.getTileXY(tileX, tileY);        
+            unsigned int numRows, numCols;
+            key.getProfile()->getNumTiles(key.getLevelOfDetail(), numCols, numRows);
+            tileY  = numRows - tileY - 1;
+            buf << key.getLevelOfDetail() << "/" << tileX << "/" << tileY;
+        }
+        else
+        {
+            buf << key.str();
+        }        
+        
         std::string text = buf.str();
 
         unsigned x = 10, y = 10;

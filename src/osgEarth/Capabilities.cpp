@@ -102,6 +102,7 @@ _maxFFPTextureUnits     ( 1 ),
 _maxGPUTextureUnits     ( 1 ),
 _maxGPUTextureCoordSets ( 1 ),
 _maxTextureSize         ( 256 ),
+_maxFastTextureSize     ( 256 ),
 _maxLights              ( 1 ),
 _supportsGLSL           ( false ),
 _GLSLversion            ( 1.0f ),
@@ -225,9 +226,18 @@ _supportsQuadBufferStereo( false )
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
 
-        bool isATI = _vendor.length() >= 4 && ::strncmp(_vendor.c_str(), "ATI ", 4) == 0;
+        // ATI workarounds:
+        bool isATI = _vendor.find("ATI ") == 0;
 
         _supportsMipmappedTextureUpdates = isATI && enableATIworkarounds ? false : true;
+        OE_INFO << LC << "  Mipmapped texture updates = " << SAYBOOL(_supportsMipmappedTextureUpdates) << std::endl;
+
+        // Intel workarounds:
+        bool isIntel = 
+            _vendor.find("Intel ")   != std::string::npos ||
+            _vendor.find("Intel(R)") != std::string::npos;
+        _maxFastTextureSize = isIntel ? std::min(2048, _maxTextureSize) : _maxTextureSize;
+        OE_INFO << LC << "Max Fast Texture Size = " << _maxFastTextureSize << std::endl;
     }
 
     // delete the final object of the graphics context

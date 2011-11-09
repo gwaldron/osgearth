@@ -1,0 +1,72 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_KML_COMMON
+#define OSGEARTH_DRIVER_KML_COMMON 1
+
+#include <osgEarth/Common>
+#include <osgEarth/URI>
+#include <osgEarth/MapNode>
+#include <osgEarthSymbology/Style>
+#include "KMLOptions"
+
+#define LC "[KML] "
+
+using namespace osgEarth;
+using namespace osgEarth::Drivers;
+using namespace osgEarth::Symbology;
+
+#define for_one( NAME, FUNC, CONF, CX ) \
+{ \
+    Config c = conf.child( toLower( #NAME ) ); \
+    if ( !c.empty() ) { \
+        KML_##NAME instance; \
+        instance. FUNC (c, CX); \
+    } \
+}
+
+#define for_many( NAME, FUNC, CONF, CX ) \
+{ \
+   ConfigSet c = conf.children( toLower( #NAME ) ); \
+   for( ConfigSet::const_iterator i = c.begin(); i != c.end(); ++i ) { \
+        KML_##NAME instance; \
+        instance. FUNC (*i, CX); \
+   } \
+}
+
+#define for_features( FUNC, CONF, CX ) \
+    for_many( Document,      FUNC, CONF, CX ); \
+    for_many( Folder,        FUNC, CONF, CX ); \
+    for_many( PhotoOverlay,  FUNC, CONF, CX ); \
+    for_many( ScreenOverlay, FUNC, CONF, CX ); \
+    for_many( GroundOverlay, FUNC, CONF, CX ); \
+    for_many( NetworkLink,   FUNC, CONF, CX ); \
+    for_many( Placemark,     FUNC, CONF, CX );
+
+struct KMLContext
+{
+    MapNode*                              _mapNode;
+    const KMLOptions*                     _options;
+    osg::ref_ptr<StyleSheet>              _sheet;
+    Style                                 _activeStyle;
+    std::stack<osg::ref_ptr<osg::Group> > _groupStack;
+};
+
+
+#endif // OSGEARTH_DRIVER_KML_READER
+

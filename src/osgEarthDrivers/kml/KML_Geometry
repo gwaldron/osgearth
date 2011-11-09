@@ -1,0 +1,40 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_KML_KML_GEOMETRY
+#define OSGEARTH_DRIVER_KML_KML_GEOMETRY 1
+
+#include "KML_Object"
+#include <osgEarthSymbology/Geometry>
+
+using namespace osgEarth;
+using namespace osgEarth::Symbology;
+
+struct KML_Geometry : public KML_Object
+{
+    KML_Geometry() : _extrude(false), _tessellate(false) { }
+    virtual void parseCoords( const Config& conf, KMLContext& cx );
+    virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
+    virtual void build( const Config& confParent, KMLContext& cx, Style& style );
+    void buildChild( const Config& conf, KMLContext& cx, Style& style );
+    osg::ref_ptr<Geometry> _geom;
+    bool _extrude, _tessellate;
+private:    
+};
+
+#endif // OSGEARTH_DRIVER_KML_KML_GEOMETRY

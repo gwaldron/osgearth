@@ -22,9 +22,9 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/GeoData>
+#include <osgEarth/URI>
 #include <osg/Referenced>
 #include <osg/ref_ptr>
-#include <osgEarth/Common>
 
 #include <osgDB/ReaderWriter>
 #include <osg/Version>
@@ -129,7 +129,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT WFSCapabilitiesReader
     {
     public:
-        static WFSCapabilities* read( const std::string &location, const osgDB::ReaderWriter::Options *options );
+        static WFSCapabilities* read( const URI& uri, const osgDB::Options* options );
         static WFSCapabilities* read( std::istream &in );
     private:
         WFSCapabilitiesReader(){}

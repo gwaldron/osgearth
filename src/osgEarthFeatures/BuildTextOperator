@@ -34,14 +34,15 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT BuildTextOperator
     {
     public:
-		    BuildTextOperator(bool hideClutter=false) : _hideClutter(hideClutter) { };
+        BuildTextOperator(bool hideClutter=false) : _hideClutter(hideClutter) { };
     public:
         osg::Node* operator()(
             const FeatureList& features, 
             const osgEarth::Symbology::TextSymbol *symbol,
             const FilterContext& context);
+
     protected:
-	    bool _hideClutter;
+        bool _hideClutter;
     };
 
 } } // namespace osgEarth::Features

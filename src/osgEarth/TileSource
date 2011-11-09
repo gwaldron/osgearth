@@ -27,7 +27,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/TileKey>
 #include <osgEarth/Profile>
-#include <osgEarth/Caching>
+#include <osgEarth/MemCache>
 #include <osgEarth/Progress>
 #include <osgEarth/ThreadingUtils>
 
@@ -83,8 +83,8 @@ namespace osgEarth
             : DriverConfigOptions( options ),
               _tileSize( 256 ),
               _noDataValue( (float)SHRT_MIN ),
-              _noDataMinValue( -FLT_MAX ),
-              _noDataMaxValue( FLT_MAX ),
+              _noDataMinValue( -32000.0f ),
+              _noDataMaxValue(  32000.0f ),
               _L2CacheSize( 16 )
         { 
             fromConfig( _conf );
@@ -98,7 +98,6 @@ namespace osgEarth
             conf.updateIfSet( "nodata_min", _noDataMinValue );
             conf.updateIfSet( "nodata_max", _noDataMaxValue );
             conf.updateIfSet( "blacklist_filename", _blacklistFilename);
-            //conf.updateIfSet( "enable_l2_cache", _enableL2Cache );
             conf.updateIfSet( "l2_cache_size", _L2CacheSize );
             conf.updateObjIfSet( "profile", _profileOptions );
             return conf;
@@ -117,7 +116,6 @@ namespace osgEarth
             conf.getIfSet( "nodata_min", _noDataMinValue );
             conf.getIfSet( "nodata_max", _noDataMaxValue );
             conf.getIfSet( "blacklist_filename", _blacklistFilename);
-            //conf.getIfSet( "enable_l2_cache", _enableL2Cache );
             conf.getIfSet( "l2_cache_size", _L2CacheSize );
             conf.getObjIfSet( "profile", _profileOptions );
 
@@ -234,17 +232,17 @@ namespace osgEarth
     	 * Creates an image for the given TileKey
 		 */
         virtual osg::Image* createImage(
-            const TileKey& key,
-            ImageOperation* op =0L,
-            ProgressCallback* progress =0L );
+            const TileKey&        key,
+            ImageOperation*       op        =0L,
+            ProgressCallback*     progress  =0L );
 
         /**
          * Creates a heightfield for the given TileKey
          */
         virtual osg::HeightField* createHeightField(
-            const TileKey& key,
-            HeightFieldOperation* prepOp =0L,
-            ProgressCallback* progress = 0L );     
+            const TileKey&        key,
+            HeightFieldOperation* op        =0L,
+            ProgressCallback*     progress  =0L );     
 
     public:
 
@@ -331,20 +329,27 @@ namespace osgEarth
          */
         virtual bool isDynamic() const { return false; }
 
+		/**
+		 * Initializes the TileSource.
+         *
+         * This is the initialize() function called by the osgEarth engine. You can define it in 
+         * the implementation class to do initial startup of the TileSource.
+		 */
+        virtual void initialize( 
+            const osgDB::Options* dbOptions       =0L,
+            const Profile*        overrideProfile =0L ) =0;
 
+        /** The options used to construct this tile source. */
+        const TileSourceOptions& getOptions() const { return _options; }
+
+    public:
+
+        /* methods required by osg::Object */
         virtual osg::Object* cloneType() const { return 0; } // cloneType() not appropriate
         virtual osg::Object* clone(const osg::CopyOp&) const { return 0; } // clone() not appropriate
         virtual bool isSameKindAs(const osg::Object* obj) const { return dynamic_cast<const TileSource*>(obj)!=NULL; }
         virtual const char* className() const { return "TileSource"; }
         virtual const char* libraryName() const { return "osgEarth"; }
-
-		/**
-		 * Initialize the TileSource.  The profile should be computed and set here using setProfile()
-		 */
-		virtual void initialize( const std::string& referenceURI, const Profile* overrideProfile = NULL) = 0;
-
-        const TileSourceOptions& getOptions() const {
-            return _options; }
    
     protected:
 
@@ -354,13 +359,19 @@ namespace osgEarth
 		 * Creates an image for the given TileKey.
          * The returned object is new and is the responsibility of the caller.
 		 */
-		virtual osg::Image* createImage( const TileKey& key, ProgressCallback* progress ) = 0;
+		virtual osg::Image* createImage( 
+            const TileKey&        key, 
+            //const osgDB::Options* options,
+            ProgressCallback*     progress ) = 0;
 
         /**
          * Creates a heightfield for the given TileKey
          * The returned object is new and is the responsibility of the caller.
          */
-        virtual osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress );
+        virtual osg::HeightField* createHeightField( 
+            const TileKey&        key, 
+            //const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
 
 		/**
 		 * Called by subclasses to initialize their profile
@@ -368,8 +379,9 @@ namespace osgEarth
 		void setProfile( const Profile* profile );
 
     private:
+
         osg::ref_ptr<const Profile> _profile;
-        const TileSourceOptions _options;
+        const TileSourceOptions     _options;
 
         friend class Map;
         friend class MapEngine;
@@ -381,7 +393,6 @@ namespace osgEarth
 		osg::ref_ptr<MemCache> _memCache;
 
         DataExtentList _dataExtents;
-        //osg::ref_ptr< RTree<unsigned int> > _dataExtentsIndex;
     };
 
     

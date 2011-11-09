@@ -30,6 +30,8 @@ ElevationQuery::postCTOR()
     _technique        = TECHNIQUE_PARAMETRIC;
     _interpolation    = INTERP_BILINEAR;
     _maxLevelOverride = -1;
+    _queries          = 0.0;
+    _totalTime        = 0.0;
 
     // Limit the size of the cache we'll use to cache heightfields. This is an
     // LRU cache.
@@ -126,12 +128,32 @@ ElevationQuery::getElevations(std::vector<osg::Vec3d>& points,
 }
 
 bool
+ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
+                              const SpatialReference*        pointsSRS,
+                              std::vector<double>&           out_elevations,
+                              double                         desiredResolution )
+{
+    sync();
+    for( osg::Vec3dArray::const_iterator i = points.begin(); i != points.end(); ++i )
+    {
+        double elevation;
+        if ( getElevationImpl( *i, pointsSRS, elevation, desiredResolution ) )
+        {
+            out_elevations.push_back( elevation );
+        }
+    }
+    return true;
+}
+
+bool
 ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
                                  const SpatialReference* pointSRS,
                                  double&                 out_elevation,
                                  double                  desiredResolution,
                                  double*                 out_actualResolution)
 {
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
     if ( _maxDataLevel == 0 || _tileSize == 0 )
     {
         // this means there are no heightfields.
@@ -155,7 +177,7 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
     osg::Vec3d mapPoint = point;
     if ( pointSRS && !pointSRS->isEquivalentTo( _mapf.getProfile()->getSRS() ) )
     {
-        if ( !pointSRS->transform( point.x(), point.y(), _mapf.getProfile()->getSRS(), mapPoint.x(), mapPoint.y() ) )
+        if ( !pointSRS->transform2D( point.x(), point.y(), _mapf.getProfile()->getSRS(), mapPoint.x(), mapPoint.y() ) )
         {
             OE_WARN << LC << "Fail: coord transform failed" << std::endl;
             return false;
@@ -226,11 +248,13 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         _tileCache.insert( key, tile.get() );
     }
 
-    OE_DEBUG << LC << "LRU Cache, hit ratio = " << _tileCache.getHitRatio() << std::endl;
+    OE_DEBUG << LC << "LRU Cache, hit ratio = " << _tileCache.getStats()._hitRatio << std::endl;
 
     // see what the actual resolution of the heightfield is.
     if ( out_actualResolution )
         *out_actualResolution = (double)hf->getXInterval();
+
+    bool result = true;
 
     // finally it's time to get a height value:
     if ( _technique == TECHNIQUE_PARAMETRIC )
@@ -240,7 +264,6 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         double yInterval = extent.height() / (double)(hf->getNumRows()-1);
         out_elevation = (double) HeightFieldUtils::getHeightAtLocation( 
             hf.get(), mapPoint.x(), mapPoint.y(), extent.xMin(), extent.yMin(), xInterval, yInterval );
-        return true;
     }
     else // ( _technique == TECHNIQUE_GEOMETRIC )
     {
@@ -275,10 +298,15 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
             out_elevation = (isectPoint-end).length2() > (zero-end).length2()
                 ? (isectPoint-zero).length()
                 : -(isectPoint-zero).length();
-            return true;            
         }
 
         OE_DEBUG << LC << "No intersection" << std::endl;
-        return false;
+        result = false;
     }
+
+    osg::Timer_t end = osg::Timer::instance()->tick();
+    _queries++;
+    _totalTime += osg::Timer::instance()->delta_s( start, end );
+
+    return result;
 }

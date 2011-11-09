@@ -22,6 +22,7 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 LineSymbol::LineSymbol( const Config& conf ) :
+Symbol ( conf ),
 _stroke( Stroke() )
 {
     mergeConfig(conf);

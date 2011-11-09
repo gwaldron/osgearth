@@ -20,9 +20,6 @@ US NEXRAD 45 minute radar returns overlaid on imagery.
     </image>
     
     <options>
-        <terrain>
-            <loading_policy mode="sequential" loading_threads="3"/>
-        </terrain>
         <lighting>false</lighting>
     </options>
 </map>

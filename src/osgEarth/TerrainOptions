@@ -185,7 +185,8 @@ namespace osgEarth
             COMPOSITING_TEXTURE_ARRAY,
             COMPOSITING_MULTITEXTURE_GPU,
             COMPOSITING_MULTITEXTURE_FFP,
-            COMPOSITING_MULTIPASS
+            COMPOSITING_MULTIPASS,
+            COMPOSITING_USER
         };
 
         /**

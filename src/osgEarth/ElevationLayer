@@ -107,7 +107,7 @@ namespace osgEarth
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
          */
-        GeoHeightField createHeightField(
+        virtual GeoHeightField createHeightField(
             const TileKey&    key,
             ProgressCallback* progress =0L );
 

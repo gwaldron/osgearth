@@ -452,6 +452,12 @@ TerrainLayer::initTileSource()
 	if ( _runtimeOptions->profile().isSet() )
 	{
 		overrideProfile = Profile::create( *_runtimeOptions->profile() );
+
+        if ( overrideProfile.valid() )
+        {
+            OE_INFO << LC << "Layer " << getName() << " overrides profile to "
+                << overrideProfile->toString() << std::endl;
+        }
 	}
 
     // Initialize the profile with the context information:
@@ -530,6 +536,13 @@ TerrainLayer::isKeyValid(const TileKey& key) const
     }
 
 	return true;
+}
+
+bool
+TerrainLayer::isCached(const TileKey& key) const
+{
+    CacheBin* bin = const_cast<TerrainLayer*>(this)->getCacheBin( key.getProfile() );
+    return bin ? bin->isCached(key.str()) : false;
 }
 
 void

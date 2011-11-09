@@ -200,7 +200,7 @@ namespace osgEarth
 		/**
 		 * Creates a GeoImage from this MapLayer
 		 */
-		GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
+		virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
 
     protected:
 
@@ -216,7 +216,7 @@ namespace osgEarth
 
         virtual void initTileSource();
 
-    private:
+    protected:
         ImageLayerOptions _runtimeOptions;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;

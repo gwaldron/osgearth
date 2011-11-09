@@ -484,6 +484,14 @@ TextureCompositor::createSamplerFunction(UID                layerUID,
 }
 
 void
+TextureCompositor::setTechnique( TextureCompositorTechnique* tech )
+{
+    _tech = TerrainOptions::COMPOSITING_USER;
+    _impl = tech;
+    OE_INFO << LC << "Custom texture compositing technique installed" << std::endl;
+}
+
+void
 TextureCompositor::init()
 {        
     if ( _impl.valid() ) // double-check pattern

@@ -245,7 +245,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     workingExtent.getCentroid( center.x(), center.y() );
     
-    double centerZ;
+    double centerZ = 0.0;
     if ( mapf )
     {
         // note: use the lowest possible resolution to speed up queries

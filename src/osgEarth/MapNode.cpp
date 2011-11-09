@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/OverlayDecorator>
+#include <osgEarth/TextureCompositor>
 #include <osgEarth/URI>
 #include <osg/ArgumentParser>
 #include <osg/PagedLOD>
@@ -348,6 +349,15 @@ MapNode::getTerrainEngine() const
         me->dirtyBound();
     }
     return _terrainEngine.get();
+}
+
+void
+MapNode::setCompositorTechnique( TextureCompositorTechnique* tech )
+{
+    if ( _terrainEngine.valid() )
+    {
+        _terrainEngine->getTextureCompositor()->setTechnique( tech );
+    }
 }
 
 osg::Group*

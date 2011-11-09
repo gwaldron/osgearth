@@ -158,6 +158,14 @@ namespace osgEarth
         Config& externalConfig() { return _externalConf; }
         const Config& externalConfig() const { return _externalConf; }
 
+        /**
+         * Sets a custom texture compositor technique on the underlying terrain engine.
+         * This method is here b/c just calling getTerrainEngine()->getTextureCompositor()
+         * ->setTechnique() has problems (with init order of the terrain engine). Someday
+         * this needs to be cleaned up.
+         */
+        void setCompositorTechnique( class TextureCompositorTechnique* tech );
+
     public: //override osg::Node
 
         virtual osg::BoundingSphere computeBound() const;

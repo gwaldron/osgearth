@@ -1,0 +1,127 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_OCEAN_SURFACE
+#define OSGEARTH_DRIVER_OCEAN_SURFACE 1
+
+#include <osgEarth/MapNode>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/URI>
+#include <osg/Node>
+#include <osg/Image>
+#include <osgDB/ReadFile>
+#include <osgDB/Options>
+
+namespace osgEarth { namespace Drivers
+{
+    using namespace osgEarth;
+
+    /**
+     * Options for controlling the ocean surface node.
+     */
+    class /*header-only*/ OceanSurfaceOptions
+    {
+    public:
+        /** Nominal sea level in meters (relative to ellipsoid/geoid); default is zero. */
+        optional<float>& seaLevel() { return _seaLevel; }
+        const optional<float>& seaLevel() const { return _seaLevel; }
+
+        /** Elevation offset (relative to seaLevel) at which ocean surface goes to min transparency */
+        optional<float>& lowFeatherOffset() { return _lowFeatherOffset; }
+        const optional<float>& lowFeatherOffset() const { return _lowFeatherOffset; }
+
+        /** Elevation offset (relative to seaLevel) at which ocean surface goes to full transparency */
+        optional<float>& highFeatherOffset() { return _highFeatherOffset; }
+        const optional<float>& highFeatherOffset() const { return _highFeatherOffset; }
+
+        /** Intensity texture to use for the ocean surface alpha. */
+        osg::ref_ptr<osg::Image>& alphaImage() { return _alphaImage; }
+        const osg::ref_ptr<osg::Image>& alphaImage() const { return _alphaImage; }
+
+        /** URI of the intensity texture to use for the ocean surface alpha. */
+        optional<URI>& alphaImageURI() { return _alphaImageURI; }
+        const optional<URI>& alphaImageURI() const { return _alphaImageURI; }
+
+    public:
+        OceanSurfaceOptions()
+            : _seaLevel         ( 0.0f ),
+              _lowFeatherOffset ( -100.0f ),
+              _highFeatherOffset( -10.0f )
+        { }
+
+    private:
+        optional<float>          _seaLevel;
+        optional<float>          _lowFeatherOffset;
+        optional<float>          _highFeatherOffset;
+        optional<URI>            _alphaImageURI;
+        osg::ref_ptr<osg::Image> _alphaImage;
+    };
+
+
+    /**
+     * Node tha renders an ocean surface over a MapNode.
+     */
+    class /*header-only*/ OceanSurfaceNode : public osg::Group
+    {
+    public:
+        /**
+         * Constructs a new ocean surface node. Add this to your scene graph somewhere
+         * alongside your MapNode.
+         */
+        OceanSurfaceNode( MapNode* mapNode, const OceanSurfaceOptions& initialOptions =OceanSurfaceOptions() )
+            : _mapNode( mapNode ), _options( initialOptions )
+        {
+            osg::Node* node = load();
+            if ( node )
+                this->addChild( node );
+        }
+
+        /**
+         * Options controlling the look and behavior of the ocean
+         */         
+        OceanSurfaceOptions& options() { return _options; }
+        const OceanSurfaceOptions& options() const { return _options; }
+
+        /**
+         * Call this whenever you change options and want to apply the changes.
+         */
+        void dirty() { load(); }
+
+    private:
+        osg::observer_ptr<MapNode> _mapNode;
+        OceanSurfaceOptions        _options;
+
+        osg::Node* load()
+        {
+            osg::Node* result = 0L;
+            osg::ref_ptr<MapNode> safeMapNode = _mapNode.get();
+            if ( safeMapNode.valid() )
+            {
+                osg::ref_ptr<osgDB::Options> o = new osgDB::Options();
+                o->setPluginData( "mapNode", (void*)_mapNode.get() );
+                o->setPluginData( "options", (void*)&_options );
+                osgDB::ReaderWriter::ReadResult r = osgDB::readNodeFile( ".osgearth_ocean_surface", o.get() );
+                result = r.takeNode();
+            }
+            return result;
+        }
+    };
+
+} } // namespace osgEarth::Drivers
+
+#endif // OSGEARTH_DRIVER_OCEAN_SURFACE

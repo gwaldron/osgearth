@@ -39,11 +39,15 @@ namespace osgEarth { namespace Drivers
         optional<bool>& addAlpha() { return _addAlpha; }
         const optional<bool>& addAlpha() const { return _addAlpha; }
 
+        optional<unsigned>& maxDataLevel() { return _maxDataLevel; }
+        const optional<unsigned>& maxDataLevel() const { return _maxDataLevel; }
+
     public:
         OSGOptions( const TileSourceOptions& opt =TileSourceOptions() ) :
             TileSourceOptions( opt ),
             _lum2rgba( false ),
-            _addAlpha( false )
+            _addAlpha( false ),
+            _maxDataLevel( 21 )
         {
             setDriver( "osg" );
             fromConfig( _conf );
@@ -55,6 +59,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("url", _url );
             conf.updateIfSet("luminance_to_rgba", _lum2rgba);
             conf.updateIfSet("add_alpha", _addAlpha);
+            conf.updateIfSet("max_data_level", _maxDataLevel );
             return conf;
         }
 
@@ -68,12 +73,14 @@ namespace osgEarth { namespace Drivers
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
             conf.getIfSet( "luminance_to_rgba", _lum2rgba );
-            conf.getIfSet("add_alpha", _addAlpha);
+            conf.getIfSet( "add_alpha", _addAlpha);
+            conf.getIfSet( "max_data_level", _maxDataLevel );
         }
 
         optional<URI>  _url;
         optional<bool> _lum2rgba;
         optional<bool> _addAlpha;
+        optional<unsigned> _maxDataLevel;
     };
 
 } } // namespace osgEarth::Drivers

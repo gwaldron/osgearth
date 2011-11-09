@@ -1417,19 +1417,13 @@ MapFrame::isCached( const TileKey& key ) const
     // Check the imagery layers
     for( ImageLayerVector::const_iterator i = imageLayers().begin(); i != imageLayers().end(); i++ )
     {
-        ImageLayer* layer = i->get();
-        
-        CacheBin* bin = layer->getCacheBin( key.getProfile() );
-        if ( !bin || !bin->isCached( key.str() ) )
+        if ( !i->get()->isCached( key ) )
             return false;
     }
 
     for( ElevationLayerVector::const_iterator i = elevationLayers().begin(); i != elevationLayers().end(); ++i )
     {
-        ElevationLayer* layer = i->get();
-
-        CacheBin* bin = layer->getCacheBin( key.getProfile() );
-        if ( !bin || !bin->isCached( key.str() ) )
+        if ( !i->get()->isCached( key ) )
             return false;
     }
 

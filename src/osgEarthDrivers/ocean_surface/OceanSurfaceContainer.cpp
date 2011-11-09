@@ -95,6 +95,9 @@ _parentMapNode( mapNode )
         _highFeather = new osg::Uniform(osg::Uniform::FLOAT, "highFeather");
         ss->addUniform( _highFeather.get() );
 
+        _baseColor = new osg::Uniform(osg::Uniform::FLOAT_VEC4, "baseColor");
+        ss->addUniform( _baseColor.get() );
+
         // trick to prevent z-fighting..
         ss->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false) );
         ss->setRenderBinDetails( 15, "RenderBin" );
@@ -109,6 +112,7 @@ OceanSurfaceContainer::apply( const OceanSurfaceOptions& options )
     _seaLevel->set( *options.seaLevel() );
     _lowFeather->set( *options.lowFeatherOffset() );
     _highFeather->set( *options.highFeatherOffset() );
+    _baseColor->set( *options.baseColor() );
 }
 
 void

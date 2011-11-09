@@ -26,6 +26,7 @@ namespace
         "#version 110 \n"
 
         "uniform mat4 osg_ViewMatrixInverse; \n"
+        "uniform mat4 osg_ViewMatrix; \n"
         "uniform sampler2D tex0; \n"                 // heightfield encoded into 16 bit texture
         "uniform float seaLevel; \n"                 // sea level offset
 
@@ -37,7 +38,13 @@ namespace
 
         "void osgearth_vert_setupTexturing() \n"
         "{ \n"
-        "   gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+
+        // adjust our vert for the sea level - extrude along the normal vector 
+        // (this must be done in modelview space to preserve precision)
+        "   vec4 mvVertex = gl_ModelViewMatrix * gl_Vertex; \n"
+        "   vec3 mvNormal = gl_NormalMatrix * gl_Normal; \n"
+        "   vec4 mvVertex2 = vec4(mvVertex.xyz + (mvNormal * seaLevel), mvVertex.w ); \n"
+        "   gl_Position = gl_ProjectionMatrix * mvVertex2; \n"
 
         // set up the tex coords for the frag shader:
         "   texCoord0 = gl_MultiTexCoord0.st; \n"
@@ -78,12 +85,10 @@ namespace
         "uniform float seaLevel; \n"               // sea level offset
         "uniform float lowFeather; \n"             // offset from sea level at which to start feathering out
         "uniform float highFeather; \n"            // offset from sea level at which to stop feathering out
+        "uniform vec4  baseColor; \n"              // base ocean color before processing
 
         "void osgearth_frag_applyTexturing(inout vec4 color) \n"
         "{ \n"
-        // baseline ocean color
-        "    vec4 baseColor = vec4( 0.25, 0.35, 0.6, 1.0 ); \n"
-        //"    vec4 baseColor = texture2D( tex1, texCoord0 ); \n"
 
         // un-normalize the heightfield data
         "    float terrainHeight = (v_enorm * 65535.0) - 32768.0; \n"                  
@@ -101,8 +106,8 @@ namespace
         "    float texEffect = mix( texIntensity, 0.8, texBalance ); \n"
 
         // color it
-        "    color = vec4( baseColor.rgb, texEffect * terrainEffect * rangeEffect * baseColor.a ); \n"
-        //"    color = vec4( baseColor.rgb, terrainEffect * rangeEffect * baseColor.a ); \n"
+        //"    color = vec4( baseColor.rgb, texEffect * terrainEffect * rangeEffect * baseColor.a ); \n"
+        "    color = vec4( baseColor.rgb, terrainEffect * rangeEffect * baseColor.a ); \n"
         //"    color = vec4( baseColor, terrainEffect ); \n"
 
         //"    color = vec4( 1, 0, 0, 1 ); \n" // debugging

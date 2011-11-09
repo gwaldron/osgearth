@@ -99,8 +99,8 @@ _enableLighting( false ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
 _lodTransitionTimeSeconds( 0.5f ),
-_enableMipmapping( true ),
-_elevationInterpolation( INTERP_BILINEAR )
+_elevationInterpolation( INTERP_BILINEAR ),
+_enableMipmapping( true )
 {
     fromConfig( _conf );
 }

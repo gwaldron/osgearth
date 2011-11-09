@@ -26,7 +26,7 @@ using namespace osgEarth;
 int
 SparseTexture2DArray::firstValidImageIndex() const 
 {
-    for( unsigned int i=0; i<_images.size(); ++i )
+    for( int i=0; i<_images.size(); ++i )
         if ( _images[i].valid() )
             return i;
     return -1;

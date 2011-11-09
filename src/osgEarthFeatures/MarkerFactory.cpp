@@ -142,11 +142,7 @@ MarkerFactory::getOrCreateNode( const Feature* feature, const MarkerSymbol* symb
                 _session->putResource( uri.full(), result );
             }
         }
-		else
-			result = NULL;
     }
-	else
-		result = NULL;
 
     return result;
 }

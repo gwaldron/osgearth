@@ -274,7 +274,7 @@ HeightFieldUtils::resizeHeightField(osg::HeightField* input, int newColumns, int
     if ( newColumns <= 1 && newRows <= 1 )
         return 0L;
 
-    if ( newColumns == (int)input->getNumColumns() && newRows == (int)input->getNumRows() )
+    if ( newColumns == input->getNumColumns() && newRows == (int)input->getNumRows() )
         return new osg::HeightField( *input, osg::CopyOp::DEEP_COPY_ALL );
 
     double spanX = (input->getNumColumns()-1) * input->getXInterval();

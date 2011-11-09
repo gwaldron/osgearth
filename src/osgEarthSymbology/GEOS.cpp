@@ -124,32 +124,29 @@ import( const Symbology::Geometry* input, const geom::GeometryFactory* f )
                 break;
 
             case Symbology::Geometry::TYPE_POLYGON:
-				{
-					seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
-					geom::LinearRing* shell = 0L;
-					if ( seq )
-						shell = f->createLinearRing( seq );
+                seq = vec3dArray2CoordSeq( input, true, f->getCoordinateSequenceFactory() );
+                geom::LinearRing* shell = 0L;
+                if ( seq )
+                    shell = f->createLinearRing( seq );
 
-					if ( shell )
-					{
-						const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
-						std::vector<geom::Geometry*>* holes = poly->getHoles().size() > 0 ? new std::vector<geom::Geometry*>() : 0L;
-						for( Symbology::RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
-						{
-							geom::Geometry* hole = import( r->get(), f );
-							if ( hole ) holes->push_back( hole );
-						}
-						if ( holes && holes->size() == 0 )
-						{
-							delete holes;
-							holes = 0L;
-						}
-						output = f->createPolygon( shell, holes );
-					}
-				}
+                if ( shell )
+                {
+                    const Symbology::Polygon* poly = static_cast<const Symbology::Polygon*>(input);
+                    std::vector<geom::Geometry*>* holes = poly->getHoles().size() > 0 ? new std::vector<geom::Geometry*>() : 0L;
+                    for( Symbology::RingCollection::const_iterator r = poly->getHoles().begin(); r != poly->getHoles().end(); ++r )
+                    {
+                        geom::Geometry* hole = import( r->get(), f );
+                        if ( hole ) holes->push_back( hole );
+                    }
+                    if ( holes && holes->size() == 0 )
+                    {
+                        delete holes;
+                        holes = 0L;
+                    }
+                    output = f->createPolygon( shell, holes );
+                }
+                
                 break;
-			default:
-				break;
             }
         }
         catch( util::IllegalArgumentException )
@@ -199,7 +196,7 @@ exportPolygon( const geom::Polygon* input )
         }
         output->rewind( Symbology::Ring::ORIENTATION_CCW );
 
-        for( unsigned k=0; k < input->getNumInteriorRing(); k++ )
+        for( int k=0; k < input->getNumInteriorRing(); k++ )
         {
             const geom::LineString* inner = input->getInteriorRingN( k );
             const geom::CoordinateSequence* s = inner->getCoordinates();

@@ -129,16 +129,6 @@ IF(WIN32)
     ENDIF(MSVC)
 ENDIF(WIN32)
 
-OPTION(ENABLE_WALL "Enable the -Wall compiler option." OFF)
-IF(ENABLE_WALL)
-	IF(CMAKE_COMPILER_IS_GNUCXX)
-		ADD_DEFINITIONS(-Wall)
-	ENDIF(CMAKE_COMPILER_IS_GNUCXX)
-	IF(MSVC)
-		ADD_DEFINITIONS(/Wall)
-	ENDIF(MSVC)
-ENDIF(ENABLE_WALL)
-
 ########################################################################################################
 ##### these were settings located in SetupCommon.cmake used in Luigi builds.... find out what are useful
 ########################################################################################################

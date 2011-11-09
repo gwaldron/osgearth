@@ -66,6 +66,8 @@ ResampleFilter::push( Feature* input, FilterContext& context )
 
         if ( part->size() < 2 ) continue;
 
+        unsigned int origSize = part->size();
+
         // copy the original part to a linked list. use a std::list since insert/erase
         // will not invalidate iterators.
         std::list<osg::Vec3d> plist;

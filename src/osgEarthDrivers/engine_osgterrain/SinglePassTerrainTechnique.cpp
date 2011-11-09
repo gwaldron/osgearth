@@ -67,21 +67,20 @@ namespace
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
 CustomTerrainTechnique(),
-_debug( false ),
 _verticalScaleOverride(1.0f),
 _initCount(0),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
 _optimizeTriangleOrientation(true),
 _texCompositor( compositor ),
-_frontGeodeInstalled( false )
+_frontGeodeInstalled( false ),
+_debug( false )
 {
     this->setThreadSafeRefUnref(true);
 }
 
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& rhs, const osg::CopyOp& copyop):
 CustomTerrainTechnique( rhs, copyop ),
-_debug( rhs._debug ),
 _verticalScaleOverride( rhs._verticalScaleOverride ),
 _initCount( 0 ),
 _pendingFullUpdate( false ),
@@ -89,6 +88,7 @@ _pendingGeometryUpdate( false ),
 _optimizeTriangleOrientation( rhs._optimizeTriangleOrientation ),
 _texCompositor( rhs._texCompositor.get() ),
 _frontGeodeInstalled( rhs._frontGeodeInstalled ),
+_debug( rhs._debug ),
 _parentTile( rhs._parentTile )
 {
     //NOP
@@ -436,6 +436,7 @@ SinglePassTerrainTechnique::getActiveStateSet() const
 osg::StateSet*
 SinglePassTerrainTechnique::getParentStateSet() const
 {
+    osg::StateSet* parentStateSet = 0;
     osg::ref_ptr<Tile> parentTile_safe = _parentTile.get();
     if ( parentTile_safe.valid() )
     {
@@ -915,19 +916,19 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
     {
       int min_i = (int)floor((*mr)._ndcMin.x() * (double)(numColumns-1));
       if (min_i < 0) min_i = 0;
-      if (min_i >= (int)numColumns) min_i = numColumns - 1;
+      if (min_i >= numColumns) min_i = numColumns - 1;
 
       int min_j = (int)floor((*mr)._ndcMin.y() * (double)(numRows-1));
       if (min_j < 0) min_j = 0;
-      if (min_j >= (int)numColumns) min_j = numColumns - 1;
+      if (min_j >= numColumns) min_j = numColumns - 1;
 
       int max_i = (int)ceil((*mr)._ndcMax.x() * (double)(numColumns-1));
       if (max_i < 0) max_i = 0;
-      if (max_i >= (int)numColumns) max_i = numColumns - 1;
+      if (max_i >= numColumns) max_i = numColumns - 1;
 
       int max_j = (int)ceil((*mr)._ndcMax.y() * (double)(numRows-1));
       if (max_j < 0) max_j = 0;
-      if (max_j >= (int)numColumns) max_j = numColumns - 1;
+      if (max_j >= numColumns) max_j = numColumns - 1;
 
       if (min_i >= 0 && max_i >= 0 && min_j >= 0 && max_j >= 0)
       {
@@ -1173,8 +1174,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
               for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
               {
                 osg::Vec3d p1 = *mit;
-				osgEarth::Symbology::Polygon::iterator mitEnd = maskPoly->end();
-                osg::Vec3d p3 = (mit == (--mitEnd)) ? maskPoly->front() : (*(mit + 1));
+                osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
 
                 //Truncated vales to compensate for accuracy issues
                 double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
@@ -1281,7 +1281,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             ss_verts->reserve(ss_verts->size() + outVerts->size() * 4 + skirtIndices.size() * 2);
 
             //Add a primative set for each continuous skirt strip
-            for (int p=0; p < (int)skirtIndices.size(); p++)
+            for (int p=0; p < skirtIndices.size(); p++)
             {
               int cursor = ss_verts->size();
 
@@ -1392,7 +1392,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
             if (orig_i < 0)
             {
-              if (skirtBreaks.back() != (int)skirtVerts->size())
+              if (skirtBreaks.back() != skirtVerts->size())
                 skirtBreaks.push_back(skirtVerts->size());
             }
             else
@@ -1426,7 +1426,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             int orig_i = indices[r*numColumns+(numColumns-1)];
             if (orig_i < 0)
             {
-              if (skirtBreaks.back() != (int)skirtVerts->size())
+              if (skirtBreaks.back() != skirtVerts->size())
                 skirtBreaks.push_back(skirtVerts->size());
             }
             else
@@ -1459,7 +1459,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             int orig_i = indices[(numRows-1)*numColumns+c];
             if (orig_i < 0)
             {
-              if (skirtBreaks.back() != (int)skirtVerts->size())
+              if (skirtBreaks.back() != skirtVerts->size())
                 skirtBreaks.push_back(skirtVerts->size());
             }
             else
@@ -1492,7 +1492,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             int orig_i = indices[r*numColumns];
             if (orig_i < 0)
             {
-              if (skirtBreaks.back() != (int)skirtVerts->size())
+              if (skirtBreaks.back() != skirtVerts->size())
                 skirtBreaks.push_back(skirtVerts->size());
             }
             else
@@ -1525,7 +1525,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
         //Add a primative set for each continuous skirt strip
         skirtBreaks.push_back(skirtVerts->size());
-        for (int p=1; p < (int)skirtBreaks.size(); p++)
+        for (int p=1; p < skirtBreaks.size(); p++)
           skirt->addPrimitiveSet( new osg::DrawArrays( GL_TRIANGLE_STRIP, skirtBreaks[p-1], skirtBreaks[p] - skirtBreaks[p-1] ) );
     }
     

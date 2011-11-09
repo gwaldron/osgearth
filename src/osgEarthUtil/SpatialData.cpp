@@ -168,15 +168,15 @@ GeoGraph::insertObject( GeoObject* object )
 GeoCell::GeoCell(const GeoExtent& extent, float maxRange, unsigned maxObjects,
                  unsigned splitDim, float splitRangeFactor, unsigned depth ) :
 _extent( extent ),
-_splitDim( splitDim ),
-_maxObjects( maxObjects ),
-_minObjects( (maxObjects/10)*8 ), // 80%
 _maxRange( maxRange ),
+_maxObjects( maxObjects ),
+_splitDim( splitDim ),
 _splitRangeFactor( splitRangeFactor ),
-_count( 0 ),
 _depth( depth ),
-_frameStamp( 0 ),
-_boundaryPoints( 10 )
+_minObjects( (maxObjects/10)*8 ), // 80%
+_count( 0 ),
+_boundaryPoints( 10 ),
+_frameStamp( 0 )
 {
     generateBoundaries();
     //generateBoundaryGeometry();

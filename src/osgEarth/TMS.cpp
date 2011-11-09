@@ -68,8 +68,8 @@ _maxX(0.0),
 _maxY(0.0),
 _minLevel(0),
 _maxLevel(0),
-_numTilesWide(-1),
-_numTilesHigh(-1)
+_numTilesHigh(-1),
+_numTilesWide(-1)
 {
 }
 

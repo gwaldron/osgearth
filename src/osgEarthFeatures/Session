@@ -21,11 +21,18 @@
 #define OSGEARTH_FEATURES_SESSION_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/ScriptEngine>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Cache>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Map>
 
 namespace osgEarth { namespace Features
 {
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
     /**
      * Session is a state object that exists throughout the life of one or more related
      * feature compilations.
@@ -36,6 +43,8 @@ namespace osgEarth { namespace Features
      * Whereas a FilterContext exists thoughout the life of a single compilation, a Session
      * exists one level above this and governs any number of "related" compilations
      * (e.g., the compilation of many grid cells comprising a single feature layer).
+     *
+     * Session implements the URIResolver interface to resolve relative URIs.
      */
     class OSGEARTHFEATURES_EXPORT Session : public osg::Referenced
     {
@@ -43,19 +52,13 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new Session that is tied to a map
          */
-        Session( const Map* map );
-		virtual ~Session();
+        Session( const Map* map, StyleSheet* styles =0L, const osgDB::Options* dbOptions =0L );
 
         /**
-         * Sets the reference URI to use to expand relative paths and URLs.
+         * URI Context for relative path resolution.
          */
-        void setReferenceURI( const std::string& referenceURI );
-
-        /**
-         * Resolves a URI based on the reference URI. You can use this method
-         * to create an absolute URI from a relative one, for example.
-         */
-        std::string resolveURI( const std::string& inputURI ) const;
+        void setURIContext( const URIContext& value ) { _uriContext = value; }
+        const URIContext& uriContext() const { return _uriContext; }
 
         /**
          * Gets the underlying map (frame) interface in this session
@@ -67,43 +70,47 @@ namespace osgEarth { namespace Features
          */
         const MapInfo& getMapInfo() const { return _mapInfo; }
 
-        /**
-         * Sets the user-defined build data for this session
-         */
-        void setBuildData( osg::Referenced* buildData ) { _buildData = buildData; }
+        /** The style sheet governing this session. */
+        void setStyles( StyleSheet* value );
+        StyleSheet* styles() const { return _styles.get(); }
 
-        /**
-         * Gets the user-defined build data for this session
-         */
-        osg::Referenced* getBuildData() const { return _buildData.get(); }
+        /** The I/O options for operations within this session */
+        const osgDB::Options* getDBOptions() const;
 
     public:
-        void putResource( const std::string& uri, osg::Referenced* object );
+        /**
+         * Stores an object in the shared Session cache.
+         *
+         * WARNING! Don't store things like nodes in here unless you plan
+         * to clone them. This is a multi-threaded store.
+         */
+        void putObject( const std::string& key, osg::Referenced* object );
 
         /**
-         * Gets a resource from the session cache.
+         * Gets an object from the shared Session cache.
          */
-        template<typename T> T* getResource( const std::string& uri ) {
-            Threading::ScopedReadLock lock( _resourceMutex );
-            ResourceMap::const_iterator i = _resourceMap.find(uri);
-            return i != _resourceMap.end() ? dynamic_cast<T*>( i->second.get() ) : 0L;
+        template<typename T> T* getObject( const std::string& key ) {
+            Threading::ScopedReadLock lock( _objMapMutex );
+            ObjectMap::const_iterator i = _objMap.find(key);
+            return i != _objMap.end() ? dynamic_cast<T*>( i->second.get() ) : 0L;
         }
 
-        void removeResource( const std::string& uri );
+        void removeObject( const std::string& key );
+
+    public:
+      ScriptEngine* getScriptEngine() const;
 
     private:
+        typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ObjectMap;
+        ObjectMap                    _objMap;
+        Threading::ReadWriteMutex    _objMapMutex;
 
-        //void parseMarker(const std::string& marker, std::string& url, bool &isImage) const;
-
-        osg::ref_ptr<const Map> _map;
-        MapInfo _mapInfo;
-        std::string _referenceURI;
-
-        typedef std::map<std::string, osg::ref_ptr<osg::Referenced> > ResourceMap;
-        ResourceMap _resourceMap;
-        Threading::ReadWriteMutex _resourceMutex;
-
-        osg::ref_ptr<osg::Referenced> _buildData;
+        URIContext                         _uriContext;
+        osg::ref_ptr<const Map>            _map;
+        MapInfo                            _mapInfo;
+        osg::ref_ptr<StyleSheet>           _styles;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        osg::ref_ptr<ScriptEngine>     _styleScriptEngine;
     };
 
 } }

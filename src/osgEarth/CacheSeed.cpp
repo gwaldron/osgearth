@@ -82,7 +82,7 @@ void CacheSeed::seed( Map* map )
 
 			if (opt.minLevel().isSet() && opt.minLevel().get() < src_min_level)
                 src_min_level = opt.minLevel().get();
-			if (opt.maxLevel().isSet() && opt.maxLevel().get() > (int)src_max_level)
+			if (opt.maxLevel().isSet() && opt.maxLevel().get() > src_max_level)
                 src_max_level = opt.maxLevel().get();
         }
     }
@@ -115,7 +115,7 @@ void CacheSeed::seed( Map* map )
 
 			if (opt.minLevel().isSet() && opt.minLevel().get() < src_min_level)
                 src_min_level = opt.minLevel().get();
-			if (opt.maxLevel().isSet() && opt.maxLevel().get() > (int)src_max_level)
+			if (opt.maxLevel().isSet() && opt.maxLevel().get() > src_max_level)
                 src_max_level = opt.maxLevel().get();
 		}
     }
@@ -126,7 +126,7 @@ void CacheSeed::seed( Map* map )
         return;
     }
 
-    if ( src_max_level > 0 && (unsigned)src_max_level < _maxLevel )
+    if ( src_max_level > 0 && src_max_level < _maxLevel )
     {
         _maxLevel = src_max_level;
     }

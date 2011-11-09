@@ -31,7 +31,6 @@
 #include <osgDB/FileUtils>
 #include <list>
 #include <ogr_api.h>
-#include <cpl_error.h>
 
 #define LC "[OGR FeatureSource] "
 
@@ -245,7 +244,7 @@ public:
 	        }
             else
             {
-                OE_INFO << LC << "failed to open dataset at " << _source << " error " << CPLGetLastErrorMsg() << std::endl;
+                OE_INFO << LC << "failed to open dataset \"" << _source << "\"" << std::endl;
             }
         }
         else
@@ -365,8 +364,6 @@ public:
                     case OFTString:
                         OGR_F_SetFieldString( feature_handle, field_index, a->second.getString().c_str() );
                         break;
-					default: 
-						break;
                     }
                 }
             }

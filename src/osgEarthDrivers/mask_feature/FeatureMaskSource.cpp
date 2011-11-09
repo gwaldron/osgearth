@@ -41,7 +41,7 @@ class FeatureMaskSource : public MaskSource
 {
 public:
     FeatureMaskSource( const MaskSourceOptions& options )
-        : MaskSource( options ), _failed( false ), _options( options )
+        : MaskSource( options ), _options( options ), _failed( false )
     {
         // the data source from which to pull features:
         if ( _options.featureSource().valid() )

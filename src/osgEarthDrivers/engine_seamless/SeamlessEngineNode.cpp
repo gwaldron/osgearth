@@ -91,6 +91,7 @@ void SeamlessEngineNode::validateTerrainOptions(TerrainOptions& options)
 void SeamlessEngineNode::onMapProfileEstablished(const Profile* mapProfile)
 {
     const Map* map = getMap();
+    int resolution = _terrainOptions.resolution().value();
     if (map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC)
         _patchSet = new Geographic(map, _terrainOptions);
     else if (map->getMapOptions().coordSysType()

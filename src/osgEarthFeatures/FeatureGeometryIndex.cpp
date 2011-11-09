@@ -28,9 +28,9 @@ namespace
     struct FindVisitor : public osg::NodeVisitor
     {
         FindVisitor( FeatureID id )
-            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
-              _id(id), 
-              _rec(0L) { }
+            : _id(id), 
+              _rec(0L),
+              osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
 
         void apply( osg::Node& node )
         {

@@ -224,17 +224,19 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 osg::BoundingSphere
 OSGTerrainEngineNode::computeBound() const
 {
-    if ( _terrain )
+    if ( _terrain && _terrain->getNumChildren() > 0 )
+    {
         return _terrain->getBound();
+    }
     else
+    {
         return TerrainEngineNode::computeBound();
+    }
 }
 
 void
 OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
-    OE_INFO << LC << "Map profile established" << std::endl;
-    
     LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
     OE_INFO << LC << "Loading policy mode = " <<
         ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "PREEMPTIVE" :
@@ -356,7 +358,11 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
     if ( getNumParents() == 0 )
         return 0L;
 
+    OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
+
+#ifdef PROFILING
     osg::Timer_t start = _timer.tick();
+#endif
 
     osg::Node* result = 0L;
 
@@ -372,6 +378,8 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
         result = _keyNodeFactory->createNode( key );
     }
 
+#ifdef PROFILING
+    osg::Timer_t end = osg::Timer::instance()->tick();
     if ( result )
     {
         _tileCount++;
@@ -382,6 +390,7 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
                 << " ms, tiles per sec = " << (double)_tileCount/_timer.time_s() << std::endl;
         }
     }
+#endif
 
     return result;
 }
@@ -419,8 +428,6 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
         case MapModelChange::MOVE_ELEVATION_LAYER:
             moveElevationLayer( change.getFirstIndex(), change.getSecondIndex() );
             break;
-		default:
-			break;
         }
     }
 

@@ -191,8 +191,8 @@ HTTPResponse::HTTPResponse( long _code )
 }
 
 HTTPResponse::HTTPResponse( const HTTPResponse& rhs ) :
-_parts( rhs._parts ),
 _response_code( rhs._response_code ),
+_parts( rhs._parts ),
 _mimeType( rhs._mimeType ),
 _cancelled( rhs._cancelled )
 {
@@ -708,7 +708,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
             OE_NOTICE << LC
                 << "NULL Content-Type (protocol violation) " 
                 << "URL=" << request.getURL() << std::endl;
-            return HTTPResponse();
+            return NULL;
         }
 
         // NOTE:

@@ -84,8 +84,8 @@ _initOptions( MaskLayerOptions( name, options ) )
 }
 
 MaskLayer::MaskLayer( const MaskLayerOptions& options, MaskSource* source ) :
-_initOptions( options ),
-_maskSource( source )
+_maskSource( source ),
+_initOptions( options )
 {
     copyOptions();
 }

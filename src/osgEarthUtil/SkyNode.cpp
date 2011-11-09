@@ -310,7 +310,7 @@ namespace
             double zeta = d2r(23.4392); // zeta
 
             // latitude of the sun on the ecliptic plane:
-//            double omega = d2r(0.0);
+            double omega = d2r(0.0);
 
             // latitude of the sun with respect to the equatorial plane (solar declination):
             double sun_lat = asin( sin(sun_lon)*sin(zeta) );
@@ -644,12 +644,9 @@ SkyNode::attach( osg::View* view, int lightNum )
     // creates the new per-view if it does not already exist
     PerViewData& data = _perViewData[view];
 
-	if(lightNum >= 0)
-	{
-		data._light = osg::clone( _defaultPerViewData._light.get() );
-		data._light->setLightNum( lightNum );
-		data._light->setAmbient( _defaultPerViewData._light->getAmbient() );
-	}
+    data._light = osg::clone( _defaultPerViewData._light.get() );
+    data._light->setLightNum( lightNum );
+    data._light->setAmbient( _defaultPerViewData._light->getAmbient() );
     data._lightPos = _defaultPerViewData._lightPos;
 
     // the cull callback has to be on a parent group-- won't work on the xforms themselves.
@@ -675,11 +672,8 @@ SkyNode::attach( osg::View* view, int lightNum )
     data._cullContainer->addChild( _atmosphere.get() );
     data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
 
-	if(lightNum >= 0)
-	{
-		view->setLightingMode( osg::View::SKY_LIGHT );
-		view->setLight( data._light.get() );
-	}
+    view->setLightingMode( osg::View::SKY_LIGHT );
+    view->setLight( data._light.get() );
     view->getCamera()->setClearColor( osg::Vec4(0,0,0,1) );
 }
 

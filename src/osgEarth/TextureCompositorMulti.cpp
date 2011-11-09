@@ -264,9 +264,8 @@ namespace
 
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options ) :
 _lodTransitionTime( *options.lodTransitionTime() ),
-_useGPU( useGPU ),
-_enableMipmappingOnUpdatedTextures(),
-_enableMipmapping( *options.enableMipmapping() )
+_enableMipmapping( *options.enableMipmapping() ),
+_useGPU( useGPU )
 {
     _enableMipmappingOnUpdatedTextures = Registry::instance()->getCapabilities().supportsMipmappedTextureUpdates();
 }

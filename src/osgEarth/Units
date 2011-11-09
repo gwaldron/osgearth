@@ -108,11 +108,21 @@ namespace osgEarth
 
         const std::string& getAbbr() const { return _abbr; }
 
+        const Type& getType() const { return _type; }
+
         bool operator == ( const Units& rhs ) const {
             return _type == rhs._type && _toBase == rhs._toBase; }
         
         bool operator != ( const Units& rhs ) const {
             return _type != rhs._type || _toBase != rhs._toBase; }
+
+        bool isLinear() const { return _type == TYPE_LINEAR; }
+
+        bool isAngular() const { return _type == TYPE_ANGULAR; }
+
+        bool isTemporal() const { return _type == TYPE_TEMPORAL; }
+
+        bool isSpeed() const { return _type == TYPE_SPEED; }
 
     public:
 
@@ -130,8 +140,8 @@ namespace osgEarth
             output = input * from._toBase / to._toBase;
         }
         static void convertSpeed( const Units& from, const Units& to, double input, double& output ) {
-            from._distance->convertTo( *to._distance, input );
-            output = to._time->convertTo( *from._time, input );
+            double t = from._distance->convertTo( *to._distance, input );
+            output = to._time->convertTo( *from._time, t );
         }
 
 
@@ -151,6 +161,11 @@ namespace osgEarth
         qualified_double<T>( double value, const Units& units ) : _value(value), _units(units) { }
 
         qualified_double<T>( const T& rhs ) : _value(rhs._value), _units(rhs._units) { }
+
+        void set( double value, const Units& units ) {
+            _value = value;
+            _units = units;
+        }
 
         T& operator = ( const T& rhs ) {
             if ( _units.canConvert(rhs._units) )
@@ -190,6 +205,8 @@ namespace osgEarth
             return _units.convertTo( convertTo, _value );
         }
 
+        const Units& getUnits() const { return _units; }
+
     private:
         double _value;
         Units  _units;
@@ -201,7 +218,8 @@ namespace osgEarth
     };
 
     struct Angular : public qualified_double<Angular> {
-        Angular() : qualified_double<Angular>(0, Units::RADIANS) { }
+        Angular() : qualified_double<Angular>(0, Units::DEGREES) { }
+        Angular(double value) : qualified_double<Angular>(value, Units::DEGREES) { }
         Angular(double value, const Units& units) : qualified_double<Angular>(value, units) { }
     };
 

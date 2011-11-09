@@ -257,16 +257,16 @@ TextureCompositorTexArray::prepareImage( const GeoImage& layerImage, const GeoEx
     if (!image)
         return GeoImage::INVALID;
 
-    if (image->getPixelFormat() != (int)GL_RGBA ||
-        image->getInternalTextureFormat() != (int)GL_RGBA8 ||
-        image->s() != (int)textureSize ||
-        image->t() != (int)textureSize )
+    if (image->getPixelFormat() != GL_RGBA ||
+        image->getInternalTextureFormat() != GL_RGBA8 ||
+        image->s() != textureSize ||
+        image->t() != textureSize )
     {
         // Because all tex2darray layers must be identical in format, let's use RGBA.
         osg::ref_ptr<osg::Image> newImage = ImageUtils::convertToRGBA8( image );
         
         // TODO: revisit. For now let's just settle on 256 (again, all layers must be the same size)
-        if ( image->s() != (int)textureSize || image->t() != (int)textureSize )
+        if ( image->s() != textureSize || image->t() != textureSize )
         {
             osg::ref_ptr<osg::Image> resizedImage;
             if ( ImageUtils::resizeImage( newImage.get(), textureSize, textureSize, resizedImage ) )

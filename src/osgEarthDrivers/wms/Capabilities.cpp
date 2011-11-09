@@ -51,6 +51,7 @@ Style::Style(const std::string& name, const std::string &title)
 }
 
 Layer::Layer():
+_parentLayer(0),
 _minLon(0),
 _minLat(0),
 _maxLon(0),
@@ -58,8 +59,7 @@ _maxLat(0),
 _minX(0),
 _minY(0),
 _maxX(0),
-_maxY(0),
-_parentLayer(0)
+_maxY(0)
 {
 }
 

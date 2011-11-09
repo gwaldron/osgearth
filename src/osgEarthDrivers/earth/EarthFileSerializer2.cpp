@@ -17,50 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "EarthFileSerializer"
-#include <osgDB/FileNameUtils>
 #include <osgEarth/FileUtils>
 
 using namespace osgEarth;
-
-
-void patchConfigUrlsImpl( Config & conf, const std::string & referenceURI )
-{
-	std::string url = conf.value("url");
-	if(!url.empty())
-	{
-		if(!osgDB::containsServerAddress(url))
-		{
-			std::string newurl = osgEarth::getFullPath(referenceURI, osgDB::convertFileNameToNativeStyle(url));
-			conf.update("url", newurl);
-		}
-	}
-	for(ConfigSet::iterator it = conf.children().begin(); it != conf.children().end(); it++)
-	{
-		Config & c = *it;
-		patchConfigUrlsImpl(c, referenceURI);
-	}
-}
-
-Config patchConfigUrls( const Config& conf, const std::string& referenceURI )
-{
-	Config ret = conf;
-	patchConfigUrlsImpl(ret, referenceURI);
-	return ret;
-}
 
 MapNode*
 EarthFileSerializer2::deserialize( const Config& conf, const std::string& referenceURI ) const
 {
     MapOptions mapOptions( conf.child( "options" ) );
-
-    //Set the reference URI of the cache config.
-    if (mapOptions.cache().isSet())
-    {
-        mapOptions.cache()->setReferenceURI(referenceURI);
-    }
-
-    // the reference URI allows osgEarth to resolve relative paths within the configuration
-    mapOptions.referenceURI() = referenceURI;
 
     // manually extract the "type" from the main tag:
     const std::string& csVal = conf.value("type");
@@ -92,7 +56,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
         Config layerDriverConf = *i;
         layerDriverConf.add( "default_tile_size", "256" );
 
-        ImageLayerOptions layerOpt( patchConfigUrls( layerDriverConf, referenceURI) );
+        ImageLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value("name");
         //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
@@ -110,7 +74,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
             Config layerDriverConf = *i;
             layerDriverConf.add( "default_tile_size", "16" );
 
-            ElevationLayerOptions layerOpt( patchConfigUrls( layerDriverConf, referenceURI) );
+            ElevationLayerOptions layerOpt( layerDriverConf );
             layerOpt.name() = layerDriverConf.value( "name" );
             //layerOpt.driver() = TileSourceOptions( layerDriverConf );
 
@@ -124,7 +88,7 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     {
         const Config& layerDriverConf = *i;
 
-        ModelLayerOptions layerOpt( patchConfigUrls( layerDriverConf, referenceURI) );
+        ModelLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value( "name" );
         layerOpt.driver() = ModelSourceOptions( layerDriverConf );
 
@@ -138,9 +102,9 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     {
         Config layerDriverConf = *i;
         if ( !layerDriverConf.hasValue("driver") )
-            layerDriverConf.attr("driver") = "feature_geom";
+            layerDriverConf.set("driver", "feature_geom");
 
-        ModelLayerOptions layerOpt( patchConfigUrls( layerDriverConf, referenceURI) );
+        ModelLayerOptions layerOpt( layerDriverConf );
         layerOpt.name() = layerDriverConf.value( "name" );
         layerOpt.driver() = ModelSourceOptions( layerDriverConf );
         layerOpt.overlay() = true; // forced on when "overlay" specified
@@ -152,13 +116,24 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
     ConfigSet masks = conf.children( "mask" );
     for( ConfigSet::const_iterator i = masks.begin(); i != masks.end(); i++ )
     {
-        Config maskLayerConf = patchConfigUrls( *i, referenceURI);
+        Config maskLayerConf = *i;
 
         MaskLayerOptions options(maskLayerConf);
         options.name() = maskLayerConf.value( "name" );
         options.driver() = MaskSourceOptions(options);
 
         map->addTerrainMaskLayer( new MaskLayer(options) );
+    }
+
+    
+    //Add any addition paths specified in the options/osg_file_paths element to the file path.  Useful for pointing osgEarth at resource folders.
+    Config osg_file_paths = conf.child( "options" ).child("osg_file_paths");
+    ConfigSet urls = osg_file_paths.children("url");
+    for (ConfigSet::const_iterator i = urls.begin(); i != urls.end(); i++) 
+    {
+        std::string path = osgEarth::getFullPath( referenceURI, (*i).value());
+        OE_DEBUG << "Adding OSG file path " << path << std::endl;
+        osgDB::Registry::instance()->getDataFilePathList().push_back( path );
     }
 
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
@@ -178,7 +153,7 @@ Config
 EarthFileSerializer2::serialize( MapNode* input ) const
 {
     Config mapConf("map");
-    mapConf.attr("version") = "2";
+    mapConf.set("version", "2");
 
     if ( !input || !input->getMap() )
         return mapConf;
@@ -196,8 +171,8 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     {
         ImageLayer* layer = i->get();
         Config layerConf = layer->getImageLayerOptions().getConfig();
-        layerConf.attr("name") = layer->getName();
-        layerConf.attr("driver") = layer->getImageLayerOptions().driver()->getDriver();
+        layerConf.set("name", layer->getName());
+        layerConf.set("driver", layer->getImageLayerOptions().driver()->getDriver());
         mapConf.add( "image", layerConf );
     }
 
@@ -205,8 +180,8 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     {
         ElevationLayer* layer = i->get();
         Config layerConf = layer->getElevationLayerOptions().getConfig();
-        layerConf.attr("name") = layer->getName();
-        layerConf.attr("driver") = layer->getElevationLayerOptions().driver()->getDriver();
+        layerConf.set("name", layer->getName());
+        layerConf.set("driver", layer->getElevationLayerOptions().driver()->getDriver());
         mapConf.add( "elevation", layerConf );
     }
 
@@ -214,9 +189,8 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     {
         ModelLayer* layer = i->get();
         Config layerConf = layer->getModelLayerOptions().getConfig(); //layer->getDriverConfig();
-        layerConf.attr("name") = layer->getName();
-        //layerConf.attr("driver") = layer->getDriverConfig().value("driver");
-        layerConf.attr("driver") = layer->getModelLayerOptions().driver()->getDriver();
+        layerConf.set("name", layer->getName());
+        layerConf.set("driver", layer->getModelLayerOptions().driver()->getDriver());
         mapConf.add( "model", layerConf );
     }
 

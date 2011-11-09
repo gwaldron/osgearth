@@ -110,6 +110,8 @@ namespace
     {
         if ( !geom ) return 0L;
 
+        bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
+
         int numRings = 0;
 
         // start by offsetting the input data and counting the number of rings
@@ -123,7 +125,7 @@ namespace
                 {
                     for( osg::Vec3dArray::iterator j = part->begin(); j != part->end(); j++ )
                     {
-                        if ( context.isGeocentric() )
+                        if ( makeECEF )
                         {
                             osg::Vec3d world = context.toWorld( *j );
                             // TODO: get the proper up vector; this is spherical.. or does it really matter for
@@ -183,6 +185,7 @@ namespace
         }
 
 
+        bool made_geom = true;
         const SpatialReference* srs = context.profile()->getSRS();
 
         // total up all the points so we can pre-allocate the vertex arrays.
@@ -227,7 +230,7 @@ namespace
                 if ( srs )
                 {
                     osg::Vec3d m_world = context.toWorld( *m ); //*m * context.inverseReferenceFrame();
-                    if ( context.isGeocentric() )
+                    if ( makeECEF )
                     {
                         osg::Vec3d p_vec = m_world; // todo: not exactly right; spherical
 
@@ -308,18 +311,37 @@ namespace
         return geode;
     }
 
-    struct BuildData : public osg::Referenced
+    struct BuildData // : public osg::Referenced
     {
+        //BuildData() { }
         BuildData( int renderBinStart ) : _renderBin( renderBinStart ) { }
-        int _renderBin;
 
-        // pairs a style name with a starting render bin.
-        typedef std::pair<std::string,osg::ref_ptr<osgEarth::Symbology::StencilVolumeNode> > StyleGroup;
-        std::vector<StyleGroup> _styleGroups;
+        typedef std::pair<std::string, osg::ref_ptr<StencilVolumeNode> > StyleGroup;
+        int                       _renderBin;
+        Threading::ReadWriteMutex _mutex;
+        std::vector<StyleGroup>   _styleGroups;  // NOTE: DO NOT ACCESS without a mutex!
 
-        bool getStyleNode( const std::string& styleName, osgEarth::Symbology::StencilVolumeNode*& out_svn ) {
-            for(std::vector<StyleGroup>::iterator i = _styleGroups.begin(); i != _styleGroups.end(); ++i ) {
-                if( i->first == styleName ) {
+
+        bool getStyleNode( const std::string& styleName, StencilVolumeNode*& out_svn, bool useLock )
+        {
+            if ( useLock )
+            {
+                Threading::ScopedReadLock lock( _mutex );
+                return getStyleNodeWithoutLocking( styleName, out_svn );
+            }
+            else
+            {
+                return getStyleNodeWithoutLocking( styleName, out_svn );
+            }
+        }
+
+    private:
+        bool getStyleNodeWithoutLocking( const std::string& styleName, StencilVolumeNode*& out_svn )
+        {
+            for(std::vector<StyleGroup>::iterator i = _styleGroups.begin(); i != _styleGroups.end(); ++i )
+            {
+                if( i->first == styleName )
+                {
                     out_svn = i->second.get();
                     return true;
                 }
@@ -332,12 +354,14 @@ namespace
     {
     protected:
         const FeatureStencilModelOptions _options;
-        int _renderBinStart;
+        int                              _renderBinStart;
+        BuildData                        _buildData;
 
     public:
         StencilVolumeNodeFactory( const FeatureStencilModelOptions& options, int renderBinStart )
             : _options(options),
-              _renderBinStart( renderBinStart ) { }
+              _buildData( renderBinStart )
+        { }
 
         //override
         bool createOrUpdateNode(
@@ -377,14 +401,11 @@ namespace
 
             densificationThreshold = *_options.densificationThreshold();
 
-            // establish the shared build data (shared across compiles in the same session)
-            //BuildData* buildData = getOrCreateBuildData( cx.getSession() );
-
             // Scan the geometry to see if it includes line data, since that will require buffering:
             bool hasLines = false;
             for( FeatureList::const_iterator i = featureList.begin(); i != featureList.end(); ++i )
             {
-                Feature* feature = *i;
+                Feature* feature = (*i).get();
                 Geometry* geom = feature->getGeometry();
                 if ( geom && 
                      ( geom->getComponentType() == Geometry::TYPE_LINESTRING ||
@@ -410,8 +431,8 @@ namespace
 
             // Transform them into the map's SRS, localizing the verts along the way:
             TransformFilter xform( mi.getProfile()->getSRS() );
-            xform.setMakeGeocentric( mi.isGeocentric() );
-            xform.setLocalizeCoordinates( !mi.isGeocentric() );
+            //xform.setMakeGeocentric( mi.isGeocentric() );
+            //xform.setLocalizeCoordinates( !mi.isGeocentric() );
             cx = xform.push( featureList, cx );
 
             if ( mi.isGeocentric() )
@@ -432,7 +453,7 @@ namespace
 
             for( FeatureList::iterator i = featureList.begin(); i != featureList.end(); ++i )
             {
-                Feature* feature = *i;
+                Feature* feature = (*i).get();
                 Geometry* geom = feature->getGeometry();
                 osg::Node* volume = createVolume( geom, -extrusionDistance, extrusionDistance * 2.0, cx );
 
@@ -443,8 +464,6 @@ namespace
                     volumes->addChild( volume );
                 }
             }
-
-            //osg::Node* result = 0L;
 
             if ( volumes )
             {
@@ -482,57 +501,49 @@ namespace
             }
             else
             {
-                BuildData* buildData = getOrCreateBuildData( session );
-
                 StencilVolumeNode* styleNode = 0L;
-                if ( !buildData->getStyleNode(style.getName(), styleNode) )
+                if ( !_buildData.getStyleNode(style.getName(), styleNode, true) )
                 {
-                    OE_INFO << LC << "Create style group \"" << style.getName() << "\"" << std::endl;
+                    // did not find; write-lock it and try again (double-check pattern)
+                    Threading::ScopedWriteLock exclusiveLock( _buildData._mutex );
 
-                    styleNode = new StencilVolumeNode( *_options.mask(), *_options.inverted() );
-
-                    if ( _options.mask() == false )
+                    if ( !_buildData.getStyleNode(style.getName(), styleNode, false) )
                     {
-                        osg::Vec4f maskColor = osg::Vec4(1,1,0,1);
+                        OE_INFO << LC << "Create style group \"" << style.getName() << "\"" << std::endl;
 
-                        if (/*hasLines &&*/ style.getSymbol<LineSymbol>())
+                        styleNode = new StencilVolumeNode( *_options.mask(), *_options.inverted() );
+
+                        if ( _options.mask() == false )
                         {
-                            const LineSymbol* line = style.getSymbol<LineSymbol>();
-                            maskColor = line->stroke()->color();
-                        } 
-                        else
-                        {
-                            const PolygonSymbol* poly = style.getSymbol<PolygonSymbol>();
-                            if (poly)
-                                maskColor = poly->fill()->color();
+                            osg::Vec4f maskColor = osg::Vec4(1,1,0,1);
+
+                            if (/*hasLines &&*/ style.getSymbol<LineSymbol>())
+                            {
+                                const LineSymbol* line = style.getSymbol<LineSymbol>();
+                                maskColor = line->stroke()->color();
+                            } 
+                            else
+                            {
+                                const PolygonSymbol* poly = style.getSymbol<PolygonSymbol>();
+                                if (poly)
+                                    maskColor = poly->fill()->color();
+                            }
+                            styleNode->addChild( createColorNode(maskColor) );
+                            
+                            osg::StateSet* ss = styleNode->getOrCreateStateSet();
+
+                            ss->setMode( GL_LIGHTING, _options.enableLighting() == true?
+                                 osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
+                                 osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
                         }
-                        styleNode->addChild( createColorNode(maskColor) );
-                        
-                        osg::StateSet* ss = styleNode->getOrCreateStateSet();
 
-                        ss->setMode( GL_LIGHTING, _options.enableLighting() == true?
-                             osg::StateAttribute::ON | osg::StateAttribute::PROTECTED :
-                             osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+                        _buildData._renderBin = styleNode->setBaseRenderBin( _buildData._renderBin );
+                        _buildData._styleGroups.push_back( BuildData::StyleGroup(style.getName(), styleNode) );
                     }
-
-                    buildData->_renderBin = styleNode->setBaseRenderBin( buildData->_renderBin );
-                    buildData->_styleGroups.push_back( BuildData::StyleGroup( style.getName(), styleNode ) );
                 }
 
                 return styleNode;
             }
-        }
-
-        //private
-        BuildData* getOrCreateBuildData( Session* session )
-        {
-            // establish the shared build data (shared across compiles in the same session)
-            BuildData* buildData = dynamic_cast<BuildData*>( session->getBuildData() );
-            if ( !buildData ) {
-                buildData = new BuildData( _renderBinStart );
-                session->setBuildData( buildData );
-            }
-            return buildData;
         }
     };
 
@@ -542,8 +553,8 @@ namespace
     public:
         FeatureStencilModelSource( const ModelSourceOptions& options, int renderBinStart ) :
             FeatureModelSource( options ),
-            _renderBinStart( renderBinStart ),
-            _options( options )
+            _options( options ),
+            _renderBinStart( renderBinStart )
         {
             // make sure we have stencil bits. Note, this only works before
             // a viewer gets created. You may need to allocate stencil bits
@@ -561,9 +572,9 @@ namespace
         }
 
         //override
-        void initialize( const std::string& referenceURI, const Map* map )
+        void initialize( const osgDB::Options* dbOptions, const Map* map )
         {
-            FeatureModelSource::initialize( referenceURI, map );
+            FeatureModelSource::initialize( dbOptions, map );
         }
 
         //override

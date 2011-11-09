@@ -119,8 +119,6 @@ namespace
 
 Control::Control() :
 _x(0), _y(0), _width(1), _height(1),
-_hfill( false ),
-_vfill( false ),
 _margin( Gutter(0) ),
 _padding( Gutter(2) ),
 _visible( true ),
@@ -130,7 +128,9 @@ _backColor( osg::Vec4f(0,0,0,0) ),
 _foreColor( osg::Vec4f(1,1,1,1) ),
 _activeColor( osg::Vec4f(.4,.4,.4,1) ),
 _active( false ),
-_absorbEvents( false )
+_absorbEvents( false ),
+_hfill( false ),
+_vfill( false )
 {
     //nop
 }
@@ -1915,6 +1915,7 @@ ControlNodeBin::setFading( bool value )
 void
 ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
 {
+    const osg::Viewport* vp = context._vp.get();
     osg::Vec2f surfaceSize( context._vp->width(), context._vp->height() );
 
     // we don't really need to keep this list in the object, but that prevents it from having to
@@ -2264,7 +2265,7 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
     //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
-        for( ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+        for( ControlList::const_reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
         {
             i->get()->handle(ea, aa, _context);
         }

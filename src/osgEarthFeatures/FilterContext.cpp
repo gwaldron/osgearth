@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FilterContext>
+#include <osgEarth/Registry>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -24,24 +25,31 @@ using namespace osgEarth::Features;
 FilterContext::FilterContext(Session*               session,
                              const FeatureProfile*  profile,
                              const GeoExtent&       workingExtent ) :
-_session( session ),
-_profile( profile ),
-_isGeocentric( false ),
-_extent( workingExtent, workingExtent )
+_session     ( session ),
+_profile     ( profile ),
+_extent      ( workingExtent, workingExtent ),
+_isGeocentric( false )
 {
-    //NOP
+    _resourceCache = new ResourceCache( session ? session->getDBOptions() : 0L );
 }
 
 FilterContext::FilterContext( const FilterContext& rhs ) :
-_session( rhs._session.get() ),
-_profile( rhs._profile.get() ),
-_isGeocentric( rhs._isGeocentric ),
-_extent( rhs._extent ),
-_referenceFrame( rhs._referenceFrame ),
+_profile              ( rhs._profile.get() ),
+_session              ( rhs._session.get() ),
+_isGeocentric         ( rhs._isGeocentric ),
+_extent               ( rhs._extent ),
+_referenceFrame       ( rhs._referenceFrame ),
 _inverseReferenceFrame( rhs._inverseReferenceFrame ),
-_optimizerHints( rhs._optimizerHints )
+_optimizerHints       ( rhs._optimizerHints ),
+_resourceCache        ( rhs._resourceCache.get() )
 {
     //nop
+}
+
+const osgDB::Options*
+FilterContext::getDBOptions() const
+{
+    return _session.valid() ? _session->getDBOptions() : 0L;
 }
 
 void
@@ -72,6 +80,24 @@ FilterContext::toWorld( Geometry* geom ) const
                 *i = *i * _inverseReferenceFrame;
         }
     }
+}
+
+osg::Vec3d
+FilterContext::toMap( const osg::Vec3d& point ) const
+{
+    osg::Vec3d world = toWorld(point);
+    if ( _isGeocentric )
+        _extent->getSRS()->transformFromECEF( world, world );
+    return world;
+}
+
+osg::Vec3d
+FilterContext::fromMap( const osg::Vec3d& point ) const
+{
+    osg::Vec3d world;
+    if ( _isGeocentric )
+        _extent->getSRS()->transformToECEF( point, world );
+    return toLocal(world);
 }
 
 std::string

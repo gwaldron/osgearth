@@ -68,22 +68,9 @@ _parentMapNode( mapNode )
         epo.maxLevel() = *options.maxLOD();
         oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
 
-#if 0
-        // now add a layer for the surface imager.
-        OSGOptions tso;
-        tso.url() = "../data/watersurface1.png"; //.int"; //*options.alphaImageURI();
-        tso.maxDataLevel() = 16;
-
-        ImageLayerOptions ilo( "ocean-tex", tso );
-        ilo.cachePolicy() = CachePolicy::NO_CACHE;
-        ilo.profile() = *mo.profile();
-
-        ImageLayer* seaLayer = new ImageLayer( ilo );
-        oceanMap->addImageLayer( seaLayer );
-#endif
-
         this->addChild( oceanMapNode );
 
+        // set up the options uniforms.
         osg::StateSet* ss = this->getOrCreateStateSet();
 
         _seaLevel = new osg::Uniform(osg::Uniform::FLOAT, "seaLevel");

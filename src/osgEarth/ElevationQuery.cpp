@@ -28,7 +28,6 @@ ElevationQuery::postCTOR()
     _tileSize         = 0;
     _maxDataLevel     = 0;
     _technique        = TECHNIQUE_PARAMETRIC;
-    _interpolation    = INTERP_BILINEAR;
     _maxLevelOverride = -1;
     _queries          = 0.0;
     _totalTime        = 0.0;
@@ -83,18 +82,6 @@ int
 ElevationQuery::getMaxTilesToCache() const
 {
     return _tileCache.getMaxSize();
-}
-
-void
-ElevationQuery::setInterpolation( ElevationInterpolation interp)
-{
-    _interpolation = interp;
-}
-
-ElevationInterpolation
-ElevationQuery::getElevationInterpolation() const
-{
-    return _interpolation;
 }
 
 bool
@@ -222,7 +209,7 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
     {
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
-        _mapf.getHeightField( key, true, hf, 0L, _interpolation );
+        _mapf.getHeightField( key, true, hf, 0L );
 
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )

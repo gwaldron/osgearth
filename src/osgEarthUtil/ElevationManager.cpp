@@ -179,7 +179,7 @@ ElevationManager::getElevationImpl(double x, double y,
 
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
-        _mapf.getHeightField( key, true, hf, 0L, _interpolation );
+        _mapf.getHeightField( key, true, hf, 0L );
 
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )

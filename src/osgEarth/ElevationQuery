@@ -142,17 +142,7 @@ namespace osgEarth
          * Gets the maximum cache size for elevation tiles.
          */
         int getMaxTilesToCache() const;
-
-        /**
-         * Sets the elevation interpolation to use when sampling data
-         */
-        void setInterpolation( ElevationInterpolation interp );
-
-        /**
-         * Gets the elevation interpolation to use when sampling data
-         */
-        ElevationInterpolation getElevationInterpolation() const;
-
+        
         /**
         * Sets the maximum level override for elevation queries.
         * A value of -1 turns off the override.
@@ -175,8 +165,7 @@ namespace osgEarth
         int _tileSize;
         unsigned int _maxDataLevel;
         int _maxLevelOverride;
-        Technique _technique;
-        ElevationInterpolation _interpolation;
+        Technique _technique;        
 
         typedef LRUCache< TileKey, osg::ref_ptr<osgTerrain::TerrainTile> > TileCache;
         TileCache _tileCache;

@@ -320,8 +320,7 @@ namespace osgEarth
             const TileKey&                  key,
             bool                            fallbackIfNeessary,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            bool*                           out_isFallback =0L,
-            ElevationInterpolation          interpolation  =INTERP_AVERAGE,
+            bool*                           out_isFallback =0L,            
             ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
             ProgressCallback*               progress       =0L)  const;
 
@@ -420,12 +419,17 @@ namespace osgEarth
         MapInfo( const Map* map )
             : _profile( map->getProfile() ),
               _isGeocentric( map->isGeocentric() ),
-              _isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ) { }
+              _isCube( map->getMapOptions().coordSysType() == MapOptions::CSTYPE_GEOCENTRIC_CUBE ),
+              _elevationInterpolation( *map->getMapOptions().elevationInterpolation())
+        { 
+        }
 
         MapInfo( const MapInfo& rhs )
             : _profile( rhs._profile ),
               _isGeocentric( rhs._isGeocentric ),
-              _isCube( rhs._isCube ) { }              
+              _isCube( rhs._isCube ),
+              _elevationInterpolation( rhs._elevationInterpolation )
+             { }              
         
         const Profile* getProfile() const { return _profile.get(); }
 
@@ -435,6 +439,8 @@ namespace osgEarth
 
         bool isProjectedSRS() const { return !isGeographicSRS(); }
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }        
+
+        ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
         
         bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
         bool mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
@@ -443,6 +449,7 @@ namespace osgEarth
     private:
         osg::ref_ptr<const Profile> _profile;
         bool _isGeocentric, _isCube;
+        ElevationInterpolation _elevationInterpolation;
     };
 
 
@@ -475,6 +482,7 @@ namespace osgEarth
 
         /** Convenience method to access the map's profile */
         const Profile* getProfile() const { return _mapInfo.getProfile(); }
+        
 
         /** The image layer stack snapshot */
         const ImageLayerVector& imageLayers() const { return _imageLayers; }
@@ -514,8 +522,7 @@ namespace osgEarth
             const TileKey& key,
             bool fallback,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            bool* out_isFallback =0L,
-            ElevationInterpolation interpolation =INTERP_AVERAGE,
+            bool* out_isFallback =0L,            
             ElevationSamplePolicy samplePolicy   =SAMPLE_FIRST_VALID,
             ProgressCallback* progress = 0) const; 
 
@@ -530,7 +537,7 @@ namespace osgEarth
         ElevationLayerVector _elevationLayers;
         ModelLayerVector _modelLayers;
         MaskLayerVector _maskLayers;
-        friend class Map;
+        friend class Map;        
     };
 
 }

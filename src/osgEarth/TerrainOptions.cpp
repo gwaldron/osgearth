@@ -99,7 +99,6 @@ _enableLighting( false ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
 _lodTransitionTimeSeconds( 0.5f ),
-_elevationInterpolation( INTERP_BILINEAR ),
 _enableMipmapping( true )
 {
     fromConfig( _conf );
@@ -129,11 +128,6 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "compositor", "multitexture_ffp", _compositingTech, COMPOSITING_MULTITEXTURE_FFP );
     conf.updateIfSet( "compositor", "multipass",        _compositingTech, COMPOSITING_MULTIPASS );
 
-    conf.updateIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
-    conf.updateIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
-    conf.updateIfSet( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
-    conf.updateIfSet( "elevation_interpolation", "triangulate", _elevationInterpolation, INTERP_TRIANGULATE);
-
     return conf;
 }
 
@@ -158,9 +152,4 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "compositor", "multitexture_gpu", _compositingTech, COMPOSITING_MULTITEXTURE_GPU );
     conf.getIfSet( "compositor", "multitexture_ffp", _compositingTech, COMPOSITING_MULTITEXTURE_FFP );
     conf.getIfSet( "compositor", "multipass",        _compositingTech, COMPOSITING_MULTIPASS );
-
-    conf.getIfSet( "elevation_interpolation", "nearest",     _elevationInterpolation, INTERP_NEAREST);
-    conf.getIfSet( "elevation_interpolation", "average",     _elevationInterpolation, INTERP_AVERAGE);
-    conf.getIfSet( "elevation_interpolation", "bilinear",    _elevationInterpolation, INTERP_BILINEAR);
-    conf.getIfSet( "elevation_interpolation", "triangulate", _elevationInterpolation, INTERP_TRIANGULATE);
 }

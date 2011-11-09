@@ -26,8 +26,7 @@
 #include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
 
 #include <osg/Depth>
-#include <osgUtil/IntersectionVisitor>
-#include <osgUtil/IntersectVisitor>
+#include <osg/Texture2D>
 
 #define LC "[OceanSurface] "
 
@@ -90,6 +89,26 @@ _parentMapNode( mapNode )
         ss->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false) );
         ss->setRenderBinDetails( 15, "RenderBin" );
 
+        // load up a surface texture
+        ss->getOrCreateUniform( "hasTex1", osg::Uniform::BOOL )->set( false );
+        if ( options.textureURI().isSet() )
+        {
+            //TODO: enable cache support here:
+            osg::Image* image = options.textureURI()->readImage().releaseImage();
+            if ( image )
+            {
+                osg::Texture2D* tex = new osg::Texture2D( image );
+                tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+                tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+                tex->setWrap  ( osg::Texture::WRAP_S, osg::Texture::REPEAT );
+                tex->setWrap  ( osg::Texture::WRAP_T, osg::Texture::REPEAT );
+
+                ss->setTextureAttributeAndModes( 1, tex, 1 );
+                ss->getOrCreateUniform( "tex1", osg::Uniform::SAMPLER_2D )->set( 1 );
+                ss->getOrCreateUniform( "hasTex1", osg::Uniform::BOOL )->set( true );
+            }
+        }
+
         apply( options );
     }
 }
@@ -108,11 +127,5 @@ OceanSurfaceContainer::apply( const OceanSurfaceOptions& options )
 void
 OceanSurfaceContainer::traverse( osg::NodeVisitor& nv )
 {
-    if ( dynamic_cast<osgUtil::IntersectionVisitor*>(&nv) )
-        return;
-
-    if ( dynamic_cast<osgUtil::IntersectVisitor*>(&nv) )
-        return;
-
     osg::Group::traverse( nv );
 }

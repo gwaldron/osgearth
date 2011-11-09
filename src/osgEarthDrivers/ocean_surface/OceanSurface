@@ -63,11 +63,11 @@ namespace osgEarth { namespace Drivers
         /** Intensity texture to use for the ocean surface alpha. */
         osg::ref_ptr<osg::Image>& alphaImage() { return _alphaImage; }
         const osg::ref_ptr<osg::Image>& alphaImage() const { return _alphaImage; }
+#endif
 
         /** URI of the intensity texture to use for the ocean surface alpha. */
-        optional<URI>& alphaImageURI() { return _alphaImageURI; }
-        const optional<URI>& alphaImageURI() const { return _alphaImageURI; }
-#endif
+        optional<URI>& textureURI() { return _textureURI; }
+        const optional<URI>& textureURI() const { return _textureURI; }
 
     public:
         OceanSurfaceOptions( const Config& conf =Config() )
@@ -89,6 +89,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("low_feather_offset",  _lowFeatherOffset );
             conf.updateIfSet("max_lod",             _maxLOD );
             conf.updateIfSet("base_color",          _baseColor );
+            conf.updateIfSet("texture_url",         _textureURI );
             return conf;
         }
 
@@ -105,16 +106,16 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("low_feather_offset",  _lowFeatherOffset );
             conf.getIfSet("max_lod",             _maxLOD );
             conf.getIfSet("base_color",          _baseColor );
+            conf.getIfSet("texture_url",         _textureURI );
         }
 
     private:
         optional<float>          _seaLevel;
         optional<float>          _lowFeatherOffset;
         optional<float>          _highFeatherOffset;
-        optional<URI>            _alphaImageURI;
         optional<unsigned>       _maxLOD;
         optional<Color>          _baseColor;
-        osg::ref_ptr<osg::Image> _alphaImage;
+        optional<URI>            _textureURI;
     };
 
 

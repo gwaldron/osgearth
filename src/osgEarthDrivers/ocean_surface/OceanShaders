@@ -34,7 +34,7 @@ namespace
         "varying float v_range; \n"                  // distance from camera to current vertex
         "varying float v_enorm; \n"                  // normalized terrain height at vertex [0..1]
         "varying vec2 texCoord0; \n"
-        "varying vec2 texCoord1; \n"
+        //"varying vec2 texCoord1; \n"
 
         "void osgearth_vert_setupTexturing() \n"
         "{ \n"
@@ -48,7 +48,7 @@ namespace
 
         // set up the tex coords for the frag shader:
         "   texCoord0 = gl_MultiTexCoord0.st; \n"
-        "   texCoord1 = gl_MultiTexCoord1.st; \n"
+        //"   texCoord1 = gl_MultiTexCoord1.st; \n"
 
         // read normalized [0..1] elevation data from the height texture:
         "   v_enorm = texture2D( tex0, texCoord0 ).r; \n"
@@ -80,8 +80,9 @@ namespace
         "varying float v_enorm; \n"                // normalized terrain height at vertex [0..1]
 
         "varying vec2 texCoord0; \n"
-        "varying vec2 texCoord1; \n"
-        "uniform sampler2D tex1; \n"               // intensity texture (water surface)
+        //"varying vec2 texCoord1; \n"
+        "uniform bool hasTex1; \n"                 // whether there's a surface texture
+        "uniform sampler2D tex1; \n"               // surface texture
         "uniform float seaLevel; \n"               // sea level offset
         "uniform float lowFeather; \n"             // offset from sea level at which to start feathering out
         "uniform float highFeather; \n"            // offset from sea level at which to stop feathering out
@@ -89,6 +90,18 @@ namespace
 
         "void osgearth_frag_applyTexturing(inout vec4 color) \n"
         "{ \n"
+        "    color = baseColor; \n"
+
+        // amplify the range's effect on alpha when the camera elevation gets low
+        "    float rangeFactor = remap( v_msl, -10000.0, 10000.0, 10.0, 1.0 ); \n"
+        "    float rangeEffect = remap( v_range, 75000.0, 200000.0 * rangeFactor, 1.0, 0.0 ); \n"
+
+        // start with the surface texture. The "/10" just stretches out the texture a bit
+        "    if (hasTex1) { \n"
+        "        vec4 texel = texture2D(tex1, texCoord0/10.0); \n"
+        "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, 0.5), color.a); \n"
+        "        color = mix(color, nearColor, rangeEffect); \n"
+        "   } \n"
 
         // un-normalize the heightfield data
         "    float terrainHeight = (v_enorm * 65535.0) - 32768.0; \n"                  
@@ -96,18 +109,15 @@ namespace
         // heightfield's effect on alpha [0..1]
         "    float terrainEffect = remap( terrainHeight, seaLevel+lowFeather, seaLevel+highFeather, 1.0, 0.0 ); \n" 
 
-        // amplify the range's effect on alpha when the camera elevation gets low
-        "    float rangeFactor = remap( v_msl, -10000.0, 10000.0, 10.0, 1.0 ); \n"
-        "    float rangeEffect = remap( v_range, 75000.0, 200000.0 * rangeFactor, 1.0, 0.0 ); \n"
-
         // balance between texture-based alpha and static alpha
-        "    float texBalance = remap( v_range, 7500.0, 15000.0, 0.0, 1.0 ); \n"
-        "    float texIntensity = texture2D( tex1, texCoord1 ).r; \n"
-        "    float texEffect = mix( texIntensity, 0.8, texBalance ); \n"
+        //"    float texBalance = remap( v_range, 7500.0, 15000.0, 0.0, 1.0 ); \n"
+        //"    float texIntensity = texture2D( tex1, texCoord1 ).r; \n"
+        //"    float texEffect = mix( texIntensity, 0.8, texBalance ); \n"
 
         // color it
         //"    color = vec4( baseColor.rgb, texEffect * terrainEffect * rangeEffect * baseColor.a ); \n"
-        "    color = vec4( baseColor.rgb, terrainEffect * rangeEffect * baseColor.a ); \n"
+        "    color = vec4( color.rgb, terrainEffect * rangeEffect * color.a ); \n"
+        //"    color = vec4( color.rgb, terrainEffect * color.a ); \n"
         //"    color = vec4( baseColor, terrainEffect ); \n"
 
         //"    color = vec4( 1, 0, 0, 1 ); \n" // debugging

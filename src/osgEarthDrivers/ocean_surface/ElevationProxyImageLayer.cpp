@@ -20,8 +20,8 @@
 
 using namespace osgEarth;
 
-ElevationProxyImageLayer::ElevationProxyImageLayer( Map* sourceMap ) :
-ImageLayer( ImageLayerOptions() ),
+ElevationProxyImageLayer::ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options ) :
+ImageLayer( options ),
 _sourceMap( sourceMap ),
 _mapf     ( sourceMap )
 {
@@ -38,7 +38,7 @@ ElevationProxyImageLayer::initTileSource()
 bool
 ElevationProxyImageLayer::isKeyValid( const TileKey& key ) const
 {
-    return true;
+    return key.getLevelOfDetail() <= *_runtimeOptions.maxLevel();
 }
 
 bool

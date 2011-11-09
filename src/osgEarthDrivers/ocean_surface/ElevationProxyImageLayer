@@ -35,7 +35,7 @@ public:
      * Constucts a proxy layer
      * @param sourceMap Map from which to read heightfields
      */
-    ElevationProxyImageLayer( Map* sourceMap );
+    ElevationProxyImageLayer( Map* sourceMap, const ImageLayerOptions& options );
 
 public: // ImageLayer
 

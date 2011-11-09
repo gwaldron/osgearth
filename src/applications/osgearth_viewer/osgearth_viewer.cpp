@@ -450,10 +450,7 @@ main(int argc, char** argv)
 
             if ( useOcean )
             {
-                OceanSurfaceOptions ocean_opts;
-                ocean_opts.alphaImageURI() = URI("../data/oceanalpha.int");
-
-                s_ocean = new OceanSurfaceNode( mapNode, ocean_opts );
+                s_ocean = new OceanSurfaceNode( mapNode );
                 if ( s_ocean )
                     root->addChild( s_ocean );
             }
@@ -467,7 +464,7 @@ main(int argc, char** argv)
             // planes based on your view of the horizon. This prevents near clipping issues
             // when you are very close to the ground. If your app never brings a user very
             // close to the ground, you may not need this.
-            if ( useSky || useAutoClip )
+            if ( useSky || useAutoClip || useOcean )
             {
                 viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
             }

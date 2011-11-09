@@ -24,6 +24,8 @@
 #include <osgEarth/TextureCompositor>
 #include <osgEarthDrivers/osg/OSGOptions>
 #include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
+
+#include <osg/Depth>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/IntersectVisitor>
 
@@ -62,7 +64,9 @@ _parentMapNode( mapNode )
 
         // install an "elevation proxy" layer that reads elevation tiles from the
         // parent map and turns them into encoded images for our shader to use.
-        oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap()) );
+        ImageLayerOptions epo( "ocean-proxy" );
+        epo.maxLevel() = *options.maxLOD();
+        oceanMap->addImageLayer( new ElevationProxyImageLayer(_parentMapNode->getMap(), epo) );
 
 #if 0
         // now add a layer for the surface imager.
@@ -91,7 +95,9 @@ _parentMapNode( mapNode )
         _highFeather = new osg::Uniform(osg::Uniform::FLOAT, "highFeather");
         ss->addUniform( _highFeather.get() );
 
-        ss->setMode(GL_LIGHTING, 0);
+        // trick to prevent z-fighting..
+        ss->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL, 0.0, 1.0, false) );
+        ss->setRenderBinDetails( 15, "RenderBin" );
 
         apply( options );
     }

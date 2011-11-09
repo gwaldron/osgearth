@@ -49,6 +49,11 @@ namespace osgEarth { namespace Drivers
         optional<float>& highFeatherOffset() { return _highFeatherOffset; }
         const optional<float>& highFeatherOffset() const { return _highFeatherOffset; }
 
+        /** Maximum LOD to subdivide ocean surface */
+        optional<unsigned>& maxLOD() { return _maxLOD; }
+        const optional<unsigned>& maxLOD() const { return _maxLOD; }
+
+#if 0
         /** Intensity texture to use for the ocean surface alpha. */
         osg::ref_ptr<osg::Image>& alphaImage() { return _alphaImage; }
         const osg::ref_ptr<osg::Image>& alphaImage() const { return _alphaImage; }
@@ -56,12 +61,14 @@ namespace osgEarth { namespace Drivers
         /** URI of the intensity texture to use for the ocean surface alpha. */
         optional<URI>& alphaImageURI() { return _alphaImageURI; }
         const optional<URI>& alphaImageURI() const { return _alphaImageURI; }
+#endif
 
     public:
         OceanSurfaceOptions()
             : _seaLevel         ( 0.0f ),
               _lowFeatherOffset ( -100.0f ),
-              _highFeatherOffset( -10.0f )
+              _highFeatherOffset( -10.0f ),
+              _maxLOD           ( 11 )
         { }
 
     private:
@@ -69,6 +76,7 @@ namespace osgEarth { namespace Drivers
         optional<float>          _lowFeatherOffset;
         optional<float>          _highFeatherOffset;
         optional<URI>            _alphaImageURI;
+        optional<unsigned>       _maxLOD;
         osg::ref_ptr<osg::Image> _alphaImage;
     };
 

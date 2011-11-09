@@ -233,21 +233,21 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 //------------------------------------------------------------------------
 
 ImageLayer::ImageLayer( const ImageLayerOptions& options ) :
-TerrainLayer( &_runtimeOptions ),
+TerrainLayer( options, &_runtimeOptions ),
 _runtimeOptions( options )
 {
     init();
 }
 
 ImageLayer::ImageLayer( const std::string& name, const TileSourceOptions& driverOptions ) :
-TerrainLayer   ( &_runtimeOptions ),
+TerrainLayer   ( ImageLayerOptions(name, driverOptions), &_runtimeOptions ),
 _runtimeOptions( ImageLayerOptions(name, driverOptions) )
 {
     init();
 }
 
 ImageLayer::ImageLayer( const ImageLayerOptions& options, TileSource* tileSource ) :
-TerrainLayer   ( &_runtimeOptions, tileSource ),
+TerrainLayer   ( options, &_runtimeOptions, tileSource ),
 _runtimeOptions( options )
 {
     init();

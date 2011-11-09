@@ -176,7 +176,7 @@ namespace osgEarth
          * Access to the initialization options used to create this image layer
          */
         const ImageLayerOptions& getImageLayerOptions() const { return _runtimeOptions; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ImageLayerCallback* cb );

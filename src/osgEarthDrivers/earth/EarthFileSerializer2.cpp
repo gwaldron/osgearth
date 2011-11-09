@@ -170,18 +170,18 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
     {
         ImageLayer* layer = i->get();
-        Config layerConf = layer->getImageLayerOptions().getConfig();
+        Config layerConf = layer->getInitialOptions().getConfig(); //ImageLayerOptions().getConfig();
         layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getImageLayerOptions().driver()->getDriver());
+        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
         mapConf.add( "image", layerConf );
     }
 
     for( ElevationLayerVector::const_iterator i = mapf.elevationLayers().begin(); i != mapf.elevationLayers().end(); ++i )
     {
         ElevationLayer* layer = i->get();
-        Config layerConf = layer->getElevationLayerOptions().getConfig();
+        Config layerConf = layer->getInitialOptions().getConfig();
         layerConf.set("name", layer->getName());
-        layerConf.set("driver", layer->getElevationLayerOptions().driver()->getDriver());
+        layerConf.set("driver", layer->getInitialOptions().driver()->getDriver());
         mapConf.add( "elevation", layerConf );
     }
 

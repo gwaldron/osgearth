@@ -34,7 +34,7 @@ namespace osgEarth { namespace Drivers
     /**
      * Options for controlling the ocean surface node.
      */
-    class /*header-only*/ OceanSurfaceOptions
+    class /*header-only*/ OceanSurfaceOptions : public ConfigOptions
     {
     public:
         /** Nominal sea level in meters (relative to ellipsoid/geoid); default is zero. */
@@ -68,13 +68,14 @@ namespace osgEarth { namespace Drivers
 #endif
 
     public:
-        OceanSurfaceOptions()
+        OceanSurfaceOptions( const Config& conf =Config() )
             : _seaLevel         ( 0.0f ),
               _lowFeatherOffset ( -100.0f ),
               _highFeatherOffset( -10.0f ),
               _maxLOD           ( 11 ),
               _baseColor        ( osg::Vec4(0.25, 0.35, 0.6, 0.75) )
-        { }
+        {
+        }
 
     private:
         optional<float>          _seaLevel;

@@ -92,7 +92,7 @@ namespace osgEarth
 
         /** Gets the initialization options with which the layer was created. */
         const ElevationLayerOptions& getElevationLayerOptions() const { return _runtimeOptions; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ElevationLayerCallback* cb );

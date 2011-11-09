@@ -134,14 +134,19 @@ TerrainLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
-TerrainLayer::TerrainLayer( TerrainLayerOptions* options ) :
-_runtimeOptions( options )
+TerrainLayer::TerrainLayer(const TerrainLayerOptions& initOptions,
+                           TerrainLayerOptions*       runtimeOptions ) :
+_initOptions   ( initOptions ),
+_runtimeOptions( runtimeOptions )
 {
     init();
 }
 
-TerrainLayer::TerrainLayer( TerrainLayerOptions* options, TileSource* tileSource ) :
-_runtimeOptions( options ),
+TerrainLayer::TerrainLayer(const TerrainLayerOptions& initOptions,
+                           TerrainLayerOptions*       runtimeOptions,
+                           TileSource*                tileSource ) :
+_initOptions   ( initOptions ),
+_runtimeOptions( runtimeOptions ),
 _tileSource    ( tileSource )
 {
     init();

@@ -320,14 +320,14 @@ StreamingTerrain::updateTaskServiceThreads( const MapFrame& mapf )
     for (ElevationLayerVector::const_iterator itr = mapf.elevationLayers().begin(); itr != mapf.elevationLayers().end(); ++itr)
     {
         ElevationLayer* layer = itr->get();
-        float w = layer->getTerrainLayerOptions().loadingWeight().value();
+        float w = layer->getElevationLayerOptions().loadingWeight().value();
         if (w > elevationWeight) elevationWeight = w;
     }
 
     float totalImageWeight = 0.0f;
     for (ImageLayerVector::const_iterator itr = mapf.imageLayers().begin(); itr != mapf.imageLayers().end(); ++itr)
     {
-        totalImageWeight += itr->get()->getTerrainLayerOptions().loadingWeight().value();
+        totalImageWeight += itr->get()->getImageLayerOptions().loadingWeight().value();
     }
 
     float totalWeight = elevationWeight + totalImageWeight;
@@ -342,7 +342,7 @@ StreamingTerrain::updateTaskServiceThreads( const MapFrame& mapf )
 
     for (ImageLayerVector::const_iterator itr = mapf.imageLayers().begin(); itr != mapf.imageLayers().end(); ++itr)
     {
-        const TerrainLayerOptions& opt = itr->get()->getTerrainLayerOptions();
+        const TerrainLayerOptions& opt = itr->get()->getImageLayerOptions();
         int imageThreads = (int)osg::round((float)_numLoadingThreads * (opt.loadingWeight().value() / totalWeight ));
         OE_INFO << LC << "Image Threads for " << itr->get()->getName() << " = " << imageThreads << std::endl;
         getImageryTaskService( itr->get()->getUID() )->setNumThreads( imageThreads );

@@ -97,21 +97,21 @@ namespace
 //------------------------------------------------------------------------
 
 ElevationLayer::ElevationLayer( const ElevationLayerOptions& options ) :
-TerrainLayer   ( &_runtimeOptions ),
+TerrainLayer   ( options, &_runtimeOptions ),
 _runtimeOptions( options )
 {
     init();
 }
 
 ElevationLayer::ElevationLayer( const std::string& name, const TileSourceOptions& driverOptions ) :
-TerrainLayer   ( &_runtimeOptions ),
+TerrainLayer   ( ElevationLayerOptions(name, driverOptions), &_runtimeOptions ),
 _runtimeOptions( ElevationLayerOptions(name, driverOptions) )
 {
     init();
 }
 
 ElevationLayer::ElevationLayer( const ElevationLayerOptions& options, TileSource* tileSource ) :
-TerrainLayer   ( &_runtimeOptions, tileSource ),
+TerrainLayer   ( options, &_runtimeOptions, tileSource ),
 _runtimeOptions( options )
 {
     init();

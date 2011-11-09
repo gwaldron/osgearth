@@ -29,6 +29,7 @@
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/IntersectVisitor>
 
+#define LC "[OceanSurface] "
 
 OceanSurfaceContainer::OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options ) :
 _parentMapNode( mapNode )
@@ -96,6 +97,8 @@ _parentMapNode( mapNode )
 void
 OceanSurfaceContainer::apply( const OceanSurfaceOptions& options )
 {
+    OE_DEBUG << LC << "Ocean Options = " << options.getConfig().toJSON(true) << std::endl;
+
     _seaLevel->set( *options.seaLevel() );
     _lowFeather->set( *options.lowFeatherOffset() );
     _highFeather->set( *options.highFeatherOffset() );

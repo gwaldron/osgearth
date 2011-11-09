@@ -12,6 +12,8 @@ SET(TARGET_H   ElevationProxyImageLayer
                OceanShaders
 )
 
+SET(TARGET_COMMON_LIBRARIES ${TARGET_COMMON_LIBRARIES} osgEarthSymbology)
+
 SETUP_PLUGIN(osgearth_ocean_surface)
 
 # to install public driver includes:

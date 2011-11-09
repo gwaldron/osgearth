@@ -450,7 +450,7 @@ main(int argc, char** argv)
 
             if ( useOcean )
             {
-                s_ocean = new OceanSurfaceNode( mapNode );
+                s_ocean = new OceanSurfaceNode( mapNode, externals.child("ocean") );
                 if ( s_ocean )
                     root->addChild( s_ocean );
             }

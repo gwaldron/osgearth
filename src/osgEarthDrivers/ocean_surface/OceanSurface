@@ -22,6 +22,7 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ImageLayer>
 #include <osgEarth/URI>
+#include <osgEarthSymbology/Color>
 #include <osg/Node>
 #include <osg/Image>
 #include <osgDB/ReadFile>
@@ -30,6 +31,7 @@
 namespace osgEarth { namespace Drivers
 {
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * Options for controlling the ocean surface node.
@@ -54,8 +56,8 @@ namespace osgEarth { namespace Drivers
         const optional<unsigned>& maxLOD() const { return _maxLOD; }
 
         /** Base color of the ocean surface */
-        optional<osg::Vec4>& baseColor() { return _baseColor; }
-        const optional<osg::Vec4>& baseColor() const { return _baseColor; }
+        optional<Color>& baseColor() { return _baseColor; }
+        const optional<Color>& baseColor() const { return _baseColor; }
 
 #if 0
         /** Intensity texture to use for the ocean surface alpha. */
@@ -69,12 +71,40 @@ namespace osgEarth { namespace Drivers
 
     public:
         OceanSurfaceOptions( const Config& conf =Config() )
-            : _seaLevel         ( 0.0f ),
+            : ConfigOptions     ( conf ),
+              _seaLevel         ( 0.0f ),
               _lowFeatherOffset ( -100.0f ),
               _highFeatherOffset( -10.0f ),
               _maxLOD           ( 11 ),
               _baseColor        ( osg::Vec4(0.25, 0.35, 0.6, 0.75) )
         {
+            mergeConfig( _conf );
+        }
+
+    public:
+        Config getConfig() const {
+            Config conf = ConfigOptions::newConfig();
+            conf.updateIfSet("sea_level",           _seaLevel );
+            conf.updateIfSet("high_feather_offset", _highFeatherOffset );
+            conf.updateIfSet("low_feather_offset",  _lowFeatherOffset );
+            conf.updateIfSet("max_lod",             _maxLOD );
+            conf.updateIfSet("base_color",          _baseColor );
+            return conf;
+        }
+
+    protected:
+        void mergeConfig( const Config& conf ) {
+            ConfigOptions::mergeConfig( conf );
+            fromConfig( conf );
+        }
+
+    private:
+        void fromConfig( const Config& conf ) {
+            conf.getIfSet("sea_level",           _seaLevel );
+            conf.getIfSet("high_feather_offset", _highFeatherOffset );
+            conf.getIfSet("low_feather_offset",  _lowFeatherOffset );
+            conf.getIfSet("max_lod",             _maxLOD );
+            conf.getIfSet("base_color",          _baseColor );
         }
 
     private:
@@ -83,7 +113,7 @@ namespace osgEarth { namespace Drivers
         optional<float>          _highFeatherOffset;
         optional<URI>            _alphaImageURI;
         optional<unsigned>       _maxLOD;
-        optional<osg::Vec4>      _baseColor;
+        optional<Color>          _baseColor;
         osg::ref_ptr<osg::Image> _alphaImage;
     };
 

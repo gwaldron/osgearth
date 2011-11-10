@@ -141,6 +141,10 @@ namespace osgEarth
             }
         }
 
+        bool has( const K& key ) {
+            return _map.find( key ) != _map.end();
+        }
+
         void erase( const K& key ) {
             map_iter mi = _map.find( key );
             if ( mi != _map.end() ) {

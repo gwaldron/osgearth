@@ -214,12 +214,6 @@ namespace osgEarth
         const optional<bool>& enableLighting() const { return _enableLighting; }  
     
         /**
-         * The interpolation method to use when sampling heightfields.
-         */
-        optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
-        const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
-
-        /**
          * Whether to enable mipmaping and mipmap generation on textures
          */
         optional<bool>& enableMipmapping() { return _enableMipmapping; }

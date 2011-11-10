@@ -550,10 +550,15 @@ EarthManipulator::established()
         if ( !safeNode.valid() )
             return false;
         
-        // check the kids, then the parents
-        osg::ref_ptr<osg::CoordinateSystemNode> csn = osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( safeNode.get() );    
+        // check the kids, then the parents.
+        // the traversal mask is set to 0x01 so that we can "hide" a CSN from this manipulator
+        // by clearing bit 0 of its node mask.
+
+        osg::ref_ptr<osg::CoordinateSystemNode> csn = 
+            osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), 0x01 );
+
         if ( !csn.valid() )
-            csn = osgEarth::findFirstParentOfType<osg::CoordinateSystemNode>( safeNode.get() );        
+            csn = osgEarth::findFirstParentOfType<osg::CoordinateSystemNode>( safeNode.get(), 0x01 );
 
         if ( csn.valid() )
         {

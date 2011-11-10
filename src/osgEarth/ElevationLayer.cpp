@@ -48,11 +48,9 @@ ElevationLayerOptions::setDefaults()
 }
 
 Config
-ElevationLayerOptions::getConfig() const
+ElevationLayerOptions::getConfig( bool isolate ) const
 {
-    Config conf = TerrainLayerOptions::getConfig();
-    //NOP
-    return conf;
+    return TerrainLayerOptions::getConfig( isolate );
 }
 
 void

@@ -41,7 +41,7 @@ namespace osgEarth
         ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
 
     public:
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
         
     private:

@@ -97,9 +97,10 @@ ImageLayerOptions::fromConfig( const Config& conf )
 }
 
 Config
-ImageLayerOptions::getConfig() const
+ImageLayerOptions::getConfig( bool isolate ) const
 {
-    Config conf = TerrainLayerOptions::getConfig();
+    Config conf = TerrainLayerOptions::getConfig( isolate );
+
     conf.updateIfSet( "nodata_image", _noDataImageFilename );
     conf.updateIfSet( "opacity", _opacity );
     conf.updateIfSet( "min_range", _minRange );

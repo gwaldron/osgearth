@@ -70,9 +70,9 @@ TerrainLayerOptions::setDefaults()
 }
 
 Config
-TerrainLayerOptions::getConfig() const
+TerrainLayerOptions::getConfig( bool isolate ) const
 {
-    Config conf = ConfigOptions::getConfig();
+    Config conf = isolate ? ConfigOptions::newConfig() : ConfigOptions::getConfig();
 
     conf.set("name", _name);
     conf.updateIfSet( "min_level", _minLevel );
@@ -90,8 +90,9 @@ TerrainLayerOptions::getConfig() const
     conf.updateIfSet   ( "cache_format", _cacheFormat );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
 
-    //Merge the TileSource options
-    if (driver().isSet()) conf.merge( driver()->getConfig() );
+    // Merge the TileSource options
+    if ( !isolate && driver().isSet() )
+        conf.merge( driver()->getConfig() );
 
     return conf;
 }
@@ -203,12 +204,19 @@ TerrainLayer::setCache( Cache* cache )
             else
             {
                 // system will generate a cacheId.
-                Config hashConf = _runtimeOptions->driver()->getConfig();
+                // technically, this is not quite right, we need to remove everything that's
+                // an image layer property and just use the tilesource properties.
+                Config layerConf = _runtimeOptions->getConfig( true );
+                Config driverConf = _runtimeOptions->driver()->getConfig();
+                Config hashConf = driverConf - layerConf;
+
+                OE_DEBUG << LC << "Hash JSON for layer " << getName() << " is: " << hashConf.toJSON(false) << std::endl;
 
                 // remove cache-control properties before hashing.
                 hashConf.remove( "cache_only" );
                 hashConf.remove( "cache_enabled" );
                 hashConf.remove( "cache_policy" );
+                hashConf.remove( "cacheid" );
 
                 cacheId = Stringify() << std::hex << osgEarth::hashString(hashConf.toJSON());
             }

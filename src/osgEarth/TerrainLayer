@@ -145,7 +145,7 @@ namespace osgEarth
         const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio; }
 
     public:
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
 
     private:

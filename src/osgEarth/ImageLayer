@@ -95,7 +95,7 @@ namespace osgEarth
         const optional<bool>& lodBlending() const { return _lodBlending; }
 
     public:
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
         
     private:

@@ -25,6 +25,7 @@
 #include <osgEarthDrivers/osg/OSGOptions>
 #include <osgEarthDrivers/engine_osgterrain/OSGTerrainOptions>
 
+#include <osg/CullFace>
 #include <osg/Depth>
 #include <osg/Texture2D>
 
@@ -33,6 +34,9 @@
 OceanSurfaceContainer::OceanSurfaceContainer( MapNode* mapNode, const OceanSurfaceOptions& options ) :
 _parentMapNode( mapNode )
 {
+    // set the node mask so that our custom EarthManipulator will NOT find this node.
+    setNodeMask( 0xFFFFFFFE );
+
     if ( _parentMapNode.valid() )
     {
         const MapOptions&     parentMapOptions     = _parentMapNode->getMap()->getMapOptions();
@@ -53,7 +57,8 @@ _parentMapNode( mapNode )
         //    mno.enableLighting() = *mno.enableLighting();
 
         OSGTerrainOptions to;
-        to.heightFieldSkirtRatio() = 0.0;
+        to.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
+        to.clusterCulling() = false;       // want to see underwater
         mno.setTerrainOptions( to );
 
         // make the ocean's map node:
@@ -108,6 +113,10 @@ _parentMapNode( mapNode )
                 ss->getOrCreateUniform( "hasTex1", osg::Uniform::BOOL )->set( true );
             }
         }
+
+        // remove backface culling so we can see underwater
+        // (use OVERRIDE since the terrain engine sets back face culling.)
+        ss->setAttributeAndModes( new osg::CullFace(), osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
         apply( options );
     }

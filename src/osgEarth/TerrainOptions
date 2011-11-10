@@ -207,12 +207,6 @@ namespace osgEarth
         const optional<bool>& enableLighting() const { return _enableLighting; }  
     
         /**
-         * The interpolation method to use when sampling heightfields.
-         */
-        optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
-        const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
-
-        /**
          * Whether to enable mipmaping and mipmap generation on textures
          */
         optional<bool>& enableMipmapping() { return _enableMipmapping; }
@@ -242,12 +236,7 @@ namespace osgEarth
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
         optional<float> _lodTransitionTimeSeconds;
-        optional<bool>  _enableMipmapping;
-#if 0
-        optional<osg::Texture::FilterMode> _contourMagFilter;
-        optional<osg::Texture::FilterMode> _contourMinFilter;
-#endif
-        optional<ElevationInterpolation> _elevationInterpolation;
+        optional<bool>  _enableMipmapping;        
     };
 }
 

@@ -1,0 +1,150 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_CACHE_BIN_H
+#define OSGEARTH_CACHE_BIN_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Config>
+#include <osgEarth/IOTypes>
+#include <osgDB/ReaderWriter>
+
+namespace osgEarth
+{
+    /**
+     * CacheBin is a names container within a Cache. It allows different
+     * application modules to compartmentalize their data withing a single
+     * cache location.
+     */
+    class /*no export*/ CacheBin : public osg::Referenced
+    {
+    public:
+        /**
+         * Constructs a caching bin.
+         * @param binID  Name of this caching bin (unique withing a Cache)
+         * @param driver ReaderWriter that serializes data for this caching bin.
+         */
+        CacheBin( const std::string& binID ) : _binID(binID) { }
+
+        /**
+         * The identifier (unique withing a Cache) of this bin.
+         */
+        const std::string& getID() const { return _binID; }
+
+        /**
+         * Reads an object from the cache bin.
+         * @param key    Lookup key to read
+         * @param maxAge Maximum age of the record; return 0L if expired.
+         */
+        virtual ReadResult readObject(
+            const std::string&         key,
+            double                     maxAge =DBL_MAX ) =0;
+
+        /**
+         * Reads an image from the cache bin.
+         * @param key    Lookup key to read
+         * @param maxAge Maximum age of the record; return 0L if expired.
+         */
+        virtual ReadResult readImage(
+            const std::string&        key,
+            double                    maxAge =DBL_MAX ) =0;
+
+        /**
+         * Reads a string buffer from the cache bin.
+         * @param key    Lookup key to read
+         * @param maxAge Maximum age of the record; return 0L if expired.
+         */
+        virtual ReadResult readString(
+            const std::string&          key,
+            double                      maxAge =DBL_MAX ) =0;
+
+        /**
+         * Writes an object (or an image) to the cache bin.
+         * @param key    Lookup key to write to
+         * @param object Object to serialize to the cache
+         */
+        virtual bool write( 
+            const std::string& key, 
+            const osg::Object* object,
+            const Config&      metadata =Config() ) =0;
+
+#if 0
+        /**
+         * Writes a string or buffer to the cache bin.
+         * @param key    Lookup key to write to
+         * @param object Buffer to serialize to the cache
+         */
+        virtual bool writeString(
+            const std::string& key,
+            const std::string& buffer,
+            const Config&      metadata =Config() ) =0;
+#endif
+
+        /**
+         * Checks whether a key exists in the cache.
+         * (Default implementation just tries to read the object)
+         */
+        virtual bool isCached( 
+            const std::string& key, 
+            double             maxAge =DBL_MAX ) =0;
+
+        /**
+         * Reads custom metadata from the cache.
+         */
+        virtual Config readMetadata() { return Config(); }
+
+        /**
+         * Writes custom metadata to the cache.
+         */
+        virtual bool writeMetadata( const Config& meta ) { return false; }
+
+        /**
+         * Store this pointer in an options structure
+         */
+        void store( osgDB::Options* options ) const {
+            if ( options ) options->setPluginData( "osgEarth::CacheBin", (void*)this );
+        }
+
+        /**
+         * Retrieve pointer from an options struture
+         */
+        static CacheBin* get( const osgDB::Options* options ) {
+            return options ? const_cast<CacheBin*>(static_cast<const CacheBin*>(options->getPluginData("osgEarth::CacheBin"))) : 0L;
+        }
+        
+#if 0
+    public:
+
+        /** Convenience template for calling readObject with a specific type */
+        template<typename T>
+        ReadResult readObject( osg::ref_ptr<T>& output, const std::string& key, double maxAge =DBL_MAX )
+        {
+            osg::ref_ptr<osg::Object> r;
+            bool ok = readObject( r, key, maxAge );
+            output = dynamic_cast<T*>( r.get() );
+            return output.valid();
+        }
+#endif
+
+    protected:
+        std::string _binID;
+    };
+}
+
+#endif // OSGEARTH_CACHE_BIN_H

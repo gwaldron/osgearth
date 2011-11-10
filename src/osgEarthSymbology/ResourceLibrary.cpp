@@ -34,12 +34,12 @@ using namespace OpenThreads;
 //------------------------------------------------------------------------
 
 ResourceLibrary*
-ResourceLibrary::create( const URI& uri )
+ResourceLibrary::create( const URI& uri, const osgDB::Options* dbOptions )
 {
-    osg::ref_ptr<XmlDocument> xml = XmlDocument::load( uri ); // buf, uri.full() );
+    // TODO: dboptions? cache policy?
+    osg::ref_ptr<XmlDocument> xml = XmlDocument::load( uri, dbOptions );
     if ( !xml.valid() )
     {
-        OE_WARN << LC << "Failed to parse XML for resource library \"" << uri.full() << "\"" << std::endl;
         return 0L;
     }
 

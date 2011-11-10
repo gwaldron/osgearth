@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/TileKey>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>

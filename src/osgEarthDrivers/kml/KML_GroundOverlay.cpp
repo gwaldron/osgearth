@@ -18,9 +18,9 @@
  */
 #include "KML_GroundOverlay"
 #include "KML_Geometry"
-#include <osgEarthUtil/ImageOverlay>
+#include <osgEarthAnnotation/ImageOverlay>
 
-using namespace osgEarth::Util;
+using namespace osgEarth::Annotation;
 
 void
 KML_GroundOverlay::scan( const Config& conf, KMLContext& cx )
@@ -50,8 +50,9 @@ KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
         double west  = llb.value<double>("west", 0.0);
         Angular rotation( llb.value<double>("rotation", 0.0), Units::DEGREES );
 
-        osg::ref_ptr<osg::Image> image = URI(href, conf.uriContext()).readImage();
-        if ( !image.valid() ) {
+        osg::ref_ptr<osg::Image> image = URI(href, conf.referrer()).readImage().getImage();
+        if ( !image.valid() )
+        {
             OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
             return;
         }
@@ -69,8 +70,9 @@ KML_GroundOverlay::build( const Config& conf, KMLContext& cx )
         g.buildChild( llq, cx, style );
         if ( g._geom.valid() && g._geom->size() >= 4 )
         {
-            osg::ref_ptr<osg::Image> image = URI(href, conf.uriContext()).readImage();
-            if ( !image.valid() ) {
+            osg::ref_ptr<osg::Image> image = URI(href, conf.referrer()).readImage().getImage();
+            if ( !image.valid() )
+            {
                 OE_WARN << LC << "GroundOverlay failed to read image from " << href << std::endl;
                 return;
             }

@@ -84,8 +84,8 @@ FeatureTileSourceOptions::fromConfig( const Config& conf )
 /*************************************************************************/
 
 FeatureTileSource::FeatureTileSource( const TileSourceOptions& options ) :
-TileSource( options ),
-_options( options.getConfig() ),
+TileSource  ( options ),
+_options    ( options.getConfig() ),
 _initialized( false )
 {
     if ( _options.featureSource().valid() )
@@ -103,7 +103,8 @@ _initialized( false )
 }
 
 void 
-FeatureTileSource::initialize( const std::string& referenceURI, const Profile* overrideProfile)
+FeatureTileSource::initialize(const osgDB::Options* dbOptions,
+                              const Profile*        overrideProfile )
 {
     if (overrideProfile)
     {
@@ -118,7 +119,7 @@ FeatureTileSource::initialize( const std::string& referenceURI, const Profile* o
 
     if ( _features.valid() )
     {
-        _features->initialize( referenceURI );
+        _features->initialize( dbOptions );
 
 #if 0 // removed this as it was screwing up the rasterizer (agglite plugin).. not sure there's any reason to do this anyway
         if (_features->getFeatureProfile())
@@ -174,7 +175,7 @@ FeatureTileSource::createImage( const TileKey& key, ProgressCallback* progress )
     {
         // Each feature has its own embedded style data, so use that:
         osg::ref_ptr<FeatureCursor> cursor = _features->createFeatureCursor( Query() );
-        while( cursor->hasMore() )
+        while( cursor.valid() && cursor->hasMore() )
         {
             Feature* feature = cursor->nextFeature();
             if ( feature )
@@ -246,7 +247,7 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
         // now copy the resulting feature set into a list, converting the data
         // types along the way if a geometry override is in place:
         FeatureList cellFeatures;
-        while( cursor->hasMore() )
+        while( cursor.valid() && cursor->hasMore() )
         {
             Feature* feature = cursor->nextFeature();
             Geometry* geom = feature->getGeometry();

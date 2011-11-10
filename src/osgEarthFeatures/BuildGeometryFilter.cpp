@@ -67,8 +67,14 @@ BuildGeometryFilter::reset()
 bool
 BuildGeometryFilter::process( FeatureList& features, const FilterContext& context )
 {
-    bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
-    const SpatialReference* srs = context.extent()->getSRS();
+    bool makeECEF = false;
+    const SpatialReference* featureSRS = 0L;
+
+    if ( context.isGeoreferenced() )
+    {
+        makeECEF = context.getSession()->getMapInfo().isGeocentric();
+        featureSRS = context.extent()->getSRS();
+    }
 
     for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
     {
@@ -158,7 +164,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 
             if ( _featureNameExpr.isSet() )
             {
-                const std::string& name = input->eval( _featureNameExpr.mutable_value() );
+                const std::string& name = input->eval( _featureNameExpr.mutable_value(), &context );
                 osgGeom->setName( name );
             }
 
@@ -192,7 +198,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 if ( makeECEF )
                 {
                     allPoints = new osg::Vec3Array();
-                    ECEF::transformAndLocalize( part->asVector(), allPoints, srs, _world2local );
+                    ECEF::transformAndLocalize( part->asVector(), featureSRS, allPoints, _world2local );
                 }
                 else
                 {
@@ -209,7 +215,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                     if ( hole->isValid() )
                     {
                         if ( makeECEF )
-                            ECEF::transformAndLocalize( hole->asVector(), allPoints, srs, _world2local );
+                            ECEF::transformAndLocalize( hole->asVector(), featureSRS, allPoints, _world2local );
                         else
                             std::copy( hole->begin(), hole->end(), allPoints->begin() + offset );
 
@@ -224,7 +230,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 if ( makeECEF )
                 {
                     osg::Vec3Array* newPart = new osg::Vec3Array();
-                    ECEF::transformAndLocalize( part->asVector(), newPart, srs, _world2local );
+                    ECEF::transformAndLocalize( part->asVector(), featureSRS, newPart, _world2local );
                     osgGeom->setVertexArray( newPart );
                 }
                 else
@@ -257,12 +263,11 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 //osgGeom->setDataVariance( osg::Object::DYNAMIC );
             }
 
-            if ( context.getSession()->getMapInfo().isGeocentric() && part->getType() != Geometry::TYPE_POINTSET )
-//            if ( context.isGeocentric() && part->getType() != Geometry::TYPE_POINTSET )
+            if ( makeECEF && part->getType() != Geometry::TYPE_POINTSET )
             {
                 double threshold = osg::DegreesToRadians( *_maxAngle_deg );
 
-                MeshSubdivider ms( _world2local, _local2world ); //context.referenceFrame(), context.inverseReferenceFrame() );
+                MeshSubdivider ms( _world2local, _local2world );
                 //ms.setMaxElementsPerEBO( INT_MAX );
                 if ( input->geoInterp().isSet() )
                     ms.run( *osgGeom, threshold, *input->geoInterp() );

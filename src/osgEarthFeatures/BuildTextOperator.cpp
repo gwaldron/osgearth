@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #include <osgEarthFeatures/BuildTextOperator>
 #include <osgEarth/Utils>
 #include <osgDB/ReadFile>
@@ -100,7 +101,7 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
         if (symbol->content().isSet())
         {
             //Get the text from the specified content and referenced attributes
-            text = feature->eval( contentExpr );
+            text = feature->eval( contentExpr, &context );
         }
 
         if (text.empty()) continue;
@@ -237,3 +238,4 @@ osg::Node* BuildTextOperator::operator()(const FeatureList&   features,
     }
     return result;
 }
+#endif

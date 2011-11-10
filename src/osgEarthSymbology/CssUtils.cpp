@@ -48,8 +48,8 @@ CssUtils::readConfig( std::istream& in )
     StringTokenizer propSetIzer( ";", "" );
     propSetIzer.addQuotes( "'\"", true );
 
-    StringTokenizer propIzer( ":", "'\"" );
-    propIzer.addQuotes( "()", true );
+    StringTokenizer propIzer( ":", "" );
+    propIzer.addQuotes( "()'\"", true );
 
     StringVector blocks;
     blockIzer.tokenize( css, blocks );
@@ -71,7 +71,7 @@ CssUtils::readConfig( std::istream& in )
 
                 if ( prop.size() == 2 )
                 {
-                    elementConf.attr( prop[0] ) = prop[1];
+                    elementConf.set( prop[0], prop[1] );
                 }
             }
             conf.add( elementConf );

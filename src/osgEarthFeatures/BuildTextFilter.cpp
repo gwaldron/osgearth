@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildTextFilter>
-#include <osgEarthFeatures/BuildTextOperator> // this should be in symbology -gw
+//#include <osgEarthFeatures/BuildTextOperator> // this should be in symbology -gw
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgText/Text>
@@ -47,7 +47,7 @@ BuildTextFilter::push( FeatureList& input, FilterContext& context )
     }
 
     // if a provider is set, load the plugin and create the node.
-    if ( !text->provider()->empty() && !text->provider().isSetTo("legacy") )
+    if ( true ) //!text->provider()->empty() && !text->provider().isSetTo("legacy") )
     {
         LabelSourceOptions options;
         options.setDriver( *text->provider() );
@@ -63,11 +63,13 @@ BuildTextFilter::push( FeatureList& input, FilterContext& context )
         }
     }
 
+#if 0
     else // legacy behavior... will be deprecated.
     {
         BuildTextOperator op;
         result = op( input, text, context );
     }
+#endif
 
     return result;
 }

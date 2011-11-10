@@ -237,8 +237,6 @@ OSGTerrainEngineNode::computeBound() const
 void
 OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
-    OE_INFO << LC << "Map profile established" << std::endl;
-    
     LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
     OE_INFO << LC << "Loading policy mode = " <<
         ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "PREEMPTIVE" :
@@ -283,7 +281,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
         CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
 
         // prepare the interpolation technique for generating triangles:
-        if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
+        if ( mapInfo.getElevationInterpolation() == INTERP_TRIANGULATE )
             tech->setOptimizeTriangleOrientation( false );
 
         _terrain->setTechniquePrototype( tech );
@@ -359,6 +357,8 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
     // create any more tiles
     if ( getNumParents() == 0 )
         return 0L;
+
+    OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
 
 #ifdef PROFILING
     osg::Timer_t start = _timer.tick();
@@ -568,7 +568,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
             osg::ref_ptr<osg::HeightField> hf;
 
             if (hasElevation)
-                _update_mapf->getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value());
+                _update_mapf->getHeightField( key, true, hf, 0L);
 
             if (!hf.valid()) 
                 hf = OSGTileFactory::createEmptyHeightField( key );
@@ -603,7 +603,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
                 if (stile->getKey().getLevelOfDetail() == 1)
                 {
                     osg::ref_ptr<osg::HeightField> hf;
-                    _update_mapf->getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value());
+                    _update_mapf->getHeightField( key, true, hf, 0L);
                     if (!hf.valid()) 
                         hf = OSGTileFactory::createEmptyHeightField( key );
                     heightFieldLayer->setHeightField( hf.get() );

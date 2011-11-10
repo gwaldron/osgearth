@@ -28,6 +28,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/SparseTexture2DArray>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/TileKey>
 
 using namespace osgEarth;
 

@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/FileUtils>
+#include <osgEarth/URI>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -40,13 +41,14 @@ using namespace osgEarth::Drivers;
 class TileCacheSource : public TileSource
 {
 public:
-    TileCacheSource( const TileSourceOptions& options ) : TileSource( options ), _options( options )
+    TileCacheSource( const TileSourceOptions& options ) 
+        : TileSource( options ), _options( options )
     {
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
-        _configPath = referenceURI;
+        _dbOptions = dbOptions;
 
 		if (overrideProfile)
 		{
@@ -60,8 +62,7 @@ public:
 		}            
     }
 
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
     {
         unsigned int level, tile_x, tile_y;
         level = key.getLevelOfDetail() +1;
@@ -87,31 +88,8 @@ public:
             _options.format()->c_str() );
 
        
-        std::string path = buf;
-
-        //If we have a relative path and the map file contains a server address, just concat the server path and the cache together.
-        if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress( _configPath ) )
-        {
-            path = osgDB::getFilePath(_configPath) + std::string("/") + path;
-        }
-
-        //If the path doesn't contain a server address, get the full path to the file.
-        if (!osgDB::containsServerAddress(path))
-        {
-            path = osgEarth::getFullPath(_configPath, path);
-        }
-        
-        osg::ref_ptr<osg::Image> image;
-        HTTPClient::readImageFile(path, image, 0L, progress ); //getOptions(), progress );
-        return image.release();
-
-        //if (osgDB::containsServerAddress(path))
-        //{
-        //    //Use the HTTPClient if it's a server address.
-        //    return HTTPClient::readImageFile( path, getOptions(), progress );
-        //}
-
-        //return osgDB::readImageFile( path, getOptions() );
+        std::string path(buf);
+        return URI(path).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).releaseImage();
     }
 
     virtual std::string getExtension()  const 
@@ -120,8 +98,8 @@ public:
     }
 
 private:
-    std::string _configPath;
-    const TileCacheOptions _options;
+    const TileCacheOptions             _options;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 // Reads tiles from a TileCache disk cache.

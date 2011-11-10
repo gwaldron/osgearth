@@ -43,7 +43,9 @@ namespace osgEarth { namespace Symbology
          * @param threadSafe Whether to protect access to the cache so that you can
          *        use it from multiple threads (default = false)
          */
-        ResourceCache( bool threadSafe =false ) : _threadSafe(threadSafe) { }
+        ResourceCache( 
+            const osgDB::Options* dbOptions,
+            bool                  threadSafe =false );
 
         /**
          * Fetches the StateSet implementation corresponding to a Skin.
@@ -61,8 +63,9 @@ namespace osgEarth { namespace Symbology
         osg::Node* getMarkerNode( MarkerResource* marker );
 
     protected:
-        bool                      _threadSafe;
-        Threading::ReadWriteMutex _mutex;
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        bool                               _threadSafe;
+        Threading::ReadWriteMutex          _mutex;
 
         typedef LRUCache<SkinResource*, osg::ref_ptr<osg::StateSet> > SkinCache;
         SkinCache _skinCache;

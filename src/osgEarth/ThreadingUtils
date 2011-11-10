@@ -310,6 +310,65 @@ namespace osgEarth { namespace Threading
         OpenThreads::Mutex               _mutex;
     };
 
+    /** Template for thread safe per-object data storage */
+    template<typename KEY, typename DATA>
+    struct PerObjectRefMap
+    {
+        DATA* get(KEY k)
+        {
+            osgEarth::Threading::ScopedReadLock lock(_mutex);
+            std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+            if ( i != _data.end() )
+                return i->second.get();
+
+            return 0L;
+        }
+
+        DATA* getOrCreate(KEY k, DATA* newDataIfNeeded)
+        {
+            osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
+            {
+                osgEarth::Threading::ScopedReadLock lock(_mutex);
+                std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second.get();
+            }
+
+            {
+                osgEarth::Threading::ScopedWriteLock lock(_mutex);
+                std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
+                if ( i != _data.end() )
+                    return i->second.get();
+
+                _data[k] = newDataIfNeeded;
+                return newDataIfNeeded;
+            }
+        }
+
+        void remove(KEY k)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            _data.erase( k );
+        }
+
+        void remove(DATA* data)
+        {
+            osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
+            for( std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
+            {
+                if ( i->second.get() == data )
+                {
+                    _data.erase( i );
+                    break;
+                }
+            }
+        }
+
+    private:
+        std::map<KEY,osg::ref_ptr<DATA> >    _data;
+        osgEarth::Threading::ReadWriteMutex  _mutex;
+    };
+
 } } // namepsace osgEarth::Threading
 
 

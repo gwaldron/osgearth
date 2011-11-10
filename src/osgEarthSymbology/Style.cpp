@@ -153,13 +153,13 @@ Config
 Style::getConfig( bool keepOrigType ) const
 {
     Config conf( "style" );
-    conf.attr("name") = _name;
+    conf.set("name", _name);
 
     conf.addIfSet( "url", _uri );
     
     if ( _origType == "text/css" && keepOrigType )
     {
-        conf.attr("type") = _origType;
+        conf.set("type", _origType);
         conf.value() = _origData;            
     }
     else
@@ -309,14 +309,42 @@ StyleSheet::getDefaultStyle() const
 void
 StyleSheet::addResourceLibrary( const std::string& name, ResourceLibrary* lib )
 {
-    _libraries[name] = lib;
+    Threading::ScopedWriteLock exclusive( _resLibsMutex );
+
+    _resLibs[name] = ResourceLibraryEntry( URI(), lib );
 }
 
 ResourceLibrary*
-StyleSheet::getResourceLibrary( const std::string& name ) const
+StyleSheet::getResourceLibrary( const std::string& name, const osgDB::Options* dbOptions ) const
 {
-    ResourceLibraryMap::const_iterator i = _libraries.find( name );
-    return i != _libraries.end() ? i->second.get() : 0L;
+    {
+        Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
+        ResourceLibraryEntries::const_iterator i = _resLibs.find( name );
+        if ( i == _resLibs.end() )
+            return 0L;
+        if ( i->second.second.valid() )
+            return i->second.second.get();
+    }
+
+    { 
+        // break the const and take an exclusive lock
+        StyleSheet* nc = const_cast<StyleSheet*>(this);
+        Threading::ScopedWriteLock exclusive( nc->_resLibsMutex );
+
+        // first, double check:
+        ResourceLibraryEntries::iterator i = nc->_resLibs.find( name );
+        if ( i->second.second.valid() )
+            return i->second.second.get();
+
+        // still not there, create it
+        const URI& uri = i->second.first;
+        ResourceLibrary* reslib = ResourceLibrary::create( uri, dbOptions );
+        if ( !reslib )
+            return 0L;
+
+        i->second.second = reslib;
+        return reslib;
+    }
 }
 
 Config
@@ -337,7 +365,7 @@ StyleSheet::getConfig() const
 void
 StyleSheet::mergeConfig( const Config& conf )
 {
-    _uriContext = conf.uriContext();
+    _uriContext = URIContext( conf.referrer() );
 
     // read in any resource library references
     ConfigSet libraries = conf.children( "library" );
@@ -349,19 +377,34 @@ StyleSheet::mergeConfig( const Config& conf )
             continue;
         }
 
-        URI uri( i->value("url"), i->uriContext() );
+        URI uri( i->value("url"), i->referrer() );
         if ( uri.empty() ) {
             OE_WARN << LC << "Resource library missing required 'url' element" << std::endl;
             continue;
         }
 
-        osg::ref_ptr<ResourceLibrary> reslib = ResourceLibrary::create( uri );
-        if ( !reslib.valid() ) {
-            OE_WARN << LC << "Resource library creation failed" << std::endl;
-            continue;
+        _resLibs[name] = ResourceLibraryEntry(uri,  (osgEarth::Symbology::ResourceLibrary*)0);
+
+        //addResourceLibrary( name, reslib.get() );
+    }
+
+    // read in any scripts
+    ConfigSet scripts = conf.children( "script" );
+    for( ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i )
+    {
+        // get the script code
+        std::string code = i->value();
+
+        // name is optional and unused at the moment
+        std::string name = i->value("name");
+
+        std::string lang = i->value("language");
+        if ( lang.empty() ) {
+            // default to javascript
+            lang = "javascript";
         }
 
-        addResourceLibrary( name, reslib.get() );
+        _script = new Script(code, lang, name);
     }
 
     // read any style class definitions. either "class" or "selector" is allowed
@@ -386,15 +429,15 @@ StyleSheet::mergeConfig( const Config& conf )
             // if there's a URL, read the CSS from the URL:
             if ( styleConf.hasValue("url") )
             {
-                URI uri( styleConf.value("url"), styleConf.uriContext() );
-                HTTPClient::readString( uri.full(), cssString );
+                URI uri( styleConf.value("url"), styleConf.referrer() );
+                cssString = uri.readString().getString();
             }
 
             // a CSS style definition can actually contain multiple styles. Read them
             // and create one style for each in the catalog.
             std::stringstream buf( cssString );
             Config css = CssUtils::readConfig( buf );
-            css.setURIContext( styleConf.uriContext( ) );
+            css.setReferrer( styleConf.referrer() );
             
             const ConfigSet children = css.children();
             for(ConfigSet::const_iterator j = children.begin(); j != children.end(); ++j )

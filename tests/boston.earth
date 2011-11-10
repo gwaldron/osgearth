@@ -5,7 +5,7 @@ Demonstrates the use of a Resource Library in order to apply "typical" textures
 to extruded buildings.
 -->
 
-<map name="Resource Library Demo" type="geocentric" version="2">
+<map name="Boston Demo" type="geocentric" version="2">
     
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
@@ -80,9 +80,6 @@ to extruded buildings.
         <terrain>
             <sample_ratio>0.5</sample_ratio>
         </terrain>
-        <cache type="tms">
-            <path>osgearth_cache</path>
-        </cache>
     </options> 
     
     <external>

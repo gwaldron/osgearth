@@ -112,24 +112,24 @@ MarkerResource::getConfig() const
 }
 
 osg::Node*
-MarkerResource::createNode() const
+MarkerResource::createNode( const osgDB::Options* dbOptions ) const
 {
-    return createNodeFromURI( _markerURI.value() );
+    return createNodeFromURI( _markerURI.value(), dbOptions );
 }
 
 osg::Node*
-MarkerResource::createNodeFromURI( const URI& uri ) const
+MarkerResource::createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const
 {
-    osg::ref_ptr<osg::Object> obj = uri.readObject();
-    if ( obj.valid() )
+    ReadResult r = uri.readObject( dbOptions );
+    if ( r.succeeded() )
     {
-        if ( dynamic_cast<osg::Image*>( obj.get() ) )
+        if ( r.getImage() )
         {
-            return buildImageModel( dynamic_cast<osg::Image*>( obj.get() ) );
+            return buildImageModel( r.getImage() );
         }
-        else if ( dynamic_cast<osg::Node*>( obj.get() ) )
+        else if ( r.getNode() )
         {
-            return dynamic_cast<osg::Node*>( obj.release() );
+            return r.releaseNode();
         }
     }
 
@@ -138,7 +138,7 @@ MarkerResource::createNodeFromURI( const URI& uri ) const
         StringVector tok;
         StringTokenizer( *uri, tok, "()" );
         if (tok.size() >= 2)
-            return createNodeFromURI( URI(tok[1]) );
+            return createNodeFromURI( URI(tok[1]), dbOptions );
     }
 
     // fail

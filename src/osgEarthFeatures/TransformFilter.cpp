@@ -29,6 +29,7 @@ using namespace osgEarth::Symbology;
 
 namespace 
 {
+#if 0
     osg::Matrixd
     createGeocentricInvRefFrame( const osg::Vec3d& input, const SpatialReference* inputSRS )
     {
@@ -69,6 +70,7 @@ namespace
 
         return localToWorld;
     }
+#endif
 
     void
     localizeGeometry( Feature* input, const osg::Matrixd& refFrame )
@@ -91,24 +93,20 @@ namespace
 //---------------------------------------------------------------------------
 
 TransformFilter::TransformFilter() :
-_makeGeocentric( false ),
 _localize( false )
 {
     // nop
 }
 
 TransformFilter::TransformFilter( const osg::Matrixd& xform ) :
-_makeGeocentric( false ),
 _localize      ( false ),
 _mat           ( xform )
 {
     //nop
 }
 
-TransformFilter::TransformFilter(const SpatialReference* outputSRS,
-                                 bool outputGeocentric ) :
+TransformFilter::TransformFilter(const SpatialReference* outputSRS ) :
 _outputSRS( outputSRS ),
-_makeGeocentric( outputGeocentric ),
 _localize( false )
 {
     //NOP
@@ -127,7 +125,7 @@ TransformFilter::push( Feature* input, FilterContext& context )
     bool needsMatrixXform = !_mat.isIdentity();
 
     // optimize: do nothing if nothing needs doing
-    if ( !needsSRSXform && !_makeGeocentric && !_localize && !needsMatrixXform )
+    if ( !needsSRSXform && !_localize && !needsMatrixXform )
         return true;
 
     // iterate over the feature geometry.
@@ -146,10 +144,6 @@ TransformFilter::push( Feature* input, FilterContext& context )
         // first transform the geometry to the output SRS:            
         if ( needsSRSXform )
             context.profile()->getSRS()->transformPoints( _outputSRS.get(), geom->asVector(), false );
-
-        // convert to ECEF if required:
-        if ( _makeGeocentric )
-            _outputSRS->transformToECEF( geom->asVector(), false );
 
         // update the bounding box.
         if ( _localize )
@@ -174,7 +168,6 @@ TransformFilter::push( FeatureList& input, FilterContext& incx )
             ok = false;
 
     FilterContext outcx( incx );
-    outcx.isGeocentric() = _makeGeocentric;
 
     if ( _outputSRS.valid() )
     {
@@ -191,15 +184,7 @@ TransformFilter::push( FeatureList& input, FilterContext& incx )
     {
         // create a suitable reference frame:
         osg::Matrixd localizer;
-        if ( _makeGeocentric )
-        {
-            localizer = createGeocentricInvRefFrame( _bbox.center(), _outputSRS.get() );
-            localizer.invert( localizer );
-        }
-        else
-        {
-            localizer = osg::Matrixd::translate( -_bbox.center() );
-        }
+        localizer = osg::Matrixd::translate( -_bbox.center() );
 
         // localize the geometry relative to the reference frame.
         for( FeatureList::iterator i = input.begin(); i != input.end(); i++ )

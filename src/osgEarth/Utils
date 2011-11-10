@@ -27,6 +27,7 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/View>
 #include <osgUtil/CullVisitor>
+#include <osgUtil/RenderBin>
 
 #include <string>
 #include <list>
@@ -196,7 +197,7 @@ namespace osgEarth
 
     struct OSGEARTH_EXPORT CullNodeByHorizon : public osg::NodeCallback {
         osg::Vec3d _world;
-        double _r2;
+        double _r, _r2;
         CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model );
         void operator()(osg::Node* node, osg::NodeVisitor* nv );
     };
@@ -243,6 +244,28 @@ namespace osgEarth
         double _minPixels;
         bool   _dirty;
         osg::observer_ptr<osg::Node> _sizingNode;
+    };
+
+    /**
+     * Proxy class that registers the custom render bin's prototype with the
+     * rendering system
+     */
+    template<class T>
+    struct osgEarthAnnotationRegisterRenderBinProxy
+    {
+        osgEarthAnnotationRegisterRenderBinProxy(const std::string& name)
+        {
+            _prototype = new T();
+            osgUtil::RenderBin::addRenderBinPrototype(name, _prototype.get());
+        }
+
+        ~osgEarthAnnotationRegisterRenderBinProxy()
+        {
+            osgUtil::RenderBin::removeRenderBinPrototype(_prototype.get());
+            _prototype = 0L;
+        }
+
+        osg::ref_ptr<T> _prototype;
     };
 
     /**

@@ -182,6 +182,7 @@ MeshConsolidator::run( osg::Geode& geode )
     unsigned numTexCoordArrays = 0;
     unsigned numVertAttribArrays = 0;
     std::vector<unsigned> texCoordArrayUnits;
+    texCoordArrayUnits.reserve(32);
 
     osg::Geometry::AttributeBinding newColorsBinding;
     osg::Geometry::AttributeBinding newNormalsBinding;

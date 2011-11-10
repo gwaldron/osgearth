@@ -73,26 +73,16 @@ WFSFeatureType::WFSFeatureType()
 /**************************************************************************************/
 
 WFSCapabilities* 
-WFSCapabilitiesReader::read( const std::string &location, const osgDB::ReaderWriter::Options *options )
+WFSCapabilitiesReader::read( const URI& location, const osgDB::Options* dbOptions )
 {
-    WFSCapabilities *caps = NULL;
-    if ( osgDB::containsServerAddress( location ) )
+    // read the data into a string buffer and parse it from there
+    std::string buffer = location.readString(dbOptions).getString();
+    if ( !buffer.empty() )
     {
-        HTTPResponse response = HTTPClient::get( location, options );
-        if ( response.isOK() && response.getNumParts() > 0 )
-        {
-            caps = read( response.getPartStream( 0 ) );
-        }
+        std::stringstream buf(buffer);
+        return read(buf);
     }
-    else
-    {
-        if ((osgDB::fileExists(location)) && (osgDB::fileType(location) == osgDB::REGULAR_FILE))
-        {
-            std::ifstream in( location.c_str() );
-            caps = read( in );
-        }
-    }
-    return caps;
+    else return 0L;
 }
 
 WFSCapabilities*

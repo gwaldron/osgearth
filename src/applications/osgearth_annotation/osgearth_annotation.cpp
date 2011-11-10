@@ -19,18 +19,24 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Annotation>
-#include <osgEarthUtil/ImageOverlay>
-#include <osgEarthUtil/ImageOverlayEditor>
+#include <osgEarthAnnotation/ImageOverlay>
+#include <osgEarthAnnotation/ImageOverlayEditor>
+#include <osgEarthAnnotation/CircleNode>
+#include <osgEarthAnnotation/EllipseNode>
+#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/Decluttering>
+#include <osgEarthFeatures/FeatureNode>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 
 using namespace osgEarth;
+using namespace osgEarth::Annotation;
+using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Util::Annotation;
 
 int
 usage( char** argv )
@@ -70,18 +76,34 @@ main(int argc, char** argv)
     osg::Group* annoGroup = new osg::Group();
     root->addChild( annoGroup );
 
-    // a Placemark combines a 2D icon with a text label.
-    annoGroup->addChild( new PlacemarkNode(
-        mapNode, 
-        osg::Vec3d(-74, 40.714, 0), 
-        URI("../data/placemark32.png").readImage(),
-        "New York") );
+    // make a group for 2D items, and apply decluttering to it.
+    osg::Group* labelGroup = new osg::Group();
+    labelGroup->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+    annoGroup->addChild( labelGroup );
+
+    osg::Image* pushpin = osgDB::readImageFile( "../data/placemark32.png" );
 
     // a Placemark combines a 2D icon with a text label.
-    annoGroup->addChild( new PlacemarkNode(
+    labelGroup->addChild( new PlaceNode(
+        mapNode, 
+        osg::Vec3d(-74, 40.714, 0), 
+        pushpin,
+        "New York") );
+
+    labelGroup->addChild( new PlaceNode(
+        mapNode, 
+        osg::Vec3d(-77.04, 38.85, 0),
+        pushpin,
+        "Washington, DC") );
+
+    labelGroup->addChild( new LabelNode(
+        mapNode, 
+        osg::Vec3d(-71.03, 42.37, 0),
+        "Boston") );
+
+    labelGroup->addChild( new LabelNode(
         mapNode, 
         osg::Vec3d(139.75, 35.685, 0), 
-        URI("../data/placemark32.png").readImage(),
         "Tokyo" ) );
 
     // a box that follows lines of latitude (rhumb line interpolation, the default)
@@ -115,11 +137,12 @@ main(int argc, char** argv)
     // a circle around New Orleans
     Style circleStyle;
     circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
-    CircleNode* circle = new CircleNode( 
+    CircleNode* circle = new CircleNode(
         mapNode, 
-        osg::Vec3d(-90.25, 29.98, 0), 
-        Linear(600, Units::KILOMETERS), 
-        circleStyle );
+        osg::Vec3d( -90.25, 29.98, 0 ),
+        Linear(300, Units::KILOMETERS ),
+        circleStyle,
+        true );
     annoGroup->addChild( circle );
 
     // an ellipse around Miami
@@ -132,7 +155,7 @@ main(int argc, char** argv)
         Linear(100, Units::MILES),
         Angular(45, Units::DEGREES),
         ellipseStyle,
-        true);
+        false );
     annoGroup->addChild( ellipse );
 
     // an extruded polygon roughly the shape of Utah
@@ -164,12 +187,7 @@ main(int argc, char** argv)
         
         osg::Node* editor = new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
         root->addChild( editor );
-
-
-
     }
-
-
 
 
     // initialize a viewer:
@@ -177,6 +195,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
+#if 1
     // make a little HUD to toggle stuff:
     VBox* vbox = new VBox();
     vbox->setBackColor( Color(Color::Black, 0.5) );
@@ -202,6 +221,7 @@ main(int argc, char** argv)
         grid->setControl( 1, 5, new LabelControl("Image overlay") );
     }
     ControlCanvas::get(&viewer,true)->addControl(vbox);
+#endif
 
     // add some stock OSG handlers:
     viewer.getDatabasePager()->setDoPreCompile( true );

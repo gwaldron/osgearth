@@ -19,6 +19,7 @@
 #include <osgEarth/Utils>
 #include <osg/Version>
 #include <osg/CoordinateSystemNode>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 
@@ -37,6 +38,7 @@ void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler*
 
 CullNodeByHorizon::CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model ) :
 _world(world),
+_r(model->getRadiusPolar()),
 _r2(model->getRadiusPolar() * model->getRadiusPolar())
 {
     //nop
@@ -47,18 +49,45 @@ CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     if ( nv )
     {
-        osg::Vec3d eye, center, up;
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
-        cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
 
-        double d2 = eye.length2();
-        double horiz2 = d2 - _r2;
+        // get the viewpoint. It will be relative to the current reference location (world).
+        osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath(), true );
+        osg::Vec3d vp  = cv->getViewPoint() * l2w;
 
-        double dist2 = (_world-eye).length2();
-
-        if ( dist2 < horiz2 )
+        // same quadrant:
+        if ( vp * _world >= 0.0 )
         {
-            traverse(node, nv);
+            double d2 = vp.length2();
+            double horiz2 = d2 - _r2;
+            double dist2 = (_world-vp).length2();
+            if ( dist2 < horiz2 )
+            {
+                traverse(node, nv);
+            }
+        }
+
+        // different quadrants:
+        else
+        {
+            // there's a horizon between them; now see if the thing is visible.
+            // find the triangle formed by the viewpoint, the target point, and 
+            // the center of the earth.
+            double a = (_world-vp).length();
+            double b = _world.length();
+            double c = vp.length();
+
+            // Heron's formula for triangle area:
+            double s = 0.5*(a+b+c);
+            double area = 0.25*sqrt( s*(s-a)*(s-b)*(s-c) );
+
+            // Get the triangle's height:
+            double h = (2*area)/a;
+
+            if ( h >= _r )
+            {
+                traverse(node, nv);
+            }
         }
     }
 }

@@ -34,12 +34,38 @@ using namespace osgEarth::Util;
 class OverlayLabelSource : public LabelSource
 {
 public:
-    OverlayLabelSource( const LabelSourceOptions& options ) :
-      LabelSource( options )
+    OverlayLabelSource( const LabelSourceOptions& options )
+        : LabelSource( options )
     {
         //nop
     }
 
+    /**
+     * Creates a simple label. The caller is responsible for placing it in the scene.
+     */
+    osg::Node* createNode(
+        const std::string& text,
+        const TextSymbol*  symbol )
+    {
+        Controls::LabelControl* label = new Controls::LabelControl( text );
+        if ( symbol )
+        {
+            if ( symbol->fill().isSet() )
+                label->setForeColor( symbol->fill()->color() );
+            if ( symbol->halo().isSet() )
+                label->setHaloColor( symbol->halo()->color() );
+            if ( symbol->size().isSet() )
+                label->setFontSize( *symbol->size() );
+            if ( symbol->font().isSet() )
+                label->setFont( osgText::readFontFile(*symbol->font()) );
+        }
+        Controls::ControlNode* node = new Controls::ControlNode( label );
+        return node;
+    }
+
+    /**
+     * Creates a complete set of positioned label nodes from a feature list.
+     */
     osg::Node* createNode(
         const FeatureList&   input,
         const TextSymbol*    text,
@@ -52,8 +78,11 @@ public:
         StringExpression  contentExpr ( *text->content() );
         NumericExpression priorityExpr( *text->priority() );
 
-        const MapInfo& mi = context.getSession()->getMapInfo();
-        bool makeECEF = mi.isGeocentric();
+        bool makeECEF = false;
+        if ( context.isGeoreferenced() )
+        {
+            makeECEF = context.getSession()->getMapInfo().isGeocentric();
+        }
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
@@ -66,26 +95,13 @@ public:
                 continue;
 
             osg::Vec3d centroid  = geom->getBounds().center();
-            //osg::Vec3d centroidWorld = context.toWorld(centroid);
 
             if ( makeECEF )
             {
                 context.profile()->getSRS()->transformToECEF( centroid, centroid );
             }
 
-#if 0
-            if ( context.isGeocentric() && geom->getComponentType() != Geometry::TYPE_POINTSET )
-            {
-                // "clamp" the centroid to the ellipsoid
-                osg::Vec3d centroidMap;
-                mi.worldPointToMapPoint(centroidWorld, centroidMap);
-                centroidMap.z() = 0.0;
-                mi.mapPointToWorldPoint(centroidMap, centroidWorld);
-                centroid = context.toLocal(centroidWorld);
-            }
-#endif
-
-            const std::string& value = feature->eval( contentExpr );
+            const std::string& value = feature->eval( contentExpr, &context );
 
             if ( !value.empty() && (!skipDupes || used.find(value) == used.end()) )
             {
@@ -94,7 +110,7 @@ public:
                     group = new osg::Group();
                 }
 
-                double priority = feature->eval( priorityExpr );
+                double priority = feature->eval( priorityExpr, &context );
 
                 Controls::LabelControl* label = new Controls::LabelControl( value );
                 if ( text->fill().isSet() )
@@ -114,7 +130,9 @@ public:
                 // for a geocentric map, do a simple dot product cull.
                 if ( makeECEF )
                 {
-                    xform->setCullCallback( new CullNodeByHorizon(centroid, mi.getProfile()->getSRS()->getEllipsoid()) );
+                    xform->setCullCallback( new CullNodeByHorizon(
+                        centroid, 
+                        context.getSession()->getMapInfo().getProfile()->getSRS()->getEllipsoid()) );
                     group->addChild( xform );
                 }
                 else
@@ -123,7 +141,9 @@ public:
                 }
 
                 if ( skipDupes )
+                {
                     used.insert( value );
+                }
             }
         }
 

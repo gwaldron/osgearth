@@ -75,7 +75,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         // evaluate the marker URI expression:
         StringExpression uriEx = *symbol->url();
-        URI markerURI( input->eval(uriEx), uriEx.uriContext() );
+        URI markerURI( input->eval(uriEx, &context), uriEx.uriContext() );
 
         // find the corresponding marker in the cache
         MarkerResource* marker = 0L;
@@ -95,7 +95,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         if ( symbol->scale().isSet() )
         {
-            scale = input->eval( scaleEx );
+            scale = input->eval( scaleEx, &context );
             if ( scale == 0.0 )
                 scale = 1.0;
             scaleMatrix = osg::Matrix::scale( scale, scale, scale );
@@ -142,7 +142,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // could take a shortcut and just use the current extent's local2world matrix for this,
                         // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd rotation;
-                        ECEF::transformAndGetRotationMatrix( context.profile()->getSRS(), point, point, rotation );
+                        ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, rotation );
                         mat = rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
                     }
                     else
@@ -160,7 +160,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     // name the feature if necessary
                     if ( !_featureNameExpr.empty() )
                     {
-                        const std::string& name = input->eval( _featureNameExpr );
+                        const std::string& name = input->eval( _featureNameExpr, &context);
                         if ( !name.empty() )
                             xform->setName( name );
                     }
@@ -216,7 +216,7 @@ struct ClusterVisitor : public osg::NodeVisitor
 
                     if ( _symbol->scale().isSet() )
                     {
-                        double scale = feature->eval( scaleEx );
+                        double scale = feature->eval( scaleEx, &_cx );
                         scaleMatrix.makeScale( scale, scale, scale );
                     }
 
@@ -233,7 +233,7 @@ struct ClusterVisitor : public osg::NodeVisitor
                             if ( makeECEF )
                             {
                                 osg::Matrixd rotation;
-                                ECEF::transformAndGetRotationMatrix( srs, point, point, rotation );
+                                ECEF::transformAndGetRotationMatrix( point, srs, point, rotation );
                                 mat = rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                             }
                             else
@@ -308,7 +308,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 
         // resolve the URI for the marker:
         StringExpression uriEx( *symbol->url() );
-        URI markerURI( f->eval( uriEx ), uriEx.uriContext() );
+        URI markerURI( f->eval( uriEx, &context ), uriEx.uriContext() );
 
         // find and load the corresponding marker model. We're using the session-level
         // object store to cache models. This is thread-safe sine we are always going
@@ -318,7 +318,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         {
             osg::ref_ptr<MarkerResource> mres = new MarkerResource();
             mres->uri() = markerURI;
-            model = mres->createNode();
+            model = mres->createNode( context.getSession()->getDBOptions() );
             if ( model )
             {
                 context.getSession()->putObject( markerURI.full(), model );

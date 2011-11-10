@@ -28,8 +28,9 @@ ElevationQuery::postCTOR()
     _tileSize         = 0;
     _maxDataLevel     = 0;
     _technique        = TECHNIQUE_PARAMETRIC;
-    _interpolation    = INTERP_BILINEAR;
     _maxLevelOverride = -1;
+    _queries          = 0.0;
+    _totalTime        = 0.0;
 
     // Limit the size of the cache we'll use to cache heightfields. This is an
     // LRU cache.
@@ -81,18 +82,6 @@ int
 ElevationQuery::getMaxTilesToCache() const
 {
     return _tileCache.getMaxSize();
-}
-
-void
-ElevationQuery::setInterpolation( ElevationInterpolation interp)
-{
-    _interpolation = interp;
-}
-
-ElevationInterpolation
-ElevationQuery::getElevationInterpolation() const
-{
-    return _interpolation;
 }
 
 bool
@@ -150,6 +139,8 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
                                  double                  desiredResolution,
                                  double*                 out_actualResolution)
 {
+    osg::Timer_t start = osg::Timer::instance()->tick();
+
     if ( _maxDataLevel == 0 || _tileSize == 0 )
     {
         // this means there are no heightfields.
@@ -218,7 +209,7 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
     {
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
-        _mapf.getHeightField( key, true, hf, 0L, _interpolation );
+        _mapf.getHeightField( key, true, hf, 0L );
 
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )
@@ -250,6 +241,8 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
     if ( out_actualResolution )
         *out_actualResolution = (double)hf->getXInterval();
 
+    bool result = true;
+
     // finally it's time to get a height value:
     if ( _technique == TECHNIQUE_PARAMETRIC )
     {
@@ -258,7 +251,6 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         double yInterval = extent.height() / (double)(hf->getNumRows()-1);
         out_elevation = (double) HeightFieldUtils::getHeightAtLocation( 
             hf.get(), mapPoint.x(), mapPoint.y(), extent.xMin(), extent.yMin(), xInterval, yInterval );
-        return true;
     }
     else // ( _technique == TECHNIQUE_GEOMETRIC )
     {
@@ -293,10 +285,15 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
             out_elevation = (isectPoint-end).length2() > (zero-end).length2()
                 ? (isectPoint-zero).length()
                 : -(isectPoint-zero).length();
-            return true;            
         }
 
         OE_DEBUG << LC << "No intersection" << std::endl;
-        return false;
+        result = false;
     }
+
+    osg::Timer_t end = osg::Timer::instance()->tick();
+    _queries++;
+    _totalTime += osg::Timer::instance()->delta_s( start, end );
+
+    return result;
 }

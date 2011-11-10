@@ -17,14 +17,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/Feature>
+#include <osgEarth/StringUtils>
 #include <algorithm>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-static
-std::string EMPTY_STRING;
+#define LC "[Feature] "
 
 //----------------------------------------------------------------------------
 
@@ -235,19 +235,66 @@ Feature::getBool( const std::string& name, bool defaultValue ) const
 }
 
 double
-Feature::eval( NumericExpression& expr ) const
+Feature::eval( NumericExpression& expr, FilterContext const* context ) const
 {
     const NumericExpression::Variables& vars = expr.variables();
     for( NumericExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
-        expr.set( *i, getDouble(i->first, 0.0)); //osgEarth::as<double>(getAttr(i->first),0.0) );
+    {
+      double val = 0.0;
+      AttributeTable::const_iterator ai = _attrs.find(toLower(i->first));
+      if (ai != _attrs.end())
+      {
+        val = ai->second.getDouble(0.0);
+      }
+      else if (context)
+      {
+        //No attr found, look for script
+        ScriptEngine* engine = context->getSession()->getScriptEngine();
+        if (engine)
+        {
+          ScriptResult result = engine->run(i->first, this, context);
+          if (result.success())
+            val = result.asDouble();
+          else
+              OE_WARN << LC << "Script error:" << result.message() << std::endl;
+        }
+      }
+
+      expr.set( *i, val); //osgEarth::as<double>(getAttr(i->first),0.0) );
+    }
+
     return expr.eval();
 }
 
 const std::string&
-Feature::eval( StringExpression& expr ) const
+Feature::eval( StringExpression& expr, FilterContext const* context ) const
 {
     const StringExpression::Variables& vars = expr.variables();
     for( StringExpression::Variables::const_iterator i = vars.begin(); i != vars.end(); ++i )
-        expr.set( *i, getString(i->first) ); //getAttr(i->first) );
+    {
+      std::string val = "";
+      AttributeTable::const_iterator ai = _attrs.find(toLower(i->first));
+      if (ai != _attrs.end())
+      {
+        val = ai->second.getString();
+      }
+      else if (context)
+      {
+        //No attr found, look for script
+        ScriptEngine* engine = context->getSession()->getScriptEngine();
+        if (engine)
+        {
+          ScriptResult result = engine->run(i->first, this, context);
+          if (result.success())
+            val = result.asString();
+          else
+              OE_WARN << LC << "Script error:" << result.message() << std::endl;
+        }
+      }
+
+      if (!val.empty())
+        expr.set( *i, val ); //getAttr(i->first) );
+    }
+
     return expr.eval();
 }

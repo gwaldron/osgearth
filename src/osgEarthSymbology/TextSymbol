@@ -33,6 +33,7 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT TextSymbol : public Symbol
     {
     public:
+#if 0
         enum SizeMode {
             SIZEMODE_SCREEN,
             SIZEMODE_OBJECT
@@ -48,6 +49,7 @@ namespace osgEarth { namespace Symbology
             LINEPLACEMENT_ALONG_LINE,
             LINEPLACEMENT_CENTROID
         };
+#endif
 
         TextSymbol( const Config& conf =Config() );
 
@@ -75,10 +77,6 @@ namespace osgEarth { namespace Symbology
         optional<float>& size() { return _size; }
         const optional<float>& size() const { return _size; }
 
-        /** Whether the text should face the screen (be 2D) */
-        optional<bool>& rotateToScreen() { return _rotateToScreen; }
-        const optional<bool>& rotateToScreen() const { return _rotateToScreen; }
-
         /** Pixel offset from the center point. */
         optional<osg::Vec2s>& pixelOffset() { return _pixelOffset; }
         const optional<osg::Vec2s>& pixelOffset() const { return _pixelOffset; }
@@ -86,6 +84,11 @@ namespace osgEarth { namespace Symbology
         /** Whether to remove duplicates when drawing multiple labels. */
         optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
         const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }
+
+#if 0
+        /** Whether the text should face the screen (be 2D) */
+        optional<bool>& rotateToScreen() { return _rotateToScreen; }
+        const optional<bool>& rotateToScreen() const { return _rotateToScreen; }
 
         /** Whether the size() property refers to pixels or scene units */
         optional<SizeMode>& sizeMode() { return _sizeMode; }
@@ -98,6 +101,7 @@ namespace osgEarth { namespace Symbology
         /** Whether to render text relative to line data */
         optional<LinePlacement>& linePlacement() { return _linePlacement; }
         const optional<LinePlacement>& linePlacement() const { return _linePlacement; }
+#endif
 
         /** Label generation provider to use */
         optional<std::string>& provider() { return _provider; }
@@ -114,12 +118,14 @@ namespace osgEarth { namespace Symbology
         optional<float>             _size;
         optional<StringExpression>  _content;
         optional<NumericExpression> _priority;
-        optional<bool>              _rotateToScreen;
         optional<bool>              _removeDuplicateLabels;
+#if 0
+        optional<bool>              _rotateToScreen;
         optional<SizeMode>          _sizeMode;
         optional<LineOrientation>   _lineOrientation;
         optional<LinePlacement>     _linePlacement;
         optional<std::string>       _theme;
+#endif
         optional<osg::Vec2s>        _pixelOffset;
         optional<std::string>       _provider;
     };

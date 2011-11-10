@@ -26,10 +26,12 @@ Symbol( conf ),
 _fill( Fill( 1, 1, 1, 1 ) ),
 _halo( Stroke( 0.3, 0.3, 0.3, 1) ),
 _size( 16.0f ),
+#if 0
 _sizeMode( SIZEMODE_SCREEN ),
 _rotateToScreen( false ),
+#endif
 _removeDuplicateLabels( false ),
-_provider( "overlay" )
+_provider( "annotation" )
 {
     mergeConfig(conf);
 }
@@ -45,8 +47,9 @@ TextSymbol::getConfig() const
     conf.addIfSet( "size", _size );
     conf.addObjIfSet( "content", _content );
     conf.addObjIfSet( "priority", _priority );
-    conf.addIfSet( "rotate_to_screen", _rotateToScreen );
     conf.addIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
+#if 0
+    conf.addIfSet( "rotate_to_screen", _rotateToScreen );
     conf.addIfSet( "size_mode", "screen", _sizeMode, SIZEMODE_SCREEN );
     conf.addIfSet( "size_mode", "object", _sizeMode, SIZEMODE_OBJECT );
     conf.addIfSet( "line_orientation", "parallel", _lineOrientation, LINEORIENTATION_PARALLEL );
@@ -54,8 +57,9 @@ TextSymbol::getConfig() const
     conf.addIfSet( "line_orientation", "horizontal", _lineOrientation, LINEORIENTATION_HORIZONTAL );
     conf.addIfSet( "line_placement", "along_line", _linePlacement, LINEPLACEMENT_ALONG_LINE );
     conf.addIfSet( "line_placement", "centroid", _linePlacement, LINEPLACEMENT_CENTROID );
-    conf.addIfSet( "provider", _provider );
     conf.addIfSet( "theme", _theme );
+#endif
+    conf.addIfSet( "provider", _provider );
     if ( _pixelOffset.isSet() ) {
         conf.add( "pixel_offset_x", toString(_pixelOffset->x()) );
         conf.add( "pixel_offset_y", toString(_pixelOffset->y()) );
@@ -72,8 +76,9 @@ TextSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "size", _size );
     conf.getObjIfSet( "content", _content );
     conf.getObjIfSet( "priority", _priority );
-    conf.getIfSet( "rotate_to_screen", _rotateToScreen );
     conf.getIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
+#if 0
+    conf.getIfSet( "rotate_to_screen", _rotateToScreen );
     conf.getIfSet( "size_mode", "screen", _sizeMode, SIZEMODE_SCREEN );
     conf.getIfSet( "size_mode", "object", _sizeMode, SIZEMODE_OBJECT );
     conf.getIfSet( "line_orientation", "parallel", _lineOrientation, LINEORIENTATION_PARALLEL );
@@ -81,8 +86,9 @@ TextSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "line_orientation", "horizontal", _lineOrientation, LINEORIENTATION_HORIZONTAL );
     conf.getIfSet( "line_placement", "along_line", _linePlacement, LINEPLACEMENT_ALONG_LINE );
     conf.getIfSet( "line_placement", "centroid", _linePlacement, LINEPLACEMENT_CENTROID );
-    conf.getIfSet( "provider", _provider );
     conf.getIfSet( "theme", _theme );
+#endif
+    conf.getIfSet( "provider", _provider );
     if ( conf.hasValue( "pixel_offset_x" ) )
         _pixelOffset = osg::Vec2s( conf.value<short>("pixel_offset_x",0), 0 );
     if ( conf.hasValue( "pixel_offset_y" ) )

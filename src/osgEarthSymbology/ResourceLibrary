@@ -42,11 +42,11 @@ namespace osgEarth { namespace Symbology
          * Attempts to create and load a resource library from an XML
          * resource catalog residing at the specified URL.
          */         
-        static ResourceLibrary* create( const URI& uri );
+        static ResourceLibrary* create( const URI& uri, const osgDB::Options* dbOptions );
 
     public:
         /**
-         * Creates a new resource library
+         * Creates a new resource library from a config.
          */
         ResourceLibrary( const Config& conf =Config() );
 
@@ -99,8 +99,8 @@ namespace osgEarth { namespace Symbology
     protected:
         typedef std::map< const Symbol*, Random > RandomMap;
 
-        Threading::ReadWriteMutex _mutex;
-        SkinResourceMap           _skins;
+        Threading::ReadWriteMutex          _mutex;
+        SkinResourceMap                    _skins;
 
         bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;
     };

@@ -18,26 +18,19 @@
 */
 #include <osgEarth/Config>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/JsonUtils>
 #include <sstream>
 #include <iomanip>
 
 using namespace osgEarth;
 
-Config& emptyConfig()
-{
-    static Config _emptyConfig;
-    return _emptyConfig;
-}
-
 void
-Config::setURIContext( const URIContext& context )
+Config::setReferrer( const std::string& referrer )
 {
-    _uriContext = context;
+    _referrer = referrer;
     for( ConfigSet::iterator i = _children.begin(); i != _children.end(); i++ )
     { 
-        i->setURIContext( context.add(i->_uriContext) );
-        //URI newURI( i->uriContext(), context );
-        //i->setURIContext( *newURI );
+        i->setReferrer( osgEarth::getFullPath(_referrer, i->_referrer) );
     }
 }
 
@@ -50,75 +43,149 @@ Config::loadXML( std::istream& in )
     return xml.valid();
 }
 
-const Config&
+Config
 Config::child( const std::string& childName ) const
 {
     for( ConfigSet::const_iterator i = _children.begin(); i != _children.end(); i++ ) {
         if ( i->key() == childName )
             return *i;
     }
-    return emptyConfig();
+
+    Config emptyConf;
+    emptyConf.setReferrer( _referrer );
+    return emptyConf;
+}
+
+Config*
+Config::mutable_child( const std::string& childName )
+{
+    for( ConfigSet::iterator i = _children.begin(); i != _children.end(); i++ ) {
+        if ( i->key() == childName )
+            return &(*i);
+    }
+
+    return 0L;
 }
 
 void
 Config::merge( const Config& rhs ) 
 {
-    for( Properties::const_iterator a = rhs._attrs.begin(); a != rhs._attrs.end(); ++a )
-        _attrs[ a->first ] = a->second;
-
     for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
         addChild( *c );
 }
 
-std::string
-Config::toString( int indent ) const
+namespace
 {
-    std::stringstream buf;
-    buf << std::fixed;
-    for( int i=0; i<indent; i++ ) buf << "  ";
-    buf << "{ " << (_key.empty()? "anonymous" : _key) << ": ";
-    if ( !_defaultValue.empty() ) buf << _defaultValue;
-    if ( !_attrs.empty() ) {
-        buf << std::endl;
-        for( int i=0; i<indent+1; i++ ) buf << "  ";
-        buf << "attrs: [ ";
-        for( Properties::const_iterator a = _attrs.begin(); a != _attrs.end(); a++ )
-            buf << a->first << "=" << a->second << ", ";
-        buf << " ]";
-    }
-    if ( !_children.empty() ) {
-        for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); c++ )
-            buf << std::endl << (*c).toString( indent+1 );
+    Json::Value conf2json( const Config& conf )
+    {
+        Json::Value value( Json::objectValue );
+
+        if ( conf.isSimple() )
+        {
+            value[ conf.key() ] = conf.value();
+        }
+        else
+        {
+            if ( !conf.key().empty() )
+                value["$key"] = conf.key();
+
+            if ( !conf.value().empty() )
+                value["$value"] = conf.value();
+
+            if ( conf.children().size() > 0 )
+            {
+                Json::Value children( Json::arrayValue );
+                unsigned i = 0;
+                for( ConfigSet::const_iterator c = conf.children().begin(); c != conf.children().end(); ++c )
+                {
+                    if ( c->isSimple() )
+                        value[c->key()] = c->value();
+                    else
+                        children[i++] = conf2json( *c );
+                }
+
+                if ( !children.empty() )
+                    value["$children"] = children;
+            }
+        }
+
+        return value;
     }
 
-    buf << " }";
+    void json2conf( const Json::Value& json, Config& conf )
+    {
+        if ( json.type() == Json::objectValue )
+        {
+            Json::Value::Members members = json.getMemberNames();
 
-	std::string bufStr;
-	bufStr = buf.str();
-    return bufStr;
+            if ( members.size() == 1 )
+            {
+                const Json::Value& value = json[members[0]];
+                if ( value.type() != Json::nullValue && value.type() != Json::objectValue && value.type() != Json::arrayValue )
+                {
+                    conf.key() = members[0];
+                    conf.value() = value.asString();
+                    return;
+                }
+            }
+
+            for( Json::Value::Members::const_iterator i = members.begin(); i != members.end(); ++i )
+            {
+                const Json::Value& value = json[*i];
+                if ( (*i) == "$key" )
+                {
+                    conf.key() = value.asString();
+                }
+                else if ( (*i) == "$value" )
+                {
+                    conf.value() = value.asString();
+                }
+                else if ( (*i) == "$children" && value.isArray() )
+                {
+                    json2conf( value, conf );
+                }
+                else
+                {
+                    conf.add( *i, value.asString() );
+                }
+            }
+        }
+        else if ( json.type() == Json::arrayValue )
+        {          
+            for( Json::Value::const_iterator j = json.begin(); j != json.end(); ++j )
+            {
+                Config child;
+                json2conf( *j, child );
+                if ( !child.empty() )
+                    conf.add( child );
+            }
+        }
+        else if ( json.type() != Json::nullValue )
+        {
+            //conf.value() = json.asString();
+        }
+    }
 }
 
 std::string
-Config::toHashString() const
+Config::toJSON( bool pretty ) const
 {
-    std::stringstream buf;
-    buf << std::fixed;
-    buf << "{" << (_key.empty()? "anonymous" : _key) << ":";
-    if ( !_defaultValue.empty() ) buf << _defaultValue;
-    if ( !_attrs.empty() ) {
-        buf << "[";
-        for( Properties::const_iterator a = _attrs.begin(); a != _attrs.end(); a++ )
-            buf << a->first << "=" << a->second << ",";
-        buf << "]";
-    }
-    if ( !_children.empty() ) {
-        for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); c++ )
-            buf << (*c).toHashString();
-    }
+    Json::Value root = conf2json( *this );
+    if ( pretty )
+        return Json::StyledWriter().write( root );
+    else
+        return Json::FastWriter().write( root );
+}
 
-    buf << "}";
-
-	std::string bufStr;
-	bufStr = buf.str();
-    return bufStr;
+bool
+Config::fromJSON( const std::string& input )
+{
+    Json::Reader reader;
+    Json::Value root( Json::objectValue );
+    if ( reader.parse( input, root ) )
+    {
+        json2conf( root, *this );
+        return true;
+    }
+    return false;
 }

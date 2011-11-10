@@ -1414,18 +1414,40 @@ MapFrame::getImageLayerByName( const std::string& name ) const
 bool
 MapFrame::isCached( const TileKey& key ) const
 {
+    //Check to see if the tile will load fast
     // Check the imagery layers
     for( ImageLayerVector::const_iterator i = imageLayers().begin(); i != imageLayers().end(); i++ )
-    {
-        if ( !i->get()->isCached( key ) )
-            return false;
+    {   
+        //If we're cache only we should be fast
+        if (i->get()->isCacheOnly()) continue;
+
+        osg::ref_ptr< TileSource > source = i->get()->getTileSource();
+        if (!source.valid()) continue;
+
+        //If the tile is blacklisted, it should also be fast.
+        if ( source->getBlacklist()->contains( key.getTileId() ) ) continue;
+        //If no data is available on this tile, we'll be fast
+        if ( !source->hasData( key ) ) continue;
+
+        if ( !i->get()->isCached( key ) ) return false;
     }
 
     for( ElevationLayerVector::const_iterator i = elevationLayers().begin(); i != elevationLayers().end(); ++i )
     {
+        //If we're cache only we should be fast
+        if (i->get()->isCacheOnly()) continue;
+
+        osg::ref_ptr< TileSource > source = i->get()->getTileSource();
+        if (!source.valid()) continue;
+
+        //If the tile is blacklisted, it should also be fast.
+        if ( source->getBlacklist()->contains( key.getTileId() ) ) continue;
+        if ( !source->hasData( key ) ) continue;
         if ( !i->get()->isCached( key ) )
+        {
             return false;
+        }
     }
 
-    return true;
+    return true;        
 }

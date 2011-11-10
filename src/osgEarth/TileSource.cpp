@@ -33,6 +33,9 @@
 
 using namespace osgEarth;
 
+//#undef OE_DEBUG
+//#define OE_DEBUG OE_INFO
+
 //------------------------------------------------------------------------
 
 TileBlacklist::TileBlacklist()

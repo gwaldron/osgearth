@@ -1,0 +1,128 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_DRIVER_OCEAN_SURFACE_SHADERS
+#define OSGEARTH_DRIVER_OCEAN_SURFACE_SHADERS 1
+
+namespace
+{
+    static char source_vert[] =
+
+        "#version 110 \n"
+
+        "uniform mat4 osg_ViewMatrixInverse; \n"
+        "uniform mat4 osg_ViewMatrix; \n"
+        "uniform sampler2D tex0; \n"                 // heightfield encoded into 16 bit texture
+        "uniform float seaLevel; \n"                 // sea level offset
+
+        "varying float v_msl; \n"                    // elevation (MSL) of camera
+        "varying float v_range; \n"                  // distance from camera to current vertex
+        "varying float v_enorm; \n"                  // normalized terrain height at vertex [0..1]
+        "varying vec2 texCoord0; \n"
+        //"varying vec2 texCoord1; \n"
+
+        "void osgearth_vert_setupTexturing() \n"
+        "{ \n"
+
+        // adjust our vert for the sea level - extrude along the normal vector 
+        // (this must be done in modelview space to preserve precision)
+        "   vec4 mvVertex = gl_ModelViewMatrix * gl_Vertex; \n"
+        "   vec3 mvNormal = gl_NormalMatrix * gl_Normal; \n"
+        "   vec4 mvVertex2 = vec4(mvVertex.xyz + (mvNormal * seaLevel), mvVertex.w ); \n"
+        "   gl_Position = gl_ProjectionMatrix * mvVertex2; \n"
+
+        // set up the tex coords for the frag shader:
+        "   texCoord0 = gl_MultiTexCoord0.st; \n"
+        //"   texCoord1 = gl_MultiTexCoord1.st; \n"
+
+        // read normalized [0..1] elevation data from the height texture:
+        "   v_enorm = texture2D( tex0, texCoord0 ).r; \n"
+
+        // scale the texture mapping to something reasonable:
+        "   texCoord0 *= 100.0; \n"
+
+        // calculate the approximate elevation:
+        "   vec4 eye = osg_ViewMatrixInverse * vec4(0,0,0,1); \n"
+        "   v_msl = length(eye.xyz) - 6378137.0 + seaLevel; \n"
+
+        // calculate distance from camera to current vertex:
+        "   v_range = distance(gl_Position, gl_ModelViewMatrixInverse[3]); \n"
+        "} \n";
+
+    char source_frag[] = 
+
+        "#version 110 \n"
+
+        // clamps a value to the vmin/vmax range, then re-maps it to the r0/r1 range:
+        "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
+        "{ \n"
+        "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
+        "    return r0 + vr * (r1-r0); \n"
+        "} \n"
+
+        "varying float v_msl; \n"                  // elevation (MSL) of camera
+        "varying float v_range; \n"                // distance from camera to current vertex
+        "varying float v_enorm; \n"                // normalized terrain height at vertex [0..1]
+
+        "varying vec2 texCoord0; \n"
+        //"varying vec2 texCoord1; \n"
+        "uniform bool hasTex1; \n"                 // whether there's a surface texture
+        "uniform sampler2D tex1; \n"               // surface texture
+        "uniform float seaLevel; \n"               // sea level offset
+        "uniform float lowFeather; \n"             // offset from sea level at which to start feathering out
+        "uniform float highFeather; \n"            // offset from sea level at which to stop feathering out
+        "uniform vec4  baseColor; \n"              // base ocean color before processing
+
+        "void osgearth_frag_applyTexturing(inout vec4 color) \n"
+        "{ \n"
+        "    color = baseColor; \n"
+
+        // amplify the range's effect on alpha when the camera elevation gets low
+        "    float rangeFactor = remap( v_msl, -10000.0, 10000.0, 10.0, 1.0 ); \n"
+        "    float rangeEffect = remap( v_range, 75000.0, 200000.0 * rangeFactor, 1.0, 0.0 ); \n"
+
+        // start with the surface texture. The "/10" just stretches out the texture a bit
+        "    if (hasTex1) { \n"
+        "        vec4 texel = texture2D(tex1, texCoord0/10.0); \n"
+        "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, 0.5), color.a); \n"
+        "        color = mix(color, nearColor, rangeEffect); \n"
+        "   } \n"
+
+        // un-normalize the heightfield data
+        "    float terrainHeight = (v_enorm * 65535.0) - 32768.0; \n"                  
+
+        // heightfield's effect on alpha [0..1]
+        "    float terrainEffect = remap( terrainHeight, seaLevel+lowFeather, seaLevel+highFeather, 1.0, 0.0 ); \n" 
+
+        // balance between texture-based alpha and static alpha
+        //"    float texBalance = remap( v_range, 7500.0, 15000.0, 0.0, 1.0 ); \n"
+        //"    float texIntensity = texture2D( tex1, texCoord1 ).r; \n"
+        //"    float texEffect = mix( texIntensity, 0.8, texBalance ); \n"
+
+        // color it
+        //"    color = vec4( baseColor.rgb, texEffect * terrainEffect * rangeEffect * baseColor.a ); \n"
+        "    color = vec4( color.rgb, terrainEffect * rangeEffect * color.a ); \n"
+        //"    color = vec4( color.rgb, terrainEffect * color.a ); \n"
+        //"    color = vec4( baseColor, terrainEffect ); \n"
+
+        //"    color = vec4( 1, 0, 0, 1 ); \n" // debugging
+        "} \n";
+
+}
+
+#endif // OSGEARTH_DRIVER_OCEAN_SURFACE_SHADERS

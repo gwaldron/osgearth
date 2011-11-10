@@ -28,14 +28,12 @@ http://readymap.org
     <options>
         <terrain>
             <lighting>false</lighting>
-            <compositor>multitexture</compositor>
             <sample_ratio>0.125</sample_ratio>
         </terrain>
         
         <cache driver="filesystem">
             <path>osgearth_cache</path>
         </cache>
-        -->
     </options>
     
     <external>

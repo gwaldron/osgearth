@@ -99,7 +99,8 @@ _enableLighting( false ),
 _attenuationDistance( 1000000 ),
 _lodBlending( false ),
 _lodTransitionTimeSeconds( 0.5f ),
-_enableMipmapping( true )
+_enableMipmapping( true ),
+_clusterCulling( true )
 {
     fromConfig( _conf );
 }
@@ -121,6 +122,7 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "attenuation_distance", _attenuationDistance );
     conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.updateIfSet( "mipmapping", _enableMipmapping );
+    conf.updateIfSet( "cluster_culling", _clusterCulling );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -145,6 +147,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "attenuation_distance", _attenuationDistance );
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.getIfSet( "mipmapping", _enableMipmapping );
+    conf.getIfSet( "cluster_culling", _clusterCulling );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );

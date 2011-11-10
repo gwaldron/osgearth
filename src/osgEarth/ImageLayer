@@ -95,7 +95,7 @@ namespace osgEarth
         const optional<bool>& lodBlending() const { return _lodBlending; }
 
     public:
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
         
     private:
@@ -176,7 +176,7 @@ namespace osgEarth
          * Access to the initialization options used to create this image layer
          */
         const ImageLayerOptions& getImageLayerOptions() const { return _runtimeOptions; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ImageLayerCallback* cb );
@@ -200,7 +200,7 @@ namespace osgEarth
 		/**
 		 * Creates a GeoImage from this MapLayer
 		 */
-		GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
+		virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
 
     protected:
 
@@ -216,7 +216,7 @@ namespace osgEarth
 
         virtual void initTileSource();
 
-    private:
+    protected:
         ImageLayerOptions _runtimeOptions;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;

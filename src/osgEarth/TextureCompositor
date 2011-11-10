@@ -153,6 +153,11 @@ namespace osgEarth
         TextureCompositor( const TerrainOptions& options );
 
         /**
+         * Sets a custom technique to use.
+         */
+        void setTechnique( TextureCompositorTechnique* tech );
+
+        /**
          * Gets the actual technique selected by the compositor. This might not be the same
          * as the requested technique, since it will validate against system capabilities and
          * automatically "fall back" on lesser techniques if necessary.

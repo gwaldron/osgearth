@@ -53,7 +53,7 @@ void Style::addSymbol(Symbol* symbol)
 
 bool Style::removeSymbol(Symbol* symbol)
 {
-	SymbolList::iterator it = find(_symbols.begin(), _symbols.end(), symbol);
+    SymbolList::iterator it = std::find(_symbols.begin(), _symbols.end(), symbol);
 	if (it == _symbols.end())
 		return false;
 		

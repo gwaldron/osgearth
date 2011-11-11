@@ -59,6 +59,7 @@ _parentMapNode( mapNode )
         OSGTerrainOptions to;
         to.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
         to.clusterCulling() = false;       // want to see underwater
+        to.enableBlending() = true;        // gotsta blend with the main node
         mno.setTerrainOptions( to );
 
         // make the ocean's map node:

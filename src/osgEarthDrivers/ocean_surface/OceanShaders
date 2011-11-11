@@ -61,6 +61,9 @@ namespace
         "   vec4 eye = osg_ViewMatrixInverse * vec4(0,0,0,1); \n"
         "   v_msl = length(eye.xyz) - 6378137.0 + seaLevel; \n"
 
+        // calculate distance from camera to current vertex:
+        "   v_range = distance(gl_Position, gl_ModelViewMatrixInverse[3]); \n"
+
         // scale the texture mapping to something reasonable:
         "   if (has_tex1) \n"
         "   { \n"
@@ -68,9 +71,6 @@ namespace
         "       vec2 lonlat = xyz_to_spherical( worldVertex.xyz/worldVertex.w ); \n"
         "       texCoord1 = lonlat / 0.0005; \n"
         "   } \n"
-
-        // calculate distance from camera to current vertex:
-        "   v_range = distance(gl_Position, gl_ModelViewMatrixInverse[3]); \n"
         "} \n";
 
     char source_frag[] = 

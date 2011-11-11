@@ -39,6 +39,8 @@ namespace osgEarth
         META_Object( osgEarth, StringObject );
     };
 
+//--------------------------------------------------------------------
+
     /**
      * Convenience metadata tags
      */
@@ -46,6 +48,8 @@ namespace osgEarth
     {
         static const std::string CONTENT_TYPE;
     };
+
+//--------------------------------------------------------------------
 
     /**
      * Return value from a read* method
@@ -141,6 +145,57 @@ namespace osgEarth
         osg::ref_ptr<osg::Object> _result;
         Config                    _meta;
         std::string               _emptyString;
+    };
+
+//--------------------------------------------------------------------
+
+    /**
+     * Callback that allows the developer to re-route URI read calls. 
+     *
+     * If the corresponding callback method returns NOT_IMPLEMENTED, URI will
+     * fall back on its default mechanism.
+     */
+    class URIReadCallback : public osg::Referenced
+    {
+    public:
+        enum CachingSupport
+        {
+            CACHE_NONE        = 0,
+            CACHE_OBJECTS     = 1 << 0,
+            CACHE_NODES       = 1 << 1,
+            CACHE_IMAGES      = 1 << 2,
+            CACHE_STRINGS     = 1 << 3,
+            CACHE_ALL         = ~0
+        };
+
+        /** 
+         * Tells the URI class which data types (if any) from this callback should be subjected
+         * to osgEarth's caching mechamism. By default, the answer is "none" - URI
+         * will not attempt to read or write from its cache when using this callback.
+         */
+        virtual unsigned cachingSupport() const { return CACHE_NONE; }
+
+    public:
+
+        /** Override the readObject() implementation */
+        virtual osgDB::ReaderWriter::ReadResult readObject( const std::string& uri, const osgDB::Options* options ) {
+            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+
+        /** Override the readNode() implementation */
+        virtual osgDB::ReaderWriter::ReadResult readNode( const std::string& uri, const osgDB::Options* options ) {
+            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+
+        /** Override the readImage() implementation */
+        virtual osgDB::ReaderWriter::ReadResult readImage( const std::string& uri, const osgDB::Options* options ) {
+            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+
+        /** Override the readString() implementation */
+        virtual osgDB::ReaderWriter::ReadResult readString( const std::string& uri, const osgDB::Options* options ) {
+            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+
+    protected:
+
+        URIReadCallback() { }
     };
 
 }

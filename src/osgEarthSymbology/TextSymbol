@@ -50,6 +50,12 @@ namespace osgEarth { namespace Symbology
             LINEPLACEMENT_CENTROID
         };
 #endif
+		enum Encoding {
+            ENCODING_ASCII,
+            ENCODING_UTF8,
+            ENCODING_UTF16,
+			ENCODING_UTF32
+		};
 
         TextSymbol( const Config& conf =Config() );
 
@@ -107,6 +113,10 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& provider() { return _provider; }
         const optional<std::string>& provider() const { return _provider; }
 
+        /** text encoding */
+        optional<Encoding>& encoding() { return _encoding; }
+        const optional<Encoding>& encoding() const { return _encoding; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -128,6 +138,7 @@ namespace osgEarth { namespace Symbology
 #endif
         optional<osg::Vec2s>        _pixelOffset;
         optional<std::string>       _provider;
+		optional<Encoding>          _encoding;
     };
 
 } } // namespace osgEarth::Symbology

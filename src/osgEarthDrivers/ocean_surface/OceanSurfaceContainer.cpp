@@ -95,7 +95,7 @@ _parentMapNode( mapNode )
         ss->setRenderBinDetails( 15, "RenderBin" );
 
         // load up a surface texture
-        ss->getOrCreateUniform( "hasTex1", osg::Uniform::BOOL )->set( false );
+        ss->getOrCreateUniform( "hasSurfTex", osg::Uniform::BOOL )->set( false );
         if ( options.textureURI().isSet() )
         {
             //TODO: enable cache support here:
@@ -110,7 +110,7 @@ _parentMapNode( mapNode )
 
                 ss->setTextureAttributeAndModes( 1, tex, 1 );
                 ss->getOrCreateUniform( "tex1", osg::Uniform::SAMPLER_2D )->set( 1 );
-                ss->getOrCreateUniform( "hasTex1", osg::Uniform::BOOL )->set( true );
+                ss->getOrCreateUniform( "hasSurfTex", osg::Uniform::BOOL )->set( true );
             }
         }
 

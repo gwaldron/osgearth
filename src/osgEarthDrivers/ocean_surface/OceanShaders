@@ -25,16 +25,24 @@ namespace
 
         "#version 110 \n"
 
+        "vec2 xyz_to_spherical(in vec3 xyz) \n"
+        "{ \n"
+        "    float r = length(xyz); \n"
+        "    float lat = acos(xyz.z/r); \n"
+        "    float lon = atan(xyz.y, xyz.x); \n"
+        "    return vec2(lon,lat); \n"
+        "} \n"
+
         "uniform mat4 osg_ViewMatrixInverse; \n"
         "uniform mat4 osg_ViewMatrix; \n"
         "uniform sampler2D tex0; \n"                 // heightfield encoded into 16 bit texture
         "uniform float seaLevel; \n"                 // sea level offset
+        "uniform bool hasSurfTex; \n"                // whether there's a surface texture
 
         "varying float v_msl; \n"                    // elevation (MSL) of camera
         "varying float v_range; \n"                  // distance from camera to current vertex
         "varying float v_enorm; \n"                  // normalized terrain height at vertex [0..1]
         "varying vec2 texCoord0; \n"
-        //"varying vec2 texCoord1; \n"
 
         "void osgearth_vert_setupTexturing() \n"
         "{ \n"
@@ -48,17 +56,22 @@ namespace
 
         // set up the tex coords for the frag shader:
         "   texCoord0 = gl_MultiTexCoord0.st; \n"
-        //"   texCoord1 = gl_MultiTexCoord1.st; \n"
 
         // read normalized [0..1] elevation data from the height texture:
         "   v_enorm = texture2D( tex0, texCoord0 ).r; \n"
 
-        // scale the texture mapping to something reasonable:
-        "   texCoord0 *= 100.0; \n"
-
         // calculate the approximate elevation:
         "   vec4 eye = osg_ViewMatrixInverse * vec4(0,0,0,1); \n"
         "   v_msl = length(eye.xyz) - 6378137.0 + seaLevel; \n"
+
+        // scale the texture mapping to something reasonable:
+        "   if (hasSurfTex) { \n"
+        "       vec4 worldVertex = osg_ViewMatrixInverse * mvVertex; \n"
+        "       vec2 lonlat = xyz_to_spherical( worldVertex.xyz/worldVertex.w ); \n"
+        "       texCoord0 = lonlat / 0.00005; \n"
+        "   } \n"
+
+        //"   texCoord0 *= float(lod)/11.0 * 100.0; \n"
 
         // calculate distance from camera to current vertex:
         "   v_range = distance(gl_Position, gl_ModelViewMatrixInverse[3]); \n"
@@ -80,8 +93,7 @@ namespace
         "varying float v_enorm; \n"                // normalized terrain height at vertex [0..1]
 
         "varying vec2 texCoord0; \n"
-        //"varying vec2 texCoord1; \n"
-        "uniform bool hasTex1; \n"                 // whether there's a surface texture
+        "uniform bool hasSurfTex; \n"              // whether there's a surface texture
         "uniform sampler2D tex1; \n"               // surface texture
         "uniform float seaLevel; \n"               // sea level offset
         "uniform float lowFeather; \n"             // offset from sea level at which to start feathering out
@@ -97,9 +109,9 @@ namespace
         "    float rangeEffect = remap( v_range, 75000.0, 200000.0 * rangeFactor, 1.0, 0.0 ); \n"
 
         // start with the surface texture. The "/10" just stretches out the texture a bit
-        "    if (hasTex1) { \n"
+        "    if (hasSurfTex) { \n"
         "        vec4 texel = texture2D(tex1, texCoord0/10.0); \n"
-        "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, 0.5), color.a); \n"
+        "        vec4 nearColor = vec4(mix(color.rgb, texel.rgb, texel.a), color.a); \n"
         "        color = mix(color, nearColor, rangeEffect); \n"
         "   } \n"
 
@@ -117,8 +129,6 @@ namespace
         // color it
         //"    color = vec4( baseColor.rgb, texEffect * terrainEffect * rangeEffect * baseColor.a ); \n"
         "    color = vec4( color.rgb, terrainEffect * rangeEffect * color.a ); \n"
-        //"    color = vec4( color.rgb, terrainEffect * color.a ); \n"
-        //"    color = vec4( baseColor, terrainEffect ); \n"
 
         //"    color = vec4( 1, 0, 0, 1 ); \n" // debugging
         "} \n";

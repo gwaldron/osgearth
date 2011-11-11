@@ -20,6 +20,7 @@
 #include <osgEarthFeatures/Session>
 #include <osgEarthFeatures/Script>
 #include <osgEarthFeatures/ScriptEngine>
+#include <osgEarthFeatures/FeatureSource>
 #include <osgEarth/FileUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
@@ -48,6 +49,10 @@ _dbOptions     ( dbOptions )
     // if the caller did not provide a dbOptions, take it from the map.
     if ( map && !dbOptions )
         _dbOptions = map->getDBOptions();
+}
+
+Session::~Session()
+{
 }
 
 const osgDB::Options*
@@ -92,4 +97,15 @@ ScriptEngine*
 Session::getScriptEngine() const
 {
   return _styleScriptEngine.get();
+}
+FeatureSource *
+Session::getFeatureSource() const 
+{ 
+	return _featureSource.get(); 
+}
+
+void 
+Session::setFeatureSource(FeatureSource * source)
+{ 
+	_featureSource = source;
 }

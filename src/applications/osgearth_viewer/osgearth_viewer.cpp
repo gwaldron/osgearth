@@ -35,12 +35,15 @@
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthDrivers/kml/KML>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarthFeatures/FeatureSourceNode>
+#include <osgEarthFeatures/FeatureSource>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Features;
 
 int
 usage( const std::string& msg )
@@ -393,6 +396,167 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
     std::vector<Viewpoint> _viewpoints;
 };
 
+bool hitTest(osgViewer::View * view, unsigned traversalMask, float x, float y, osg::Vec3d & posWorld, osg::Vec3d & posLocal, osg::NodePath & nodePath, osg::ref_ptr<osg::Drawable> & drawable, unsigned & primIndex)
+{
+	osg::Vec3d vecLocal;
+	osg::Vec3d vecWorld;
+	bool ret;
+
+	osg::Camera * camera = view->getCamera();
+
+	osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::WINDOW, x, y);
+
+	osgUtil::IntersectionVisitor iv(picker.get());
+
+	// get the traversal mask from the given camera if no mask has been specified
+	if(traversalMask == (unsigned)-1)
+		traversalMask = camera->getCullMask();
+	iv.setTraversalMask(traversalMask);
+	camera->accept(iv);
+
+	ret = picker->containsIntersections();
+	if (ret)
+	{
+		const osgUtil::LineSegmentIntersector::Intersection& hitr = picker->getFirstIntersection();
+		posWorld = hitr.getWorldIntersectPoint();
+		posLocal = hitr.getLocalIntersectPoint();
+		nodePath = hitr.nodePath;
+		drawable = hitr.drawable;
+		primIndex = hitr.primitiveIndex;
+	}
+	else
+	{
+		nodePath.clear();
+		posWorld = osg::Vec3d();
+		posLocal = osg::Vec3d();
+		drawable = NULL;
+		primIndex = (unsigned)-1;
+	}
+	return ret;
+}
+
+bool hitTestPolytope(osgViewer::View * view, unsigned traversalMask, float x, float y, osg::Vec3d & posWorld, osg::Vec3d & posLocal, osg::NodePath & nodePath, osg::ref_ptr<osg::Drawable> & drawable, unsigned & primIndex)
+{
+	osg::Vec3d vecLocal;
+	osg::Vec3d vecWorld;
+	bool ret;
+
+	osg::Camera * camera = view->getCamera();
+
+	osg::ref_ptr< osgUtil::PolytopeIntersector > picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::WINDOW, x, y, x, y);
+
+	osgUtil::IntersectionVisitor iv(picker.get());
+
+	// get the traversal mask from the given camera if no mask has been specified
+	if(traversalMask == (unsigned)-1)
+		traversalMask = camera->getCullMask();
+	iv.setTraversalMask(traversalMask);
+	camera->accept(iv);
+
+	ret = picker->containsIntersections();
+	if (ret)
+	{
+		const osgUtil::PolytopeIntersector::Intersection& hitr = picker->getFirstIntersection();
+		posWorld = hitr.localIntersectionPoint * (const osg::Matrix&)hitr.matrix;
+		posLocal = hitr.localIntersectionPoint;
+		nodePath = hitr.nodePath;
+		drawable = hitr.drawable;
+		primIndex = hitr.primitiveIndex;
+	}
+	else
+	{
+		nodePath.clear();
+		posWorld = osg::Vec3d();
+		posLocal = osg::Vec3d();
+		drawable = NULL;
+		primIndex = (unsigned)-1;
+	}
+	return ret;
+}
+
+std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const osg::Node * node)
+{
+		os << "{this=" << (void*)node 
+			<< ";name=" << (node?node->getName():"<null>")
+			<< ";classname=" << (node?node->className():"<null>")
+			<< ";libname=" << (node?node->libraryName():"<null>")
+			<< ";mask=" << std::hex << (node?node->getNodeMask():0) << std::dec
+			<< "}";
+//	}
+	return os;
+}
+
+std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const osg::NodePath & path)
+{
+	os << "{size=" << path.size() << ";elements=[";
+	for(osg::NodePath::const_iterator it = path.begin(); it != path.end();)
+	{
+		const osg::Node * node = *it;
+		os << node;
+		it++;
+		if(it != path.end())
+			os << ",";
+	}
+	return os  << "]}";
+}
+
+
+struct FeatureInfoHandler : public osgGA::GUIEventHandler
+{
+	FeatureInfoHandler( osgEarth::Map * map )
+		: _map( map ) { }
+
+	bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+	{
+		osg::Vec3d world;
+		osg::Vec3d local;
+		osg::NodePath path;
+		osg::ref_ptr<osg::Drawable> drawable;
+		unsigned primIndex = 0;
+		bool hit = false;
+		if ( ea.getEventType() == ea.KEYDOWN)
+		{
+			if(ea.getKey() == 'i')
+				hit = hitTest((osgViewer::View*)aa.asView(), (unsigned)-1, ea.getX(), ea.getY(), world, local, path, drawable, primIndex);
+			else if(ea.getKey() == 'u')
+				hit = hitTestPolytope((osgViewer::View*)aa.asView(), (unsigned)-1, ea.getX(), ea.getY(), world, local, path, drawable, primIndex);
+		}
+		if(hit)
+		{
+			std::cout << "hit on " << path << std::endl;
+			FeatureSourceNode * featureNode = NULL;
+			for(osg::NodePath::reverse_iterator it = path.rbegin(); !featureNode && it != path.rend(); it++)
+				featureNode = dynamic_cast<FeatureSourceNode *>(*it);
+
+			if(featureNode)
+			{
+				FeatureSource * featureSource = featureNode->getSource();
+				osgEarth::Features::FeatureID fid;
+				FeatureSourceMultiNode * featureMultiNode = dynamic_cast<FeatureSourceMultiNode *>(featureNode);
+				if(featureMultiNode)
+					fid = featureMultiNode->getFID(drawable, primIndex);
+				else
+					fid = featureNode->getFID();
+				std::string name;
+				if(featureSource)
+				{
+					Feature * feature = featureSource->getFeature(fid);
+					if(feature)
+						name = feature->getString("name");
+				}
+				std::cerr << "hit feature " << fid << ":" << name << std::endl;
+			}
+			else
+			{
+				std::cerr << "hit no feature" << std::endl;
+			}
+		}
+		return false;
+	}
+
+	osgEarth::Map * _map;
+};
+
 int
 main(int argc, char** argv)
 {
@@ -517,6 +681,7 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::ThreadingHandler());
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+	viewer.addEventHandler(new FeatureInfoHandler(mapNode->getMap()));
 
     return viewer.run();
 }

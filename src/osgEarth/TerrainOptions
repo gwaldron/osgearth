@@ -177,6 +177,12 @@ namespace osgEarth
         const optional<float>& lodTransitionTime() const { return _lodTransitionTimeSeconds; }
 
         /**
+         * Whether cluster culling is enabled on terrain tiles (default = true)
+         */
+        optional<bool>& clusterCulling() { return _clusterCulling; }
+        const optional<bool>& clusterCulling() const { return _clusterCulling; }
+
+        /**
          * Available techniques for compositing image layers at runtime.
          */
         enum CompositingTechnique
@@ -185,7 +191,8 @@ namespace osgEarth
             COMPOSITING_TEXTURE_ARRAY,
             COMPOSITING_MULTITEXTURE_GPU,
             COMPOSITING_MULTITEXTURE_FFP,
-            COMPOSITING_MULTIPASS
+            COMPOSITING_MULTIPASS,
+            COMPOSITING_USER
         };
 
         /**
@@ -236,7 +243,13 @@ namespace osgEarth
         optional<float> _attenuationDistance;
         optional<bool> _lodBlending;
         optional<float> _lodTransitionTimeSeconds;
-        optional<bool>  _enableMipmapping;        
+        optional<bool>  _enableMipmapping;
+        optional<bool> _clusterCulling;
+#if 0
+        optional<osg::Texture::FilterMode> _contourMagFilter;
+        optional<osg::Texture::FilterMode> _contourMinFilter;
+#endif
+        optional<ElevationInterpolation> _elevationInterpolation;
     };
 }
 

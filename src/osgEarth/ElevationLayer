@@ -41,7 +41,7 @@ namespace osgEarth
         ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
 
     public:
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
         
     private:
@@ -92,7 +92,7 @@ namespace osgEarth
 
         /** Gets the initialization options with which the layer was created. */
         const ElevationLayerOptions& getElevationLayerOptions() const { return _runtimeOptions; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ElevationLayerCallback* cb );
@@ -107,7 +107,7 @@ namespace osgEarth
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
          */
-        GeoHeightField createHeightField(
+        virtual GeoHeightField createHeightField(
             const TileKey&    key,
             ProgressCallback* progress =0L );
 

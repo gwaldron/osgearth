@@ -20,6 +20,7 @@
 #define OSGEARTHSYMBOLOGY_COLOR_H 1
 
 #include <osgEarthSymbology/Common>
+#include <osgEarth/Config>
 #include <osg/Vec4f>
 #include <string>
 
@@ -89,5 +90,41 @@ namespace osgEarth { namespace Symbology
     };
 
 } } // namespace osgEarth::Symbology
+
+    
+//------------------------------------------------------------------------
+
+namespace osgEarth
+{
+    using namespace osgEarth::Symbology;
+
+    // Config specializations for Color:
+
+    template <> inline
+    void Config::addIfSet<Color>( const std::string& key, const optional<Color>& opt ) {
+        if ( opt.isSet() ) {
+            add( key, opt->toHTML() );
+        }
+    }
+
+    template<> inline
+    void Config::updateIfSet<Color>( const std::string& key, const optional<Color>& opt ) {
+        if ( opt.isSet() ) {
+            remove( key );
+            add( key, opt->toHTML() );
+        }
+    }
+
+    template<> inline
+    bool Config::getIfSet<Color>( const std::string& key, optional<Color>& output ) const {
+        if ( hasValue( key ) ) {
+            output = Color( value(key) );
+            return true;
+        }
+        else
+            return false;
+    }
+}
+
 
 #endif // OSGEARTHSYMBOLOGY_COLOR_H

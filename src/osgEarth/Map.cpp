@@ -960,6 +960,8 @@ Map::calculateProfile()
 
 namespace
 {
+    typedef std::pair<ElevationLayer*, GeoHeightField> GeoHFPair;
+
     bool
     s_getHeightField(const TileKey&                  key,
                      const ElevationLayerVector&     elevLayers,
@@ -971,13 +973,10 @@ namespace
                      bool*                           out_isFallback,
                      ProgressCallback*               progress ) 
     {
-        unsigned int lowestLOD = key.getLevelOfDetail();
+        unsigned lowestLOD = key.getLevelOfDetail();
         bool hfInitialized = false;
 
-        typedef std::map< TerrainLayer*, bool > LayerValidMap;
-        LayerValidMap layerValidMap;
-
-	    //Get a HeightField for each of the enabled layers
+        //Get a HeightField for each of the enabled layers
 	    GeoHeightFieldVector heightFields;
 
         unsigned int numValidHeightFields = 0;
@@ -986,70 +985,49 @@ namespace
         {
             *out_isFallback = false;
         }
-        
-        //First pass:  Try to get the exact LOD requested for each enabled heightfield
+
+        // Generate a heightfield for each elevation layer.
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
         {
             ElevationLayer* layer = i->get();
-            if ( layer->getEnabled() ) // layer->getProfile() && layer->getEnabled() )
+            if ( layer->getEnabled() )
             {
                 GeoHeightField geoHF = layer->createHeightField( key, progress );
-                layerValidMap[ layer ] = geoHF.valid();
-                if ( geoHF.valid() ) 
+
+                // if "fallback" is set, try to fall back on lower LODs.
+                if ( !geoHF.valid() && fallback )
                 {
-                    numValidHeightFields++;
+                    TileKey hf_key = key;
+
+                    while ( hf_key.valid() && !geoHF.valid() )
+                    {
+                        geoHF = layer->createHeightField( hf_key, progress );
+                        if ( !geoHF.valid() )
+                            hf_key = hf_key.createParentKey();
+                    }
+
+                    if ( geoHF.valid() )
+                    {
+                        if ( hf_key.getLevelOfDetail() < lowestLOD )
+                            lowestLOD = hf_key.getLevelOfDetail();
+
+                        if ( out_isFallback )
+                            *out_isFallback = true;
+                    }
+                }
+
+                if ( geoHF.valid() )
+                {
                     heightFields.push_back( geoHF );
                 }
             }
         }
 
-        //If we didn't get any heightfields and weren't requested to fallback, just return NULL
-        if (numValidHeightFields == 0 && !fallback)
+        // If we didn't get any heightfields and weren't requested to fallback, just return NULL
+        if ( heightFields.size() == 0 )
         {
             return false;
         }
-
-        //Second pass:  We were either asked to fallback or we might have some heightfields at the requested
-        //              LOD and some that are NULL. Fall back on parent tiles to fill in the missing data if possible.
-        for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
-        {
-            ElevationLayer* layer = i->get();
-
-            if ( layer->getEnabled() ) // layer->getProfile() && layer->getEnabled() )
-            {
-                if ( !layerValidMap[ layer ] ) // didn't populate on the first pass
-                {
-                    TileKey hf_key = key;
-                    GeoHeightField geoHF;
-                    while (hf_key.valid())
-                    {
-                        geoHF = layer->createHeightField( hf_key, progress );
-                        if ( geoHF.valid() )
-                            break;
-
-                        hf_key = hf_key.createParentKey();
-                    }
-
-                    if (geoHF.valid())
-                    {
-                        if ( hf_key.getLevelOfDetail() < lowestLOD )
-                            lowestLOD = hf_key.getLevelOfDetail();
-
-                        heightFields.push_back( geoHF );
-
-                        if ( out_isFallback )
-                            *out_isFallback = true;
-
-                    }
-                }
-            }
-        }
-
-	    if (heightFields.size() == 0)
-	    {
-	        //If we got no heightfields, return NULL
-		    return false;
-	    }
 
 	    else if (heightFields.size() == 1)
 	    {
@@ -1102,7 +1080,6 @@ namespace
                     // is the highest priority.
                     std::vector<float> elevations;
                     for( GeoHeightFieldVector::reverse_iterator itr = heightFields.rbegin(); itr != heightFields.rend(); ++itr )
-                    //for (GeoHeightFieldVector::iterator itr = heightFields.begin(); itr != heightFields.end(); ++itr)
                     {
                         const GeoHeightField& geoHF = *itr;
 
@@ -1414,24 +1391,40 @@ MapFrame::getImageLayerByName( const std::string& name ) const
 bool
 MapFrame::isCached( const TileKey& key ) const
 {
+    //Check to see if the tile will load fast
     // Check the imagery layers
     for( ImageLayerVector::const_iterator i = imageLayers().begin(); i != imageLayers().end(); i++ )
-    {
-        ImageLayer* layer = i->get();
-        
-        CacheBin* bin = layer->getCacheBin( key.getProfile() );
-        if ( !bin || !bin->isCached( key.str() ) )
-            return false;
+    {   
+        //If we're cache only we should be fast
+        if (i->get()->isCacheOnly()) continue;
+
+        osg::ref_ptr< TileSource > source = i->get()->getTileSource();
+        if (!source.valid()) continue;
+
+        //If the tile is blacklisted, it should also be fast.
+        if ( source->getBlacklist()->contains( key.getTileId() ) ) continue;
+        //If no data is available on this tile, we'll be fast
+        if ( !source->hasData( key ) ) continue;
+
+        if ( !i->get()->isCached( key ) ) return false;
     }
 
     for( ElevationLayerVector::const_iterator i = elevationLayers().begin(); i != elevationLayers().end(); ++i )
     {
-        ElevationLayer* layer = i->get();
+        //If we're cache only we should be fast
+        if (i->get()->isCacheOnly()) continue;
 
-        CacheBin* bin = layer->getCacheBin( key.getProfile() );
-        if ( !bin || !bin->isCached( key.str() ) )
+        osg::ref_ptr< TileSource > source = i->get()->getTileSource();
+        if (!source.valid()) continue;
+
+        //If the tile is blacklisted, it should also be fast.
+        if ( source->getBlacklist()->contains( key.getTileId() ) ) continue;
+        if ( !source->hasData( key ) ) continue;
+        if ( !i->get()->isCached( key ) )
+        {
             return false;
+        }
     }
 
-    return true;
+    return true;        
 }

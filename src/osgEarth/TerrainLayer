@@ -105,8 +105,8 @@ namespace osgEarth
 		/**
 		 * The desired tile size to reproject imagery to if necessary.
 		 */
-        optional<unsigned int> reprojectedTileSize() { return _reprojectedTileSize; }
-        const optional<unsigned int> reprojectedTileSize() const { return _reprojectedTileSize; }
+        optional<unsigned int>& reprojectedTileSize() { return _reprojectedTileSize; }
+        const optional<unsigned int>& reprojectedTileSize() const { return _reprojectedTileSize; }
 
         /**
          * Explicit cache ID to uniquely identify the cache that matched this
@@ -145,7 +145,7 @@ namespace osgEarth
         const optional<double>& edgeBufferRatio() const { return _edgeBufferRatio; }
 
     public:
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
 
     private:
@@ -188,9 +188,14 @@ namespace osgEarth
     class OSGEARTH_EXPORT TerrainLayer : public Layer
     {
     protected:
-        TerrainLayer( TerrainLayerOptions* options );
+        TerrainLayer( 
+            const TerrainLayerOptions& initOptions, 
+            TerrainLayerOptions*       runtimeOptions );
         
-        TerrainLayer( TerrainLayerOptions* options, TileSource* tileSource );
+        TerrainLayer( 
+            const TerrainLayerOptions& initOptions, 
+            TerrainLayerOptions*       runtimeOptions,
+            TileSource*                tileSource );
 
         virtual ~TerrainLayer();
 
@@ -199,8 +204,9 @@ namespace osgEarth
         /**
          * The options data connected to this layer.
          */
-        const TerrainLayerOptions& getTerrainLayerOptions() const {
-            return *_runtimeOptions; }
+        const TerrainLayerOptions& getInitialOptions() const { return _initOptions; }
+
+        const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return *_runtimeOptions; }
 
         /**
          * Whether to draw this layer.
@@ -211,8 +217,7 @@ namespace osgEarth
         /**
          * Gets the readable name of the map layer.
          */
-        const std::string& getName() const { 
-            return getTerrainLayerOptions().name(); }
+        const std::string& getName() const { return getTerrainLayerRuntimeOptions().name(); }
 
 		/**
 		 * Gets the profile of this MapLayer
@@ -242,7 +247,12 @@ namespace osgEarth
 		/**
 		 * Whether the given key is valid for this layer
 		 */
-		bool isKeyValid(const TileKey& key) const;
+		virtual bool isKeyValid(const TileKey& key) const;
+
+        /** 
+         * Whether the data for the specified tile key is in the cache.
+         */
+        virtual bool isCached(const TileKey& key) const;
         
         /**
          * Gives the terrain layer a hint as to what the target profile of 
@@ -344,6 +354,7 @@ namespace osgEarth
         std::string                    _name;
         std::string                    _referenceURI;
         OpenThreads::Mutex             _initTileSourceMutex;
+        TerrainLayerOptions            _initOptions;
         TerrainLayerOptions*           _runtimeOptions;
 
 		osg::ref_ptr<Cache>            _cache;

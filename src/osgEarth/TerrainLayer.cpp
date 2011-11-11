@@ -70,9 +70,9 @@ TerrainLayerOptions::setDefaults()
 }
 
 Config
-TerrainLayerOptions::getConfig() const
+TerrainLayerOptions::getConfig( bool isolate ) const
 {
-    Config conf = ConfigOptions::getConfig();
+    Config conf = isolate ? ConfigOptions::newConfig() : ConfigOptions::getConfig();
 
     conf.set("name", _name);
     conf.updateIfSet( "min_level", _minLevel );
@@ -90,8 +90,9 @@ TerrainLayerOptions::getConfig() const
     conf.updateIfSet   ( "cache_format", _cacheFormat );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
 
-    //Merge the TileSource options
-    if (driver().isSet()) conf.merge( driver()->getConfig() );
+    // Merge the TileSource options
+    if ( !isolate && driver().isSet() )
+        conf.merge( driver()->getConfig() );
 
     return conf;
 }
@@ -134,14 +135,19 @@ TerrainLayerOptions::mergeConfig( const Config& conf )
 
 //------------------------------------------------------------------------
 
-TerrainLayer::TerrainLayer( TerrainLayerOptions* options ) :
-_runtimeOptions( options )
+TerrainLayer::TerrainLayer(const TerrainLayerOptions& initOptions,
+                           TerrainLayerOptions*       runtimeOptions ) :
+_initOptions   ( initOptions ),
+_runtimeOptions( runtimeOptions )
 {
     init();
 }
 
-TerrainLayer::TerrainLayer( TerrainLayerOptions* options, TileSource* tileSource ) :
-_runtimeOptions( options ),
+TerrainLayer::TerrainLayer(const TerrainLayerOptions& initOptions,
+                           TerrainLayerOptions*       runtimeOptions,
+                           TileSource*                tileSource ) :
+_initOptions   ( initOptions ),
+_runtimeOptions( runtimeOptions ),
 _tileSource    ( tileSource )
 {
     init();
@@ -198,12 +204,19 @@ TerrainLayer::setCache( Cache* cache )
             else
             {
                 // system will generate a cacheId.
-                Config hashConf = _runtimeOptions->driver()->getConfig();
+                // technically, this is not quite right, we need to remove everything that's
+                // an image layer property and just use the tilesource properties.
+                Config layerConf = _runtimeOptions->getConfig( true );
+                Config driverConf = _runtimeOptions->driver()->getConfig();
+                Config hashConf = driverConf - layerConf;
+
+                OE_DEBUG << LC << "Hash JSON for layer " << getName() << " is: " << hashConf.toJSON(false) << std::endl;
 
                 // remove cache-control properties before hashing.
                 hashConf.remove( "cache_only" );
                 hashConf.remove( "cache_enabled" );
                 hashConf.remove( "cache_policy" );
+                hashConf.remove( "cacheid" );
 
                 cacheId = Stringify() << std::hex << osgEarth::hashString(hashConf.toJSON());
             }
@@ -452,6 +465,12 @@ TerrainLayer::initTileSource()
 	if ( _runtimeOptions->profile().isSet() )
 	{
 		overrideProfile = Profile::create( *_runtimeOptions->profile() );
+
+        if ( overrideProfile.valid() )
+        {
+            OE_INFO << LC << "Layer " << getName() << " overrides profile to "
+                << overrideProfile->toString() << std::endl;
+        }
 	}
 
     // Initialize the profile with the context information:
@@ -530,6 +549,13 @@ TerrainLayer::isKeyValid(const TileKey& key) const
     }
 
 	return true;
+}
+
+bool
+TerrainLayer::isCached(const TileKey& key) const
+{
+    CacheBin* bin = const_cast<TerrainLayer*>(this)->getCacheBin( key.getProfile() );
+    return bin ? bin->isCached(key.str()) : false;
 }
 
 void

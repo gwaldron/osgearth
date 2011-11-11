@@ -55,12 +55,13 @@ namespace osgEarth
      * that matches the template parameter type.
      */
     template<typename T>
-    T* findTopMostNodeOfType(osg::Node* node)
+    T* findTopMostNodeOfType(osg::Node* node, unsigned traversalMask =~0)
     {
         if (!node) return 0;
 
         FindTopMostNodeOfTypeVisitor<T> fnotv;
         fnotv.setTraversalMode(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN);
+        fnotv.setTraversalMask(traversalMask);
         node->accept(fnotv);
 
         return fnotv._foundNode;
@@ -71,12 +72,13 @@ namespace osgEarth
      * that matches the template parameter type.
      */
     template<typename T>
-    T* findFirstParentOfType(osg::Node* node)
+    T* findFirstParentOfType(osg::Node* node, unsigned traversalMask =~0)
     {
         if (!node) return 0;
 
         FindTopMostNodeOfTypeVisitor<T> fnotv;
         fnotv.setTraversalMode(osg::NodeVisitor::TRAVERSE_PARENTS);
+        fnotv.setTraversalMask(traversalMask);
         node->accept(fnotv);
 
         return fnotv._foundNode;
@@ -87,12 +89,12 @@ namespace osgEarth
      * that matches the template parameter type. First searched upward, then downward.
      */
     template<typename T>
-    T* findRelativeNodeOfType(osg::Node* node)
+    T* findRelativeNodeOfType(osg::Node* node, unsigned traversalMask =~0)
     {
         if ( !node ) return 0;
-        T* result = findFirstParentOfType<T>( node );
+        T* result = findFirstParentOfType<T>( node, traversalMask );
         if ( !result )
-            result = findTopMostNodeOfType<T>( node );
+            result = findTopMostNodeOfType<T>( node, traversalMask );
         return result;
     }
 

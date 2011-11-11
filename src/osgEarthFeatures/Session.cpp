@@ -63,10 +63,11 @@ Session::createMapFrame( Map::ModelParts parts ) const
 }
 
 void
-Session::putObject( const std::string& key, osg::Referenced* object )
+Session::putObject( const std::string& key, osg::Referenced* object, bool overwrite )
 {
     Threading::ScopedWriteLock lock( _objMapMutex );
-    _objMap[key] = object;
+    if ( overwrite || _objMap.find(key) == _objMap.end() )
+        _objMap[key] = object;
 }
 
 void

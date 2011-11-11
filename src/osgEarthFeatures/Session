@@ -84,7 +84,7 @@ namespace osgEarth { namespace Features
          * WARNING! Don't store things like nodes in here unless you plan
          * to clone them. This is a multi-threaded store.
          */
-        void putObject( const std::string& key, osg::Referenced* object );
+        void putObject( const std::string& key, osg::Referenced* object, bool overwrite =true );
 
         /**
          * Gets an object from the shared Session cache.

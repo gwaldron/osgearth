@@ -313,23 +313,24 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         // find and load the corresponding marker model. We're using the session-level
         // object store to cache models. This is thread-safe sine we are always going
         // to CLONE the model before using it.
-        osg::Node* model = context.getSession()->getObject<osg::Node>( markerURI.full() );
-        if ( !model )
+        osg::ref_ptr<osg::Node> model = context.getSession()->getObject<osg::Node>( markerURI.full() );
+        if ( !model.valid() )
         {
             osg::ref_ptr<MarkerResource> mres = new MarkerResource();
             mres->uri() = markerURI;
             model = mres->createNode( context.getSession()->getDBOptions() );
-            if ( model )
+            if ( model.valid() )
             {
-                context.getSession()->putObject( markerURI.full(), model );
+                // store it, but only if there isn't already one in there.
+                context.getSession()->putObject( markerURI.full(), model.get(), false );
             }
         }
 
-        if ( model )
+        if ( model.valid() )
         {
-            MarkerToFeatures::iterator itr = markerToFeatures.find( model );
+            MarkerToFeatures::iterator itr = markerToFeatures.find( model.get() );
             if (itr == markerToFeatures.end())
-                markerToFeatures[ model ].push_back( f );
+                markerToFeatures[ model.get() ].push_back( f );
             else
                 itr->second.push_back( f );
         }

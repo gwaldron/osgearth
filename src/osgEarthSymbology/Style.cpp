@@ -383,7 +383,7 @@ StyleSheet::mergeConfig( const Config& conf )
             continue;
         }
 
-        _resLibs[name] = ResourceLibraryEntry(uri, 0L);
+        _resLibs[name] = ResourceLibraryEntry(uri,  (osgEarth::Symbology::ResourceLibrary*)0);
 
         //addResourceLibrary( name, reslib.get() );
     }

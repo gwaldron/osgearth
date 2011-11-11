@@ -42,6 +42,20 @@ namespace osgEarth
 {    
     //------------------------------------------------------------------------
 
+    struct Utils
+    {
+        /**
+         * Clamps v to [vmin..vmax], then remaps its range to [r0..r1]. 
+         */
+        static double remap( double v, double vmin, double vmax, double r0, double r1 )
+        {
+            float vr = (osg::clampBetween(v, vmin, vmax)-vmin)/(vmax-vmin);
+            return r0 + vr * (r1-r0);
+        }
+    };
+
+    //------------------------------------------------------------------------
+
     class CacheStats
     {
     public:

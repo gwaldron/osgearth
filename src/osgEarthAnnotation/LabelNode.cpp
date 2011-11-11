@@ -34,7 +34,20 @@ LabelUtils::createText(const osg::Vec3&   positionOffset,
                        const TextSymbol*  symbol )
 {
     osgText::Text* t = new osgText::Text();
-    t->setText( text );
+    osgText::String::Encoding text_encoding = osgText::String::ENCODING_UNDEFINED;
+    if ( symbol && symbol->encoding().isSet() )
+    {
+        switch(symbol->encoding().value())
+        {
+        case TextSymbol::ENCODING_ASCII: text_encoding = osgText::String::ENCODING_ASCII; break;
+        case TextSymbol::ENCODING_UTF8: text_encoding = osgText::String::ENCODING_UTF8; break;
+        case TextSymbol::ENCODING_UTF16: text_encoding = osgText::String::ENCODING_UTF16; break;
+        case TextSymbol::ENCODING_UTF32: text_encoding = osgText::String::ENCODING_UTF32; break;
+        default: text_encoding = osgText::String::ENCODING_UNDEFINED; break;
+        }
+    }
+
+    t->setText( text, text_encoding );
 
     if ( symbol && symbol->pixelOffset().isSet() )
     {

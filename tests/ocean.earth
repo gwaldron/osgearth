@@ -27,7 +27,7 @@ http://readymap.org
     
     <options>
         <terrain>
-            <lighting>false</lighting>
+            <lighting>true</lighting>
             <sample_ratio>0.125</sample_ratio>
         </terrain>
         

@@ -52,9 +52,8 @@ _parentMapNode( mapNode )
 
         // ditto with the map node options:
         MapNodeOptions mno;
-        mno.enableLighting() = false;
-        //if ( mno.enableLighting().isSet() )
-        //    mno.enableLighting() = *mno.enableLighting();
+        if ( mno.enableLighting().isSet() )
+            mno.enableLighting() = *mno.enableLighting();
 
         OSGTerrainOptions to;
         to.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts

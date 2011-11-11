@@ -21,7 +21,7 @@
 
 namespace
 {
-    static char source_vert[] =
+    static char source_setupTexturing[] =
 
         "#version 110 \n"
 
@@ -38,11 +38,11 @@ namespace
         "uniform sampler2D tex0; \n"                 // heightfield encoded into 16 bit texture
         "uniform float seaLevel; \n"                 // sea level offset
         "uniform bool has_tex1; \n"                  // whether there's a surface texture
+        "varying vec2 texCoord1; \n"
 
         "varying float v_msl; \n"                    // elevation (MSL) of camera
         "varying float v_range; \n"                  // distance from camera to current vertex
         "varying float v_enorm; \n"                  // normalized terrain height at vertex [0..1]
-        "varying vec2 texCoord1; \n"
 
         "void osgearth_vert_setupTexturing() \n"
         "{ \n"
@@ -57,23 +57,23 @@ namespace
         // read normalized [0..1] elevation data from the height texture:
         "   v_enorm = texture2D( tex0, gl_MultiTexCoord0.st ).r; \n"
 
-        // calculate the approximate elevation:
+        // send interpolated params to the fs:
         "   vec4 eye = osg_ViewMatrixInverse * vec4(0,0,0,1); \n"
-        "   v_msl = length(eye.xyz) - 6378137.0 + seaLevel; \n"
 
-        // calculate distance from camera to current vertex:
-        "   v_range = distance(gl_Position, gl_ModelViewMatrixInverse[3]); \n"
+        // height of camera above sea level:
+        "   v_msl = length(eye.xyz/eye.w) - 6378137.0 + seaLevel; \n"
+
+        // disatnce to camera:
+        "   v_range = length(gl_Position); \n"
 
         // scale the texture mapping to something reasonable:
-        "   if (has_tex1) \n"
-        "   { \n"
-        "       vec4 worldVertex = osg_ViewMatrixInverse * mvVertex; \n"
-        "       vec2 lonlat = xyz_to_spherical( worldVertex.xyz/worldVertex.w ); \n"
-        "       texCoord1 = lonlat / 0.0005; \n"
-        "   } \n"
+        "   vec4 worldVertex = osg_ViewMatrixInverse * mvVertex; \n"
+        "   vec2 lonlat = xyz_to_spherical( worldVertex.xyz/worldVertex.w ); \n"
+        "   texCoord1 = lonlat / 0.0005; \n"
         "} \n";
 
-    char source_frag[] = 
+
+    char source_applyTexturing[] = 
 
         "#version 110 \n"
 
@@ -102,9 +102,11 @@ namespace
 
         // amplify the range's effect on alpha when the camera elevation gets low
         "    float rangeFactor = remap( v_msl, -10000.0, 10000.0, 10.0, 1.0 ); \n"
+
+        // affect alpha based on the distance from the camera
         "    float rangeEffect = remap( v_range, 75000.0, 200000.0 * rangeFactor, 1.0, 0.0 ); \n"
 
-        // start with the surface texture. The "/10" just stretches out the texture a bit
+        // start with the surface texture.
         "    if (has_tex1) \n"
         "    { \n"
         "        vec4 texel = texture2D(tex1, texCoord1); \n"

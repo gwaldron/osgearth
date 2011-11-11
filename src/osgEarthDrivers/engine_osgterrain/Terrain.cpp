@@ -109,9 +109,7 @@ _verticalScale( 1.0f )
     setNumChildrenRequiringUpdateTraversal( 1 );
 
     // register for events in order to support ON_DEMAND frame scheme
-    setNumChildrenRequiringEventTraversal( 1 );
-
-    getOrCreateStateSet()->setMode(GL_BLEND , osg::StateAttribute::ON);    
+    setNumChildrenRequiringEventTraversal( 1 );    
 }
 
 Terrain::~Terrain()

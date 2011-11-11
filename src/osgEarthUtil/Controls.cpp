@@ -2265,7 +2265,7 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
     //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
-        for( ControlList::const_reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+        for( ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
         {
             i->get()->handle(ea, aa, _context);
         }

@@ -6,6 +6,7 @@ Demonstrates the simplest possible use of the GDAL driver to load a GeoTIFF imag
 <map version="2">
     <image driver="gdal" name="world-tiff" cache_enabled="false">
         <url>../data/world.tif</url>
+        <caching_policy usage="no_cache"/>
     </image>
     
     <options lighting="false"/>

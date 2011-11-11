@@ -220,7 +220,7 @@ URI::readObject(const osgDB::Options* dbOptions,
 
     const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
-    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
+    if ( isRemote() && cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }
@@ -269,7 +269,7 @@ URI::readImage(const osgDB::Options* dbOptions,
 
     const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
-    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
+    if ( isRemote() && cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }
@@ -316,7 +316,7 @@ URI::readNode(const osgDB::Options* dbOptions,
 
     const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
-    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
+    if ( isRemote() && cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }
@@ -360,7 +360,7 @@ URI::readString(const osgDB::Options* dbOptions,
 
     const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
-    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
+    if ( isRemote() && cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }

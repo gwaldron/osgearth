@@ -78,7 +78,7 @@ Style::combineWith( const Style& rhs ) const
     newStyle.mergeConfig( rhs.getConfig(false) );
 
     if ( !this->empty() && !rhs.empty() )
-        newStyle.setName( _name + ":" + rhs.getName() );
+        newStyle.setName( _name + std::string(":") + rhs.getName() );
     else if ( !this->empty() && rhs.empty() )
         newStyle.setName( _name );
     else if ( this->empty() && !rhs.empty() )

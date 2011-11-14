@@ -466,7 +466,7 @@ main(int argc, char** argv)
             // close to the ground, you may not need this.
             if ( useSky || useAutoClip || useOcean )
             {
-                viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
+                viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
             }
         }
 

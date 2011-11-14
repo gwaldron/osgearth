@@ -52,13 +52,13 @@ _parentMapNode( mapNode )
 
         // ditto with the map node options:
         MapNodeOptions mno;
-        mno.enableLighting() = false;
-        //if ( mno.enableLighting().isSet() )
-        //    mno.enableLighting() = *mno.enableLighting();
+        if ( mno.enableLighting().isSet() )
+            mno.enableLighting() = *mno.enableLighting();
 
         OSGTerrainOptions to;
         to.heightFieldSkirtRatio() = 0.0;  // don't want to see skirts
         to.clusterCulling() = false;       // want to see underwater
+        to.enableBlending() = true;        // gotsta blend with the main node
         mno.setTerrainOptions( to );
 
         // make the ocean's map node:
@@ -95,7 +95,7 @@ _parentMapNode( mapNode )
         ss->setRenderBinDetails( 15, "RenderBin" );
 
         // load up a surface texture
-        ss->getOrCreateUniform( "hasTex1", osg::Uniform::BOOL )->set( false );
+        ss->getOrCreateUniform( "has_tex1", osg::Uniform::BOOL )->set( false );
         if ( options.textureURI().isSet() )
         {
             //TODO: enable cache support here:
@@ -110,7 +110,7 @@ _parentMapNode( mapNode )
 
                 ss->setTextureAttributeAndModes( 1, tex, 1 );
                 ss->getOrCreateUniform( "tex1", osg::Uniform::SAMPLER_2D )->set( 1 );
-                ss->getOrCreateUniform( "hasTex1", osg::Uniform::BOOL )->set( true );
+                ss->getOrCreateUniform( "has_tex1", osg::Uniform::BOOL )->set( true );
             }
         }
 

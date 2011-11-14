@@ -76,7 +76,7 @@ namespace osgEarth { namespace Drivers
               _lowFeatherOffset ( -100.0f ),
               _highFeatherOffset( -10.0f ),
               _maxLOD           ( 11 ),
-              _baseColor        ( osg::Vec4(0.25, 0.35, 0.6, 0.75) )
+              _baseColor        ( osg::Vec4(0.2, 0.3, 0.5, 0.8) )
         {
             mergeConfig( _conf );
         }

@@ -25,6 +25,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
+#include <osgEarth/IOTypes>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
@@ -131,11 +132,14 @@ namespace osgEarth
         UID createUID();
 
         /**
-         * Gets or sets the local root of the system default cache.
+         * Sets a global read callback for URI objects.
          */
-        void setCacheDirectory( const std::string& dir );
+        void setURIReadCallback( URIReadCallback* callback ) { _uriReadCallback = callback; }
 
-        const std::string& getCacheDirectory() const;
+        /**
+         * Gets the global read callback for URI objects.
+         */
+        URIReadCallback* getURIReadCallback() const { return _uriReadCallback.get(); }
 
         /**
          * Gets the default set of osgDB::Options to use.
@@ -187,6 +191,8 @@ namespace osgEarth
         void initCapabilities();
 
         osg::ref_ptr<osgDB::Options> _defaultOptions;
+
+        osg::ref_ptr<URIReadCallback> _uriReadCallback;
     };
 }
 

@@ -266,6 +266,11 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     _terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
     _terrain->setSampleRatio  ( _terrainOptions.heightFieldSampleRatio().value() );
 
+    if (_terrainOptions.enableBlending().value())
+    {
+        _terrain->getOrCreateStateSet()->setMode(GL_BLEND , osg::StateAttribute::ON);    
+    }
+
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
     // install the proper layer composition technique:

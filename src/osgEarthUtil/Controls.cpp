@@ -468,6 +468,7 @@ LabelControl::LabelControl(const std::string& text,
                            const osg::Vec4f& foreColor) : _encoding(osgText::String::ENCODING_UNDEFINED)
 {
     setText( text );
+	setEncoding( osgText::String::ENCODING_UNDEFINED );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
     setFontSize( fontSize );
     setBackColor( osg::Vec4f(0,0,0,0) );
@@ -478,6 +479,7 @@ LabelControl::LabelControl(const std::string& text,
                            const osg::Vec4f& foreColor) : _encoding(osgText::String::ENCODING_UNDEFINED)
 {
     setText( text );
+	setEncoding( osgText::String::ENCODING_UNDEFINED );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
     setFontSize( 18.0f );
     setBackColor( osg::Vec4f(0,0,0,0) );
@@ -494,10 +496,12 @@ LabelControl::setText( const std::string& value )
 }
 
 void
-LabelControl::setText( const std::string& value, osgText::String::Encoding encoding)
+LabelControl::setEncoding( osgText::String::Encoding value )
 {
-    setText(value);
-    _encoding = encoding;
+	if ( value != _encoding ) {
+		_encoding = value;
+		dirty();
+	}
 }
 
 void
@@ -544,7 +548,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 #endif
 
-        t->setText( _text, _encoding );
+		t->setText( _text, _encoding );
         // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
         t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
         t->setCharacterSize( _fontSize );
@@ -2272,7 +2276,7 @@ ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter
     //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
-        for( ControlList::const_reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+        for( ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
         {
             i->get()->handle(ea, aa, _context);
         }

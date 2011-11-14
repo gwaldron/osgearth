@@ -90,6 +90,8 @@ namespace osgEarth
         std::string _referrer;
     };
 
+//--------------------------------------------------------------------
+
     /**
      * Stream container for reading a URI directly from a stream
      */
@@ -109,6 +111,8 @@ namespace osgEarth
         std::istream*     _fileStream;
         std::stringstream _bufStream;
     };
+
+//--------------------------------------------------------------------
 
     /**
      * Represents the location of a resource, providing the raw (original, possibly

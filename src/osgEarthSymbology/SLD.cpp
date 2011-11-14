@@ -41,6 +41,7 @@ using namespace osgEarth::Symbology;
 #define CSS_TEXT_SIZE             "text-size"
 #define CSS_TEXT_HALO             "text-halo"
 #define CSS_TEXT_ATTRIBUTE        "text-attribute"
+#define CSS_TEXT_ENCODING         "text-encoding"
 #define CSS_TEXT_ROTATE_TO_SCREEN "text-rotate-to-screen"
 #define CSS_TEXT_SIZE_MODE        "text-size-mode"
 #define CSS_TEXT_REMOVE_DUPLICATE_LABELS "text-remove-duplicate-labels"
@@ -208,6 +209,15 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!text) text = sc.getOrCreate<TextSymbol>();
             text->provider() = p.value();
         }
+		else if (p.key() == CSS_TEXT_ENCODING)
+		{
+			if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+			if (p.value() == "utf-8") text->encoding() = TextSymbol::ENCODING_UTF8;
+			else if (p.value() == "utf-16") text->encoding() = TextSymbol::ENCODING_UTF16;
+			else if (p.value() == "utf-32") text->encoding() = TextSymbol::ENCODING_UTF32;
+			else if (p.value() == "ascii") text->encoding() = TextSymbol::ENCODING_ASCII;
+			else text->encoding() = TextSymbol::ENCODING_ASCII;
+		}
 
         // ..... MarkerSymbol .....
 

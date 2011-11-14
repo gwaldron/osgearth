@@ -338,7 +338,7 @@ namespace osgEarth { namespace Threading
         DATA* get(KEY k)
         {
             osgEarth::Threading::ScopedReadLock lock(_mutex);
-            std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+            typename std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second.get();
 
@@ -350,14 +350,14 @@ namespace osgEarth { namespace Threading
             osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
             {
                 osgEarth::Threading::ScopedReadLock lock(_mutex);
-                std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+                typename std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
             }
 
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
+                typename std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
 
@@ -375,7 +375,7 @@ namespace osgEarth { namespace Threading
         void remove(DATA* data)
         {
             osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            for( std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
+            for( typename std::map<KEY,osg::ref_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
             {
                 if ( i->second.get() == data )
                 {
@@ -397,7 +397,7 @@ namespace osgEarth { namespace Threading
         DATA* get(KEY k)
         {
             osgEarth::Threading::ScopedReadLock lock(_mutex);
-            std::map<KEY, osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
+            typename std::map<KEY, osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second.get();
 
@@ -409,14 +409,14 @@ namespace osgEarth { namespace Threading
             osg::ref_ptr<DATA> _refReleaser = newDataIfNeeded;
             {
                 osgEarth::Threading::ScopedReadLock lock(_mutex);
-                std::map<KEY,osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
+                typename std::map<KEY,osg::observer_ptr<DATA> >::const_iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
             }
 
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.find(k);
+                typename std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second.get();
 
@@ -434,7 +434,7 @@ namespace osgEarth { namespace Threading
         void remove(DATA* data)
         {
             osgEarth::Threading::ScopedWriteLock exclusive(_mutex);
-            for( std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
+            for( typename std::map<KEY,osg::observer_ptr<DATA> >::iterator i = _data.begin(); i != _data.end(); ++i )
             {
                 if ( i->second.get() == data )
                 {

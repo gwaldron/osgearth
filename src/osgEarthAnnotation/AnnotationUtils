@@ -16,50 +16,42 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
+#ifndef OSGEARTH_ANNOTATION_ANNOTATION_UTILS_H
+#define OSGEARTH_ANNOTATION_ANNOTATION_UTILS_H 1
 
-#ifndef OSGEARTH_ANNOTATION_LABEL_NODE_H
-#define OSGEARTH_ANNOTATION_LABEL_NODE_H 1
-
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/Common>
 #include <osgEarthSymbology/TextSymbol>
-#include <osgEarth/MapNode>
+#include <osg/Drawable>
+#include <osg/Geometry>
 
 namespace osgEarth { namespace Annotation
-{	
+{
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
     /**
-     * Text labeling node.
+     * Internal tools used by the annotation library.
      */
-    class OSGEARTHANNO_EXPORT LabelNode : public OrthoNode // LocalizedNode
+    struct AnnotationUtils
     {
-    public:
         /**
-         * Constructs a label node that is positioned relative to a map.
+         * Creates a drawable representing a symbolized text label in
+         * pixel space.
          */
-        LabelNode(
-            MapNode*                mapNode,
-            const osg::Vec3d&       position,
-            const std::string&      text,
-            const TextSymbol*       symbol =0L ); 
+        static osg::Drawable* createTextDrawable(
+            const std::string& text,
+            const TextSymbol*  symbol,
+            const osg::Vec3&   positionOffset );
 
         /**
-         * Constructs a label node that is positioned relative to a map
-         * point (referneced by the spatial reference)
+         * Creates the basic geometry to draw an image texture-mapped to
+         * a quad in pixel space.
          */
-        LabelNode(
-            const SpatialReference* mapSRS,
-            const osg::Vec3d&       position,
-            const std::string&      text,
-            const TextSymbol*       symbol =0L );
-
-    protected:
-        void init( const TextSymbol* symbol );
-
-        std::string _text;
+        static osg::Geometry* createImageGeometry(
+            osg::Image*       image,
+            const osg::Vec2s& pixelOffsets );
     };
 
 } } // namespace osgEarth::Annotation
 
-#endif // OSGEARTH_ANNOTATION_LABEL_NODE_H
+#endif //OSGEARTH_ANNOTATION_ANNOTATION_UTILS_H

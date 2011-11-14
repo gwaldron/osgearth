@@ -18,6 +18,7 @@
  */
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarth/FindNode>
+#include <osgEarth/Registry>
 #include <osgEarth/Utils>
 
 using namespace osgEarth::Util;
@@ -149,9 +150,23 @@ _haeThreshold        ( 250.0 ),
 _rp2                 ( -1 ),
 _autoFarPlaneClamping( true )
 {
-    if ( map && map->isGeocentric() )
+    if ( map )
     {
-        _rp2 = map->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
+        if ( map->isGeocentric() )
+        {
+            _rp2 = map->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
+            _rp2 *= _rp2;
+            _active = true;
+        }
+        else
+        {
+            // deactivate for a projected map
+            _active = false;
+        }
+    }
+    else
+    {
+        _rp2 = Registry::instance()->getGlobalGeodeticProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
         _rp2 *= _rp2;
         _active = true;
     }
@@ -193,7 +208,16 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 // get the height-above-ellipsoid. If we need to be more accurate, we can use 
                 // ElevationQuery in the future..
                 osg::Vec3d loc;
-                _map->worldPointToMapPoint( eye, loc );
+                if ( _map.valid() )
+                {
+                    _map->worldPointToMapPoint( eye, loc );
+                }
+                else
+                {
+                    static osg::EllipsoidModel em;
+                    em.convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), loc.y(), loc.x(), loc.z() );
+                }
+                
                 double hae = loc.z();
 
                 // ramp a new near/far ratio based on the HAE.

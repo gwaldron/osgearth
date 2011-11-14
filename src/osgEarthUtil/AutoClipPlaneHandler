@@ -49,7 +49,7 @@ namespace osgEarth { namespace Util
          * in the specified map.
          * @param map Map to take ellipsoid information from; if NULL, use WGS84 values
          */
-        AutoClipPlaneCullCallback( Map* map );
+        AutoClipPlaneCullCallback( Map* map =0L );
 
         /**
          * Sets the minimum near/far ratio to use for this camera. The minimum ratio takes

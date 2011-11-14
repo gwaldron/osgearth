@@ -195,7 +195,7 @@ Config::operator - ( const Config& rhs ) const
 {
     Config result( *this );
 
-    for( ConfigSet::const_iterator& i = rhs.children().begin(); i != rhs.children().end(); ++i )
+    for( ConfigSet::const_iterator i = rhs.children().begin(); i != rhs.children().end(); ++i )
     {
         result.remove( i->key() );
     }

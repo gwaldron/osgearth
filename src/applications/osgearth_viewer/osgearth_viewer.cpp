@@ -35,12 +35,92 @@
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthDrivers/kml/KML>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarthUtil/AreaSelectControl>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Annotation;
+
+
+class DisplayMeters : public AreaSelectControlEventHandler
+{
+
+public:
+	DisplayMeters(AreaSelectControl* areaSelectControl) : m_areaSelectControl(areaSelectControl)
+	{
+		osg::Group* labels = new osg::Group;
+		for(unsigned int c = 0; c < 4; c++)
+		{
+			osg::Vec3d worldPoint;
+			osg::MatrixTransform* xform = new osg::MatrixTransform();
+			std::stringstream stream;
+			stream << "AreaSelect-";
+			stream << c;
+
+			osgEarth::Util::Controls::LabelControl* labelControl = new osgEarth::Util::Controls::LabelControl(stream.str());
+			labelControl->setVisible(false);
+			xform->addChild(new osgEarth::Util::Controls::ControlNode(labelControl, (float) c));
+			labels->addChild(xform);
+			m_labelList.push_back(xform);
+		}
+		osg::Group* root = dynamic_cast<osg::Group*>(areaSelectControl->getView()->getSceneData());
+		labels->setNodeMask(200);
+		root->addChild(labels);
+
+	}
+	virtual void changed(void){};
+	virtual void completed(void){};
+	virtual void drawingRectangle(osg::Vec3d* fourPoints)
+	{
+	//add distance string
+		osg::Vec3d* rectanglePoints = m_areaSelectControl->getFourMapPoints();
+		for (int c = 0; c < 4; c++)
+		{
+			osgEarth::Util::Controls::ControlNode* controlNode = ((osgEarth::Util::Controls::ControlNode*)m_labelList[c]->getChild(0));
+			osgEarth::Util::Controls::LabelControl* label = (osgEarth::Util::Controls::LabelControl*)controlNode->getControl();
+			osg::Vec3d worldPoint;
+			int c2 = (c + 1) % 4;
+			if (m_areaSelectControl->getMapNode()->getMap()->mapPointToWorldPoint(((rectanglePoints[c] + rectanglePoints[c2]) / 2.0), worldPoint))
+			{
+				double length = osgEarth::GeoMath::distance(osg::DegreesToRadians(rectanglePoints[c].y()),
+				osg::DegreesToRadians(rectanglePoints[c].x()),
+				osg::DegreesToRadians(rectanglePoints[c2].y()),
+				osg::DegreesToRadians(rectanglePoints[c2].x()));
+				std::stringstream stream;
+				stream << length <<" Meters";
+				label->setText(stream.str());
+				label->setVisible(true);
+				m_labelList[c]->setMatrix( osg::Matrix::translate(worldPoint));
+				label->dirty();
+				controlNode->computeBound();
+			}
+			else
+			{
+				label->setVisible(false);
+			}
+		}	
+
+	}
+
+	virtual void clearDrawing()
+	{
+		for (int c = 0; c < 4; c++)
+		{
+			osgEarth::Util::Controls::ControlNode* controlNode = ((osgEarth::Util::Controls::ControlNode*)m_labelList[c]->getChild(0));
+			osgEarth::Util::Controls::LabelControl* label = (osgEarth::Util::Controls::LabelControl *)controlNode->getControl();
+			label->setVisible(false);
+		}
+	}
+private:
+	osg::ref_ptr<AreaSelectControl> m_areaSelectControl;
+	std::vector<osg::ref_ptr<osg::MatrixTransform> > m_labelList;
+
+
+
+
+};
 
 int
 usage( const std::string& msg )
@@ -410,7 +490,7 @@ main(int argc, char** argv)
     arguments.read( "--kml", kmlFile );
 
     // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
+    osg::Node* earthNode = osgDB::readNodeFile("readymap.earth");
     if (!earthNode)
         return usage( "Unable to load earth model." );
     
@@ -510,6 +590,10 @@ main(int argc, char** argv)
     viewer.getDatabasePager()->setDoPreCompile( true );
 
     viewer.setSceneData( root );
+
+	AreaSelectControl* areaSelect = new AreaSelectControl(&viewer, mapNode);
+	areaSelect->addEventHandler(new DisplayMeters(areaSelect));
+	viewer.addEventHandler(areaSelect);
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

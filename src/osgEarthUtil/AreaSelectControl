@@ -1,0 +1,145 @@
+#ifndef AREA_SELECT_CONTROL_H
+#define AREA_SELECT_CONTROL_H
+
+#include <osgGA/GUIEventHandler>
+#include <osgViewer/Viewer>
+#include <osgEarth/MapNode>
+#include <osgEarthUtil/Controls>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthUtil/EarthManipulator>
+#include <vector>
+#include <String>
+namespace osgEarth { namespace Util
+{
+ 
+namespace AreaSelectControlStates
+{
+	class OSGEARTHUTIL_EXPORT State;
+}
+
+class OSGEARTHUTIL_EXPORT AreaSelectControlEventHandler : public osg::Object
+{
+public:
+	virtual void changed(void) = 0;
+	virtual void completed(void) = 0;
+	virtual void drawingRectangle(osg::Vec3d* fourPoints) = 0;
+	virtual void clearDrawing() = 0;
+
+	virtual osg::Object* cloneType(void) const;
+	virtual osg::Object* clone(const osg::CopyOp&);
+	virtual osg::Object* clone(const osg::CopyOp&) const;
+	virtual const char* libraryName(void);
+	virtual const char* libraryName(void) const;
+	virtual const char* className(void) const;
+
+
+};
+
+
+
+class OSGEARTHUTIL_EXPORT  AreaSelectControl : public osgGA::GUIEventHandler
+{
+public:
+	AreaSelectControl(osgViewer::View* viewer, osgEarth::MapNode* mapNode);
+	~AreaSelectControl(void);
+	void reset(void);
+	virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+	void changed(void); //called when something has changed
+	void completed(void); //called when the selection is done
+	osgViewer::View* getView(){return m_view;}
+
+
+	
+	void addEventHandler(AreaSelectControlEventHandler* handler){m_eventHandlers.push_back(handler);}
+	void removeEventHandler(AreaSelectControlEventHandler* handler);
+
+	
+	osg::ref_ptr<AreaSelectControlStates::State>& currentState(void) { return (m_currentState); }
+	osg::Vec3d getFirstPoint(void) { return (m_firstPoint); }
+	osg::Vec3d getSecondPoint(void) { return (m_secondPoint); }
+	void setFirstPoint(osg::Vec3d point) { m_firstPoint = point; changed(); }
+	void setSecondPoint(osg::Vec3d point) { m_secondPoint = point; changed(); }
+	osg::ref_ptr<osgViewer::View> getViewer(void) { return (m_view); }
+	osg::ref_ptr<osgEarth::MapNode> getMapNode(void) { return(m_mapNode); }
+	void drawRectangle(void);
+	osgEarth::Util::EarthManipulator* getManipulator(void) { return (m_manip); }
+	osg::Vec3d* getFourPoints(void) { return (m_fourPoints); };
+	osg::Vec3d* getFourMapPoints(void) { return (m_fourMapPoints); };
+	bool isNull(void);
+	void clearDrawing(void);
+private:
+	std::vector<osg::ref_ptr<AreaSelectControlEventHandler> > m_eventHandlers;
+	osgViewer::View* m_view;
+	osg::Vec3d m_firstPoint;
+	osg::Vec3d m_secondPoint;
+	osg::ref_ptr<AreaSelectControlStates::State> m_currentState;
+	std::vector<osg::Node* > m_FeatureNodeList;
+	osgEarth::Util::EarthManipulator* m_manip;
+	osgEarth::MapNode* m_mapNode;
+
+	// list of 4 matrix nodes that contain the labels around the selection box
+	//std::vector<osg::MatrixTransform*> m_labelList;
+
+	osg::Vec3d m_fourPoints [4];
+	osg::Vec3d m_fourMapPoints [4];
+};
+
+//State classes for the area select control implementing the state design pattern
+namespace AreaSelectControlStates
+{
+	class OSGEARTHUTIL_EXPORT  State : public osg::Object
+	{
+	public:
+		State(AreaSelectControl* control);
+		virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa) = 0;
+		virtual osg::Object* cloneType(void) const;
+		virtual osg::Object* clone(const osg::CopyOp&);
+		virtual osg::Object* clone(const osg::CopyOp&) const;
+		virtual const char* libraryName(void);
+		virtual const char* libraryName(void) const;
+		virtual const char* className(void) const;
+	protected:
+		AreaSelectControl* m_control;
+	};
+
+	class OSGEARTHUTIL_EXPORT  Start : public State
+	{
+	public:
+		Start(AreaSelectControl* control);
+		virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+	};
+
+	class  OSGEARTHUTIL_EXPORT  FirstSelected : public State
+	{
+	public:
+		FirstSelected(AreaSelectControl* control);
+		virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+	};
+
+	class OSGEARTHUTIL_EXPORT  Dragging : public State
+	{
+	public:
+		Dragging(AreaSelectControl* control);
+		virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+	};
+
+	class OSGEARTHUTIL_EXPORT  WaitingForSecondSelection : public State
+	{
+	public:
+		WaitingForSecondSelection(AreaSelectControl* control);
+		virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+	};
+
+	class OSGEARTHUTIL_EXPORT Complete : public State
+	{
+	public:
+		Complete(AreaSelectControl* control);
+		virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
+	};
+}
+}
+}
+
+#endif // AREA_SELECT_CONTROL_H

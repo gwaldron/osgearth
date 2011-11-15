@@ -79,7 +79,7 @@ public:
             if (!token.empty())
             {
                 std::string sep = url.full().find( "?" ) == std::string::npos ? "?" : "&";
-                url = url.append( sep + "token=" + token );
+                url = url.append( sep + std::string("token=") + token );
             }
         }
 

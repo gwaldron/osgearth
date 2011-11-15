@@ -338,7 +338,7 @@ namespace osgEarth { namespace Threading
         DATA* get(KEY k)
         {
             osgEarth::Threading::ScopedReadLock lock(_mutex);
-            typename std::map<KEY,osg::ref_ptr<DATA> >::const_iterator i = _data.find(k);
+            typename std::map<KEY,osg::ref_ptr<DATA > >::const_iterator i = _data.find(k);
             if ( i != _data.end() )
                 return i->second.get();
 

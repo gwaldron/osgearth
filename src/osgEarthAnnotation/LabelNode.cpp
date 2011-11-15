@@ -59,7 +59,7 @@ LabelNode::init( const TextSymbol* symbol )
     // The following setup will result is a proper dynamic bounding box for the text.
     // If you just use osgText's rotate-to-screen and SCREEN_COORDS setup, you do not
     // get a proper bounds.
-    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
+    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0), true );
 
     osg::StateSet* stateSet = t->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );

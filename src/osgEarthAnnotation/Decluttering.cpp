@@ -48,12 +48,15 @@ namespace
 
     struct DeclutterContext : public osg::Referenced
     {
+        DeclutteringOptions _options;
     };
 
+    // records information about each drawable.
+    // TODO: a way to clear out this list when drawables go away
     struct DrawableInfo
     {
-        DrawableInfo() : _oldDepth(1.0) { }
-        float _oldDepth;
+        DrawableInfo() : _lastAlpha(1.0), _lastScale(1.0) { }
+        float _lastAlpha, _lastScale;
     };
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
@@ -217,6 +220,9 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
         // copy the final draw list back into the bin, rejecting any leaves whose parents
         // are in the cull list.
+
+        const DeclutteringOptions& options = _context->_options;
+
         leaves.clear();
         for( osgUtil::RenderBin::RenderLeafList::const_iterator i=passed.begin(); i != passed.end(); ++i )
         {
@@ -226,16 +232,30 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             if ( culledParents.find( drawable->getParent(0) ) == culledParents.end() )
             {
                 DrawableInfo& info = memory[drawable];
-                if ( info._oldDepth < 1.0f )
-                {
-                    info._oldDepth += 0.05f;
-                    if ( info._oldDepth > 1.0f )
-                        info._oldDepth = 1.0f;
-                    else
-                        leaf->_modelview->preMult( osg::Matrix::scale(info._oldDepth,info._oldDepth,1) );
-                }
-                leaf->_depth = info._oldDepth;
 
+                bool fullyIn = true;
+
+                // scale in until at full scale:
+                if ( info._lastScale < 1.0f )
+                {
+                    fullyIn = false;
+                    info._lastScale += *options.stepUp();
+                    if ( info._lastScale > 1.0f )
+                        info._lastScale = 1.0f;
+                    else
+                        leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                }
+                
+                // fade in until at full alpha:
+                if ( info._lastAlpha < 1.0f )
+                {
+                    fullyIn = false;
+                    info._lastAlpha += *options.stepUp();
+                    if ( info._lastAlpha > 1.0f )
+                        info._lastAlpha = 1.0f;
+                }
+
+                leaf->_depth = info._lastAlpha;
                 leaves.push_back( leaf );
             }
             else
@@ -251,23 +271,38 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             osgUtil::RenderLeaf* leaf =     *i;
             const osg::Drawable* drawable = leaf->getDrawable();
 
-            // don't bother drawing failed text.
-            if ( !dynamic_cast<const osgText::Text*>(drawable) )
-            {
-                DrawableInfo& info = memory[drawable];
-                if ( info._oldDepth > 0.35f )
-                {
-                    info._oldDepth -= 0.05f;
-                    if ( info._oldDepth < 0.35f )
-                        info._oldDepth = 0.35f;
-                }
-                leaf->_depth = info._oldDepth;
+            DrawableInfo& info = memory[drawable];
 
+            bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
+            bool fullyOut = true;
+
+            if ( info._lastScale > *options.minScale() )
+            {
+                fullyOut = false;
+                info._lastScale -= *options.stepDown();
+                if ( info._lastScale < *options.minScale() )
+                    info._lastScale = *options.minScale();
+            }
+
+            if ( info._lastAlpha > *options.minAlpha() )
+            {
+                fullyOut = false;
+                info._lastAlpha -= *options.stepDown();
+                if ( info._lastAlpha < *options.minAlpha() )
+                    info._lastAlpha = *options.minAlpha();
+            }
+
+            leaf->_depth = info._lastAlpha;
+
+            if ( !isText || !fullyOut )
+            {
                 leaves.push_back( leaf );
 
                 // scale it:
-                leaf->_modelview->preMult( osg::Matrix::scale(leaf->_depth,leaf->_depth,1) );
+                if ( info._lastScale != 1.0f )
+                    leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
             }
+
         }
     }
 };
@@ -447,7 +482,6 @@ public:
         setSortCallback( new DeclutterSort(_context.get()) );
     }
 
-protected:
     osg::ref_ptr<DeclutterPriorityFunctor> _f;
     osg::ref_ptr<DeclutterContext>         _context;
 };
@@ -479,6 +513,38 @@ Decluttering::clearDeclutterPriorityFunctor()
     if ( bin )
     {
         bin->clearSortingFunctor();
+    }
+}
+
+void
+Decluttering::setOptions( const DeclutteringOptions& options )
+{
+    // pull our prototype
+    osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
+        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
+
+    if ( bin )
+    {
+        bin->_context->_options = options;
+    }
+}
+
+const DeclutteringOptions&
+Decluttering::getOptions()
+{
+    static DeclutteringOptions s_defaultOptions;
+
+    // pull our prototype
+    osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
+        osgUtil::RenderBin::getRenderBinPrototype( OSGEARTH_DECLUTTER_BIN ) );
+
+    if ( bin )
+    {
+        return bin->_context->_options;
+    }
+    else
+    {
+        return s_defaultOptions;
     }
 }
 

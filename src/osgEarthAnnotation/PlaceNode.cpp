@@ -53,7 +53,7 @@ PlaceNode::init()
     {
         // this offset anchors the image at the bottom
         osg::Vec2s offset( 0.0, _image->t()/2.0 );
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset );
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, true );
         if ( imageGeom )
             geode->addDrawable( imageGeom );
     }
@@ -61,7 +61,8 @@ PlaceNode::init()
     osg::Drawable* text = AnnotationUtils::createTextDrawable(
         _text,
         _style.get<TextSymbol>(),
-        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ) );
+        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ),
+        true );
 
     if ( text )
         geode->addDrawable( text );

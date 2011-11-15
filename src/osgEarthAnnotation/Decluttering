@@ -32,12 +32,6 @@
 
 namespace osgEarth { namespace Annotation 
 {
-    struct DeclutterCullCallback : public osg::Drawable::CullCallback
-    {
-        bool cull(osg::NodeVisitor* nv, osg::Drawable* drawable, osg::RenderInfo* renderInfo) const;
-        osg::BoundingBox _screenBox;
-    };
-
     /**
      * Custom functor that compares two RenderLeaf's and returns TRUE if the left-hand one
      * is higher priority, otherwise FALSE. You can call setDeclutterPriorityFunctor()
@@ -46,6 +40,41 @@ namespace osgEarth { namespace Annotation
     struct DeclutterPriorityFunctor : public osg::Referenced
     {
         virtual bool operator() ( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const =0;
+    };
+
+    /**
+     * Options to control the annotation decluttering engine.
+     */
+    class DeclutteringOptions
+    {
+    public:
+        DeclutteringOptions()
+            : _minAlpha         ( 0.35f ),
+              _minScale         ( 0.45f ),
+              _stepDown         ( 0.05f ),
+              _stepUp           ( 0.05f )
+        {
+            //nop
+        }
+
+        optional<float>& minAlpha() { return _minAlpha; }
+        const optional<float>& minAlpha() const { return _minAlpha; }
+
+        optional<float>& minScale() { return _minScale; }
+        const optional<float>& minScale() const { return _minScale; }
+
+        optional<float>& stepDown() { return _stepDown; }
+        const optional<float>& stepDown() const { return _stepDown; }
+
+        optional<float>& stepUp() { return _stepUp; }
+        const optional<float>& stepUp() const { return _stepUp; }
+
+
+    protected:
+        optional<float> _minAlpha;
+        optional<float> _minScale;
+        optional<float> _stepDown;
+        optional<float> _stepUp;
     };
 
     struct Decluttering
@@ -60,6 +89,16 @@ namespace osgEarth { namespace Annotation
          * reverting to the default behavior (which is to sort by distance from the camera).
          */
         static void clearDeclutterPriorityFunctor();
+
+        /**
+         * Applies the provided options to the decluttering engine.
+         */
+        static void setOptions( const DeclutteringOptions& options );
+
+        /**
+         * Fetches the current decluttering options
+         */
+        static const DeclutteringOptions& getOptions();
     };
 
 } } // namespace osgEarth::Annotation

@@ -94,7 +94,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
             "uniform float     fade; \n"
             "uniform sampler2D tex0; \n"
             "void main() { \n"
-            "    if ( fade < 1.0 ) { fade = 0.0; } \n"
+            //"    if ( fade < 1.0 ) { fade = 0.0; } \n"
             "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st).aaaa * vec4(1,1,1,fade*1.5); \n"
             "} \n";
 

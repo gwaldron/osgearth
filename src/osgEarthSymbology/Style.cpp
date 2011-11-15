@@ -78,7 +78,7 @@ Style::combineWith( const Style& rhs ) const
     newStyle.mergeConfig( rhs.getConfig(false) );
 
     if ( !this->empty() && !rhs.empty() )
-        newStyle.setName( _name + ":" + rhs.getName() );
+        newStyle.setName( _name + std::string(":") + rhs.getName() );
     else if ( !this->empty() && rhs.empty() )
         newStyle.setName( _name );
     else if ( this->empty() && !rhs.empty() )
@@ -383,7 +383,7 @@ StyleSheet::mergeConfig( const Config& conf )
             continue;
         }
 
-        _resLibs[name] = ResourceLibraryEntry(uri, 0L);
+        _resLibs[name] = ResourceLibraryEntry(uri,  (osgEarth::Symbology::ResourceLibrary*)0L);
 
         //addResourceLibrary( name, reslib.get() );
     }

@@ -156,7 +156,7 @@ CacheSeed::processKey(const MapFrame& mapf, const TileKey& key ) const
     	if ( _progress.valid() && _progress->isCanceled() )
 	        return; // Task has been cancelled by user
 
-        if ( _progress.valid() && gotData && _progress->reportProgress(0, 0, "Cached tile: " + key.str()) )
+        if ( _progress.valid() && gotData && _progress->reportProgress(0, 0, std::string("Cached tile: ") + key.str()) )
             return; // Canceled
     }
 

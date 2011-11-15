@@ -178,7 +178,7 @@ int main(int argc, char** argv)
                 Viewpoint( osg::Vec3d( -90, 0, 0 ), 0.0, -90.0, 5e7 ) );
 
             // add a handler that will automatically calculate good clipping planes
-            viewer.addEventHandler( new AutoClipPlaneHandler() );
+            viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
         }
     }
 

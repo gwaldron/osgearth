@@ -2262,6 +2262,9 @@ ControlCanvas::getControlAtMouse( float x, float y ) const
 bool
 ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
+    if ( !_context._vp )
+        return false;
+
 	for (ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i)
 	{
 		Control* control = i->get();
@@ -2318,6 +2321,9 @@ void
 ControlCanvas::update( const osg::FrameStamp* frameStamp )
 {
     _context._frameStamp = frameStamp;
+
+    if ( !_context._vp )
+        return;
 
     int bin = 0;
     for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )

@@ -29,14 +29,6 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
-    struct OSGEARTHANNO_EXPORT LabelUtils
-    {
-        static osg::Drawable* createText(
-            const osg::Vec3&   positionOffset,
-            const std::string& text,
-            const TextSymbol*  symbol );
-    };
-
     /**
      * Text labeling node.
      */

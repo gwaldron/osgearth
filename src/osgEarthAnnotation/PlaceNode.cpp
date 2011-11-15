@@ -18,11 +18,10 @@
 */
 
 #include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
-#include <osgText/Text>
 #include <osg/Depth>
 
 using namespace osgEarth;
@@ -48,52 +47,25 @@ _style  ( style )
 void
 PlaceNode::init()
 {
-    osg::Texture2D* texture = new osg::Texture2D();
-    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
-    texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
-    texture->setResizeNonPowerOfTwoHint(false);
-    texture->setImage( _image.get() );
-
-    // set up the drawstate.
-    osg::StateSet* dstate = new osg::StateSet;
-    dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
-    dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
-    dstate->setMode(GL_BLEND, 1);
-    dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);   
-
-    // set up the geoset.
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setStateSet(dstate);
-
-    osg::Vec3Array* coords = new osg::Vec3Array(4);
-    (*coords)[0].set( -_image->s()/2.0, 0, 0 );
-    (*coords)[1].set( -_image->s()/2.0 + _image->s(), 0, 0 );
-    (*coords)[2].set( -_image->s()/2.0 + _image->s(), _image->t()-1, 0 );
-    (*coords)[3].set( -_image->s()/2.0, _image->t()-1, 0 );
-    geom->setVertexArray(coords);
-
-    osg::Vec2Array* tcoords = new osg::Vec2Array(4);
-    (*tcoords)[0].set(0, 0);
-    (*tcoords)[1].set(1, 0);
-    (*tcoords)[2].set(1, 1);
-    (*tcoords)[3].set(0, 1);
-    geom->setTexCoordArray(0,tcoords);
-
-    osg::Vec4Array* colors = new osg::Vec4Array(1);
-    (*colors)[0].set(1.0f,1.0f,1.0,1.0f);
-    geom->setColorArray(colors);
-    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
-
-    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
-
-    osg::Drawable* text = LabelUtils::createText(
-        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ),
-        _text,
-        _style.get<TextSymbol>() );
-
     osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( text );
-    geode->addDrawable( geom );
+
+    if ( _image.get() )
+    {
+        // this offset anchors the image at the bottom
+        osg::Vec2s offset( 0.0, _image->t()/2.0 );
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, true );
+        if ( imageGeom )
+            geode->addDrawable( imageGeom );
+    }
+
+    osg::Drawable* text = AnnotationUtils::createTextDrawable(
+        _text,
+        _style.get<TextSymbol>(),
+        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ),
+        true );
+
+    if ( text )
+        geode->addDrawable( text );
     
     osg::StateSet* stateSet = geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
@@ -111,6 +83,8 @@ void
 PlaceNode::setText( const std::string& text )
 {
     //todo
+    //warning, if you implement this, set the object variance on the
+    // text drawable to DYNAMIC
 }
 
 void

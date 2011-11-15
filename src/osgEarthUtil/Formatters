@@ -64,7 +64,15 @@ namespace osgEarth { namespace Util
         std::string format(
             const Angular&       angle,
             int                  precision =-1, 
-            const AngularFormat& format    =FORMAT_DEFAULT);
+            const AngularFormat& outputFormat    =FORMAT_DEFAULT);
+
+        std::string operator()(
+            const Angular&       angle,
+            int                  precision =-1, 
+            const AngularFormat& outputFormat =FORMAT_DEFAULT)
+        {
+            return format(angle, precision, outputFormat);
+        }
 
         /**
          * Parses a string into an angle (returning false if parsing fails).
@@ -125,6 +133,8 @@ namespace osgEarth { namespace Util
          * Formats a lat/lon (in degrees) as an MGRS string.
          */
         std::string format( double latDeg, double lonDeg ) const;
+
+        std::string operator()(double latDeg, double lonDeg ) const { return format(latDeg, lonDeg); }
 
     private:
         osg::ref_ptr<const SpatialReference> _refSRS;

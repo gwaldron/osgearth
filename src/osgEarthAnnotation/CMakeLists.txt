@@ -10,6 +10,7 @@ set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 set(LIB_PUBLIC_HEADERS  
     AnnotationData
+    AnnotationUtils
     CircleNode
     Common
     Decluttering
@@ -25,6 +26,7 @@ set(LIB_PUBLIC_HEADERS
 
 set(LIB_COMMON_FILES
     AnnotationData.cpp
+    AnnotationUtils.cpp
     CircleNode.cpp
     Decluttering.cpp
     EllipseNode.cpp

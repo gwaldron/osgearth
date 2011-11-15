@@ -490,7 +490,7 @@ main(int argc, char** argv)
     arguments.read( "--kml", kmlFile );
 
     // load the .earth file from the command line.
-    osg::Node* earthNode = osgDB::readNodeFile("readymap.earth");
+    osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
         return usage( "Unable to load earth model." );
     

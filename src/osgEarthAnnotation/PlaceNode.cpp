@@ -82,6 +82,8 @@ void
 PlaceNode::setText( const std::string& text )
 {
     //todo
+    //warning, if you implement this, set the object variance on the
+    // text drawable to DYNAMIC
 }
 
 void

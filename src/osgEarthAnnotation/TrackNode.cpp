@@ -29,28 +29,6 @@ using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
-#if 0
-TrackNodeFieldSchema::TrackNodeFieldSchema()
-{
-    //nop
-}
-
-void
-TrackNodeFieldSchema::insert( const std::string& name, const TextSymbol* symbol )
-{
-    _symbolMap[name] = symbol;
-}
-
-const TextSymbol*
-TrackNodeFieldSchema::get( const std::string& name ) const
-{
-    SymbolMap::const_iterator i = _symbolMap.find(name);
-    return i != _symbolMap.end() ? i->second.get() : 0L;
-}
-#endif
-
-//------------------------------------------------------------------------
-
 TrackNode::TrackNode(MapNode*                    mapNode, 
                      const osg::Vec3d&           position,
                      osg::Image*                 image,
@@ -77,10 +55,11 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
             if ( ts )
             {
                 osg::Drawable* drawable = AnnotationUtils::createTextDrawable( 
-                    osgEarth::EMPTY_STRING, ts, osg::Vec3(0,0,0) );
+                    osgEarth::EMPTY_STRING, ts, osg::Vec3(0,0,0), true );
 
                 if ( drawable )
                 {
+                    drawable->setDataVariance( osg::Object::DYNAMIC );
                     geode->addDrawable( drawable );
                     _fieldDrawables[i->first] = drawable;
                 }
@@ -92,7 +71,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
     {
         // apply the image icon.
         osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
-            _image.get(), osg::Vec2s(0,0) );
+            _image.get(), osg::Vec2s(0,0), true );
 
         if ( imageGeom )
         {
@@ -120,4 +99,3 @@ TrackNode::setFieldValue( const std::string& name, const std::string& value )
         }
     }
 }
-

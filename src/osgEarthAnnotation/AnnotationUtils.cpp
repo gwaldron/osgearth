@@ -19,15 +19,18 @@
 
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthSymbology/Color>
+#include <osgEarth/ThreadingUtils>
 #include <osgText/Text>
 
+using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
 osg::Drawable* 
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
-                                    const osg::Vec3&   positionOffset )
+                                    const osg::Vec3&   positionOffset,
+                                    bool               installFadeShader)
                                     
 {
     osgText::Text* t = new osgText::Text();
@@ -79,14 +82,45 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     // this disables the default rendering bin set by osgText::Font. Necessary if we're
     // going to do decluttering at a higher level
-    t->getOrCreateStateSet()->setRenderBinToInherit();
+    osg::StateSet* stateSet = t->getOrCreateStateSet();
+
+    stateSet->setRenderBinToInherit();
+    
+    if ( installFadeShader )
+    {
+        // a custom fragment shader for drawing faded, textured geometry:
+        // btw, the "1.5" makes the text a little brighter and nicer-looking :)
+        static char s_frag[] =
+            "uniform float     fade; \n"
+            "uniform sampler2D tex0; \n"
+            "void main() { \n"
+            "    if ( fade < 1.0 ) { fade = 0.0; } \n"
+            "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st).aaaa * vec4(1,1,1,fade*1.5); \n"
+            "} \n";
+
+        static osg::ref_ptr<osg::Program> s_program;
+        static Threading::Mutex s_programMutex;
+        if ( s_program == 0L )
+        {
+            Threading::ScopedMutexLock lock(s_programMutex);
+            if ( s_program == 0L )
+            {
+                s_program = new osg::Program();
+                s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
+            }
+        }
+
+        stateSet->setAttributeAndModes( s_program.get(), 1 );
+    }
 
     return t;
 }
 
 osg::Geometry*
 AnnotationUtils::createImageGeometry(osg::Image*       image,
-                                     const osg::Vec2s& pixelOffset)
+                                     const osg::Vec2s& pixelOffset,
+                                     bool              installFadeShader,
+                                     unsigned          textureUnit )
 {
     if ( !image )
         return 0L;
@@ -123,7 +157,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     (*tcoords)[1].set(1, 0);
     (*tcoords)[2].set(1, 1);
     (*tcoords)[3].set(0, 1);
-    geom->setTexCoordArray(0,tcoords);
+    geom->setTexCoordArray(textureUnit,tcoords);
 
     osg::Vec4Array* colors = new osg::Vec4Array(1);
     (*colors)[0].set(1.0f,1.0f,1.0,1.0f);
@@ -131,6 +165,39 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
+    
+    if ( installFadeShader )
+    {
+        // a custom fragment shader for drawing faded, textured geometry:
+        static char s_frag[] =
+            "uniform float     fade; \n"
+            "uniform sampler2D tex0; \n"
+            "void main() { \n"
+            "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st) * vec4(1,1,1,fade); \n"
+            "} \n";
+
+        static osg::ref_ptr<osg::Program> s_program;
+        static Threading::Mutex s_programMutex;
+        if ( s_program == 0L )
+        {
+            Threading::ScopedMutexLock lock(s_programMutex);
+            if ( s_program == 0L )
+            {
+                s_program = new osg::Program();
+                s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
+            }
+        }
+
+        dstate->setAttributeAndModes( s_program.get(), 1 );
+    }
 
     return geom;
+}
+
+osg::Uniform*
+AnnotationUtils::createFadeUniform()
+{
+    osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, "fade");
+    u->set( 1.0f );
+    return u;
 }

@@ -318,13 +318,13 @@ namespace osgEarth { namespace Threading
         {
             {
                 osgEarth::Threading::ScopedReadLock readLock(_mutex);
-                std::map<KEY,DATA>::iterator i = _data.find(k);
+                typename std::map<KEY,DATA>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second;
             }
             {
                 osgEarth::Threading::ScopedWriteLock lock(_mutex);
-                std::map<KEY,DATA>::iterator i = _data.find(k);
+                typename std::map<KEY,DATA>::iterator i = _data.find(k);
                 if ( i != _data.end() )
                     return i->second;
                 else

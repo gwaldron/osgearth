@@ -25,13 +25,18 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
 {
     // piece together a MapOptions, TerrainOptions, and MapNodeOptions:
     Config mapOptionsConf;
+    mapOptionsConf.setReferrer( conf.referrer() );
+
     if ( conf.hasValue("name") )
         mapOptionsConf.update("name", conf.value("name"));
     if ( conf.hasValue("type") )
         mapOptionsConf.update("type", conf.value("type"));
 
     Config terrainOptionsConf;
+    terrainOptionsConf.setReferrer( conf.referrer() );
+
     Config mapNodeOptionsConf;
+    mapNodeOptionsConf.setReferrer( conf.referrer() );
 
     for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i )
     {
@@ -43,7 +48,8 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
             if (child.key() == "cache")
             {
                 std::string type = child.value("type");
-                if (type.empty()) type = "tms";
+                if (type.empty())
+                    type = "filesystem";
                 Config cacheConfig(child);
                 cacheConfig.set("driver", type );
                 mapOptionsConf.add( cacheConfig );
@@ -80,15 +86,6 @@ EarthFileSerializer1::deserialize( const Config& conf, const std::string& refere
     MapOptions mapOptions( mapOptionsConf );
     MapNodeOptions mapNodeOptions( mapNodeOptionsConf );
     mapNodeOptions.setTerrainOptions( TerrainOptions(terrainOptionsConf) );
-
-    //Set the reference URI of the cache config.
-    //if (mapOptions.cache().isSet())
-    //{
-    //    mapOptions.cache()->setReferenceURI(referenceURI);
-    //}
-
-    // the reference URI allows osgEarth to resolve relative paths within the configuration
-    //mapOptions.referenceURI() = referenceURI;
 
     Map* map = new Map( mapOptions );
 

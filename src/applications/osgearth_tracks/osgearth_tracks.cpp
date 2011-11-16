@@ -22,11 +22,15 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/GeoMath>
 #include <osgEarth/Units>
+#include <osgEarth/StringUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/Controls>
 #include <osgEarthAnnotation/TrackNode>
 #include <osgEarthAnnotation/Decluttering>
+#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthSymbology/Color>
+
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -36,6 +40,7 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
 
@@ -60,6 +65,11 @@ using namespace osgEarth::Symbology;
 
 // format coordinates as MGRS
 static MGRSFormatter s_format(MGRSFormatter::PRECISION_1000M);
+
+// globals for this demo
+osg::StateSet* g_declutterStateSet = 0L;
+
+
 
 
 /** Prints an error message */
@@ -128,6 +138,7 @@ createFieldSchema( TrackNodeFieldSchema& schema )
     schema[FIELD_NUMBER] = numberSymbol;
 }
 
+/** Builds a bunch of tracks. */
 void
 createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSchema& schema, TrackSims& sims )
 {
@@ -150,7 +161,10 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
         track->setFieldValue( FIELD_POSITION, Stringify() << s_format(lat0, lon0) );
         track->setFieldValue( FIELD_NUMBER,   Stringify() << (1 + prng.next(9)) );
 
-        track->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+        // add a priority
+        AnnotationData* data = new AnnotationData();
+        data->setPriority( (float)i );
+        track->setUserData( data );
 
         parent->addChild( track );
 
@@ -165,6 +179,75 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
     }
 }
 
+/** creates some UI controls for adjusting the decluttering parameters. */
+void
+createControls( osgViewer::View* view )
+{
+    ControlCanvas* canvas = ControlCanvas::get(view, true);
+    
+    // title bar
+    VBox* vbox = canvas->addControl(new VBox(Control::ALIGN_NONE, Control::ALIGN_BOTTOM, 2, 1 ));
+    vbox->setBackColor( Color(Color::Black, 0.5) );
+    vbox->addControl( new LabelControl("osgEarth Tracks Demo", Color::Yellow) );
+    
+    // checkbox that toggles decluttering of tracks
+    struct ToggleDecluttering : public ControlEventHandler {
+        void onValueChanged( Control* c, bool on ) {
+            g_declutterStateSet->setRenderBinMode( 
+                on ? osg::StateSet::USE_RENDERBIN_DETAILS : osg::StateSet::INHERIT_RENDERBIN_DETAILS );
+        }
+    };
+    HBox* toggleBox = vbox->addControl( new HBox() );
+    toggleBox->addControl( new CheckBoxControl(true, new ToggleDecluttering()) );
+    toggleBox->addControl( new LabelControl("Declutter") );
+
+    // grid for the slider controls so they look nice
+    Grid* grid = vbox->addControl( new Grid() );
+    grid->setHorizFill( true );
+    grid->setChildHorizAlign( Control::ALIGN_LEFT );
+    grid->setChildSpacing( 6 );
+
+    unsigned r=0;
+    static DeclutteringOptions g_dcOptions = Decluttering::getOptions();
+
+    // event handler for changing decluttering options
+    struct ChangeFloatOption : public ControlEventHandler {
+        optional<float>& _param;
+        LabelControl* _label;
+        ChangeFloatOption( optional<float>& param, LabelControl* label ) : _param(param), _label(label) { }
+        void onValueChanged( Control* c, float value ) {
+            _param = value;
+            _label->setText( Stringify() << std::setprecision(1) << value );
+            Decluttering::setOptions( g_dcOptions );
+        }
+    };
+
+    grid->setControl( 0, r, new LabelControl("Scale threshold:") );
+    LabelControl* scaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::setprecision(1) << *g_dcOptions.minScale()) );
+    HSliderControl* scaleSlider = grid->setControl( 1, r, new HSliderControl( 
+        0.0, 1.0, *g_dcOptions.minScale(), new ChangeFloatOption(g_dcOptions.minScale(), scaleLabel) ) );
+    scaleSlider->setHorizFill( true, 200 );
+
+    grid->setControl( 0, ++r, new LabelControl("Alpha threshold:") );
+    LabelControl* alphaLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::setprecision(1) << *g_dcOptions.minAlpha()) );
+    HSliderControl* alphaSlider = grid->setControl( 1, r, new HSliderControl( 
+        0.0, 1.0, *g_dcOptions.minAlpha(), new ChangeFloatOption(g_dcOptions.minAlpha(), alphaLabel) ) );
+
+    grid->setControl( 0, ++r, new LabelControl("Activate speed:") );
+    LabelControl* actLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::setprecision(1) << *g_dcOptions.stepUp()) );
+    HSliderControl* actSlider = grid->setControl( 1, r, new HSliderControl( 
+        0.01, 0.5, *g_dcOptions.stepUp(), new ChangeFloatOption(g_dcOptions.stepUp(), actLabel) ) );
+
+    grid->setControl( 0, ++r, new LabelControl("Deactivate speed:") );
+    LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::setprecision(1) << *g_dcOptions.stepDown()) );
+    HSliderControl* deactSlider = grid->setControl( 1, r, new HSliderControl( 
+        0.01, 0.5, *g_dcOptions.stepDown(), new ChangeFloatOption(g_dcOptions.stepDown(), deactLabel) ) );
+}
+
+/**
+ * Main application.
+ * Creates some simulated track data and runs the simulation.
+ */
 int
 main(int argc, char** argv)
 {
@@ -185,15 +268,20 @@ main(int argc, char** argv)
     // a list of simulators for our tracks.
     TrackSims trackSims;
 
-    // create some track nodes.
+    // create some track nodes, and activate decluttering by default.
     osg::Group* tracks = new osg::Group();
     createTrackNodes( mapNode, tracks, schema, trackSims );
+    g_declutterStateSet = tracks->getOrCreateStateSet();
+    g_declutterStateSet->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
     root->addChild( tracks );
 
     // initialize a viewer.
     osgViewer::Viewer viewer( arguments );
     viewer.setCameraManipulator( new EarthManipulator );
     viewer.setSceneData( root );
+
+    // configure a UI for controlling the demo
+    createControls( &viewer );
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.

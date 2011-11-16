@@ -316,10 +316,14 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
     Threading::PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
     osg::ref_ptr<osg::Uniform> _fade;
 
+    /**
+     * Constructs the decluttering draw callback.
+     * @param context A shared context among all decluttering objects.
+     */
     DeclutterDraw( DeclutterContext* context )
         : _context( context )
     {
-        //nop
+        // create the fade uniform.
         _fade = AnnotationUtils::createFadeUniform();
         _fade->set( 0.5f );
     }

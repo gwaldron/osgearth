@@ -50,6 +50,12 @@ namespace osgEarth { namespace Annotation
         const std::string& getDescription() const { return _description; }
 
         /**
+         * Priority of the item
+         */
+        void setPriority( float value ) { _priority = value; }
+        float getPriority() const { return _priority; }
+
+        /**
          * Viewpoint associated with this annotation.
          */
         void setViewpoint( const Viewpoint& vp ) {
@@ -68,6 +74,7 @@ namespace osgEarth { namespace Annotation
     protected:
         std::string _name;
         std::string _description;
+        float       _priority;
         Viewpoint*  _viewpoint;
     };
 

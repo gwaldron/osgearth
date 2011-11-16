@@ -45,7 +45,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Options to control the annotation decluttering engine.
      */
-    class DeclutteringOptions
+    class /*header-only*/ DeclutteringOptions
     {
     public:
         DeclutteringOptions()
@@ -77,7 +77,7 @@ namespace osgEarth { namespace Annotation
         optional<float> _stepUp;
     };
 
-    struct Decluttering
+    struct OSGEARTHANNO_EXPORT Decluttering
     {
         /**
          * Sets a functor to use to determine render leaf priority for declutter sorting.

@@ -91,10 +91,9 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         // a custom fragment shader for drawing faded, textured geometry:
         // btw, the "1.5" makes the text a little brighter and nicer-looking :)
         static char s_frag[] =
-            "uniform float     fade; \n"
+            "uniform float fade = 1.0; \n"
             "uniform sampler2D tex0; \n"
             "void main() { \n"
-            //"    if ( fade < 1.0 ) { fade = 0.0; } \n"
             "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st).aaaa * vec4(1,1,1,fade*1.5); \n"
             "} \n";
 
@@ -170,7 +169,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     {
         // a custom fragment shader for drawing faded, textured geometry:
         static char s_frag[] =
-            "uniform float     fade; \n"
+            "uniform float fade = 1.0; \n"
             "uniform sampler2D tex0; \n"
             "void main() { \n"
             "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st) * vec4(1,1,1,fade); \n"

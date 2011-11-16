@@ -605,3 +605,4 @@ MapNode::updateOverlayGraph()
         _overlayDecorator->setOverlayGraph( 0L );
     }
 }
+

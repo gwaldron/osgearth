@@ -385,6 +385,29 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse( nv );
 }
 
+void
+TerrainEngineNode::addTerrainChangedCallback( TerrainChangedCallback* callback )
+{
+    _terrainChangedCallbacks.push_back( callback );
+}
+
+void
+TerrainEngineNode::removeTerrainChangedCallback( TerrainChangedCallback* callback)
+{
+    TerrainChangedCallbackList::iterator i = std::find(_terrainChangedCallbacks.begin(), _terrainChangedCallbacks.end(), callback);
+    if (i != _terrainChangedCallbacks.end()) _terrainChangedCallbacks.erase( i );    
+}
+
+void
+TerrainEngineNode::fireTerrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
+{    
+    for (TerrainChangedCallbackList::iterator i = _terrainChangedCallbacks.begin(); i != _terrainChangedCallbacks.end(); i++)
+    {
+        i->get()->onTerrainChanged(tileKey, terrain);
+    }
+}
+
+
 //------------------------------------------------------------------------
 
 #undef LC
@@ -413,3 +436,4 @@ TerrainEngineNodeFactory::create( Map* map, const TerrainOptions& options )
 
     return result;
 }
+

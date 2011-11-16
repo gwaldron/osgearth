@@ -65,7 +65,8 @@ namespace
 #else
         osg::PagedLOD* p = new osg::PagedLOD();
         p->setCenter( bs.center() );
-        p->setRadius( bs.radius() );
+        //p->setRadius( bs.radius() );
+        p->setRadius(std::max((float)bs.radius(),maxRange));
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
 #endif

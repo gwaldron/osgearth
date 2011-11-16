@@ -36,13 +36,14 @@ class ClampObjectLocatorCallback : public osgEarth::TerrainEngineNode::TerrainCh
 public:
     ClampObjectLocatorCallback(ObjectLocatorNode* locator):
       _locator(locator),
-      _maxLevel(-1)
+      _maxLevel(-1),
+      _minLevel(6)
     {
     }
 
     virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain)
     {           
-        if (_maxLevel < (int)tileKey.getLevelOfDetail())
+        if ((int)tileKey.getLevelOfDetail() > _minLevel && _maxLevel < (int)tileKey.getLevelOfDetail())
         {
             osg::Vec3d position = _locator->getLocator()->getPosition();
 
@@ -90,6 +91,7 @@ public:
 
     osg::ref_ptr< ObjectLocatorNode > _locator;
     int _maxLevel;
+    int _minLevel;
 };
 
 

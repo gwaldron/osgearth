@@ -19,29 +19,67 @@
 #ifndef OSGEARTH_ANNOTATION_TRACK_NODE_H
 #define OSGEARTH_ANNOTATION_TRACK_NODE_H 1
 
-#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthSymbology/TextSymbol>
 #include <osgEarth/MapNode>
-#include <osgEarthSymbology/Style>
-#include <osgEarthUtil/Controls>
-#include <osg/MatrixTransform>
+#include <osg/Image>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
-    using namespace osgEarth::Util::Controls;
+
+    typedef std::map<std::string, osg::ref_ptr<const TextSymbol> > TrackNodeFieldSchema;
 
 #if 0
+    class OSGEARTHANNO_EXPORT TrackNodeFieldSchema : public osg::Referenced 
+    {
+    public:
+        typedef std::map<std::string, osg::ref_ptr<const TextSymbol> > SymbolMap;
+
+    public:
+        TrackNodeFieldSchema();
+
+        void insert( const std::string& name, const TextSymbol* symbol );
+
+        const TextSymbol* get( const std::string& name ) const;
+
+        const SymbolMap& getSymbolMap() const { return _symbolMap; }
+
+    protected:
+        SymbolMap _symbolMap;
+    };
+#endif
+
     /** 
      * TrackNode is a movable, single-point entity represented by an icon,
      * optional placeable text labels, and optional localized geometry.
      */
-    class OSGEARTHANNO_EXPORT TrackNode : public osg::MatrixTransform
+    class OSGEARTHANNO_EXPORT TrackNode : public OrthoNode
     {
     public:
-        TrackNode( MapNode* mapNode );
+        TrackNode(
+            MapNode*                    mapNode,
+            const osg::Vec3d&           position,
+            osg::Image*                 image,
+            const TrackNodeFieldSchema& fieldSchema );
+
+        /** 
+         * Sets the value of one of the field labels.
+         * @param name  Field name as identified in the field schema.
+         * @param value Value to which to set the field label.
+         */
+        void setFieldValue( const std::string& name, const std::string& value );
+
+    protected:
+        osg::ref_ptr<osg::Image>                 _image;
+        //osg::ref_ptr<const TrackNodeFieldSchema> _fieldSchema;
+
+        typedef std::map<std::string, osg::Drawable*> FieldDrawables;
+        FieldDrawables _fieldDrawables;
+
+        void init( const TrackNodeFieldSchema& schema );
     };
-#endif
 
 } } // namespace osgEarth::Annotation
 

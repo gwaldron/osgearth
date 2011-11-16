@@ -48,6 +48,7 @@ using namespace osgEarth::Symbology;
 #define CSS_TEXT_LINE_ORIENTATION "text-line-orientation"
 #define CSS_TEXT_LINE_PLACEMENT   "text-line-placement"
 #define CSS_TEXT_CONTENT          "text-content"
+#define CSS_TEXT_ALIGN            "text-align"
 #define CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER "text-content-attribute-delimiter"
 
 
@@ -156,6 +157,27 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (p.value() == "true") text->removeDuplicateLabels() = true;
             else if (p.value() == "false") text->removeDuplicateLabels() = false;
         } 
+        else if (p.key() == CSS_TEXT_ALIGN)
+        {
+            if (!text) text = sc.getOrCreate<TextSymbol>();
+            if      ( p.value() == "left_top" ) text->alignment() = TextSymbol::ALIGN_LEFT_TOP;
+            else if ( p.value() == "left_center" ) text->alignment() = TextSymbol::ALIGN_LEFT_CENTER;
+            else if ( p.value() == "left_bottom" ) text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
+            else if ( p.value() == "center_top"  ) text->alignment() = TextSymbol::ALIGN_CENTER_TOP;
+            else if ( p.value() == "center_center" ) text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+            else if ( p.value() == "center_bottom" ) text->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
+            else if ( p.value() == "right_top" ) text->alignment() = TextSymbol::ALIGN_RIGHT_TOP;
+            else if ( p.value() == "right_center" ) text->alignment() = TextSymbol::ALIGN_RIGHT_CENTER;
+            else if ( p.value() == "right_bottom" ) text->alignment() = TextSymbol::ALIGN_RIGHT_BOTTOM;
+            else if ( p.value() == "left_base_line" ) text->alignment() = TextSymbol::ALIGN_LEFT_BASE_LINE;
+            else if ( p.value() == "center_base_line" ) text->alignment() = TextSymbol::ALIGN_CENTER_BASE_LINE;
+            else if ( p.value() == "right_base_line" ) text->alignment() = TextSymbol::ALIGN_RIGHT_BASE_LINE;
+            else if ( p.value() == "left_bottom_base_line" ) text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM_BASE_LINE;
+            else if ( p.value() == "center_bottom_base_line" ) text->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM_BASE_LINE;
+            else if ( p.value() == "right_bottom_base_line" ) text->alignment() = TextSymbol::ALIGN_RIGHT_BOTTOM_BASE_LINE;
+            else if ( p.value() == "base_line" ) text->alignment() = TextSymbol::ALIGN_BASE_LINE;
+        }
+
 #if 0
         else if (p.key() == CSS_TEXT_ATTRIBUTE)
         {

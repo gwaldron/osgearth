@@ -25,6 +25,7 @@ void AreaSelectControl::reset(void)
 {
 	m_manip = (osgEarth::Util::EarthManipulator*)m_view->getCameraManipulator();
 	m_currentState = new AreaSelectControlStates::Start(this);
+	clearDrawing();
 	for (int c = 0; c < 4; c++)
 	{
 		m_fourPoints[c] = osg::Vec3d(0.0, 0.0, 0.0);
@@ -36,6 +37,7 @@ void AreaSelectControl::reset(void)
 
 AreaSelectControl::~AreaSelectControl(void)
 {
+	clearDrawing();
 }
 
 bool AreaSelectControl::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)

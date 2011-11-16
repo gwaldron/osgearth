@@ -75,9 +75,9 @@ private:
 	osg::Vec3d m_firstPoint;
 	osg::Vec3d m_secondPoint;
 	osg::ref_ptr<AreaSelectControlStates::State> m_currentState;
-	std::vector<osg::Node* > m_FeatureNodeList;
-	osgEarth::Util::EarthManipulator* m_manip;
-	osgEarth::MapNode* m_mapNode;
+	std::vector<osg::ref_ptr<osg::Node> > m_FeatureNodeList;
+	osg::ref_ptr<osgEarth::Util::EarthManipulator> m_manip;
+	osg::ref_ptr<osgEarth::MapNode> m_mapNode;
 
 	// list of 4 matrix nodes that contain the labels around the selection box
 	//std::vector<osg::MatrixTransform*> m_labelList;

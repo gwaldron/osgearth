@@ -85,7 +85,9 @@ namespace osgEarth
         /**
          * Attempts to load a MapNOde from a ".earth" file in the arguments list
          */
-        static MapNode* load( class osg::ArgumentParser& arguments );
+        static MapNode* load( class osg::ArgumentParser& arguments );        
+
+
 
     public:
 
@@ -217,7 +219,8 @@ namespace osgEarth
     private:
 
         osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
-        osg::ref_ptr< MapCallback > _mapCallback;
+        osg::ref_ptr< MapCallback > _mapCallback;        
+        
     
         void init();
         void adjustEventTraversalCount( int delta );

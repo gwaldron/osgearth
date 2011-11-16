@@ -26,6 +26,7 @@ SET(TARGET_DEFAULT_PREFIX "application_")
 SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")
 
 ADD_SUBDIRECTORY(osgearth_viewer)
+ADD_SUBDIRECTORY(osgearth_clamp)
 ADD_SUBDIRECTORY(osgearth_manip)
 ADD_SUBDIRECTORY(osgearth_seed)
 ADD_SUBDIRECTORY(osgearth_composite)

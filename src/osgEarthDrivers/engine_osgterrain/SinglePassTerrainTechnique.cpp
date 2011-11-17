@@ -1351,20 +1351,16 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         osg::ref_ptr<osgUtil::DelaunayTriangulator> trig=new osgUtil::DelaunayTriangulator();
         trig->setInputPointArray((*mr)._internal.get());
 
+
         // Add mask bounds as a triangulation constraint
         osg::ref_ptr<osgUtil::DelaunayConstraint> dc=new osgUtil::DelaunayConstraint;
 
         osg::Vec3Array* maskConstraint = new osg::Vec3Array();
         dc->setVertexArray(maskConstraint);
 
-
         //Crop the mask to the stitching poly (for case where mask crosses tile edge)
         osg::ref_ptr<osgEarth::Symbology::Geometry> maskCrop;
         maskPoly->crop(maskSkirtPoly.get(), maskCrop);
-
-        //bool multiParent = false;
-        //if (maskCrop.valid())
-        //  multiParent = maskCrop->getType() == osgEarth::Symbology::Geometry::TYPE_MULTI;
         
         osgEarth::Symbology::GeometryIterator i( maskCrop.get(), false );
         while( i.hasMore() )
@@ -1378,22 +1374,6 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             osg::Vec3Array* partVerts = part->toVec3Array();
             maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
             dc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
-
-            //if (!multiParent)
-            //{
-            //  osg::ref_ptr<osgEarth::Symbology::Polygon> holePoly = static_cast<osgEarth::Symbology::Polygon*>(outPoly.get());
-            //  if (holePoly)
-            //  {
-            //    osgEarth::Symbology::RingCollection holes = holePoly->getHoles();
-            //    
-            //    for (osgEarth::Symbology::RingCollection::iterator hit = holes.begin(); hit != holes.end(); ++hit)
-            //    {
-            //      (*hit)->rewind(osgEarth::Symbology::Ring::ORIENTATION_CCW);
-            //      maskConstraint->insert(maskConstraint->end(), (*hit)->begin(), (*hit)->end());
-            //      dc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - (*hit)->size(), (*hit)->size()));
-            //    }
-            //  }
-            //}
           }
         }
 
@@ -1501,7 +1481,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
           }
 
           if (!isZSet[count])
-            OE_WARN << LC << "Z-value not set for stitching polygon vertex" << std::endl;
+            OE_WARN << LC << "Z-value not set for mask constraint vertex" << std::endl;
 
           count++;
         }
@@ -1513,9 +1493,11 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         osg::Vec3Array *norms=new osg::Vec3Array;
         trig->setOutputNormalArray(norms);
         
+
         // Triangulate vertices and remove triangles that lie within the contraint loop
         trig->triangulate();
         trig->removeInternalTriangles(dc.get());
+
 
         // Set up new arrays to hold final vertices and normals
         osg::Geometry* stitch_geom = (*mr)._geom;
@@ -1525,6 +1507,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
         osg::Vec3Array* stitch_norms = new osg::Vec3Array(trig->getInputPointArray()->size());
         stitch_geom->setNormalArray( stitch_norms );
         stitch_geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
 
         //Initialize tex coords
         osg::Vec2Array* unifiedStitchTexCoords = 0L;
@@ -1541,6 +1524,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             renderLayers[i]._stitchTexCoords->reserve(trig->getInputPointArray()->size());
           }
         }
+
 
         // Iterate through point to convert to model coords, calculate normals, and set up tex coords
         int norm_i = -1;
@@ -1584,6 +1568,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             }
           }
         }
+
 
         // Get triangles from triangulator and add as primative set to the geometry
         stitch_geom->addPrimitiveSet(trig->getTriangles());

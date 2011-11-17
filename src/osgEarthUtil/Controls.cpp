@@ -809,12 +809,12 @@ _min(min),
 _max(max),
 _value(value)
 {
-   if ( _max <= _min )
-       _max = _min+1.0f;
-   if ( _value < _min )
-       _value = _min;
-   if ( _value > _max )
-       _value = _max;
+   //if ( _max <= _min )
+   //    _max = _min+1.0f;
+   //if ( _value < _min )
+   //    _value = _min;
+   //if ( _value > _max )
+   //    _value = _max;
 
    setHorizFill( true );
    setVertAlign( ALIGN_CENTER );
@@ -836,7 +836,7 @@ HSliderControl::fireValueChanged()
 void
 HSliderControl::setValue( float value, bool notify )
 {
-    value = osg::clampBetween( value, _min, _max );
+    //value = osg::clampBetween( value, _min, _max );
     if ( value != _value )
     {
         _value = value;

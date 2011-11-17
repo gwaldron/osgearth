@@ -59,17 +59,14 @@ using namespace osgEarth::Symbology;
 #define ICON_URL       "../data/m2525_air.png"
 #define ICON_SIZE      40
 
-// length of the simulation, in seconds
-#define NUM_TRACKS     500
-#define SIM_DURATION   60
-
 // format coordinates as MGRS
-static MGRSFormatter s_format(MGRSFormatter::PRECISION_1000M);
+static MGRSFormatter s_format(MGRSFormatter::PRECISION_10000M);
 
 // globals for this demo
-osg::StateSet* g_declutterStateSet = 0L;
-
-
+osg::StateSet*  g_declutterStateSet = 0L;
+bool            g_showCoords        = true;
+optional<float> g_duration          = 60.0;
+unsigned        g_numTracks         = 500;
 
 
 /** Prints an error message */
@@ -101,12 +98,29 @@ struct TrackSim : public osg::Referenced
 
         // update the position label.
         _track->setPosition(pos);
-        _track->setFieldValue( FIELD_POSITION, Stringify() << s_format(pos.y(),pos.x()) );
+
+        if ( g_showCoords )
+            _track->setFieldValue( FIELD_POSITION, s_format(pos.y(),pos.x()) );
+        else
+            _track->setFieldValue( FIELD_POSITION, "" );
     }
 };
 typedef std::list< osg::ref_ptr<TrackSim> > TrackSims;
 
+/** Update operation that runs the simulators. */
+struct TrackSimUpdate : public osg::Operation
+{
+    TrackSimUpdate(TrackSims& sims) : osg::Operation( "tasksim", true ), _sims(sims) { }
 
+    void operator()( osg::Object* obj ) {
+        osg::View* view = dynamic_cast<osg::View*>(obj);
+        double t = fmod(view->getFrameStamp()->getSimulationTime(), (double)g_duration.get()) / (double)g_duration.get();
+        for( TrackSims::iterator i = _sims.begin(); i != _sims.end(); ++i )
+            i->get()->update( t );
+    }
+
+    TrackSims& _sims;
+};
 
 /**
  * Creates a field schema that we'll later use as a labeling template for
@@ -115,27 +129,28 @@ typedef std::list< osg::ref_ptr<TrackSim> > TrackSims;
 void
 createFieldSchema( TrackNodeFieldSchema& schema )
 {
+
     // draw the track name above the icon:
     TextSymbol* nameSymbol = new TextSymbol();
     nameSymbol->pixelOffset()->set( 0, 2+ICON_SIZE/2 );
     nameSymbol->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
     nameSymbol->halo()->color() = Color::Black;
     nameSymbol->size() = nameSymbol->size().value() + 2.0f;
-    schema[FIELD_NAME] = nameSymbol;
+    schema[FIELD_NAME] = TrackNodeField(nameSymbol, false); // false => static label (won't change after set)
 
     // draw the track coordinates below the icon:
     TextSymbol* posSymbol = new TextSymbol();
     posSymbol->pixelOffset()->set( 0, -2-ICON_SIZE/2 );
     posSymbol->alignment() = TextSymbol::ALIGN_CENTER_TOP;
-    posSymbol->halo()->color() = Color::Black;
-    schema[FIELD_POSITION] = posSymbol;
+    posSymbol->fill()->color() = Color::Yellow;
+    posSymbol->size() = posSymbol->size().value() - 2.0f;
+    schema[FIELD_POSITION] = TrackNodeField(posSymbol, true); // true => may change at runtime
 
     // draw some other field to the left:
     TextSymbol* numberSymbol = new TextSymbol();
     numberSymbol->pixelOffset()->set( -2-ICON_SIZE/2, 0 );
     numberSymbol->alignment() = TextSymbol::ALIGN_RIGHT_CENTER;
-    numberSymbol->halo()->color() = Color::Black;
-    schema[FIELD_NUMBER] = numberSymbol;
+    schema[FIELD_NUMBER] = TrackNodeField(numberSymbol, false);
 }
 
 /** Builds a bunch of tracks. */
@@ -150,7 +165,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
     // make some tracks, choosing a random simulation for each.
     Random prng;
 
-    for( unsigned i=0; i<NUM_TRACKS; ++i )
+    for( unsigned i=0; i<g_numTracks; ++i )
     {
         double lon0 = -180.0 + prng.next() * 360.0;
         double lat0 = -80.0 + prng.next() * 160.0;
@@ -197,9 +212,19 @@ createControls( osgViewer::View* view )
                 on ? osg::StateSet::USE_RENDERBIN_DETAILS : osg::StateSet::INHERIT_RENDERBIN_DETAILS );
         }
     };
-    HBox* toggleBox = vbox->addControl( new HBox() );
-    toggleBox->addControl( new CheckBoxControl(true, new ToggleDecluttering()) );
-    toggleBox->addControl( new LabelControl("Declutter") );
+    HBox* dcToggle = vbox->addControl( new HBox() );
+    dcToggle->addControl( new CheckBoxControl(true, new ToggleDecluttering()) );
+    dcToggle->addControl( new LabelControl("Declutter") );
+
+    // checkbox that toggles the coordinate display
+    struct ToggleCoords : public ControlEventHandler {
+        void onValueChanged( Control* c, bool on ) {
+            g_showCoords = on;
+        }
+    };
+    HBox* coordsToggle = vbox->addControl( new HBox() );
+    coordsToggle->addControl( new CheckBoxControl(true, new ToggleCoords()) );
+    coordsToggle->addControl( new LabelControl("Show locations") );
 
     // grid for the slider controls so they look nice
     Grid* grid = vbox->addControl( new Grid() );
@@ -217,29 +242,34 @@ createControls( osgViewer::View* view )
         ChangeFloatOption( optional<float>& param, LabelControl* label ) : _param(param), _label(label) { }
         void onValueChanged( Control* c, float value ) {
             _param = value;
-            _label->setText( Stringify() << std::setprecision(1) << value );
+            _label->setText( Stringify() << std::fixed << std::setprecision(1) << value );
             Decluttering::setOptions( g_dcOptions );
         }
     };
 
-    grid->setControl( 0, r, new LabelControl("Scale threshold:") );
-    LabelControl* scaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::setprecision(1) << *g_dcOptions.minScale()) );
+    grid->setControl( 0, r, new LabelControl("Simulation speed:") );
+    LabelControl* speedLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_duration) );
+    HSliderControl* speedSlider = grid->setControl( 1, r, new HSliderControl( 
+        600.0, 30.0, *g_duration, new ChangeFloatOption(g_duration, speedLabel) ) );
+
+    grid->setControl( 0, ++r, new LabelControl("Scale threshold:") );
+    LabelControl* scaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minScale()) );
     HSliderControl* scaleSlider = grid->setControl( 1, r, new HSliderControl( 
         0.0, 1.0, *g_dcOptions.minScale(), new ChangeFloatOption(g_dcOptions.minScale(), scaleLabel) ) );
     scaleSlider->setHorizFill( true, 200 );
 
     grid->setControl( 0, ++r, new LabelControl("Alpha threshold:") );
-    LabelControl* alphaLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::setprecision(1) << *g_dcOptions.minAlpha()) );
+    LabelControl* alphaLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minAlpha()) );
     HSliderControl* alphaSlider = grid->setControl( 1, r, new HSliderControl( 
         0.0, 1.0, *g_dcOptions.minAlpha(), new ChangeFloatOption(g_dcOptions.minAlpha(), alphaLabel) ) );
 
     grid->setControl( 0, ++r, new LabelControl("Activate speed:") );
-    LabelControl* actLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::setprecision(1) << *g_dcOptions.stepUp()) );
+    LabelControl* actLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.stepUp()) );
     HSliderControl* actSlider = grid->setControl( 1, r, new HSliderControl( 
         0.01, 0.5, *g_dcOptions.stepUp(), new ChangeFloatOption(g_dcOptions.stepUp(), actLabel) ) );
 
     grid->setControl( 0, ++r, new LabelControl("Deactivate speed:") );
-    LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::setprecision(1) << *g_dcOptions.stepDown()) );
+    LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.stepDown()) );
     HSliderControl* deactSlider = grid->setControl( 1, r, new HSliderControl( 
         0.01, 0.5, *g_dcOptions.stepDown(), new ChangeFloatOption(g_dcOptions.stepDown(), deactLabel) ) );
 }
@@ -257,6 +287,9 @@ main(int argc, char** argv)
     MapNode* mapNode = MapNode::load( arguments );
     if ( !mapNode )
         return usage( "Missing required .earth file" );
+
+    // count on the cmd line?
+    arguments.read("--count", g_numTracks);
     
     osg::Group* root = new osg::Group();
     root->addChild( mapNode );
@@ -265,10 +298,8 @@ main(int argc, char** argv)
     TrackNodeFieldSchema schema;
     createFieldSchema( schema );
 
-    // a list of simulators for our tracks.
-    TrackSims trackSims;
-
     // create some track nodes, and activate decluttering by default.
+    TrackSims trackSims;
     osg::Group* tracks = new osg::Group();
     createTrackNodes( mapNode, tracks, schema, trackSims );
     g_declutterStateSet = tracks->getOrCreateStateSet();
@@ -279,6 +310,9 @@ main(int argc, char** argv)
     osgViewer::Viewer viewer( arguments );
     viewer.setCameraManipulator( new EarthManipulator );
     viewer.setSceneData( root );
+
+    // attach the simulator to the viewer.
+    viewer.addUpdateOperation( new TrackSimUpdate(trackSims) );
 
     // configure a UI for controlling the demo
     createControls( &viewer );
@@ -295,15 +329,5 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
     viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
 
-    while( !viewer.done() )
-    {
-        viewer.frame();
-
-        double t = fmod(viewer.getFrameStamp()->getSimulationTime(), SIM_DURATION) / SIM_DURATION;
-
-        for( TrackSims::iterator i = trackSims.begin(); i != trackSims.end(); ++i )
-        {
-            i->get()->update( t );
-        }
-    }
+    viewer.run();
 }

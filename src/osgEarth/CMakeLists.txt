@@ -27,6 +27,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     CompositeTileSource
     Config
+    Containers
     Cube
     DrapeableNode
     ECEF

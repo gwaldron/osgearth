@@ -19,7 +19,7 @@
 #include <osgEarth/MemCache>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Utils>
+#include <osgEarth/Containers>
 
 using namespace osgEarth;
 

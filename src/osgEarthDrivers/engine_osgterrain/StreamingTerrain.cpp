@@ -291,7 +291,8 @@ StreamingTerrain::getImageryTaskService(int layerId)
     {
         std::stringstream buf;
         buf << "layer " << layerId;
-        std::string bufStr = buf.str();
+        std::string bufStr;
+        bufStr = buf.str();
         service = createTaskService( bufStr, layerId, 1 );
     }
     return service;

@@ -266,6 +266,7 @@ Viewpoint::toString() const
         << ", p=" << _pitch_deg
         << ", d=" << _range
         ;
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     return str;
 }

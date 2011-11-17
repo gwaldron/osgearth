@@ -136,7 +136,8 @@ s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, f
     buf << "    color = vec4(color3.rgb, color.a); \n"
         << "} \n";
 
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 }
@@ -195,7 +196,8 @@ namespace
     {
         std::stringstream sstream;
         sstream << "tex" << unit;
-        std::string str = sstream.str();
+        std::string str;
+        str = sstream.str();
         osg::ref_ptr<osg::Uniform> sampler = ss->getUniform(str);
         int samplerUnit = -1;
         if (sampler.valid() && sampler->getType() == osg::Uniform::SAMPLER_2D_ARRAY)
@@ -411,7 +413,8 @@ TextureCompositorTexArray::createSamplerFunction(UID layerUID,
             << "    return texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n"
             << "} \n";
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         result = new osg::Shader( type, str );
     }
     return result;

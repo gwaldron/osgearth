@@ -113,7 +113,8 @@ public:
             buf << key.str();
         }        
         
-        std::string text = buf.str();
+        std::string text;
+        text = buf.str();
 
         unsigned x = 10, y = 10;
 

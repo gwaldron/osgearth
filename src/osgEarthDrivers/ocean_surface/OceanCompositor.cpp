@@ -44,7 +44,9 @@ namespace
     {
         std::stringstream buf;
         buf << "tex" << slot;
-        return buf.str();
+        std::string str;
+        str = buf.str();
+        return str;
     }
 
     osg::Texture2D*

@@ -359,7 +359,8 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 
     buf << "} \n";
 
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     //OE_INFO << str << std::endl;
     return new osg::Shader( osg::Shader::VERTEX, str );
 }
@@ -418,7 +419,8 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
     buf << "    gl_FragColor = color; \n"
         << "} \n";  
 
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     //OE_INFO << str;
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
@@ -440,7 +442,8 @@ ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
         
     buf << "} \n";
 
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     return new osg::Shader( osg::Shader::VERTEX, str );
 }
 
@@ -473,7 +476,8 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
     buf << "    color = vec4(color3,color.a); \n"
         << "} \n";
 
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 

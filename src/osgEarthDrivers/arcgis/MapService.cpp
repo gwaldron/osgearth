@@ -235,8 +235,8 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
         }
     }
 
-	std::string ssStr;
-	ssStr = ss.str();
+	 std::string ssStr;
+	 ssStr = ss.str();
 
     osg::ref_ptr< SpatialReference > spatialReference = SpatialReference::create( ssStr );
     if (spatialReference->isGeographic())

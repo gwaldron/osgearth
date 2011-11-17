@@ -114,7 +114,9 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
                 }
                 else
                 {
-                    std::string token = _trimTokens ? trim(buf.str()) : buf.str();
+                    std::string bufstr;
+                    bufstr = buf.str();
+                    std::string token = _trimTokens ? trim(bufstr) : bufstr;
 
                     if ( _allowEmpties || !token.empty() )
                         output.push_back( token );
@@ -130,7 +132,9 @@ StringTokenizer::tokenize( const std::string& input, StringVector& output ) cons
         }       
     }
 
-    std::string last = _trimTokens ? trim(buf.str()) : buf.str();
+    std::string bufstr;
+    bufstr = buf.str();
+    std::string last = _trimTokens ? trim(bufstr) : bufstr;
     if ( !last.empty() )
         output.push_back( last );
 }
@@ -236,7 +240,8 @@ osgEarth::vec4fToHtmlColor( const osg::Vec4f& c )
     buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.b()*255.0f);
     if ( c.a() < 1.0f )
         buf << std::hex << std::setw(2) << std::setfill('0') << (int)(c.a()*255.0f);
-    std::string ssStr = buf.str();
+    std::string ssStr;
+    ssStr = buf.str();
     return ssStr;
 }
 
@@ -345,7 +350,8 @@ osgEarth::joinStrings( const StringVector& input, char delim )
         buf << *i;
         if ( (i+1) != input.end() ) buf << delim;
     }
-    std::string result = buf.str();
+    std::string result;
+    result = buf.str();
     return result;
 }
 

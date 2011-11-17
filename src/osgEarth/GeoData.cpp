@@ -160,7 +160,8 @@ std::string
 Bounds::toString() const {
     std::stringstream buf;
     buf << "(" << xMin() << "," << yMin() << " => " << xMax() << "," << yMax() << ")";
-    std::string result = buf.str();
+    std::string result;
+    result = buf.str();
     return result;
 }
 
@@ -447,8 +448,8 @@ GeoExtent::toString() const
 
     buf << ", SRS=" << _srs->getName();
 
-	std::string bufStr;
-	bufStr = buf.str();
+	 std::string bufStr;
+	 bufStr = buf.str();
     return bufStr;
 }
 

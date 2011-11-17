@@ -112,6 +112,7 @@ FilterContext::toString() const
         << ", geocentric = "     << osgEarth::toString(_isGeocentric)
         << "]";
 
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     return str;
 }

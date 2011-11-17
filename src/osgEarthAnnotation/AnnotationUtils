@@ -59,6 +59,11 @@ namespace osgEarth { namespace Annotation
          * above elements when installFadeShader = true.
          */
         static osg::Uniform* createFadeUniform();
+
+        /**
+         * Gets a program that implements fading on annotation objects.
+         */
+        static osg::Program* getFadeProgram();
     };
 
 } } // namespace osgEarth::Annotation

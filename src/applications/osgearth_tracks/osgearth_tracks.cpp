@@ -207,8 +207,7 @@ createControls( osgViewer::View* view )
     // checkbox that toggles decluttering of tracks
     struct ToggleDecluttering : public ControlEventHandler {
         void onValueChanged( Control* c, bool on ) {
-            g_declutterStateSet->setRenderBinMode( 
-                on ? osg::StateSet::USE_RENDERBIN_DETAILS : osg::StateSet::INHERIT_RENDERBIN_DETAILS );
+            Decluttering::setEnabled( g_declutterStateSet, on );
         }
     };
     HBox* dcToggle = vbox->addControl( new HBox() );
@@ -314,7 +313,7 @@ main(int argc, char** argv)
     // subject to decluttering; and the custom sorting functor will sort the tracks
     // based on priority. (By default, objects are prioritized by distance-to-camera).
     g_declutterStateSet = tracks->getOrCreateStateSet();
-    g_declutterStateSet->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+    Decluttering::setEnabled( g_declutterStateSet, true );
     Decluttering::setSortFunctor( new DeclutterByPriority() );
 
     // initialize a viewer.

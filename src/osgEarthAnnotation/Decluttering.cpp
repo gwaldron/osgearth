@@ -519,6 +519,25 @@ const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECL
 //----------------------------------------------------------------------------
 
 //static
+
+void
+Decluttering::setEnabled( osg::StateSet* stateSet, bool enabled, int binNum )
+{
+    if ( stateSet )
+    {
+        if ( enabled )
+        {
+            stateSet->setAttributeAndModes( AnnotationUtils::getFadeProgram(), 1 );
+            stateSet->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
+        }
+        else
+        {
+            stateSet->removeAttribute( osg::StateAttribute::PROGRAM );
+            stateSet->setRenderBinToInherit();
+        }
+    }
+}
+
 void
 Decluttering::setSortFunctor( DeclutterSortFunctor* functor )
 {

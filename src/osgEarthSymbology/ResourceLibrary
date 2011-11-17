@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/MarkerResource>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Random>
 #include <map>
@@ -88,9 +89,10 @@ namespace osgEarth { namespace Symbology
         SkinResource* getSkin( const SkinSymbol* symbol, Random& prng ) const;
 
 
-    public: // Model resource functions
+    public: // Marker resource functions
 
-        //TODO
+        MarkerResource* getMarker( const std::string& name ) const;
+
 
     public: // serialization functions
 
@@ -101,6 +103,7 @@ namespace osgEarth { namespace Symbology
 
         Threading::ReadWriteMutex          _mutex;
         SkinResourceMap                    _skins;
+        MarkerResourceMap                  _markers;
 
         bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;
     };

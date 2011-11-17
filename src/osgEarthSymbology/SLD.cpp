@@ -249,6 +249,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             marker->url() = p.value();
             marker->url()->setURIContext( conf.referrer() );
         }
+        else if (p.key() == "marker-library")
+        {
+            if (!marker) marker = sc.getOrCreate<MarkerSymbol>();
+            marker->libraryName() = StringExpression(p.value());
+        }
         else if (p.key() == "marker-placement")
         {
             if (!marker) marker = sc.getOrCreate<MarkerSymbol>();

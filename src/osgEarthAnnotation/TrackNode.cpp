@@ -128,6 +128,10 @@ TrackNode::setFieldValue( const std::string& name, const osgText::String& value 
 void
 TrackNode::addDrawable( const std::string& name, osg::Drawable* drawable )
 {
+    // attach the annotation data to the drawable:
+    if ( _annoData.valid() )
+        drawable->setUserData( _annoData.get() );
+
     _namedDrawables[name] = drawable;
     _geode->addDrawable( drawable );
 }
@@ -137,4 +141,17 @@ TrackNode::getDrawable( const std::string& name ) const
 {
     NamedDrawables::const_iterator i = _namedDrawables.find(name);
     return i != _namedDrawables.end() ? i->second : 0L;
+}
+
+void
+TrackNode::setAnnotationData( AnnotationData* data )
+{
+    OrthoNode::setAnnotationData( data );
+
+    // override this method so we can attach the anno data to the drawables.
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        i->get()->setUserData( data );
+    }
 }

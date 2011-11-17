@@ -317,3 +317,9 @@ OrthoNode::setHorizonCulling( bool value )
         }
     }
 }
+
+void
+OrthoNode::setAnnotationData( AnnotationData* data )
+{
+    _annoData = data;
+}

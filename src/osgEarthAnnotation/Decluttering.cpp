@@ -18,6 +18,7 @@
 */
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarth/Utils>
 #include <osgEarth/ThreadingUtils>
 #include <osgUtil/RenderBin>
@@ -38,8 +39,8 @@ namespace
     // wrapper to satisfy the template processor..
     struct SortContainer
     {
-        SortContainer( DeclutterPriorityFunctor& f ) : _f(f) { }
-        const DeclutterPriorityFunctor& _f;
+        SortContainer( DeclutterSortFunctor& f ) : _f(f) { }
+        const DeclutterSortFunctor& _f;
         bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const 
         {
             return _f(lhs, rhs);
@@ -93,8 +94,8 @@ namespace
  */
 struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 {
-    DeclutterPriorityFunctor* _f;
-    DeclutterContext*         _context;
+    DeclutterSortFunctor* _f;
+    DeclutterContext*     _context;
 
     Threading::PerObjectMap<osg::View*, PerViewInfo> _perView;
 
@@ -103,7 +104,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
      * @param f Custom declutter sorting predicate. Pass NULL to use the 
      *          default sorter (sort by distance-to-camera).
      */
-    DeclutterSort( DeclutterContext* context, DeclutterPriorityFunctor* f = 0L )
+    DeclutterSort( DeclutterContext* context, DeclutterSortFunctor* f = 0L )
         : _context(context), _f(f)
     {
         //nop
@@ -149,6 +150,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         // will be culled as a group.
         std::set<const osg::Node*> culledParents;
 
+        const DeclutteringOptions& options = _context->_options;
+
         // Go through each leaf and test for visibility.
         for( osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); i != leaves.end(); ++i )
         {
@@ -172,6 +175,17 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 winPos.x() + box.xMax(),
                 winPos.y() + box.yMax(),
                 winPos.z() );
+
+#if 0
+            // adjust the box for the max scale option:
+            if ( *options.maxScale() != 1.0f )
+            {
+                float w2 = 0.5 * (box.xMax()-box.xMin()), h2 = 0.5 * (box.yMax()-box.yMin());
+                float nw2 = *options.maxScale() * w2, nh2 = *options.maxScale() * h2;
+                box.xMin() += w2-nw2, box.xMax() -= w2-nw2;
+                box.yMin() += h2-nh2, box.yMax() -= h2-nh2;
+            }
+#endif
 
             // if this leaf is already in a culled group, skip it.
             if ( culledParents.find(drawableParent) != culledParents.end() )
@@ -230,8 +244,6 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         // copy the final draw list back into the bin, rejecting any leaves whose parents
         // are in the cull list.
 
-        const DeclutteringOptions& options = _context->_options;
-
         leaves.clear();
         for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._passed.begin(); i != local._passed.end(); ++i )
         {
@@ -245,18 +257,19 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 bool fullyIn = true;
 
                 // scale in until at full scale:
-                if ( info._lastScale < 1.0f )
+                if ( info._lastScale != *options.maxScale() )
                 {
                     fullyIn = false;
                     info._lastScale += *options.stepUp();
-                    if ( info._lastScale > 1.0f )
-                        info._lastScale = 1.0f;
-                    else
-                        leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                    if ( info._lastScale > *options.maxScale() )
+                        info._lastScale = *options.maxScale();
                 }
+
+                if ( info._lastScale != 1.0f )
+                    leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
                 
                 // fade in until at full alpha:
-                if ( info._lastAlpha < 1.0f )
+                if ( info._lastAlpha != 1.0f )
                 {
                     fullyIn = false;
                     info._lastAlpha += *options.stepUp();
@@ -285,7 +298,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
             bool fullyOut = true;
 
-            if ( info._lastScale > *options.minScale() )
+            if ( info._lastScale != *options.minScale() )
             {
                 fullyOut = false;
                 info._lastScale -= *options.stepDown();
@@ -293,7 +306,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                     info._lastScale = *options.minScale();
             }
 
-            if ( info._lastAlpha > *options.minAlpha() )
+            if ( info._lastAlpha != *options.minAlpha() )
             {
                 fullyOut = false;
                 info._lastAlpha -= *options.stepDown();
@@ -487,7 +500,7 @@ public:
         setDrawCallback( new DeclutterDraw(_context.get()) );
     }
 
-    void setSortingFunctor( DeclutterPriorityFunctor* f )
+    void setSortingFunctor( DeclutterSortFunctor* f )
     {
         _f = f;
         setSortCallback( new DeclutterSort(_context.get(), f) );
@@ -498,8 +511,8 @@ public:
         setSortCallback( new DeclutterSort(_context.get()) );
     }
 
-    osg::ref_ptr<DeclutterPriorityFunctor> _f;
-    osg::ref_ptr<DeclutterContext>         _context;
+    osg::ref_ptr<DeclutterSortFunctor> _f;
+    osg::ref_ptr<DeclutterContext>     _context;
 };
 const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECLUTTER_BIN;
 
@@ -507,7 +520,7 @@ const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECL
 
 //static
 void
-Decluttering::setDeclutterPriorityFunctor( DeclutterPriorityFunctor* functor )
+Decluttering::setSortFunctor( DeclutterSortFunctor* functor )
 {
     // pull our prototype
     osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
@@ -520,7 +533,7 @@ Decluttering::setDeclutterPriorityFunctor( DeclutterPriorityFunctor* functor )
 }
 
 void
-Decluttering::clearDeclutterPriorityFunctor()
+Decluttering::clearSortFunctor()
 {
     // pull our prototype
     osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
@@ -562,6 +575,25 @@ Decluttering::getOptions()
     {
         return s_defaultOptions;
     }
+}
+
+//----------------------------------------------------------------------------
+
+bool
+DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
+{
+    const AnnotationData* lhsData = dynamic_cast<const AnnotationData*>(lhs->getDrawable()->getUserData());
+    if ( lhsData )
+    {
+        const AnnotationData* rhsData = dynamic_cast<const AnnotationData*>(rhs->getDrawable()->getUserData());
+        if ( rhsData )
+        {
+            return lhsData->getPriority() > rhsData->getPriority();
+        }
+    }
+
+    // fallback
+    return uintptr_t(lhs) < uintptr_t(rhs);
 }
 
 //----------------------------------------------------------------------------

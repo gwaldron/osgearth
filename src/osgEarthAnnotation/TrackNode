@@ -112,6 +112,9 @@ namespace osgEarth { namespace Annotation
          */
         osg::Drawable* getDrawable( const std::string& name ) const;
 
+    public: // override
+
+        virtual void setAnnotationData( AnnotationData* data );
 
     protected:
         osg::ref_ptr<osg::Image> _image;

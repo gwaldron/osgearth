@@ -129,7 +129,6 @@ struct TrackSimUpdate : public osg::Operation
 void
 createFieldSchema( TrackNodeFieldSchema& schema )
 {
-
     // draw the track name above the icon:
     TextSymbol* nameSymbol = new TextSymbol();
     nameSymbol->pixelOffset()->set( 0, 2+ICON_SIZE/2 );
@@ -178,8 +177,8 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
         // add a priority
         AnnotationData* data = new AnnotationData();
-        data->setPriority( (float)i );
-        track->setUserData( data );
+        data->setPriority( float(i) );
+        track->setAnnotationData( data );
 
         parent->addChild( track );
 
@@ -247,30 +246,37 @@ createControls( osgViewer::View* view )
         }
     };
 
-    grid->setControl( 0, r, new LabelControl("Simulation speed:") );
+    grid->setControl( 0, r, new LabelControl("Sim loop duration:") );
     LabelControl* speedLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_duration) );
     HSliderControl* speedSlider = grid->setControl( 1, r, new HSliderControl( 
         600.0, 30.0, *g_duration, new ChangeFloatOption(g_duration, speedLabel) ) );
+    speedSlider->setHorizFill( true, 200 );
 
-    grid->setControl( 0, ++r, new LabelControl("Scale threshold:") );
-    LabelControl* scaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minScale()) );
-    HSliderControl* scaleSlider = grid->setControl( 1, r, new HSliderControl( 
-        0.0, 1.0, *g_dcOptions.minScale(), new ChangeFloatOption(g_dcOptions.minScale(), scaleLabel) ) );
-    scaleSlider->setHorizFill( true, 200 );
+    grid->setControl( 0, ++r, new LabelControl("Min scale:") );
+    LabelControl* minScaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minScale()) );
+    grid->setControl( 1, r, new HSliderControl( 
+        0.0, 1.0, *g_dcOptions.minScale(), new ChangeFloatOption(g_dcOptions.minScale(), minScaleLabel) ) );
 
-    grid->setControl( 0, ++r, new LabelControl("Alpha threshold:") );
+#if 0
+    grid->setControl( 0, ++r, new LabelControl("Max scale:") );
+    LabelControl* maxScaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.maxScale()) );
+    grid->setControl( 1, r, new HSliderControl( 
+        0.1, 1.5, *g_dcOptions.maxScale(), new ChangeFloatOption(g_dcOptions.maxScale(), maxScaleLabel) ) );
+#endif
+
+    grid->setControl( 0, ++r, new LabelControl("Min alpha:") );
     LabelControl* alphaLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minAlpha()) );
-    HSliderControl* alphaSlider = grid->setControl( 1, r, new HSliderControl( 
+    grid->setControl( 1, r, new HSliderControl( 
         0.0, 1.0, *g_dcOptions.minAlpha(), new ChangeFloatOption(g_dcOptions.minAlpha(), alphaLabel) ) );
 
     grid->setControl( 0, ++r, new LabelControl("Activate speed:") );
     LabelControl* actLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.stepUp()) );
-    HSliderControl* actSlider = grid->setControl( 1, r, new HSliderControl( 
+    grid->setControl( 1, r, new HSliderControl( 
         0.01, 0.5, *g_dcOptions.stepUp(), new ChangeFloatOption(g_dcOptions.stepUp(), actLabel) ) );
 
     grid->setControl( 0, ++r, new LabelControl("Deactivate speed:") );
     LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.stepDown()) );
-    HSliderControl* deactSlider = grid->setControl( 1, r, new HSliderControl( 
+    grid->setControl( 1, r, new HSliderControl( 
         0.01, 0.5, *g_dcOptions.stepDown(), new ChangeFloatOption(g_dcOptions.stepDown(), deactLabel) ) );
 }
 
@@ -298,13 +304,18 @@ main(int argc, char** argv)
     TrackNodeFieldSchema schema;
     createFieldSchema( schema );
 
-    // create some track nodes, and activate decluttering by default.
+    // create some track nodes.
     TrackSims trackSims;
     osg::Group* tracks = new osg::Group();
     createTrackNodes( mapNode, tracks, schema, trackSims );
+    root->addChild( tracks );
+
+    // Set up the automatic decluttering. Anything in the custom render bin will be
+    // subject to decluttering; and the custom sorting functor will sort the tracks
+    // based on priority. (By default, objects are prioritized by distance-to-camera).
     g_declutterStateSet = tracks->getOrCreateStateSet();
     g_declutterStateSet->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
-    root->addChild( tracks );
+    Decluttering::setSortFunctor( new DeclutterByPriority() );
 
     // initialize a viewer.
     osgViewer::Viewer viewer( arguments );

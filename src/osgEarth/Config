@@ -340,6 +340,9 @@ namespace osgEarth
             return i == _refMap.end() ? 0 : dynamic_cast<X*>( i->second.get() );
         }
 
+        // remove everything from (this) that also appears in rhs
+        Config operator - ( const Config& rhs ) const;
+
     protected:
         std::string _key;
         std::string _defaultValue;

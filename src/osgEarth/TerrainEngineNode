@@ -47,6 +47,43 @@ namespace osgEarth
         /** Accesses the compositor that controls the rendering of image layers */
         TextureCompositor* getTextureCompositor() const { return _texCompositor.get(); }
 
+        /**
+         * A callback that is called when osgEarth pages in new terrain data.
+         * Note:  This callback will be called from a background thread and thus anything
+         *        you do in this callback should be threadsafe.
+         */
+        class TerrainChangedCallback : public osg::Referenced
+        {
+        public:
+            /**
+             *Called when new terrain data is paged in.
+             *@param tileKey
+             *       The tileKey for the terrain tile that is paged in.
+             *@param terrain
+             *       The osg::Node for the new terrain.  Note, this is only the terrain for the new tile, not the entire terrain.
+             */
+            virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain) {};
+        };
+
+        /**
+         * Adds a TerrainChangedCallback
+         */
+        void addTerrainChangedCallback( TerrainChangedCallback* callback );
+
+        /**
+         * Removes a TerrainChangedCallback
+         */
+        void removeTerrainChangedCallback( TerrainChangedCallback* callback);
+
+        /**
+         *Notifies this TerrainEngineNode that new data has been loaded for the given TileKey.         
+         *@param tileKey
+         *       The tileKey for the terrain tile that is paged in.
+         *@param terrain
+         *       The osg::Node for the new terrain.  Note, this is only the terrain for the new tile, not the entire terrain.
+         */    
+        void fireTerrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
+
     public: // Runtime properties
 
         /** Sets the scale factor to apply to elevation height values. Default is 1.0 */
@@ -145,6 +182,9 @@ namespace osgEarth
             INIT_POSTINIT_COMPLETE
         };
         InitStage _initStage;
+
+        typedef std::list< osg::ref_ptr< TerrainChangedCallback > > TerrainChangedCallbackList;
+        TerrainChangedCallbackList _terrainChangedCallbacks;
     };
 
     /**

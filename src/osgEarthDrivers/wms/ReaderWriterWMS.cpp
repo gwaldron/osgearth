@@ -87,9 +87,9 @@ public:
             capUrl = URI(
                 _options.url()->full() + 
                 sep + 
-                "SERVICE=WMS" +
-                "&VERSION=" + _options.wmsVersion().value() +
-                "&REQUEST=GetCapabilities" );
+                std::string("SERVICE=WMS") +
+                std::string("&VERSION=") + _options.wmsVersion().value() +
+                std::string("&REQUEST=GetCapabilities") );
         }
 
         //Try to read the WMS capabilities
@@ -254,6 +254,7 @@ public:
         // TODO
 
 		setProfile( result.get() );
+        OE_NOTICE << "[osgEarth::WMS] Profile=" << result->toString() << std::endl;
     }
 
     /* override */
@@ -333,7 +334,7 @@ public:
         {
             std::string extras;
             if ( _timesVec.size() == 1 )
-                extras = "TIME=" + _timesVec[0];
+                extras = std::string("TIME=") + _timesVec[0];
 
             HTTPResponse response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extras, progress, response );
@@ -359,7 +360,7 @@ public:
 
         for( unsigned int r=0; r<_timesVec.size(); ++r )
         {
-            std::string extraAttrs = "TIME=" + _timesVec[r];
+            std::string extraAttrs = std::string("TIME=") + _timesVec[r];
             HTTPResponse response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
             if ( reader )
@@ -405,7 +406,7 @@ public:
 
         for( unsigned int r=0; r<_timesVec.size(); ++r )
         {
-            std::string extraAttrs = "TIME=" + _timesVec[r];
+            std::string extraAttrs = std::string("TIME=") + _timesVec[r];
 
             HTTPResponse response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );

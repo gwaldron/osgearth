@@ -34,6 +34,7 @@
 #include <osgEarthSymbology/Color>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthDrivers/kml/KML>
+#include <osgEarthDrivers/ocean_surface/OceanSurface>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -48,6 +49,7 @@ usage( const std::string& msg )
     OE_NOTICE << std::endl;
     OE_NOTICE << "USAGE: osgearth_viewer [options] file.earth" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
+    OE_NOTICE << "   --ocean         : activates the ocean surface model" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
     OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
     OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
@@ -59,6 +61,7 @@ usage( const std::string& msg )
 static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
+static OceanSurfaceNode* s_ocean         =0L;
 static bool              s_dms           =false;
 static bool              s_mgrs          =false;
 
@@ -67,6 +70,33 @@ struct SkySliderHandler : public ControlEventHandler
     virtual void onValueChanged( class Control* control, float value )
     {
         s_sky->setDateTime( 2011, 3, 6, value );
+    }
+};
+
+struct ChangeSeaLevel : public ControlEventHandler
+{
+    virtual void onValueChanged( class Control* control, float value )
+    {
+        s_ocean->options().seaLevel() = value;
+        s_ocean->dirty();
+    }
+};
+
+struct ChangeLowFeather : public ControlEventHandler
+{
+    virtual void onValueChanged( class Control* control, float value )
+    {
+        s_ocean->options().lowFeatherOffset() = value;
+        s_ocean->dirty();
+    }
+};
+
+struct ChangeHighFeather : public ControlEventHandler
+{
+    virtual void onValueChanged( class Control* control, float value )
+    {
+        s_ocean->options().highFeatherOffset() = value;
+        s_ocean->dirty();
     }
 };
 
@@ -217,6 +247,57 @@ createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
 
         main->addControl( skyBox );
     }
+
+    // ocean sliders:
+    if ( s_ocean )
+    {
+        HBox* oceanBox1 = new HBox();
+        oceanBox1->setChildVertAlign( Control::ALIGN_CENTER );
+        oceanBox1->setChildSpacing( 10 );
+        oceanBox1->setHorizFill( true );
+        main->addControl( oceanBox1 );
+
+        oceanBox1->addControl( new LabelControl("Sea Level: ", 16) );
+
+        HSliderControl* mslSlider = new HSliderControl( -250.0f, 250.0f, 0.0f );
+        mslSlider->setBackColor( Color::Gray );
+        mslSlider->setHeight( 12 );
+        mslSlider->setHorizFill( true, 200 );
+        mslSlider->addEventHandler( new ChangeSeaLevel() );
+        oceanBox1->addControl( mslSlider );
+
+
+        HBox* oceanBox2 = new HBox();
+        oceanBox2->setChildVertAlign( Control::ALIGN_CENTER );
+        oceanBox2->setChildSpacing( 10 );
+        oceanBox2->setHorizFill( true );
+        main->addControl( oceanBox2 );
+
+        oceanBox2->addControl( new LabelControl("Low Feather: ", 16) );
+
+        HSliderControl* lfSlider = new HSliderControl( -1000.0, 250.0f, -100.0f );
+        lfSlider->setBackColor( Color::Gray );
+        lfSlider->setHeight( 12 );
+        lfSlider->setHorizFill( true, 200 );
+        lfSlider->addEventHandler( new ChangeLowFeather() );
+        oceanBox2->addControl( lfSlider );
+
+
+        HBox* oceanBox3 = new HBox();
+        oceanBox3->setChildVertAlign( Control::ALIGN_CENTER );
+        oceanBox3->setChildSpacing( 10 );
+        oceanBox3->setHorizFill( true );
+        main->addControl( oceanBox3 );
+
+        oceanBox3->addControl( new LabelControl("High Feather: ", 16) );
+
+        HSliderControl* hfSlider = new HSliderControl( -500.0f, 500.0f, -10.0f );
+        hfSlider->setBackColor( Color::Gray );
+        hfSlider->setHeight( 12 );
+        hfSlider->setHorizFill( true, 200 );
+        hfSlider->addEventHandler( new ChangeHighFeather() );
+        oceanBox3->addControl( hfSlider );
+    }
     
     canvas->addControl( main );
 
@@ -321,6 +402,7 @@ main(int argc, char** argv)
 
     bool useAutoClip  = arguments.read( "--autoclip" );
     bool useSky       = arguments.read( "--sky" );
+    bool useOcean     = arguments.read( "--ocean" );
     s_dms             = arguments.read( "--dms" );
     s_mgrs            = arguments.read( "--mgrs" );
 
@@ -362,16 +444,29 @@ main(int argc, char** argv)
                 root->addChild( s_sky );
             }
 
+            // Ocean surface.
+            if ( externals.hasChild( "ocean" ) )
+                useOcean = true;
+
+            if ( useOcean )
+            {
+                s_ocean = new OceanSurfaceNode( mapNode, externals.child("ocean") );
+                if ( s_ocean )
+                    root->addChild( s_ocean );
+            }
+
             if ( externals.hasChild("autoclip") )
+            {
                 useAutoClip = externals.child("autoclip").boolValue( useAutoClip );
+            }
 
             // the AutoClipPlaneHandler will automatically adjust the near/far clipping
             // planes based on your view of the horizon. This prevents near clipping issues
             // when you are very close to the ground. If your app never brings a user very
             // close to the ground, you may not need this.
-            if ( useSky || useAutoClip )
+            if ( useSky || useAutoClip || useOcean )
             {
-                viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
+                viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
             }
         }
 

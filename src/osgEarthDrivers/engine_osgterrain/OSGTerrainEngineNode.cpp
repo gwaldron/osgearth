@@ -266,6 +266,11 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     _terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
     _terrain->setSampleRatio  ( _terrainOptions.heightFieldSampleRatio().value() );
 
+    if (_terrainOptions.enableBlending().value())
+    {
+        _terrain->getOrCreateStateSet()->setMode(GL_BLEND , osg::StateAttribute::ON);    
+    }
+
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
     // install the proper layer composition technique:
@@ -281,7 +286,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
         CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
 
         // prepare the interpolation technique for generating triangles:
-        if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
+        if ( mapInfo.getElevationInterpolation() == INTERP_TRIANGULATE )
             tech->setOptimizeTriangleOrientation( false );
 
         _terrain->setTechniquePrototype( tech );
@@ -568,7 +573,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
             osg::ref_ptr<osg::HeightField> hf;
 
             if (hasElevation)
-                _update_mapf->getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value());
+                _update_mapf->getHeightField( key, true, hf, 0L);
 
             if (!hf.valid()) 
                 hf = OSGTileFactory::createEmptyHeightField( key );
@@ -603,7 +608,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
                 if (stile->getKey().getLevelOfDetail() == 1)
                 {
                     osg::ref_ptr<osg::HeightField> hf;
-                    _update_mapf->getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value());
+                    _update_mapf->getHeightField( key, true, hf, 0L);
                     if (!hf.valid()) 
                         hf = OSGTileFactory::createEmptyHeightField( key );
                     heightFieldLayer->setHeightField( hf.get() );

@@ -34,9 +34,6 @@
 
 #define LC "[HTTPClient] "
 
-//#undef  OE_DEBUG
-//#define OE_DEBUG OE_INFO
-
 using namespace osgEarth;
 
 //----------------------------------------------------------------------------
@@ -576,7 +573,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
 		std::string proxy_password = _proxySettings.get().password();
 		if (!proxy_username.empty() && !proxy_password.empty())
 		{
-			proxy_auth = proxy_username + ":" + proxy_password;
+            proxy_auth = proxy_username + std::string(":") + proxy_password;
 		}
 	}
 

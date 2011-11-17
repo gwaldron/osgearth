@@ -112,6 +112,26 @@ GeoMath::destination(double lat1Rad, double lon1Rad,
                                  cos(dR)-sin(lat1Rad)*sin(out_latRad));
 }
 
+namespace
+{
+    double slerp( double t, double from, double to )
+    {
+        osg::Quat q;
+        static osg::Vec3d axis(1,0,0);
+        q.slerp( t, osg::Quat(from, axis), osg::Quat(to, axis) );
+        return atan2( 2 * (q.y()*q.z() + q.w()*q.x()), (q.w()*q.w() - q.x()*q.x() - q.y()*q.y() + q.z() * q.z()));
+    }
+}
+
+void
+GeoMath::interpolate(double lat1Rad, double lon1Rad,
+                     double lat2Rad, double lon2Rad,
+                     double t,
+                     double& out_latRad, double& out_lonRad)
+{
+    out_latRad = slerp( t, lat1Rad, lat2Rad );
+    out_lonRad = slerp( t, lon1Rad, lon2Rad );
+}
 
 double
 GeoMath::rhumbDistance(double lat1Rad, double lon1Rad,

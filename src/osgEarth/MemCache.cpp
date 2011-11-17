@@ -42,7 +42,8 @@ namespace
         ReadResult readObject(const std::string& key,
                               double             maxAge )
         {
-            Threading::ScopedReadLock sharedLock( _mutex );
+            // sadly we must write-lock even to read, since get() alters the LRU list
+            Threading::ScopedWriteLock exclusiveLock( _mutex );
             MemCacheLRU::Record rec = _lru.get(key);
             // clone required since the cache is in memory
 
@@ -70,9 +71,9 @@ namespace
 
         bool write( const std::string& key, const osg::Object* object, const Config& meta )
         {
-            Threading::ScopedWriteLock exclusiveLock( _mutex );
             if ( object ) 
             {
+                Threading::ScopedWriteLock exclusiveLock( _mutex );
                 _lru.insert( key, std::make_pair(object, meta) );
                 return true;
             }
@@ -80,17 +81,10 @@ namespace
                 return false;
         }
 
-#if 0
-        bool writeString( const std::string& key, const std::string& buffer, const Config& meta )
-        {
-            return write( key, new StringObject(buffer), meta );
-        }
-#endif
-
         bool isCached( const std::string& key, double maxAge ) 
         {
             Threading::ScopedReadLock sharedLock( _mutex );
-            return _lru.get(key).valid();
+            return _lru.has(key);
         }
 
     private:

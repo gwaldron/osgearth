@@ -66,6 +66,9 @@ namespace osgEarth { namespace Drivers
         optional<std::string>& baseName() { return _baseName; }
         const optional<std::string>& baseName() const { return _baseName; }
 
+        optional<int>& terrainTileCacheSize() { return _terrainTileCacheSize; }
+        const optional<int>& terrainTileCacheSize() const { return _terrainTileCacheSize; }
+        
     public:
         VPBOptions( const TileSourceOptions& opt =TileSourceOptions() ) : TileSourceOptions( opt ),
             _primarySplitLevel( INT_MAX ),
@@ -73,7 +76,8 @@ namespace osgEarth { namespace Drivers
             _layer( 0 ),
             _widthLod0( 1 ),
             _heightLod0( 1 ),
-            _dirStruct( DS_NESTED )
+            _dirStruct( DS_NESTED ),
+            _terrainTileCacheSize(128)
         {
             setDriver( "vpb" );
             fromConfig( _conf );
@@ -90,6 +94,7 @@ namespace osgEarth { namespace Drivers
             conf.updateIfSet("num_tiles_wide_at_lod_0", _widthLod0 );
             conf.updateIfSet("num_tiles_high_at_lod_0", _heightLod0 );
             conf.updateIfSet("base_name", _baseName );
+            conf.updateIfSet("terrain_tile_cache_size", _terrainTileCacheSize);
             if ( _dirStruct.isSet() ) {
                 if ( _dirStruct == DS_FLAT ) conf.update("directory_structure", "flat");
                 else if ( _dirStruct == DS_TASK ) conf.update("directory_structure", "task");
@@ -114,6 +119,7 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("numTilesWideAtLod0", _widthLod0 );
             conf.getIfSet("numTilesHighAtLod0", _heightLod0 );
             conf.getIfSet("base_name", _baseName);
+            conf.getIfSet("terrain_tile_cache_size", _terrainTileCacheSize);
             
             std::string ds = conf.value("directory_structure");
             if ( ds == "flat" ) _dirStruct = DS_FLAT;
@@ -125,6 +131,7 @@ namespace osgEarth { namespace Drivers
         optional<std::string> _baseName, _layerSetName;
         optional<int>         _primarySplitLevel, _secondarySplitLevel, _layer, _widthLod0, _heightLod0;
         optional<DirectoryStructure> _dirStruct;
+        optional<int> _terrainTileCacheSize;
     };
 
 } } // namespace osgEarth::Drivers

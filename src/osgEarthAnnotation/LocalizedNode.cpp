@@ -200,6 +200,8 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
         cv = static_cast<osgUtil::CullVisitor*>( &nv );
+
+        // make sure that we're using the AutoTransform if this node is in the decluttering bin.
         bool declutter = cv->getCurrentRenderBin()->getName() == OSGEARTH_DECLUTTER_BIN;
         if ( declutter && getValue(0) == 1 )
         {
@@ -210,6 +212,7 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
             this->setSingleChildOn( 0 );
         }
 
+        // turn of small feature culling
         cv->setSmallFeatureCullingPixelSize(0.0f);
     }
 

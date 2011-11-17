@@ -95,11 +95,17 @@ public:
         // calculate and store the maximum LOD for which to return data
         if ( image.valid() )
         {
-            int minSpan = osg::minimum( image->s(), image->t() );
-            int tileSize = _options.tileSize().value();
-            _maxDataLevel = (int)LOG2((minSpan/tileSize)+1);
-            //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
-
+            if ( _options.maxDataLevel().isSet() )
+            {
+                _maxDataLevel = *_options.maxDataLevel();
+            }
+            else
+            {
+                int minSpan = osg::minimum( image->s(), image->t() );
+                int tileSize = _options.tileSize().value();
+                _maxDataLevel = (int)LOG2((minSpan/tileSize)+1);
+                //OE_NOTICE << "[osgEarth::OSG driver] minSpan=" << minSpan << ", _tileSize=" << tileSize << ", maxDataLevel = " << _maxDataLevel << std::endl;
+            }
             
             getDataExtents().push_back( DataExtent(overrideProfile->getExtent(), 0, _maxDataLevel) );
 

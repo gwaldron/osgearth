@@ -65,6 +65,17 @@ public:
                     break;
                 }
             }
+            
+            /*
+            if (result == LOCAL_FILE)
+            {
+                OE_NOTICE << filename << " is local" << std::endl;
+            }
+            else
+            {
+                OE_NOTICE << filename << " is remote" << std::endl;
+            } 
+            */
             //if ( engine->getTileFactory()->areChildrenCached( engine->getMap(), mapKey ) )
             //{
             //    result = LOCAL_FILE;

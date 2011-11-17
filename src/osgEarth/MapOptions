@@ -48,7 +48,8 @@ namespace osgEarth
             : ConfigOptions( options ),
               _cstype      ( CSTYPE_GEOCENTRIC ),
               _referenceURI(""),
-              _cachePolicy ( CachePolicy() )
+              _cachePolicy ( CachePolicy()),
+              _elevationInterpolation(INTERP_BILINEAR)
         {
             fromConfig(_conf);
         }
@@ -85,6 +86,13 @@ namespace osgEarth
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
 
+         /**
+         * The interpolation method to use when sampling heightfields.
+         */
+        optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
+        const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
+
+
     public:
         /**
          * A reference location that drivers can use to load data from relative locations.
@@ -110,6 +118,7 @@ namespace osgEarth
         optional<CachePolicy>          _cachePolicy;
         optional<CoordinateSystemType> _cstype;
         optional<std::string>          _referenceURI;
+        optional<ElevationInterpolation> _elevationInterpolation;
     };
 }
 

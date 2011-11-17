@@ -17,7 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
-#include <osgEarthSymbology/MeshConsolidator>
+#include <osgEarthFeatures/FeatureSourceNode>
+#include <osgEarthFeatures/FeatureSourceMeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ECEF>
 #include <osg/AutoTransform>
@@ -68,6 +69,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
     StringExpression  uriEx   = *symbol->url();
     NumericExpression scaleEx = *symbol->scale();
+    FeatureSource * source = (session!=NULL)?session->getFeatureSource():NULL;
 
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
@@ -153,11 +155,10 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         mat = scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
                     }
 
-                    osg::MatrixTransform* xform = new osg::MatrixTransform();
+                    FeatureSourceNode* xform = new FeatureSourceNode(source, input->getFID());
                     xform->setMatrix( mat );
-
+                    xform->setDataVariance( osg::Object::STATIC );
                     xform->addChild( model.get() );
-
                     attachPoint->addChild( xform );
 
                     // name the feature if necessary
@@ -180,12 +181,13 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 struct ClusterVisitor : public osg::NodeVisitor
 {
-        ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FilterContext& cx )
+        ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FeatureSourceMultiNode * featureNode, FilterContext& cx )
             : _features   ( features ),
               _symbol     ( symbol ),
               //_modelMatrix( modelMatrix ),
               _f2n        ( f2n ),
               _cx         ( cx ),
+              _featureNode(featureNode),
               osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
         {
             //nop
@@ -202,8 +204,13 @@ struct ClusterVisitor : public osg::NodeVisitor
             // save the geode's drawables..
             osg::Geode::DrawableList old_drawables = geode.getDrawableList();
 
+            //OE_DEBUG << "ClusterVisitor geode " << &geode << " featureNode=" << _featureNode << " drawables=" << old_drawables.size() << std::endl;
+
             // ..and clear out the drawables list.
             geode.removeDrawables( 0, geode.getNumDrawables() );
+            // ... and remove all drawables from the feature node
+            for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
+                _featureNode->removeDrawable(i->get());
 
             // foreach each drawable that was originally in the geode...
             for( osg::Geode::DrawableList::iterator i = old_drawables.begin(); i != old_drawables.end(); i++ )
@@ -259,6 +266,7 @@ struct ClusterVisitor : public osg::NodeVisitor
                                 
                                 // add the new cloned, translated drawable back to the geode.
                                 geode.addDrawable( newDrawable.get() );
+                                _featureNode->addDrawable(newDrawable.get(), feature->getFID());
                             }
                         }
 
@@ -268,7 +276,7 @@ struct ClusterVisitor : public osg::NodeVisitor
 
             geode.dirtyBound();
 
-            MeshConsolidator::run( geode );
+            FeatureSourceMeshConsolidator::run( geode, _featureNode );
 
             // merge the geometry. Not sure this is necessary
             osgUtil::Optimizer opt;
@@ -283,6 +291,7 @@ struct ClusterVisitor : public osg::NodeVisitor
         const MarkerSymbol*   _symbol;
         //osg::Matrixd          _modelMatrix;
         FeaturesToNodeFilter* _f2n;
+        FeatureSourceMultiNode * _featureNode;
     };
 
 
@@ -339,6 +348,8 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         }
     }
 
+    FeatureSource * source = (session!=NULL)?session->getFeatureSource():NULL;
+
     //For each model, cluster the features that use that marker
     for (MarkerToFeatures::iterator i = markerToFeatures.begin(); i != markerToFeatures.end(); ++i)
     {
@@ -349,11 +360,14 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         {
             osg::Node* clone = osg::clone( prototype, osg::CopyOp::DEEP_COPY_ALL );
 
+            FeatureSourceMultiNode * featureNode = new FeatureSourceMultiNode(source);
+
             // ..and apply the clustering to the copy.
-            ClusterVisitor cv( i->second, symbol, this, context );
+            ClusterVisitor cv( i->second, symbol, this, featureNode, context );
             clone->accept( cv );
 
-            attachPoint->addChild( clone );
+            featureNode->addChild(clone);
+            attachPoint->addChild( featureNode );
         }
     }
 

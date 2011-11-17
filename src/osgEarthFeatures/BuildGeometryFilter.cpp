@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/FeatureSourceMeshConsolidator>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -59,6 +59,7 @@ BuildGeometryFilter::reset()
 {
     _result = 0L;
     _geode = new osg::Geode();
+    _featureNode = new FeatureSourceMultiNode;
     _hasLines = false;
     _hasPoints = false;
     _hasPolygons = false;
@@ -282,6 +283,8 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
             // add the part to the geode.
+            _featureNode->addDrawable(osgGeom, input->getFID());
+
             _geode->addDrawable( osgGeom );
         }
     }
@@ -301,7 +304,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     // convert all geom to triangles and consolidate into minimal set of Geometries
     if ( !_featureNameExpr.isSet() )
     {
-        MeshConsolidator::run( *_geode.get() );
+        FeatureSourceMeshConsolidator::run( *_geode.get(), _featureNode );
     }
 
     osg::Node* result = 0L;
@@ -325,7 +328,9 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
 
-        result = delocalize( _geode.release() );
+        _featureNode->addChild(_geode.release());
+
+        result = delocalize( _featureNode.release() );
     }
     else
     {

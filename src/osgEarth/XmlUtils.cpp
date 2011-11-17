@@ -160,8 +160,8 @@ XmlElement::getText() const
         }
     }
 
-	std::string builderStr;
-	builderStr = builder.str();
+ 	 std::string builderStr;
+	 builderStr = builder.str();
     std::string result = trim( builderStr );
     return result;
 }
@@ -407,7 +407,8 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
     //Read the entire document into a string
     std::stringstream buffer;
     buffer << in.rdbuf();
-    std::string xmlStr(buffer.str()); 
+    std::string xmlStr;
+    xmlStr = buffer.str();
 
     removeDocType( xmlStr );
     //OE_NOTICE << xmlStr;
@@ -419,7 +420,8 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
     {
         std::stringstream buf;
         buf << xmlDoc.ErrorDesc() << " (row " << xmlDoc.ErrorRow() << ", col " << xmlDoc.ErrorCol() << ")";
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         OE_WARN << "Error in XML document: " << str << std::endl;
         if ( !uriContext.referrer().empty() )
             OE_WARN << uriContext.referrer() << std::endl;

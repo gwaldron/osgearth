@@ -135,7 +135,7 @@ HTTPRequest::addParameter( const std::string& name, int value )
 {
     std::stringstream buf;
     buf << value;
-	std::string bufStr;
+	 std::string bufStr;
     bufStr = buf.str();
     _parameters[name] = bufStr;
 }
@@ -145,7 +145,7 @@ HTTPRequest::addParameter( const std::string& name, double value )
 {
     std::stringstream buf;
     buf << value;
-	std::string bufStr;
+	 std::string bufStr;
     bufStr = buf.str();
     _parameters[name] = bufStr;
 }
@@ -172,8 +172,8 @@ HTTPRequest::getURL() const
             buf << ( i == _parameters.begin() && _url.find( "?" ) == std::string::npos? "?" : "&" );
             buf << i->first << "=" << i->second;
         }
-		std::string bufStr;
-		bufStr = buf.str();
+		 std::string bufStr;
+		 bufStr = buf.str();
         return bufStr;
     }
 }
@@ -233,8 +233,8 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 
 std::string
 HTTPResponse::getPartAsString( unsigned int n ) const {
-	std::string streamStr;
-	streamStr = _parts[n]->_stream.str();
+	 std::string streamStr;
+	 streamStr = _parts[n]->_stream.str();
     return streamStr;
 }
 

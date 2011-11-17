@@ -272,7 +272,9 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
         // yes, always use +north so we get Y relative to equator
         std::stringstream buf;
         buf << "+proj=utm +zone=" << (zone+1) << " +north +units=m";
-        osg::ref_ptr<SpatialReference> utm = SpatialReference::create( buf.str() );
+        std::string str;
+        str = buf.str();
+        osg::ref_ptr<SpatialReference> utm = SpatialReference::create(str );
 
         double utmX, utmY;
         if ( _refSRS->transform2D( lonDeg, latDeg, utm.get(), utmX, utmY ) == false )

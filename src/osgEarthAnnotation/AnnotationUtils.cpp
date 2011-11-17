@@ -85,33 +85,12 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     osg::StateSet* stateSet = t->getOrCreateStateSet();
 
     stateSet->setRenderBinToInherit();
-    
-    if ( installFadeShader )
-    {
-        // a custom fragment shader for drawing faded, textured geometry:
-        // btw, the "1.5" makes the text a little brighter and nicer-looking :)
-        static char s_frag[] =
-            "uniform float     fade; \n"
-            "uniform sampler2D tex0; \n"
-            "void main() { \n"
-            //"    if ( fade < 1.0 ) { fade = 0.0; } \n"
-            "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st).aaaa * vec4(1,1,1,fade*1.5); \n"
-            "} \n";
 
-        static osg::ref_ptr<osg::Program> s_program;
-        static Threading::Mutex s_programMutex;
-        if ( s_program == 0L )
-        {
-            Threading::ScopedMutexLock lock(s_programMutex);
-            if ( s_program == 0L )
-            {
-                s_program = new osg::Program();
-                s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
-            }
-        }
-
-        stateSet->setAttributeAndModes( s_program.get(), 1 );
-    }
+    // add the static "isText=true" uniform; this is a hint for the annotation shaders
+    // if they get installed.
+    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, "isText");
+    s_isTextUniform->set( true );
+    stateSet->addUniform( s_isTextUniform.get() );
 
     return t;
 }
@@ -165,31 +144,12 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
-    
-    if ( installFadeShader )
-    {
-        // a custom fragment shader for drawing faded, textured geometry:
-        static char s_frag[] =
-            "uniform float     fade; \n"
-            "uniform sampler2D tex0; \n"
-            "void main() { \n"
-            "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st) * vec4(1,1,1,fade); \n"
-            "} \n";
 
-        static osg::ref_ptr<osg::Program> s_program;
-        static Threading::Mutex s_programMutex;
-        if ( s_program == 0L )
-        {
-            Threading::ScopedMutexLock lock(s_programMutex);
-            if ( s_program == 0L )
-            {
-                s_program = new osg::Program();
-                s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
-            }
-        }
-
-        dstate->setAttributeAndModes( s_program.get(), 1 );
-    }
+    // add the static "isText=true" uniform; this is a hint for the annotation shaders
+    // if they get installed.
+    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, "isText");
+    s_isNotTextUniform->set( false );
+    dstate->addUniform( s_isNotTextUniform.get() );
 
     return geom;
 }
@@ -200,4 +160,40 @@ AnnotationUtils::createFadeUniform()
     osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, "fade");
     u->set( 1.0f );
     return u;
+}
+
+osg::Program*
+AnnotationUtils::getFadeProgram()
+{
+    static Threading::Mutex           s_mutex;
+    static osg::ref_ptr<osg::Program> s_program;
+
+    if ( !s_program.valid() )
+    {
+        Threading::ScopedMutexLock lock(s_mutex);
+        if ( !s_program.valid() )
+        {
+            // a custom fragment shader for drawing faded, textured geometry:
+            // btw, the "1.5" makes the text a little brighter and nicer-looking :)
+            static char s_frag[] =
+                "uniform float fade   = 1.0; \n"
+                "uniform bool  isText = false; \n"
+                "uniform sampler2D tex0; \n"
+                "void main() { \n"
+                "    if (isText) { \n"
+                "        float alpha = texture2D(tex0,gl_TexCoord[0].st).a; \n"
+                "        gl_FragColor = vec4( gl_Color.rgb, gl_Color.a * alpha * fade ); \n"
+                //"        gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st).aaaa * vec4(1,1,1,fade*1.5); \n"
+                "    } \n"
+                "    else { \n"
+                "        gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st) * vec4(1,1,1,fade); \n"
+                "    } \n"
+                "} \n";
+
+            s_program = new osg::Program();
+            s_program->setName( "osgEarth::Annotation::fade program");
+            s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
+        }
+    }
+    return s_program.get();
 }

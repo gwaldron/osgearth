@@ -201,7 +201,8 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
     {
         cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
-        // make sure that we're using the AutoTransform if this node is in the decluttering bin.
+        // make sure that we're NOT using the AutoTransform if this node is in the decluttering bin;
+        // the decluttering bin automatically manages screen space transformation.
         bool declutter = cv->getCurrentRenderBin()->getName() == OSGEARTH_DECLUTTER_BIN;
         if ( declutter && getValue(0) == 1 )
         {
@@ -212,7 +213,7 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
             this->setSingleChildOn( 0 );
         }
 
-        // turn of small feature culling
+        // turn off small feature culling
         cv->setSmallFeatureCullingPixelSize(0.0f);
     }
 
@@ -315,4 +316,10 @@ OrthoNode::setHorizonCulling( bool value )
             this->removeCullCallback( this->getCullCallback() );
         }
     }
+}
+
+void
+OrthoNode::setAnnotationData( AnnotationData* data )
+{
+    _annoData = data;
 }

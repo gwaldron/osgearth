@@ -21,35 +21,52 @@
 
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthSymbology/TextSymbol>
-#include <osgEarth/MapNode>
+#include <osgEarth/Containers>
 #include <osg/Image>
+#include <osgText/String>
 
+namespace osgEarth
+{ 
+    class MapNode;
+}
+    
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
 
-    typedef std::map<std::string, osg::ref_ptr<const TextSymbol> > TrackNodeFieldSchema;
-
-#if 0
-    class OSGEARTHANNO_EXPORT TrackNodeFieldSchema : public osg::Referenced 
+    /**
+     * Defines for a labeling field associated with a TrackNode. A TrackNode
+     * can have zero or more "fields", each being a text label rendered 
+     * along with the node's icon.
+     */
+    struct /*no-export*/ TrackNodeField
     {
-    public:
-        typedef std::map<std::string, osg::ref_ptr<const TextSymbol> > SymbolMap;
+        /**
+         * Constructs a new field definition.
+         * @param symbol  Text symbol describing the field's appearance and placement
+         * @param dynamic Whether the text label will be dynamic; i.e. whether the user
+         *                intends to update it at runtime. Setting this to "false" for a
+         *                static label yields better performance in a multithreaded app.
+         */
+        TrackNodeField( const TextSymbol* symbol, bool dynamic =true )
+            : _symbol(symbol), _dynamic(dynamic) { }
 
-    public:
-        TrackNodeFieldSchema();
+        /** other constructors (internal) */
+        TrackNodeField()
+            : _dynamic(true) { }
 
-        void insert( const std::string& name, const TextSymbol* symbol );
+        TrackNodeField( const TrackNodeField& rhs ) 
+            : _symbol(rhs._symbol.get()), _dynamic(rhs._dynamic) { }
 
-        const TextSymbol* get( const std::string& name ) const;
-
-        const SymbolMap& getSymbolMap() const { return _symbolMap; }
-
-    protected:
-        SymbolMap _symbolMap;
+        osg::ref_ptr<const TextSymbol> _symbol;
+        bool                           _dynamic;
     };
-#endif
+
+    /**
+     * Schema that maps field names to field definitions.
+     */
+    typedef fast_map<std::string, TrackNodeField> TrackNodeFieldSchema;
 
     /** 
      * TrackNode is a movable, single-point entity represented by an icon,
@@ -58,6 +75,13 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT TrackNode : public OrthoNode
     {
     public:
+        /**
+         * Constructs a new track node
+         * @param mapNode     Map node under which this track will live
+         * @param position    Initial position (in map coordinates)
+         * @param image       Icon image to use
+         * @param fieldSchema Schema for track label fields
+         */
         TrackNode(
             MapNode*                    mapNode,
             const osg::Vec3d&           position,
@@ -69,14 +93,35 @@ namespace osgEarth { namespace Annotation
          * @param name  Field name as identified in the field schema.
          * @param value Value to which to set the field label.
          */
-        void setFieldValue( const std::string& name, const std::string& value );
+        void setFieldValue( const std::string& name, const std::string& value ) { setFieldValue(name, osgText::String(value)); }
+        void setFieldValue( const std::string& name, const osgText::String& value );
+
+        /**
+         * Adds an arbitrary drawable to this track node. Useful for adding
+         * user-defined graphics.
+         * @param name     Name of the drawable (for later retrieval). The namespace
+         *                 should not conflict with that of the field schema.
+         * @param drawable Drawable to add.
+         */
+        void addDrawable( const std::string& name, osg::Drawable* drawable );
+
+        /**
+         * Gets a drawable (as previously added with addDrawable). 
+         * Note: Make sure that if you are modifying a drawable, mark it with a 
+         * DYNAMIC data variance so it will be thread-safe.
+         */
+        osg::Drawable* getDrawable( const std::string& name ) const;
+
+    public: // override
+
+        virtual void setAnnotationData( AnnotationData* data );
 
     protected:
-        osg::ref_ptr<osg::Image>                 _image;
-        //osg::ref_ptr<const TrackNodeFieldSchema> _fieldSchema;
+        osg::ref_ptr<osg::Image> _image;
+        class osg::Geode*        _geode;
 
-        typedef std::map<std::string, osg::Drawable*> FieldDrawables;
-        FieldDrawables _fieldDrawables;
+        typedef fast_map<std::string, osg::Drawable*> NamedDrawables;
+        NamedDrawables _namedDrawables;
 
         void init( const TrackNodeFieldSchema& schema );
     };

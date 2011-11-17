@@ -117,22 +117,40 @@ namespace
 
 // ---------------------------------------------------------------------------
 
-Control::Control() :
-_x(0), _y(0), _width(1), _height(1),
-_margin( Gutter(0) ),
-_padding( Gutter(2) ),
-_visible( true ),
-_valign( ALIGN_NONE ),
-_halign( ALIGN_NONE ),
-_backColor( osg::Vec4f(0,0,0,0) ),
-_foreColor( osg::Vec4f(1,1,1,1) ),
-_activeColor( osg::Vec4f(.4,.4,.4,1) ),
-_active( false ),
-_absorbEvents( false ),
-_hfill( false ),
-_vfill( false )
+Control::Control()
 {
-    //nop
+    init();
+}
+
+Control::Control( const Alignment& halign, const Alignment& valign, const Gutter& padding )
+{
+    init();
+
+    setHorizAlign( halign );
+    setVertAlign( valign );
+    setPadding( padding );
+}
+
+void
+Control::init()
+{
+    _x.init(0);
+    _y.init(0);
+    _width.init(1);
+    _height.init(1);
+    _valign.init( ALIGN_NONE );
+    _halign.init( ALIGN_NONE );
+    _backColor.init( osg::Vec4(0,0,0,0) );
+    _foreColor.init( osg::Vec4(1,1,1,1) );
+    _activeColor.init( osg::Vec4(.4,.4,.4,1) );
+
+    _margin = Gutter(0);
+    _padding = Gutter(2);
+    _hfill = false;
+    _vfill = false;    
+    _visible = true;
+    _active = false;
+    _absorbEvents = false;
 }
 
 void
@@ -786,19 +804,24 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
 
 // ---------------------------------------------------------------------------
 
-HSliderControl::HSliderControl( float min, float max, float value ) :
+HSliderControl::HSliderControl( float min, float max, float value, ControlEventHandler* handler) :
 _min(min),
 _max(max),
 _value(value)
 {
-   if ( _max <= _min )
-       _max = _min+1.0f;
-   if ( _value < _min )
-       _value = _min;
-   if ( _value > _max )
-       _value = _max;
+   //if ( _max <= _min )
+   //    _max = _min+1.0f;
+   //if ( _value < _min )
+   //    _value = _min;
+   //if ( _value > _max )
+   //    _value = _max;
 
    setHorizFill( true );
+   setVertAlign( ALIGN_CENTER );
+   setHeight( 20.0f );
+
+   if ( handler )
+    addEventHandler( handler );
 }
 
 void
@@ -813,7 +836,7 @@ HSliderControl::fireValueChanged()
 void
 HSliderControl::setValue( float value, bool notify )
 {
-    value = osg::clampBetween( value, _min, _max );
+    //value = osg::clampBetween( value, _min, _max );
     if ( value != _value )
     {
         _value = value;
@@ -1103,6 +1126,12 @@ _spacing( 1 )
     //nop
 }
 
+Container::Container( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing )
+: Control( halign, valign, padding )
+{
+    this->setChildSpacing( spacing );
+}
+
 void
 Container::setFrame( Frame* frame )
 {
@@ -1246,8 +1275,14 @@ VBox::VBox()
     //nop
 }
 
-void
-VBox::addControl( Control* control, int index )
+VBox::VBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing ) :
+Container( halign, valign, padding, spacing )
+{
+    //nop
+}
+
+Control*
+VBox::addControlImpl( Control* control, int index )
 {
     if ( index < 0 )
         _controls.push_back( control );
@@ -1257,6 +1292,8 @@ VBox::addControl( Control* control, int index )
 
     applyChildAligns();
     dirty();
+
+    return control;
 }
 
 void
@@ -1379,8 +1416,14 @@ HBox::HBox()
     //nop
 }
 
-void
-HBox::addControl( Control* control, int index )
+HBox::HBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing ) :
+Container( halign, valign, padding, spacing )
+{
+    //nop
+}
+
+Control*
+HBox::addControlImpl( Control* control, int index )
 {
     if ( index < 0 )
         _controls.push_back( control );
@@ -1391,6 +1434,8 @@ HBox::addControl( Control* control, int index )
     applyChildAligns();
 
     dirty();
+
+    return control;
 }
 
 void
@@ -1514,27 +1559,36 @@ Grid::Grid()
     //nop
 }
 
-void
-Grid::setControl( int col, int row, Control* child )
+Grid::Grid( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing ) :
+Container( halign, valign, padding, spacing )
 {
-    if ( !child ) return;
+    //nop
+}
 
-    expandToInclude( col, row );
+Control*
+Grid::setControlImpl( int col, int row, Control* child )
+{
+    if ( child )
+    {
+        expandToInclude( col, row );
 
-    Control* oldControl = cell( col, row ).get();
-    if ( oldControl ) {
-        ControlList::iterator i = std::find( _children.begin(), _children.end(), oldControl );
-        if ( i != _children.end() ) 
-            _children.erase( i );
+        Control* oldControl = cell( col, row ).get();
+        if ( oldControl ) {
+            ControlList::iterator i = std::find( _children.begin(), _children.end(), oldControl );
+            if ( i != _children.end() ) 
+                _children.erase( i );
+        }
+
+        cell( col, row ) = child;
+        _children.push_back( child );
+
+        child->setParent( this );
+        applyChildAligns();
+
+        dirty();
     }
 
-    cell( col, row ) = child;
-    _children.push_back( child );
-
-    child->setParent( this );
-    applyChildAligns();
-
-    dirty();
+    return child;
 }
 
 osg::ref_ptr<Control>&
@@ -1562,11 +1616,11 @@ Grid::expandToInclude( int col, int row )
     }
 }
 
-void
-Grid::addControl( Control* control, int index )
+Control*
+Grid::addControlImpl( Control* control, int index )
 {
     // creates a new row and puts the control in its first column
-    setControl( 0, _rows.size(), control );
+    return setControlImpl( 0, _rows.size(), control );
 }
 
 void
@@ -1578,7 +1632,7 @@ Grid::addControls( const ControlVector& controls )
     {
         if ( i->valid() )
         {
-            setControl( col, row, i->get() );
+            setControlImpl( col, row, i->get() );
         }
     }
 }
@@ -2223,14 +2277,15 @@ ControlCanvas::setAllowControlNodeOverlap( bool value )
     getControlNodeBin()->_sortingEnabled = !value;
 }
 
-void
-ControlCanvas::addControl( Control* control )
+Control*
+ControlCanvas::addControlImpl( Control* control )
 {
     osg::Geode* geode = new osg::Geode();
     _geodeTable[control] = geode;
     addChild( geode );
     control->dirty();    
     _controls.push_back( control );
+    return control;
 }
 
 void

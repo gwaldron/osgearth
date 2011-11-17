@@ -322,7 +322,9 @@ public:
             buf << "&BBOX=" << query.bounds().get().xMin() << "," << query.bounds().get().yMin() << ","
                             << query.bounds().get().xMax() << "," << query.bounds().get().yMax();
         }
-        return buf.str();
+        std::string str;
+        str = buf.str();
+        return str;
     }
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )

@@ -51,7 +51,8 @@ namespace
     {
         std::stringstream buf;
         buf << uid << "." << lod << "_" << x << "_" << y << ".osgearth_pseudo_fmg";
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         return str;
     }
 

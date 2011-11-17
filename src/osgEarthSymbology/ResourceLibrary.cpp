@@ -71,14 +71,18 @@ ResourceLibrary::ResourceLibrary( const Config& conf )
 void
 ResourceLibrary::mergeConfig( const Config& conf )
 {
-    // read skins
-    const ConfigSet skins = conf.children( "skin" );
-    for( ConfigSet::const_iterator i = skins.begin(); i != skins.end(); ++i )
+    for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i )
     {
-        addResource( new SkinResource(*i) );
+        const Config& child = *i;
+        if ( child.key() == "skin" )
+        {
+            addResource( new SkinResource(child) );
+        }
+        else if ( child.key() == "marker" )
+        {
+            addResource( new MarkerResource(child) );
+        }
     }
-
-    //todo: other types later..
 }
 
 void
@@ -88,6 +92,11 @@ ResourceLibrary::addResource( Resource* resource )
     {
         Threading::ScopedWriteLock exclusive(_mutex);
         _skins[resource->name()] = static_cast<SkinResource*>(resource);
+    }
+    else if ( dynamic_cast<MarkerResource*>(resource) )
+    {
+        Threading::ScopedWriteLock exclusive(_mutex);
+        _markers[resource->name()] = static_cast<MarkerResource*>(resource);
     }
     else
     {
@@ -200,4 +209,12 @@ ResourceLibrary::matches( const SkinSymbol* q, SkinResource* s ) const
     }
 
     return true;
+}
+
+MarkerResource*
+ResourceLibrary::getMarker( const std::string& name ) const
+{
+    Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
+    MarkerResourceMap::const_iterator i = _markers.find( name );
+    return i != _markers.end() ? i->second.get() : 0L;
 }

@@ -20,6 +20,7 @@
 #define OSGEARTH_ANNO_LOCALIZED_NODE_H 1
 
 #include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarth/SpatialReference>
 #include <osg/Transform>
 #include <osg/Switch>
@@ -126,6 +127,12 @@ namespace osgEarth { namespace Annotation
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
 
+        /**
+         * Annotation data attached to this annotation node.
+         */
+        virtual void setAnnotationData( AnnotationData* data );
+        AnnotationData* getAnnotationData() { return _annoData; }
+
     public: // osg::Node
 
         virtual void traverse( osg::NodeVisitor& nv );
@@ -135,6 +142,9 @@ namespace osgEarth { namespace Annotation
 
         /** Attaches a child node to the transforms. */
         void attach( osg::Node* transformChild );
+
+    protected:
+        osg::ref_ptr<AnnotationData>              _annoData;
 
     private:
         osg::observer_ptr<const SpatialReference> _mapSRS;

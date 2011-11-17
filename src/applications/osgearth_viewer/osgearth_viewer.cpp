@@ -169,8 +169,9 @@ struct MouseCoordsHandler : public osgGA::GUIEventHandler
                         << "Lat: " << f.format( Angular(lla.y(),Units::DEGREES), 4 ) << "  "
                         << "Lon: " << f.format( Angular(lla.x(),Units::DEGREES), 5 );
                 }
-
-                _label->setText( ss.str() );
+                std::string str;
+                str = ss.str();
+                _label->setText( str );
             }
             else
             {
@@ -214,7 +215,9 @@ createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
             const Viewpoint& vp = vps[i];
             std::stringstream buf;
             buf << (i+1);
-            Control* num = new LabelControl(buf.str(), 16.0f, osg::Vec4f(1,1,0,1));
+            std::string str;
+            str = buf.str();
+            Control* num = new LabelControl(str, 16.0f, osg::Vec4f(1,1,0,1));
             num->setPadding( 4 );
             g->setControl( 0, i, num );
 
@@ -492,6 +495,7 @@ main(int argc, char** argv)
         if ( !kmlFile.empty() )
         {
             KMLOptions kmlo;
+            kmlo.declutter() = true;
             kmlo.defaultIconImage() = osgDB::readImageFile("http://www.osgearth.org/chrome/site/pushpin_yellow.png");
 
             osg::Node* kml = KML::load( URI(kmlFile), mapNode, kmlo );

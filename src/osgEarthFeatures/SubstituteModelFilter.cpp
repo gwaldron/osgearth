@@ -83,6 +83,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
         if ( rec.valid() ) {
             marker = rec.value();
         }
+        else if ( _markerLib.valid() ) {
+            marker = _markerLib->getMarker( markerURI.base() );
+        }
         else {
             marker = new MarkerResource();
             marker->uri() = markerURI;
@@ -374,6 +377,21 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     if ( !symbol ) {
         OE_WARN << LC << "No MarkerSymbol found in style; cannot process feautres" << std::endl;
         return 0L;
+    }
+
+    _markerLib = 0L;
+
+    const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
+
+    if ( symbol->libraryName().isSet() )
+    {
+        _markerLib = sheet->getResourceLibrary( symbol->libraryName()->expr(), context.getDBOptions() );
+
+        if ( !_markerLib.valid() )
+        {
+            OE_WARN << LC << "Unable to load resource library '" << symbol->libraryName()->expr() << "'"
+                << "; may not find marker models." << std::endl;
+        }
     }
 
     FilterContext newContext( context );

@@ -142,6 +142,6 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     // apply decluttering if necessary
     if ( pNode && cx._options->declutter() == true && !cx._options->iconAndLabelGroup().valid() )
     {
-        pNode->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+        Decluttering::setEnabled( pNode->getOrCreateStateSet(), true );
     }
 }

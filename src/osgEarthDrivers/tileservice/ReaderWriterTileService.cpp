@@ -98,8 +98,8 @@ public:
             << "&y=" << y
             << "&." << _formatToUse; //Add this to trick osg into using the correct loader.
         std::string bufStr;
-		bufStr = buf.str();
-		return bufStr;
+		  bufStr = buf.str();
+		  return bufStr;
     }
 
     virtual std::string getExtension()  const 

@@ -49,8 +49,10 @@ public:
     virtual void onDistanceChanged(MeasureToolHandler* sender, double distance)
     {
         std::stringstream ss;
-        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl;        
-        _label->setText( ss.str() );
+        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl; 
+        std::string str;
+        str = ss.str();
+        _label->setText( str );
     }
     LabelControl* _label;
 };

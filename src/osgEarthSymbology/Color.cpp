@@ -156,7 +156,8 @@ Color::toHTML( Format format ) const
     buf << std::hex << std::setw(2) << std::setfill('0') << (int)(x*255.0f);
     buf << std::hex << std::setw(2) << std::setfill('0') << (int)(y*255.0f);
     buf << std::hex << std::setw(2) << std::setfill('0') << (int)(z*255.0f);
-    std::string ssStr = buf.str();
+    std::string ssStr;
+    ssStr = buf.str();
     return ssStr;
 }
 

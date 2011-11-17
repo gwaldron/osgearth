@@ -54,7 +54,7 @@ public:
         const FilterContext& context )
     {
         osg::Group* group = new osg::Group();
-        group->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+        Decluttering::setEnabled( group->getOrCreateStateSet(), true );
 
         StringExpression  contentExpr ( *symbol->content() );
         //NumericExpression priorityExpr( *text->priority() );

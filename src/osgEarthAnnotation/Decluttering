@@ -37,20 +37,30 @@ namespace osgEarth { namespace Annotation
      * is higher priority, otherwise FALSE. You can call setDeclutterPriorityFunctor()
      * to set a custom priority-sorting functor.
      */
-    struct DeclutterPriorityFunctor : public osg::Referenced
+    struct DeclutterSortFunctor : public osg::Referenced
     {
         virtual bool operator() ( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const =0;
     };
 
     /**
+     * A decluttering functor that sorts by the priority field in AnnotationData.
+     * AnnotationData should be attached to each Drawable's user data.
+     */
+    struct OSGEARTHANNO_EXPORT DeclutterByPriority : public DeclutterSortFunctor
+    {
+        virtual bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const;
+    };
+
+    /**
      * Options to control the annotation decluttering engine.
      */
-    class DeclutteringOptions
+    class /*header-only*/ DeclutteringOptions
     {
     public:
         DeclutteringOptions()
             : _minAlpha         ( 0.35f ),
               _minScale         ( 0.45f ),
+              _maxScale         ( 1.00f ),
               _stepDown         ( 0.05f ),
               _stepUp           ( 0.05f )
         {
@@ -63,6 +73,10 @@ namespace osgEarth { namespace Annotation
         optional<float>& minScale() { return _minScale; }
         const optional<float>& minScale() const { return _minScale; }
 
+        // not yet implemented
+        optional<float>& maxScale() { return _maxScale; }
+        const optional<float>& maxScale() const { return _maxScale; }
+
         optional<float>& stepDown() { return _stepDown; }
         const optional<float>& stepDown() const { return _stepDown; }
 
@@ -73,22 +87,28 @@ namespace osgEarth { namespace Annotation
     protected:
         optional<float> _minAlpha;
         optional<float> _minScale;
+        optional<float> _maxScale;
         optional<float> _stepDown;
         optional<float> _stepUp;
     };
 
-    struct Decluttering
+    struct OSGEARTHANNO_EXPORT Decluttering
     {
+        /**
+         * Activates decluttering on a stateset.
+         */
+        static void setEnabled( osg::StateSet* stateSet, bool enabled, int binNum =INT_MAX );
+
         /**
          * Sets a functor to use to determine render leaf priority for declutter sorting.
          */
-        static void setDeclutterPriorityFunctor( DeclutterPriorityFunctor* f );
+        static void setSortFunctor( DeclutterSortFunctor* f );
 
         /**
          * Clears a custom priority functor that was set using setDeclutterPriorityFunctor,
          * reverting to the default behavior (which is to sort by distance from the camera).
          */
-        static void clearDeclutterPriorityFunctor();
+        static void clearSortFunctor();
 
         /**
          * Applies the provided options to the decluttering engine.

@@ -19,9 +19,11 @@
 
 #include <osgEarthAnnotation/TrackNode>
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarth/Utils>
+#include <osgEarth/MapNode>
 #include <osg/Depth>
 #include <osgText/Text>
+
+#define LC "[TrackNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -43,7 +45,7 @@ _image      ( image )
 void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
-    osg::Geode* geode = new osg::Geode();
+    _geode = new osg::Geode();
 
     if ( !schema.empty() )
     {
@@ -51,17 +53,25 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
         // set the field text later.
         for( TrackNodeFieldSchema::const_iterator i = schema.begin(); i != schema.end(); ++i )
         {
-            const TextSymbol* ts = i->second.get();
-            if ( ts )
+            const TrackNodeField& field = i->second;
+            if ( field._symbol.valid() )
             {
                 osg::Drawable* drawable = AnnotationUtils::createTextDrawable( 
-                    osgEarth::EMPTY_STRING, ts, osg::Vec3(0,0,0), true );
+                    field._symbol->content()->expr(),   // text
+                    field._symbol.get(),                // symbol
+                    osg::Vec3(0,0,0),                   // offset
+                    true );                             // install fade shader
 
                 if ( drawable )
                 {
-                    drawable->setDataVariance( osg::Object::DYNAMIC );
-                    geode->addDrawable( drawable );
-                    _fieldDrawables[i->first] = drawable;
+                    // if the user intends to change the label later, make it dynamic
+                    // since osgText updates are not thread-safe
+                    if ( field._dynamic )
+                        drawable->setDataVariance( osg::Object::DYNAMIC );
+                    else
+                        drawable->setDataVariance( osg::Object::STATIC );
+
+                    addDrawable( i->first, drawable );
                 }
             }
         }
@@ -71,31 +81,77 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
     {
         // apply the image icon.
         osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
-            _image.get(), osg::Vec2s(0,0), true );
+            _image.get(),             // image
+            osg::Vec2s(0,0),          // offset
+            true );                   // install fade shader
 
         if ( imageGeom )
         {
-            geode->addDrawable( imageGeom );
+            _geode->addDrawable( imageGeom );
         }
     }
-    
-    // ensure depth testing always passes, and disable depth bugger writes.
-    osg::StateSet* stateSet = geode->getOrCreateStateSet();
+
+    // ensure depth testing always passes, and disable depth buffer writes.
+    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    this->attach( geode );
+    this->attach( _geode );
 }
 
 void
-TrackNode::setFieldValue( const std::string& name, const std::string& value )
+TrackNode::setFieldValue( const std::string& name, const osgText::String& value )
 {
-    FieldDrawables::const_iterator i = _fieldDrawables.find(name);
-    if ( i != _fieldDrawables.end() )
+    NamedDrawables::const_iterator i = _namedDrawables.find(name);
+
+    if ( i != _namedDrawables.end() )
     {
-        osgText::Text* drawable = static_cast<osgText::Text*>( i->second );
+        osgText::Text* drawable = dynamic_cast<osgText::Text*>( i->second );
         if ( drawable )
         {
-            drawable->setText( value );
+            // only permit updates if the field was declared dynamic, OR
+            // this node is not connected yet
+            if (drawable->getDataVariance() == osg::Object::DYNAMIC || this->getNumParents() == 0)
+            {
+                // btw, setText checks for assigning an equal value, so we don't have to
+                drawable->setText( value );             
+            }
+            else
+            {
+                OE_WARN << LC 
+                    << "Illegal: attempt to modify a TrackNode field value that is not marked as dynamic"
+                    << std::endl;
+            }
         }
+    }
+}
+
+void
+TrackNode::addDrawable( const std::string& name, osg::Drawable* drawable )
+{
+    // attach the annotation data to the drawable:
+    if ( _annoData.valid() )
+        drawable->setUserData( _annoData.get() );
+
+    _namedDrawables[name] = drawable;
+    _geode->addDrawable( drawable );
+}
+
+osg::Drawable*
+TrackNode::getDrawable( const std::string& name ) const
+{
+    NamedDrawables::const_iterator i = _namedDrawables.find(name);
+    return i != _namedDrawables.end() ? i->second : 0L;
+}
+
+void
+TrackNode::setAnnotationData( AnnotationData* data )
+{
+    OrthoNode::setAnnotationData( data );
+
+    // override this method so we can attach the anno data to the drawables.
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        i->get()->setUserData( data );
     }
 }

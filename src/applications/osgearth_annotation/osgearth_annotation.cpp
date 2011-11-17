@@ -78,7 +78,7 @@ main(int argc, char** argv)
 
     // make a group for 2D items, and apply decluttering to it.
     osg::Group* labelGroup = new osg::Group();
-    labelGroup->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+    Decluttering::setEnabled( labelGroup->getOrCreateStateSet(), true );
     annoGroup->addChild( labelGroup );
 
     osg::Image* pushpin = osgDB::readImageFile( "../data/placemark32.png" );

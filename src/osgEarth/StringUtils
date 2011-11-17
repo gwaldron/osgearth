@@ -154,6 +154,11 @@ namespace osgEarth
         return vec3fToString(value);
     }
 
+    /**
+     * Assembles and returns an inline string using a stream-like << operator.
+     * Example: 
+     *     std::string str = Stringify() << "Hello, world " << variable;
+     */
     struct Stringify
     {
         operator std::string () const
@@ -163,28 +168,23 @@ namespace osgEarth
             return result;
         }
 
-        Stringify& operator << (bool val) { buf << val; return (*this); }
-        Stringify& operator << (short val) { buf << val; return (*this); }
-        Stringify& operator << (unsigned short val) { buf << val; return (*this); }
-        Stringify& operator << (int val) { buf << val; return (*this); }
-        Stringify& operator << (unsigned int val) { buf << val; return (*this); }
-        Stringify& operator << (long val) { buf << val; return (*this); }
-        Stringify& operator << (unsigned long val) { buf << val; return (*this); }
-        Stringify& operator << (float val) { buf << val; return (*this); }
-        Stringify& operator << (double val) { buf << val; return (*this); }
-        Stringify& operator << (long double val) { buf << val; return (*this); }
-        Stringify& operator << (const void* val) { buf << val; return (*this); }
-        Stringify& operator << (char val) { buf << val; return (*this); }
-        Stringify& operator << (signed char val) { buf << val; return (*this); }
-        Stringify& operator << (unsigned char val) { buf << val; return (*this); }
-        Stringify& operator << (const char* val) { buf << val; return (*this); }
-        Stringify& operator << (const signed char* val) { buf << val; return (*this); }
-        Stringify& operator << (const unsigned char* val) { buf << val; return (*this); }
-        Stringify& operator << (const std::string& val) { buf << val; return (*this); }
-        Stringify& operator << (std::streambuf* val) { buf << val; return (*this); }
-        Stringify& operator << (std::ostream& (*val)(std::ostream&)) { buf << val; return (*this); }
-        Stringify& operator << (std::ios& (*val)(std::ostream&)) { buf << val; return (*this); }
-        Stringify& operator << (std::ios_base& (*val)(std::ios_base&)) { buf << val; return (*this); }
+        template<typename T>
+        Stringify& operator << (const T& val) { buf << val; return (*this); }
+
+        template<>
+        Stringify& operator << <bool>(const bool& val) { buf << (val ? "true" : "false"); return (*this); }
+
+        template<>
+        Stringify& operator << <osg::Vec3f>(const osg::Vec3f& val) {
+            buf << val.x() << ", " << val.y() << ", " << val.z(); return (*this); }
+        
+        template<>
+        Stringify& operator << <osg::Vec3d>(const osg::Vec3d& val ) {
+            buf << val.x() << ", " << val.y() << ", " << val.z(); return (*this); }
+
+        template<>
+        Stringify& operator << <osg::Vec4f>(const osg::Vec4f& val) {
+            buf << val.r() << ", " << val.g() << ", " << val.b() << ", " << val.a(); return (*this); }
 
     protected:
         std::stringstream buf;

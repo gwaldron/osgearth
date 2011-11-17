@@ -171,6 +171,44 @@ namespace
     static unsigned UPS_COL_ALPHABET_SIZE = 18;
     static char*    UPS_ROW_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";  // omit I, O
     static unsigned UPS_ROW_ALPHABET_SIZE = 24;
+
+    static std::string s_lateralZoneSpecs[] = {
+        "+proj=utm +zone=1 +north +units=m",  "+proj=utm +zone=2 +north +units=m",
+        "+proj=utm +zone=3 +north +units=m",  "+proj=utm +zone=4 +north +units=m",
+        "+proj=utm +zone=5 +north +units=m",  "+proj=utm +zone=6 +north +units=m",
+        "+proj=utm +zone=7 +north +units=m",  "+proj=utm +zone=8 +north +units=m",
+        "+proj=utm +zone=9 +north +units=m",  "+proj=utm +zone=10 +north +units=m",
+        "+proj=utm +zone=11 +north +units=m", "+proj=utm +zone=12 +north +units=m",
+        "+proj=utm +zone=13 +north +units=m", "+proj=utm +zone=14 +north +units=m",
+        "+proj=utm +zone=15 +north +units=m", "+proj=utm +zone=16 +north +units=m",
+        "+proj=utm +zone=17 +north +units=m", "+proj=utm +zone=18 +north +units=m",
+        "+proj=utm +zone=19 +north +units=m", "+proj=utm +zone=20 +north +units=m",
+        "+proj=utm +zone=21 +north +units=m", "+proj=utm +zone=22 +north +units=m",
+        "+proj=utm +zone=23 +north +units=m", "+proj=utm +zone=24 +north +units=m",
+        "+proj=utm +zone=25 +north +units=m", "+proj=utm +zone=26 +north +units=m",
+        "+proj=utm +zone=27 +north +units=m", "+proj=utm +zone=28 +north +units=m",
+        "+proj=utm +zone=29 +north +units=m", "+proj=utm +zone=30 +north +units=m",
+        "+proj=utm +zone=31 +north +units=m", "+proj=utm +zone=32 +north +units=m",
+        "+proj=utm +zone=33 +north +units=m", "+proj=utm +zone=34 +north +units=m",
+        "+proj=utm +zone=35 +north +units=m", "+proj=utm +zone=36 +north +units=m",
+        "+proj=utm +zone=37 +north +units=m", "+proj=utm +zone=38 +north +units=m",
+        "+proj=utm +zone=39 +north +units=m", "+proj=utm +zone=40 +north +units=m",
+        "+proj=utm +zone=41 +north +units=m", "+proj=utm +zone=42 +north +units=m",
+        "+proj=utm +zone=43 +north +units=m", "+proj=utm +zone=44 +north +units=m",
+        "+proj=utm +zone=45 +north +units=m", "+proj=utm +zone=46 +north +units=m",
+        "+proj=utm +zone=47 +north +units=m", "+proj=utm +zone=48 +north +units=m",
+        "+proj=utm +zone=49 +north +units=m", "+proj=utm +zone=50 +north +units=m",
+        "+proj=utm +zone=51 +north +units=m", "+proj=utm +zone=52 +north +units=m",
+        "+proj=utm +zone=53 +north +units=m", "+proj=utm +zone=54 +north +units=m",
+        "+proj=utm +zone=55 +north +units=m", "+proj=utm +zone=56 +north +units=m",
+        "+proj=utm +zone=57 +north +units=m", "+proj=utm +zone=58 +north +units=m",
+        "+proj=utm +zone=59 +north +units=m", "+proj=utm +zone=60 +north +units=m"
+    };
+
+    static std::string s_polarZoneSpecs[] = {
+        "+proj=stere +lat_ts=90 +lat_0=90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0",   // north
+        "+proj=stere +lat_ts=-90 +lat_0=-90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0"  // south
+    };
 }
 
 MGRSFormatter::MGRSFormatter(Precision               precision,
@@ -229,9 +267,10 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
         zone = 0;
         gzd = isNorth ? (lonDeg < 0.0 ? 'Y' : 'Z') : (lonDeg < 0.0? 'A' : 'B');
 
-        osg::ref_ptr<const SpatialReference> ups = isNorth?
-            SpatialReference::create( "+proj=stere +lat_ts=90 +lat_0=90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0" ) :
-            SpatialReference::create( "+proj=stere +lat_ts=-90 +lat_0=-90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0" );
+        osg::ref_ptr<const SpatialReference> ups =
+            const_cast<MGRSFormatter*>(this)->_srsCache[ s_polarZoneSpecs[isNorth?0:1] ];
+        if (!ups.valid())
+            ups = SpatialReference::create( s_polarZoneSpecs[isNorth?0:1] );
 
         if ( !ups.valid() )
         {
@@ -270,9 +309,12 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
 
         // convert the input coordinates to UTM:
         // yes, always use +north so we get Y relative to equator
-        std::stringstream buf;
-        buf << "+proj=utm +zone=" << (zone+1) << " +north +units=m";
-        osg::ref_ptr<SpatialReference> utm = SpatialReference::create( buf.str() );
+
+        // using an SRS cache speed things up a lot..
+        osg::ref_ptr<const SpatialReference>& utm = 
+            const_cast<MGRSFormatter*>(this)->_srsCache[s_lateralZoneSpecs[zone]];
+        if ( !utm.valid() )
+            utm = SpatialReference::create( s_lateralZoneSpecs[zone] );
 
         double utmX, utmY;
         if ( _refSRS->transform2D( lonDeg, latDeg, utm.get(), utmX, utmY ) == false )

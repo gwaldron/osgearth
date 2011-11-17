@@ -296,11 +296,14 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
             if ( !isText || !fullyOut )
             {
-                leaves.push_back( leaf );
+                if ( info._lastAlpha > 0.0f && info._lastScale >= 0.0f )
+                {
+                    leaves.push_back( leaf );
 
-                // scale it:
-                if ( info._lastScale != 1.0f )
-                    leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                    // scale it:
+                    if ( info._lastScale != 1.0f )
+                        leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                }
             }
 
         }
@@ -325,7 +328,7 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
     {
         // create the fade uniform.
         _fade = AnnotationUtils::createFadeUniform();
-        _fade->set( 0.5f );
+        _fade->set( 1.0f );
     }
 
     /**

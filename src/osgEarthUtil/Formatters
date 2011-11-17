@@ -141,6 +141,8 @@ namespace osgEarth { namespace Util
         bool                                 _useAL;
         Precision                            _precision;
         unsigned                             _options;
+
+        std::map<std::string, osg::ref_ptr<const SpatialReference>> _srsCache;
     };
 
 } } // namespace osgEarth::Util

@@ -60,6 +60,19 @@ namespace
     };
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
+    
+    typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
+
+    // data stored per-view
+    struct PerViewInfo
+    {
+        DrawableMemory _memory;
+        
+        // re-usable structures
+        osgUtil::RenderBin::RenderLeafList _passed;
+        osgUtil::RenderBin::RenderLeafList _failed;
+        std::vector<RenderLeafBox>         _used;
+    };
 }
 
 //----------------------------------------------------------------------------
@@ -83,7 +96,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
     DeclutterPriorityFunctor* _f;
     DeclutterContext*         _context;
 
-    Threading::PerObjectMap<osg::View*, DrawableMemory> _memoryPerView;
+    Threading::PerObjectMap<osg::View*, PerViewInfo> _perView;
 
     /**
      * Constructs the new sorter.
@@ -120,16 +133,12 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             return;
 
         // access the drawable memory for this view:
-        DrawableMemory& memory = _memoryPerView.get( bin->getStage()->getCamera()->getView() );
+        PerViewInfo& local = _perView.get( bin->getStage()->getCamera()->getView() );
         
-        // List of render leaves that pass the initial visibility test
-        osgUtil::RenderBin::RenderLeafList passed, failed;
-        passed.reserve( leaves.size() );
-        failed.reserve( leaves.size() );
-
-        // list of occlusion boxes - pairs the drawable's parent with the bounding box.
-        typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
-        std::vector<RenderLeafBox> used;
+        // Reset the local vectors
+        local._passed.clear();          // drawables that pass occlusion test
+        local._failed.clear();          // drawables that fail occlusion test
+        local._used.clear();            // list of occupied bounding boxes in screen space
 
         // compute a window matrix so we can do window-space culling:
         const osg::Viewport* vp = bin->getStage()->getCamera()->getViewport();
@@ -174,7 +183,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 // weed out any drawables that are obscured by closer drawables.
                 // TODO: think about a more efficient algorithm - right now we are just using
                 // brute force to compare all bbox's
-                for( std::vector<RenderLeafBox>::const_iterator j = used.begin(); j != used.end(); ++j )
+                for( std::vector<RenderLeafBox>::const_iterator j = local._used.begin(); j != local._used.end(); ++j )
                 {
                     // only need a 2D test since we're in clip space
                     bool isClear =
@@ -197,8 +206,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             {
                 // passed the test, so add the leaf's bbox to the "used" list, and add the leaf
                 // to the final draw list.
-                used.push_back( std::make_pair(drawableParent, box) );
-                passed.push_back( leaf );
+                local._used.push_back( std::make_pair(drawableParent, box) );
+                local._passed.push_back( leaf );
             }
 
             else
@@ -206,7 +215,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 // culled, so put the parent in the parents list so that any future leaves
                 // with the same parent will be trivially rejected
                 culledParents.insert( drawable->getParent(0) );
-                failed.push_back( leaf );
+                local._failed.push_back( leaf );
             }
 
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
@@ -224,14 +233,14 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         const DeclutteringOptions& options = _context->_options;
 
         leaves.clear();
-        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=passed.begin(); i != passed.end(); ++i )
+        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._passed.begin(); i != local._passed.end(); ++i )
         {
             osgUtil::RenderLeaf* leaf     = *i;
             const osg::Drawable* drawable = leaf->getDrawable();
 
             if ( culledParents.find( drawable->getParent(0) ) == culledParents.end() )
             {
-                DrawableInfo& info = memory[drawable];
+                DrawableInfo& info = local._memory[drawable];
 
                 bool fullyIn = true;
 
@@ -260,18 +269,18 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             }
             else
             {
-                failed.push_back(leaf);
+                local._failed.push_back(leaf);
             }
         }
 
         // next, go through the FAILED list and sort them into failure bins so we can draw
         // them using a different technique if necessary.
-        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=failed.begin(); i != failed.end(); ++i )
+        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._failed.begin(); i != local._failed.end(); ++i )
         {
             osgUtil::RenderLeaf* leaf =     *i;
             const osg::Drawable* drawable = leaf->getDrawable();
 
-            DrawableInfo& info = memory[drawable];
+            DrawableInfo& info = local._memory[drawable];
 
             bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
             bool fullyOut = true;

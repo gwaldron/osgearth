@@ -22,6 +22,7 @@
 #include <osgEarthAnnotation/Common>
 #include <osgEarth/Config>
 #include <osg/Drawable>
+#include <limits.h>
 
 /**
  * To apply the "decluttering" algorithm to a subgraph, call

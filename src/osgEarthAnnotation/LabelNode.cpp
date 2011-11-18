@@ -37,7 +37,8 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const TextSymbol*   symbol ) :
 
 OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
-_text( text )
+_text    ( text ),
+_geode   ( 0L )
 {
     init( symbol );
 }
@@ -59,13 +60,26 @@ LabelNode::init( const TextSymbol* symbol )
     // The following setup will result is a proper dynamic bounding box for the text.
     // If you just use osgText's rotate-to-screen and SCREEN_COORDS setup, you do not
     // get a proper bounds.
-    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0), true );
+    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
 
     osg::StateSet* stateSet = t->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( t );
+    _geode = new osg::Geode();
+    _geode->addDrawable( t );
 
-    this->attach( geode );
+    this->attach( _geode );
+}
+
+void
+LabelNode::setAnnotationData( AnnotationData* data )
+{
+    OrthoNode::setAnnotationData( data );
+
+    // override this method so we can attach the anno data to the drawables.
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        i->get()->setUserData( data );
+    }
 }

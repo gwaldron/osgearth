@@ -41,8 +41,7 @@ namespace osgEarth { namespace Annotation
         static osg::Drawable* createTextDrawable(
             const std::string& text,
             const TextSymbol*  symbol,
-            const osg::Vec3&   positionOffset,
-            bool               installFadeShader =false);
+            const osg::Vec3&   positionOffset );
 
         /**
          * Creates the basic geometry to draw an image texture-mapped to
@@ -51,7 +50,6 @@ namespace osgEarth { namespace Annotation
         static osg::Geometry* createImageGeometry(
             osg::Image*       image,
             const osg::Vec2s& pixelOffsets,
-            bool              installFadeShader =false,
             unsigned          textureUnit       =0 );
 
         /**

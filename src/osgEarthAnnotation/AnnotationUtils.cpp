@@ -29,8 +29,7 @@ using namespace osgEarth::Annotation;
 osg::Drawable* 
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
-                                    const osg::Vec3&   positionOffset,
-                                    bool               installFadeShader)
+                                    const osg::Vec3&   positionOffset )
                                     
 {
     osgText::Text* t = new osgText::Text();
@@ -98,7 +97,6 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 osg::Geometry*
 AnnotationUtils::createImageGeometry(osg::Image*       image,
                                      const osg::Vec2s& pixelOffset,
-                                     bool              installFadeShader,
                                      unsigned          textureUnit )
 {
     if ( !image )

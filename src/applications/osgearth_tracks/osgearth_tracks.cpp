@@ -63,10 +63,11 @@ using namespace osgEarth::Symbology;
 static MGRSFormatter s_format(MGRSFormatter::PRECISION_10000M);
 
 // globals for this demo
-osg::StateSet*  g_declutterStateSet = 0L;
-bool            g_showCoords        = true;
-optional<float> g_duration          = 60.0;
-unsigned        g_numTracks         = 500;
+osg::StateSet*      g_declutterStateSet = 0L;
+bool                g_showCoords        = true;
+optional<float>     g_duration          = 60.0;
+unsigned            g_numTracks         = 500;
+DeclutteringOptions g_dcOptions;
 
 
 /** Prints an error message */
@@ -231,7 +232,6 @@ createControls( osgViewer::View* view )
     grid->setChildSpacing( 6 );
 
     unsigned r=0;
-    static DeclutteringOptions g_dcOptions = Decluttering::getOptions();
 
     // event handler for changing decluttering options
     struct ChangeFloatOption : public ControlEventHandler {
@@ -252,31 +252,24 @@ createControls( osgViewer::View* view )
     speedSlider->setHorizFill( true, 200 );
 
     grid->setControl( 0, ++r, new LabelControl("Min scale:") );
-    LabelControl* minScaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minScale()) );
+    LabelControl* minAnimationScaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minAnimationScale()) );
     grid->setControl( 1, r, new HSliderControl( 
-        0.0, 1.0, *g_dcOptions.minScale(), new ChangeFloatOption(g_dcOptions.minScale(), minScaleLabel) ) );
-
-#if 0
-    grid->setControl( 0, ++r, new LabelControl("Max scale:") );
-    LabelControl* maxScaleLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.maxScale()) );
-    grid->setControl( 1, r, new HSliderControl( 
-        0.1, 1.5, *g_dcOptions.maxScale(), new ChangeFloatOption(g_dcOptions.maxScale(), maxScaleLabel) ) );
-#endif
+        0.0, 1.0, *g_dcOptions.minAnimationScale(), new ChangeFloatOption(g_dcOptions.minAnimationScale(), minAnimationScaleLabel) ) );
 
     grid->setControl( 0, ++r, new LabelControl("Min alpha:") );
-    LabelControl* alphaLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minAlpha()) );
+    LabelControl* alphaLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.minAnimationAlpha()) );
     grid->setControl( 1, r, new HSliderControl( 
-        0.0, 1.0, *g_dcOptions.minAlpha(), new ChangeFloatOption(g_dcOptions.minAlpha(), alphaLabel) ) );
+        0.0, 1.0, *g_dcOptions.minAnimationAlpha(), new ChangeFloatOption(g_dcOptions.minAnimationAlpha(), alphaLabel) ) );
 
-    grid->setControl( 0, ++r, new LabelControl("Activate speed:") );
-    LabelControl* actLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.stepUp()) );
+    grid->setControl( 0, ++r, new LabelControl("Activate time (s):") );
+    LabelControl* actLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.inAnimationTime()) );
     grid->setControl( 1, r, new HSliderControl( 
-        0.01, 0.5, *g_dcOptions.stepUp(), new ChangeFloatOption(g_dcOptions.stepUp(), actLabel) ) );
+        0.0, 2.0, *g_dcOptions.inAnimationTime(), new ChangeFloatOption(g_dcOptions.inAnimationTime(), actLabel) ) );
 
-    grid->setControl( 0, ++r, new LabelControl("Deactivate speed:") );
-    LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.stepDown()) );
+    grid->setControl( 0, ++r, new LabelControl("Deactivate tiume (s):") );
+    LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.outAnimationTime()) );
     grid->setControl( 1, r, new HSliderControl( 
-        0.01, 0.5, *g_dcOptions.stepDown(), new ChangeFloatOption(g_dcOptions.stepDown(), deactLabel) ) );
+        0.0, 2.0, *g_dcOptions.outAnimationTime(), new ChangeFloatOption(g_dcOptions.outAnimationTime(), deactLabel) ) );
 }
 
 /**
@@ -309,12 +302,18 @@ main(int argc, char** argv)
     createTrackNodes( mapNode, tracks, schema, trackSims );
     root->addChild( tracks );
 
-    // Set up the automatic decluttering. Anything in the custom render bin will be
-    // subject to decluttering; and the custom sorting functor will sort the tracks
-    // based on priority. (By default, objects are prioritized by distance-to-camera).
+    // Set up the automatic decluttering. setEnabled() activates decluttering for
+    // all drawables under that state set. We are also activating priority-based
+    // sorting, which looks at the AnnotationData::priority field for each drawable.
+    // (By default, objects are sorted by disatnce-to-camera.) Finally, we customize 
+    // a couple of the decluttering options to get the animation effects we want.
     g_declutterStateSet = tracks->getOrCreateStateSet();
     Decluttering::setEnabled( g_declutterStateSet, true );
-    Decluttering::setSortFunctor( new DeclutterByPriority() );
+    g_dcOptions = Decluttering::getOptions();
+    g_dcOptions.inAnimationTime()  = 1.0f;
+    g_dcOptions.outAnimationTime() = 1.0f;
+    g_dcOptions.sortByPriority()   = true;
+    Decluttering::setOptions( g_dcOptions );
 
     // initialize a viewer.
     osgViewer::Viewer viewer( arguments );

@@ -54,10 +54,15 @@ namespace osgEarth { namespace Annotation
             const std::string&      text,
             const TextSymbol*       symbol =0L );
 
+    public: // OrthoNode override
+
+        virtual void setAnnotationData( AnnotationData* data );
+
     protected:
         void init( const TextSymbol* symbol );
 
         std::string _text;
+        class osg::Geode* _geode;
     };
 
 } } // namespace osgEarth::Annotation

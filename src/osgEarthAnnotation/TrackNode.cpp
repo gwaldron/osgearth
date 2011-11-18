@@ -59,8 +59,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
                 osg::Drawable* drawable = AnnotationUtils::createTextDrawable( 
                     field._symbol->content()->expr(),   // text
                     field._symbol.get(),                // symbol
-                    osg::Vec3(0,0,0),                   // offset
-                    true );                             // install fade shader
+                    osg::Vec3(0,0,0) );                 // offset
 
                 if ( drawable )
                 {
@@ -82,8 +81,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
         // apply the image icon.
         osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
             _image.get(),             // image
-            osg::Vec2s(0,0),          // offset
-            true );                   // install fade shader
+            osg::Vec2s(0,0) );        // offset
 
         if ( imageGeom )
         {

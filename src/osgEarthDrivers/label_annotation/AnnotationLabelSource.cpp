@@ -57,7 +57,7 @@ public:
         Decluttering::setEnabled( group->getOrCreateStateSet(), true );
 
         StringExpression  contentExpr ( *symbol->content() );
-        //NumericExpression priorityExpr( *text->priority() );
+        NumericExpression priorityExpr( *symbol->priority() );
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
@@ -76,6 +76,13 @@ public:
                 geom->getBounds().center(),
                 value,
                 symbol );
+
+            if ( symbol->priority().isSet() )
+            {
+                AnnotationData* data = new AnnotationData();
+                data->setPriority( feature->eval(priorityExpr) );
+                labelNode->setAnnotationData( data );
+            }
 
             group->addChild( labelNode );
         }

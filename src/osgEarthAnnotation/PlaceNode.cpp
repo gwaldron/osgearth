@@ -39,7 +39,8 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
 OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
 _image  ( image ),
 _text   ( text ),
-_style  ( style )
+_style  ( style ),
+_geode  ( 0L )
 {
     init();
 }
@@ -47,7 +48,7 @@ _style  ( style )
 void
 PlaceNode::init()
 {
-    osg::Geode* geode = new osg::Geode();
+    _geode = new osg::Geode();
 
     if ( _image.get() )
     {
@@ -55,22 +56,21 @@ PlaceNode::init()
         osg::Vec2s offset( 0.0, _image->t()/2.0 );
         osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, true );
         if ( imageGeom )
-            geode->addDrawable( imageGeom );
+            _geode->addDrawable( imageGeom );
     }
 
     osg::Drawable* text = AnnotationUtils::createTextDrawable(
         _text,
         _style.get<TextSymbol>(),
-        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ),
-        true );
+        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ) );
 
     if ( text )
-        geode->addDrawable( text );
+        _geode->addDrawable( text );
     
-    osg::StateSet* stateSet = geode->getOrCreateStateSet();
+    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    this->attach( geode );
+    this->attach( _geode );
 }
 
 void
@@ -91,4 +91,17 @@ void
 PlaceNode::setStyle( const Style& style )
 {
     //todo
+}
+
+void
+PlaceNode::setAnnotationData( AnnotationData* data )
+{
+    OrthoNode::setAnnotationData( data );
+
+    // override this method so we can attach the anno data to the drawables.
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        i->get()->setUserData( data );
+    }
 }

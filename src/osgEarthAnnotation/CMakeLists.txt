@@ -10,6 +10,7 @@ set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 set(LIB_PUBLIC_HEADERS  
     AnnotationData
+    AnnotationNode
     AnnotationUtils
     CircleNode
     Common
@@ -20,12 +21,14 @@ set(LIB_PUBLIC_HEADERS
     ImageOverlay
     LabelNode
     LocalizedNode
+    OrthoNode
     PlaceNode
     TrackNode
 )
 
 set(LIB_COMMON_FILES
     AnnotationData.cpp
+    AnnotationNode.cpp
     AnnotationUtils.cpp
     CircleNode.cpp
     Decluttering.cpp
@@ -34,6 +37,7 @@ set(LIB_COMMON_FILES
     ImageOverlay.cpp
     LabelNode.cpp
     LocalizedNode.cpp
+    OrthoNode.cpp
     PlaceNode.cpp
     TrackNode.cpp
 )

@@ -20,7 +20,7 @@
 #ifndef OSGEARTH_ANNOTATION_LABEL_NODE_H
 #define OSGEARTH_ANNOTATION_LABEL_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/OrthoNode>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarth/MapNode>
 

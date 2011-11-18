@@ -34,6 +34,14 @@ namespace osgEarth { namespace Annotation
      */
     struct AnnotationUtils
     {
+        static const std::string UNIFORM_HIGHLIGHT;
+
+        static const std::string UNIFORM_IS_TEXT;
+
+        static const std::string UNIFORM_FADE;
+
+        static const std::string PROGRAM_NAME;
+
         /**
          * Creates a drawable representing a symbolized text label in
          * pixel space.
@@ -53,15 +61,21 @@ namespace osgEarth { namespace Annotation
             unsigned          textureUnit       =0 );
 
         /**
-         * Creates a fading uniform that you can use with one of the
-         * above elements when installFadeShader = true.
+         * Creates a fading uniform that the decluttering engine can use
+         * to adjust the alpha of annotation drawables.
          */
         static osg::Uniform* createFadeUniform();
 
         /**
-         * Gets a program that implements fading on annotation objects.
+         * Creates a boolean uniform used to indicate a hightlighted state.
          */
-        static osg::Program* getFadeProgram();
+        static osg::Uniform* createHighlightUniform();
+
+        /**
+         * Gets a program that implements fading, highligting, etc. on annotation 
+         * objects.
+         */
+        static osg::Program* getAnnotationProgram();
     };
 
 } } // namespace osgEarth::Annotation

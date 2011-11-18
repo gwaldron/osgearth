@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_ANNOTATION_PLACE_NODE_H
 #define OSGEARTH_ANNOTATION_PLACE_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/OrthoNode>
 #include <osgEarth/MapNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarthUtil/Controls>

@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_ANNOTATION_TRACK_NODE_H
 #define OSGEARTH_ANNOTATION_TRACK_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/OrthoNode>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarth/Containers>
 #include <osg/Image>

@@ -557,7 +557,18 @@ Decluttering::setEnabled( osg::StateSet* stateSet, bool enabled, int binNum )
     {
         if ( enabled )
         {
-            stateSet->setAttributeAndModes( AnnotationUtils::getFadeProgram(), 1 );
+            osg::Program* p = dynamic_cast<osg::Program*>(stateSet->getAttribute(osg::StateAttribute::PROGRAM));
+            if ( p == 0L || p->getName() != AnnotationUtils::PROGRAM_NAME )
+            {
+                stateSet->setAttributeAndModes( AnnotationUtils::getAnnotationProgram(), 1 );
+            }
+
+            // just installs a default highlight uniform so the shader has default value.
+            if ( !stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT ) )
+            {
+                stateSet->addUniform( AnnotationUtils::createHighlightUniform() );
+            }
+
             stateSet->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
         }
         else

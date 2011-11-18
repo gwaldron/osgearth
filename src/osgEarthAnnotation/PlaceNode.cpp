@@ -54,7 +54,7 @@ PlaceNode::init()
     {
         // this offset anchors the image at the bottom
         osg::Vec2s offset( 0.0, _image->t()/2.0 );
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset, true );
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset );
         if ( imageGeom )
             _geode->addDrawable( imageGeom );
     }

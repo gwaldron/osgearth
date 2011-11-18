@@ -56,31 +56,17 @@ XmlElement::XmlElement( const Config& conf )
         children.push_back( new XmlText(conf.value()) );
     }
 
-    //for( Properties::const_iterator i = conf.attrs().begin(); i != conf.attrs().end(); i++ )
-    //    attrs[i->first] = i->second;
-
     for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
     {
         if ( j->isSimple() )
         {
             attrs[j->key()] = j->value();
         }
-        else
+        else if ( j->children().size() > 0 )
         {
             children.push_back( new XmlElement(*j) );
         }
     }
-
-    
-    //    if ( !j->children().empty() )
-    //    {
-    //        children.push_back( new XmlElement( *j ) );
-    //    }
-    //    else
-    //    {
-    //        addSubElement(j->key(), j->attrs(), j->value());
-    //    }
-    //}
 }
 
 const std::string&

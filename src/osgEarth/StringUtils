@@ -171,24 +171,24 @@ namespace osgEarth
         template<typename T>
         Stringify& operator << (const T& val) { buf << val; return (*this); }
 
-        template<>
-        Stringify& operator << <bool>(const bool& val) { buf << (val ? "true" : "false"); return (*this); }
-
-        template<>
-        Stringify& operator << <osg::Vec3f>(const osg::Vec3f& val) {
-            buf << val.x() << ", " << val.y() << ", " << val.z(); return (*this); }
-        
-        template<>
-        Stringify& operator << <osg::Vec3d>(const osg::Vec3d& val ) {
-            buf << val.x() << ", " << val.y() << ", " << val.z(); return (*this); }
-
-        template<>
-        Stringify& operator << <osg::Vec4f>(const osg::Vec4f& val) {
-            buf << val.r() << ", " << val.g() << ", " << val.b() << ", " << val.a(); return (*this); }
-
     protected:
         std::stringstream buf;
     };
+
+    template<> inline
+    Stringify& Stringify::operator << <bool>(const bool& val) { buf << (val ? "true" : "false"); return (*this); }
+
+    template<> inline
+    Stringify& Stringify::operator << <osg::Vec3f>(const osg::Vec3f& val) {
+        buf << val.x() << ", " << val.y() << ", " << val.z(); return (*this); }
+
+    template<> inline
+    Stringify& Stringify::operator << <osg::Vec3d>(const osg::Vec3d& val ) {
+        buf << val.x() << ", " << val.y() << ", " << val.z(); return (*this); }
+
+    template<> inline
+    Stringify& Stringify::operator << <osg::Vec4f>(const osg::Vec4f& val) {
+        buf << val.r() << ", " << val.g() << ", " << val.b() << ", " << val.a(); return (*this); }
 
     /**
      * Splits a string up into a vector of strings based on a set of 

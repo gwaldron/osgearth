@@ -266,7 +266,7 @@ createControls( osgViewer::View* view )
     grid->setControl( 1, r, new HSliderControl( 
         0.0, 2.0, *g_dcOptions.inAnimationTime(), new ChangeFloatOption(g_dcOptions.inAnimationTime(), actLabel) ) );
 
-    grid->setControl( 0, ++r, new LabelControl("Deactivate tiume (s):") );
+    grid->setControl( 0, ++r, new LabelControl("Deactivate time (s):") );
     LabelControl* deactLabel = grid->setControl( 2, r, new LabelControl(Stringify() << std::fixed << std::setprecision(1) << *g_dcOptions.outAnimationTime()) );
     grid->setControl( 1, r, new HSliderControl( 
         0.0, 2.0, *g_dcOptions.outAnimationTime(), new ChangeFloatOption(g_dcOptions.outAnimationTime(), deactLabel) ) );

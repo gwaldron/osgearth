@@ -65,6 +65,8 @@ namespace osgEarth { namespace Symbology
 
     typedef std::map<std::string, osg::ref_ptr<MarkerResource> > MarkerResourceMap;
 
+    typedef std::vector< osg::ref_ptr<MarkerResource> > MarkerResourceVector;
+
 } } // namespace osgEarth::Symbology
 
 #endif // OSGEARTHSYMBOLOGY_MARKER_RESOURCE_H

@@ -218,3 +218,15 @@ ResourceLibrary::getMarker( const std::string& name ) const
     MarkerResourceMap::const_iterator i = _markers.find( name );
     return i != _markers.end() ? i->second.get() : 0L;
 }
+
+void
+ResourceLibrary::getMarkers( MarkerResourceVector& output ) const
+{
+    Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
+
+    output.clear();
+    output.reserve( _markers.size() );
+
+    for( MarkerResourceMap::const_iterator i = _markers.begin(); i != _markers.end(); ++i )
+        output.push_back( i->second.get() );
+}

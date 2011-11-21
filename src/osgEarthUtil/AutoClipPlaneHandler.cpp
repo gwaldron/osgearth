@@ -154,7 +154,7 @@ _autoFarPlaneClamping( true )
     {
         if ( map->isGeocentric() )
         {
-            _rp2 = map->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
+            _rp2 = map->getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
             _rp2 *= _rp2;
             _active = true;
         }
@@ -166,7 +166,7 @@ _autoFarPlaneClamping( true )
     }
     else
     {
-        _rp2 = Registry::instance()->getGlobalGeodeticProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
+        _rp2 = Registry::instance()->getGlobalGeodeticProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
         _rp2 *= _rp2;
         _active = true;
     }

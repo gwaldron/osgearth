@@ -56,6 +56,9 @@ public:
         osg::Group* group = new osg::Group();
         Decluttering::setEnabled( group->getOrCreateStateSet(), true );
 
+        std::set<std::string> used; // to prevent dupes
+        bool skipDupes = (symbol->removeDuplicateLabels() == true);
+
         StringExpression  contentExpr ( *symbol->content() );
         NumericExpression priorityExpr( *symbol->priority() );
 
@@ -71,20 +74,28 @@ public:
 
             const std::string& value = feature->eval( contentExpr );
 
-            LabelNode* labelNode = new LabelNode(
-                context.getSession()->getMapInfo().getProfile()->getSRS(),
-                geom->getBounds().center(),
-                value,
-                symbol );
-
-            if ( symbol->priority().isSet() )
+            if ( !value.empty() && (!skipDupes || used.find(value) == used.end()) )
             {
-                AnnotationData* data = new AnnotationData();
-                data->setPriority( feature->eval(priorityExpr) );
-                labelNode->setAnnotationData( data );
-            }
+                LabelNode* labelNode = new LabelNode(
+                    context.getSession()->getMapInfo().getProfile()->getSRS(),
+                    geom->getBounds().center(),
+                    value,
+                    symbol );
 
-            group->addChild( labelNode );
+                if ( symbol->priority().isSet() )
+                {
+                    AnnotationData* data = new AnnotationData();
+                    data->setPriority( feature->eval(priorityExpr) );
+                    labelNode->setAnnotationData( data );
+                }
+                
+                group->addChild( labelNode );
+
+                if ( skipDupes )
+                {
+                    used.insert(value);
+                }
+            }
         }
 
         return group;

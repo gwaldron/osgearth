@@ -91,7 +91,15 @@ namespace osgEarth { namespace Symbology
 
     public: // Marker resource functions
 
+        /**
+         * Finds and returns a marker reosurce by name.
+         */
         MarkerResource* getMarker( const std::string& name ) const;
+
+        /**
+         * Returns a list of all marker resources in this library.
+         */
+        void getMarkers( MarkerResourceVector& output ) const;
 
 
     public: // serialization functions

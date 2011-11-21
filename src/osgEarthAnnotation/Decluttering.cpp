@@ -678,5 +678,5 @@ DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::R
 
 /** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}
-static osgEarthAnnotationRegisterRenderBinProxy<osgEarthAnnotationDeclutterRenderBin> s_regbin(
+static osgEarthRegisterRenderBinProxy<osgEarthAnnotationDeclutterRenderBin> s_regbin(
     osgEarthAnnotationDeclutterRenderBin::BIN_NAME);

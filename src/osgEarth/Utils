@@ -134,15 +134,15 @@ namespace osgEarth
      * rendering system
      */
     template<class T>
-    struct osgEarthAnnotationRegisterRenderBinProxy
+    struct osgEarthRegisterRenderBinProxy
     {
-        osgEarthAnnotationRegisterRenderBinProxy(const std::string& name)
+        osgEarthRegisterRenderBinProxy(const std::string& name)
         {
             _prototype = new T();
             osgUtil::RenderBin::addRenderBinPrototype(name, _prototype.get());
         }
 
-        ~osgEarthAnnotationRegisterRenderBinProxy()
+        ~osgEarthRegisterRenderBinProxy()
         {
             osgUtil::RenderBin::removeRenderBinPrototype(_prototype.get());
             _prototype = 0L;

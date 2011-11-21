@@ -147,6 +147,7 @@ _active              ( false ),
 _minNearFarRatio     ( 0.00001 ),
 _maxNearFarRatio     ( 0.0005 ),
 _haeThreshold        ( 250.0 ),
+_rp                  ( -1 ),
 _rp2                 ( -1 ),
 _autoFarPlaneClamping( true )
 {
@@ -154,8 +155,8 @@ _autoFarPlaneClamping( true )
     {
         if ( map->isGeocentric() )
         {
-            _rp2 = map->getProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
-            _rp2 *= _rp2;
+            _rp = map->getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+            _rp2 = _rp*_rp;
             _active = true;
         }
         else
@@ -166,11 +167,60 @@ _autoFarPlaneClamping( true )
     }
     else
     {
-        _rp2 = Registry::instance()->getGlobalGeodeticProfile()->getSRS()->getEllipsoid()->getRadiusPolar();
-        _rp2 *= _rp2;
+        _rp = Registry::instance()->getGlobalGeodeticProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+        _rp2 = _rp*_rp;
         _active = true;
     }
 }
+
+#if 1
+
+void
+AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
+{
+    if ( !_active )
+        return;
+
+    osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( nv );
+    if ( !cv )
+        return;
+
+    osg::Camera* cam = cv->getCurrentCamera();
+
+    cam->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+
+    osg::Vec3d eye, center, up;
+    cam->getViewMatrixAsLookAt( eye, center, up );
+
+    double d = eye.length();
+    double d2 = d*d;
+
+    if ( d2 > _rp2 )
+    {
+        double fovy, ar, znear, zfar, finalZfar;
+        cam->getProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
+
+        // far clip at the horizon:
+        zfar = sqrt( d2 - _rp2 );
+
+        if (_autoFarPlaneClamping)
+        {
+            finalZfar = zfar;
+        }
+
+        double nfr = _minNearFarRatio + _maxNearFarRatio * ((d-_rp)/d);
+        znear = osg::clampAbove( zfar * nfr, 1.0 );
+
+        cam->setProjectionMatrixAsPerspective( fovy, ar, znear, finalZfar );
+
+        //OE_NOTICE << fixed
+        //    << "near=" << znear << ", far=" << zfar << std::endl;
+    }
+
+    traverse(node, nv);
+}
+
+#else
 
 void
 AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
@@ -235,3 +285,5 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
     }
     traverse( node, nv );
 }
+
+#endif

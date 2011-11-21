@@ -24,10 +24,12 @@
 #include <osg/TextureRectangle>
 #include <osgGA/GUIEventHandler>
 #include <osgText/Text>
+#include <osgUtil/RenderBin>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
 #include <osg/Version>
 #include <osgEarth/Common>
+#include <osgEarth/Utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -1893,9 +1895,6 @@ ControlNode::traverse( osg::NodeVisitor& nv )
         static osg::Vec4d s_zero_w(0,0,0,1);
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
-        //setCullingActive( true );
-        //cv->setSmallFeatureCullingPixelSize(0);
-
         // pull up the per-view data for this view:
         PerViewData& data = _perViewData[cv->getCurrentCamera()->getView()];
 
@@ -1914,8 +1913,6 @@ ControlNode::traverse( osg::NodeVisitor& nv )
         if ( data._canvas.valid() )
         {
             // calculate its screen position:
-            //data._screenPos = s_zero * (*cv->getMVPW());
-
             osg::Vec4d clip = s_zero_w * (*cv->getModelViewMatrix()) * (*cv->getProjectionMatrix());
             osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );
             data._screenPos = clip_ndc * cv->getWindowMatrix();
@@ -1945,6 +1942,28 @@ _screenPos  ( 0.0, 0.0, 0.0 )
 {
     //nop
 }
+
+// ---------------------------------------------------------------------------
+
+/**
+ * A custom render bin for Controls, that sorts drawables by traversal order,
+ * providing an unambiguous draw order.
+ */
+#define OSGEARTH_CONTROLS_BIN "osgEarth::Utils::Controls::bin"
+
+namespace
+{    
+    struct osgEarthControlsRenderBin : public osgUtil::RenderBin
+    {
+        osgEarthControlsRenderBin()
+        {
+            this->setName( OSGEARTH_CONTROLS_BIN );
+            this->setSortMode( osgUtil::RenderBin::TRAVERSAL_ORDER );
+        }
+    };
+}
+
+static osgEarthRegisterRenderBinProxy<osgEarthControlsRenderBin> s_regbin( OSGEARTH_CONTROLS_BIN );
 
 // ---------------------------------------------------------------------------
 
@@ -2111,9 +2130,6 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                       for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
                       {
                           j->get()->setDataVariance( osg::Object::DYNAMIC );
-
-                          osg::StateSet* stateSet = j->get()->getOrCreateStateSet();
-                          stateSet->setRenderBinDetails( bin++, "RenderBin" );
                           geode->addDrawable( j->get() );
                       }
                   }
@@ -2248,11 +2264,9 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     osg::StateSet* ss = getOrCreateStateSet();
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
-    ss->setAttributeAndModes( new osg::Depth( osg::Depth::LEQUAL, 0, 1, false ) );
-
-    // this is necessary b/c osgText puts things in this bin too and we can't override that
-    ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-    ss->setBinNumber(999999);
+    ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
+    ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
+    ss->setBinName( OSGEARTH_CONTROLS_BIN );
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
@@ -2401,7 +2415,6 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
             for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
             {
                 j->get()->setDataVariance( osg::Object::DYNAMIC );
-                j->get()->getOrCreateStateSet()->setBinNumber( bin++ );
                 geode->addDrawable( j->get() );
             }
         }

@@ -25,6 +25,8 @@ using namespace osgEarth;
 
 struct KML_Model : public KML_Geometry
 {
+    void parseCoords( const Config& conf, KMLContext& cx );
+    void parseStyle(const Config& conf, KMLContext& cx, Style& style);
 };
 
 #endif // OSGEARTH_DRIVER_KML_KML_MODEL

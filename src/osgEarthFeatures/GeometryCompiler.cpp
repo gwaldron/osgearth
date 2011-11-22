@@ -48,7 +48,7 @@ namespace
 
 GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
 ConfigOptions( conf ),
-_maxGranularity_deg( 5.0 ),
+_maxGranularity_deg( 1.0 ),
 _mergeGeometry( false ),
 _clustering( true )
 {

@@ -19,7 +19,6 @@
 #include "KML_Placemark"
 #include "KML_Geometry"
 #include "KML_Style"
-#include <osgEarthFeatures/MarkerFactory>
 #include <osgEarthFeatures/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/Decluttering>
@@ -47,10 +46,10 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     }
 
     URI iconURI;
-    MarkerSymbol* marker = style.get<MarkerSymbol>();
-    if ( marker && marker->url().isSet() )
+    MarkerSymbol* iconMarker = style.get<MarkerSymbol>();    
+    if ( iconMarker && iconMarker->url().isSet() )
     {
-        iconURI = URI( marker->url()->expr(), marker->url()->uriContext() );
+        iconURI = URI( iconMarker->url()->expr(), iconMarker->url()->uriContext() );
     }
 
     std::string text = 
@@ -60,7 +59,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
 
     // read in the geometry:
     bool isPoly = false;
-    bool isPoint = false;
+    bool isPoint = false;    
+
     osg::Vec3d position;
     KML_Geometry geometry;
     geometry.build(conf, cx, style);
@@ -75,25 +75,29 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     FeatureNode* fNode = 0L;
     PlaceNode*   pNode = 0L;
 
-    // if we have a non-single-point geometry, render it.
-    if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 1 )
+    MarkerSymbol* marker = style.get<MarkerSymbol>();    
+
+    // if we have a non-single-point geometry or it's a marker, render it.
+    if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 1 || marker )    
     {
         const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
-        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
 
-        bool draped =
-            (ex == 0L && alt == 0L && isPoly) ||
-            (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+        bool draped =            
+            ((ex == 0L && alt == 0L && isPoly) || (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN)) &&
+            (!marker);
 
-        // Make a feautre node; drape if we're not extruding.
-        fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped );
+        // Make a feature node; drape if we're not extruding.
+        GeometryCompilerOptions options;
+        options.clustering() = false;
+        fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped, options );
         fNode->setStyle( style );
 
         if ( draped )
             fNode->getOrCreateStateSet()->setMode(GL_LIGHTING, 1);
     }
 
-    if ( isPoint )
+    if ( isPoint && !marker )
     {
         osg::ref_ptr<osg::Image> image = iconURI.readImage().getImage();
         if ( !image.valid() )

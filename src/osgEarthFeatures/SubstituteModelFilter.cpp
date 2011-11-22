@@ -101,7 +101,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
             scale = input->eval( scaleEx, &context );
             if ( scale == 0.0 )
                 scale = 1.0;
-            OE_NOTICE << "Using scale " << scale << std::endl;
             scaleMatrix = osg::Matrix::scale( scale, scale, scale );
         }
         

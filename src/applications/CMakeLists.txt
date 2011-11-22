@@ -19,26 +19,28 @@ SET(TARGET_COMMON_LIBRARIES
     osgEarthFeatures
     osgEarthUtil
     osgEarthSymbology
+    osgEarthAnnotation
 )
 
 SET(TARGET_DEFAULT_PREFIX "application_")
 SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")
 
 ADD_SUBDIRECTORY(osgearth_viewer)
+ADD_SUBDIRECTORY(osgearth_clamp)
 ADD_SUBDIRECTORY(osgearth_manip)
 ADD_SUBDIRECTORY(osgearth_seed)
 ADD_SUBDIRECTORY(osgearth_composite)
 ADD_SUBDIRECTORY(osgearth_clouds)
-ADD_SUBDIRECTORY(osgearth_ocean)
 ADD_SUBDIRECTORY(osgearth_toc)
 ADD_SUBDIRECTORY(osgearth_elevation)
 ADD_SUBDIRECTORY(osgearth_features)
 ADD_SUBDIRECTORY(osgearth_featureinfo)
 ADD_SUBDIRECTORY(osgearth_map)
 ADD_SUBDIRECTORY(osgearth_annotation)
+ADD_SUBDIRECTORY(osgearth_tracks)
 
 IF(NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6")
-ADD_SUBDIRECTORY(osgearth_featureeditor)
+    ADD_SUBDIRECTORY(osgearth_featureeditor)
 ENDIF()
 
 ADD_SUBDIRECTORY(osgearth_measure)
@@ -57,4 +59,4 @@ ENDIF()
 #ADD_SUBDIRECTORY(osgearth_symbology)
 
 #testing
-add_subdirectory(osgearth_resources)
+#add_subdirectory(osgearth_resources)

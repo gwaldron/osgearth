@@ -58,7 +58,11 @@ namespace osgEarth { namespace Symbology
 
         /** URI of the model to use for substitution. */
         optional<StringExpression>& url() { return _url; }
-        const optional<StringExpression>& url() const { return _url; }        
+        const optional<StringExpression>& url() const { return _url; }     
+
+        /** Name of the resource library to use with this symbol (optional) */
+        optional<StringExpression>& libraryName() { return _libraryName; }
+        const optional<StringExpression>& libraryName() const { return _libraryName; }   
 
         /** How to map feature geometry to model placement. (default is PLACEMENT_CENTROID) */
         optional<Placement>& placement() { return _placement; }
@@ -71,6 +75,10 @@ namespace osgEarth { namespace Symbology
         /** Model instance scale factor */
         optional<NumericExpression>& scale() { return _scale; }
         const optional<NumericExpression>& scale() const { return _scale; }
+
+        /** Orientation in HPR degrees */
+        optional<osg::Vec3f>& orientation() { return _orientation; }
+        const optional<osg::Vec3f>& orientation() const { return _orientation; }
 
         /** Seeding value for the randomizer */
         optional<unsigned>& randomSeed() { return _randomSeed; }
@@ -92,8 +100,10 @@ namespace osgEarth { namespace Symbology
 
     protected:
         optional<StringExpression>   _url;
+        optional<StringExpression>   _libraryName;
         optional<NumericExpression>  _scale;
         optional<Placement>          _placement;
+        optional<osg::Vec3f>         _orientation;
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
 

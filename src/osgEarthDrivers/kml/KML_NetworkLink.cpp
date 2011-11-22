@@ -20,6 +20,7 @@
 #include <osgEarth/GeoMath>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
+#include <osg/Version>
 
 #undef  LC
 #define LC "[KML_NetworkLink] "
@@ -92,9 +93,11 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         plod->setRange( 0, minRange, maxRange );
         plod->setCenter( lodCenter );
         plod->setRadius( d );
+#if OSG_MIN_VERSION_REQUIRED(3,0,0)
         osgDB::Options* options = new osgDB::Options();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         plod->setDatabaseOptions( options );
+#endif;
         //plod->setNodeMask( open ? ~0 : 0 );
 
         OE_DEBUG << LC << 
@@ -106,10 +109,12 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
     else 
     {
         osg::ProxyNode* proxy = new osg::ProxyNode();
-        proxy->setFileName( 0, href );
+        proxy->setFileName( 0, href );                
+#if OSG_MIN_VERSION_REQUIRED(3,0,0)
         osgDB::Options* options = new osgDB::Options();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         proxy->setDatabaseOptions( options );
+#endif
         //proxy->setNodeMask( open ? ~0 : 0 );
 
         cx._groupStack.top()->addChild( proxy );

@@ -22,6 +22,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/URI>
 
 #include <osg/Notify>
 #include <osg/io_utils>
@@ -147,17 +148,19 @@ public:
         _options( in_options ),
         //_directory_structure( FLAT_TASK_DIRECTORIES ),
         _profile( osgEarth::Registry::instance()->getGlobalGeodeticProfile() ),
-        _maxNumTilesInCache( 128 ),
+        _maxNumTilesInCache( in_options.terrainTileCacheSize().value() ),
         _initialized( false )
     {
 	}
 	
-	void initialize( const std::string& referenceURI)
+    void initialize( const osgDB::Options* dbOptions )
 	{
         Threading::ScopedMutexLock lock( _initializeMutex );
 
         if ( _initialized )
             return;
+
+        _dbOptions = dbOptions;
 
         unsigned int numTilesWideAtLod0, numTilesHighAtLod0;
         _profile->getNumTiles(0, numTilesWideAtLod0, numTilesHighAtLod0);
@@ -167,22 +170,24 @@ public:
 
         if ( !_url.empty() )
         {
+#if 0 // OBE
 			//If the path doesn't contain a server address, get the full path to the file.
 			if (!osgDB::containsServerAddress( *_url ))
 			{
                 //todo: obselete..?
                 _url = URI(_url.full(), referenceURI);
-				//_url = osgEarth::getFullPath(referenceURI, _url);
 			}
+#endif
 			
             osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
             localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
-            //_rootNode = osgDB::readNodeFile( _url, localOptions.get() );
 
-            HTTPClient::ResultCode rc = HTTPClient::readNodeFile( _url.full(), _rootNode, localOptions.get() );
+            ReadResult rc = _url.readNode( localOptions.get(), CachePolicy::NO_CACHE );
+            //HTTPClient::ResultCode rc = HTTPClient::readNodeFile( _url.full(), _rootNode, localOptions.get() );
 
-            if ( rc == HTTPClient::RESULT_OK && _rootNode.valid() )
+            if ( rc.succeeded() )
             {
+                _rootNode = rc.getNode();
                 _baseNameToUse = _options.baseName().value();
 
                 _path = osgDB::getFilePath( *_url );
@@ -262,7 +267,7 @@ public:
             }
             else
             {
-                OE_WARN << LC << HTTPClient::getResultCodeString(rc) << ": " << *_url << std::endl;
+                OE_WARN << LC << rc.getResultCodeString() << ": " << *_url << std::endl;
                 _url = URI();
             }
         }
@@ -367,27 +372,18 @@ public:
             OE_DEBUG << LC << "file has been found in black list : "<<filename<<std::endl;
             insertTile(tileID, 0);
             return; //return 0;
-        }
-
-        //    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
-        //    if (_blacklistedFilenames.count(filename)==1)
-        //    {
-        //        OE_DEBUG<<"VPB: file has been found in black list : "<<filename<<std::endl;
-        //        insertTile(tileID, 0);
-        //        return 0;
-        //    }
-        //}
-        
+        }        
 
         osg::ref_ptr<osgDB::ReaderWriter::Options> localOptions = new osgDB::ReaderWriter::Options;
         localOptions->setPluginData("osgearth_vpb Plugin",(void*)(1));
 
 
         //osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(filename, localOptions.get());
-        osg::ref_ptr<osg::Node> node;
-        HTTPClient::ResultCode result = HTTPClient::readNodeFile( filename, node, localOptions.get(), progress );
-        if ( result == HTTPClient::RESULT_OK && node.valid() )
+        ReadResult r = URI(filename).readNode( localOptions.get(), CachePolicy::NO_CACHE, progress );
+        if ( r.succeeded() )
         {
+            osg::Node* node = r.getNode();
+
             //OE_INFO << LC << "Loaded model "<<filename<<std::endl;
             CollectTiles ct;
             node->accept(ct);
@@ -427,7 +423,7 @@ public:
         else
         {
             // in the case of an "unrecoverable" error, black-list the URL for this tile.
-            if ( ! HTTPClient::isRecoverable( result ) )
+            if ( ! HTTPClient::isRecoverable( r.code() ) )
             {
                 Threading::ScopedWriteLock exclusiveLock( _blacklistMutex );
                 _blacklistedFilenames.insert( filename );
@@ -511,6 +507,8 @@ public:
 
     bool _initialized;
     Threading::Mutex _initializeMutex;
+
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
     
 };
 
@@ -518,19 +516,17 @@ class VPBSource : public TileSource
 {
 public:
     VPBSource( VPBDatabase* vpbDatabase, const VPBOptions& in_options ) : 
-        TileSource(in_options),
-        _vpbDatabase(vpbDatabase),
-        _options( in_options ),
-        _referenceUri()
+        TileSource   ( in_options  ),
+        _vpbDatabase ( vpbDatabase ),
+        _options     ( in_options  )
     {
         //nop
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
-	    _referenceUri = referenceURI;
-
-	    _vpbDatabase->initialize(referenceURI);
+        _dbOptions = dbOptions;
+	    _vpbDatabase->initialize( dbOptions );
 
 	    if ( overrideProfile)
 	    {
@@ -542,7 +538,7 @@ public:
 	    }
     }
     
-	osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
+    osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
 	{
 		osg::Image * ret = NULL;
 		//TODO:  Make VPB driver use progress callback
@@ -598,9 +594,8 @@ public:
 		return ret;
 	}
 
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress
-                                         )
+    osg::HeightField* createHeightField( const TileKey&        key,
+                                         ProgressCallback*     progress )
     {
         osg::ref_ptr<osgTerrain::TerrainTile> tile;
         _vpbDatabase->getTerrainTile(key, progress, tile);
@@ -625,9 +620,9 @@ public:
     }
 
 private:
-    osg::ref_ptr<VPBDatabase> _vpbDatabase;
-    const VPBOptions _options;
-	std::string	_referenceUri;
+    osg::ref_ptr<VPBDatabase>          _vpbDatabase;
+    const VPBOptions                   _options;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

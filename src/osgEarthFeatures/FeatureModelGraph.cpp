@@ -51,7 +51,8 @@ namespace
     {
         std::stringstream buf;
         buf << uid << "." << lod << "_" << x << "_" << y << ".osgearth_pseudo_fmg";
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         return str;
     }
 
@@ -65,7 +66,8 @@ namespace
 #else
         osg::PagedLOD* p = new osg::PagedLOD();
         p->setCenter( bs.center() );
-        p->setRadius( bs.radius() );
+        //p->setRadius( bs.radius() );
+        p->setRadius(std::max((float)bs.radius(),maxRange));
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
 #endif
@@ -231,7 +233,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
                                          const MapFrame*  mapf ) const
 {
     osg::Vec3d center, corner;
-    double z = 0.0;
+    //double z = 0.0;
     GeoExtent workingExtent;
 
     if ( extent.getSRS()->isEquivalentTo( _usableMapExtent.getSRS() ) )
@@ -245,16 +247,19 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
 
     workingExtent.getCentroid( center.x(), center.y() );
     
+    double centerZ = 0.0;    
     if ( mapf )
     {
-        // note: use the lowest possible resolution to speed up queries
+        // Use an appropriate resolution for this extents width
+        double resolution = workingExtent.width();             
         ElevationQuery query( *mapf );
-        query.getElevation( center, mapf->getProfile()->getSRS(), center.z(), DBL_MAX );
-    }
+        query.getElevation( center, mapf->getProfile()->getSRS(), center.z(), resolution );
+        centerZ = center.z();
+    }    
 
     corner.x() = workingExtent.xMin();
     corner.y() = workingExtent.yMin();
-    corner.z() = z;
+    corner.z() = 0;
 
     if ( _session->getMapInfo().isGeocentric() )
     {
@@ -292,45 +297,65 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
     osg::Group* result = 0L;
     
     if ( _useTiledSource )
-    {        
+    {       
         // A "tiled" source has a pre-generted tile hierarchy, but no range information.
         // We will be calculating the LOD ranges here.
+        osg::Group* geometry =0L;
 
-        // The extent of this tile:
-        GeoExtent tileExtent = s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent );
+        if ( lod >= _source->getFeatureProfile()->getFirstLevel() )
+        {
+            // The extent of this tile:
+            GeoExtent tileExtent = s_getTileExtent( lod, tileX, tileY, _usableFeatureExtent );
 
-        // Calculate the bounds of this new tile:
-        MapFrame mapf = _session->createMapFrame();
-        osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent, &mapf );
+            // Calculate the bounds of this new tile:
+            MapFrame mapf = _session->createMapFrame();
+            osg::BoundingSphered tileBound = getBoundInWorldCoords( tileExtent, &mapf );
 
-        // Apply the tile range multiplier to calculate a max camera range. The max range is
-        // the geographic radius of the tile times the multiplier.
-        float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;
-        double maxRange =  tileBound.radius() * tileFactor;
-        FeatureLevel level( 0, maxRange );
-        
-        // Construct a tile key that will be used to query the source for this tile.
-        TileKey key(lod, tileX, tileY, _source->getFeatureProfile()->getProfile());
-        osg::Group* geometry = build( level, tileExtent, &key );
-        result = geometry;
+            // Apply the tile range multiplier to calculate a max camera range. The max range is
+            // the geographic radius of the tile times the multiplier.
+            float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;            
+            double maxRange =  tileBound.radius() * tileFactor;
+            FeatureLevel level( 0, maxRange );
+            //OE_NOTICE << "(" << lod << ": " << tileX << ", " << tileY << ")" << std::endl;
+            //OE_NOTICE << "  extent = " << tileExtent.width() << "x" << tileExtent.height() << std::endl;
+            //OE_NOTICE << "  tileFactor = " << tileFactor << " maxRange=" << maxRange << " radius=" << tileBound.radius() << std::endl;
+            
+            // Construct a tile key that will be used to query the source for this tile.
+            TileKey key(lod, tileX, tileY, _source->getFeatureProfile()->getProfile());
+            geometry = build( level, tileExtent, &key );
+            result = geometry;
+        }
 
-        if (lod < _source->getFeatureProfile()->getMaxLevel())
+        if ( lod < _source->getFeatureProfile()->getMaxLevel() )
         {
             // see if there are any more levels. If so, build some pagedlods to bring the
             // next level in.
-            FeatureLevel nextLevel(0, maxRange/2.0);
+            //FeatureLevel nextLevel(0, maxRange/2.0);
 
             osg::ref_ptr<osg::Group> group = new osg::Group();
 
             // calculate the LOD of the next level:
             if ( lod+1 != ~0 )
             {
-                MapFrame mapf = _session->createMapFrame();
-                buildSubTilePagedLODs( lod, tileX, tileY, &mapf, group.get() );
+                //if ( geometry == 0L )
+                //{
+                //    OE_WARN << LC << "OK...geometry is null, LOD is = " << lod 
+                //        << ", firstLOD = " << _source->getFeatureProfile()->getFirstLevel()
+                //        << ", maxLOD = " << _source->getFeatureProfile()->getMaxLevel()
+                //        << std::endl;
+                //}
 
-                // slap the geometry in there afterwards, if there is any
-                if ( geometry )
+                // only build sub-pagedlods if we are expecting subtiles at some point:
+                if ( geometry != 0L || lod < _source->getFeatureProfile()->getFirstLevel() )
+                {
+                    MapFrame mapf = _session->createMapFrame();
+                    buildSubTilePagedLODs( lod, tileX, tileY, &mapf, group.get() );
                     group->addChild( geometry );
+                }
+
+                //// slap the geometry in there afterwards, if there is any
+                //if ( geometry )
+                //    group->addChild( geometry );
 
                 result = group.release();
             }   
@@ -559,7 +584,7 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 
         // each feature has its own style, so use that and ignore the style catalog.
         osg::ref_ptr<FeatureCursor> cursor = _source->createFeatureCursor( baseQuery );
-        while( cursor->hasMore() )
+        while( cursor.valid() && cursor->hasMore() )
         {
             Feature* feature = cursor->nextFeature();
             if ( feature )
@@ -654,7 +679,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
     // query the feature source:
     osg::ref_ptr<FeatureCursor> cursor = _source->createFeatureCursor( query );
 
-    if ( cursor->hasMore() )
+    if ( cursor.valid() && cursor->hasMore() )
     {
         Bounds cellBounds =
             query.bounds().isSet() ? *query.bounds() : extent.bounds();

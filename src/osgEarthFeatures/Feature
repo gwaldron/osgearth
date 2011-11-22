@@ -21,6 +21,7 @@
 #define OSGEARTHFEATURES_FEATURE_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/FilterContext>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/SpatialReference>
@@ -32,6 +33,7 @@ namespace osgEarth { namespace Features
 {
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
+    class FilterContext;
 
     /**
      * Metadata and schema information for feature data.
@@ -148,10 +150,10 @@ namespace osgEarth { namespace Features
         const optional<GeoInterpolation>& geomInterp() const { return _geoInterp; }
 
         /** populates the variables of an expression with attribute values and evals the expression. */
-        double eval( NumericExpression& expr ) const;
+        double eval( NumericExpression& expr, FilterContext const* context=0L ) const;
         
         /** populates the variables of an expression with attribute values and evals the expression. */
-        const std::string& eval( StringExpression& expr ) const;
+        const std::string& eval( StringExpression& expr, FilterContext const* context=0L ) const;
 
     protected:
         FeatureID                         _fid;

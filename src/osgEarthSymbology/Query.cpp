@@ -75,7 +75,8 @@ Query::combineWith( const Query& rhs ) const
     {
         std::stringstream buf;
         buf << "( " << *_expression << " ) AND ( " << *rhs.expression() << " )";
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         merged.expression() = str;
     }
     else if ( lhsEmptyExpr && !rhsEmptyExpr )

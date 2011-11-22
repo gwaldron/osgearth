@@ -24,10 +24,12 @@
 #include <osg/TextureRectangle>
 #include <osgGA/GUIEventHandler>
 #include <osgText/Text>
+#include <osgUtil/RenderBin>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/GeometryRasterizer>
 #include <osg/Version>
 #include <osgEarth/Common>
+#include <osgEarth/Utils>
 
 using namespace osgEarth;
 using namespace osgEarth::Symbology;
@@ -117,22 +119,40 @@ namespace
 
 // ---------------------------------------------------------------------------
 
-Control::Control() :
-_x(0), _y(0), _width(1), _height(1),
-_margin( Gutter(0) ),
-_padding( Gutter(2) ),
-_visible( true ),
-_valign( ALIGN_NONE ),
-_halign( ALIGN_NONE ),
-_backColor( osg::Vec4f(0,0,0,0) ),
-_foreColor( osg::Vec4f(1,1,1,1) ),
-_activeColor( osg::Vec4f(.4,.4,.4,1) ),
-_active( false ),
-_absorbEvents( false ),
-_hfill( false ),
-_vfill( false )
+Control::Control()
 {
-    //nop
+    init();
+}
+
+Control::Control( const Alignment& halign, const Alignment& valign, const Gutter& padding )
+{
+    init();
+
+    setHorizAlign( halign );
+    setVertAlign( valign );
+    setPadding( padding );
+}
+
+void
+Control::init()
+{
+    _x.init(0);
+    _y.init(0);
+    _width.init(1);
+    _height.init(1);
+    _valign.init( ALIGN_NONE );
+    _halign.init( ALIGN_NONE );
+    _backColor.init( osg::Vec4(0,0,0,0) );
+    _foreColor.init( osg::Vec4(1,1,1,1) );
+    _activeColor.init( osg::Vec4(.4,.4,.4,1) );
+
+    _margin = Gutter(0);
+    _padding = Gutter(2);
+    _hfill = false;
+    _vfill = false;    
+    _visible = true;
+    _active = false;
+    _absorbEvents = false;
 }
 
 void
@@ -468,6 +488,7 @@ LabelControl::LabelControl(const std::string& text,
                            const osg::Vec4f& foreColor)
 {
     setText( text );
+	setEncoding( osgText::String::ENCODING_UNDEFINED );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
     setFontSize( fontSize );
     setBackColor( osg::Vec4f(0,0,0,0) );
@@ -478,6 +499,7 @@ LabelControl::LabelControl(const std::string& text,
                            const osg::Vec4f& foreColor)
 {
     setText( text );
+	setEncoding( osgText::String::ENCODING_UNDEFINED );
     setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
     setFontSize( 18.0f );
     setBackColor( osg::Vec4f(0,0,0,0) );
@@ -491,6 +513,15 @@ LabelControl::setText( const std::string& value )
         _text = value;
         dirty();
     }
+}
+
+void
+LabelControl::setEncoding( osgText::String::Encoding value )
+{
+	if ( value != _encoding ) {
+		_encoding = value;
+		dirty();
+	}
 }
 
 void
@@ -537,7 +568,7 @@ LabelControl::calcSize(const ControlContext& cx, osg::Vec2f& out_size)
         t->getOrCreateStateSet()->setAttributeAndModes( program, osg::StateAttribute::ON );
 #endif
 
-        t->setText( _text );
+		t->setText( _text, _encoding );
         // yes, object coords. screen coords won't work becuase the bounding box will be wrong.
         t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
         t->setCharacterSize( _fontSize );
@@ -775,19 +806,24 @@ ImageControl::draw( const ControlContext& cx, DrawableList& out )
 
 // ---------------------------------------------------------------------------
 
-HSliderControl::HSliderControl( float min, float max, float value ) :
+HSliderControl::HSliderControl( float min, float max, float value, ControlEventHandler* handler) :
 _min(min),
 _max(max),
 _value(value)
 {
-   if ( _max <= _min )
-       _max = _min+1.0f;
-   if ( _value < _min )
-       _value = _min;
-   if ( _value > _max )
-       _value = _max;
+   //if ( _max <= _min )
+   //    _max = _min+1.0f;
+   //if ( _value < _min )
+   //    _value = _min;
+   //if ( _value > _max )
+   //    _value = _max;
 
    setHorizFill( true );
+   setVertAlign( ALIGN_CENTER );
+   setHeight( 20.0f );
+
+   if ( handler )
+    addEventHandler( handler );
 }
 
 void
@@ -802,7 +838,7 @@ HSliderControl::fireValueChanged()
 void
 HSliderControl::setValue( float value, bool notify )
 {
-    value = osg::clampBetween( value, _min, _max );
+    //value = osg::clampBetween( value, _min, _max );
     if ( value != _value )
     {
         _value = value;
@@ -1092,6 +1128,12 @@ _spacing( 1 )
     //nop
 }
 
+Container::Container( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing )
+: Control( halign, valign, padding )
+{
+    this->setChildSpacing( spacing );
+}
+
 void
 Container::setFrame( Frame* frame )
 {
@@ -1235,8 +1277,14 @@ VBox::VBox()
     //nop
 }
 
-void
-VBox::addControl( Control* control, int index )
+VBox::VBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing ) :
+Container( halign, valign, padding, spacing )
+{
+    //nop
+}
+
+Control*
+VBox::addControlImpl( Control* control, int index )
 {
     if ( index < 0 )
         _controls.push_back( control );
@@ -1246,6 +1294,8 @@ VBox::addControl( Control* control, int index )
 
     applyChildAligns();
     dirty();
+
+    return control;
 }
 
 void
@@ -1368,8 +1418,14 @@ HBox::HBox()
     //nop
 }
 
-void
-HBox::addControl( Control* control, int index )
+HBox::HBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing ) :
+Container( halign, valign, padding, spacing )
+{
+    //nop
+}
+
+Control*
+HBox::addControlImpl( Control* control, int index )
 {
     if ( index < 0 )
         _controls.push_back( control );
@@ -1380,6 +1436,8 @@ HBox::addControl( Control* control, int index )
     applyChildAligns();
 
     dirty();
+
+    return control;
 }
 
 void
@@ -1503,27 +1561,36 @@ Grid::Grid()
     //nop
 }
 
-void
-Grid::setControl( int col, int row, Control* child )
+Grid::Grid( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing ) :
+Container( halign, valign, padding, spacing )
 {
-    if ( !child ) return;
+    //nop
+}
 
-    expandToInclude( col, row );
+Control*
+Grid::setControlImpl( int col, int row, Control* child )
+{
+    if ( child )
+    {
+        expandToInclude( col, row );
 
-    Control* oldControl = cell( col, row ).get();
-    if ( oldControl ) {
-        ControlList::iterator i = std::find( _children.begin(), _children.end(), oldControl );
-        if ( i != _children.end() ) 
-            _children.erase( i );
+        Control* oldControl = cell( col, row ).get();
+        if ( oldControl ) {
+            ControlList::iterator i = std::find( _children.begin(), _children.end(), oldControl );
+            if ( i != _children.end() ) 
+                _children.erase( i );
+        }
+
+        cell( col, row ) = child;
+        _children.push_back( child );
+
+        child->setParent( this );
+        applyChildAligns();
+
+        dirty();
     }
 
-    cell( col, row ) = child;
-    _children.push_back( child );
-
-    child->setParent( this );
-    applyChildAligns();
-
-    dirty();
+    return child;
 }
 
 osg::ref_ptr<Control>&
@@ -1551,11 +1618,11 @@ Grid::expandToInclude( int col, int row )
     }
 }
 
-void
-Grid::addControl( Control* control, int index )
+Control*
+Grid::addControlImpl( Control* control, int index )
 {
     // creates a new row and puts the control in its first column
-    setControl( 0, _rows.size(), control );
+    return setControlImpl( 0, _rows.size(), control );
 }
 
 void
@@ -1567,7 +1634,7 @@ Grid::addControls( const ControlVector& controls )
     {
         if ( i->valid() )
         {
-            setControl( col, row, i->get() );
+            setControlImpl( col, row, i->get() );
         }
     }
 }
@@ -1828,9 +1895,6 @@ ControlNode::traverse( osg::NodeVisitor& nv )
         static osg::Vec4d s_zero_w(0,0,0,1);
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
 
-        //setCullingActive( true );
-        //cv->setSmallFeatureCullingPixelSize(0);
-
         // pull up the per-view data for this view:
         PerViewData& data = _perViewData[cv->getCurrentCamera()->getView()];
 
@@ -1849,8 +1913,6 @@ ControlNode::traverse( osg::NodeVisitor& nv )
         if ( data._canvas.valid() )
         {
             // calculate its screen position:
-            //data._screenPos = s_zero * (*cv->getMVPW());
-
             osg::Vec4d clip = s_zero_w * (*cv->getModelViewMatrix()) * (*cv->getProjectionMatrix());
             osg::Vec3d clip_ndc( clip.x()/clip.w(), clip.y()/clip.w(), clip.z()/clip.w() );
             data._screenPos = clip_ndc * cv->getWindowMatrix();
@@ -1880,6 +1942,28 @@ _screenPos  ( 0.0, 0.0, 0.0 )
 {
     //nop
 }
+
+// ---------------------------------------------------------------------------
+
+/**
+ * A custom render bin for Controls, that sorts drawables by traversal order,
+ * providing an unambiguous draw order.
+ */
+#define OSGEARTH_CONTROLS_BIN "osgEarth::Utils::Controls::bin"
+
+namespace
+{    
+    struct osgEarthControlsRenderBin : public osgUtil::RenderBin
+    {
+        osgEarthControlsRenderBin()
+        {
+            this->setName( OSGEARTH_CONTROLS_BIN );
+            this->setSortMode( osgUtil::RenderBin::TRAVERSAL_ORDER );
+        }
+    };
+}
+
+static osgEarthRegisterRenderBinProxy<osgEarthControlsRenderBin> s_regbin( OSGEARTH_CONTROLS_BIN );
 
 // ---------------------------------------------------------------------------
 
@@ -2046,9 +2130,6 @@ ControlNodeBin::draw( const ControlContext& context, bool newContext, int bin )
                       for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
                       {
                           j->get()->setDataVariance( osg::Object::DYNAMIC );
-
-                          osg::StateSet* stateSet = j->get()->getOrCreateStateSet();
-                          stateSet->setRenderBinDetails( bin++, "RenderBin" );
                           geode->addDrawable( j->get() );
                       }
                   }
@@ -2183,11 +2264,9 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     osg::StateSet* ss = getOrCreateStateSet();
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
     ss->setMode( GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE );
-    ss->setAttributeAndModes( new osg::Depth( osg::Depth::LEQUAL, 0, 1, false ) );
-
-    // this is necessary b/c osgText puts things in this bin too and we can't override that
-    ss->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
-    ss->setBinNumber(999999);
+    ss->setAttributeAndModes( new osg::Depth( osg::Depth::ALWAYS, 0, 1, false ) );
+    ss->setRenderBinMode( osg::StateSet::USE_RENDERBIN_DETAILS );
+    ss->setBinName( OSGEARTH_CONTROLS_BIN );
 
     _controlNodeBin = new ControlNodeBin();
     this->addChild( _controlNodeBin->getControlGroup() );
@@ -2212,14 +2291,15 @@ ControlCanvas::setAllowControlNodeOverlap( bool value )
     getControlNodeBin()->_sortingEnabled = !value;
 }
 
-void
-ControlCanvas::addControl( Control* control )
+Control*
+ControlCanvas::addControlImpl( Control* control )
 {
     osg::Geode* geode = new osg::Geode();
     _geodeTable[control] = geode;
     addChild( geode );
     control->dirty();    
     _controls.push_back( control );
+    return control;
 }
 
 void
@@ -2251,11 +2331,24 @@ ControlCanvas::getControlAtMouse( float x, float y ) const
 bool
 ControlCanvas::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
-    bool handled = false;
+    if ( !_context._vp )
+        return false;
+
+	for (ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i)
+	{
+		Control* control = i->get();
+		if (control->isDirty())
+		{
+			aa.requestRedraw();
+			break;
+		}
+	}
+
+	bool handled = false;
     //Send a frame event to all controls
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
-        for( ControlList::const_reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
+        for( ControlList::reverse_iterator i = _controls.rbegin(); i != _controls.rend(); ++i )
         {
             i->get()->handle(ea, aa, _context);
         }
@@ -2298,6 +2391,9 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
 {
     _context._frameStamp = frameStamp;
 
+    if ( !_context._vp )
+        return;
+
     int bin = 0;
     for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
     {
@@ -2319,7 +2415,6 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
             for( DrawableList::iterator j = drawables.begin(); j != drawables.end(); ++j )
             {
                 j->get()->setDataVariance( osg::Object::DYNAMIC );
-                j->get()->getOrCreateStateSet()->setBinNumber( bin++ );
                 geode->addDrawable( j->get() );
             }
         }

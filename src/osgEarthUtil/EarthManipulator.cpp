@@ -549,11 +549,16 @@ EarthManipulator::established()
         osg::ref_ptr<osg::Node> safeNode = _node.get();
         if ( !safeNode.valid() )
             return false;
+        
+        // check the kids, then the parents.
+        // the traversal mask is set to 0x01 so that we can "hide" a CSN from this manipulator
+        // by clearing bit 0 of its node mask.
 
-        // check the kids, then the parents
-        osg::ref_ptr<osg::CoordinateSystemNode> csn = osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( safeNode.get() );    
+        osg::ref_ptr<osg::CoordinateSystemNode> csn = 
+            osgEarth::findTopMostNodeOfType<osg::CoordinateSystemNode>( safeNode.get(), 0x01 );
+
         if ( !csn.valid() )
-            csn = osgEarth::findFirstParentOfType<osg::CoordinateSystemNode>( safeNode.get() );
+            csn = osgEarth::findFirstParentOfType<osg::CoordinateSystemNode>( safeNode.get(), 0x01 );
 
         if ( csn.valid() )
         {
@@ -585,9 +590,9 @@ EarthManipulator::established()
                 else
                 {
                     setHomeViewpoint( Viewpoint(
-                        _csn->getBound().center(),
+                        safeNode->getBound().center(),
                         0, -89.9, 
-                        _csn->getBound().radius()*2.0) );
+                        safeNode->getBound().radius()*2.0) );
                 }
             }
 
@@ -703,7 +708,7 @@ EarthManipulator::getSRS() const
         nonconst_this->_is_geocentric = false;
 
         // first try to find a map node:
-        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( safeNode.get() );
+        osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( safeNode.get() );       
         if ( mapNode )
         {
             nonconst_this->_cached_srs = mapNode->getMap()->getProfile()->getSRS();

@@ -51,8 +51,11 @@ public:
     }
 
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize(const osgDB::Options* dbOptions,
+                    const Profile*        overrideProfile )
     {
+        _dbOptions = dbOptions;
+
         const Profile* result = NULL;
 
         URI tmsURI = _options.url().value();
@@ -62,22 +65,8 @@ public:
             return;
         }
 
-        //Find the full path to the URL
-        //If we have a relative path and the map file contains a server address, just concat the server path and the url together
-        if (osgEarth::isRelativePath(tmsURI.full()) && osgDB::containsServerAddress(referenceURI))
-        {
-            tmsURI = URI( osgDB::getFilePath(referenceURI) + std::string("/") + tmsURI.full() );
-        }
-
-        //If the path doesn't contain a server address, get the full path to the file.
-        if (!osgDB::containsServerAddress(tmsURI.full()))
-        {
-            tmsURI = URI( tmsURI.full(), referenceURI );
-            //tmsPath = osgEarth::getFullPath(referenceURI, tmsURI);
-        }
-
 		// Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-    	_tileMap = TileMapReaderWriter::read( tmsURI.full(), 0L ); //getOptions() );
+    	_tileMap = TileMapReaderWriter::read( tmsURI.full(), 0L );
 
 
 		//Take the override profile if one is given
@@ -127,8 +116,8 @@ public:
     }
 
 
-    osg::Image* createImage(const osgEarth::TileKey& key,
-                            ProgressCallback* progress)
+    osg::Image* createImage(const TileKey&        key,
+                            ProgressCallback*     progress )
     {
         if (_tileMap.valid() && key.getLevelOfDetail() <= getMaxDataLevel() )
         {
@@ -136,12 +125,10 @@ public:
                 
             //OE_NOTICE << "TMSSource: Key=" << key.str() << ", URL=" << image_url << std::endl;
 
-            
-            osg::ref_ptr<osg::Image> image;
-            
+            osg::ref_ptr<osg::Image> image;            
             if (!image_url.empty())
             {
-                HTTPClient::readImageFile( image_url, image, 0L, progress ); //getOptions(), progress );
+                image = URI(image_url).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).getImage();
             }
 
             if (!image.valid())
@@ -175,8 +162,9 @@ public:
 private:
 
     osg::ref_ptr<TileMap> _tileMap;
-    bool _invertY;
-    const TMSOptions _options;
+    bool                  _invertY;
+    const TMSOptions      _options;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

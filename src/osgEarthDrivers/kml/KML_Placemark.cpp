@@ -19,10 +19,12 @@
 #include "KML_Placemark"
 #include "KML_Geometry"
 #include "KML_Style"
-#include <osgEarthUtil/Annotation>
+#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/Decluttering>
 
 using namespace osgEarth::Features;
-using namespace osgEarth::Util::Annotation;
+using namespace osgEarth::Annotation;
 
 void 
 KML_Placemark::build( const Config& conf, KMLContext& cx )
@@ -44,10 +46,10 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     }
 
     URI iconURI;
-    MarkerSymbol* marker = style.get<MarkerSymbol>();
-    if ( marker && marker->url().isSet() )
+    MarkerSymbol* iconMarker = style.get<MarkerSymbol>();    
+    if ( iconMarker && iconMarker->url().isSet() )
     {
-        iconURI = URI( marker->url()->expr(), marker->url()->uriContext() );
+        iconURI = URI( iconMarker->url()->expr(), iconMarker->url()->uriContext() );
     }
 
     std::string text = 
@@ -57,7 +59,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
 
     // read in the geometry:
     bool isPoly = false;
-    bool isPoint = false;
+    bool isPoint = false;    
+
     osg::Vec3d position;
     KML_Geometry geometry;
     geometry.build(conf, cx, style);
@@ -69,36 +72,40 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
     }
 
-    FeatureNode*   fNode = 0L;
-    PlacemarkNode* pNode = 0L;
+    FeatureNode* fNode = 0L;
+    PlaceNode*   pNode = 0L;
 
-    // if we have a non-single-point geometry, render it.
-    if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 1 )
+    MarkerSymbol* marker = style.get<MarkerSymbol>();    
+
+    // if we have a non-single-point geometry or it's a marker, render it.
+    if ( geometry._geom.valid() && geometry._geom->getTotalPointCount() > 1 || marker )    
     {
         const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
-        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
 
-        bool draped =
-            (ex == 0L && alt == 0L && isPoly) ||
-            (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+        bool draped =            
+            ((ex == 0L && alt == 0L && isPoly) || (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN)) &&
+            (!marker);
 
-        // Make a feautre node; drape if we're not extruding.
-        fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped );
+        // Make a feature node; drape if we're not extruding.
+        GeometryCompilerOptions options;
+        options.clustering() = false;
+        fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped, options );
         fNode->setStyle( style );
 
         if ( draped )
             fNode->getOrCreateStateSet()->setMode(GL_LIGHTING, 1);
     }
 
-    if ( isPoint )
+    if ( isPoint && !marker )
     {
-        osg::Image* image = iconURI.readImage();
-        if ( !image )
+        osg::ref_ptr<osg::Image> image = iconURI.readImage().getImage();
+        if ( !image.valid() )
         {
             image = cx._options->defaultIconImage().get();
-            if ( !image )
+            if ( !image.valid() )
             {
-                image = cx._options->defaultIconURI()->readImage();
+                image = cx._options->defaultIconURI()->readImage().getImage();
             }
         }
 
@@ -108,25 +115,37 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             style.addSymbol( cx._options->defaultTextSymbol().get() );
         }
 
-        pNode = new PlacemarkNode( cx._mapNode, position, image, text, style );
+        pNode = new PlaceNode( cx._mapNode, position, image, text, style );
     }
+
+    osg::Group* parent =
+        cx._options->iconAndLabelGroup().valid() ?
+        cx._options->iconAndLabelGroup() :
+        cx._groupStack.top();
+
 
     if ( fNode && pNode )
     {
         osg::Group* group = new osg::Group();
         group->addChild( fNode );
         group->addChild( pNode );
-        cx._groupStack.top()->addChild( group );
+        parent->addChild( group );
         KML_Feature::build( conf, cx, group );
     }
     else if ( pNode )
     {
-        cx._groupStack.top()->addChild( pNode );
+        parent->addChild( pNode );
         KML_Feature::build( conf, cx, pNode );
     }
     else if ( fNode )
     {
-        cx._groupStack.top()->addChild( fNode );
+        parent->addChild( fNode );
         KML_Feature::build( conf, cx, fNode );
+    }
+
+    // apply decluttering if necessary
+    if ( pNode && cx._options->declutter() == true && !cx._options->iconAndLabelGroup().valid() )
+    {
+        Decluttering::setEnabled( pNode->getOrCreateStateSet(), true );
     }
 }

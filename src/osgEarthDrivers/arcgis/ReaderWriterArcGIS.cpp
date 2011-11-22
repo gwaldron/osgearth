@@ -22,6 +22,8 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
+#include <osgEarth/URI>
+
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -77,7 +79,7 @@ public:
             if (!token.empty())
             {
                 std::string sep = url.full().find( "?" ) == std::string::npos ? "?" : "&";
-                url = url.append( sep + "token=" + token );
+                url = url.append( sep + std::string("token=") + token );
             }
         }
 
@@ -90,8 +92,10 @@ public:
     }
 
     // override
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
+        _dbOptions = dbOptions;
+
         const Profile* profile = NULL;
 
         if ( _profileConf.isSet() )
@@ -152,8 +156,7 @@ public:
     }
 
     // override
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage(const TileKey& key, ProgressCallback* progress)
     {
         std::stringstream buf;
 
@@ -194,7 +197,9 @@ public:
             std::string token = _options.token().value();
             if (!token.empty())
             {
-                std::string sep = buf.str().find( "?" ) == std::string::npos ? "?" : "&";
+                std::string str;
+                str = buf.str();
+                std::string sep = str.find( "?" ) == std::string::npos ? "?" : "&";
                 buf << sep << "token=" << token;
             }
         }
@@ -206,8 +211,7 @@ public:
         osg::ref_ptr<osg::Image> image;
 		std::string bufStr;
 		bufStr = buf.str();
-        HTTPClient::readImageFile( bufStr, image, 0L, progress ); //getOptions(), progress );
-        return image.release();
+        return URI(bufStr).readImage( 0L, CachePolicy::NO_CACHE, progress ).releaseImage();
     }
 
     // override
@@ -231,6 +235,7 @@ private:
     std::string _layer;
     std::string _format;
     MapService _map_service;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

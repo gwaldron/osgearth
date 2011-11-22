@@ -29,6 +29,10 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/Profile>
 #include <osgEarth/GeoData>
+#include <osgEarth/Cache>
+#include <osgEarth/CachePolicy>
+#include <osgEarth/URI>
+
 #include <osgDB/ReaderWriter>
 #include <OpenThreads/Mutex>
 #include <list>
@@ -61,7 +65,6 @@ namespace osgEarth { namespace Features
         optional<ProfileOptions>& profile() { return _profile; }
         const optional<ProfileOptions>& profile() const { return _profile; }
 
-
     public:
         FeatureSourceOptions( const ConfigOptions& options =ConfigOptions() );
         virtual Config getConfig() const;
@@ -79,6 +82,7 @@ namespace osgEarth { namespace Features
         optional<std::string>    _name;
         optional< bool >         _openWrite;
         optional<ProfileOptions> _profile;
+        optional<CachePolicy>    _cachePolicy;
     };
 
     /**
@@ -91,7 +95,9 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new feature source with the provided read/write options.
          */
-        FeatureSource( const ConfigOptions& options =ConfigOptions() );
+        FeatureSource(
+            const ConfigOptions&  options =ConfigOptions(),
+            const osgDB::Options* dbOptions =0L );
 
         /**
          * Gets a reference to the metadata that describes features that you can
@@ -188,9 +194,9 @@ namespace osgEarth { namespace Features
 
 
 		/**
-		 * Initialize the FeatureSource.  The profile should be computed and set here using setProfile()
+		 * Initialize the FeatureSource.
 		 */
-		virtual void initialize( const std::string& referenceURI ) =0;
+        virtual void initialize( const osgDB::Options* dbOptions =0L ) { }
 
     protected:
 
@@ -206,11 +212,24 @@ namespace osgEarth { namespace Features
          */
         virtual ~FeatureSource() { }
 
-    private:
-        const FeatureSourceOptions _options;
+        /** Access the raw DB options that came in */
+        const osgDB::Options* dbOptions() const { return _dbOptions.get(); }
 
+        /** The URI context (for resolving relative paths) */
+        const URIContext& uriContext() const { return _uriContext; }
+
+        /** The Cache passed in via the dbOptions */
+        Cache* getCache() const { return _cache.get(); }    
+
+    private:
+        const FeatureSourceOptions         _options;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
-        OpenThreads::Mutex _createMutex;
+        OpenThreads::Mutex                 _createMutex;
+
+        osg::ref_ptr<const osgDB::Options> _dbOptions;
+        URIContext                         _uriContext;
+        osg::observer_ptr<Cache>           _cache;
+        //osg::observer_ptr<CacheBin>        _cacheBin;
 
         friend class Map;
         friend class FeatureSourceFactory;

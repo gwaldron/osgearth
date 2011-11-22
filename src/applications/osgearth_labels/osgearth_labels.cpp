@@ -119,7 +119,7 @@ createLabels( Map* map )
         return 0L;
     }
 
-    features->initialize( "" );
+    features->initialize( map->getDBOptions() );
     const FeatureProfile* featureProfile = features->getFeatureProfile();
     if ( !featureProfile || !featureProfile->getSRS() )
     {

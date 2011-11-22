@@ -22,7 +22,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/Caching>
 #include <osgEarth/Profile>
 #include <osgEarth/TileSource>
 #include <osgEarth/TerrainLayer>
@@ -42,7 +41,7 @@ namespace osgEarth
         ElevationLayerOptions( const std::string& name, const TileSourceOptions& driverOptions );
 
     public:
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
         
     private:
@@ -93,7 +92,7 @@ namespace osgEarth
 
         /** Gets the initialization options with which the layer was created. */
         const ElevationLayerOptions& getElevationLayerOptions() const { return _runtimeOptions; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ElevationLayerCallback* cb );
@@ -108,13 +107,22 @@ namespace osgEarth
          * in the specified TileKey. The returned HeightField will always match the geospatial
          * extents of that TileKey.
          */
-        osg::HeightField* createHeightField(
+        virtual GeoHeightField createHeightField(
             const TileKey&    key,
             ProgressCallback* progress =0L );
 
     protected:
         
-		virtual GeoHeightField createGeoHeightField( const TileKey& key, ProgressCallback* progress);
+        // creates a geoHF directly from the tile source
+        osg::HeightField* createHeightFieldFromTileSource( 
+            const TileKey&    key, 
+            ProgressCallback* progress);
+
+        // assembles tiles from a layer that is not in the same profile as the map, and
+        // returns a single tile in the map's profile.
+        osg::HeightField* assembleHeightFieldFromTileSource(
+            const TileKey&     key,
+            ProgressCallback*  progress );
         
         virtual std::string suggestCacheFormat() const;
 

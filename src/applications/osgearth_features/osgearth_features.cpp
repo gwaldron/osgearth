@@ -27,6 +27,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 
 #include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/ConvertTypeFilter>
 
 #include <osgEarthDrivers/gdal/GDALOptions>
 #include <osgEarthDrivers/feature_ogr/OGRFeatureOptions>
@@ -46,6 +47,7 @@ using namespace osgEarth::Util;
 int main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
+    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
 
     bool useRaster  = arguments.read("--rasterize");
     bool useOverlay = arguments.read("--overlay");
@@ -64,21 +66,27 @@ int main(int argc, char** argv)
     basemapOpt.url() = "../data/world.tif";
     map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );
 
-    // Next we add a feature layer. First configure a feature driver to 
-    // load the vectors from a shapefile:
-    OGRFeatureOptions featureOpt;
+    // Next we add a feature layer. 
+    OGRFeatureOptions featureOptions;
     if ( !useMem )
     {
-        featureOpt.url() = "../data/usa.shp";
+        // Configures the feature driver to load the vectors from a shapefile:
+        featureOptions.url() = "../data/usa.shp";
+
+        // installs an inline filter to convert geometry to lines
+        ConvertTypeFilter* filter = new ConvertTypeFilter();
+        filter->toType() = Geometry::TYPE_LINESTRING;
+        featureOptions.filters().push_back( filter );
     }
     else
     {
+        // the --mem options tells us to just make an in-memory geometry:
         Ring* line = new Ring();
         line->push_back( osg::Vec3d(-60, 20, 0) );
         line->push_back( osg::Vec3d(-120, 20, 0) );
         line->push_back( osg::Vec3d(-120, 60, 0) );
         line->push_back( osg::Vec3d(-60, 60, 0) );
-        featureOpt.geometry() = line;
+        featureOptions.geometry() = line;
     }
 
     // Define a style for the feature data. Since we are going to render the
@@ -86,71 +94,76 @@ int main(int argc, char** argv)
     Style style;
 
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
-    ls->stroke()->color() = osg::Vec4f( 1,1,0,1 ); // yellow
+    ls->stroke()->color() = Color::Yellow;
     ls->stroke()->width() = 2.0f;
-
-    // Add some text labels.
-    if ( useLabels )
-    {
-        TextSymbol* text = style.getOrCreateSymbol<TextSymbol>();
-        text->provider() = "overlay";
-        text->content() = StringExpression( "[name]" );
-        text->priority() = NumericExpression( "[area]" );
-        text->removeDuplicateLabels() = true;
-        text->size() = 16.0f;
-        text->fill()->color() = Color::White;
-        text->halo()->color() = Color::DarkGray;
-    }
 
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNodeOptions mapNodeOptions;
     mapNodeOptions.enableLighting() = false;
-
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
-
-    // Now we'll choose the AGG-Lite driver to render the features. By the way, the
-    // feature data is actually polygons, so we override that to treat it as lines.
-    // We apply the feature driver and set the style as well.
+   
     if (useStencil)
     {
-        FeatureStencilModelOptions worldOpt;
-        worldOpt.featureOptions() = featureOpt;
-        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
-        worldOpt.styles() = new StyleSheet();
-        worldOpt.styles()->addStyle( style );
-        worldOpt.enableLighting() = false;
-        worldOpt.depthTestEnabled() = false;
-        map->addModelLayer( new ModelLayer( "my features", worldOpt ) );
+        FeatureStencilModelOptions stencilOptions;
+        stencilOptions.featureOptions() = featureOptions;
+        stencilOptions.styles() = new StyleSheet();
+        stencilOptions.styles()->addStyle( style );
+        stencilOptions.enableLighting() = false;
+        stencilOptions.depthTestEnabled() = false;
+        map->addModelLayer( new ModelLayer("my features", stencilOptions) );
     }
     else if (useRaster)
     {
-        AGGLiteOptions worldOpt;
-        worldOpt.featureOptions() = featureOpt;
-        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
-        worldOpt.styles() = new StyleSheet();
-        worldOpt.styles()->addStyle( style );
-        map->addImageLayer( new ImageLayer( ImageLayerOptions("world", worldOpt) ) );
+        AGGLiteOptions rasterOptions;
+        rasterOptions.featureOptions() = featureOptions;
+        rasterOptions.styles() = new StyleSheet();
+        rasterOptions.styles()->addStyle( style );
+        map->addImageLayer( new ImageLayer("my features", rasterOptions) );
     }
     else //if (useGeom || useOverlay)
     {
-        FeatureGeomModelOptions worldOpt;
-        worldOpt.featureOptions() = featureOpt;
-        worldOpt.geometryTypeOverride() = Geometry::TYPE_LINESTRING;
-        worldOpt.styles() = new StyleSheet();
-        worldOpt.styles()->addStyle( style );
-        worldOpt.enableLighting() = false;
-        worldOpt.depthTestEnabled() = false;
+        FeatureGeomModelOptions geomOptions;
+        geomOptions.featureOptions() = featureOptions;
+        geomOptions.styles() = new StyleSheet();
+        geomOptions.styles()->addStyle( style );
+        geomOptions.enableLighting() = false;
 
-        ModelLayerOptions options( "my features", worldOpt );
-        options.overlay() = useOverlay;
-        map->addModelLayer( new ModelLayer(options) );
+        ModelLayerOptions layerOptions( "my features", geomOptions );
+        layerOptions.overlay() = useOverlay;
+        map->addModelLayer( new ModelLayer(layerOptions) );
+    }
+
+    if ( useLabels )
+    {
+        // set up symbology for drawing labels. We're pulling the label
+        // text from the "name" attribute, and its draw priority from the
+        // "area" attribute (meaning bigger features get higher-priotity
+        // labels.)
+        Style labelStyle;
+
+        TextSymbol* text = labelStyle.getOrCreateSymbol<TextSymbol>();
+        text->content() = StringExpression( "[name]" );
+        text->priority() = NumericExpression( "[area]" );
+        text->removeDuplicateLabels() = true;
+        text->size() = 16.0f;
+        text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+        text->fill()->color() = Color::White;
+        text->halo()->color() = Color::DarkGray;
+
+        // and configure a model layer:
+        FeatureGeomModelOptions geomOptions;
+        geomOptions.featureOptions() = featureOptions;
+        geomOptions.styles() = new StyleSheet();
+        geomOptions.styles()->addStyle( labelStyle );
+
+        map->addModelLayer( new ModelLayer("labels", geomOptions) );
     }
 
     viewer.setSceneData( mapNode );
     viewer.setCameraManipulator( new EarthManipulator() );
 
-    if ( !useStencil && !useOverlay )
-        viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
+    if ( !useStencil )
+        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(map) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

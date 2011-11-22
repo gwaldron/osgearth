@@ -75,7 +75,7 @@ public:
     }
 
     /** override */
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* options, const Profile* overrideProfile)
     {
         osg::ref_ptr<const Profile> result;
 
@@ -87,9 +87,9 @@ public:
             capUrl = URI(
                 _options.url()->full() + 
                 sep + 
-                "SERVICE=WMS" +
-                "&VERSION=" + _options.wmsVersion().value() +
-                "&REQUEST=GetCapabilities" );
+                std::string("SERVICE=WMS") +
+                std::string("&VERSION=") + _options.wmsVersion().value() +
+                std::string("&REQUEST=GetCapabilities") );
         }
 
         //Try to read the WMS capabilities
@@ -254,6 +254,7 @@ public:
         // TODO
 
 		setProfile( result.get() );
+        OE_NOTICE << "[osgEarth::WMS] Profile=" << result->toString() << std::endl;
     }
 
     /* override */
@@ -296,10 +297,10 @@ public:
                 {
                     Config ex = se.child("serviceexceptionreport").child("serviceexception");
                     if ( !ex.empty() ) {
-                        OE_NOTICE << "WMS Service Exception: " << ex.value() << std::endl;
+                        OE_NOTICE << "WMS Service Exception: " << ex.toJSON(true) << std::endl;
                     }
                     else {
-                        OE_NOTICE << "WMS Response: " << se.toString() << std::endl;
+                        OE_NOTICE << "WMS Response: " << se.toJSON(true) << std::endl;
                     }
                 }
                 else {
@@ -333,7 +334,7 @@ public:
         {
             std::string extras;
             if ( _timesVec.size() == 1 )
-                extras = "TIME=" + _timesVec[0];
+                extras = std::string("TIME=") + _timesVec[0];
 
             HTTPResponse response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extras, progress, response );
@@ -359,7 +360,7 @@ public:
 
         for( unsigned int r=0; r<_timesVec.size(); ++r )
         {
-            std::string extraAttrs = "TIME=" + _timesVec[r];
+            std::string extraAttrs = std::string("TIME=") + _timesVec[r];
             HTTPResponse response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
             if ( reader )
@@ -393,35 +394,11 @@ public:
 
         return image.release();
     }
-    
-    ///** creates a 3D image from timestamped data. */
-    //osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
-    //{
-    //    osg::ImageSequence* seq = new osg::ImageSequence();
-
-    //    for( int r=0; r<_timesVec.size(); ++r )
-    //    {
-    //        std::string extraAttrs = "TIME=" + _timesVec[r];
-
-    //        std::string uri = createURI(key);
-    //        std::string delim = uri.find("?") == std::string::npos ? "?" : "&";
-    //        uri = uri + delim + extraAttrs;
-    //        uri = uri + "&." + _formatToUse;
-
-    //        seq->addImageFile( uri );
-    //    }
-
-    //    seq->play();
-    //    seq->setLength( (double)_timesVec.size() );
-    //    seq->setLoopingMode( osg::ImageStream::LOOPING );
-    //    
-    //    return seq;
-    //}
 
     /** creates a 3D image from timestamped data. */
     osg::Image* createImageSequence( const TileKey& key, ProgressCallback* progress )
     {
-        osg::ImageSequence* seq = new SyncImageSequence(); //osg::ImageSequence();
+        osg::ImageSequence* seq = new SyncImageSequence();
 
         seq->setLoopingMode( osg::ImageStream::LOOPING );
         seq->setLength( _options.secondsPerFrame().value() * (double)_timesVec.size() );
@@ -429,7 +406,7 @@ public:
 
         for( unsigned int r=0; r<_timesVec.size(); ++r )
         {
-            std::string extraAttrs = "TIME=" + _timesVec[r];
+            std::string extraAttrs = std::string("TIME=") + _timesVec[r];
 
             HTTPResponse response;
             osgDB::ReaderWriter* reader = fetchTileAndReader( key, extraAttrs, progress, response );
@@ -452,8 +429,7 @@ public:
 
 
     /** override */
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress)
     {
         osg::Image* image = createImage(key, progress);
         if (!image)

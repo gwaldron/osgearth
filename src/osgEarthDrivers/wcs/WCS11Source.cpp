@@ -21,6 +21,7 @@
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgEarth/Registry>
+#include <osgEarth/URI>
 #include <osg/Notify>
 #include <osgDB/Registry>
 #include <iostream>
@@ -31,7 +32,7 @@ using namespace osgEarth;
 
 WCS11Source::WCS11Source( const TileSourceOptions& options ) :
 TileSource( options ),
-_options(options)
+_options  ( options )
 {
     _covFormat = _options.format().value();
     
@@ -42,7 +43,9 @@ _options(options)
 }
 
 
-void WCS11Source::initialize( const std::string& referenceURI, const Profile* overrideProfile)
+void
+WCS11Source::initialize(const osgDB::Options* dbOptions,
+                        const Profile*        overrideProfile )
 {
 	if (overrideProfile)
 	{
@@ -64,8 +67,8 @@ WCS11Source::getExtension() const
 
 
 osg::Image*
-WCS11Source::createImage( const TileKey& key,
-                         ProgressCallback* progress)
+WCS11Source::createImage(const TileKey&        key,
+                         ProgressCallback*     progress)
 {
     HTTPRequest request = createRequest( key );
 
@@ -110,8 +113,8 @@ WCS11Source::createImage( const TileKey& key,
 
 
 osg::HeightField*
-WCS11Source::createHeightField( const TileKey& key,
-                                ProgressCallback* progress)
+WCS11Source::createHeightField(const TileKey&        key,
+                               ProgressCallback*     progress)
 {
     osg::HeightField* field = NULL;
 

@@ -21,7 +21,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarth/GeoData>
-#include <osgEarth/Utils>
+#include <osgEarth/Containers>
 #include <vector>
 #include <stack>
 

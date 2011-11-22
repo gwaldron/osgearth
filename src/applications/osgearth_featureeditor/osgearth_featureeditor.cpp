@@ -41,7 +41,7 @@
 
 #include <osgEarthUtil/Controls>
 
-#include <osgEarthUtil/FeatureEditing>
+#include <osgEarthAnnotation/FeatureEditing>
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
@@ -49,6 +49,7 @@ using namespace osgEarth::Drivers;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
+using namespace osgEarth::Annotation;
 
 osg::Vec4
 randomColor()
@@ -296,7 +297,9 @@ int main(int argc, char** argv)
     
     viewer.setSceneData( s_root.get() );
     viewer.setCameraManipulator( new EarthManipulator() );
-    viewer.addEventHandler( new osgEarth::Util::AutoClipPlaneHandler );
+
+    if ( s_mapNode )
+        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(s_mapNode->getMap()) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

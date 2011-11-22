@@ -109,7 +109,7 @@ struct BuildElevLayer
         osg::ref_ptr<osg::HeightField> hf;
         bool isFallback = false;
 
-        if ( _mapf->getHeightField( _key, true, hf, &isFallback, *_opt->elevationInterpolation() ) )
+        if ( _mapf->getHeightField( _key, true, hf, &isFallback ) )
         {
             // Treat Plate Carre specially by scaling the height values. (There is no need
             // to do this with an empty heightfield)

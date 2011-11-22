@@ -24,12 +24,12 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
-#include <osgEarthUtil/Viewpoint>
 #include <osgEarthSymbology/Color>
 
 #include <osgEarthUtil/MeasureTool>
@@ -49,8 +49,10 @@ public:
     virtual void onDistanceChanged(MeasureToolHandler* sender, double distance)
     {
         std::stringstream ss;
-        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl;        
-        _label->setText( ss.str() );
+        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl; 
+        std::string str;
+        str = ss.str();
+        _label->setText( str );
     }
     LabelControl* _label;
 };

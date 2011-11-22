@@ -20,6 +20,7 @@
 #define OSGEARTH_HTTP_CLIENT_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/IOTypes>
 #include <osgEarth/Progress>
 #include <osgEarth/TerrainOptions>
 #include <OpenThreads/Thread>
@@ -119,7 +120,7 @@ namespace osgEarth
         HTTPResponse( const HTTPResponse& rhs );
 
         /** Gets the HTTP response code (Code) in this response */
-        long getCode() const;
+        unsigned getCode() const;
 
         /** True is the HTTP response code is OK (200) */
         bool isOK() const;
@@ -155,10 +156,12 @@ namespace osgEarth
             std::stringstream _stream;
         };
         typedef std::vector< osg::ref_ptr<Part> > Parts;
-        Parts _parts;
-        long _response_code;
+        Parts       _parts;
+        long        _response_code;
         std::string _mimeType;
-        bool _cancelled;
+        bool        _cancelled;
+
+        Config getHeadersAsConfig() const;
 
         friend class HTTPClient;
     };
@@ -173,41 +176,17 @@ namespace osgEarth
     class OSGEARTH_EXPORT HTTPClient : public osg::Referenced
     {
     public:
-        enum ResultCode {
-            RESULT_OK,
-            RESULT_CANCELED,
-            RESULT_NOT_FOUND,
-            RESULT_SERVER_ERROR,
-            RESULT_TIMEOUT,
-            RESULT_NO_READER,
-            RESULT_READER_ERROR,
-            RESULT_UNKNOWN_ERROR
-        };
-
         /**
          * Returns true is the result code represents a recoverable situation,
          * i.e. one in which retrying might work.
          */
-        static bool isRecoverable( ResultCode code )
+        static bool isRecoverable( ReadResult::Code code )
         {
             return
-                code == RESULT_OK ||
-                code == RESULT_SERVER_ERROR ||
-                code == RESULT_TIMEOUT ||
-                code == RESULT_CANCELED;
-        }
-
-        static std::string getResultCodeString( ResultCode code )
-        {
-            return
-                code == RESULT_OK ? "OK" :
-                code == RESULT_CANCELED ? "Read canceled" :
-                code == RESULT_NOT_FOUND ? "Target not found" :
-                code == RESULT_SERVER_ERROR ? "Server error" :
-                code == RESULT_TIMEOUT ? "Read timed out" :
-                code == RESULT_NO_READER ? "No suitable ReaderWriter found" :
-                code == RESULT_READER_ERROR ? "ReaderWriter error" :
-                "Unknown error";
+                code == ReadResult::RESULT_OK ||
+                code == ReadResult::RESULT_SERVER_ERROR ||
+                code == ReadResult::RESULT_TIMEOUT ||
+                code == ReadResult::RESULT_CANCELED;
         }
 
         /** Gest the user-agent string that all HTTP requests will use.
@@ -225,43 +204,40 @@ namespace osgEarth
 
     public:
         /**
-         * Reads an image. Based on the structure of the URI, it will either try to fetch the
+         * Reads an image. Based on the structure of "location", it will either try to fetch the
          * data using HTTP or simply read the file from disk.
          */
-        static ResultCode readImageFile(
-            const std::string& uri,
-            osg::ref_ptr<osg::Image>& output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback* callback = 0 );
+        static ReadResult readImage(
+            const std::string&    location,
+            const osgDB::Options* dbOptions =0L,
+            ProgressCallback*     progress  =0L );
 
         /**
-         * Reads an osg::Node. Based on the structure of the URI, it will either try to fetch the
+         * Reads an osg::Node. Based on the structure of "location" it will either try to fetch the
          * data using HTTP or simply read the file from disk.
          */
-        static ResultCode readNodeFile(
-            const std::string& uri,
-            osg::ref_ptr<osg::Node>& output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback* callback = 0 );
+        static ReadResult readNode(
+            const std::string&    location,
+            const osgDB::Options* dbOptions =0L,
+            ProgressCallback*     progress  =0L );
 
         /**
-         * Reads an object. Based on the structure of the URI, it will either try to fetch the
+         * Reads an object. Based on the structure of "location", it will either try to fetch the
          * data using HTTP or simply read the file from disk.
          */
-        static ResultCode readObjectFile(
-            const std::string&                  url,
-            osg::ref_ptr<osg::Object>&          output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback*                   callback = 0);
+        static ReadResult readObject(
+            const std::string&    location,
+            const osgDB::Options* dbOptions =0L,
+            ProgressCallback*     progress  =0L );
 
         /**
-         * Reads a string. Based on the structure of the URI, it will either try to fetch the
+         * Reads a string. Based on the structure of "location", it will either try to fetch the
          * data using HTTP or simply read the file from disk.
          */
-        static ResultCode readString(
-            const std::string& uri,
-            std::string& output,
-            ProgressCallback* callback =0);
+        static ReadResult readString(
+            const std::string&    location,
+            const osgDB::Options* dbOptions =0L,
+            ProgressCallback*     progress  =0L );
 
         /**
          * Downloads a file directly to disk.
@@ -275,13 +251,13 @@ namespace osgEarth
         /**
          * Performs an HTTP "GET".
          */
-        static HTTPResponse get( const HTTPRequest& request,
-                                 const osgDB::ReaderWriter::Options* = 0,
-                                 ProgressCallback* callback = 0);
+        static HTTPResponse get( const HTTPRequest&    request,
+                                 const osgDB::Options* dbOptions =0L,
+                                 ProgressCallback*     progress  =0L );
 
-        static HTTPResponse get( const std::string& url,
-                                 const osgDB::ReaderWriter::Options* options = 0,
-                                 ProgressCallback* callback = 0);
+        static HTTPResponse get( const std::string&    url,
+                                 const osgDB::Options* options  =0L,
+                                 ProgressCallback*     progress =0L );
 
     private:
         HTTPClient();
@@ -289,14 +265,35 @@ namespace osgEarth
 
         void readOptions( const osgDB::ReaderWriter::Options* options, std::string &proxy_host, std::string &proxy_port ) const;
 
-        HTTPResponse doGet( const HTTPRequest& request,
-                            const osgDB::ReaderWriter::Options* options = 0,
-                            ProgressCallback* callback = 0) const;
+        HTTPResponse doGet( const HTTPRequest&    request,
+                            const osgDB::Options* options  =0L,
+                            ProgressCallback*     callback =0L ) const;
 
-        HTTPResponse doGet( const std::string& url,
-                            const osgDB::ReaderWriter::Options* options = 0,
-                            ProgressCallback* callback = 0 ) const;
+        HTTPResponse doGet( const std::string&    url,
+                            const osgDB::Options* options  =0L,
+                            ProgressCallback*     callback =0L ) const;
 
+        ReadResult doReadObject(
+            const std::string&    location,
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
+
+        ReadResult doReadImage(
+            const std::string&    location,
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
+
+        ReadResult doReadNode(
+            const std::string&    location,
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
+
+        ReadResult doReadString(
+            const std::string&    location,
+            const osgDB::Options* dbOptions,
+            ProgressCallback*     progress );
+
+#if 0
         ResultCode doReadObjectFile(
             const std::string&                  url,
             osg::ref_ptr<osg::Object>&          output,
@@ -319,7 +316,7 @@ namespace osgEarth
             const std::string& filename,
             std::string& output,
             ProgressCallback *callback = 0);
-
+#endif
 
         /**
          * Convenience method for downloading a URL directly to a file

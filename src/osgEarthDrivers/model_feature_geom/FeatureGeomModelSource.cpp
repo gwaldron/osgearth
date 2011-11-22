@@ -53,9 +53,9 @@ namespace
         const FeatureGeomModelOptions& getOptions() const { return _options; }
 
         //override
-        void initialize( const std::string& referenceURI, const osgEarth::Map* map )
+        void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
         {
-            FeatureModelSource::initialize( referenceURI, map );
+            FeatureModelSource::initialize( dbOptions, map );
         }
 
         //override

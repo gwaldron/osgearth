@@ -18,9 +18,9 @@
  */
 #include "KML_Feature"
 #include "KML_Style"
-#include <osgEarthUtil/Viewpoint>
+#include <osgEarth/Viewpoint>
 
-using namespace osgEarth::Util;
+using namespace osgEarth;
 
 void
 KML_Feature::scan( const Config& conf, KMLContext& cx )

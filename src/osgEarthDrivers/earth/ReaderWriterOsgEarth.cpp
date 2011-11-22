@@ -110,8 +110,8 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
 
             else
             {
-                std::string buf;
-                if ( HTTPClient::readString( fileName, buf ) != HTTPClient::RESULT_OK )
+                osgEarth::ReadResult r = URI(fileName).readString( options, CachePolicy::NO_CACHE );
+                if ( r.failed() )
                     return ReadResult::ERROR_IN_READING_FILE;
 
                 // Since we're now passing off control to the stream, we have to pass along the
@@ -123,7 +123,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
                 URIContext( fileName ).store( myOptions.get() );
                 //myOptions->setPluginData( "__ReaderWriterOsgEarth::ref_uri", (void*)&fileName );
 
-                std::stringstream in( buf );
+                std::stringstream in( r.getString() );
                 return readNode( in, myOptions.get() );
             }
         }
@@ -132,9 +132,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         {
             // pull the URI context from the options structure (since we're reading
             // from an "anonymous" stream here)
-            URIContext uriContext( options );
+            URIContext uriContext( options );            
 
-            osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );
+            osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );            
             if ( !doc.valid() )
                 return ReadResult::ERROR_IN_READING_FILE;
 
@@ -151,14 +151,7 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             if ( !conf.empty() )
             {
                 // see if we were given a reference URI to use:
-                std::string refURI;
-                if ( options )
-                {
-                    const std::string* value = static_cast<const std::string*>( 
-                        options->getPluginData( "__ReaderWriterOsgEarth::ref_uri") );
-                    if ( value )
-                        refURI = *value;
-                }
+                std::string refURI = uriContext.referrer();                                
 
                 if ( conf.value("version") == "2" )
                 {

@@ -19,13 +19,16 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/ShaderComposition>
-#include <osgEarth/Caching>
+#include <osgEarthDrivers/cache_filesystem/FileSystemCache>
 #include <osg/Notify>
+#include <osg/Version>
+#include <osgDB/Registry>
 #include <gdal_priv.h>
 #include <ogr_api.h>
 #include <stdlib.h>
 
 using namespace osgEarth;
+using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
 #define STR_GLOBAL_GEODETIC "global-geodetic"
@@ -39,12 +42,13 @@ using namespace OpenThreads;
 extern const char* builtinMimeTypeExtMappings[];
 
 Registry::Registry() :
-osg::Referenced(true),
-_gdal_registered( false ),
+osg::Referenced  ( true ),
+_gdal_registered ( false ),
 _numGdalMutexGets( 0 ),
-_uidGen( 0 ),
-_caps( 0L )
+_uidGen          ( 0 ),
+_caps            ( 0L )
 {
+    // set up GDAL and OGR.
     OGRRegisterAll();
     GDALAllRegister();
 
@@ -62,31 +66,65 @@ _caps( 0L )
 
     // activate KMZ support
     osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
-    osgDB::Registry::instance()->addArchiveExtension( "kmz" );
+    osgDB::Registry::instance()->addArchiveExtension( "kmz" );    
+
+#if OSG_MIN_VERSION_REQUIRED(3,0,0)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz", "kmz" );
+#endif
+    
+    // pre-load OSG's ZIP plugin so that we can use it in URIs
+    std::string zipLib = osgDB::Registry::instance()->createLibraryNameForExtension( "zip" );
+    if ( !zipLib.empty() )
+        osgDB::Registry::instance()->loadLibrary( zipLib );    
 
     // set up our default r/w options to NOT cache archives!
     _defaultOptions = new osgDB::Options();
-    _defaultOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
-        ((int)_defaultOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
+    _defaultOptions->setObjectCacheHint( osgDB::Options::CACHE_NONE );
+    //_defaultOptions->setObjectCacheHint( (osgDB::Options::CacheHintOptions)
+    //    ((int)_defaultOptions->getObjectCacheHint() & ~osgDB::Options::CACHE_ARCHIVES) );
 
     // see if there's a cache in the envvar
     const char* cachePath = ::getenv("OSGEARTH_CACHE_PATH");
     if ( cachePath )
     {
-        TMSCacheOptions tmso;
-        tmso.setPath( std::string(cachePath) );
-        setCacheOverride( new TMSCache(tmso) );
-        OE_INFO << LC << "Setting cache (from env.var.) to " << tmso.path() << std::endl;
+        FileSystemCacheOptions options;
+        options.rootPath() = std::string(cachePath);
+
+        osg::ref_ptr<Cache> cache = CacheFactory::create(options);
+        if ( cache->isOK() )
+        {
+            setCache( cache.get() );
+            OE_INFO << LC << "CACHE PATH set from environment variable: \"" << cachePath << "\"" << std::endl;
+        }
+        else
+        {
+            OE_WARN << LC << "FAILED to initialize cache from env.var." << std::endl;
+        }
+    }
+
+    // activate cache-only mode from the environment
+    if ( ::getenv("OSGEARTH_CACHE_ONLY") )
+    {
+        _defaultCachePolicy = CachePolicy::CACHE_ONLY;
+        OE_INFO << LC << "CACHE-ONLY MODE set from environment variable" << std::endl;
+    }
+
+    // activate no-cache mode from the environment
+    else if ( ::getenv("OSGEARTH_NO_CACHE") )
+    {
+        _defaultCachePolicy = CachePolicy::NO_CACHE;
+        OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
     }
 }
 
 Registry::~Registry()
 {
+    //nop
 }
 
-Registry* Registry::instance(bool erase)
+Registry* 
+Registry::instance(bool erase)
 {
     static osg::ref_ptr<Registry> s_registry = new Registry;
 
@@ -99,9 +137,10 @@ Registry* Registry::instance(bool erase)
     return s_registry.get(); // will return NULL on erase
 }
 
-void Registry::destruct()
+void 
+Registry::destruct()
 {
-    _cacheOverride = 0;
+    _cache = 0L;
 }
 
 
@@ -193,15 +232,17 @@ Registry::getDefaultVSRS() const
 }
 
 osgEarth::Cache*
-Registry::getCacheOverride() const
+Registry::getCache() const
 {
-	return _cacheOverride.get();
+	return _cache.get();
 }
 
 void
-Registry::setCacheOverride( osgEarth::Cache* cacheOverride )
+Registry::setCache( osgEarth::Cache* cache )
 {
-	_cacheOverride = cacheOverride;
+	_cache = cache;
+    if ( cache )
+        cache->store( _defaultOptions.get() );
 }
 
 void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)
@@ -219,32 +260,33 @@ Registry::getReaderWriterForMimeType(const std::string& mimeType)
 }
 
 bool
-Registry::isBlacklisted(const std::string &filename)
+Registry::isBlacklisted(const std::string& filename)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    Threading::ScopedReadLock sharedLock(_blacklistMutex);
     return (_blacklistedFilenames.count(filename)==1);
 }
 
 void
 Registry::blacklist(const std::string& filename)
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
-    _blacklistedFilenames.insert( filename );
+    {
+        Threading::ScopedWriteLock exclusiveLock(_blacklistMutex);
+        _blacklistedFilenames.insert( filename );
+    }
     OE_DEBUG << "Blacklist size = " << _blacklistedFilenames.size() << std::endl;
 }
 
 void
 Registry::clearBlacklist()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    Threading::ScopedWriteLock exclusiveLock(_blacklistMutex);
     _blacklistedFilenames.clear();
-    OE_DEBUG << "Blacklist size = " << _blacklistedFilenames.size() << std::endl;
 }
 
 unsigned int
 Registry::getNumBlacklistedFilenames()
 {
-    OpenThreads::ScopedLock<OpenThreads::Mutex> lock(_blacklistMutex);
+    Threading::ScopedReadLock sharedLock(_blacklistMutex);
     return _blacklistedFilenames.size();
 }
 
@@ -282,6 +324,7 @@ Registry::setShaderFactory( ShaderFactory* lib )
 UID
 Registry::createUID()
 {
+    //todo: use OpenThreads::Atomic for this
     static Mutex s_uidGenMutex;
     ScopedLock<Mutex> lock( s_uidGenMutex );
     return (UID)( _uidGen++ );
@@ -290,7 +333,7 @@ Registry::createUID()
 osgDB::Options*
 Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
 {
-    osgDB::Options* newOptions = input ? input->cloneOptions() : new osgDB::Options();
+    osgDB::Options* newOptions = input ? static_cast<osgDB::Options*>(input->clone(osg::CopyOp::SHALLOW_COPY)) : new osgDB::Options();
 
     // clear the CACHE_ARCHIVES flag because it is evil
     if ( ((int)newOptions->getObjectCacheHint() & osgDB::Options::CACHE_ARCHIVES) != 0 )

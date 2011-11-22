@@ -21,6 +21,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/URI>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -218,10 +219,10 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
             if (!proj || strlen(proj) == 0)
             {                
                 std::string prjLocation = osgDB::getNameLessExtension( std::string(dsFileName) ) + std::string(".prj");
-                std::string wkt;
-                if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
-                {                    
-                    proj = CPLStrdup( wkt.c_str() );
+                ReadResult r = URI(prjLocation).readString();
+                if ( r.succeeded() )
+                {
+                    proj = CPLStrdup( r.getString().c_str() );
                 }                
             }
 
@@ -637,7 +638,7 @@ public:
     }
 
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {   
         GDAL_SCOPED_LOCK;
 
@@ -649,6 +650,7 @@ public:
 
         URI uri = _options.url().value();
 
+#if 0 //OBE
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
 
@@ -662,6 +664,7 @@ public:
         {
             uri = URI(uri.full(), referenceURI);
         }
+#endif
 
         StringTokenizer izer( ";" );
         StringVector exts;
@@ -734,10 +737,11 @@ public:
         {
             // not found in the dataset; try loading a .prj file
             std::string prjLocation = osgDB::getNameLessExtension( uri.full() ) + std::string(".prj");
-            std::string wkt;
-            if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
+
+            ReadResult r = URI(prjLocation).readString( 0L, CachePolicy::NO_CACHE );
+            if ( r.succeeded() )
             {
-                src_srs = SpatialReference::create( wkt );
+                src_srs = SpatialReference::create( r.getString() );
             }
 
             if ( !src_srs.valid() )
@@ -1016,8 +1020,8 @@ public:
         geoY = _geotransform[3] + _geotransform[4] * x + _geotransform[5] * y;
     }
 
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage( const TileKey&        key,
+                             ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
@@ -1456,8 +1460,8 @@ public:
     }
 
 
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey&        key,
+                                         ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
@@ -1523,13 +1527,7 @@ private:
     osg::Vec2d _extentsMin;
     osg::Vec2d _extentsMax;
 
-    //std::string     _url;
-    //int             _tile_size;
-    //std::string     _extensions;
-    //ElevationInterpolation   _interpolation;
-
     const GDALOptions _options;
-    //osg::ref_ptr<const GDALOptions> _settings;
 
     unsigned int _maxDataLevel;
 };

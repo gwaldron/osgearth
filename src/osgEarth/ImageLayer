@@ -1,4 +1,3 @@
-/* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
  * Copyright 2008-2010 Pelican Mapping
  * http://osgearth.org
@@ -24,7 +23,6 @@
 #include <osgEarth/Config>
 #include <osgEarth/TileSource>
 #include <osgEarth/Profile>
-#include <osgEarth/Caching>
 #include <osgEarth/TerrainLayer>
 #include <osgEarth/ThreadingUtils>
 
@@ -97,7 +95,7 @@ namespace osgEarth
         const optional<bool>& lodBlending() const { return _lodBlending; }
 
     public:
-        virtual Config getConfig() const;
+        virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
         
     private:
@@ -139,15 +137,15 @@ namespace osgEarth
     public:
         ImageLayerTileProcessor( const ImageLayerOptions& options =ImageLayerOptions() );
 
-        void init( const ImageLayerOptions& options, bool layerInTargetProfile );
+        void init( const ImageLayerOptions& options, const osgDB::Options* dbOptions, bool layerInTargetProfile );
 
         void process( osg::ref_ptr<osg::Image>& image ) const;
 
     private:
-        ImageLayerOptions _options;
-        osg::Vec4f _chromaKey;
-        osg::ref_ptr<const osg::Image> _noDataImage;
-        bool _layerInTargetProfile;
+        ImageLayerOptions                  _options;
+        osg::Vec4f                         _chromaKey;
+        osg::ref_ptr<osg::Image>           _noDataImage;
+        bool                               _layerInTargetProfile;
     };
 
     //--------------------------------------------------------------------
@@ -178,7 +176,7 @@ namespace osgEarth
          * Access to the initialization options used to create this image layer
          */
         const ImageLayerOptions& getImageLayerOptions() const { return _runtimeOptions; }
-        virtual const TerrainLayerOptions& getTerrainLayerOptions() const { return _runtimeOptions; }
+        virtual const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return _runtimeOptions; }
 
         /** Adds a property notification callback to this layer */
         void addCallback( ImageLayerCallback* cb );
@@ -202,22 +200,24 @@ namespace osgEarth
 		/**
 		 * Creates a GeoImage from this MapLayer
 		 */
-		GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
+		virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
 
     protected:
 
-        osg::Image* createImageWrapper(
-            const TileKey& key,
-            bool cacheInLayerProfile,
-            ProgressCallback* progress );
+        // Fetches an image from the underlying TileSource whose data matches that of the
+        // key extent.
+        osg::Image* createImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+
+        // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
+        // returns a single tile. This is called by createImageFromTileSource() if the key profile
+        // doesn't match the layer profile.
+        osg::Image* assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+
 
         virtual void initTileSource();
-    private:
-        //const ImageLayerOptions _options;
-        ImageLayerOptions       _runtimeOptions;
 
-        //float _actualOpacity;        
-        //bool  _actualLODBlending;
+    protected:
+        ImageLayerOptions _runtimeOptions;
 
         osg::ref_ptr<TileSource::ImageOperation> _preCacheOp;
         

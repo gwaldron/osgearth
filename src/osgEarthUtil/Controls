@@ -139,6 +139,8 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         Control();
 
+        Control( const Alignment& halign, const Alignment& valign, const Gutter& padding );
+
         void setX( float value );
         const osgEarth::optional<float>& x() const { return _x; }
         void clearX() { _x.unset(); dirty(); }
@@ -233,6 +235,7 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::Vec2f _renderSize; // rendering size (includes padding)
 
         // adjusts renderpos for alignment.
+        void init();
         void align();
 
         friend class ControlCanvas;
@@ -265,16 +268,19 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         LabelControl(
-            const std::string& value ="",
-            float fontSize =18.0f,
+            const std::string& value    ="",
+            float fontSize              =18.0f,
             const osg::Vec4f& foreColor =osg::Vec4f(1,1,1,1) );
 
         LabelControl(
             const std::string& value,
-            const osg::Vec4f& foreColor );
+            const osg::Vec4f&  foreColor );
 
         void setText( const std::string& value );
         const std::string& text() const { return _text; }
+
+		void setEncoding( osgText::String::Encoding value );
+        const osgText::String::Encoding& encoding() const { return _encoding; }
 
         void setFont( osgText::Font* font );
         osgText::Font* font() const { return _font.get(); }
@@ -297,6 +303,7 @@ namespace osgEarth { namespace Util { namespace Controls
         osg::ref_ptr<osgText::Text> _drawable;
         osg::Vec3 _bmin, _bmax;
         optional<osg::Vec4f> _haloColor;
+		osgText::String::Encoding _encoding;
     };
 
     /**
@@ -336,7 +343,7 @@ namespace osgEarth { namespace Util { namespace Controls
     class OSGEARTHUTIL_EXPORT HSliderControl : public Control
     {
     public:
-        HSliderControl( float min = 0.0f, float max = 100.0f, float value = 50.0f );
+        HSliderControl( float min = 0.0f, float max = 100.0f, float value = 50.0f, ControlEventHandler* handler =0L );
 
         void setMin( float min, bool notify =true );
         float getMin() const { return _min; }
@@ -421,6 +428,7 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         Container();
+        Container( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
 
         // the Frame connected to this container. can be NULL for no frame.
         void setFrame( Frame* frame );
@@ -438,8 +446,10 @@ namespace osgEarth { namespace Util { namespace Controls
         void setChildVertAlign( Alignment align );
         const optional<Alignment>& childVertAlign() const { return _childvalign; }
 
-        // default add function.
-        virtual void addControl( Control* control, int index =-1 ) =0;
+        // adds a control.
+        template<typename T>
+        T* addControl( T* control, int index =-1 ) { 
+            return dynamic_cast<T*>( addControlImpl(control, index) ); }
 
         // default multiple-add function.
         virtual void addControls( const ControlVector& controls );
@@ -457,6 +467,10 @@ namespace osgEarth { namespace Util { namespace Controls
         virtual void draw( const ControlContext& context, DrawableList& drawables );
 
     protected:
+
+        // default add function in subclass.
+        virtual Control* addControlImpl( Control* control, int index =-1 ) =0;
+
         virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, ControlContext& cx );
 
         void applyChildAligns();
@@ -481,9 +495,9 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         VBox();
+        VBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
 
     public: // Container
-        virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _controls; }
         virtual void clearControls();
 
@@ -492,6 +506,9 @@ namespace osgEarth { namespace Util { namespace Controls
         virtual void calcFill( const ControlContext& context );
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
+
+    protected:
+        virtual Control* addControlImpl( Control* control, int index =-1 );
 
     private:
         ControlList _controls;
@@ -504,9 +521,9 @@ namespace osgEarth { namespace Util { namespace Controls
     {
     public:
         HBox();
+        HBox( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
 
     public: // Container
-        virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _controls; }
         virtual void clearControls();
 
@@ -515,6 +532,9 @@ namespace osgEarth { namespace Util { namespace Controls
         virtual void calcFill( const ControlContext& context );
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
+
+    protected:
+        virtual Control* addControlImpl( Control* control, int index =-1 );
 
     private:
         ControlList _controls;
@@ -528,13 +548,16 @@ namespace osgEarth { namespace Util { namespace Controls
     public:
         Grid();
 
-        void setControl( int col, int row, Control* control );
+        Grid( const Alignment& halign, const Alignment& valign, const Gutter& padding, float spacing );
+
+        template<typename T>
+        T* setControl( int col, int row, T* control ) {
+            return dynamic_cast<T*>( setControlImpl(col, row, control)); }
 
         unsigned getNumRows() const { return _rows.size(); }
         unsigned getNumColumns() const { return _colWidths.size(); }
 
     public: // Container
-        virtual void addControl( Control* control, int index =-1 );
         virtual const ControlList& children() const { return _children; }
         virtual void clearControls();
 
@@ -546,6 +569,10 @@ namespace osgEarth { namespace Util { namespace Controls
         virtual void calcFill( const ControlContext& context );
         virtual void calcPos ( const ControlContext& context, const osg::Vec2f& cursor, const osg::Vec2f& parentSize );
         virtual void draw( const ControlContext& context, DrawableList& drawables );
+
+    protected:
+        virtual Control* addControlImpl( Control* control, int index =-1 );
+        virtual Control* setControlImpl( int col, int row, Control* control );
 
     private:
         typedef std::vector< osg::ref_ptr<Control> > Row;
@@ -667,7 +694,9 @@ namespace osgEarth { namespace Util { namespace Controls
 
     public:
         /** adds a top-level control to this surface. */
-        void addControl( Control* control );
+        template<typename T>
+        T* addControl( T* control ) { 
+            return dynamic_cast<T*>( addControlImpl( control ) ); }
 
         /** removes a top-level control. */
         void removeControl( Control* control );
@@ -704,6 +733,8 @@ namespace osgEarth { namespace Util { namespace Controls
         bool            _contextDirty;
 
         osg::ref_ptr<ControlNodeBin> _controlNodeBin;
+
+        Control* addControlImpl( Control* control );
 
     private:
         friend struct ControlCanvasEventHandler;

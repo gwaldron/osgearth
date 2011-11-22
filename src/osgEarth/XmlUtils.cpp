@@ -29,26 +29,7 @@
 
 using namespace osgEarth;
 
-
 static std::string EMPTY_VALUE = "";
-
-//std::string
-//osgEarth::trim( const std::string& in )
-//{
-//    std::string whitespace (" \t\f\v\n\r");
-//    // by Rodrigo C F Dias
-//    // http://www.codeproject.com/KB/stl/stdstringtrim.aspx
-//    std::string str = in;
-//    std::string::size_type pos = str.find_last_not_of( whitespace );
-//    if(pos != std::string::npos) {
-//        str.erase(pos + 1);
-//        pos = str.find_first_not_of( whitespace );
-//        if(pos != std::string::npos) str.erase(0, pos);
-//    }
-//    else str.erase(str.begin(), str.end());
-//    return str;
-//}
-
 
 XmlNode::XmlNode()
 {
@@ -69,17 +50,21 @@ XmlElement::XmlElement( const std::string& _name, const XmlAttributes& _attrs )
 XmlElement::XmlElement( const Config& conf )
 {
     name = conf.key();
-    for( Properties::const_iterator i = conf.attrs().begin(); i != conf.attrs().end(); i++ )
-        attrs[i->first] = i->second;
+
+    if ( !conf.value().empty() )
+    {
+        children.push_back( new XmlText(conf.value()) );
+    }
+
     for( ConfigSet::const_iterator j = conf.children().begin(); j != conf.children().end(); j++ )
     {
-        if (!j->children().empty())
+        if ( j->isSimple() )
         {
-            children.push_back( new XmlElement( *j ) );
+            attrs[j->key()] = j->value();
         }
-        else
+        else if ( j->children().size() > 0 )
         {
-            addSubElement(j->key(), j->attrs(), j->value());
+            children.push_back( new XmlElement(*j) );
         }
     }
 }
@@ -161,8 +146,8 @@ XmlElement::getText() const
         }
     }
 
-	std::string builderStr;
-	builderStr = builder.str();
+ 	 std::string builderStr;
+	 builderStr = builder.str();
     std::string result = trim( builderStr );
     return result;
 }
@@ -221,8 +206,12 @@ Config
 XmlElement::getConfig() const
 {
     Config conf( name );
+
     for( XmlAttributes::const_iterator a = attrs.begin(); a != attrs.end(); a++ )
-        conf.attr( a->first ) = a->second;
+    {
+        conf.set( a->first, a->second );
+    }
+
     for( XmlNodeList::const_iterator c = children.begin(); c != children.end(); c++ )
     {
         XmlNode* n = c->get();
@@ -374,29 +363,27 @@ namespace
 
 
 XmlDocument*
-XmlDocument::load( const std::string& location )
+XmlDocument::load( const std::string& location, const osgDB::Options* dbOptions )
 {
-    return load( URI(location) );
+    return load( URI(location), dbOptions );
 }
 
 XmlDocument*
-XmlDocument::load( const URI& uri )
+XmlDocument::load( const URI& uri, const osgDB::Options* dbOptions )
 {
-    std::string buffer;
-    if ( HTTPClient::readString( uri.full(), buffer ) != HTTPClient::RESULT_OK )
+    XmlDocument* result = 0L;
+
+    ReadResult r = uri.readString( dbOptions );
+    if ( r.succeeded() )
     {
-        return 0L;
+        std::stringstream buf( r.getString() );
+        result = load( buf );
+        if ( result )
+            result->_sourceURI = uri;
     }
-
-    std::stringstream buf(buffer);
-    XmlDocument* result = load(buf);
-
-    if ( result )
-        result->_sourceURI = uri;
 
     return result;
 }
-
 
 XmlDocument*
 XmlDocument::load( std::istream& in, const URIContext& uriContext )
@@ -406,7 +393,8 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
     //Read the entire document into a string
     std::stringstream buffer;
     buffer << in.rdbuf();
-    std::string xmlStr(buffer.str()); 
+    std::string xmlStr;
+    xmlStr = buffer.str();
 
     removeDocType( xmlStr );
     //OE_NOTICE << xmlStr;
@@ -418,7 +406,8 @@ XmlDocument::load( std::istream& in, const URIContext& uriContext )
     {
         std::stringstream buf;
         buf << xmlDoc.ErrorDesc() << " (row " << xmlDoc.ErrorRow() << ", col " << xmlDoc.ErrorCol() << ")";
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         OE_WARN << "Error in XML document: " << str << std::endl;
         if ( !uriContext.referrer().empty() )
             OE_WARN << uriContext.referrer() << std::endl;
@@ -437,7 +426,7 @@ Config
 XmlDocument::getConfig() const
 {
     Config conf = XmlElement::getConfig();
-    conf.setURIContext( _sourceURI.full() );
+    conf.setReferrer( _sourceURI.full() );
     return conf;
 }
 

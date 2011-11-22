@@ -119,9 +119,11 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
                     << "X:   " << point.x() << std::endl
                     << "Y:   " << point.y() << std::endl
                     << "Z:   " << point.z();
-                s_flagText->setText( buf.str() );
+                std::string str;
+                str = buf.str();
+                s_flagText->setText( str );
 
-                OE_NOTICE << buf.str() << std::endl;
+                OE_NOTICE << str << std::endl;
             }
             else
             {

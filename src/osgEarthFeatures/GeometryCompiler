@@ -65,7 +65,6 @@ namespace osgEarth { namespace Features
         const optional<double>& resampleMaxLength() const { return _resampleMaxLength;}
 
 
-
     public:
         Config getConfig() const;
         void mergeConfig( const Config& conf );

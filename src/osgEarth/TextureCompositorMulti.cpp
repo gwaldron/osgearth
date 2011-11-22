@@ -21,6 +21,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/TileKey>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -74,7 +75,8 @@ namespace
             
         buf << "} \n";
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         return new osg::Shader( osg::Shader::VERTEX, str );
     }
 
@@ -175,7 +177,8 @@ namespace
 
 
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         //OE_INFO << std::endl << str;
         return new osg::Shader( osg::Shader::FRAGMENT, str );
     }
@@ -189,7 +192,9 @@ namespace
     {
         std::stringstream buf;
         buf << "tex" << slot;
-        return buf.str();
+        std::string str;
+        str = buf.str();
+        return str;
     }
     
     static osg::Texture2D*
@@ -482,7 +487,8 @@ TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
 
         buf << "} \n";
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         result = new osg::Shader( type, str );
     }
     return result;

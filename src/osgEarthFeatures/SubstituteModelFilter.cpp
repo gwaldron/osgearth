@@ -75,13 +75,16 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         // evaluate the marker URI expression:
         StringExpression uriEx = *symbol->url();
-        URI markerURI( input->eval(uriEx), uriEx.uriContext() );
+        URI markerURI( input->eval(uriEx, &context), uriEx.uriContext() );
 
         // find the corresponding marker in the cache
         MarkerResource* marker = 0L;
         MarkerCache::Record rec = _markerCache.get( markerURI );
         if ( rec.valid() ) {
             marker = rec.value();
+        }
+        else if ( _markerLib.valid() ) {
+            marker = _markerLib->getMarker( markerURI.base() );
         }
         else {
             marker = new MarkerResource();
@@ -95,10 +98,22 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
         if ( symbol->scale().isSet() )
         {
-            scale = input->eval( scaleEx );
+            scale = input->eval( scaleEx, &context );
             if ( scale == 0.0 )
                 scale = 1.0;
             scaleMatrix = osg::Matrix::scale( scale, scale, scale );
+        }
+        
+        osg::Matrixd rotationMatrix;
+        if ( symbol->orientation().isSet() )
+        {
+            osg::Vec3d hpr = *symbol->orientation();
+            //Rotation in HPR
+            //Apply the rotation            
+            rotationMatrix.makeRotate( 
+                osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
+                osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
+                osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
         }
 
         // how that we have a marker source, create a node for it
@@ -140,14 +155,14 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     {
                         // the "rotation" element lets us re-orient the instance to ensure it's pointing up. We
                         // could take a shortcut and just use the current extent's local2world matrix for this,
-                        // but it the tile is big enough the up vectors won't be quite right.
+                        // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd rotation;
-                        ECEF::transformAndGetRotationMatrix( context.profile()->getSRS(), point, point, rotation );
-                        mat = rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
+                        ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, rotation );
+                        mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;                        
                     }
                     else
                     {
-                        mat = scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
+                        mat = rotationMatrix * scaleMatrix *  osg::Matrixd::translate( point ) * _world2local;                        
                     }
 
                     osg::MatrixTransform* xform = new osg::MatrixTransform();
@@ -160,7 +175,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     // name the feature if necessary
                     if ( !_featureNameExpr.empty() )
                     {
-                        const std::string& name = input->eval( _featureNameExpr );
+                        const std::string& name = input->eval( _featureNameExpr, &context);
                         if ( !name.empty() )
                             xform->setName( name );
                     }
@@ -216,9 +231,22 @@ struct ClusterVisitor : public osg::NodeVisitor
 
                     if ( _symbol->scale().isSet() )
                     {
-                        double scale = feature->eval( scaleEx );
+                        double scale = feature->eval( scaleEx, &_cx );
                         scaleMatrix.makeScale( scale, scale, scale );
                     }
+
+                    osg::Matrixd rotationMatrix;
+                    if ( _symbol->orientation().isSet() )
+                    {
+                        osg::Vec3d hpr = *_symbol->orientation();
+                        //Rotation in HPR
+                        //Apply the rotation            
+                        rotationMatrix.makeRotate( 
+                            osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
+                            osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
+                            osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
+                    }
+
 
                     ConstGeometryIterator gi( feature->getGeometry(), false );
                     while( gi.hasMore() )
@@ -233,12 +261,12 @@ struct ClusterVisitor : public osg::NodeVisitor
                             if ( makeECEF )
                             {
                                 osg::Matrixd rotation;
-                                ECEF::transformAndGetRotationMatrix( srs, point, point, rotation );
-                                mat = rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
+                                ECEF::transformAndGetRotationMatrix( point, srs, point, rotation );
+                                mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                             }
                             else
                             {
-                                mat = scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
+                                mat = rotationMatrix * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                             }
 
                             // clone the source drawable once for each input feature.
@@ -308,28 +336,29 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
 
         // resolve the URI for the marker:
         StringExpression uriEx( *symbol->url() );
-        URI markerURI( f->eval( uriEx ), uriEx.uriContext() );
+        URI markerURI( f->eval( uriEx, &context ), uriEx.uriContext() );
 
         // find and load the corresponding marker model. We're using the session-level
         // object store to cache models. This is thread-safe sine we are always going
         // to CLONE the model before using it.
-        osg::Node* model = context.getSession()->getObject<osg::Node>( markerURI.full() );
-        if ( !model )
+        osg::ref_ptr<osg::Node> model = context.getSession()->getObject<osg::Node>( markerURI.full() );
+        if ( !model.valid() )
         {
             osg::ref_ptr<MarkerResource> mres = new MarkerResource();
             mres->uri() = markerURI;
-            model = mres->createNode();
-            if ( model )
+            model = mres->createNode( context.getSession()->getDBOptions() );
+            if ( model.valid() )
             {
-                context.getSession()->putObject( markerURI.full(), model );
+                // store it, but only if there isn't already one in there.
+                context.getSession()->putObject( markerURI.full(), model.get(), false );
             }
         }
 
-        if ( model )
+        if ( model.valid() )
         {
-            MarkerToFeatures::iterator itr = markerToFeatures.find( model );
+            MarkerToFeatures::iterator itr = markerToFeatures.find( model.get() );
             if (itr == markerToFeatures.end())
-                markerToFeatures[ model ].push_back( f );
+                markerToFeatures[ model.get() ].push_back( f );
             else
                 itr->second.push_back( f );
         }
@@ -373,6 +402,21 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     if ( !symbol ) {
         OE_WARN << LC << "No MarkerSymbol found in style; cannot process feautres" << std::endl;
         return 0L;
+    }
+
+    _markerLib = 0L;
+
+    const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
+
+    if ( symbol->libraryName().isSet() )
+    {
+        _markerLib = sheet->getResourceLibrary( symbol->libraryName()->expr(), context.getDBOptions() );
+
+        if ( !_markerLib.valid() )
+        {
+            OE_WARN << LC << "Unable to load resource library '" << symbol->libraryName()->expr() << "'"
+                << "; may not find marker models." << std::endl;
+        }
     }
 
     FilterContext newContext( context );

@@ -55,7 +55,7 @@ public:
         _geom->push_back( osg::Vec3(5, 250, 0) );
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile )
+    void initialize( const osgDB::Options* options, const Profile* overrideProfile )
     {
         if ( overrideProfile )
             setProfile( overrideProfile );

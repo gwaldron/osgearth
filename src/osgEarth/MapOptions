@@ -21,7 +21,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
-#include <osgEarth/Caching>
+#include <osgEarth/Cache>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Profile>
@@ -45,8 +46,10 @@ namespace osgEarth
     public:
         MapOptions( const ConfigOptions& options =ConfigOptions() )
             : ConfigOptions( options ),
-              _cstype( CSTYPE_GEOCENTRIC ),
-              _referenceURI("")
+              _cstype      ( CSTYPE_GEOCENTRIC ),
+              _referenceURI(""),
+              _cachePolicy ( CachePolicy()),
+              _elevationInterpolation(INTERP_BILINEAR)
         {
             fromConfig(_conf);
         }
@@ -77,6 +80,19 @@ namespace osgEarth
         optional<CacheOptions>& cache() { return _cacheOptions; }
         const optional<CacheOptions>& cache() const { return _cacheOptions; }
 
+        /**
+         * Default cache policy that propagates to each layer.
+         */
+        optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
+        const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
+
+         /**
+         * The interpolation method to use when sampling heightfields.
+         */
+        optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
+        const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
+
+
     public:
         /**
          * A reference location that drivers can use to load data from relative locations.
@@ -99,8 +115,10 @@ namespace osgEarth
         optional<std::string>          _name;
         optional<ProfileOptions>       _profileOptions;
         optional<CacheOptions>         _cacheOptions;
+        optional<CachePolicy>          _cachePolicy;
         optional<CoordinateSystemType> _cstype;
         optional<std::string>          _referenceURI;
+        optional<ElevationInterpolation> _elevationInterpolation;
     };
 }
 

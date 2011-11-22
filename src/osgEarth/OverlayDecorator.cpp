@@ -397,7 +397,8 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
             << "} \n";
     }
 
-    std::string vertSource = buf.str();
+    std::string vertSource;
+    vertSource = buf.str();
     program->addShader( new osg::Shader( osg::Shader::VERTEX, vertSource ) );
 
     std::stringstream fragBuf;
@@ -411,7 +412,8 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
                << "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
                << "}\n";
     
-    std::string fragSource = fragBuf.str();
+    std::string fragSource;
+    fragSource = fragBuf.str();
     
     program->addShader( new osg::Shader( osg::Shader::FRAGMENT, fragSource ) );
     set->addUniform(new osg::Uniform("texture_0",0));
@@ -442,7 +444,8 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
         << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
         << "} \n";
 
-    std::string vertexSource = buf.str();
+    std::string vertexSource;
+    vertexSource = buf.str();
     vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
     // fragment shader - subgraph
@@ -490,7 +493,8 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
-    std::string fragmentSource = buf.str();
+    std::string fragmentSource;
+    fragmentSource = buf.str();
     vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 }
 

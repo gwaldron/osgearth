@@ -32,5 +32,5 @@ main(int argc, char** argv)
     XmlDocument* xml = XmlDocument::load( URI("e:/data/osgearth_resources/US/catalog.xml") );
     Config conf = xml->getConfig();
 
-    OE_NOTICE << conf.toString() << std::endl;
+    OE_NOTICE << conf.toJSON(true) << std::endl;
 }

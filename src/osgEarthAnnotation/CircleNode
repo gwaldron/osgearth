@@ -1,0 +1,60 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTH_ANNOTATION_CIRCLE_NODE_H
+#define OSGEARTH_ANNOTATION_CIRCLE_NODE_H 1
+
+#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthSymbology/Style>
+#include <osgEarth/MapNode>
+#include <osgEarth/Units>
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Circle annotation.
+     */
+    class OSGEARTHANNO_EXPORT CircleNode : public LocalizedNode
+    {
+    public:
+        /**
+         * Constructs a new circle annotation.
+         *
+         * @param mapNode     Map on which the circle will appear
+         * @param position    Location of the annotation, in map coordinates
+         * @param radius      Circle radius
+         * @param style       Style defining how the annotation will look
+         * @param draped      Whether to "drape" the annotation down on to the terrain
+         * @param numSegments Hint as to the tessellation of the annotation
+         */
+        CircleNode(
+            MapNode*          mapNode,
+            const osg::Vec3d& position,
+            const Linear&     radius,
+            const Style&      style,
+            bool              draped      =true,
+            unsigned          numSegments =0 );
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNOTATION_CIRCLE_NODE_H

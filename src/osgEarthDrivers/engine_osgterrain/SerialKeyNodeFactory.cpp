@@ -109,7 +109,7 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
     }
 
     // this one rejects back-facing tiles:
-    if ( _mapInfo.isGeocentric() )
+    if ( _mapInfo.isGeocentric() && _options.clusterCulling() == true )
     {
         result->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
             static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer())->getHeightField(),

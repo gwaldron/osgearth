@@ -49,6 +49,8 @@ namespace osgEarth
     public:
         virtual void traverse( osg::NodeVisitor& nv );
 
+        virtual osg::BoundingSphere computeBound() const;
+
     protected:
         osg::observer_ptr<MapNode> _mapNode;
 
@@ -61,6 +63,7 @@ namespace osgEarth
         bool                    _newDraped;
         osg::ref_ptr<osg::Node> _newNode;
 
+    protected:
         void applyChanges();
         void setNodeImpl( osg::Node* );
         void setDrapedImpl( bool );

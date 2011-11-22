@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/OptimizerHints>
 #include <osgEarthFeatures/Session>
+#include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/ResourceCache>
 #include <osgEarth/GeoData>
 #include <osg/Matrix>
@@ -33,6 +34,7 @@ namespace osgEarth { namespace Features
     using namespace osgEarth;
     using namespace osgEarth::Symbology;
     class Session;
+    class FeatureProfile;
 
     /**
      * Context within which a chain of filters is executed.
@@ -56,6 +58,11 @@ namespace osgEarth { namespace Features
     public: // properties
 
         /**
+         * Whether this context contains complete georeferencing information.
+         */
+        bool isGeoreferenced() const { return _session.valid() && _profile.valid(); }
+
+        /**
          * Access to the Session under which this filter context operates
          */
         Session* getSession() { return _session.get(); }
@@ -76,8 +83,8 @@ namespace osgEarth { namespace Features
         /**
          * Whether to assume a geocentric coordinate system for geographic profiles.
          */
-        bool isGeocentric() const { return _isGeocentric; }
-        bool& isGeocentric() { return _isGeocentric; }
+        //bool isGeocentric() const { return _isGeocentric; }
+        //bool& isGeocentric() { return _isGeocentric; }
 
         /**
          * Whether this context has a non-identity reference frame
@@ -145,6 +152,9 @@ namespace osgEarth { namespace Features
 
         /** Dump as a string */
         std::string toString() const;
+
+        /** Gets the DB Options associated with the context's session */
+        const osgDB::Options* getDBOptions() const;
 
     protected:
         osg::ref_ptr<Session>              _session;

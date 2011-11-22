@@ -35,7 +35,7 @@ _imageWidth       ( 10.0f ),
 _imageHeight      ( 3.0f ),
 _minObjHeight     ( 0.0f ),
 _maxObjHeight     ( FLT_MAX ),
-_isTiled( false ),
+_isTiled          ( false ),
 _texEnvMode       ( osg::TexEnv::MODULATE ),
 _maxTexSpan       ( 1024 )
 {
@@ -50,7 +50,7 @@ SkinResource::mergeConfig( const Config& conf )
     conf.getIfSet( "image_height",        _imageHeight );
     conf.getIfSet( "min_object_height",   _minObjHeight );
     conf.getIfSet( "max_object_height",   _maxObjHeight );
-    conf.getIfSet( "tiled",  _isTiled );
+    conf.getIfSet( "tiled",               _isTiled );
     conf.getIfSet( "max_texture_span",    _maxTexSpan );
 
     conf.getIfSet( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
@@ -70,7 +70,7 @@ SkinResource::getConfig() const
     conf.updateIfSet( "image_height",        _imageHeight );
     conf.updateIfSet( "min_object_height",   _minObjHeight );
     conf.updateIfSet( "max_object_height",   _maxObjHeight );
-    conf.updateIfSet( "tiled",  _isTiled );
+    conf.updateIfSet( "tiled",               _isTiled );
     conf.updateIfSet( "max_texture_span",    _maxTexSpan );
 
     conf.updateIfSet( "texture_mode", "decal",    _texEnvMode, osg::TexEnv::DECAL );
@@ -82,9 +82,9 @@ SkinResource::getConfig() const
 }
 
 osg::StateSet*
-SkinResource::createStateSet() const
+SkinResource::createStateSet( const osgDB::Options* dbOptions ) const
 {
-    return createStateSet( createImage() );
+    return createStateSet( createImage(dbOptions) );
 }
 
 osg::StateSet*
@@ -121,15 +121,9 @@ SkinResource::createStateSet( osg::Image* image ) const
 }
 
 osg::Image*
-SkinResource::createImage() const
+SkinResource::createImage( const osgDB::Options* dbOptions ) const
 {
-    osg::ref_ptr<osg::Image> image;
-    if ( HTTPClient::readImageFile( _imageURI->full(), image ) != HTTPClient::RESULT_OK )
-    {
-        //TODO: hmm, perhaps create an "error image" here? or just return NULL
-        //      and let the caller do so.
-    }
-    return image.release();
+    return _imageURI->readImage(dbOptions).releaseImage();
 }
 
 //---------------------------------------------------------------------------
@@ -173,7 +167,7 @@ SkinSymbol::getConfig() const
 
     std::string tagstring = this->tagString();
     if ( !tagstring.empty() )
-        conf.attr("tags") = tagstring;
+        conf.set("tags", tagstring);
 
     return conf;
 }

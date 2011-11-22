@@ -21,7 +21,6 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
-#include <osgEarth/Map>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/TerrainOptions>
 #include <osg/StateSet>
@@ -29,6 +28,10 @@
 
 namespace osgEarth
 {
+    class ImageLayer;
+    class TileKey;
+    struct MapModelChange;
+
     /**
      * Tracks the usage of texture slots and their rendering order for a map.
      *
@@ -148,6 +151,11 @@ namespace osgEarth
          * Constructs a new compositor.
          */
         TextureCompositor( const TerrainOptions& options );
+
+        /**
+         * Sets a custom technique to use.
+         */
+        void setTechnique( TextureCompositorTechnique* tech );
 
         /**
          * Gets the actual technique selected by the compositor. This might not be the same

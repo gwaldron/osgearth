@@ -20,6 +20,7 @@
 #define OSGEARTH_DRIVER_WFS_FEATURE_SOURCE_OPTIONS 1
 
 #include <osgEarth/Common>
+#include <osgEarth/URI>
 #include <osgEarthFeatures/FeatureSource>
 
 namespace osgEarth { namespace Drivers

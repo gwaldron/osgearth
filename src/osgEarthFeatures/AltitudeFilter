@@ -53,6 +53,9 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<const AltitudeSymbol> _altitude;
         double                             _maxRes;
         std::string                        _maxZAttr, _minZAttr, _terrainZAttr;
+
+        void pushAndClamp( FeatureList& input, FilterContext& cx );
+        void pushAndDontClamp( FeatureList& input, FilterContext& cx );
     };
 
 } } // namespace osgEarth::Features

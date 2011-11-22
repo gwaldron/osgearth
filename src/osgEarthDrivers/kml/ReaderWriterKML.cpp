@@ -18,7 +18,6 @@
  */
 #include <osgDB/ReaderWriter>
 #include <osgDB/FileNameUtils>
-#include <osgDB/ObjectWrapper>
 #include <osgDB/FileCache>
 #include <osgDB/Registry>
 #include <osgDB/FileUtils>
@@ -48,17 +47,17 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 #endif // SUPPORT_KMZ
     }
 
-    ReadResult readObject(const std::string& url, const Options* options) const
+    osgDB::ReaderWriter::ReadResult readObject(const std::string& url, const osgDB::Options* options) const
     {
         return readNode( url, options );
     }
 
-    ReadResult readObject(std::istream& in, const Options* options ) const
+    osgDB::ReaderWriter::ReadResult readObject(std::istream& in, const osgDB::Options* dbOptions ) const
     {
-        return readNode(in, options);
+        return readNode(in, dbOptions);
     }
 
-    ReadResult readNode(const std::string& url, const Options* options) const
+    osgDB::ReaderWriter::ReadResult readNode(const std::string& url, const osgDB::Options* dbOptions) const
     {
         std::string ext = osgDB::getLowerCaseFileExtension(url);
         if ( !acceptsExtension(ext) )
@@ -66,18 +65,18 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
         if ( ext == "kmz" )
         {
-            return URI(url + "/.kml").readNode( options );
+            return URI(url + "/.kml").readNode( dbOptions ).releaseNode();
         }
         else
         {
             // propagate the source URI along to the stream reader
-            osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(options);
+            osg::ref_ptr<osgDB::Options> myOptions = Registry::instance()->cloneOrCreateOptions(dbOptions);
             URIContext(url).store( myOptions.get() );
             return readNode( URIStream(url), myOptions.get() );
         }
     }
 
-    ReadResult readNode(std::istream& in, const Options* options ) const
+    osgDB::ReaderWriter::ReadResult readNode(std::istream& in, const osgDB::Options* options ) const
     {
         if ( !options )
             return ReadResult("Missing required MapNode option");
@@ -103,7 +102,7 @@ struct ReaderWriterKML : public osgDB::ReaderWriter
 
 #ifdef SUPPORT_KMZ
 
-    ReadResult openArchive( const std::string& url, ArchiveStatus status, unsigned int dummy, const osgDB::Options* options =0L ) const
+    osgDB::ReaderWriter::ReadResult openArchive( const std::string& url, ArchiveStatus status, unsigned int dummy, const osgDB::Options* options =0L ) const
     {
         // Find the archive for this thread. We store one KMZ archive instance per thread 
         // so that the minizip library can work in parallel

@@ -25,6 +25,7 @@
 #include <osgEarthSymbology/Symbol>
 #include <osgEarthSymbology/MarkerSymbol>
 #include <osgEarth/URI>
+#include <map>
 
 namespace osgEarth { namespace Symbology
 {
@@ -44,7 +45,7 @@ namespace osgEarth { namespace Symbology
         /**
          * Creates a new Node representing the marker.
          */
-        osg::Node* createNode() const;
+        osg::Node* createNode( const osgDB::Options* dbOptions ) const;
 
     public:
         /** Source location of the actual data to load.  */
@@ -59,8 +60,12 @@ namespace osgEarth { namespace Symbology
     protected:
         optional<URI>  _markerURI;
 
-        osg::Node* createNodeFromURI( const URI& uri ) const;
+        osg::Node* createNodeFromURI( const URI& uri, const osgDB::Options* dbOptions ) const;
     };
+
+    typedef std::map<std::string, osg::ref_ptr<MarkerResource> > MarkerResourceMap;
+
+    typedef std::vector< osg::ref_ptr<MarkerResource> > MarkerResourceVector;
 
 } } // namespace osgEarth::Symbology
 

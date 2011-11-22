@@ -18,6 +18,8 @@
  */
 
 #include <osgEarthFeatures/Session>
+#include <osgEarthFeatures/Script>
+#include <osgEarthFeatures/ScriptEngine>
 #include <osgEarth/FileUtils>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/StringUtils>
@@ -32,31 +34,27 @@ using namespace osgEarth::Features;
 
 //---------------------------------------------------------------------------
 
-Session::Session( const Map* map, StyleSheet* styles ) :
+Session::Session( const Map* map, StyleSheet* styles, const osgDB::Options* dbOptions ) :
 osg::Referenced( true ),
 _map           ( map ),
-_mapInfo       ( map )
-//_resourceCache ( new ResourceCache(true) ) // make is thread-safe.
+_mapInfo       ( map ),
+_dbOptions     ( dbOptions )
 {
     if ( styles )
         setStyles( styles );
     else
         _styles = new StyleSheet();
+
+    // if the caller did not provide a dbOptions, take it from the map.
+    if ( map && !dbOptions )
+        _dbOptions = map->getDBOptions();
 }
 
-#if 0
-void
-Session::setReferenceURI( const std::string& referenceURI )
+const osgDB::Options*
+Session::getDBOptions() const
 {
-    _referenceURI = referenceURI;
+    return _dbOptions.get();
 }
-
-std::string
-Session::resolveURI( const std::string& inputURI ) const
-{
-    return osgEarth::getFullPath( _referenceURI, inputURI );
-}
-#endif
 
 MapFrame
 Session::createMapFrame( Map::ModelParts parts ) const
@@ -65,17 +63,11 @@ Session::createMapFrame( Map::ModelParts parts ) const
 }
 
 void
-Session::putObject( const std::string& key, osg::Referenced* object )
+Session::putObject( const std::string& key, osg::Referenced* object, bool overwrite )
 {
-    //if ( dynamic_cast<osg::Node*>( object ) )
-    //{
-    //    OE_INFO << LC << "*** usage warning: storing an osg::Node in the Session cache is bad news;"
-    //        << " live graph iterators can be invalidated." 
-    //        << std::endl;
-    //}
-
     Threading::ScopedWriteLock lock( _objMapMutex );
-    _objMap[key] = object;
+    if ( overwrite || _objMap.find(key) == _objMap.end() )
+        _objMap[key] = object;
 }
 
 void
@@ -89,4 +81,16 @@ void
 Session::setStyles( StyleSheet* value )
 {
     _styles = value ? value : new StyleSheet();
+
+    // Go ahead and create the script engine for the StyleSheet
+    if (_styles && _styles->script())
+      _styleScriptEngine = ScriptEngineFactory::create(Script(_styles->script()->code, _styles->script()->language, _styles->script()->name));
+    else
+      _styleScriptEngine = 0L;
+}
+
+ScriptEngine*
+Session::getScriptEngine() const
+{
+  return _styleScriptEngine.get();
 }

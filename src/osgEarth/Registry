@@ -21,10 +21,11 @@
 #define OSGEARTH_REGISTRY 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Caching>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
+#include <osgEarth/IOTypes>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
@@ -36,6 +37,7 @@
 
 namespace osgEarth
 {    
+    class Cache;
     class ShaderFactory;
 
     /**
@@ -62,9 +64,13 @@ namespace osgEarth
         /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
         OpenThreads::ReentrantMutex& getGDALMutex();
 
-        /** Global override of map caching settings. */
-        Cache* getCacheOverride() const;
-        void setCacheOverride( Cache* cacheOverride );
+        /** The system-wide default cache. */
+        Cache* getCache() const;
+        void setCache( Cache* cache );
+
+        /** The system-wide default cache policy */
+        const CachePolicy& defaultCachePolicy() const { return _defaultCachePolicy; }
+        void setDefaultCachePolicy( const CachePolicy& policy ) { _defaultCachePolicy = policy; }
 
         /** Registers a mapping of a mime-type to an extension. A process fetching data
           * over HTTP can use this facility to determine the proper ReaderWriter to use
@@ -126,11 +132,14 @@ namespace osgEarth
         UID createUID();
 
         /**
-         * Gets or sets the local root of the system default cache.
+         * Sets a global read callback for URI objects.
          */
-        void setCacheDirectory( const std::string& dir );
+        void setURIReadCallback( URIReadCallback* callback ) { _uriReadCallback = callback; }
 
-        const std::string& getCacheDirectory() const;
+        /**
+         * Gets the global read callback for URI objects.
+         */
+        URIReadCallback* getURIReadCallback() const { return _uriReadCallback.get(); }
 
         /**
          * Gets the default set of osgDB::Options to use.
@@ -146,7 +155,6 @@ namespace osgEarth
     protected:
         virtual ~Registry();
         Registry();
-
 
         void destruct();
 
@@ -164,11 +172,12 @@ namespace osgEarth
         // maps mime-types to extensions.
         MimeTypeExtensionMap _mimeTypeExtMap;
 
-		osg::ref_ptr<Cache> _cacheOverride;
+		osg::ref_ptr<Cache> _cache;
+        CachePolicy         _defaultCachePolicy;
 
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;
-        OpenThreads::Mutex _blacklistMutex;
+        Threading::ReadWriteMutex _blacklistMutex;
 
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
@@ -182,6 +191,8 @@ namespace osgEarth
         void initCapabilities();
 
         osg::ref_ptr<osgDB::Options> _defaultOptions;
+
+        osg::ref_ptr<URIReadCallback> _uriReadCallback;
     };
 }
 

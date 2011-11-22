@@ -23,7 +23,6 @@
 #include "TransparentLayer"
 
 #include <osgEarth/Map>
-#include <osgEarth/Caching>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
@@ -565,7 +564,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
     osg::ref_ptr<osg::HeightField> hf;
     if ( mapf.elevationLayers().size() > 0 )
     {
-        mapf.getHeightField( key, false, hf, 0L, _terrainOptions.elevationInterpolation().value());     
+        mapf.getHeightField( key, false, hf, 0L);     
     }
 
     //If we are on the first LOD and we couldn't get a heightfield tile, just create an empty one.  Otherwise you can run into the situation
@@ -633,7 +632,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            if ( mapf.getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value() ) )
+            if ( mapf.getHeightField( key, true, hf, 0L ) )
             {
                 hasElevation = true;
             }
@@ -865,7 +864,7 @@ OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key
 
     // try to create a heightfield at native res:
     osg::ref_ptr<osg::HeightField> hf;
-    if ( !mapf.getHeightField( key, !exactOnly, hf, 0L, _terrainOptions.elevationInterpolation().value() ) )
+    if ( !mapf.getHeightField( key, !exactOnly, hf, 0L ) )
     {
         if ( exactOnly )
             return NULL;

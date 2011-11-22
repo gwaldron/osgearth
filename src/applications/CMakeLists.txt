@@ -49,6 +49,10 @@ ADD_SUBDIRECTORY(osgearth_tilesource)
 ADD_SUBDIRECTORY(osgearth_labels)
 ADD_SUBDIRECTORY(osgearth_imageoverlay)
 
+IF (QT4_FOUND AND NOT ANDROID)
+    ADD_SUBDIRECTORY(osgearth_qt)
+ENDIF()
+
 
 #ADD_SUBDIRECTORY(osgearth_symbology)
 

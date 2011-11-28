@@ -83,13 +83,26 @@ namespace osgEarth { namespace Features
          *
          * WARNING! Don't store things like nodes in here unless you plan
          * to clone them. This is a multi-threaded store.
+         *
+         * Returns the object written, OR the already-existing object if overwrite = false
+         * and the key was already taken.
          */
-        void putObject( const std::string& key, osg::Referenced* object, bool overwrite =true );
+        template<typename T>
+        T* putObject( const std::string& key, T* object, bool overwrite =true ) {
+            Threading::ScopedWriteLock lock( _objMapMutex );
+            ObjectMap::iterator i = _objMap.find(key);
+            if ( i != _objMap.end() && !overwrite )
+                return dynamic_cast<T*>(i->second.get());
+            _objMap[key] = object;
+            return object;
+        }
 
         /**
          * Gets an object from the shared Session cache.
+         * (returns a ref_ptr so as not to lose its ref in a multi-threaded app)
          */
-        template<typename T> T* getObject( const std::string& key ) {
+        template<typename T>
+        osg::ref_ptr<T> getObject( const std::string& key ) {
             Threading::ScopedReadLock lock( _objMapMutex );
             ObjectMap::const_iterator i = _objMap.find(key);
             return i != _objMap.end() ? dynamic_cast<T*>( i->second.get() ) : 0L;

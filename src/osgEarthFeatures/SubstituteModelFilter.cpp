@@ -350,7 +350,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
             if ( model.valid() )
             {
                 // store it, but only if there isn't already one in there.
-                context.getSession()->putObject( markerURI.full(), model.get(), false );
+                model = context.getSession()->putObject( markerURI.full(), model.get(), false );
             }
         }
 

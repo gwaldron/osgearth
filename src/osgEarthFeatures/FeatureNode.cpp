@@ -25,9 +25,9 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-FeatureNode::FeatureNode( MapNode* mapNode, Feature* feature, bool draped, GeometryCompilerOptions& options ) :
+FeatureNode::FeatureNode( MapNode* mapNode, Feature* feature, bool draped, const GeometryCompilerOptions& options ) :
 DrapeableNode( mapNode, draped ),
-_options( options ),
+_options     ( options ),
 _feature     ( feature )
 {
     init();

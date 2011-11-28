@@ -20,8 +20,13 @@
 #define OSGEARTHQT_DATAMANAGER_H 1
 
 #include <osgEarthQt/Common>
+#include <osgEarthQt/Actions>
 
 #include <osgEarth/Map>
+#include <osgEarth/MapNode>
+#include <osgEarth/Viewpoint>
+
+#include <osgEarthAnnotation/AnnotationNode>
 
 #include <QObject>
 
@@ -30,17 +35,36 @@ namespace{ struct DataManagerMapCallback; }
 namespace osgEarth { namespace QtGui 
 {
     using namespace osgEarth;
+    using namespace osgEarth::Annotation;
+    using namespace osgEarth::QtGui;
 
-    class OSGEARTHQT_EXPORT DataManager : public QObject, public osg::Referenced
+    typedef std::vector< osg::ref_ptr<AnnotationNode> > AnnotationVector;
+
+    class OSGEARTHQT_EXPORT DataManager : public QObject, public osg::Referenced, public ActionManager
     {
     Q_OBJECT
 
     public:
       DataManager(osgEarth::Map* map);
+      DataManager(osgEarth::MapNode* mapNode);
 
       osgEarth::Map* map() { return _map.get(); }
 
-      //void addAnnotation
+      void addAnnotation(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent/*=0L*/);
+      void removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent=0L);
+      void getAnnotations(AnnotationVector& out_annotations) const;
+
+      void getViewpoints(std::vector<osgEarth::Viewpoint>& out_viewpoints) const;
+
+    public: //ActionManager
+      void addBeforeActionCallback( ActionCallback* cb );
+      void addAfterActionCallback( ActionCallback* cb );
+
+      bool doAction( void* sender, Action* action, bool reversible =true );
+      bool undoAction();
+      bool canUndo() const;
+      void clearUndoActions();
+      ReversibleAction* getNextUndoAction() const;
 
     signals:
       void mapChanged();
@@ -61,12 +85,24 @@ namespace osgEarth { namespace QtGui
       void maskLayerAdded(osgEarth::MaskLayer* layer);
       void maskLayerRemoved(osgEarth::MaskLayer* layer);
 
-      //void annotationAdded
+      void annotationAdded(osgEarth::Annotation::AnnotationNode* annotation);
+      void annotationRemoved(osgEarth::Annotation::AnnotationNode* annotation);
 
     protected:
-      osg::ref_ptr<osgEarth::Map> _map;
-
       void onMapChanged(const osgEarth::MapModelChange& change);
+
+    private:
+      osg::ref_ptr<osgEarth::Map> _map;
+      Threading::ReadWriteMutex _dataMutex;
+      AnnotationVector _annotations;
+      std::vector<osgEarth::Viewpoint> _viewpoints;
+
+      // ActionManager-related members
+      std::list< osg::ref_ptr<Action> > _undoStack;
+      typedef std::list< osg::ref_ptr<ActionCallback> > ActionCallbackList;
+      ActionCallbackList _beforeCallbacks;
+      ActionCallbackList _afterCallbacks;
+      int _maxUndoStackSize;
 
 
       friend struct DataManagerMapCallback;

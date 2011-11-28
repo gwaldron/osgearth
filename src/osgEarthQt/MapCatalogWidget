@@ -31,7 +31,7 @@ namespace osgEarth { namespace QtGui
 {
     using namespace osgEarth;
 
-    class OSGEARTHQT_EXPORT MapCatalogWidget : public QWidget
+    class OSGEARTHQT_EXPORT MapCatalogWidget : public QWidget, public ActionCallback
     {
     Q_OBJECT
 
@@ -44,28 +44,36 @@ namespace osgEarth { namespace QtGui
         ANNOTATIONS = 0x08,
         LAYERS_AND_ANNOTATIONS = 0x0F,
         MASK_LAYERS = 0x10,
-        //VIEWPOINTS = 0x20,
+        VIEWPOINTS = 0x20,
         ALL = 0xFF
       };
 
       MapCatalogWidget(DataManager* dm, unsigned int fields=LAYERS_AND_ANNOTATIONS);
       MapCatalogWidget(osgEarth::Map* map, unsigned int fields=ALL_LAYERS);
 
+      //ActionCallback
+      void operator()( void* sender, Action* action );
+
     private slots:
 	    void onMapChanged();
-	    //void onTreeItemChanged(QTreeWidgetItem* item, int col);
+	    void onTreeItemDoubleClicked(QTreeWidgetItem* item, int col);
+      void onTreeItemChanged(QTreeWidgetItem* item, int col);
+      void onTreeSelectionChanged();
 
     protected:
       ~MapCatalogWidget();
 
       void initUi();
       void refresh();
+      void fireSelectionAction(QTreeWidgetItem* item);
 
       QTreeWidget* _tree;
       QTreeWidgetItem* _elevationsItem;
       QTreeWidgetItem* _imagesItem;
       QTreeWidgetItem* _modelsItem;
+      QTreeWidgetItem* _annotationsItem;
       QTreeWidgetItem* _masksItem;
+      QTreeWidgetItem* _viewpointsItem;
 
       osg::ref_ptr<DataManager> _manager;
       osg::ref_ptr<osgEarth::Map> _map;

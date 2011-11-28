@@ -17,6 +17,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthQt/ViewerWidget>
+#include <osgEarthQt/Actions>
+#include <osgEarthQt/DataManager>
+#include <osgEarthQt/GuiActions>
 
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/EarthManipulator>
@@ -26,13 +29,33 @@
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 
+#include <QtGui>
 #include <QtCore/QTimer>
 #include <QtGui/QWidget>
 
 using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
-ViewerWidget::ViewerWidget(osg::Node* scene, osgEarth::Map* map)
+namespace
+{
+  class ViewerActionCallback : public ActionCallback
+  {
+  public:
+    ViewerActionCallback(osgEarth::Util::EarthManipulator* manip) : _manip(manip) {}
+
+    void operator()( void* sender, Action* action )
+    {
+      SetViewpointAction* viewpointAction = dynamic_cast<SetViewpointAction*>(action);
+      if (viewpointAction && _manip.valid())
+        _manip->setViewpoint(viewpointAction->viewpoint(), 4.5);
+    }
+
+  private:
+    osg::ref_ptr<osgEarth::Util::EarthManipulator> _manip;
+  };
+}
+
+ViewerWidget::ViewerWidget(osg::Node* scene, DataManager* manager) : _manager(manager)
 {
   initialize();
 
@@ -47,10 +70,19 @@ void ViewerWidget::initialize()
   setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
   setCamera(createCamera());
   setCameraManipulator(new osgEarth::Util::EarthManipulator());
-  addEventHandler(new osgEarth::Util::AutoClipPlaneHandler());
+  
+  if (_manager.valid())
+    getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(_manager->map()));
+
   addEventHandler(new osgViewer::StatsHandler());
   addEventHandler(new osgGA::StateSetManipulator());
   addEventHandler(new osgViewer::ThreadingHandler());
+
+  if (_manager.valid())
+  {
+    _actionCallback = new ViewerActionCallback(dynamic_cast<osgEarth::Util::EarthManipulator*>(getCameraManipulator()));
+    _manager->addAfterActionCallback(_actionCallback);
+  }
 }
 
 osg::Camera* ViewerWidget::createCamera()
@@ -61,7 +93,7 @@ osg::Camera* ViewerWidget::createCamera()
   traits->readDISPLAY();
   if (traits->displayNum<0) traits->displayNum = 0;
 
-  traits->windowName = "";
+  traits->windowName = "osgEarthViewerQt";
   traits->windowDecoration = false;
   traits->x = x();
   traits->y = y();
@@ -90,7 +122,7 @@ osg::Camera* ViewerWidget::createCamera()
   camera->setGraphicsContext( new osgQt::GraphicsWindowQt(traits.get()) );
 
   //camera->setClearColor( osg::Vec4(0.0, 0.0, 0.0, 1.0) );
-  camera->setViewport(new osg::Viewport(traits->x, traits->y, traits->width, traits->height));
+  camera->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
   camera->setProjectionMatrixAsPerspective(30.0f, static_cast<double>(traits->width)/static_cast<double>(traits->height), 1.0f, 10000.0f );
   
   return camera.release();

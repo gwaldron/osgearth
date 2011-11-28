@@ -17,6 +17,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthQt/CompositeViewerWidget>
+#include <osgEarthQt/Actions>
+#include <osgEarthQt/DataManager>
+#include <osgEarthQt/GuiActions>
 
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/EarthManipulator>
@@ -33,11 +36,42 @@
 using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
-CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene, osgEarth::Map* map)
+namespace
+{
+  class MultiViewActionCallback : public ActionCallback
+  {
+  public:
+    MultiViewActionCallback(osgViewer::CompositeViewer* viewer) : _viewer(viewer) {}
+
+    void operator()( void* sender, Action* action )
+    {
+      if (!_viewer.valid())
+        return;
+
+      SetViewpointAction* viewpointAction = dynamic_cast<SetViewpointAction*>(action);
+      if (viewpointAction)
+      {
+        osgViewer::ViewerBase::Views views;
+        _viewer->getViews(views);
+
+        for (osgViewer::ViewerBase::Views::iterator it = views.begin(); it != views.end(); ++it)
+        {
+          osgEarth::Util::EarthManipulator* manip = dynamic_cast<osgEarth::Util::EarthManipulator*>((*it)->getCameraManipulator());
+          if (manip)
+            manip->setViewpoint(viewpointAction->viewpoint(), 4.5);
+        }
+      }
+    }
+
+  private:
+    osg::ref_ptr<osgViewer::CompositeViewer> _viewer;
+  };
+}
+
+CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene, DataManager* manager)
+: _manager(manager)
 {
   initialize();
-
-  //if (scene) getView(0)->setSceneData(scene);
 
   connect(&_timer, SIGNAL(timeout()), this, SLOT(update()));
   _timer.start(15);
@@ -45,8 +79,13 @@ CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene, osgEarth::Map* ma
 
 void CompositeViewerWidget::initialize()
 {
-  setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
-  //createViewWidget();
+  setThreadingModel(osgViewer::Viewer::SingleThreaded);
+
+  if (_manager.valid())
+  {
+    _actionCallback = new MultiViewActionCallback(this);
+    _manager->addAfterActionCallback(_actionCallback);
+  }
 }
 
 osgViewer::View* CompositeViewerWidget::createViewWidget(osg::Node* scene, osgViewer::View* shared)
@@ -54,7 +93,10 @@ osgViewer::View* CompositeViewerWidget::createViewWidget(osg::Node* scene, osgVi
   osgViewer::View* view = new osgViewer::View();
   view->setCamera(createCamera(0, 0, 100, 100, (shared ? shared->getCamera()->getGraphicsContext() : 0L)));
   view->setCameraManipulator(new osgEarth::Util::EarthManipulator());
-  view->addEventHandler(new osgEarth::Util::AutoClipPlaneHandler());
+  
+  if (_manager.valid())
+    view->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(_manager->map()));
+
   view->addEventHandler(new osgViewer::StatsHandler());
   view->addEventHandler(new osgGA::StateSetManipulator());
   view->addEventHandler(new osgViewer::ThreadingHandler());
@@ -107,7 +149,7 @@ osg::Camera* CompositeViewerWidget::createCamera(int x, int y, int width, int he
   camera->setGraphicsContext( new osgQt::GraphicsWindowQt(traits.get()) );
 
   //camera->setClearColor( osg::Vec4(0.0, 0.0, 0.0, 1.0) );
-  camera->setViewport(new osg::Viewport(traits->x, traits->y, traits->width, traits->height));
+  camera->setViewport(new osg::Viewport(0, 0, traits->width, traits->height));
   camera->setProjectionMatrixAsPerspective(30.0f, static_cast<double>(traits->width)/static_cast<double>(traits->height), 1.0f, 10000.0f );
   
   return camera.release();

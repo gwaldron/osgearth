@@ -76,6 +76,10 @@ namespace osgEarth { namespace Symbology
         optional<NumericExpression>& scale() { return _scale; }
         const optional<NumericExpression>& scale() const { return _scale; }
 
+        /** Orientation in HPR degrees */
+        optional<osg::Vec3f>& orientation() { return _orientation; }
+        const optional<osg::Vec3f>& orientation() const { return _orientation; }
+
         /** Seeding value for the randomizer */
         optional<unsigned>& randomSeed() { return _randomSeed; }
         const optional<unsigned>& randomSeed() const { return _randomSeed; }
@@ -99,6 +103,7 @@ namespace osgEarth { namespace Symbology
         optional<StringExpression>   _libraryName;
         optional<NumericExpression>  _scale;
         optional<Placement>          _placement;
+        optional<osg::Vec3f>         _orientation;
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
 

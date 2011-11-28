@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarth/DrapeableNode>
 #include <osg/StateSet>
 
@@ -39,7 +40,11 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureNode : public DrapeableNode
     {
     public:
-        FeatureNode( MapNode* mapNode, Feature* feature, bool draped =true );
+        FeatureNode( 
+            MapNode* mapNode, 
+            Feature* feature, 
+            bool     draped   =true, 
+            const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
         void setFeature( Feature* feature );
 
@@ -50,6 +55,7 @@ namespace osgEarth { namespace Features
     protected:
         osg::ref_ptr<Feature>       _feature;
         optional<Style>             _style;
+        GeometryCompilerOptions     _options;
     };
 
 } } // namespace osgEarth::Features

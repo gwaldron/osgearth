@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureNode>
-#include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/Session>
 
 #define LC "[FeatureNode] "
@@ -26,8 +25,9 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
-FeatureNode::FeatureNode( MapNode* mapNode, Feature* feature, bool draped ) :
+FeatureNode::FeatureNode( MapNode* mapNode, Feature* feature, bool draped, const GeometryCompilerOptions& options ) :
 DrapeableNode( mapNode, draped ),
+_options     ( options ),
 _feature     ( feature )
 {
     init();
@@ -38,9 +38,7 @@ FeatureNode::init()
 {
     if ( _feature.valid() && _feature->getGeometry() )
     {
-        GeometryCompilerOptions options;
-        options.maxGranularity() = 1.0;
-        GeometryCompiler compiler( options );
+        GeometryCompiler compiler( _options );
         Session* session = new Session( _mapNode->getMap() );
         GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
         FeatureProfile* profile = new FeatureProfile(extent);

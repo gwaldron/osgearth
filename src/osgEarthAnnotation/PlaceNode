@@ -71,6 +71,8 @@ namespace osgEarth { namespace Annotation
 
         virtual void setAnnotationData( AnnotationData* data );
 
+        virtual void setDynamic( bool value );
+
     private:
         osg::ref_ptr<osg::Image>   _image;
         std::string                _text;

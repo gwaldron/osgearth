@@ -24,7 +24,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
-AnnotationNode::AnnotationNode()
+AnnotationNode::AnnotationNode() :
+_dynamic( false )
 {
     //nop
 }
@@ -33,6 +34,12 @@ void
 AnnotationNode::setAnnotationData( AnnotationData* data )
 {
     _annoData = data;
+}
+
+void
+AnnotationNode::setDynamic( bool value )
+{
+    _dynamic = value;
 }
 
 void

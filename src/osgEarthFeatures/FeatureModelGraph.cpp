@@ -190,7 +190,7 @@ _dirty    ( false )
     // user manually specified schema levels, don't use the tiles.
     _useTiledSource = _source->getFeatureProfile()->getTiled();
 
-    if ( options.levels().isSet() && options.levels()->getNumLevels() > 0 )
+    if ( options.layout().isSet() && options.layout()->getNumLevels() > 0 )
     {
         // the user provided a custom levels setup, so don't use the tiled source (which
         // provides its own levels setup)
@@ -199,10 +199,10 @@ _dirty    ( false )
         // for each custom level, calculate the best LOD match and store it in the level
         // layout data. We will use this information later when constructing the SG in
         // the pager.
-        for( unsigned i = 0; i < options.levels()->getNumLevels(); ++i )
+        for( unsigned i = 0; i < options.layout()->getNumLevels(); ++i )
         {
-            const FeatureLevel* level = options.levels()->getLevel( i );
-            unsigned lod = options.levels()->chooseLOD( *level, _fullWorldBound.radius() );
+            const FeatureLevel* level = options.layout()->getLevel( i );
+            unsigned lod = options.layout()->chooseLOD( *level, _fullWorldBound.radius() );
             _lodmap.resize( lod+1, 0L );
             _lodmap[lod] = level;
 
@@ -278,7 +278,7 @@ FeatureModelGraph::setupPaging()
     osg::BoundingSphered bs = getBoundInWorldCoords( _usableMapExtent, &mapf );
 
     // calculate the max range for the top-level PLOD:
-    float maxRange = bs.radius() * _options.levels()->tileSizeFactor().value();
+    float maxRange = bs.radius() * _options.layout()->tileSizeFactor().value();
 
     // build the URI for the top-level paged LOD:
     std::string uri = s_makeURI( _uid, 0, 0, 0 );
@@ -313,7 +313,7 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
 
             // Apply the tile range multiplier to calculate a max camera range. The max range is
             // the geographic radius of the tile times the multiplier.
-            float tileFactor = _options.levels().isSet() ? _options.levels()->tileSizeFactor().get() : 15.0f;            
+            float tileFactor = _options.layout().isSet() ? _options.layout()->tileSizeFactor().get() : 15.0f;            
             double maxRange =  tileBound.radius() * tileFactor;
             FeatureLevel level( 0, maxRange );
             //OE_NOTICE << "(" << lod << ": " << tileX << ", " << tileY << ")" << std::endl;
@@ -362,7 +362,7 @@ FeatureModelGraph::load( unsigned lod, unsigned tileX, unsigned tileY, const std
         }
     }
 
-    else if ( !_options.levels().isSet() || _options.levels()->getNumLevels() == 0 )
+    else if ( !_options.layout().isSet() || _options.layout()->getNumLevels() == 0 )
     {
         // This is a non-tiled data source that has NO level details. In this case, 
         // we simply want to load all features at once and make them visible at
@@ -456,7 +456,7 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
             // the max range of a FeatureLevel below this will, by definition, have a max range
             // less than or equal to this number -- based on how the LODs were chosen in 
             // setupPaging.
-            float maxRange = subtile_bs.radius() * _options.levels()->tileSizeFactor().value();
+            float maxRange = subtile_bs.radius() * _options.layout()->tileSizeFactor().value();
 
             std::string uri = s_makeURI( _uid, subtileLOD, u, v );
 
@@ -693,7 +693,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
         cursor->fill( workingSet );
 
         CropFilter crop( 
-            _options.levels().isSet() && _options.levels()->cropFeatures() == true ? 
+            _options.layout().isSet() && _options.layout()->cropFeatures() == true ? 
             CropFilter::METHOD_CROPPING : CropFilter::METHOD_CENTROID );
         context = crop.push( workingSet, context );
 
@@ -701,7 +701,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
         // extent to fit on the map), calculate the extent of the features in this tile and 
         // crop to the map extent if necessary. (Note, if cropFeatures was set to true, this is
         // already done)
-        if ( _featureExtentClamped && _options.levels().isSet() && _options.levels()->cropFeatures() == false )
+        if ( _featureExtentClamped && _options.layout().isSet() && _options.layout()->cropFeatures() == false )
         {
             context.extent() = _usableFeatureExtent;
             CropFilter crop2( CropFilter::METHOD_CROPPING );
@@ -756,7 +756,7 @@ FeatureModelGraph::redraw()
 {
     removeChildren( 0, getNumChildren() );
     // if there's a display schema in place, set up for quadtree paging.
-    if ( _options.levels().isSet() || _useTiledSource ) //_source->getFeatureProfile()->getTiled() )
+    if ( _options.layout().isSet() || _useTiledSource ) //_source->getFeatureProfile()->getTiled() )
     {
         setupPaging();
     }

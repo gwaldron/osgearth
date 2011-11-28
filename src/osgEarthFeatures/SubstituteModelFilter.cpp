@@ -64,7 +64,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
     // first, go through the features and build the model cache. Apply the model matrix' scale
     // factor to any AutoTransforms directly (cloning them as necessary)
     std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
-    //std::map< Feature*, osg::ref_ptr<osg::Node> > featureModels;
 
     StringExpression  uriEx   = *symbol->url();
     NumericExpression scaleEx = *symbol->scale();
@@ -84,7 +83,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
             marker = rec.value();
         }
         else if ( _markerLib.valid() ) {
-            marker = _markerLib->getMarker( markerURI.base() );
+            marker = _markerLib->getMarker( markerURI.base(), context.getDBOptions() );
         }
         else {
             marker = new MarkerResource();
@@ -350,7 +349,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
             if ( model.valid() )
             {
                 // store it, but only if there isn't already one in there.
-                context.getSession()->putObject( markerURI.full(), model.get(), false );
+                model = context.getSession()->putObject( markerURI.full(), model.get(), false );
             }
         }
 

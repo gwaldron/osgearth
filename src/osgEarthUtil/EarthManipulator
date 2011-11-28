@@ -803,7 +803,7 @@ namespace osgEarth { namespace Util
         double                  _set_viewpoint_accel;
         double                  _set_viewpoint_accel_2;
 
-        bool                    _after_first_frame;
+        unsigned                _frame_count;
 
         osg::ref_ptr<Settings> _settings;		
 

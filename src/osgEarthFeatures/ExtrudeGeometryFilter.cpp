@@ -683,7 +683,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 {
                     SkinSymbol querySymbol( *_wallSkinSymbol.get() );
                     querySymbol.objectHeight() = fabs(height) - offset;
-                    wallSkin = _wallResLib->getSkin( &querySymbol, wallSkinPRNG );
+                    wallSkin = _wallResLib->getSkin( &querySymbol, wallSkinPRNG, context.getDBOptions() );
                 }
 
                 else
@@ -699,7 +699,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( _roofResLib.valid() )
                 {
                     SkinSymbol querySymbol( *_roofSkinSymbol.get() );
-                    roofSkin = _roofResLib->getSkin( &querySymbol, roofSkinPRNG );
+                    roofSkin = _roofResLib->getSkin( &querySymbol, roofSkinPRNG, context.getDBOptions() );
                 }
 
                 else

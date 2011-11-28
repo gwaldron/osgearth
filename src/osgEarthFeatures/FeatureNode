@@ -40,7 +40,11 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT FeatureNode : public DrapeableNode
     {
     public:
-        FeatureNode( MapNode* mapNode, Feature* feature, bool draped =true, GeometryCompilerOptions& options = GeometryCompilerOptions() );
+        FeatureNode( 
+            MapNode* mapNode, 
+            Feature* feature, 
+            bool     draped   =true, 
+            const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
         void setFeature( Feature* feature );
 

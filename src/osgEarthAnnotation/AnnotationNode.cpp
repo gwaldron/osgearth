@@ -51,10 +51,10 @@ AnnotationNode::setHighlight( bool value )
     if ( Registry::instance()->getCapabilities().supportsGLSL() )
     {
         osg::StateSet* stateSet = getOrCreateStateSet();
-        osg::Uniform* u = stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT );
+        osg::Uniform* u = stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT() );
         if ( !u )
         {
-            u = new osg::Uniform( osg::Uniform::BOOL, AnnotationUtils::UNIFORM_HIGHLIGHT );
+            u = new osg::Uniform( osg::Uniform::BOOL, AnnotationUtils::UNIFORM_HIGHLIGHT() );
             stateSet->addUniform( u );
         }
         u->set( value );

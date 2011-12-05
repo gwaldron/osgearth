@@ -24,6 +24,8 @@
 #include <osgEarth/Utils>
 #include <osg/Depth>
 
+#define LC "[PlaceNode] "
+
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
@@ -50,6 +52,8 @@ PlaceNode::init()
 {
     _geode = new osg::Geode();
 
+    osg::Drawable* text = 0L;
+
     if ( _image.get() )
     {
         // this offset anchors the image at the bottom
@@ -57,12 +61,19 @@ PlaceNode::init()
         osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset );
         if ( imageGeom )
             _geode->addDrawable( imageGeom );
-    }
 
-    osg::Drawable* text = AnnotationUtils::createTextDrawable(
-        _text,
-        _style.get<TextSymbol>(),
-        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ) );
+        text = AnnotationUtils::createTextDrawable(
+            _text,
+            _style.get<TextSymbol>(),
+            osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ) );
+    }
+    else
+    {
+        text = AnnotationUtils::createTextDrawable(
+            _text,
+            _style.get<TextSymbol>(),
+            osg::Vec3( 0, 0, 0 ) );
+    }
 
     if ( text )
         _geode->addDrawable( text );
@@ -76,21 +87,42 @@ PlaceNode::init()
 void
 PlaceNode::setIconImage( osg::Image* image )
 {
-    //todo
+    if ( !_dynamic )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
 }
 
 void
 PlaceNode::setText( const std::string& text )
 {
-    //todo
-    //warning, if you implement this, set the object variance on the
-    // text drawable to DYNAMIC
+    if ( !_dynamic )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        osgText::Text* d = dynamic_cast<osgText::Text*>( i->get() );
+        if ( d )
+        {
+            d->setText( text );
+            break;
+        }
+    }
 }
 
 void
 PlaceNode::setStyle( const Style& style )
 {
-    //todo
+    if ( !_dynamic )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
 }
 
 void
@@ -103,5 +135,17 @@ PlaceNode::setAnnotationData( AnnotationData* data )
     for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
     {
         i->get()->setUserData( data );
+    }
+}
+
+void
+PlaceNode::setDynamic( bool value )
+{
+    OrthoNode::setDynamic( value );
+
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        i->get()->setDataVariance( value ? osg::Object::DYNAMIC : osg::Object::STATIC );
     }
 }

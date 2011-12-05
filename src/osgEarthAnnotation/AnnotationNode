@@ -45,11 +45,18 @@ namespace osgEarth { namespace Annotation
         virtual void setHighlight( bool value );
         bool getHightlight() const { return _highlight; }
 
+        /**
+         * Sets the node to "dynamic", i.e. sets up the node so that you can
+         * safely change it at runtime.
+         */
+        virtual void setDynamic( bool value );
+
     protected:
         AnnotationNode();
 
         osg::ref_ptr<AnnotationData> _annoData;
         bool                         _highlight;
+        bool                         _dynamic;
     };
 
 } } // namespace osgEarth::Annotation

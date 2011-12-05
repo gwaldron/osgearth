@@ -225,7 +225,7 @@ namespace osgEarth { namespace Symbology
         const StyleSelectorList& selectors() const { return _selectors; }
 
         /** Adds a resource library. */
-        void addResourceLibrary( const std::string& name, ResourceLibrary* library );
+        void addResourceLibrary( ResourceLibrary* library );
 
         /** Gets a resource library by name. */
         ResourceLibrary* getResourceLibrary( const std::string& name, const osgDB::Options* dbOptions ) const;
@@ -248,9 +248,12 @@ namespace osgEarth { namespace Symbology
         StyleMap                     _styles;
         Style                        _emptyStyle;
 
-        typedef std::pair<URI, osg::ref_ptr<ResourceLibrary> > ResourceLibraryEntry;
-        typedef std::map<std::string, ResourceLibraryEntry> ResourceLibraryEntries;
-        ResourceLibraryEntries     _resLibs;
+        //typedef std::pair<URI, osg::ref_ptr<ResourceLibrary> > ResourceLibraryEntry;
+        //typedef std::map<std::string, ResourceLibraryEntry> ResourceLibraryEntries;
+        //ResourceLibraryEntries     _resLibs;
+        
+        typedef std::map<std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraries;
+        ResourceLibraries          _resLibs;
         Threading::ReadWriteMutex  _resLibsMutex;
 
     };

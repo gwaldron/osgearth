@@ -24,6 +24,8 @@
 #include <osgText/Text>
 #include <osg/Depth>
 
+#define LC "[LabelNode] "
+
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
@@ -72,6 +74,23 @@ LabelNode::init( const TextSymbol* symbol )
 }
 
 void
+LabelNode::setText( const std::string& text )
+{
+    if ( !_dynamic )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+
+    osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
+    if ( d )
+    {
+        d->setText( text );
+        d->dirtyDisplayList();
+    }
+}
+
+void
 LabelNode::setAnnotationData( AnnotationData* data )
 {
     OrthoNode::setAnnotationData( data );
@@ -82,4 +101,16 @@ LabelNode::setAnnotationData( AnnotationData* data )
     {
         i->get()->setUserData( data );
     }
+}
+
+void
+LabelNode::setDynamic( bool dynamic )
+{
+    OrthoNode::setDynamic( dynamic );
+
+    osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
+    if ( d )
+    {
+        d->setDataVariance( dynamic ? osg::Object::DYNAMIC : osg::Object::STATIC );
+    }    
 }

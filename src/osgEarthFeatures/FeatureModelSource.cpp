@@ -53,8 +53,8 @@ FeatureModelSourceOptions::fromConfig( const Config& conf )
     _featureSource = conf.getNonSerializable<FeatureSource>("feature_source");
 
     conf.getObjIfSet( "styles",       _styles );
-    conf.getObjIfSet( "layout",       _levels );
-    conf.getObjIfSet( "paging",       _levels ); // backwards compat.. to be deprecated
+    conf.getObjIfSet( "layout",       _layout );
+    conf.getObjIfSet( "paging",       _layout ); // backwards compat.. to be deprecated
     conf.getObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.getObjIfSet( "feature_name", _featureNameExpr );
     conf.getObjIfSet( "cache_policy", _cachePolicy );
@@ -86,7 +86,7 @@ FeatureModelSourceOptions::getConfig() const
     //conf.updateObjIfSet( "feature_source", _featureSource);
     conf.updateObjIfSet( "gridding",     _gridding ); // to be deprecated
     conf.updateObjIfSet( "styles",       _styles );
-    conf.updateObjIfSet( "layout",       _levels );
+    conf.updateObjIfSet( "layout",       _layout );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
 
     conf.updateIfSet( "lighting", _lit );

@@ -87,11 +87,15 @@ namespace
 
         bool isCached( const std::string& key, double maxAge =DBL_MAX );
 
+        bool purge();
+
         Config readMetadata();
 
         bool writeMetadata( const Config& meta );
 
     protected:
+        bool purgeDirectory( const std::string& dir );
+
         bool                              _ok;
         std::string                       _metaPath;
         osg::ref_ptr<osgDB::ReaderWriter> _rw;
@@ -465,6 +469,56 @@ namespace
 
         URI fileURI( toLegalFileName(key), _metaPath );
         return osgDB::fileExists( fileURI.full() + ".osgb" );
+    }
+
+    bool
+    FileSystemCacheBin::purgeDirectory( const std::string& dir )
+    {
+        bool allOK = true;
+        osgDB::DirectoryContents dc = osgDB::getDirectoryContents( dir );
+
+        for( osgDB::DirectoryContents::iterator i = dc.begin(); i != dc.end(); ++i )
+        {
+            int ok = 0;
+            std::string full = osgDB::concatPaths(dir, *i);
+            
+            if ( full.find( getID() ) != std::string::npos ) // safety latch
+            {
+                osgDB::FileType type = osgDB::fileType( full );
+
+                if ( type == osgDB::DIRECTORY && i->compare(".") != 0 && i->compare("..") != 0 )
+                {
+                    purgeDirectory( full );
+
+                    ok = ::unlink( full.c_str() );
+                    OE_DEBUG << LC << "Unlink: " << full << std::endl;
+                }
+                else if ( type == osgDB::REGULAR_FILE )
+                {
+                    if ( full != _metaPath )
+                    {
+                        ok = ::unlink( full.c_str() );
+                        OE_DEBUG << LC << "Unlink: " << full << std::endl;
+                    }
+                }
+
+                if ( ok != 0 )
+                    allOK = false;
+            }
+        }
+
+        return allOK;
+    }
+
+    bool
+    FileSystemCacheBin::purge()
+    {
+        if ( !_ok ) return false;
+        {
+            ScopedWriteLock exclusiveLock( _rwmutex );
+            std::string binDir = osgDB::getFilePath( _metaPath );
+            return purgeDirectory( binDir );
+        }
     }
 
     Config

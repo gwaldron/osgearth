@@ -25,10 +25,34 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
-const std::string AnnotationUtils::PROGRAM_NAME      = "osgEarthAnnotation::Program";
-const std::string AnnotationUtils::UNIFORM_HIGHLIGHT = "highlight";
-const std::string AnnotationUtils::UNIFORM_IS_TEXT   = "is_text";
-const std::string AnnotationUtils::UNIFORM_FADE      = "fade";
+const std::string&
+AnnotationUtils::PROGRAM_NAME()
+{
+  static std::string s = "osgEarthAnnotation::Program";
+  return s;
+}
+
+const std::string&
+AnnotationUtils::UNIFORM_HIGHLIGHT()
+{
+   static std::string s = "highlight";
+   return s;
+}
+
+
+const std::string&
+AnnotationUtils::UNIFORM_IS_TEXT()
+{
+  static std::string s = "is_text";
+  return s;
+}
+
+const std::string&
+AnnotationUtils::UNIFORM_FADE()
+{
+  static std::string s ="fade";
+  return s;
+}
 
 osg::Drawable* 
 AnnotationUtils::createTextDrawable(const std::string& text,
@@ -91,7 +115,7 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 
     // add the static "isText=true" uniform; this is a hint for the annotation shaders
     // if they get installed.
-    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT);
+    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
     s_isTextUniform->set( true );
     stateSet->addUniform( s_isTextUniform.get() );
 
@@ -149,7 +173,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 
     // add the static "isText=true" uniform; this is a hint for the annotation shaders
     // if they get installed.
-    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT);
+    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
     s_isNotTextUniform->set( false );
     dstate->addUniform( s_isNotTextUniform.get() );
 
@@ -159,7 +183,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 osg::Uniform*
 AnnotationUtils::createFadeUniform()
 {
-    osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, UNIFORM_FADE);
+    osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, UNIFORM_FADE());
     u->set( 1.0f );
     return u;
 }
@@ -167,7 +191,7 @@ AnnotationUtils::createFadeUniform()
 osg::Uniform*
 AnnotationUtils::createHighlightUniform()
 {
-    osg::Uniform* u = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_HIGHLIGHT);
+    osg::Uniform* u = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_HIGHLIGHT());
     u->set( false );
     return u;
 }
@@ -184,27 +208,27 @@ AnnotationUtils::getAnnotationProgram()
         if ( !s_program.valid() )
         {
             std::string frag_source = Stringify() <<
-                "uniform float     " << UNIFORM_FADE      << "; \n"
-                "uniform bool      " << UNIFORM_IS_TEXT   << "; \n"
-                "uniform bool      " << UNIFORM_HIGHLIGHT << "; \n"
+                "uniform float     " << UNIFORM_FADE()      << "; \n"
+                "uniform bool      " << UNIFORM_IS_TEXT()   << "; \n"
+                "uniform bool      " << UNIFORM_HIGHLIGHT() << "; \n"
                 "uniform sampler2D tex0; \n"
                 "void main() { \n"
                 "    vec4 color; \n"
-                "    if (" << UNIFORM_IS_TEXT << ") { \n"
+                "    if (" << UNIFORM_IS_TEXT() << ") { \n"
                 "        float alpha = texture2D(tex0,gl_TexCoord[0].st).a; \n"
-                "        color = vec4( gl_Color.rgb, gl_Color.a * alpha * " << UNIFORM_FADE << "); \n"
+                "        color = vec4( gl_Color.rgb, gl_Color.a * alpha * " << UNIFORM_FADE() << "); \n"
                 "    } \n"
                 "    else { \n"
-                "        color = gl_Color * texture2D(tex0,gl_TexCoord[0].st) * vec4(1,1,1," << UNIFORM_FADE << "); \n"
+                "        color = gl_Color * texture2D(tex0,gl_TexCoord[0].st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
                 "    } \n"
-                "    if (" << UNIFORM_HIGHLIGHT << ") { \n"
+                "    if (" << UNIFORM_HIGHLIGHT() << ") { \n"
                 "        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
                 "    } \n"
                 "    gl_FragColor = color; \n"
                 "} \n";
 
             s_program = new osg::Program();
-            s_program->setName( PROGRAM_NAME );
+            s_program->setName( PROGRAM_NAME() );
             s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, frag_source) );
         }
     }

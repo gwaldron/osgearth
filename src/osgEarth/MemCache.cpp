@@ -87,6 +87,13 @@ namespace
             return _lru.has(key);
         }
 
+        bool purge()
+        {
+            Threading::ScopedWriteLock exclusiveLock( _mutex );
+            _lru.clear();
+            return true;
+        }
+
     private:
         MemCacheLRU               _lru;
         Threading::ReadWriteMutex _mutex;

@@ -197,6 +197,13 @@ namespace osgEarth
             }
         }
 
+        void clear() {
+            _lru.clear();
+            _map.clear();
+            _queries = 0;
+            _hits = 0;
+        }
+
         void setMaxSize( unsigned max ) {
             _max = max;
             _buf = max/10;

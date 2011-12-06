@@ -79,10 +79,8 @@ usage( const std::string& msg )
         << "        [--bounds xmin ymin xmax ymax]  ; Geospatial bounding box to seed" << std::endl
         << "        [--cache-path path]             ; Overrides the cache path in the .earth file" << std::endl
         << "        [--cache-type type]             ; Overrides the cache type in the .earth file" << std::endl
-        //<< std::endl
-        //<< "    --purge file.earth                  ; Purges cached data from the cache in a .earth file" << std::endl
-        //<< "        [--layer name]                  ; Named layer for which to purge the cache" << std::endl
-        //<< "        [--all]                         ; Purge all data from the cache" << std::endl
+        << std::endl
+        << "    --purge file.earth                  ; Purges a layer cache in a .earth file (interactive)" << std::endl
         << std::endl;
 
     return -1;
@@ -197,7 +195,7 @@ list( osg::ArgumentParser& args )
 int
 purge( osg::ArgumentParser& args )
 {
-    return usage( "Sorry, but purge is not yet implemented." );
+    //return usage( "Sorry, but purge is not yet implemented." );
 
     osg::ref_ptr<osg::Node> node = osgDB::readNodeFiles( args );
     if ( !node.valid() )
@@ -208,8 +206,104 @@ purge( osg::ArgumentParser& args )
         return usage( "Input file was not a .earth file" );
 
     Map* map = mapNode->getMap();
-    const Cache* cache = map->getCache();
 
-    if ( !cache )
+    if ( !map->getCache() )
         return message( "Earth file does not contain a cache." );
+
+    struct Entry
+    {
+        bool                   _isImage;
+        std::string            _name;
+        osg::ref_ptr<CacheBin> _bin;
+    };
+    std::vector<Entry> entries;
+
+
+    ImageLayerVector imageLayers;
+    map->getImageLayers( imageLayers );
+    for( ImageLayerVector::const_iterator i = imageLayers.begin(); i != imageLayers.end(); ++i )
+    {
+        CacheBin* bin = i->get()->getCacheBin( map->getProfile() );
+        if ( bin )
+        {
+            entries.push_back(Entry());
+            entries.back()._isImage = true;
+            entries.back()._name = i->get()->getName();
+            entries.back()._bin = bin;
+        }
+    }
+
+    ElevationLayerVector elevationLayers;
+    map->getElevationLayers( elevationLayers );
+    for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
+    {
+        CacheBin* bin = i->get()->getCacheBin( map->getProfile() );
+        if ( bin )
+        {
+            entries.push_back(Entry());
+            entries.back()._isImage = false;
+            entries.back()._name = i->get()->getName();
+            entries.back()._bin = bin;
+        }
+    }
+
+    if ( entries.size() > 0 )
+    {
+        std::cout << std::endl;
+
+        for( unsigned i=0; i<entries.size(); ++i )
+        {
+            std::cout << (i+1) << ") " << entries[i]._name << " (" << (entries[i]._isImage? "image" : "elevation" ) << ")" << std::endl;
+        }
+
+        std::cout 
+            << std::endl
+            << "Enter number of cache to purge, or <enter> to quit: "
+            << std::flush;
+
+        std::string input;
+        std::getline( std::cin, input );
+
+        if ( !input.empty() )
+        {
+            unsigned k = as<unsigned>(input, 0L);
+            if ( k > 0 && k <= entries.size() )
+            {
+                Config meta = entries[k-1]._bin->readMetadata();
+                if ( !meta.empty() )
+                {
+                    std::cout
+                        << std::endl
+                        << "Cache METADATA:" << std::endl
+                        << meta.toJSON() 
+                        << std::endl << std::endl;
+                }
+
+                std::cout
+                    << "Are you sure (y/N)? "
+                    << std::flush;
+
+                std::getline( std::cin, input );
+                if ( input == "y" || input == "Y" )
+                {
+                    std::cout << "Purging.." << std::flush;
+                    entries[k-1]._bin->purge();
+                }
+                else
+                {
+                    std::cout << "No action taken." << std::endl;
+                }
+            }
+            else
+            {
+                std::cout << "Invalid choice." << std::endl;
+            }
+        }
+        else
+        {
+            std::cout << "No action taken." << std::endl;
+        }
+    }
+
+    return 0;
 }

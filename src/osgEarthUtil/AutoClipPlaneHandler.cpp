@@ -91,9 +91,9 @@ namespace
                 // near plane clamping.
                 double min_near_plane = zfar*nearFarRatio;
 
-                // GW: changed this to enforce the NF ratio.
-                //if (desired_znear<min_near_plane) desired_znear=min_near_plane;
-                if (desired_znear > min_near_plane) desired_znear=min_near_plane;
+                //// GW: changed this to enforce the NF ratio.
+                if (desired_znear<min_near_plane) desired_znear=min_near_plane;
+                //if (desired_znear > min_near_plane) desired_znear=min_near_plane;
 
                 if ( desired_znear < 1.0 )
                     desired_znear = 1.0;

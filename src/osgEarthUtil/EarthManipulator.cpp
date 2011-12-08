@@ -397,6 +397,7 @@ EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, d
 
 
 EarthManipulator::EarthManipulator() :
+osgGA::MatrixManipulator(),
 _last_action      ( ACTION_NULL ),
 _frame_count      ( 0 )
 {
@@ -1306,16 +1307,15 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         case osgGA::GUIEventAdapter::DOUBLECLICK:
             // bail out of continuous mode if necessary:
             _continuous = false;
-
             addMouseEvent( ea );
-			if (_mouse_down_event)
-			{
-				action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-				if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
-					aa.requestRedraw();
-				resetMouse( aa );
-				handled = true;
-			}
+            if (_mouse_down_event)
+            {
+	        action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+	        if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
+		    aa.requestRedraw();
+	        resetMouse( aa );
+	        handled = true;
+            }
             break;
 
         case osgGA::GUIEventAdapter::MOVE: // MOVE not currently bindable

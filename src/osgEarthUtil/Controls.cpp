@@ -2255,7 +2255,7 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     setReferenceFrame(osg::Transform::ABSOLUTE_RF);
     setViewMatrix(osg::Matrix::identity());
     setClearMask(GL_DEPTH_BUFFER_BIT);
-    setRenderOrder(osg::Camera::POST_RENDER); 
+    setRenderOrder(osg::Camera::POST_RENDER, INT_MAX);
     setAllowEventFocus( true );
     
     // activate the update traversal

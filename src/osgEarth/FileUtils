@@ -49,6 +49,22 @@ namespace osgEarth
      * Gets whether or not the given path contains a zip file within the path
      */
     extern OSGEARTH_EXPORT bool isZipPath(const std::string& path);
+
+    /**
+     * Gets the path to the temp directory
+     */
+    extern OSGEARTH_EXPORT std::string getTempPath();
+
+    /**
+     * Gets a temporary filename
+     * @param prefix
+     *        The prefix of the temporary filename
+     * @param suffix
+     *        The suffix of the temporary filename
+     */
+     std::string getTempName(const std::string& prefix="", const std::string& suffix="");
+
+
 }
 
 #endif

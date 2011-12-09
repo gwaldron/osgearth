@@ -437,7 +437,8 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         return assembleImageFromTileSource( key, progress, forceFallback );
 
     // Fail is the image is blacklisted.
-    if ( source->getBlacklist()->contains( key.getTileId() ) )
+    // ..unless there will be a fallback attempt.
+    if ( source->getBlacklist()->contains( key.getTileId() ) && !forceFallback )
         return 0L;
 
     // Fail if no data is available for this key.
@@ -455,25 +456,29 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
 
     osg::ref_ptr<osg::Image> result;
+    bool fellBack = false;
+
     if ( forceFallback )
     {
         TileKey finalKey = key;
         while( !result.valid() && finalKey.valid() )
         {
-            result = source->createImage( finalKey, op.get(), progress );
-            if ( !result.valid() )
+            if ( !source->getBlacklist()->contains( finalKey.getTileId() ) )
             {
-                finalKey = finalKey.createParentKey();
-            }
-            else
-            {
-                if ( finalKey.getLevelOfDetail() != key.getLevelOfDetail() )
+                result = source->createImage( finalKey, op.get(), progress );
+                if ( result.valid() )
                 {
-                    GeoImage raw( result.get(), finalKey.getExtent() );
-                    GeoImage cropped = raw.crop( key.getExtent(), true );
-                    result = cropped.takeImage();
+                    if ( finalKey.getLevelOfDetail() != key.getLevelOfDetail() )
+                    {
+                        GeoImage raw( result.get(), finalKey.getExtent() );
+                        GeoImage cropped = raw.crop( key.getExtent(), true );
+                        result = cropped.takeImage();
+                        fellBack = true;
+                    }
                 }
             }
+            if ( !result.valid() )
+                finalKey = finalKey.createParentKey();
         }
 
         if ( !result.valid() )

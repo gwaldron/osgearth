@@ -190,11 +190,13 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 {
     bool makeECEF = false;
     const SpatialReference* srs = 0L;
+    const SpatialReference* mapSRS = 0L;
 
     if ( cx.isGeoreferenced() )
     {
        srs = cx.extent()->getSRS();
        makeECEF = cx.getSession()->getMapInfo().isGeocentric();
+       mapSRS = cx.getSession()->getMapInfo().getProfile()->getSRS();
     }
 
     bool made_geom = false;
@@ -449,11 +451,14 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 (*roofTexcoords)[roofVertPtr].set( u, v );
             }            
 
-            if ( makeECEF )
-            {
-                ECEF::transformAndLocalize( basePt, srs, basePt, _world2local );
-                ECEF::transformAndLocalize( roofPt, srs, roofPt, _world2local );
-            }
+            //if ( makeECEF )
+            //{
+            //    ECEF::transformAndLocalize( basePt, srs, basePt, _world2local );
+            //    ECEF::transformAndLocalize( roofPt, srs, roofPt, _world2local );
+            //}
+            transformAndLocalize( basePt, srs, basePt, mapSRS, _world2local, makeECEF );
+            transformAndLocalize( roofPt, srs, roofPt, mapSRS, _world2local, makeECEF );
+
 
             if ( base )
                 (*baseVerts)[baseVertPtr] = basePt;

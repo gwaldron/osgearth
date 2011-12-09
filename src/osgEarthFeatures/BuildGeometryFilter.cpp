@@ -69,11 +69,13 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 {
     bool makeECEF = false;
     const SpatialReference* featureSRS = 0L;
+    const SpatialReference* mapSRS = 0L;
 
     if ( context.isGeoreferenced() )
     {
         makeECEF = context.getSession()->getMapInfo().isGeocentric();
         featureSRS = context.extent()->getSRS();
+        mapSRS = context.getSession()->getMapInfo().getProfile()->getSRS();
     }
 
     for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
@@ -193,18 +195,11 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             {
                 Polygon* poly = static_cast<Polygon*>(part);
                 int totalPoints = poly->getTotalPointCount();
-                osg::Vec3Array* allPoints; // = new osg::Vec3Array( totalPoints );
+                //osg::Vec3Array* allPoints; // = new osg::Vec3Array( totalPoints );
 
-                if ( makeECEF )
-                {
-                    allPoints = new osg::Vec3Array();
-                    ECEF::transformAndLocalize( part->asVector(), featureSRS, allPoints, _world2local );
-                }
-                else
-                {
-                    allPoints = new osg::Vec3Array( totalPoints );
-                    std::copy( part->begin(), part->end(), allPoints->begin() );
-                }
+                osg::Vec3Array* allPoints = new osg::Vec3Array();
+                transformAndLocalize( part->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
+
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
 
                 int offset = part->size();
@@ -214,10 +209,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                     Geometry* hole = h->get();
                     if ( hole->isValid() )
                     {
-                        if ( makeECEF )
-                            ECEF::transformAndLocalize( hole->asVector(), featureSRS, allPoints, _world2local );
-                        else
-                            std::copy( hole->begin(), hole->end(), allPoints->begin() + offset );
+                        transformAndLocalize( hole->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
 
                         osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, offset, hole->size() ) );
                         offset += hole->size();
@@ -227,17 +219,11 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             }
             else
             {
-                if ( makeECEF )
-                {
-                    osg::Vec3Array* newPart = new osg::Vec3Array();
-                    ECEF::transformAndLocalize( part->asVector(), featureSRS, newPart, _world2local );
-                    osgGeom->setVertexArray( newPart );
-                }
-                else
-                {
-                    osgGeom->setVertexArray( part->toVec3Array() );
-                }
+                osg::Vec3Array* allPoints = new osg::Vec3Array();
+                transformAndLocalize( part->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
+
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
+                osgGeom->setVertexArray( allPoints );
             }
 
             // tessellate all polygon geometries. Tessellating each geometry separately

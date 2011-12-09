@@ -48,19 +48,20 @@ struct BuildColorLayer
         // fetch the image from the layer, falling back on parent keys utils we are 
         // able to find one that works.
 
+        bool autoFallback = _key.getLevelOfDetail() <= 1;
 
-#if 0
         TileKey imageKey( _key );
-        while( !geoImage.valid() && imageKey.valid() ) // && _layer->isKeyValid(imageKey) )
+        while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
         {
-            geoImage = _layer->createImage( imageKey, 0L ); // TODO: include a progress callback?
+            geoImage = _layer->createImage( imageKey, 0L, autoFallback ); // TODO: include a progress callback?
             if ( !geoImage.valid() )
             {
                 imageKey = imageKey.createParentKey();
                 isFallbackData = true;
             }
         }
-#else
+
+#if 0
         bool autoFallback = _key.getLevelOfDetail() == 1;
 
         geoImage = _layer->createImage( _key, 0L, autoFallback );

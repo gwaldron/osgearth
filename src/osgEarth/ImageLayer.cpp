@@ -397,6 +397,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // * return NULL to indicate that the key exceeds the maximum LOD of the source data,
     //   and that the engine may need to generate a "fallback" tile if necessary;
     //
+    // deprecated:
     // * return an "empty image" if the LOD is valid BUT the key does not intersect the
     //   source's data extents.
 
@@ -417,12 +418,17 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) && !forceFallback )
         return 0L;
 
+#if 0
     // Return an empty image if there's no data in the requested extent
     // (even though the LOD is valid)
     if ( !source->hasDataInExtent( key.getExtent() ) )
     {
         return ImageUtils::createEmptyImage();
     }
+#endif
+
+    if ( !source->hasDataInExtent( key.getExtent() ) )
+        return 0L;
 
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
@@ -509,7 +515,29 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
 
             OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
-            osg::ref_ptr<osg::Image> img = createImageFromTileSource( intersectingTiles[j], progress, forceFallback );
+            osg::ref_ptr<osg::Image> img;
+            if ( forceFallback )
+            {
+                TileKey finalKey = intersectingTiles[j];
+                while( !img.valid() && finalKey.valid() )
+                {
+                    img = createImageFromTileSource( finalKey, progress, false );
+                    if ( img.valid() && finalKey.getLevelOfDetail() < intersectingTiles[j].getLevelOfDetail() )
+                    {
+                        GeoImage raw( img.get(), finalKey.getExtent() );
+                        GeoImage cropped = raw.crop( intersectingTiles[j].getExtent() );
+                        img = cropped.takeImage();
+                    }
+                    else
+                    {
+                        finalKey = finalKey.createParentKey();
+                    }
+                }
+            }
+            else
+            {
+                img = createImageFromTileSource( intersectingTiles[j], progress, false );
+            }
 
             if ( img.valid() )
             {

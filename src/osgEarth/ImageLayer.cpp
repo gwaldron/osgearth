@@ -342,7 +342,7 @@ ImageLayer::initPreCacheOp()
 }
 
 GeoImage
-ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
+ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback )
 {
     OE_DEBUG << LC << "Layer \"" << getName() << "\" create image for \"" << key.str() << "\"" << std::endl;
 
@@ -392,7 +392,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
     }
 
     // Get an image from the underlying TileSource.
-    osg::Image* image = createImageFromTileSource( key, progress );
+    osg::Image* image = createImageFromTileSource( key, progress, forceFallback );
     result = GeoImage( image, key.getExtent() );
 
     // Normalize the image if necessary
@@ -415,7 +415,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
 
 osg::Image*
 ImageLayer::createImageFromTileSource(const TileKey&    key,
-                                      ProgressCallback* progress)
+                                      ProgressCallback* progress,
+                                      bool              forceFallback)
 {
     // Results:
     // 
@@ -433,14 +434,14 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
     // If the profiles are different, use a compositing method to assemble the tile.
     if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
-        return assembleImageFromTileSource( key, progress );
+        return assembleImageFromTileSource( key, progress, forceFallback );
 
     // Fail is the image is blacklisted.
     if ( source->getBlacklist()->contains( key.getTileId() ) )
         return 0L;
 
     // Fail if no data is available for this key.
-    if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) )
+    if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) && !forceFallback )
         return 0L;
 
     // Return an empty image if there's no data in the requested extent
@@ -452,7 +453,39 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
-    osg::Image* result = source->createImage( key, op.get(), progress );
+
+    osg::ref_ptr<osg::Image> result;
+    if ( forceFallback )
+    {
+        TileKey finalKey = key;
+        while( !result.valid() && finalKey.valid() )
+        {
+            result = source->createImage( finalKey, op.get(), progress );
+            if ( !result.valid() )
+            {
+                finalKey = finalKey.createParentKey();
+            }
+            else
+            {
+                if ( finalKey.getLevelOfDetail() != key.getLevelOfDetail() )
+                {
+                    GeoImage raw( result.get(), finalKey.getExtent() );
+                    GeoImage cropped = raw.crop( key.getExtent(), true );
+                    result = cropped.takeImage();
+                }
+            }
+        }
+
+        if ( !result.valid() )
+        {
+            result = ImageUtils::createEmptyImage();
+        }
+    }
+
+    else
+    {
+        result = source->createImage( key, op.get(), progress );
+    }
     
     // If image creation failed (but was not intentionally canceled),
     // blacklist this tile for future requests.
@@ -461,12 +494,13 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         source->getBlacklist()->add( key.getTileId() );
     }
 
-    return result;
+    return result.release();
 }
 
 osg::Image*
 ImageLayer::assembleImageFromTileSource(const TileKey&    key, 
-                                        ProgressCallback* progress )
+                                        ProgressCallback* progress,
+                                        bool              forceFallback )
 {
     GeoImage mosaic, result;
 
@@ -498,7 +532,8 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
 
             OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
-            osg::ref_ptr<osg::Image> img = createImageFromTileSource( intersectingTiles[j], progress );
+            osg::ref_ptr<osg::Image> img = createImageFromTileSource( intersectingTiles[j], progress, forceFallback );
+
             if ( img.valid() )
             {
                 // make sure the image is RGBA:

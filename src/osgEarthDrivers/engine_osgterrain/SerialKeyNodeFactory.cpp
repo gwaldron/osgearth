@@ -138,7 +138,7 @@ SerialKeyNodeFactory::createNode( const TileKey& key )
 
     osg::Group* root = 0L;
 
-    if ( tileHasAnyRealData )
+    if ( tileHasAnyRealData || key.getLevelOfDetail() == 0 )
     {
         // Now postprocess them and assemble into a tile group.
         root = new osg::Group();

@@ -47,8 +47,11 @@ struct BuildColorLayer
 
         // fetch the image from the layer, falling back on parent keys utils we are 
         // able to find one that works.
+
+
+#if 0
         TileKey imageKey( _key );
-        while( !geoImage.valid() && imageKey.valid() && _layer->isKeyValid(imageKey) )
+        while( !geoImage.valid() && imageKey.valid() ) // && _layer->isKeyValid(imageKey) )
         {
             geoImage = _layer->createImage( imageKey, 0L ); // TODO: include a progress callback?
             if ( !geoImage.valid() )
@@ -57,6 +60,16 @@ struct BuildColorLayer
                 isFallbackData = true;
             }
         }
+#else
+        bool autoFallback = _key.getLevelOfDetail() == 1;
+
+        geoImage = _layer->createImage( _key, 0L, autoFallback );
+        if ( !geoImage.valid() && !autoFallback )
+        {
+            geoImage = _layer->createImage( _key, 0L, true );
+            isFallbackData = true;
+        }
+#endif
 
         GeoLocator* locator = 0L;
 
@@ -381,7 +394,7 @@ TileBuilder::createTile(const TileKey&      key,
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
             ImageLayer* layer = i->get();
-            if ( layer->isKeyValid(key) )
+            //if ( layer->isKeyValid(key) )  // Wrong. no guarantee key is in the same profile.
             {
                 BuildColorLayer build;
                 build.init( key, layer, mapInfo, _terrainOptions, repo );

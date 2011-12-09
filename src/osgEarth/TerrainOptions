@@ -219,6 +219,18 @@ namespace osgEarth
         optional<bool>& enableMipmapping() { return _enableMipmapping; }
         const optional<bool>& enableMipmapping() const { return _enableMipmapping; }
 
+        /**
+         * The min filter to be applied to textures
+         */
+        optional<osg::Texture::FilterMode> minFilter() { return _minFilter;}
+        const optional<osg::Texture::FilterMode> minFilter() const { return _minFilter;}
+
+        /**
+         * The mag filter to be applied to textures
+         */
+        optional<osg::Texture::FilterMode> magFilter() { return _magFilter;}
+        const optional<osg::Texture::FilterMode> magFilter() const { return _magFilter;}
+
             
         /**
          * Whether to enable blending
@@ -253,10 +265,8 @@ namespace osgEarth
         optional<bool>  _enableMipmapping;
         optional<bool> _clusterCulling;
         optional<bool> _enableBlending;
-#if 0
-        optional<osg::Texture::FilterMode> _contourMagFilter;
-        optional<osg::Texture::FilterMode> _contourMinFilter;
-#endif
+        optional<osg::Texture::FilterMode> _magFilter;
+        optional<osg::Texture::FilterMode> _minFilter;
         optional<ElevationInterpolation> _elevationInterpolation;
     };
 }

@@ -79,21 +79,7 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "lod_blending", _lodBlending );
 
     if ( conf.hasValue( "transparent_color" ) )
-        _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
-
-	//Load the filter settings
-	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);   
+        _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));	
 }
 
 Config
@@ -109,20 +95,6 @@ ImageLayerOptions::getConfig( bool isolate ) const
 
 	if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
-
-    //Save the filter settings
-	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
     
     return conf;
 }

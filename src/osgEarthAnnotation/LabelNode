@@ -55,6 +55,15 @@ namespace osgEarth { namespace Annotation
             const TextSymbol*       symbol =0L );
 
         /**
+         * Constructs a label node that is positioned some other way,
+         * typically by being in a subgraph under another transform
+         * somewhere.
+         */
+        LabelNode(
+            const std::string& text,
+            const TextSymbol*  symbol =0L );
+
+        /**
          * Sets the text content.
          */
         void setText( const std::string& text );

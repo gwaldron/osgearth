@@ -51,7 +51,17 @@ LabelNode::LabelNode(const SpatialReference* mapSRS,
                      const TextSymbol*       symbol ) :
 
 OrthoNode( mapSRS, position ),
-_text( text )
+_text    ( text ),
+_geode   ( 0L )
+{
+    init( symbol );
+}
+
+LabelNode::LabelNode(const std::string&  text,
+                     const TextSymbol*   symbol ) :
+OrthoNode(),
+_text    ( text ),
+_geode   ( 0L )
 {
     init( symbol );
 }

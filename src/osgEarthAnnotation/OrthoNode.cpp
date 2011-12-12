@@ -33,6 +33,26 @@ OrthoNode::OrthoNode(const SpatialReference* mapSRS,
 _mapSRS        ( mapSRS ),
 _horizonCulling( false )
 {
+    init();
+
+    if ( mapSRS )
+    {
+        setHorizonCulling( true );
+    }
+
+    setPosition( pos );
+}
+
+OrthoNode::OrthoNode() :
+_mapSRS        ( 0L ),
+_horizonCulling( false )
+{
+    init();
+}
+
+void
+OrthoNode::init()
+{
     _autoxform = new osg::AutoTransform();
     _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
     _autoxform->setAutoScaleToScreen( true );
@@ -45,13 +65,6 @@ _horizonCulling( false )
     this->setSingleChildOn( 0 );
 
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
-
-    if ( mapSRS )
-    {
-        setHorizonCulling( true );
-    }
-
-    setPosition( pos );
 }
 
 void

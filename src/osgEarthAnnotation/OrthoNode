@@ -65,7 +65,16 @@ namespace osgEarth { namespace Annotation
         virtual void traverse( osg::NodeVisitor& nv );
 
     protected:
+
+        /**
+         * Constructs an ortho node that resides at an absolute position on the map
+         */
         OrthoNode( const SpatialReference* mapSRS, const osg::Vec3d& position );
+
+        /**
+         * Constructs an relative-position ortho node
+         */
+        OrthoNode();
 
         /** Attaches a child node to the transforms. */
         void attach( osg::Node* transformChild );
@@ -75,6 +84,8 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<osg::AutoTransform>          _autoxform;
         osg::ref_ptr<osg::MatrixTransform>        _matxform;
         bool                                      _horizonCulling;
+
+        void init();
     };
 
 } } // namespace osgEarth::Annotation

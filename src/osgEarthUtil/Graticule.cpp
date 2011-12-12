@@ -244,7 +244,7 @@ namespace
         }
 
         osgText::Text* t = new osgText::Text();
-        t->setFont( "fonts/arial.ttf" );
+        t->setFont( Registry::instance()->getDefaultFont() );
         t->setAlignment( osgText::Text::CENTER_BOTTOM );
         t->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
         t->setCharacterSize( size );

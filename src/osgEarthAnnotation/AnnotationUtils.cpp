@@ -20,6 +20,7 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthSymbology/Color>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Registry>
 #include <osgText/Text>
 
 using namespace osgEarth;
@@ -91,8 +92,15 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     t->setAutoRotateToScreen( false );
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
     t->setCharacterSize( symbol && symbol->size().isSet() ? *symbol->size() : 16.0f );
-    t->setFont( osgText::readFontFile( symbol && symbol->font().isSet() ? *symbol->font() : "arial.ttf" ) );
     t->setColor( symbol && symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
+
+    osgText::Font* font = 0L;
+    if ( symbol && symbol->font().isSet() )
+        font = osgText::readFontFile( *symbol->font() );
+    if ( !font )
+        font = Registry::instance()->getDefaultFont();
+    if ( font )
+        t->setFont( font );
 
     if ( symbol )
     {
@@ -104,6 +112,12 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     if ( symbol && symbol->halo().isSet() )
     {
         t->setBackdropColor( symbol->halo()->color() );
+        t->setBackdropType( osgText::Text::OUTLINE );
+    }
+    else if ( !symbol )
+    {
+        // if no symbol at all is provided, default to using a black halo.
+        t->setBackdropColor( osg::Vec4(.3,.3,.3,1) );
         t->setBackdropType( osgText::Text::OUTLINE );
     }
 

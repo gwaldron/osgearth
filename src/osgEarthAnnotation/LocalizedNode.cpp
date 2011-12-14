@@ -64,7 +64,7 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
     {
        _xform->setCullingActive( true );
     }
-    osg::Group::traverse( nv );
+    AnnotationNode::traverse( nv );
 }
 
 bool

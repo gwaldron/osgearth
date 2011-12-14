@@ -21,6 +21,7 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthAnnotation/DrawState>
 #include <osg/Switch>
 
 namespace osgEarth { namespace Annotation
@@ -33,6 +34,8 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Switch
     {
     public:
+        AnnotationNode();
+
         /**
          * Annotation data attached to this annotation node.
          */
@@ -51,12 +54,19 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setDynamic( bool value );
 
-    protected:
-        AnnotationNode();
+        // temp
+        void setAltDrawStateTechnique( DrawStateTechnique* tech );
 
-        osg::ref_ptr<AnnotationData> _annoData;
-        bool                         _highlight;
-        bool                         _dynamic;
+    public: // osg::Node
+
+        virtual void traverse( osg::NodeVisitor& nv );
+
+    protected:
+
+        osg::ref_ptr<AnnotationData>     _annoData;
+        osg::ref_ptr<DrawStateTechnique> _altDrawStateTechnique;
+        bool                             _highlight;
+        bool                             _dynamic;
     };
 
 } } // namespace osgEarth::Annotation

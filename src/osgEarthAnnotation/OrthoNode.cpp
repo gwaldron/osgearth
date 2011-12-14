@@ -92,11 +92,13 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
         cv->setSmallFeatureCullingPixelSize(0.0f);
     }
 
-    for( unsigned pos = 0; pos < _children.size(); ++pos )
-    {
-        if ( _values[pos] )
-            _children[pos]->accept( nv );
-    }
+    //for( unsigned pos = 0; pos < _children.size(); ++pos )
+    //{
+    //    if ( _values[pos] )
+    //        _children[pos]->accept( nv );
+    //}
+
+    AnnotationNode::traverse( nv );
 
     if ( cv )
     {

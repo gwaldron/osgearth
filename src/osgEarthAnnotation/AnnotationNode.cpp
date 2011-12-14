@@ -25,7 +25,8 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 AnnotationNode::AnnotationNode() :
-_dynamic( false )
+_dynamic  ( false ),
+_highlight( false )
 {
     //nop
 }
@@ -58,5 +59,29 @@ AnnotationNode::setHighlight( bool value )
             stateSet->addUniform( u );
         }
         u->set( value );
+    }
+}
+
+void
+AnnotationNode::setAltDrawStateTechnique( DrawStateTechnique* tech )
+{
+    _altDrawStateTechnique = tech;
+}
+
+void
+AnnotationNode::traverse( osg::NodeVisitor& nv )
+{
+    bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
+
+    if ( isCull && _highlight && _altDrawStateTechnique.valid() )
+    {
+        _altDrawStateTechnique->preCull( nv );
+    }
+
+    osg::Switch::traverse( nv );
+
+    if ( isCull && _highlight && _altDrawStateTechnique.valid() )
+    {
+        _altDrawStateTechnique->postCull( nv );
     }
 }

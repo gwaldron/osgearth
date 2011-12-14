@@ -75,12 +75,18 @@ FeaturesToNodeFilter::transformAndLocalize(const std::vector<osg::Vec3d>& input,
     {
         ECEF::transformAndLocalize( input, inputSRS, output, world2local );
     }
-    else
+    else if ( inputSRS )
     {
         std::vector<osg::Vec3d> temp( input );
         inputSRS->transformPoints( outputSRS, temp );
-        
         for( std::vector<osg::Vec3d>::const_iterator i = temp.begin(); i != temp.end(); ++i )
+        {
+            output->push_back( (*i) * world2local );
+        }
+    }
+    else
+    {
+        for( std::vector<osg::Vec3d>::const_iterator i = input.begin(); i != input.end(); ++i )
         {
             output->push_back( (*i) * world2local );
         }
@@ -99,10 +105,14 @@ FeaturesToNodeFilter::transformAndLocalize(const osg::Vec3d&              input,
     {
         ECEF::transformAndLocalize( input, inputSRS, output, world2local );
     }
-    else
+    else if ( inputSRS )
     {
         inputSRS->transform( input, outputSRS, output );
         output = output * world2local;
+    }
+    else
+    {
+        output = input * world2local;
     }
 }
 

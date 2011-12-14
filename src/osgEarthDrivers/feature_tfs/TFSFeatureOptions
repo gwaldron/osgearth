@@ -39,6 +39,7 @@ namespace osgEarth { namespace Drivers
 
     public:
         TFSFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) : FeatureSourceOptions( opt ) {
+            setDriver( "tfs" );
             fromConfig( _conf );
         }
 

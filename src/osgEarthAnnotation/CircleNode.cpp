@@ -18,10 +18,13 @@
 */
 
 #include <osgEarthAnnotation/CircleNode>
-#include <osgEarthAnnotation/GeometryNode>
+//#include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
+#include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarth/MapNode>
+#include <osgEarth/DrapeableNode>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -36,14 +39,37 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        bool               draped,
                        unsigned           numSegments) :
 
-LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
+LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position, false )
 {
     // construct a local-origin circle.
     GeometryFactory factory;
     Geometry* geom = factory.createCircle(osg::Vec3d(0,0,0), radius, numSegments);
     if ( geom )
     {
-        LocalGeometryNode* dg = new LocalGeometryNode( mapNode, geom, style, draped, getTransform() );
-        this->addChild( dg );
+        GeometryCompiler compiler;
+        FilterContext cx( 0L );
+        osg::ref_ptr<Feature> feature = new Feature(geom);
+        osg::Node* node = compiler.compile( feature.get(), style, cx );
+        if ( node )
+        {
+            //osg::MatrixTransform* xform = new osg::MatrixTransform(((osg::MatrixTransform*)getTransform())->getMatrix());
+            osg::Transform* xform = getTransform();
+            xform->addChild( node );
+
+            if ( draped )
+            {
+                DrapeableNode* drapeable = new DrapeableNode( mapNode, true );
+                drapeable->setNode( xform );
+                this->addChild( drapeable );
+            }
+
+            else
+            {
+                this->addChild( xform );
+            }
+        }
+
+        //LocalGeometryNode* dg = new LocalGeometryNode( mapNode, geom, style, draped, getTransform() );
+        //this->addChild( dg );
     }
 }

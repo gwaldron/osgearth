@@ -21,23 +21,87 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgUtil/CullVisitor>
+#include <osg/Switch>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
 
+    template<typename T> struct TraverseFunctor {
+        T* _target;
+        TraverseFunctor(T* target) : _target(target) { }
+        void operator()(osg::NodeVisitor& nv) { _target->T::traverse(nv); }
+    };
+
+    template<typename T>
+    struct TraverseNode : public osg::Node {
+        TraverseFunctor<T> _tf;
+        TraverseNode(TraverseFunctor<T>& tf) : _tf(tf) { }
+        void traverse(osg::NodeVisitor& nv) { _tf(nv); }
+        osg::BoundingSphere computeBound() const { return _tf._target->getBound(); }
+    };
+
     class /*no-export*/ DrawStateTechnique : public osg::Referenced
     {
     public:
-        virtual void preCull( osg::NodeVisitor& nv ) const { }
-        virtual void postCull( osg::NodeVisitor& nv ) const { }
+        DrawStateTechnique() : _injectionAdded(false) { }
+
+        virtual DrawStateTechnique* clone() const =0;
+
+        virtual bool isShareable() const { return false; }
+
+        virtual void preTraverse( osg::NodeVisitor& nv ) { }
+
+        virtual void postTraverse( osg::NodeVisitor& nv ) { }
+
+        template<typename T> void traverse( osg::NodeVisitor& nv, TraverseFunctor<T>& tf ) { 
+            if ( _injection.valid() ) {
+                if ( !_injectionAdded ) {
+                    _injection->addChild( new TraverseNode<T>(tf) );
+                    _injectionAdded = true;
+                }
+                _injection->accept(nv);
+            }
+            else {
+                tf(nv);
+            }
+        }
+
+        osg::ref_ptr<osg::Group> _injection;
+        bool                     _injectionAdded;
     };
 
     class OSGEARTHANNO_EXPORT ScaleDrawStateTechnique : public DrawStateTechnique
     {
     public:
-        virtual void preCull( osg::NodeVisitor& nv ) const;
-        virtual void postCull( osg::NodeVisitor& nv ) const;
+        virtual bool isShareable() const { return true; }
+        virtual DrawStateTechnique* clone() const { return new ScaleDrawStateTechnique(); }
+
+        virtual void preTraverse( osg::NodeVisitor& nv );
+        virtual void postTraverse( osg::NodeVisitor& nv );
+    };
+
+    class OSGEARTHANNO_EXPORT OutlineDrawStateTechnique : public DrawStateTechnique
+    {
+    public:
+        virtual bool isShareable() const { return true; }
+        virtual DrawStateTechnique* clone() const { return new OutlineDrawStateTechnique(); }
+
+        OutlineDrawStateTechnique();
+    };
+
+    class OSGEARTHANNO_EXPORT EncircleDrawStateTechnique : public DrawStateTechnique
+    {
+    public:
+        EncircleDrawStateTechnique();
+
+        virtual bool isShareable() const { return false; }
+        virtual DrawStateTechnique* clone() const { return new EncircleDrawStateTechnique(); }
+
+        virtual void preTraverse( osg::NodeVisitor& nv );
+
+    protected:
+        osg::MatrixTransform* _xform;
     };
 
 } } // namespace osgEarth::Annotation

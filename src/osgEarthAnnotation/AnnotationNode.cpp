@@ -48,6 +48,7 @@ AnnotationNode::setHighlight( bool value )
 {
     _highlight = value;
 
+#if 0
     // update the selection uniform.
     if ( Registry::instance()->getCapabilities().supportsGLSL() )
     {
@@ -60,28 +61,36 @@ AnnotationNode::setHighlight( bool value )
         }
         u->set( value );
     }
+#endif
 }
 
 void
 AnnotationNode::setAltDrawStateTechnique( DrawStateTechnique* tech )
 {
-    _altDrawStateTechnique = tech;
+    if ( tech )
+    {
+        if ( !tech->isShareable() || tech->referenceCount() > 0 )
+        {
+            _altDrawStateTechnique = tech->clone();
+        }
+        else
+        {
+            _altDrawStateTechnique = tech;
+        }
+    }
 }
 
 void
 AnnotationNode::traverse( osg::NodeVisitor& nv )
 {
-    bool isCull = nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR;
-
-    if ( isCull && _highlight && _altDrawStateTechnique.valid() )
+    if ( _highlight && _altDrawStateTechnique.valid() && nv.getVisitorType() != osg::NodeVisitor::NODE_VISITOR )
     {
-        _altDrawStateTechnique->preCull( nv );
+        _altDrawStateTechnique->preTraverse( nv );
+        _altDrawStateTechnique->traverse( nv, TraverseFunctor<osg::Switch>(this) );
+        _altDrawStateTechnique->postTraverse( nv );
     }
-
-    osg::Switch::traverse( nv );
-
-    if ( isCull && _highlight && _altDrawStateTechnique.valid() )
+    else
     {
-        _altDrawStateTechnique->postCull( nv );
+        osg::Switch::traverse( nv );
     }
 }

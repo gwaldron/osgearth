@@ -13,6 +13,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Controls
     ClampCallback
+    DPLineSegmentIntersector
     EarthManipulator
     ElevationManager
     Export
@@ -23,6 +24,7 @@ SET(LIB_PUBLIC_HEADERS
     ObjectPlacer
     ObjectLocator
     #OceanSurfaceNode
+    PickingUtils
     SkyNode
     SpatialData
     StarData
@@ -34,6 +36,7 @@ SET(LIB_COMMON_FILES
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
+    DPLineSegmentIntersector.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
     Formatters.cpp
@@ -43,6 +46,7 @@ SET(LIB_COMMON_FILES
     ObjectPlacer.cpp
     ObjectLocator.cpp
     #OceanSurfaceNode.cpp
+    PickingUtils.cpp
     SpatialData.cpp
     SkyNode.cpp
 	WFS.cpp

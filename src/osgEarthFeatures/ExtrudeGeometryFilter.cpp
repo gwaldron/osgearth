@@ -93,7 +93,7 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 
     if ( _styleDirty )
     {
-        const StyleSheet* sheet = context.getSession()->styles();
+        const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
 
         _wallSkinSymbol    = 0L;
         _wallPolygonSymbol = 0L;

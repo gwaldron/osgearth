@@ -18,7 +18,10 @@
 */
 
 #include <osgEarth/MapNode>
+#include <osgEarth/ECEF>
 #include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/PickingUtils>
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthAnnotation/ImageOverlayEditor>
 #include <osgEarthAnnotation/CircleNode>
@@ -33,7 +36,6 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/EventVisitor>
-#include <osgUtil/LineSegmentIntersector>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -48,6 +50,7 @@ usage( char** argv )
     return -1;
 }
 
+// helper to toggle annotations on and off using the Controls UI
 struct ToggleNode : public ControlEventHandler {
     ToggleNode( osg::Node* node ) : _node( node ) { }
     void onValueChanged( Control* src, bool value ) {
@@ -57,9 +60,6 @@ struct ToggleNode : public ControlEventHandler {
     osg::observer_ptr<osg::Node> _node;
 };
 
-
-
-typedef osgUtil::LineSegmentIntersector::Intersections Hits;
 
 
 struct AnnotationEventCallback : public osg::NodeCallback
@@ -81,46 +81,29 @@ struct AnnotationEventCallback : public osg::NodeCallback
             {
                 _mx = ea->getX();
                 _my = ea->getY();
-                OE_NOTICE << "x=" << _mx << ", y=" << _my << std::endl;
             }
 
             else if ( ea->getEventType() == osgGA::GUIEventAdapter::FRAME )
             {
-                OE_NOTICE << "frame " << ev->getFrameStamp()->getFrameNumber()
-                    << ", mx=" << _mx
-                    << ", my=" << _my
-                    << ", selected=" << _selected.size()
-                    << std::endl;
-
                 std::set<AnnotationNode*> toRevert;
                 toRevert.swap( _selected );
 
-                osg::NodePath path;
-                path.push_back(node);
-                Hits hits;
+                Picker picker( view, node );
+                Picker::Hits hits;
 
-                if ( view->computeIntersections(_mx, _my, path, hits) )
+                if ( picker.pick( _mx, _my, hits ) )
                 {
-                    OE_NOTICE << "Hits = " << hits.size() << std::endl;
-                    for( Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
+                    for( Picker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
                     {
-                        const osgUtil::LineSegmentIntersector::Intersection& hit = *h;
+                        const Picker::Hit& hit = *h;
 
-                        const osg::NodePath& hitPath = hit.nodePath;
-
-                        for( osg::NodePath::const_reverse_iterator n = hitPath.rbegin(); n != hitPath.rend(); ++n )
+                        AnnotationNode* annotation = picker.getNode<AnnotationNode>( hit );
+                        if ( annotation )
                         {
-                            AnnotationNode* annode = dynamic_cast<AnnotationNode*>(*n);
-                            if ( annode )
-                            {
-                                _selected.insert( annode );
-                                annode->setHighlight( true );
-                                toRevert.erase( annode );
-                                OE_NOTICE << "Highlighted one" << std::endl;
-                                //OE_NOTICE << "Hit an annotation node, stamp = "
-                                //    << nv->getFrameStamp()->getFrameNumber() << std::endl;
-                                break;
-                            }
+                            _selected.insert( annotation );
+                            annotation->setHighlight( true );
+                            toRevert.erase( annotation );
+                            break;
                         }
                     }
                 }                
@@ -128,7 +111,6 @@ struct AnnotationEventCallback : public osg::NodeCallback
                 for( std::set<AnnotationNode*>::iterator i = toRevert.begin(); i != toRevert.end(); ++i )
                 {
                     (*i)->setHighlight( false );
-                    OE_NOTICE << "UN-highlighted one" << std::endl;
                 }
             }
         }
@@ -136,16 +118,6 @@ struct AnnotationEventCallback : public osg::NodeCallback
         traverse(node,nv);
     }
 
-};
-
-struct GeomAnnoNode : public LocalizedNode
-{
-    GeomAnnoNode( MapNode* mapNode, Geometry* geom )
-        : LocalizedNode( mapNode->getMap()->getProfile()->getSRS() )
-    {
-        LocalGeometryNode* lgn = new LocalGeometryNode( mapNode, geom, Style(), false, getTransform() );
-        this->addChild( lgn );
-    }
 };
 
 int
@@ -178,7 +150,6 @@ main(int argc, char** argv)
     Decluttering::setEnabled( labelGroup->getOrCreateStateSet(), true );
     annoGroup->addChild( labelGroup );
 
-#if 0
     osg::Image* pushpin = osgDB::readImageFile( "../data/placemark32.png" );
 
     // a Placemark combines a 2D icon with a text label.
@@ -215,21 +186,10 @@ main(int argc, char** argv)
     geom->push_back( osg::Vec3d(0,   60, 0) );
     Style geomStyle;
 
-    //geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Yellow;
-    //geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
-
-    geomStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color::White;
-
+    geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Yellow;
+    geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
     FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geomStyle), true );
-
-    AnnotationNode* gannode = new AnnotationNode();
-    gannode->addChild( gnode );
-    gannode->setAltDrawStateTechnique( scaler );
-    annoGroup->addChild( gannode );
-    //annoGroup->addChild( gnode );
-#endif
-
-#if 0
+    annoGroup->addChild( gnode );
 
     // another line, this time using great-circle interpolation (flight path from New York to Tokyo)
     Geometry* path = new LineString();
@@ -248,24 +208,6 @@ main(int argc, char** argv)
     pathAnno->addChild( pathNode );
     annoGroup->addChild( pathAnno );
 
-#endif
-
-#if 1
-    Geometry* ss = new Polygon();
-    ss->push_back( osg::Vec3d(-100000, -100000, 0) );
-    ss->push_back( osg::Vec3d( 100000, -100000, 0) );
-    ss->push_back( osg::Vec3d( 100000,  100000, 0) );
-    ss->push_back( osg::Vec3d(-100000,  100000, 0) );
-
-    GeomAnnoNode* gan = new GeomAnnoNode( mapNode, ss );
-    gan->setPosition( osg::Vec3d(0,0,0) );
-    AnnotationNode* gan2 = new AnnotationNode();
-    gan2->addChild( gan );
-    gan2->setAltDrawStateTechnique( scaler );
-    annoGroup->addChild( gan2 );
-#endif
-
-#if 1
     // a circle around New Orleans
     Style circleStyle;
     circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
@@ -275,11 +217,9 @@ main(int argc, char** argv)
         Linear(300, Units::KILOMETERS ),
         circleStyle,
         false ); //true );
-    circle->setAltDrawStateTechnique( scaler );
+    circle->setAltDrawStateTechnique( new OutlineDrawStateTechnique() );
     annoGroup->addChild( circle );
-#endif
 
-#if 0
     // an ellipse around Miami
     Style ellipseStyle;
     ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
@@ -291,7 +231,7 @@ main(int argc, char** argv)
         Angular(45, Units::DEGREES),
         ellipseStyle,
         false );
-    ellipse->setAltDrawStateTechnique( scaler );
+    ellipse->setAltDrawStateTechnique( new EncircleDrawStateTechnique() );
     annoGroup->addChild( ellipse );
 
     // an extruded polygon roughly the shape of Utah
@@ -311,12 +251,10 @@ main(int argc, char** argv)
     FeatureNode* utahNode = new FeatureNode(mapNode, utahFeature, false);
     AnnotationNode* utahAnnoNode = new AnnotationNode();
     utahAnnoNode->addChild( utahNode );
-    utahAnnoNode->setAltDrawStateTechnique( scaler );
+    utahAnnoNode->setAltDrawStateTechnique( new EncircleDrawStateTechnique() );
     annoGroup->addChild( utahAnnoNode );
     //annoGroup->addChild( utahNode );
-#endif
 
-#if 0
     // an image overlay
     ImageOverlay* imageOverlay = 0L;
     osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
@@ -330,24 +268,21 @@ main(int argc, char** argv)
         osg::Node* editor = new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
         root->addChild( editor );
     }
-#endif
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
-    // install an event handler for interacting with the annotation group.
+    // install an event handler for picking and hovering.
     annoGroup->addEventCallback( new AnnotationEventCallback() );
 
-#if 0
-    // make a little HUD to toggle stuff:
+    // make a little UI so the user can toggle annotations on and off.
     VBox* vbox = new VBox();
     vbox->setBackColor( Color(Color::Black, 0.5) );
     vbox->setVertAlign( Control::ALIGN_TOP );
     vbox->addControl( new LabelControl("Annotation Example", 22.0f, Color::Yellow) );
-    Grid* grid = new Grid();
-    vbox->addControl( grid );
+    Grid* grid = vbox->addControl( new Grid() );
     grid->setChildSpacing( 5 );
     grid->setChildHorizAlign( Control::ALIGN_LEFT );
     grid->setChildVertAlign( Control::ALIGN_CENTER );
@@ -365,8 +300,8 @@ main(int argc, char** argv)
         grid->setControl( 0, 5, new CheckBoxControl(true, new ToggleNode(imageOverlay)) );
         grid->setControl( 1, 5, new LabelControl("Image overlay") );
     }
+
     ControlCanvas::get(&viewer,true)->addControl(vbox);
-#endif
 
     // add some stock OSG handlers:
     viewer.getDatabasePager()->setDoPreCompile( true );

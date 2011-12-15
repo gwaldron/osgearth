@@ -1,0 +1,77 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_PICKING_UTILS_H
+#define OSGEARTHUTIL_PICKING_UTILS_H
+
+#include <osgEarthUtil/Common>
+#include <osgViewer/View>
+#include <osgUtil/LineSegmentIntersector>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    /**
+     * Utility for picking objects from the scene.
+     *
+     * This class wraps the osgViewer::View::computeIntersections function, but
+     * addes double-precision support so it can be used in a geocentric scene.
+     */
+    class OSGEARTHUTIL_EXPORT Picker
+    {
+    public:
+        typedef osgUtil::LineSegmentIntersector::Intersection  Hit;
+        typedef osgUtil::LineSegmentIntersector::Intersections Hits;
+
+    public:
+        /** 
+         * Constructs a picker that will pick data from the given view,
+         * and restrict its search to the given graph.
+         */
+        Picker( osgViewer::View* view, osg::Node* graph =0L, unsigned traversalMask =~0 );
+
+        /**
+         * Picks geometry under the specified viewport coordinates.
+         */
+        bool pick( float mouseX, float mouseY, Hits& results ) const;
+
+        /**
+         * Finds and returns the lowest node of type "T" in a hit, or 0L if no such
+         * node exists.
+         */
+        template<typename T>
+        T* getNode( const Hit& hit ) const {
+            for( osg::NodePath::const_reverse_iterator i = hit.nodePath.rbegin(); i != hit.nodePath.rend(); ++i ) {
+               T* node = dynamic_cast<T*>(*i);
+               if ( node ) return node;
+            }
+            return 0L;
+        }
+
+
+    protected:
+        osgViewer::View*              _view;
+        osg::ref_ptr<osg::Node>       _root;
+        osg::NodePath                 _path;
+        unsigned                      _travMask;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_PICKING_UTILS_H

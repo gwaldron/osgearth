@@ -19,12 +19,16 @@
 
 #include <osg/Notify>
 #include <osgEarth/MapNode>
+#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthQt/ViewerWidget>
 #include <osgEarthQt/CompositeViewerWidget>
+#include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/DataManager>
+#include <osgEarthUtil/SkyNode>
+#include <osgEarthDrivers/ocean_surface/OceanSurface>
 
 #include <QAction>
 #include <QDockWidget>
@@ -39,6 +43,8 @@ using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
 static osg::ref_ptr<osg::Group> s_annoGroup;
+static osgEarth::Util::SkyNode* s_sky=0L;
+static osgEarth::Drivers::OceanSurfaceNode* s_ocean=0L;
 
 int
 usage( const std::string& msg )
@@ -55,12 +61,14 @@ int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
-    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+    osg::DisplaySettings::instance()->setMinimumNumStencilBits(8);
 
     std::string compNum;
-    bool composite = arguments.read( "--composite", compNum );
+    bool composite = arguments.read("--composite", compNum);
     int numViews = composite ? osgEarth::as<int>(compNum, 4) : 1;
 
+    std::string stylesheet;
+    bool styled = arguments.read("--stylesheet", stylesheet);
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
@@ -82,19 +90,23 @@ main(int argc, char** argv)
 
 
     // add an annotation for demo purposes
-    osgEarth::Annotation::AnnotationNode* annotation = new osgEarth::Annotation::PlaceNode(
-      mapNode, 
-      osg::Vec3d(-77.04, 38.85, 0),
-      osgDB::readImageFile("../data/placemark32.png"),
-      "Washington, DC");
+    if (mapNode)
+    {
+      osgEarth::Annotation::AnnotationNode* annotation = new osgEarth::Annotation::PlaceNode(
+        mapNode, 
+        osg::Vec3d(-77.04, 38.85, 0),
+        osgDB::readImageFile("../data/placemark32.png"),
+        "Washington, DC");
 
-    osgEarth::Annotation::AnnotationData* data = new osgEarth::Annotation::AnnotationData();
-    data->setName("Washington, DC");
-    data->setViewpoint(osgEarth::Viewpoint(osg::Vec3d(-77.04, 38.85, 0), 0.0, -90.0, 1e5));
-    annotation->setAnnotationData(data);
+      osgEarth::Annotation::AnnotationData* data = new osgEarth::Annotation::AnnotationData();
+      data->setName("Washington, DC");
+      data->setViewpoint(osgEarth::Viewpoint(osg::Vec3d(-77.04, 38.85, 0), 0.0, -90.0, 1e5));
+      annotation->setAnnotationData(data);
 
-    dataManager->addAnnotation(annotation, s_annoGroup);
+      dataManager->addAnnotation(annotation, s_annoGroup);
+    }
     
+    osgEarth::QtGui::ViewVector views;
 
     // create viewer widget
     if (composite)
@@ -102,18 +114,46 @@ main(int argc, char** argv)
       osgEarth::QtGui::CompositeViewerWidget* viewer = new osgEarth::QtGui::CompositeViewerWidget(root, dataManager.get());
 
       osgViewer::View* primary = viewer->createViewWidget(root);
+      views.push_back(primary);
 
       for (int i=0; i < numViews - 1; i++)
-        osgViewer::View* childView = viewer->createViewWidget(root, primary);
+        views.push_back(viewer->createViewWidget(root, primary));
 
       viewer->setGeometry(100, 100, 800, 600);
-      appWin.setViewerWidget(viewer);
+      appWin.setViewerWidget(viewer, views);
     }
     else
     {
       osgEarth::QtGui::ViewerWidget* viewer = new osgEarth::QtGui::ViewerWidget(root, dataManager.get());
       viewer->setGeometry(100, 100, 800, 600);
       appWin.setViewerWidget(viewer);
+      views.push_back(viewer);
+
+      if (mapNode)
+      {
+        const Config& externals = mapNode->externalConfig();
+
+        if (mapNode->getMap()->isGeocentric())
+        {
+          // Sky model.
+          Config skyConf = externals.child("sky");
+
+          double hours = skyConf.value("hours", 12.0);
+          s_sky = new osgEarth::Util::SkyNode(mapNode->getMap());
+          s_sky->setDateTime(2011, 3, 6, hours);
+          s_sky->attach(viewer);
+          root->addChild(s_sky);
+
+          // Ocean surface.
+          if (externals.hasChild("ocean"))
+          {
+            s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode, externals.child("ocean"));
+            if (s_ocean)
+              root->addChild(s_ocean);
+          }
+        }
+      }
+        
     }
 
 
@@ -121,6 +161,7 @@ main(int argc, char** argv)
     QDockWidget *catalogDock = new QDockWidget(QWidget::tr("Catalog"));
     catalogDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::MapCatalogWidget* layerCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::LAYERS_AND_ANNOTATIONS);
+    layerCatalog->setActiveViews(views);
 	  catalogDock->setWidget(layerCatalog);
 	  appWin.addDockWidget(Qt::LeftDockWidgetArea, catalogDock);
 
@@ -129,9 +170,31 @@ main(int argc, char** argv)
     QDockWidget *vpDock = new QDockWidget(QWidget::tr("Viewpoints"));
     vpDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
+    vpCatalog->setActiveViews(views);
 	  vpDock->setWidget(vpCatalog);
 	  appWin.addDockWidget(Qt::LeftDockWidgetArea, vpDock);
 
+
+    // create layer manager widget and add as a docked widget to the main window
+    QDockWidget *layersDock = new QDockWidget(QWidget::tr("Image Layers"));
+    layersDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    osgEarth::QtGui::LayerManagerWidget* layerManager = new osgEarth::QtGui::LayerManagerWidget(dataManager.get(), osgEarth::QtGui::LayerManagerWidget::IMAGE_LAYERS);
+    layerManager->setActiveViews(views);
+	  layersDock->setWidget(layerManager);
+	  appWin.addDockWidget(Qt::RightDockWidgetArea, layersDock);
+
+    // attempt to load .qss stylesheet if one was provided
+    if (styled)
+    {
+     //QFile file("C:\\dev\\git\\osgearth_qt\\src\\applications\\osgearth_qt\\default_style.qss");
+      QFile file(QString(stylesheet.c_str()));
+      if (file.exists())
+      {
+        file.open(QFile::ReadOnly);
+        QString qstylesheet = QLatin1String(file.readAll());
+        app.setStyleSheet(qstylesheet);
+      }
+    }
 
     appWin.setGeometry(100, 100, 800, 600);
     appWin.show();

@@ -36,24 +36,6 @@
 using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
-namespace
-{
-  class ViewerActionCallback : public ActionCallback
-  {
-  public:
-    ViewerActionCallback(osgEarth::Util::EarthManipulator* manip) : _manip(manip) {}
-
-    void operator()( void* sender, Action* action )
-    {
-      SetViewpointAction* viewpointAction = dynamic_cast<SetViewpointAction*>(action);
-      if (viewpointAction && _manip.valid())
-        _manip->setViewpoint(viewpointAction->viewpoint(), 4.5);
-    }
-
-  private:
-    osg::ref_ptr<osgEarth::Util::EarthManipulator> _manip;
-  };
-}
 
 ViewerWidget::ViewerWidget(osg::Node* scene, DataManager* manager) : _manager(manager)
 {
@@ -77,12 +59,6 @@ void ViewerWidget::initialize()
   addEventHandler(new osgViewer::StatsHandler());
   addEventHandler(new osgGA::StateSetManipulator());
   addEventHandler(new osgViewer::ThreadingHandler());
-
-  if (_manager.valid())
-  {
-    _actionCallback = new ViewerActionCallback(dynamic_cast<osgEarth::Util::EarthManipulator*>(getCameraManipulator()));
-    _manager->addAfterActionCallback(_actionCallback);
-  }
 }
 
 osg::Camera* ViewerWidget::createCamera()

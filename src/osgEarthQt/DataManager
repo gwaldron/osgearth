@@ -30,7 +30,6 @@
 
 #include <QObject>
 
-namespace{ struct DataManagerMapCallback; }
 
 namespace osgEarth { namespace QtGui 
 {
@@ -38,8 +37,13 @@ namespace osgEarth { namespace QtGui
     using namespace osgEarth::Annotation;
     using namespace osgEarth::QtGui;
 
-    typedef std::vector< osg::ref_ptr<AnnotationNode> > AnnotationVector;
+    struct DataManagerMapCallback;
+    struct DataManagerElevationLayerCallback;
+    struct DataManagerImageLayerCallback;
+    struct DataManagerModelLayerCallback;
 
+
+    //---------------------------------------------------------------------------
     class OSGEARTHQT_EXPORT DataManager : public QObject, public osg::Referenced, public ActionManager
     {
     Q_OBJECT
@@ -70,25 +74,12 @@ namespace osgEarth { namespace QtGui
       void mapChanged();
       //void selectionChanged(
 
-      void imageLayerAdded(osgEarth::ImageLayer* layer, unsigned int index);
-      void imageLayerRemoved(osgEarth::ImageLayer* layer, unsigned int index);
-      void imageLayerMoved(osgEarth::ImageLayer* layer, unsigned int oldIndex, unsigned int newIndex);
-
-      void elevationLayerAdded(osgEarth::ElevationLayer* layer, unsigned int index);
-      void elevationLayerRemoved(osgEarth::ElevationLayer* layer, unsigned int index);
-      void elevationLayerMoved(osgEarth::ElevationLayer* layer, unsigned int oldIndex, unsigned int newIndex);
-
-      void modelLayerAdded(osgEarth::ModelLayer* layer, unsigned int index);
-      void modelLayerRemoved(osgEarth::ModelLayer* layer);
-      void modelLayerMoved(osgEarth::ModelLayer* layer, unsigned int oldIndex, unsigned int newIndex);
-
-      void maskLayerAdded(osgEarth::MaskLayer* layer);
-      void maskLayerRemoved(osgEarth::MaskLayer* layer);
-
       void annotationAdded(osgEarth::Annotation::AnnotationNode* annotation);
       void annotationRemoved(osgEarth::Annotation::AnnotationNode* annotation);
 
     protected:
+      void initialize();
+      void onMapChanged();
       void onMapChanged(const osgEarth::MapModelChange& change);
 
     private:
@@ -96,6 +87,10 @@ namespace osgEarth { namespace QtGui
       Threading::ReadWriteMutex _dataMutex;
       AnnotationVector _annotations;
       std::vector<osgEarth::Viewpoint> _viewpoints;
+      osg::ref_ptr<DataManagerElevationLayerCallback> _elevationCallback;
+      osg::ref_ptr<DataManagerImageLayerCallback> _imageCallback;
+      osg::ref_ptr<DataManagerModelLayerCallback> _modelCallback;
+
 
       // ActionManager-related members
       std::list< osg::ref_ptr<Action> > _undoStack;
@@ -106,6 +101,81 @@ namespace osgEarth { namespace QtGui
 
 
       friend struct DataManagerMapCallback;
+      friend struct DataManagerElevationLayerCallback;
+      friend struct DataManagerImageLayerCallback;
+      friend struct DataManagerModelLayerCallback;
+    };
+
+
+    //---------------------------------------------------------------------------
+    struct DataManagerMapCallback : public osgEarth::MapCallback
+    {
+      DataManagerMapCallback(DataManager* dm) : _dm(dm) { }
+
+      void onMapModelChanged( const MapModelChange& change )
+      {
+        if (_dm.valid())
+          _dm->onMapChanged(change);
+      }
+
+      osg::observer_ptr<DataManager> _dm;
+    };
+
+
+    //---------------------------------------------------------------------------
+    struct DataManagerElevationLayerCallback : public osgEarth::ElevationLayerCallback
+    {
+      DataManagerElevationLayerCallback(DataManager* dm) : _dm(dm) { }
+
+      void onEnabledChanged(TerrainLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      osg::observer_ptr<DataManager> _dm;
+    };
+
+
+    //---------------------------------------------------------------------------
+    struct DataManagerImageLayerCallback : public osgEarth::ImageLayerCallback
+    {
+      DataManagerImageLayerCallback(DataManager* dm) : _dm(dm) { }
+
+      void onOpacityChanged(ImageLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      void onEnabledChanged(TerrainLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      osg::observer_ptr<DataManager> _dm;
+    };
+
+
+    //---------------------------------------------------------------------------
+    struct DataManagerModelLayerCallback : public osgEarth::ModelLayerCallback
+    {
+      DataManagerModelLayerCallback(DataManager* dm) : _dm(dm) { }
+
+      void onEnabledChanged(ModelLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      void onOverlayChanged(ModelLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      osg::observer_ptr<DataManager> _dm;
     };
 } }
 

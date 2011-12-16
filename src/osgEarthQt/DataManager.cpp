@@ -24,27 +24,10 @@
 using namespace osgEarth::QtGui;
 using namespace osgEarth::Annotation;
 
-namespace
-{
-  struct DataManagerMapCallback : public osgEarth::MapCallback
-  {
-    DataManagerMapCallback(DataManager* dm) : _dm(dm) { }
-
-    void onMapModelChanged( const MapModelChange& change )
-    {
-      _dm->onMapChanged(change);
-    }
-
-    osg::observer_ptr<DataManager> _dm;
-  };
-}
 
 DataManager::DataManager(osgEarth::Map* map) : _map(map), _maxUndoStackSize( 128 )
 {
-  if (_map)
-  {
-    _map->addMapCallback(new DataManagerMapCallback(this));
-  }
+  initialize();
 }
 
 DataManager::DataManager(osgEarth::MapNode* mapNode) : _maxUndoStackSize( 128 )
@@ -52,8 +35,6 @@ DataManager::DataManager(osgEarth::MapNode* mapNode) : _maxUndoStackSize( 128 )
   if (mapNode)
   {
     _map = mapNode->getMap();
-    if (_map)
-      _map->addMapCallback(new DataManagerMapCallback(this));
 
     //Look for viewpoints in the MapNode externals
     const Config& externals = mapNode->externalConfig();
@@ -63,6 +44,35 @@ DataManager::DataManager(osgEarth::MapNode* mapNode) : _maxUndoStackSize( 128 )
       for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         _viewpoints.push_back(Viewpoint(*i));
     }
+  }
+
+  initialize();
+}
+
+void DataManager::initialize()
+{
+  _elevationCallback = new DataManagerElevationLayerCallback(this);
+  _imageCallback = new DataManagerImageLayerCallback(this);
+  _modelCallback = new DataManagerModelLayerCallback(this);
+
+  if (_map)
+  {
+    osgEarth::ElevationLayerVector elevLayers;
+    _map->getElevationLayers(elevLayers);
+    for (osgEarth::ElevationLayerVector::const_iterator it = elevLayers.begin(); it != elevLayers.end(); ++it)
+      (*it)->addCallback(_elevationCallback);
+
+    osgEarth::ImageLayerVector imageLayers;
+    _map->getImageLayers(imageLayers);
+    for (osgEarth::ImageLayerVector::const_iterator it = imageLayers.begin(); it != imageLayers.end(); ++it)
+      (*it)->addCallback(_imageCallback);
+
+    osgEarth::ModelLayerVector modelLayers;
+    _map->getModelLayers(modelLayers);
+    for (osgEarth::ModelLayerVector::const_iterator it = modelLayers.begin(); it != modelLayers.end(); ++it)
+      (*it)->addCallback(_modelCallback);
+
+    _map->addMapCallback(new DataManagerMapCallback(this));
   }
 }
 
@@ -143,35 +153,30 @@ void DataManager::getViewpoints(std::vector<osgEarth::Viewpoint>& out_viewpoints
     out_viewpoints.push_back(*it);
 }
 
+void DataManager::onMapChanged()
+{
+  emit mapChanged();
+}
+
 void DataManager::onMapChanged(const osgEarth::MapModelChange& change)
 {
   switch( change.getAction() )
   {
   case MapModelChange::ADD_ELEVATION_LAYER: 
-    emit elevationLayerAdded( change.getElevationLayer(), change.getFirstIndex() ); break;
+    change.getElevationLayer()->addCallback(_elevationCallback); break;
   case MapModelChange::ADD_IMAGE_LAYER:
-    emit imageLayerAdded( change.getImageLayer(), change.getFirstIndex() ); break;
-  case MapModelChange::ADD_MASK_LAYER:
-    emit maskLayerAdded( change.getMaskLayer() ); break;
+    change.getImageLayer()->addCallback(_imageCallback); break;
   case MapModelChange::ADD_MODEL_LAYER:
-		emit modelLayerAdded( change.getModelLayer(), change.getFirstIndex() ); break;
+		change.getModelLayer()->addCallback(_modelCallback); break;
   case MapModelChange::REMOVE_ELEVATION_LAYER:
-    emit elevationLayerRemoved( change.getElevationLayer(), change.getFirstIndex() ); break;
+    change.getElevationLayer()->removeCallback(_elevationCallback); break;
   case MapModelChange::REMOVE_IMAGE_LAYER:
-    emit imageLayerRemoved( change.getImageLayer(), change.getFirstIndex() ); break;
-  case MapModelChange::REMOVE_MASK_LAYER:
-    emit maskLayerRemoved( change.getMaskLayer() ); break;
+    change.getImageLayer()->removeCallback(_imageCallback); break;
   case MapModelChange::REMOVE_MODEL_LAYER:
-    emit modelLayerRemoved( change.getModelLayer() ); break;
-  case MapModelChange::MOVE_ELEVATION_LAYER:
-    emit elevationLayerMoved( change.getElevationLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
-  case MapModelChange::MOVE_IMAGE_LAYER:
-    emit imageLayerMoved( change.getImageLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
-	case MapModelChange::MOVE_MODEL_LAYER:
-		emit modelLayerMoved( change.getModelLayer(), change.getFirstIndex(), change.getSecondIndex() ); break;
+    change.getModelLayer()->removeCallback(_modelCallback); break;
   }
 
-  emit mapChanged();
+  onMapChanged();
 }
 
 //---------------------------------------------------------------------------

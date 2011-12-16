@@ -13,6 +13,7 @@ INCLUDE( ${QT_USE_FILE} )
 
 set(LIB_MOC_HDRS
     DataManager
+    LayerManagerWidget
     MapCatalogWidget
 )
 
@@ -25,6 +26,7 @@ SET(LIB_PUBLIC_HEADERS
     CompositeViewerWidget
     DataManager
     GuiActions
+    LayerManagerWidget
     MapCatalogWidget
     ViewerWidget
 )
@@ -33,9 +35,9 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
     ${LIB_MOC_SRCS}
-    Actions.cpp
     CompositeViewerWidget.cpp
     DataManager.cpp
+    LayerManagerWidget.cpp
     MapCatalogWidget.cpp
     ViewerWidget.cpp
 )

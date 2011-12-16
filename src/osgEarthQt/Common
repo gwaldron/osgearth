@@ -21,6 +21,8 @@
 #define OSGEARTHQT_COMMON_H 1
 
 #include <osgEarth/Common>
+#include <osgEarthAnnotation/AnnotationNode>
+#include <osgViewer/Viewer>
 
 // define USE_DEPRECATED_API is used to include in API which is being phased out
 // if you can compile your apps with this turned off you are
@@ -80,6 +82,9 @@
 */
 
 namespace osgEarth { namespace QtGui {
+
+  typedef std::vector< osg::ref_ptr<osgEarth::Annotation::AnnotationNode> > AnnotationVector;
+  typedef std::vector< osg::ref_ptr<osgViewer::View> > ViewVector;
     
 } }
 

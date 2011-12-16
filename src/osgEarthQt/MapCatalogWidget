@@ -31,7 +31,7 @@ namespace osgEarth { namespace QtGui
 {
     using namespace osgEarth;
 
-    class OSGEARTHQT_EXPORT MapCatalogWidget : public QWidget, public ActionCallback
+    class OSGEARTHQT_EXPORT MapCatalogWidget : public QFrame, public ActionCallback
     {
     Q_OBJECT
 
@@ -50,6 +50,9 @@ namespace osgEarth { namespace QtGui
 
       MapCatalogWidget(DataManager* dm, unsigned int fields=LAYERS_AND_ANNOTATIONS);
       MapCatalogWidget(osgEarth::Map* map, unsigned int fields=ALL_LAYERS);
+
+      void setActiveView(osgViewer::View* view);
+      void setActiveViews(const ViewVector& views);
 
       //ActionCallback
       void operator()( void* sender, Action* action );
@@ -77,6 +80,7 @@ namespace osgEarth { namespace QtGui
 
       osg::ref_ptr<DataManager> _manager;
       osg::ref_ptr<osgEarth::Map> _map;
+      ViewVector _views;
       unsigned int _fields;
     };
 } }

@@ -36,37 +36,6 @@
 using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
-namespace
-{
-  class MultiViewActionCallback : public ActionCallback
-  {
-  public:
-    MultiViewActionCallback(osgViewer::CompositeViewer* viewer) : _viewer(viewer) {}
-
-    void operator()( void* sender, Action* action )
-    {
-      if (!_viewer.valid())
-        return;
-
-      SetViewpointAction* viewpointAction = dynamic_cast<SetViewpointAction*>(action);
-      if (viewpointAction)
-      {
-        osgViewer::ViewerBase::Views views;
-        _viewer->getViews(views);
-
-        for (osgViewer::ViewerBase::Views::iterator it = views.begin(); it != views.end(); ++it)
-        {
-          osgEarth::Util::EarthManipulator* manip = dynamic_cast<osgEarth::Util::EarthManipulator*>((*it)->getCameraManipulator());
-          if (manip)
-            manip->setViewpoint(viewpointAction->viewpoint(), 4.5);
-        }
-      }
-    }
-
-  private:
-    osg::ref_ptr<osgViewer::CompositeViewer> _viewer;
-  };
-}
 
 CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene, DataManager* manager)
 : _manager(manager)
@@ -80,12 +49,6 @@ CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene, DataManager* mana
 void CompositeViewerWidget::initialize()
 {
   setThreadingModel(osgViewer::Viewer::SingleThreaded);
-
-  if (_manager.valid())
-  {
-    _actionCallback = new MultiViewActionCallback(this);
-    _manager->addAfterActionCallback(_actionCallback);
-  }
 }
 
 osgViewer::View* CompositeViewerWidget::createViewWidget(osg::Node* scene, osgViewer::View* shared)

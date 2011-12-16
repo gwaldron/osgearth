@@ -42,7 +42,6 @@ namespace osgEarth { namespace QtGui
     protected:
       QTimer _timer;
       osg::ref_ptr<DataManager> _manager;
-      osg::ref_ptr<ActionCallback> _actionCallback;
 
       void initialize();
       osg::Camera* createCamera();

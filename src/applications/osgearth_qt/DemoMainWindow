@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
+#include <osgEarthQt/Common>
 #include <osgEarthQt/CompositeViewerWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/MapCatalogWidget>
@@ -46,23 +47,52 @@ class DemoMainWindow : public QMainWindow
     {
       setCentralWidget(viewer);
       _viewer = viewer;
+
+      _views.clear();
+      _views.push_back(_viewer);
     }
 
-    void setViewerWidget(osgEarth::QtGui::CompositeViewerWidget* viewer)
+    void setViewerWidget(osgEarth::QtGui::CompositeViewerWidget* viewer, const osgEarth::QtGui::ViewVector& views)
     {
       setCentralWidget(viewer);
       _compositeViewer = viewer;
+
+      _views.clear();
+      _views.insert(_views.end(), views.begin(), views.end());
     }
 
   private slots:
 
 		void addLayer()
     {
-      osgEarth::Drivers::GDALOptions layerOpt;
-      layerOpt.url() = osgEarth::URI("../data/nyc-inset-wgs84.tif");
-      _manager->map()->addImageLayer( new osgEarth::ImageLayer( osgEarth::ImageLayerOptions("ny_inset", layerOpt) ) );
+      if (!_testLayer.valid())
+      {
+        osgEarth::Drivers::GDALOptions layerOpt;
+        layerOpt.url() = osgEarth::URI("../data/nyc-inset-wgs84.tif");
+        _testLayer = new osgEarth::ImageLayer(osgEarth::ImageLayerOptions("ny_inset", layerOpt));
+      }
 
-      _addLayerAction->setDisabled(true);
+      _manager->map()->addImageLayer(_testLayer.get());
+
+      _addLayerAction->setEnabled(false);
+      _removeLayerAction->setEnabled(true);
+      _moveLayerAction->setEnabled(true);
+    }
+
+    void removeLayer()
+    {
+      if (_testLayer.valid())
+        _manager->map()->removeImageLayer(_testLayer.get());
+
+      _removeLayerAction->setEnabled(false);
+      _addLayerAction->setEnabled(true);
+      _moveLayerAction->setEnabled(false);
+    }
+
+    void moveLayer()
+    {
+      if (_testLayer.valid())
+        _manager->map()->moveImageLayer(_testLayer.get(), 0);
     }
 
 		void addAnnotation()
@@ -89,6 +119,7 @@ class DemoMainWindow : public QMainWindow
       QDockWidget *catalogDock = new QDockWidget(QWidget::tr("Full Catalog"));
       catalogDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
       osgEarth::QtGui::MapCatalogWidget* layerCatalog = new osgEarth::QtGui::MapCatalogWidget(_manager.get(), osgEarth::QtGui::MapCatalogWidget::ALL);
+      layerCatalog->setActiveViews(_views);
 	    catalogDock->setWidget(layerCatalog);
       addDockWidget(Qt::RightDockWidgetArea, catalogDock);
 
@@ -131,11 +162,21 @@ class DemoMainWindow : public QMainWindow
 	    _addLayerAction->setStatusTip(tr("Add an image layer"));
 	    connect(_addLayerAction, SIGNAL(triggered()), this, SLOT(addLayer()));
       _addLayerAction->setDisabled(!_manager.valid());
+
+      _removeLayerAction = new QAction(tr("&Remove Layer"), this);
+      _removeLayerAction->setStatusTip(tr("Remove an image layer"));
+      connect(_removeLayerAction, SIGNAL(triggered()), this, SLOT(removeLayer()));
+      _removeLayerAction->setDisabled(true);
+
+      _moveLayerAction = new QAction(tr("&Move Layer to Bottom"), this);
+      _moveLayerAction->setStatusTip(tr("Move the added image layer to index 0"));
+      connect(_moveLayerAction, SIGNAL(triggered()), this, SLOT(moveLayer()));
+      _moveLayerAction->setDisabled(true);
     	
 	    _addAnnotationAction = new QAction(/*QIcon(":/resources/images/open.png"),*/ tr("&Add Annotation"), this);
       _addAnnotationAction->setStatusTip(tr("Add an annotation"));
       connect(_addAnnotationAction, SIGNAL(triggered()), this, SLOT(addAnnotation()));
-      _addAnnotationAction->setDisabled(!_manager.valid() || !_annoRoot.valid());
+      _addAnnotationAction->setDisabled(!_manager.valid() || !_mapNode.valid() || !_annoRoot.valid());
 
       _addCatalogAction = new QAction(tr("&Add Catalog"), this);
 	    _addCatalogAction->setStatusTip(tr("Add a full catalog widget"));
@@ -149,16 +190,24 @@ class DemoMainWindow : public QMainWindow
       _fileToolbar->setObjectName(tr("FILE_TOOLBAR"));
 	    _fileToolbar->setIconSize(QSize(24, 24));
 	    _fileToolbar->addAction(_addLayerAction);
+      _fileToolbar->addAction(_removeLayerAction);
+      _fileToolbar->addAction(_moveLayerAction);
+      _fileToolbar->addSeparator();
 	    _fileToolbar->addAction(_addAnnotationAction);
+      _fileToolbar->addSeparator();
       _fileToolbar->addAction(_addCatalogAction);
     }
 	
     osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
     osg::ref_ptr<osgEarth::MapNode> _mapNode;
     osg::ref_ptr<osg::Group> _annoRoot;
+    osg::ref_ptr<osgEarth::ImageLayer> _testLayer;
     osg::ref_ptr<osgEarth::QtGui::ViewerWidget> _viewer;
     osg::ref_ptr<osgEarth::QtGui::CompositeViewerWidget> _compositeViewer;
+    osgEarth::QtGui::ViewVector _views;
 		QAction *_addLayerAction;
+    QAction *_removeLayerAction;
+    QAction *_moveLayerAction;
 		QAction *_addAnnotationAction;
     QAction *_addCatalogAction;
 		QToolBar *_fileToolbar;

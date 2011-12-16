@@ -24,9 +24,12 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
 #include <osgText/Text>
+#include <osg/ComputeBoundsVisitor>
+#include <osgUtil/IntersectionVisitor>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+
 
 OrthoNode::OrthoNode(const SpatialReference* mapSRS,
                      const osg::Vec3d&       pos ) :
@@ -53,7 +56,7 @@ _horizonCulling( false )
 void
 OrthoNode::init()
 {
-    _autoxform = new osg::AutoTransform();
+    _autoxform = new AnnotationUtils::OrthoNodeAutoTransform();
     _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
     _autoxform->setAutoScaleToScreen( true );
     _autoxform->setCullingActive( false ); // for the first pass
@@ -88,21 +91,36 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
             this->setSingleChildOn( 0 );
         }
 
+        // If decluttering is enabled, update the auto-transform but not its children.
+        // This is necessary to support picking/selection. An optimization would be to
+        // disable this pass when picking is not in use
+#if 1
+        if ( declutter )
+            static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform.get())->acceptCullNoTraverse( cv );
+#endif
+
         // turn off small feature culling
         cv->setSmallFeatureCullingPixelSize(0.0f);
+
+        AnnotationNode::traverse( nv );
+
+        this->setCullingActive( true );
+    }
+    
+    // For an intersection visitor, ALWAYS traverse the autoxform instead of the 
+    // matrix transform. The matrix transform is only used in combination with the 
+    // decluttering engine, so it cannot properly support picking of decluttered
+    // objects
+    else if ( 
+        nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR &&
+        dynamic_cast<osgUtil::IntersectionVisitor*>( &nv ) )
+    {
+        _autoxform->accept( nv );
     }
 
-    //for( unsigned pos = 0; pos < _children.size(); ++pos )
-    //{
-    //    if ( _values[pos] )
-    //        _children[pos]->accept( nv );
-    //}
-
-    AnnotationNode::traverse( nv );
-
-    if ( cv )
+    else
     {
-        this->setCullingActive( true );
+        AnnotationNode::traverse( nv );
     }
 }
 

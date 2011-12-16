@@ -309,6 +309,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 
                 leaf->_depth = info._lastAlpha;
                 leaves.push_back( leaf );
+
+                
             }
             else
             {
@@ -495,7 +497,7 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
         const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
         if ( pcp )
         {
-            // todo: find a way to optimizer this..?
+            // todo: find a way to optimize this..?
             _fade->set( leaf->_depth );
             pcp->apply( *_fade.get() );
         }

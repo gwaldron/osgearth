@@ -17,19 +17,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/PickingUtils>
-#include <osgEarthUtil/DPLineSegmentIntersector>
+#include <osgUtil/PolytopeIntersector>
+#include <osg/Polytope>
 
 #define LC "[Picker] "
 
 using namespace osgEarth::Util;
 
-Picker::Picker( osgViewer::View* view, osg::Node* root, unsigned travMask ) :
+Picker::Picker( osgViewer::View* view, osg::Node* root, unsigned travMask, float buffer ) :
 _view    ( view ),
 _root    ( root ),
-_travMask( travMask )
+_travMask( travMask ),
+_buffer  ( buffer )
 {
     if ( root )
-        _path.push_back( root );
+        _path = root->getParentalNodePaths()[0];
 }
 
 bool
@@ -40,46 +42,74 @@ Picker::pick( float x, float y, Hits& results ) const
     if ( !camera )
         camera = _view->getCamera();
 
-    osg::Vec3d startVertex, endVertex;
-    osg::ref_ptr<osgUtil::LineSegmentIntersector> picker;
+    osg::ref_ptr<osgUtil::PolytopeIntersector> picker;
+
+    double buffer_x = _buffer, buffer_y = _buffer;
+    if ( camera->getViewport() )
+    {
+        double aspectRatio = camera->getViewport()->width()/camera->getViewport()->height();
+        buffer_x *= aspectRatio;
+        buffer_y /= aspectRatio;
+    }
+    
+    double zNear = 0.0;
+    double zFar  = 1.0;
+
+    double xMin = local_x - buffer_x;
+    double xMax = local_x + buffer_x;
+    double yMin = local_y - buffer_y;
+    double yMax = local_y + buffer_y;
+
+    osg::Polytope winPT;
+    winPT.add(osg::Plane( 1.0, 0.0, 0.0, -xMin));
+    winPT.add(osg::Plane(-1.0, 0.0 ,0.0,  xMax));
+    winPT.add(osg::Plane( 0.0, 1.0, 0.0, -yMin));
+    winPT.add(osg::Plane( 0.0,-1.0, 0.0,  yMax));
+    winPT.add(osg::Plane( 0.0, 0.0, 1.0, zNear));
+
+    osg::Matrix windowMatrix;
 
     if ( _root.valid() )
     {
-        osg::Matrixd matrix;
-        if ( _path.size() > 1 )
-        {
-            osg::NodePath prunedNodePath( _path.begin(), _path.end()-1 );
-            matrix = osg::computeLocalToWorld( prunedNodePath );
-        }
+        osg::Matrix matrix;
 
-        matrix.postMult( camera->getViewMatrix() );
-        matrix.postMult( camera->getProjectionMatrix() );
-
-        double zNear = -1.0;
-        double zFar = 1.0;
         if (camera->getViewport())
         {
-            matrix.postMult(camera->getViewport()->computeWindowMatrix());
+            windowMatrix = camera->getViewport()->computeWindowMatrix();
+            matrix.preMult( windowMatrix );
             zNear = 0.0;
             zFar = 1.0;
         }
 
-        osg::Matrixd inverse;
-        inverse.invert(matrix);
+        matrix.preMult( camera->getProjectionMatrix() );
+        matrix.preMult( camera->getViewMatrix() );
 
-        osg::Vec3d startVertex = osg::Vec3d(local_x,local_y,zNear) * inverse;
-        osg::Vec3d endVertex = osg::Vec3d(local_x,local_y,zFar) * inverse;
+        osg::NodePath prunedNodePath( _path.begin(), _path.end()-1 );
+        matrix.preMult( osg::computeWorldToLocal(prunedNodePath) );
+
+        osg::Polytope transformedPT;
+        transformedPT.setAndTransformProvidingInverse( winPT, matrix );
         
-        picker = new DPLineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+        picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::MODEL, transformedPT);
     }
 
     else
     {
-        osgUtil::LineSegmentIntersector::CoordinateFrame cf = camera->getViewport() ? osgUtil::Intersector::WINDOW : osgUtil::Intersector::PROJECTION;
-        picker = new osgUtil::LineSegmentIntersector(cf, local_x, local_y);
+        osgUtil::Intersector::CoordinateFrame cf = camera->getViewport() ? osgUtil::Intersector::WINDOW : osgUtil::Intersector::PROJECTION;
+        picker = new osgUtil::PolytopeIntersector(cf, winPT);
     }
 
     osgUtil::IntersectionVisitor iv(picker.get());
+
+    // in MODEL mode, we need to window and proj matrixes in order to support some of the 
+    // features in osgEarth (like Annotation::OrthoNode).
+    if ( _root.valid() )
+    {
+        iv.pushWindowMatrix( new osg::RefMatrix(windowMatrix) );
+        iv.pushProjectionMatrix( new osg::RefMatrix(camera->getProjectionMatrix()) );
+        iv.pushViewMatrix( new osg::RefMatrix(camera->getViewMatrix()) );
+    }
+
     iv.setTraversalMask( _travMask );
 
     if ( _root.valid() )

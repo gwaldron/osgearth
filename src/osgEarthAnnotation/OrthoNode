@@ -28,6 +28,10 @@ namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
 
+    /**
+     * Base class for an annotation node that it drawn in screen-space
+     * (as an orthographic overlay)
+     */
     class OSGEARTHANNO_EXPORT OrthoNode : public AnnotationNode
     {
     public:

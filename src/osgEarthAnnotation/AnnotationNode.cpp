@@ -85,7 +85,7 @@ AnnotationNode::traverse( osg::NodeVisitor& nv )
 {
     if ( _highlight && _altDrawStateTechnique.valid() && nv.getVisitorType() != osg::NodeVisitor::NODE_VISITOR )
     {
-        _altDrawStateTechnique->preTraverse( nv );
+        _altDrawStateTechnique->preTraverse( nv, this );
         _altDrawStateTechnique->traverse( nv, TraverseFunctor<osg::Switch>(this) );
         _altDrawStateTechnique->postTraverse( nv );
     }

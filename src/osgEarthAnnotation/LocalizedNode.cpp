@@ -64,7 +64,18 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
     {
        _xform->setCullingActive( true );
     }
-    AnnotationNode::traverse( nv );
+
+    if ( _highlight && _altDrawStateTechnique.valid() && nv.getVisitorType() != osg::NodeVisitor::NODE_VISITOR )
+    {
+        _altDrawStateTechnique->preTraverse( nv, _xform.get() );
+        // that's right, bypass AnnotationNode::traverse.
+        _altDrawStateTechnique->traverse( nv, TraverseFunctor<osg::Switch>(this) );
+        _altDrawStateTechnique->postTraverse( nv );
+    }
+    else
+    {
+        AnnotationNode::traverse( nv );
+    }
 }
 
 bool

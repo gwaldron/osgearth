@@ -159,9 +159,10 @@ main(int argc, char** argv)
         osg::Vec3d(-74, 40.714, 0), 
         pushpin,
         "New York" );
-    p1->setAltDrawStateTechnique( scaler );
+    p1->setAltDrawStateTechnique( new ScaleDrawStateTechnique() );
     labelGroup->addChild( p1 );
 
+#if 1
     labelGroup->addChild( new PlaceNode(
         mapNode, 
         osg::Vec3d(-77.04, 38.85, 0),
@@ -268,6 +269,7 @@ main(int argc, char** argv)
         osg::Node* editor = new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode );
         root->addChild( editor );
     }
+#endif
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
@@ -277,6 +279,7 @@ main(int argc, char** argv)
     // install an event handler for picking and hovering.
     annoGroup->addEventCallback( new AnnotationEventCallback() );
 
+#if 0
     // make a little UI so the user can toggle annotations on and off.
     VBox* vbox = new VBox();
     vbox->setBackColor( Color(Color::Black, 0.5) );
@@ -302,6 +305,7 @@ main(int argc, char** argv)
     }
 
     ControlCanvas::get(&viewer,true)->addControl(vbox);
+#endif
 
     // add some stock OSG handlers:
     viewer.getDatabasePager()->setDoPreCompile( true );

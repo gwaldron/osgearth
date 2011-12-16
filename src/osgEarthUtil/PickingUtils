@@ -21,7 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgViewer/View>
-#include <osgUtil/LineSegmentIntersector>
+#include <osgUtil/PolytopeIntersector>
 
 namespace osgEarth { namespace Util
 {
@@ -29,25 +29,33 @@ namespace osgEarth { namespace Util
 
     /**
      * Utility for picking objects from the scene.
-     *
-     * This class wraps the osgViewer::View::computeIntersections function, but
-     * addes double-precision support so it can be used in a geocentric scene.
      */
     class OSGEARTHUTIL_EXPORT Picker
     {
     public:
-        typedef osgUtil::LineSegmentIntersector::Intersection  Hit;
-        typedef osgUtil::LineSegmentIntersector::Intersections Hits;
+        typedef osgUtil::PolytopeIntersector::Intersection  Hit;
+        typedef osgUtil::PolytopeIntersector::Intersections Hits;
 
     public:
         /** 
          * Constructs a picker that will pick data from the given view,
          * and restrict its search to the given graph.
+         *
+         * @param view          View under which to pick
+         * @param graph         Subgraph within which to restrict the pick
+         * @param traversalMask Node mask to apply to the pick visitor
+         * @param buffer        Pick buffer around the click (pixels)
          */
-        Picker( osgViewer::View* view, osg::Node* graph =0L, unsigned traversalMask =~0 );
+        Picker( 
+            osgViewer::View* view,
+            osg::Node*       graph         =0L, 
+            unsigned         traversalMask =~0,
+            float            buffer        =5.0f );
 
         /**
-         * Picks geometry under the specified viewport coordinates.
+         * Picks geometry under the specified viewport coordinates. The results
+         * are stores in "results". You can typically get the mouseX and mouseY
+         * from osgGA::GUIEventAdapter getX() and getY().
          */
         bool pick( float mouseX, float mouseY, Hits& results ) const;
 
@@ -70,6 +78,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr<osg::Node>       _root;
         osg::NodePath                 _path;
         unsigned                      _travMask;
+        float                         _buffer;
     };
 
 } } // namespace osgEarth::Util

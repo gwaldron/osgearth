@@ -28,7 +28,7 @@
 using namespace osgEarth::Annotation;
 
 void
-ScaleDrawStateTechnique::preTraverse( osg::NodeVisitor& nv )
+ScaleDrawStateTechnique::preTraverse( osg::NodeVisitor& nv, osg::Group* parent )
 {
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
@@ -89,7 +89,7 @@ EncircleDrawStateTechnique::EncircleDrawStateTechnique()
 }
 
 void
-EncircleDrawStateTechnique::preTraverse(osg::NodeVisitor& nv)
+EncircleDrawStateTechnique::preTraverse(osg::NodeVisitor& nv, osg::Group* parent)
 {
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {

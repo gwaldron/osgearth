@@ -50,7 +50,7 @@ namespace osgEarth { namespace Annotation
 
         virtual bool isShareable() const { return false; }
 
-        virtual void preTraverse( osg::NodeVisitor& nv ) { }
+        virtual void preTraverse( osg::NodeVisitor& nv, osg::Group* parent ) { }
 
         virtual void postTraverse( osg::NodeVisitor& nv ) { }
 
@@ -74,10 +74,10 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT ScaleDrawStateTechnique : public DrawStateTechnique
     {
     public:
-        virtual bool isShareable() const { return true; }
+        virtual bool isShareable() const { return false; }
         virtual DrawStateTechnique* clone() const { return new ScaleDrawStateTechnique(); }
 
-        virtual void preTraverse( osg::NodeVisitor& nv );
+        virtual void preTraverse( osg::NodeVisitor& nv, osg::Group* parent );
         virtual void postTraverse( osg::NodeVisitor& nv );
     };
 
@@ -98,7 +98,7 @@ namespace osgEarth { namespace Annotation
         virtual bool isShareable() const { return false; }
         virtual DrawStateTechnique* clone() const { return new EncircleDrawStateTechnique(); }
 
-        virtual void preTraverse( osg::NodeVisitor& nv );
+        virtual void preTraverse( osg::NodeVisitor& nv, osg::Group* parent );
 
     protected:
         osg::MatrixTransform* _xform;

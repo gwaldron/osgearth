@@ -190,7 +190,7 @@ void LayerControlWidgetBase::initUi(bool hasContent)
   // create the primary vertical layout
   _primaryLayout = new QVBoxLayout;
 	_primaryLayout->setSpacing(0);
-	_primaryLayout->setContentsMargins(0, 4, 0, 0);
+	_primaryLayout->setContentsMargins(0, 0, 0, 0);
   setLayout(_primaryLayout);
 
 
@@ -664,8 +664,8 @@ void LayerManagerWidget::initialize()
   setObjectName("oeFrameContainer");
 
   _stack = new QVBoxLayout;
-	_stack->setSpacing(0);
-	_stack->setContentsMargins(4, 0, 4, 4);
+	_stack->setSpacing(4);
+	_stack->setContentsMargins(4, 4, 4, 4);
   _stack->setSizeConstraint(QLayout::SetMinimumSize);
 
   QWidget* stackWidget = new QWidget();

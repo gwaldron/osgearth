@@ -45,7 +45,7 @@ namespace osgEarth { namespace QtGui
     class LayerManagerWidget;
 
     //---------------------------------------------------------------------------
-    class LayerControlWidgetBase : public QWidget
+    class LayerControlWidgetBase : public QFrame
     {
     Q_OBJECT
 

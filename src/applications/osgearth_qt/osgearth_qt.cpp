@@ -193,6 +193,7 @@ main(int argc, char** argv)
         file.open(QFile::ReadOnly);
         QString qstylesheet = QLatin1String(file.readAll());
         app.setStyleSheet(qstylesheet);
+        layerManager->setStyleSheet(qstylesheet);
       }
     }
 

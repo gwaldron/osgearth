@@ -34,13 +34,13 @@ namespace osgEarth { namespace Annotation
      */
     struct AnnotationUtils
     {
-        static const std::string UNIFORM_HIGHLIGHT;
+        static const std::string& UNIFORM_HIGHLIGHT();
 
-        static const std::string UNIFORM_IS_TEXT;
+        static const std::string& UNIFORM_IS_TEXT();
 
-        static const std::string UNIFORM_FADE;
+        static const std::string& UNIFORM_FADE();
 
-        static const std::string PROGRAM_NAME;
+        static const std::string& PROGRAM_NAME();
 
         /**
          * Creates a drawable representing a symbolized text label in

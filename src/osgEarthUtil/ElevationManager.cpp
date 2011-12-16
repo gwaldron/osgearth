@@ -76,6 +76,18 @@ ElevationManager::getMaxTilesToCache() const
 }
 
 void
+ElevationManager::setMaxLevelOverride(int maxLevelOverride)
+{
+    _maxLevelOverride = maxLevelOverride;
+}
+
+int
+ElevationManager::getMaxLevelOverride() const
+{
+    return _maxLevelOverride;
+}
+
+void
 ElevationManager::setInterpolation( ElevationInterpolation interp)
 {
     _interpolation = interp;

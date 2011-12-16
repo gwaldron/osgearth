@@ -37,7 +37,7 @@ public:
     ClampObjectLocatorCallback(ObjectLocatorNode* locator):
       _locator(locator),
       _maxLevel(-1),
-      _minLevel(6)
+      _minLevel(0)
     {
     }
 
@@ -129,7 +129,7 @@ main(int argc, char** argv)
     
     root->addChild( earthNode );    
 
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+    //viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
 
     
     osg::Node* tree = osgDB::readNodeFile("../data/tree.osg");         

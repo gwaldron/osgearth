@@ -16,15 +16,15 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include "WFSFeatureOptions"
+#include "TFSFeatureOptions"
 
 #include <osgEarth/Registry>
+#include <osgEarth/XmlUtils>
 #include <osgEarth/FileUtils>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
-#include <osgEarthUtil/WFS>
 #include <osgEarthFeatures/OgrUtils>
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -35,38 +35,101 @@
 
 #include <ogr_api.h>
 
-
+#ifdef WIN32
+#include <windows.h>
+#endif
 
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
 
-#define LC "[WFS FeatureSource] "
+#define LC "[TFS FeatureSource] "
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
 
 #define OGR_SCOPED_LOCK GDAL_SCOPED_LOCK
 
-/**
- * A FeatureSource that reads features from a WFS layer
- *
- * This FeatureSource does NOT support styling.
- */
-class WFSFeatureSource : public FeatureSource
+
+struct TFSLayer
+{
+    std::string _title;
+    std::string _abstract;
+    osgEarth::GeoExtent _extent;
+    unsigned int _maxLevel;
+    unsigned int _firstLevel;
+};
+
+class TFSReader
 {
 public:
-    WFSFeatureSource(const WFSFeatureOptions& options ) :
+    static bool read(const URI& uri, const osgDB::ReaderWriter::Options* options, TFSLayer &layer);
+    static bool read( std::istream &in, TFSLayer &layer);
+};
+
+bool
+TFSReader::read(const URI& uri, const osgDB::ReaderWriter::Options *options, TFSLayer &layer)
+{
+    osgEarth::ReadResult result = uri.readString();
+    if (result.succeeded())
+    {
+        std::string str = result.getString();
+        std::stringstream in( str.c_str()  );
+        return read( in, layer);
+    }    
+    return false;
+}
+
+bool
+TFSReader::read( std::istream &in, TFSLayer &layer)
+{
+    osg::ref_ptr< XmlDocument > doc = XmlDocument::load( in );
+    if (!doc.valid()) return false;
+
+    osg::ref_ptr<XmlElement> e_layer = doc->getSubElement( "layer" );
+    if (!e_layer.valid()) return false;
+
+    layer._title      = e_layer->getSubElementText("title");
+    layer._abstract   = e_layer->getSubElementText("abstract");    
+    layer._firstLevel   = as<unsigned int>(e_layer->getSubElementText("firstlevel"), 0);
+    layer._maxLevel = as<unsigned int>(e_layer->getSubElementText("maxlevel"), 0);
+
+
+     //Read the bounding box
+    osg::ref_ptr<XmlElement> e_bounding_box = e_layer->getSubElement("boundingbox");
+    if (e_bounding_box.valid())
+    {
+        double minX = as<double>(e_bounding_box->getAttr( "minx" ), 0.0);
+        double minY = as<double>(e_bounding_box->getAttr( "miny" ), 0.0);
+        double maxX = as<double>(e_bounding_box->getAttr( "maxx" ), 0.0);
+        double maxY = as<double>(e_bounding_box->getAttr( "maxy" ), 0.0);
+        layer._extent = GeoExtent(SpatialReference::create( "epsg:4326" ), minX, minY, maxX, maxY);
+    }
+
+
+    return true;
+}
+
+
+
+/**
+ * A FeatureSource that reads features from a TFS layer
+ * 
+ */
+class TFSFeatureSource : public FeatureSource
+{
+public:
+    TFSFeatureSource(const TFSFeatureOptions& options ) :
       FeatureSource( options ),
-      _options     ( options )
+      _options     ( options ),
+      _layerValid(false)
     {        
         _geojsonDriver = OGRGetDriverByName( "GeoJSON" );
         _gmlDriver     = OGRGetDriverByName( "GML" );
     }
 
     /** Destruct the object, cleaning up and OGR handles. */
-    virtual ~WFSFeatureSource()
+    virtual ~TFSFeatureSource()
     {               
         //nop
     }
@@ -83,7 +146,7 @@ public:
             {
                 Config optionsConf = _options.getConfig();
 
-                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON()) << "_wfs";
+                std::string binId = Stringify() << std::hex << hashString(optionsConf.toJSON()) << "_tfs";
                 _cacheBin = cache->addBin( binId );
                 
                 // write a metadata record just for reference purposes.. we don't actually use it
@@ -98,29 +161,11 @@ public:
                     _cacheBin->store( _dbOptions.get() );
                 }
             }
-        }
-
-        std::string capUrl;
-
-        if ( _options.url().isSet() )
+        }     
+        _layerValid = TFSReader::read(_options.url().get(), _dbOptions.get(), _layer);
+        if (_layerValid)
         {
-            char sep = _options.url()->full().find_first_of('?') == std::string::npos? '?' : '&';
-
-            capUrl = 
-                _options.url()->full() +
-                sep + 
-                "SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities";
-        }
-
-        _capabilities = WFSCapabilitiesReader::read( capUrl, _dbOptions.get() );
-        if ( !_capabilities.valid() )
-        {
-            OE_WARN << "[osgEarth::WFS] Unable to read WFS GetCapabilities." << std::endl;
-            //return;
-        }
-        else
-        {
-            OE_INFO << "[osgEarth::WFS] Got capabilities from " << capUrl << std::endl;
+            OE_INFO << LC <<  "Read layer TFS " << _layer._title << " " << _layer._abstract << " " << _layer._firstLevel << " " << _layer._maxLevel << " " << _layer._extent.toString() << std::endl;
         }
     }
 
@@ -130,37 +175,20 @@ public:
     const FeatureProfile* createFeatureProfile()
     {
         FeatureProfile* result = NULL;
-        if (_capabilities.valid())
+        if (_layerValid)
         {
-            //Find the feature type by name
-            osg::ref_ptr< WFSFeatureType > featureType = _capabilities->getFeatureTypeByName( _options.typeName().get() );
-            if (featureType.valid())
-            {
-                if (featureType->getExtent().isValid())
-                {
-                    result = new FeatureProfile(featureType->getExtent());
-
-                    if (featureType->getTiled())
-                    {                        
-                        result->setTiled( true );
-                        result->setFirstLevel( featureType->getFirstLevel() );
-                        result->setMaxLevel( featureType->getMaxLevel() );
-                        result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), featureType->getExtent().xMin(), featureType->getExtent().yMin(), featureType->getExtent().xMax(), featureType->getExtent().yMax(), 0, 1, 1) );
-                    }
-                }
-            }
-        }
-
-        if (!result)
-        {
-            result = new FeatureProfile(GeoExtent(SpatialReference::create( "epsg:4326" ), -180, -90, 180, 90));
+            result = new FeatureProfile(_layer._extent);
+            result->setTiled( true );
+            result->setFirstLevel( _layer._firstLevel);
+            result->setMaxLevel( _layer._maxLevel);
+            result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), _layer._extent.xMin(), _layer._extent.yMin(), _layer._extent.xMax(), _layer._extent.yMax(), 0, 1, 1) );
         }
         return result;        
     }
 
 
     bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
-    {
+    {        
         // find the right driver for the given mime type
         OGRSFDriverH ogrDriver =
             isJSON(mimeType) ? _geojsonDriver :
@@ -255,34 +283,19 @@ public:
     }
 
     std::string createURL(const Symbology::Query& query)
-    {
-        std::stringstream buf;
-        buf << _options.url()->full() << "?SERVICE=WFS&VERSION=1.0.0&REQUEST=getfeature";
-        buf << "&TYPENAME=" << _options.typeName().get();
-        
-        std::string outputFormat = "geojson";
-        if (_options.outputFormat().isSet()) outputFormat = _options.outputFormat().get();
-        buf << "&OUTPUTFORMAT=" << outputFormat;
-
-        if (_options.maxFeatures().isSet())
-        {
-            buf << "&MAXFEATURES=" << _options.maxFeatures().get();
-        }
-
+    {     
         if (query.tileKey().isSet())
         {
-            buf << "&Z=" << query.tileKey().get().getLevelOfDetail() << 
-                   "&X=" << query.tileKey().get().getTileX() <<
-                   "&Y=" << query.tileKey().get().getTileY();
+            std::stringstream buf;
+            std::string path = osgDB::getFilePath(_options.url()->full());
+            buf << path << "/" << query.tileKey().get().getLevelOfDetail() << "/"
+                               << query.tileKey().get().getTileX() << "/"
+                               << query.tileKey().get().getTileY()
+                               << "." << _options.format().get();            
+            OE_DEBUG << "TFS url " << buf.str() << std::endl;
+            return buf.str();
         }
-        else if (query.bounds().isSet())
-        {
-            buf << "&BBOX=" << query.bounds().get().xMin() << "," << query.bounds().get().yMin() << ","
-                            << query.bounds().get().xMax() << "," << query.bounds().get().yMax();
-        }
-        std::string str;
-        str = buf.str();
-        return str;
+        return "";                       
     }
 
     FeatureCursor* createFeatureCursor( const Symbology::Query& query )
@@ -290,6 +303,7 @@ public:
         FeatureCursor* result = 0L;
 
         std::string url = createURL( query );
+        if (url.empty()) return 0;
 
         // check the blacklist:
         if ( Registry::instance()->isBlacklisted(url) )
@@ -310,7 +324,13 @@ public:
         if ( !buffer.empty() )
         {
             // Get the mime-type from the metadata record if possible
-            const std::string& mimeType = r.metadata().value( IOMetadata::CONTENT_TYPE );
+            std::string mimeType = r.metadata().value( IOMetadata::CONTENT_TYPE );
+            //If the mimetype is empty then try to set it from the format specification
+            if (mimeType.empty())
+            {
+                if (_options.format().value() == "json") mimeType = "json";
+                else if (_options.format().value().compare("gml") == 0) mimeType = "text/xml";
+            }
             dataOK = getFeatures( buffer, mimeType, features );
         }
 
@@ -357,26 +377,27 @@ public:
 
 
 private:
-    const WFSFeatureOptions         _options;  
-    osg::ref_ptr< WFSCapabilities > _capabilities;
+    const TFSFeatureOptions         _options;    
     FeatureSchema                   _schema;
     osg::ref_ptr<CacheBin>          _cacheBin;
     osg::ref_ptr<osgDB::Options>    _dbOptions;
     OGRSFDriverH                    _geojsonDriver, _gmlDriver;
+    TFSLayer                        _layer;
+    bool                            _layerValid;
 };
 
 
-class WFSFeatureSourceFactory : public FeatureSourceDriver
+class TFSFeatureSourceFactory : public FeatureSourceDriver
 {
 public:
-    WFSFeatureSourceFactory()
+    TFSFeatureSourceFactory()
     {
-        supportsExtension( "osgearth_feature_wfs", "WFS feature driver for osgEarth" );
+        supportsExtension( "osgearth_feature_tfs", "TFS feature driver for osgEarth" );
     }
 
     virtual const char* className()
     {
-        return "WFS Feature Reader";
+        return "TFS Feature Reader";
     }
 
     virtual ReadResult readObject(const std::string& file_name, const Options* options) const
@@ -384,9 +405,9 @@ public:
         if ( !acceptsExtension(osgDB::getLowerCaseFileExtension( file_name )))
             return ReadResult::FILE_NOT_HANDLED;
 
-        return ReadResult( new WFSFeatureSource( getFeatureSourceOptions(options) ) );
+        return ReadResult( new TFSFeatureSource( getFeatureSourceOptions(options) ) );
     }
 };
 
-REGISTER_OSGPLUGIN(osgearth_feature_wfs, WFSFeatureSourceFactory)
+REGISTER_OSGPLUGIN(osgearth_feature_tfs, TFSFeatureSourceFactory)
 

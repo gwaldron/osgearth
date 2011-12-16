@@ -79,21 +79,7 @@ ImageLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "lod_blending", _lodBlending );
 
     if ( conf.hasValue( "transparent_color" ) )
-        _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
-
-	//Load the filter settings
-	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);   
+        _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));	
 }
 
 Config
@@ -109,20 +95,6 @@ ImageLayerOptions::getConfig( bool isolate ) const
 
 	if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
-
-    //Save the filter settings
-	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
     
     return conf;
 }
@@ -342,7 +314,7 @@ ImageLayer::initPreCacheOp()
 }
 
 GeoImage
-ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
+ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback )
 {
     OE_DEBUG << LC << "Layer \"" << getName() << "\" create image for \"" << key.str() << "\"" << std::endl;
 
@@ -392,7 +364,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
     }
 
     // Get an image from the underlying TileSource.
-    osg::Image* image = createImageFromTileSource( key, progress );
+    osg::Image* image = createImageFromTileSource( key, progress, forceFallback );
     result = GeoImage( image, key.getExtent() );
 
     // Normalize the image if necessary
@@ -415,7 +387,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress )
 
 osg::Image*
 ImageLayer::createImageFromTileSource(const TileKey&    key,
-                                      ProgressCallback* progress)
+                                      ProgressCallback* progress,
+                                      bool              forceFallback)
 {
     // Results:
     // 
@@ -424,6 +397,7 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // * return NULL to indicate that the key exceeds the maximum LOD of the source data,
     //   and that the engine may need to generate a "fallback" tile if necessary;
     //
+    // deprecated:
     // * return an "empty image" if the LOD is valid BUT the key does not intersect the
     //   source's data extents.
 
@@ -433,26 +407,68 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
     // If the profiles are different, use a compositing method to assemble the tile.
     if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
-        return assembleImageFromTileSource( key, progress );
+        return assembleImageFromTileSource( key, progress, forceFallback );
 
     // Fail is the image is blacklisted.
-    if ( source->getBlacklist()->contains( key.getTileId() ) )
+    // ..unless there will be a fallback attempt.
+    if ( source->getBlacklist()->contains( key.getTileId() ) && !forceFallback )
         return 0L;
 
     // Fail if no data is available for this key.
-    if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) )
+    if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) && !forceFallback )
         return 0L;
 
+#if 0
     // Return an empty image if there's no data in the requested extent
     // (even though the LOD is valid)
     if ( !source->hasDataInExtent( key.getExtent() ) )
     {
         return ImageUtils::createEmptyImage();
     }
+#endif
+
+    if ( !source->hasDataInExtent( key.getExtent() ) )
+        return 0L;
 
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
-    osg::Image* result = source->createImage( key, op.get(), progress );
+
+    osg::ref_ptr<osg::Image> result;
+    bool fellBack = false;
+
+    if ( forceFallback )
+    {
+        TileKey finalKey = key;
+        while( !result.valid() && finalKey.valid() )
+        {
+            if ( !source->getBlacklist()->contains( finalKey.getTileId() ) )
+            {
+                result = source->createImage( finalKey, op.get(), progress );
+                if ( result.valid() )
+                {
+                    if ( finalKey.getLevelOfDetail() != key.getLevelOfDetail() )
+                    {
+                        GeoImage raw( result.get(), finalKey.getExtent() );
+                        GeoImage cropped = raw.crop( key.getExtent(), true );
+                        result = cropped.takeImage();
+                        fellBack = true;
+                    }
+                }
+            }
+            if ( !result.valid() )
+                finalKey = finalKey.createParentKey();
+        }
+
+        if ( !result.valid() )
+        {
+            result = ImageUtils::createEmptyImage();
+        }
+    }
+
+    else
+    {
+        result = source->createImage( key, op.get(), progress );
+    }
     
     // If image creation failed (but was not intentionally canceled),
     // blacklist this tile for future requests.
@@ -461,12 +477,13 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
         source->getBlacklist()->add( key.getTileId() );
     }
 
-    return result;
+    return result.release();
 }
 
 osg::Image*
 ImageLayer::assembleImageFromTileSource(const TileKey&    key, 
-                                        ProgressCallback* progress )
+                                        ProgressCallback* progress,
+                                        bool              forceFallback )
 {
     GeoImage mosaic, result;
 
@@ -498,7 +515,30 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
 
             OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
 
-            osg::ref_ptr<osg::Image> img = createImageFromTileSource( intersectingTiles[j], progress );
+            osg::ref_ptr<osg::Image> img;
+            if ( forceFallback )
+            {
+                TileKey finalKey = intersectingTiles[j];
+                while( !img.valid() && finalKey.valid() )
+                {
+                    img = createImageFromTileSource( finalKey, progress, false );
+                    if ( img.valid() && finalKey.getLevelOfDetail() < intersectingTiles[j].getLevelOfDetail() )
+                    {
+                        GeoImage raw( img.get(), finalKey.getExtent() );
+                        GeoImage cropped = raw.crop( intersectingTiles[j].getExtent() );
+                        img = cropped.takeImage();
+                    }
+                    else
+                    {
+                        finalKey = finalKey.createParentKey();
+                    }
+                }
+            }
+            else
+            {
+                img = createImageFromTileSource( intersectingTiles[j], progress, false );
+            }
+
             if ( img.valid() )
             {
                 // make sure the image is RGBA:

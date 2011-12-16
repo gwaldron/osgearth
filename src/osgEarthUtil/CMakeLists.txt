@@ -19,6 +19,7 @@ SET(LIB_PUBLIC_HEADERS
     Formatters
     Graticule
 	MeasureTool
+	NearFarGroup
     ObjectPlacer
     ObjectLocator
     #OceanSurfaceNode
@@ -38,6 +39,7 @@ SET(LIB_COMMON_FILES
     Formatters.cpp
     Graticule.cpp
 	MeasureTool.cpp
+	NearFarGroup.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
     #OceanSurfaceNode.cpp

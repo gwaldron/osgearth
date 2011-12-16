@@ -46,7 +46,8 @@ osg::Referenced  ( true ),
 _gdal_registered ( false ),
 _numGdalMutexGets( 0 ),
 _uidGen          ( 0 ),
-_caps            ( 0L )
+_caps            ( 0L ),
+_defaultFont     ( 0L )
 {
     // set up GDAL and OGR.
     OGRRegisterAll();
@@ -115,6 +116,20 @@ _caps            ( 0L )
     {
         _defaultCachePolicy = CachePolicy::NO_CACHE;
         OE_INFO << LC << "NO-CACHE MODE set from environment variable" << std::endl;
+    }
+
+    // load a default font
+
+    const char* envFont = ::getenv("OSGEARTH_DEFAULT_FONT");
+    if ( envFont )
+    {
+        _defaultFont = osgText::readFontFile( std::string(envFont) );
+    }
+    if ( !_defaultFont.valid() )
+    {
+#ifdef WIN32
+        _defaultFont = osgText::readFontFile("arial.ttf");
+#endif
     }
 }
 
@@ -319,6 +334,20 @@ Registry::setShaderFactory( ShaderFactory* lib )
 {
     if ( lib != 0L && lib != _shaderLib.get() )
         _shaderLib = lib;
+}
+
+void
+Registry::setDefaultFont( osgText::Font* font )
+{
+    Threading::ScopedWriteLock exclusive(_regMutex);
+    _defaultFont = font;
+}
+
+osgText::Font*
+Registry::getDefaultFont()
+{
+    Threading::ScopedReadLock shared(_regMutex);
+    return _defaultFont.get();
 }
 
 UID

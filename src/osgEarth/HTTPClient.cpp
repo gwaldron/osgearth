@@ -681,6 +681,9 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, Pr
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
 
+    //Disable peer certificate verification to allow us to access in https servers where the peer certificate cannot be verified.
+    curl_easy_setopt( _curl_handle, CURLOPT_SSL_VERIFYPEER, (void*)0 );
+
     long response_code = 0L;
 	if (!proxy_addr.empty())
 	{

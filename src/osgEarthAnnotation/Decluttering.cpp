@@ -520,11 +520,9 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
 class osgEarthAnnotationDeclutterRenderBin : public osgUtil::RenderBin
 {
 public:
-    static const std::string BIN_NAME;
-
     osgEarthAnnotationDeclutterRenderBin()
     {
-        this->setName( BIN_NAME );
+        this->setName( OSGEARTH_DECLUTTER_BIN );
         _context = new DeclutterContext();
         clearSortingFunctor();
         setDrawCallback( new DeclutterDraw(_context.get()) );
@@ -544,7 +542,7 @@ public:
     osg::ref_ptr<DeclutterSortFunctor> _f;
     osg::ref_ptr<DeclutterContext>     _context;
 };
-const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECLUTTER_BIN;
+//const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECLUTTER_BIN;
 
 //----------------------------------------------------------------------------
 
@@ -558,13 +556,13 @@ Decluttering::setEnabled( osg::StateSet* stateSet, bool enabled, int binNum )
         if ( enabled )
         {
             osg::Program* p = dynamic_cast<osg::Program*>(stateSet->getAttribute(osg::StateAttribute::PROGRAM));
-            if ( p == 0L || p->getName() != AnnotationUtils::PROGRAM_NAME )
+            if ( p == 0L || p->getName() != AnnotationUtils::PROGRAM_NAME() )
             {
                 stateSet->setAttributeAndModes( AnnotationUtils::getAnnotationProgram(), 1 );
             }
 
             // just installs a default highlight uniform so the shader has default value.
-            if ( !stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT ) )
+            if ( !stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT() ) )
             {
                 stateSet->addUniform( AnnotationUtils::createHighlightUniform() );
             }
@@ -678,5 +676,4 @@ DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::R
 
 /** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}
-static osgEarthRegisterRenderBinProxy<osgEarthAnnotationDeclutterRenderBin> s_regbin(
-    osgEarthAnnotationDeclutterRenderBin::BIN_NAME);
+static osgEarthRegisterRenderBinProxy<osgEarthAnnotationDeclutterRenderBin> s_regbin(OSGEARTH_DECLUTTER_BIN);

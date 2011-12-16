@@ -90,11 +90,25 @@ namespace
 
                 // near plane clamping.
                 double min_near_plane = zfar*nearFarRatio;
+
+                //// GW: changed this to enforce the NF ratio.
                 if (desired_znear<min_near_plane) desired_znear=min_near_plane;
+                //if (desired_znear > min_near_plane) desired_znear=min_near_plane;
+
+                if ( desired_znear < 1.0 )
+                    desired_znear = 1.0;
+
+#if 0
+                OE_INFO << std::fixed
+                    << "nfr=" << nearFarRatio << ", znear=" << znear << ", zfar=" << zfar
+                    << ", dznear=" << desired_znear << ", dzfar=" << desired_zfar
+                    << std::endl;
+#endif
 
                 // assign the clamped values back to the computed values.
                 znear = desired_znear;
                 zfar = desired_zfar;
+
 
                 value_type trans_near_plane = (-desired_znear*projection(2,2)+projection(3,2))/(-desired_znear*projection(2,3)+projection(3,3));
                 value_type trans_far_plane = (-desired_zfar*projection(2,2)+projection(3,2))/(-desired_zfar*projection(2,3)+projection(3,3));
@@ -155,7 +169,9 @@ _autoFarPlaneClamping( true )
     {
         if ( map->isGeocentric() )
         {
-            _rp = map->getProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+            // Select the minimal radius..
+            const osg::EllipsoidModel* em = map->getProfile()->getSRS()->getEllipsoid();
+            _rp = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
             _rp2 = _rp*_rp;
             _active = true;
         }
@@ -167,13 +183,14 @@ _autoFarPlaneClamping( true )
     }
     else
     {
-        _rp = Registry::instance()->getGlobalGeodeticProfile()->getSRS()->getEllipsoid()->getRadiusEquator();
+        const osg::EllipsoidModel* em = Registry::instance()->getGlobalGeodeticProfile()->getSRS()->getEllipsoid();
+        _rp = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
         _rp2 = _rp*_rp;
         _active = true;
     }
 }
 
-#if 1
+#if 0
 
 void
 AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )

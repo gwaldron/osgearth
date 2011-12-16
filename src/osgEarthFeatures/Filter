@@ -72,6 +72,21 @@ namespace osgEarth { namespace Features
         osg::Group* delocalizeAsGroup( osg::Node* node ) const;
         osg::Group* createDelocalizeGroup() const;
 
+        void transformAndLocalize(
+            const std::vector<osg::Vec3d>& input,
+            const SpatialReference*        inputSRS,
+            osg::Vec3Array*                output,
+            const SpatialReference*        outputSRS,
+            const osg::Matrixd&            world2local,
+            bool                           toECEF );
+
+        void transformAndLocalize(
+            const osg::Vec3d&              input,
+            const SpatialReference*        inputSRS,
+            osg::Vec3d&                    output,
+            const SpatialReference*        outputSRS,
+            const osg::Matrixd&            world2local,
+            bool                           toECEF );
 
         osg::Matrixd _world2local, _local2world;   // for coordinate localization
     };

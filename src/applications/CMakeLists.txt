@@ -48,16 +48,9 @@ ADD_SUBDIRECTORY(osgearth_version)
 ADD_SUBDIRECTORY(osgearth_controls)
 ADD_SUBDIRECTORY(osgearth_shadercomp)
 ADD_SUBDIRECTORY(osgearth_tilesource)
-ADD_SUBDIRECTORY(osgearth_labels)
 ADD_SUBDIRECTORY(osgearth_imageoverlay)
 ADD_SUBDIRECTORY(osgearth_city)
 
 IF (QT4_FOUND AND NOT ANDROID)
     ADD_SUBDIRECTORY(osgearth_qt)
 ENDIF()
-
-
-#ADD_SUBDIRECTORY(osgearth_symbology)
-
-#testing
-#add_subdirectory(osgearth_resources)

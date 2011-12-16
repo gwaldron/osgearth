@@ -84,18 +84,6 @@ namespace osgEarth
             const osg::Object* object,
             const Config&      metadata =Config() ) =0;
 
-#if 0
-        /**
-         * Writes a string or buffer to the cache bin.
-         * @param key    Lookup key to write to
-         * @param object Buffer to serialize to the cache
-         */
-        virtual bool writeString(
-            const std::string& key,
-            const std::string& buffer,
-            const Config&      metadata =Config() ) =0;
-#endif
-
         /**
          * Checks whether a key exists in the cache.
          * (Default implementation just tries to read the object)
@@ -115,6 +103,11 @@ namespace osgEarth
         virtual bool writeMetadata( const Config& meta ) { return false; }
 
         /**
+         * Purges all entries in the cache bin.
+         */
+        virtual bool purge() = 0;
+
+        /**
          * Store this pointer in an options structure
          */
         void store( osgDB::Options* options ) const {
@@ -127,20 +120,6 @@ namespace osgEarth
         static CacheBin* get( const osgDB::Options* options ) {
             return options ? const_cast<CacheBin*>(static_cast<const CacheBin*>(options->getPluginData("osgEarth::CacheBin"))) : 0L;
         }
-        
-#if 0
-    public:
-
-        /** Convenience template for calling readObject with a specific type */
-        template<typename T>
-        ReadResult readObject( osg::ref_ptr<T>& output, const std::string& key, double maxAge =DBL_MAX )
-        {
-            osg::ref_ptr<osg::Object> r;
-            bool ok = readObject( r, key, maxAge );
-            output = dynamic_cast<T*>( r.get() );
-            return output.valid();
-        }
-#endif
 
     protected:
         std::string _binID;

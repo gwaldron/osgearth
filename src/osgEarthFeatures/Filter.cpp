@@ -28,18 +28,84 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
 {
     if ( context.isGeoreferenced() )
     {
-        const SpatialReference* geogSRS = context.profile()->getSRS()->getGeographicSRS();
-        GeoExtent geodExtent = context.extent()->transform( geogSRS );
-        if ( geodExtent.width() < 180.0 )
+        if ( context.getSession()->getMapInfo().isGeocentric() )
         {
-            osg::Vec3d centroid, centroidECEF;
-            geodExtent.getCentroid( centroid.x(), centroid.y() );
-            geogSRS->transformToECEF( centroid, centroidECEF );
-            _local2world = ECEF::createInverseRefFrame( centroidECEF );
-            _world2local.invert( _local2world );
+            const SpatialReference* geogSRS = context.profile()->getSRS()->getGeographicSRS();
+            GeoExtent geodExtent = context.extent()->transform( geogSRS );
+            if ( geodExtent.width() < 180.0 )
+            {
+                osg::Vec3d centroid, centroidECEF;
+                geodExtent.getCentroid( centroid.x(), centroid.y() );
+                geogSRS->transformToECEF( centroid, centroidECEF );
+                _local2world = ECEF::createInverseRefFrame( centroidECEF );
+                _world2local.invert( _local2world );
+            }
+        }
+
+        else // projected
+        {
+            if ( context.extent().isSet() )
+            {
+                osg::Vec3d centroid;
+                context.extent()->getCentroid(centroid.x(), centroid.y());
+
+                context.extent()->getSRS()->transform(
+                    centroid,
+                    context.getSession()->getMapInfo().getProfile()->getSRS(),
+                    centroid );
+
+                _world2local.makeTranslate( -centroid );
+                _local2world.invert( _world2local );
+            }
         }
     }
 }
+
+void
+FeaturesToNodeFilter::transformAndLocalize(const std::vector<osg::Vec3d>& input,
+                                           const SpatialReference*        inputSRS,
+                                           osg::Vec3Array*                output,
+                                           const SpatialReference*        outputSRS,
+                                           const osg::Matrixd&            world2local,
+                                           bool                           toECEF )
+{
+    output->reserve( output->size() + input.size() );
+
+    if ( toECEF )
+    {
+        ECEF::transformAndLocalize( input, inputSRS, output, world2local );
+    }
+    else
+    {
+        std::vector<osg::Vec3d> temp( input );
+        inputSRS->transformPoints( outputSRS, temp );
+        
+        for( std::vector<osg::Vec3d>::const_iterator i = temp.begin(); i != temp.end(); ++i )
+        {
+            output->push_back( (*i) * world2local );
+        }
+    }
+}
+
+void
+FeaturesToNodeFilter::transformAndLocalize(const osg::Vec3d&              input,
+                                           const SpatialReference*        inputSRS,
+                                           osg::Vec3d&                    output,
+                                           const SpatialReference*        outputSRS,
+                                           const osg::Matrixd&            world2local,
+                                           bool                           toECEF )
+{
+    if ( toECEF )
+    {
+        ECEF::transformAndLocalize( input, inputSRS, output, world2local );
+    }
+    else
+    {
+        inputSRS->transform( input, outputSRS, output );
+        output = output * world2local;
+    }
+}
+
 
 osg::Node*
 FeaturesToNodeFilter::delocalize( osg::Node* node ) const

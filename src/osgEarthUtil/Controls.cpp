@@ -29,6 +29,7 @@
 #include <osgEarthSymbology/GeometryRasterizer>
 #include <osg/Version>
 #include <osgEarth/Common>
+#include <osgEarth/Registry>
 #include <osgEarth/Utils>
 
 using namespace osgEarth;
@@ -489,7 +490,7 @@ LabelControl::LabelControl(const std::string& text,
 {
     setText( text );
 	setEncoding( osgText::String::ENCODING_UNDEFINED );
-    setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
+    setFont( Registry::instance()->getDefaultFont() );
     setFontSize( fontSize );
     setBackColor( osg::Vec4f(0,0,0,0) );
     setForeColor( foreColor );
@@ -500,7 +501,7 @@ LabelControl::LabelControl(const std::string& text,
 {
     setText( text );
 	setEncoding( osgText::String::ENCODING_UNDEFINED );
-    setFont( osgText::readFontFile( "arial.ttf" ) ); // TODO: cache this?
+    setFont( Registry::instance()->getDefaultFont() );
     setFontSize( 18.0f );
     setBackColor( osg::Vec4f(0,0,0,0) );
     setForeColor( foreColor );
@@ -2255,7 +2256,7 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     setReferenceFrame(osg::Transform::ABSOLUTE_RF);
     setViewMatrix(osg::Matrix::identity());
     setClearMask(GL_DEPTH_BUFFER_BIT);
-    setRenderOrder(osg::Camera::POST_RENDER); 
+    setRenderOrder(osg::Camera::POST_RENDER, 25000);
     setAllowEventFocus( true );
     
     // activate the update traversal

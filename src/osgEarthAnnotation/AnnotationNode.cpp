@@ -24,7 +24,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
-AnnotationNode::AnnotationNode()
+AnnotationNode::AnnotationNode() :
+_dynamic( false )
 {
     //nop
 }
@@ -36,6 +37,12 @@ AnnotationNode::setAnnotationData( AnnotationData* data )
 }
 
 void
+AnnotationNode::setDynamic( bool value )
+{
+    _dynamic = value;
+}
+
+void
 AnnotationNode::setHighlight( bool value )
 {
     _highlight = value;
@@ -44,10 +51,10 @@ AnnotationNode::setHighlight( bool value )
     if ( Registry::instance()->getCapabilities().supportsGLSL() )
     {
         osg::StateSet* stateSet = getOrCreateStateSet();
-        osg::Uniform* u = stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT );
+        osg::Uniform* u = stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT() );
         if ( !u )
         {
-            u = new osg::Uniform( osg::Uniform::BOOL, AnnotationUtils::UNIFORM_HIGHLIGHT );
+            u = new osg::Uniform( osg::Uniform::BOOL, AnnotationUtils::UNIFORM_HIGHLIGHT() );
             stateSet->addUniform( u );
         }
         u->set( value );

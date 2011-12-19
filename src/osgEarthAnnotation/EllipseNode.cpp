@@ -19,6 +19,7 @@
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
+#include <osgEarth/DrapeableNode>
 #include <osgEarth/MapNode>
 
 using namespace osgEarth;

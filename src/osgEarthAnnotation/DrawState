@@ -66,9 +66,9 @@ namespace osgEarth { namespace Annotation
         DrawStateTechnique* copyOrClone() { return isShareable() ? this : clone(); }
 
     public:
-        virtual bool apply(class AnnotationNode& node, bool enable) { return false; }
-        virtual bool apply(class LocalizedNode&  node, bool enable) { return false; }
-        virtual bool apply(class OrthoNode&      node, bool enable) { return false; }
+        virtual bool apply(class AnnotationNode& node, bool enable);
+        virtual bool apply(class LocalizedNode&  node, bool enable);
+        virtual bool apply(class OrthoNode&      node, bool enable);
     };
 
     //-----------------------------------------------------------------------
@@ -80,15 +80,34 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT DrawStateInstaller : public osg::NodeVisitor
     {
     public:
+        struct Callback : public osg::Referenced
+        {
+            virtual void operator()( AnnotationNode* node ) =0;
+        };
+
+    public:
+        /**
+         * Constructor - for applying a single technique to all the Annotations
+         * found in the visited graph.
+         */
         DrawStateInstaller( const std::string& name, DrawStateTechnique* tech )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
               _name(name), _tech(tech) { }
+
+        /**
+         * Constructor - for using a callback to assign a draw state to each
+         * individual Annotation.
+         */
+        DrawStateInstaller( const std::string& name, Callback* callback )
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _name(name), _callback(callback) { }
 
     public:
         virtual void apply(osg::Node& node);
 
     public:
         osg::ref_ptr<DrawStateTechnique> _tech;
+        osg::ref_ptr<Callback>           _callback;
         std::string                      _name;
     };
 
@@ -105,8 +124,7 @@ namespace osgEarth { namespace Annotation
         InjectionDrawStateTechnique( osg::Group* group );
         virtual DrawStateTechnique* clone() const { return new InjectionDrawStateTechnique(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
 
-        virtual bool apply(class LocalizedNode& node, bool enable);
-        virtual bool apply(class OrthoNode&     node, bool enable);
+        virtual bool apply(class AnnotationNode& node, bool enable);
 
     protected:
         osg::ref_ptr<osg::Group> _injectionGroup;

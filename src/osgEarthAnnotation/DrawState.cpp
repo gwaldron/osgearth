@@ -42,9 +42,32 @@ DrawStateInstaller::apply(osg::Node& node)
 {
     if ( dynamic_cast<AnnotationNode*>(&node) )
     {
-        static_cast<AnnotationNode*>(&node)->installAltDrawState( _name, _tech );
+        if ( _tech.valid() )
+            static_cast<AnnotationNode*>(&node)->installAltDrawState( _name, _tech );
+        else if ( _callback.valid() )
+            _callback->operator()( static_cast<AnnotationNode*>(&node) );
     }
     traverse(node);
+}
+
+//---------------------------------------------------------------------------
+
+bool
+DrawStateTechnique::apply(class AnnotationNode& node, bool enable)
+{
+    return false;
+}
+
+bool
+DrawStateTechnique::apply(class LocalizedNode& node, bool enable)
+{ 
+    return apply(static_cast<AnnotationNode&>(node), enable);
+}
+
+bool
+DrawStateTechnique::apply(class OrthoNode& node, bool enable)
+{
+    return apply(static_cast<AnnotationNode&>(node), enable);
 }
 
 //---------------------------------------------------------------------------
@@ -57,14 +80,7 @@ _injectionGroup( group )
 }
 
 bool
-InjectionDrawStateTechnique::apply(LocalizedNode& node, bool enable)
-{
-    bool success = apply( node.getTransform(), enable );
-    return success ? true : DrawStateTechnique::apply(node, enable);
-}
-
-bool
-InjectionDrawStateTechnique::apply(OrthoNode& node, bool enable)
+InjectionDrawStateTechnique::apply(AnnotationNode& node, bool enable)
 {
     bool success = apply( node.getAttachPoint(), enable );
     return success ? true : DrawStateTechnique::apply(node, enable);
@@ -227,7 +243,7 @@ HighlightDrawStateTechnique::apply(osg::Group* ap, bool enable)
         const osg::BoundingSphere& bs = ap->getBound();
 
         osg::Geode* geode = new osg::Geode();
-        osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), bs.radius()) );
+        osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), 2.0*bs.radius()) );
         sd->setColor( _color );
 
         osg::StateSet* s = sd->getOrCreateStateSet();

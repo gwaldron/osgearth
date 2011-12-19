@@ -18,6 +18,7 @@ set(LIB_PUBLIC_HEADERS
     DrawState
     EllipseNode
     Export
+    FeatureNode
     GeometryNode
     ImageOverlay
     LabelNode
@@ -35,6 +36,7 @@ set(LIB_COMMON_FILES
     Decluttering.cpp
     DrawState.cpp
     EllipseNode.cpp
+    FeatureNode.cpp
     GeometryNode.cpp
     ImageOverlay.cpp
     LabelNode.cpp

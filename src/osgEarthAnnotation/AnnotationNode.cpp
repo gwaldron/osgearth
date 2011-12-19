@@ -19,6 +19,7 @@
 
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarth/FindNode>
 #include <osgEarth/Registry>
 
 using namespace osgEarth;
@@ -105,20 +106,9 @@ AnnotationNode::clearAltDrawState()
     }
 }
 
-void
-AnnotationNode::traverse( osg::NodeVisitor& nv )
+osg::Group*
+AnnotationNode::getAttachPoint()
 {
-    osg::Switch::traverse( nv );
-#if 0
-    if ( _highlight && _altDrawStateTechnique.valid() && nv.getVisitorType() != osg::NodeVisitor::NODE_VISITOR )
-    {
-        _altDrawStateTechnique->preTraverse( nv, this );
-        _altDrawStateTechnique->traverse( nv, TraverseFunctor<osg::Switch>(this) );
-        _altDrawStateTechnique->postTraverse( nv );
-    }
-    else
-    {
-        osg::Switch::traverse( nv );
-    }
-#endif
+    osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
+    return t ? (osg::Group*)t : (osg::Group*)this;
 }

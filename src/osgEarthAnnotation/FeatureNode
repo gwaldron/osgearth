@@ -16,35 +16,46 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNO_GEOMETRY_NODE_H
-#define OSGEARTH_ANNO_GEOMETRY_NODE_H 1
+#ifndef OSGEARTH_ANNO_FEATURE_NODE_H
+#define OSGEARTH_ANNO_FEATURE_NODE_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarth/MapNode>
-#include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/GeometryCompiler>
 
 namespace osgEarth { namespace Annotation
-{	
+{
     using namespace osgEarth;
+    using namespace osgEarth::Features;
     using namespace osgEarth::Symbology;
 
     /**
-     * Simple node that renders a Geometry into a scene graph node.
+     * A node that renders a single feature. Since no feature profile is provided,
+     * the feature must contain geometry that is in the same SRS as the map.
      */
-    class OSGEARTHANNO_EXPORT GeometryNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT FeatureNode : public AnnotationNode
     {
     public:
-        /**
-         * Constructs a new draped geometry node
-         */
-        GeometryNode( 
-            MapNode*     mapNode,
-            Geometry*    geom, 
-            const Style& style, 
-            bool         draped     =false );
+        FeatureNode( 
+            MapNode* mapNode, 
+            Feature* feature, 
+            bool     draped   =true, 
+            const GeometryCompilerOptions& options = GeometryCompilerOptions() );
+
+        void setFeature( Feature* feature );
+
+    protected:
+        osg::observer_ptr<MapNode>  _mapNode;
+        osg::ref_ptr<Feature>       _feature;
+        optional<Style>             _style;
+        GeometryCompilerOptions     _options;
+        bool                        _draped;
+        
+        void init();
     };
 
 } } // namespace osgEarth::Annotation
 
-#endif // OSGEARTH_ANNO_GEOMETRY_NODE_H
+#endif // OSGEARTH_ANNO_FEATURE_NODE_H

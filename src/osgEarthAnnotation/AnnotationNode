@@ -63,6 +63,16 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setDynamic( bool value );
 
+        /** 
+         * Gets the attach point for children of this node
+         */
+        virtual osg::Group* getAttachPoint();
+
+        /**
+         * Finds the first transform in the subgraph.
+         */
+        //virtual osg::Transform* getTransform();
+
 
     public: // alternate draw state support
 
@@ -80,11 +90,6 @@ namespace osgEarth { namespace Annotation
          * Clears any active alternate draw state.
          */
         virtual void clearAltDrawState();
-
-
-    public: // osg::Node
-
-        virtual void traverse( osg::NodeVisitor& nv );
 
 
     protected:

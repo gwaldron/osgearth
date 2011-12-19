@@ -85,14 +85,6 @@ namespace osgEarth { namespace Annotation
 
         virtual void traverse( osg::NodeVisitor& nv );
 
-#if 0
-    public: // AnnotationNode
-
-        virtual void setAltDrawState( const std::string& name );
-
-        virtual void clearAltDrawState();
-#endif
-        
     public:
 
         osg::Transform* getTransform() { return _xform.get(); }

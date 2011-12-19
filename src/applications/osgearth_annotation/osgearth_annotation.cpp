@@ -19,9 +19,11 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarth/ECEF>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Formatters>
 #include <osgEarthUtil/PickingUtils>
+
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthAnnotation/ImageOverlayEditor>
 #include <osgEarthAnnotation/CircleNode>
@@ -29,9 +31,11 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/GeometryNode>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/Decluttering>
-#include <osgEarthFeatures/FeatureNode>
+
 #include <osgEarthSymbology/GeometryFactory>
+
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
@@ -202,9 +206,7 @@ main(int argc, char** argv)
     Feature* pathFeature = new Feature(path, pathStyle);
     pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
     FeatureNode* pathNode = new FeatureNode(mapNode, pathFeature, true);
-    AnnotationNode* pathAnno = new AnnotationNode();
-    pathAnno->addChild( pathNode );
-    annoGroup->addChild( pathAnno );
+    annoGroup->addChild( pathNode );
 
     // a circle around New Orleans
     Style circleStyle;
@@ -243,12 +245,9 @@ main(int argc, char** argv)
     utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
     utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
 
-    Feature* utahFeature = new Feature(utah, utahStyle);
-    FeatureNode* utahNode = new FeatureNode(mapNode, utahFeature, false);
-    AnnotationNode* utahAnnoNode = new AnnotationNode();
-    utahAnnoNode->addChild( utahNode );
-    annoGroup->addChild( utahAnnoNode );
-    //annoGroup->addChild( utahNode );
+    Feature*     utahFeature = new Feature(utah, utahStyle);
+    FeatureNode* featureNode = new FeatureNode(mapNode, utahFeature, false);
+    annoGroup->addChild( featureNode );
 
     // an image overlay
     ImageOverlay* imageOverlay = 0L;
@@ -267,10 +266,8 @@ main(int argc, char** argv)
 
     // install a "hover" draw state that will change the appearance of an Annotation
     // when the mouse is hovering over it.
-    DrawStateInstaller dsi( "hover", new HighlightDrawStateTechnique() );
-    //DrawStateInstaller dsi( "hover", new ScaleDrawStateTechnique(1.1f) );
-    //DrawStateInstaller dsi( "hover", new EncircleDrawStateTechnique() );
-    annoGroup->accept( dsi );
+    annoGroup->accept( DrawStateInstaller("hover", new HighlightDrawStateTechnique()) );
+    labelGroup->accept( DrawStateInstaller("hover", new ScaleDrawStateTechnique()) );
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);

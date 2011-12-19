@@ -50,8 +50,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Attaches a child node to the transforms. Use this instead of addChild.
          */
-        //void attach( osg::Node* transformChild );
-        osg::Group* getAttachPoint() { return _attachPoint; }
+        virtual osg::Group* getAttachPoint() { return _attachPoint; }
 
     public:
         /**

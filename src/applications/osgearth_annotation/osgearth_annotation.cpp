@@ -101,7 +101,7 @@ struct AnnotationEventCallback : public osg::NodeCallback
                         if ( annotation )
                         {
                             _selected.insert( annotation );
-                            annotation->setHighlight( true );
+                            annotation->setAltDrawState( "hover" );
                             toRevert.erase( annotation );
                             break;
                         }
@@ -110,7 +110,7 @@ struct AnnotationEventCallback : public osg::NodeCallback
 
                 for( std::set<AnnotationNode*>::iterator i = toRevert.begin(); i != toRevert.end(); ++i )
                 {
-                    (*i)->setHighlight( false );
+                    (*i)->clearAltDrawState();
                 }
             }
         }
@@ -123,6 +123,8 @@ struct AnnotationEventCallback : public osg::NodeCallback
 int
 main(int argc, char** argv)
 {
+    osg::DisplaySettings::instance()->setMinimumNumStencilBits( 2 );
+
     osg::Group* root = new osg::Group();
 
     // try to load an earth file.
@@ -142,9 +144,6 @@ main(int argc, char** argv)
     osg::Group* annoGroup = new osg::Group();
     root->addChild( annoGroup );
 
-    // a scaling selection state technique.
-    DrawStateTechnique* scaler = new ScaleDrawStateTechnique();
-
     // make a group for 2D items, and apply decluttering to it.
     osg::Group* labelGroup = new osg::Group();
     Decluttering::setEnabled( labelGroup->getOrCreateStateSet(), true );
@@ -159,7 +158,6 @@ main(int argc, char** argv)
         osg::Vec3d(-74, 40.714, 0), 
         pushpin,
         "New York" );
-    p1->setAltDrawStateTechnique( new ScaleDrawStateTechnique() );
     labelGroup->addChild( p1 );
 
 #if 1
@@ -205,7 +203,6 @@ main(int argc, char** argv)
     pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
     FeatureNode* pathNode = new FeatureNode(mapNode, pathFeature, true);
     AnnotationNode* pathAnno = new AnnotationNode();
-    pathAnno->setAltDrawStateTechnique( scaler );
     pathAnno->addChild( pathNode );
     annoGroup->addChild( pathAnno );
 
@@ -218,7 +215,6 @@ main(int argc, char** argv)
         Linear(300, Units::KILOMETERS ),
         circleStyle,
         false ); //true );
-    circle->setAltDrawStateTechnique( new OutlineDrawStateTechnique() );
     annoGroup->addChild( circle );
 
     // an ellipse around Miami
@@ -231,8 +227,7 @@ main(int argc, char** argv)
         Linear(100, Units::MILES),
         Angular(45, Units::DEGREES),
         ellipseStyle,
-        false );
-    ellipse->setAltDrawStateTechnique( new EncircleDrawStateTechnique() );
+        true );
     annoGroup->addChild( ellipse );
 
     // an extruded polygon roughly the shape of Utah
@@ -252,7 +247,6 @@ main(int argc, char** argv)
     FeatureNode* utahNode = new FeatureNode(mapNode, utahFeature, false);
     AnnotationNode* utahAnnoNode = new AnnotationNode();
     utahAnnoNode->addChild( utahNode );
-    utahAnnoNode->setAltDrawStateTechnique( new EncircleDrawStateTechnique() );
     annoGroup->addChild( utahAnnoNode );
     //annoGroup->addChild( utahNode );
 
@@ -270,6 +264,13 @@ main(int argc, char** argv)
         root->addChild( editor );
     }
 #endif
+
+    // install a "hover" draw state that will change the appearance of an Annotation
+    // when the mouse is hovering over it.
+    DrawStateInstaller dsi( "hover", new HighlightDrawStateTechnique() );
+    //DrawStateInstaller dsi( "hover", new ScaleDrawStateTechnique(1.1f) );
+    //DrawStateInstaller dsi( "hover", new EncircleDrawStateTechnique() );
+    annoGroup->accept( dsi );
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);

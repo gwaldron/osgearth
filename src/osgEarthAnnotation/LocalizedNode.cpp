@@ -57,6 +57,15 @@ _autoTransform ( is2D )
     setPosition( pos );
 }
 
+LocalizedNode::LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op) :
+AnnotationNode( rhs, op )
+{
+    _mapSRS         = rhs._mapSRS.get();
+    _horizonCulling = rhs._horizonCulling;
+    _autoTransform  = rhs._autoTransform;
+    _xform          = osg::clone( rhs._xform.get(), op );
+}
+
 void
 LocalizedNode::traverse( osg::NodeVisitor& nv )
 {
@@ -65,6 +74,7 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
        _xform->setCullingActive( true );
     }
 
+#if 0
     if ( _highlight && _altDrawStateTechnique.valid() && nv.getVisitorType() != osg::NodeVisitor::NODE_VISITOR )
     {
         _altDrawStateTechnique->preTraverse( nv, _xform.get() );
@@ -76,6 +86,9 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
     {
         AnnotationNode::traverse( nv );
     }
+#endif
+    
+    AnnotationNode::traverse( nv );
 }
 
 bool
@@ -174,3 +187,38 @@ LocalizedNode::setHorizonCulling( bool value )
         }
     }
 }
+
+#if 0
+void
+LocalizedNode::setAltDrawState( const std::string& name )
+{
+    if ( !_activeDsTech || _activeDsName != name )
+    {
+        clearAltDrawState();
+        
+        DrawStateTechMap::iterator i = _dsTechMap.find(name);
+        if ( i != _dsTechMap.end() )
+        {
+            DrawStateTechnique* tech = i->second.get();
+            if ( tech->enable( _xform ) )
+            {
+                _activeDsTech = tech;
+                _activeDsName = name;
+            }
+        }
+    }
+}
+
+void
+LocalizedNode::clearAltDrawState()
+{
+    if ( _activeDsTech )
+    {
+        if ( _activeDsTech->disable( _xform ) )
+        {
+            _activeDsTech = 0L;
+            _activeDsName = "";
+        }
+    }
+}
+#endif

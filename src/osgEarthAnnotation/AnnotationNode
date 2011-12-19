@@ -24,6 +24,11 @@
 #include <osgEarthAnnotation/DrawState>
 #include <osg/Switch>
 
+#define META_AnnotationNode(library,type) \
+    META_Node(library,type); \
+    virtual bool accept(DrawStateTechnique* t, bool enable) { return t->apply(*this, enable); }
+
+
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
@@ -34,7 +39,17 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Switch
     {
     public:
+        META_AnnotationNode(osgEarthAnnotation, AnnotationNode);
+
+        /**
+         * Default constructor.
+         */
         AnnotationNode();
+
+        /**
+         * Copy constructor.
+         */
+        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL);
 
         /**
          * Annotation data attached to this annotation node.
@@ -43,30 +58,44 @@ namespace osgEarth { namespace Annotation
         AnnotationData* getAnnotationData() const { return _annoData.get(); }
 
         /**
-         * Sets the "highlighted" state for this annotation node.
-         */
-        virtual void setHighlight( bool value );
-        bool getHightlight() const { return _highlight; }
-
-        /**
          * Sets the node to "dynamic", i.e. sets up the node so that you can
          * safely change it at runtime.
          */
         virtual void setDynamic( bool value );
 
-        // temp
-        void setAltDrawStateTechnique( DrawStateTechnique* tech );
+
+    public: // alternate draw state support
+
+        /**
+         * Installs an alternate draw state on this annotation node.
+         */
+        void installAltDrawState( const std::string& name, DrawStateTechnique* tech );
+
+        /**
+         * Activates a named alternate draw state that was installed previously
+         */
+        virtual void setAltDrawState( const std::string& name );
+
+        /**
+         * Clears any active alternate draw state.
+         */
+        virtual void clearAltDrawState();
+
 
     public: // osg::Node
 
         virtual void traverse( osg::NodeVisitor& nv );
 
+
     protected:
 
-        osg::ref_ptr<AnnotationData>     _annoData;
-        osg::ref_ptr<DrawStateTechnique> _altDrawStateTechnique;
-        bool                             _highlight;
-        bool                             _dynamic;
+        osg::ref_ptr<AnnotationData> _annoData;
+        bool                         _dynamic;
+
+        typedef std::map<std::string, osg::ref_ptr<DrawStateTechnique> > DrawStateTechMap;
+        DrawStateTechMap    _dsTechMap;
+        DrawStateTechnique* _activeDsTech;
+        std::string         _activeDsName;
     };
 
 } } // namespace osgEarth::Annotation

@@ -18,7 +18,6 @@
 */
 
 #include <osgEarthAnnotation/CircleNode>
-//#include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
@@ -47,29 +46,23 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position, false )
     if ( geom )
     {
         GeometryCompiler compiler;
-        FilterContext cx( 0L );
         osg::ref_ptr<Feature> feature = new Feature(geom);
-        osg::Node* node = compiler.compile( feature.get(), style, cx );
+        osg::Node* node = compiler.compile( feature.get(), style, FilterContext(0L) );
         if ( node )
         {
-            //osg::MatrixTransform* xform = new osg::MatrixTransform(((osg::MatrixTransform*)getTransform())->getMatrix());
-            osg::Transform* xform = getTransform();
-            xform->addChild( node );
+            getTransform()->addChild( node );
 
             if ( draped )
             {
                 DrapeableNode* drapeable = new DrapeableNode( mapNode, true );
-                drapeable->setNode( xform );
+                drapeable->setNode( getTransform() );
                 this->addChild( drapeable );
             }
 
             else
             {
-                this->addChild( xform );
+                this->addChild( getTransform() );
             }
         }
-
-        //LocalGeometryNode* dg = new LocalGeometryNode( mapNode, geom, style, draped, getTransform() );
-        //this->addChild( dg );
     }
 }

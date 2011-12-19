@@ -93,7 +93,7 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
     osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    this->attach( _geode );
+    getAttachPoint()->addChild( _geode );
 }
 
 void

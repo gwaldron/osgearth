@@ -25,10 +25,17 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 AnnotationNode::AnnotationNode() :
-_dynamic  ( false ),
-_highlight( false )
+_dynamic            ( false ),
+_activeDsTech       ( 0L )
 {
     //nop
+}
+
+AnnotationNode::AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op) :
+osg::Switch(rhs, op)
+{
+    _dynamic   = rhs._dynamic;
+    _annoData  = rhs._annoData.get();
 }
 
 void
@@ -44,45 +51,65 @@ AnnotationNode::setDynamic( bool value )
 }
 
 void
-AnnotationNode::setHighlight( bool value )
+AnnotationNode::installAltDrawState( const std::string& name, DrawStateTechnique* tech )
 {
-    _highlight = value;
-
-#if 0
-    // update the selection uniform.
-    if ( Registry::instance()->getCapabilities().supportsGLSL() )
+    if ( _activeDsTech )
     {
-        osg::StateSet* stateSet = getOrCreateStateSet();
-        osg::Uniform* u = stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT() );
-        if ( !u )
-        {
-            u = new osg::Uniform( osg::Uniform::BOOL, AnnotationUtils::UNIFORM_HIGHLIGHT() );
-            stateSet->addUniform( u );
-        }
-        u->set( value );
+        clearAltDrawState();
     }
-#endif
+
+    if ( tech == 0L )
+    {
+        _dsTechMap.erase( name );
+    }
+    else
+    {
+        _dsTechMap[name] = tech->copyOrClone();
+    }
 }
 
 void
-AnnotationNode::setAltDrawStateTechnique( DrawStateTechnique* tech )
+AnnotationNode::setAltDrawState( const std::string& name )
 {
-    if ( tech )
+    // already active?
+    if ( _activeDsTech && _activeDsName == name )
+        return;
+
+    // is a different one active? if so kill it
+    if ( _activeDsTech )
+        clearAltDrawState();
+
+    // try to find and enable the new one
+    DrawStateTechMap::iterator i = _dsTechMap.find(name);
+    if ( i != _dsTechMap.end() )
     {
-        if ( !tech->isShareable() || tech->referenceCount() > 0 )
+        DrawStateTechnique* tech = i->second.get();
+        if ( tech )
         {
-            _altDrawStateTechnique = tech->clone();
+            if ( this->accept(tech, true) ) 
+            {
+                _activeDsTech = tech;
+                _activeDsName = name;
+            }
         }
-        else
-        {
-            _altDrawStateTechnique = tech;
-        }
+    }
+}
+
+void
+AnnotationNode::clearAltDrawState()
+{
+    if ( _activeDsTech )
+    {
+        this->accept(_activeDsTech, false);
+        _activeDsTech = 0L;
     }
 }
 
 void
 AnnotationNode::traverse( osg::NodeVisitor& nv )
 {
+    osg::Switch::traverse( nv );
+#if 0
     if ( _highlight && _altDrawStateTechnique.valid() && nv.getVisitorType() != osg::NodeVisitor::NODE_VISITOR )
     {
         _altDrawStateTechnique->preTraverse( nv, this );
@@ -93,4 +120,5 @@ AnnotationNode::traverse( osg::NodeVisitor& nv )
     {
         osg::Switch::traverse( nv );
     }
+#endif
 }

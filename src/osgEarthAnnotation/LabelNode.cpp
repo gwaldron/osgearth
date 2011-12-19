@@ -80,7 +80,7 @@ LabelNode::init( const TextSymbol* symbol )
     _geode = new osg::Geode();
     _geode->addDrawable( t );
 
-    this->attach( _geode );
+    getAttachPoint()->addChild( _geode );
 }
 
 void

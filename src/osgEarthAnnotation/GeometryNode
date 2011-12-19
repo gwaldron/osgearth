@@ -34,7 +34,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Simple node that renders a Geometry into a scene graph node.
      */
-    class OSGEARTHANNO_EXPORT LocalGeometryNode : public DrapeableNode
+    class OSGEARTHANNO_EXPORT LocalGeometryNode : public LocalizedNode
     {
     public:
         /**

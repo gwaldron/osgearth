@@ -60,12 +60,16 @@ OrthoNode::init()
     _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
     _autoxform->setAutoScaleToScreen( true );
     _autoxform->setCullingActive( false ); // for the first pass
-    this->addChild( _autoxform.get() );
+    this->addChild( _autoxform );
 
     _matxform = new osg::MatrixTransform();
-    this->addChild( _matxform.get() );
+    this->addChild( _matxform );
 
     this->setSingleChildOn( 0 );
+
+    _attachPoint = new osg::Group();
+    _autoxform->addChild( _attachPoint );
+    _matxform->addChild( _attachPoint );
 
     this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 }
@@ -96,7 +100,7 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
         // disable this pass when picking is not in use
 #if 1
         if ( declutter )
-            static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform.get())->acceptCullNoTraverse( cv );
+            static_cast<AnnotationUtils::OrthoNodeAutoTransform*>(_autoxform)->acceptCullNoTraverse( cv );
 #endif
 
         // turn off small feature culling
@@ -122,13 +126,6 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
     {
         AnnotationNode::traverse( nv );
     }
-}
-
-void
-OrthoNode::attach( osg::Node* child )
-{
-    _autoxform->addChild( child );
-    _matxform->addChild( child );
 }
 
 bool

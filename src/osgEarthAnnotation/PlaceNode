@@ -38,6 +38,8 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT PlaceNode : public OrthoNode
     {
     public:
+        META_AnnotationNode(osgEarthAnnotation, PlaceNode);
+
         /**
          * Constructs a new node (convenience function)
          */
@@ -85,6 +87,10 @@ namespace osgEarth { namespace Annotation
         class osg::Geode*          _geode;
 
         void init();
+
+        // required by META_Node, but this object is not cloneable
+        PlaceNode() { }
+        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
     };
 
 } } // namespace osgEarth::Annotation

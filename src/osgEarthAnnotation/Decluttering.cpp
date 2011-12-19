@@ -265,10 +265,12 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
             // projection when it's drawn later. (Note: we need a new RefMatrix since the
             // original might be shared ... potential optimization here)
-            leaf->_modelview = new osg::RefMatrix( osg::Matrix::translate(
-                box.xMin() + offset.x(),
-                box.yMin() + offset.y(), 
-                0) );
+            // We'll also preserve the scale.
+            osg::Matrix newModelView;
+            newModelView.makeTranslate( box.xMin() + offset.x(), box.yMin() + offset.y(), 0 );
+            newModelView.preMultScale( leaf->_modelview->getScale() );
+            
+            leaf->_modelview = new osg::RefMatrix( newModelView );
         }
 
         // copy the final draw list back into the bin, rejecting any leaves whose parents

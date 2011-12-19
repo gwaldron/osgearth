@@ -24,81 +24,221 @@
 #include <osg/ShapeDrawable>
 #include <osg/CullFace>
 #include <osg/Depth>
+#include <osg/Stencil>
+
+#include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/OrthoNode>
+#include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/TrackNode>
 
 using namespace osgEarth::Annotation;
 
+//---------------------------------------------------------------------------
+
 void
-ScaleDrawStateTechnique::preTraverse( osg::NodeVisitor& nv, osg::Group* parent )
+DrawStateInstaller::apply(osg::Node& node)
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    if ( dynamic_cast<AnnotationNode*>(&node) )
     {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
-        osg::RefMatrix* proj = cv->getProjectionMatrix();
-        osg::RefMatrix* newProj = new osg::RefMatrix();
-        double l, r, b, t, n, f;
-        proj->getFrustum( l, r, b, t, n, f );
-        double x = (r-l)*0.01;
-        l += x, r -= x, b += x, t -= x;
-        newProj->makeFrustum( l, r, b, t, n, f );
-        cv->pushProjectionMatrix( newProj );
+        static_cast<AnnotationNode*>(&node)->installAltDrawState( _name, _tech );
     }
+    traverse(node);
 }
 
-void
-ScaleDrawStateTechnique::postTraverse( osg::NodeVisitor& nv )
+//---------------------------------------------------------------------------
+
+InjectionDrawStateTechnique::InjectionDrawStateTechnique( osg::Group* group ) :
+_injectionGroup( group )
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    if ( !_injectionGroup.valid() )
+        _injectionGroup = new osg::Group();
+}
+
+bool
+InjectionDrawStateTechnique::apply(LocalizedNode& node, bool enable)
+{
+    bool success = apply( node.getTransform(), enable );
+    return success ? true : DrawStateTechnique::apply(node, enable);
+}
+
+bool
+InjectionDrawStateTechnique::apply(OrthoNode& node, bool enable)
+{
+    bool success = apply( node.getAttachPoint(), enable );
+    return success ? true : DrawStateTechnique::apply(node, enable);
+}
+
+bool
+InjectionDrawStateTechnique::apply(osg::Group* ap, bool enable)
+{
+    if ( _injectionGroup.valid() && ap )
     {
-        osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>(&nv);
-        cv->popProjectionMatrix();
-    }
-}
-
-//--------------------------------------------------------------------------
-
-OutlineDrawStateTechnique::OutlineDrawStateTechnique()
-{
-    osgFX::Outline* outline = new osgFX::Outline();
-    outline->setWidth( 3.0f );
-    outline->setColor( Color::Cyan );
-    _injection = outline;
-}
-
-//--------------------------------------------------------------------------
-
-EncircleDrawStateTechnique::EncircleDrawStateTechnique()
-{
-    osg::Group* g = new osg::Group();
-
-    _xform = new osg::MatrixTransform();
-    g->addChild( _xform );
-
-    osg::Geode* geode = new osg::Geode();
-    osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), 1.0) );
-    sd->setColor( Color(Color::Red,0.4) );
-
-    osg::StateSet* s = sd->getOrCreateStateSet();
-    s->setMode(GL_LIGHTING,0);
-    s->setMode(GL_BLEND,1);
-    s->setAttributeAndModes( new osg::Depth(osg::Depth::LESS, 0, 1, false), 1 );
-    s->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
-    geode->addDrawable( sd );
-    _xform->addChild( geode );
-
-    _injection = g;
-}
-
-void
-EncircleDrawStateTechnique::preTraverse(osg::NodeVisitor& nv, osg::Group* parent)
-{
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-        if ( _injection->getNumChildren() > 1 )
+        if ( enable )
         {
-            const osg::BoundingSphere& bs = _injection->getChild(1)->getBound();
-            _xform->setMatrix(
-                osg::Matrix::scale( bs.radius(),bs.radius(),bs.radius() ) *
-                osg::Matrix::translate( bs.center() ) );
+            for( unsigned i=0; i<ap->getNumChildren(); ++i )
+            {
+                _injectionGroup->addChild( ap->getChild(i) );
+            }
+            ap->removeChildren(0, ap->getNumChildren() );
+            ap->addChild( _injectionGroup.get() );
         }
+        else // if ( !enable)
+        {
+            for( unsigned i=0; i<_injectionGroup->getNumChildren(); ++i )
+            {
+                ap->addChild( _injectionGroup->getChild(i) );
+            }
+            ap->removeChild(0, 1);
+            _injectionGroup->removeChildren(0, _injectionGroup->getNumChildren());
+        }
+        return true;
+    }
+    return false;
+}
+
+//---------------------------------------------------------------------------
+
+ScaleDrawStateTechnique::ScaleDrawStateTechnique( float factor ) :
+InjectionDrawStateTechnique( new osg::MatrixTransform( osg::Matrix::scale(factor,factor,factor) ) )
+{
+    //nop
+}
+
+//--------------------------------------------------------------------------
+
+namespace
+{
+    struct TraverseNodeCallback : public osg::NodeCallback
+    {
+        osg::ref_ptr<osg::Node> _node;
+        TraverseNodeCallback(osg::Node* node) : _node(node) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv)
+        {
+            _node->accept(*nv);
+            traverse(node, nv);
+        }
+    };
+};
+
+EncircleDrawStateTechnique::EncircleDrawStateTechnique() :
+InjectionDrawStateTechnique( new osg::Group() )
+{
+    //nop
+}
+
+bool
+EncircleDrawStateTechnique::apply(osg::Group* ap, bool enable)
+{
+    if ( _injectionGroup->getCullCallback() == 0L )
+    {
+        const osg::BoundingSphere& bs = ap->getBound();
+
+        osg::Geode* geode = new osg::Geode();
+        osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), bs.radius()) );
+        sd->setColor( Color(Color::Red,0.4) );
+
+        osg::StateSet* s = sd->getOrCreateStateSet();
+        s->setMode(GL_LIGHTING,0);
+        s->setMode(GL_BLEND,1);
+        s->setAttributeAndModes( new osg::Depth(osg::Depth::LESS, 0, 1, false), 1 );
+        s->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
+        geode->addDrawable( sd );
+
+        _injectionGroup->addCullCallback( new TraverseNodeCallback(geode) );
+    }
+
+    return InjectionDrawStateTechnique::apply(ap, enable);
+}
+
+//--------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[HighlightDrawState] "
+namespace
+{
+    struct HighlightGroup : public osg::Group
+    {
+        osg::ref_ptr<osg::StateSet> _pass1, _pass2;
+        osg::ref_ptr<osg::Node>     _fillNode;
+
+        void traverse(osg::NodeVisitor& nv)
+        {
+            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
+            if ( cv && _fillNode.valid() && _pass1.valid() )
+            {
+                const osg::GraphicsContext* gc = cv->getCurrentCamera()->getGraphicsContext();
+                if ( gc && gc->getTraits() && gc->getTraits()->stencil < 1 )
+                {
+                    OE_WARN << LC << "Insufficient stencil buffer bits available; disabling highlighting." << std::endl;
+                    OE_WARN << LC << "Please call osg::DisplaySettings::instance()->setMinimumNumStencilBits()" << std::endl;
+                    _pass1 = 0L;
+                }
+                else
+                {
+                    cv->pushStateSet(_pass1);
+                    osg::Group::traverse( nv );
+                    cv->popStateSet();
+
+                    cv->pushStateSet(_pass2);
+                    _fillNode->accept( nv );
+                    cv->popStateSet();
+                }
+            }
+            else
+            {
+                osg::Group::traverse(nv);
+            }
+        }
+    };
+}
+
+HighlightDrawStateTechnique::HighlightDrawStateTechnique(const osg::Vec4f& color) :
+InjectionDrawStateTechnique( new HighlightGroup() ),
+_color( color )
+{
+    HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
+
+    hg->_pass1 = new osg::StateSet();
+    {
+        osg::Stencil* stencil  = new osg::Stencil();
+        stencil->setFunction(osg::Stencil::ALWAYS, 1, ~0u);
+        stencil->setOperation(osg::Stencil::KEEP, osg::Stencil::KEEP, osg::Stencil::REPLACE);
+        hg->_pass1->setAttributeAndModes(stencil, 1);
+    }
+
+    hg->_pass2 = new osg::StateSet();
+    {
+        osg::Stencil* stencil  = new osg::Stencil();
+        stencil->setFunction(osg::Stencil::NOTEQUAL, 0, ~0u);
+        stencil->setOperation(osg::Stencil::REPLACE, osg::Stencil::REPLACE, osg::Stencil::REPLACE);
+        hg->_pass2->setAttributeAndModes(stencil, 1);
+        hg->_pass2->setRenderBinDetails( 942, "RenderBin" );
     }
 }
+
+bool
+HighlightDrawStateTechnique::apply(osg::Group* ap, bool enable)
+{
+    HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
+    if ( !hg->_fillNode.valid() )
+    {
+        const osg::BoundingSphere& bs = ap->getBound();
+
+        osg::Geode* geode = new osg::Geode();
+        osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), bs.radius()) );
+        sd->setColor( _color );
+
+        osg::StateSet* s = sd->getOrCreateStateSet();
+        s->setMode(GL_LIGHTING,0);
+        s->setMode(GL_BLEND,1);
+        s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
+        s->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
+        geode->addDrawable( sd );
+        hg->_fillNode = geode;
+    }
+
+    return InjectionDrawStateTechnique::apply(ap, enable);
+}
+

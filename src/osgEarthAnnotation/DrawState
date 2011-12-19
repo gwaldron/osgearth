@@ -20,19 +20,22 @@
 #define OSGEARTH_ANNOTATION_DRAW_STATE_H 1
 
 #include <osgEarthAnnotation/Common>
-#include <osgUtil/CullVisitor>
-#include <osg/Switch>
+#include <osg/NodeVisitor>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
 
+    //-----------------------------------------------------------------------
+
+    // utility: functor for traversing a target node
     template<typename T> struct TraverseFunctor {
         T* _target;
         TraverseFunctor(T* target) : _target(target) { }
         void operator()(osg::NodeVisitor& nv) { _target->T::traverse(nv); }
     };
 
+    // utility: node that traverses another node via a functor
     template<typename T>
     struct TraverseNode : public osg::Node {
         TraverseFunctor<T> _tf;
@@ -41,67 +44,119 @@ namespace osgEarth { namespace Annotation
         osg::BoundingSphere computeBound() const { return _tf._target->getBound(); }
     };
 
-    class /*no-export*/ DrawStateTechnique : public osg::Referenced
-    {
-    public:
-        DrawStateTechnique() : _injectionAdded(false) { }
-
-        virtual DrawStateTechnique* clone() const =0;
-
-        virtual bool isShareable() const { return false; }
-
-        virtual void preTraverse( osg::NodeVisitor& nv, osg::Group* parent ) { }
-
-        virtual void postTraverse( osg::NodeVisitor& nv ) { }
-
-        template<typename T> void traverse( osg::NodeVisitor& nv, TraverseFunctor<T>& tf ) { 
-            if ( _injection.valid() ) {
-                if ( !_injectionAdded ) {
-                    _injection->addChild( new TraverseNode<T>(tf) );
-                    _injectionAdded = true;
-                }
-                _injection->accept(nv);
-            }
-            else {
-                tf(nv);
-            }
+    // utility: cull callback that traverses another node
+    struct TraverseNodeCallback : public osg::NodeCallback {
+        osg::ref_ptr<osg::Node> _node;
+        TraverseNodeCallback(osg::Node* node) : _node(node) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            _node->accept(*nv);
+            traverse(node, nv);
         }
-
-        osg::ref_ptr<osg::Group> _injection;
-        bool                     _injectionAdded;
     };
 
-    class OSGEARTHANNO_EXPORT ScaleDrawStateTechnique : public DrawStateTechnique
+    //-----------------------------------------------------------------------
+
+    class OSGEARTHANNO_EXPORT DrawStateTechnique : public osg::Referenced
     {
     public:
+        DrawStateTechnique() { }
+
         virtual bool isShareable() const { return false; }
-        virtual DrawStateTechnique* clone() const { return new ScaleDrawStateTechnique(); }
+        virtual DrawStateTechnique* clone() const =0;
+        DrawStateTechnique* copyOrClone() { return isShareable() ? this : clone(); }
 
-        virtual void preTraverse( osg::NodeVisitor& nv, osg::Group* parent );
-        virtual void postTraverse( osg::NodeVisitor& nv );
+    public:
+        virtual bool apply(class AnnotationNode& node, bool enable) { return false; }
+        virtual bool apply(class LocalizedNode&  node, bool enable) { return false; }
+        virtual bool apply(class OrthoNode&      node, bool enable) { return false; }
     };
 
-    class OSGEARTHANNO_EXPORT OutlineDrawStateTechnique : public DrawStateTechnique
+    //-----------------------------------------------------------------------
+
+    /**
+     * Simple visitor that installs a draw state technique on all the 
+     * AnnotationNode's in a graph.
+     */
+    class OSGEARTHANNO_EXPORT DrawStateInstaller : public osg::NodeVisitor
     {
     public:
-        virtual bool isShareable() const { return true; }
-        virtual DrawStateTechnique* clone() const { return new OutlineDrawStateTechnique(); }
+        DrawStateInstaller( const std::string& name, DrawStateTechnique* tech )
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _name(name), _tech(tech) { }
 
-        OutlineDrawStateTechnique();
+    public:
+        virtual void apply(osg::Node& node);
+
+    public:
+        osg::ref_ptr<DrawStateTechnique> _tech;
+        std::string                      _name;
     };
 
-    class OSGEARTHANNO_EXPORT EncircleDrawStateTechnique : public DrawStateTechnique
+    //-----------------------------------------------------------------------
+
+    /** 
+     * A draw state technique that injects a node below the annotation's
+     * transform. For example, you could install an Effect node, or a node
+     * that activates a shader.
+     */
+    class OSGEARTHANNO_EXPORT InjectionDrawStateTechnique : public DrawStateTechnique
+    {
+    public:
+        InjectionDrawStateTechnique( osg::Group* group );
+        virtual DrawStateTechnique* clone() const { return new InjectionDrawStateTechnique(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
+
+        virtual bool apply(class LocalizedNode& node, bool enable);
+        virtual bool apply(class OrthoNode&     node, bool enable);
+
+    protected:
+        osg::ref_ptr<osg::Group> _injectionGroup;
+
+        virtual bool apply(osg::Group* attachPoint, bool enable);
+    };
+
+    //-----------------------------------------------------------------------
+
+    /**
+     * A draw state technique that scales the annotation.
+     */
+    class OSGEARTHANNO_EXPORT ScaleDrawStateTechnique : public InjectionDrawStateTechnique
+    {
+    public:
+        ScaleDrawStateTechnique(float factor =1.05f);
+    };
+
+    //-----------------------------------------------------------------------
+
+    /**
+     * A draw state technique that scales the annotation.
+     */
+    class OSGEARTHANNO_EXPORT EncircleDrawStateTechnique : public InjectionDrawStateTechnique
     {
     public:
         EncircleDrawStateTechnique();
-
-        virtual bool isShareable() const { return false; }
         virtual DrawStateTechnique* clone() const { return new EncircleDrawStateTechnique(); }
 
-        virtual void preTraverse( osg::NodeVisitor& nv, osg::Group* parent );
+    protected:
+        virtual bool apply(osg::Group* attachPoint, bool enable);
+    };
+
+    //------------------------------------------------------------------------
+
+    /**
+     * Draw state technique that highlights the geometry
+     */
+    class OSGEARTHANNO_EXPORT HighlightDrawStateTechnique : public InjectionDrawStateTechnique
+    {
+    public:
+        HighlightDrawStateTechnique(const osg::Vec4f& color =osg::Vec4f(1,1,0,0.5));
+        virtual bool isShareable() const { return true; }
+        virtual DrawStateTechnique* clone() const { return new HighlightDrawStateTechnique(_color); }
 
     protected:
-        osg::MatrixTransform* _xform;
+        virtual bool apply(osg::Group* attachPoint, bool enable);
+
+        osg::Vec4f _color;
+        osg::ref_ptr<osg::StateSet> _passes[2];
     };
 
 } } // namespace osgEarth::Annotation

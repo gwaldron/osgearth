@@ -276,6 +276,8 @@ OverlayDecorator::reinit()
             // set up the RTT camera:
             _rttCamera = new osg::Camera();
             _rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
+            _rttCamera->setClearStencil( 0 );
+            _rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
             // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
             // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
             _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
@@ -284,6 +286,8 @@ OverlayDecorator::reinit()
             _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
             _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
+            //TODO: make sure this is actually supported on most platforms:
+            _rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
             _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
             if ( _rttBlending )

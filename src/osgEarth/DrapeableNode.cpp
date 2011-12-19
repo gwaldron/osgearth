@@ -20,6 +20,7 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
 #include <osgEarth/FindNode>
+#include <osgUtil/IntersectionVisitor>
 
 using namespace osgEarth;
 
@@ -167,6 +168,13 @@ DrapeableNode::traverse( osg::NodeVisitor& nv )
         {
             _nodeContainer->accept( nv );
         }
+    }
+
+    // Handle any other visitor types by traversing all the way to the draped node
+    // if necessary (e.g., for intersection visitors)
+    else if ( nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR && _nodeContainer.valid() )
+    {
+        _nodeContainer->accept( nv );
     }
 
     osg::Group::traverse( nv );

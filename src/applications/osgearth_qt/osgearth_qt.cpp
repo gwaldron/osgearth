@@ -186,7 +186,6 @@ main(int argc, char** argv)
     // attempt to load .qss stylesheet if one was provided
     if (styled)
     {
-     //QFile file("C:\\dev\\git\\osgearth_qt\\src\\applications\\osgearth_qt\\default_style.qss");
       QFile file(QString(stylesheet.c_str()));
       if (file.exists())
       {

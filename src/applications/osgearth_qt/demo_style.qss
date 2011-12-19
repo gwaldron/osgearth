@@ -3,7 +3,7 @@
   color: white;
 } 
 
-#oeItem, #oeItem* {
+#oeItem, #oeItem * {
   background-color: lightgrey;
   color: white;
 }

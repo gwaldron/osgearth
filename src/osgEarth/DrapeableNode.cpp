@@ -172,9 +172,15 @@ DrapeableNode::traverse( osg::NodeVisitor& nv )
 
     // Handle any other visitor types by traversing all the way to the draped node
     // if necessary (e.g., for intersection visitors)
-    else if ( nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR && _nodeContainer.valid() )
+    else if ( nv.getVisitorType() == osg::NodeVisitor::NODE_VISITOR && (_draped || _newDraped) )
     {
-        _nodeContainer->accept( nv );
+        if ( _newNode.valid() )
+            _newNode->accept( nv );
+        else if ( _nodeContainer.valid() )
+            _nodeContainer->accept( nv );
+        else if ( _node.valid() )
+            _node->accept( nv );
+        return;
     }
 
     osg::Group::traverse( nv );

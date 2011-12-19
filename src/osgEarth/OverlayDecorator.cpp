@@ -83,7 +83,7 @@ namespace
             : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
               _bbox(out_bbox),
               _original( polytope ),
-              _coarse( true )
+              _coarse( false ) // true )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );
@@ -106,8 +106,12 @@ namespace
             {
                 if ( _coarse )
                 {
-                    _bbox.expandBy(
-                        osg::BoundingSphere( bs.center() * _matrixStack.top(), bs.radius() ) );
+                    // GW: doesn't work, don't know why
+                    osg::BoundingBox box;
+                    box.expandBy( bs );
+                    osg::Vec3d bmin = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
+                    osg::Vec3d bmax = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
+                    _bbox.expandBy( osg::BoundingBox(bmin, bmax) );
                 }
                 else
                 {
@@ -135,6 +139,7 @@ namespace
         void apply( osg::Transform& transform )
         {
             osg::Matrixd matrix;
+            if ( !_matrixStack.empty() ) matrix = _matrixStack.top();
             transform.computeLocalToWorldMatrix( matrix, this );
 
             _matrixStack.push( matrix );

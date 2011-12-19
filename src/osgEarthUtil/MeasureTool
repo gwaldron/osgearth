@@ -22,7 +22,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
-#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthSymbology/Style>
 #include <osg/Group>
 #include <osgGA/GUIEventHandler>
@@ -83,7 +83,7 @@ namespace osgEarth { namespace Util
         int _mouseButton;
         osg::ref_ptr< osg::Group > _group;
 
-        osg::ref_ptr< osgEarth::Features::FeatureNode > _featureNode;
+        osg::ref_ptr< osgEarth::Annotation::FeatureNode > _featureNode;
         osg::ref_ptr< osgEarth::Features::Feature >  _feature;
 
         MeasureToolEventHandlerList _eventHandlers;

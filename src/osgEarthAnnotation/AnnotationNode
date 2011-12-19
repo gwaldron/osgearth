@@ -68,11 +68,6 @@ namespace osgEarth { namespace Annotation
          */
         virtual osg::Group* getAttachPoint();
 
-        /**
-         * Finds the first transform in the subgraph.
-         */
-        //virtual osg::Transform* getTransform();
-
 
     public: // alternate draw state support
 

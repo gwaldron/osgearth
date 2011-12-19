@@ -46,6 +46,8 @@ namespace osgEarth { namespace Annotation
 
         void setFeature( Feature* feature );
 
+        void init();
+
     protected:
         osg::observer_ptr<MapNode>  _mapNode;
         osg::ref_ptr<Feature>       _feature;
@@ -53,7 +55,6 @@ namespace osgEarth { namespace Annotation
         GeometryCompilerOptions     _options;
         bool                        _draped;
         
-        void init();
     };
 
 } } // namespace osgEarth::Annotation

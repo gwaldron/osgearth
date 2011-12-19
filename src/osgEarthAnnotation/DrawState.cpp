@@ -117,7 +117,8 @@ InjectionDrawStateTechnique::apply(osg::Group* ap, bool enable)
 //---------------------------------------------------------------------------
 
 ScaleDrawStateTechnique::ScaleDrawStateTechnique( float factor ) :
-InjectionDrawStateTechnique( new osg::MatrixTransform( osg::Matrix::scale(factor,factor,factor) ) )
+InjectionDrawStateTechnique( new osg::MatrixTransform( osg::Matrix::scale(factor,factor,factor) ) ),
+_factor( factor )
 {
     //nop
 }
@@ -257,4 +258,3 @@ HighlightDrawStateTechnique::apply(osg::Group* ap, bool enable)
 
     return InjectionDrawStateTechnique::apply(ap, enable);
 }
-

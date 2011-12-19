@@ -48,18 +48,18 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
         osg::Node* node = compiler.compile( feature.get(), style, FilterContext(0L) );
         if ( node )
         {
-            getTransform()->addChild( node );
+            getAttachPoint()->addChild( node );
 
             if ( draped )
             {
-                DrapeableNode* drapeable = new DrapeableNode( mapNode, true );
-                drapeable->setNode( getTransform() );
+                DrapeableNode* drapeable = new DrapeableNode( mapNode );
+                drapeable->setNode( getAttachPoint() );
                 this->addChild( drapeable );
             }
 
             else
             {
-                this->addChild( getTransform() );
+                this->addChild( getAttachPoint() );
             }
         }
     }

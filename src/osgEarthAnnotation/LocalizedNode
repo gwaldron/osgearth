@@ -87,7 +87,9 @@ namespace osgEarth { namespace Annotation
 
     public:
 
-        osg::Transform* getTransform() { return _xform.get(); }
+        virtual osg::Group* getAttachPoint() { return _xform.get(); }
+
+        virtual osg::Transform* getTransform() { return _xform.get(); }
 
     protected:
         osg::observer_ptr<const SpatialReference> _mapSRS;

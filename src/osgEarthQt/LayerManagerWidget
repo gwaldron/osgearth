@@ -249,7 +249,6 @@ namespace osgEarth { namespace QtGui
 
     private slots:
       void onItemDoubleClicked();
-      //void onSelectionChanged();
 
     private:
       friend struct LayerManagerMapCallback;
@@ -276,7 +275,6 @@ namespace osgEarth { namespace QtGui
       void dragLeaveEvent(QDragLeaveEvent* event);
       void dropEvent(QDropEvent* event);
 
-      //void setSelectedWidget(QWidget* widget);
       void doLayerWidgetDrop(LayerControlWidgetBase* widget, LayerControlWidgetBase* dropOn=0L);
 
       osg::ref_ptr<DataManager> _manager;

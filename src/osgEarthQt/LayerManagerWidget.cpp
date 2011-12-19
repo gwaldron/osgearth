@@ -628,13 +628,11 @@ LayerManagerWidget::LayerManagerWidget(DataManager* dm, LayerType type) : QScrol
     _map = _manager->map();
 
   initialize();
-  refresh();
 }
 
 LayerManagerWidget::LayerManagerWidget(osgEarth::Map* map, LayerType type) : QScrollArea(), _map(map), _type(type)
 {
   initialize();
-  refresh();
 }
 
 LayerManagerWidget::~LayerManagerWidget()
@@ -695,10 +693,11 @@ void LayerManagerWidget::initialize()
   resetStyleSheet();
   setAcceptDrops(true);
 
-  //connect(this, SIGNAL(itemSelectionChanged()), this, SLOT(onSelectionChanged()));
-
   if (_map.valid())
+  {
+    refresh();
     _map->addMapCallback(new LayerManagerMapCallback(this));
+  }
 }
 
 void LayerManagerWidget::onItemDoubleClicked()
@@ -711,20 +710,12 @@ void LayerManagerWidget::onItemDoubleClicked()
     _manager->doAction(this, action);
 }
 
-//void LayerManagerWidget::onSelectionChanged()
-//{
-//  if (!_manager.valid())
-//    return;
-//
-//  //TODO: figure out how to handle selection changes
-//}
-
 void LayerManagerWidget::refresh()
 {
-  //TODO: 
-  //_stack->clear();
+  //TODO: Clear all items in _stack?
+  //      Currently refresh() is only called from initialize() so clearing is not necessary.
 
-  if (!_map)
+  if (!_map.valid())
     return;
 
   if (_type == IMAGE_LAYERS)

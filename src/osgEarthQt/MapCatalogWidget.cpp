@@ -260,11 +260,11 @@ void MapCatalogWidget::initUi()
 	_tree = new QTreeWidget();
 	_tree->setColumnCount(1);
 	_tree->setHeaderHidden(true);
-  _tree->setSelectionMode(QAbstractItemView::ExtendedSelection);
+  _tree->setSelectionMode(QAbstractItemView::SingleSelection);
   _tree->setObjectName("oeFrameContainer");
   connect(_tree, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(onTreeItemDoubleClicked(QTreeWidgetItem*, int)));
   connect(_tree, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(onTreeItemChanged(QTreeWidgetItem*, int)));
-  connect(_tree, SIGNAL(itemSelectionChanged()), this, SLOT(onTreeSelectionChanged()));
+  //TODO: connect(_tree, SIGNAL(itemSelectionChanged()), this, SLOT(onTreeSelectionChanged()));
 
   _elevationsItem = 0;
   _imagesItem = 0;
@@ -313,29 +313,28 @@ void MapCatalogWidget::onTreeItemChanged(QTreeWidgetItem* item, int col)
   }
 }
 
-void MapCatalogWidget::onTreeSelectionChanged()
-{
-  if (!_manager)
-    return;
+//TODO:
+//void MapCatalogWidget::onTreeSelectionChanged()
+//{
+//  if (!_manager)
+//    return;
+//
+//  //TODO: figure out how to handle selection changes
+//
+//  for (int i=0; i < _tree->topLevelItemCount(); i++)
+//  {
+//    QTreeWidgetItem *item = _tree->topLevelItem(i);
+//    fireSelectionAction(item);
+//  }
+//}
 
-  //TODO: figure out how to handle selection changes
-
-  for (int i=0; i < _tree->topLevelItemCount(); i++)
-  {
-    QTreeWidgetItem *item = _tree->topLevelItem(i);
-    fireSelectionAction(item);
-  }
-}
-
-void MapCatalogWidget::fireSelectionAction(QTreeWidgetItem* item)
-{
-  //TODO: do for current item and recurse
-}
+//void MapCatalogWidget::fireSelectionAction(QTreeWidgetItem* item)
+//{
+//  //TODO: do for current item and recurse
+//}
 
 void MapCatalogWidget::refresh()
 {
-  //_tree->clear();
-
   if (!_map)
     return;
 
@@ -349,7 +348,6 @@ void MapCatalogWidget::refresh()
 	    _tree->addTopLevelItem(_elevationsItem);
     }
 
-    //qDeleteAll(_elevationsItem->takeChildren());
     _elevationsItem->takeChildren();
 	  
     osgEarth::ElevationLayerVector layers;
@@ -373,7 +371,6 @@ void MapCatalogWidget::refresh()
 	    _tree->addTopLevelItem(_imagesItem);
     }
 
-    //qDeleteAll(_imagesItem->takeChildren());
     _imagesItem->takeChildren();
 
     osgEarth::ImageLayerVector layers;
@@ -397,7 +394,6 @@ void MapCatalogWidget::refresh()
 	    _tree->addTopLevelItem(_modelsItem);
     }
 
-    //qDeleteAll(_modelsItem->takeChildren());
     _modelsItem->takeChildren();
 
     osgEarth::ModelLayerVector layers;
@@ -421,7 +417,6 @@ void MapCatalogWidget::refresh()
 	    _tree->addTopLevelItem(_annotationsItem);
     }
 
-    //qDeleteAll(_annotationsItem->takeChildren());
     _annotationsItem->takeChildren();
 
     AnnotationVector annos;
@@ -446,7 +441,6 @@ void MapCatalogWidget::refresh()
 	    _tree->addTopLevelItem(_masksItem);
     }
 
-    //qDeleteAll(_masksItem->takeChildren());
     _masksItem->takeChildren();
 
     osgEarth::MaskLayerVector layers;
@@ -455,7 +449,6 @@ void MapCatalogWidget::refresh()
     {
       CustomActionTreeItem* layerItem = new CustomActionTreeItem(*it);
       layerItem->setText(0, QString((*it)->getName().c_str()));
-			//layerItem->setCheckState(0, (*it)->getEnabled() ? Qt::Checked : Qt::Unchecked);
 			_masksItem->addChild(layerItem);
     }
   }
@@ -470,7 +463,6 @@ void MapCatalogWidget::refresh()
 	    _tree->addTopLevelItem(_viewpointsItem);
     }
 
-    //qDeleteAll(_viewpointsItem->takeChildren());
     _viewpointsItem->takeChildren();
 
     std::vector<osgEarth::Viewpoint> viewpoints;

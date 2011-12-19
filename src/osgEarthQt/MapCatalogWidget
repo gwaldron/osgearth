@@ -61,7 +61,7 @@ namespace osgEarth { namespace QtGui
 	    void onMapChanged();
 	    void onTreeItemDoubleClicked(QTreeWidgetItem* item, int col);
       void onTreeItemChanged(QTreeWidgetItem* item, int col);
-      void onTreeSelectionChanged();
+      //TODO: void onTreeSelectionChanged();
 
     protected:
       ~MapCatalogWidget();

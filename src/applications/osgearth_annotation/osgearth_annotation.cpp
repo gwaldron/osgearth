@@ -266,9 +266,8 @@ main(int argc, char** argv)
 
     // install a "hover" draw state that will change the appearance of an Annotation
     // when the mouse is hovering over it.
-    //annoGroup->accept( DrawStateInstaller("hover", new HighlightDrawStateTechnique()) );
+    annoGroup->accept( DrawStateInstaller("hover", new HighlightDrawStateTechnique()) );
     labelGroup->accept( DrawStateInstaller("hover", new ScaleDrawStateTechnique()) );
-    annoGroup->accept( DrawStateInstaller("hover", new ScaleDrawStateTechnique()) );
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);

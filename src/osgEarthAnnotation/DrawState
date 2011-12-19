@@ -171,7 +171,6 @@ namespace osgEarth { namespace Annotation
     {
     public:
         HighlightDrawStateTechnique(const osg::Vec4f& color =osg::Vec4f(1,1,0,0.5));
-        virtual bool isShareable() const { return true; }
         virtual DrawStateTechnique* clone() const { return new HighlightDrawStateTechnique(_color); }
 
     protected:

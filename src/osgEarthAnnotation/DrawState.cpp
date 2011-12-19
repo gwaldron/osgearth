@@ -18,13 +18,6 @@
 */
 
 #include <osgEarthAnnotation/DrawState>
-#include <osgEarthSymbology/Color>
-#include <osg/MatrixTransform>
-#include <osgFX/Outline>
-#include <osg/ShapeDrawable>
-#include <osg/CullFace>
-#include <osg/Depth>
-#include <osg/Stencil>
 
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/LocalizedNode>
@@ -32,6 +25,18 @@
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/TrackNode>
+
+#include <osgEarthSymbology/Color>
+#include <osgEarthSymbology/MeshSubdivider>
+
+#include <osg/MatrixTransform>
+#include <osgFX/Outline>
+#include <osg/ShapeDrawable>
+#include <osg/CullFace>
+#include <osg/Depth>
+#include <osg/Stencil>
+#include <osg/Geometry>
+
 
 using namespace osgEarth::Annotation;
 
@@ -139,6 +144,50 @@ namespace
     };
 };
 
+namespace
+{
+    osg::Node* createGeodesicSphere( float r, const osg::Vec4& color )
+    {
+        osg::Geometry* geom = new osg::Geometry();
+
+        osg::Vec3Array* v = new osg::Vec3Array();
+        v->reserve(6);
+        v->push_back( osg::Vec3(0,0,r) ); // top
+        v->push_back( osg::Vec3(0,0,-r) ); // bottom
+        v->push_back( osg::Vec3(-r,0,0) ); // left
+        v->push_back( osg::Vec3(r,0,0) ); // right
+        v->push_back( osg::Vec3(0,r,0) ); // back
+        v->push_back( osg::Vec3(0,-r,0) ); // front
+        geom->setVertexArray(v);
+
+        osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+        b->reserve(24);
+        b->push_back(0); b->push_back(3); b->push_back(4);
+        b->push_back(0); b->push_back(4); b->push_back(2);
+        b->push_back(0); b->push_back(2); b->push_back(5);
+        b->push_back(0); b->push_back(5); b->push_back(3);
+        b->push_back(1); b->push_back(3); b->push_back(5);
+        b->push_back(1); b->push_back(4); b->push_back(3);
+        b->push_back(1); b->push_back(2); b->push_back(4);
+        b->push_back(1); b->push_back(5); b->push_back(2);
+        geom->addPrimitiveSet( b );
+
+        MeshSubdivider ms;
+        ms.run( *geom, osg::DegreesToRadians(15.0f), GEOINTERP_GREAT_CIRCLE );
+
+        osg::Vec4Array* c = new osg::Vec4Array(1);
+        (*c)[0] = color;
+        geom->setColorArray( c );
+        geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        osg::Geode* geode = new osg::Geode();
+        geode->addDrawable( geom );
+
+        return geode;
+    }
+}
+
+
 EncircleDrawStateTechnique::EncircleDrawStateTechnique() :
 InjectionDrawStateTechnique( new osg::Group() )
 {
@@ -152,16 +201,13 @@ EncircleDrawStateTechnique::apply(osg::Group* ap, bool enable)
     {
         const osg::BoundingSphere& bs = ap->getBound();
 
-        osg::Geode* geode = new osg::Geode();
-        osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), bs.radius()) );
-        sd->setColor( Color(Color::Red,0.4) );
+        osg::Node* geode = createGeodesicSphere(bs.radius(), osg::Vec4(1,0,0,0.4));
 
-        osg::StateSet* s = sd->getOrCreateStateSet();
+        osg::StateSet* s = geode->getOrCreateStateSet();
         s->setMode(GL_LIGHTING,0);
         s->setMode(GL_BLEND,1);
         s->setAttributeAndModes( new osg::Depth(osg::Depth::LESS, 0, 1, false), 1 );
         s->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
-        geode->addDrawable( sd );
 
         _injectionGroup->addCullCallback( new TraverseNodeCallback(geode) );
     }
@@ -243,16 +289,17 @@ HighlightDrawStateTechnique::apply(osg::Group* ap, bool enable)
     {
         const osg::BoundingSphere& bs = ap->getBound();
 
-        osg::Geode* geode = new osg::Geode();
-        osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), 2.0*bs.radius()) );
-        sd->setColor( _color );
+        osg::Node* geode = createGeodesicSphere( 2.0*bs.radius(), _color );
+        //osg::Geode* geode = new osg::Geode();
+        //osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), 2.0*bs.radius()) );
+        //sd->setColor( _color );
 
-        osg::StateSet* s = sd->getOrCreateStateSet();
+        osg::StateSet* s = geode->getOrCreateStateSet();
         s->setMode(GL_LIGHTING,0);
         s->setMode(GL_BLEND,1);
         s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
         s->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
-        geode->addDrawable( sd );
+        //geode->addDrawable( sd );
         hg->_fillNode = geode;
     }
 

@@ -26,8 +26,8 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 AnnotationNode::AnnotationNode() :
-_dynamic            ( false ),
-_activeDsTech       ( 0L )
+_dynamic ( false ),
+_activeDs( 0L )
 {
     //nop
 }
@@ -52,20 +52,20 @@ AnnotationNode::setDynamic( bool value )
 }
 
 void
-AnnotationNode::installAltDrawState( const std::string& name, DrawStateTechnique* tech )
+AnnotationNode::installAltDrawState( const std::string& name, DrawState* ds )
 {
-    if ( _activeDsTech )
+    if ( _activeDs )
     {
         clearAltDrawState();
     }
 
-    if ( tech == 0L )
+    if ( ds == 0L )
     {
-        _dsTechMap.erase( name );
+        _dsMap.erase( name );
     }
     else
     {
-        _dsTechMap[name] = tech->copyOrClone();
+        _dsMap[name] = ds->copyOrClone();
     }
 }
 
@@ -73,30 +73,30 @@ void
 AnnotationNode::uninstallAltDrawState( const std::string& name )
 {
     clearAltDrawState();
-    _dsTechMap.erase( name );
+    _dsMap.erase( name );
 }
 
 void
 AnnotationNode::setAltDrawState( const std::string& name )
 {
     // already active?
-    if ( _activeDsTech && _activeDsName == name )
+    if ( _activeDs && _activeDsName == name )
         return;
 
     // is a different one active? if so kill it
-    if ( _activeDsTech )
+    if ( _activeDs )
         clearAltDrawState();
 
     // try to find and enable the new one
-    DrawStateTechMap::iterator i = _dsTechMap.find(name);
-    if ( i != _dsTechMap.end() )
+    DrawStateMap::iterator i = _dsMap.find(name);
+    if ( i != _dsMap.end() )
     {
-        DrawStateTechnique* tech = i->second.get();
-        if ( tech )
+        DrawState* ds = i->second.get();
+        if ( ds )
         {
-            if ( this->accept(tech, true) ) 
+            if ( this->accept(ds, true) ) 
             {
-                _activeDsTech = tech;
+                _activeDs = ds;
                 _activeDsName = name;
             }
         }
@@ -106,17 +106,17 @@ AnnotationNode::setAltDrawState( const std::string& name )
 void
 AnnotationNode::clearAltDrawState()
 {
-    if ( _activeDsTech )
+    if ( _activeDs )
     {
-        this->accept(_activeDsTech, false);
-        _activeDsTech = 0L;
+        this->accept(_activeDs, false);
+        _activeDs = 0L;
     }
 }
 
 bool
 AnnotationNode::hasAltDrawState( const std::string& name ) const
 {
-    return _dsTechMap.find(name) != _dsTechMap.end();
+    return _dsMap.find(name) != _dsMap.end();
 }
 
 osg::Group*

@@ -97,7 +97,7 @@ namespace osgEarth { namespace Annotation
         bool _horizonCulling;
         bool _autoTransform;
 
-        friend class DrawStateTechnique;
+        friend class DrawState;
     };
 
 } } // namespace osgEarth::Annotation

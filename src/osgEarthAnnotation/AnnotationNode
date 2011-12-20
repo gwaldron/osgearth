@@ -26,7 +26,7 @@
 
 #define META_AnnotationNode(library,type) \
     META_Node(library,type); \
-    virtual bool accept(DrawStateTechnique* t, bool enable) { return t->apply(*this, enable); }
+    virtual bool accept(DrawState* ds, bool enable) { return ds->apply(*this, enable); }
 
 
 namespace osgEarth { namespace Annotation
@@ -74,7 +74,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Installs an alternate draw state on this annotation node.
          */
-        void installAltDrawState( const std::string& name, DrawStateTechnique* tech );
+        void installAltDrawState( const std::string& name, DrawState* ds );
 
         /**
          * Uninstalls an alternate draw state on this annotation node.
@@ -102,10 +102,10 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<AnnotationData> _annoData;
         bool                         _dynamic;
 
-        typedef std::map<std::string, osg::ref_ptr<DrawStateTechnique> > DrawStateTechMap;
-        DrawStateTechMap    _dsTechMap;
-        DrawStateTechnique* _activeDsTech;
-        std::string         _activeDsName;
+        typedef std::map<std::string, osg::ref_ptr<DrawState> > DrawStateMap;
+        DrawStateMap _dsMap;
+        DrawState*   _activeDs;
+        std::string  _activeDsName;
     };
 
 } } // namespace osgEarth::Annotation

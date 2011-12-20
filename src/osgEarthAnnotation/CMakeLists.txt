@@ -20,11 +20,13 @@ set(LIB_PUBLIC_HEADERS
     Export
     FeatureNode
     GeometryNode
+    HighlightDrawState
     ImageOverlay
     LabelNode
     LocalizedNode
     OrthoNode
     PlaceNode
+    ScaleDrawState
     TrackNode
 )
 
@@ -38,6 +40,7 @@ set(LIB_COMMON_FILES
     EllipseNode.cpp
     FeatureNode.cpp
     GeometryNode.cpp
+    HighlightDrawState.cpp
     ImageOverlay.cpp
     LabelNode.cpp
     LocalizedNode.cpp

@@ -56,14 +56,14 @@ namespace osgEarth { namespace Annotation
 
     //-----------------------------------------------------------------------
 
-    class OSGEARTHANNO_EXPORT DrawStateTechnique : public osg::Referenced
+    class OSGEARTHANNO_EXPORT DrawState : public osg::Referenced
     {
     public:
-        DrawStateTechnique() { }
+        DrawState() { }
 
         virtual bool isShareable() const { return false; }
-        virtual DrawStateTechnique* clone() const =0;
-        DrawStateTechnique* copyOrClone() { return isShareable() ? this : clone(); }
+        virtual DrawState* clone() const =0;
+        DrawState* copyOrClone() { return isShareable() ? this : clone(); }
 
     public:
         virtual bool apply(class AnnotationNode& node, bool enable);
@@ -90,7 +90,7 @@ namespace osgEarth { namespace Annotation
          * Constructor - for applying a single technique to all the Annotations
          * found in the visited graph.
          */
-        DrawStateInstaller( const std::string& name, DrawStateTechnique* tech )
+        DrawStateInstaller( const std::string& name, DrawState* tech )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
               _name(name), _tech(tech) { }
 
@@ -106,9 +106,9 @@ namespace osgEarth { namespace Annotation
         virtual void apply(osg::Node& node);
 
     public:
-        osg::ref_ptr<DrawStateTechnique> _tech;
-        osg::ref_ptr<Callback>           _callback;
-        std::string                      _name;
+        osg::ref_ptr<DrawState> _tech;
+        osg::ref_ptr<Callback>  _callback;
+        std::string             _name;
     };
 
     //-----------------------------------------------------------------------
@@ -118,11 +118,11 @@ namespace osgEarth { namespace Annotation
      * transform. For example, you could install an Effect node, or a node
      * that activates a shader.
      */
-    class OSGEARTHANNO_EXPORT InjectionDrawStateTechnique : public DrawStateTechnique
+    class OSGEARTHANNO_EXPORT InjectionDrawState : public DrawState
     {
     public:
-        InjectionDrawStateTechnique( osg::Group* group =0L );
-        virtual DrawStateTechnique* clone() const { return new InjectionDrawStateTechnique(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
+        InjectionDrawState( osg::Group* group =0L );
+        virtual DrawState* clone() const { return new InjectionDrawState(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
 
         virtual bool apply(class AnnotationNode& node, bool enable);
 
@@ -132,55 +132,6 @@ namespace osgEarth { namespace Annotation
         virtual bool apply(osg::Group* attachPoint, bool enable);
     };
 
-    //-----------------------------------------------------------------------
-
-    /**
-     * A draw state technique that scales the annotation.
-     */
-    class OSGEARTHANNO_EXPORT ScaleDrawStateTechnique : public InjectionDrawStateTechnique
-    {
-    public:
-        ScaleDrawStateTechnique(float factor =1.1f);
-        virtual DrawStateTechnique* clone() const { return new ScaleDrawStateTechnique(_factor); }
-
-    protected:
-        float _factor;
-    };
-
-    //-----------------------------------------------------------------------
-
-    /**
-     * A draw state technique that scales the annotation.
-     */
-    class OSGEARTHANNO_EXPORT EncircleDrawStateTechnique : public InjectionDrawStateTechnique
-    {
-    public:
-        EncircleDrawStateTechnique() { }
-        virtual DrawStateTechnique* clone() const { return new EncircleDrawStateTechnique(); }
-
-    protected:
-        virtual bool apply(osg::Group* attachPoint, bool enable);
-    };
-
-    //------------------------------------------------------------------------
-
-    /**
-     * Draw state technique that highlights the geometry
-     */
-    class OSGEARTHANNO_EXPORT HighlightDrawStateTechnique : public InjectionDrawStateTechnique
-    {
-    public:
-        HighlightDrawStateTechnique(const osg::Vec4f& color =osg::Vec4f(1,1,0,0.5));
-        virtual DrawStateTechnique* clone() const { return new HighlightDrawStateTechnique(_color); }
-        
-        virtual bool apply(class OrthoNode& node, bool enable);
-
-    protected:
-        virtual bool apply(osg::Group* attachPoint, bool enable);
-
-        osg::Vec4f _color;
-        osg::ref_ptr<osg::StateSet> _passes[2];
-    };
 
 } } // namespace osgEarth::Annotation
 

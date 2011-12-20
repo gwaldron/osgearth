@@ -185,7 +185,7 @@ LocalizedNode::setAltDrawState( const std::string& name )
         DrawStateTechMap::iterator i = _dsTechMap.find(name);
         if ( i != _dsTechMap.end() )
         {
-            DrawStateTechnique* tech = i->second.get();
+            DrawState* tech = i->second.get();
             if ( tech->enable( _xform ) )
             {
                 _activeDsTech = tech;

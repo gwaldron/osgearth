@@ -23,6 +23,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Formatters>
 #include <osgEarthUtil/AnnotationEvents>
+#include <osgEarthUtil/AutoClipPlaneHandler>
 
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthAnnotation/ImageOverlayEditor>
@@ -33,6 +34,8 @@
 #include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/Decluttering>
+#include <osgEarthAnnotation/HighlightDrawState>
+#include <osgEarthAnnotation/ScaleDrawState>
 
 #include <osgEarthSymbology/GeometryFactory>
 
@@ -242,10 +245,10 @@ main(int argc, char** argv)
     // based on some user action.
 
     // highlight annotation upon hover by default:
-    annoGroup->accept( DrawStateInstaller("hover", new HighlightDrawStateTechnique()) );
+    annoGroup->accept( DrawStateInstaller("hover", new HighlightDrawState()) );
 
     // scale labels when hovering:
-    labelGroup->accept( DrawStateInstaller("hover", new ScaleDrawStateTechnique(1.1f)) );
+    labelGroup->accept( DrawStateInstaller("hover", new ScaleDrawState(1.1f)) );
 
     // install an event handler for picking and hovering.
     AnnotationEventCallback* cb = new AnnotationEventCallback();
@@ -260,7 +263,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 
-    // add some stock OSG handlers:
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
     viewer.getDatabasePager()->setDoPreCompile( true );
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());

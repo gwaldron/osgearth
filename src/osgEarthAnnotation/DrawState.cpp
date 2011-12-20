@@ -27,20 +27,6 @@
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/TrackNode>
 
-#include <osgEarthSymbology/Color>
-#include <osgEarthSymbology/MeshSubdivider>
-
-#include <osgEarth/FindNode>
-
-#include <osg/MatrixTransform>
-#include <osgFX/Outline>
-#include <osg/ShapeDrawable>
-#include <osg/CullFace>
-#include <osg/Depth>
-#include <osg/Stencil>
-#include <osg/Geometry>
-
-
 using namespace osgEarth::Annotation;
 
 //---------------------------------------------------------------------------
@@ -61,26 +47,26 @@ DrawStateInstaller::apply(osg::Node& node)
 //---------------------------------------------------------------------------
 
 bool
-DrawStateTechnique::apply(class AnnotationNode& node, bool enable)
+DrawState::apply(class AnnotationNode& node, bool enable)
 {
     return false;
 }
 
 bool
-DrawStateTechnique::apply(class LocalizedNode& node, bool enable)
+DrawState::apply(class LocalizedNode& node, bool enable)
 { 
     return apply(static_cast<AnnotationNode&>(node), enable);
 }
 
 bool
-DrawStateTechnique::apply(class OrthoNode& node, bool enable)
+DrawState::apply(class OrthoNode& node, bool enable)
 {
     return apply(static_cast<AnnotationNode&>(node), enable);
 }
 
 //---------------------------------------------------------------------------
 
-InjectionDrawStateTechnique::InjectionDrawStateTechnique( osg::Group* group ) :
+InjectionDrawState::InjectionDrawState( osg::Group* group ) :
 _injectionGroup( group )
 {
     if ( !_injectionGroup.valid() )
@@ -88,14 +74,14 @@ _injectionGroup( group )
 }
 
 bool
-InjectionDrawStateTechnique::apply(AnnotationNode& node, bool enable)
+InjectionDrawState::apply(AnnotationNode& node, bool enable)
 {
     bool success = apply( node.getAttachPoint(), enable );
-    return success ? true : DrawStateTechnique::apply(node, enable);
+    return success ? true : DrawState::apply(node, enable);
 }
 
 bool
-InjectionDrawStateTechnique::apply(osg::Group* ap, bool enable)
+InjectionDrawState::apply(osg::Group* ap, bool enable)
 {
     if ( _injectionGroup.valid() && ap )
     {
@@ -120,178 +106,4 @@ InjectionDrawStateTechnique::apply(osg::Group* ap, bool enable)
         return true;
     }
     return false;
-}
-
-//---------------------------------------------------------------------------
-
-ScaleDrawStateTechnique::ScaleDrawStateTechnique( float factor ) :
-InjectionDrawStateTechnique( new osg::MatrixTransform( osg::Matrix::scale(factor,factor,factor) ) ),
-_factor( factor )
-{
-    //nop
-}
-
-//--------------------------------------------------------------------------
-
-namespace
-{
-    struct TraverseNodeCallback : public osg::NodeCallback
-    {
-        osg::ref_ptr<osg::Node> _node;
-        TraverseNodeCallback(osg::Node* node) : _node(node) { }
-        void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            _node->accept(*nv);
-            traverse(node, nv);
-        }
-    };
-};
-
-//--------------------------------------------------------------------------
-
-bool
-EncircleDrawStateTechnique::apply(osg::Group* ap, bool enable)
-{
-    if ( _injectionGroup->getCullCallback() == 0L && ap != 0L )
-    {
-        const osg::BoundingSphere& bs = ap->getBound();
-
-        osg::Node* geode = AnnotationUtils::createGeodesicSphere(bs.radius(), osg::Vec4(1,0,0,0.4));
-
-        osg::StateSet* s = geode->getOrCreateStateSet();
-        s->setMode(GL_LIGHTING,0);
-        s->setMode(GL_BLEND,1);
-        s->setAttributeAndModes( new osg::Depth(osg::Depth::LESS, 0, 1, false), 1 );
-        s->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
-
-        _injectionGroup->addCullCallback( new TraverseNodeCallback(geode) );
-    }
-
-    return InjectionDrawStateTechnique::apply(ap, enable);
-}
-
-//--------------------------------------------------------------------------
-
-#undef  LC
-#define LC "[HighlightDrawState] "
-namespace
-{
-    struct HighlightGroup : public osg::Group
-    {
-        osg::ref_ptr<osg::StateSet> _pass1, _pass2;
-        osg::ref_ptr<osg::Node>     _fillNode;
-
-        void traverse(osg::NodeVisitor& nv)
-        {
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>(&nv);
-            if ( cv && _fillNode.valid() && _pass1.valid() )
-            {
-                const osg::GraphicsContext* gc = cv->getCurrentCamera()->getGraphicsContext();
-                if ( gc && gc->getTraits() && gc->getTraits()->stencil < 1 )
-                {
-                    OE_WARN << LC << "Insufficient stencil buffer bits available; disabling highlighting." << std::endl;
-                    OE_WARN << LC << "Please call osg::DisplaySettings::instance()->setMinimumNumStencilBits()" << std::endl;
-                    _pass1 = 0L;
-                }
-                else
-                {
-                    // first render the geometry to the stencil buffer:
-                    cv->pushStateSet(_pass1);
-                    osg::Group::traverse( nv );
-                    cv->popStateSet();
-
-                    // the render the coverage quad
-                    cv->pushStateSet(_pass2);
-                    _fillNode->accept( nv );
-                    cv->popStateSet();
-                }
-            }
-            else
-            {
-                osg::Group::traverse(nv);
-            }
-        }
-    };
-}
-
-HighlightDrawStateTechnique::HighlightDrawStateTechnique(const osg::Vec4f& color) :
-InjectionDrawStateTechnique( new HighlightGroup() ),
-_color( color )
-{
-    HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
-
-    hg->_pass1 = new osg::StateSet();
-    {
-        osg::Stencil* stencil  = new osg::Stencil();
-        stencil->setFunction(osg::Stencil::ALWAYS, 1, ~0u);
-        stencil->setOperation(osg::Stencil::KEEP, osg::Stencil::KEEP, osg::Stencil::REPLACE);
-        hg->_pass1->setAttributeAndModes(stencil, 1);
-        hg->_pass1->setBinNumber(0);
-    }
-
-    hg->_pass2 = new osg::StateSet();
-    {
-        osg::Stencil* stencil  = new osg::Stencil();
-        stencil->setFunction(osg::Stencil::NOTEQUAL, 0, ~0u);
-        stencil->setOperation(osg::Stencil::REPLACE, osg::Stencil::REPLACE, osg::Stencil::REPLACE);
-        hg->_pass2->setAttributeAndModes(stencil, 1);
-        hg->_pass2->setBinNumber(1);
-    }
-}
-
-bool
-HighlightDrawStateTechnique::apply(OrthoNode& node, bool enable)
-{
-    if ( node.getAttachPoint() )
-    {
-        node.setDynamic( true );
-        FindNodesVisitor<osg::Geode> fnv;
-        node.getAttachPoint()->accept( fnv );
-        if ( enable )
-        {
-            osg::BoundingBox box;
-            for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
-            {
-                osg::Geode* geode = *i;
-                box.expandBy( geode->getBoundingBox() );
-            }
-            
-            if ( fnv._results.size() > 0 )
-            {
-                osg::Drawable* geom = AnnotationUtils::create2DOutline( box, 3.0f, _color );  
-                geom->setUserData( node.getAnnotationData() );
-                for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
-                {
-                    (*i)->addDrawable(geom);
-                }
-            }
-        }
-        else
-        {
-            for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
-            {
-                osg::Geode* geode = *i;
-                geode->removeDrawable( geode->getDrawable(geode->getNumDrawables()-1) );
-            }
-        }
-
-        return true;
-    }
-    return false;
-}
-
-bool
-HighlightDrawStateTechnique::apply(osg::Group* ap, bool enable)
-{
-    HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
-    if ( !hg->_fillNode.valid() && ap != 0L )
-    {
-        const osg::BoundingSphere& bs = ap->getBound();
-
-        osg::Node* quad = AnnotationUtils::createFullScreenQuad( _color );
-        quad->setCullingActive( false );
-        hg->_fillNode = quad;
-    }
-
-    return InjectionDrawStateTechnique::apply(ap, enable);
 }

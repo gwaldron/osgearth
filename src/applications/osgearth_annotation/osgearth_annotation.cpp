@@ -22,7 +22,7 @@
 
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Formatters>
-#include <osgEarthUtil/PickingUtils>
+#include <osgEarthUtil/AnnotationEvents>
 
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthAnnotation/ImageOverlayEditor>
@@ -54,75 +54,26 @@ usage( char** argv )
     return -1;
 }
 
-// helper to toggle annotations on and off using the Controls UI
-struct ToggleNode : public ControlEventHandler {
-    ToggleNode( osg::Node* node ) : _node( node ) { }
-    void onValueChanged( Control* src, bool value ) {
-        if ( _node.valid() )
-            _node->setNodeMask( value ? ~0 : 0 );
-    }
-    osg::observer_ptr<osg::Node> _node;
-};
+//------------------------------------------------------------------
 
-
-
-struct AnnotationEventCallback : public osg::NodeCallback
+/**
+ * Event handler that processes events fired from the
+ * AnnotationEventCallback
+ */
+struct MyAnnoEventHandler : public AnnotationEventHandler
 {
-    std::set<AnnotationNode*> _selected;
-    float _mx, _my;
-
-    void operator()( osg::Node* node, osg::NodeVisitor* nv )
+    void onHoverEnter( AnnotationNode* anno ) 
     {
-        osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(nv);
-        osgGA::EventVisitor::EventList& events = ev->getEvents();
-
-        osgViewer::View* view = static_cast<osgViewer::View*>(ev->getActionAdapter());
-        for( osgGA::EventVisitor::EventList::const_iterator e = events.begin(); e != events.end(); ++e )
-        {
-            osgGA::GUIEventAdapter* ea = e->get();
-
-            if ( ea->getEventType() == osgGA::GUIEventAdapter::MOVE )
-            {
-                _mx = ea->getX();
-                _my = ea->getY();
-            }
-
-            else if ( ea->getEventType() == osgGA::GUIEventAdapter::FRAME )
-            {
-                std::set<AnnotationNode*> toRevert;
-                toRevert.swap( _selected );
-
-                Picker picker( view, node );
-                Picker::Hits hits;
-
-                if ( picker.pick( _mx, _my, hits ) )
-                {
-                    for( Picker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
-                    {
-                        const Picker::Hit& hit = *h;
-
-                        AnnotationNode* annotation = picker.getNode<AnnotationNode>( hit );
-                        if ( annotation )
-                        {
-                            _selected.insert( annotation );
-                            annotation->setAltDrawState( "hover" );
-                            toRevert.erase( annotation );
-                            break;
-                        }
-                    }
-                }                
-
-                for( std::set<AnnotationNode*>::iterator i = toRevert.begin(); i != toRevert.end(); ++i )
-                {
-                    (*i)->clearAltDrawState();
-                }
-            }
-        }
-
-        traverse(node,nv);
+        anno->setAltDrawState( "hover" );
     }
 
+    void onHoverLeave( AnnotationNode* anno )
+    {
+        anno->clearAltDrawState();
+    }
 };
+
+//------------------------------------------------------------------
 
 int
 main(int argc, char** argv)
@@ -297,16 +248,18 @@ main(int argc, char** argv)
     // scale labels when hovering:
     labelGroup->accept( DrawStateInstaller("hover", new ScaleDrawStateTechnique(1.1f)) );
 
-    
+    // install an event handler for picking and hovering.
+    AnnotationEventCallback* cb = new AnnotationEventCallback();
+    cb->addHandler( new MyAnnoEventHandler() );
+
+    annoGroup->addEventCallback( cb );
+
     //--------------------------------------------------------------------
 
     // initialize a viewer:
     osgViewer::Viewer viewer(arguments);
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
-
-    // install an event handler for picking and hovering.
-    annoGroup->addEventCallback( new AnnotationEventCallback() );
 
     // add some stock OSG handlers:
     viewer.getDatabasePager()->setDoPreCompile( true );

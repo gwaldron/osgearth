@@ -36,6 +36,13 @@ namespace osgEarth { namespace Util
         typedef osgUtil::PolytopeIntersector::Intersection  Hit;
         typedef osgUtil::PolytopeIntersector::Intersections Hits;
 
+        enum Limit {
+            NO_LIMIT,
+            LIMIT_ONE_PER_DRAWABLE,
+            LIMIT_ONE,
+            LIMIT_NEAREST
+        };
+
     public:
         /** 
          * Constructs a picker that will pick data from the given view,
@@ -50,7 +57,8 @@ namespace osgEarth { namespace Util
             osgViewer::View* view,
             osg::Node*       graph         =0L, 
             unsigned         traversalMask =~0,
-            float            buffer        =5.0f );
+            float            buffer        =5.0f,
+            Limit            limit         =LIMIT_ONE);
 
         /**
          * Picks geometry under the specified viewport coordinates. The results
@@ -79,6 +87,7 @@ namespace osgEarth { namespace Util
         osg::NodePath                 _path;
         unsigned                      _travMask;
         float                         _buffer;
+        Limit                         _limit;
     };
 
 } } // namespace osgEarth::Util

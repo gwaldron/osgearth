@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthUtil/PickingUtils>
+#include <osgEarthUtil/Pickers>
 #include <osgUtil/PolytopeIntersector>
 #include <osg/Polytope>
 
@@ -24,11 +24,12 @@
 
 using namespace osgEarth::Util;
 
-Picker::Picker( osgViewer::View* view, osg::Node* root, unsigned travMask, float buffer ) :
+Picker::Picker( osgViewer::View* view, osg::Node* root, unsigned travMask, float buffer, Limit limit ) :
 _view    ( view ),
 _root    ( root ),
 _travMask( travMask ),
-_buffer  ( buffer )
+_buffer  ( buffer ),
+_limit   ( limit )
 {
     if ( root )
         _path = root->getParentalNodePaths()[0];
@@ -99,6 +100,7 @@ Picker::pick( float x, float y, Hits& results ) const
         picker = new osgUtil::PolytopeIntersector(cf, winPT);
     }
 
+    picker->setIntersectionLimit( (osgUtil::Intersector::IntersectionLimit)_limit );
     osgUtil::IntersectionVisitor iv(picker.get());
 
     // in MODEL mode, we need to window and proj matrixes in order to support some of the 

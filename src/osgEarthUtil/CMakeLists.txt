@@ -9,6 +9,7 @@ SET(LIB_NAME osgEarthUtil)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS  
+    AnnotationEvents
     AutoClipPlaneHandler
     Common
     Controls
@@ -24,7 +25,7 @@ SET(LIB_PUBLIC_HEADERS
     ObjectPlacer
     ObjectLocator
     #OceanSurfaceNode
-    PickingUtils
+    Pickers
     SkyNode
     SpatialData
     StarData
@@ -33,6 +34,7 @@ SET(LIB_PUBLIC_HEADERS
 )
 
 SET(LIB_COMMON_FILES
+    AnnotationEvents.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
@@ -46,7 +48,7 @@ SET(LIB_COMMON_FILES
     ObjectPlacer.cpp
     ObjectLocator.cpp
     #OceanSurfaceNode.cpp
-    PickingUtils.cpp
+    Pickers.cpp
     SpatialData.cpp
     SkyNode.cpp
 	WFS.cpp

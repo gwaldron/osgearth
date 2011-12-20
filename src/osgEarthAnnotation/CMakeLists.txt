@@ -15,14 +15,18 @@ set(LIB_PUBLIC_HEADERS
     CircleNode
     Common
     Decluttering
+    DrawState
     EllipseNode
     Export
+    FeatureNode
     GeometryNode
+    HighlightDrawState
     ImageOverlay
     LabelNode
     LocalizedNode
     OrthoNode
     PlaceNode
+    ScaleDrawState
     TrackNode
 )
 
@@ -32,8 +36,11 @@ set(LIB_COMMON_FILES
     AnnotationUtils.cpp
     CircleNode.cpp
     Decluttering.cpp
+    DrawState.cpp
     EllipseNode.cpp
+    FeatureNode.cpp
     GeometryNode.cpp
+    HighlightDrawState.cpp
     ImageOverlay.cpp
     LabelNode.cpp
     LocalizedNode.cpp

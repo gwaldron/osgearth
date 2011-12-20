@@ -1240,9 +1240,9 @@ Container::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( visible() == true )
     {
-        Control::draw( cx, out );
         if ( _frame.valid() )
             _frame->draw( cx, out );
+        Control::draw( cx, out );
     }
 }
 

@@ -25,6 +25,7 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/SpatialReference>
 #include <osg/CoordinateSystemNode>
 #include <osgSim/OverlayNode>
 
@@ -98,6 +99,13 @@ namespace osgEarth
          * Gets the Map that this MapNode is rendering.
          */
         Map* getMap();
+        const Map* getMap() const;
+
+        /**
+         * Gets the spatial reference system of the underlying map.
+         * Convenience function.
+         */
+        const SpatialReference* getMapSRS() const;
 
         /**
          * Finds the topmost Map node in the specified scene graph, or returns NULL if

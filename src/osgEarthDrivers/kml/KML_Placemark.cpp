@@ -19,7 +19,7 @@
 #include "KML_Placemark"
 #include "KML_Geometry"
 #include "KML_Style"
-#include <osgEarthFeatures/FeatureNode>
+#include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/Decluttering>
 
@@ -90,8 +90,10 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         // Make a feature node; drape if we're not extruding.
         GeometryCompilerOptions options;
         options.clustering() = false;
-        fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped, options );
-        fNode->setStyle( style );
+        Feature* feature = new Feature(geometry._geom.get(), style);
+        fNode = new FeatureNode( cx._mapNode, feature, draped, options );
+        //fNode = new FeatureNode( cx._mapNode, new Feature(geometry._geom.get()), draped, options );
+        //fNode->setStyle( style );
 
         if ( draped )
             fNode->getOrCreateStateSet()->setMode(GL_LIGHTING, 1);

@@ -140,9 +140,9 @@ struct OverlayCallback : public ImageOverlay::ImageOverlayCallback
 
 
 ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay, const osg::EllipsoidModel* ellipsoid, osg::Node* terrain):
-_overlay(overlay),
-_ellipsoid(ellipsoid),
-_terrain(terrain)
+_overlay  (overlay),
+_ellipsoid(ellipsoid ? ellipsoid : overlay->getMapNode() ? overlay->getMapNode()->getMapSRS()->getEllipsoid() : 0L),
+_terrain  (terrain ? terrain : overlay->getMapNode() ? overlay->getMapNode()->getTerrainEngine() : 0L )
 {   
     _overlayCallback = new OverlayCallback(this);
     _overlay->addCallback( _overlayCallback.get() );

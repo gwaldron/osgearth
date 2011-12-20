@@ -46,7 +46,13 @@ namespace osgEarth
         void setDraped( bool value );
         bool getDraped() const { return _draped; }
 
-    public:
+        /**
+         * Gets the map node used to drape this node
+         */
+        MapNode* getMapNode() { return _mapNode.get(); }
+
+    public: // osg::Node
+
         virtual void traverse( osg::NodeVisitor& nv );
 
         virtual osg::BoundingSphere computeBound() const;

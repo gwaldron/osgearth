@@ -26,6 +26,7 @@
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/Formatters>
 #include <osgEarthUtil/Controls>
+#include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthAnnotation/TrackNode>
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationData>

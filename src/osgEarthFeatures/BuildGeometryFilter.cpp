@@ -262,10 +262,16 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             }
 
             // NOTE! per-vertex colors makes the optimizer destroy the geometry....
-            osg::Vec4Array* colors = new osg::Vec4Array(1);
-            (*colors)[0] = color;
+            //osg::Vec4Array* colors = new osg::Vec4Array(1);
+            //(*colors)[0] = color;
+            //osgGeom->setColorArray( colors );
+            //osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+            osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() );
+            colors->assign( colors->size(), color );
             osgGeom->setColorArray( colors );
-            osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
+            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+            
 
             // add the part to the geode.
             _geode->addDrawable( osgGeom );

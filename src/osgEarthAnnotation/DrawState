@@ -172,6 +172,8 @@ namespace osgEarth { namespace Annotation
     public:
         HighlightDrawStateTechnique(const osg::Vec4f& color =osg::Vec4f(1,1,0,0.5));
         virtual DrawStateTechnique* clone() const { return new HighlightDrawStateTechnique(_color); }
+        
+        virtual bool apply(class OrthoNode& node, bool enable);
 
     protected:
         virtual bool apply(osg::Group* attachPoint, bool enable);

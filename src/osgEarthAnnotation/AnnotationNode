@@ -77,6 +77,11 @@ namespace osgEarth { namespace Annotation
         void installAltDrawState( const std::string& name, DrawStateTechnique* tech );
 
         /**
+         * Uninstalls an alternate draw state on this annotation node.
+         */
+        void uninstallAltDrawState( const std::string& name );
+
+        /**
          * Activates a named alternate draw state that was installed previously
          */
         virtual void setAltDrawState( const std::string& name );
@@ -85,6 +90,11 @@ namespace osgEarth { namespace Annotation
          * Clears any active alternate draw state.
          */
         virtual void clearAltDrawState();
+
+        /**
+         * Whether this annotation has the specified alternate draw state installed.
+         */
+        bool hasAltDrawState( const std::string& name ) const;
 
 
     protected:

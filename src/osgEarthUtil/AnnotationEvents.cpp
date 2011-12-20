@@ -27,16 +27,19 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
 
-AnnotationEventCallback::AnnotationEventCallback() :
-_hoverEnabled( true )
+AnnotationEventCallback::AnnotationEventCallback( AnnotationEventHandler* handler ) :
+_hoverEnabled( true ),
+_mouseDown   ( false )
 {
-    //nop
+    if ( handler )
+        addHandler( handler );
 }
 
 void
 AnnotationEventCallback::addHandler( AnnotationEventHandler* handler )
 {
-    _handlers.push_back( handler );
+    if ( handler )
+        _handlers.push_back( handler );
 }
 
 void
@@ -53,15 +56,21 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
         if ( ea->getEventType() == osgGA::GUIEventAdapter::MOVE ||
              ea->getEventType() == osgGA::GUIEventAdapter::DRAG )
         {
-            _mx = ea->getX();
-            _my = ea->getY();
+            _args.x = ea->getX();
+            _args.y = ea->getY();        
         }
 
         else if ( ea->getEventType() == osgGA::GUIEventAdapter::PUSH )
         {
+            _mouseDown = true;
+            _args.x = ea->getX();
+            _args.y = ea->getY();
+            _args.buttons = ea->getButtonMask();
+            _args.modkeys = ea->getModKeyMask();
+
             Picker picker( view, node );
             Picker::Hits hits;
-            if ( picker.pick( _mx, _my, hits ) )
+            if ( picker.pick( _args.x, _args.y, hits ) )
             {
                 for( Picker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
                 {
@@ -75,7 +84,12 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
             }
         }
 
-        else if ( ea->getEventType() == osgGA::GUIEventAdapter::FRAME && _hoverEnabled )
+        else if ( ea->getEventType() == osgGA::GUIEventAdapter::RELEASE )
+        {
+            _mouseDown = false;
+        }
+
+        else if ( ea->getEventType() == osgGA::GUIEventAdapter::FRAME && _hoverEnabled && !_mouseDown )
         {
             std::set<AnnotationNode*> toUnHover;
             toUnHover.swap( _hovered );
@@ -83,7 +97,7 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
             Picker picker( view, node );
             Picker::Hits hits;
 
-            if ( picker.pick( _mx, _my, hits ) )
+            if ( picker.pick( _args.x, _args.y, hits ) )
             {
                 for( Picker::Hits::const_iterator h = hits.begin(); h != hits.end(); ++h )
                 {
@@ -92,8 +106,11 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                     AnnotationNode* anno = picker.getNode<AnnotationNode>( hit );
                     if ( anno )
                     {
+                        if ( toUnHover.find(anno) == toUnHover.end() )
+                        {
+                            fireEvent( &AnnotationEventHandler::onHoverEnter, anno );
+                        }
                         _hovered.insert( anno );
-                        fireEvent( &AnnotationEventHandler::onHoverEnter, anno );
                         toUnHover.erase( anno );
                         //break;
                     }
@@ -111,10 +128,11 @@ AnnotationEventCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
 }
 
 void
-AnnotationEventCallback::fireEvent( EventHandlerMethodPtr method, AnnotationNode* node )
+AnnotationEventCallback::fireEvent(EventHandlerMethodPtr   method, 
+                                   AnnotationNode*         node )
 {
     for( Handlers::iterator i = _handlers.begin(); i != _handlers.end(); ++i )
     {
-        (i->get()->*method)( node );
+        (i->get()->*method)( node, _args );
     }
 }

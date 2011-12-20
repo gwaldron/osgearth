@@ -33,11 +33,18 @@ namespace osgEarth { namespace Util
      */
     struct AnnotationEventHandler : public osg::Referenced
     {
-        virtual void onClick( AnnotationNode* node ) { }
+        struct EventArgs
+        {
+            float x, y;
+            int   buttons;   // see osgGA::GUIEventAdapter::MouseButtonMask
+            int   modkeys;   // see osgGA::GUIEventAdapter::ModKeyMask
+        };
 
-        virtual void onHoverEnter( AnnotationNode* node ) { }
+        virtual void onClick( AnnotationNode* node, const EventArgs& details ) { }
 
-        virtual void onHoverLeave( AnnotationNode* node ) { }
+        virtual void onHoverEnter( AnnotationNode* node, const EventArgs& details ) { }
+
+        virtual void onHoverLeave( AnnotationNode* node, const EventArgs& details ) { }
     };
 
     /**
@@ -47,7 +54,7 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT AnnotationEventCallback : public osg::NodeCallback
     {
     public:
-        AnnotationEventCallback();
+        AnnotationEventCallback( AnnotationEventHandler* handler =0L );
 
         /** 
          * Adds an event handler whose events will fire upon user actions
@@ -66,14 +73,15 @@ namespace osgEarth { namespace Util
         virtual void operator()( osg::Node* node, osg::NodeVisitor* nv );
 
     protected:
-        float _mx, _my;
+        AnnotationEventHandler::EventArgs _args;
+        bool  _mouseDown;
         bool _hoverEnabled;
         std::set<AnnotationNode*> _hovered;
 
         typedef std::vector< osg::ref_ptr<AnnotationEventHandler> > Handlers;
         Handlers _handlers;
 
-        typedef void (AnnotationEventHandler::*EventHandlerMethodPtr)(AnnotationNode*);
+        typedef void (AnnotationEventHandler::*EventHandlerMethodPtr)(AnnotationNode*,const AnnotationEventHandler::EventArgs&);
         void fireEvent(EventHandlerMethodPtr mp, AnnotationNode* node);
     };
 

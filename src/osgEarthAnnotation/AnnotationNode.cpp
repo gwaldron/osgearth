@@ -70,6 +70,13 @@ AnnotationNode::installAltDrawState( const std::string& name, DrawStateTechnique
 }
 
 void
+AnnotationNode::uninstallAltDrawState( const std::string& name )
+{
+    clearAltDrawState();
+    _dsTechMap.erase( name );
+}
+
+void
 AnnotationNode::setAltDrawState( const std::string& name )
 {
     // already active?
@@ -104,6 +111,12 @@ AnnotationNode::clearAltDrawState()
         this->accept(_activeDsTech, false);
         _activeDsTech = 0L;
     }
+}
+
+bool
+AnnotationNode::hasAltDrawState( const std::string& name ) const
+{
+    return _dsTechMap.find(name) != _dsTechMap.end();
 }
 
 osg::Group*

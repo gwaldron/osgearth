@@ -87,6 +87,15 @@ namespace osgEarth { namespace Annotation
         {
             void acceptCullNoTraverse( osg::CullStack* cs );
         };
+
+        // some geometry creation utilities
+        static osg::Drawable* create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
+
+        static osg::Drawable* create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
+
+        static osg::Node* createFullScreenQuad( const osg::Vec4& color );
+
+        static osg::Node* createGeodesicSphere( float r, const osg::Vec4& color );
     };
 
 } } // namespace osgEarth::Annotation

@@ -19,9 +19,12 @@
 
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthSymbology/Color>
+#include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Registry>
 #include <osgText/Text>
+#include <osg/Depth>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -370,4 +373,146 @@ AnnotationUtils::OrthoNodeAutoTransform::acceptCullNoTraverse( osg::CullStack* c
     }
 
     // GW: the stock AutoTransform calls Transform::accept here; we do NOT
+}
+
+osg::Node* 
+AnnotationUtils::createGeodesicSphere( float r, const osg::Vec4& color )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(6);
+    v->push_back( osg::Vec3(0,0,r) ); // top
+    v->push_back( osg::Vec3(0,0,-r) ); // bottom
+    v->push_back( osg::Vec3(-r,0,0) ); // left
+    v->push_back( osg::Vec3(r,0,0) ); // right
+    v->push_back( osg::Vec3(0,r,0) ); // back
+    v->push_back( osg::Vec3(0,-r,0) ); // front
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+    b->reserve(24);
+    b->push_back(0); b->push_back(3); b->push_back(4);
+    b->push_back(0); b->push_back(4); b->push_back(2);
+    b->push_back(0); b->push_back(2); b->push_back(5);
+    b->push_back(0); b->push_back(5); b->push_back(3);
+    b->push_back(1); b->push_back(3); b->push_back(5);
+    b->push_back(1); b->push_back(4); b->push_back(3);
+    b->push_back(1); b->push_back(2); b->push_back(4);
+    b->push_back(1); b->push_back(5); b->push_back(2);
+    geom->addPrimitiveSet( b );
+
+    MeshSubdivider ms;
+    ms.run( *geom, osg::DegreesToRadians(15.0f), GEOINTERP_GREAT_CIRCLE );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( geom );
+
+    return geode;
+}
+
+osg::Node* 
+AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(4);
+    v->push_back( osg::Vec3(0,0,0) );
+    v->push_back( osg::Vec3(1,0,0) );
+    v->push_back( osg::Vec3(1,1,0) );
+    v->push_back( osg::Vec3(0,1,0) );
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+    b->reserve(6);
+    b->push_back(0); b->push_back(1); b->push_back(2);
+    b->push_back(2); b->push_back(3); b->push_back(0);
+    geom->addPrimitiveSet( b );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( geom );
+
+    osg::StateSet* s = geom->getOrCreateStateSet();
+    s->setMode(GL_LIGHTING,0);
+    s->setMode(GL_BLEND,1);
+    s->setMode(GL_DEPTH_TEST,0);
+    s->setMode(GL_CULL_FACE,0);
+    s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
+
+    osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::identity() );
+    xform->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
+    xform->addChild( geode );
+
+    osg::Projection* proj = new osg::Projection( osg::Matrix::ortho(0,1,0,1,0,-1) );
+    proj->addChild( xform );
+
+    return proj;
+}
+
+osg::Drawable*
+AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(4);
+    v->push_back( osg::Vec3(box.xMin()-padding, box.yMin()-padding, 0) );
+    v->push_back( osg::Vec3(box.xMax()+padding, box.yMin()-padding, 0) );
+    v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
+    v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+    b->reserve(6);
+    b->push_back(0); b->push_back(1); b->push_back(2);
+    b->push_back(2); b->push_back(3); b->push_back(0);
+    geom->addPrimitiveSet( b );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    return geom;
+}
+
+osg::Drawable*
+AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(4);
+    v->push_back( osg::Vec3(box.xMin()-padding, box.yMin()-padding, 0) );
+    v->push_back( osg::Vec3(box.xMax()+padding, box.yMin()-padding, 0) );
+    v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
+    v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_LINE_LOOP);
+    b->reserve(4);
+    b->push_back(0); b->push_back(1); b->push_back(2); b->push_back(3);
+    geom->addPrimitiveSet( b );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
+    s_isNotTextUniform->set( true );
+    geom->getOrCreateStateSet()->addUniform( s_isNotTextUniform.get() );
+
+    return geom;
 }

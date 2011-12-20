@@ -62,12 +62,12 @@ usage( char** argv )
  */
 struct MyAnnoEventHandler : public AnnotationEventHandler
 {
-    void onHoverEnter( AnnotationNode* anno ) 
+    void onHoverEnter( AnnotationNode* anno, const EventArgs& args )
     {
         anno->setAltDrawState( "hover" );
     }
 
-    void onHoverLeave( AnnotationNode* anno )
+    void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
     {
         anno->clearAltDrawState();
     }
@@ -232,8 +232,7 @@ main(int argc, char** argv)
         //Add an editor            
         annoGroup->addChild( imageOverlay );
         
-        osg::Node* editor = new ImageOverlayEditor( 
-            imageOverlay, mapNode->getMapSRS()->getEllipsoid(), mapNode->getTerrainEngine() );
+        osg::Node* editor = new ImageOverlayEditor( imageOverlay );
         root->addChild( editor );
     }
     
@@ -242,7 +241,7 @@ main(int argc, char** argv)
     // install alternate draw states. These change the appearance of an Annotation
     // based on some user action.
 
-    // highlight things upon hover by default:
+    // highlight annotation upon hover by default:
     annoGroup->accept( DrawStateInstaller("hover", new HighlightDrawStateTechnique()) );
 
     // scale labels when hovering:

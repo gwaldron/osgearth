@@ -19,6 +19,7 @@
 
 #include <osgEarthAnnotation/DrawState>
 
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthAnnotation/OrthoNode>
@@ -28,6 +29,8 @@
 
 #include <osgEarthSymbology/Color>
 #include <osgEarthSymbology/MeshSubdivider>
+
+#include <osgEarth/FindNode>
 
 #include <osg/MatrixTransform>
 #include <osgFX/Outline>
@@ -144,92 +147,6 @@ namespace
     };
 };
 
-namespace
-{
-    osg::Node* createGeodesicSphere( float r, const osg::Vec4& color )
-    {
-        osg::Geometry* geom = new osg::Geometry();
-
-        osg::Vec3Array* v = new osg::Vec3Array();
-        v->reserve(6);
-        v->push_back( osg::Vec3(0,0,r) ); // top
-        v->push_back( osg::Vec3(0,0,-r) ); // bottom
-        v->push_back( osg::Vec3(-r,0,0) ); // left
-        v->push_back( osg::Vec3(r,0,0) ); // right
-        v->push_back( osg::Vec3(0,r,0) ); // back
-        v->push_back( osg::Vec3(0,-r,0) ); // front
-        geom->setVertexArray(v);
-
-        osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
-        b->reserve(24);
-        b->push_back(0); b->push_back(3); b->push_back(4);
-        b->push_back(0); b->push_back(4); b->push_back(2);
-        b->push_back(0); b->push_back(2); b->push_back(5);
-        b->push_back(0); b->push_back(5); b->push_back(3);
-        b->push_back(1); b->push_back(3); b->push_back(5);
-        b->push_back(1); b->push_back(4); b->push_back(3);
-        b->push_back(1); b->push_back(2); b->push_back(4);
-        b->push_back(1); b->push_back(5); b->push_back(2);
-        geom->addPrimitiveSet( b );
-
-        MeshSubdivider ms;
-        ms.run( *geom, osg::DegreesToRadians(15.0f), GEOINTERP_GREAT_CIRCLE );
-
-        osg::Vec4Array* c = new osg::Vec4Array(1);
-        (*c)[0] = color;
-        geom->setColorArray( c );
-        geom->setColorBinding( osg::Geometry::BIND_OVERALL );
-
-        osg::Geode* geode = new osg::Geode();
-        geode->addDrawable( geom );
-
-        return geode;
-    }
-
-    osg::Node* createQuad( const osg::Vec4& color )
-    {
-        osg::Geometry* geom = new osg::Geometry();
-
-        osg::Vec3Array* v = new osg::Vec3Array();
-        v->reserve(4);
-        v->push_back( osg::Vec3(0,0,0) );
-        v->push_back( osg::Vec3(1,0,0) );
-        v->push_back( osg::Vec3(1,1,0) );
-        v->push_back( osg::Vec3(0,1,0) );
-        geom->setVertexArray(v);
-
-        osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
-        b->reserve(6);
-        b->push_back(0); b->push_back(1); b->push_back(2);
-        b->push_back(2); b->push_back(3); b->push_back(0);
-        geom->addPrimitiveSet( b );
-
-        osg::Vec4Array* c = new osg::Vec4Array(1);
-        (*c)[0] = color;
-        geom->setColorArray( c );
-        geom->setColorBinding( osg::Geometry::BIND_OVERALL );
-
-        osg::Geode* geode = new osg::Geode();
-        geode->addDrawable( geom );
-        
-        osg::StateSet* s = geom->getOrCreateStateSet();
-        s->setMode(GL_LIGHTING,0);
-        s->setMode(GL_BLEND,1);
-        s->setMode(GL_DEPTH_TEST,0);
-        s->setMode(GL_CULL_FACE,0);
-        s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
-
-        osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::identity() );
-        xform->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
-        xform->addChild( geode );
-
-        osg::Projection* proj = new osg::Projection( osg::Matrix::ortho(0,1,0,1,0,-1) );
-        proj->addChild( xform );
-
-        return proj;
-    }
-}
-
 //--------------------------------------------------------------------------
 
 bool
@@ -239,7 +156,7 @@ EncircleDrawStateTechnique::apply(osg::Group* ap, bool enable)
     {
         const osg::BoundingSphere& bs = ap->getBound();
 
-        osg::Node* geode = createGeodesicSphere(bs.radius(), osg::Vec4(1,0,0,0.4));
+        osg::Node* geode = AnnotationUtils::createGeodesicSphere(bs.radius(), osg::Vec4(1,0,0,0.4));
 
         osg::StateSet* s = geode->getOrCreateStateSet();
         s->setMode(GL_LIGHTING,0);
@@ -323,6 +240,47 @@ _color( color )
 }
 
 bool
+HighlightDrawStateTechnique::apply(OrthoNode& node, bool enable)
+{
+    if ( node.getAttachPoint() )
+    {
+        node.setDynamic( true );
+        FindNodesVisitor<osg::Geode> fnv;
+        node.getAttachPoint()->accept( fnv );
+        if ( enable )
+        {
+            osg::BoundingBox box;
+            for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
+            {
+                osg::Geode* geode = *i;
+                box.expandBy( geode->getBoundingBox() );
+            }
+            
+            if ( fnv._results.size() > 0 )
+            {
+                osg::Drawable* geom = AnnotationUtils::create2DOutline( box, 3.0f, _color );  
+                geom->setUserData( node.getAnnotationData() );
+                for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
+                {
+                    (*i)->addDrawable(geom);
+                }
+            }
+        }
+        else
+        {
+            for( std::vector<osg::Geode*>::iterator i = fnv._results.begin(); i != fnv._results.end(); ++i )
+            {
+                osg::Geode* geode = *i;
+                geode->removeDrawable( geode->getDrawable(geode->getNumDrawables()-1) );
+            }
+        }
+
+        return true;
+    }
+    return false;
+}
+
+bool
 HighlightDrawStateTechnique::apply(osg::Group* ap, bool enable)
 {
     HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
@@ -330,7 +288,7 @@ HighlightDrawStateTechnique::apply(osg::Group* ap, bool enable)
     {
         const osg::BoundingSphere& bs = ap->getBound();
 
-        osg::Node* quad = createQuad( _color );
+        osg::Node* quad = AnnotationUtils::createFullScreenQuad( _color );
         quad->setCullingActive( false );
         hg->_fillNode = quad;
     }

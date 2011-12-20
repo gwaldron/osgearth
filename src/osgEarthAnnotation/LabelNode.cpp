@@ -99,11 +99,11 @@ LabelNode::init( const TextSymbol* symbol )
     // get a proper bounds.
     osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
 
-    osg::StateSet* stateSet = t->getOrCreateStateSet();
-    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
-
     _geode = new osg::Geode();
     _geode->addDrawable( t );
+
+    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
+    stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
     getAttachPoint()->addChild( _geode );
 }

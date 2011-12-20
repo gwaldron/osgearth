@@ -48,12 +48,17 @@ namespace osgEarth { namespace Annotation
 
         void init();
 
+    public: // AnnotationNode
+
+        virtual osg::Group* getAttachPoint();
+
     protected:
         osg::observer_ptr<MapNode>  _mapNode;
         osg::ref_ptr<Feature>       _feature;
         optional<Style>             _style;
         GeometryCompilerOptions     _options;
         bool                        _draped;
+        osg::Group*                 _attachPoint;
         
     };
 

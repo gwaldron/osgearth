@@ -22,6 +22,7 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>
+#include <osg/Transform>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -45,6 +46,7 @@ FeatureNode::init()
 {
     // if there's a draw state, clear it out first.
     this->clearAltDrawState();
+    _attachPoint = 0L;
 
     // if there is existing geometry, kill it
     this->removeChildren( 0, this->getNumChildren() );
@@ -65,14 +67,18 @@ FeatureNode::init()
         osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         if ( node )
         {
+            _attachPoint = new osg::Group();
+            _attachPoint->addChild( node );
+
             if ( _draped )
             {
-                DrapeableNode* d = new DrapeableNode();
-                d->setNode( node );
+                DrapeableNode* d = new DrapeableNode(_mapNode.get());
+                d->setNode( _attachPoint );
+                this->addChild( d );
             }
             else
             {
-                this->addChild( node );
+                this->addChild( _attachPoint );
             }
         }
     }
@@ -83,4 +89,19 @@ FeatureNode::setFeature( Feature* feature )
 {
     _feature = feature;
     init();
+}
+
+osg::Group*
+FeatureNode::getAttachPoint()
+{
+    if ( !_attachPoint )
+        return 0L;
+
+    // first try to find a transform to go under:
+    osg::Group* xform = osgEarth::findTopMostNodeOfType<osg::Transform>(_attachPoint);
+    if ( xform )
+        return xform;
+
+    // failing that, use the artificial attach group we created.
+    return _attachPoint;
 }

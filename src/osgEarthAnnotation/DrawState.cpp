@@ -185,19 +185,57 @@ namespace
 
         return geode;
     }
+
+    osg::Node* createQuad( const osg::Vec4& color )
+    {
+        osg::Geometry* geom = new osg::Geometry();
+
+        osg::Vec3Array* v = new osg::Vec3Array();
+        v->reserve(4);
+        v->push_back( osg::Vec3(0,0,0) );
+        v->push_back( osg::Vec3(1,0,0) );
+        v->push_back( osg::Vec3(1,1,0) );
+        v->push_back( osg::Vec3(0,1,0) );
+        geom->setVertexArray(v);
+
+        osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+        b->reserve(6);
+        b->push_back(0); b->push_back(1); b->push_back(2);
+        b->push_back(2); b->push_back(3); b->push_back(0);
+        geom->addPrimitiveSet( b );
+
+        osg::Vec4Array* c = new osg::Vec4Array(1);
+        (*c)[0] = color;
+        geom->setColorArray( c );
+        geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        osg::Geode* geode = new osg::Geode();
+        geode->addDrawable( geom );
+        
+        osg::StateSet* s = geom->getOrCreateStateSet();
+        s->setMode(GL_LIGHTING,0);
+        s->setMode(GL_BLEND,1);
+        s->setMode(GL_DEPTH_TEST,0);
+        s->setMode(GL_CULL_FACE,0);
+        s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
+
+        osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::identity() );
+        xform->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
+        xform->addChild( geode );
+
+        osg::Projection* proj = new osg::Projection( osg::Matrix::ortho(0,1,0,1,0,-1) );
+        proj->addChild( xform );
+
+        return proj;
+    }
 }
 
-
-EncircleDrawStateTechnique::EncircleDrawStateTechnique() :
-InjectionDrawStateTechnique( new osg::Group() )
-{
-    //nop
-}
+//--------------------------------------------------------------------------
 
 bool
 EncircleDrawStateTechnique::apply(osg::Group* ap, bool enable)
 {
-    if ( _injectionGroup->getCullCallback() == 0L )
+    if ( _injectionGroup->getCullCallback() == 0L && ap != 0L )
     {
         const osg::BoundingSphere& bs = ap->getBound();
 
@@ -240,10 +278,12 @@ namespace
                 }
                 else
                 {
+                    // first render the geometry to the stencil buffer:
                     cv->pushStateSet(_pass1);
                     osg::Group::traverse( nv );
                     cv->popStateSet();
 
+                    // the render the coverage quad
                     cv->pushStateSet(_pass2);
                     _fillNode->accept( nv );
                     cv->popStateSet();
@@ -269,6 +309,7 @@ _color( color )
         stencil->setFunction(osg::Stencil::ALWAYS, 1, ~0u);
         stencil->setOperation(osg::Stencil::KEEP, osg::Stencil::KEEP, osg::Stencil::REPLACE);
         hg->_pass1->setAttributeAndModes(stencil, 1);
+        hg->_pass1->setBinNumber(0);
     }
 
     hg->_pass2 = new osg::StateSet();
@@ -277,7 +318,7 @@ _color( color )
         stencil->setFunction(osg::Stencil::NOTEQUAL, 0, ~0u);
         stencil->setOperation(osg::Stencil::REPLACE, osg::Stencil::REPLACE, osg::Stencil::REPLACE);
         hg->_pass2->setAttributeAndModes(stencil, 1);
-        hg->_pass2->setRenderBinDetails( 942, "RenderBin" );
+        hg->_pass2->setBinNumber(1);
     }
 }
 
@@ -285,22 +326,13 @@ bool
 HighlightDrawStateTechnique::apply(osg::Group* ap, bool enable)
 {
     HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
-    if ( !hg->_fillNode.valid() )
+    if ( !hg->_fillNode.valid() && ap != 0L )
     {
         const osg::BoundingSphere& bs = ap->getBound();
 
-        osg::Node* geode = createGeodesicSphere( 2.0*bs.radius(), _color );
-        //osg::Geode* geode = new osg::Geode();
-        //osg::ShapeDrawable* sd = new osg::ShapeDrawable( new osg::Sphere(osg::Vec3(0,0,0), 2.0*bs.radius()) );
-        //sd->setColor( _color );
-
-        osg::StateSet* s = geode->getOrCreateStateSet();
-        s->setMode(GL_LIGHTING,0);
-        s->setMode(GL_BLEND,1);
-        s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
-        s->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
-        //geode->addDrawable( sd );
-        hg->_fillNode = geode;
+        osg::Node* quad = createQuad( _color );
+        quad->setCullingActive( false );
+        hg->_fillNode = quad;
     }
 
     return InjectionDrawStateTechnique::apply(ap, enable);

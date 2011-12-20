@@ -83,7 +83,7 @@ namespace
             : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
               _bbox(out_bbox),
               _original( polytope ),
-              _coarse( false ) // true )
+              _coarse( false ) //true )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );
@@ -106,12 +106,36 @@ namespace
             {
                 if ( _coarse )
                 {
-                    // GW: doesn't work, don't know why
-                    osg::BoundingBox box;
-                    box.expandBy( bs );
-                    osg::Vec3d bmin = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
-                    osg::Vec3d bmax = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
-                    _bbox.expandBy( osg::BoundingBox(bmin, bmax) );
+                    osg::BoundingSphere bsphere = bs;
+
+                    osg::BoundingSphere::vec_type xdash = bsphere._center;
+                    xdash.x() += bsphere._radius;
+                    xdash = xdash*_matrixStack.top();
+
+                    osg::BoundingSphere::vec_type ydash = bsphere._center;
+                    ydash.y() += bsphere._radius;
+                    ydash = ydash*_matrixStack.top();
+
+                    osg::BoundingSphere::vec_type zdash = bsphere._center;
+                    zdash.z() += bsphere._radius;
+                    zdash = zdash*_matrixStack.top();
+
+                    bsphere._center = bsphere._center*_matrixStack.top();
+
+                    xdash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_xdash = xdash.length();
+
+                    ydash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_ydash = ydash.length();
+
+                    zdash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_zdash = zdash.length();
+
+                    bsphere._radius = len_xdash;
+                    if (bsphere._radius<len_ydash) bsphere._radius = len_ydash;
+                    if (bsphere._radius<len_zdash) bsphere._radius = len_zdash;
+
+                    _bbox.expandBy(bsphere);
                 }
                 else
                 {

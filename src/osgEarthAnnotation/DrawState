@@ -121,7 +121,7 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT InjectionDrawStateTechnique : public DrawStateTechnique
     {
     public:
-        InjectionDrawStateTechnique( osg::Group* group );
+        InjectionDrawStateTechnique( osg::Group* group =0L );
         virtual DrawStateTechnique* clone() const { return new InjectionDrawStateTechnique(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
 
         virtual bool apply(class AnnotationNode& node, bool enable);
@@ -140,7 +140,7 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT ScaleDrawStateTechnique : public InjectionDrawStateTechnique
     {
     public:
-        ScaleDrawStateTechnique(float factor =1.05f);
+        ScaleDrawStateTechnique(float factor =1.1f);
         virtual DrawStateTechnique* clone() const { return new ScaleDrawStateTechnique(_factor); }
 
     protected:
@@ -155,7 +155,7 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT EncircleDrawStateTechnique : public InjectionDrawStateTechnique
     {
     public:
-        EncircleDrawStateTechnique();
+        EncircleDrawStateTechnique() { }
         virtual DrawStateTechnique* clone() const { return new EncircleDrawStateTechnique(); }
 
     protected:

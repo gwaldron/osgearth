@@ -41,11 +41,22 @@ namespace osgEarth { namespace Annotation
         META_AnnotationNode(osgEarthAnnotation, PlaceNode);
 
         /**
-         * Constructs a new node (convenience function)
+         * Constructs a new place node
          */
         PlaceNode(
             MapNode*           mapNode,
             const osg::Vec3d&  position,
+            osg::Image*        iconImage,
+            const std::string& labelText,
+            const Style&       style =Style() );
+
+        /**
+         * Constructs a new place node.
+         */
+        PlaceNode(
+            MapNode*           mapNode,
+            double             x,
+            double             y,
             osg::Image*        iconImage,
             const std::string& labelText,
             const Style&       style =Style() );

@@ -192,6 +192,14 @@ list( osg::ArgumentParser& args )
     return 0;
 }
 
+struct Entry
+{
+    bool                   _isImage;
+    std::string            _name;
+    osg::ref_ptr<CacheBin> _bin;
+};
+
+
 int
 purge( osg::ArgumentParser& args )
 {
@@ -210,12 +218,6 @@ purge( osg::ArgumentParser& args )
     if ( !map->getCache() )
         return message( "Earth file does not contain a cache." );
 
-    struct Entry
-    {
-        bool                   _isImage;
-        std::string            _name;
-        osg::ref_ptr<CacheBin> _bin;
-    };
     std::vector<Entry> entries;
 
 

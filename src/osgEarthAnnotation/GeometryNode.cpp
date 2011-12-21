@@ -31,7 +31,7 @@ GeometryNode::GeometryNode(MapNode*     mapNode,
                            Geometry*    geom,
                            const Style& style,
                            bool         draped ) :
-LocalizedNode( mapNode->getMap()->getProfile()->getSRS() )
+LocalizedNode( mapNode->getMapSRS() )
 {
     osg::ref_ptr<Feature> feature = new Feature( geom );
 
@@ -42,8 +42,8 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS() )
     {
         if ( draped )
         {
-            DrapeableNode* dn = new DrapeableNode();
-            dn->setNode( node );
+            DrapeableNode* dn = new DrapeableNode(mapNode);
+            dn->addChild( node );
         }
         else
         {

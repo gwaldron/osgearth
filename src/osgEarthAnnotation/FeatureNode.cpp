@@ -73,7 +73,7 @@ FeatureNode::init()
             if ( _draped )
             {
                 DrapeableNode* d = new DrapeableNode(_mapNode.get());
-                d->setNode( _attachPoint );
+                d->addChild( _attachPoint );
                 this->addChild( d );
             }
             else

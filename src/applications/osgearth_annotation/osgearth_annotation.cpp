@@ -135,6 +135,7 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
+#if 1
     // a box that follows lines of latitude (rhumb line interpolation, the default)
 
     Geometry* geom = new Polygon();
@@ -149,9 +150,11 @@ main(int argc, char** argv)
     annoGroup->addChild( gnode );
 
     labelGroup->addChild( new LabelNode(mapNode, -30, 50, "Rhumb line polygon", labelStyle) );
+#endif
 
     //--------------------------------------------------------------------
 
+#if 1
     // Another path using great-circle interpolation.
 
     Geometry* path = new LineString();
@@ -169,6 +172,7 @@ main(int argc, char** argv)
     annoGroup->addChild( pathNode );
 
     labelGroup->addChild( new LabelNode(mapNode, -170, 61.2, "Great circle path", labelStyle) );
+#endif
 
     //--------------------------------------------------------------------
 
@@ -186,6 +190,7 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
+#if 1
     // An draped ellipse around Miami.
 
     Style ellipseStyle;
@@ -199,6 +204,7 @@ main(int argc, char** argv)
         ellipseStyle,
         true );
     annoGroup->addChild( ellipse );
+#endif
 
     //--------------------------------------------------------------------
 
@@ -227,7 +233,7 @@ main(int argc, char** argv)
     // an image overlay with an attached editor
 
     ImageOverlay* imageOverlay = 0L;
-    osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
+    osg::Image* image = osgDB::readImageFile( "E:/devel/osgearth/2.x/repo/data/USFLAG.TGA" );
     if ( image ) {
         imageOverlay = new ImageOverlay(mapNode, image);
         imageOverlay->setBounds( Bounds( -100.0, 50.0, -90.0, 55.0) );

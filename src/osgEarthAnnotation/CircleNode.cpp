@@ -38,7 +38,7 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        bool               draped,
                        unsigned           numSegments) :
 
-LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position, false )
+LocalizedNode( mapNode->getMapSRS(), position, false )
 {
     // construct a local-origin circle.
     GeometryFactory factory;
@@ -55,7 +55,7 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position, false )
             if ( draped )
             {
                 DrapeableNode* drapeable = new DrapeableNode( mapNode, true );
-                drapeable->setNode( getAttachPoint() );
+                drapeable->addChild( getAttachPoint() );
                 this->addChild( drapeable );
             }
 

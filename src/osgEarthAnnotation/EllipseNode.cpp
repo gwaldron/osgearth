@@ -36,7 +36,7 @@ EllipseNode::EllipseNode(MapNode*          mapNode,
                          const Style&      style,
                          bool              draped,
                          unsigned          numSegments) :
-LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
+LocalizedNode( mapNode->getMapSRS(), position )
 {
     // construct a local-origin ellipse.
     GeometryFactory factory;
@@ -53,7 +53,7 @@ LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
             if ( draped )
             {
                 DrapeableNode* drapeable = new DrapeableNode( mapNode );
-                drapeable->setNode( getAttachPoint() );
+                drapeable->addChild( getAttachPoint() );
                 this->addChild( drapeable );
             }
 

@@ -77,10 +77,10 @@ namespace
      * It's called "Coarse" because it does not traverse to the Drawable level, just to
      * the Geode bounding sphere level.
      */
-    struct CoarsePolytopeIntersector : public osg::NodeVisitor
+    struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
     {
         CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
-            : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+            : OverlayDecorator::InternalNodeVisitor(),
               _bbox(out_bbox),
               _original( polytope ),
               _coarse( false ) //true )

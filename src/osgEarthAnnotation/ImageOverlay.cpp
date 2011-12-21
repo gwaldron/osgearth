@@ -54,13 +54,11 @@ void
 ImageOverlay::postCTOR()
 {
     _geode = new osg::Geode;
-    //addChild( _geode );    
 
-    setNode( _geode );
+    addChild( _geode );
 
     init();    
     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-    //setNumChildrenRequiringUpdateTraversal( 1 );    
 }
 
 void
@@ -71,7 +69,7 @@ ImageOverlay::init()
     double height = 0;
     osg::Geometry* geometry = new osg::Geometry();
     osg::Vec3d ll;
-    const osg::EllipsoidModel* ellipsoid = _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
+    const osg::EllipsoidModel* ellipsoid = getMapNode()->getMapSRS()->getEllipsoid();
     ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(_lowerLeft.y()), osg::DegreesToRadians(_lowerLeft.x()), height, ll.x(), ll.y(), ll.z());
 
     osg::Vec3d lr;

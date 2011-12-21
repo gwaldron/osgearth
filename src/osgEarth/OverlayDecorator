@@ -134,6 +134,12 @@ namespace osgEarth
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<osgEarth::VirtualProgram>  _vp;
         osg::ref_ptr<TerrainEngineNode>         _engine;
+
+    public:
+        // marker class for DrapeableNode support.
+        struct InternalNodeVisitor : public osg::NodeVisitor {
+            InternalNodeVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
+        };
     };
 
 } // namespace osgEarth

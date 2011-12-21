@@ -251,10 +251,13 @@ main(int argc, char** argv)
     // based on some user action.
 
     // highlight annotation upon hover by default:
-    annoGroup->accept( DrawStateInstaller("hover", new HighlightDrawState()) );
+    
+    DrawStateInstaller highlightInstaller("hover", new HighlightDrawState());
+    annoGroup->accept( highlightInstaller );
 
     // scale labels when hovering:
-    labelGroup->accept( DrawStateInstaller("hover", new ScaleDrawState(1.1f)) );
+    DrawStateInstaller scaleInstaller("hover", new ScaleDrawState(1.1f));
+    labelGroup->accept( scaleInstaller );
 
     // install an event handler for picking and hovering.
     AnnotationEventCallback* cb = new AnnotationEventCallback();

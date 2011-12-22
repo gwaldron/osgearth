@@ -83,7 +83,7 @@ namespace
             : OverlayDecorator::InternalNodeVisitor(),
               _bbox(out_bbox),
               _original( polytope ),
-              _coarse( false ) //true )
+              _coarse( false )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );
@@ -153,8 +153,11 @@ namespace
 
             if ( _polytopeStack.top().intersects( box ) )
             {
-                osg::Vec3d bmin = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
-                osg::Vec3d bmax = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
+                // apply an eplison to avoid a bbox with a zero dimension
+                static float e = 0.0001;
+
+                osg::Vec3d bmin = osg::Vec3(box.xMin()-e, box.yMin()-e, box.zMin()-e) * _matrixStack.top();
+                osg::Vec3d bmax = osg::Vec3(box.xMax()+e, box.yMax()+e, box.zMax()+e) * _matrixStack.top();
                   
                 _bbox.expandBy( osg::BoundingBox(bmin, bmax) );
             }

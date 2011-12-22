@@ -50,6 +50,25 @@ namespace osgEarth
           T* _foundNode;
     };
 
+    /** 
+     * Collects all the nodes of type "T"
+     */
+    template<typename T>
+    struct FindNodesVisitor : public osg::NodeVisitor
+    {
+        FindNodesVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
+
+        void apply(osg::Node& node)
+        {
+            T* result = dynamic_cast<T*>( &node );
+            if ( result )
+                _results.push_back( result );
+            traverse(node);
+        }
+
+        std::vector<T*> _results;
+    };
+
     /**
      * Searchs the scene graph downward starting at [node] and returns the first node found
      * that matches the template parameter type.

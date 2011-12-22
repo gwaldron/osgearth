@@ -50,6 +50,7 @@ namespace osgEarth { namespace Drivers
 
     public:
         WFSFeatureOptions( const ConfigOptions& opt =ConfigOptions() ) : FeatureSourceOptions( opt ) {
+            setDriver( "wfs" );
             fromConfig( _conf );
         }
 

@@ -59,6 +59,9 @@ namespace osgEarth
         bool _useGPU;
         bool _enableMipmappingOnUpdatedTextures;
         bool _enableMipmapping;
+
+        osg::Texture::FilterMode _minFilter;
+        osg::Texture::FilterMode _magFilter;
     };
 }
 

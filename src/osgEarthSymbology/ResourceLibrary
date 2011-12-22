@@ -22,6 +22,7 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/MarkerResource>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Random>
 #include <map>
@@ -42,13 +43,27 @@ namespace osgEarth { namespace Symbology
          * Attempts to create and load a resource library from an XML
          * resource catalog residing at the specified URL.
          */         
-        static ResourceLibrary* create( const URI& uri, const osgDB::Options* dbOptions );
+        //static ResourceLibrary* create( const URI& uri, const osgDB::Options* dbOptions );
+
+        /** URI from which the lib was loaded */
+        //const URIContext& getSourceContext() const { return _sourceContext; }
 
     public:
+        /**
+         * Creates a new resource library with a source URI. The library
+         * will populate upon first use..
+         */
+        ResourceLibrary( const std::string& name, const URI& uri );
+
         /**
          * Creates a new resource library from a config.
          */
         ResourceLibrary( const Config& conf =Config() );
+
+        /**
+         * Gets the name of the lib.
+         */
+        const std::string& getName() const { return _name; }
 
         /**
          * Adds a resoure to the library.
@@ -66,18 +81,18 @@ namespace osgEarth { namespace Symbology
         /**
          * Finds and returns a Skin resource by name.
          */
-        SkinResource* getSkin( const std::string& name ) const;
+        SkinResource* getSkin( const std::string& name, const osgDB::Options* dbOptions =0L ) const;
 
         /**
          * Returns a list of all Skin resources.
          */
-        void getSkins( SkinResourceVector& output ) const;
+        void getSkins( SkinResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
 
         /**
          * Returns a list of all Skin resources that match the criteria specified
          * in the symbol.
          */
-        void getSkins( const SkinSymbol* symbol, SkinResourceVector& output ) const;
+        void getSkins( const SkinSymbol* symbol, SkinResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
 
         /**
          * Returns a skin that matches the criteria specified in the symbol. The method
@@ -85,24 +100,40 @@ namespace osgEarth { namespace Symbology
          * symbol contains a random seed, it will use that to seed the selection in order
          * to provide consistency.
          */
-        SkinResource* getSkin( const SkinSymbol* symbol, Random& prng ) const;
+        SkinResource* getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::Options* dbOptions =0L ) const;
 
 
-    public: // Model resource functions
+    public: // Marker resource functions
 
-        //TODO
+        /**
+         * Finds and returns a marker reosurce by name.
+         */
+        MarkerResource* getMarker( const std::string& name, const osgDB::Options* dbOptions =0L ) const;
+
+        /**
+         * Returns a list of all marker resources in this library.
+         */
+        void getMarkers( MarkerResourceVector& output, const osgDB::Options* dbOptions =0L ) const;
+
 
     public: // serialization functions
 
         void mergeConfig( const Config& conf );
+        Config getConfig() const;
 
     protected:
         typedef std::map< const Symbol*, Random > RandomMap;
 
+        optional<URI>                      _uri;
+        std::string                        _name;
+        bool                               _initialized;
         Threading::ReadWriteMutex          _mutex;
         SkinResourceMap                    _skins;
+        MarkerResourceMap                  _markers;
 
         bool matches( const SkinSymbol* symbol, SkinResource* skin ) const;
+
+        void initialize( const osgDB::Options* options );
     };
 
 

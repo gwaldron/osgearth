@@ -31,6 +31,7 @@
 #include <osg/Math>
 #include <osg/Timer>
 #include <osg/Version>
+#include <osgUtil/DelaunayTriangulator>
 #include <osgUtil/Tessellator>
 #include <osgUtil/SmoothingVisitor>
 
@@ -56,8 +57,9 @@ namespace
     osg::ref_ptr<osg::Vec3dArray> _boundary;
     osg::Vec3d _ndcMin, _ndcMax;
     osg::Geometry* _geom;
+    osg::ref_ptr<osg::Vec3Array> _internal;
 
-    MaskRecord(osg::Vec3dArray* boundary, osg::Vec3d& ndcMin, osg::Vec3d& ndcMax, osg::Geometry* geom) : _boundary(boundary), _ndcMin(ndcMin), _ndcMax(ndcMax), _geom(geom) { }
+    MaskRecord(osg::Vec3dArray* boundary, osg::Vec3d& ndcMin, osg::Vec3d& ndcMax, osg::Geometry* geom) : _boundary(boundary), _ndcMin(ndcMin), _ndcMax(ndcMax), _geom(geom) { _internal = new osg::Vec3Array(); }
   };
 
   typedef std::vector<MaskRecord> MaskRecordVector;
@@ -849,6 +851,9 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
                 {
                   validValue = false;
                   indices[iv] = -2;
+
+                  (*mr)._internal->push_back(ndc);
+
                   break;
                 }
               }
@@ -1019,20 +1024,15 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
           maskPoly->push_back(local);
         }
 
+#if 0
 
-//Change the following two #if statements to see mask skirt polygons
-//before clipping and adjusting
-#if 1
         //Do a diff on the polygons to get the actual mask skirt
         osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly;
         maskSkirtPoly->difference(maskPoly.get(), outPoly);
-#else
-        osg::ref_ptr<osgEarth::Symbology::Geometry> outPoly = maskSkirtPoly;
-#endif
 
         osg::Vec3Array* outVerts = new osg::Vec3Array();
-
         osg::Geometry* stitch_geom = (*mr)._geom;
+
         stitch_geom->setVertexArray(outVerts);
 
         bool multiParent = false;
@@ -1076,7 +1076,6 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
 
         if (stitch_geom->getNumPrimitiveSets() > 0)
         {
-#if 1
           // Tessellate mask skirt
           osg::ref_ptr<osgUtil::Tessellator> tscx=new osgUtil::Tessellator;
           tscx->setTessellationType(osgUtil::Tessellator::TESS_TYPE_GEOMETRY);
@@ -1265,17 +1264,7 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
               }
             }
           }
-#else
-          for (osg::Vec3Array::iterator it = outVerts->begin(); it != outVerts->end(); ++it)
-          {
-            //Convert to model coords
-            osg::Vec3d model;
-            _masterLocator->convertLocalToModel(*it, model);
-            model = model - _centerModel;
-            (*it).set(model.x(), model.y(), model.z());
-          }
-#endif
-      
+ 
           //Create stitching skirts
           if (createSkirt && skirtIndices.size() > 0)
           {
@@ -1353,6 +1342,240 @@ SinglePassTerrainTechnique::createGeometry( const TileFrame& tilef )
             }
           }
         }
+
+#else
+        // Use delaunay triangulation for stitching as an alternative to the method above
+
+        // Add the outter stitching bounds to the collection of vertices to be used for triangulation
+        (*mr)._internal->insert((*mr)._internal->end(), maskSkirtPoly->begin(), maskSkirtPoly->end());
+
+        osg::ref_ptr<osgUtil::DelaunayTriangulator> trig=new osgUtil::DelaunayTriangulator();
+        trig->setInputPointArray((*mr)._internal.get());
+
+
+        // Add mask bounds as a triangulation constraint
+        osg::ref_ptr<osgUtil::DelaunayConstraint> dc=new osgUtil::DelaunayConstraint;
+
+        osg::Vec3Array* maskConstraint = new osg::Vec3Array();
+        dc->setVertexArray(maskConstraint);
+
+        //Crop the mask to the stitching poly (for case where mask crosses tile edge)
+        osg::ref_ptr<osgEarth::Symbology::Geometry> maskCrop;
+        maskPoly->crop(maskSkirtPoly.get(), maskCrop);
+        
+        osgEarth::Symbology::GeometryIterator i( maskCrop.get(), false );
+        while( i.hasMore() )
+        {
+          osgEarth::Symbology::Geometry* part = i.next();
+          if (!part)
+            continue;
+
+          if (part->getType() == osgEarth::Symbology::Geometry::TYPE_POLYGON)
+          {
+            osg::Vec3Array* partVerts = part->toVec3Array();
+            maskConstraint->insert(maskConstraint->end(), partVerts->begin(), partVerts->end());
+            dc->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP, maskConstraint->size() - partVerts->size(), partVerts->size()));
+          }
+        }
+
+        // Cropping strips z-values so need reassign
+        std::vector<int> isZSet;
+        for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
+        {
+          int zSet = 0;
+
+          //Look for verts that belong to the original mask skirt polygon
+          for (osgEarth::Symbology::Polygon::iterator mit = maskSkirtPoly->begin(); mit != maskSkirtPoly->end(); ++mit)
+          {
+            if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+            {
+              (*it).z() = (*mit).z();
+              zSet += 1;
+              break;
+            }
+          }
+
+          //Look for verts that belong to the mask polygon
+          for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+          {
+            if (osg::absolute((*mit).x() - (*it).x()) < MATCH_TOLERANCE && osg::absolute((*mit).y() - (*it).y()) < MATCH_TOLERANCE)
+            {
+              (*it).z() = (*mit).z();
+              zSet += 2;
+              break;
+            }
+          }
+
+          isZSet.push_back(zSet);
+        }
+
+        //Any mask skirt verts that are still unset are newly created verts where the skirt
+        //meets the mask. Find the mask segment the point lies along and calculate the
+        //appropriate z value for the point.
+        int count = 0;
+        for (osg::Vec3Array::iterator it = maskConstraint->begin(); it != maskConstraint->end(); ++it)
+        {
+          //If the z-value was set from a mask vertex there is no need to change it.  If
+          //it was set from a vertex from the stitching polygon it may need overriden if
+          //the vertex lies along a mask edge.  Or if it is unset, it will need to be set.
+          //if (isZSet[count] < 2)
+          if (!isZSet[count])
+          {
+            osg::Vec3d p2 = *it;
+            double closestZ = 0.0;
+            double closestRatio = DBL_MAX;
+            for (osgEarth::Symbology::Polygon::iterator mit = maskPoly->begin(); mit != maskPoly->end(); ++mit)
+            {
+              osg::Vec3d p1 = *mit;
+              osg::Vec3d p3 = mit == --maskPoly->end() ? maskPoly->front() : (*(mit + 1));
+
+              //Truncated vales to compensate for accuracy issues
+              double p1x = ((int)(p1.x() * 1000000)) / 1000000.0L;
+              double p3x = ((int)(p3.x() * 1000000)) / 1000000.0L;
+              double p2x = ((int)(p2.x() * 1000000)) / 1000000.0L;
+
+              double p1y = ((int)(p1.y() * 1000000)) / 1000000.0L;
+              double p3y = ((int)(p3.y() * 1000000)) / 1000000.0L;
+              double p2y = ((int)(p2.y() * 1000000)) / 1000000.0L;
+
+              if ((p1x < p3x ? p2x >= p1x && p2x <= p3x : p2x >= p3x && p2x <= p1x) &&
+                  (p1y < p3y ? p2y >= p1y && p2y <= p3y : p2y >= p3y && p2y <= p1y))
+              {
+                double l1 =(osg::Vec2d(p2.x(), p2.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                double lt = (osg::Vec2d(p3.x(), p3.y()) - osg::Vec2d(p1.x(), p1.y())).length();
+                double zmag = p3.z() - p1.z();
+
+                double foundZ = (l1 / lt) * zmag + p1.z();
+
+                double mRatio = 1.0;
+                if (osg::absolute(p1x - p3x) < MATCH_TOLERANCE)
+                {
+                  if (osg::absolute(p1x-p2x) < MATCH_TOLERANCE)
+                    mRatio = 0.0;
+                }
+                else
+                {
+                  double m1 = p1x == p2x ? 0.0 : (p2y - p1y) / (p2x - p1x);
+                  double m2 = p1x == p3x ? 0.0 : (p3y - p1y) / (p3x - p1x);
+                  mRatio = m2 == 0.0 ? m1 : osg::absolute(1.0L - m1 / m2);
+                }
+
+                if (mRatio < 0.01)
+                {
+                  (*it).z() = foundZ;
+                  isZSet[count] = 2;
+                  break;
+                }
+                else if (mRatio < closestRatio)
+                {
+                  closestRatio = mRatio;
+                  closestZ = foundZ;
+                }
+              }
+            }
+
+            if (!isZSet[count] && closestRatio < DBL_MAX)
+            {
+              (*it).z() = closestZ;
+              isZSet[count] = 2;
+            }
+          }
+
+          if (!isZSet[count])
+            OE_WARN << LC << "Z-value not set for mask constraint vertex" << std::endl;
+
+          count++;
+        }
+
+        trig->addInputConstraint(dc.get());
+
+
+        // Create array to hold vertex normals
+        osg::Vec3Array *norms=new osg::Vec3Array;
+        trig->setOutputNormalArray(norms);
+        
+
+        // Triangulate vertices and remove triangles that lie within the contraint loop
+        trig->triangulate();
+        trig->removeInternalTriangles(dc.get());
+
+
+        // Set up new arrays to hold final vertices and normals
+        osg::Geometry* stitch_geom = (*mr)._geom;
+        osg::Vec3Array* stitch_verts = new osg::Vec3Array();
+        stitch_verts->reserve(trig->getInputPointArray()->size());
+        stitch_geom->setVertexArray(stitch_verts);
+        osg::Vec3Array* stitch_norms = new osg::Vec3Array(trig->getInputPointArray()->size());
+        stitch_geom->setNormalArray( stitch_norms );
+        stitch_geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
+
+        //Initialize tex coords
+        osg::Vec2Array* unifiedStitchTexCoords = 0L;
+        if (_texCompositor->requiresUnitTextureSpace())
+        {
+          unifiedStitchTexCoords = new osg::Vec2Array();
+          unifiedStitchTexCoords->reserve(trig->getInputPointArray()->size());
+          stitch_geom->setTexCoordArray(0, unifiedStitchTexCoords);
+        }
+        else if ( renderLayers.size() > 0 )
+        {
+          for (unsigned int i = 0; i < renderLayers.size(); ++i)
+          {
+            renderLayers[i]._stitchTexCoords->reserve(trig->getInputPointArray()->size());
+          }
+        }
+
+
+        // Iterate through point to convert to model coords, calculate normals, and set up tex coords
+        int norm_i = -1;
+        for (osg::Vec3Array::iterator it = trig->getInputPointArray()->begin(); it != trig->getInputPointArray()->end(); ++it)
+        {
+          // get model coords
+          osg::Vec3d model;
+          _masterLocator->convertLocalToModel(*it, model);
+          model = model - _centerModel;
+
+          stitch_verts->push_back(model);
+
+          // calc normals
+          osg::Vec3d local_one(*it);
+          local_one.z() += 1.0;
+          osg::Vec3d model_one;
+          _masterLocator->convertLocalToModel( local_one, model_one );
+          model_one = model_one - model;
+          model_one.normalize();
+          (*stitch_norms)[++norm_i] = model_one;
+
+          // set up text coords
+          if (_texCompositor->requiresUnitTextureSpace())
+          {
+            unifiedStitchTexCoords->push_back(osg::Vec2((*it).x(), (*it).y()));
+          }
+          else if (renderLayers.size() > 0)
+          {
+            for (unsigned int i = 0; i < renderLayers.size(); ++i)
+            {
+              if (!renderLayers[i]._locator->isEquivalentTo(*masterTextureLocator.get()))
+              {
+                osg::Vec3d color_ndc;
+                osgTerrain::Locator::convertLocalCoordBetween(*masterTextureLocator.get(), (*it), *renderLayers[i]._locator.get(), color_ndc);
+                renderLayers[i]._stitchTexCoords->push_back(osg::Vec2(color_ndc.x(), color_ndc.y()));
+              }
+              else
+              {
+                renderLayers[i]._stitchTexCoords->push_back(osg::Vec2((*it).x(), (*it).y()));
+              }
+            }
+          }
+        }
+
+
+        // Get triangles from triangulator and add as primative set to the geometry
+        stitch_geom->addPrimitiveSet(trig->getTriangles());
+        //stitch_geom->setNormalArray(trig->getOutputNormalArray());
+        //stitch_geom->setNormalBinding(osg::Geometry::BIND_PER_PRIMITIVE);
+#endif
       }
     }
 

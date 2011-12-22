@@ -26,6 +26,7 @@ SET(TARGET_DEFAULT_PREFIX "application_")
 SET(TARGET_DEFAULT_LABEL_PREFIX "Sample")
 
 ADD_SUBDIRECTORY(osgearth_viewer)
+ADD_SUBDIRECTORY(osgearth_clamp)
 ADD_SUBDIRECTORY(osgearth_manip)
 ADD_SUBDIRECTORY(osgearth_seed)
 ADD_SUBDIRECTORY(osgearth_composite)
@@ -47,11 +48,5 @@ ADD_SUBDIRECTORY(osgearth_version)
 ADD_SUBDIRECTORY(osgearth_controls)
 ADD_SUBDIRECTORY(osgearth_shadercomp)
 ADD_SUBDIRECTORY(osgearth_tilesource)
-ADD_SUBDIRECTORY(osgearth_labels)
 ADD_SUBDIRECTORY(osgearth_imageoverlay)
-
-
-#ADD_SUBDIRECTORY(osgearth_symbology)
-
-#testing
-#add_subdirectory(osgearth_resources)
+ADD_SUBDIRECTORY(osgearth_city)

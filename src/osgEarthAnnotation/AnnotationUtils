@@ -21,6 +21,7 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthSymbology/TextSymbol>
+#include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geometry>
 
@@ -34,6 +35,14 @@ namespace osgEarth { namespace Annotation
      */
     struct AnnotationUtils
     {
+        static const std::string& UNIFORM_HIGHLIGHT();
+
+        static const std::string& UNIFORM_IS_TEXT();
+
+        static const std::string& UNIFORM_FADE();
+
+        static const std::string& PROGRAM_NAME();
+
         /**
          * Creates a drawable representing a symbolized text label in
          * pixel space.
@@ -41,8 +50,7 @@ namespace osgEarth { namespace Annotation
         static osg::Drawable* createTextDrawable(
             const std::string& text,
             const TextSymbol*  symbol,
-            const osg::Vec3&   positionOffset,
-            bool               installFadeShader =false);
+            const osg::Vec3&   positionOffset );
 
         /**
          * Creates the basic geometry to draw an image texture-mapped to
@@ -51,14 +59,43 @@ namespace osgEarth { namespace Annotation
         static osg::Geometry* createImageGeometry(
             osg::Image*       image,
             const osg::Vec2s& pixelOffsets,
-            bool              installFadeShader =false,
             unsigned          textureUnit       =0 );
 
         /**
-         * Creates a fading uniform that you can use with one of the
-         * above elements when installFadeShader = true.
+         * Creates a fading uniform that the decluttering engine can use
+         * to adjust the alpha of annotation drawables.
          */
         static osg::Uniform* createFadeUniform();
+
+        /**
+         * Creates a boolean uniform used to indicate a hightlighted state.
+         */
+        static osg::Uniform* createHighlightUniform();
+
+        /**
+         * Gets a program that implements fading, highligting, etc. on annotation 
+         * objects.
+         */
+        static osg::Program* getAnnotationProgram();
+
+
+        /**
+         * Internal - A customized AutoTransform used by the OrthoNode to
+         * support intersections that are compatible with the decluttering engine
+         */
+        struct OrthoNodeAutoTransform : public osg::AutoTransform
+        {
+            void acceptCullNoTraverse( osg::CullStack* cs );
+        };
+
+        // some geometry creation utilities
+        static osg::Drawable* create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
+
+        static osg::Drawable* create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
+
+        static osg::Node* createFullScreenQuad( const osg::Vec4& color );
+
+        static osg::Node* createGeodesicSphere( float r, const osg::Vec4& color );
     };
 
 } } // namespace osgEarth::Annotation

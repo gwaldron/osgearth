@@ -54,10 +54,13 @@ public:
         const FilterContext& context )
     {
         osg::Group* group = new osg::Group();
-        group->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+        Decluttering::setEnabled( group->getOrCreateStateSet(), true );
+
+        std::set<std::string> used; // to prevent dupes
+        bool skipDupes = (symbol->removeDuplicateLabels() == true);
 
         StringExpression  contentExpr ( *symbol->content() );
-        //NumericExpression priorityExpr( *text->priority() );
+        NumericExpression priorityExpr( *symbol->priority() );
 
         for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
         {
@@ -71,13 +74,28 @@ public:
 
             const std::string& value = feature->eval( contentExpr );
 
-            LabelNode* labelNode = new LabelNode(
-                context.getSession()->getMapInfo().getProfile()->getSRS(),
-                geom->getBounds().center(),
-                value,
-                symbol );
+            if ( !value.empty() && (!skipDupes || used.find(value) == used.end()) )
+            {
+                LabelNode* labelNode = new LabelNode(
+                    context.getSession()->getMapInfo().getProfile()->getSRS(),
+                    geom->getBounds().center(),
+                    value,
+                    symbol );
 
-            group->addChild( labelNode );
+                if ( symbol->priority().isSet() )
+                {
+                    AnnotationData* data = new AnnotationData();
+                    data->setPriority( feature->eval(priorityExpr) );
+                    labelNode->setAnnotationData( data );
+                }
+                
+                group->addChild( labelNode );
+
+                if ( skipDupes )
+                {
+                    used.insert(value);
+                }
+            }
         }
 
         return group;

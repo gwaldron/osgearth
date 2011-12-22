@@ -519,6 +519,12 @@ namespace osgEarth { namespace Util
          */
         virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
 
+        
+        /**
+         * Cancels a viewpoint transition if one is in progress
+         */
+        void cancelViewpointTransition() { _setting_viewpoint = false; }
+
         /**
          * Sets the viewpoint to activate when performing the ACTION_HOME action.
          */
@@ -600,6 +606,7 @@ namespace osgEarth { namespace Util
 		 * Sets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
 		 */
 		void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
+
 
 
     public: // osgGA::MatrixManipulator
@@ -803,7 +810,7 @@ namespace osgEarth { namespace Util
         double                  _set_viewpoint_accel;
         double                  _set_viewpoint_accel_2;
 
-        bool                    _after_first_frame;
+        unsigned                _frame_count;
 
         osg::ref_ptr<Settings> _settings;		
 

@@ -19,18 +19,49 @@
 
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthSymbology/Color>
+#include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarth/ThreadingUtils>
+#include <osgEarth/Registry>
 #include <osgText/Text>
+#include <osg/Depth>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
+const std::string&
+AnnotationUtils::PROGRAM_NAME()
+{
+  static std::string s = "osgEarthAnnotation::Program";
+  return s;
+}
+
+const std::string&
+AnnotationUtils::UNIFORM_HIGHLIGHT()
+{
+   static std::string s = "highlight";
+   return s;
+}
+
+
+const std::string&
+AnnotationUtils::UNIFORM_IS_TEXT()
+{
+  static std::string s = "is_text";
+  return s;
+}
+
+const std::string&
+AnnotationUtils::UNIFORM_FADE()
+{
+  static std::string s ="fade";
+  return s;
+}
 
 osg::Drawable* 
 AnnotationUtils::createTextDrawable(const std::string& text,
                                     const TextSymbol*  symbol,
-                                    const osg::Vec3&   positionOffset,
-                                    bool               installFadeShader)
+                                    const osg::Vec3&   positionOffset )
                                     
 {
     osgText::Text* t = new osgText::Text();
@@ -64,8 +95,15 @@ AnnotationUtils::createTextDrawable(const std::string& text,
     t->setAutoRotateToScreen( false );
     t->setCharacterSizeMode( osgText::Text::OBJECT_COORDS );
     t->setCharacterSize( symbol && symbol->size().isSet() ? *symbol->size() : 16.0f );
-    t->setFont( osgText::readFontFile( symbol && symbol->font().isSet() ? *symbol->font() : "arial.ttf" ) );
     t->setColor( symbol && symbol->fill().isSet() ? symbol->fill()->color() : Color::White );
+
+    osgText::Font* font = 0L;
+    if ( symbol && symbol->font().isSet() )
+        font = osgText::readFontFile( *symbol->font() );
+    if ( !font )
+        font = Registry::instance()->getDefaultFont();
+    if ( font )
+        t->setFont( font );
 
     if ( symbol )
     {
@@ -79,39 +117,24 @@ AnnotationUtils::createTextDrawable(const std::string& text,
         t->setBackdropColor( symbol->halo()->color() );
         t->setBackdropType( osgText::Text::OUTLINE );
     }
+    else if ( !symbol )
+    {
+        // if no symbol at all is provided, default to using a black halo.
+        t->setBackdropColor( osg::Vec4(.3,.3,.3,1) );
+        t->setBackdropType( osgText::Text::OUTLINE );
+    }
 
     // this disables the default rendering bin set by osgText::Font. Necessary if we're
     // going to do decluttering at a higher level
     osg::StateSet* stateSet = t->getOrCreateStateSet();
 
     stateSet->setRenderBinToInherit();
-    
-    if ( installFadeShader )
-    {
-        // a custom fragment shader for drawing faded, textured geometry:
-        // btw, the "1.5" makes the text a little brighter and nicer-looking :)
-        static char s_frag[] =
-            "uniform float     fade; \n"
-            "uniform sampler2D tex0; \n"
-            "void main() { \n"
-            //"    if ( fade < 1.0 ) { fade = 0.0; } \n"
-            "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st).aaaa * vec4(1,1,1,fade*1.5); \n"
-            "} \n";
 
-        static osg::ref_ptr<osg::Program> s_program;
-        static Threading::Mutex s_programMutex;
-        if ( s_program == 0L )
-        {
-            Threading::ScopedMutexLock lock(s_programMutex);
-            if ( s_program == 0L )
-            {
-                s_program = new osg::Program();
-                s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
-            }
-        }
-
-        stateSet->setAttributeAndModes( s_program.get(), 1 );
-    }
+    // add the static "isText=true" uniform; this is a hint for the annotation shaders
+    // if they get installed.
+    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
+    s_isTextUniform->set( true );
+    stateSet->addUniform( s_isTextUniform.get() );
 
     return t;
 }
@@ -119,7 +142,6 @@ AnnotationUtils::createTextDrawable(const std::string& text,
 osg::Geometry*
 AnnotationUtils::createImageGeometry(osg::Image*       image,
                                      const osg::Vec2s& pixelOffset,
-                                     bool              installFadeShader,
                                      unsigned          textureUnit )
 {
     if ( !image )
@@ -165,31 +187,12 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     geom->setColorBinding(osg::Geometry::BIND_OVERALL);
 
     geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
-    
-    if ( installFadeShader )
-    {
-        // a custom fragment shader for drawing faded, textured geometry:
-        static char s_frag[] =
-            "uniform float     fade; \n"
-            "uniform sampler2D tex0; \n"
-            "void main() { \n"
-            "    gl_FragColor = gl_Color * texture2D(tex0,gl_TexCoord[0].st) * vec4(1,1,1,fade); \n"
-            "} \n";
 
-        static osg::ref_ptr<osg::Program> s_program;
-        static Threading::Mutex s_programMutex;
-        if ( s_program == 0L )
-        {
-            Threading::ScopedMutexLock lock(s_programMutex);
-            if ( s_program == 0L )
-            {
-                s_program = new osg::Program();
-                s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_frag) );
-            }
-        }
-
-        dstate->setAttributeAndModes( s_program.get(), 1 );
-    }
+    // add the static "isText=true" uniform; this is a hint for the annotation shaders
+    // if they get installed.
+    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
+    s_isNotTextUniform->set( false );
+    dstate->addUniform( s_isNotTextUniform.get() );
 
     return geom;
 }
@@ -197,7 +200,319 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
 osg::Uniform*
 AnnotationUtils::createFadeUniform()
 {
-    osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, "fade");
+    osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, UNIFORM_FADE());
     u->set( 1.0f );
     return u;
+}
+
+osg::Uniform*
+AnnotationUtils::createHighlightUniform()
+{
+    osg::Uniform* u = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_HIGHLIGHT());
+    u->set( false );
+    return u;
+}
+
+osg::Program*
+AnnotationUtils::getAnnotationProgram()
+{
+    static Threading::Mutex           s_mutex;
+    static osg::ref_ptr<osg::Program> s_program;
+
+    if ( !s_program.valid() )
+    {
+        Threading::ScopedMutexLock lock(s_mutex);
+        if ( !s_program.valid() )
+        {
+            std::string frag_source = Stringify() <<
+                "uniform float     " << UNIFORM_FADE()      << "; \n"
+                "uniform bool      " << UNIFORM_IS_TEXT()   << "; \n"
+                "uniform bool      " << UNIFORM_HIGHLIGHT() << "; \n"
+                "uniform sampler2D tex0; \n"
+                "void main() { \n"
+                "    vec4 color; \n"
+                "    if (" << UNIFORM_IS_TEXT() << ") { \n"
+                "        float alpha = texture2D(tex0,gl_TexCoord[0].st).a; \n"
+                "        color = vec4( gl_Color.rgb, gl_Color.a * alpha * " << UNIFORM_FADE() << "); \n"
+                "    } \n"
+                "    else { \n"
+                "        color = gl_Color * texture2D(tex0,gl_TexCoord[0].st) * vec4(1,1,1," << UNIFORM_FADE() << "); \n"
+                "    } \n"
+                "    if (" << UNIFORM_HIGHLIGHT() << ") { \n"
+                "        color = vec4(color.r*1.5, color.g*0.5, color.b*0.25, color.a); \n"
+                "    } \n"
+                "    gl_FragColor = color; \n"
+                "} \n";
+
+            s_program = new osg::Program();
+            s_program->setName( PROGRAM_NAME() );
+            s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, frag_source) );
+        }
+    }
+    return s_program.get();
+}
+
+//-------------------------------------------------------------------------
+
+// This is identical to osg::AutoTransform::accept, except that we (a) removed
+// code that's not used by OrthoNode, and (b) took out the call to
+// Transform::accept since we don't want to traverse the child graph from
+// this call.
+void
+AnnotationUtils::OrthoNodeAutoTransform::acceptCullNoTraverse( osg::CullStack* cs )
+{
+    osg::Viewport::value_type width = _previousWidth;
+    osg::Viewport::value_type height = _previousHeight;
+
+    osg::Viewport* viewport = cs->getViewport();
+    if (viewport)
+    {
+        width = viewport->width();
+        height = viewport->height();
+    }
+
+    osg::Vec3d eyePoint = cs->getEyeLocal(); 
+    osg::Vec3d localUp = cs->getUpLocal(); 
+    osg::Vec3d position = getPosition();
+
+    const osg::Matrix& projection = *(cs->getProjectionMatrix());
+
+    bool doUpdate = _firstTimeToInitEyePoint;
+    if (!_firstTimeToInitEyePoint)
+    {
+        osg::Vec3d dv = _previousEyePoint-eyePoint;
+        if (dv.length2()>getAutoUpdateEyeMovementTolerance()*(eyePoint-getPosition()).length2())
+        {
+            doUpdate = true;
+        }
+        osg::Vec3d dupv = _previousLocalUp-localUp;
+        // rotating the camera only affects ROTATE_TO_*
+        if (_autoRotateMode &&
+            dupv.length2()>getAutoUpdateEyeMovementTolerance())
+        {
+            doUpdate = true;
+        }
+        else if (width!=_previousWidth || height!=_previousHeight)
+        {
+            doUpdate = true;
+        }
+        else if (projection != _previousProjection) 
+        {
+            doUpdate = true;
+        }                
+        else if (position != _previousPosition) 
+        { 
+            doUpdate = true; 
+        } 
+    }
+    _firstTimeToInitEyePoint = false;
+
+    if (doUpdate)
+    {            
+        if (getAutoScaleToScreen())
+        {
+            double size = 1.0/cs->pixelSize(getPosition(),0.48f);
+
+            if (_autoScaleTransitionWidthRatio>0.0)
+            {
+                if (_minimumScale>0.0)
+                {
+                    double j = _minimumScale;
+                    double i = (_maximumScale<DBL_MAX) ? 
+                        _minimumScale+(_maximumScale-_minimumScale)*_autoScaleTransitionWidthRatio :
+                    _minimumScale*(1.0+_autoScaleTransitionWidthRatio);
+                    double c = 1.0/(4.0*(i-j));
+                    double b = 1.0 - 2.0*c*i;
+                    double a = j + b*b / (4.0*c);
+                    double k = -b / (2.0*c);
+
+                    if (size<k) size = _minimumScale;
+                    else if (size<i) size = a + b*size + c*(size*size);
+                }
+
+                if (_maximumScale<DBL_MAX)
+                {
+                    double n = _maximumScale;
+                    double m = (_minimumScale>0.0) ?
+                        _maximumScale+(_minimumScale-_maximumScale)*_autoScaleTransitionWidthRatio :
+                    _maximumScale*(1.0-_autoScaleTransitionWidthRatio);
+                    double c = 1.0 / (4.0*(m-n));
+                    double b = 1.0 - 2.0*c*m;
+                    double a = n + b*b/(4.0*c);
+                    double p = -b / (2.0*c);
+
+                    if (size>p) size = _maximumScale;
+                    else if (size>m) size = a + b*size + c*(size*size);
+                }        
+            }
+
+            setScale(size);
+        }
+
+        if (_autoRotateMode==ROTATE_TO_SCREEN)
+        {
+            osg::Vec3d translation;
+            osg::Quat rotation;
+            osg::Vec3d scale;
+            osg::Quat so;
+
+            cs->getModelViewMatrix()->decompose( translation, rotation, scale, so );
+
+            setRotation(rotation.inverse());
+        }
+        // GW: removed other unused auto-rotate modes
+
+        _previousEyePoint = eyePoint;
+        _previousLocalUp = localUp;
+        _previousWidth = width;
+        _previousHeight = height;
+        _previousProjection = projection;
+        _previousPosition = position;
+
+        _matrixDirty = true;
+    }
+
+    // GW: the stock AutoTransform calls Transform::accept here; we do NOT
+}
+
+osg::Node* 
+AnnotationUtils::createGeodesicSphere( float r, const osg::Vec4& color )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(6);
+    v->push_back( osg::Vec3(0,0,r) ); // top
+    v->push_back( osg::Vec3(0,0,-r) ); // bottom
+    v->push_back( osg::Vec3(-r,0,0) ); // left
+    v->push_back( osg::Vec3(r,0,0) ); // right
+    v->push_back( osg::Vec3(0,r,0) ); // back
+    v->push_back( osg::Vec3(0,-r,0) ); // front
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+    b->reserve(24);
+    b->push_back(0); b->push_back(3); b->push_back(4);
+    b->push_back(0); b->push_back(4); b->push_back(2);
+    b->push_back(0); b->push_back(2); b->push_back(5);
+    b->push_back(0); b->push_back(5); b->push_back(3);
+    b->push_back(1); b->push_back(3); b->push_back(5);
+    b->push_back(1); b->push_back(4); b->push_back(3);
+    b->push_back(1); b->push_back(2); b->push_back(4);
+    b->push_back(1); b->push_back(5); b->push_back(2);
+    geom->addPrimitiveSet( b );
+
+    MeshSubdivider ms;
+    ms.run( *geom, osg::DegreesToRadians(15.0f), GEOINTERP_GREAT_CIRCLE );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( geom );
+
+    return geode;
+}
+
+osg::Node* 
+AnnotationUtils::createFullScreenQuad( const osg::Vec4& color )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(4);
+    v->push_back( osg::Vec3(0,0,0) );
+    v->push_back( osg::Vec3(1,0,0) );
+    v->push_back( osg::Vec3(1,1,0) );
+    v->push_back( osg::Vec3(0,1,0) );
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+    b->reserve(6);
+    b->push_back(0); b->push_back(1); b->push_back(2);
+    b->push_back(2); b->push_back(3); b->push_back(0);
+    geom->addPrimitiveSet( b );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( geom );
+
+    osg::StateSet* s = geom->getOrCreateStateSet();
+    s->setMode(GL_LIGHTING,0);
+    s->setMode(GL_BLEND,1);
+    s->setMode(GL_DEPTH_TEST,0);
+    s->setMode(GL_CULL_FACE,0);
+    s->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
+
+    osg::MatrixTransform* xform = new osg::MatrixTransform( osg::Matrix::identity() );
+    xform->setReferenceFrame( osg::Transform::ABSOLUTE_RF );
+    xform->addChild( geode );
+
+    osg::Projection* proj = new osg::Projection( osg::Matrix::ortho(0,1,0,1,0,-1) );
+    proj->addChild( xform );
+
+    return proj;
+}
+
+osg::Drawable*
+AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(4);
+    v->push_back( osg::Vec3(box.xMin()-padding, box.yMin()-padding, 0) );
+    v->push_back( osg::Vec3(box.xMax()+padding, box.yMin()-padding, 0) );
+    v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
+    v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+    b->reserve(6);
+    b->push_back(0); b->push_back(1); b->push_back(2);
+    b->push_back(2); b->push_back(3); b->push_back(0);
+    geom->addPrimitiveSet( b );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    return geom;
+}
+
+osg::Drawable*
+AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(4);
+    v->push_back( osg::Vec3(box.xMin()-padding, box.yMin()-padding, 0) );
+    v->push_back( osg::Vec3(box.xMax()+padding, box.yMin()-padding, 0) );
+    v->push_back( osg::Vec3(box.xMax()+padding, box.yMax()+padding, 0) );
+    v->push_back( osg::Vec3(box.xMin()-padding, box.yMax()+padding, 0) );
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_LINE_LOOP);
+    b->reserve(4);
+    b->push_back(0); b->push_back(1); b->push_back(2); b->push_back(3);
+    geom->addPrimitiveSet( b );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
+    s_isNotTextUniform->set( true );
+    geom->getOrCreateStateSet()->addUniform( s_isNotTextUniform.get() );
+
+    return geom;
 }

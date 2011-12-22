@@ -20,8 +20,28 @@
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
 #include <osgEarth/FindNode>
+#include <osgUtil/IntersectionVisitor>
+
+#define LC "[DrapeableNode] "
 
 using namespace osgEarth;
+
+namespace
+{
+    // Custom group that limits traversals to CULL and any visitor internal to
+    // the operation of the OverlayDecorator.
+    struct OverlayTraversalGroup : public osg::Group {
+        virtual void traverse(osg::NodeVisitor& nv) {
+            if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR ||  
+                 dynamic_cast<OverlayDecorator::InternalNodeVisitor*>(&nv) )
+            {
+                osg::Group::traverse(nv);
+            }
+        }
+    };
+}
+
+//------------------------------------------------------------------------
 
 DrapeableNode::DrapeableNode( MapNode* mapNode, bool draped ) :
 _mapNode  ( mapNode ),
@@ -32,142 +52,115 @@ _dirty    ( false )
     // create a container group that will house the culler. This culler
     // allows a draped node, which sits under the MapNode's OverlayDecorator,
     // to "track" the traversal state of the DrapeableNode itself.
-    _nodeContainer = new osg::Group();
-    _nodeContainer->setCullCallback( new CullNodeByFrameNumber() );
-    _nodeContainer->setStateSet( this->getOrCreateStateSet() ); // share the stateset
+    _overlayProxyContainer = new OverlayTraversalGroup();
+    _overlayProxyContainer->setCullCallback( new CullNodeByFrameNumber() );
+    _overlayProxyContainer->setStateSet( this->getOrCreateStateSet() ); // share the stateset
+
+    // If draping is requested, set up to apply it on the first update traversal.
+    // Can't apply it until then since we need safe access to the MapNode.
+    setDraped( draped );
+
+    if ( !mapNode )
+    {
+        OE_WARN << LC << "Creates a drapeable without a MapNode; draping will be disabled" << std::endl;
+    }
 }
 
 void
 DrapeableNode::applyChanges()
-{    
-    if ( _newDraped != _draped )
-    {
-        setDrapedImpl( _newDraped );
-    }
-
-    if ( _newNode.valid() )
-    {
-        setNodeImpl( _newNode.get() );
-        _newNode = 0L;
-    }
-}
-
-void
-DrapeableNode::setNode( osg::Node* node )
 {
-    _newNode = node;
-    if ( !_dirty )
+    _draped = _newDraped;
+
+    if ( _draped && _overlayProxyContainer->getNumParents() == 0 )
     {
-        _dirty = true;
-        dirtyBound();
-        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+        _mapNode->getOverlayGroup()->addChild( _overlayProxyContainer.get() );
+        _mapNode->updateOverlayGraph();
+    }
+    else if ( !_draped && _overlayProxyContainer->getNumParents() > 0 )
+    {
+        _mapNode->getOverlayGroup()->removeChild( _overlayProxyContainer.get() );
+        _mapNode->updateOverlayGraph();
     }
 }
 
 void
 DrapeableNode::setDraped( bool draped )
 {
-    _newDraped = draped;
-    if ( !_dirty )
+    if ( draped != _draped && _mapNode.valid() )
     {
-        _dirty = true;
-        dirtyBound();
-        ADJUST_UPDATE_TRAV_COUNT( this, 1 );
-    }
-}
-
-void
-DrapeableNode::setNodeImpl( osg::Node* node )
-{
-    if ( _node.valid() )
-    {
-        if ( _draped && _mapNode.valid() )
+        _newDraped = draped;
+        if ( !_dirty )
         {
-            _mapNode->getOverlayGroup()->removeChild( _nodeContainer.get() );
-            _mapNode->updateOverlayGraph();
-        }
-        else
-        {
-            this->removeChild( _node.get() );
-        }
-    }
-
-    _node = node;
-    _nodeContainer->removeChildren( 0, _nodeContainer->getNumChildren() );
-
-    if ( _node.valid() )
-    {
-        if ( _draped && _mapNode.valid() )
-        {
-            _nodeContainer->addChild( _node.get() );
-            _mapNode->getOverlayGroup()->addChild( _nodeContainer.get() );
-            _mapNode->updateOverlayGraph();
-        }
-        else
-        {
-            this->addChild( _node.get() );
+            _dirty = true;
+            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
         }
     }
 }
 
-void
-DrapeableNode::setDrapedImpl( bool value )
+bool
+DrapeableNode::addChild( osg::Node* child )
 {
-    if ( _draped != value )
-    {
-        osg::ref_ptr<osg::Node> save = _node.get();
-        if ( save.valid() )
-            setNode( 0L );
-
-        _draped = value;
-
-        if ( save.valid() )
-            setNode( save.get() );
-    }
+    osg::Group::addChild( child );
+    return _overlayProxyContainer->addChild( child );
 }
 
-osg::BoundingSphere
-DrapeableNode::computeBound() const
+bool
+DrapeableNode::insertChild( unsigned i, osg::Node* child )
 {
-    if ( _newNode.valid() )
-    {
-        return _newNode->getBound();
-    }
-    else if ( _node.valid() )
-    {
-        return _node->getBound();
-    }
-    else
-    {
-        return osg::Group::computeBound();
-    }
+    osg::Group::insertChild( i, child );
+    return _overlayProxyContainer->insertChild( i, child );
+}
+
+bool
+DrapeableNode::removeChild( osg::Node* child )
+{
+    osg::Group::removeChild( child );
+    return _overlayProxyContainer->removeChild( child );
+}
+
+bool
+DrapeableNode::replaceChild( osg::Node* oldChild, osg::Node* newChild )
+{
+    osg::Group::replaceChild( oldChild, newChild );
+    return _overlayProxyContainer->replaceChild( oldChild, newChild );
 }
 
 void
 DrapeableNode::traverse( osg::NodeVisitor& nv )
 {
-    if ( _draped && nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR && _node.valid() && _mapNode.valid() )
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
-        CullNodeByFrameNumber* cb = static_cast<CullNodeByFrameNumber*>(_nodeContainer->getCullCallback());
-        cb->_frame = nv.getFrameStamp()->getFrameNumber();
+        if ( _draped )
+        {
+            // for a draped node, inform the proxy that we are visible. But do NOT traverse the
+            // child graph (since it will be traversed by the OverlayDecorator).
+            CullNodeByFrameNumber* cb = static_cast<CullNodeByFrameNumber*>(_overlayProxyContainer->getCullCallback());
+            cb->_frame = nv.getFrameStamp()->getFrameNumber();
+        }
+        else
+        {
+            // for a non-draped node, just traverse children as usual.
+            osg::Group::traverse( nv );
+        }
     }
 
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
         if ( _dirty )
         {
             applyChanges();
-
             _dirty = false;
             ADJUST_UPDATE_TRAV_COUNT( this, -1 );
         }
-
-        // traverse the subgraph
-        if ( _nodeContainer.valid() && this->getNumChildrenRequiringUpdateTraversal() > 0 )
-        {
-            _nodeContainer->accept( nv );
-        }
+        
+        // traverse children directly, regardles of draped status
+        osg::Group::traverse( nv );
     }
 
-    osg::Group::traverse( nv );
+    // handle other visitor types (like intersections, etc) by simply
+    // traversing the child graph.
+    else // if ( nv.getNodeVisitor() == osg::NodeVisitor::NODE_VISITOR )
+    {
+        osg::Group::traverse( nv );
+    }
 }

@@ -118,31 +118,35 @@ Style::mergeConfig( const Config& conf )
 
                 if ( c.key() == "text" )
                 {
-                    getOrCreateSymbol<TextSymbol>()->mergeConfig( c );
+                    getOrCreate<TextSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "point" )
                 {
-                    getOrCreateSymbol<PointSymbol>()->mergeConfig( c );
+                    getOrCreate<PointSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "line" )
                 {
-                    getOrCreateSymbol<LineSymbol>()->mergeConfig( c );
+                    getOrCreate<LineSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "polygon" )
                 {
-                    getOrCreateSymbol<PolygonSymbol>()->mergeConfig( c );
+                    getOrCreate<PolygonSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "extrusion" )
                 {
-                    getOrCreateSymbol<ExtrusionSymbol>()->mergeConfig( c );
+                    getOrCreate<ExtrusionSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "altitude" )
                 {
-                    getOrCreateSymbol<AltitudeSymbol>()->mergeConfig( c );
+                    getOrCreate<AltitudeSymbol>()->mergeConfig( c );
                 }
                 else if ( c.key() == "marker" )
                 {
-                    getOrCreateSymbol<MarkerSymbol>()->mergeConfig( c );
+                    getOrCreate<MarkerSymbol>()->mergeConfig( c );
+                }
+                else if ( c.key() == "skin" )
+                {
+                    getOrCreate<SkinSymbol>()->mergeConfig( c );
                 }
             }
         }
@@ -307,23 +311,29 @@ StyleSheet::getDefaultStyle() const
 }
 
 void
-StyleSheet::addResourceLibrary( const std::string& name, ResourceLibrary* lib )
+StyleSheet::addResourceLibrary( ResourceLibrary* lib )
 {
     Threading::ScopedWriteLock exclusive( _resLibsMutex );
-
-    _resLibs[name] = ResourceLibraryEntry( URI(), lib );
+    _resLibs[ lib->getName() ] = lib;
 }
 
 ResourceLibrary*
 StyleSheet::getResourceLibrary( const std::string& name, const osgDB::Options* dbOptions ) const
 {
+    Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
+    ResourceLibraries::const_iterator i = _resLibs.find( name );
+    if ( i != _resLibs.end() )
+        return i->second.get();
+    else
+        return 0L;
+}
+
+#if 0
     {
         Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
-        ResourceLibraryEntries::const_iterator i = _resLibs.find( name );
-        if ( i == _resLibs.end() )
-            return 0L;
-        if ( i->second.second.valid() )
-            return i->second.second.get();
+        ResourceLibraries::const_iterator i = _resLibs.find( name );
+        if ( i != _resLibs.end() )
+            return i->second.get();
     }
 
     { 
@@ -332,11 +342,13 @@ StyleSheet::getResourceLibrary( const std::string& name, const osgDB::Options* d
         Threading::ScopedWriteLock exclusive( nc->_resLibsMutex );
 
         // first, double check:
-        ResourceLibraryEntries::iterator i = nc->_resLibs.find( name );
-        if ( i->second.second.valid() )
-            return i->second.second.get();
+        ResourceLibraries::iterator i = nc->_resLibs.find( name );
+        if ( i != _resLibs.end() )
+            return i->second.get();
 
         // still not there, create it
+        _resLibs[name] = new ResourceLibrary( uri );
+        uri.
         const URI& uri = i->second.first;
         ResourceLibrary* reslib = ResourceLibrary::create( uri, dbOptions );
         if ( !reslib )
@@ -346,19 +358,49 @@ StyleSheet::getResourceLibrary( const std::string& name, const osgDB::Options* d
         return reslib;
     }
 }
+#endif
 
 Config
 StyleSheet::getConfig() const
 {
     Config conf;
+
     for( StyleSelectorList::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
     {
         conf.add( "selector", i->getConfig() );
     }
+
     for( StyleMap::const_iterator i = _styles.begin(); i != _styles.end(); ++i )
     {
         conf.add( "style", i->second.getConfig() );
     }
+
+    {
+        Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
+
+        for( ResourceLibraries::const_iterator i = _resLibs.begin(); i != _resLibs.end(); ++i )
+        {
+            if ( i->second.valid() )
+            {
+                Config libConf = i->second->getConfig();
+                conf.add( "library", libConf );
+            }
+        }
+    }
+
+    if ( _script.valid() )
+    {
+        Config scriptConf("script");
+        if ( !_script->name.empty() )
+            scriptConf.set( "name", _script->name );
+        if ( !_script->language.empty() )
+            scriptConf.set( "language", _script->language );
+        if ( !_script->code.empty() )
+            scriptConf.value() = _script->code;
+
+        conf.add( scriptConf );
+    }
+
     return conf;
 }
 
@@ -371,6 +413,11 @@ StyleSheet::mergeConfig( const Config& conf )
     ConfigSet libraries = conf.children( "library" );
     for( ConfigSet::iterator i = libraries.begin(); i != libraries.end(); ++i )
     {
+        ResourceLibrary* resLib = new ResourceLibrary( *i );
+        _resLibs[resLib->getName()] = resLib;
+    }
+
+#if 0
         std::string name = i->value("name");
         if ( name.empty() ) {
             OE_WARN << LC << "Resource library missing required 'name' attribute" << std::endl;
@@ -378,15 +425,18 @@ StyleSheet::mergeConfig( const Config& conf )
         }
 
         URI uri( i->value("url"), i->referrer() );
-        if ( uri.empty() ) {
-            OE_WARN << LC << "Resource library missing required 'url' element" << std::endl;
-            continue;
-        }
+        //if ( uri.empty() ) {
+        //    OE_WARN << LC << "Resource library missing required 'url' element" << std::endl;
+        //    continue;
+        //}
+
+        if ( 
 
         _resLibs[name] = ResourceLibraryEntry(uri,  (osgEarth::Symbology::ResourceLibrary*)0L);
 
         //addResourceLibrary( name, reslib.get() );
     }
+#endif
 
     // read in any scripts
     ConfigSet scripts = conf.children( "script" );

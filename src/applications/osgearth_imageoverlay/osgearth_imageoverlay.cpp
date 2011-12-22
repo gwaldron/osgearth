@@ -158,7 +158,9 @@ struct UpdateLabelCallback : public ImageOverlay::ImageOverlayCallback
         osg::Vec2d location = _overlay->getControlPoint( _controlPoint );
         std::stringstream ss;
         ss << location.y() << ", " << location.x();
-        _label->setText( ss.str() );
+        std::string str;
+        str = ss.str();
+        _label->setText( str );
     }
     
 

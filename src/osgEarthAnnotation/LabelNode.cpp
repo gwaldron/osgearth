@@ -24,6 +24,8 @@
 #include <osgText/Text>
 #include <osg/Depth>
 
+#define LC "[LabelNode] "
+
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
@@ -34,12 +36,38 @@ using namespace osgEarth::Symbology;
 LabelNode::LabelNode(MapNode*            mapNode,
                      const osg::Vec3d&   position,
                      const std::string&  text,
+                     const Style&        style ) :
+
+OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
+_text    ( text ),
+_geode   ( 0L )
+{
+    init( style.get<TextSymbol>() );
+}
+
+LabelNode::LabelNode(MapNode*            mapNode,
+                     const osg::Vec3d&   position,
+                     const std::string&  text,
                      const TextSymbol*   symbol ) :
 
 OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
-_text( text )
+_text    ( text ),
+_geode   ( 0L )
 {
     init( symbol );
+}
+
+LabelNode::LabelNode(MapNode*            mapNode,
+                     double              x,
+                     double              y,
+                     const std::string&  text,
+                     const Style&        style ) :
+
+OrthoNode( mapNode->getMap()->getProfile()->getSRS(), osg::Vec3d(x,y,0) ),
+_text    ( text ),
+_geode   ( 0L )
+{
+    init( style.get<TextSymbol>() );
 }
 
 LabelNode::LabelNode(const SpatialReference* mapSRS,
@@ -48,9 +76,19 @@ LabelNode::LabelNode(const SpatialReference* mapSRS,
                      const TextSymbol*       symbol ) :
 
 OrthoNode( mapSRS, position ),
-_text( text )
+_text    ( text ),
+_geode   ( 0L )
 {
     init( symbol );
+}
+
+LabelNode::LabelNode(const std::string&  text,
+                     const Style&        style ) :
+OrthoNode(),
+_text    ( text ),
+_geode   ( 0L )
+{
+    init( style.get<TextSymbol>() );
 }
 
 void
@@ -59,13 +97,55 @@ LabelNode::init( const TextSymbol* symbol )
     // The following setup will result is a proper dynamic bounding box for the text.
     // If you just use osgText's rotate-to-screen and SCREEN_COORDS setup, you do not
     // get a proper bounds.
-    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0), true );
+    osg::Drawable* t = AnnotationUtils::createTextDrawable( _text, symbol, osg::Vec3(0,0,0) );
 
-    osg::StateSet* stateSet = t->getOrCreateStateSet();
+    _geode = new osg::Geode();
+    _geode->addDrawable( t );
+
+    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( t );
+    getAttachPoint()->addChild( _geode );
+}
 
-    this->attach( geode );
+void
+LabelNode::setText( const std::string& text )
+{
+    if ( !_dynamic )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+
+    osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
+    if ( d )
+    {
+        d->setText( text );
+        d->dirtyDisplayList();
+    }
+}
+
+void
+LabelNode::setAnnotationData( AnnotationData* data )
+{
+    OrthoNode::setAnnotationData( data );
+
+    // override this method so we can attach the anno data to the drawables.
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        i->get()->setUserData( data );
+    }
+}
+
+void
+LabelNode::setDynamic( bool dynamic )
+{
+    OrthoNode::setDynamic( dynamic );
+
+    osgText::Text* d = dynamic_cast<osgText::Text*>(_geode->getDrawable(0));
+    if ( d )
+    {
+        d->setDataVariance( dynamic ? osg::Object::DYNAMIC : osg::Object::STATIC );
+    }    
 }

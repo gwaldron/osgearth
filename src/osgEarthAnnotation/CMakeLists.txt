@@ -10,30 +10,41 @@ set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 set(LIB_PUBLIC_HEADERS  
     AnnotationData
+    AnnotationNode
     AnnotationUtils
     CircleNode
     Common
     Decluttering
+    DrawState
     EllipseNode
     Export
+    FeatureNode
     GeometryNode
+    HighlightDrawState
     ImageOverlay
     LabelNode
     LocalizedNode
+    OrthoNode
     PlaceNode
+    ScaleDrawState
     TrackNode
 )
 
 set(LIB_COMMON_FILES
     AnnotationData.cpp
+    AnnotationNode.cpp
     AnnotationUtils.cpp
     CircleNode.cpp
     Decluttering.cpp
+    DrawState.cpp
     EllipseNode.cpp
+    FeatureNode.cpp
     GeometryNode.cpp
+    HighlightDrawState.cpp
     ImageOverlay.cpp
     LabelNode.cpp
     LocalizedNode.cpp
+    OrthoNode.cpp
     PlaceNode.cpp
     TrackNode.cpp
 )

@@ -64,7 +64,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
     // first, go through the features and build the model cache. Apply the model matrix' scale
     // factor to any AutoTransforms directly (cloning them as necessary)
     std::map< std::pair<URI, float>, osg::ref_ptr<osg::Node> > uniqueModels;
-    //std::map< Feature*, osg::ref_ptr<osg::Node> > featureModels;
 
     StringExpression  uriEx   = *symbol->url();
     NumericExpression scaleEx = *symbol->scale();
@@ -83,6 +82,9 @@ SubstituteModelFilter::process(const FeatureList&           features,
         if ( rec.valid() ) {
             marker = rec.value();
         }
+        else if ( _markerLib.valid() ) {
+            marker = _markerLib->getMarker( markerURI.base(), context.getDBOptions() );
+        }
         else {
             marker = new MarkerResource();
             marker->uri() = markerURI;
@@ -99,6 +101,18 @@ SubstituteModelFilter::process(const FeatureList&           features,
             if ( scale == 0.0 )
                 scale = 1.0;
             scaleMatrix = osg::Matrix::scale( scale, scale, scale );
+        }
+        
+        osg::Matrixd rotationMatrix;
+        if ( symbol->orientation().isSet() )
+        {
+            osg::Vec3d hpr = *symbol->orientation();
+            //Rotation in HPR
+            //Apply the rotation            
+            rotationMatrix.makeRotate( 
+                osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
+                osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
+                osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
         }
 
         // how that we have a marker source, create a node for it
@@ -143,11 +157,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
                         // but if the tile is big enough the up vectors won't be quite right.
                         osg::Matrixd rotation;
                         ECEF::transformAndGetRotationMatrix( point, context.profile()->getSRS(), point, rotation );
-                        mat = rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
+                        mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate( point ) * _world2local;                        
                     }
                     else
                     {
-                        mat = scaleMatrix * osg::Matrixd::translate( point ) * _world2local;
+                        mat = rotationMatrix * scaleMatrix *  osg::Matrixd::translate( point ) * _world2local;                        
                     }
 
                     osg::MatrixTransform* xform = new osg::MatrixTransform();
@@ -220,6 +234,19 @@ struct ClusterVisitor : public osg::NodeVisitor
                         scaleMatrix.makeScale( scale, scale, scale );
                     }
 
+                    osg::Matrixd rotationMatrix;
+                    if ( _symbol->orientation().isSet() )
+                    {
+                        osg::Vec3d hpr = *_symbol->orientation();
+                        //Rotation in HPR
+                        //Apply the rotation            
+                        rotationMatrix.makeRotate( 
+                            osg::DegreesToRadians(hpr.y()), osg::Vec3(1,0,0),
+                            osg::DegreesToRadians(hpr.x()), osg::Vec3(0,0,1),
+                            osg::DegreesToRadians(hpr.z()), osg::Vec3(0,1,0) );            
+                    }
+
+
                     ConstGeometryIterator gi( feature->getGeometry(), false );
                     while( gi.hasMore() )
                     {
@@ -234,11 +261,11 @@ struct ClusterVisitor : public osg::NodeVisitor
                             {
                                 osg::Matrixd rotation;
                                 ECEF::transformAndGetRotationMatrix( point, srs, point, rotation );
-                                mat = rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
+                                mat = rotationMatrix * rotation * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                             }
                             else
                             {
-                                mat = scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
+                                mat = rotationMatrix * scaleMatrix * osg::Matrixd::translate(point) * _f2n->world2local();
                             }
 
                             // clone the source drawable once for each input feature.
@@ -322,7 +349,7 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
             if ( model.valid() )
             {
                 // store it, but only if there isn't already one in there.
-                context.getSession()->putObject( markerURI.full(), model.get(), false );
+                model = context.getSession()->putObject( markerURI.full(), model.get(), false );
             }
         }
 
@@ -374,6 +401,21 @@ SubstituteModelFilter::push(FeatureList& features, FilterContext& context)
     if ( !symbol ) {
         OE_WARN << LC << "No MarkerSymbol found in style; cannot process feautres" << std::endl;
         return 0L;
+    }
+
+    _markerLib = 0L;
+
+    const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
+
+    if ( symbol->libraryName().isSet() )
+    {
+        _markerLib = sheet->getResourceLibrary( symbol->libraryName()->expr(), context.getDBOptions() );
+
+        if ( !_markerLib.valid() )
+        {
+            OE_WARN << LC << "Unable to load resource library '" << symbol->libraryName()->expr() << "'"
+                << "; may not find marker models." << std::endl;
+        }
     }
 
     FilterContext newContext( context );

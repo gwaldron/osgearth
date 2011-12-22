@@ -277,26 +277,9 @@ namespace
 
         // see if there's a read callback installed.
         URIReadCallback* cb = Registry::instance()->getURIReadCallback();
-        bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
 
-        // establish our caching policy:
-        const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
-
-        // get a cache bin if we need it:
-        CacheBin* bin = 0L;
-        if ( uri.isRemote() && (cp.usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
-        {
-            bin = s_getCacheBin( dbOptions );
-        }
-
-        // first try to go to the cache if there is one:
-        if ( bin && cp.isCacheReadable() )
-        {
-            result = reader.fromCache( bin, uri.full(), *cp.maxAge() );
-        }
-
-        // not in the cache, so move on:
-        if ( result.empty() )
+        // for a local URI, bypass all the caching logic
+        if ( !uri.isRemote() )
         {
             // try to use the callback if it's set. Callback ignores the caching policy.
             if ( cb )
@@ -313,26 +296,65 @@ namespace
                 }
             }
 
-            // still no data, go to the source:
-            if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
+            if ( result.empty() )
             {
-                if ( uri.isRemote() )
+                result = reader.fromFile( uri.full(), dbOptions );
+            }
+        }
+
+        // remote URI, consider caching:
+        else
+        {
+            bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
+
+            // establish our caching policy:
+            const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
+
+            // get a cache bin if we need it:
+            CacheBin* bin = 0L;
+            if ( (cp.usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
+            {
+                bin = s_getCacheBin( dbOptions );
+            }
+
+            // first try to go to the cache if there is one:
+            if ( bin && cp.isCacheReadable() )
+            {
+                result = reader.fromCache( bin, uri.full(), *cp.maxAge() );
+            }
+
+            // not in the cache, so proceed to read it from the network.
+            if ( result.empty() )
+            {
+                // try to use the callback if it's set. Callback ignores the caching policy.
+                if ( cb )
+                {                
+                    osgDB::ReaderWriter::ReadResult rr = reader.fromCallback( cb, uri.full(), dbOptions );
+                    if ( rr.validObject() )
+                    {
+                        result = ReadResult( rr.getObject() );
+                    }
+                    else if ( rr.status() != osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED )
+                    {
+                        // only "NOT_IMPLEMENTED" is a reason to fallback. Anything else if a FAIL
+                        return ReadResult( ReadResult::RESULT_NOT_FOUND );
+                    }
+                }
+
+                // still no data, go to the source:
+                if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
                 {
                     result = reader.fromHTTP( 
                         uri.full(),
                         dbOptions ? dbOptions : Registry::instance()->getDefaultOptions(),
                         progress );
                 }
-                else
-                {
-                    result = reader.fromFile(uri.full(), dbOptions);
-                }
-            }
 
-            // write the result to the cache if possible:
-            if ( result.succeeded() && bin && cp.isCacheWriteable() )
-            {
-                bin->write( uri.full(), result.getObject(), result.metadata() );
+                // write the result to the cache if possible:
+                if ( result.succeeded() && bin && cp.isCacheWriteable() )
+                {
+                    bin->write( uri.full(), result.getObject(), result.metadata() );
+                }
             }
         }
 

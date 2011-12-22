@@ -1,0 +1,379 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_CONTAINERS_H
+#define OSGEARTH_CONTAINERS_H 1
+
+#include <osgEarth/Common>
+#include <list>
+
+namespace osgEarth
+{
+    /**
+     * A std::map-like container that is faster than std::map for small amounts
+     * of data accessed by a single user
+     */
+    template<typename KEY, typename DATA>
+    struct fast_map
+    {
+        typedef std::pair<KEY,DATA> entry_t;
+        typedef std::list<entry_t>  list_t;
+
+        typedef typename list_t::iterator       iterator;
+        typedef typename list_t::const_iterator const_iterator;
+
+        list_t _data;
+        KEY    _lastKey;
+
+        DATA& operator[] (const KEY& key) {
+            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
+                if ( i->first == key ) {
+                    if ( _lastKey == key && i != _data.begin() ) {
+                        _data.insert(begin(), *i);
+                        _data.erase(i);
+                        return _data.front().second;
+                    }
+                    else {
+                        _lastKey = key;
+                        return i->second;
+                    }
+                }
+            }
+            _data.push_back(entry_t(key,DATA()));
+            return _data.back().second;
+        }
+
+        iterator find( const KEY& key ) {
+            for( iterator i = _data.begin(); i != _data.end(); ++i ) {
+                if ( i->first == key ) {
+                    return i;
+                }
+            }
+            return end();
+        }
+
+        const_iterator find( const KEY& key ) const {
+            for( const_iterator i = _data.begin(); i != _data.end(); ++i ) {
+                if ( i->first == key ) {
+                    return i;
+                }
+            }
+            return end();
+        }
+
+        const_iterator begin() const { return _data.begin(); }
+        const_iterator end() const { return _data.end(); }
+        iterator begin() { return _data.begin(); }
+        iterator end() { return _data.end(); }
+
+        bool empty() const { return _data.empty(); }
+    };
+
+    //------------------------------------------------------------------------
+
+    struct CacheStats
+    {
+    public:
+        CacheStats( unsigned entries, unsigned maxEntries, unsigned queries, float hitRatio )
+            : _entries(entries), _maxEntries(maxEntries), _queries(queries), _hitRatio(hitRatio) { }
+
+        unsigned _entries;
+        unsigned _maxEntries;
+        unsigned _queries;
+        float    _hitRatio;
+    };
+
+    //------------------------------------------------------------------------
+
+    /**
+     * Least-recently-used cache class.
+     * K = key type, T = value type
+     *
+     * usage:
+     *    LRUCache<K,T> cache;
+     *    cache.put( key, value );
+     *    LRUCache.Record rec = cache.get( key );
+     *    if ( rec.valid() )
+     *        const T& value = rec.value();
+     */
+    template<typename K, typename T>
+    class LRUCache
+    {
+    public:
+        struct Record {
+            Record(const T* value) : _value(value) { }
+            const bool valid() const { return _value != 0L; }
+            const T& value() const { return *_value; }
+        private:
+            bool _valid;
+            const T* _value;
+        };
+
+    protected:
+        typedef typename std::list<K>::iterator lru_iter;
+        typedef typename std::list<K> lru_type;
+        typedef typename std::pair<T, lru_iter> map_value_type;
+        typedef typename std::map<K, map_value_type> map_type;
+        typedef typename map_type::iterator map_iter;
+
+        map_type _map;
+        lru_type _lru;
+        unsigned _max;
+        unsigned _buf;
+        unsigned _queries;
+        unsigned _hits;
+
+    public:
+        LRUCache( unsigned max =100 ) : _max(max) {
+            _buf = _max/10;
+            _queries = 0;
+            _hits = 0;
+        }
+
+        void insert( const K& key, const T& value ) {
+            map_iter mi = _map.find( key );
+            if ( mi != _map.end() ) {
+                _lru.erase( mi->second.second );
+                mi->second.first = value;
+                _lru.push_back( key );
+                mi->second.second = _lru.end();
+                mi->second.second--;
+            }
+            else {
+                _lru.push_back( key );
+                lru_iter last = _lru.end(); last--;
+                _map[key] = std::make_pair(value, last);
+            }
+
+            if ( _lru.size() > _max ) {
+                for( unsigned i=0; i < _buf; ++i ) {
+                    const K& key = _lru.front();
+                    _map.erase( key );
+                    _lru.pop_front();
+                }
+            }
+        }
+
+        Record get( const K& key ) {
+            _queries++;
+            map_iter mi = _map.find( key );
+            if ( mi != _map.end() ) {
+                _lru.erase( mi->second.second );
+                _lru.push_back( key );
+                lru_iter new_iter = _lru.end(); new_iter--;
+                mi->second.second = new_iter;
+                _hits++;
+                return Record( &(mi->second.first) );
+            }
+            else {
+                return Record( 0L );
+            }
+        }
+
+        bool has( const K& key ) {
+            return _map.find( key ) != _map.end();
+        }
+
+        void erase( const K& key ) {
+            map_iter mi = _map.find( key );
+            if ( mi != _map.end() ) {
+                _lru.erase( mi->second.second );
+                _map.erase( mi );
+            }
+        }
+
+        void clear() {
+            _lru.clear();
+            _map.clear();
+            _queries = 0;
+            _hits = 0;
+        }
+
+        void setMaxSize( unsigned max ) {
+            _max = max;
+            _buf = max/10;
+            while( _lru.size() > _max ) {
+                const K& key = _lru.front();
+                _map.erase( key );
+                _lru.pop_front();
+            }
+        }
+
+        unsigned getMaxSize() const {
+            return _max;
+        }
+
+        CacheStats getStats() const {
+            return CacheStats(
+                _lru.size(), _max, _queries, _queries > 0 ? (float)_hits/(float)_queries : 0.0f );
+        }
+    };
+
+    //--------------------------------------------------------------------
+
+    /**
+     * Same of osg::MixinVector, but with a superclass template parameter.
+     */
+    template<class ValueT, class SuperClass>
+    class MixinVector : public SuperClass
+    {
+        typedef typename std::vector<ValueT> vector_type;
+    public:
+        typedef typename vector_type::allocator_type allocator_type;
+        typedef typename vector_type::value_type value_type;
+        typedef typename vector_type::const_pointer const_pointer;
+        typedef typename vector_type::pointer pointer;
+        typedef typename vector_type::const_reference const_reference;
+        typedef typename vector_type::reference reference;
+        typedef typename vector_type::const_iterator const_iterator;
+        typedef typename vector_type::iterator iterator;
+        typedef typename vector_type::const_reverse_iterator const_reverse_iterator;
+        typedef typename vector_type::reverse_iterator reverse_iterator;
+        typedef typename vector_type::size_type size_type;
+        typedef typename vector_type::difference_type difference_type;
+
+        explicit MixinVector() : _impl()
+        {
+        }
+
+        explicit MixinVector(size_type initial_size, const value_type& fill_value = value_type())
+        : _impl(initial_size, fill_value)
+        {
+        }
+
+        template<class InputIterator>
+        MixinVector(InputIterator first, InputIterator last)
+        : _impl(first, last)
+        {
+        }
+
+        MixinVector(const vector_type& other)
+        : _impl(other)
+        {
+        }
+
+        MixinVector(const MixinVector& other)
+        : _impl(other._impl)
+        {
+        }
+
+        MixinVector& operator=(const vector_type& other)
+        {
+            _impl = other;
+            return *this;
+        }
+
+        MixinVector& operator=(const MixinVector& other)
+        {
+            _impl = other._impl;
+            return *this;
+        }
+
+        virtual ~MixinVector() {}
+
+        void clear() { _impl.clear(); }
+        void resize(size_type new_size, const value_type& fill_value = value_type()) { _impl.resize(new_size, fill_value); }
+        void reserve(size_type new_capacity) { _impl.reserve(new_capacity); }
+        
+        void swap(vector_type& other) { _impl.swap(other); }
+        void swap(MixinVector& other) { _impl.swap(other._impl); }
+
+        bool empty() const { return _impl.empty(); }
+        size_type size() const { return _impl.size(); }
+        size_type capacity() const { return _impl.capacity(); }
+        size_type max_size() const { return _impl.max_size(); }
+        allocator_type get_allocator() const { return _impl.get_allocator(); }
+
+        const_iterator begin() const { return _impl.begin(); }
+        iterator begin() { return _impl.begin(); }
+        const_iterator end() const { return _impl.end(); }
+        iterator end() { return _impl.end(); }
+
+        const_reverse_iterator rbegin() const { return _impl.rbegin(); }
+        reverse_iterator rbegin() { return _impl.rbegin(); }
+        const_reverse_iterator rend() const { return _impl.rend(); }
+        reverse_iterator rend() { return _impl.rend(); }
+
+        const_reference operator[](size_type index) const { return _impl[index]; }
+        reference operator[](size_type index) { return _impl[index]; }
+
+        const_reference at(size_type index) const { return _impl.at(index); }
+        reference at(size_type index) { return _impl.at(index); }
+
+        void assign(size_type count, const value_type& value) { _impl.assign(count, value); }
+        template<class Iter>
+        void assign(Iter first, Iter last) { _impl.assign(first, last); }
+
+        void push_back(const value_type& value) { _impl.push_back(value); }
+        void pop_back() { _impl.pop_back(); }
+
+        iterator erase(iterator where) { return _impl.erase(where); }
+        iterator erase(iterator first, iterator last) { return _impl.erase(first, last); }
+
+        iterator insert(iterator where, const value_type& value) { return _impl.insert(where, value); }
+
+        template<class InputIterator>
+        void insert(iterator where, InputIterator first, InputIterator last)
+        {
+            _impl.insert(where, first, last);
+        }
+
+        void insert(iterator where, size_type count, const value_type& value)
+        {
+            _impl.insert(where, count, value);
+        }
+
+        const_reference back() const { return _impl.back(); }
+        reference back() { return _impl.back(); }
+        const_reference front() const { return _impl.front(); }
+        reference front() { return _impl.front(); }
+
+        vector_type& asVector() { return _impl; }
+        const vector_type& asVector() const { return _impl; }
+
+        friend inline bool operator==(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl == right._impl; }
+        friend inline bool operator==(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl == right; }
+        friend inline bool operator==(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left == right._impl; }
+
+        friend inline bool operator!=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl != right._impl; }
+        friend inline bool operator!=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl != right; }
+        friend inline bool operator!=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left != right._impl; }
+
+        friend inline bool operator<(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl < right._impl; }
+        friend inline bool operator<(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl < right; }
+        friend inline bool operator<(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left < right._impl; }
+
+        friend inline bool operator>(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl > right._impl; }
+        friend inline bool operator>(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl > right; }
+        friend inline bool operator>(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left > right._impl; }
+
+        friend inline bool operator<=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl <= right._impl; }
+        friend inline bool operator<=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl <= right; }
+        friend inline bool operator<=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left <= right._impl; }
+
+        friend inline bool operator>=(const MixinVector<ValueT,SuperClass>& left, const MixinVector<ValueT,SuperClass>& right) { return left._impl >= right._impl; }
+        friend inline bool operator>=(const MixinVector<ValueT,SuperClass>& left, const std::vector<ValueT>& right) { return left._impl >= right; }
+        friend inline bool operator>=(const std::vector<ValueT>& left, const MixinVector<ValueT,SuperClass>& right) { return left >= right._impl; }
+
+    private:
+        vector_type _impl;
+    };
+
+}
+
+#endif // OSGEARTH_CONTAINERS_H

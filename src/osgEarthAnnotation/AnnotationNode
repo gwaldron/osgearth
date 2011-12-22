@@ -1,0 +1,113 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNO_ANNOTATION_NODE_H
+#define OSGEARTH_ANNO_ANNOTATION_NODE_H 1
+
+#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthAnnotation/DrawState>
+#include <osg/Switch>
+
+#define META_AnnotationNode(library,type) \
+    META_Node(library,type); \
+    virtual bool accept(DrawState* ds, bool enable) { return ds->apply(*this, enable); }
+
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+
+    /**
+     * Base class for all annotation node types.
+     */
+    class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Switch
+    {
+    public:
+        META_AnnotationNode(osgEarthAnnotation, AnnotationNode);
+
+        /**
+         * Default constructor.
+         */
+        AnnotationNode();
+
+        /**
+         * Copy constructor.
+         */
+        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL);
+
+        /**
+         * Annotation data attached to this annotation node.
+         */
+        virtual void setAnnotationData( AnnotationData* data );
+        AnnotationData* getAnnotationData() const { return _annoData.get(); }
+
+        /**
+         * Sets the node to "dynamic", i.e. sets up the node so that you can
+         * safely change it at runtime.
+         */
+        virtual void setDynamic( bool value );
+
+        /** 
+         * Gets the attach point for children of this node
+         */
+        virtual osg::Group* getAttachPoint();
+
+
+    public: // alternate draw state support
+
+        /**
+         * Installs an alternate draw state on this annotation node.
+         */
+        void installAltDrawState( const std::string& name, DrawState* ds );
+
+        /**
+         * Uninstalls an alternate draw state on this annotation node.
+         */
+        void uninstallAltDrawState( const std::string& name );
+
+        /**
+         * Activates a named alternate draw state that was installed previously
+         */
+        virtual void setAltDrawState( const std::string& name );
+
+        /**
+         * Clears any active alternate draw state.
+         */
+        virtual void clearAltDrawState();
+
+        /**
+         * Whether this annotation has the specified alternate draw state installed.
+         */
+        bool hasAltDrawState( const std::string& name ) const;
+
+
+    protected:
+
+        osg::ref_ptr<AnnotationData> _annoData;
+        bool                         _dynamic;
+
+        typedef std::map<std::string, osg::ref_ptr<DrawState> > DrawStateMap;
+        DrawStateMap _dsMap;
+        DrawState*   _activeDs;
+        std::string  _activeDsName;
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNO_ANNOTATION_NODE_H

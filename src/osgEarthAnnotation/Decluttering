@@ -20,12 +20,14 @@
 #define OSGEARTH_ANNOTATION_DECLUTTER_RENDER_BIN_H 1
 
 #include <osgEarthAnnotation/Common>
+#include <osgEarth/Config>
 #include <osg/Drawable>
+#include <limits.h>
 
 /**
  * To apply the "decluttering" algorithm to a subgraph, call
  *
- * Node->getOrCreateStateSet()->setRenderBinDetails( binNumber, OSGEARTH_DECLUTTER_BIN )
+ * Decluttering::setEnabled( node->getOrCreateStateSet(), true );
  */
 
 #define OSGEARTH_DECLUTTER_BIN "declutter"
@@ -37,58 +39,87 @@ namespace osgEarth { namespace Annotation
      * is higher priority, otherwise FALSE. You can call setDeclutterPriorityFunctor()
      * to set a custom priority-sorting functor.
      */
-    struct DeclutterPriorityFunctor : public osg::Referenced
+    struct DeclutterSortFunctor : public osg::Referenced
     {
         virtual bool operator() ( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const =0;
     };
 
     /**
-     * Options to control the annotation decluttering engine.
+     * A decluttering functor that sorts by the priority field in AnnotationData.
+     * AnnotationData should be attached to each Drawable's user data.
      */
-    class DeclutteringOptions
+    struct OSGEARTHANNO_EXPORT DeclutterByPriority : public DeclutterSortFunctor
     {
-    public:
-        DeclutteringOptions()
-            : _minAlpha         ( 0.35f ),
-              _minScale         ( 0.45f ),
-              _stepDown         ( 0.05f ),
-              _stepUp           ( 0.05f )
-        {
-            //nop
-        }
-
-        optional<float>& minAlpha() { return _minAlpha; }
-        const optional<float>& minAlpha() const { return _minAlpha; }
-
-        optional<float>& minScale() { return _minScale; }
-        const optional<float>& minScale() const { return _minScale; }
-
-        optional<float>& stepDown() { return _stepDown; }
-        const optional<float>& stepDown() const { return _stepDown; }
-
-        optional<float>& stepUp() { return _stepUp; }
-        const optional<float>& stepUp() const { return _stepUp; }
-
-
-    protected:
-        optional<float> _minAlpha;
-        optional<float> _minScale;
-        optional<float> _stepDown;
-        optional<float> _stepUp;
+        virtual bool operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const;
     };
 
-    struct Decluttering
+    /**
+     * Options to control the annotation decluttering engine.
+     */
+    class OSGEARTHANNO_EXPORT DeclutteringOptions
     {
+    public:
+        DeclutteringOptions( const Config& conf =Config() )
+            : _minAnimAlpha         ( 0.35f ),
+              _minAnimScale         ( 0.45f ),
+              _inAnimTime           ( 0.40f ),
+              _outAnimTime          ( 0.00f ),
+              _sortByPriority       ( false )
+        {
+            fromConfig(conf);
+        }
+
+        /** Alpha value of a fully-occluded object */
+        optional<float>& minAnimationAlpha() { return _minAnimAlpha; }
+        const optional<float>& minAnimationAlpha() const { return _minAnimAlpha; }
+
+        /** Scale factor of a fully-occluded object */
+        optional<float>& minAnimationScale() { return _minAnimScale; }
+        const optional<float>& minAnimationScale() const { return _minAnimScale; }
+
+        /** Time (in seconds) for an object to transition from occluded to visible */
+        optional<float>& inAnimationTime() { return _inAnimTime; }
+        const optional<float>& inAnimationTime() const { return _inAnimTime; }
+
+        /** Time (in seconds) for an object to transition from visible to occluded */
+        optional<float>& outAnimationTime() { return _outAnimTime; }
+        const optional<float>& outAnimationTime() const { return _outAnimTime; }
+
+        /** If set, activate the AnnotationData priority-based sorting */
+        optional<bool>& sortByPriority() { return _sortByPriority; }
+        const optional<bool>& sortByPriority() const { return _sortByPriority; }
+
+    public:
+
+        Config getConfig() const;
+
+    protected:
+        optional<float> _minAnimAlpha;
+        optional<float> _minAnimScale;
+        optional<float> _inAnimTime;
+        optional<float> _outAnimTime;
+        optional<bool>  _sortByPriority;
+
+        void fromConfig( const Config& conf );
+    };
+
+    struct OSGEARTHANNO_EXPORT Decluttering
+    {
+        /**
+         * Activates decluttering on a stateset.
+         */
+        static void setEnabled( osg::StateSet* stateSet, bool enabled, int binNum =INT_MAX );
+
         /**
          * Sets a functor to use to determine render leaf priority for declutter sorting.
          */
-        static void setDeclutterPriorityFunctor( DeclutterPriorityFunctor* f );
+        static void setSortFunctor( DeclutterSortFunctor* f );
 
         /**
          * Clears a custom priority functor that was set using setDeclutterPriorityFunctor,
          * reverting to the default behavior (which is to sort by distance from the camera).
          */
-        static void clearDeclutterPriorityFunctor();
+        static void clearSortFunctor();
 
         /**
          * Applies the provided options to the decluttering engine.

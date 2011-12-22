@@ -338,6 +338,18 @@ MapNode::getMap()
     return _map.get();
 }
 
+const Map*
+MapNode::getMap() const
+{
+    return _map.get();
+}
+
+const SpatialReference*
+MapNode::getMapSRS() const
+{
+    return getMap()->getProfile()->getSRS();
+}
+
 TerrainEngineNode*
 MapNode::getTerrainEngine() const
 {
@@ -605,3 +617,4 @@ MapNode::updateOverlayGraph()
         _overlayDecorator->setOverlayGraph( 0L );
     }
 }
+

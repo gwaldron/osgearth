@@ -75,7 +75,7 @@ public:
         _geom->push_back( osg::Vec3(250, 5, 0) );
         _geom->push_back( osg::Vec3(250, 250, 0) );
         _geom->push_back( osg::Vec3(5, 250, 0) );
-        _font = osgText::readFontFile( "arial.ttf" );
+        _font = Registry::instance()->getDefaultFont();
 
         _color = osgEarth::htmlColorToVec4f( *_options.colorCode() );
     }
@@ -113,7 +113,8 @@ public:
             buf << key.str();
         }        
         
-        std::string text = buf.str();
+        std::string text;
+        text = buf.str();
 
         unsigned x = 10, y = 10;
 

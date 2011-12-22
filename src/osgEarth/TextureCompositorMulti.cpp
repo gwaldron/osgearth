@@ -75,7 +75,8 @@ namespace
             
         buf << "} \n";
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         return new osg::Shader( osg::Shader::VERTEX, str );
     }
 
@@ -176,7 +177,8 @@ namespace
 
 
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         //OE_INFO << std::endl << str;
         return new osg::Shader( osg::Shader::FRAGMENT, str );
     }
@@ -190,11 +192,13 @@ namespace
     {
         std::stringstream buf;
         buf << "tex" << slot;
-        return buf.str();
+        std::string str;
+        str = buf.str();
+        return str;
     }
     
     static osg::Texture2D*
-    s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout, osg::StateSet* parentStateSet)
+        s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout, osg::StateSet* parentStateSet, osg::Texture::FilterMode minFilter, osg::Texture::FilterMode magFilter)
     {
         int slot = layout.getSlot( layerUID, 0 );
         if ( slot < 0 )
@@ -212,8 +216,8 @@ namespace
             tex->setMaxAnisotropy( 16.0f );
 
             tex->setResizeNonPowerOfTwoHint(false);
-            tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MAG_FILTER, magFilter );
+            tex->setFilter( osg::Texture::MIN_FILTER, minFilter );
 
             // configure the wrapping
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
@@ -265,6 +269,8 @@ namespace
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options ) :
 _lodTransitionTime( *options.lodTransitionTime() ),
 _enableMipmapping( *options.enableMipmapping() ),
+_minFilter( *options.minFilter() ),
+_magFilter( *options.magFilter() ),
 _useGPU( useGPU )
 {
     _enableMipmappingOnUpdatedTextures = Registry::instance()->getCapabilities().supportsMipmappedTextureUpdates();
@@ -278,7 +284,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
                                                 const TextureLayout& layout,
                                                 osg::StateSet*       parentStateSet) const
 {
-    osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, parentStateSet);
+    osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, parentStateSet, _minFilter, _magFilter);
     if ( tex )
     {
         osg::Image* image = preparedImage.getImage();
@@ -291,8 +297,8 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
             ImageUtils::isPowerOfTwo( image ) && 
             !(!image->isMipmap() && ImageUtils::isCompressed(image)) )
         {
-            if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
-                tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            if ( tex->getFilter(osg::Texture::MIN_FILTER) != _minFilter )
+                tex->setFilter( osg::Texture::MIN_FILTER, _minFilter );
         }
         else if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR )
         {
@@ -483,7 +489,8 @@ TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
 
         buf << "} \n";
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         result = new osg::Shader( type, str );
     }
     return result;

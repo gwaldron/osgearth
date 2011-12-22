@@ -476,7 +476,8 @@ TextureCompositor::createSamplerFunction(UID                layerUID,
         std::string fname = !functionName.empty() ? functionName : "defaultSamplerFunction";
         std::stringstream buf;
         buf << "vec4 " << functionName << "() { \n return vec4(0,0,0,0); \n } \n";
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         result = new osg::Shader( type, str );
     }
 

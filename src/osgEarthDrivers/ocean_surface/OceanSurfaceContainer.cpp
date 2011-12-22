@@ -133,8 +133,30 @@ OceanSurfaceContainer::apply( const OceanSurfaceOptions& options )
     _baseColor->set( *options.baseColor() );
 }
 
+
+// removed, because it was causing conflicts with the ACPH and with entity data
+#if 0
 void
 OceanSurfaceContainer::traverse( osg::NodeVisitor& nv )
 {
+    osgUtil::CullVisitor* cv = 0L;
+    osg::CullSettings::ComputeNearFarMode mode;
+
+    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    {
+        // temporarily disable near/far computation so that the ocean surface doesn't
+        // play into the clip plane math
+        cv = static_cast<osgUtil::CullVisitor*>(&nv);
+        mode = cv->getComputeNearFarMode();
+
+        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    }
+
     osg::Group::traverse( nv );
+
+    if ( cv )
+    {
+        cv->setComputeNearFarMode( mode );
+    }
 }
+#endif

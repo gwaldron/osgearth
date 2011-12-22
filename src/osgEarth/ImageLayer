@@ -75,19 +75,7 @@ namespace osgEarth
 		 */
 		optional<osg::Vec4ub>& transparentColor() { return _transparentColor; }
         const optional<osg::Vec4ub>& transparentColor() const { return _transparentColor; }
-
-        /**
-         * The texture magnification mipmapping filter mode
-         */
-		optional<osg::Texture::FilterMode>& magFilter(void) {return _magFilter;}
-		const optional<osg::Texture::FilterMode>& magFilter(void) const {return _magFilter;}
-
-        /**
-         * The texture minification mipmapping filter mode
-         */
-		optional<osg::Texture::FilterMode>& minFilter(void) {return _minFilter;}
-		const optional<osg::Texture::FilterMode>& minFilter(void) const {return _minFilter;}
-
+        
         /**
          * Whether LOD blending is enabled for this layer
          */
@@ -107,8 +95,6 @@ namespace osgEarth
         optional<float>  _maxRange;
 		optional<osg::Vec4ub> _transparentColor;
 	    optional<std::string> _noDataImageFilename;
-		optional<osg::Texture::FilterMode> _magFilter;
-        optional<osg::Texture::FilterMode> _minFilter;
         optional<bool> _lodBlending;
     };
 
@@ -200,18 +186,18 @@ namespace osgEarth
 		/**
 		 * Creates a GeoImage from this MapLayer
 		 */
-		virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0);
+		virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0, bool forceFallback =false);
 
     protected:
 
         // Fetches an image from the underlying TileSource whose data matches that of the
         // key extent.
-        osg::Image* createImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+        osg::Image* createImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
 
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
-        osg::Image* assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress);
+        osg::Image* assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
 
 
         virtual void initTileSource();

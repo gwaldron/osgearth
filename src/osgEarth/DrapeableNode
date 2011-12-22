@@ -26,19 +26,16 @@
 namespace osgEarth
 {
     /**
-     * Base class for a node that can be "draped" on the MapNode terrain
+     * Base class for a graph that can be "draped" on the MapNode terrain
      * using the overlay decorator.
      */
     class OSGEARTH_EXPORT DrapeableNode : public osg::Group
     {
     public:
-        DrapeableNode( MapNode* mapNode =0L, bool draped =true );
-
         /**
-         * The node to drape (or not) on the MapNode terrain.
+         * Constructs a new drapeable node.
          */
-        void setNode( osg::Node* node );
-        osg::Node* getNode() const { return _node.get(); }
+        DrapeableNode( MapNode* mapNode, bool draped =true );
 
         /**
          * Whether to drape the node content on the mapnode terrain.
@@ -46,27 +43,31 @@ namespace osgEarth
         void setDraped( bool value );
         bool getDraped() const { return _draped; }
 
-    public:
+        /**
+         * Gets the map node used to drape this node
+         */
+        MapNode* getMapNode() { return _mapNode.get(); }
+
+    public: // osg::Node
+
         virtual void traverse( osg::NodeVisitor& nv );
 
-        virtual osg::BoundingSphere computeBound() const;
+    public: // osg::Group
 
-    protected:
-        osg::observer_ptr<MapNode> _mapNode;
+        // override these in order to manage the proxy container.
+        virtual bool addChild( osg::Node* child );
+        virtual bool insertChild( unsigned index, osg::Node* child );
+        virtual bool removeChild( osg::Node* child );
+        virtual bool replaceChild( osg::Node* origChild, osg::Node* newChild );
 
     private:
         bool                       _draped;
-        osg::ref_ptr<osg::Node>    _node;
-        osg::ref_ptr<osg::Group>   _nodeContainer;
+        bool                       _dirty;
+        bool                       _newDraped;
+        osg::ref_ptr<osg::Group>   _overlayProxyContainer;
+        osg::observer_ptr<MapNode> _mapNode;
 
-        int                     _dirty;
-        bool                    _newDraped;
-        osg::ref_ptr<osg::Node> _newNode;
-
-    protected:
         void applyChanges();
-        void setNodeImpl( osg::Node* );
-        void setDrapedImpl( bool );
     };
 
 } // namespace osgEarth

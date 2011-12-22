@@ -18,6 +18,7 @@
 */
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/AnnotationData>
 #include <osgEarth/Utils>
 #include <osgEarth/ThreadingUtils>
 #include <osgUtil/RenderBin>
@@ -35,17 +36,18 @@ using namespace osgEarth::Annotation;
 
 namespace
 {
-    // wrapper to satisfy the template processor..
+    // Sort wrapper to satisfy the template processor.
     struct SortContainer
     {
-        SortContainer( DeclutterPriorityFunctor& f ) : _f(f) { }
-        const DeclutterPriorityFunctor& _f;
+        SortContainer( DeclutterSortFunctor& f ) : _f(f) { }
+        const DeclutterSortFunctor& _f;
         bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const 
         {
             return _f(lhs, rhs);
         }
     };
 
+    // Data structure shared across entire decluttering system.
     struct DeclutterContext : public osg::Referenced
     {
         DeclutteringOptions _options;
@@ -60,38 +62,84 @@ namespace
     };
 
     typedef std::map<const osg::Drawable*, DrawableInfo> DrawableMemory;
+    
+    typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
+
+    // Data structure stored one-per-View.
+    struct PerViewInfo
+    {
+        PerViewInfo() : _lastTimeStamp(0.0) { }
+
+        // remembers the state of each drawable from the previous pass
+        DrawableMemory _memory;
+        
+        // re-usable structures (to avoid unnecessary re-allocation)
+        osgUtil::RenderBin::RenderLeafList _passed;
+        osgUtil::RenderBin::RenderLeafList _failed;
+        std::vector<RenderLeafBox>         _used;
+
+        // time stamp of the previous pass, for calculating animation speed
+        double _lastTimeStamp;
+    };
+}
+
+//----------------------------------------------------------------------------
+
+void
+DeclutteringOptions::fromConfig( const Config& conf )
+{
+    conf.getIfSet( "min_animation_scale", _minAnimScale );
+    conf.getIfSet( "min_animation_alpha", _minAnimAlpha );
+    conf.getIfSet( "in_animation_time",   _inAnimTime );
+    conf.getIfSet( "out_animation_time",  _outAnimTime );
+    conf.getIfSet( "sort_by_priority",    _sortByPriority );
+}
+
+Config
+DeclutteringOptions::getConfig() const
+{
+    Config conf;
+    conf.addIfSet( "min_animation_scale", _minAnimScale );
+    conf.addIfSet( "min_animation_alpha", _minAnimAlpha );
+    conf.addIfSet( "in_animation_time",   _inAnimTime );
+    conf.addIfSet( "out_animation_time",  _outAnimTime );
+    conf.addIfSet( "sort_by_priority",    _sortByPriority );
+    return conf;
 }
 
 //----------------------------------------------------------------------------
 
 /**
  * A custom RenderLeaf sorting algorithm for decluttering objects.
- * It first sorts front-to-back so that objects closer to the camera get
- * priority. (You can replace this sorting algorithm with your own.)
- * Then it goes through the drawables and removes any that try to occupy
- * already occupied space (in eye space). Drawables with a common parent
- * node (e.g., under the same Geode) are processed as a group.
  *
- * We can easily modify this to do other interesting things, like shift
- * objects around or scale them based on occlusion.
+ * First we sort the leaves front-to-back so that objects closer to the camera
+ * get higher priority. If you have installed a custom sorting functor,
+ * this is used instead.
  *
- * To submit an object for decluttering, all you have to do is call
- * obj->getStateSet()->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
+ * Next, we go though all the drawables and remove any that try to occupy
+ * already-occupied real estate in the 2D viewport. Objects that fail the test
+ * go on a "failed" list and are either completely removed from the display
+ * or transitioned to a secondary visual state (scaled down, alpha'd down)
+ * dependeing on the options setup.
+ *
+ * Drawables with the same parent (i.e., Geode) are treated as a group. As
+ * soon as one passes the occlusion test, all its siblings will automatically
+ * pass as well.
  */
 struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
 {
-    DeclutterPriorityFunctor* _f;
-    DeclutterContext*         _context;
+    DeclutterSortFunctor* _customSortFunctor;
+    DeclutterContext*     _context;
 
-    Threading::PerObjectMap<osg::View*, DrawableMemory> _memoryPerView;
+    Threading::PerObjectMap<osg::View*, PerViewInfo> _perView;
 
     /**
      * Constructs the new sorter.
      * @param f Custom declutter sorting predicate. Pass NULL to use the 
      *          default sorter (sort by distance-to-camera).
      */
-    DeclutterSort( DeclutterContext* context, DeclutterPriorityFunctor* f = 0L )
-        : _context(context), _f(f)
+    DeclutterSort( DeclutterContext* context, DeclutterSortFunctor* f = 0L )
+        : _context(context), _customSortFunctor(f)
     {
         //nop
     }
@@ -102,12 +150,12 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
     {
         osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
 
-        // first, sort the leaves.
-        if ( _f )
+        // first, sort the leaves:
+        if ( _customSortFunctor )
         {
             // if there's a custom sorting function installed
             bin->copyLeavesFromStateGraphListToRenderLeafList();
-            std::sort( leaves.begin(), leaves.end(), SortContainer( *_f ) );
+            std::sort( leaves.begin(), leaves.end(), SortContainer( *_customSortFunctor ) );
         }
         else
         {
@@ -119,17 +167,20 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         if ( leaves.size() == 0 )
             return;
 
-        // access the drawable memory for this view:
-        DrawableMemory& memory = _memoryPerView.get( bin->getStage()->getCamera()->getView() );
+        // access the view-specific persistent data:
+        osg::View*   view  = bin->getStage()->getCamera()->getView();
+        PerViewInfo& local = _perView.get( bin->getStage()->getCamera()->getView() );   
         
-        // List of render leaves that pass the initial visibility test
-        osgUtil::RenderBin::RenderLeafList passed, failed;
-        passed.reserve( leaves.size() );
-        failed.reserve( leaves.size() );
+        // calculate the elapsed time since the previous pass; we'll use this for
+        // the animations
+        double now = view->getFrameStamp()->getReferenceTime();
+        float elapsedSeconds = float(now - local._lastTimeStamp);
+        local._lastTimeStamp = now;
 
-        // list of occlusion boxes - pairs the drawable's parent with the bounding box.
-        typedef std::pair<const osg::Node*, osg::BoundingBox> RenderLeafBox;
-        std::vector<RenderLeafBox> used;
+        // Reset the local re-usable containers
+        local._passed.clear();          // drawables that pass occlusion test
+        local._failed.clear();          // drawables that fail occlusion test
+        local._used.clear();            // list of occupied bounding boxes in screen space
 
         // compute a window matrix so we can do window-space culling:
         const osg::Viewport* vp = bin->getStage()->getCamera()->getViewport();
@@ -139,6 +190,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         // with the same parent node (typically a Geode) are considered to be grouped and
         // will be culled as a group.
         std::set<const osg::Node*> culledParents;
+
+        const DeclutteringOptions& options = _context->_options;
 
         // Go through each leaf and test for visibility.
         for( osgUtil::RenderBin::RenderLeafList::iterator i = leaves.begin(); i != leaves.end(); ++i )
@@ -174,7 +227,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 // weed out any drawables that are obscured by closer drawables.
                 // TODO: think about a more efficient algorithm - right now we are just using
                 // brute force to compare all bbox's
-                for( std::vector<RenderLeafBox>::const_iterator j = used.begin(); j != used.end(); ++j )
+                for( std::vector<RenderLeafBox>::const_iterator j = local._used.begin(); j != local._used.end(); ++j )
                 {
                     // only need a 2D test since we're in clip space
                     bool isClear =
@@ -197,8 +250,8 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
             {
                 // passed the test, so add the leaf's bbox to the "used" list, and add the leaf
                 // to the final draw list.
-                used.push_back( std::make_pair(drawableParent, box) );
-                passed.push_back( leaf );
+                local._used.push_back( std::make_pair(drawableParent, box) );
+                local._passed.push_back( leaf );
             }
 
             else
@@ -206,101 +259,107 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 // culled, so put the parent in the parents list so that any future leaves
                 // with the same parent will be trivially rejected
                 culledParents.insert( drawable->getParent(0) );
-                failed.push_back( leaf );
+                local._failed.push_back( leaf );
             }
 
             // modify the leaf's modelview matrix to correctly position it in the 2D ortho
             // projection when it's drawn later. (Note: we need a new RefMatrix since the
             // original might be shared ... potential optimization here)
-            leaf->_modelview = new osg::RefMatrix( osg::Matrix::translate(
-                box.xMin() + offset.x(),
-                box.yMin() + offset.y(), 
-                0) );
+            // We'll also preserve the scale.
+            osg::Matrix newModelView;
+            newModelView.makeTranslate( box.xMin() + offset.x(), box.yMin() + offset.y(), 0 );
+            newModelView.preMultScale( leaf->_modelview->getScale() );
+            
+            leaf->_modelview = new osg::RefMatrix( newModelView );
         }
 
         // copy the final draw list back into the bin, rejecting any leaves whose parents
         // are in the cull list.
 
-        const DeclutteringOptions& options = _context->_options;
-
         leaves.clear();
-        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=passed.begin(); i != passed.end(); ++i )
+        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._passed.begin(); i != local._passed.end(); ++i )
         {
             osgUtil::RenderLeaf* leaf     = *i;
             const osg::Drawable* drawable = leaf->getDrawable();
 
             if ( culledParents.find( drawable->getParent(0) ) == culledParents.end() )
             {
-                DrawableInfo& info = memory[drawable];
+                DrawableInfo& info = local._memory[drawable];
 
                 bool fullyIn = true;
 
                 // scale in until at full scale:
-                if ( info._lastScale < 1.0f )
+                if ( info._lastScale != 1.0f )
                 {
                     fullyIn = false;
-                    info._lastScale += *options.stepUp();
+                    info._lastScale += elapsedSeconds / std::max(*options.inAnimationTime(), 0.001f);
                     if ( info._lastScale > 1.0f )
                         info._lastScale = 1.0f;
-                    else
-                        leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
                 }
+
+                if ( info._lastScale != 1.0f )
+                    leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
                 
                 // fade in until at full alpha:
-                if ( info._lastAlpha < 1.0f )
+                if ( info._lastAlpha != 1.0f )
                 {
                     fullyIn = false;
-                    info._lastAlpha += *options.stepUp();
+                    info._lastAlpha += elapsedSeconds / std::max(*options.inAnimationTime(), 0.001f);
                     if ( info._lastAlpha > 1.0f )
                         info._lastAlpha = 1.0f;
                 }
 
                 leaf->_depth = info._lastAlpha;
                 leaves.push_back( leaf );
+
+                
             }
             else
             {
-                failed.push_back(leaf);
+                local._failed.push_back(leaf);
             }
         }
 
         // next, go through the FAILED list and sort them into failure bins so we can draw
         // them using a different technique if necessary.
-        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=failed.begin(); i != failed.end(); ++i )
+        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._failed.begin(); i != local._failed.end(); ++i )
         {
             osgUtil::RenderLeaf* leaf =     *i;
             const osg::Drawable* drawable = leaf->getDrawable();
 
-            DrawableInfo& info = memory[drawable];
+            DrawableInfo& info = local._memory[drawable];
 
             bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
             bool fullyOut = true;
 
-            if ( info._lastScale > *options.minScale() )
+            if ( info._lastScale != *options.minAnimationScale() )
             {
                 fullyOut = false;
-                info._lastScale -= *options.stepDown();
-                if ( info._lastScale < *options.minScale() )
-                    info._lastScale = *options.minScale();
+                info._lastScale -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
+                if ( info._lastScale < *options.minAnimationScale() )
+                    info._lastScale = *options.minAnimationScale();
             }
 
-            if ( info._lastAlpha > *options.minAlpha() )
+            if ( info._lastAlpha != *options.minAnimationAlpha() )
             {
                 fullyOut = false;
-                info._lastAlpha -= *options.stepDown();
-                if ( info._lastAlpha < *options.minAlpha() )
-                    info._lastAlpha = *options.minAlpha();
+                info._lastAlpha -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
+                if ( info._lastAlpha < *options.minAnimationAlpha() )
+                    info._lastAlpha = *options.minAnimationAlpha();
             }
 
             leaf->_depth = info._lastAlpha;
 
             if ( !isText || !fullyOut )
             {
-                leaves.push_back( leaf );
+                if ( info._lastAlpha > 0.01f && info._lastScale >= 0.0f )
+                {
+                    leaves.push_back( leaf );
 
-                // scale it:
-                if ( info._lastScale != 1.0f )
-                    leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                    // scale it:
+                    if ( info._lastScale != 1.0f )
+                        leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                }
             }
 
         }
@@ -316,12 +375,16 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
     Threading::PerThread< osg::ref_ptr<osg::RefMatrix> > _ortho2D;
     osg::ref_ptr<osg::Uniform> _fade;
 
+    /**
+     * Constructs the decluttering draw callback.
+     * @param context A shared context among all decluttering objects.
+     */
     DeclutterDraw( DeclutterContext* context )
         : _context( context )
     {
-        //nop
+        // create the fade uniform.
         _fade = AnnotationUtils::createFadeUniform();
-        _fade->set( 0.5f );
+        _fade->set( 1.0f );
     }
 
     /**
@@ -436,7 +499,7 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
         const osg::Program::PerContextProgram* pcp = state.getLastAppliedProgramObject();
         if ( pcp )
         {
-            // todo: find a way to optimizer this..?
+            // todo: find a way to optimize this..?
             _fade->set( leaf->_depth );
             pcp->apply( *_fade.get() );
         }
@@ -461,17 +524,15 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
 class osgEarthAnnotationDeclutterRenderBin : public osgUtil::RenderBin
 {
 public:
-    static const std::string BIN_NAME;
-
     osgEarthAnnotationDeclutterRenderBin()
     {
-        this->setName( BIN_NAME );
+        this->setName( OSGEARTH_DECLUTTER_BIN );
         _context = new DeclutterContext();
         clearSortingFunctor();
         setDrawCallback( new DeclutterDraw(_context.get()) );
     }
 
-    void setSortingFunctor( DeclutterPriorityFunctor* f )
+    void setSortingFunctor( DeclutterSortFunctor* f )
     {
         _f = f;
         setSortCallback( new DeclutterSort(_context.get(), f) );
@@ -482,16 +543,46 @@ public:
         setSortCallback( new DeclutterSort(_context.get()) );
     }
 
-    osg::ref_ptr<DeclutterPriorityFunctor> _f;
-    osg::ref_ptr<DeclutterContext>         _context;
+    osg::ref_ptr<DeclutterSortFunctor> _f;
+    osg::ref_ptr<DeclutterContext>     _context;
 };
-const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECLUTTER_BIN;
+//const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECLUTTER_BIN;
 
 //----------------------------------------------------------------------------
 
 //static
+
 void
-Decluttering::setDeclutterPriorityFunctor( DeclutterPriorityFunctor* functor )
+Decluttering::setEnabled( osg::StateSet* stateSet, bool enabled, int binNum )
+{
+    if ( stateSet )
+    {
+        if ( enabled )
+        {
+            osg::Program* p = dynamic_cast<osg::Program*>(stateSet->getAttribute(osg::StateAttribute::PROGRAM));
+            if ( p == 0L || p->getName() != AnnotationUtils::PROGRAM_NAME() )
+            {
+                stateSet->setAttributeAndModes( AnnotationUtils::getAnnotationProgram(), 1 );
+            }
+
+            // just installs a default highlight uniform so the shader has default value.
+            if ( !stateSet->getUniform( AnnotationUtils::UNIFORM_HIGHLIGHT() ) )
+            {
+                stateSet->addUniform( AnnotationUtils::createHighlightUniform() );
+            }
+
+            stateSet->setRenderBinDetails( binNum, OSGEARTH_DECLUTTER_BIN );
+        }
+        else
+        {
+            stateSet->removeAttribute( osg::StateAttribute::PROGRAM );
+            stateSet->setRenderBinToInherit();
+        }
+    }
+}
+
+void
+Decluttering::setSortFunctor( DeclutterSortFunctor* functor )
 {
     // pull our prototype
     osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
@@ -504,7 +595,7 @@ Decluttering::setDeclutterPriorityFunctor( DeclutterPriorityFunctor* functor )
 }
 
 void
-Decluttering::clearDeclutterPriorityFunctor()
+Decluttering::clearSortFunctor()
 {
     // pull our prototype
     osgEarthAnnotationDeclutterRenderBin* bin = dynamic_cast<osgEarthAnnotationDeclutterRenderBin*>(
@@ -525,6 +616,14 @@ Decluttering::setOptions( const DeclutteringOptions& options )
 
     if ( bin )
     {
+        // activate priority-sorting through the options.
+        if ( options.sortByPriority().isSetTo( true ) &&
+             bin->_context->_options.sortByPriority() == false )
+        {
+            Decluttering::setSortFunctor(new DeclutterByPriority());
+        }
+        
+        // communicate the new options on the shared context.
         bin->_context->_options = options;
     }
 }
@@ -550,7 +649,35 @@ Decluttering::getOptions()
 
 //----------------------------------------------------------------------------
 
+bool
+DeclutterByPriority::operator()(const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
+{
+    float diff = 0.0f;
+    const AnnotationData* lhsData = dynamic_cast<const AnnotationData*>(lhs->getDrawable()->getUserData());
+    if ( lhsData )
+    {
+        const AnnotationData* rhsData = dynamic_cast<const AnnotationData*>(rhs->getDrawable()->getUserData());
+        if ( rhsData )
+        {
+            diff = lhsData->getPriority() - rhsData->getPriority();
+        }
+    }
+
+    if ( diff != 0.0f )
+        return diff > 0.0f;
+
+    // first fallback on depth:
+    diff = lhs->_depth - rhs->_depth;
+    if ( diff != 0.0f )
+        return diff < 0.0f;
+
+    // then fallback on traversal order.
+    diff = float(lhs->_traversalNumber) - float(rhs->_traversalNumber);
+    return diff < 0.0f;
+}
+
+//----------------------------------------------------------------------------
+
 /** the actual registration. */
 extern "C" void osgEarth_declutter(void) {}
-static osgEarthAnnotationRegisterRenderBinProxy<osgEarthAnnotationDeclutterRenderBin> s_regbin(
-    osgEarthAnnotationDeclutterRenderBin::BIN_NAME);
+static osgEarthRegisterRenderBinProxy<osgEarthAnnotationDeclutterRenderBin> s_regbin(OSGEARTH_DECLUTTER_BIN);

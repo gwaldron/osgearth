@@ -21,7 +21,7 @@
 
 #include <osgEarth/Map>
 #include <osgEarth/MapNode>
-#include <osgEarth/Utils>
+#include <osgEarth/Containers>
 
 namespace osgEarth
 {

@@ -109,6 +109,13 @@ public:
                     osgEarth::Registry::instance()->blacklist( uri );
                     return ReadResult::FILE_NOT_FOUND;
                 }
+                else
+                {   
+                    osg::Timer_t start = osg::Timer::instance()->tick();
+                    engineNode->fireTerrainChanged( key, node );
+                    osg::Timer_t end = osg::Timer::instance()->tick();
+                    OE_DEBUG << "Took " << osg::Timer::instance()->delta_m(start, end) << "ms to fire terrain callbacks" << std::endl;
+                }
 
                 return ReadResult( node, ReadResult::FILE_LOADED );
             }

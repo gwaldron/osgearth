@@ -30,6 +30,7 @@
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
+#include <osgText/Font>
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
@@ -108,6 +109,12 @@ namespace osgEarth
         const VerticalSpatialReference* getDefaultVSRS() const;
 
         /**
+         * Sets or gets a default system font to use
+         */
+        void setDefaultFont( osgText::Font* font );
+        osgText::Font* getDefaultFont();
+
+        /**
          * Gets the graphics hardware capabilities for this platform
          */
         const Capabilities& getCapabilities() const;
@@ -165,7 +172,8 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _global_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
-        OpenThreads::Mutex _regMutex;        
+        Threading::ReadWriteMutex _regMutex;
+        //OpenThreads::Mutex _regMutex;        
         int _numGdalMutexGets;
         
         typedef std::map< std::string, std::string> MimeTypeExtensionMap;
@@ -193,6 +201,8 @@ namespace osgEarth
         osg::ref_ptr<osgDB::Options> _defaultOptions;
 
         osg::ref_ptr<URIReadCallback> _uriReadCallback;
+
+        osg::ref_ptr<osgText::Font> _defaultFont;
     };
 }
 

@@ -86,7 +86,7 @@ namespace osgEarth { namespace Util
         bool   _active;
         double _minNearFarRatio, _maxNearFarRatio;
         double _haeThreshold;
-        double _rp2;
+        double _rp2, _rp;
         bool   _autoFarPlaneClamping;
         osg::ref_ptr<Map> _map;
         Threading::PerObjectMap< osg::Camera*, osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> > _clampers;

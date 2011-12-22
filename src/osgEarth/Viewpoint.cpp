@@ -133,31 +133,34 @@ Viewpoint::Viewpoint( const Config& conf )
     //TODO: SRS
 }
 
+#define CONF_STR Stringify() << std::fixed << std::setprecision(4)
+
 Config
 Viewpoint::getConfig() const
 {
-    Config conf;
+    Config conf( "viewpoint" );
 
     if ( _is_valid )
     {
-        conf.set("name", _name);
+        if ( !_name.empty() )
+            conf.set("name", _name);
 
         if ( getSRS() && getSRS()->isGeographic() )
         {
-            conf.set("lat", osgEarth::toString(_focal_point.y()));
-            conf.set("long", osgEarth::toString(_focal_point.x()));
-            conf.set("height", osgEarth::toString(_focal_point.z()));
+            conf.set("lat",    CONF_STR << _focal_point.y());
+            conf.set("long",   CONF_STR << _focal_point.x());
+            conf.set("height", CONF_STR << _focal_point.z());
         }
         else
         {
-            conf.set("x", osgEarth::toString(_focal_point.x()));
-            conf.set("y", osgEarth::toString(_focal_point.y()));
-            conf.set("z", osgEarth::toString(_focal_point.z()));
+            conf.set("x", CONF_STR << _focal_point.x());
+            conf.set("y", CONF_STR << _focal_point.y());
+            conf.set("z", CONF_STR << _focal_point.z());
         }
 
-        conf.set("heading", osgEarth::toString(_heading_deg));
-        conf.set("pitch", osgEarth::toString(_pitch_deg));
-        conf.set("range", osgEarth::toString(_range));
+        conf.set("heading", CONF_STR << _heading_deg);
+        conf.set("pitch",   CONF_STR << _pitch_deg);
+        conf.set("range",   CONF_STR << _range);
 
         //TODO: SRS
     }
@@ -266,6 +269,7 @@ Viewpoint::toString() const
         << ", p=" << _pitch_deg
         << ", d=" << _range
         ;
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     return str;
 }

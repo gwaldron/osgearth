@@ -1,0 +1,102 @@
+<!--
+osgEarth Sample.
+
+Same as the boston.earth example only it excludes certain buildings from being rendered so we can replace them with geospecific models.  Run this example with:
+osgearth_viewer boston_buildings.earth --kml ../data/BostonBuildings.kmz to see the hand modeled buildings.
+-->
+
+<map name="Boston Demo" type="geocentric" version="2">
+    
+    <image name="ReadyMap.org - Imagery" driver="tms">
+        <url>http://readymap.org/readymap/tiles/1.0.0/22/</url>
+    </image>
+      
+    <model name="buildings" driver="feature_geom">
+             
+        <features name="buildings" driver="ogr">
+            <url>../data/boston_buildings_utm19.shp</url>
+            <build_spatial_index>true</build_spatial_index>
+        </features>
+        
+        <!--
+           The "layout" element activates tiling and paging of the feature set. If you
+           omit the layout element, the entire feature set will render as one pre-loaded
+           model (no tiling or paging).
+           
+           Each "level" is a level of detail for features, and should select a style
+              to use for that level. It also can specify min and max camera ranges,
+              in meters.
+              
+           The "tile size factor" controls how a feature is tiled. The higher this factor,
+              the smaller the tile size, and the more tiles will be used to render a given
+              level of detail. The default is 15. (The renderer multiplies a tile's radius
+              by the tile_size_factor to calculate the maximum suitable camera range for
+              a given level of subdivision. It compares this to the feature level's max
+              range to decide how many tiles to create.)
+        -->
+        
+        <layout>
+            <tile_size_factor>45</tile_size_factor>
+            <level name="default" max_range="20000">
+                <selector class="buildings"/>
+            </level>
+        </layout>
+        
+        <styles>            
+            <library name="us_resources">
+                <url>../data/resources/textures_us/catalog.xml</url>
+            </library>
+            
+            <style type="text/css">
+                buildings {
+                    extrusion-height:      3.5 * max([story_ht_], 1);
+                    extrusion-flatten:     true;
+                    extrusion-wall-style:  building-wall;
+                    extrusion-roof-style:  building-rooftop;
+                    altitude-clamping:     none;
+                }            
+                building-wall {
+                    skin-library:     us_resources;
+                    skin-tags:        building;
+                    skin-random-seed: 1;
+                    fill:             #ffffff;
+                }
+                building-rooftop {
+                    skin-library:     us_resources;
+                    skin-tags:        rooftop;
+                    skin-tiled:       true;
+                    skin-random-seed: 1;
+                    fill:             #ffffff;
+                }
+            </style>
+			
+						
+		    <!--Exclude certain buildings from being rendered b/c they will be replaced with geospecific buildings -->
+			<selector class="buildings">
+                <query>
+                    <expr><![CDATA[ OBJECTID_1 <> 91506 and OBJECTID_1 <> 12921 and OBJECTID_1 <> 11460 and OBJECTID_1 <> 11474 and OBJECTID_1 <> 11471 and OBJECTID_1 <> 11439 and OBJECTID_1 <> 11432 and  OBJECTID_1 <> 91499 and OBJECTID_1 <> 10878 ]]> </expr>
+                </query>
+            </selector>			
+			
+        </styles>
+
+        <lighting>true</lighting>        
+    </model>
+    
+    
+    <options>
+        <lighting>false</lighting>
+        <terrain>
+            <sample_ratio>0.5</sample_ratio>
+        </terrain>
+    </options> 
+    
+    <external>
+        <viewpoint name="Boston Overview" heading="24.261" height="0" lat="42.34425" long="-71.076262" pitch="-21.6" range="3450"/>
+        <viewpoint name="Boston Downtown 1" heading="117" lat="42.3568" long="-71.0585" height="0" pitch="-20.4" range="1500" />
+        <viewpoint name="Boston Downtown 2" heading="-128.5" lat="42.3582" long="-71.0546" height="0" pitch="-19" range="1620" />
+        <viewpoint name="Boston Street Level" heading="-145.85" lat="42.36460" long="-71.053612" pitch="-10.1" range="85.034"/>
+        <sky hours="21.0"/>
+    </external>
+  
+</map>

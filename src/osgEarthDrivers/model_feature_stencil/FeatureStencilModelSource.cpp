@@ -21,14 +21,15 @@
 #include <osgEarth/Map>
 #include <osgEarthFeatures/FeatureModelSource>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/AltitudeFilter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/ResampleFilter>
 #include <osgEarthFeatures/ConvertTypeFilter>
+#include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/FeatureGridder>
 #include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarthSymbology/Style>
-#include <osgEarthSymbology/StencilVolumeNode>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
 #include <osg/ClusterCullingCallback>
@@ -91,224 +92,6 @@ namespace
         proj->getOrCreateStateSet()->setMode( GL_BLEND, 1 );    
 
         return proj;
-    }
-
-    void tessellate( osg::Geometry* geom )
-    {
-        osgUtil::Tessellator tess;
-        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
-    //    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-        tess.retessellatePolygons( *geom );
-    }
-
-    osg::Geode*
-    createVolume(osgEarth::Symbology::Geometry* geom,
-                 double               offset,
-                 double               height,
-                 const FilterContext& context )
-    {
-        if ( !geom ) return 0L;
-
-        bool makeECEF = context.getSession()->getMapInfo().isGeocentric();
-
-        int numRings = 0;
-
-        // start by offsetting the input data and counting the number of rings
-        {
-            osgEarth::Symbology::GeometryIterator i( geom );
-            while( i.hasMore() )
-            {
-                osgEarth::Symbology::Geometry* part = i.next();
-
-                if (offset != 0.0)
-                {
-                    for( osg::Vec3dArray::iterator j = part->begin(); j != part->end(); j++ )
-                    {
-                        if ( makeECEF )
-                        {
-                            osg::Vec3d world = context.toWorld( *j );
-                            // TODO: get the proper up vector; this is spherical.. or does it really matter for
-                            // stencil volumes?
-                            osg::Vec3d offset_vec = world;
-                            offset_vec.normalize();
-                            *j = context.toLocal( world + offset_vec * offset ); //(*j) += offset_vec * offset;
-                        }
-                        else
-                        {
-                            (*j).z() += offset;
-                        }
-                    }
-                }
-
-                // in the meantime, count the # of closed geoms. We will need to know this in 
-                // order to pre-allocate the proper # of verts.
-                if ( part->getType() == osgEarth::Symbology::Geometry::TYPE_POLYGON || part->getType() == osgEarth::Symbology::Geometry::TYPE_RING )
-                {
-                    numRings++;
-                }
-            }
-        }
-
-        // now, go thru and remove any coplanar segments from the geometry. The tesselator will
-        // not work include a vert connecting two colinear segments in the tesselation, and this
-        // will break the stenciling logic.
-    #define PARALLEL_EPSILON 0.01
-        osgEarth::Symbology::GeometryIterator i( geom );
-        while( i.hasMore() )
-        {
-            osgEarth::Symbology::Geometry* part = i.next();
-            if ( part->size() >= 3 )
-            {
-                osg::Vec3d prevVec = part->front() - part->back();
-                prevVec.normalize();
-
-                for( osg::Vec3dArray::iterator j = part->begin(); part->size() >= 3 && j != part->end(); )
-                {
-                    osg::Vec3d& p0 = *j;
-                    osg::Vec3d& p1 = j+1 != part->end() ? *(j+1) : part->front();
-                    osg::Vec3d vec = p1-p0; vec.normalize();
-
-                    // if the vectors are essentially parallel, remove the extraneous vertex.
-                    if ( (prevVec ^ vec).length() < PARALLEL_EPSILON )
-                    {
-                        j = part->erase( j );
-                        //OE_NOTICE << "removed colinear segment" << std::endl;
-                    }
-                    else
-                    {
-                        ++j;
-                        prevVec = vec;
-                    }
-                }
-            }
-        }
-
-
-        bool made_geom = true;
-        const SpatialReference* srs = context.profile()->getSRS();
-
-        // total up all the points so we can pre-allocate the vertex arrays.
-        int num_cap_verts = geom->getTotalPointCount();
-        int num_wall_verts = 2 * (num_cap_verts + numRings); // add in numRings b/c we need to close each wall
-
-        osg::Geometry* walls = new osg::Geometry();
-        osg::Vec3Array* verts = new osg::Vec3Array( num_wall_verts );
-        walls->setVertexArray( verts );
-
-        osg::Geometry* top_cap = new osg::Geometry();
-        osg::Vec3Array* top_verts = new osg::Vec3Array( num_cap_verts );
-        top_cap->setVertexArray( top_verts );
-
-        osg::Geometry* bottom_cap = new osg::Geometry();
-        osg::Vec3Array* bottom_verts = new osg::Vec3Array( num_cap_verts );
-        bottom_cap->setVertexArray( bottom_verts );
-
-        int wall_vert_ptr = 0;
-        int top_vert_ptr = 0;
-        int bottom_vert_ptr = 0;
-
-        //double target_len = height;
-
-        // now generate the extruded geometry.
-        osgEarth::Symbology::GeometryIterator k( geom );
-        while( k.hasMore() )
-        {
-            osgEarth::Symbology::Geometry* part = k.next();
-
-            unsigned int wall_part_ptr = wall_vert_ptr;
-            unsigned int top_part_ptr = top_vert_ptr;
-            unsigned int bottom_part_ptr = bottom_vert_ptr;
-            double part_len = 0.0;
-
-            GLenum prim_type = part->getType() == osgEarth::Symbology::Geometry::TYPE_POINTSET ? GL_LINES : GL_TRIANGLE_STRIP;
-
-            for( osg::Vec3dArray::const_iterator m = part->begin(); m != part->end(); ++m )
-            {
-                osg::Vec3d extrude_vec;
-
-                if ( srs )
-                {
-                    osg::Vec3d m_world = context.toWorld( *m ); //*m * context.inverseReferenceFrame();
-                    if ( makeECEF )
-                    {
-                        osg::Vec3d p_vec = m_world; // todo: not exactly right; spherical
-
-                        osg::Vec3d unit_vec = p_vec; 
-                        unit_vec.normalize();
-                        p_vec = p_vec + unit_vec*height;
-
-                        extrude_vec = context.toLocal( p_vec ); //p_vec * context.referenceFrame();
-                    }
-                    else
-                    {
-                        extrude_vec.set( m_world.x(), m_world.y(), height );
-                        extrude_vec = context.toLocal( extrude_vec ); //extrude_vec * context.referenceFrame();
-                    }
-                }
-                else
-                {
-                    extrude_vec.set( m->x(), m->y(), height );
-                }
-
-                (*top_verts)[top_vert_ptr++] = extrude_vec;
-                (*bottom_verts)[bottom_vert_ptr++] = *m;
-                 
-                part_len += wall_vert_ptr > (int)wall_part_ptr?
-                    (extrude_vec - (*verts)[wall_vert_ptr-2]).length() :
-                    0.0;
-
-                int p;
-
-                p = wall_vert_ptr++;
-                (*verts)[p] = extrude_vec;
-
-                p = wall_vert_ptr++;
-                (*verts)[p] = *m;
-            }
-
-            // close the wall if it's a ring/poly:
-            if ( part->getType() == osgEarth::Symbology::Geometry::TYPE_RING || part->getType() == osgEarth::Symbology::Geometry::TYPE_POLYGON )
-            {
-                part_len += wall_vert_ptr > (int)wall_part_ptr?
-                    ((*verts)[wall_part_ptr] - (*verts)[wall_vert_ptr-2]).length() :
-                    0.0;
-
-                int p;
-
-                p = wall_vert_ptr++;
-                (*verts)[p] = (*verts)[wall_part_ptr];
-
-                p = wall_vert_ptr++;
-                (*verts)[p] = (*verts)[wall_part_ptr+1];
-            }
-
-            walls->addPrimitiveSet( new osg::DrawArrays(
-                prim_type,
-                wall_part_ptr, wall_vert_ptr - wall_part_ptr ) );
-
-            top_cap->addPrimitiveSet( new osg::DrawArrays(
-                osg::PrimitiveSet::LINE_LOOP,
-                top_part_ptr, top_vert_ptr - top_part_ptr ) );
-
-            // reverse the bottom verts so the front face is down:
-            std::reverse( bottom_verts->begin()+bottom_part_ptr, bottom_verts->begin()+bottom_vert_ptr );
-
-            bottom_cap->addPrimitiveSet( new osg::DrawArrays(
-                osg::PrimitiveSet::LINE_LOOP,
-                bottom_part_ptr, bottom_vert_ptr - bottom_part_ptr ) );
-        }
-
-        // build solid surfaces for the caps:
-        tessellate( top_cap );
-        tessellate( bottom_cap );
-
-        osg::Geode* geode = new osg::Geode();
-        geode->addDrawable( walls );
-        geode->addDrawable( top_cap );
-        geode->addDrawable( bottom_cap );
-
-        return geode;
     }
 
     struct BuildData // : public osg::Referenced
@@ -379,9 +162,6 @@ namespace
             FeatureList featureList;
             cursor->fill( featureList );
 
-            //for (FeatureList::const_iterator it = features.begin(); it != features.end(); ++it)
-            //    featureList.push_back(osg::clone((*it).get(),osg::CopyOp::DEEP_COPY_ALL));
-
             // establish the extrusion distance for the stencil volumes
             double extrusionDistance = 1;
             double densificationThreshold = 1.0;
@@ -429,52 +209,23 @@ namespace
                 }
             }
 
-            // Transform them into the map's SRS, localizing the verts along the way:
-            TransformFilter xform( mi.getProfile()->getSRS() );
-            //xform.setMakeGeocentric( mi.isGeocentric() );
-            //xform.setLocalizeCoordinates( !mi.isGeocentric() );
-            cx = xform.push( featureList, cx );
-
-            if ( mi.isGeocentric() )
-            {
-                // We need to make sure that on a round globe, the points are sampled such that
-                // long segments follow the curvature of the earth. By the way, if a Buffer was
-                // applied, that will also remove colinear segment points. Resample the points to 
-                // achieve a usable tesselation.
-                ResampleFilter resample;
-                resample.maxLength() = densificationThreshold;
-                resample.minLength() = 0.0;
-                resample.perturbationThreshold() = 0.1;
-                cx = resample.push( featureList, cx );
-            }
-
             // Extrude and cap the geometry in both directions to build a stencil volume:
-            osg::Group* volumes = 0L;
 
-            for( FeatureList::iterator i = featureList.begin(); i != featureList.end(); ++i )
-            {
-                Feature* feature = (*i).get();
-                Geometry* geom = feature->getGeometry();
-                osg::Node* volume = createVolume( geom, -extrusionDistance, extrusionDistance * 2.0, cx );
+            Style bs;
+            bs.getOrCreate<AltitudeSymbol>()->verticalOffset() = -extrusionDistance;
+            bs.getOrCreate<ExtrusionSymbol>()->height() = extrusionDistance * 2.0;
+            
+            AltitudeFilter alt;
+            alt.setPropertiesFromStyle( bs );
+            cx = alt.push( featureList, cx );
 
-                if ( volume )
-                {
-                    if ( !volumes )
-                        volumes = new osg::Group();
-                    volumes->addChild( volume );
-                }
-            }
+            ExtrudeGeometryFilter extrude;
+            extrude.setStyle( bs );
+            extrude.setMakeStencilVolume( true );
+            osg::Node* volumes = extrude.push( featureList, cx );           
 
             if ( volumes )
             {
-                // Resolve the localizing reference frame if necessary:
-                if ( cx.hasReferenceFrame() )
-                {
-                    osg::MatrixTransform* xform = new osg::MatrixTransform( cx.inverseReferenceFrame() );
-                    xform->addChild( volumes );
-                    volumes = xform;
-                }
-
                 // Apply an LOD if required:
                 if ( _options.minRange().isSet() || _options.maxRange().isSet() )
                 {
@@ -484,8 +235,12 @@ namespace
                 }
 
                 // Add the volumes to the appropriate style group.
-                StencilVolumeNode* styleNode = dynamic_cast<StencilVolumeNode*>( getOrCreateStyleGroup( style, cx.getSession() ) );
-                styleNode->addVolumes( volumes );
+                osg::Group* styleGroup = getOrCreateStyleGroup( style, cx.getSession() );
+                StencilVolumeNode* svNode = dynamic_cast<StencilVolumeNode*>( styleGroup );
+                if ( svNode )
+                    svNode->addVolumes( volumes );
+                else
+                    styleGroup->addChild( volumes );
             }
 
             node = 0L; // always return null, since we added our geom to the style group.

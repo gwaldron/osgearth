@@ -64,6 +64,11 @@ namespace osgEarth { namespace Features
          * Sets the maximum wall angle that doesn't require a new normal vector
          */
         void setWallAngleThreshold( float angle_deg ) { _wallAngleThresh_deg = angle_deg; }
+
+        /**
+         * Sets whether to render a bottom top. Useful for creating stencil volumes.
+         */
+        void setMakeStencilVolume( bool value ) { _makeStencilVolume = value; }
         
         /**
          * Sets the expression to evaluate when setting a feature name.
@@ -88,6 +93,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<HeightCallback>   _heightCallback;
         optional<NumericExpression>    _heightOffsetExpr;
         optional<NumericExpression>    _heightExpr;
+        bool                           _makeStencilVolume;
 
         Style                          _style;
         bool                           _styleDirty;

@@ -38,6 +38,8 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT FeatureNode : public AnnotationNode
     {
     public:
+        META_AnnotationNode(osgEarthAnnotation, FeatureNode);
+
         FeatureNode( 
             MapNode* mapNode, 
             Feature* feature, 
@@ -59,6 +61,9 @@ namespace osgEarth { namespace Annotation
         GeometryCompilerOptions     _options;
         bool                        _draped;
         osg::Group*                 _attachPoint;
+
+        FeatureNode() { }
+        FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
         
     };
 

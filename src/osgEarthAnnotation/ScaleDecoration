@@ -16,10 +16,10 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNOTATION_SCALE_DRAW_STATE_H
-#define OSGEARTH_ANNOTATION_SCALE_DRAW_STATE_H 1
+#ifndef OSGEARTH_ANNOTATION_SCALE_DECORATION_H
+#define OSGEARTH_ANNOTATION_SCALE_DECORATION_H 1
 
-#include <osgEarthAnnotation/DrawState>
+#include <osgEarthAnnotation/Decoration>
 #include <osg/NodeVisitor>
 
 namespace osgEarth { namespace Annotation
@@ -27,16 +27,16 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth;
 
     /**
-     * A draw state technique that scales the annotation.
+     * A decoration technique that scales the annotation.
      */
-    class /*OSGEARTHANNO_EXPORT*/ ScaleDrawState : public InjectionDrawState
+    class /*OSGEARTHANNO_EXPORT*/ ScaleDecoration : public InjectionDecoration
     {
     public:
-        ScaleDrawState(float factor =1.1f) :
-            InjectionDrawState(new osg::MatrixTransform(osg::Matrix::scale(factor,factor,factor))),
+        ScaleDecoration(float factor =1.1f) :
+            InjectionDecoration(new osg::MatrixTransform(osg::Matrix::scale(factor,factor,factor))),
             _factor(factor) { }
 
-        virtual DrawState* clone() const { return new ScaleDrawState(_factor); }
+        virtual Decoration* clone() const { return new ScaleDecoration(_factor); }
 
     protected:
         float _factor;
@@ -44,4 +44,4 @@ namespace osgEarth { namespace Annotation
 
 } } // namespace osgEarth::Annotation
 
-#endif //OSGEARTH_ANNOTATION_DRAW_STATE_H
+#endif //OSGEARTH_ANNOTATION_DECORATION_H

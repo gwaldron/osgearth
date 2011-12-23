@@ -34,8 +34,8 @@
 #include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/Decluttering>
-#include <osgEarthAnnotation/HighlightDrawState>
-#include <osgEarthAnnotation/ScaleDrawState>
+#include <osgEarthAnnotation/HighlightDecoration>
+#include <osgEarthAnnotation/ScaleDecoration>
 
 #include <osgEarthSymbology/GeometryFactory>
 
@@ -67,12 +67,12 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 {
     void onHoverEnter( AnnotationNode* anno, const EventArgs& args )
     {
-        anno->setAltDrawState( "hover" );
+        anno->setDecoration( "hover" );
     }
 
     void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
     {
-        anno->clearAltDrawState();
+        anno->clearDecoration();
     }
 };
 
@@ -81,7 +81,7 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 int
 main(int argc, char** argv)
 {
-    // The HighlightDrawStateTechnique requires you to allocate stencil planes,
+    // The HighlightDecoration requires you to allocate stencil planes,
     // and will yell at you if you don't. You have to do this prior to creating
     // your Viewer.
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 2 );
@@ -247,16 +247,16 @@ main(int argc, char** argv)
     
     //--------------------------------------------------------------------
 
-    // install alternate draw states. These change the appearance of an Annotation
+    // install decoration. These change the appearance of an Annotation
     // based on some user action.
 
     // highlight annotation upon hover by default:
     
-    DrawStateInstaller highlightInstaller("hover", new HighlightDrawState());
+    DecorationInstaller highlightInstaller("hover", new HighlightDecoration());
     annoGroup->accept( highlightInstaller );
 
     // scale labels when hovering:
-    DrawStateInstaller scaleInstaller("hover", new ScaleDrawState(1.1f));
+    DecorationInstaller scaleInstaller("hover", new ScaleDecoration(1.1f));
     labelGroup->accept( scaleInstaller );
 
     // install an event handler for picking and hovering.

@@ -52,11 +52,11 @@ AnnotationNode::setDynamic( bool value )
 }
 
 void
-AnnotationNode::installAltDrawState( const std::string& name, DrawState* ds )
+AnnotationNode::installDecoration( const std::string& name, Decoration* ds )
 {
     if ( _activeDs )
     {
-        clearAltDrawState();
+        clearDecoration();
     }
 
     if ( ds == 0L )
@@ -70,14 +70,14 @@ AnnotationNode::installAltDrawState( const std::string& name, DrawState* ds )
 }
 
 void
-AnnotationNode::uninstallAltDrawState( const std::string& name )
+AnnotationNode::uninstallDecoration( const std::string& name )
 {
-    clearAltDrawState();
+    clearDecoration();
     _dsMap.erase( name );
 }
 
 void
-AnnotationNode::setAltDrawState( const std::string& name )
+AnnotationNode::setDecoration( const std::string& name )
 {
     // already active?
     if ( _activeDs && _activeDsName == name )
@@ -85,13 +85,13 @@ AnnotationNode::setAltDrawState( const std::string& name )
 
     // is a different one active? if so kill it
     if ( _activeDs )
-        clearAltDrawState();
+        clearDecoration();
 
     // try to find and enable the new one
-    DrawStateMap::iterator i = _dsMap.find(name);
+    DecorationMap::iterator i = _dsMap.find(name);
     if ( i != _dsMap.end() )
     {
-        DrawState* ds = i->second.get();
+        Decoration* ds = i->second.get();
         if ( ds )
         {
             if ( this->accept(ds, true) ) 
@@ -104,7 +104,7 @@ AnnotationNode::setAltDrawState( const std::string& name )
 }
 
 void
-AnnotationNode::clearAltDrawState()
+AnnotationNode::clearDecoration()
 {
     if ( _activeDs )
     {
@@ -114,7 +114,7 @@ AnnotationNode::clearAltDrawState()
 }
 
 bool
-AnnotationNode::hasAltDrawState( const std::string& name ) const
+AnnotationNode::hasDecoration( const std::string& name ) const
 {
     return _dsMap.find(name) != _dsMap.end();
 }

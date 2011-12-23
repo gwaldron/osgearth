@@ -153,7 +153,7 @@ AnnotationUtils::createImageGeometry(osg::Image*       image,
     texture->setResizeNonPowerOfTwoHint(false);
     texture->setImage( image );
 
-    // set up the drawstate.
+    // set up the decoration.
     osg::StateSet* dstate = new osg::StateSet;
     dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
     dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);

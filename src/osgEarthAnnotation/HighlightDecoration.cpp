@@ -17,14 +17,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarthAnnotation/HighlightDrawState>
+#include <osgEarthAnnotation/HighlightDecoration>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/OrthoNode>
 #include <osgEarth/FindNode>
 #include <osg/Stencil>
 
 #undef  LC
-#define LC "[HighlightDrawState] "
+#define LC "[HighlightDecoration] "
 
 using namespace osgEarth::Annotation;
 
@@ -68,8 +68,8 @@ namespace
     };
 }
 
-HighlightDrawState::HighlightDrawState(const osg::Vec4f& color) :
-InjectionDrawState( new HighlightGroup() ),
+HighlightDecoration::HighlightDecoration(const osg::Vec4f& color) :
+InjectionDecoration( new HighlightGroup() ),
 _color( color )
 {
     HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
@@ -94,7 +94,7 @@ _color( color )
 }
 
 bool
-HighlightDrawState::apply(OrthoNode& node, bool enable)
+HighlightDecoration::apply(OrthoNode& node, bool enable)
 {
     if ( node.getAttachPoint() )
     {
@@ -135,7 +135,7 @@ HighlightDrawState::apply(OrthoNode& node, bool enable)
 }
 
 bool
-HighlightDrawState::apply(osg::Group* ap, bool enable)
+HighlightDecoration::apply(osg::Group* ap, bool enable)
 {
     HighlightGroup* hg = dynamic_cast<HighlightGroup*>( _injectionGroup.get() );
     if ( !hg->_fillNode.valid() && ap != 0L )
@@ -147,5 +147,5 @@ HighlightDrawState::apply(osg::Group* ap, bool enable)
         hg->_fillNode = quad;
     }
 
-    return InjectionDrawState::apply(ap, enable);
+    return InjectionDecoration::apply(ap, enable);
 }

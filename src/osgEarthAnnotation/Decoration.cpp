@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarthAnnotation/DrawState>
+#include <osgEarthAnnotation/Decoration>
 
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/AnnotationNode>
@@ -32,12 +32,12 @@ using namespace osgEarth::Annotation;
 //---------------------------------------------------------------------------
 
 void
-DrawStateInstaller::apply(osg::Node& node)
+DecorationInstaller::apply(osg::Node& node)
 {
     if ( dynamic_cast<AnnotationNode*>(&node) )
     {
         if ( _tech.valid() )
-            static_cast<AnnotationNode*>(&node)->installAltDrawState( _name, _tech );
+            static_cast<AnnotationNode*>(&node)->installDecoration( _name, _tech );
         else if ( _callback.valid() )
             _callback->operator()( static_cast<AnnotationNode*>(&node) );
     }
@@ -47,26 +47,26 @@ DrawStateInstaller::apply(osg::Node& node)
 //---------------------------------------------------------------------------
 
 bool
-DrawState::apply(class AnnotationNode& node, bool enable)
+Decoration::apply(class AnnotationNode& node, bool enable)
 {
     return false;
 }
 
 bool
-DrawState::apply(class LocalizedNode& node, bool enable)
+Decoration::apply(class LocalizedNode& node, bool enable)
 { 
     return apply(static_cast<AnnotationNode&>(node), enable);
 }
 
 bool
-DrawState::apply(class OrthoNode& node, bool enable)
+Decoration::apply(class OrthoNode& node, bool enable)
 {
     return apply(static_cast<AnnotationNode&>(node), enable);
 }
 
 //---------------------------------------------------------------------------
 
-InjectionDrawState::InjectionDrawState( osg::Group* group ) :
+InjectionDecoration::InjectionDecoration( osg::Group* group ) :
 _injectionGroup( group )
 {
     if ( !_injectionGroup.valid() )
@@ -74,14 +74,14 @@ _injectionGroup( group )
 }
 
 bool
-InjectionDrawState::apply(AnnotationNode& node, bool enable)
+InjectionDecoration::apply(AnnotationNode& node, bool enable)
 {
     bool success = apply( node.getAttachPoint(), enable );
-    return success ? true : DrawState::apply(node, enable);
+    return success ? true : Decoration::apply(node, enable);
 }
 
 bool
-InjectionDrawState::apply(osg::Group* ap, bool enable)
+InjectionDecoration::apply(osg::Group* ap, bool enable)
 {
     if ( _injectionGroup.valid() && ap )
     {

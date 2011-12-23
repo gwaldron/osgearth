@@ -154,6 +154,7 @@ Control::init()
     _visible = true;
     _active = false;
     _absorbEvents = false;
+    _dirty = true;
 }
 
 void

@@ -28,8 +28,30 @@ namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
 
+    /**
+     * Base class for an annotation node that it drawn in screen-space
+     * (as an orthographic overlay)
+     */
     class OSGEARTHANNO_EXPORT OrthoNode : public AnnotationNode
     {
+    public:
+        META_AnnotationNode( osgEarthAnnotation, OrthoNode );
+
+        /**
+         * Constructs an relative-position ortho node
+         */
+        OrthoNode();
+
+        /**
+         * Constructs an ortho node that resides at an absolute position on the map
+         */
+        OrthoNode( const SpatialReference* mapSRS, const osg::Vec3d& position );
+
+        /**
+         * Attaches a child node to the transforms. Use this instead of addChild.
+         */
+        virtual osg::Group* getAttachPoint() { return _attachPoint; }
+
     public:
         /**
          * Sets the map position of the node. The coordinates are in the SRS
@@ -64,28 +86,17 @@ namespace osgEarth { namespace Annotation
 
         virtual void traverse( osg::NodeVisitor& nv );
 
-    protected:
-
-        /**
-         * Constructs an ortho node that resides at an absolute position on the map
-         */
-        OrthoNode( const SpatialReference* mapSRS, const osg::Vec3d& position );
-
-        /**
-         * Constructs an relative-position ortho node
-         */
-        OrthoNode();
-
-        /** Attaches a child node to the transforms. */
-        void attach( osg::Node* transformChild );
-
     private:
         osg::observer_ptr<const SpatialReference> _mapSRS;
-        osg::ref_ptr<osg::AutoTransform>          _autoxform;
-        osg::ref_ptr<osg::MatrixTransform>        _matxform;
-        bool                                      _horizonCulling;
+        osg::AutoTransform*   _autoxform;
+        osg::MatrixTransform* _matxform;
+        osg::Group*           _attachPoint;
+        bool                  _horizonCulling;
 
         void init();
+
+        // required by META_Node, but this object is not cloneable
+        OrthoNode( const OrthoNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
     };
 
 } } // namespace osgEarth::Annotation

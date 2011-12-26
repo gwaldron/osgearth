@@ -22,7 +22,6 @@ This shows how to label point features with an attribute.
                    text-content:  [cntry_name];
                    text-priority: [pop_cntry];
                    text-halo:     #3f3f7f;
-                   text-font:     arial.ttf;
                    text-align:    center_center;
                 }     
             </style>

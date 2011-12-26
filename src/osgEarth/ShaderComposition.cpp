@@ -333,12 +333,10 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
         << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
 
         << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
-        << "    osgearth_CameraRange = length( position4.xyz ); \n"
+        << "    osgearth_CameraRange = length( position4.xyz ); \n";
 
-//        << "    vec3 cameraPos = normalize(vec3( osg_ViewMatrixInverse[3][0], osg_ViewMatrixInverse[3][1], osg_ViewMatrixInverse[3][2] ));
-
-        << "    vec3 position = position4.xyz / position4.w; \n"
-        << "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";
+        //<< "    vec3 position = position4.xyz / position4.w; \n"
+        //<< "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";
 
     if ( preTexture )
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
@@ -417,6 +415,15 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
             buf << "    " << i->second << "( color ); \n";
 
     buf << "    gl_FragColor = color; \n"
+
+#if 0 // GW: testing logarithmic depth buffer remapping
+        << "    float A = gl_ProjectionMatrix[2].z; \n"
+        << "    float B = gl_ProjectionMatrix[3].z; \n"
+        << "    float n = -B/(1.0-A); \n"
+        << "    float f =  B/(1.0+A); \n"
+        << "    float C = 1; \n"
+        << "    gl_FragDepth = log(C*gl_FragCoord.z+1) / log(C*f+1); \n"
+#endif
         << "} \n";  
 
     std::string str;
@@ -424,7 +431,7 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
     //OE_INFO << str;
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
-
+ 
 
 osg::Shader*
 ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const

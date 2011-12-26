@@ -21,7 +21,13 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthAnnotation/Decoration>
 #include <osg/Switch>
+
+#define META_AnnotationNode(library,type) \
+    META_Node(library,type); \
+    virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
+
 
 namespace osgEarth { namespace Annotation
 {	
@@ -33,6 +39,18 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT AnnotationNode : public osg::Switch
     {
     public:
+        META_AnnotationNode(osgEarthAnnotation, AnnotationNode);
+
+        /**
+         * Default constructor.
+         */
+        AnnotationNode();
+
+        /**
+         * Copy constructor.
+         */
+        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL);
+
         /**
          * Annotation data attached to this annotation node.
          */
@@ -40,23 +58,54 @@ namespace osgEarth { namespace Annotation
         AnnotationData* getAnnotationData() const { return _annoData.get(); }
 
         /**
-         * Sets the "highlighted" state for this annotation node.
-         */
-        virtual void setHighlight( bool value );
-        bool getHightlight() const { return _highlight; }
-
-        /**
          * Sets the node to "dynamic", i.e. sets up the node so that you can
          * safely change it at runtime.
          */
         virtual void setDynamic( bool value );
 
+        /** 
+         * Gets the attach point for children of this node
+         */
+        virtual osg::Group* getAttachPoint();
+
+
+    public: // decoration support
+
+        /**
+         * Installs a decoration on this annotation node.
+         */
+        void installDecoration( const std::string& name, Decoration* ds );
+
+        /**
+         * Uninstalls a decoration on this annotation node.
+         */
+        void uninstallDecoration( const std::string& name );
+
+        /**
+         * Activates a named decoration that was installed previously
+         */
+        virtual void setDecoration( const std::string& name );
+
+        /**
+         * Clears any decoration.
+         */
+        virtual void clearDecoration();
+
+        /**
+         * Whether this annotation has the specified decoration installed.
+         */
+        bool hasDecoration( const std::string& name ) const;
+
+
     protected:
-        AnnotationNode();
 
         osg::ref_ptr<AnnotationData> _annoData;
-        bool                         _highlight;
         bool                         _dynamic;
+
+        typedef std::map<std::string, osg::ref_ptr<Decoration> > DecorationMap;
+        DecorationMap _dsMap;
+        Decoration*   _activeDs;
+        std::string  _activeDsName;
     };
 
 } } // namespace osgEarth::Annotation

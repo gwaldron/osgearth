@@ -77,13 +77,13 @@ namespace
      * It's called "Coarse" because it does not traverse to the Drawable level, just to
      * the Geode bounding sphere level.
      */
-    struct CoarsePolytopeIntersector : public osg::NodeVisitor
+    struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
     {
         CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
-            : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+            : OverlayDecorator::InternalNodeVisitor(),
               _bbox(out_bbox),
               _original( polytope ),
-              _coarse( true )
+              _coarse( false )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );
@@ -106,8 +106,36 @@ namespace
             {
                 if ( _coarse )
                 {
-                    _bbox.expandBy(
-                        osg::BoundingSphere( bs.center() * _matrixStack.top(), bs.radius() ) );
+                    osg::BoundingSphere bsphere = bs;
+
+                    osg::BoundingSphere::vec_type xdash = bsphere._center;
+                    xdash.x() += bsphere._radius;
+                    xdash = xdash*_matrixStack.top();
+
+                    osg::BoundingSphere::vec_type ydash = bsphere._center;
+                    ydash.y() += bsphere._radius;
+                    ydash = ydash*_matrixStack.top();
+
+                    osg::BoundingSphere::vec_type zdash = bsphere._center;
+                    zdash.z() += bsphere._radius;
+                    zdash = zdash*_matrixStack.top();
+
+                    bsphere._center = bsphere._center*_matrixStack.top();
+
+                    xdash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_xdash = xdash.length();
+
+                    ydash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_ydash = ydash.length();
+
+                    zdash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_zdash = zdash.length();
+
+                    bsphere._radius = len_xdash;
+                    if (bsphere._radius<len_ydash) bsphere._radius = len_ydash;
+                    if (bsphere._radius<len_zdash) bsphere._radius = len_zdash;
+
+                    _bbox.expandBy(bsphere);
                 }
                 else
                 {
@@ -125,8 +153,11 @@ namespace
 
             if ( _polytopeStack.top().intersects( box ) )
             {
-                osg::Vec3d bmin = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
-                osg::Vec3d bmax = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
+                // apply an eplison to avoid a bbox with a zero dimension
+                static float e = 0.0001;
+
+                osg::Vec3d bmin = osg::Vec3(box.xMin()-e, box.yMin()-e, box.zMin()-e) * _matrixStack.top();
+                osg::Vec3d bmax = osg::Vec3(box.xMax()+e, box.yMax()+e, box.zMax()+e) * _matrixStack.top();
                   
                 _bbox.expandBy( osg::BoundingBox(bmin, bmax) );
             }
@@ -135,6 +166,7 @@ namespace
         void apply( osg::Transform& transform )
         {
             osg::Matrixd matrix;
+            if ( !_matrixStack.empty() ) matrix = _matrixStack.top();
             transform.computeLocalToWorldMatrix( matrix, this );
 
             _matrixStack.push( matrix );
@@ -276,6 +308,8 @@ OverlayDecorator::reinit()
             // set up the RTT camera:
             _rttCamera = new osg::Camera();
             _rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
+            _rttCamera->setClearStencil( 0 );
+            _rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
             // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
             // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
             _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
@@ -284,6 +318,8 @@ OverlayDecorator::reinit()
             _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
             _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
+            //TODO: make sure this is actually supported on most platforms:
+            _rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
             _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
             if ( _rttBlending )

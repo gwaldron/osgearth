@@ -33,6 +33,25 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT LocalizedNode : public AnnotationNode
     {
     public:
+        META_AnnotationNode(osgEarthAnnotation, LocalizedNode);
+
+        /**
+         * Constructs a new LocalizedNode.
+         *
+         * @param mapSRS  Spatial reference for position info
+         * @param pos     Initial position of the node (map coords)
+         * @param is2D    Whether to autotransform the node to face/scale to the screen
+         */
+        LocalizedNode( 
+            const SpatialReference* mapSRS   =0L,
+            const osg::Vec3d&       pos      =osg::Vec3d(0,0,0), 
+            bool                    is2D     =false );
+        
+        // copy constructor
+        LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL);
+
+
+    public:
         /**
          * Sets the map position of the node. The coordinates are in the SRS
          * of the current Map. Returns true upon success.
@@ -62,31 +81,23 @@ namespace osgEarth { namespace Annotation
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
 
+    public: // osg::Node
+
+        virtual void traverse( osg::NodeVisitor& nv );
 
     public:
 
-        virtual void traverse( osg::NodeVisitor& nv );
-        
-    protected:
-        /**
-         * Constructs a new LocalizedNode.
-         *
-         * @param mapSRS  Spatial reference for position info
-         * @param pos     Initial position of the node (map coords)
-         * @param is2D    Whether to autotransform the node to face/scale to the screen
-         */
-        LocalizedNode( 
-            const SpatialReference* mapSRS,
-            const osg::Vec3d&       pos      =osg::Vec3d(0,0,0), 
-            bool                    is2D     =false );
+        virtual osg::Group* getAttachPoint() { return _xform.get(); }
 
-        osg::Transform* getTransform() { return _xform.get(); }
+        virtual osg::Transform* getTransform() { return _xform.get(); }
 
     protected:
         osg::observer_ptr<const SpatialReference> _mapSRS;
         osg::ref_ptr<osg::Transform> _xform;
         bool _horizonCulling;
         bool _autoTransform;
+
+        friend class Decoration;
     };
 
 } } // namespace osgEarth::Annotation

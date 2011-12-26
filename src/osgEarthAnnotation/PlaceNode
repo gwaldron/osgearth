@@ -38,12 +38,25 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT PlaceNode : public OrthoNode
     {
     public:
+        META_AnnotationNode(osgEarthAnnotation, PlaceNode);
+
         /**
-         * Constructs a new node (convenience function)
+         * Constructs a new place node
          */
         PlaceNode(
             MapNode*           mapNode,
             const osg::Vec3d&  position,
+            osg::Image*        iconImage,
+            const std::string& labelText,
+            const Style&       style =Style() );
+
+        /**
+         * Constructs a new place node.
+         */
+        PlaceNode(
+            MapNode*           mapNode,
+            double             x,
+            double             y,
             osg::Image*        iconImage,
             const std::string& labelText,
             const Style&       style =Style() );
@@ -85,6 +98,10 @@ namespace osgEarth { namespace Annotation
         class osg::Geode*          _geode;
 
         void init();
+
+        // required by META_Node, but this object is not cloneable
+        PlaceNode() { }
+        PlaceNode(const PlaceNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
     };
 
 } } // namespace osgEarth::Annotation

@@ -21,6 +21,7 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthSymbology/TextSymbol>
+#include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geometry>
 
@@ -76,6 +77,25 @@ namespace osgEarth { namespace Annotation
          * objects.
          */
         static osg::Program* getAnnotationProgram();
+
+
+        /**
+         * Internal - A customized AutoTransform used by the OrthoNode to
+         * support intersections that are compatible with the decluttering engine
+         */
+        struct OrthoNodeAutoTransform : public osg::AutoTransform
+        {
+            void acceptCullNoTraverse( osg::CullStack* cs );
+        };
+
+        // some geometry creation utilities
+        static osg::Drawable* create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
+
+        static osg::Drawable* create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
+
+        static osg::Node* createFullScreenQuad( const osg::Vec4& color );
+
+        static osg::Node* createGeodesicSphere( float r, const osg::Vec4& color );
     };
 
 } } // namespace osgEarth::Annotation

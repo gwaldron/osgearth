@@ -73,7 +73,8 @@ ExtrudeGeometryFilter::ExtrudeGeometryFilter() :
 _maxAngle_deg       ( 5.0 ),
 _mergeGeometry      ( true ),
 _wallAngleThresh_deg( 60.0 ),
-_styleDirty         ( true )
+_styleDirty         ( true ),
+_makeStencilVolume  ( false )
 {
     //NOP
 }
@@ -93,7 +94,7 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 
     if ( _styleDirty )
     {
-        const StyleSheet* sheet = context.getSession()->styles();
+        const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
 
         _wallSkinSymbol    = 0L;
         _wallPolygonSymbol = 0L;
@@ -204,7 +205,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
     double tex_width_m   = wallSkin ? *wallSkin->imageWidth() : 1.0;
     double tex_height_m  = wallSkin ? *wallSkin->imageHeight() : 1.0;
     bool   tex_repeats_y = wallSkin ? *wallSkin->isTiled() : false;
-    bool   useColor      = !wallSkin || wallSkin->texEnvMode() != osg::TexEnv::DECAL;
+    bool   useColor      = (!wallSkin || wallSkin->texEnvMode() != osg::TexEnv::DECAL) && !_makeStencilVolume;
 
     bool isPolygon = input->getComponentType() == Geometry::TYPE_POLYGON;
 
@@ -259,15 +260,19 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
         roof->setVertexArray( roofVerts );
 
         // per-vertex colors are necessary if we are going to use the MeshConsolidator -gw
-        osg::Vec4Array* roofColors = new osg::Vec4Array();
-        roofColors->reserve( pointCount );
-        roofColors->assign( pointCount, roofColor );
-        roof->setColorArray( roofColors );
-        roof->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-        //osg::Vec4Array* roofColors = new osg::Vec4Array( 1 );
-        //(*roofColors)[0] = roofColor;
-        //roof->setColorArray( roofColors );
-        //roof->setColorBinding( osg::Geometry::BIND_OVERALL );
+        if ( useColor )
+        {
+            osg::Vec4Array* roofColors = new osg::Vec4Array();
+            roofColors->reserve( pointCount );
+            roofColors->assign( pointCount, roofColor );
+            roof->setColorArray( roofColors );
+            roof->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+
+            //osg::Vec4Array* roofColors = new osg::Vec4Array( 1 );
+            //(*roofColors)[0] = roofColor;
+            //roof->setColorArray( roofColors );
+            //roof->setColorBinding( osg::Geometry::BIND_OVERALL );
+        }
 
         if ( roofSkin )
         {
@@ -637,6 +642,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             //walls->setUseVertexBufferObjects(true);
             
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
+            osg::ref_ptr<osg::Geometry> baselines = 0L;
             osg::ref_ptr<osg::Geometry> outlines  = 0L;
             
             if ( part->getType() == Geometry::TYPE_POLYGON )
@@ -652,6 +658,12 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( _outlineSymbol != 0L )
             {
                 outlines = new osg::Geometry();
+            }
+
+            // make a base cap if we're doing stencil volumes.
+            if ( _makeStencilVolume )
+            {
+                baselines = new osg::Geometry();
             }
 
             // calculate the extrusion height:
@@ -733,7 +745,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if (extrudeGeometry( 
                     part, height, offset, 
                     *_extrusionSymbol->flatten(),
-                    walls.get(), rooflines.get(), 0L, outlines.get(),
+                    walls.get(), rooflines.get(), baselines.get(), outlines.get(),
                     wallColor, roofColor, outlineColor,
                     wallSkin, roofSkin,
                     context ) )
@@ -759,12 +771,13 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 {
                     osgUtil::Tessellator tess;
                     tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-                    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD ); //POSITIVE );
+                    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
                     tess.retessellatePolygons( *(rooflines.get()) );
 
                     // generate default normals (no crease angle necessary; they are all pointing up)
                     // TODO do this manually; probably faster
-                    osgUtil::SmoothingVisitor::smooth( *rooflines.get() );
+                    if ( !_makeStencilVolume )
+                        osgUtil::SmoothingVisitor::smooth( *rooflines.get() );
 
                     // texture the rooflines if necessary
                     //applyOverlayTexturing( rooflines.get(), input, env );
@@ -779,6 +792,14 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                     }
                 }
 
+                if ( baselines.valid() )
+                {
+                    osgUtil::Tessellator tess;
+                    tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+                    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
+                    tess.retessellatePolygons( *(baselines.get()) );
+                }
+
                 std::string name;
                 if ( !_featureNameExpr.empty() )
                     name = input->eval( _featureNameExpr, &context );
@@ -790,6 +811,11 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 {
                     //MeshConsolidator::run( *rooflines.get() );
                     addDrawable( rooflines.get(), roofStateSet, name );
+                }
+
+                if ( baselines.valid() )
+                {
+                    addDrawable( baselines.get(), 0L, name );
                 }
 
                 if ( outlines.valid() )

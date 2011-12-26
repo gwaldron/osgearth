@@ -17,9 +17,9 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/EllipseNode>
-#include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
+#include <osgEarth/DrapeableNode>
 #include <osgEarth/MapNode>
 
 using namespace osgEarth;
@@ -36,17 +36,31 @@ EllipseNode::EllipseNode(MapNode*          mapNode,
                          const Style&      style,
                          bool              draped,
                          unsigned          numSegments) :
-LocalizedNode( mapNode->getMap()->getProfile()->getSRS(), position )
+LocalizedNode( mapNode->getMapSRS(), position )
 {
-    if ( mapNode )
+    // construct a local-origin ellipse.
+    GeometryFactory factory;
+    Geometry* geom = factory.createEllipse(osg::Vec3d(0,0,0), radiusMajor, radiusMinor, rotationAngle, numSegments);
+    if ( geom )
     {
-        // construct a local-origin circle.
-        GeometryFactory factory;
-        Geometry* geom = factory.createEllipse(osg::Vec3d(0,0,0), radiusMajor, radiusMinor, rotationAngle, numSegments);
-        if ( geom )
+        GeometryCompiler compiler;
+        osg::ref_ptr<Feature> feature = new Feature(geom);
+        osg::Node* node = compiler.compile( feature.get(), style, FilterContext(0L) );
+        if ( node )
         {
-            LocalGeometryNode* dg = new LocalGeometryNode( mapNode, geom, style, draped, getTransform() );
-            this->addChild( dg );
+            getAttachPoint()->addChild( node );
+
+            if ( draped )
+            {
+                DrapeableNode* drapeable = new DrapeableNode( mapNode );
+                drapeable->addChild( getAttachPoint() );
+                this->addChild( drapeable );
+            }
+
+            else
+            {
+                this->addChild( getAttachPoint() );
+            }
         }
     }
 }

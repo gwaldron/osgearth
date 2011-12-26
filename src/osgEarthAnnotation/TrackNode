@@ -75,6 +75,8 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT TrackNode : public OrthoNode
     {
     public:
+        META_AnnotationNode(osgEarthAnnotation, TrackNode);
+
         /**
          * Constructs a new track node
          * @param mapNode     Map node under which this track will live
@@ -124,6 +126,12 @@ namespace osgEarth { namespace Annotation
         NamedDrawables _namedDrawables;
 
         void init( const TrackNodeFieldSchema& schema );
+
+    private:
+        // required by META_Node, but this object is not cloneable
+        TrackNode() { }
+        TrackNode(const TrackNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL) { }
+
     };
 
 } } // namespace osgEarth::Annotation

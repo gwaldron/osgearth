@@ -154,6 +154,7 @@ Control::init()
     _visible = true;
     _active = false;
     _absorbEvents = false;
+    _dirty = true;
 }
 
 void
@@ -486,25 +487,26 @@ struct LabelText : public osgText::Text
 
 LabelControl::LabelControl(const std::string& text,
                            float fontSize,
-                           const osg::Vec4f& foreColor)
-{
-    setText( text );
-	setEncoding( osgText::String::ENCODING_UNDEFINED );
-    setFont( Registry::instance()->getDefaultFont() );
-    setFontSize( fontSize );
-    setBackColor( osg::Vec4f(0,0,0,0) );
+                           const osg::Vec4f& foreColor):
+_text(text),
+_fontSize(fontSize),
+_encoding( osgText::String::ENCODING_UNDEFINED )
+{    
+    setFont( Registry::instance()->getDefaultFont() );    
     setForeColor( foreColor );
+    setBackColor( osg::Vec4f(0,0,0,0) );
 }
 
 LabelControl::LabelControl(const std::string& text,
-                           const osg::Vec4f& foreColor)
-{
-    setText( text );
-	setEncoding( osgText::String::ENCODING_UNDEFINED );
-    setFont( Registry::instance()->getDefaultFont() );
-    setFontSize( 18.0f );
-    setBackColor( osg::Vec4f(0,0,0,0) );
+                           const osg::Vec4f& foreColor):
+_text( text ),
+_fontSize( 18.0f ),
+_encoding( osgText::String::ENCODING_UNDEFINED )
+{    	
+    setFont( Registry::instance()->getDefaultFont() );   
     setForeColor( foreColor );
+    setBackColor( osg::Vec4f(0,0,0,0) );
+    
 }
 
 void
@@ -1240,9 +1242,9 @@ Container::draw( const ControlContext& cx, DrawableList& out )
 {
     if ( visible() == true )
     {
-        Control::draw( cx, out );
         if ( _frame.valid() )
             _frame->draw( cx, out );
+        Control::draw( cx, out );
     }
 }
 

@@ -19,6 +19,7 @@
 
 #include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
 
 using namespace osgEarth;
@@ -26,12 +27,11 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 
 
-LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
-                                     Geometry*    geom,
-                                     const Style& style,
-                                     bool         draped,
-                                     osg::Group*  parent ) :
-DrapeableNode( mapNode, draped )
+GeometryNode::GeometryNode(MapNode*     mapNode,
+                           Geometry*    geom,
+                           const Style& style,
+                           bool         draped ) :
+LocalizedNode( mapNode->getMapSRS() )
 {
     osg::ref_ptr<Feature> feature = new Feature( geom );
 
@@ -40,14 +40,14 @@ DrapeableNode( mapNode, draped )
     osg::Node* node = compiler.compile( feature.get(), style, cx );
     if ( node )
     {
-        if ( parent )
+        if ( draped )
         {
-            parent->addChild( node );
-            setNode( parent );
+            DrapeableNode* dn = new DrapeableNode(mapNode);
+            dn->addChild( node );
         }
         else
         {
-            setNode( node );
+            getAttachPoint()->addChild( node );
         }
     }
 }

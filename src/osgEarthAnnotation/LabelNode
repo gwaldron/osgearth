@@ -21,7 +21,7 @@
 #define OSGEARTH_ANNOTATION_LABEL_NODE_H 1
 
 #include <osgEarthAnnotation/OrthoNode>
-#include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/Style>
 #include <osgEarth/MapNode>
 
 namespace osgEarth { namespace Annotation
@@ -32,9 +32,11 @@ namespace osgEarth { namespace Annotation
     /**
      * Text labeling node.
      */
-    class OSGEARTHANNO_EXPORT LabelNode : public OrthoNode // LocalizedNode
+    class OSGEARTHANNO_EXPORT LabelNode : public OrthoNode
     {
     public:
+        META_AnnotationNode( osgEarthAnnotation, LabelNode );
+
         /**
          * Constructs a label node that is positioned relative to a map.
          */
@@ -42,7 +44,26 @@ namespace osgEarth { namespace Annotation
             MapNode*                mapNode,
             const osg::Vec3d&       position,
             const std::string&      text,
-            const TextSymbol*       symbol =0L ); 
+            const Style&            style =Style() );
+
+        /**
+         * Constructs a label node that is positioned relative to a map.
+         */
+        LabelNode(
+            MapNode*                mapNode,
+            const osg::Vec3d&       position,
+            const std::string&      text,
+            const TextSymbol*       symbol );
+
+        /**
+         * Constructs a label node from an x,y
+         */
+        LabelNode(
+            MapNode*                mapNode,
+            double                  x,
+            double                  y,
+            const std::string&      text,
+            const Style&            style =Style() );
 
         /**
          * Constructs a label node that is positioned relative to a map
@@ -52,7 +73,7 @@ namespace osgEarth { namespace Annotation
             const SpatialReference* mapSRS,
             const osg::Vec3d&       position,
             const std::string&      text,
-            const TextSymbol*       symbol =0L );
+            const TextSymbol*       symbol );
 
         /**
          * Constructs a label node that is positioned some other way,
@@ -60,8 +81,8 @@ namespace osgEarth { namespace Annotation
          * somewhere.
          */
         LabelNode(
-            const std::string& text,
-            const TextSymbol*  symbol =0L );
+            const std::string& text   ="",
+            const Style&       style =Style() );
 
         /**
          * Sets the text content.
@@ -79,6 +100,9 @@ namespace osgEarth { namespace Annotation
 
         std::string _text;
         class osg::Geode* _geode;
+
+        /** Copy constructor */
+        LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
     };
 
 } } // namespace osgEarth::Annotation

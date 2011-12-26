@@ -16,35 +16,33 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNO_GEOMETRY_NODE_H
-#define OSGEARTH_ANNO_GEOMETRY_NODE_H 1
+#ifndef OSGEARTH_ANNOTATION_HIGHLIGHT_DECORATION_H
+#define OSGEARTH_ANNOTATION_HIGHLIGHT_DECORATION_H 1
 
-#include <osgEarthAnnotation/LocalizedNode>
-#include <osgEarth/MapNode>
-#include <osgEarthSymbology/Geometry>
-#include <osgEarthSymbology/Style>
+#include <osgEarthAnnotation/Decoration>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
-    using namespace osgEarth::Symbology;
 
     /**
-     * Simple node that renders a Geometry into a scene graph node.
+     * Decoration technique that highlights the geometry
      */
-    class OSGEARTHANNO_EXPORT GeometryNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT HighlightDecoration : public InjectionDecoration
     {
     public:
-        /**
-         * Constructs a new draped geometry node
-         */
-        GeometryNode( 
-            MapNode*     mapNode,
-            Geometry*    geom, 
-            const Style& style, 
-            bool         draped     =false );
+        HighlightDecoration(const osg::Vec4f& color =osg::Vec4f(1,1,0,0.5));
+        virtual Decoration* clone() const { return new HighlightDecoration(_color); }
+        
+        virtual bool apply(class OrthoNode& node, bool enable);
+
+    protected:
+        virtual bool apply(osg::Group* attachPoint, bool enable);
+
+        osg::Vec4f _color;
+        osg::ref_ptr<osg::StateSet> _passes[2];
     };
 
 } } // namespace osgEarth::Annotation
 
-#endif // OSGEARTH_ANNO_GEOMETRY_NODE_H
+#endif //OSGEARTH_ANNOTATION_HIGHLIGHT_DECORATION_H

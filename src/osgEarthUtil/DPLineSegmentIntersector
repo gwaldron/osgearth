@@ -1,0 +1,48 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_DP_LINE_SEG_INTERSECTOR_H
+#define OSGEARTH_UTIL_DP_LINE_SEG_INTERSECTOR_H
+
+#include <osgEarthUtil/Common>
+#include <osgUtil/LineSegmentIntersector>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * A double-precision version of the osgUtil::LineSegmentIntersector.
+     * Use this instead of the OSG one when working in geocentric space.
+     */
+    class OSGEARTHUTIL_EXPORT DPLineSegmentIntersector : public osgUtil::LineSegmentIntersector
+    {
+    public:
+        DPLineSegmentIntersector(const osgUtil::Intersector::CoordinateFrame& cf, const osg::Vec3d& start, const osg::Vec3d& end)
+            : osgUtil::LineSegmentIntersector(cf, start, end) { }
+
+        DPLineSegmentIntersector(const osg::Vec3d& start, const osg::Vec3d& end)
+            : osgUtil::LineSegmentIntersector(start, end) { }
+
+    public: // overrides
+        
+        virtual osgUtil::Intersector* clone(osgUtil::IntersectionVisitor& iv);
+        virtual void intersect(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable);
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_DP_LINE_SEG_INTERSECTOR_H

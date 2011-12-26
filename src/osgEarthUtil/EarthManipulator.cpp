@@ -344,7 +344,10 @@ EarthManipulator::Settings::bindScroll(ActionType action, int scrolling_motion,
 const EarthManipulator::Action&
 EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey_mask) const
 {
-    InputSpec spec( event_type, input_mask, modkey_mask );
+    //Build the input spec but remove the numlock and caps lock from the modkey mask.  On Linux these seem to be passed in as part of the modkeymask
+    //if they are on.  So if you bind an action like SCROLL to a modkey mask of 0 or a modkey mask of ctrl it will never match the spec exactly b/c 
+    //the modkey mask also includes capslock and numlock.
+    InputSpec spec( event_type, input_mask, modkey_mask & ~osgGA::GUIEventAdapter::MODKEY_NUM_LOCK & ~osgGA::GUIEventAdapter::MODKEY_CAPS_LOCK);
     ActionBindings::const_iterator i = _bindings.find(spec);
     return i != _bindings.end() ? i->second : NullAction;
     //for( ActionBindings::const_iterator i = _bindings.begin(); i != _bindings.end(); i++ )

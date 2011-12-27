@@ -121,7 +121,7 @@ public:
                 if ( !geom )
                     continue;
 
-                const std::string& value = feature->eval( contentExpr );
+                const std::string& value = feature->eval( contentExpr, &context );
                 if ( value.empty() )
                     continue;
 
@@ -148,7 +148,7 @@ public:
         if ( symbol->priority().isSet() )
         {
             AnnotationData* data = new AnnotationData();
-            data->setPriority( feature->eval(priorityExpr) );
+            data->setPriority( feature->eval(priorityExpr, &context) );
             labelNode->setAnnotationData( data );
         }
 

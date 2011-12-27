@@ -164,7 +164,8 @@ namespace osgEarth
         /** Returns a copy of this URI with the suffix appended */
         URI append( const std::string& suffix ) const;
 
-    public:
+
+    public: // read methods return a ReadResult object
 
         ReadResult readObject(
             const osgDB::Options* dbOptions   =0L,
@@ -185,6 +186,29 @@ namespace osgEarth
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
+
+    public: // get methods call the read* methods, then just return the raw data.
+
+        osg::Object* getObject(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const { return readObject().releaseObject(); }
+
+        osg::Image* getImage(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const { return readImage().releaseImage(); }
+
+        osg::Node* getNode(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const { return readNode().releaseNode(); }
+
+        std::string getString(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const { return readString().getString(); }
+
 
     public:
 

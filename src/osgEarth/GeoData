@@ -52,6 +52,7 @@ namespace osgEarth
         void expandBy( const Bounds& rhs );
         osg::Vec2d center2d() const;
         double radius2d() const;
+        double area2d() const;
         std::string toString() const;
         bool isValid() const;
         bool isEmpty() const { return !isValid(); }

@@ -71,7 +71,7 @@ int main(int argc, char** argv)
     if ( !useMem )
     {
         // Configures the feature driver to load the vectors from a shapefile:
-        featureOptions.url() = "../data/usa.shp";
+        featureOptions.url() = "../data/world.shp";
 
         // installs an inline filter to convert geometry to lines
         ConvertTypeFilter* filter = new ConvertTypeFilter();
@@ -100,6 +100,7 @@ int main(int argc, char** argv)
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNodeOptions mapNodeOptions;
     mapNodeOptions.enableLighting() = false;
+    mapNodeOptions.overlayMipMapping() = true;
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
    
     if (useStencil)
@@ -110,6 +111,7 @@ int main(int argc, char** argv)
         stencilOptions.styles()->addStyle( style );
         stencilOptions.enableLighting() = false;
         stencilOptions.depthTestEnabled() = false;
+        ls->stroke()->width() = 0.1f;
         map->addModelLayer( new ModelLayer("my features", stencilOptions) );
     }
     else if (useRaster)
@@ -136,14 +138,13 @@ int main(int argc, char** argv)
     if ( useLabels )
     {
         // set up symbology for drawing labels. We're pulling the label
-        // text from the "name" attribute, and its draw priority from the
-        // "area" attribute (meaning bigger features get higher-priotity
-        // labels.)
+        // text from the name attribute, and its draw priority from the
+        // population attribute.
         Style labelStyle;
 
         TextSymbol* text = labelStyle.getOrCreateSymbol<TextSymbol>();
-        text->content() = StringExpression( "[name]" );
-        text->priority() = NumericExpression( "[area]" );
+        text->content() = StringExpression( "[cntry_name]" );
+        text->priority() = NumericExpression( "[pop_cntry]" );
         text->removeDuplicateLabels() = true;
         text->size() = 16.0f;
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;

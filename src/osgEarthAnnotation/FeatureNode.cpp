@@ -44,8 +44,8 @@ _options( options )
 void
 FeatureNode::init()
 {
-    // if there's a draw state, clear it out first.
-    this->clearAltDrawState();
+    // if there's a decoration, clear it out first.
+    this->clearDecoration();
     _attachPoint = 0L;
 
     // if there is existing geometry, kill it

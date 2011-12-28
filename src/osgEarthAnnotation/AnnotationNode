@@ -21,12 +21,12 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/AnnotationData>
-#include <osgEarthAnnotation/DrawState>
+#include <osgEarthAnnotation/Decoration>
 #include <osg/Switch>
 
 #define META_AnnotationNode(library,type) \
     META_Node(library,type); \
-    virtual bool accept(DrawState* ds, bool enable) { return ds->apply(*this, enable); }
+    virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
 
 
 namespace osgEarth { namespace Annotation
@@ -69,32 +69,32 @@ namespace osgEarth { namespace Annotation
         virtual osg::Group* getAttachPoint();
 
 
-    public: // alternate draw state support
+    public: // decoration support
 
         /**
-         * Installs an alternate draw state on this annotation node.
+         * Installs a decoration on this annotation node.
          */
-        void installAltDrawState( const std::string& name, DrawState* ds );
+        void installDecoration( const std::string& name, Decoration* ds );
 
         /**
-         * Uninstalls an alternate draw state on this annotation node.
+         * Uninstalls a decoration on this annotation node.
          */
-        void uninstallAltDrawState( const std::string& name );
+        void uninstallDecoration( const std::string& name );
 
         /**
-         * Activates a named alternate draw state that was installed previously
+         * Activates a named decoration that was installed previously
          */
-        virtual void setAltDrawState( const std::string& name );
+        virtual void setDecoration( const std::string& name );
 
         /**
-         * Clears any active alternate draw state.
+         * Clears any decoration.
          */
-        virtual void clearAltDrawState();
+        virtual void clearDecoration();
 
         /**
-         * Whether this annotation has the specified alternate draw state installed.
+         * Whether this annotation has the specified decoration installed.
          */
-        bool hasAltDrawState( const std::string& name ) const;
+        bool hasDecoration( const std::string& name ) const;
 
 
     protected:
@@ -102,9 +102,9 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<AnnotationData> _annoData;
         bool                         _dynamic;
 
-        typedef std::map<std::string, osg::ref_ptr<DrawState> > DrawStateMap;
-        DrawStateMap _dsMap;
-        DrawState*   _activeDs;
+        typedef std::map<std::string, osg::ref_ptr<Decoration> > DecorationMap;
+        DecorationMap _dsMap;
+        Decoration*   _activeDs;
         std::string  _activeDsName;
     };
 

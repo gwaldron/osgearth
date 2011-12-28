@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNOTATION_DRAW_STATE_H
-#define OSGEARTH_ANNOTATION_DRAW_STATE_H 1
+#ifndef OSGEARTH_ANNOTATION_DECORATION_H
+#define OSGEARTH_ANNOTATION_DECORATION_H 1
 
 #include <osgEarthAnnotation/Common>
 #include <osg/NodeVisitor>
@@ -56,14 +56,14 @@ namespace osgEarth { namespace Annotation
 
     //-----------------------------------------------------------------------
 
-    class OSGEARTHANNO_EXPORT DrawState : public osg::Referenced
+    class OSGEARTHANNO_EXPORT Decoration : public osg::Referenced
     {
     public:
-        DrawState() { }
+        Decoration() { }
 
         virtual bool isShareable() const { return false; }
-        virtual DrawState* clone() const =0;
-        DrawState* copyOrClone() { return isShareable() ? this : clone(); }
+        virtual Decoration* clone() const =0;
+        Decoration* copyOrClone() { return isShareable() ? this : clone(); }
 
     public:
         virtual bool apply(class AnnotationNode& node, bool enable);
@@ -74,10 +74,10 @@ namespace osgEarth { namespace Annotation
     //-----------------------------------------------------------------------
 
     /**
-     * Simple visitor that installs a draw state technique on all the 
+     * Simple visitor that installs a decoration on all the 
      * AnnotationNode's in a graph.
      */
-    class OSGEARTHANNO_EXPORT DrawStateInstaller : public osg::NodeVisitor
+    class OSGEARTHANNO_EXPORT DecorationInstaller : public osg::NodeVisitor
     {
     public:
         struct Callback : public osg::Referenced
@@ -87,18 +87,18 @@ namespace osgEarth { namespace Annotation
 
     public:
         /**
-         * Constructor - for applying a single technique to all the Annotations
+         * Constructor - for applying a single decorator to all the Annotations
          * found in the visited graph.
          */
-        DrawStateInstaller( const std::string& name, DrawState* tech )
+        DecorationInstaller( const std::string& name, Decoration* tech )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
               _name(name), _tech(tech) { }
 
         /**
-         * Constructor - for using a callback to assign a draw state to each
+         * Constructor - for using a callback to assign a decorator to each
          * individual Annotation.
          */
-        DrawStateInstaller( const std::string& name, Callback* callback )
+        DecorationInstaller( const std::string& name, Callback* callback )
             : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
               _name(name), _callback(callback) { }
 
@@ -106,7 +106,7 @@ namespace osgEarth { namespace Annotation
         virtual void apply(osg::Node& node);
 
     public:
-        osg::ref_ptr<DrawState> _tech;
+        osg::ref_ptr<Decoration> _tech;
         osg::ref_ptr<Callback>  _callback;
         std::string             _name;
     };
@@ -114,15 +114,15 @@ namespace osgEarth { namespace Annotation
     //-----------------------------------------------------------------------
 
     /** 
-     * A draw state technique that injects a node below the annotation's
+     * A decorator that injects a node below the annotation's
      * transform. For example, you could install an Effect node, or a node
      * that activates a shader.
      */
-    class OSGEARTHANNO_EXPORT InjectionDrawState : public DrawState
+    class OSGEARTHANNO_EXPORT InjectionDecoration : public Decoration
     {
     public:
-        InjectionDrawState( osg::Group* group =0L );
-        virtual DrawState* clone() const { return new InjectionDrawState(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
+        InjectionDecoration( osg::Group* group =0L );
+        virtual Decoration* clone() const { return new InjectionDecoration(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
 
         virtual bool apply(class AnnotationNode& node, bool enable);
 
@@ -135,4 +135,4 @@ namespace osgEarth { namespace Annotation
 
 } } // namespace osgEarth::Annotation
 
-#endif //OSGEARTH_ANNOTATION_DRAW_STATE_H
+#endif //OSGEARTH_ANNOTATION_DECORATION_H

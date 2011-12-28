@@ -16,23 +16,23 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNOTATION_HIGHLIGHT_DRAW_STATE_H
-#define OSGEARTH_ANNOTATION_HIGHLIGHT_DRAW_STATE_H 1
+#ifndef OSGEARTH_ANNOTATION_HIGHLIGHT_DECORATION_H
+#define OSGEARTH_ANNOTATION_HIGHLIGHT_DECORATION_H 1
 
-#include <osgEarthAnnotation/DrawState>
+#include <osgEarthAnnotation/Decoration>
 
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
 
     /**
-     * Draw state technique that highlights the geometry
+     * Decoration technique that highlights the geometry
      */
-    class OSGEARTHANNO_EXPORT HighlightDrawState : public InjectionDrawState
+    class OSGEARTHANNO_EXPORT HighlightDecoration : public InjectionDecoration
     {
     public:
-        HighlightDrawState(const osg::Vec4f& color =osg::Vec4f(1,1,0,0.5));
-        virtual DrawState* clone() const { return new HighlightDrawState(_color); }
+        HighlightDecoration(const osg::Vec4f& color =osg::Vec4f(1,1,0,0.5));
+        virtual Decoration* clone() const { return new HighlightDecoration(_color); }
         
         virtual bool apply(class OrthoNode& node, bool enable);
 
@@ -45,4 +45,4 @@ namespace osgEarth { namespace Annotation
 
 } } // namespace osgEarth::Annotation
 
-#endif //OSGEARTH_ANNOTATION_HIGHLIGHT_DRAW_STATE_H
+#endif //OSGEARTH_ANNOTATION_HIGHLIGHT_DECORATION_H

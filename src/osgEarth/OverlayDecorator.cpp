@@ -254,7 +254,7 @@ _useShaders   ( false ),
 _useWarping   ( false ),
 _warp         ( 1.0f ),
 _visualizeWarp( false ),
-_mipmapping   ( true ),
+_mipmapping   ( false ),
 _rttBlending  ( true )
 {
     // nop
@@ -317,9 +317,17 @@ OverlayDecorator::reinit()
             _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
             _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
             _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
-            //TODO: make sure this is actually supported on most platforms:
-            _rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
+            
+            // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
+            // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
+            // a PBUFFER_RTT impl
+            if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
+                _rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
+            else
+                _rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+
             _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
             if ( _rttBlending )
@@ -574,7 +582,7 @@ OverlayDecorator::setTextureUnit( int texUnit )
 }
 
 void
-OverlayDecorator::setMipmapping( bool value )
+OverlayDecorator::setMipMapping( bool value )
 {
     if ( value != _mipmapping )
     {

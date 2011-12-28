@@ -507,7 +507,7 @@ TextureCompositor::init()
     // MULTITEXTURE_GPU is the current default.
     
     if (_tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU ||
-        (isAuto && caps.supportsGLSL(1.20f) && caps.supportsMultiTexture()) ) 
+        ( isAuto && TextureCompositorMultiTexture::isSupported(true) ) )
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true, _options );
@@ -518,7 +518,7 @@ TextureCompositor::init()
 
     else
     if (_tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY || 
-        (isAuto && caps.supportsGLSL(1.30f) && caps.supportsTextureArrays()) )
+        ( isAuto && TextureCompositorTexArray::isSupported() ) )
     {
         _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
         _impl = new TextureCompositorTexArray( _options );
@@ -528,7 +528,8 @@ TextureCompositor::init()
 #endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
 
     else
-    if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
+    if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || 
+        (isAuto && TextureCompositorMultiTexture::isSupported(false) ) )
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         _impl = new TextureCompositorMultiTexture( false, _options );

@@ -31,10 +31,10 @@ namespace osgEarth
     /**
      * String wrapped in an osg::Object (for I/O purposes)
      */
-    class /*no-export*/ StringObject : public osg::Object
+    class OSGEARTH_EXPORT StringObject : public osg::Object
     {
     public:
-        StringObject() : osg::Object() { }
+        StringObject();
         StringObject( const StringObject& rhs, const osg::CopyOp& op ) : osg::Object(rhs, op), _str(rhs._str) { }
         StringObject( const std::string& in ) : osg::Object(), _str(in) { }
         META_Object( osgEarth, StringObject );

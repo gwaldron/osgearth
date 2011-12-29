@@ -154,12 +154,13 @@ namespace
             if ( _polytopeStack.top().intersects( box ) )
             {
                 // apply an eplison to avoid a bbox with a zero dimension
-                static float e = 0.0001;
+                static float e = 0.001;
 
-                osg::Vec3d bmin = osg::Vec3(box.xMin()-e, box.yMin()-e, box.zMin()-e) * _matrixStack.top();
-                osg::Vec3d bmax = osg::Vec3(box.xMax()+e, box.yMax()+e, box.zMax()+e) * _matrixStack.top();
+                osg::Vec3d b0 = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
+                osg::Vec3d b1 = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
                   
-                _bbox.expandBy( osg::BoundingBox(bmin, bmax) );
+                _bbox.expandBy( std::min(b0.x(),b1.x())-e, std::min(b0.y(),b1.y())-e, std::min(b0.z(),b1.z())-e );
+                _bbox.expandBy( std::max(b0.x(),b1.x())+e, std::max(b0.y(),b1.y())+e, std::max(b0.z(),b1.z())+e );
             }
         }
 

@@ -18,6 +18,7 @@
  */
 #include "KML_Feature"
 #include "KML_Style"
+#include "KML_StyleMap"
 #include <osgEarth/Viewpoint>
 
 using namespace osgEarth;
@@ -27,6 +28,7 @@ KML_Feature::scan( const Config& conf, KMLContext& cx )
 {
     KML_Object::scan(conf, cx);
     for_many( Style, scan, conf, cx );
+    for_many( StyleMap, scan, conf, cx );
 }
 
 void
@@ -34,6 +36,7 @@ KML_Feature::scan2( const Config& conf, KMLContext& cx )
 {
     KML_Object::scan2(conf, cx);
     for_many( Style, scan2, conf, cx );
+    for_many( StyleMap, scan2, conf, cx );
 }
 
 void

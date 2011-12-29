@@ -88,7 +88,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         }
 
         // Place node (icon + text) or Label node (text only)
-        else if ( isPoint && geometry._geom->getTotalPointCount() == 1 )
+        else if ( marker || geometry._geom->getTotalPointCount() == 1 )
         {
             if ( !markerImage.valid() )
             {
@@ -110,27 +110,32 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                 pNode = new LabelNode( cx._mapNode, position, text, style );
         }
 
-        else if ( geometry._geom->getTotalPointCount() > 1 )
+        if ( geometry._geom->getTotalPointCount() > 1 )
         {
             const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
             const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
 
             bool draped =            
-                ((ex == 0L && alt == 0L && isPoly) || (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN)) &&
-                (!marker);
+                (ex == 0L && alt == 0L && isPoly) || 
+                (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+                //&& (!marker);
+
+            // this will confuse the GeometryCompiler into thinking we want point-model sub..
+            // probably need a more elegant solution here..
+            if ( marker )
+                style.removeSymbol(marker);
 
             // Make a feature node; drape if we're not extruding.
             GeometryCompilerOptions options;
-            options.clustering() = false;
+            options.clustering() = false;            
             Feature* feature = new Feature(geometry._geom.get(), style);
             fNode = new FeatureNode( cx._mapNode, feature, draped, options );
 
             if ( draped )
                 fNode->getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
         }
-
-#if 0
-        if ( fNode && pNode )
+        
+        if ( pNode && fNode )
         {
             osg::Group* group = new osg::Group();
             group->addChild( fNode );
@@ -138,13 +143,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             cx._groupStack.top()->addChild( group );
             if ( cx._options->declutter() == true )
                 Decluttering::setEnabled( pNode->getOrCreateStateSet(), true );
-            
-            //parent->addChild( group );
-            KML_Feature::build( conf, cx, group );
+            KML_Feature::build( conf, cx, pNode );
+            KML_Feature::build( conf, cx, fNode );
         }
-        else
-#endif
-        if ( pNode )
+
+        else if ( pNode )
         {
             if ( cx._options->iconAndLabelGroup().valid() )
             {
@@ -158,6 +161,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             }
             KML_Feature::build( conf, cx, pNode );
         }
+
         else if ( fNode )
         {
             cx._groupStack.top()->addChild( fNode );

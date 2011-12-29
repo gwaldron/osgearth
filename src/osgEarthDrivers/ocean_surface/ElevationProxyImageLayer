@@ -45,7 +45,7 @@ public: // ImageLayer
 
     virtual bool isCached( const TileKey& key ) const;
 
-    virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress );
+    virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback );
 
 private:
     osg::observer_ptr<Map> _sourceMap;

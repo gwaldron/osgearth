@@ -27,6 +27,7 @@
 
 #include <osg/MatrixTransform>
 
+#include <QList>
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QTreeWidget>
@@ -164,9 +165,9 @@ namespace
     AnnotationTreeItem(osgEarth::Annotation::AnnotationNode* annotation, osgEarth::Map* map) : _annotation(annotation), _map(map), ToggleNodeTreeItem(annotation) {};
 	  AnnotationTreeItem(osgEarth::Annotation::AnnotationNode* annotation, osgEarth::Map* map, const QStringList &strings) : _annotation(annotation), _map(map), ToggleNodeTreeItem(annotation, strings) {};
   	
-	  osg::Node* getAnnotation() const { return _annotation.get(); }
+	  osgEarth::Annotation::AnnotationNode* getAnnotation() const { return _annotation.get(); }
 
-    Action* getSelectionAction(bool selected) { return new SetAnnotationHighlightAction(_annotation.get(), selected); }
+    Action* getSelectionAction(bool selected) { return 0L; } //new SetAnnotationHighlightAction(_annotation.get(), selected); }
 
     Action* getDoubleClickAction(const ViewVector& views)
     {
@@ -220,23 +221,27 @@ namespace
 }
 
 //---------------------------------------------------------------------------
-MapCatalogWidget::MapCatalogWidget(DataManager* dm, unsigned int fields) : _manager(dm), _fields(fields)
+MapCatalogWidget::MapCatalogWidget(DataManager* dm, unsigned int fields)
+  : _manager(dm), _fields(fields)
 {
   if (_manager.valid())
   {
     _map = dm->map();
     connect(_manager.get(), SIGNAL(mapChanged()), this, SLOT(onMapChanged()));
+
+    //if (_fields & ANNOTATIONS)
+      connect(_manager.get(), SIGNAL(selectionChanged(/*const AnnotationVector&*/)), this, SLOT(onSelectionChanged(/*const AnnotationVector&*/)));
+
     _manager->addAfterActionCallback(this);
   }
 
   initUi();
-  refresh();
 }
 
-MapCatalogWidget::MapCatalogWidget(osgEarth::Map* map, unsigned int fields) : _map(map), _fields(fields)
+MapCatalogWidget::MapCatalogWidget(osgEarth::Map* map, unsigned int fields)
+  : _map(map), _fields(fields)
 {
   initUi();
-  refresh();
 }
 
 MapCatalogWidget::~MapCatalogWidget()
@@ -255,16 +260,28 @@ void MapCatalogWidget::setActiveViews(const ViewVector& views)
   _views.insert(_views.end(), views.begin(), views.end());
 }
 
+void MapCatalogWidget::setHideEmptyGroups(bool hide)
+{
+  if (_hideEmptyGroups == hide)
+    return;
+
+  _hideEmptyGroups = hide;
+  refreshAll();
+}
+
 void MapCatalogWidget::initUi()
 {
+  _hideEmptyGroups = false;
+  _updating = false;
+
 	_tree = new QTreeWidget();
 	_tree->setColumnCount(1);
 	_tree->setHeaderHidden(true);
-  _tree->setSelectionMode(QAbstractItemView::SingleSelection);
+  _tree->setSelectionMode(QAbstractItemView::ExtendedSelection);
   _tree->setObjectName("oeFrameContainer");
   connect(_tree, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(onTreeItemDoubleClicked(QTreeWidgetItem*, int)));
   connect(_tree, SIGNAL(itemChanged(QTreeWidgetItem*, int)), this, SLOT(onTreeItemChanged(QTreeWidgetItem*, int)));
-  //TODO: connect(_tree, SIGNAL(itemSelectionChanged()), this, SLOT(onTreeSelectionChanged()));
+  connect(_tree, SIGNAL(itemSelectionChanged()), this, SLOT(onTreeSelectionChanged()));
 
   _elevationsItem = 0;
   _imagesItem = 0;
@@ -278,11 +295,19 @@ void MapCatalogWidget::initUi()
 	layout->setContentsMargins(3, 0, 3, 3);
 	layout->addWidget(_tree);
   setLayout(layout);
+
+  refreshAll();
 }
 
 void MapCatalogWidget::onMapChanged()
 {
-  refresh();
+  refreshAll();
+}
+
+void MapCatalogWidget::onSelectionChanged(/*const AnnotationVector& selection*/)
+{
+  if (_fields & ANNOTATIONS)
+    refreshAnnotations();
 }
 
 void MapCatalogWidget::onTreeItemDoubleClicked(QTreeWidgetItem* item, int col)
@@ -313,30 +338,47 @@ void MapCatalogWidget::onTreeItemChanged(QTreeWidgetItem* item, int col)
   }
 }
 
-//TODO:
-//void MapCatalogWidget::onTreeSelectionChanged()
-//{
-//  if (!_manager)
-//    return;
-//
-//  //TODO: figure out how to handle selection changes
-//
-//  for (int i=0; i < _tree->topLevelItemCount(); i++)
-//  {
-//    QTreeWidgetItem *item = _tree->topLevelItem(i);
-//    fireSelectionAction(item);
-//  }
-//}
 
-//void MapCatalogWidget::fireSelectionAction(QTreeWidgetItem* item)
-//{
-//  //TODO: do for current item and recurse
-//}
+void MapCatalogWidget::onTreeSelectionChanged()
+{
+  if (_fields & ANNOTATIONS && !_updating && _manager.valid())
+  {
+    AnnotationVector annos;
 
-void MapCatalogWidget::refresh()
+    QList<QTreeWidgetItem*> items = _tree->selectedItems();
+    for (QList<QTreeWidgetItem*>::iterator it = items.begin(); it != items.end(); ++it)
+    {
+      AnnotationTreeItem* annoItem = dynamic_cast<AnnotationTreeItem*>(*it);
+      if (annoItem)
+        annos.push_back(annoItem->getAnnotation());
+    }
+
+    _manager->setSelectedAnnotations(annos);
+  }
+}
+
+
+void MapCatalogWidget::refreshAll()
 {
   if (!_map)
     return;
+
+  _updating = true;
+
+  refreshElevationLayers();
+  refreshImageLayers();
+  refreshModelLayers();
+  refreshMaskLayers();
+  refreshAnnotations();
+  refreshViewpoints();
+
+  _updating = false;
+}
+
+void MapCatalogWidget::refreshElevationLayers()
+{
+  bool wasUpdating = _updating;
+  _updating = true;
 
   if (_fields & ELEVATION_LAYERS)
   {
@@ -346,6 +388,7 @@ void MapCatalogWidget::refresh()
       //_elevationsItem->setIcon(0, QIcon(":/resources/images/globe.png"));
 	    _elevationsItem->setText(0, "Elevation Layers");
 	    _tree->addTopLevelItem(_elevationsItem);
+      _elevationsItem->setExpanded(true);
     }
 
     _elevationsItem->takeChildren();
@@ -359,7 +402,17 @@ void MapCatalogWidget::refresh()
       //layerItem->setCheckState(0, (*it)->getEnabled() ? Qt::Checked : Qt::Unchecked);
 			_elevationsItem->addChild(layerItem);
     }
+
+    _elevationsItem->setHidden(_hideEmptyGroups && _elevationsItem->childCount() == 0);
   }
+
+  _updating = wasUpdating;
+}
+
+void MapCatalogWidget::refreshImageLayers()
+{
+  bool wasUpdating = _updating;
+  _updating = true;
 
   if (_fields & IMAGE_LAYERS)
   {
@@ -369,6 +422,7 @@ void MapCatalogWidget::refresh()
       //_imagesItem->setIcon(0, QIcon(":/resources/images/globe.png"));
 	    _imagesItem->setText(0, "Image Layers");
 	    _tree->addTopLevelItem(_imagesItem);
+      _imagesItem->setExpanded(true);
     }
 
     _imagesItem->takeChildren();
@@ -382,7 +436,17 @@ void MapCatalogWidget::refresh()
 			layerItem->setCheckState(0, (*it)->getEnabled() ? Qt::Checked : Qt::Unchecked);
 			_imagesItem->addChild(layerItem);
     }
+
+    _imagesItem->setHidden(_hideEmptyGroups && _imagesItem->childCount() == 0);
   }
+
+  _updating = wasUpdating;
+}
+
+void MapCatalogWidget::refreshModelLayers()
+{
+  bool wasUpdating = _updating;
+  _updating = true;
 
   if (_fields & MODEL_LAYERS)
   {
@@ -392,6 +456,7 @@ void MapCatalogWidget::refresh()
       //_modelsItem->setIcon(0, QIcon(":/resources/images/globe.png"));
 	    _modelsItem->setText(0, "Model Layers");
 	    _tree->addTopLevelItem(_modelsItem);
+      _modelsItem->setExpanded(true);
     }
 
     _modelsItem->takeChildren();
@@ -405,9 +470,19 @@ void MapCatalogWidget::refresh()
 			layerItem->setCheckState(0, (*it)->getEnabled() ? Qt::Checked : Qt::Unchecked);
 			_modelsItem->addChild(layerItem);
     }
+
+    _modelsItem->setHidden(_hideEmptyGroups && _modelsItem->childCount() == 0);
   }
 
-  if (_manager && (_fields & ANNOTATIONS))
+  _updating = wasUpdating;
+}
+
+void MapCatalogWidget::refreshAnnotations()
+{
+  bool wasUpdating = _updating;
+  _updating = true;
+
+  if (_manager.valid() && (_fields & ANNOTATIONS))
   {
     if (!_annotationsItem)
     {
@@ -415,6 +490,7 @@ void MapCatalogWidget::refresh()
       //_annotationsItem->setIcon(0, QIcon(":/resources/images/globe.png"));
 	    _annotationsItem->setText(0, "Annotations");
 	    _tree->addTopLevelItem(_annotationsItem);
+      _annotationsItem->setExpanded(true);
     }
 
     _annotationsItem->takeChildren();
@@ -426,10 +502,23 @@ void MapCatalogWidget::refresh()
       AnnotationTreeItem* annoItem = new AnnotationTreeItem(*it, _map);
       annoItem->setText(0, QString(((*it)->getAnnotationData() ? (*it)->getAnnotationData()->getName().c_str() : "Annotation")));
 			annoItem->setCheckState(0, (*it)->getNodeMask() != 0 ? Qt::Checked : Qt::Unchecked);
-      annoItem->setSelected((*it)->getHightlight());
+
 			_annotationsItem->addChild(annoItem);
+
+      if (_manager->isSelected(*it))
+        annoItem->setSelected(true);
     }
+
+    _annotationsItem->setHidden(_hideEmptyGroups && _annotationsItem->childCount() == 0);
   }
+
+  _updating = wasUpdating;
+}
+
+void MapCatalogWidget::refreshMaskLayers()
+{
+  bool wasUpdating = _updating;
+  _updating = true;
 
   if (_fields & MASK_LAYERS)
   {
@@ -439,6 +528,7 @@ void MapCatalogWidget::refresh()
       //_masksItem->setIcon(0, QIcon(":/resources/images/globe.png"));
 	    _masksItem->setText(0, "Mask Layers");
 	    _tree->addTopLevelItem(_masksItem);
+      _masksItem->setExpanded(true);
     }
 
     _masksItem->takeChildren();
@@ -451,9 +541,19 @@ void MapCatalogWidget::refresh()
       layerItem->setText(0, QString((*it)->getName().c_str()));
 			_masksItem->addChild(layerItem);
     }
+
+    _masksItem->setHidden(_hideEmptyGroups && _masksItem->childCount() == 0);
   }
 
-  if (_manager && (_fields & VIEWPOINTS))
+  _updating = wasUpdating;
+}
+
+void MapCatalogWidget::refreshViewpoints()
+{
+  bool wasUpdating = _updating;
+  _updating = true;
+
+  if (_manager.valid() && (_fields & VIEWPOINTS))
   {
     if (!_viewpointsItem)
     {
@@ -461,6 +561,7 @@ void MapCatalogWidget::refresh()
       //_viewpointsItem->setIcon(0, QIcon(":/resources/images/globe.png"));
 	    _viewpointsItem->setText(0, "Viewpoints");
 	    _tree->addTopLevelItem(_viewpointsItem);
+      _viewpointsItem->setExpanded(true);
     }
 
     _viewpointsItem->takeChildren();
@@ -473,18 +574,17 @@ void MapCatalogWidget::refresh()
       vpItem->setText(0, QString((*it).getName().c_str()));
 			_viewpointsItem->addChild(vpItem);
     }
+
+    _viewpointsItem->setHidden(_hideEmptyGroups && _viewpointsItem->childCount() == 0);
   }
+
+  _updating = wasUpdating;
 }
 
 //ActionCallback
 void MapCatalogWidget::operator()( void* sender, Action* action )
 {
   Action* foundAction = dynamic_cast<ToggleNodeAction*>(action);
-  if (!foundAction)
-  {
-    foundAction = dynamic_cast<SetAnnotationHighlightAction*>(action);
-  }
-
   if (foundAction)
-    refresh();
+    refreshAll();
 }

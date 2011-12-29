@@ -51,6 +51,8 @@ DataManager::DataManager(osgEarth::MapNode* mapNode) : _maxUndoStackSize( 128 )
 
 void DataManager::initialize()
 {
+  _selectedDecoration = "selected";
+
   _elevationCallback = new DataManagerElevationLayerCallback(this);
   _imageCallback = new DataManagerImageLayerCallback(this);
   _modelCallback = new DataManagerModelLayerCallback(this);
@@ -142,6 +144,94 @@ void DataManager::getAnnotations(AnnotationVector& out_annotations) const
   Threading::ScopedReadLock lock(const_cast<DataManager*>(this)->_dataMutex);
   for(AnnotationVector::const_iterator it = _annotations.begin(); it != _annotations.end(); ++it)
     out_annotations.push_back(it->get());
+}
+
+void DataManager::addSelectedAnnotation(osgEarth::Annotation::AnnotationNode* annotation)
+{
+  bool added = false;
+
+  if (annotation)
+  {
+    Threading::ScopedWriteLock lock(const_cast<DataManager*>(this)->_dataMutex);
+
+    added = std::find(_selection.begin(), _selection.end(), annotation) == _selection.end();
+
+    if (added)
+    {
+      annotation->setDecoration(_selectedDecoration);
+      _selection.push_back(annotation);
+    }
+  }
+
+  if (added)
+    emit selectionChanged();
+}
+
+void DataManager::removeSelectedAnnotation(osgEarth::Annotation::AnnotationNode* annotation)
+{
+  bool removed = false;
+
+  if (annotation)
+  {
+    Threading::ScopedWriteLock lock(const_cast<DataManager*>(this)->_dataMutex);
+
+    AnnotationVector::iterator found = std::find(_selection.begin(), _selection.end(), annotation);
+    if (found != _selection.end())
+    {
+      annotation->clearDecoration();
+      _selection.erase(found);
+      removed = true;
+    }
+  }
+
+  if (removed)
+    emit selectionChanged();
+}
+
+void DataManager::setSelectedAnnotations(const AnnotationVector& annotations)
+{
+  if (_selection.size() == 0 && annotations.size() == 0)
+    return;
+
+  clearSelectedAnnotations();
+
+  {
+    Threading::ScopedWriteLock lock(const_cast<DataManager*>(this)->_dataMutex);
+
+    for (AnnotationVector::const_iterator itNew = annotations.begin(); itNew != annotations.end(); ++itNew)
+    {
+      (*itNew)->setDecoration(_selectedDecoration);
+      _selection.push_back(*itNew);
+    }
+  }
+
+  emit selectionChanged();
+}
+
+void DataManager::clearSelectedAnnotations()
+{
+  if (_selection.size() == 0)
+    return;
+
+  {
+    Threading::ScopedWriteLock lock(const_cast<DataManager*>(this)->_dataMutex);
+
+    for (AnnotationVector::iterator itOld = _selection.begin(); itOld != _selection.end(); ++itOld)
+      (*itOld)->clearDecoration();
+
+    _selection.clear();
+  }
+
+  emit selectionChanged();
+}
+
+bool DataManager::isSelected(osgEarth::Annotation::AnnotationNode* annotation)
+{
+  if (!annotation)
+    return false;
+
+  Threading::ScopedReadLock lock(const_cast<DataManager*>(this)->_dataMutex);
+  return std::find(_selection.begin(), _selection.end(), annotation) != _selection.end();
 }
 
 void DataManager::getViewpoints(std::vector<osgEarth::Viewpoint>& out_viewpoints) const

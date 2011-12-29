@@ -58,6 +58,14 @@ namespace osgEarth { namespace QtGui
       void removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent=0L);
       void getAnnotations(AnnotationVector& out_annotations) const;
 
+      void setSelectedDecoration(const std::string& decoration) { _selectedDecoration = decoration; }
+
+      void addSelectedAnnotation(osgEarth::Annotation::AnnotationNode* annotation);
+      void removeSelectedAnnotation(osgEarth::Annotation::AnnotationNode* annotation);
+      void setSelectedAnnotations(const AnnotationVector& annotations);
+      void clearSelectedAnnotations();
+      bool isSelected(osgEarth::Annotation::AnnotationNode* annotation);
+
       void getViewpoints(std::vector<osgEarth::Viewpoint>& out_viewpoints) const;
 
     public: //ActionManager
@@ -72,7 +80,7 @@ namespace osgEarth { namespace QtGui
 
     signals:
       void mapChanged();
-      //void selectionChanged(
+      void selectionChanged(/*const AnnotationVector& selection*/);
 
       void annotationAdded(osgEarth::Annotation::AnnotationNode* annotation);
       void annotationRemoved(osgEarth::Annotation::AnnotationNode* annotation);
@@ -86,6 +94,8 @@ namespace osgEarth { namespace QtGui
       osg::ref_ptr<osgEarth::Map> _map;
       Threading::ReadWriteMutex _dataMutex;
       AnnotationVector _annotations;
+      AnnotationVector _selection;
+      std::string _selectedDecoration;
       std::vector<osgEarth::Viewpoint> _viewpoints;
       osg::ref_ptr<DataManagerElevationLayerCallback> _elevationCallback;
       osg::ref_ptr<DataManagerImageLayerCallback> _imageCallback;

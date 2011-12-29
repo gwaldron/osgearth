@@ -48,27 +48,35 @@ namespace osgEarth { namespace QtGui
         ALL = 0xFF
       };
 
-      MapCatalogWidget(DataManager* dm, unsigned int fields=LAYERS_AND_ANNOTATIONS);
+      MapCatalogWidget(DataManager* dm, unsigned int fields=ALL_LAYERS);
       MapCatalogWidget(osgEarth::Map* map, unsigned int fields=ALL_LAYERS);
 
       void setActiveView(osgViewer::View* view);
       void setActiveViews(const ViewVector& views);
+
+      void setHideEmptyGroups(bool hide);
 
       //ActionCallback
       void operator()( void* sender, Action* action );
 
     private slots:
 	    void onMapChanged();
+      void onSelectionChanged(/*const AnnotationVector& selection*/);
 	    void onTreeItemDoubleClicked(QTreeWidgetItem* item, int col);
       void onTreeItemChanged(QTreeWidgetItem* item, int col);
-      //TODO: void onTreeSelectionChanged();
+      void onTreeSelectionChanged();
 
     protected:
       ~MapCatalogWidget();
 
       void initUi();
-      void refresh();
-      void fireSelectionAction(QTreeWidgetItem* item);
+      void refreshAll();
+      void refreshElevationLayers();
+      void refreshImageLayers();
+      void refreshModelLayers();
+      void refreshAnnotations();
+      void refreshMaskLayers();
+      void refreshViewpoints();
 
       QTreeWidget* _tree;
       QTreeWidgetItem* _elevationsItem;
@@ -82,6 +90,8 @@ namespace osgEarth { namespace QtGui
       osg::ref_ptr<osgEarth::Map> _map;
       ViewVector _views;
       unsigned int _fields;
+      bool _hideEmptyGroups;
+      bool _updating;
     };
 } }
 

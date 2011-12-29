@@ -25,6 +25,7 @@
 
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/ScaleDecoration>
 #include <osgEarthDrivers/gdal/GDALOptions>
 
 #include <QAction>
@@ -100,6 +101,8 @@ class DemoMainWindow : public QMainWindow
       annoData->setName("New York");
       annoData->setViewpoint(osgEarth::Viewpoint(osg::Vec3d(-74, 40.714, 0), 0.0, -90.0, 1e5));
       annotation->setAnnotationData(annoData);
+
+      annotation->installDecoration("selected", new osgEarth::Annotation::ScaleDecoration(2.0f));
 
       _manager->addAnnotation(annotation, _annoRoot.get());
 

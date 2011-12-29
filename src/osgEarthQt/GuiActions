@@ -145,33 +145,6 @@ namespace osgEarth { namespace QtGui
     double _duration;
   };
 
-  //---------------------------------------------------------------------------
-  // SetAnnotationHighlightAction
-
-  class OSGEARTHQT_EXPORT SetAnnotationHighlightAction : public Action
-  {
-  public:
-    SetAnnotationHighlightAction(osgEarth::Annotation::AnnotationNode* annotation, bool highlight)
-      : Action(), _annotation(annotation), _highlight(highlight) { }
-
-    bool doAction( void* sender, DataManager* manager )
-    {
-      if (_annotation.valid() && _annotation->getHightlight() != _highlight)
-      {
-        _annotation->setHighlight(_highlight);
-        return true;
-      }
-
-      return false;
-    }
-
-    osgEarth::Annotation::AnnotationNode* getAnnotation() { return _annotation.get(); }
-
-	protected:
-    osg::ref_ptr<osgEarth::Annotation::AnnotationNode> _annotation;
-    bool _highlight;
-  };
-
 } }
 
 #endif // OSGEARTHQT_GUIACTIONS_H

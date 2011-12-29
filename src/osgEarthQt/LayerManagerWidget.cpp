@@ -33,9 +33,6 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QList>
-#include <QListWidget>
-#include <QListWidgetItem>
 #include <QPushButton>
 #include <QSizePolicy>
 #include <QSlider>

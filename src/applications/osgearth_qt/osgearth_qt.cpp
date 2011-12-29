@@ -22,11 +22,13 @@
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/PlaceNode>
+#include <osgEarthAnnotation/ScaleDecoration>
 #include <osgEarthQt/ViewerWidget>
 #include <osgEarthQt/CompositeViewerWidget>
 #include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/DataManager>
+#include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
 
@@ -46,16 +48,62 @@ static osg::ref_ptr<osg::Group> s_annoGroup;
 static osgEarth::Util::SkyNode* s_sky=0L;
 static osgEarth::Drivers::OceanSurfaceNode* s_ocean=0L;
 
+
 int
 usage( const std::string& msg )
 {
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << std::endl;
     OE_NOTICE << "USAGE: osgearth_qt [options] file.earth" << std::endl;
-    OE_NOTICE << "   --composite n   : use a composite viewer with n initial views" << std::endl;
+    OE_NOTICE << "   --composite n           : use a composite viewer with n initial views" << std::endl;
+    OE_NOTICE << "   --stylesheet filename   : optional Qt stylesheet" << std::endl;
         
     return -1;
 }
+
+//------------------------------------------------------------------
+
+/**
+ * Event handler that processes events fired from the
+ * AnnotationEventCallback
+ */
+struct MyAnnoEventHandler : public AnnotationEventHandler
+{
+  MyAnnoEventHandler(osgEarth::QtGui::DataManager* manager) : _manager(manager) {}
+
+  void onClick( AnnotationNode* node, const EventArgs& details )
+  {
+    if (_manager.valid() && details.buttons == osgGA::GUIEventAdapter::MouseButtonMask::LEFT_MOUSE_BUTTON)
+    {
+      if (details.modkeys & osgGA::GUIEventAdapter::MODKEY_CTRL)
+      {
+        if (_manager->isSelected(node))
+          _manager->removeSelectedAnnotation(node);
+        else
+          _manager->addSelectedAnnotation(node);
+      }
+      else
+      {
+        _manager->clearSelectedAnnotations();
+        _manager->addSelectedAnnotation(node);
+      }
+    }   
+  }
+
+  //void onHoverEnter( AnnotationNode* anno, const EventArgs& args )
+  //{
+  //  anno->setDecoration( "hover" );
+  //}
+
+  //void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
+  //{
+  //  anno->clearDecoration();
+  //}
+
+  osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
+};
+
+//------------------------------------------------------------------
 
 int
 main(int argc, char** argv)
@@ -88,6 +136,10 @@ main(int argc, char** argv)
     osg::ref_ptr<osgEarth::QtGui::DataManager> dataManager = new osgEarth::QtGui::DataManager(mapNode);
     DemoMainWindow appWin(dataManager.get(), mapNode, s_annoGroup);
 
+    // install an event handler for picking and selection
+    AnnotationEventCallback* cb = new AnnotationEventCallback();
+    cb->addHandler(new MyAnnoEventHandler(dataManager.get()));
+    s_annoGroup->addEventCallback(cb);
 
     // add an annotation for demo purposes
     if (mapNode)
@@ -102,6 +154,8 @@ main(int argc, char** argv)
       data->setName("Washington, DC");
       data->setViewpoint(osgEarth::Viewpoint(osg::Vec3d(-77.04, 38.85, 0), 0.0, -90.0, 1e5));
       annotation->setAnnotationData(data);
+
+      annotation->installDecoration("selected", new osgEarth::Annotation::ScaleDecoration(2.0f));
 
       dataManager->addAnnotation(annotation, s_annoGroup);
     }
@@ -158,15 +212,25 @@ main(int argc, char** argv)
 
 
     // create catalog widget and add as a docked widget to the main window
-    QDockWidget *catalogDock = new QDockWidget(QWidget::tr("Catalog"));
+    QDockWidget *catalogDock = new QDockWidget(QWidget::tr("Layers"));
     catalogDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    osgEarth::QtGui::MapCatalogWidget* layerCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::LAYERS_AND_ANNOTATIONS);
+    osgEarth::QtGui::MapCatalogWidget* layerCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::ALL_LAYERS);
     layerCatalog->setActiveViews(views);
+    layerCatalog->setHideEmptyGroups(true);
 	  catalogDock->setWidget(layerCatalog);
 	  appWin.addDockWidget(Qt::LeftDockWidgetArea, catalogDock);
 
 
-    // create a second catalog widget for viewpoints
+    // create a second catalog widget for Annotations
+    QDockWidget *annoDock = new QDockWidget(QWidget::tr("Annotations"));
+    annoDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    osgEarth::QtGui::MapCatalogWidget* annoCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::ANNOTATIONS);
+    annoCatalog->setActiveViews(views);
+	  annoDock->setWidget(annoCatalog);
+	  appWin.addDockWidget(Qt::LeftDockWidgetArea, annoDock);
+
+
+    // create a third catalog widget for viewpoints
     QDockWidget *vpDock = new QDockWidget(QWidget::tr("Viewpoints"));
     vpDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
@@ -175,7 +239,7 @@ main(int argc, char** argv)
 	  appWin.addDockWidget(Qt::LeftDockWidgetArea, vpDock);
 
 
-    // create layer manager widget and add as a docked widget to the main window
+    // create layer manager widget and add as a docked widget on the right
     QDockWidget *layersDock = new QDockWidget(QWidget::tr("Image Layers"));
     layersDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::LayerManagerWidget* layerManager = new osgEarth::QtGui::LayerManagerWidget(dataManager.get(), osgEarth::QtGui::LayerManagerWidget::IMAGE_LAYERS);

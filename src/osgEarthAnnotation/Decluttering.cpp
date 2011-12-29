@@ -81,6 +81,8 @@ namespace
         // time stamp of the previous pass, for calculating animation speed
         double _lastTimeStamp;
     };
+
+    static bool s_enabledGlobally = true;
 }
 
 //----------------------------------------------------------------------------
@@ -151,7 +153,7 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         osgUtil::RenderBin::RenderLeafList& leaves = bin->getRenderLeafList();
 
         // first, sort the leaves:
-        if ( _customSortFunctor )
+        if ( _customSortFunctor && s_enabledGlobally )
         {
             // if there's a custom sorting function installed
             bin->copyLeavesFromStateGraphListToRenderLeafList();
@@ -218,30 +220,33 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
                 winPos.z() );
 
             // if this leaf is already in a culled group, skip it.
-            if ( culledParents.find(drawableParent) != culledParents.end() )
+            if ( s_enabledGlobally )
             {
-                visible = false;
-            }
-            else
-            {
-                // weed out any drawables that are obscured by closer drawables.
-                // TODO: think about a more efficient algorithm - right now we are just using
-                // brute force to compare all bbox's
-                for( std::vector<RenderLeafBox>::const_iterator j = local._used.begin(); j != local._used.end(); ++j )
+                if ( culledParents.find(drawableParent) != culledParents.end() )
                 {
-                    // only need a 2D test since we're in clip space
-                    bool isClear =
-                        box.xMin() > j->second.xMax() ||
-                        box.xMax() < j->second.xMin() ||
-                        box.yMin() > j->second.yMax() ||
-                        box.yMax() < j->second.yMin();
-
-                    // if there's an overlap (and the conflict isn't from the same drawable
-                    // parent, which is acceptable), then the leaf is culled.
-                    if ( !isClear && drawableParent != j->first )
+                    visible = false;
+                }
+                else
+                {
+                    // weed out any drawables that are obscured by closer drawables.
+                    // TODO: think about a more efficient algorithm - right now we are just using
+                    // brute force to compare all bbox's
+                    for( std::vector<RenderLeafBox>::const_iterator j = local._used.begin(); j != local._used.end(); ++j )
                     {
-                        visible = false;
-                        break;
+                        // only need a 2D test since we're in clip space
+                        bool isClear =
+                            box.xMin() > j->second.xMax() ||
+                            box.xMax() < j->second.xMin() ||
+                            box.yMin() > j->second.yMax() ||
+                            box.yMax() < j->second.yMin();
+
+                        // if there's an overlap (and the conflict isn't from the same drawable
+                        // parent, which is acceptable), then the leaf is culled.
+                        if ( !isClear && drawableParent != j->first )
+                        {
+                            visible = false;
+                            break;
+                        }
                     }
                 }
             }
@@ -276,92 +281,92 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         // copy the final draw list back into the bin, rejecting any leaves whose parents
         // are in the cull list.
 
-        leaves.clear();
-        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._passed.begin(); i != local._passed.end(); ++i )
+        if ( s_enabledGlobally )
         {
-            osgUtil::RenderLeaf* leaf     = *i;
-            const osg::Drawable* drawable = leaf->getDrawable();
-
-            if ( culledParents.find( drawable->getParent(0) ) == culledParents.end() )
+            leaves.clear();
+            for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._passed.begin(); i != local._passed.end(); ++i )
             {
+                osgUtil::RenderLeaf* leaf     = *i;
+                const osg::Drawable* drawable = leaf->getDrawable();
+
+                if ( culledParents.find( drawable->getParent(0) ) == culledParents.end() )
+                {
+                    DrawableInfo& info = local._memory[drawable];
+
+                    bool fullyIn = true;
+
+                    // scale in until at full scale:
+                    if ( info._lastScale != 1.0f )
+                    {
+                        fullyIn = false;
+                        info._lastScale += elapsedSeconds / std::max(*options.inAnimationTime(), 0.001f);
+                        if ( info._lastScale > 1.0f )
+                            info._lastScale = 1.0f;
+                    }
+
+                    if ( info._lastScale != 1.0f )
+                        leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                    
+                    // fade in until at full alpha:
+                    if ( info._lastAlpha != 1.0f )
+                    {
+                        fullyIn = false;
+                        info._lastAlpha += elapsedSeconds / std::max(*options.inAnimationTime(), 0.001f);
+                        if ( info._lastAlpha > 1.0f )
+                            info._lastAlpha = 1.0f;
+                    }
+
+                    leaf->_depth = info._lastAlpha;
+                    leaves.push_back( leaf );                
+                }
+                else
+                {
+                    local._failed.push_back(leaf);
+                }
+            }
+
+            // next, go through the FAILED list and sort them into failure bins so we can draw
+            // them using a different technique if necessary.
+            for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._failed.begin(); i != local._failed.end(); ++i )
+            {
+                osgUtil::RenderLeaf* leaf =     *i;
+                const osg::Drawable* drawable = leaf->getDrawable();
+
                 DrawableInfo& info = local._memory[drawable];
 
-                bool fullyIn = true;
+                bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
+                bool fullyOut = true;
 
-                // scale in until at full scale:
-                if ( info._lastScale != 1.0f )
+                if ( info._lastScale != *options.minAnimationScale() )
                 {
-                    fullyIn = false;
-                    info._lastScale += elapsedSeconds / std::max(*options.inAnimationTime(), 0.001f);
-                    if ( info._lastScale > 1.0f )
-                        info._lastScale = 1.0f;
+                    fullyOut = false;
+                    info._lastScale -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
+                    if ( info._lastScale < *options.minAnimationScale() )
+                        info._lastScale = *options.minAnimationScale();
                 }
 
-                if ( info._lastScale != 1.0f )
-                    leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
-                
-                // fade in until at full alpha:
-                if ( info._lastAlpha != 1.0f )
+                if ( info._lastAlpha != *options.minAnimationAlpha() )
                 {
-                    fullyIn = false;
-                    info._lastAlpha += elapsedSeconds / std::max(*options.inAnimationTime(), 0.001f);
-                    if ( info._lastAlpha > 1.0f )
-                        info._lastAlpha = 1.0f;
+                    fullyOut = false;
+                    info._lastAlpha -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
+                    if ( info._lastAlpha < *options.minAnimationAlpha() )
+                        info._lastAlpha = *options.minAnimationAlpha();
                 }
 
                 leaf->_depth = info._lastAlpha;
-                leaves.push_back( leaf );
 
-                
-            }
-            else
-            {
-                local._failed.push_back(leaf);
-            }
-        }
-
-        // next, go through the FAILED list and sort them into failure bins so we can draw
-        // them using a different technique if necessary.
-        for( osgUtil::RenderBin::RenderLeafList::const_iterator i=local._failed.begin(); i != local._failed.end(); ++i )
-        {
-            osgUtil::RenderLeaf* leaf =     *i;
-            const osg::Drawable* drawable = leaf->getDrawable();
-
-            DrawableInfo& info = local._memory[drawable];
-
-            bool isText = dynamic_cast<const osgText::Text*>(drawable) != 0L;
-            bool fullyOut = true;
-
-            if ( info._lastScale != *options.minAnimationScale() )
-            {
-                fullyOut = false;
-                info._lastScale -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
-                if ( info._lastScale < *options.minAnimationScale() )
-                    info._lastScale = *options.minAnimationScale();
-            }
-
-            if ( info._lastAlpha != *options.minAnimationAlpha() )
-            {
-                fullyOut = false;
-                info._lastAlpha -= elapsedSeconds / std::max(*options.outAnimationTime(), 0.001f);
-                if ( info._lastAlpha < *options.minAnimationAlpha() )
-                    info._lastAlpha = *options.minAnimationAlpha();
-            }
-
-            leaf->_depth = info._lastAlpha;
-
-            if ( !isText || !fullyOut )
-            {
-                if ( info._lastAlpha > 0.01f && info._lastScale >= 0.0f )
+                if ( !isText || !fullyOut )
                 {
-                    leaves.push_back( leaf );
+                    if ( info._lastAlpha > 0.01f && info._lastScale >= 0.0f )
+                    {
+                        leaves.push_back( leaf );
 
-                    // scale it:
-                    if ( info._lastScale != 1.0f )
-                        leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                        // scale it:
+                        if ( info._lastScale != 1.0f )
+                            leaf->_modelview->preMult( osg::Matrix::scale(info._lastScale,info._lastScale,1) );
+                    }
                 }
             }
-
         }
     }
 };
@@ -500,7 +505,7 @@ struct DeclutterDraw : public osgUtil::RenderBin::DrawCallback
         if ( pcp )
         {
             // todo: find a way to optimize this..?
-            _fade->set( leaf->_depth );
+            _fade->set( s_enabledGlobally ? leaf->_depth : 1.0f );
             pcp->apply( *_fade.get() );
         }
     
@@ -546,7 +551,6 @@ public:
     osg::ref_ptr<DeclutterSortFunctor> _f;
     osg::ref_ptr<DeclutterContext>     _context;
 };
-//const std::string osgEarthAnnotationDeclutterRenderBin::BIN_NAME = OSGEARTH_DECLUTTER_BIN;
 
 //----------------------------------------------------------------------------
 
@@ -579,6 +583,12 @@ Decluttering::setEnabled( osg::StateSet* stateSet, bool enabled, int binNum )
             stateSet->setRenderBinToInherit();
         }
     }
+}
+
+void
+Decluttering::setEnabled( bool enabled )
+{
+    s_enabledGlobally = enabled;
 }
 
 void

@@ -52,32 +52,8 @@ using namespace osgEarth::Util;
 
 namespace
 {
-    // a cull callback that prevents objects from being included in the near/fear clip
-    // plane calculates that OSG does. This is useful for including "distant objects"
-    struct DoNotIncludeInNearFarComputationCallback : public osg::NodeCallback
-    {
-        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            osgUtil::CullVisitor* cv = dynamic_cast< osgUtil::CullVisitor*>( nv );
-
-            // Default value
-            osg::CullSettings::ComputeNearFarMode oldMode;
-
-            if( cv )
-            {
-                oldMode = cv->getComputeNearFarMode();
-                cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-            }
-
-            traverse(node, nv);
-
-            if( cv )
-            {
-                cv->setComputeNearFarMode(oldMode);
-            }
-        }
-    };
-
+    // draw callback that will tweak the far clipping plane just
+    // before rendering a drawable.
     struct OverrideNearFarValuesCallback : public osg::Drawable::DrawCallback
     {
         OverrideNearFarValuesCallback(double radius)
@@ -109,9 +85,8 @@ namespace
 
                 // Build a new projection matrix with a modified far plane
                 osg::ref_ptr<osg::RefMatrixd> projectionMatrix = new osg::RefMatrix;
-                //projectionMatrix->makeFrustum( left, right, bottom, top, zNear, distance);
-                //OE_INFO << "zNear=" << zNear << ", zFar=" << zFar << std::endl;
                 projectionMatrix->makeFrustum( left, right, bottom, top, zNear, distance );
+
                 renderInfo.getState()->applyProjectionMatrix( projectionMatrix.get());
 
                 // Draw the drawable
@@ -890,7 +865,6 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     set->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
     set->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
     
-    //geode->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
     AddCallbackToDrawablesVisitor visitor( _innerRadius );
     geode->accept( visitor );
 

@@ -121,6 +121,25 @@ CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 //------------------------------------------------------------------------
 
+void
+DoNotComputeNearFarCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgUtil::CullVisitor* cv = static_cast< osgUtil::CullVisitor*>( nv );
+    osg::CullSettings::ComputeNearFarMode oldMode;
+    if( cv )
+    {
+        oldMode = cv->getComputeNearFarMode();
+        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    }
+    traverse(node, nv);
+    if( cv )
+    {
+        cv->setComputeNearFarMode(oldMode);
+    }
+}
+
+//------------------------------------------------------------------------
+
 #undef LC
 #define LC "[PixelAutoTransform] "
 

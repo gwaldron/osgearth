@@ -94,6 +94,13 @@ namespace osgEarth
         }
     };
 
+    // a cull callback that prevents objects from being included in the near/fear clip
+    // plane calculates that OSG does.
+    struct DoNotComputeNearFarCullCallback : public osg::NodeCallback
+    {
+        void operator()(osg::Node* node, osg::NodeVisitor* nv);
+    };
+
     /**
      * A pixel-based AutoTransform variant.
      */

@@ -36,8 +36,9 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT SkyNode : public osg::Group
     {
     public:
-        /** Creates a new sky node based on the provided map. */        
-        SkyNode( Map* map, const std::string& starFile="" );
+        /** Creates a new sky node based on the provided map. */
+        SkyNode( Map* map, const std::string& starFile="", float minStarMagnitude=-1.0f );
+        SkyNode( Map* map, float minStarMagnitude );
 
         /** Attached this sky node to a view (placing a sky light). */
         void attach( osg::View* view, int lightNum =0 );
@@ -97,12 +98,14 @@ namespace osgEarth { namespace Util
         typedef std::map<osg::View*, PerViewData> PerViewDataMap;
         PerViewDataMap _perViewData;
 
-        float _innerRadius, _outerRadius, _sunDistance, _starRadius;
+        float _innerRadius, _outerRadius, _sunDistance, _starRadius, _minStarMagnitude;
         osg::ref_ptr<osg::Node> _sun, _stars, _atmosphere;
         osg::ref_ptr<osg::Uniform> _starAlpha;
         osg::ref_ptr<osg::Uniform> _starPointSize;
 
         osg::ref_ptr< const osg::EllipsoidModel > _ellipsoidModel;
+
+        void initialize( Map* map, const std::string& starFile="" );
 
         void makeAtmosphere( const osg::EllipsoidModel* );
         void makeSun();

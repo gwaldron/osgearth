@@ -535,8 +535,8 @@ namespace
     static const char s_starVertexSource[] = 
         "void main() \n"
         "{ \n"
-        "    gl_FrontColor = vec4(1,1,1,1); \n"
-        "    gl_PointSize = gl_Color.r + 1.0; \n"
+        "    gl_FrontColor = gl_Color; \n" //vec4(1,1,1,1); \n"
+        "    gl_PointSize = gl_Color.r * 2.0; \n"
         "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
         "} \n";
 

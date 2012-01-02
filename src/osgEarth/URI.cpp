@@ -199,13 +199,204 @@ namespace
     // convert an osgDB::ReaderWriter::ReadResult to an osgEarth::ReadResult
     ReadResult toReadResult( osgDB::ReaderWriter::ReadResult& rr )
     {
-        if ( rr.getObject() )
+        if ( rr.validObject() )
             return ReadResult( rr.getObject() );
         else
             return ReadResult( ReadResult::RESULT_NOT_FOUND ); // TODO: translate codes better
     }
+
+    //--------------------------------------------------------------------
+    // Read functors (used by the doRead method)
+
+    struct ReadObject
+    {
+        bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0); }
+        osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readObject(uri, opt); }
+        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readObject(uri, maxAge); }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readObject(uri, opt, p); }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readObjectFile(uri, opt)); }
+    };
+
+    struct ReadNode
+    {
+        bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_NODES) != 0); }
+        osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readNode(uri, opt); }
+        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readObject(uri, maxAge); }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readNode(uri, opt, p); }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readNodeFile(uri, opt)); }
+    };
+
+    struct ReadImage
+    {
+        bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_IMAGES) != 0); }
+        osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readImage(uri, opt); }
+        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readImage(uri, maxAge); }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readImage(uri, opt, p); }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) { return ReadResult(osgDB::readImageFile(uri, opt)); }
+    };
+
+    struct ReadString
+    {
+        bool callbackRequestsCaching( URIReadCallback* cb ) const { return !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_STRINGS) != 0); }
+        osgDB::ReaderWriter::ReadResult fromCallback( URIReadCallback* cb, const std::string& uri, const osgDB::Options* opt ) { return cb->readString(uri, opt); }
+        ReadResult fromCache( CacheBin* bin, const std::string& uri, double maxAge ) { return bin->readString(uri, maxAge); }
+        ReadResult fromHTTP( const std::string& uri, const osgDB::Options* opt, ProgressCallback* p ) { return HTTPClient::readString(uri, opt, p); }
+        ReadResult fromFile( const std::string& uri, const osgDB::Options* opt ) 
+        {
+            std::ifstream input( uri.c_str() );
+            if ( input.is_open() )
+            {
+                input >> std::noskipws;
+                std::stringstream buf;
+                buf << input.rdbuf();
+			    std::string bufStr;
+		        bufStr = buf.str();
+                return ReadResult( new StringObject(bufStr) );
+            }
+            else return ReadResult();
+        }
+    };
+
+    //--------------------------------------------------------------------
+    // MASTER read template function. I templatized this so we wouldn't
+    // have 4 95%-identical code paths to maintain...
+
+    template<typename READ_FUNCTOR>
+    ReadResult doRead(
+        const URI&            uri,
+        const osgDB::Options* dbOptions,
+        const CachePolicy&    cachePolicy,
+        ProgressCallback*     progress)
+    {
+        ReadResult result;
+
+        if ( uri.empty() )
+            return result;
+
+        READ_FUNCTOR reader;
+
+        // see if there's a read callback installed.
+        URIReadCallback* cb = Registry::instance()->getURIReadCallback();
+
+        // for a local URI, bypass all the caching logic
+        if ( !uri.isRemote() )
+        {
+            // try to use the callback if it's set. Callback ignores the caching policy.
+            if ( cb )
+            {                
+                osgDB::ReaderWriter::ReadResult rr = reader.fromCallback( cb, uri.full(), dbOptions );
+                if ( rr.validObject() )
+                {
+                    result = ReadResult( rr.getObject() );
+                }
+                else if ( rr.status() != osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED )
+                {
+                    // only "NOT_IMPLEMENTED" is a reason to fallback. Anything else if a FAIL
+                    return ReadResult( ReadResult::RESULT_NOT_FOUND );
+                }
+            }
+
+            if ( result.empty() )
+            {
+                result = reader.fromFile( uri.full(), dbOptions );
+            }
+        }
+
+        // remote URI, consider caching:
+        else
+        {
+            bool callbackCachingOK = !cb || reader.callbackRequestsCaching(cb);
+
+            // establish our caching policy:
+            const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
+
+            // get a cache bin if we need it:
+            CacheBin* bin = 0L;
+            if ( (cp.usage() != CachePolicy::USAGE_NO_CACHE) && callbackCachingOK )
+            {
+                bin = s_getCacheBin( dbOptions );
+            }
+
+            // first try to go to the cache if there is one:
+            if ( bin && cp.isCacheReadable() )
+            {
+                result = reader.fromCache( bin, uri.full(), *cp.maxAge() );
+            }
+
+            // not in the cache, so proceed to read it from the network.
+            if ( result.empty() )
+            {
+                // try to use the callback if it's set. Callback ignores the caching policy.
+                if ( cb )
+                {                
+                    osgDB::ReaderWriter::ReadResult rr = reader.fromCallback( cb, uri.full(), dbOptions );
+                    if ( rr.validObject() )
+                    {
+                        result = ReadResult( rr.getObject() );
+                    }
+                    else if ( rr.status() != osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED )
+                    {
+                        // only "NOT_IMPLEMENTED" is a reason to fallback. Anything else if a FAIL
+                        return ReadResult( ReadResult::RESULT_NOT_FOUND );
+                    }
+                }
+
+                // still no data, go to the source:
+                if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
+                {
+                    result = reader.fromHTTP( 
+                        uri.full(),
+                        dbOptions ? dbOptions : Registry::instance()->getDefaultOptions(),
+                        progress );
+                }
+
+                // write the result to the cache if possible:
+                if ( result.succeeded() && bin && cp.isCacheWriteable() )
+                {
+                    bin->write( uri.full(), result.getObject(), result.metadata() );
+                }
+            }
+        }
+
+        return result;
+    }
 }
 
+ReadResult
+URI::readObject(const osgDB::Options* dbOptions,
+                const CachePolicy&    cachePolicy,
+                ProgressCallback*     progress ) const
+{
+    return doRead<ReadObject>( *this, dbOptions, cachePolicy, progress );
+}
+
+ReadResult
+URI::readNode(const osgDB::Options* dbOptions,
+              const CachePolicy&    cachePolicy,
+              ProgressCallback*     progress ) const
+{
+    return doRead<ReadNode>( *this, dbOptions, cachePolicy, progress );
+}
+
+ReadResult
+URI::readImage(const osgDB::Options* dbOptions,
+               const CachePolicy&    cachePolicy,
+               ProgressCallback*     progress ) const
+{
+    return doRead<ReadImage>( *this, dbOptions, cachePolicy, progress );
+}
+
+ReadResult
+URI::readString(const osgDB::Options* dbOptions,
+                const CachePolicy&    cachePolicy,
+                ProgressCallback*     progress ) const
+{
+    return doRead<ReadString>( *this, dbOptions, cachePolicy, progress );
+}
+
+
+
+#if 0
 ReadResult
 URI::readObject(const osgDB::Options* dbOptions,
                 const CachePolicy&    cachePolicy,
@@ -216,34 +407,61 @@ URI::readObject(const osgDB::Options* dbOptions,
     if ( empty() )
         return result;
 
-    CacheBin* bin = 0L;
+    // see if there's a read callback installed.
+    URIReadCallback* cb = Registry::instance()->getURIReadCallback();
+    bool cbSupportsCache = !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0);
 
+    // establish our caching policy:
     const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
-    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
+    // get a cache bin if we need it:
+    CacheBin* bin = 0L;
+    if (isRemote() && (cp.usage() != CachePolicy::USAGE_NO_CACHE) && cbSupportsCache )
     {
         bin = s_getCacheBin( dbOptions );
     }
 
+    // first try to go to the cache if there is one:
     if ( bin && cp.isCacheReadable() )
     {
         result = bin->readObject( full(), *cp.maxAge() );
     }
 
-    if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
+    // not in the cache, so move on:
+    if ( result.empty() )
     {
-        if ( isRemote() )
+        // try to use the callback if it's set. Callback ignores the caching policy.
+        if ( cb )
         {
-            result = HTTPClient::readObject(
-                _fullURI,
-                dbOptions ? dbOptions : Registry::instance()->getDefaultOptions(),
-                progress );
-        }
-        else
-        {
-            result = ReadResult( osgDB::readObjectFile(full(), dbOptions) );
+            osgDB::ReaderWriter::ReadResult rr = cb->readObject( full(), dbOptions );
+            if ( rr.validObject() )
+            {
+                result = ReadResult( rr.getObject() );
+            }
+            else if ( rr.status() != osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED )
+            {
+                // only "NOT_IMPLEMENTED" is a reason to fallback. Anything else if a FAIL
+                return ReadResult( ReadResult::RESULT_NOT_FOUND );
+            }
         }
 
+        // still no data, go to the source:
+        if ( result.empty() )
+        {
+            if ( isRemote() )
+            {
+                result = HTTPClient::readObject(
+                    full(),
+                    dbOptions ? dbOptions : Registry::instance()->getDefaultOptions(),
+                    progress );
+            }
+            else
+            {
+                result = ReadResult( osgDB::readObjectFile(full(), dbOptions) );
+            }
+        }
+
+        // write the result to the cache if possible:
         if ( result.succeeded() && bin && cp.isCacheWriteable() )
         {
             bin->write( full(), result.getObject(), result.metadata() );
@@ -265,20 +483,27 @@ URI::readImage(const osgDB::Options* dbOptions,
     if ( empty() )
         return result;
 
-    CacheBin* bin = 0L;
+    // see if there's a read callback installed.
+    URIReadCallback* cb = Registry::instance()->getURIReadCallback();
+    bool cbSupportsCache = !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0);
 
+    // establish our caching policy:
     const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
-    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
+    // get a cache bin if we need it:
+    CacheBin* bin = 0L;
+    if (isRemote() && (cp.usage() != CachePolicy::USAGE_NO_CACHE) && cbSupportsCache )
     {
         bin = s_getCacheBin( dbOptions );
     }
 
+    // first, try to read from the cache.
     if ( bin && cp.isCacheReadable() )
     {
         result = bin->readImage( full(), *cp.maxAge() );
     }
 
+    // second, try to read from the source.
     if ( result.empty() && cp.usage() != CachePolicy::USAGE_CACHE_ONLY )
     {
         if ( isRemote() )
@@ -312,11 +537,16 @@ URI::readNode(const osgDB::Options* dbOptions,
     if ( empty() )
         return result;
 
-    CacheBin* bin = 0L;
+    // see if there's a read callback installed.
+    URIReadCallback* cb = Registry::instance()->getURIReadCallback();
+    bool cbSupportsCache = !cb || ((cb->cachingSupport() & URIReadCallback::CACHE_OBJECTS) != 0);
 
+    // establish our caching policy:
     const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
-    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
+    // get a cache bin if we need it:
+    CacheBin* bin = 0L;
+    if (isRemote() && (cp.usage() != CachePolicy::USAGE_NO_CACHE) && cbSupportsCache )
     {
         bin = s_getCacheBin( dbOptions );
     }
@@ -360,7 +590,7 @@ URI::readString(const osgDB::Options* dbOptions,
 
     const CachePolicy& cp = !cachePolicy.empty() ? cachePolicy : Registry::instance()->defaultCachePolicy();
 
-    if ( cp.usage() != CachePolicy::USAGE_NO_CACHE )
+    if ( isRemote() && cp.usage() != CachePolicy::USAGE_NO_CACHE )
     {
         bin = s_getCacheBin( dbOptions );
     }
@@ -401,3 +631,4 @@ URI::readString(const osgDB::Options* dbOptions,
 
     return result;
 }
+#endif

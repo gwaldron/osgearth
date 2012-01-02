@@ -83,6 +83,18 @@ ElevationQuery::getMaxTilesToCache() const
 {
     return _tileCache.getMaxSize();
 }
+        
+void
+ElevationQuery::setMaxLevelOverride(int maxLevelOverride)
+{
+    _maxLevelOverride = maxLevelOverride;
+}
+
+int
+ElevationQuery::getMaxLevelOverride() const
+{
+    return _maxLevelOverride;
+}
 
 bool
 ElevationQuery::getElevation(const osg::Vec3d&       point,

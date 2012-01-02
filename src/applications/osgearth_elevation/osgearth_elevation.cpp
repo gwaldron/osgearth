@@ -17,74 +17,44 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osg/Notify>
-#include <osg/Shape>
-#include <osg/ShapeDrawable>
-#include <osg/Geode>
-#include <osg/AutoTransform>
-#include <osg/MatrixTransform>
-#include <osgText/Text>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgEarth/MapNode>
-#include <osgEarth/FindNode>
 #include <osgEarth/ElevationQuery>
+#include <osgEarth/StringUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/ObjectLocator>
-#include <osg/Depth>
-#include <sstream>
+#include <osgEarthAnnotation/LabelNode>
 #include <iomanip>
 
 using namespace osgEarth;
+using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
 
-static osg::Node*     s_flagNode;
-static osgText::Text* s_flagText;
+static MapNode*       s_mapNode    = 0L;
+static LabelNode*     s_labelNode  = 0L;
 
-static
-osg::Node* createFlag()
-{
-    osg::Geode* g = new osg::Geode();
-    osgText::Text* text = new osgText::Text();
-    text->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
-    text->setCharacterSize( 24.f );
-    text->setFont( osgText::readFontFile("arial.ttf") );
-    text->setBackdropType( osgText::Text::OUTLINE );
-    text->setText( "00000000000000" );
-    text->setAutoRotateToScreen( true );
-    text->setPosition( osg::Vec3d( 0, 0, 0 ) );
-    text->setDataVariance( osg::Object::DYNAMIC );
-    g->addDrawable( text );
-    g->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
-    g->getStateSet()->setAttribute( new osg::Depth(osg::Depth::ALWAYS), 1 );
-    g->getStateSet()->setRenderBinDetails( 99, "RenderBin" );
-    g->setDataVariance( osg::Object::DYNAMIC );
-    g->setCullingActive( false );
-    g->setNodeMask( 0 );
-    s_flagText = text;
-    s_flagNode = g;
-    return g;
-}
 
 // An event handler that will print out the elevation at the clicked point
 struct QueryElevationHandler : public osgGA::GUIEventHandler 
 {
-    QueryElevationHandler(const Map* map, ObjectLocator* flagLocator ) 
-        : _map(map),
-          _mouseDown( false ), 
-          _flagLocator(flagLocator), 
-          _query(map)
+    QueryElevationHandler()
+        : _mouseDown( false ),
+          _query( s_mapNode->getMap() )
     {
+        _map = s_mapNode->getMap();
         _query.setMaxTilesToCache(10);
+        _path.push_back( s_mapNode->getTerrainEngine() );
     }
 
     void update( float x, float y, osgViewer::View* view )
     {
         osgUtil::LineSegmentIntersector::Intersections results;
-        if ( view->computeIntersections( x, y, results, 0x01 ) )
+
+        if ( view->computeIntersections( x, y, _path, results ) )
         {
             // find the first hit under the mouse:
             osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
@@ -109,19 +79,17 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
             if ( ok )
             {
-                _flagLocator->setPosition( osg::Vec3d(lla.x(), lla.y(), out_elevation) );
-                s_flagNode->setNodeMask( ~0 );
+                s_labelNode->setPosition( osg::Vec3d(lla.x(), lla.y(), out_elevation) );
 
-                std::stringstream buf;
-                buf << std::fixed << std::setprecision(2) 
-                    << "Pos: " << lla.x() << ", " << lla.y() << std::endl
-                    << "Elv: " << out_elevation << "m" << std::endl
-                    << "X:   " << point.x() << std::endl
-                    << "Y:   " << point.y() << std::endl
-                    << "Z:   " << point.z();
-                s_flagText->setText( buf.str() );
+                s_labelNode->setText( Stringify()
+                    << std::fixed << std::setprecision(2) 
+                    << "Pos: " << lla.x() << ", " << lla.y() << "\n"
+                    << "Elv: " << out_elevation << "m" << "\n"
+                    << "X:   " << point.x() << "\n"
+                    << "Y:   " << point.y() << "\n"
+                    << "Z:   " << point.z() );
 
-                OE_NOTICE << buf.str() << std::endl;
+                s_labelNode->setNodeMask( ~0 );
             }
             else
             {
@@ -132,7 +100,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
         }
         else
         {
-            s_flagNode->setNodeMask(0);
+            s_labelNode->setNodeMask( 0 );
         }
     }
 
@@ -151,6 +119,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     bool             _mouseDown;
     ElevationQuery   _query;
     ObjectLocator*   _flagLocator;
+    osg::NodePath    _path;
 };
 
 
@@ -160,15 +129,8 @@ int main(int argc, char** argv)
 
     osgViewer::Viewer viewer(arguments);
 
-	osgEarth::MapNode* mapNode = NULL;
-
-	osg::Node* loadedNode = osgDB::readNodeFiles( arguments );
-    if (loadedNode)
-    {
-		mapNode = findTopMostNodeOfType<osgEarth::MapNode>( loadedNode );
-    }
-
-    if ( !mapNode )
+    s_mapNode = MapNode::load(arguments);
+    if ( !s_mapNode )
     {
         OE_WARN << "Unable to load earth file." << std::endl;
         return -1;
@@ -177,19 +139,21 @@ int main(int argc, char** argv)
     osg::Group* root = new osg::Group();
 
     // The MapNode will render the Map object in the scene graph.
-    mapNode->setNodeMask( 0x01 );
-    root->addChild( mapNode );
+    root->addChild( s_mapNode );
 
-    // A flag so we can see where we clicked
-    ObjectLocatorNode* flag = new ObjectLocatorNode( mapNode->getMap() );
-    flag->addChild( createFlag() );
-    flag->setNodeMask( 0x02 );
-    root->addChild( flag );
+    // style the text
+    TextSymbol* sym = new TextSymbol();
+    sym->halo()->color().set(0,0,0,1);
+
+    s_labelNode = new LabelNode( s_mapNode, osg::Vec3d(0,0,0), "", sym );
+    s_labelNode->setDynamic( true );
+
+    root->addChild( s_labelNode );
 
     viewer.setSceneData( root );
 
     // An event handler that will respond to mouse clicks:
-    viewer.addEventHandler( new QueryElevationHandler( mapNode->getMap(), flag->getLocator() ) );
+    viewer.addEventHandler( new QueryElevationHandler() );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
@@ -197,7 +161,7 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
 
     // install the programmable manipulator.
-    if ( mapNode->getMap()->isGeocentric() )
+    if ( s_mapNode->getMap()->isGeocentric() )
         viewer.setCameraManipulator( new osgEarth::Util::EarthManipulator() );
 
     return viewer.run();

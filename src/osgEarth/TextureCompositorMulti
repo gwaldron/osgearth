@@ -33,6 +33,9 @@ namespace osgEarth
     public:
         TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options );
 
+        static bool isSupported( bool useGPU );
+
+    public:
         bool requiresUnitTextureSpace() const { return false; }
 
         bool usesShaderComposition() const { return _useGPU; }
@@ -54,11 +57,15 @@ namespace osgEarth
             osg::Shader::Type type,
             const TextureLayout& layout ) const;
 
+
     private:
         float _lodTransitionTime;
         bool _useGPU;
         bool _enableMipmappingOnUpdatedTextures;
         bool _enableMipmapping;
+
+        osg::Texture::FilterMode _minFilter;
+        osg::Texture::FilterMode _magFilter;
     };
 }
 

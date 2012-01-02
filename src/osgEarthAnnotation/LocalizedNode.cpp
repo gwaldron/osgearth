@@ -20,8 +20,8 @@
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarth/Utils>
-#include <osg/MatrixTransform>
 #include <osg/AutoTransform>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -30,6 +30,7 @@ using namespace osgEarth::Annotation;
 LocalizedNode::LocalizedNode(const SpatialReference* mapSRS,
                              const osg::Vec3d&       pos,
                              bool                    is2D ) :
+AnnotationNode (),
 _mapSRS        ( mapSRS ),
 _horizonCulling( false ),
 _autoTransform ( is2D )
@@ -56,6 +57,15 @@ _autoTransform ( is2D )
     setPosition( pos );
 }
 
+LocalizedNode::LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op) :
+AnnotationNode( rhs, op )
+{
+    _mapSRS         = rhs._mapSRS.get();
+    _horizonCulling = rhs._horizonCulling;
+    _autoTransform  = rhs._autoTransform;
+    _xform          = osg::clone( rhs._xform.get(), op );
+}
+
 void
 LocalizedNode::traverse( osg::NodeVisitor& nv )
 {
@@ -63,7 +73,8 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
     {
        _xform->setCullingActive( true );
     }
-    osg::Group::traverse( nv );
+    
+    AnnotationNode::traverse( nv );
 }
 
 bool
@@ -163,153 +174,37 @@ LocalizedNode::setHorizonCulling( bool value )
     }
 }
 
-//------------------------------------------------------------------------
-
-
-OrthoNode::OrthoNode(const SpatialReference* mapSRS,
-                     const osg::Vec3d&       pos ) :
-_mapSRS        ( mapSRS ),
-_horizonCulling( false )
-{
-    _autoxform = new osg::AutoTransform();
-    _autoxform->setAutoRotateMode( osg::AutoTransform::ROTATE_TO_SCREEN );
-    _autoxform->setAutoScaleToScreen( true );
-    _autoxform->setCullingActive( false ); // for the first pass
-    this->addChild( _autoxform.get() );
-
-    _matxform = new osg::MatrixTransform();
-    this->addChild( _matxform.get() );
-
-    this->setSingleChildOn( 0 );
-
-    this->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
-
-    if ( mapSRS )
-    {
-        setHorizonCulling( true );
-    }
-
-    setPosition( pos );
-}
-
+#if 0
 void
-OrthoNode::traverse( osg::NodeVisitor& nv )
+LocalizedNode::setAltDrawState( const std::string& name )
 {
-    osgUtil::CullVisitor* cv = 0L;
-
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
+    if ( !_activeDsTech || _activeDsName != name )
     {
-        cv = static_cast<osgUtil::CullVisitor*>( &nv );
-        bool declutter = cv->getCurrentRenderBin()->getName() == OSGEARTH_DECLUTTER_BIN;
-        if ( declutter && getValue(0) == 1 )
-        {
-            this->setSingleChildOn( 1 );
-        }
-        else if ( !declutter && getValue(0) == 0 )
-        {
-            this->setSingleChildOn( 0 );
-        }
-
-        cv->setSmallFeatureCullingPixelSize(0.0f);
-    }
-
-    for( unsigned pos = 0; pos < _children.size(); ++pos )
-    {
-        if ( _values[pos] )
-            _children[pos]->accept( nv );
-    }
-
-    if ( cv )
-    {
-        this->setCullingActive( true );
-    }
-}
-
-void
-OrthoNode::attach( osg::Node* child )
-{
-    _autoxform->addChild( child );
-    _matxform->addChild( child );
-}
-
-bool
-OrthoNode::setPosition( const osg::Vec3d& pos )
-{
-    return setPosition( pos, 0L );
-}
-
-bool
-OrthoNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
-{
-    // first transform the point to the map's SRS:
-    osg::Vec3d mapPos = pos;
-    if ( posSRS && _mapSRS.valid() && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
-        return false;
-
-    CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(this->getCullCallback());
-
-    // update the transform:
-    if ( !_mapSRS.valid() )
-    {
-        _autoxform->setPosition( mapPos );
-        _matxform->setMatrix( osg::Matrix::translate(pos) );
-    }
-    else
-    {
-        osg::Matrixd local2world;
-        _mapSRS->createLocal2World( mapPos, local2world );
-        _autoxform->setPosition( local2world.getTrans() );
-        _matxform->setMatrix( local2world );
+        clearAltDrawState();
         
-        if ( culler )
-            culler->_world = local2world.getTrans();
-    }
-
-    return true;
-}
-
-osg::Vec3d
-OrthoNode::getPosition() const
-{
-    return getPosition( 0L );
-}
-
-osg::Vec3d
-OrthoNode::getPosition( const SpatialReference* srs ) const
-{
-    osg::Vec3d world = _autoxform->getPosition();
-    if ( _mapSRS.valid() )
-    {
-        osg::Vec3d output = world;
-        if ( _mapSRS->isGeographic() )
-            _mapSRS->transformFromECEF( world, output );
-    
-        if ( srs )
-            _mapSRS->transform( output, srs, output );
-
-        return output;
-    }
-    else
-    {
-        return world;
+        DrawStateTechMap::iterator i = _dsTechMap.find(name);
+        if ( i != _dsTechMap.end() )
+        {
+            DrawState* tech = i->second.get();
+            if ( tech->enable( _xform ) )
+            {
+                _activeDsTech = tech;
+                _activeDsName = name;
+            }
+        }
     }
 }
 
 void
-OrthoNode::setHorizonCulling( bool value )
+LocalizedNode::clearAltDrawState()
 {
-    if ( _horizonCulling != value && _mapSRS.valid() )
+    if ( _activeDsTech )
     {
-        _horizonCulling = value;
-
-        if ( _horizonCulling )
+        if ( _activeDsTech->disable( _xform ) )
         {
-            osg::Vec3d world = _autoxform->getPosition();
-            this->setCullCallback( new CullNodeByHorizon(world, _mapSRS->getEllipsoid()) );
-        }
-        else
-        {
-            this->removeCullCallback( this->getCullCallback() );
+            _activeDsTech = 0L;
+            _activeDsName = "";
         }
     }
 }
+#endif

@@ -100,7 +100,10 @@ _attenuationDistance( 1000000 ),
 _lodBlending( false ),
 _lodTransitionTimeSeconds( 0.5f ),
 _enableMipmapping( true ),
-_clusterCulling( true )
+_clusterCulling( true ),
+_enableBlending( false ),
+_minFilter( osg::Texture::LINEAR_MIPMAP_LINEAR ),
+_magFilter( osg::Texture::LINEAR)
 {
     fromConfig( _conf );
 }
@@ -123,12 +126,27 @@ TerrainOptions::getConfig() const
     conf.updateIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.updateIfSet( "mipmapping", _enableMipmapping );
     conf.updateIfSet( "cluster_culling", _clusterCulling );
+    conf.updateIfSet( "blending", _enableBlending );
 
     conf.updateIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.updateIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
     conf.updateIfSet( "compositor", "multitexture",     _compositingTech, COMPOSITING_MULTITEXTURE_GPU );
     conf.updateIfSet( "compositor", "multitexture_ffp", _compositingTech, COMPOSITING_MULTITEXTURE_FFP );
     conf.updateIfSet( "compositor", "multipass",        _compositingTech, COMPOSITING_MULTIPASS );
+
+    //Save the filter settings
+	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 
     return conf;
 }
@@ -148,6 +166,7 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "lod_transition_time", _lodTransitionTimeSeconds );
     conf.getIfSet( "mipmapping", _enableMipmapping );
     conf.getIfSet( "cluster_culling", _clusterCulling );
+    conf.getIfSet( "blending", _enableBlending );
 
     conf.getIfSet( "compositor", "auto",             _compositingTech, COMPOSITING_AUTO );
     conf.getIfSet( "compositor", "texture_array",    _compositingTech, COMPOSITING_TEXTURE_ARRAY );
@@ -155,4 +174,18 @@ TerrainOptions::fromConfig( const Config& conf )
     conf.getIfSet( "compositor", "multitexture_gpu", _compositingTech, COMPOSITING_MULTITEXTURE_GPU );
     conf.getIfSet( "compositor", "multitexture_ffp", _compositingTech, COMPOSITING_MULTITEXTURE_FFP );
     conf.getIfSet( "compositor", "multipass",        _compositingTech, COMPOSITING_MULTIPASS );
+
+    //Load the filter settings
+	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
+    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
+    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
+    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
+    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
+    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
+    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
 }

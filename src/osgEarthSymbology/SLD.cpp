@@ -41,12 +41,14 @@ using namespace osgEarth::Symbology;
 #define CSS_TEXT_SIZE             "text-size"
 #define CSS_TEXT_HALO             "text-halo"
 #define CSS_TEXT_ATTRIBUTE        "text-attribute"
+#define CSS_TEXT_ENCODING         "text-encoding"
 #define CSS_TEXT_ROTATE_TO_SCREEN "text-rotate-to-screen"
 #define CSS_TEXT_SIZE_MODE        "text-size-mode"
 #define CSS_TEXT_REMOVE_DUPLICATE_LABELS "text-remove-duplicate-labels"
 #define CSS_TEXT_LINE_ORIENTATION "text-line-orientation"
 #define CSS_TEXT_LINE_PLACEMENT   "text-line-placement"
 #define CSS_TEXT_CONTENT          "text-content"
+#define CSS_TEXT_ALIGN            "text-align"
 #define CSS_TEXT_CONTENT_ATTRIBUTE_DELIMITER "text-content-attribute-delimiter"
 
 
@@ -155,6 +157,27 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (p.value() == "true") text->removeDuplicateLabels() = true;
             else if (p.value() == "false") text->removeDuplicateLabels() = false;
         } 
+        else if (p.key() == CSS_TEXT_ALIGN)
+        {
+            if (!text) text = sc.getOrCreate<TextSymbol>();
+            if      ( p.value() == "left_top" ) text->alignment() = TextSymbol::ALIGN_LEFT_TOP;
+            else if ( p.value() == "left_center" ) text->alignment() = TextSymbol::ALIGN_LEFT_CENTER;
+            else if ( p.value() == "left_bottom" ) text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM;
+            else if ( p.value() == "center_top"  ) text->alignment() = TextSymbol::ALIGN_CENTER_TOP;
+            else if ( p.value() == "center_center" ) text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+            else if ( p.value() == "center_bottom" ) text->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
+            else if ( p.value() == "right_top" ) text->alignment() = TextSymbol::ALIGN_RIGHT_TOP;
+            else if ( p.value() == "right_center" ) text->alignment() = TextSymbol::ALIGN_RIGHT_CENTER;
+            else if ( p.value() == "right_bottom" ) text->alignment() = TextSymbol::ALIGN_RIGHT_BOTTOM;
+            else if ( p.value() == "left_base_line" ) text->alignment() = TextSymbol::ALIGN_LEFT_BASE_LINE;
+            else if ( p.value() == "center_base_line" ) text->alignment() = TextSymbol::ALIGN_CENTER_BASE_LINE;
+            else if ( p.value() == "right_base_line" ) text->alignment() = TextSymbol::ALIGN_RIGHT_BASE_LINE;
+            else if ( p.value() == "left_bottom_base_line" ) text->alignment() = TextSymbol::ALIGN_LEFT_BOTTOM_BASE_LINE;
+            else if ( p.value() == "center_bottom_base_line" ) text->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM_BASE_LINE;
+            else if ( p.value() == "right_bottom_base_line" ) text->alignment() = TextSymbol::ALIGN_RIGHT_BOTTOM_BASE_LINE;
+            else if ( p.value() == "base_line" ) text->alignment() = TextSymbol::ALIGN_BASE_LINE;
+        }
+
 #if 0
         else if (p.key() == CSS_TEXT_ATTRIBUTE)
         {
@@ -208,6 +231,15 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!text) text = sc.getOrCreate<TextSymbol>();
             text->provider() = p.value();
         }
+		else if (p.key() == CSS_TEXT_ENCODING)
+		{
+			if (!text) text = sc.getOrCreateSymbol<TextSymbol>();
+			if (p.value() == "utf-8") text->encoding() = TextSymbol::ENCODING_UTF8;
+			else if (p.value() == "utf-16") text->encoding() = TextSymbol::ENCODING_UTF16;
+			else if (p.value() == "utf-32") text->encoding() = TextSymbol::ENCODING_UTF32;
+			else if (p.value() == "ascii") text->encoding() = TextSymbol::ENCODING_ASCII;
+			else text->encoding() = TextSymbol::ENCODING_ASCII;
+		}
 
         // ..... MarkerSymbol .....
 
@@ -216,6 +248,11 @@ SLDReader::readStyleFromCSSParams( const Config& conf, Style& sc )
             if (!marker) marker = sc.getOrCreate<MarkerSymbol>();            
             marker->url() = p.value();
             marker->url()->setURIContext( conf.referrer() );
+        }
+        else if (p.key() == "marker-library")
+        {
+            if (!marker) marker = sc.getOrCreate<MarkerSymbol>();
+            marker->libraryName() = StringExpression(p.value());
         }
         else if (p.key() == "marker-placement")
         {

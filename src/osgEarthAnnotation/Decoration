@@ -1,0 +1,138 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNOTATION_DECORATION_H
+#define OSGEARTH_ANNOTATION_DECORATION_H 1
+
+#include <osgEarthAnnotation/Common>
+#include <osg/NodeVisitor>
+
+namespace osgEarth { namespace Annotation
+{	
+    using namespace osgEarth;
+
+    //-----------------------------------------------------------------------
+
+    // utility: functor for traversing a target node
+    template<typename T> struct TraverseFunctor {
+        T* _target;
+        TraverseFunctor(T* target) : _target(target) { }
+        void operator()(osg::NodeVisitor& nv) { _target->T::traverse(nv); }
+    };
+
+    // utility: node that traverses another node via a functor
+    template<typename T>
+    struct TraverseNode : public osg::Node {
+        TraverseFunctor<T> _tf;
+        TraverseNode(TraverseFunctor<T>& tf) : _tf(tf) { }
+        void traverse(osg::NodeVisitor& nv) { _tf(nv); }
+        osg::BoundingSphere computeBound() const { return _tf._target->getBound(); }
+    };
+
+    // utility: cull callback that traverses another node
+    struct TraverseNodeCallback : public osg::NodeCallback {
+        osg::ref_ptr<osg::Node> _node;
+        TraverseNodeCallback(osg::Node* node) : _node(node) { }
+        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
+            _node->accept(*nv);
+            traverse(node, nv);
+        }
+    };
+
+    //-----------------------------------------------------------------------
+
+    class OSGEARTHANNO_EXPORT Decoration : public osg::Referenced
+    {
+    public:
+        Decoration() { }
+
+        virtual bool isShareable() const { return false; }
+        virtual Decoration* clone() const =0;
+        Decoration* copyOrClone() { return isShareable() ? this : clone(); }
+
+    public:
+        virtual bool apply(class AnnotationNode& node, bool enable);
+        virtual bool apply(class LocalizedNode&  node, bool enable);
+        virtual bool apply(class OrthoNode&      node, bool enable);
+    };
+
+    //-----------------------------------------------------------------------
+
+    /**
+     * Simple visitor that installs a decoration on all the 
+     * AnnotationNode's in a graph.
+     */
+    class OSGEARTHANNO_EXPORT DecorationInstaller : public osg::NodeVisitor
+    {
+    public:
+        struct Callback : public osg::Referenced
+        {
+            virtual void operator()( AnnotationNode* node ) =0;
+        };
+
+    public:
+        /**
+         * Constructor - for applying a single decorator to all the Annotations
+         * found in the visited graph.
+         */
+        DecorationInstaller( const std::string& name, Decoration* tech )
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _name(name), _tech(tech) { }
+
+        /**
+         * Constructor - for using a callback to assign a decorator to each
+         * individual Annotation.
+         */
+        DecorationInstaller( const std::string& name, Callback* callback )
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _name(name), _callback(callback) { }
+
+    public:
+        virtual void apply(osg::Node& node);
+
+    public:
+        osg::ref_ptr<Decoration> _tech;
+        osg::ref_ptr<Callback>  _callback;
+        std::string             _name;
+    };
+
+    //-----------------------------------------------------------------------
+
+    /** 
+     * A decorator that injects a node below the annotation's
+     * transform. For example, you could install an Effect node, or a node
+     * that activates a shader.
+     */
+    class OSGEARTHANNO_EXPORT InjectionDecoration : public Decoration
+    {
+    public:
+        InjectionDecoration( osg::Group* group =0L );
+        virtual Decoration* clone() const { return new InjectionDecoration(osg::clone(_injectionGroup.get(), osg::CopyOp::DEEP_COPY_ALL)); }
+
+        virtual bool apply(class AnnotationNode& node, bool enable);
+
+    protected:
+        osg::ref_ptr<osg::Group> _injectionGroup;
+
+        virtual bool apply(osg::Group* attachPoint, bool enable);
+    };
+
+
+} } // namespace osgEarth::Annotation
+
+#endif //OSGEARTH_ANNOTATION_DECORATION_H

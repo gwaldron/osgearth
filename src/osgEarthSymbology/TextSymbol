@@ -50,6 +50,37 @@ namespace osgEarth { namespace Symbology
             LINEPLACEMENT_CENTROID
         };
 #endif
+		enum Encoding {
+            ENCODING_ASCII,
+            ENCODING_UTF8,
+            ENCODING_UTF16,
+			ENCODING_UTF32
+		};
+
+        // note: these are identical to the values in osgText::Text::AlignmentType
+        enum Alignment {
+            ALIGN_LEFT_TOP,
+            ALIGN_LEFT_CENTER,
+            ALIGN_LEFT_BOTTOM,
+
+            ALIGN_CENTER_TOP,
+            ALIGN_CENTER_CENTER,
+            ALIGN_CENTER_BOTTOM,
+
+            ALIGN_RIGHT_TOP,
+            ALIGN_RIGHT_CENTER,
+            ALIGN_RIGHT_BOTTOM,
+            
+            ALIGN_LEFT_BASE_LINE,
+            ALIGN_CENTER_BASE_LINE,
+            ALIGN_RIGHT_BASE_LINE,
+        
+            ALIGN_LEFT_BOTTOM_BASE_LINE,
+            ALIGN_CENTER_BOTTOM_BASE_LINE,
+            ALIGN_RIGHT_BOTTOM_BASE_LINE,
+        
+            ALIGN_BASE_LINE = ALIGN_LEFT_BASE_LINE /// default.        
+        };
 
         TextSymbol( const Config& conf =Config() );
 
@@ -81,6 +112,18 @@ namespace osgEarth { namespace Symbology
         optional<osg::Vec2s>& pixelOffset() { return _pixelOffset; }
         const optional<osg::Vec2s>& pixelOffset() const { return _pixelOffset; }
 
+        /** Alignment of the label relative to (0,0) pixels */
+        optional<Alignment>& alignment() { return _alignment; }
+        const optional<Alignment>& alignment() const { return _alignment; }
+
+        ///** Horizontal alignment relative to x=0 position */
+        //optional<HorizontalAlignment>& horizontalAlignment() { return _halign; }
+        //const optional<HorizontalAlignment>& horizontalAlignment() const { return _halign; }
+
+        ///** Horizontal alignment relative to x=0 position */
+        //optional<VerticalAlignment>& verticalAlignment() { return _valign; }
+        //const optional<VerticalAlignment>& verticalAlignment() const { return _valign; }
+
         /** Whether to remove duplicates when drawing multiple labels. */
         optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
         const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }
@@ -107,6 +150,10 @@ namespace osgEarth { namespace Symbology
         optional<std::string>& provider() { return _provider; }
         const optional<std::string>& provider() const { return _provider; }
 
+        /** text encoding */
+        optional<Encoding>& encoding() { return _encoding; }
+        const optional<Encoding>& encoding() const { return _encoding; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
@@ -128,6 +175,12 @@ namespace osgEarth { namespace Symbology
 #endif
         optional<osg::Vec2s>        _pixelOffset;
         optional<std::string>       _provider;
+		optional<Encoding>          _encoding;
+
+        //optional<HorizontalAlignment> _halign;
+        //optional<VerticalAlignment>   _valign;
+
+        optional<Alignment>         _alignment;
     };
 
 } } // namespace osgEarth::Symbology

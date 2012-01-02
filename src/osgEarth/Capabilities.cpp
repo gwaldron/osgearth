@@ -109,7 +109,8 @@ _supportsMultiTexture   ( false ),
 _supportsStencilWrap    ( true ),
 _supportsTwoSidedStencil( false ),
 _supportsTexture2DLod   ( false ),
-_supportsMipmappedTextureUpdates( false )
+_supportsMipmappedTextureUpdates( false ),
+_supportsDepthPackedStencilBuffer( false )
 {
     // little hack to force the osgViewer library to link so we can create a graphics context
     osgViewerGetVersion();
@@ -196,6 +197,9 @@ _supportsMipmappedTextureUpdates( false )
         _supportsTwoSidedStencil = osg::isGLExtensionSupported( id, "GL_EXT_stencil_two_side" );
         OE_INFO << LC << "  2-sided stencils = " << SAYBOOL(_supportsTwoSidedStencil) << std::endl;
 
+        _supportsDepthPackedStencilBuffer = osg::isGLExtensionSupported( id, "GL_EXT_packed_depth_stencil" );
+        OE_INFO << LC << "  depth-packed stencil = " << SAYBOOL(_supportsDepthPackedStencilBuffer) << std::endl;
+
         //_supportsTexture2DLod = osg::isGLExtensionSupported( id, "GL_ARB_shader_texture_lod" );
         //OE_INFO << LC << "  texture2DLod = " << SAYBOOL(_supportsTexture2DLod) << std::endl;
 
@@ -205,12 +209,17 @@ _supportsMipmappedTextureUpdates( false )
         _supportsMipmappedTextureUpdates = isATI && enableATIworkarounds ? false : true;
         OE_INFO << LC << "  Mipmapped texture updates = " << SAYBOOL(_supportsMipmappedTextureUpdates) << std::endl;
 
+#if 0
         // Intel workarounds:
         bool isIntel = 
             _vendor.find("Intel ")   != std::string::npos ||
-            _vendor.find("Intel(R)") != std::string::npos;
-        _maxFastTextureSize = isIntel ? std::min(2048, _maxTextureSize) : _maxTextureSize;
-        OE_INFO << LC << "Max Fast Texture Size = " << _maxFastTextureSize << std::endl;
+            _vendor.find("Intel(R)") != std::string::npos ||
+            _vendor.compare("Intel") == 0;
+#endif
+
+        _maxFastTextureSize = _maxTextureSize;
+
+        OE_INFO << LC << "  Max Fast Texture Size = " << _maxFastTextureSize << std::endl;
     }
 }
 

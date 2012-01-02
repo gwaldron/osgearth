@@ -74,7 +74,8 @@ struct MySliderHandler : public ControlEventHandler
     {
         std::stringstream buf;
         buf << (int)value;
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         s_sliderLabel->setText( str );
     }
 };
@@ -208,7 +209,9 @@ createControls( ControlCanvas* cs )
             LabelControl* label = new LabelControl();
             std::stringstream buf;
             buf << "Label_" << i;
-            label->setText( buf.str() );
+            std::string str;
+            str = buf.str();
+            label->setText( str );
             label->setMargin( 10 );
             label->setBackColor( 1,1,1,0.4 );
             bottom->addControl( label );

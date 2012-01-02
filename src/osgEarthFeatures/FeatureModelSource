@@ -60,8 +60,8 @@ namespace osgEarth { namespace Features
         optional<bool>& enableLighting() { return _lit; }
         const optional<bool>& enableLighting() const { return _lit; }
 
-        optional<FeatureDisplayLayout>& levels() { return _levels; }
-        const optional<FeatureDisplayLayout>& levels() const { return _levels; }
+        optional<FeatureDisplayLayout>& layout() { return _layout; }
+        const optional<FeatureDisplayLayout>& layout() const { return _layout; }
 
         optional<bool>& clusterCulling() { return _clusterCulling; }
         const optional<bool>& clusterCulling() const { return _clusterCulling; }
@@ -103,7 +103,7 @@ namespace osgEarth { namespace Features
         void fromConfig( const Config& conf );
 
         optional<FeatureSourceOptions>  _featureOptions;
-        optional<FeatureDisplayLayout>  _levels;
+        optional<FeatureDisplayLayout>  _layout;
         optional<StringExpression>      _featureNameExpr;
         optional<bool>                  _lit;
         optional<double>                _maxGranularity_deg;
@@ -117,8 +117,6 @@ namespace osgEarth { namespace Features
         /** @deprecated */
         optional<GriddingPolicy>        _gridding;
         optional<Geometry::Type>        _geomTypeOverride;
-        
-        //optional<Symbology::StyleSheet> _styles;
     };
 
     /**

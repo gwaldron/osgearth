@@ -266,6 +266,8 @@ MapNode::init()
         _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
     if ( _mapNodeOptions.overlayTextureSize().isSet() )
         _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
+    if ( _mapNodeOptions.overlayMipMapping().isSet() )
+        _overlayDecorator->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
     addTerrainDecorator( _overlayDecorator.get() );
 
     // install any pre-existing model layers:
@@ -336,6 +338,18 @@ Map*
 MapNode::getMap()
 {
     return _map.get();
+}
+
+const Map*
+MapNode::getMap() const
+{
+    return _map.get();
+}
+
+const SpatialReference*
+MapNode::getMapSRS() const
+{
+    return getMap()->getProfile()->getSRS();
 }
 
 TerrainEngineNode*
@@ -605,3 +619,4 @@ MapNode::updateOverlayGraph()
         _overlayDecorator->setOverlayGraph( 0L );
     }
 }
+

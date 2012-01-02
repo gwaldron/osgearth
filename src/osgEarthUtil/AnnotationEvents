@@ -1,0 +1,90 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_UTIL_ANNOTATION_EVENTS_H
+#define OSGEARTH_UTIL_ANNOTATION_EVENTS_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarthAnnotation/AnnotationNode>
+#include <set>
+
+namespace osgEarth { namespace Util
+{	
+    using namespace osgEarth::Util;
+    using namespace osgEarth::Annotation;
+
+    /**
+     * Event handler skeleton for handling events from the AnnotationEventCallback.
+     */
+    struct AnnotationEventHandler : public osg::Referenced
+    {
+        struct EventArgs
+        {
+            float x, y;
+            int   buttons;   // see osgGA::GUIEventAdapter::MouseButtonMask
+            int   modkeys;   // see osgGA::GUIEventAdapter::ModKeyMask
+        };
+
+        virtual void onClick( AnnotationNode* node, const EventArgs& details ) { }
+
+        virtual void onHoverEnter( AnnotationNode* node, const EventArgs& details ) { }
+
+        virtual void onHoverLeave( AnnotationNode* node, const EventArgs& details ) { }
+    };
+
+    /**
+     * Event-traversal node callback that handles user interaction with 
+     * annotation objects.
+     */
+    class OSGEARTHUTIL_EXPORT AnnotationEventCallback : public osg::NodeCallback
+    {
+    public:
+        AnnotationEventCallback( AnnotationEventHandler* handler =0L );
+
+        /** 
+         * Adds an event handler whose events will fire upon user actions
+         */
+        void addHandler( AnnotationEventHandler* handler );
+
+        /**
+         * Sets whether "hovering" events will fire. By default they do. But you 
+         * can disable this (if you're not using hovering) and get a small
+         * performance improvement.
+         */
+        void setHoverEnabled( bool hoverEnabled );
+
+    public: // osg::NodeCallback
+
+        virtual void operator()( osg::Node* node, osg::NodeVisitor* nv );
+
+    protected:
+        AnnotationEventHandler::EventArgs _args;
+        bool  _mouseDown;
+        bool _hoverEnabled;
+        std::set<AnnotationNode*> _hovered;
+
+        typedef std::vector< osg::ref_ptr<AnnotationEventHandler> > Handlers;
+        Handlers _handlers;
+
+        typedef void (AnnotationEventHandler::*EventHandlerMethodPtr)(AnnotationNode*,const AnnotationEventHandler::EventArgs&);
+        void fireEvent(EventHandlerMethodPtr mp, AnnotationNode* node);
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNO_ANNOTATION_NODE_H

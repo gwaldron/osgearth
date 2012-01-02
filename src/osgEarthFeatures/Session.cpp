@@ -63,13 +63,6 @@ Session::createMapFrame( Map::ModelParts parts ) const
 }
 
 void
-Session::putObject( const std::string& key, osg::Referenced* object )
-{
-    Threading::ScopedWriteLock lock( _objMapMutex );
-    _objMap[key] = object;
-}
-
-void
 Session::removeObject( const std::string& key )
 {
     Threading::ScopedWriteLock lock( _objMapMutex );

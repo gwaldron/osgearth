@@ -282,7 +282,7 @@ unsigned int
 TileSource::getMaxDataLevel() const
 {
     //If we have no data extents, just use a reasonably high number
-    if (_dataExtents.size() == 0) return 35;
+    if (_dataExtents.size() == 0) return 23;
 
     unsigned int maxDataLevel = 0;
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)

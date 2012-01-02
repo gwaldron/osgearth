@@ -30,7 +30,7 @@ SET(LIB_PUBLIC_HEADERS
 	FeatureListSource
     FeatureModelGraph
     FeatureModelSource
-    FeatureNode
+    #FeatureNode
     FeatureSource
     FeatureTileSource
     Filter
@@ -70,7 +70,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	FeatureListSource.cpp
     FeatureModelGraph.cpp
     FeatureModelSource.cpp
-    FeatureNode.cpp
+    #FeatureNode.cpp
     FeatureSource.cpp
     FeatureTileSource.cpp
     Filter.cpp

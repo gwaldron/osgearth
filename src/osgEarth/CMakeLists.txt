@@ -27,6 +27,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     CompositeTileSource
     Config
+    Containers
     Cube
     DrapeableNode
     ECEF
@@ -110,7 +111,6 @@ IF (NOT TINYXML_FOUND)
         tinyxmlparser.cpp
     )
 ENDIF (NOT TINYXML_FOUND)
-MESSAGE("${LIB_PUBLIC_HEADERS}")
 
 ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}

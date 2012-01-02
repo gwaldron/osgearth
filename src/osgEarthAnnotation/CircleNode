@@ -36,6 +36,8 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT CircleNode : public LocalizedNode
     {
     public:
+        META_AnnotationNode( osgEarthAnnotation, CircleNode );
+
         /**
          * Constructs a new circle annotation.
          *
@@ -53,6 +55,10 @@ namespace osgEarth { namespace Annotation
             const Style&      style,
             bool              draped      =true,
             unsigned          numSegments =0 );
+
+    private:
+        CircleNode() { }
+        CircleNode(const CircleNode& rhs, const osg::CopyOp& op) { }
     };
 
 } } // namespace osgEarth::Annotation

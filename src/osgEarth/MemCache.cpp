@@ -19,7 +19,7 @@
 #include <osgEarth/MemCache>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
-#include <osgEarth/Utils>
+#include <osgEarth/Containers>
 
 using namespace osgEarth;
 
@@ -85,6 +85,13 @@ namespace
         {
             Threading::ScopedReadLock sharedLock( _mutex );
             return _lru.has(key);
+        }
+
+        bool purge()
+        {
+            Threading::ScopedWriteLock exclusiveLock( _mutex );
+            _lru.clear();
+            return true;
         }
 
     private:

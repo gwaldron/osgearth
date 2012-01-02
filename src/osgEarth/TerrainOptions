@@ -218,6 +218,25 @@ namespace osgEarth
          */
         optional<bool>& enableMipmapping() { return _enableMipmapping; }
         const optional<bool>& enableMipmapping() const { return _enableMipmapping; }
+
+        /**
+         * The min filter to be applied to textures
+         */
+        optional<osg::Texture::FilterMode> minFilter() { return _minFilter;}
+        const optional<osg::Texture::FilterMode> minFilter() const { return _minFilter;}
+
+        /**
+         * The mag filter to be applied to textures
+         */
+        optional<osg::Texture::FilterMode> magFilter() { return _magFilter;}
+        const optional<osg::Texture::FilterMode> magFilter() const { return _magFilter;}
+
+            
+        /**
+         * Whether to enable blending
+         */
+        optional<bool>& enableBlending() { return _enableBlending; }
+        const optional<bool>& enableBlending() const { return _enableBlending; }
    
     public:
         virtual Config getConfig() const;
@@ -230,7 +249,7 @@ namespace osgEarth
 
     private:
         void fromConfig( const Config& conf );
-            
+                    
         optional<float> _verticalScale;
         optional<float> _heightFieldSampleRatio;
         optional<float> _minTileRangeFactor;
@@ -245,10 +264,9 @@ namespace osgEarth
         optional<float> _lodTransitionTimeSeconds;
         optional<bool>  _enableMipmapping;
         optional<bool> _clusterCulling;
-#if 0
-        optional<osg::Texture::FilterMode> _contourMagFilter;
-        optional<osg::Texture::FilterMode> _contourMinFilter;
-#endif
+        optional<bool> _enableBlending;
+        optional<osg::Texture::FilterMode> _magFilter;
+        optional<osg::Texture::FilterMode> _minFilter;
         optional<ElevationInterpolation> _elevationInterpolation;
     };
 }

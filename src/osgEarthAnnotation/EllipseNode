@@ -36,6 +36,8 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT EllipseNode : public LocalizedNode
     {
     public:
+        META_AnnotationNode( osgEarthAnnotation, EllipseNode );
+
         /**
          * Constructs a new ellipse annotation.
          *
@@ -57,6 +59,10 @@ namespace osgEarth { namespace Annotation
             const Style&            style,
             bool                    draped      =true,
             unsigned                numSegments =0 );
+
+    private:
+        EllipseNode() { }
+        EllipseNode(const EllipseNode& rhs, const osg::CopyOp& op) { }
     };
 
 } } // namespace osgEarth::Annotation

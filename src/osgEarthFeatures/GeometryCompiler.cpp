@@ -48,7 +48,7 @@ namespace
 
 GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
 ConfigOptions( conf ),
-_maxGranularity_deg( 5.0 ),
+_maxGranularity_deg( 1.0 ),
 _mergeGeometry( false ),
 _clustering( true )
 {
@@ -177,7 +177,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     // if the style was empty, use some defaults based on the geometry type of the
     // first feature.
-    if ( style.empty() && workingSet.size() > 0 )
+    if ( !point && !line && !polygon && !marker && !extrusion && !text && workingSet.size() > 0 )
     {
         Feature* first = workingSet.begin()->get();
         Geometry* geom = first->getGeometry();

@@ -19,12 +19,10 @@
 #ifndef OSGEARTH_ANNO_GEOMETRY_NODE_H
 #define OSGEARTH_ANNO_GEOMETRY_NODE_H 1
 
-#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarth/MapNode>
-#include <osgEarth/DrapeableNode>
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthSymbology/Style>
-#include <osg/MatrixTransform>
 
 namespace osgEarth { namespace Annotation
 {	
@@ -34,18 +32,17 @@ namespace osgEarth { namespace Annotation
     /**
      * Simple node that renders a Geometry into a scene graph node.
      */
-    class OSGEARTHANNO_EXPORT LocalGeometryNode : public DrapeableNode
+    class OSGEARTHANNO_EXPORT GeometryNode : public LocalizedNode
     {
     public:
         /**
          * Constructs a new draped geometry node
          */
-        LocalGeometryNode( 
+        GeometryNode( 
             MapNode*     mapNode,
             Geometry*    geom, 
             const Style& style, 
-            bool         draped     =false,
-            osg::Group*  parentNode =0L );
+            bool         draped     =false );
     };
 
 } } // namespace osgEarth::Annotation

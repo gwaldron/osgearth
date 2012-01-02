@@ -65,7 +65,7 @@ KMLReader::read( const Config& conf )
 
     if ( cx._options->iconAndLabelGroup().valid() && cx._options->declutter() == true )
     {
-        cx._options->iconAndLabelGroup()->getOrCreateStateSet()->setRenderBinDetails( INT_MAX, OSGEARTH_DECLUTTER_BIN );
+        Decluttering::setEnabled( cx._options->iconAndLabelGroup()->getOrCreateStateSet(), true );
     }
 
     const Config& kml = conf.child("kml");

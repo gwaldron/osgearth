@@ -9,19 +9,23 @@ SET(LIB_NAME osgEarthUtil)
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 SET(LIB_PUBLIC_HEADERS  
+    AnnotationEvents
     AutoClipPlaneHandler
     Common
     Controls
     ClampCallback
+    DPLineSegmentIntersector
     EarthManipulator
     ElevationManager
     Export
     Formatters
     Graticule
 	MeasureTool
+	NearFarGroup
     ObjectPlacer
     ObjectLocator
     #OceanSurfaceNode
+    Pickers
     SkyNode
     SpatialData
     StarData
@@ -30,17 +34,21 @@ SET(LIB_PUBLIC_HEADERS
 )
 
 SET(LIB_COMMON_FILES
+    AnnotationEvents.cpp
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
+    DPLineSegmentIntersector.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
     Formatters.cpp
     Graticule.cpp
 	MeasureTool.cpp
+	NearFarGroup.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
     #OceanSurfaceNode.cpp
+    Pickers.cpp
     SpatialData.cpp
     SkyNode.cpp
 	WFS.cpp
@@ -61,9 +69,10 @@ ELSE(WIN32)
 ENDIF(WIN32)
 
 LINK_INTERNAL(${LIB_NAME}
-osgEarth
-osgEarthFeatures
-osgEarthSymbology
+    osgEarth
+    osgEarthFeatures
+    osgEarthSymbology
+    osgEarthAnnotation
 )
 
 LINK_WITH_VARIABLES(${LIB_NAME} OSG_LIBRARY OSGUTIL_LIBRARY OSGSIM_LIBRARY OSGTERRAIN_LIBRARY OSGDB_LIBRARY OSGFX_LIBRARY OSGMANIPULATOR_LIBRARY OSGVIEWER_LIBRARY OSGTEXT_LIBRARY OSGGA_LIBRARY OPENTHREADS_LIBRARY)

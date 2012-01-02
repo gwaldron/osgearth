@@ -79,7 +79,7 @@ public:
             if (!token.empty())
             {
                 std::string sep = url.full().find( "?" ) == std::string::npos ? "?" : "&";
-                url = url.append( sep + "token=" + token );
+                url = url.append( sep + std::string("token=") + token );
             }
         }
 
@@ -197,7 +197,9 @@ public:
             std::string token = _options.token().value();
             if (!token.empty())
             {
-                std::string sep = buf.str().find( "?" ) == std::string::npos ? "?" : "&";
+                std::string str;
+                str = buf.str();
+                std::string sep = str.find( "?" ) == std::string::npos ? "?" : "&";
                 buf << sep << "token=" << token;
             }
         }

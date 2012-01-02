@@ -34,8 +34,8 @@ OceanCompositor::updateMasterStateSet(osg::StateSet*       stateSet,
         vp = new VirtualProgram();
         stateSet->setAttributeAndModes( vp, 1 );
     }
-    vp->setShader( "osgearth_vert_setupTexturing", new osg::Shader(osg::Shader::VERTEX, source_vert) );
-    vp->setShader( "osgearth_frag_applyTexturing", new osg::Shader(osg::Shader::FRAGMENT, source_frag) );
+    vp->setShader( "osgearth_vert_setupTexturing", new osg::Shader(osg::Shader::VERTEX, source_setupTexturing) );
+    vp->setShader( "osgearth_frag_applyTexturing", new osg::Shader(osg::Shader::FRAGMENT, source_applyTexturing ) );
 }
     
 namespace
@@ -44,7 +44,9 @@ namespace
     {
         std::stringstream buf;
         buf << "tex" << slot;
-        return buf.str();
+        std::string str;
+        str = buf.str();
+        return str;
     }
 
     osg::Texture2D*

@@ -21,72 +21,79 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgEarth/ThreadingUtils>
+#include <osgEarth/Utils>
 #include <osgGA/GUIEventHandler>
 #include <osgGA/EventVisitor>
+#include <osg/Camera>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
     /**
-     * An event handler that automatically calculates optimal near and
-     * far clip planes for a geocentric map node. Just add this to your
-     * main Viewer and go.
+     * A CULL callback that automatically adjusts the calculated near and far clip planes for
+     * use in a geocentric map.
      *
-     * This only works properly for geocentric (round earth) maps.
+     * Usage: add this as a cull callback to a camera, like:
+     *
+     * osgViewer::Viewer viewer;
+     * ...
+     * viewer.getCamera()->addCullCallback( new AutoClipPlaneCallback(map) )
      */
-    class OSGEARTHUTIL_EXPORT AutoClipPlaneHandler : public osgGA::GUIEventHandler
+    class OSGEARTHUTIL_EXPORT AutoClipPlaneCullCallback : public osg::NodeCallback
     {
     public:
         /**
-         * Constructs a new clip plane handler.
+         * Constructs a new auto-clip plane manager corresponding to the parameters
+         * in the specified map.
+         * @param map Map to take ellipsoid information from; if NULL, use WGS84 values
          */
-        AutoClipPlaneHandler( const Map* map =0L );
-        
+        AutoClipPlaneCullCallback( Map* map =0L );
+
         /**
-         * Whether to automatically set the far clip to the horizon. default=true.
+         * Sets the minimum near/far ratio to use for this camera. The minimum ratio takes
+         * effect when the camera HAE hits zero.
          */
-        void setAutoFarPlaneClipping(bool enabled) { _autoFarPlaneClipping = enabled; }
-        bool getAutoFarPlaneClipping() const { return _autoFarPlaneClipping; }
+        void setMinNearFarRatio( double value ) { _minNearFarRatio = value; }
+        double getMinNearFarRatio() const { return _minNearFarRatio; }
 
-        
-    public: // EventHandler
+        /**
+         * Sets the maximum near/far ratio to use for the camera. The maximum ratio
+         * takes effect when the camera HAE hits the Height Threshold.
+         */
+        void setMaxNearFarRatio( double value ) { _maxNearFarRatio = value; }
+        double getMaxNearFarRatio() const { return _maxNearFarRatio; }
 
-        virtual bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
+        /** 
+         * Sets the camera Height (above ellipsoide) at which the near/far ratio
+         * hits its maximum value.
+         */
+        void setHeightThreshold( double value ) { _haeThreshold = value; }
+        double getHeightThreshold() const { return _haeThreshold; }
 
-        void frame( osgGA::GUIActionAdapter& aa );
+        /**
+         * Whether to clamp the the far clipping plane to the approximate
+         * visible horizon.
+         */
+        void setClampFarClipPlane( bool value ) { _autoFarPlaneClamping = value; }
+        bool getClampFarClipPlane() const { return _autoFarPlaneClamping; }
 
-    private:
-
-        osg::observer_ptr<osgEarth::MapNode> _mapNode;
-        bool _geocentric;
-        int _frame;
-        double _nfrAtRadius, _nfrAtDoubleRadius, _rp;
-        bool _autoFarPlaneClipping;
-    };
-
-
-    class OSGEARTHUTIL_EXPORT AutoClipPlaneCallback : public osg::NodeCallback
-    {
     public:
-        AutoClipPlaneCallback( const Map* map =0L )
-        {
-            _handler = new AutoClipPlaneHandler( map );
-        }
-
-        virtual void operator()( osg::Node* node, osg::NodeVisitor* nv )
-        {
-            osgGA::EventVisitor* ev = dynamic_cast<osgGA::EventVisitor*>( nv );
-            if ( ev ) {
-                _handler->frame( *ev->getActionAdapter() );
-            }
-            traverse( node, nv );
-        }
-
-        osg::ref_ptr<AutoClipPlaneHandler> _handler;
+        virtual void operator()( osg::Node* node, osg::NodeVisitor* nv );
+        
+    protected:
+        bool   _active;
+        double _minNearFarRatio, _maxNearFarRatio;
+        double _haeThreshold;
+        double _rp2, _rp;
+        bool   _autoFarPlaneClamping;
+        osg::ref_ptr<Map> _map;
+        Threading::PerObjectMap< osg::Camera*, osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> > _clampers;
     };
+
+
 
 } } // namespace osgEarth::Util
 
 #endif // OSGEARTHUTIL_AUTOCLIPPLANEHANDLER_H
-

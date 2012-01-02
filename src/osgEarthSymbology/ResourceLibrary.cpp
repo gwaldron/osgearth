@@ -33,6 +33,7 @@ using namespace OpenThreads;
 
 //------------------------------------------------------------------------
 
+#if 0
 ResourceLibrary*
 ResourceLibrary::create( const URI& uri, const osgDB::Options* dbOptions )
 {
@@ -60,25 +61,77 @@ ResourceLibrary::create( const URI& uri, const osgDB::Options* dbOptions )
         << uri.full() << "\"; load failed." << std::endl;
     return 0L;
 }
+#endif
 
 //------------------------------------------------------------------------
 
-ResourceLibrary::ResourceLibrary( const Config& conf )
+ResourceLibrary::ResourceLibrary( const Config& conf ) :
+_initialized( false )
 {
     mergeConfig( conf );
+}
+
+ResourceLibrary::ResourceLibrary( const std::string& name, const URI& uri ) :
+_name       ( name ),
+_uri        ( uri, uri ),
+_initialized( false )
+{
+    //nop
 }
 
 void
 ResourceLibrary::mergeConfig( const Config& conf )
 {
-    // read skins
-    const ConfigSet skins = conf.children( "skin" );
-    for( ConfigSet::const_iterator i = skins.begin(); i != skins.end(); ++i )
-    {
-        addResource( new SkinResource(*i) );
-    }
+    _name = conf.value("name" );
 
-    //todo: other types later..
+    conf.getIfSet( "url", _uri );
+
+    for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i )
+    {
+        const Config& child = *i;
+        if ( child.key() == "skin" )
+        {
+            addResource( new SkinResource(child) );
+        }
+        else if ( child.key() == "marker" )
+        {
+            addResource( new MarkerResource(child) );
+        }
+    }
+}
+
+Config
+ResourceLibrary::getConfig() const
+{
+    Config conf;
+    {
+        Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
+
+        if ( !_name.empty() )
+        {
+            conf.set( "name", _name );
+        }
+
+        if ( _uri.isSet() )
+        {
+            conf.addIfSet( "url", _uri );
+        }
+        else
+        {
+            for( SkinResourceMap::const_iterator i = _skins.begin(); i != _skins.end(); ++i )
+            {
+                SkinResource* res = i->second.get();
+                conf.add( res->getConfig() );
+            }
+
+            for( MarkerResourceMap::const_iterator i = _markers.begin(); i != _markers.end(); ++i )
+            {
+                MarkerResource* res = i->second.get();
+                conf.add( res->getConfig() );
+            }
+        }
+    }
+    return conf;
 }
 
 void
@@ -88,6 +141,11 @@ ResourceLibrary::addResource( Resource* resource )
     {
         Threading::ScopedWriteLock exclusive(_mutex);
         _skins[resource->name()] = static_cast<SkinResource*>(resource);
+    }
+    else if ( dynamic_cast<MarkerResource*>(resource) )
+    {
+        Threading::ScopedWriteLock exclusive(_mutex);
+        _markers[resource->name()] = static_cast<MarkerResource*>(resource);
     }
     else
     {
@@ -105,17 +163,51 @@ ResourceLibrary::removeResource( Resource* resource )
     }
 }
 
-SkinResource*
-ResourceLibrary::getSkin( const std::string& name ) const
+void
+ResourceLibrary::initialize( const osgDB::Options* dbOptions )
 {
+    if ( !_initialized )
+    {
+        static Threading::Mutex s_initMutex;
+        Threading::ScopedMutexLock exclusive(s_initMutex);
+        if ( !_initialized )
+        {
+            if ( _uri.isSet() )
+            {
+                osg::ref_ptr<XmlDocument> xml = XmlDocument::load( *_uri, dbOptions );
+                if ( xml.valid() )
+                {
+                    Config conf = xml->getConfig();
+                    if ( conf.key() == "resources" )
+                    {
+                        mergeConfig( conf );
+                    }
+                    else
+                    {
+                        const Config& child = conf.child("resources");
+                        if ( !child.empty() )
+                            mergeConfig( child );
+                    }
+                }
+            }
+            _initialized = true;
+        }
+    }
+}
+
+SkinResource*
+ResourceLibrary::getSkin( const std::string& name, const osgDB::Options* dbOptions ) const
+{
+    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
     Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
     SkinResourceMap::const_iterator i = _skins.find( name );
     return i != _skins.end() ? i->second.get() : 0L;
 }
 
 void
-ResourceLibrary::getSkins( SkinResourceVector& output ) const
+ResourceLibrary::getSkins( SkinResourceVector& output, const osgDB::Options* dbOptions ) const
 {
+    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
     Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
     output.reserve( _skins.size() );
     for( SkinResourceMap::const_iterator i = _skins.begin(); i != _skins.end(); ++i )
@@ -123,8 +215,9 @@ ResourceLibrary::getSkins( SkinResourceVector& output ) const
 }
 
 void
-ResourceLibrary::getSkins( const SkinSymbol* symbol, SkinResourceVector& output ) const
+ResourceLibrary::getSkins( const SkinSymbol* symbol, SkinResourceVector& output, const osgDB::Options* dbOptions ) const
 {
+    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
     Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
 
     for( SkinResourceMap::const_iterator i = _skins.begin(); i != _skins.end(); ++i )
@@ -138,8 +231,9 @@ ResourceLibrary::getSkins( const SkinSymbol* symbol, SkinResourceVector& output 
 }
 
 SkinResource*
-ResourceLibrary::getSkin( const SkinSymbol* symbol, Random& prng ) const
+ResourceLibrary::getSkin( const SkinSymbol* symbol, Random& prng, const osgDB::Options* dbOptions ) const
 {
+    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
     SkinResourceVector candidates;
     getSkins( symbol, candidates );
     unsigned size = candidates.size();
@@ -200,4 +294,26 @@ ResourceLibrary::matches( const SkinSymbol* q, SkinResource* s ) const
     }
 
     return true;
+}
+
+MarkerResource*
+ResourceLibrary::getMarker( const std::string& name, const osgDB::Options* dbOptions ) const
+{
+    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
+    Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
+    MarkerResourceMap::const_iterator i = _markers.find( name );
+    return i != _markers.end() ? i->second.get() : 0L;
+}
+
+void
+ResourceLibrary::getMarkers( MarkerResourceVector& output, const osgDB::Options* dbOptions ) const
+{
+    const_cast<ResourceLibrary*>(this)->initialize( dbOptions );
+    Threading::ScopedReadLock shared( const_cast<ResourceLibrary*>(this)->_mutex );
+
+    output.clear();
+    output.reserve( _markers.size() );
+
+    for( MarkerResourceMap::const_iterator i = _markers.begin(); i != _markers.end(); ++i )
+        output.push_back( i->second.get() );
 }

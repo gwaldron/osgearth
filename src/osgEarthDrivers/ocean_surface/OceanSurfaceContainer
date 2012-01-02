@@ -39,7 +39,7 @@ public:
 
 public: // osg::Node
 
-    void traverse( osg::NodeVisitor& nv );
+    //void traverse( osg::NodeVisitor& nv );
 
 private:
     osg::observer_ptr<MapNode> _parentMapNode;

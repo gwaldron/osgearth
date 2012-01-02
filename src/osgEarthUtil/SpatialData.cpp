@@ -60,7 +60,9 @@ namespace
         
         std::stringstream buf;
         buf << num;
-        t->setText( buf.str() );
+        std::string str;
+        str = buf.str();
+        t->setText( str );
         t->setCharacterSizeMode( osgText::TextBase::SCREEN_COORDS );
         t->setCharacterSize( 22.0f );
         t->setAutoRotateToScreen( true );
@@ -369,7 +371,9 @@ GeoCell::adjustCount( int delta )
             osgText::Text* t = static_cast<osgText::Text*>( _clusterGeode->getDrawable(0) );
             std::stringstream buf;
             buf << _count;
-            t->setText( buf.str() );
+            std::string str;
+            str = buf.str();
+            t->setText( str );
         }
 #endif
     }

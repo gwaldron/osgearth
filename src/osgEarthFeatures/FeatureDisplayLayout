@@ -44,9 +44,6 @@ namespace osgEarth { namespace Features
         float minRange() const { return _minRange; }
         float maxRange() const { return _maxRange; }
 
-        //optional<unsigned>& lod() { return _lod; }
-        //const optional<unsigned>& lod() const { return _lod; }
-
         const StyleSelectorVector& selectors() const { return _selectors; }
 
     public:

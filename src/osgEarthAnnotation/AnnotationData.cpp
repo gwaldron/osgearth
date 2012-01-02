@@ -22,7 +22,8 @@
 using namespace osgEarth::Annotation;
 
 AnnotationData::AnnotationData() :
-_viewpoint( 0L )
+_viewpoint( 0L ),
+_priority ( 0.0f )
 {
     //nop
 }

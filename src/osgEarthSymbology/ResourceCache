@@ -23,11 +23,13 @@
 #include <osgEarthSymbology/Common>
 #include <osgEarthSymbology/Skins>
 #include <osgEarthSymbology/MarkerResource>
-#include <osgEarth/Utils>
+#include <osgEarth/Containers>
 #include <osgEarth/ThreadingUtils>
 
 namespace osgEarth { namespace Symbology
 {
+    using namespace osgEarth;
+
     /**
      * Caches the runtime objects created by resources, so we can avoid creating them
      * each time they are referenced.

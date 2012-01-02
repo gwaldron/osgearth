@@ -69,11 +69,12 @@ namespace osgEarth
 
         /**
          * Whether mipmapping is enabled on the projected overlay texture. Mapmapping
-         * will improve the visual appearance, but will use more memory, and may affect
-         * performance for overlays that are dynamic.
+         * will improve the visual appearance, but will use more memory, and will affect
+         * performance for overlays that are dynamic. Mipmapping can slow things down
+         * a LOT on some GPUs (e.g. Intel GMA)
          */
-        void setMipmapping( bool value );
-        bool getMipmapping() const { return _mipmapping; }
+        void setMipMapping( bool value );
+        bool getMipMapping() const { return _mipmapping; }
 
         /**
          * Whether to employ overlay warping. Warping can help increase the apparent
@@ -134,6 +135,12 @@ namespace osgEarth
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<osgEarth::VirtualProgram>  _vp;
         osg::ref_ptr<TerrainEngineNode>         _engine;
+
+    public:
+        // marker class for DrapeableNode support.
+        struct InternalNodeVisitor : public osg::NodeVisitor {
+            InternalNodeVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
+        };
     };
 
 } // namespace osgEarth

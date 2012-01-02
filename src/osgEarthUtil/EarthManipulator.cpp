@@ -344,7 +344,10 @@ EarthManipulator::Settings::bindScroll(ActionType action, int scrolling_motion,
 const EarthManipulator::Action&
 EarthManipulator::Settings::getAction(int event_type, int input_mask, int modkey_mask) const
 {
-    InputSpec spec( event_type, input_mask, modkey_mask );
+    //Build the input spec but remove the numlock and caps lock from the modkey mask.  On Linux these seem to be passed in as part of the modkeymask
+    //if they are on.  So if you bind an action like SCROLL to a modkey mask of 0 or a modkey mask of ctrl it will never match the spec exactly b/c 
+    //the modkey mask also includes capslock and numlock.
+    InputSpec spec( event_type, input_mask, modkey_mask & ~osgGA::GUIEventAdapter::MODKEY_NUM_LOCK & ~osgGA::GUIEventAdapter::MODKEY_CAPS_LOCK);
     ActionBindings::const_iterator i = _bindings.find(spec);
     return i != _bindings.end() ? i->second : NullAction;
     //for( ActionBindings::const_iterator i = _bindings.begin(); i != _bindings.end(); i++ )
@@ -397,7 +400,9 @@ EarthManipulator::Settings::setAutoViewpointDurationLimits( double minSeconds, d
 
 
 EarthManipulator::EarthManipulator() :
-_last_action( ACTION_NULL )
+osgGA::MatrixManipulator(),
+_last_action      ( ACTION_NULL ),
+_frame_count      ( 0 )
 {
     reinitialize();
     configureDefaultSettings();
@@ -422,7 +427,7 @@ _local_pitch( rhs._local_pitch  ),
 _has_pending_viewpoint( rhs._has_pending_viewpoint ),
 _homeViewpoint( rhs._homeViewpoint.get() ),
 _homeViewpointDuration( rhs._homeViewpointDuration ),
-_after_first_frame( rhs._after_first_frame ),
+_frame_count( rhs._frame_count ),
 _lastPointOnEarth( rhs._lastPointOnEarth ),
 _arc_height( rhs._arc_height )
 {
@@ -784,7 +789,7 @@ EarthManipulator::getRotation(const osg::Vec3d& point) const
 void
 EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 {
-    if ( !established() ) // !_node.valid() ) // || !_after_first_frame )
+    if ( !established() ) 
     {
         _pending_viewpoint = vp;
         _pending_viewpoint_duration_s = duration_s;
@@ -1210,8 +1215,11 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             aa.requestRedraw();
         }
 
-        if ( _setting_viewpoint )
+        else if ( _setting_viewpoint && _node.valid() )
         {
+            if ( _frame_count < 2 )
+                _time_s_set_viewpoint = _time_s_now;
+
             updateSetViewpoint();
             aa.requestRedraw();
         }
@@ -1234,7 +1242,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 aa.requestRedraw();
         }
 
-        _after_first_frame = true;
+        _frame_count++;
 
         return false;
     }
@@ -1302,16 +1310,15 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         case osgGA::GUIEventAdapter::DOUBLECLICK:
             // bail out of continuous mode if necessary:
             _continuous = false;
-
             addMouseEvent( ea );
-			if (_mouse_down_event)
-			{
-				action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-				if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
-					aa.requestRedraw();
-				resetMouse( aa );
-				handled = true;
-			}
+            if (_mouse_down_event)
+            {
+	        action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+	        if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
+		    aa.requestRedraw();
+	        resetMouse( aa );
+	        handled = true;
+            }
             break;
 
         case osgGA::GUIEventAdapter::MOVE: // MOVE not currently bindable
@@ -1845,18 +1852,9 @@ EarthManipulator::rotate( double dx, double dy )
 
 void
 EarthManipulator::zoom( double dx, double dy )
-{
-    double fd = 1000;
+{    
     double scale = 1.0f + dy;
-
-    if ( fd * scale > _settings->getMinDistance() )
-    {
-        setDistance( _distance * scale );
-    }
-    else
-    {
-		setDistance( _settings->getMinDistance() );
-    }
+    setDistance( _distance * scale );    
 }
 
 bool

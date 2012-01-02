@@ -18,12 +18,13 @@
 */
 
 #include <osgEarthAnnotation/PlaceNode>
-#include <osgEarthAnnotation/LabelNode>
+#include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
-#include <osgText/Text>
 #include <osg/Depth>
+
+#define LC "[PlaceNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -40,7 +41,24 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
 OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
 _image  ( image ),
 _text   ( text ),
-_style  ( style )
+_style  ( style ),
+_geode  ( 0L )
+{
+    init();
+}
+
+PlaceNode::PlaceNode(MapNode*           mapNode,
+                     double             x,
+                     double             y,
+                     osg::Image*        image,
+                     const std::string& text,
+                     const Style&       style ) :
+
+OrthoNode( mapNode->getMap()->getProfile()->getSRS(), osg::Vec3d(x,y,0) ),
+_image  ( image ),
+_text   ( text ),
+_style  ( style ),
+_geode  ( 0L )
 {
     init();
 }
@@ -48,73 +66,102 @@ _style  ( style )
 void
 PlaceNode::init()
 {
-    osg::Texture2D* texture = new osg::Texture2D();
-    texture->setFilter(osg::Texture::MIN_FILTER,osg::Texture::LINEAR);
-    texture->setFilter(osg::Texture::MAG_FILTER,osg::Texture::LINEAR);
-    texture->setResizeNonPowerOfTwoHint(false);
-    texture->setImage( _image.get() );
+    _geode = new osg::Geode();
 
-    // set up the drawstate.
-    osg::StateSet* dstate = new osg::StateSet;
-    dstate->setMode(GL_CULL_FACE,osg::StateAttribute::OFF);
-    dstate->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
-    dstate->setMode(GL_BLEND, 1);
-    dstate->setTextureAttributeAndModes(0, texture,osg::StateAttribute::ON);   
+    osg::Drawable* text = 0L;
 
-    // set up the geoset.
-    osg::Geometry* geom = new osg::Geometry();
-    geom->setStateSet(dstate);
+    if ( _image.get() )
+    {
+        // this offset anchors the image at the bottom
+        osg::Vec2s offset( 0.0, _image->t()/2.0 );
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( _image.get(), offset );
+        if ( imageGeom )
+            _geode->addDrawable( imageGeom );
 
-    osg::Vec3Array* coords = new osg::Vec3Array(4);
-    (*coords)[0].set( -_image->s()/2.0, 0, 0 );
-    (*coords)[1].set( -_image->s()/2.0 + _image->s(), 0, 0 );
-    (*coords)[2].set( -_image->s()/2.0 + _image->s(), _image->t()-1, 0 );
-    (*coords)[3].set( -_image->s()/2.0, _image->t()-1, 0 );
-    geom->setVertexArray(coords);
+        text = AnnotationUtils::createTextDrawable(
+            _text,
+            _style.get<TextSymbol>(),
+            osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ) );
+    }
+    else
+    {
+        text = AnnotationUtils::createTextDrawable(
+            _text,
+            _style.get<TextSymbol>(),
+            osg::Vec3( 0, 0, 0 ) );
+    }
 
-    osg::Vec2Array* tcoords = new osg::Vec2Array(4);
-    (*tcoords)[0].set(0, 0);
-    (*tcoords)[1].set(1, 0);
-    (*tcoords)[2].set(1, 1);
-    (*tcoords)[3].set(0, 1);
-    geom->setTexCoordArray(0,tcoords);
-
-    osg::Vec4Array* colors = new osg::Vec4Array(1);
-    (*colors)[0].set(1.0f,1.0f,1.0,1.0f);
-    geom->setColorArray(colors);
-    geom->setColorBinding(osg::Geometry::BIND_OVERALL);
-
-    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
-
-    osg::Drawable* text = LabelUtils::createText(
-        osg::Vec3( _image->s()/2.0 + 2, _image->t()/2.0, 0 ),
-        _text,
-        _style.get<TextSymbol>() );
-
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( text );
-    geode->addDrawable( geom );
+    if ( text )
+        _geode->addDrawable( text );
     
-    osg::StateSet* stateSet = geode->getOrCreateStateSet();
+    osg::StateSet* stateSet = _geode->getOrCreateStateSet();
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
-    this->attach( geode );
+    getAttachPoint()->addChild( _geode );
 }
 
 void
 PlaceNode::setIconImage( osg::Image* image )
 {
-    //todo
+    if ( !_dynamic )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
 }
 
 void
 PlaceNode::setText( const std::string& text )
 {
-    //todo
+    if ( !_dynamic )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        osgText::Text* d = dynamic_cast<osgText::Text*>( i->get() );
+        if ( d )
+        {
+            d->setText( text );
+            break;
+        }
+    }
 }
 
 void
 PlaceNode::setStyle( const Style& style )
 {
-    //todo
+    if ( !_dynamic )
+    {
+        OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
+        return;
+    }
+}
+
+void
+PlaceNode::setAnnotationData( AnnotationData* data )
+{
+    OrthoNode::setAnnotationData( data );
+
+    // override this method so we can attach the anno data to the drawables.
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        i->get()->setUserData( data );
+    }
+}
+
+void
+PlaceNode::setDynamic( bool value )
+{
+    OrthoNode::setDynamic( value );
+
+    const osg::Geode::DrawableList& list = _geode->getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        i->get()->setDataVariance( value ? osg::Object::DYNAMIC : osg::Object::STATIC );
+    }
 }

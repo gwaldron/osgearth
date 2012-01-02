@@ -549,7 +549,18 @@ namespace
 
 //---------------------------------------------------------------------------
 
-SkyNode::SkyNode( Map* map, const std::string& starFile )
+SkyNode::SkyNode( Map* map, const std::string& starFile, float minStarMagnitude ) : _minStarMagnitude(minStarMagnitude)
+{
+    initialize(map, starFile);
+}
+
+SkyNode::SkyNode( Map *map, float minStarMagnitude) : _minStarMagnitude(minStarMagnitude)
+{
+    initialize(map);
+}
+
+void
+SkyNode::initialize( Map *map, const std::string& starFile )
 {
     // intialize the default settings:
     _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
@@ -569,6 +580,14 @@ SkyNode::SkyNode( Map* map, const std::string& starFile )
     // make the ephemeris (note: order is important here)
     makeAtmosphere( _ellipsoidModel.get() );
     makeSun();
+
+    if (_minStarMagnitude < 0)
+    {
+      const char* magEnv = ::getenv("OSGEARTH_MIN_STAR_MAGNITUDE");
+      if (magEnv)
+        _minStarMagnitude = as<float>(std::string(magEnv), -1.0f);
+    }
+
     makeStars(starFile);
 }
 
@@ -1034,6 +1053,9 @@ SkyNode::getDefaultStars(std::vector<StarData>& out_stars)
   {
     std::stringstream ss(*sptr);
     out_stars.push_back(StarData(ss));
+
+    if (out_stars[out_stars.size() - 1].magnitude < _minStarMagnitude)
+      out_stars.pop_back();
   }
 }
 
@@ -1062,6 +1084,9 @@ SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_s
 
     std::stringstream ss(line);
     out_stars.push_back(StarData(ss));
+
+    if (out_stars[out_stars.size() - 1].magnitude < _minStarMagnitude)
+      out_stars.pop_back();
   }
 
   in.close();

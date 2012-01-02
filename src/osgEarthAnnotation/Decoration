@@ -28,34 +28,6 @@ namespace osgEarth { namespace Annotation
 
     //-----------------------------------------------------------------------
 
-    // utility: functor for traversing a target node
-    template<typename T> struct TraverseFunctor {
-        T* _target;
-        TraverseFunctor(T* target) : _target(target) { }
-        void operator()(osg::NodeVisitor& nv) { _target->T::traverse(nv); }
-    };
-
-    // utility: node that traverses another node via a functor
-    template<typename T>
-    struct TraverseNode : public osg::Node {
-        TraverseFunctor<T> _tf;
-        TraverseNode(TraverseFunctor<T>& tf) : _tf(tf) { }
-        void traverse(osg::NodeVisitor& nv) { _tf(nv); }
-        osg::BoundingSphere computeBound() const { return _tf._target->getBound(); }
-    };
-
-    // utility: cull callback that traverses another node
-    struct TraverseNodeCallback : public osg::NodeCallback {
-        osg::ref_ptr<osg::Node> _node;
-        TraverseNodeCallback(osg::Node* node) : _node(node) { }
-        void operator()(osg::Node* node, osg::NodeVisitor* nv) {
-            _node->accept(*nv);
-            traverse(node, nv);
-        }
-    };
-
-    //-----------------------------------------------------------------------
-
     class OSGEARTHANNO_EXPORT Decoration : public osg::Referenced
     {
     public:

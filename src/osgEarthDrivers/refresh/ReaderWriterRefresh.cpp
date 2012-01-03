@@ -88,14 +88,9 @@ public:
           _time(time),
           _lastUpdateTime(0),
           osg::ImageStream()
-      {          
-          OE_NOTICE << "RefreshImage " << _filename << " freq=" << _time << std::endl;
+      {                    
           osg::ref_ptr< osg::Image > image = osgDB::readImageFile( filename );
           if (image.valid()) copyImage( image.get() );
-          else
-          {
-              OE_NOTICE << "Couldn't load " << _filename << std::endl;
-          }
       }      
 
 
@@ -151,7 +146,6 @@ public:
        */
       void copyImage( osg::Image* image)
       {
-          OE_NOTICE << "copying image" << std::endl;
           if (image)
           {
               unsigned char* data = new unsigned char[ image->getTotalSizeInBytes() ];

@@ -18,10 +18,10 @@
 */
 
 #include <osgEarth/TileSource>
-#include <osgEarth/TMS>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarthUtil/TMS>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -37,6 +37,7 @@
 #include "TMSOptions"
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
 
 #define LC "[TMS driver] "

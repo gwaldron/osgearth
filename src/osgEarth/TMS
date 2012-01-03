@@ -39,10 +39,13 @@
 #include <osgDB/Options>
 #endif
 
-namespace osgEarth
-{
+namespace osgEarth 
+{   
     class TileSource;
+}
 
+namespace osgEarth { namespace TMS
+{
     /**
      * TMS tile format.  Specifies format information of a tile
      */
@@ -423,6 +426,7 @@ namespace osgEarth
         TileMapReaderWriter();
         TileMapReaderWriter(const TileMapReaderWriter &tmr);
     };
-}
+
+} } // namespace osgEarth::TMS
 
 #endif //OSGEARTH_TMS_H

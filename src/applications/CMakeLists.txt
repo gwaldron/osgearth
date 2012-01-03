@@ -50,3 +50,5 @@ ADD_SUBDIRECTORY(osgearth_shadercomp)
 ADD_SUBDIRECTORY(osgearth_tilesource)
 ADD_SUBDIRECTORY(osgearth_imageoverlay)
 ADD_SUBDIRECTORY(osgearth_city)
+ADD_SUBDIRECTORY(osgearth_package)
+

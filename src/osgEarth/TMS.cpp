@@ -35,6 +35,7 @@
 #include <iomanip>
 
 using namespace osgEarth;
+using namespace osgEarth::TMS;
 
 #define LC "[TMS] "
 

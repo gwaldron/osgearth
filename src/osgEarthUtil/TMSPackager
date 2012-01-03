@@ -35,8 +35,11 @@ namespace osgEarth { namespace Util
     class OSGEARTHUTIL_EXPORT TMSPackager
     {
     public:
-        /** Constructs a new packager. */
-        TMSPackager();
+        /**
+         * Constructs a new packager.
+         * @param profile    Profile of packaged tile data (required)
+         */
+        TMSPackager( const Profile* outProfile );
 
         /**
          * Whether to dump out progress messages 
@@ -53,6 +56,12 @@ namespace osgEarth { namespace Util
         bool getAbortOnError() const { return _abortOnError; }
 
         /**
+         * Maximum level of detail of tiles to package
+         */
+        void setMaxLevel( unsigned value ) { _maxLevel = value; }
+        unsigned getMaxLevel() const { return _maxLevel; }
+
+        /**
          * Result structure for method calls
          */
         struct Result {
@@ -66,26 +75,22 @@ namespace osgEarth { namespace Util
         /**
          * Packages an image layer as a TMS repository.
          * @param layer          Image layer to export
-         * @param outProfile     Profile of packaged TMS repo
-         * @param outDirectory   Root folder of TMS repo
+         * @param rootFolder     Root output folder of TMS repo
          * @param imageExtension (optional) Force an image type extension (e.g., "jpg")
          */
         Result package(
             ImageLayer*        layer,
-            const Profile*     outProfile,
-            const std::string& outDirectory,
+            const std::string& rootFolder,
             const std::string& imageExtension ="png" );
 
         /**
          * Packages an elevation layer as a TMS repository.
-         * @param layer          Image layer to export
-         * @param outProfile     Profile of packaged TMS repo
-         * @param outDirectory   Root folder of TMS repo
+         * @param layer          Image layer to 
+         * @param rootFolder     Root output folder of TMS repo
          */
-        Result package(
+        Result package( 
             ElevationLayer*    layer,
-            const Profile*     outProfile,
-            const std::string& outDirectory );
+            const std::string& rootFolder );
 
     protected:
 
@@ -105,8 +110,10 @@ namespace osgEarth { namespace Util
 
     protected:
 
-        bool _verbose;
-        bool _abortOnError;
+        bool                        _verbose;
+        bool                        _abortOnError;
+        unsigned                    _maxLevel;
+        osg::ref_ptr<const Profile> _outProfile;
 
     };
 

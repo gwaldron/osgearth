@@ -29,6 +29,7 @@ SET(LIB_PUBLIC_HEADERS
     SkyNode
     SpatialData
     StarData
+    TMS
     TMSPackager
 	WFS
     WMS
@@ -52,6 +53,7 @@ SET(LIB_COMMON_FILES
     Pickers.cpp
     SpatialData.cpp
     SkyNode.cpp
+    TMS.cpp
     TMSPackager.cpp
 	WFS.cpp
     WMS.cpp

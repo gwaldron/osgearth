@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/TMSPackager>
-#include <osgEarth/TMS>
+#include <osgEarthUtil/TMS>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/ImageToHeightFieldConverter>
 #include <osgDB/FileUtils>
@@ -30,7 +30,9 @@ using namespace osgEarth::Util;
 using namespace osgEarth;
 
 
-TMSPackager::TMSPackager() :
+TMSPackager::TMSPackager(const Profile* outProfile) :
+_outProfile  ( outProfile ),
+_maxLevel    ( 5 ),
 _verbose     ( false ),
 _abortOnError( true )
 {
@@ -86,8 +88,9 @@ TMSPackager::packageImageTile(ImageLayer*          layer,
             return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
         }
 
-        if (!layer->getImageLayerOptions().maxLevel().isSet() ||
-            key.getLevelOfDetail() < *layer->getImageLayerOptions().maxLevel())
+        if ((key.getLevelOfDetail() + 1 < _maxLevel) &&
+            (!layer->getImageLayerOptions().maxLevel().isSet() ||
+             key.getLevelOfDetail() + 1 < *layer->getImageLayerOptions().maxLevel()))
         {
             for( unsigned q=0; q<4; ++q )
             {
@@ -150,8 +153,9 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
             return Result( Stringify() << "Aborting, write failed for tile " << key.str() );
         }
 
-        if (!layer->getElevationLayerOptions().maxLevel().isSet() ||
-            key.getLevelOfDetail() < *layer->getElevationLayerOptions().maxLevel())
+        if ((key.getLevelOfDetail() + 1 < _maxLevel) &&
+            (!layer->getElevationLayerOptions().maxLevel().isSet() ||
+             key.getLevelOfDetail() + 1 < *layer->getElevationLayerOptions().maxLevel()))
         {
             for( unsigned q=0; q<4; ++q )
             {
@@ -169,21 +173,20 @@ TMSPackager::packageElevationTile(ElevationLayer*      layer,
 
 TMSPackager::Result
 TMSPackager::package(ImageLayer*        layer,
-                     const Profile*     outProfile,
-                     const std::string& target,
+                     const std::string& rootFolder,
                      const std::string& imageExtension)
 {
-    if ( !layer || !outProfile )
+    if ( !layer || !_outProfile.valid() )
         return Result( "Illegal null layer or profile" );
 
     // attempt to create the output folder:
-    osgDB::makeDirectory( target );
-    if ( !osgDB::fileExists( target ) )
+    osgDB::makeDirectory( rootFolder );
+    if ( !osgDB::fileExists( rootFolder ) )
         return Result( "Unable to create output folder" );
 
     // collect the root tile keys in preparation for packaging:
     std::vector<TileKey> rootKeys;
-    outProfile->getRootKeys( rootKeys );
+    _outProfile->getRootKeys( rootKeys );
 
     if ( rootKeys.size() == 0 )
         return Result( "Unable to calculate root key set" );
@@ -207,7 +210,7 @@ TMSPackager::package(ImageLayer*        layer,
     unsigned maxLevel = 0;
     for( std::vector<TileKey>::const_iterator i = rootKeys.begin(); i != rootKeys.end(); ++i )
     {
-        Result r = packageImageTile( layer, *i, target, imageExtension, maxLevel );
+        Result r = packageImageTile( layer, *i, rootFolder, imageExtension, maxLevel );
         if ( _abortOnError && !r.ok )
             return r;
     }
@@ -215,7 +218,7 @@ TMSPackager::package(ImageLayer*        layer,
     // create the tile map metadata:
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
-        outProfile,
+        _outProfile.get(),
         imageExtension,
         testImage.getImage()->s(),
         testImage.getImage()->t() );
@@ -226,7 +229,7 @@ TMSPackager::package(ImageLayer*        layer,
     tileMap->generateTileSets( maxLevel + 1 );
 
     // write out the tilemap catalog:
-    std::string tileMapFilename = osgDB::concatPaths(target, "tms.xml");
+    std::string tileMapFilename = osgDB::concatPaths(rootFolder, "tms.xml");
     TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );
 
     return Result();
@@ -235,20 +238,19 @@ TMSPackager::package(ImageLayer*        layer,
 
 TMSPackager::Result
 TMSPackager::package(ElevationLayer*    layer,
-                     const Profile*     outProfile,
-                     const std::string& target)
+                     const std::string& rootFolder)
 {
-    if ( !layer || !outProfile )
+    if ( !layer || !_outProfile.valid() )
         return Result( "Illegal null layer or profile" );
 
     // attempt to create the output folder:
-    osgDB::makeDirectory( target );
-    if ( !osgDB::fileExists( target ) )
+    osgDB::makeDirectory( rootFolder );
+    if ( !osgDB::fileExists( rootFolder ) )
         return Result( "Unable to create output folder" );
 
     // collect the root tile keys in preparation for packaging:
     std::vector<TileKey> rootKeys;
-    outProfile->getRootKeys( rootKeys );
+    _outProfile->getRootKeys( rootKeys );
 
     if ( rootKeys.size() == 0 )
         return Result( "Unable to calculate root key set" );
@@ -263,7 +265,7 @@ TMSPackager::package(ElevationLayer*    layer,
     unsigned maxLevel = 0;
     for( std::vector<TileKey>::const_iterator i = rootKeys.begin(); i != rootKeys.end(); ++i )
     {
-        Result r = packageElevationTile( layer, *i, target, extension, maxLevel );
+        Result r = packageElevationTile( layer, *i, rootFolder, extension, maxLevel );
         if ( _abortOnError && !r.ok )
             return r;
     }
@@ -271,7 +273,7 @@ TMSPackager::package(ElevationLayer*    layer,
     // create the tile map metadata:
     osg::ref_ptr<TMS::TileMap> tileMap = TMS::TileMap::create(
         "",
-        outProfile,
+        _outProfile.get(),
         extension,
         testHF.getHeightField()->getNumColumns(),
         testHF.getHeightField()->getNumRows() );
@@ -282,7 +284,7 @@ TMSPackager::package(ElevationLayer*    layer,
     tileMap->generateTileSets( maxLevel + 1 );
 
     // write out the tilemap catalog:
-    std::string tileMapFilename = osgDB::concatPaths(target, "tms.xml");
+    std::string tileMapFilename = osgDB::concatPaths(rootFolder, "tms.xml");
     TMS::TileMapReaderWriter::write( tileMap.get(), tileMapFilename );
 
     return Result();

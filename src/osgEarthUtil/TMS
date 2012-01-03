@@ -23,8 +23,10 @@
  * (http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification)
  */
 
-#ifndef OSGEARTH_TMS_H
-#define OSGEARTH_TMS_H 1
+#ifndef OSGEARTH_UTIL_TMS_H
+#define OSGEARTH_UTIL_TMS_H 1
+
+#include <osgEarthUtil/Common>
 
 #include <vector>
 #include <iostream>
@@ -44,12 +46,12 @@ namespace osgEarth
     class TileSource;
 }
 
-namespace osgEarth { namespace TMS
+namespace osgEarth { namespace Util { namespace TMS
 {
     /**
      * TMS tile format.  Specifies format information of a tile
      */
-    class OSGEARTH_EXPORT TileFormat
+    class OSGEARTHUTIL_EXPORT TileFormat
     {
     public:
         TileFormat();
@@ -104,7 +106,7 @@ namespace osgEarth { namespace TMS
     /**
     *TMS tile set.  A collection of tiled images at a given zoom level.
     */
-    class OSGEARTH_EXPORT TileSet
+    class OSGEARTHUTIL_EXPORT TileSet
     {
     public:
         TileSet();
@@ -148,7 +150,7 @@ namespace osgEarth { namespace TMS
     /**
     *A TMS tile map
     */
-    class OSGEARTH_EXPORT TileMap : public osg::Referenced
+    class OSGEARTHUTIL_EXPORT TileMap : public osg::Referenced
     {
     public:
         TileMap();
@@ -413,7 +415,7 @@ namespace osgEarth { namespace TMS
         DataExtentList _dataExtents;
     };
 
-    class OSGEARTH_EXPORT TileMapReaderWriter
+    class OSGEARTHUTIL_EXPORT TileMapReaderWriter
     {
     public:
         static TileMap* read( const std::string &location, const osgDB::ReaderWriter::Options* options );
@@ -427,6 +429,6 @@ namespace osgEarth { namespace TMS
         TileMapReaderWriter(const TileMapReaderWriter &tmr);
     };
 
-} } // namespace osgEarth::TMS
+} } } // namespace osgEarth::Util::TMS
 
-#endif //OSGEARTH_TMS_H
+#endif //OSGEARTHUTIL_TMS_H

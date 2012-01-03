@@ -504,7 +504,7 @@ main(int argc, char** argv)
         {
             KMLOptions kmlo;
             kmlo.declutter() = true;
-            kmlo.defaultIconImage() = osgDB::readImageFile("http://www.osgearth.org/chrome/site/pushpin_yellow.png");
+            kmlo.defaultIconImage() = URI("http://www.osgearth.org/chrome/site/pushpin_yellow.png").getImage();
 
             osg::Node* kml = KML::load( URI(kmlFile), mapNode, kmlo );
             if ( kml )

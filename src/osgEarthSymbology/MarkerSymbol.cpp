@@ -44,6 +44,7 @@ MarkerSymbol::getConfig() const
     conf.addIfSet( "placement", "random",   _placement, PLACEMENT_RANDOM );
     conf.addIfSet( "density", _density );
     conf.addIfSet( "random_seed", _randomSeed );
+    conf.addIfSet( "is_model", _isModelHint );
     conf.addNonSerializable( "MarkerSymbol::image", _image.get() );
     conf.addNonSerializable( "MarkerSymbol::node", _node.get() );
     return conf;
@@ -61,6 +62,7 @@ MarkerSymbol::mergeConfig( const Config& conf )
     conf.getIfSet( "density", _density );
     conf.getIfSet( "random_seed", _randomSeed );
     conf.getIfSet( "orientation", _orientation);
+    conf.getIfSet( "is_model", _isModelHint );
     _image = conf.getNonSerializable<osg::Image>( "MarkerSymbol::image" );
     _node = conf.getNonSerializable<osg::Node>( "MarkerSymbol::node" );
 }

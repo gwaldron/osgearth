@@ -31,12 +31,16 @@ namespace osgEarth
     /**
      * String wrapped in an osg::Object (for I/O purposes)
      */
-    struct StringObject : public osg::Object, public std::string
+    class OSGEARTH_EXPORT StringObject : public osg::Object
     {
-        StringObject() { }
-        StringObject( const StringObject& rhs, const osg::CopyOp& op ) { }
-        StringObject( const std::string& in ) : std::string(in) { }
+    public:
+        StringObject();
+        StringObject( const StringObject& rhs, const osg::CopyOp& op ) : osg::Object(rhs, op), _str(rhs._str) { }
+        StringObject( const std::string& in ) : osg::Object(), _str(in) { }
         META_Object( osgEarth, StringObject );
+        const std::string& getString() const { return _str; }
+    private:
+        std::string _str;
     };
 
 //--------------------------------------------------------------------
@@ -119,7 +123,7 @@ namespace osgEarth
         T* release() { return dynamic_cast<T*>(_result.get())? static_cast<T*>(_result.release()) : 0L; }
 
         /** The result as a string */
-        const std::string& getString() const { return dynamic_cast<StringObject*>(_result.get()) ? *static_cast<StringObject*>(_result.get()) : _emptyString; }
+        const std::string& getString() const { const StringObject* so = dynamic_cast<StringObject*>(_result.get()); return so ? so->getString() : _emptyString; } //return dynamic_cast<StringObject*>(_result.get()) ? *static_cast<StringObject*>(_result.get()) : _emptyString; }
         
         /** Gets a string describing the read result */
         static std::string getResultCodeString( unsigned code )

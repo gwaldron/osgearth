@@ -266,6 +266,8 @@ MapNode::init()
         _overlayDecorator->setOverlayBlending( *_mapNodeOptions.overlayBlending() );
     if ( _mapNodeOptions.overlayTextureSize().isSet() )
         _overlayDecorator->setTextureSize( *_mapNodeOptions.overlayTextureSize() );
+    if ( _mapNodeOptions.overlayMipMapping().isSet() )
+        _overlayDecorator->setMipMapping( *_mapNodeOptions.overlayMipMapping() );
     addTerrainDecorator( _overlayDecorator.get() );
 
     // install any pre-existing model layers:

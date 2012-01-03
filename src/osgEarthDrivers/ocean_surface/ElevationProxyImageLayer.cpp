@@ -48,7 +48,7 @@ ElevationProxyImageLayer::isCached( const TileKey& key ) const
 }
 
 GeoImage
-ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* progress) 
+ElevationProxyImageLayer::createImage(const TileKey& key, ProgressCallback* progress, bool forceFallback)
 {
     osg::ref_ptr<Map> map = _sourceMap.get();
     if ( map.valid() )

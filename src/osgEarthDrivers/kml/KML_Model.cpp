@@ -41,10 +41,12 @@ KML_Model::parseCoords( const Config& conf, KMLContext& cx )
 void
 KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
 {    
-    MarkerSymbol* marker = new MarkerSymbol;
+    MarkerSymbol* marker = 0L;
+    
     Config link = conf.child("link");
     if (!link.empty())
     {
+        if ( !marker ) marker = style.getOrCreate<MarkerSymbol>();
         marker->url() = StringExpression( link.value("href") );
         marker->url()->setURIContext( URIContext(conf.referrer()) );        
     }
@@ -52,6 +54,7 @@ KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
     Config scale = conf.child("scale");
     if (!scale.empty())
     {
+        if ( !marker ) marker = style.getOrCreate<MarkerSymbol>();
         //TODO:  Support XYZ scale instead of single value
         marker->scale() = scale.value("x", 1.0);
     }
@@ -59,13 +62,16 @@ KML_Model::parseStyle(const Config& conf, KMLContext& cx, Style& style)
     Config orientation = conf.child("orientation");
     if (!orientation.empty())
     {
+        if ( !marker ) marker = style.getOrCreate<MarkerSymbol>();
         double h = orientation.value("heading", 0);
         double p = orientation.value("tilt", 0);
         double r = orientation.value("roll", 0);        
         marker->orientation() = osg::Vec3d(h,p,r);
-    }    
+    }
 
+    // since we know this is a model, not an icon.
+    if ( marker )
+        marker->isModel() = true;
 
-    style.addSymbol( marker );
     KML_Geometry::parseStyle(conf, cx, style);
 }

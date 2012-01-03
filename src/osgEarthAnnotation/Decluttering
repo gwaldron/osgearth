@@ -106,9 +106,14 @@ namespace osgEarth { namespace Annotation
     struct OSGEARTHANNO_EXPORT Decluttering
     {
         /**
-         * Activates decluttering on a stateset.
+         * Enables or disables decluttering on a stateset.
          */
         static void setEnabled( osg::StateSet* stateSet, bool enabled, int binNum =INT_MAX );
+
+        /**
+         * Enables or disables decluttering globally.
+         */
+        static void setEnabled( bool enabled );
 
         /**
          * Sets a functor to use to determine render leaf priority for declutter sorting.

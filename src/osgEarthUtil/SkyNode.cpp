@@ -22,6 +22,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
+#include <osgEarth/Utils>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -52,32 +53,8 @@ using namespace osgEarth::Util;
 
 namespace
 {
-    // a cull callback that prevents objects from being included in the near/fear clip
-    // plane calculates that OSG does. This is useful for including "distant objects"
-    struct DoNotIncludeInNearFarComputationCallback : public osg::NodeCallback
-    {
-        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
-        {
-            osgUtil::CullVisitor* cv = dynamic_cast< osgUtil::CullVisitor*>( nv );
-
-            // Default value
-            osg::CullSettings::ComputeNearFarMode oldMode;
-
-            if( cv )
-            {
-                oldMode = cv->getComputeNearFarMode();
-                cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-            }
-
-            traverse(node, nv);
-
-            if( cv )
-            {
-                cv->setComputeNearFarMode(oldMode);
-            }
-        }
-    };
-
+    // draw callback that will tweak the far clipping plane just
+    // before rendering a drawable.
     struct OverrideNearFarValuesCallback : public osg::Drawable::DrawCallback
     {
         OverrideNearFarValuesCallback(double radius)
@@ -109,9 +86,8 @@ namespace
 
                 // Build a new projection matrix with a modified far plane
                 osg::ref_ptr<osg::RefMatrixd> projectionMatrix = new osg::RefMatrix;
-                //projectionMatrix->makeFrustum( left, right, bottom, top, zNear, distance);
-                //OE_INFO << "zNear=" << zNear << ", zFar=" << zFar << std::endl;
                 projectionMatrix->makeFrustum( left, right, bottom, top, zNear, distance );
+
                 renderInfo.getState()->applyProjectionMatrix( projectionMatrix.get());
 
                 // Draw the drawable
@@ -157,9 +133,6 @@ namespace
 
         osg::Geometry* geom = new osg::Geometry();
 
-        //geom->setUseVertexBufferObjects( true );
-        geom->setUseDisplayList( false );
-
         int latSegments = 100;
         int lonSegments = 2 * latSegments;
 
@@ -186,11 +159,11 @@ namespace
                     int x_plus_1 = x < lonSegments-1 ? x+1 : 0;
                     int y_plus_1 = y+1;
                     el->push_back( y*lonSegments + x );
-                    el->push_back( y*lonSegments + x_plus_1 );
                     el->push_back( y_plus_1*lonSegments + x );
                     el->push_back( y*lonSegments + x_plus_1 );
+                    el->push_back( y*lonSegments + x_plus_1 );
+                    el->push_back( y_plus_1*lonSegments + x );
                     el->push_back( y_plus_1*lonSegments + x_plus_1 );
-                    el->push_back( y_plus_1*lonSegments + x );
                 }
             }
         }
@@ -208,9 +181,6 @@ namespace
         float deltaAngle = 360.0/(float)segments;
 
         osg::Geometry* geom = new osg::Geometry();
-
-        //geom->setUseVertexBufferObjects( true );
-        geom->setUseDisplayList( false );
 
         osg::Vec3Array* verts = new osg::Vec3Array();
         verts->reserve( 1 + segments );
@@ -354,9 +324,16 @@ namespace
     // Adapted from code that is
     // Copyright (c) 2004 Sean O'Neil
 
-    static char s_atmosphereVertexSource[] =
-        "#version 110 \n"
+    static char s_versionString[] =
+        "#version 110 \n";
 
+    static char s_mathUtils[] =
+        "float fastpow( in float x, in float y ) \n"
+        "{ \n"
+        "    return x/(x+y-y*x); \n"
+        "} \n";
+
+    static char s_atmosphereVertexDeclarations[] =
         "uniform mat4 osg_ViewMatrixInverse;     // camera position \n"
         "uniform vec3 atmos_v3LightPos;        // The direction vector to the light source \n"
         "uniform vec3 atmos_v3InvWavelength;   // 1 / pow(wavelength,4) for the rgb channels \n"
@@ -380,8 +357,9 @@ namespace
 
         "vec3 vVec; \n"
         "float atmos_fCameraHeight;    // The camera's current height \n"		
-        "float atmos_fCameraHeight2;   // fCameraHeight^2 \n"
+        "float atmos_fCameraHeight2;   // fCameraHeight^2 \n";
 
+    static char s_atmosphereVertexShared[] =
         "float atmos_scale(float fCos) \n"	
         "{ \n"
         "    float x = 1.0 - fCos; \n"
@@ -480,8 +458,10 @@ namespace
         "  atmos_mieColor      = v3FrontColor * atmos_fKmESun; \n"			
         "  atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"				
         "  atmos_v3Direction = vVec - v3Pos; \n"				
-        "} \n"
+        "} \n";
 
+
+    static char s_atmosphereVertexMain[] =
         "void main(void) \n"
         "{ \n"
         "  // Get camera position and height \n"
@@ -496,15 +476,8 @@ namespace
         "      SkyFromAtmosphere(); \n"
         "  } \n"
         "} \n";
-        
-    static char s_atmosphereFragmentSource[] =
-        "#version 110 \n"
-        
-        "float fastpow( in float x, in float y ) \n"
-        "{ \n"
-        "    return x/(x+y-y*x); \n"
-        "} \n"
 
+    static char s_atmosphereFragmentDeclarations[] =
         "uniform vec3 atmos_v3LightPos; \n"							
         "uniform float atmos_g; \n"				
         "uniform float atmos_g2; \n"
@@ -514,8 +487,12 @@ namespace
         "varying vec3 atmos_mieColor; \n"
         "varying vec3 atmos_rayleighColor; \n"
 
-        "const float fExposure = 4.0; \n"
+        "const float fExposure = 4.0; \n";
 
+    //static char s_atmosphereFragmentShared[] =
+    //    "void applyFragLighting( inout color )
+        
+    static char s_atmosphereFragmentMain[] =
         "void main(void) \n"			
         "{ \n"				
         "    float fCos = dot(atmos_v3LightPos, atmos_v3Direction) / length(atmos_v3Direction); \n"
@@ -528,7 +505,6 @@ namespace
         "} \n";
 
     static char s_sunVertexSource[] = 
-        "#version 110 \n"
         "varying vec3 atmos_v3Direction; \n"
 
         "void main() \n"
@@ -540,13 +516,6 @@ namespace
         "} \n";
 
     static char s_sunFragmentSource[] =
-        "#version 110 \n"
-        
-        "float fastpow( in float x, in float y ) \n"
-        "{ \n"
-        "    return x/(x+y-y*x); \n"
-        "} \n"
-
         "uniform float sunAlpha; \n"
         "varying vec3 atmos_v3Direction; \n"
 
@@ -566,8 +535,8 @@ namespace
     static const char s_starVertexSource[] = 
         "void main() \n"
         "{ \n"
-        "    gl_FrontColor = vec4(1,1,1,1); \n"
-        "    gl_PointSize = gl_Color.r + 1.0f; \n"
+        "    gl_FrontColor = gl_Color; \n" //vec4(1,1,1,1); \n"
+        "    gl_PointSize = gl_Color.r * 2.0; \n"
         "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
         "} \n";
 
@@ -580,7 +549,18 @@ namespace
 
 //---------------------------------------------------------------------------
 
-SkyNode::SkyNode( Map* map, const std::string& starFile )
+SkyNode::SkyNode( Map* map, const std::string& starFile, float minStarMagnitude ) : _minStarMagnitude(minStarMagnitude)
+{
+    initialize(map, starFile);
+}
+
+SkyNode::SkyNode( Map *map, float minStarMagnitude) : _minStarMagnitude(minStarMagnitude)
+{
+    initialize(map);
+}
+
+void
+SkyNode::initialize( Map *map, const std::string& starFile )
 {
     // intialize the default settings:
     _defaultPerViewData._lightPos.set( osg::Vec3f(0.0f, 1.0f, 0.0f) );
@@ -592,7 +572,7 @@ SkyNode::SkyNode( Map* map, const std::string& starFile )
     _defaultPerViewData._starsVisible = true;
     
     // set up the astronomical parameters:
-    _ellipsoidModel =  map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
+    _ellipsoidModel = map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
     _innerRadius = _ellipsoidModel->getRadiusPolar();
     _outerRadius = _innerRadius * 1.025f;
     _sunDistance = _innerRadius * 12000.0f;
@@ -600,6 +580,14 @@ SkyNode::SkyNode( Map* map, const std::string& starFile )
     // make the ephemeris (note: order is important here)
     makeAtmosphere( _ellipsoidModel.get() );
     makeSun();
+
+    if (_minStarMagnitude < 0)
+    {
+      const char* magEnv = ::getenv("OSGEARTH_MIN_STAR_MAGNITUDE");
+      if (magEnv)
+        _minStarMagnitude = as<float>(std::string(magEnv), -1.0f);
+    }
+
     makeStars(starFile);
 }
 
@@ -628,7 +616,10 @@ SkyNode::traverse( osg::NodeVisitor& nv )
         }
     }
 
-    osg::Group::traverse( nv );
+    else
+    {
+        osg::Group::traverse( nv );
+    }
 
     if ( cv )
     {
@@ -671,6 +662,9 @@ SkyNode::attach( osg::View* view, int lightNum )
 
     data._cullContainer->addChild( _atmosphere.get() );
     data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
+
+    // node to traverse the child nodes
+    data._cullContainer->addChild( new TraverseNode<osg::Group>(this) );
 
     view->setLightingMode( osg::View::SKY_LIGHT );
     view->setLight( data._light.get() );
@@ -850,13 +844,23 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     set->setBinNumber( BIN_ATMOSPHERE );
     set->setAttributeAndModes( new osg::Depth( osg::Depth::LESS, 0, 1, false ) ); // no depth write
     set->setAttributeAndModes( new osg::BlendFunc( GL_ONE, GL_ONE ), osg::StateAttribute::ON );
-    set->setAttributeAndModes( new osg::FrontFace( osg::FrontFace::CLOCKWISE ), osg::StateAttribute::ON );
+    //set->setAttributeAndModes( new osg::FrontFace( osg::FrontFace::CLOCKWISE ), osg::StateAttribute::ON );
 
     // next, create and add the shaders:
     osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, s_atmosphereVertexSource );
+    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+        << s_versionString
+        << s_mathUtils
+        << s_atmosphereVertexDeclarations
+        << s_atmosphereVertexShared
+        << s_atmosphereVertexMain );
     program->addShader( vs );
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, s_atmosphereFragmentSource );
+    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+        << s_versionString
+        << s_mathUtils
+        << s_atmosphereFragmentDeclarations
+        //<< s_atmosphereFragmentShared
+        << s_atmosphereFragmentMain );
     program->addShader( fs );
     set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
@@ -898,7 +902,6 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     set->getOrCreateUniform( "atmos_fSamples",        osg::Uniform::FLOAT )->set( (float)Samples );
     set->getOrCreateUniform( "atmos_fWeather",        osg::Uniform::FLOAT )->set( Weather );
     
-    //geode->setCullCallback( new DoNotIncludeInNearFarComputationCallback() );
     AddCallbackToDrawablesVisitor visitor( _innerRadius );
     geode->accept( visitor );
 
@@ -929,9 +932,14 @@ SkyNode::makeSun()
 
     // create shaders
     osg::Program* program = new osg::Program();
-    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, s_sunVertexSource );
+    osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
+        << s_versionString
+        << s_sunVertexSource );
     program->addShader( vs );
-    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, s_sunFragmentSource );
+    osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
+        << s_versionString
+        << s_mathUtils
+        << s_sunFragmentSource );
     program->addShader( fs );
     set->setAttributeAndModes( program, osg::StateAttribute::ON );
 
@@ -1013,7 +1021,6 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   }
 
   osg::Geometry* geometry = new osg::Geometry;
-  geometry->setUseVertexBufferObjects( true );
   geometry->setVertexArray( coords );
   geometry->setColorArray( colors );
   geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
@@ -1046,6 +1053,9 @@ SkyNode::getDefaultStars(std::vector<StarData>& out_stars)
   {
     std::stringstream ss(*sptr);
     out_stars.push_back(StarData(ss));
+
+    if (out_stars[out_stars.size() - 1].magnitude < _minStarMagnitude)
+      out_stars.pop_back();
   }
 }
 
@@ -1074,6 +1084,9 @@ SkyNode::parseStarFile(const std::string& starFile, std::vector<StarData>& out_s
 
     std::stringstream ss(line);
     out_stars.push_back(StarData(ss));
+
+    if (out_stars[out_stars.size() - 1].magnitude < _minStarMagnitude)
+      out_stars.pop_back();
   }
 
   in.close();

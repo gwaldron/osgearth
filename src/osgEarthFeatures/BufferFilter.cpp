@@ -18,6 +18,8 @@
  */
 #include <osgEarthFeatures/BufferFilter>
 
+#define LC "[BufferFilter] "
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -64,10 +66,10 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
     }
 
     //OE_NOTICE << "Buffer: input = " << input.size() << " features" << std::endl;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
+    for( FeatureList::iterator i = input.begin(); i != input.end(); )
     {
-        Feature* input = i->get();
-        if ( !input || !input->getGeometry() )
+        Feature* feature = i->get();
+        if ( !feature || !feature->getGeometry() )
             continue;
 
         osg::ref_ptr<Symbology::Geometry> output;
@@ -82,9 +84,15 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
 
         params._cornerSegs = _numQuadSegs;
 
-        if ( input->getGeometry()->buffer( _distance.value(), output, params ) )
+        if ( feature->getGeometry()->buffer( _distance.value(), output, params ) )
         {
-            input->setGeometry( output.get() );
+            feature->setGeometry( output.get() );
+            ++i;
+        }
+        else
+        {
+            i = input.erase( i );
+            OE_INFO << LC << "feature " << feature->getFID() << " yielded no geometry" << std::endl;
         }
     }
 

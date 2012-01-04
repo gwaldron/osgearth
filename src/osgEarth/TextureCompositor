@@ -26,6 +26,8 @@
 #include <osg/StateSet>
 #include <osg/Program>
 
+#define MAX_IMAGE_LAYERS 16
+
 namespace osgEarth
 {
     class ImageLayer;

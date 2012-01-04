@@ -17,24 +17,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-
-#include <osg/Notify>
-#include <osgDB/FileUtils>
-#include <osgDB/FileNameUtils>
+#include <osgEarthUtil/TMS>
 #include <osgEarth/Common>
 #include <osgEarth/GeoData>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/XmlUtils>
-#include <osgEarth/TMS>
 #include <osgEarth/TileKey>
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
 
+#include <osg/Notify>
+#include <osgDB/FileUtils>
+#include <osgDB/FileNameUtils>
+
 #include <limits.h>
 #include <iomanip>
 
 using namespace osgEarth;
+using namespace osgEarth::Util::TMS;
 
 #define LC "[TMS] "
 

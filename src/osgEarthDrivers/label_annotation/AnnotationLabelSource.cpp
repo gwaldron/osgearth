@@ -55,51 +55,106 @@ public:
     {
         osg::Group* group = new osg::Group();
         Decluttering::setEnabled( group->getOrCreateStateSet(), true );
-
-        std::set<std::string> used; // to prevent dupes
-        bool skipDupes = (symbol->removeDuplicateLabels() == true);
-
+        if ( symbol->priority().isSet() )
+        {
+            DeclutteringOptions dco = Decluttering::getOptions();
+            dco.sortByPriority() = symbol->priority().isSet();
+            Decluttering::setOptions( dco );
+        }    
+        
         StringExpression  contentExpr ( *symbol->content() );
         NumericExpression priorityExpr( *symbol->priority() );
 
-        for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
+        if ( symbol->removeDuplicateLabels() == true )
         {
-            const Feature* feature = i->get();
-            if ( !feature )
-                continue;
+            // in remove-duplicates mode, make a list of unique features, selecting
+            // the one with the largest area as the one we'll use for labeling.
 
-            const Geometry* geom = feature->getGeometry();
-            if ( !geom )
-                continue;
+            typedef std::pair<double, osg::ref_ptr<const Feature> > Entry;
+            typedef std::map<std::string, Entry>                    EntryMap;
 
-            const std::string& value = feature->eval( contentExpr );
-
-            if ( !value.empty() && (!skipDupes || used.find(value) == used.end()) )
+            EntryMap used;
+    
+            for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
             {
-                LabelNode* labelNode = new LabelNode(
-                    context.getSession()->getMapInfo().getProfile()->getSRS(),
-                    geom->getBounds().center(),
-                    value,
-                    symbol );
-
-                if ( symbol->priority().isSet() )
+                Feature* feature = i->get();
+                if ( feature && feature->getGeometry() )
                 {
-                    AnnotationData* data = new AnnotationData();
-                    data->setPriority( feature->eval(priorityExpr) );
-                    labelNode->setAnnotationData( data );
+                    const std::string& value = feature->eval( contentExpr );
+                    if ( !value.empty() )
+                    {
+                        double area = feature->getGeometry()->getBounds().area2d();
+                        if ( used.find(value) == used.end() )
+                        {
+                            used[value] = Entry(area, feature);
+                        }
+                        else 
+                        {
+                            Entry& biggest = used[value];
+                            if ( area > biggest.first )
+                            {
+                                biggest.first = area;
+                                biggest.second = feature;
+                            }
+                        }
+                    }
                 }
-                
-                group->addChild( labelNode );
+            }
 
-                if ( skipDupes )
-                {
-                    used.insert(value);
-                }
+            for( EntryMap::iterator i = used.begin(); i != used.end(); ++i )
+            {
+                const std::string& value = i->first;
+                const Feature* feature = i->second.second.get();
+                group->addChild( makeLabelNode(context, feature, value, symbol, priorityExpr) );
+            }
+        }
+
+        else
+        {
+            for( FeatureList::const_iterator i = input.begin(); i != input.end(); ++i )
+            {
+                const Feature* feature = i->get();
+                if ( !feature )
+                    continue;
+
+                const Geometry* geom = feature->getGeometry();
+                if ( !geom )
+                    continue;
+
+                const std::string& value = feature->eval( contentExpr, &context );
+                if ( value.empty() )
+                    continue;
+
+                group->addChild( makeLabelNode(context, feature, value, symbol, priorityExpr) );
             }
         }
 
         return group;
     }
+
+        
+    osg::Node* makeLabelNode(const FilterContext& context, 
+                             const Feature*       feature, 
+                             const std::string&   value, 
+                             const TextSymbol*    symbol, 
+                             NumericExpression&   priorityExpr )
+    {
+        LabelNode* labelNode = new LabelNode(
+            context.getSession()->getMapInfo().getProfile()->getSRS(),
+            feature->getGeometry()->getBounds().center(),
+            value,
+            symbol );
+
+        if ( symbol->priority().isSet() )
+        {
+            AnnotationData* data = new AnnotationData();
+            data->setPriority( feature->eval(priorityExpr, &context) );
+            labelNode->setAnnotationData( data );
+        }
+
+        return labelNode;
+    }
+
 };
 
 //------------------------------------------------------------------------

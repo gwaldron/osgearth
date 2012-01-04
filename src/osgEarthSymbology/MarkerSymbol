@@ -84,6 +84,10 @@ namespace osgEarth { namespace Symbology
         optional<unsigned>& randomSeed() { return _randomSeed; }
         const optional<unsigned>& randomSeed() const { return _randomSeed; }
 
+        /** Hint as to whether the marker is an icon vs. a 3D model */
+        optional<bool>& isModel() { return _isModelHint; }
+        const optional<bool>& isModel() const { return _isModelHint; }
+
     public: // non-serialized properties (for programmatic use only)
 
         /** Explicit image to use for 2D icon placemet */
@@ -92,7 +96,7 @@ namespace osgEarth { namespace Symbology
 
         /** Explicit model to use for model placement */
         void setModel( osg::Node* node ) { _node = node; }
-        osg::Node* getNode() const { return _node.get(); }
+        osg::Node* getModel() const { return _node.get(); }
 
     public:
         virtual Config getConfig() const;
@@ -106,6 +110,7 @@ namespace osgEarth { namespace Symbology
         optional<osg::Vec3f>         _orientation;
         optional<float>              _density;
         optional<unsigned>           _randomSeed;
+        optional<bool>               _isModelHint;
 
         osg::ref_ptr<osg::Image>     _image;
         osg::ref_ptr<osg::Node>      _node;

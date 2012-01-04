@@ -379,7 +379,7 @@ namespace
                 std::ofstream outfile( fileURI.full().c_str() );
                 if ( outfile.is_open() )
                 {
-                    outfile << *so;
+                    outfile << so->getString();
                     outfile.flush();
                     outfile.close();
                     objWriteOK = true;

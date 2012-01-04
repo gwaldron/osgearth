@@ -33,6 +33,9 @@ namespace osgEarth
     public:
         TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options );
 
+        static bool isSupported( bool useGPU );
+
+    public:
         bool requiresUnitTextureSpace() const { return false; }
 
         bool usesShaderComposition() const { return _useGPU; }
@@ -53,6 +56,7 @@ namespace osgEarth
             const std::string& functionName,
             osg::Shader::Type type,
             const TextureLayout& layout ) const;
+
 
     private:
         float _lodTransitionTime;

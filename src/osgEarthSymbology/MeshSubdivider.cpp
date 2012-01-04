@@ -133,15 +133,18 @@ namespace
         typedef std::map<osg::Vec3,GLuint> VertMap;        
         VertMap _vertMap;
         osg::Vec3Array* _sourceVerts;
+        osg::Vec4Array* _sourceColors;
         osg::Vec2Array* _sourceTexCoords;
         osg::ref_ptr<osg::Vec3Array> _verts;        
+        osg::ref_ptr<osg::Vec4Array> _colors;
         osg::ref_ptr<osg::Vec2Array> _texcoords;
         TriangleQueue _tris;
         
         TriangleData()
         {            
-            _verts = new osg::Vec3Array();             
-            _sourceVerts = 0;
+            _verts           = new osg::Vec3Array();             
+            _sourceVerts     = 0;
+            _sourceColors    = 0;
             _sourceTexCoords = 0;
         }       
 
@@ -150,13 +153,25 @@ namespace
             _sourceVerts = sourceVerts;
         }
 
-        void setSourceTexCoords(osg::Vec2Array* sourceTexCoords)
+        void setSourceColors(osg::Vec4Array* sourceColors)
         {
-            _sourceTexCoords = sourceTexCoords;
-            _texcoords = new osg::Vec2Array();
+            if ( sourceColors )
+            {
+                _sourceColors = sourceColors;
+                _colors       = new osg::Vec4Array();
+            }
         }
 
-        GLuint record( const osg::Vec3& v, const osg::Vec2f& t )
+        void setSourceTexCoords(osg::Vec2Array* sourceTexCoords)
+        {
+            if ( sourceTexCoords )
+            {
+                _sourceTexCoords = sourceTexCoords;
+                _texcoords       = new osg::Vec2Array();
+            }
+        }
+
+        GLuint record( const osg::Vec3& v, const osg::Vec2f& t, const osg::Vec4f& c )
         {
             VertMap::iterator i = _vertMap.find(v);
             if ( i == _vertMap.end() )
@@ -167,7 +182,11 @@ namespace
                 //Only push back the texture coordinate if it's valid
                 if (_texcoords)
                 {
-                  _texcoords->push_back( t );
+                    _texcoords->push_back( t );
+                }
+                if (_colors)
+                {
+                    _colors->push_back( c );
                 }
                 return index;
             }
@@ -182,7 +201,8 @@ namespace
         {
             const osg::Vec3 v0 = (*_sourceVerts)[p1];
             const osg::Vec3 v1 = (*_sourceVerts)[p2];
-            const osg::Vec3 v2 = (*_sourceVerts)[p3];            
+            const osg::Vec3 v2 = (*_sourceVerts)[p3];   
+
             osg::Vec2 t0, t1, t2;
             if (_sourceTexCoords)
             {
@@ -190,8 +210,16 @@ namespace
                 t1 = (*_sourceTexCoords)[p2];
                 t2 = (*_sourceTexCoords)[p3];
             }
-            _tris.push( Triangle(record(v0, t0), record(v1, t1), record(v2, t2)) );            
-            //OE_NOTICE << "Incoming verts " << p1 << ", " << p2 << ", " << p3 << std::endl;
+            
+            osg::Vec4 c0, c1, c2;
+            if (_sourceColors)
+            {
+                c0 = (*_sourceColors)[p1];
+                c1 = (*_sourceColors)[p2];
+                c2 = (*_sourceColors)[p3];
+            }
+
+            _tris.push( Triangle(record(v0, t0, c0), record(v1, t1, c1), record(v2, t2, c2)) );
         }
     };      
 
@@ -435,8 +463,10 @@ namespace
         osg::TriangleIndexFunctor<TriangleData> data;;
         data.setSourceVerts(dynamic_cast<osg::Vec3Array*>(geom.getVertexArray()));
         data.setSourceTexCoords(dynamic_cast<osg::Vec2Array*>(geom.getTexCoordArray(0)));
+        if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX )
+            data.setSourceColors(dynamic_cast<osg::Vec4Array*>(geom.getColorArray()));
+        //TODO normals
         geom.accept( data );
-
         
         int numTrisIn = data._tris.size();        
 
@@ -456,9 +486,21 @@ namespace
             osg::Vec3d v1_w = (*data._verts)[tri._i1] * L2W;
             osg::Vec3d v2_w = (*data._verts)[tri._i2] * L2W;
 
-            osg::Vec2  t0 = (*data._texcoords)[tri._i0];
-            osg::Vec2  t1 = (*data._texcoords)[tri._i1];
-            osg::Vec2  t2 = (*data._texcoords)[tri._i2];
+            osg::Vec2 t0,t1,t2;
+            if ( data._texcoords.valid() )
+            {
+                t0 = (*data._texcoords)[tri._i0];
+                t1 = (*data._texcoords)[tri._i1];
+                t2 = (*data._texcoords)[tri._i2];
+            }
+
+            osg::Vec4f c0,c1,c2;
+            if ( data._colors.valid() )
+            {
+                c0 = (*data._colors)[tri._i0];
+                c1 = (*data._colors)[tri._i1];
+                c2 = (*data._colors)[tri._i2];
+            }
 
             double g0 = angleBetween(v0_w, v1_w);
             double g1 = angleBetween(v1_w, v2_w);
@@ -476,7 +518,10 @@ namespace
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v0_w, v1_w, interp) * W2L );
-                        data._texcoords->push_back( (t0 + t1) / 2.0f );
+                        if ( data._colors.valid() )
+                            data._colors->push_back( (c0 + c1) / 2.0f );
+                        if ( data._texcoords.valid() )
+                            data._texcoords->push_back( (t0 + t1) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -497,7 +542,10 @@ namespace
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v1_w, v2_w, interp) * W2L );
-                        data._texcoords->push_back( (t1 + t2) / 2.0f );
+                        if ( data._colors.valid() )
+                            data._colors->push_back( (c1 + c2) / 2.0f );
+                        if ( data._texcoords.valid() )
+                            data._texcoords->push_back( (t1 + t2) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -518,7 +566,10 @@ namespace
                     if ( ei == edges.end() )
                     {
                         data._verts->push_back( geocentricMidpoint(v2_w, v0_w, interp) * W2L );
-                        data._texcoords->push_back( (t2 + t0) / 2.0f );
+                        if ( data._colors.valid() )
+                            data._colors->push_back( (c2 + c0) / 2.0f );
+                        if ( data._texcoords.valid() )
+                            data._texcoords->push_back( (t2 + t0) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -546,7 +597,7 @@ namespace
 
             // set the new VBO.
             geom.setVertexArray( data._verts.get() );
-
+            geom.setColorArray( data._colors.get() );
             geom.setTexCoordArray(0, data._texcoords.get() );
 
             if ( data._verts->size() < 256 )

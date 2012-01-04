@@ -84,7 +84,6 @@ SET(LIB_PUBLIC_HEADERS
     TileKey
     TileSource
     ThreadingUtils
-    TMS
     Units
     URI
     Utils
@@ -175,7 +174,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
-    TMS.cpp
     Units.cpp
     URI.cpp
     Utils.cpp

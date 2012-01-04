@@ -94,6 +94,13 @@ namespace osgEarth { namespace Features
         void reset();
         
         bool process( FeatureList& input, const FilterContext& context );
+        
+        void buildPolygon(
+            Geometry*               input,
+            const SpatialReference* featureSRS,
+            const SpatialReference* mapSRS,
+            bool                    makeECEF,
+            osg::Geometry*          osgGeom);
     };
 
 } } // namespace osgEarth::Features

@@ -50,6 +50,7 @@ ADD_SUBDIRECTORY(osgearth_shadercomp)
 ADD_SUBDIRECTORY(osgearth_tilesource)
 ADD_SUBDIRECTORY(osgearth_imageoverlay)
 ADD_SUBDIRECTORY(osgearth_city)
+ADD_SUBDIRECTORY(osgearth_package)
 
 IF (QT4_FOUND AND NOT ANDROID)
     ADD_SUBDIRECTORY(osgearth_qt)

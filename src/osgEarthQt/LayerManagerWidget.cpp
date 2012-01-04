@@ -31,6 +31,7 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QFrame>
+#include <QGraphicsOpacityEffect>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>

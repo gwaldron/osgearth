@@ -171,13 +171,13 @@ namespace
 
     Action* getDoubleClickAction(const ViewVector& views)
     {
-      if (_annotation.valid() && _annotation->getAnnotationData() && _map.valid())
+      if (_annotation.valid())
       {
         if (_annotation->getAnnotationData() && _annotation->getAnnotationData()->getViewpoint())
         {
           return new SetViewpointAction(osgEarth::Viewpoint(*_annotation->getAnnotationData()->getViewpoint()), views);
         }
-        else
+        else if (_map.valid())
         {
           osg::Vec3d center = _annotation->getBound().center();
 
@@ -312,7 +312,7 @@ void MapCatalogWidget::onSelectionChanged(/*const AnnotationVector& selection*/)
 
 void MapCatalogWidget::onTreeItemDoubleClicked(QTreeWidgetItem* item, int col)
 {
-  if (!_manager)
+  if (!_manager.valid())
     return;
 
   ActionableTreeItem* actionable = dynamic_cast<ActionableTreeItem*>(item);
@@ -326,7 +326,7 @@ void MapCatalogWidget::onTreeItemDoubleClicked(QTreeWidgetItem* item, int col)
 
 void MapCatalogWidget::onTreeItemChanged(QTreeWidgetItem* item, int col)
 {
-  if (!_manager)
+  if (!_manager.valid())
     return;
 
   ActionableTreeItem* actionable = dynamic_cast<ActionableTreeItem*>(item);

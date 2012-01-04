@@ -28,13 +28,10 @@
 #include <QCheckBox>
 #include <QDropEvent>
 #include <QFrame>
-#include <QGraphicsOpacityEffect>
 #include <QHBoxLayout>
-#include <QListWidget>
 #include <QPoint>
 #include <QScrollArea>
 #include <QSlider>
-#include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 

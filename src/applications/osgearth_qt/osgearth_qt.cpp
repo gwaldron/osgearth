@@ -28,6 +28,7 @@
 #include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/DataManager>
+#include <osgEarthQt/AnnotationListWidget>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
@@ -221,16 +222,16 @@ main(int argc, char** argv)
 	  appWin.addDockWidget(Qt::LeftDockWidgetArea, catalogDock);
 
 
-    // create a second catalog widget for Annotations
+    // create and dock an annotation list widget
     QDockWidget *annoDock = new QDockWidget(QWidget::tr("Annotations"));
     annoDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-    osgEarth::QtGui::MapCatalogWidget* annoCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::ANNOTATIONS);
-    annoCatalog->setActiveViews(views);
-	  annoDock->setWidget(annoCatalog);
+    osgEarth::QtGui::AnnotationListWidget* annoList = new osgEarth::QtGui::AnnotationListWidget(dataManager.get());
+    annoList->setActiveViews(views);
+    annoDock->setWidget(annoList);
 	  appWin.addDockWidget(Qt::LeftDockWidgetArea, annoDock);
 
 
-    // create a third catalog widget for viewpoints
+    // create a second catalog widget for viewpoints
     QDockWidget *vpDock = new QDockWidget(QWidget::tr("Viewpoints"));
     vpDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
@@ -257,6 +258,7 @@ main(int argc, char** argv)
         QString qstylesheet = QLatin1String(file.readAll());
         app.setStyleSheet(qstylesheet);
         layerManager->setStyleSheet(qstylesheet);
+        annoList->setStyleSheet(qstylesheet);
       }
     }
 

@@ -10,17 +10,27 @@ SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 INCLUDE( ${QT_USE_FILE} )
 
+# Header files that need moc'd
 set(LIB_MOC_HDRS
+    AnnotationListWidget
     DataManager
     LayerManagerWidget
     MapCatalogWidget
 )
+
+# Qt resource files
+set(LIB_QT_RCS
+    images.qrc
+)
+
+QT4_ADD_RESOURCES( LIB_RC_SRCS ${LIB_QT_RCS} )
 
 QT4_WRAP_CPP( LIB_MOC_SRCS ${LIB_MOC_HDRS} )
 
 SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Actions
+    AnnotationListWidget
     Common
     CompositeViewerWidget
     DataManager
@@ -28,12 +38,15 @@ SET(LIB_PUBLIC_HEADERS
     LayerManagerWidget
     MapCatalogWidget
     ViewerWidget
+    ${LIB_QT_RCS}
 )
 
 ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
+    ${LIB_RC_SRCS}
     ${LIB_MOC_SRCS}
+    AnnotationListWidget.cpp
     CompositeViewerWidget.cpp
     DataManager.cpp
     LayerManagerWidget.cpp

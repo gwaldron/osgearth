@@ -30,47 +30,11 @@
 #include <osgEarthUtil/ObjectLocator>
 #include <osgEarthAnnotation/Draggers>
 #include <osg/io_utils>
+#include <osgSim/LineOfSight>
 
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
-
-
-class LineOfSight
-{
-public:
-    LineOfSight(const osg::Vec3& start, const osg::Vec3d& end);    
-    bool compute(osg::Node* node, osg::Vec3d& hit);
-private:
-    osg::Vec3d _start;
-    osg::Vec3d _end;
-};
-
-LineOfSight::LineOfSight(const osg::Vec3& start, const osg::Vec3d& end):
-_start(start),
-_end(end)
-{
-
-}
-
-bool
-LineOfSight::compute(osg::Node* node, osg::Vec3d& hit)
-{
-    osgUtil::LineSegmentIntersector* i = new osgUtil::LineSegmentIntersector( _start, _end );
-
-    osgUtil::IntersectionVisitor iv;            
-    iv.setIntersector( i );
-    node->accept( iv );
-
-    osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
-    if ( !results.empty() )
-    {
-        const osgUtil::LineSegmentIntersector::Intersection& result = *results.begin();
-        hit = result.getWorldIntersectPoint();        
-        return false;
-    }   
-    return true;
-}
 
 class LineOfSightNode: public osg::Group
 {
@@ -172,8 +136,23 @@ LineOfSightNode::compute()
     osg::Vec3d a, b;
     _mapNode->getMap()->mapPointToWorldPoint( _start, a );
     _mapNode->getMap()->mapPointToWorldPoint( _end, b );
-    LineOfSight los(a, b);
-    _hasLOS = los.compute(_mapNode.get(), _hit);
+    //LineOfSight los(a, b);
+    osgSim::LineOfSight los;
+    los.setDatabaseCacheReadCallback(0);
+    unsigned int index = los.addLOS(a, b);
+    los.computeIntersections(_mapNode.get());
+    osgSim::LineOfSight::Intersections hits = los.getIntersections(0);    
+    if (hits.size() > 0)
+    {
+        _hasLOS = false;
+        _hit = *hits.begin();
+    }
+    else
+    {
+        _hasLOS = true;
+    }
+
+    //_hasLOS = los.compute(_mapNode.get(), _hit);
     _mapNode->getMap()->worldPointToMapPoint( _hit, _hit);
     draw();
 }
@@ -577,29 +556,44 @@ RadialLineOfSightNode::compute()
 
     osg::Vec3d previousEnd;
     osg::Vec3d firstEnd;
+
+    osgSim::LineOfSight los;
+    los.setDatabaseCacheReadCallback(0);
     
     for (unsigned int i = 0; i < _numSpokes; i++)
     {
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );
         osg::Vec3d spoke = quat * (side * _radius);
+        osg::Vec3d end = centerWorld + spoke;        
+        los.addLOS( centerWorld, end);      
+    }
 
-        osg::Vec3d end = centerWorld + spoke;
-        LineOfSight los(centerWorld, end);
+    los.computeIntersections(_mapNode.get());
+
+    for (unsigned int i = 0; i < _numSpokes; i++)
+    {
+        osg::Vec3d start = los.getStartPoint(i);
+        osg::Vec3d end = los.getEndPoint(i);
+
+        osgSim::LineOfSight::Intersections hits = los.getIntersections(i);
         osg::Vec3d hit;
-        bool hasLOS = los.compute(_mapNode.get(), hit);
-        
-
-        if (hasLOS)
+        bool hasLOS = hits.empty();
+        if (!hasLOS)
         {
-            verts->push_back( centerWorld - centerWorld );
+            hit = *hits.begin();
+        }
+         
+         if (hasLOS)
+        {
+            verts->push_back( start - centerWorld );
             verts->push_back( end - centerWorld );
             colors->push_back( osg::Vec4(0,1,0,1));
             colors->push_back( osg::Vec4(0,1,0,1));
         }
         else
         {
-            verts->push_back( centerWorld - centerWorld );
+            verts->push_back( start - centerWorld );
             verts->push_back( hit - centerWorld  );
             colors->push_back( osg::Vec4(0,1,0,1));
             colors->push_back( osg::Vec4(0,1,0,1));

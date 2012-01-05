@@ -206,44 +206,44 @@ LineOfSightNode::draw()
 
     if (_hasLOS)
     {
-        verts->push_back( startWorld );
-        verts->push_back( endWorld );
+        verts->push_back( startWorld - startWorld );
+        verts->push_back( endWorld   - startWorld );
         colors->push_back( goodColor );
         colors->push_back( goodColor );
     }
     else
     {
-        verts->push_back( startWorld );
-        verts->push_back( endWorld );
-        colors->push_back( badColor );
-        colors->push_back( badColor );
-
         /*
         verts->push_back( startWorld );
-        colors->push_back( goodColor );
-        verts->push_back( hitWorld );
-        colors->push_back( goodColor );
-
-        verts->push_back( hitWorld );
-        colors->push_back( badColor );
         verts->push_back( endWorld );
         colors->push_back( badColor );
+        colors->push_back( badColor );
         */
+
+        verts->push_back( startWorld - startWorld );
+        colors->push_back( goodColor );
+        verts->push_back( hitWorld   - startWorld );
+        colors->push_back( goodColor );
+
+        verts->push_back( hitWorld   - startWorld );
+        colors->push_back( badColor );
+        verts->push_back( endWorld   - startWorld );
+        colors->push_back( badColor );
     }
 
+    geometry->addPrimitiveSet( new osg::DrawArrays( GL_LINES, 0, verts->size()) );        
 
-
-
-    
-
-    geometry->addPrimitiveSet( new osg::DrawArrays( GL_LINES, 0, verts->size()) );
-
-    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    
     osg::Geode* geode = new osg::Geode;
     geode->addDrawable( geometry );
 
-    addChild( geode );
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->setMatrix(osg::Matrixd::translate(startWorld));
+    mt->addChild(geode);  
+
+    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+    
+
+    addChild( mt );
 }
 
 class LineOfSightEditor : public osg::Group
@@ -592,20 +592,20 @@ RadialLineOfSightNode::compute()
 
         if (hasLOS)
         {
-            verts->push_back( centerWorld );
-            verts->push_back( end  );
+            verts->push_back( centerWorld - centerWorld );
+            verts->push_back( end - centerWorld );
             colors->push_back( osg::Vec4(0,1,0,1));
             colors->push_back( osg::Vec4(0,1,0,1));
         }
         else
         {
-            verts->push_back( centerWorld );
-            verts->push_back( hit  );
+            verts->push_back( centerWorld - centerWorld );
+            verts->push_back( hit - centerWorld  );
             colors->push_back( osg::Vec4(0,1,0,1));
             colors->push_back( osg::Vec4(0,1,0,1));
 
-            verts->push_back( hit );
-            verts->push_back( end  );
+            verts->push_back( hit - centerWorld );
+            verts->push_back( end - centerWorld );
             colors->push_back( osg::Vec4(1,0,0,1));
             colors->push_back( osg::Vec4(1,0,0,1));
 
@@ -616,8 +616,8 @@ RadialLineOfSightNode::compute()
 
         if (i > 0)
         {
-            verts->push_back( end );
-            verts->push_back( previousEnd );
+            verts->push_back( end - centerWorld );
+            verts->push_back( previousEnd - centerWorld );
             colors->push_back( osg::Vec4(1,1,1,1));
             colors->push_back( osg::Vec4(1,1,1,1));
         }
@@ -631,8 +631,8 @@ RadialLineOfSightNode::compute()
 
 
     //Add the last outside of circle
-    verts->push_back( firstEnd );
-    verts->push_back( previousEnd );
+    verts->push_back( firstEnd - centerWorld );
+    verts->push_back( previousEnd - centerWorld );
     colors->push_back( osg::Vec4(1,1,1,1));
     colors->push_back( osg::Vec4(1,1,1,1));
 
@@ -643,7 +643,12 @@ RadialLineOfSightNode::compute()
 
     getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
-    addChild( geode );  
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->setMatrix(osg::Matrixd::translate(centerWorld));
+    mt->addChild(geode);
+
+
+    addChild( mt );  
 }
 
 struct RadialLOSHandler : public osgGA::GUIEventHandler 

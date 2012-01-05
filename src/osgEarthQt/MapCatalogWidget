@@ -31,7 +31,7 @@ namespace osgEarth { namespace QtGui
 {
     using namespace osgEarth;
 
-    class OSGEARTHQT_EXPORT MapCatalogWidget : public QFrame, public ActionCallback
+    class OSGEARTHQT_EXPORT MapCatalogWidget : public QFrame
     {
     Q_OBJECT
 
@@ -56,9 +56,6 @@ namespace osgEarth { namespace QtGui
 
       void setHideEmptyGroups(bool hide);
 
-      //ActionCallback
-      void operator()( void* sender, Action* action );
-
     private slots:
 	    void onMapChanged();
       void onSelectionChanged(/*const AnnotationVector& selection*/);
@@ -67,7 +64,7 @@ namespace osgEarth { namespace QtGui
       void onTreeSelectionChanged();
 
     protected:
-      ~MapCatalogWidget();
+      friend class MapCatalogActionCallbackProxy;
 
       void initUi();
       void refreshAll();

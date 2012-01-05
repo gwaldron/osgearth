@@ -263,8 +263,6 @@ namespace osgEarth { namespace QtGui
 
       static const std::string DEFAULT_STYLESHEET;
 
-      ~LayerManagerWidget();
-
       void initialize();
       void refresh();
 

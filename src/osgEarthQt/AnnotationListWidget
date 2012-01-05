@@ -42,7 +42,6 @@ namespace osgEarth { namespace QtGui
 
     public:
       AnnotationListWidget(DataManager* dm);
-      ~AnnotationListWidget();
 
       void setActiveView(osgViewer::View* view);
       void setActiveViews(const ViewVector& views);
@@ -62,6 +61,8 @@ namespace osgEarth { namespace QtGui
       void onListSelectionChanged();
 
     protected:
+      friend class AnnotationListActionCallbackProxy;
+
       static const std::string DEFAULT_STYLESHEET;
 
       void initialize();

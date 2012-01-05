@@ -633,10 +633,6 @@ LayerManagerWidget::LayerManagerWidget(osgEarth::Map* map, LayerType type) : QSc
   initialize();
 }
 
-LayerManagerWidget::~LayerManagerWidget()
-{
-}
-
 void LayerManagerWidget::setActiveView(osgViewer::View* view)
 {
   _views.clear();

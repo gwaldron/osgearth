@@ -220,6 +220,28 @@ namespace
   };
 }
 
+namespace osgEarth { namespace QtGui
+{
+  class MapCatalogActionCallbackProxy : public ActionCallback
+  {
+  public:
+    MapCatalogActionCallbackProxy(MapCatalogWidget* catalog) : _catalog(catalog) { }
+
+    void operator()( void* sender, Action* action )
+    {
+      if (_catalog)
+      {
+        Action* foundAction = dynamic_cast<ToggleNodeAction*>(action);
+        if (foundAction)
+          _catalog->refreshAll();
+      }
+    }
+
+  private:
+    MapCatalogWidget* _catalog;
+  };
+} }
+
 //---------------------------------------------------------------------------
 MapCatalogWidget::MapCatalogWidget(DataManager* dm, unsigned int fields)
   : _manager(dm), _fields(fields)
@@ -232,7 +254,7 @@ MapCatalogWidget::MapCatalogWidget(DataManager* dm, unsigned int fields)
     //if (_fields & ANNOTATIONS)
       connect(_manager.get(), SIGNAL(selectionChanged(/*const AnnotationVector&*/)), this, SLOT(onSelectionChanged(/*const AnnotationVector&*/)));
 
-    _manager->addAfterActionCallback(this);
+    _manager->addAfterActionCallback(new MapCatalogActionCallbackProxy(this));
   }
 
   initUi();
@@ -242,10 +264,6 @@ MapCatalogWidget::MapCatalogWidget(osgEarth::Map* map, unsigned int fields)
   : _map(map), _fields(fields)
 {
   initUi();
-}
-
-MapCatalogWidget::~MapCatalogWidget()
-{
 }
 
 void MapCatalogWidget::setActiveView(osgViewer::View* view)
@@ -579,12 +597,4 @@ void MapCatalogWidget::refreshViewpoints()
   }
 
   _updating = wasUpdating;
-}
-
-//ActionCallback
-void MapCatalogWidget::operator()( void* sender, Action* action )
-{
-  Action* foundAction = dynamic_cast<ToggleNodeAction*>(action);
-  if (foundAction)
-    refreshAll();
 }

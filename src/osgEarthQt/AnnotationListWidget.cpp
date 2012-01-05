@@ -49,6 +49,28 @@ namespace
   };
 }
 
+namespace osgEarth { namespace QtGui
+{
+  class AnnotationListActionCallbackProxy : public ActionCallback
+  {
+  public:
+    AnnotationListActionCallbackProxy(AnnotationListWidget* annoList) : _annoList(annoList) { }
+
+    void operator()( void* sender, Action* action )
+    {
+      if (_annoList)
+      {
+        Action* foundAction = dynamic_cast<ToggleNodeAction*>(action);
+        if (foundAction)
+          _annoList->refresh();
+      }
+    }
+
+  private:
+    AnnotationListWidget* _annoList;
+  };
+} }
+
 const std::string AnnotationListWidget::DEFAULT_STYLESHEET = "#oeFrameContainer, #oeFrameContainer * { background-color: rgba(255, 255, 255, 100%) } #oeItemHeader, #oeItemHeader * { background-color: grey; color: white; }";
 
 AnnotationListWidget::AnnotationListWidget(DataManager* dm)
@@ -60,11 +82,9 @@ AnnotationListWidget::AnnotationListWidget(DataManager* dm)
   {
     connect(_manager.get(), SIGNAL(mapChanged()), this, SLOT(onMapChanged()));
     connect(_manager.get(), SIGNAL(selectionChanged(/*const AnnotationVector&*/)), this, SLOT(onSelectionChanged(/*const AnnotationVector&*/)));
-  }
-}
 
-AnnotationListWidget::~AnnotationListWidget()
-{
+    _manager->addAfterActionCallback(new AnnotationListActionCallbackProxy(this));
+  }
 }
 
 void AnnotationListWidget::setActiveView(osgViewer::View* view)

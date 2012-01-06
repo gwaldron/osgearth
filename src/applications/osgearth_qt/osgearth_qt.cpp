@@ -41,6 +41,10 @@
 
 #include "DemoMainWindow"
 
+#ifdef Q_WS_X11
+#include <X11/Xlib.h>
+#endif
+
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -74,7 +78,7 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 
   void onClick( AnnotationNode* node, const EventArgs& details )
   {
-    if (_manager.valid() && details.buttons == osgGA::GUIEventAdapter::MouseButtonMask::LEFT_MOUSE_BUTTON)
+    if (_manager.valid() && details.buttons == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
     {
       if (details.modkeys & osgGA::GUIEventAdapter::MODKEY_CTRL)
       {
@@ -130,6 +134,10 @@ main(int argc, char** argv)
 
     s_annoGroup = new osg::Group();
     root->addChild( s_annoGroup );
+
+  #ifdef Q_WS_X11
+    XInitThreads();
+  #endif
 
     QApplication app(argc, argv);
 

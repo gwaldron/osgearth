@@ -92,6 +92,7 @@ namespace osgEarth
     */
     struct ModelLayerCallback : public osg::Referenced
     {
+        virtual void onEnabledChanged( class ModelLayer* layer ) { }
         virtual void onOverlayChanged( class ModelLayer* layer ) { }
     };
 

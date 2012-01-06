@@ -6,7 +6,7 @@ SET(MOC_HDRS
     DemoMainWindow
 )
 
-QT4_WRAP_CPP( MOC_SRCS ${MOC_HDRS} )
+QT4_WRAP_CPP( MOC_SRCS ${MOC_HDRS} OPTIONS "-f" )
 
 SET(TARGET_H
     DemoMainWindow

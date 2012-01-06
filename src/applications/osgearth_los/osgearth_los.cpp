@@ -225,6 +225,308 @@ LineOfSightNode::draw()
     addChild( mt );
 }
 
+osg::Vec3d getNodeCenter(osg::Node* node)
+{
+    osg::NodePathList nodePaths = node->getParentalNodePaths();
+    if ( nodePaths.empty() )
+        return node->getBound().center();
+
+    osg::NodePath path = nodePaths[0];
+
+    osg::Matrixd localToWorld = osg::computeLocalToWorld( path );
+    osg::Vec3d center = osg::Vec3d(0,0,0) * localToWorld;
+
+    // if the tether node is a MT, we are set. If it's not, we need to get the
+    // local bound and add its translation to the localToWorld. We cannot just use
+    // the bounds directly because they are single precision (unless you built OSG
+    // with double-precision bounding spheres, which you probably did not :)
+    if ( !dynamic_cast<osg::MatrixTransform*>( node ) )
+    {
+        const osg::BoundingSphere& bs = node->getBound();
+        center += bs.center();
+    }   
+    return center;
+}
+
+class LineOfSightTether : public osg::NodeCallback
+{
+public:
+    LineOfSightTether(osg::Node* startNode, osg::Node* endNode);
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
+
+private:
+    osg::ref_ptr< osg::Node > _startNode;
+    osg::ref_ptr< osg::Node > _endNode;
+};
+
+LineOfSightTether::LineOfSightTether(osg::Node* startNode, osg::Node* endNode):
+_startNode(startNode),
+_endNode(endNode)
+{
+}
+
+void 
+LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+    {
+        LineOfSightNode* los = static_cast<LineOfSightNode*>(node);
+
+        osg::Vec3d start = getNodeCenter( _startNode );
+        osg::Vec3d end   = getNodeCenter( _endNode );
+
+        //Convert these to mappoints since that is what LOS expects
+        los->getMapNode()->getMap()->worldPointToMapPoint( start, start );
+        los->getMapNode()->getMap()->worldPointToMapPoint( end, end );
+
+        los->setStart( start );
+        los->setEnd( end );
+
+        
+    }
+    traverse(node, nv);
+}
+
+class RadialLineOfSightNode : public osg::Group
+{
+public:
+    RadialLineOfSightNode( MapNode* mapNode );
+
+    osgEarth::MapNode* getMapNode() { return _mapNode.get(); }
+
+    void setRadius( double radius );
+    double getRadius() const;
+
+    void setNumSpokes( int numSpokes );
+    int getNumSpokes() const;
+
+    const osg::Vec3d& getCenter() const;
+    void setCenter(const osg::Vec3d& center);
+
+private:
+    void compute();
+    int _numSpokes;
+    double _radius;
+    osg::Vec3d _center;
+    osg::ref_ptr< MapNode > _mapNode;
+};
+
+
+RadialLineOfSightNode::RadialLineOfSightNode( MapNode* mapNode):
+_mapNode( mapNode ),
+_numSpokes(20),
+_radius(500),
+_center(0,0,0)
+{
+    compute();
+}
+
+double
+RadialLineOfSightNode::getRadius() const
+{
+    return _radius;
+}
+
+void
+RadialLineOfSightNode::setRadius(double radius)
+{
+    if (_radius != radius)
+    {
+        _radius = osg::clampAbove(radius, 1.0);
+        compute();
+    }
+}
+
+int
+RadialLineOfSightNode::getNumSpokes() const
+{
+    return _numSpokes;
+}
+
+void RadialLineOfSightNode::setNumSpokes(int numSpokes)
+{
+    if (numSpokes != _numSpokes)
+    {
+        _numSpokes = osg::clampAbove(numSpokes, 1);
+        compute();
+    }
+}
+
+const osg::Vec3d&
+RadialLineOfSightNode::getCenter() const
+{
+    return _center;
+}
+
+void
+RadialLineOfSightNode::setCenter(const osg::Vec3d& center)
+{
+    if (_center != center)
+    {
+        _center = center;
+        compute();
+    }
+}
+
+void
+RadialLineOfSightNode::compute()
+{
+    //Remove all the children
+    removeChildren(0, getNumChildren());
+
+    //Get the center point in geocentric
+    osg::Vec3d centerWorld;
+    _mapNode->getMap()->mapPointToWorldPoint( _center, centerWorld );
+
+    osg::Vec3d up = centerWorld;
+    up.normalize();
+
+    //Get the "side" vector
+    osg::Vec3d side = up ^ osg::Vec3d(0,0,1);
+
+    //Get the number of spokes
+    double delta = osg::PI * 2.0 / (double)_numSpokes;
+
+    //TODO:  Localize
+    osg::Geometry* geometry = new osg::Geometry;
+    osg::Vec3Array* verts = new osg::Vec3Array();
+    verts->reserve(_numSpokes * 2);
+    geometry->setVertexArray( verts );
+
+    osg::Vec4Array* colors = new osg::Vec4Array();
+    colors->reserve( _numSpokes * 2 );
+    
+    geometry->setColorArray( colors );
+    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+
+    osg::Vec3d previousEnd;
+    osg::Vec3d firstEnd;
+
+    osgSim::LineOfSight los;
+    los.setDatabaseCacheReadCallback(0);
+    
+    for (unsigned int i = 0; i < _numSpokes; i++)
+    {
+        double angle = delta * (double)i;
+        osg::Quat quat(angle, up );
+        osg::Vec3d spoke = quat * (side * _radius);
+        osg::Vec3d end = centerWorld + spoke;        
+        los.addLOS( centerWorld, end);      
+    }
+
+    los.computeIntersections(_mapNode.get());
+
+    for (unsigned int i = 0; i < _numSpokes; i++)
+    {
+        osg::Vec3d start = los.getStartPoint(i);
+        osg::Vec3d end = los.getEndPoint(i);
+
+        osgSim::LineOfSight::Intersections hits = los.getIntersections(i);
+        osg::Vec3d hit;
+        bool hasLOS = hits.empty();
+        if (!hasLOS)
+        {
+            hit = *hits.begin();
+        }
+         
+         if (hasLOS)
+        {
+            verts->push_back( start - centerWorld );
+            verts->push_back( end - centerWorld );
+            colors->push_back( osg::Vec4(0,1,0,1));
+            colors->push_back( osg::Vec4(0,1,0,1));
+        }
+        else
+        {
+            verts->push_back( start - centerWorld );
+            verts->push_back( hit - centerWorld  );
+            colors->push_back( osg::Vec4(0,1,0,1));
+            colors->push_back( osg::Vec4(0,1,0,1));
+
+            verts->push_back( hit - centerWorld );
+            verts->push_back( end - centerWorld );
+            colors->push_back( osg::Vec4(1,0,0,1));
+            colors->push_back( osg::Vec4(1,0,0,1));
+
+            //colors->push_back( osg::Vec4(1,0,0,1));
+            //colors->push_back( osg::Vec4(1,0,0,1));
+        }
+
+
+        if (i > 0)
+        {
+            verts->push_back( end - centerWorld );
+            verts->push_back( previousEnd - centerWorld );
+            colors->push_back( osg::Vec4(1,1,1,1));
+            colors->push_back( osg::Vec4(1,1,1,1));
+        }
+        else
+        {
+            firstEnd = end;
+        }
+
+        previousEnd = end;
+    }
+
+
+    //Add the last outside of circle
+    verts->push_back( firstEnd - centerWorld );
+    verts->push_back( previousEnd - centerWorld );
+    colors->push_back( osg::Vec4(1,1,1,1));
+    colors->push_back( osg::Vec4(1,1,1,1));
+
+    geometry->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( geometry );
+
+    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+
+    osg::MatrixTransform* mt = new osg::MatrixTransform;
+    mt->setMatrix(osg::Matrixd::translate(centerWorld));
+    mt->addChild(geode);
+
+
+    addChild( mt );  
+}
+
+
+
+class RadialLineOfSightTether : public osg::NodeCallback
+{
+public:
+    RadialLineOfSightTether(osg::Node* node);
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
+
+private:
+    osg::ref_ptr< osg::Node > _node;
+};
+
+RadialLineOfSightTether::RadialLineOfSightTether(osg::Node* node):
+_node(node)
+{
+}
+
+void 
+RadialLineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    if (nv->getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+    {
+        RadialLineOfSightNode* los = static_cast<RadialLineOfSightNode*>(node);
+
+        osg::Vec3d center = getNodeCenter( _node );
+
+        //Convert center to mappoint since that is what LOS expects
+        los->getMapNode()->getMap()->worldPointToMapPoint( center, center );
+
+        los->setCenter( center );      
+    }
+    traverse(node, nv);
+}
+
+
+
+
 class LineOfSightEditor : public osg::Group
 {
 public:
@@ -444,206 +746,6 @@ struct LOSHandler : public osgGA::GUIEventHandler
     MapNode* _mapNode;
 };
 
-class RadialLineOfSightNode : public osg::Group
-{
-public:
-    RadialLineOfSightNode( MapNode* mapNode );
-
-    void setRadius( double radius );
-    double getRadius() const;
-
-    void setNumSpokes( int numSpokes );
-    int getNumSpokes() const;
-
-    const osg::Vec3d& getCenter() const;
-    void setCenter(const osg::Vec3d& center);
-
-private:
-    void compute();
-    int _numSpokes;
-    double _radius;
-    osg::Vec3d _center;
-    osg::ref_ptr< MapNode > _mapNode;
-};
-
-
-RadialLineOfSightNode::RadialLineOfSightNode( MapNode* mapNode):
-_mapNode( mapNode ),
-_numSpokes(20),
-_radius(500),
-_center(0,0,0)
-{
-    compute();
-}
-
-double
-RadialLineOfSightNode::getRadius() const
-{
-    return _radius;
-}
-
-void
-RadialLineOfSightNode::setRadius(double radius)
-{
-    if (_radius != radius)
-    {
-        _radius = osg::clampAbove(radius, 1.0);
-        compute();
-    }
-}
-
-int
-RadialLineOfSightNode::getNumSpokes() const
-{
-    return _numSpokes;
-}
-
-void RadialLineOfSightNode::setNumSpokes(int numSpokes)
-{
-    if (numSpokes != _numSpokes)
-    {
-        _numSpokes = osg::clampAbove(numSpokes, 1);
-        compute();
-    }
-}
-
-const osg::Vec3d&
-RadialLineOfSightNode::getCenter() const
-{
-    return _center;
-}
-
-void
-RadialLineOfSightNode::setCenter(const osg::Vec3d& center)
-{
-    if (_center != center)
-    {
-        _center = center;
-        compute();
-    }
-}
-
-void
-RadialLineOfSightNode::compute()
-{
-    //Remove all the children
-    removeChildren(0, getNumChildren());
-
-    //Get the center point in geocentric
-    osg::Vec3d centerWorld;
-    _mapNode->getMap()->mapPointToWorldPoint( _center, centerWorld );
-
-    osg::Vec3d up = centerWorld;
-    up.normalize();
-
-    //Get the "side" vector
-    osg::Vec3d side = up ^ osg::Vec3d(0,0,1);
-
-    //Get the number of spokes
-    double delta = osg::PI * 2.0 / (double)_numSpokes;
-
-    //TODO:  Localize
-    osg::Geometry* geometry = new osg::Geometry;
-    osg::Vec3Array* verts = new osg::Vec3Array();
-    verts->reserve(_numSpokes * 2);
-    geometry->setVertexArray( verts );
-
-    osg::Vec4Array* colors = new osg::Vec4Array();
-    colors->reserve( _numSpokes * 2 );
-    
-    geometry->setColorArray( colors );
-    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-
-    osg::Vec3d previousEnd;
-    osg::Vec3d firstEnd;
-
-    osgSim::LineOfSight los;
-    los.setDatabaseCacheReadCallback(0);
-    
-    for (unsigned int i = 0; i < _numSpokes; i++)
-    {
-        double angle = delta * (double)i;
-        osg::Quat quat(angle, up );
-        osg::Vec3d spoke = quat * (side * _radius);
-        osg::Vec3d end = centerWorld + spoke;        
-        los.addLOS( centerWorld, end);      
-    }
-
-    los.computeIntersections(_mapNode.get());
-
-    for (unsigned int i = 0; i < _numSpokes; i++)
-    {
-        osg::Vec3d start = los.getStartPoint(i);
-        osg::Vec3d end = los.getEndPoint(i);
-
-        osgSim::LineOfSight::Intersections hits = los.getIntersections(i);
-        osg::Vec3d hit;
-        bool hasLOS = hits.empty();
-        if (!hasLOS)
-        {
-            hit = *hits.begin();
-        }
-         
-         if (hasLOS)
-        {
-            verts->push_back( start - centerWorld );
-            verts->push_back( end - centerWorld );
-            colors->push_back( osg::Vec4(0,1,0,1));
-            colors->push_back( osg::Vec4(0,1,0,1));
-        }
-        else
-        {
-            verts->push_back( start - centerWorld );
-            verts->push_back( hit - centerWorld  );
-            colors->push_back( osg::Vec4(0,1,0,1));
-            colors->push_back( osg::Vec4(0,1,0,1));
-
-            verts->push_back( hit - centerWorld );
-            verts->push_back( end - centerWorld );
-            colors->push_back( osg::Vec4(1,0,0,1));
-            colors->push_back( osg::Vec4(1,0,0,1));
-
-            //colors->push_back( osg::Vec4(1,0,0,1));
-            //colors->push_back( osg::Vec4(1,0,0,1));
-        }
-
-
-        if (i > 0)
-        {
-            verts->push_back( end - centerWorld );
-            verts->push_back( previousEnd - centerWorld );
-            colors->push_back( osg::Vec4(1,1,1,1));
-            colors->push_back( osg::Vec4(1,1,1,1));
-        }
-        else
-        {
-            firstEnd = end;
-        }
-
-        previousEnd = end;
-    }
-
-
-    //Add the last outside of circle
-    verts->push_back( firstEnd - centerWorld );
-    verts->push_back( previousEnd - centerWorld );
-    colors->push_back( osg::Vec4(1,1,1,1));
-    colors->push_back( osg::Vec4(1,1,1,1));
-
-    geometry->addPrimitiveSet(new osg::DrawArrays(GL_LINES, 0, verts->size()));
-
-    osg::Geode* geode = new osg::Geode();
-    geode->addDrawable( geometry );
-
-    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-
-    osg::MatrixTransform* mt = new osg::MatrixTransform;
-    mt->setMatrix(osg::Matrixd::translate(centerWorld));
-    mt->addChild(geode);
-
-
-    addChild( mt );  
-}
 
 struct RadialLOSHandler : public osgGA::GUIEventHandler 
 {
@@ -682,7 +784,8 @@ struct RadialLOSHandler : public osgGA::GUIEventHandler
                     Map* map = _mapNode->getMap();
                     osg::Vec3d lla;
                     map->worldPointToMapPoint( hit, lla );                    
-                    _los->setCenter( lla + osg::Vec3d(0,0,_hat) );                    
+                    _los->setCenter( lla + osg::Vec3d(0,0,_hat) );            
+                    OE_NOTICE << "Setting center to " << _los->getCenter() << std::endl;
                 }
             }
         }
@@ -724,6 +827,69 @@ struct RadialLOSHandler : public osgGA::GUIEventHandler
     double _hat;
 };
 
+
+osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& center, float radius,double looptime)
+{
+    // set up the animation path 
+    osg::AnimationPath* animationPath = new osg::AnimationPath;
+    animationPath->setLoopMode(osg::AnimationPath::LOOP);
+    
+    int numSamples = 40;
+
+    double delta = osg::PI * 2.0 / (double)numSamples;
+
+    //Get the center point in geocentric
+    osg::Vec3d centerWorld;
+    mapNode->getMap()->mapPointToWorldPoint( center, centerWorld );
+
+    osg::Vec3d up = centerWorld;
+    up.normalize();
+
+    //Get the "side" vector
+    osg::Vec3d side = up ^ osg::Vec3d(0,0,1);
+
+
+    double time=0.0f;
+    double time_delta = looptime/(double)numSamples;
+
+    osg::Vec3d firstPosition;
+    osg::Quat firstRotation;
+
+    for (unsigned int i = 0; i < numSamples; i++)
+    {
+        double angle = delta * (double)i;
+        osg::Quat quat(angle, up );
+        osg::Vec3d spoke = quat * (side * radius);
+        osg::Vec3d end = centerWorld + spoke;                
+
+        osg::Quat makeUp;
+        makeUp.makeRotate(osg::Vec3d(0,0,1), up);
+        
+        animationPath->insert(time,osg::AnimationPath::ControlPoint(end,makeUp));
+        if (i == 0)
+        {
+            firstPosition = end;
+            firstRotation = makeUp;
+        }
+        time += time_delta;            
+    }
+   
+    animationPath->insert(time, osg::AnimationPath::ControlPoint(firstPosition, firstRotation));
+
+    return animationPath;    
+}
+
+osg::Node* createPlane(osg::Node* node, MapNode* mapNode, const osg::Vec3d& center, double radius, double time)
+{
+    osg::MatrixTransform* positioner = new osg::MatrixTransform;
+    positioner->addChild( node);
+    osg::AnimationPath* animationPath = createAnimationPath(mapNode, center, radius, time);
+    positioner->setUpdateCallback( new osg::AnimationPathCallback(animationPath, 0.0, 1.0));
+    return positioner;
+}
+
+
+
 int
 main(int argc, char** argv)
 {
@@ -763,6 +929,25 @@ main(int argc, char** argv)
     radial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     viewer.addEventHandler( new RadialLOSHandler( radial, mapNode) );
     root->addChild( radial );
+
+    osg::ref_ptr< osg::Node >  plane = osgDB::readNodeFile("cessna.osgt.50,50,50.scale");
+    osg::Node* plane1 = createPlane(plane, mapNode, osg::Vec3d(-121.656, 46.0935, 4133.06), 5000, 20);
+    osg::Node* plane2 = createPlane(plane, mapNode, osg::Vec3d(-121.321, 46.2589, 1390.09), 3000, 5);
+    root->addChild( plane1  );
+    root->addChild( plane2 );
+    los->setUpdateCallback( new LineOfSightTether( plane1, plane2 ) );
+
+
+    osg::Node* plane3 = createPlane(plane, mapNode, osg::Vec3d( -121.463, 46.3548, 1348.71), 10000, 5);    
+    root->addChild( plane3 );
+    RadialLineOfSightNode* tetheredRadial = new RadialLineOfSightNode( mapNode );    
+    tetheredRadial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);    
+    tetheredRadial->setRadius( 5000 );
+    tetheredRadial->setNumSpokes( 100 );
+    root->addChild( tetheredRadial );
+    tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );
+
+    
 
 
     //viewer.addEventHandler( new LOSHandler( los, mapNode, editor ) );

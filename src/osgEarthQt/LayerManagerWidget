@@ -1,0 +1,289 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_LAYERMANAGERWIDGET_H
+#define OSGEARTHQT_LAYERMANAGERWIDGET_H 1
+
+#include <osgEarthQt/Actions>
+#include <osgEarthQt/Common>
+#include <osgEarthQt/DataManager>
+
+#include <osgEarth/Map>
+
+#include <QCheckBox>
+#include <QDropEvent>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QPoint>
+#include <QScrollArea>
+#include <QSlider>
+#include <QVBoxLayout>
+#include <QWidget>
+
+namespace osgEarth { namespace QtGui 
+{
+    using namespace osgEarth;
+
+    class LayerManagerWidget;
+
+    //---------------------------------------------------------------------------
+    class LayerControlWidgetBase : public QFrame
+    {
+    Q_OBJECT
+
+    public:
+      LayerControlWidgetBase(LayerManagerWidget* parentManager, bool hasContent=true) : _parent(parentManager) { initUi(hasContent); }
+
+      virtual Action* getDoubleClickAction(const ViewVector& views) { return 0L; }
+
+      LayerManagerWidget* getParentManager() { return _parent; }
+
+      virtual osgEarth::UID getUID()=0;
+
+    signals:
+      void doubleClicked();
+
+    protected:
+      ~LayerControlWidgetBase();
+
+      virtual void initUi(bool hasContent);
+
+      void mouseDoubleClickEvent(QMouseEvent* event);
+      void mousePressEvent(QMouseEvent* event);
+      void mouseMoveEvent(QMouseEvent* event);
+      void dragEnterEvent(QDragEnterEvent* event);
+      void dragLeaveEvent(QDragLeaveEvent* event);
+      //void dragMoveEvent(QDragMoveEvent* event);
+      void dropEvent(QDropEvent* event);
+
+      LayerManagerWidget* _parent;
+      QVBoxLayout*  _primaryLayout;
+      QFrame*       _headerBox;
+      QHBoxLayout*  _headerBoxLayout;
+      QFrame*       _contentBox;
+      QHBoxLayout*  _contentBoxLayout;
+      QFrame*       _dropBox;
+
+      QPoint _dragStartPosition;
+    };
+
+
+    //---------------------------------------------------------------------------
+    class ElevationLayerControlWidget : public LayerControlWidgetBase
+    {
+    Q_OBJECT
+
+    public:
+      ElevationLayerControlWidget(ElevationLayer* layer, LayerManagerWidget* parentManager);
+
+      Action* getDoubleClickAction(const ViewVector& views);
+
+      osgEarth::UID getUID();
+
+      ElevationLayer* layer() { return _layer.get(); }
+
+      void setLayerEnabled(bool enabled);
+
+    private slots:
+      void onEnabledCheckStateChanged(int state);
+
+    protected:
+      ~ElevationLayerControlWidget();
+
+      void initUi();
+
+      osg::ref_ptr<ElevationLayer> _layer;
+      osg::ref_ptr<Action> _doubleClick;
+      osg::ref_ptr<ElevationLayerCallback> _layerCallback;
+      QCheckBox* _enabledCheckBox;
+    };
+
+
+    //---------------------------------------------------------------------------
+    class ImageLayerControlWidget : public LayerControlWidgetBase
+    {
+    Q_OBJECT
+
+    public:
+      ImageLayerControlWidget(osgEarth::ImageLayer* layer, LayerManagerWidget* parentManager);
+
+      Action* getDoubleClickAction(const ViewVector& views);
+
+      osgEarth::UID getUID();
+
+      osgEarth::ImageLayer* layer() { return _layer.get(); }
+
+      void setLayerEnabled(bool enabled);
+      void setLayerOpacity(float opacity);
+
+
+    private slots:
+      void onCheckStateChanged(int state);
+      void onSliderValueChanged(int value);
+
+    protected:
+      ~ImageLayerControlWidget();
+
+      void initUi();
+
+      osg::ref_ptr<osgEarth::ImageLayer> _layer;
+      osg::ref_ptr<Action> _doubleClick;
+      osg::ref_ptr<ImageLayerCallback> _layerCallback;
+      QCheckBox* _enabledCheckBox;
+      QSlider* _opacitySlider;
+    };
+
+
+    //---------------------------------------------------------------------------
+    class ModelLayerControlWidget : public LayerControlWidgetBase
+    {
+    Q_OBJECT
+
+    public:
+      ModelLayerControlWidget(ModelLayer* layer, LayerManagerWidget* parentManager, osgEarth::Map* map=0L);
+
+      Action* getDoubleClickAction(const ViewVector& views);
+
+      osgEarth::UID getUID();
+
+      ModelLayer* layer() { return _layer.get(); }
+
+      void setLayerEnabled(bool enabled);
+      void setLayerOverlay(bool overlay);
+
+    private slots:
+      void onEnabledCheckStateChanged(int state);
+      void onOverlayCheckStateChanged(int state);
+
+    protected:
+      ~ModelLayerControlWidget();
+
+      void initUi();
+
+      osg::ref_ptr<ModelLayer> _layer;
+      osg::ref_ptr<Map> _map;
+      osg::ref_ptr<ModelLayerCallback> _layerCallback;
+      osg::ref_ptr<Action> _doubleClick;
+      QCheckBox* _enabledCheckBox;
+      QCheckBox* _overlayCheckBox;
+    };
+
+
+
+
+    //---------------------------------------------------------------------------
+    class LayerWidgetMimeData : public QMimeData
+    {
+    Q_OBJECT
+
+    public:
+      static const QString MIME_TYPE;
+
+      LayerWidgetMimeData(LayerControlWidgetBase* widget) : _widget(widget) {}
+
+      bool hasFormat(const QString &mimeType) const
+      {
+        if (mimeType == MIME_TYPE)
+          return true;
+
+        return false;
+      }
+
+      QStringList formats() const
+      {
+        QStringList formats;
+        formats << MIME_TYPE;
+
+        return formats;
+      }
+
+      QVariant retrieveData(const QString &mimeType, QVariant::Type type) const
+      {
+        return QVariant();
+      }
+
+      LayerControlWidgetBase* getWidget() const { return _widget; }
+
+    private:
+      LayerControlWidgetBase* _widget;
+    };
+
+
+    //---------------------------------------------------------------------------
+    class OSGEARTHQT_EXPORT LayerManagerWidget : public QScrollArea
+    {
+    Q_OBJECT
+
+    public:
+      enum LayerType {
+        ELEVATION_LAYERS,
+        IMAGE_LAYERS,
+        MODEL_LAYERS
+      };
+
+      LayerManagerWidget(DataManager* dm, LayerType type=IMAGE_LAYERS);
+      LayerManagerWidget(osgEarth::Map* map, LayerType type=IMAGE_LAYERS);
+
+      void setActiveView(osgViewer::View* view);
+      void setActiveViews(const ViewVector& views);
+
+      void resetStyleSheet();
+
+    private slots:
+      void onItemDoubleClicked();
+
+    private:
+      friend struct LayerManagerMapCallback;
+
+      QWidget* findItemByUID(osgEarth::UID uid, int* out_row=0L);
+
+      void addElevationLayerItem(osgEarth::ElevationLayer* layer, int index=-1);
+      void addImageLayerItem(osgEarth::ImageLayer* layer, int index=-1);
+      void addModelLayerItem(osgEarth::ModelLayer* layer, int index=-1);
+      void removeLayerItem(osgEarth::Layer* layer);
+      void moveLayerItem(osgEarth::Layer* layer, int oldIndex, int newIndex);
+
+    protected:
+      friend class LayerControlWidgetBase;
+
+      static const std::string DEFAULT_STYLESHEET;
+
+      void initialize();
+      void refresh();
+
+      void dragEnterEvent(QDragEnterEvent* event);
+      void dragLeaveEvent(QDragLeaveEvent* event);
+      void dropEvent(QDropEvent* event);
+
+      void doLayerWidgetDrop(LayerControlWidgetBase* widget, LayerControlWidgetBase* dropOn=0L);
+
+      osg::ref_ptr<DataManager> _manager;
+      osg::ref_ptr<osgEarth::Map> _map;
+      ViewVector _views;
+      LayerType _type;
+
+      QVBoxLayout*  _stack;
+      QFrame*       _dropBox;
+
+      bool _dragging;
+      int _dragId;
+      osg::observer_ptr<osg::Referenced> _dragLayer;
+    };
+} }
+
+#endif // OSGEARTHQT_LAYERMANAGERWIDGET_H

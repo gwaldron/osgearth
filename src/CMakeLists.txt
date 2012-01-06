@@ -15,6 +15,11 @@ ENDFOREACH( lib )
 ADD_SUBDIRECTORY( osgEarthDrivers )
 ADD_SUBDIRECTORY( applications )
 
+IF (QT4_FOUND AND NOT ANDROID)
+    ADD_SUBDIRECTORY(osgEarthQt)
+    SET_PROPERTY(TARGET osgEarthQt PROPERTY FOLDER "Libs")
+ENDIF()
+
 IF(MSVC80)
   OPTION(OSGEARTH_MSVC_GENERATE_PLUGINS_AND_WRAPPERS_MANIFESTS "Generate or not manifests files under VS8 for dynamically loaded dlls" ON)
 ENDIF(MSVC80)

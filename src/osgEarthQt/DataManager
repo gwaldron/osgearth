@@ -1,0 +1,194 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_DATAMANAGER_H
+#define OSGEARTHQT_DATAMANAGER_H 1
+
+#include <osgEarthQt/Common>
+#include <osgEarthQt/Actions>
+
+#include <osgEarth/Map>
+#include <osgEarth/MapNode>
+#include <osgEarth/Viewpoint>
+
+#include <osgEarthAnnotation/AnnotationNode>
+
+#include <QObject>
+
+
+namespace osgEarth { namespace QtGui 
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Annotation;
+    using namespace osgEarth::QtGui;
+
+    struct DataManagerMapCallback;
+    struct DataManagerElevationLayerCallback;
+    struct DataManagerImageLayerCallback;
+    struct DataManagerModelLayerCallback;
+
+
+    //---------------------------------------------------------------------------
+    class OSGEARTHQT_EXPORT DataManager : public QObject, public osg::Referenced, public ActionManager
+    {
+    Q_OBJECT
+
+    public:
+      DataManager(osgEarth::Map* map);
+      DataManager(osgEarth::MapNode* mapNode);
+
+      osgEarth::Map* map() { return _map.get(); }
+
+      void addAnnotation(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent/*=0L*/);
+      void removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotation, osg::Group* parent=0L);
+      void getAnnotations(AnnotationVector& out_annotations) const;
+
+      void setSelectedDecoration(const std::string& decoration) { _selectedDecoration = decoration; }
+
+      void addSelectedAnnotation(osgEarth::Annotation::AnnotationNode* annotation);
+      void removeSelectedAnnotation(osgEarth::Annotation::AnnotationNode* annotation);
+      void setSelectedAnnotations(const AnnotationVector& annotations);
+      void clearSelectedAnnotations();
+      bool isSelected(osgEarth::Annotation::AnnotationNode* annotation);
+
+      void getViewpoints(std::vector<osgEarth::Viewpoint>& out_viewpoints) const;
+
+    public: //ActionManager
+      void addBeforeActionCallback( ActionCallback* cb );
+      void addAfterActionCallback( ActionCallback* cb );
+
+      bool doAction( void* sender, Action* action, bool reversible =true );
+      bool undoAction();
+      bool canUndo() const;
+      void clearUndoActions();
+      ReversibleAction* getNextUndoAction() const;
+
+    signals:
+      void mapChanged();
+      void selectionChanged(/*const AnnotationVector& selection*/);
+
+      void annotationAdded(osgEarth::Annotation::AnnotationNode* annotation);
+      void annotationRemoved(osgEarth::Annotation::AnnotationNode* annotation);
+
+    protected:
+      ~DataManager() { }
+
+      void initialize();
+      void onMapChanged();
+      void onMapChanged(const osgEarth::MapModelChange& change);
+
+    private:
+      osg::ref_ptr<osgEarth::Map> _map;
+      Threading::ReadWriteMutex _dataMutex;
+      AnnotationVector _annotations;
+      AnnotationVector _selection;
+      std::string _selectedDecoration;
+      std::vector<osgEarth::Viewpoint> _viewpoints;
+      osg::ref_ptr<DataManagerElevationLayerCallback> _elevationCallback;
+      osg::ref_ptr<DataManagerImageLayerCallback> _imageCallback;
+      osg::ref_ptr<DataManagerModelLayerCallback> _modelCallback;
+
+
+      // ActionManager-related members
+      std::list< osg::ref_ptr<Action> > _undoStack;
+      typedef std::list< osg::ref_ptr<ActionCallback> > ActionCallbackList;
+      ActionCallbackList _beforeCallbacks;
+      ActionCallbackList _afterCallbacks;
+      int _maxUndoStackSize;
+
+
+      friend struct DataManagerMapCallback;
+      friend struct DataManagerElevationLayerCallback;
+      friend struct DataManagerImageLayerCallback;
+      friend struct DataManagerModelLayerCallback;
+    };
+
+
+    //---------------------------------------------------------------------------
+    struct DataManagerMapCallback : public osgEarth::MapCallback
+    {
+      DataManagerMapCallback(DataManager* dm) : _dm(dm) { }
+
+      void onMapModelChanged( const MapModelChange& change )
+      {
+        if (_dm.valid())
+          _dm->onMapChanged(change);
+      }
+
+      osg::observer_ptr<DataManager> _dm;
+    };
+
+
+    //---------------------------------------------------------------------------
+    struct DataManagerElevationLayerCallback : public osgEarth::ElevationLayerCallback
+    {
+      DataManagerElevationLayerCallback(DataManager* dm) : _dm(dm) { }
+
+      void onEnabledChanged(TerrainLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      osg::observer_ptr<DataManager> _dm;
+    };
+
+
+    //---------------------------------------------------------------------------
+    struct DataManagerImageLayerCallback : public osgEarth::ImageLayerCallback
+    {
+      DataManagerImageLayerCallback(DataManager* dm) : _dm(dm) { }
+
+      void onOpacityChanged(ImageLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      void onEnabledChanged(TerrainLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      osg::observer_ptr<DataManager> _dm;
+    };
+
+
+    //---------------------------------------------------------------------------
+    struct DataManagerModelLayerCallback : public osgEarth::ModelLayerCallback
+    {
+      DataManagerModelLayerCallback(DataManager* dm) : _dm(dm) { }
+
+      void onEnabledChanged(ModelLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      void onOverlayChanged(ModelLayer* layer)
+      {
+        if (_dm.valid())
+          _dm->onMapChanged();
+      }
+
+      osg::observer_ptr<DataManager> _dm;
+    };
+} }
+
+#endif // OSGEARTHQT_DATAMANAGER_H

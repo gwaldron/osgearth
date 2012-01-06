@@ -24,7 +24,6 @@ SET(LIB_PUBLIC_HEADERS
     GeometryFactory
     GEOS
     GeometryRasterizer
-    LineFunctor
     LineSymbol
     MarkerResource
     MarkerSymbol

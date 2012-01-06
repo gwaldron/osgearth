@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/MeshConsolidator>
-#include <osgEarthSymbology/LineFunctor>
+#include <osgEarth/LineFunctor>
 #include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
 #include <limits>

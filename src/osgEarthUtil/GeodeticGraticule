@@ -1,0 +1,127 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_GEODETIC_GRATICLE
+#define OSGEARTHUTIL_GEODETIC_GRATICLE
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/MapNode>
+#include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/Feature>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Implements a map graticule. 
+     * 
+     * NOTE: So far, this only works for geocentric maps.
+     * TODO: Add projected support; add text label support
+     */
+    class OSGEARTHUTIL_EXPORT GeodeticGraticule : public osg::Group
+    {
+    public:
+
+        /**
+         * Constructs a new graticule for use with the specified map. The graticule
+         * is created with several default levels. If you call addLevel(), the 
+         * default levels are deleted.
+         *
+         * @param map
+         *      Map with which you will use this graticule
+         */
+        GeodeticGraticule( MapNode* mapNode );
+
+        /**
+         * Sets the color of the grid lines
+         */
+        void setLineColor( const osg::Vec4f& value );
+
+        /**
+         * Sets the color of the text labels
+         */
+        void setTextColor( const osg::Vec4f& value ) { _textColor = value; }
+
+
+        void setFirstLevel(float maxRange, unsigned tilesX, unsigned tilesY, unsigned cellsPerTileX, unsigned cellsPerTileY);
+
+        /**
+         * Adds a new level to the profile. Levels are sorted by maxRange. Calling this method
+         * deletes any automatically created default levels.
+         *
+         * @param maxRange
+         *      Maximum camera range for this level.
+         * @param cellsX, cellsY
+         *      Number of grid cells in each direction at this level.
+         * @param lineWidth
+         *      Width of the grid lines, in map units, at this level.
+         */
+        void addLevel( float maxRange, unsigned cellsX, unsigned cellsY );
+        //void addLevel( float maxRange, unsigned int cellsX, unsigned int cellsY, double lineWidth );
+
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+
+    private:
+        struct Level
+        {
+            float     _maxRange;
+            unsigned  _tilesX, _tilesY;
+            unsigned  _cellsPerTileX, _cellsPerTileY;
+            Style     _style;
+        };
+
+        unsigned int getID() const { return _id; }
+
+        void init();
+
+        bool getLevel( unsigned int level, GeodeticGraticule::Level& out_level ) const;
+
+        unsigned int getNumLevels() const { return _levels.size(); }
+
+        osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+
+        unsigned int               _id;
+        bool                       _autoLevels;
+        osg::observer_ptr<MapNode> _mapNode;
+        std::vector<Level>         _levels;
+        osg::Vec4f                 _textColor;
+        Style                      _lineStyle;
+        Style                      _style;
+
+        osg::Group*                _root;
+
+        //osg::Node* createGridLevel( unsigned int levelNum ) const;
+        //osg::Node* createTextLevel( unsigned int levelNum ) const;
+
+        osg::Node* buildTile( const TileKey& key, Map* map ) const;
+        osg::Node* buildChildren( unsigned level, unsigned x, unsigned y ) const;
+
+        friend class GeodeticGraticuleFactory;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_GEODETIC_GRATICLE

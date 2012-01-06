@@ -100,6 +100,15 @@ _options( options )
 }
 
 osg::Node*
+GeometryCompiler::compile(Geometry*             geometry,
+                          const Style&          style,
+                          const FilterContext&  context)
+{
+    osg::ref_ptr<Feature> f = new Feature(geometry);
+    return compile(f.get(), style, context);
+}
+
+osg::Node*
 GeometryCompiler::compile(Feature*              feature,
                           const Style&          style,
                           const FilterContext&  context)

@@ -33,108 +33,6 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
 
-osg::Vec4
-randomColor()
-{
-    float r = (float)rand() / (float)RAND_MAX;
-    float g = (float)rand() / (float)RAND_MAX;
-    float b = (float)rand() / (float)RAND_MAX;
-    return osg::Vec4(r,g,b,1.0f);
-}
-
-
-struct RadialLOSHandler : public osgGA::GUIEventHandler 
-{
-    RadialLOSHandler(RadialLineOfSightNode* los, MapNode* mapNode)
-        : _los( los ),
-        _mapNode( mapNode ),
-        _hat(5)
-    {        
-    }
-
-    bool getHit( float x, float y, osgViewer::View* view, osg::Vec3d& hit )
-    {
-        osgUtil::LineSegmentIntersector::Intersections results;
-        if ( view->computeIntersections( x, y, results ) )
-        {
-            // find the first hit under the mouse:
-            osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-            hit = first.getWorldIntersectPoint();            
-            return true;
-        }
-        return false;
-    }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        //if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
-        if ( ea.getEventType() == osgGA::GUIEventAdapter::MOVE )
-        {
-            osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-            osg::Vec3d hit;
-            if (getHit( ea.getX(), ea.getY(), view, hit ))
-            {
-                //if (ea.getButtonMask() == osgGA::GUIEventAdapter::MouseButtonMask::MIDDLE_MOUSE_BUTTON)
-                if (ea.getModKeyMask() & osgGA::GUIEventAdapter::MODKEY_CTRL)
-                {
-                    Map* map = _mapNode->getMap();
-                    osg::Vec3d lla;
-                    map->worldPointToMapPoint( hit, lla );                    
-                    _los->setCenter( lla + osg::Vec3d(0,0,_hat) );            
-                    OE_NOTICE << "Setting center to " << _los->getCenter() << std::endl;
-                }
-            }
-        }
-        else if (ea.getEventType() == osgGA::GUIEventAdapter::KEYDOWN)
-        {
-            double radiusDelta = 100.0;
-            int spokeDelta = 10;
-            if (ea.getKey() == 'u')
-            {              
-                _los->setRadius( _los->getRadius() + radiusDelta );
-            }
-            else if (ea.getKey() == 'U')
-            {                
-                _los->setRadius( _los->getRadius() - radiusDelta );
-            }
-            else if (ea.getKey() == 'j')
-            {
-                _los->setNumSpokes( _los->getNumSpokes() + spokeDelta );
-            }
-            else if (ea.getKey() == 'J')
-            {
-                _los->setNumSpokes( _los->getNumSpokes() - spokeDelta );
-            }
-            else if (ea.getKey() == 'k')
-            {
-                _los->setCenter( _los->getCenter() + osg::Vec3d(0,0,10));
-            }
-            else if (ea.getKey() == 'K')
-            {
-                _los->setCenter( _los->getCenter() + osg::Vec3d(0,0,-10));
-            }
-            else if (ea.getKey() == 'c')
-            {
-                osg::Vec4f good = randomColor();
-                osg::Vec4f bad = randomColor();
-                _los->setGoodColor( good );
-                _los->setBadColor( bad );
-            }
-            else if (ea.getKey() == 'd')
-            {
-                if (_los->getDisplayMode() == MODE_SPLIT) _los->setDisplayMode( MODE_SINGLE);
-                else _los->setDisplayMode( MODE_SPLIT);
-            }
-
-        }
-        return false;
-    }    
-
-    RadialLineOfSightNode* _los;    
-    MapNode* _mapNode;
-    double _hat;
-};
-
 
 osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& center, float radius,double looptime)
 {
@@ -242,7 +140,6 @@ main(int argc, char** argv)
     radial->setNumSpokes(100);
     //Turn of depth testing so it's easier to see
     radial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-    //viewer.addEventHandler( new RadialLOSHandler( radial, mapNode) );
     root->addChild( radial );
     RadialLineOfSightEditor* radialEditor = new RadialLineOfSightEditor( radial );
     root->addChild( radialEditor );

@@ -17,27 +17,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/Formatters>
+
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Geometry>
+#include <osgEarthAnnotation/LabelNode>
+
 #include <osgEarth/Registry>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/DrapeableNode>
+#include <osgEarth/ThreadingUtils>
+
 #include <OpenThreads/Mutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/PagedLOD>
-#include <osg/ProxyNode>
-#include <osg/MatrixTransform>
 #include <osg/Depth>
 #include <osg/Program>
-#include <osg/LineStipple>
 #include <osgDB/FileNameUtils>
-#include <osgUtil/Optimizer>
-#include <osgText/Text>
-#include <sstream>
-#include <iomanip>
 
 #define LC "[GeodeticGraticule] "
 
@@ -45,9 +43,9 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
-using namespace OpenThreads;
+using namespace osgEarth::Annotation;
 
-static Mutex s_graticuleMutex;
+static Threading::Mutex s_graticuleMutex;
 typedef std::map<unsigned int, osg::ref_ptr<GeodeticGraticule> > GeodeticGraticuleRegistry;
 static GeodeticGraticuleRegistry s_graticuleRegistry;
 
@@ -57,50 +55,83 @@ static GeodeticGraticuleRegistry s_graticuleRegistry;
 
 //---------------------------------------------------------------------------
 
-namespace
+GeodeticGraticuleOptions::GeodeticGraticuleOptions( const Config& conf ) :
+ConfigOptions( conf )
 {
-    char s_vertexShader[] =
-        "varying vec3 Normal; \n"
-        "void main(void) \n"
-        "{ \n"
-        "    Normal = normalize( gl_NormalMatrix * gl_Normal ); \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "    gl_FrontColor = gl_Color; \n"
-        "} \n";
+    mergeConfig( _conf );
+}
 
-    char s_fragmentShader[] =
-        "varying vec3 Normal; \n"
-        "void main(void) \n"
-        "{ \n"
-        "    gl_FragColor = gl_Color; \n"
-        "} \n";
+void
+GeodeticGraticuleOptions::mergeConfig( const Config& conf )
+{
+    //todo
+}
+
+Config
+GeodeticGraticuleOptions::getConfig() const
+{
+    Config conf = ConfigOptions::newConfig();
+    conf.key() = "geodetic_graticule";
+    //todo
+    return conf;
+}
+
+void
+GeodeticGraticuleOptions::addLevel( float maxRange, float minRange, unsigned subFactor, const Style& lineStyle, const Style& textStyle )
+{
+    Level level;
+    level._maxRange = maxRange;
+    level._minRange = minRange;
+    level._subdivisionFactor = subFactor;
+    if ( !lineStyle.empty() )
+        level._lineStyle = lineStyle;
+    if ( !textStyle.empty() )
+        level._textStyle = textStyle;
+
+    _levels.push_back(level);
 }
 
 //---------------------------------------------------------------------------
 
 GeodeticGraticule::GeodeticGraticule( MapNode* mapNode ) :
 _mapNode   ( mapNode ),
-_autoLevels( true ),
-_textColor ( 1,1,0,1 ),
 _root      ( 0L )
 {
+    init();
+}
+
+GeodeticGraticule::GeodeticGraticule( MapNode* mapNode, const GeodeticGraticuleOptions& options ) :
+_mapNode   ( mapNode ),
+_root      ( 0L )
+{
+    _options = options;
+    init();
+}
+
+void
+GeodeticGraticule::init()
+{
+    if ( !_mapNode.valid() )
+    {
+        OE_WARN << LC << "Illegal NULL map node" << std::endl;
+        return;
+    }
+
+    if ( !_mapNode->isGeocentric() )
+    {
+        OE_WARN << LC << "Projected map mode is not yet supported" << std::endl;
+        return;
+    }
+
     // safely generate a unique ID for this graticule:
     _id = Registry::instance()->createUID();
     {
-        ScopedLock<Mutex> lock( s_graticuleMutex );
+        Threading::ScopedMutexLock lock( s_graticuleMutex );
         s_graticuleRegistry[_id] = this;
     }
 
-    LineSymbol* line = _style.getOrCreate<LineSymbol>();
-    line->stroke()->color() = Color::Gray;
-    line->stroke()->width() = 1.0;
+    const Profile* mapProfile = _mapNode->getMap()->getProfile();
 
-    AltitudeSymbol* alt = _style.getOrCreate<AltitudeSymbol>();
-    alt->verticalOffset() = NumericExpression(25000.0);
-
-    //TextSymbol* text = _style.getOrCreate<TextSymbol>();
-
-    const Profile* mapProfile = mapNode->getMap()->getProfile();
     _profile = Profile::create(
         mapProfile->getSRS(),
         mapProfile->getExtent().xMin(),
@@ -109,45 +140,60 @@ _root      ( 0L )
         mapProfile->getExtent().yMax(),
         mapProfile->getVerticalSRS(),
         8, 4 );
-    //_profile = mapNode->getMap()->getProfile();
+
     _featureProfile = new FeatureProfile(_profile->getSRS());
 
-    if ( _mapNode->isGeocentric() )
-    {
-        double r = _mapNode->getMapSRS()->getEllipsoid()->getRadiusEquator();
-
-        addLevel( FLT_MAX, 4, 4 );
-
-        double d = 4.5*r;
-        for(int i=0; i<3; i++)
-        {
-            d *= 0.5;
-            addLevel( d, 4, 4 );
-        }
-    }
-    else
-    {
-        // ??? calculate an optimal # of cells per tile
-    }
-
+    //todo: do this right..
     osg::StateSet* set = this->getOrCreateStateSet();
     set->setRenderBinDetails( 9999, "RenderBin" );
-    //set->setAttributeAndModes( 
-    //    new osg::Depth( osg::Depth::LEQUAL, 1 ) );
-        //new osg::Depth( osg::Depth::ALWAYS ), 
-        //osg::StateAttribute::ON | osg::StateAttribute::PROTECTED );
     set->setMode( GL_LIGHTING, 0 );
 
-    //osg::Program* program = new osg::Program();
-    //program->addShader( new osg::Shader( osg::Shader::VERTEX, s_vertexShader ) );
-    //program->addShader( new osg::Shader( osg::Shader::FRAGMENT, s_fragmentShader ) );
-    //set->setAttributeAndModes( program, osg::StateAttribute::ON );
+    // set up default options if the caller did not supply them
+    if ( !_options.isSet() )
+    {
+        _options->lineStyle() = Style();
 
-    init();
+        LineSymbol* line = _options->lineStyle()->getOrCreate<LineSymbol>();
+        line->stroke()->color() = Color::Gray;
+        line->stroke()->width() = 1.0;
+
+        AltitudeSymbol* alt = _options->lineStyle()->getOrCreate<AltitudeSymbol>();
+        alt->verticalOffset() = NumericExpression(5000.0);
+
+        _options->textStyle() = Style();
+        TextSymbol* text = _options->textStyle()->getOrCreate<TextSymbol>();
+        text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+
+        if ( _mapNode->isGeocentric() )
+        {
+            double r = _mapNode->getMapSRS()->getEllipsoid()->getRadiusEquator();
+            _options->addLevel( FLT_MAX, 0.0f, 1u );
+            double d = 4.5*r;
+            for(int i=0; i<3; i++)
+            {
+                d *= 0.5;
+                _options->addLevel( d, d*0.25 );
+            }
+        }
+        else
+        {
+            //todo?
+        }
+    }
+
+    // this will intialize the graph.
+    rebuild();
 }
 
 void
-GeodeticGraticule::init()
+GeodeticGraticule::setOptions( const GeodeticGraticuleOptions& options )
+{
+    _options = options;
+    rebuild();
+}
+
+void
+GeodeticGraticule::rebuild()
 {
     // intialize the container if necessary
     if ( !_root )
@@ -161,10 +207,10 @@ GeodeticGraticule::init()
     }
 
     // need at least one level
-    if ( _levels.size() < 1 )
+    if ( _options->levels().size() < 1 )
         return;
 
-    const Level& level0 = _levels[0];
+    const GeodeticGraticuleOptions::Level& level0 = _options->levels()[0];
 
     // build the top level cell grid.
     unsigned tilesX, tilesY;
@@ -182,35 +228,71 @@ GeodeticGraticule::init()
     }
 }
 
+
 osg::Node*
 GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
 {
-    if ( _levels.size() <= key.getLevelOfDetail() )
+    if ( _options->levels().size() <= key.getLevelOfDetail() )
     {
         OE_WARN << LC << "Tried to create cell at non-existant level " << key.getLevelOfDetail() << std::endl;
         return 0L;
     }
 
-    const Level& level = _levels[key.getLevelOfDetail()];
+    const GeodeticGraticuleOptions::Level& level = _options->levels()[key.getLevelOfDetail()]; //_levels[key.getLevelOfDetail()];
+
+
+    // the "-2" here is because normal tile paging gives you one subdivision already,
+    // so we only need to account for > 1 subdivision factor.
+    unsigned cellsPerTile = level._subdivisionFactor <= 2u ? 1u : 1u << (level._subdivisionFactor-2u);
+    unsigned cellsPerTileX = std::max(1u, cellsPerTile);
+    unsigned cellsPerTileY = std::max(1u, cellsPerTile);
+
 
     GeoExtent tileExtent = key.getExtent();
 
     FeatureList latLines;
     FeatureList lonLines;
 
-    double cellWidth = tileExtent.width() / level._cellsPerTileX;
-    double cellHeight = tileExtent.height() / level._cellsPerTileY;
+    static LatLongFormatter s_llf(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
+    
+    double cellWidth = tileExtent.width() / cellsPerTileX;
+    double cellHeight = tileExtent.height() / cellsPerTileY;
 
-    for( unsigned cx = 0; cx < level._cellsPerTileX; ++cx )
+    const Style& lineStyle = level._lineStyle.isSet() ? *level._lineStyle : *_options->lineStyle();
+    const Style& textStyle = level._textStyle.isSet() ? *level._textStyle : *_options->textStyle();
+
+    bool hasText = textStyle.get<TextSymbol>() != 0L;
+
+    osg::ref_ptr<osg::Group> labels;
+    if ( hasText )
+        labels = new osg::Group();
+
+    // longitude lines
+    for( unsigned cx = 0; cx < cellsPerTileX; ++cx )
     {
         double clon = tileExtent.xMin() + cellWidth * (double)cx;
         LineString* lon = new LineString(2);
         lon->push_back( osg::Vec3d(clon, tileExtent.yMin(), 0) );
         lon->push_back( osg::Vec3d(clon, tileExtent.yMax(), 0) );
         lonLines.push_back( new Feature(lon) );
+
+        if ( hasText )
+        {
+            for( unsigned cy = 0; cy < cellsPerTileY; ++cy )
+            {
+                double clat = tileExtent.yMin() + (0.5*cellHeight) + cellHeight*(double)cy;
+                LabelNode* label = new LabelNode( 
+                    _mapNode.get(), 
+                    osg::Vec3d(clon, clat, 0), 
+                    s_llf.format(clon),
+                    textStyle );
+                labels->addChild( label );
+            }
+        }
     }
 
-    for( unsigned cy = 0; cy < level._cellsPerTileY; ++cy )
+    // latitude lines
+    for( unsigned cy = 0; cy < cellsPerTileY; ++cy )
     {
         double clat = tileExtent.yMin() + cellHeight * (double)cy;
         if ( clat == key.getProfile()->getExtent().yMin() )
@@ -220,6 +302,20 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
         lat->push_back( osg::Vec3d(tileExtent.xMin(), clat, 0) );
         lat->push_back( osg::Vec3d(tileExtent.xMax(), clat, 0) );
         latLines.push_back( new Feature(lat) );
+
+        if ( hasText )
+        {
+            for( unsigned cx = 0; cx < cellsPerTileX; ++cx )
+            {
+                double clon = tileExtent.xMin() + (0.5*cellWidth) + cellWidth*(double)cy;
+                LabelNode* label = new LabelNode( 
+                    _mapNode.get(), 
+                    osg::Vec3d(clon, clat, 0), 
+                    s_llf.format(clat),
+                    textStyle );
+                labels->addChild( label );
+            }
+        }
     }
 
     osg::Group* group = new osg::Group();
@@ -229,17 +325,21 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
     FilterContext context( session.get(), _featureProfile.get(), tileExtent );
 
     // make sure we get sufficient tessellation:
-    compiler.options().maxGranularity() = std::min(cellWidth, cellHeight) / 2.0;
+    compiler.options().maxGranularity() = std::min(cellWidth, cellHeight) / 16.0;
 
     compiler.options().geoInterp() = GEOINTERP_GREAT_CIRCLE;
-    osg::Node* lonNode = compiler.compile(lonLines, level._style, context);
+    osg::Node* lonNode = compiler.compile(lonLines, lineStyle, context);
     if ( lonNode )
         group->addChild( lonNode );
 
     compiler.options().geoInterp() = GEOINTERP_RHUMB_LINE;
-    osg::Node* latNode = compiler.compile(latLines, level._style, context);
+    osg::Node* latNode = compiler.compile(latLines, lineStyle, context);
     if ( latNode )
         group->addChild( latNode );
+
+    // add the labels.
+    if ( labels.valid() )
+        group->addChild( labels.get() );
 
     // get the geocentric tile center:
     osg::Vec3d tileCenter;
@@ -255,9 +355,9 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
     }
 
     // add a paging node for higher LODs:
-    if ( key.getLevelOfDetail() + 1 < _levels.size() )
+    if ( key.getLevelOfDetail() + 1 < _options->levels().size() )
     {
-        const Level& nextLevel = _levels[key.getLevelOfDetail()+1];
+        const GeodeticGraticuleOptions::Level& nextLevel = _options->levels()[key.getLevelOfDetail()+1];
 
         osg::BoundingSphere bs = group->getBound();
 
@@ -265,10 +365,18 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
 
         osg::PagedLOD* plod = new osg::PagedLOD();
         plod->setCenter( bs.center() );
-        plod->addChild( group, nextLevel._maxRange, FLT_MAX );
+        plod->addChild( group, std::max(level._minRange,nextLevel._maxRange), FLT_MAX );
         plod->setFileName( 1, uri );
         plod->setRange( 1, 0, nextLevel._maxRange );
         group = plod;
+    }
+
+    // or, if this is the deepest level and there's a minRange set, we need an LOD:
+    else if ( level._minRange > 0.0f )
+    {
+        osg::LOD* lod = new osg::LOD();
+        lod->addChild( group, level._minRange, FLT_MAX );
+        group = lod;
     }
 
     if ( ccc )
@@ -303,37 +411,12 @@ GeodeticGraticule::buildChildren( unsigned level, unsigned x, unsigned y ) const
     else return 0L;
 }
 
-
 #if 0
-            GeoExtent cellExtent(
-                key.getExtent().getSRS(),
-                tileExtent.xMin() + cellWidth  * (double)cx,
-                tileExtent.yMin() + cellHeight *ush_ (double)cy,
-                tileExtent.xMin() + cellWidth  * (double)(cx + 1),
-                tileExtent.yMin() + cellHeight * (double)(cy + 1));
-#endif
-
-
 void
-GeodeticGraticule::setFirstLevel(float maxRange,
-                                 unsigned tilesX,        unsigned tilesY,
-                                 unsigned cellsPerTileX, unsigned cellsPerTileY )
-{
-    _levels.clear();
-    Level level0;
-    level0._maxRange = maxRange;
-    level0._tilesX = std::max(1u, tilesX);
-    level0._tilesY = std::max(1u, tilesY);
-    level0._cellsPerTileX = std::max(1u, cellsPerTileX);
-    level0._cellsPerTileY = std::max(1u, cellsPerTileY);
-    _levels.push_back(level0);
-}
-
-
-
-void
-GeodeticGraticule::addLevel(float maxRange,
-                            unsigned cellsPerTileX, unsigned cellsPerTileY )
+GeodeticGraticule::addLevel(float        maxRange,
+                            float        minRange,
+                            unsigned     subdivFactor,
+                            const Style& style)
 {
     if ( _autoLevels )
     {
@@ -341,23 +424,28 @@ GeodeticGraticule::addLevel(float maxRange,
         _levels.clear();
     }
 
+    // the "-2" here is because normal tile paging gives you one subdivision already,
+    // so we only need to account for > 1 subdivision factor.
+    unsigned cellsPerTile = subdivFactor <= 2u ? 1u : 1u << (subdivFactor-2u);
+
     Level level;
     level._maxRange = maxRange;
-    level._cellsPerTileX = std::max(1u, cellsPerTileX);
-    level._cellsPerTileY = std::max(1u, cellsPerTileY);
+    level._minRange = minRange;
     _profile->getNumTiles( _levels.size(), level._tilesX, level._tilesY );
+    level._cellsPerTileX = std::max(1u, cellsPerTile);
+    level._cellsPerTileY = std::max(1u, cellsPerTile);
 
-    level._style.getOrCreate<LineSymbol>()->stroke()->color() = 
-        _levels.size() == 0 ? Color::White :
-        _levels.size() == 1 ? Color::Yellow :
-        _levels.size() == 2 ? Color::Lime :
-        Color::Cyan;
-
-    level._style.addSymbol( _style.get<AltitudeSymbol>() );
+    if ( !style.empty() )
+    {
+        level._style = style;
+    }
+    else
+    {
+        level._style = _levels.size() > 0 ? _levels[_levels.size()-1]._style : _defaultLineStyle;
+    }
 
     _levels.push_back( level );
 }
-
 
 bool
 GeodeticGraticule::getLevel( unsigned level, GeodeticGraticule::Level& out_level ) const
@@ -372,6 +460,7 @@ GeodeticGraticule::getLevel( unsigned level, GeodeticGraticule::Level& out_level
         return false;
     }
 }
+#endif
 
 void
 GeodeticGraticule::traverse( osg::NodeVisitor& nv )
@@ -380,98 +469,6 @@ GeodeticGraticule::traverse( osg::NodeVisitor& nv )
     {
     }
     osg::Group::traverse( nv );
-}
-
-namespace
-{
-    Geometry*
-    createCellGeometry( const GeoExtent& tex, double lw, const GeoExtent& profEx, bool isGeocentric )
-    {            
-        LineString* geom = 0L;
-
-        if ( tex.yMin() == profEx.yMin() )
-        {
-            geom = new LineString(2);
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMax(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMin(), 0 ) );
-        }
-        else
-        {
-            geom = new LineString(3);
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMax(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMin(), tex.yMin(), 0 ) );
-            geom->push_back( osg::Vec3d( tex.xMax(), tex.yMin(), 0 ) );
-        }
-
-        return geom;
-    }
-
-    struct HardCodeCellBoundCB : public osg::Node::ComputeBoundingSphereCallback
-    {
-        HardCodeCellBoundCB( const osg::BoundingSphere& bs ) : _bs(bs) { }
-        virtual osg::BoundingSphere computeBound(const osg::Node&) const { return _bs; }
-        osg::BoundingSphere _bs;
-    };
-
-    osg::Node*
-    createTextTransform(double x, double y, double value, 
-                        const osg::EllipsoidModel* ell, 
-                        float size, const osg::Vec4f& color,
-                        float rotation =0.0f )
-    {    
-        osg::Vec3d pos;
-        if ( ell ) // is geocentric
-        {
-            ell->convertLatLongHeightToXYZ(
-                osg::DegreesToRadians( y ),
-                osg::DegreesToRadians( x ),
-                0,
-                pos.x(), pos.y(), pos.z() );
-        }
-        else
-        {
-            pos.set( x, y, 0 );
-        }
-
-        osgText::Text* t = new osgText::Text();
-        t->setFont( Registry::instance()->getDefaultFont() );
-        t->setAlignment( osgText::Text::CENTER_BOTTOM );
-        t->setCharacterSizeMode( osgText::Text::SCREEN_COORDS );
-        t->setCharacterSize( size );
-        t->setBackdropType( osgText::Text::OUTLINE );
-        t->setBackdropColor( osg::Vec4f(0,0,0,1) );
-        t->setColor( color );
-
-        std::stringstream buf;
-        buf << std::fixed << std::setprecision(3) << value;
-        std::string bufStr;
-        bufStr = buf.str();
-        t->setText( bufStr );
-
-        if ( rotation != 0.0f ) 
-        {
-            osg::Quat rot;
-            rot.makeRotate( osg::DegreesToRadians(rotation), 0, 0, 1 );
-            t->setRotation( rot );
-        }
-
-        osg::Geode* geode = new osg::Geode();
-        geode->addDrawable( t );
-
-        osg::Matrixd L2W;
-        ell->computeLocalToWorldTransformFromXYZ(
-            pos.x(), pos.y(), pos.z(), L2W );
-
-        osg::MatrixTransform* xform = new osg::MatrixTransform();
-        xform->setMatrix( L2W );
-        xform->addChild( geode );     
-
-        // in geocentric mode, install a plane culler
-        if ( ell )
-            xform->setCullCallback( new CullNodeByNormal(pos) );
-
-        return xform;
-    }
 }
 
 /**************************************************************************/
@@ -511,7 +508,7 @@ namespace osgEarth { namespace Util
             // look up the graticule referenced in the location name:
             GeodeticGraticule* graticule = 0L;
             {
-                ScopedLock<Mutex> lock( s_graticuleMutex );
+                Threading::ScopedMutexLock lock( s_graticuleMutex );
                 GeodeticGraticuleRegistry::iterator i = s_graticuleRegistry.find(id);
                 if ( i != s_graticuleRegistry.end() )
                     graticule = i->second.get();

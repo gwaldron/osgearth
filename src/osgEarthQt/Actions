@@ -1,0 +1,109 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_ACTIONS_H
+#define OSGEARTHQT_ACTIONS_H 1
+
+#include <osgEarthQt/Common>
+#include <list>
+
+namespace osgEarth { namespace QtGui 
+{
+    class DataManager;
+
+    class OSGEARTHQT_EXPORT Action : public osg::Referenced
+    {
+    public:
+        virtual bool doAction( void* sender, DataManager* manager ) =0;
+
+        void cancel() {
+            _canceled = true; }
+
+        bool isOK() const {
+            return _message.empty(); }
+
+        bool isCanceled() const {
+            return _canceled; }
+
+        bool isCheckpoint() const {
+            return _checkpoint; }
+
+        bool setError( const std::string& message ) {
+            _message = message;
+            return false; }
+
+        virtual bool isReversible() const {
+            return false; }
+
+    protected:
+        Action() : _canceled(false), _checkpoint(true) { }
+
+        std::string _message;
+        bool _canceled;
+        bool _checkpoint;
+    };
+
+    class OSGEARTHQT_EXPORT ReversibleAction : public Action
+    {
+    public:
+        virtual bool undoAction( void* sender, DataManager* app ) =0;
+
+        bool isReversible() const {
+            return true; }
+
+    protected:
+        ReversibleAction() : Action() { _checkpoint = true; }
+    };
+
+    //class OSGEARTHQT_EXPORT ActionContext
+    //{
+    //public:
+    //    ActionContext( void* sender ) : _sender(sender) { }
+
+    //public:
+    //    void* getSender() { return _sender; }
+
+    //protected:
+    //    void* _sender;
+    //};
+
+    class OSGEARTHQT_EXPORT ActionCallback : public osg::Referenced
+    {
+    public:
+        virtual void operator()( void* sender, Action* action ) { }
+
+    protected:
+        ActionCallback() { };
+    };
+
+    class OSGEARTHQT_EXPORT ActionManager
+    {
+    public:
+        virtual void addBeforeActionCallback( ActionCallback* cb ) =0;
+        virtual void addAfterActionCallback( ActionCallback* cb ) =0;
+
+        virtual bool doAction( void* sender, Action* action, bool reversible =true ) =0;
+        virtual bool undoAction() =0;
+        virtual bool canUndo() const =0;
+        virtual void clearUndoActions() =0;
+        virtual ReversibleAction* getNextUndoAction() const =0;
+    };
+
+} }
+
+#endif // OSGEARTHQT_ACTIONS_H

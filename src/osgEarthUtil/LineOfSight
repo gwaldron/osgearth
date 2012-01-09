@@ -1,0 +1,180 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_LINEOFSIGHT
+#define OSGEARTHUTIL_LINEOFSIGHT
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/MapNode>
+#include <osgEarthAnnotation/Draggers>
+
+namespace osgEarth { namespace Util
+{
+    enum LOSDisplayMode
+    {
+        MODE_SPLIT,
+        MODE_SINGLE        
+    };
+
+
+    class OSGEARTHUTIL_EXPORT LineOfSightNode: public osg::Group
+    {
+    public:
+        LineOfSightNode( osgEarth::MapNode* mapNode );
+
+        LineOfSightNode( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end );
+
+        const osg::Vec3d& getStart() const;
+        void setStart(const osg::Vec3& start);
+
+        const osg::Vec3d& getEnd() const;
+        void setEnd(const osg::Vec3& end);
+
+        const osg::Vec3d& getHit() const;    
+        bool getHasLOS() const;
+
+        void setGoodColor( const osg::Vec4f &color );
+        const osg::Vec4f& getGoodColor() const;
+
+        void setBadColor( const osg::Vec4f &color );
+        const osg::Vec4f& getBadColor() const;
+
+        LOSDisplayMode getDisplayMode() const;
+        void setDisplayMode( LOSDisplayMode displayMode );
+
+        osgEarth::MapNode* getMapNode() const { return _mapNode.get(); }
+
+    private:
+        void compute();
+        void draw();
+        osg::ref_ptr< osgEarth::MapNode > _mapNode;
+        bool _hasLOS;
+
+        LOSDisplayMode _displayMode;    
+        osg::Vec4 _goodColor;
+        osg::Vec4 _badColor;
+
+        osg::Vec3d _hit;
+        osg::Vec3d _start;
+        osg::Vec3d _end;
+    };
+
+
+    /**********************************************************************/
+
+
+    class OSGEARTHUTIL_EXPORT LineOfSightTether : public osg::NodeCallback
+    {
+    public:
+        LineOfSightTether(osg::Node* startNode, osg::Node* endNode);
+        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
+
+    private:
+        osg::ref_ptr< osg::Node > _startNode;
+        osg::ref_ptr< osg::Node > _endNode;
+    };
+
+
+    /**********************************************************************/
+
+    class OSGEARTHUTIL_EXPORT RadialLineOfSightNode : public osg::Group
+    {
+    public:
+        RadialLineOfSightNode( MapNode* mapNode );
+
+        osgEarth::MapNode* getMapNode() { return _mapNode.get(); }
+
+        void setRadius( double radius );
+        double getRadius() const;
+
+        void setNumSpokes( int numSpokes );
+        int getNumSpokes() const;
+
+        const osg::Vec3d& getCenter() const;
+        void setCenter(const osg::Vec3d& center);
+
+        void setGoodColor( const osg::Vec4f &color );
+        const osg::Vec4f& getGoodColor() const;
+
+        void setBadColor( const osg::Vec4f &color );
+        const osg::Vec4f& getBadColor() const;
+
+        void setOutlineColor( const osg::Vec4f &color );
+        const osg::Vec4f& getOutlineColor() const;
+
+
+        LOSDisplayMode getDisplayMode() const;
+        void setDisplayMode( LOSDisplayMode displayMode );
+
+
+    private:
+        void compute();
+        int _numSpokes;
+        double _radius;
+
+        LOSDisplayMode _displayMode;    
+        osg::Vec4 _goodColor;
+        osg::Vec4 _badColor;
+        osg::Vec4 _outlineColor;
+        osg::Vec3d _center;
+        osg::ref_ptr< MapNode > _mapNode;
+    };
+
+    /**********************************************************************/
+
+    class OSGEARTHUTIL_EXPORT RadialLineOfSightTether : public osg::NodeCallback
+    {
+    public:
+        RadialLineOfSightTether(osg::Node* node);
+        virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
+
+    private:
+        osg::ref_ptr< osg::Node > _node;
+    };
+
+    /**********************************************************************/
+
+    class OSGEARTHUTIL_EXPORT LineOfSightEditor : public osg::Group
+    {
+    public:
+        LineOfSightEditor(LineOfSightNode* los);    
+
+        void updateDraggers();
+    private:
+        osg::ref_ptr< LineOfSightNode > _los;
+        osgEarth::Annotation::IntersectingDragger* _startDragger;
+        osgEarth::Annotation::IntersectingDragger* _endDragger;
+    };
+
+    /**********************************************************************/
+    class OSGEARTHUTIL_EXPORT RadialLineOfSightEditor : public osg::Group
+    {
+    public:
+        RadialLineOfSightEditor(RadialLineOfSightNode* los);    
+
+        void updateDraggers();
+    private:
+        osg::ref_ptr< RadialLineOfSightNode > _los;
+        osgEarth::Annotation::IntersectingDragger* _dragger;
+    };
+
+
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_LINEOFSIGHT

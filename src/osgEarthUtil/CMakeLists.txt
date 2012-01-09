@@ -20,9 +20,9 @@ SET(LIB_PUBLIC_HEADERS
     Export
     Formatters
     GeodeticGraticule
-    Graticule
+	LineOfSight
 	MeasureTool
-	NearFarGroup
+	NearFarGroup	
     ObjectPlacer
     ObjectLocator
     #OceanSurfaceNode
@@ -46,7 +46,7 @@ SET(LIB_COMMON_FILES
     ElevationManager.cpp
     Formatters.cpp
     GeodeticGraticule.cpp
-    Graticule.cpp
+	LineOfSight.cpp
 	MeasureTool.cpp
 	NearFarGroup.cpp
     ObjectPlacer.cpp

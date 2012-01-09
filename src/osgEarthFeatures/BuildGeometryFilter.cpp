@@ -51,7 +51,7 @@ namespace
     {
         if ( lineSymbol )
         {
-            float width = *lineSymbol->stroke()->width();
+            float width = std::max( 1.0f, *lineSymbol->stroke()->width() );
             stateSet->setAttributeAndModes(new osg::LineWidth(width), 1);
             if ( lineSymbol->stroke()->stipple().isSet() )
             {
@@ -159,7 +159,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 
             if ( renderType == Geometry::TYPE_POLYGON )
             {
-                buildPolygon(part, featureSRS, mapSRS, makeECEF, osgGeom);
+                buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom);
                 allPoints = static_cast<osg::Vec3Array*>( osgGeom->getVertexArray() );
             }
             else
@@ -203,19 +203,24 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             if ( renderType == Geometry::TYPE_POLYGON && lineSymbol )
             {
                 osg::Geometry*  outline = new osg::Geometry();
+
+                buildPolygon(part, featureSRS, mapSRS, makeECEF, false, outline);
+#if 0
+
                 osg::Vec3Array* outlineVerts = new osg::Vec3Array();
                 outline->setVertexArray(outlineVerts);
 
                 transformAndLocalize( part->asVector(), featureSRS, outlineVerts, mapSRS, _world2local, makeECEF );
                 outline->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, 0, part->size() ) );
-                
+#endif
                 osg::Vec4Array* outlineColors = new osg::Vec4Array();
                 outline->setColorArray(outlineColors);
                 outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
                 osg::Vec4f outlineColor = lineSymbol->stroke()->color();
-                outlineColors->reserve( colors->size() + part->size() + 1 );
-                for( unsigned c=0; c < part->size() + 1; ++c )
+                unsigned pcount = part->getTotalPointCount();
+                outlineColors->reserve( pcount );
+                for( unsigned c=0; c < pcount; ++c )
                     outlineColors->push_back( outlineColor );
 
                 // subdivide if necessary.
@@ -246,8 +251,12 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
                                   const SpatialReference* featureSRS,
                                   const SpatialReference* mapSRS,
                                   bool                    makeECEF,
+                                  bool                    tessellate,
                                   osg::Geometry*          osgGeom)
 {
+    if ( !ring->isValid() )
+        return;
+
     int totalPoints = ring->getTotalPointCount();
     osg::Vec3Array* allPoints = new osg::Vec3Array();
     transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
@@ -273,10 +282,13 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
     }
     osgGeom->setVertexArray( allPoints );
 
-    osgUtil::Tessellator tess;
-    tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-    tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-    tess.retessellatePolygons( *osgGeom );
+    if ( tessellate )
+    {
+        osgUtil::Tessellator tess;
+        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+        tess.retessellatePolygons( *osgGeom );
+    }
 }
 
 
@@ -305,7 +317,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             const LineSymbol* lineSymbol = _style.getSymbol<LineSymbol>();
             float size = 1.0;
             if (lineSymbol)
-                size = lineSymbol->stroke()->width().value();
+                size = std::max(1.0f, lineSymbol->stroke()->width().value());
 
             _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
             _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(size), osg::StateAttribute::ON );

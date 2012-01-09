@@ -116,14 +116,6 @@ namespace osgEarth { namespace Symbology
         optional<Alignment>& alignment() { return _alignment; }
         const optional<Alignment>& alignment() const { return _alignment; }
 
-        ///** Horizontal alignment relative to x=0 position */
-        //optional<HorizontalAlignment>& horizontalAlignment() { return _halign; }
-        //const optional<HorizontalAlignment>& horizontalAlignment() const { return _halign; }
-
-        ///** Horizontal alignment relative to x=0 position */
-        //optional<VerticalAlignment>& verticalAlignment() { return _valign; }
-        //const optional<VerticalAlignment>& verticalAlignment() const { return _valign; }
-
         /** Whether to remove duplicates when drawing multiple labels. */
         optional<bool>& removeDuplicateLabels() { return _removeDuplicateLabels; }
         const optional<bool>& removeDuplicateLabels() const { return _removeDuplicateLabels; }

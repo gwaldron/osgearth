@@ -99,6 +99,9 @@ IntersectingDragger::getHit(const osg::Vec3d& start, const osg::Vec3d &end, osg:
         {
             OE_DEBUG << "Got get hit at " << start << " to " << end << std::endl;
             intersection = lsi->getIntersections().begin()->getWorldIntersectPoint();
+            osg::Vec3d normal = intersection;
+            normal.normalize();
+            intersection += normal * _heightAboveTerrain;
             return true;
         }
     }
@@ -112,6 +115,18 @@ IntersectingDragger::setDrawableColor(const osg::Vec4f& color)
 {
     if (_shapeDrawable.valid()) _shapeDrawable->setColor( color );
 };
+
+void
+IntersectingDragger::setHeightAboveTerrain( double hat )
+{
+    _heightAboveTerrain = hat;
+}
+
+double
+IntersectingDragger::getHeightAboveTerrain() const
+{
+    return _heightAboveTerrain;
+}
 
 bool IntersectingDragger::handle(const osgManipulator::PointerInfo& pointer, const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa)
 {

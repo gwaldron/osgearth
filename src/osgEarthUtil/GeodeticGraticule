@@ -32,6 +32,73 @@ namespace osgEarth { namespace Util
     using namespace osgEarth::Symbology;
 
     /**
+     * Configuration options for the geodetic graticule.
+     */
+    class OSGEARTHUTIL_EXPORT GeodeticGraticuleOptions : public ConfigOptions
+    {
+    public:
+        GeodeticGraticuleOptions( const Config& conf =Config() );
+
+    public:
+        struct Level 
+        {
+            float    _minRange, _maxRange;
+            unsigned _subdivisionFactor;
+            optional<Style> _lineStyle;
+            optional<Style> _textStyle;
+        };
+
+        /** Default style for grid lines */
+        optional<Style>& lineStyle() { return _defaultLineStyle; }
+        const optional<Style>& lineStyle() const { return _defaultLineStyle; }
+
+        /** Default style for text labels */
+        optional<Style>& textStyle() { return _defaultTextStyle; }
+        const optional<Style>& textStyle() const { return _defaultTextStyle; }
+
+        /** Subdivision levels */
+        const std::vector<Level>& levels() const { return _levels; }
+
+        /** Clear out all the levels */
+        void clearLevels();
+
+        /**
+         * Adds a new level of detail. You should only add levels in descending order of 
+         * maxRange (farthest to closest).
+         *
+         * @param maxRange
+         *      Maximum camera range for this level.
+         * @param minRange
+         *      (optional) Minimum camera range for this level. Though you can set this at any level,
+         *      it typically only makes sense to set this at the deepest level in order to
+         *      disable the graticule when you zoom closer in.
+         * @param subdivisionFactor
+         *      (optional) Number of times to subdivide each tile
+         * @param lineStyle
+         *      (optional) Style to apply to the grid lines at this level
+         * @param textStyle
+         *      (optional) Style to apply to text labels at this level
+         */
+        void addLevel( 
+            float        maxRange, 
+            float        minRange          =0.0f, 
+            unsigned     subdivisionFactor =2u, 
+            const Style& lineStyle         =Style(),
+            const Style& textStyle         =Style() );
+
+    public:
+        Config getConfig() const;
+
+    protected:
+        optional<Style>    _defaultLineStyle;
+        optional<Style>    _defaultTextStyle;
+        std::vector<Level> _levels;
+
+        void mergeConfig( const Config& conf );
+    };
+
+
+    /**
      * Implements a map graticule. 
      * 
      * NOTE: So far, this only works for geocentric maps.
@@ -48,35 +115,23 @@ namespace osgEarth { namespace Util
          *
          * @param map
          *      Map with which you will use this graticule
+         * @param options
+         *      Optional "options" that configure the graticule. Defaults will be used
+         *      if you don't specify this.
          */
         GeodeticGraticule( MapNode* mapNode );
+        GeodeticGraticule( MapNode* mapNode, const GeodeticGraticuleOptions& options);
+
+        /** 
+         * Applies a new set of options. The graticule will be rebuilt if necessary.
+         */
+        void setOptions( const GeodeticGraticuleOptions& options );
 
         /**
-         * Sets the color of the grid lines
+         * Gets the options with which the graticule was built.
          */
-        void setLineColor( const osg::Vec4f& value );
+        const GeodeticGraticuleOptions& getOptions() const { return _options.value(); }
 
-        /**
-         * Sets the color of the text labels
-         */
-        void setTextColor( const osg::Vec4f& value ) { _textColor = value; }
-
-
-        void setFirstLevel(float maxRange, unsigned tilesX, unsigned tilesY, unsigned cellsPerTileX, unsigned cellsPerTileY);
-
-        /**
-         * Adds a new level to the profile. Levels are sorted by maxRange. Calling this method
-         * deletes any automatically created default levels.
-         *
-         * @param maxRange
-         *      Maximum camera range for this level.
-         * @param cellsX, cellsY
-         *      Number of grid cells in each direction at this level.
-         * @param lineWidth
-         *      Width of the grid lines, in map units, at this level.
-         */
-        void addLevel( float maxRange, unsigned cellsX, unsigned cellsY );
-        //void addLevel( float maxRange, unsigned int cellsX, unsigned int cellsY, double lineWidth );
 
     public: // osg::Node
 
@@ -84,38 +139,19 @@ namespace osgEarth { namespace Util
 
 
     private:
-        struct Level
-        {
-            float     _maxRange;
-            unsigned  _tilesX, _tilesY;
-            unsigned  _cellsPerTileX, _cellsPerTileY;
-            Style     _style;
-        };
-
-        unsigned int getID() const { return _id; }
-
-        void init();
-
-        bool getLevel( unsigned int level, GeodeticGraticule::Level& out_level ) const;
-
-        unsigned int getNumLevels() const { return _levels.size(); }
-
         osg::ref_ptr<const Profile> _profile;
         osg::ref_ptr<const FeatureProfile> _featureProfile;
 
         unsigned int               _id;
-        bool                       _autoLevels;
         osg::observer_ptr<MapNode> _mapNode;
-        std::vector<Level>         _levels;
-        osg::Vec4f                 _textColor;
-        Style                      _lineStyle;
-        Style                      _style;
-
         osg::Group*                _root;
 
-        //osg::Node* createGridLevel( unsigned int levelNum ) const;
-        //osg::Node* createTextLevel( unsigned int levelNum ) const;
+        optional<GeodeticGraticuleOptions> _options;
 
+    private:
+        unsigned int getID() const { return _id; }
+        void init();
+        void rebuild();
         osg::Node* buildTile( const TileKey& key, Map* map ) const;
         osg::Node* buildChildren( unsigned level, unsigned x, unsigned y ) const;
 

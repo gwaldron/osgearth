@@ -13,8 +13,10 @@ INCLUDE( ${QT_USE_FILE} )
 # Header files that need moc'd
 set(LIB_MOC_HDRS
     AnnotationListWidget
+    CollapsiblePairWidget
     DataManager
     LayerManagerWidget
+    LOSControlWidget
     MapCatalogWidget
 )
 
@@ -32,11 +34,13 @@ SET(LIB_PUBLIC_HEADERS
 #   header files go here
     Actions
     AnnotationListWidget
+    CollapsiblePairWidget
     Common
     CompositeViewerWidget
     DataManager
     GuiActions
     LayerManagerWidget
+    LOSControlWidget
     MapCatalogWidget
     ViewerWidget
     ${LIB_QT_RCS}
@@ -48,9 +52,11 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_RC_SRCS}
     ${LIB_MOC_SRCS}
     AnnotationListWidget.cpp
+    CollapsiblePairWidget.cpp
     CompositeViewerWidget.cpp
     DataManager.cpp
     LayerManagerWidget.cpp
+    LOSControlWidget.cpp
     MapCatalogWidget.cpp
     ViewerWidget.cpp
 )

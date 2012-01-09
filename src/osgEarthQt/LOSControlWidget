@@ -16,14 +16,15 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHQT_ANNOTATIONLISTWIDGET_H
-#define OSGEARTHQT_ANNOTATIONLISTWIDGET_H 1
+#ifndef OSGEARTHQT_LOSCONTROLWIDGET_H
+#define OSGEARTHQT_LOSCONTROLWIDGET_H 1
 
 #include <osgEarthQt/Actions>
 #include <osgEarthQt/CollapsiblePairWidget>
 #include <osgEarthQt/Common>
 #include <osgEarthQt/DataManager>
 
+#include <QDoubleSpinBox>
 #include <QFrame>
 #include <QLabel>
 #include <QListWidget>
@@ -33,40 +34,35 @@ namespace osgEarth { namespace QtGui
 {
     using namespace osgEarth;
 
-    class OSGEARTHQT_EXPORT AnnotationListWidget : public CollapsiblePairWidget
+    class OSGEARTHQT_EXPORT LOSControlWidget : public CollapsiblePairWidget
     {
     Q_OBJECT
 
     public:
-      AnnotationListWidget(DataManager* dm);
+      LOSControlWidget(DataManager* dm);
+      LOSControlWidget(osgEarth::Map* map);
 
       void setActiveView(osgViewer::View* view);
       void setActiveViews(const ViewVector& views);
 
     private slots:
-      void onMapChanged();
-      void onSelectionChanged(/*const AnnotationVector& selection*/);
+      //void onMapChanged();
 	    void onItemDoubleClicked(QListWidgetItem* item);
       void onItemChanged(QListWidgetItem* item);
-      void onListSelectionChanged();
+      //void onListSelectionChanged();
 
     protected:
-      friend class AnnotationListActionCallbackProxy;
-
       void initialize();
-      void refresh();
 
-      QListWidget*  _annoList;
-      QFrame*       _detailsBox;
-      QLabel*       _nameField;
-      QLabel*       _priorityField;
-      QLabel*       _viewpointField;
-      QLabel*       _descriptionField;
+      QListWidget*     _losList;
+      QFrame*          _detailsBox;
+      QLabel*          _nameField;
+      QDoubleSpinBox*  _radiusBox;
 
-      osg::ref_ptr<DataManager>  _manager;
-      ViewVector                 _views;
-      int                        _updating;
+      osg::ref_ptr<DataManager>    _manager;
+      osg::ref_ptr<osgEarth::Map>  _map;
+      ViewVector                   _views;
     };
 } }
 
-#endif // OSGEARTHQT_ANNOTATIONLISTWIDGET_H
+#endif // OSGEARTHQT_LOSCONTROLWIDGET_H

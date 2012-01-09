@@ -127,18 +127,28 @@ main(int argc, char** argv)
     //Create a point to point LineOfSightNode.
     LineOfSightNode* los = new LineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));
     root->addChild( los );
+    los->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+
     
     //Create an editor for the point to point line of sight that allows you to drag the beginning and end points around.
     //This is just one way that you could manipulator the LineOfSightNode.
     LineOfSightEditor* p2peditor = new LineOfSightEditor( los );
     root->addChild( p2peditor );
 
+    //Create a relative point to point LineOfSightNode.
+    LineOfSightNode* relativeLOS = new LineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
+    relativeLOS->setAltitudeMode( ALTITUDE_RELATIVE );
+    root->addChild( relativeLOS );
+    relativeLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+
+    LineOfSightEditor* relEditor = new LineOfSightEditor( relativeLOS );
+    root->addChild( relEditor );
+    
     //Create a RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
     RadialLineOfSightNode* radial = new RadialLineOfSightNode( mapNode );
     radial->setCenter( osg::Vec3d(-121.515, 46.054, 847.604) );
     radial->setRadius( 2000 );
-    radial->setNumSpokes(100);
-    //Turn of depth testing so it's easier to see
+    radial->setNumSpokes(100);    
     radial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     root->addChild( radial );
     RadialLineOfSightEditor* radialEditor = new RadialLineOfSightEditor( radial );
@@ -159,6 +169,7 @@ main(int argc, char** argv)
     //Create a LineOfSightNode that will use a LineOfSightTether callback to monitor
     //the two plane's positions and recompute the LOS when they move
     LineOfSightNode* tetheredLOS = new LineOfSightNode( mapNode);
+    tetheredLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
     root->addChild( tetheredLOS );
     tetheredLOS->setUpdateCallback( new LineOfSightTether( plane1, plane2 ) );
 
@@ -176,6 +187,8 @@ main(int argc, char** argv)
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
     viewer.getDatabasePager()->setDoPreCompile( true );
+
+    manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d( -121.488, 46.2054, 0 ), 0.0, -50, 100000 ));
 
     viewer.setSceneData( root );    
 

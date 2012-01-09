@@ -40,6 +40,23 @@ namespace osgEarth { namespace Util
         MODE_SINGLE        
     };
 
+    /**
+     * The altitude mode of the locations
+     */
+    enum AltitudeMode
+    {
+        ALTITUDE_ABSOLUTE,
+        ALTITUDE_RELATIVE
+    };
+
+    struct ChangedCallback : public osg::Referenced
+    {
+    public:
+        virtual void onChanged() {};
+    };
+
+    typedef std::list< osg::ref_ptr<ChangedCallback> > ChangedCallbackList;
+
 
     /**
      * A Node that can be used to display point to point line of sight calculations
@@ -73,10 +90,15 @@ namespace osgEarth { namespace Util
         const osg::Vec3d& getStart() const;
 
         /**
+         * Gets the start point in world coordinates
+         */
+        const osg::Vec3d& getStartWorld() const;
+
+        /**
          * Set the start point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
          * the location should be in the form lon, lat, elevation
          */
-        void setStart(const osg::Vec3& start);
+        void setStart(const osg::Vec3d& start);
 
         /**
          * Get the end point
@@ -84,15 +106,25 @@ namespace osgEarth { namespace Util
         const osg::Vec3d& getEnd() const;
 
         /**
+         * Gets the end point in world coordinates
+         */
+        const osg::Vec3d& getEndWorld() const;
+
+        /**
          * Set the end point.  The point should be in the Map's coordinate system.  So if you're dealing with a geocentric map
          * the location should be in the form lon, lat, elevation
          */
-        void setEnd(const osg::Vec3& end);
+        void setEnd(const osg::Vec3d& end);
 
         /**
          * Gets the hit point.  Only valid is getHasLOS is false.
          */
-        const osg::Vec3d& getHit() const;    
+        const osg::Vec3d& getHit() const;
+
+        /**
+         * Gets the hit point in world coordinates
+         */
+        const osg::Vec3d& getHitWorld() const;
 
         /**
          * Gets whether not this calculation has line of sight.
@@ -130,6 +162,18 @@ namespace osgEarth { namespace Util
         void setDisplayMode( LOSDisplayMode displayMode );
 
         /**
+         * Gets the altitude mode
+         */
+        AltitudeMode getAltitudeMode() const;
+
+        /**
+         * Sets the altitude mode
+         */
+
+        void setAltitudeMode( AltitudeMode mode );
+
+
+        /**
          * Gets the MapNode that this LineOfSightNode is operating on.
          */
         osgEarth::MapNode* getMapNode() const { return _mapNode.get(); }
@@ -139,9 +183,15 @@ namespace osgEarth { namespace Util
          */
         void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
 
+        void addChangedCallback( ChangedCallback* callback );
+        void removeChangedCallback( ChangedCallback* callback );
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+
     private:
-        void compute(osg::Node* node);
-        void draw();
+        void compute(osg::Node* node, bool backgroundThread = false);
+        void draw(bool backgroundThread = false);
         void subscribeToTerrain();
         osg::ref_ptr< osgEarth::MapNode > _mapNode;
         bool _hasLOS;
@@ -154,7 +204,17 @@ namespace osgEarth { namespace Util
         osg::Vec3d _start;
         osg::Vec3d _end;
 
+        osg::Vec3d _startWorld;
+        osg::Vec3d _endWorld;
+        osg::Vec3d _hitWorld;
+
+        AltitudeMode _altitudeMode;
+
+        ChangedCallbackList _changedCallbacks;
+
         osg::ref_ptr < osgEarth::TerrainEngineNode::TerrainChangedCallback > _terrainChangedCallback;
+
+        osg::ref_ptr< osg::Node > _pendingNode;
     };
 
 
@@ -277,13 +337,31 @@ namespace osgEarth { namespace Util
         void setDisplayMode( LOSDisplayMode displayMode );
 
         /**
+         * Gets the altitude mode
+         */
+        AltitudeMode getAltitudeMode() const;
+
+        /**
+         * Sets the altitude mode
+         */
+
+        void setAltitudeMode( AltitudeMode mode );
+
+        void addChangedCallback( ChangedCallback* callback );
+        
+        void removeChangedCallback( ChangedCallback* callback );
+
+
+        /**
          * Called when the underlying terrain has changed.
          */
         void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
 
+        virtual void traverse(osg::NodeVisitor& nv);
+
 
     private:
-        void compute(osg::Node* node);
+        void compute(osg::Node* node, bool backgroundThread = false);
         int _numSpokes;
         double _radius;
 
@@ -293,6 +371,9 @@ namespace osgEarth { namespace Util
         osg::Vec4 _outlineColor;
         osg::Vec3d _center;
         osg::ref_ptr< MapNode > _mapNode;
+        AltitudeMode _altitudeMode;
+        ChangedCallbackList _changedCallbacks;
+        osg::ref_ptr< osg::Node > _pendingNode;
         osg::ref_ptr < osgEarth::TerrainEngineNode::TerrainChangedCallback > _terrainChangedCallback;
     };
 
@@ -331,6 +412,8 @@ namespace osgEarth { namespace Util
          *        The LineOfSightNode to edit
          */
         LineOfSightEditor(LineOfSightNode* los);    
+        
+        ~LineOfSightEditor();    
 
         /**
          *Updates the position of the draggers to represent the actual location of the LineOfSightNode.
@@ -342,6 +425,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr< LineOfSightNode > _los;
         osgEarth::Annotation::IntersectingDragger* _startDragger;
         osgEarth::Annotation::IntersectingDragger* _endDragger;
+        osg::ref_ptr< ChangedCallback > _callback;
     };
 
     /**********************************************************************/
@@ -355,6 +439,8 @@ namespace osgEarth { namespace Util
          *        The RadialLineOfSightNode to edit
          */
         RadialLineOfSightEditor(RadialLineOfSightNode* los);    
+        ~RadialLineOfSightEditor();
+
 
          /**
          *Updates the position of the dragger to represent the actual location of the RadialLineOfSightNode.
@@ -365,6 +451,7 @@ namespace osgEarth { namespace Util
     private:
         osg::ref_ptr< RadialLineOfSightNode > _los;
         osgEarth::Annotation::IntersectingDragger* _dragger;
+        osg::ref_ptr< ChangedCallback > _callback;
     };
 
 

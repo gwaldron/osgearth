@@ -117,7 +117,7 @@ public:
                     OE_DEBUG << "Took " << osg::Timer::instance()->delta_m(start, end) << "ms to fire terrain callbacks" << std::endl;
                 }
 
-                return ReadResult( node.release(), ReadResult::FILE_LOADED );
+                return ReadResult( node.get(), ReadResult::FILE_LOADED );
             }
             else
             {

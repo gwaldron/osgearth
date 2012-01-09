@@ -54,6 +54,8 @@ namespace osgEarth { namespace Util
          */
         LineOfSightNode( osgEarth::MapNode* mapNode );
 
+        ~LineOfSightNode();
+
         /**
          *Constructs and new LineOfSightNode
          *@param mapNode
@@ -132,9 +134,15 @@ namespace osgEarth { namespace Util
          */
         osgEarth::MapNode* getMapNode() const { return _mapNode.get(); }
 
+        /**
+         * Called when the underlying terrain has changed.
+         */
+        void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
+
     private:
-        void compute();
+        void compute(osg::Node* node);
         void draw();
+        void subscribeToTerrain();
         osg::ref_ptr< osgEarth::MapNode > _mapNode;
         bool _hasLOS;
 
@@ -145,6 +153,8 @@ namespace osgEarth { namespace Util
         osg::Vec3d _hit;
         osg::Vec3d _start;
         osg::Vec3d _end;
+
+        osg::ref_ptr < osgEarth::TerrainEngineNode::TerrainChangedCallback > _terrainChangedCallback;
     };
 
 
@@ -186,6 +196,8 @@ namespace osgEarth { namespace Util
          *        The MapNode this RadialLineOfSightNode is operating on.
          */
         RadialLineOfSightNode( MapNode* mapNode );
+
+        ~RadialLineOfSightNode();
 
         /**
          * Gets the MapNode this RadialLineOfSightNode is operating on
@@ -264,9 +276,14 @@ namespace osgEarth { namespace Util
          */
         void setDisplayMode( LOSDisplayMode displayMode );
 
+        /**
+         * Called when the underlying terrain has changed.
+         */
+        void terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
+
 
     private:
-        void compute();
+        void compute(osg::Node* node);
         int _numSpokes;
         double _radius;
 
@@ -276,6 +293,7 @@ namespace osgEarth { namespace Util
         osg::Vec4 _outlineColor;
         osg::Vec3d _center;
         osg::ref_ptr< MapNode > _mapNode;
+        osg::ref_ptr < osgEarth::TerrainEngineNode::TerrainChangedCallback > _terrainChangedCallback;
     };
 
     /**********************************************************************/

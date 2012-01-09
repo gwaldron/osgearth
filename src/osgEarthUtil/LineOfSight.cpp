@@ -23,6 +23,24 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
 
+class LineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainEngineNode::TerrainChangedCallback
+{
+public:
+    LineOfSightNodeTerrainChangedCallback( LineOfSightNode* los ):
+      _los(los)
+    {
+    }
+
+    virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain)
+    {
+        _los->terrainChanged( tileKey, terrain );
+    }
+
+private:
+    LineOfSightNode* _los;
+}; 
+
+
 LineOfSightNode::LineOfSightNode(osgEarth::MapNode *mapNode):
 _mapNode(mapNode),
 _start(0,0,0),
@@ -33,7 +51,8 @@ _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT )
 {
-    compute();
+    compute(_mapNode.get());
+    subscribeToTerrain();
 }
 
 LineOfSightNode::LineOfSightNode(osgEarth::MapNode *mapNode, const osg::Vec3d& start, const osg::Vec3d& end):
@@ -46,7 +65,35 @@ _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT )
 {
-    compute();
+    compute(_mapNode.get());    
+    subscribeToTerrain();
+}
+
+
+void
+LineOfSightNode::subscribeToTerrain()
+{
+    _terrainChangedCallback = new LineOfSightNodeTerrainChangedCallback( this );
+    _mapNode->getTerrainEngine()->addTerrainChangedCallback( _terrainChangedCallback.get() );        
+}
+
+LineOfSightNode::~LineOfSightNode()
+{
+    //Unsubscribe to the terrain callback
+    _mapNode->getTerrainEngine()->removeTerrainChangedCallback( _terrainChangedCallback.get() );
+}
+
+void
+LineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
+{
+    OE_DEBUG << "LineOfSightNode::terrainChanged" << std::endl;
+    //Make a temporary group that contains both the old MapNode as well as the new incoming terrain.
+    //Because this function is called from the database pager thread we need to include both b/c 
+    //the new terrain isn't yet merged with the new terrain.
+    osg::ref_ptr < osg::Group > group = new osg::Group;
+    group->addChild( terrain );
+    group->addChild( _mapNode.get() );
+    compute( group );
 }
 
 const osg::Vec3d&
@@ -61,7 +108,7 @@ LineOfSightNode::setStart(const osg::Vec3& start)
     if (_start != start)
     {
         _start = start;
-        compute();
+        compute(_mapNode.get());
     }
 }
 
@@ -77,7 +124,7 @@ LineOfSightNode::setEnd(const osg::Vec3& end)
     if (_end != end)
     {
         _end = end;
-        compute();
+        compute(_mapNode.get());
     }
 }
 
@@ -95,7 +142,7 @@ LineOfSightNode::getHasLOS() const
 
 
 void
-LineOfSightNode::compute()
+LineOfSightNode::compute(osg::Node* node)
 {
     //Computes the LOS and redraws the scene
     osg::Vec3d a, b;
@@ -105,7 +152,7 @@ LineOfSightNode::compute()
     osgSim::LineOfSight los;
     los.setDatabaseCacheReadCallback(0);
     unsigned int index = los.addLOS(a, b);
-    los.computeIntersections(_mapNode.get());
+    los.computeIntersections(node);
     osgSim::LineOfSight::Intersections hits = los.getIntersections(0);    
     if (hits.size() > 0)
     {
@@ -289,6 +336,25 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 }
 
 /**********************************************************************/
+
+class RadialLineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainEngineNode::TerrainChangedCallback
+{
+public:
+    RadialLineOfSightNodeTerrainChangedCallback( RadialLineOfSightNode* los ):
+      _los(los)
+    {
+    }
+
+    virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain)
+    {
+        _los->terrainChanged( tileKey, terrain );
+    }
+
+private:
+    RadialLineOfSightNode* _los;
+};
+
+
 RadialLineOfSightNode::RadialLineOfSightNode( MapNode* mapNode):
 _mapNode( mapNode ),
 _numSpokes(20),
@@ -299,7 +365,14 @@ _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _outlineColor( 1.0f, 1.0f, 1.0f, 1.0f),
 _displayMode( MODE_SPLIT )
 {
-    compute();
+    compute(_mapNode.get());
+    _terrainChangedCallback = new RadialLineOfSightNodeTerrainChangedCallback( this );
+    _mapNode->getTerrainEngine()->addTerrainChangedCallback( _terrainChangedCallback.get() );        
+}
+
+RadialLineOfSightNode::~RadialLineOfSightNode()
+{    
+    _mapNode->getTerrainEngine()->removeTerrainChangedCallback( _terrainChangedCallback.get() );
 }
 
 double
@@ -314,7 +387,7 @@ RadialLineOfSightNode::setRadius(double radius)
     if (_radius != radius)
     {
         _radius = osg::clampAbove(radius, 1.0);
-        compute();
+        compute(_mapNode.get());
     }
 }
 
@@ -329,7 +402,7 @@ void RadialLineOfSightNode::setNumSpokes(int numSpokes)
     if (numSpokes != _numSpokes)
     {
         _numSpokes = osg::clampAbove(numSpokes, 1);
-        compute();
+        compute(_mapNode.get());
     }
 }
 
@@ -345,16 +418,26 @@ RadialLineOfSightNode::setCenter(const osg::Vec3d& center)
     if (_center != center)
     {
         _center = center;
-        compute();
+        compute(_mapNode.get());
     }
 }
 
 void
-RadialLineOfSightNode::compute()
+RadialLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
 {
-    //Remove all the children
-    removeChildren(0, getNumChildren());
+    OE_DEBUG << "RadialLineOfSightNode::terrainChanged" << std::endl;
+    //Make a temporary group that contains both the old MapNode as well as the new incoming terrain.
+    //Because this function is called from the database pager thread we need to include both b/c 
+    //the new terrain isn't yet merged with the new terrain.
+    osg::ref_ptr < osg::Group > group = new osg::Group;
+    group->addChild( terrain );
+    group->addChild( _mapNode.get() );
+    compute( group );
+}
 
+void
+RadialLineOfSightNode::compute(osg::Node* node)
+{    
     //Get the center point in geocentric
     osg::Vec3d centerWorld;
     _mapNode->getMap()->mapPointToWorldPoint( _center, centerWorld );
@@ -394,7 +477,7 @@ RadialLineOfSightNode::compute()
         los.addLOS( centerWorld, end);      
     }
 
-    los.computeIntersections(_mapNode.get());
+    los.computeIntersections(node);
 
     for (unsigned int i = 0; i < _numSpokes; i++)
     {
@@ -473,7 +556,8 @@ RadialLineOfSightNode::compute()
     mt->setMatrix(osg::Matrixd::translate(centerWorld));
     mt->addChild(geode);
 
-
+    //Remove all the children
+    removeChildren(0, getNumChildren());
     addChild( mt );  
 }
 
@@ -483,7 +567,7 @@ RadialLineOfSightNode::setGoodColor( const osg::Vec4f &color )
     if (_goodColor != color)
     {
         _goodColor = color;
-        compute();
+        compute(_mapNode.get());
     }
 }
 
@@ -499,7 +583,7 @@ RadialLineOfSightNode::setBadColor( const osg::Vec4f &color )
     if (_badColor != color)
     {
         _badColor = color;
-        compute();
+        compute(_mapNode.get());
     }
 }
 
@@ -515,7 +599,7 @@ RadialLineOfSightNode::setOutlineColor( const osg::Vec4f &color )
     if (_outlineColor != color)
     {
         _outlineColor = color;
-        compute();
+        compute(_mapNode.get());
     }
 }
 
@@ -537,7 +621,7 @@ RadialLineOfSightNode::setDisplayMode( LOSDisplayMode displayMode )
     if (_displayMode != displayMode)
     {
         _displayMode = displayMode;
-        compute();
+        compute(_mapNode.get());
     }
 }
 

@@ -56,7 +56,8 @@ TranslateCommand::~TranslateCommand()
 
 IntersectingDragger::IntersectingDragger():
 osgManipulator::Dragger(),
-_size(5.0f)
+_size(5.0f),
+_heightAboveTerrain(0.0)
 {
     setColor(osg::Vec4(0.0f, 1.0f, 0.0f, 1.0f));
     setPickColor(osg::Vec4(1.0f, 1.0f, 0.0f, 1.0f));

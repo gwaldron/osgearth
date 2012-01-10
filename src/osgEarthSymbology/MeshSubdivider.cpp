@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/LineFunctor>
+#include <osgEarth/LineFunctor>
 #include <osgEarth/GeoMath>
 #include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>

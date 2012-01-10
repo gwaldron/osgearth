@@ -80,7 +80,7 @@ namespace
     struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
     {
         CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
-            : OverlayDecorator::InternalNodeVisitor(),
+            : OverlayDecorator::InternalNodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN),
               _bbox(out_bbox),
               _original( polytope ),
               _coarse( false )

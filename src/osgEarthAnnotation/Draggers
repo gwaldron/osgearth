@@ -74,6 +74,9 @@ namespace osgEarth { namespace Annotation
          */
         inline void setSize( float size ) { _size = size; }
 
+        void setHeightAboveTerrain( double hat );
+        double getHeightAboveTerrain() const;
+
         virtual bool handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa);
 
     protected:
@@ -89,6 +92,8 @@ namespace osgEarth { namespace Annotation
         float                           _size;
         osg::Matrixd                    _localToWorld;
         osg::Matrixd                    _worldToLocal;
+
+        double                          _heightAboveTerrain;
 
         osg::ref_ptr< osg::ShapeDrawable > _shapeDrawable;
 

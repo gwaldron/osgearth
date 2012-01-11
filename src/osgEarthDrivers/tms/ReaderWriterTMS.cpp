@@ -18,10 +18,10 @@
 */
 
 #include <osgEarth/TileSource>
-#include <osgEarth/TMS>
 #include <osgEarth/FileUtils>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/HTTPClient>
+#include <osgEarthUtil/TMS>
 
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
@@ -37,6 +37,7 @@
 #include "TMSOptions"
 
 using namespace osgEarth;
+using namespace osgEarth::Util;
 using namespace osgEarth::Drivers;
 
 #define LC "[TMS driver] "
@@ -66,7 +67,7 @@ public:
         }
 
 		// Attempt to read the tile map parameters from a TMS TileMap XML tile on the server:
-    	_tileMap = TileMapReaderWriter::read( tmsURI.full(), 0L );
+        _tileMap = TMS::TileMapReaderWriter::read( tmsURI.full(), 0L );
 
 
 		//Take the override profile if one is given
@@ -74,7 +75,7 @@ public:
 		{
 		    OE_INFO << LC << "Using override profile " << overrideProfile->toString() << std::endl;				
 			result = overrideProfile;
-			_tileMap = TileMap::create( 
+            _tileMap = TMS::TileMap::create( 
                 _options.url()->full(),
                 overrideProfile, 
                 _options.format().value(),
@@ -161,9 +162,9 @@ public:
 
 private:
 
-    osg::ref_ptr<TileMap> _tileMap;
-    bool                  _invertY;
-    const TMSOptions      _options;
+    osg::ref_ptr<TMS::TileMap> _tileMap;
+    bool                       _invertY;
+    const TMSOptions           _options;
     osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
@@ -173,7 +174,7 @@ private:
 class ReaderWriterTMS : public TileSourceDriver
 {
 private:
-    typedef std::map< std::string,osg::ref_ptr<TileMap> > TileMapCache;
+    typedef std::map< std::string,osg::ref_ptr<TMS::TileMap> > TileMapCache;
     TileMapCache _tileMapCache;
 
 public:

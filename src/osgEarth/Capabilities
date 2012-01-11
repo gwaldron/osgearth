@@ -78,7 +78,10 @@ namespace osgEarth
         /** whether the GPU properly supports updating an existing texture with a new mipmapped image */
         bool supportsMipmappedTextureUpdates() const { return _supportsMipmappedTextureUpdates; }
 
-    private:
+        /** whether the GPU supports DEPTH_PACKED_STENCIL buffer */
+        bool supportsDepthPackedStencilBuffer() const { return _supportsDepthPackedStencilBuffer; }
+
+    protected:
         Capabilities();
 
     private:
@@ -97,6 +100,7 @@ namespace osgEarth
         bool _supportsTwoSidedStencil;
         bool _supportsTexture2DLod;
         bool _supportsMipmappedTextureUpdates;
+        bool _supportsDepthPackedStencilBuffer;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

@@ -1,0 +1,163 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_GEODETIC_GRATICLE
+#define OSGEARTHUTIL_GEODETIC_GRATICLE
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/MapNode>
+#include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/Feature>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Configuration options for the geodetic graticule.
+     */
+    class OSGEARTHUTIL_EXPORT GeodeticGraticuleOptions : public ConfigOptions
+    {
+    public:
+        GeodeticGraticuleOptions( const Config& conf =Config() );
+
+    public:
+        struct Level 
+        {
+            float    _minRange, _maxRange;
+            unsigned _subdivisionFactor;
+            optional<Style> _lineStyle;
+            optional<Style> _textStyle;
+        };
+
+        /** Default style for grid lines */
+        optional<Style>& lineStyle() { return _defaultLineStyle; }
+        const optional<Style>& lineStyle() const { return _defaultLineStyle; }
+
+        /** Default style for text labels */
+        optional<Style>& textStyle() { return _defaultTextStyle; }
+        const optional<Style>& textStyle() const { return _defaultTextStyle; }
+
+        /** Subdivision levels */
+        const std::vector<Level>& levels() const { return _levels; }
+
+        /** Clear out all the levels */
+        void clearLevels();
+
+        /**
+         * Adds a new level of detail. You should only add levels in descending order of 
+         * maxRange (farthest to closest).
+         *
+         * @param maxRange
+         *      Maximum camera range for this level.
+         * @param minRange
+         *      (optional) Minimum camera range for this level. Though you can set this at any level,
+         *      it typically only makes sense to set this at the deepest level in order to
+         *      disable the graticule when you zoom closer in.
+         * @param subdivisionFactor
+         *      (optional) Number of times to subdivide each tile
+         * @param lineStyle
+         *      (optional) Style to apply to the grid lines at this level
+         * @param textStyle
+         *      (optional) Style to apply to text labels at this level
+         */
+        void addLevel( 
+            float        maxRange, 
+            float        minRange          =0.0f, 
+            unsigned     subdivisionFactor =2u, 
+            const Style& lineStyle         =Style(),
+            const Style& textStyle         =Style() );
+
+    public:
+        Config getConfig() const;
+
+    protected:
+        optional<Style>    _defaultLineStyle;
+        optional<Style>    _defaultTextStyle;
+        std::vector<Level> _levels;
+
+        void mergeConfig( const Config& conf );
+    };
+
+
+    /**
+     * Implements a map graticule. 
+     * 
+     * NOTE: So far, this only works for geocentric maps.
+     * TODO: Add projected support; add text label support
+     */
+    class OSGEARTHUTIL_EXPORT GeodeticGraticule : public osg::Group
+    {
+    public:
+
+        /**
+         * Constructs a new graticule for use with the specified map. The graticule
+         * is created with several default levels. If you call addLevel(), the 
+         * default levels are deleted.
+         *
+         * @param map
+         *      Map with which you will use this graticule
+         * @param options
+         *      Optional "options" that configure the graticule. Defaults will be used
+         *      if you don't specify this.
+         */
+        GeodeticGraticule( MapNode* mapNode );
+        GeodeticGraticule( MapNode* mapNode, const GeodeticGraticuleOptions& options);
+
+        /** 
+         * Applies a new set of options. The graticule will be rebuilt if necessary.
+         */
+        void setOptions( const GeodeticGraticuleOptions& options );
+
+        /**
+         * Gets the options with which the graticule was built.
+         */
+        const GeodeticGraticuleOptions& getOptions() const { return _options.value(); }
+
+
+    public: // osg::Node
+
+        virtual void traverse(osg::NodeVisitor& nv);
+
+
+    private:
+        osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+
+        unsigned int               _id;
+        osg::observer_ptr<MapNode> _mapNode;
+        osg::Group*                _root;
+
+        optional<GeodeticGraticuleOptions> _options;
+
+    private:
+        unsigned int getID() const { return _id; }
+        void init();
+        void rebuild();
+        osg::Node* buildTile( const TileKey& key, Map* map ) const;
+        osg::Node* buildChildren( unsigned level, unsigned x, unsigned y ) const;
+
+        friend class GeodeticGraticuleFactory;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_GEODETIC_GRATICLE

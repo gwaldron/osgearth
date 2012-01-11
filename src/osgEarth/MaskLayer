@@ -93,6 +93,11 @@ namespace osgEarth
 
     public:
         /** 
+         * Gets the name of this mask layer
+         */
+        const std::string& getName() const { return *_runtimeOptions.name(); }
+
+        /** 
          * Gets the geometric boundary polygon representing the area of the
          * terrain to mask out.
          */

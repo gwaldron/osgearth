@@ -29,6 +29,7 @@ SET(LIB_PUBLIC_HEADERS
     Config
     Containers
     Cube
+    CullingUtils
     DrapeableNode
     ECEF
     ElevationLayer
@@ -48,6 +49,7 @@ SET(LIB_PUBLIC_HEADERS
     IOTypes
     JsonUtils
     Layer
+    LineFunctor
     Locators
     LocalTangentPlane
     Map
@@ -84,7 +86,6 @@ SET(LIB_PUBLIC_HEADERS
     TileKey
     TileSource
     ThreadingUtils
-    TMS
     Units
     URI
     Utils
@@ -123,6 +124,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
+    CullingUtils.cpp
     DrapeableNode.cpp
     ECEF.cpp
     EGM.cpp
@@ -175,7 +177,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     TileFactory.cpp
     TileKey.cpp
     TileSource.cpp
-    TMS.cpp
     Units.cpp
     URI.cpp
     Utils.cpp

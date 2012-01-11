@@ -80,7 +80,7 @@ namespace
     struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
     {
         CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
-            : OverlayDecorator::InternalNodeVisitor(),
+            : OverlayDecorator::InternalNodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN),
               _bbox(out_bbox),
               _original( polytope ),
               _coarse( false )
@@ -154,12 +154,13 @@ namespace
             if ( _polytopeStack.top().intersects( box ) )
             {
                 // apply an eplison to avoid a bbox with a zero dimension
-                static float e = 0.0001;
+                static float e = 0.001;
 
-                osg::Vec3d bmin = osg::Vec3(box.xMin()-e, box.yMin()-e, box.zMin()-e) * _matrixStack.top();
-                osg::Vec3d bmax = osg::Vec3(box.xMax()+e, box.yMax()+e, box.zMax()+e) * _matrixStack.top();
+                osg::Vec3d b0 = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
+                osg::Vec3d b1 = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
                   
-                _bbox.expandBy( osg::BoundingBox(bmin, bmax) );
+                _bbox.expandBy( std::min(b0.x(),b1.x())-e, std::min(b0.y(),b1.y())-e, std::min(b0.z(),b1.z())-e );
+                _bbox.expandBy( std::max(b0.x(),b1.x())+e, std::max(b0.y(),b1.y())+e, std::max(b0.z(),b1.z())+e );
             }
         }
 
@@ -254,7 +255,7 @@ _useShaders   ( false ),
 _useWarping   ( false ),
 _warp         ( 1.0f ),
 _visualizeWarp( false ),
-_mipmapping   ( true ),
+_mipmapping   ( false ),
 _rttBlending  ( true )
 {
     // nop
@@ -298,7 +299,7 @@ OverlayDecorator::reinit()
             _projTexture->setInternalFormat( GL_RGBA8 );
             _projTexture->setSourceFormat( GL_RGBA );
             _projTexture->setSourceType( GL_UNSIGNED_BYTE );
-            _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR );
+            _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
             _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
             _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
             _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
@@ -317,19 +318,29 @@ OverlayDecorator::reinit()
             _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
             _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
             _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
-            //TODO: make sure this is actually supported on most platforms:
-            _rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
-            _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+            
+            // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
+            // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
+            // a PBUFFER_RTT impl
+            if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
+                _rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
+            else
+                _rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+
+            osg::StateSet* rttStateSet = _rttCamera->getOrCreateStateSet();
+
+            rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
             if ( _rttBlending )
             {
                 osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-                _rttCamera->getOrCreateStateSet()->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+                rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
             }
             else
             {
-                _rttCamera->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+                rttStateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
             }
             //Enable blending on the RTT camera with pre-multiplied alpha.
             //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
@@ -348,6 +359,11 @@ OverlayDecorator::reinit()
                 else
                     _rttCamera->addChild( _overlayGraph.get() );
             }
+
+            // overlay geometry is rendered with no depth testing, and in the order it's found in the
+            // scene graph... until further notice...
+            rttStateSet->setMode(GL_DEPTH_TEST, 0);
+            rttStateSet->setBinName( "TraversalOrderBin" );
         }
     }
 
@@ -574,7 +590,7 @@ OverlayDecorator::setTextureUnit( int texUnit )
 }
 
 void
-OverlayDecorator::setMipmapping( bool value )
+OverlayDecorator::setMipMapping( bool value )
 {
     if ( value != _mipmapping )
     {

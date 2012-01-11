@@ -286,19 +286,6 @@ TerrainEngineNode::updateImageUniforms()
     _imageLayerController->_layerEnabledUniform.detach();
     _imageLayerController->_layerOpacityUniform.detach();
     _imageLayerController->_layerRangeUniform.detach();
-
-#if 0
-    if ( _imageLayerController->_layerEnabledUniform.valid() )
-        _imageLayerController->_layerEnabledUniform->removeFrom( stateSet );
-
-    if ( _imageLayerController->_layerOpacityUniform.valid() )
-        _imageLayerController->_layerOpacityUniform->removeFrom( stateSet );
-
-    if ( _imageLayerController->_layerRangeUniform.valid() )
-        _imageLayerController->_layerRangeUniform->removeFrom( stateSet );
-#endif
-
-    //stateSet->removeUniform( "osgearth_ImageLayerAttenuation" );
     
     if ( mapf.imageLayers().size() > 0 )
     {
@@ -306,13 +293,9 @@ TerrainEngineNode::updateImageUniforms()
         // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
         // "ghost" layers that used to exist at a given index, but no longer do.
         
-        _imageLayerController->_layerEnabledUniform.attach( "osgearth_ImageLayerEnabled", osg::Uniform::BOOL,  stateSet, 16 );
+        _imageLayerController->_layerEnabledUniform.attach( "osgearth_ImageLayerEnabled", osg::Uniform::BOOL,  stateSet, MAX_IMAGE_LAYERS );
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
-
-        //_imageLayerController->_layerEnabledUniform  = new ArrayUniform( osg::Uniform::BOOL,  "osgearth_ImageLayerEnabled", 64 ); //mapf.imageLayers().size() );
-        //_imageLayerController->_layerOpacityUniform  = new ArrayUniform( osg::Uniform::FLOAT, "osgearth_ImageLayerOpacity", mapf.imageLayers().size() );
-        //_imageLayerController->_layerRangeUniform    = new ArrayUniform( osg::Uniform::FLOAT, "osgearth_ImageLayerRange", 2 * mapf.imageLayers().size() );
 
         for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
         {
@@ -326,12 +309,8 @@ TerrainEngineNode::updateImageUniforms()
         }
 
         // set the remainder of the layers to disabled 
-        for( int j=mapf.imageLayers().size(); j<64; ++j )
+        for( int j=mapf.imageLayers().size(); j<_imageLayerController->_layerEnabledUniform.getNumElements(); ++j)
             _imageLayerController->_layerEnabledUniform.setElement( j, false );
-
-        //_imageLayerController->_layerOpacityUniform->addTo( stateSet );
-        //_imageLayerController->_layerEnabledUniform->addTo( stateSet );
-        //_imageLayerController->_layerRangeUniform->addTo( stateSet );
     }
 }
 

@@ -310,7 +310,8 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
     const OrderedFunctionMap* postLighting = k != functions.end() ? &k->second : 0L;
 
     std::stringstream buf;
-    buf << "void osgearth_vert_setupTexturing(); \n"
+    buf << "#version 110 \n"
+        << "void osgearth_vert_setupTexturing(); \n"
         << "void osgearth_vert_setupLighting(); \n"
         << "uniform bool osgearth_LightingEnabled; \n"
         << "uniform float osgearth_CameraElevation; \n"
@@ -334,9 +335,6 @@ ShaderFactory::createVertexShaderMain( const FunctionLocationMap& functions ) co
 
         << "    vec4 position4 = gl_ModelViewMatrix * gl_Vertex; \n"
         << "    osgearth_CameraRange = length( position4.xyz ); \n";
-
-        //<< "    vec3 position = position4.xyz / position4.w; \n"
-        //<< "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal ); \n";
 
     if ( preTexture )
         for( OrderedFunctionMap::const_iterator i = preTexture->begin(); i != preTexture->end(); ++i )
@@ -377,7 +375,8 @@ ShaderFactory::createFragmentShaderMain( const FunctionLocationMap& functions ) 
     const OrderedFunctionMap* postLighting = k != functions.end() ? &k->second : 0L;
 
     std::stringstream buf;
-    buf << "void osgearth_frag_applyTexturing( inout vec4 color ); \n"
+    buf << "#version 110 \n"
+        << "void osgearth_frag_applyTexturing( inout vec4 color ); \n"
         << "void osgearth_frag_applyLighting( inout vec4 color ); \n";
 
     if ( preTexture )
@@ -438,7 +437,8 @@ ShaderFactory::createDefaultTextureVertexShader( int numTexCoordSets ) const
 {
     std::stringstream buf;
 
-    buf << "void osgearth_vert_setupTexturing() \n"
+    buf << "#version 110 \n"
+        << "void osgearth_vert_setupTexturing() \n"
         << "{ \n";
 
     //TODO: gl_TexCoord et.al. are depcrecated so we should replace them ...
@@ -460,7 +460,7 @@ ShaderFactory::createDefaultTextureFragmentShader( int numTexImageUnits ) const
 {
     std::stringstream buf;
 
-    buf << "#version 120 \n";
+    buf << "#version 100 \n";
 
     if ( numTexImageUnits > 0 )
     {
@@ -493,6 +493,7 @@ osg::Shader*
 ShaderFactory::createDefaultLightingVertexShader() const
 {
     static char s_PerVertexLighting_VertexShaderSource[] = 
+        "#version 110 \n"
         "void osgearth_vert_setupLighting()                                         \n"
         "{                                                                          \n"
         "    vec3 normal = normalize( gl_NormalMatrix * gl_Normal );                \n"
@@ -523,6 +524,7 @@ osg::Shader*
 ShaderFactory::createDefaultLightingFragmentShader() const
 {
     static char s_PerVertexLighting_FragmentShaderSource[] =
+        "#version 110 \n"
         "void osgearth_frag_applyLighting( inout vec4 color )                       \n"
         "{                                                                          \n"
         "    float alpha = color.a;                                                 \n"

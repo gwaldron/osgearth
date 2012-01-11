@@ -175,9 +175,15 @@ ModelLayer::getEnabled() const
 void
 ModelLayer::setEnabled(bool enabled)
 {
-    _runtimeOptions.enabled() = enabled;
-    if ( _node.valid() )
-        _node->setNodeMask( enabled ? ~0 : 0 );
+    if ( _runtimeOptions.enabled() != enabled )
+    {
+        _runtimeOptions.enabled() = enabled;
+
+        if ( _node.valid() )
+            _node->setNodeMask( enabled ? ~0 : 0 );
+
+        fireCallback( &ModelLayerCallback::onEnabledChanged );
+    }
 }
 
 void

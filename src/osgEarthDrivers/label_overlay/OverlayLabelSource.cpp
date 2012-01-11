@@ -31,6 +31,10 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Util;
 
+
+/******* Deprecated ---- please use AnnotationLabelSource instead *************/
+
+
 class OverlayLabelSource : public LabelSource
 {
 public:

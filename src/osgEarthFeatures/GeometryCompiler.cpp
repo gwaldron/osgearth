@@ -100,6 +100,15 @@ _options( options )
 }
 
 osg::Node*
+GeometryCompiler::compile(Geometry*             geometry,
+                          const Style&          style,
+                          const FilterContext&  context)
+{
+    osg::ref_ptr<Feature> f = new Feature(geometry);
+    return compile(f.get(), style, context);
+}
+
+osg::Node*
 GeometryCompiler::compile(Feature*              feature,
                           const Style&          style,
                           const FilterContext&  context)
@@ -177,7 +186,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
 
     // if the style was empty, use some defaults based on the geometry type of the
     // first feature.
-    if ( style.empty() && workingSet.size() > 0 )
+    if ( !point && !line && !polygon && !marker && !extrusion && !text && workingSet.size() > 0 )
     {
         Feature* first = workingSet.begin()->get();
         Geometry* geom = first->getGeometry();

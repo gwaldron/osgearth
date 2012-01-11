@@ -115,9 +115,10 @@ namespace osgEarth
         osgText::Font* getDefaultFont();
 
         /**
-         * Gets the graphics hardware capabilities for this platform
+         * The graphics hardware capabilities for this platform.
          */
         const Capabilities& getCapabilities() const;
+        void setCapabilities( Capabilities* caps );
 
         /**
          * Gets or sets the default shader factory. You can replace the default

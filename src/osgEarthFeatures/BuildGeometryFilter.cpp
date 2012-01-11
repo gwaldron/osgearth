@@ -45,6 +45,24 @@ using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 
+namespace
+{
+    void applyLineSymbology( osg::StateSet* stateSet, const LineSymbol* lineSymbol )
+    {
+        if ( lineSymbol )
+        {
+            float width = std::max( 1.0f, *lineSymbol->stroke()->width() );
+            stateSet->setAttributeAndModes(new osg::LineWidth(width), 1);
+            if ( lineSymbol->stroke()->stipple().isSet() )
+            {
+                stateSet->setAttributeAndModes(
+                    new osg::LineStipple(1, *lineSymbol->stroke()->stipple()) );
+            }
+        }
+    }
+}
+
+
 BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
 _maxAngle_deg ( 5.0 ),
@@ -73,9 +91,9 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
 
     if ( context.isGeoreferenced() )
     {
-        makeECEF = context.getSession()->getMapInfo().isGeocentric();
+        makeECEF   = context.getSession()->getMapInfo().isGeocentric();
         featureSRS = context.extent()->getSRS();
-        mapSRS = context.getSession()->getMapInfo().getProfile()->getSRS();
+        mapSRS     = context.getSession()->getMapInfo().getProfile()->getSRS();
     }
 
     for( FeatureList::iterator f = features.begin(); f != features.end(); ++f )
@@ -86,81 +104,47 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
         while( parts.hasMore() )
         {
             Geometry* part = parts.next();
-            
-            osg::PrimitiveSet::Mode primMode = osg::PrimitiveSet::POINTS;
 
             const Style& myStyle = input->style().isSet() ? *input->style() : _style;
 
-            osg::Vec4f color = osg::Vec4(1,1,1,1);
-            bool tessellatePolys = true;
+            bool  setLinePropsHere   = input->style().isSet(); // otherwise it will be set globally, we assume
+            float width              = 1.0f;
+            bool  hasPolyOutline     = false;
 
-            bool setWidth = input->style().isSet(); // otherwise it will be set globally, we assume
-            float width = 1.0f;
+            const LineSymbol*    lineSymbol = myStyle.get<LineSymbol>();
+            const PolygonSymbol* polySymbol = myStyle.get<PolygonSymbol>();
 
-            switch( part->getType() )
+            // resolve the geometry type from the component type and the symbology:
+            Geometry::Type renderType;
+
+            if ((polySymbol != 0L) ||
+                (polySymbol == 0L && lineSymbol == 0L && part->getType() == Geometry::TYPE_POLYGON))
             {
-            case Geometry::TYPE_POINTSET:
-                {
-                    _hasPoints = true;
-                    primMode = osg::PrimitiveSet::POINTS;
-                    const PointSymbol* point = myStyle.getSymbol<PointSymbol>();
-                    if (point)
-                    {
-                        color = point->fill()->color();
-                    }
-                }
-                break;
-
-            case Geometry::TYPE_LINESTRING:
-                {
-                    _hasLines = true;
-                    primMode = osg::PrimitiveSet::LINE_STRIP;
-                    const LineSymbol* lineSymbol = myStyle.getSymbol<LineSymbol>();
-                    if (lineSymbol)
-                    {
-                        color = lineSymbol->stroke()->color();
-                        width = lineSymbol->stroke()->width().isSet() ? *lineSymbol->stroke()->width() : 1.0f;
-                    }
-                }
-                break;
-
-            case Geometry::TYPE_RING:
-                {
-                    _hasLines = true;
-                    primMode = osg::PrimitiveSet::LINE_LOOP;
-                    const LineSymbol* lineSymbol = myStyle.getSymbol<LineSymbol>();
-                    if (lineSymbol)
-                    {
-                        color = lineSymbol->stroke()->color();
-                        width = lineSymbol->stroke()->width().isSet() ? *lineSymbol->stroke()->width() : 1.0f;
-                    }
-                }
-                break;
-
-            case Geometry::TYPE_POLYGON:
-                {
-                    primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-                    const PolygonSymbol* poly = myStyle.getSymbol<PolygonSymbol>();
-                    if (poly)
-                    {
-                        _hasPolygons = true;
-                        color = poly->fill()->color();
-                    }
-                    else
-                    {
-                        // if we have a line symbol and no polygon symbol, draw as an outline.
-                        _hasLines = true;
-                        const LineSymbol* line = myStyle.getSymbol<LineSymbol>();
-                        if ( line )
-                        {
-                            color = line->stroke()->color();
-                            width = line->stroke()->width().isSet() ? *line->stroke()->width() : 1.0f;
-                            tessellatePolys = false;
-                        }
-                    }
-                }
-                break;
+                renderType = Geometry::TYPE_POLYGON;
             }
+
+            else if (
+                (lineSymbol != 0L && polySymbol == 0L && !part->isLinear()))
+            {
+                renderType = Geometry::TYPE_RING;
+            }
+
+            else if (
+                (lineSymbol != 0L && polySymbol == 0L && part->isLinear()))
+            {
+                renderType = part->getType();
+            }
+
+            else
+            {
+                renderType = part->getType();
+            }
+
+            // resolve the color:
+            osg::Vec4f primaryColor =
+                polySymbol ? polySymbol->fill()->color() :
+                lineSymbol ? lineSymbol->stroke()->color() :
+                osg::Vec4f(1,1,1,1);
             
             osg::Geometry* osgGeom = new osg::Geometry();
 
@@ -170,86 +154,38 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 osgGeom->setName( name );
             }
 
-            // NOTE: benchmarking reveals VBOs to be much slower (for static data, at least)
-            //osgGeom->setUseVertexBufferObjects( true );
-            //osgGeom->setUseDisplayList( false );
+            // build the geometry:
+            osg::Vec3Array* allPoints = 0L;
 
-            if ( setWidth && width != 1.0f )
+            if ( renderType == Geometry::TYPE_POLYGON )
             {
-                osgGeom->getOrCreateStateSet()->setAttributeAndModes(
-                    new osg::LineWidth( width ), osg::StateAttribute::ON );
-            }
-
-            if (_hasLines)
-            {
-                const LineSymbol* line = myStyle.getSymbol<LineSymbol>();
-                if (line && line->stroke().isSet() && line->stroke()->stipple().isSet())
-                {
-                    osg::LineStipple* lineStipple = new osg::LineStipple;
-                    lineStipple->setPattern( *line->stroke()->stipple() );            
-                    osgGeom->getOrCreateStateSet()->setAttributeAndModes( lineStipple, osg::StateAttribute::ON );
-                }
-            }
-            
-            if (part->getType() == Geometry::TYPE_POLYGON && static_cast<Polygon*>(part)->getHoles().size() > 0 )
-            {
-                Polygon* poly = static_cast<Polygon*>(part);
-                int totalPoints = poly->getTotalPointCount();
-                //osg::Vec3Array* allPoints; // = new osg::Vec3Array( totalPoints );
-
-                osg::Vec3Array* allPoints = new osg::Vec3Array();
-                transformAndLocalize( part->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
-
-                osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
-
-                int offset = part->size();
-
-                for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
-                {
-                    Geometry* hole = h->get();
-                    if ( hole->isValid() )
-                    {
-                        transformAndLocalize( hole->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
-
-                        osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, offset, hole->size() ) );
-                        offset += hole->size();
-                    }
-                }
-                osgGeom->setVertexArray( allPoints );
+                buildPolygon(part, featureSRS, mapSRS, makeECEF, true, osgGeom);
+                allPoints = static_cast<osg::Vec3Array*>( osgGeom->getVertexArray() );
             }
             else
             {
-                osg::Vec3Array* allPoints = new osg::Vec3Array();
+                // line geometry
+                GLenum primMode = 
+                    renderType == Geometry::TYPE_LINESTRING ? GL_LINE_STRIP :
+                    renderType == Geometry::TYPE_RING       ? GL_LINE_LOOP :
+                    GL_POINTS;
+                allPoints = new osg::Vec3Array();
                 transformAndLocalize( part->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
-
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
                 osgGeom->setVertexArray( allPoints );
+
+                applyLineSymbology( osgGeom->getOrCreateStateSet(), lineSymbol );
             }
 
-            // tessellate all polygon geometries. Tessellating each geometry separately
-            // with TESS_TYPE_GEOMETRY is much faster than doing the whole bunch together
-            // using TESS_TYPE_DRAWABLE.
+            // assign the primary color:
+            osg::Vec4Array* colors = new osg::Vec4Array( allPoints->size() );
+            for(unsigned c=0; c<colors->size(); ++c)
+                (*colors)[c] = primaryColor;
+            osgGeom->setColorArray( colors );
+            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
-            if ( part->getType() == Geometry::TYPE_POLYGON && tessellatePolys )
-            {
-                osgUtil::Tessellator tess;
-                //tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_DRAWABLE );
-                //tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_ODD );
-                tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
-                tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
-
-                tess.retessellatePolygons( *osgGeom );
-
-                // the tessellator results in a collection of trifans, strips, etc. This step will
-                // consolidate those into one (or more if necessary) GL_TRIANGLES primitive.
-                //NOTE: this now happens elsewhere 
-                //MeshConsolidator::run( *osgGeom );
-
-                // mark this geometry as DYNAMIC because otherwise the OSG optimizer will destroy it.
-                //osgGeom->setDataVariance( osg::Object::DYNAMIC );
-            }
-
-            if ( makeECEF && part->getType() != Geometry::TYPE_POINTSET )
+            // subdivide the mesh if necessary to conform to an ECEF globe:
+            if ( makeECEF && renderType != Geometry::TYPE_POINTSET )
             {
                 double threshold = osg::DegreesToRadians( *_maxAngle_deg );
 
@@ -261,25 +197,100 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                     ms.run( *osgGeom, threshold, *_geoInterp );
             }
 
-            // NOTE! per-vertex colors makes the optimizer destroy the geometry....
-            //osg::Vec4Array* colors = new osg::Vec4Array(1);
-            //(*colors)[0] = color;
-            //osgGeom->setColorArray( colors );
-            //osgGeom->setColorBinding( osg::Geometry::BIND_OVERALL );
-
-            osg::Vec4Array* colors = new osg::Vec4Array( osgGeom->getVertexArray()->getNumElements() );
-            colors->assign( colors->size(), color );
-            osgGeom->setColorArray( colors );
-            osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
-            
-
-            // add the part to the geode.
             _geode->addDrawable( osgGeom );
+
+            // build secondary geometry, if necessary (polygon outlines)
+            if ( renderType == Geometry::TYPE_POLYGON && lineSymbol )
+            {
+                osg::Geometry*  outline = new osg::Geometry();
+
+                buildPolygon(part, featureSRS, mapSRS, makeECEF, false, outline);
+#if 0
+
+                osg::Vec3Array* outlineVerts = new osg::Vec3Array();
+                outline->setVertexArray(outlineVerts);
+
+                transformAndLocalize( part->asVector(), featureSRS, outlineVerts, mapSRS, _world2local, makeECEF );
+                outline->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, 0, part->size() ) );
+#endif
+                osg::Vec4Array* outlineColors = new osg::Vec4Array();
+                outline->setColorArray(outlineColors);
+                outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
+
+                osg::Vec4f outlineColor = lineSymbol->stroke()->color();
+                unsigned pcount = part->getTotalPointCount();
+                outlineColors->reserve( pcount );
+                for( unsigned c=0; c < pcount; ++c )
+                    outlineColors->push_back( outlineColor );
+
+                // subdivide if necessary.
+                if ( makeECEF )
+                {
+                    double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+                    MeshSubdivider ms( _world2local, _local2world );
+                    if ( input->geoInterp().isSet() )
+                        ms.run( *outline, threshold, *input->geoInterp() );
+                    else
+                        ms.run( *outline, threshold, *_geoInterp );
+                }
+
+                applyLineSymbology( outline->getOrCreateStateSet(), lineSymbol );
+
+                _geode->addDrawable( outline );
+            }
+
         }
     }
     
     return true;
 }
+
+// builds and tessellates a polygon (with or without holes)
+void
+BuildGeometryFilter::buildPolygon(Geometry*               ring,
+                                  const SpatialReference* featureSRS,
+                                  const SpatialReference* mapSRS,
+                                  bool                    makeECEF,
+                                  bool                    tessellate,
+                                  osg::Geometry*          osgGeom)
+{
+    if ( !ring->isValid() )
+        return;
+
+    int totalPoints = ring->getTotalPointCount();
+    osg::Vec3Array* allPoints = new osg::Vec3Array();
+    transformAndLocalize( ring->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
+
+    osgGeom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, 0, ring->size() ) );
+
+    Polygon* poly = dynamic_cast<Polygon*>(ring);
+    if ( poly )
+    {
+        int offset = ring->size();
+
+        for( RingCollection::const_iterator h = poly->getHoles().begin(); h != poly->getHoles().end(); ++h )
+        {
+            Geometry* hole = h->get();
+            if ( hole->isValid() )
+            {
+                transformAndLocalize( hole->asVector(), featureSRS, allPoints, mapSRS, _world2local, makeECEF );
+
+                osgGeom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, offset, hole->size() ) );
+                offset += hole->size();
+            }
+        }
+    }
+    osgGeom->setVertexArray( allPoints );
+
+    if ( tessellate )
+    {
+        osgUtil::Tessellator tess;
+        tess.setTessellationType( osgUtil::Tessellator::TESS_TYPE_GEOMETRY );
+        tess.setWindingType( osgUtil::Tessellator::TESS_WINDING_POSITIVE );
+        tess.retessellatePolygons( *osgGeom );
+    }
+}
+
 
 osg::Node*
 BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
@@ -306,7 +317,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
             const LineSymbol* lineSymbol = _style.getSymbol<LineSymbol>();
             float size = 1.0;
             if (lineSymbol)
-                size = lineSymbol->stroke()->width().value();
+                size = std::max(1.0f, lineSymbol->stroke()->width().value());
 
             _geode->getOrCreateStateSet()->setAttribute( new osg::Point(size), osg::StateAttribute::ON );
             _geode->getOrCreateStateSet()->setAttribute( new osg::LineWidth(size), osg::StateAttribute::ON );

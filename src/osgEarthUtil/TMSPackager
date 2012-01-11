@@ -1,0 +1,122 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_TMS_PACKAGER_H
+#define OSGEARTHUTIL_TMS_PACKAGER_H
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/ImageLayer>
+#include <osgEarth/ElevationLayer>
+#include <osgEarth/Profile>
+
+namespace osgEarth { namespace Util
+{
+    /**
+     * Utility that reads tiles from an ImageLayer or ElevationLayer and stores
+     * the resulting data in a disk-based TMS (Tile Map Service) repository.
+     *
+     * See: http://wiki.osgeo.org/wiki/Tile_Map_Service_Specification
+     */
+    class OSGEARTHUTIL_EXPORT TMSPackager
+    {
+    public:
+        /**
+         * Constructs a new packager.
+         * @param profile    Profile of packaged tile data (required)
+         */
+        TMSPackager( const Profile* outProfile );
+
+        /**
+         * Whether to dump out progress messages 
+         * default = false
+         */
+        void setVerbose( bool value ) { _verbose = value; }
+        bool getVerbose() const { return _verbose; }
+
+        /**
+         * Whether to abort if a tile writing error is encountered
+         * default = true
+         */
+        void setAbortOnError( bool value ) { _abortOnError = value; }
+        bool getAbortOnError() const { return _abortOnError; }
+
+        /**
+         * Maximum level of detail of tiles to package
+         */
+        void setMaxLevel( unsigned value ) { _maxLevel = value; }
+        unsigned getMaxLevel() const { return _maxLevel; }
+
+        /**
+         * Result structure for method calls
+         */
+        struct Result {
+            Result() : ok(true) { }
+            Result(const std::string& m) : message(m), ok(false) { }
+            operator bool() const { return ok; }
+            bool ok;
+            std::string message;
+        };
+
+        /**
+         * Packages an image layer as a TMS repository.
+         * @param layer          Image layer to export
+         * @param rootFolder     Root output folder of TMS repo
+         * @param imageExtension (optional) Force an image type extension (e.g., "jpg")
+         */
+        Result package(
+            ImageLayer*        layer,
+            const std::string& rootFolder,
+            const std::string& imageExtension ="png" );
+
+        /**
+         * Packages an elevation layer as a TMS repository.
+         * @param layer          Image layer to 
+         * @param rootFolder     Root output folder of TMS repo
+         */
+        Result package( 
+            ElevationLayer*    layer,
+            const std::string& rootFolder );
+
+    protected:
+
+        Result packageImageTile(
+            ImageLayer*          layer,
+            const TileKey&       key,
+            const std::string&   rootDir,
+            const std::string&   extension,
+            unsigned&            out_maxLevel );
+
+        Result packageElevationTile(
+            ElevationLayer*      layer,
+            const TileKey&       key,
+            const std::string&   rootDir,
+            const std::string&   extension,
+            unsigned&            out_maxLevel );
+
+    protected:
+
+        bool                        _verbose;
+        bool                        _abortOnError;
+        unsigned                    _maxLevel;
+        osg::ref_ptr<const Profile> _outProfile;
+
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_TMS_PACKAGER_H

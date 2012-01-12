@@ -342,14 +342,6 @@ OverlayDecorator::reinit()
             {
                 rttStateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
             }
-            //Enable blending on the RTT camera with pre-multiplied alpha.
-            //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-                
-
-            // texture coordinate generator:
-            _texGenNode = new osg::TexGenNode();
-            _texGenNode->setTextureUnit( *_textureUnit );
-            _texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR );
             
             // attach the overlay graph to the RTT camera.
             if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != _rttCamera.get() ))
@@ -378,11 +370,6 @@ OverlayDecorator::reinit()
         _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
         _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
         _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
-
-        // decalling (note: this has no effect when using shaders.. remove? -gw)
-        //osg::TexEnv* env = new osg::TexEnv();
-        //env->setMode( osg::TexEnv::DECAL );
-        //_subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
         
         // set up the shaders
         if ( _useShaders )
@@ -685,9 +672,6 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
     _rttCamera->setProjectionMatrix( _rttProjMatrix );
 
     osg::Matrix MVPT = _projectorViewMatrix * _projectorProjMatrix * normalizeMatrix;
-
-    //_texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR ); // moved to initialization
-    _texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
     
     // uniform update:
     if ( _useShaders )
@@ -950,9 +934,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                 cull( cv );
             }
             _rttCamera->accept( nv );
-            
-            // note: texgennode doesn't need a cull, and the subgraph
-            // is traversed in cull().
         }
 
         else
@@ -962,7 +943,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                 updateRTTCamera( nv );
             }
             _rttCamera->accept( nv );
-            _texGenNode->accept( nv );
 
             osg::Group::traverse( nv );
         }    

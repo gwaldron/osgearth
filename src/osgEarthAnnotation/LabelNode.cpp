@@ -111,7 +111,7 @@ LabelNode::init( const TextSymbol* symbol )
 void
 LabelNode::setText( const std::string& text )
 {
-    if ( !_dynamic )
+    if ( !_dynamic && getNumParents() > 0 )
     {
         OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
         return;

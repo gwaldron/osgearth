@@ -30,7 +30,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for node that is localized at a specific geographic point.
      */
-    class OSGEARTHANNO_EXPORT LocalizedNode : public AnnotationNode
+    class OSGEARTHANNO_EXPORT LocalizedNode : public PositionedAnnotationNode
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, LocalizedNode);

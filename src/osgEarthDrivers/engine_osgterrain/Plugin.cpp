@@ -103,7 +103,7 @@ public:
                 osg::ref_ptr< osg::Node > node = engineNode->createNode( key );
                 
                 // Blacklist the tile if we couldn't load it
-                if ( !node )
+                if ( !node.valid() )
                 {
                     OE_DEBUG << LC << "Blacklisting " << uri << std::endl;
                     osgEarth::Registry::instance()->blacklist( uri );

@@ -54,7 +54,7 @@ const Units Units::DATA_MILES        ( "data miles",     "dm",  Units::TYPE_LINE
 const Units Units::INCHES            ( "inches",         "in",  Units::TYPE_LINEAR, 0.0254 );
 const Units Units::FATHOMS           ( "fathoms",        "fm",  Units::TYPE_LINEAR, 1.8288 );
 const Units Units::KILOFEET          ( "kilofeet",       "kf",  Units::TYPE_LINEAR, 304.8 );
-const Units Units::KILOYARDS         ( "kiloyards",      "ky",  Units::TYPE_LINEAR, 914.4 );
+const Units Units::KILOYARDS         ( "kiloyards",      "kyd", Units::TYPE_LINEAR, 914.4 );
 
 const Units Units::DEGREES           ( "degrees",        "\xb0",Units::TYPE_ANGULAR, 0.017453292519943295 );
 const Units Units::RADIANS           ( "radians",        "rad", Units::TYPE_ANGULAR, 1.0 );

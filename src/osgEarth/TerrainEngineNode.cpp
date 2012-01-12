@@ -367,12 +367,14 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 void
 TerrainEngineNode::addTerrainChangedCallback( TerrainChangedCallback* callback )
 {
+    Threading::ScopedWriteLock lock( _terrainChangedCallbacksMutex );
     _terrainChangedCallbacks.push_back( callback );
 }
 
 void
 TerrainEngineNode::removeTerrainChangedCallback( TerrainChangedCallback* callback)
 {
+    Threading::ScopedWriteLock lock( _terrainChangedCallbacksMutex );
     TerrainChangedCallbackList::iterator i = std::find(_terrainChangedCallbacks.begin(), _terrainChangedCallbacks.end(), callback);
     if (i != _terrainChangedCallbacks.end()) _terrainChangedCallbacks.erase( i );    
 }
@@ -380,6 +382,7 @@ TerrainEngineNode::removeTerrainChangedCallback( TerrainChangedCallback* callbac
 void
 TerrainEngineNode::fireTerrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
 {    
+    Threading::ScopedReadLock lock( _terrainChangedCallbacksMutex );
     for (TerrainChangedCallbackList::iterator i = _terrainChangedCallbacks.begin(); i != _terrainChangedCallbacks.end(); i++)
     {
         i->get()->onTerrainChanged(tileKey, terrain);

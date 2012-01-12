@@ -88,6 +88,7 @@ namespace osgEarth { namespace Annotation
          * Sets the text content.
          */
         void setText( const std::string& text );
+    
 
     public: // OrthoNode override
 
@@ -98,7 +99,7 @@ namespace osgEarth { namespace Annotation
     protected:
         void init( const TextSymbol* symbol );
 
-        std::string _text;
+        std::string       _text;
         class osg::Geode* _geode;
 
         /** Copy constructor */

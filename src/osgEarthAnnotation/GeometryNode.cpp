@@ -40,14 +40,16 @@ LocalizedNode( mapNode->getMapSRS() )
     osg::Node* node = compiler.compile( feature.get(), style, cx );
     if ( node )
     {
+        getTransform()->addChild( node );
         if ( draped )
         {
             DrapeableNode* dn = new DrapeableNode(mapNode);
-            dn->addChild( node );
+            dn->addChild( getTransform() );
+            this->addChild( dn );
         }
         else
         {
-            getAttachPoint()->addChild( node );
+            this->addChild( getTransform() );
         }
     }
 }

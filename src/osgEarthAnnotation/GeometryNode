@@ -30,7 +30,9 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth::Symbology;
 
     /**
-     * Simple node that renders a Geometry into a scene graph node.
+     * Simple node that renders a Geometry into a scene graph node. The geometry
+     * is in a local tangent plane that may be positioned somewhere on the 
+     * Map's surface.
      */
     class OSGEARTHANNO_EXPORT GeometryNode : public LocalizedNode
     {

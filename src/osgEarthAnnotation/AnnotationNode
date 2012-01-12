@@ -108,6 +108,43 @@ namespace osgEarth { namespace Annotation
         std::string  _activeDsName;
     };
 
+    /**
+     * Virtual class for AnnotationNodes with the set/getPosition method
+     */
+    class PositionedAnnotationNode : public AnnotationNode
+    {
+    public:
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * of the current Map. Returns true upon success.
+         */
+        virtual bool setPosition( const osg::Vec3d& pos ) =0;
+
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * passed in, and will be reprojected to Map coordinates.
+         * Returns true upon success.
+         */
+        virtual bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs ) =0;
+
+        /**
+         * Gets the position (in map coordinates) of the node
+         */
+        virtual osg::Vec3d getPosition() const =0;
+
+        /**
+         * Gets the position (in the requested coordinate system)
+         */
+        virtual osg::Vec3d getPosition( const SpatialReference* srs ) const =0;
+
+    protected:
+        PositionedAnnotationNode() : AnnotationNode() { }
+
+        PositionedAnnotationNode( const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) 
+            : AnnotationNode( rhs, op ) { }
+        
+    };
+
 } } // namespace osgEarth::Annotation
 
 #endif // OSGEARTH_ANNO_ANNOTATION_NODE_H

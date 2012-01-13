@@ -180,6 +180,7 @@ TrackNode* createTrack(TrackNodeFieldSchema& schema, osg::Image* image, const st
 
   AnnotationData* data = new AnnotationData();
   data->setName(name);
+  data->setViewpoint(osgEarth::Viewpoint(center, 0.0, -90.0, 1e5));
   track->setAnnotationData( data );
 
   trackSims.push_back(new TrackSim(track, center, radius, time, mapNode));

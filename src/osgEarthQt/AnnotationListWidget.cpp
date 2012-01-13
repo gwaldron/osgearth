@@ -179,7 +179,7 @@ void AnnotationListWidget::refresh()
 
     _nameField->setText(tr(annoData ? annoData->getName().c_str() : "-----"));
     _priorityField->setText(annoData ? QString::number(annoData->getPriority()) : tr("-----"));
-    _viewpointField->setText(tr(annoData ? annoData->getViewpoint()->toString().c_str() : "-----"));
+    _viewpointField->setText(tr(annoData && annoData->getViewpoint() ? annoData->getViewpoint()->toString().c_str() : "-----"));
     _descriptionField->setText(tr(annoData ? annoData->getDescription().c_str() : ""));
   }
 

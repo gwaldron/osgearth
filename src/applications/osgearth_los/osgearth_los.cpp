@@ -154,6 +154,18 @@ main(int argc, char** argv)
     RadialLineOfSightEditor* radialEditor = new RadialLineOfSightEditor( radial );
     root->addChild( radialEditor );
 
+    //Create a relative RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
+    RadialLineOfSightNode* radialRelative = new RadialLineOfSightNode( mapNode );
+    radialRelative->setCenter( osg::Vec3d(-121.2, 46.054, 10) );
+    radialRelative->setAltitudeMode( ALTITUDE_RELATIVE );
+    radialRelative->setRadius( 3000 );
+    radialRelative->setNumSpokes(60);    
+    radialRelative->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+    root->addChild( radialRelative );
+    RadialLineOfSightEditor* radialRelEditor = new RadialLineOfSightEditor( radialRelative );
+    root->addChild( radialRelEditor );
+
+
     //Create an editor for the radial line of sight that allows you to drag it around.
 
 

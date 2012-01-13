@@ -1,0 +1,78 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_LOSCREATIONDIALOG_H
+#define OSGEARTHQT_LOSCREATIONDIALOG_H 1
+
+#include "ui_LOSCreationDialog.h"
+
+#include <osgEarthQt/Common>
+#include <osgEarthQt/DataManager>
+
+#include <QDialog>
+
+namespace osgEarth { namespace QtGui 
+{
+  class LOSCreationDialog : public QDialog
+  {
+  Q_OBJECT
+
+  public:
+    LOSCreationDialog(osgEarth::MapNode* mapNode, int losCount, DataManager* manager=0L, ViewVector* views=0L);
+
+    osg::Group* losNode() { return _node.get(); }
+    QString losName() { return _ui.nameBox->text(); }
+    osg::Group* losEditor() { return _editor.get(); }
+
+    void mapClick(const osg::Vec3d& location);
+
+  public slots:
+    void accept();
+		
+  private slots:
+    void onP1TypeChange(const QString& text);
+    void onP2TypeChange(const QString& text);
+    void onRadTypeChange(const QString& text);
+
+    void onP1MapButtonClicked(bool checked);
+    void onP2MapButtonClicked(bool checked);
+    void onRadMapButtonClicked(bool checked);
+
+    void onP1FindNodeButtonClicked(bool checked);
+    void onP2FindNodeButtonClicked(bool checked);
+    void onRadFindNodeButtonClicked(bool checked);
+
+  private:
+    void initUi(int losCount);
+    bool doClose();
+    void centerMapOnNode(osg::Node* node);
+
+    Ui::LOSCreationDialog _ui;
+    osg::ref_ptr<osg::Group> _node;
+    osg::ref_ptr<osg::Group> _editor;
+    osg::ref_ptr<osgEarth::MapNode> _mapNode;
+    osg::ref_ptr<DataManager> _manager;
+    osg::ref_ptr<osgEarth::Map> _map;
+    AnnotationVector _annotations;
+    ViewVector* _views;
+
+    QPushButton* _activeButton;
+  };
+} }
+
+#endif // OSGEARTHQT_LOSCREATIONDIALOG_H

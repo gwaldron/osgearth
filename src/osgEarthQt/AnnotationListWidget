@@ -20,23 +20,20 @@
 #define OSGEARTHQT_ANNOTATIONLISTWIDGET_H 1
 
 #include <osgEarthQt/Actions>
+#include <osgEarthQt/CollapsiblePairWidget>
 #include <osgEarthQt/Common>
 #include <osgEarthQt/DataManager>
 
 #include <QFrame>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
-#include <QPushButton>
-#include <QScrollArea>
-#include <QVBoxLayout>
 #include <QWidget>
 
 namespace osgEarth { namespace QtGui 
 {
     using namespace osgEarth;
 
-    class OSGEARTHQT_EXPORT AnnotationListWidget : public QScrollArea
+    class OSGEARTHQT_EXPORT AnnotationListWidget : public CollapsiblePairWidget
     {
     Q_OBJECT
 
@@ -46,14 +43,7 @@ namespace osgEarth { namespace QtGui
       void setActiveView(osgViewer::View* view);
       void setActiveViews(const ViewVector& views);
 
-      void setListVisible(bool visible) { _listGroup->setVisible(visible); }
-      void setDetailsVisible(bool visible) { _detailsGroup->setVisible(visible); }
-
-      void resetStyleSheet();
-
     private slots:
-      void onListHideClicked(bool checked);
-      void onDetailsHideClicked(bool checked);
       void onMapChanged();
       void onSelectionChanged(/*const AnnotationVector& selection*/);
 	    void onItemDoubleClicked(QListWidgetItem* item);
@@ -63,23 +53,15 @@ namespace osgEarth { namespace QtGui
     protected:
       friend class AnnotationListActionCallbackProxy;
 
-      static const std::string DEFAULT_STYLESHEET;
-
       void initialize();
       void refresh();
 
-      QIcon         _showIcon, _hideIcon;
-      QWidget*      _listGroup;
-      QWidget*      _detailsGroup;
       QListWidget*  _annoList;
       QFrame*       _detailsBox;
-      QPushButton*  _listHideButton;
-      QPushButton*  _detailsHideButton;
       QLabel*       _nameField;
       QLabel*       _priorityField;
       QLabel*       _viewpointField;
       QLabel*       _descriptionField;
-      QWidget*      _stretchBox;
 
       osg::ref_ptr<DataManager>  _manager;
       ViewVector                 _views;

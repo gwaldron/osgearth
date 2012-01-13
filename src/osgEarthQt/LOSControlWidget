@@ -1,0 +1,157 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_LOSCONTROLWIDGET_H
+#define OSGEARTHQT_LOSCONTROLWIDGET_H 1
+
+#include <osgEarthQt/Actions>
+#include <osgEarthQt/CollapsiblePairWidget>
+#include <osgEarthQt/Common>
+#include <osgEarthQt/DataManager>
+
+#include <osgEarthUtil/LineOfSight>
+
+#include <osgGA/GUIEventHandler>
+
+#include <QAction>
+#include <QCheckBox>
+#include <QDoubleSpinBox>
+#include <QFrame>
+#include <QLabel>
+#include <QListWidget>
+#include <QPointer>
+#include <QSpinBox>
+#include <QWidget>
+
+namespace osgEarth { namespace QtGui 
+{
+    using namespace osgEarth;
+
+    class LOSCreationDialog;
+    struct LOSControlMouseHandler;
+    class OSGEARTHQT_EXPORT LOSControlWidget : public CollapsiblePairWidget
+    {
+    Q_OBJECT
+
+    public:
+      LOSControlWidget(osg::Group* root, osgEarth::MapNode* mapNode, DataManager* dm=0L);
+
+      void setActiveView(osgViewer::View* view);
+      void setActiveViews(const ViewVector& views);
+
+    private slots:
+	    void onItemDoubleClicked(QListWidgetItem* item);
+      void onItemChanged(QListWidgetItem* item);
+      void onItemSelectionChanged();
+
+      void onDragBoxChanged(int state);
+
+      void onRadiusValueChanged(double value);
+      void onSpokesValueChanged(int value);
+
+      void onAddLOS();
+      void onRemoveSelectedLOS();
+      void onCreateFinished(int result);
+
+    protected:
+      friend struct LOSControlMouseHandler;
+
+      void initialize();
+      void addLOSNode(osg::Group* los, const QString& name, osg::Group* editor=0L);
+      void addView(osgViewer::View* view);
+      void removeViews();
+      void mapClick(const osg::Vec3d& location);
+
+      QListWidget*       _losList;
+      QFrame*            _detailsBox;
+      QLabel*            _typeField;
+      QCheckBox*         _dragBox;
+      QDoubleSpinBox*    _radiusBox;
+      QSpinBox*          _spokesBox;
+      QAction*           _removeAction;
+      QPointer<LOSCreationDialog>  _newDialog;
+
+      osg::ref_ptr<osg::Group>              _root;
+      osg::ref_ptr<osgEarth::MapNode>       _mapNode;
+      osg::ref_ptr<DataManager>             _manager;
+      osg::ref_ptr<osgEarth::Map>           _map;
+      ViewVector                            _views;
+      //LineOfSightVector                     _losNodes;
+      osg::ref_ptr<osgEarth::Util::RadialLineOfSightNode>  _activeRadial;
+      int                                   _losCounter;
+      osg::ref_ptr<osgGA::GUIEventHandler>  _guiHandler;
+    };
+
+    struct LOSControlMouseHandler : public osgGA::GUIEventHandler
+    {
+      LOSControlMouseHandler(LOSControlWidget* losControl, osgEarth::MapNode* mapNode)
+        : _losControl(losControl), _mapNode(mapNode), _mouseDown(false)
+      {
+        //_mapNodePath.push_back( mapNode->getTerrainEngine() );
+      }
+
+      bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+      {
+        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
+
+        if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
+        {
+          if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+          {
+            _mouseDown = true;
+            _xDown = ea.getX();
+            _yDown = ea.getY();
+          }
+        }
+        else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
+        {
+          if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+          {
+            if (_mouseDown && _xDown == ea.getX() && _yDown == ea.getY())
+            {
+              osgUtil::LineSegmentIntersector::Intersections results;
+              if ( view->computeIntersections( _xDown, _yDown, results ) )
+              {
+                // find the first hit under the mouse:
+                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
+                osg::Vec3d point = first.getWorldIntersectPoint();
+                osg::Vec3d lla;
+
+                // transform it to map coordinates:
+                _mapNode->getMap()->worldPointToMapPoint(point, lla);
+
+                _losControl->mapClick(lla);
+              }
+            }
+
+            _mouseDown = false;
+          }
+        }
+
+        return false;
+      }
+
+      LOSControlWidget*      _losControl;
+      osg::ref_ptr<MapNode>  _mapNode;
+
+      bool _mouseDown;
+      float _xDown, _yDown;
+    };
+} }
+
+#endif // OSGEARTHQT_LOSCONTROLWIDGET_H

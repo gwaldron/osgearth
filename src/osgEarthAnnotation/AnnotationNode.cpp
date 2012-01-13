@@ -34,7 +34,7 @@ namespace osgEarth { namespace Annotation
     {
         AutoClampCallback( AnnotationNode* node ) : _node(node) { }
 
-        void tileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
+        void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
         {
             osg::ref_ptr<AnnotationNode> _safeNode = _node.get();
             if ( _safeNode.valid() )

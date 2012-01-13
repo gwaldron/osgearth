@@ -18,17 +18,20 @@
 */
 
 #include <osg/Notify>
+#include <osgEarth/ImageUtils>
 #include <osgEarth/MapNode>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/ScaleDecoration>
+#include <osgEarthAnnotation/TrackNode>
 #include <osgEarthQt/ViewerWidget>
 #include <osgEarthQt/CompositeViewerWidget>
 #include <osgEarthQt/LayerManagerWidget>
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/AnnotationListWidget>
+#include <osgEarthQt/LOSControlWidget>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
@@ -49,10 +52,15 @@
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
+#define TRACK_ICON_URL    "../data/m2525_air.png"
+#define TRACK_ICON_SIZE   24
+#define TRACK_FIELD_NAME  "name"
+
 static osg::ref_ptr<osg::Group> s_annoGroup;
 static osgEarth::Util::SkyNode* s_sky=0L;
 static osgEarth::Drivers::OceanSurfaceNode* s_ocean=0L;
 
+//------------------------------------------------------------------
 
 int
 usage( const std::string& msg )
@@ -109,6 +117,88 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 };
 
 //------------------------------------------------------------------
+// Methods for demo track simulation
+
+struct TrackSim : public osg::Referenced
+{
+  TrackSim(TrackNode* track, const osg::Vec3d center, float radius, double time, osgEarth::MapNode* mapNode)
+    : _track(track), _mapNode(mapNode), _radius(radius), _time(time)
+  {
+    //Get the center point in geocentric
+    mapNode->getMap()->mapPointToWorldPoint( center, _center );
+
+    _up = _center;
+    _up.normalize();
+
+    //Get the "side" vector
+    _side = _up ^ osg::Vec3d(0,0,1);
+  }
+
+  void update(double time)
+  {
+    double angle = (time / _time);
+    angle = (angle - (int)angle) * osg::PI * 2.0;
+
+    osg::Quat quat(angle, _up );
+    osg::Vec3d spoke = quat * (_side * _radius);
+    osg::Vec3d end = _center + spoke;
+
+    osg::Vec3d pos;
+    _mapNode->getMap()->worldPointToMapPoint(end, pos);
+
+    _track->setPosition(pos);
+  }
+
+  TrackNode* _track;
+  osgEarth::MapNode* _mapNode;
+  osg::Vec3d _center, _side, _up;
+  float _radius;
+  double _time;
+};
+typedef std::vector< osg::ref_ptr<TrackSim> > TrackSimVector;
+
+/** Update operation that runs the simulators. */
+struct TrackSimUpdate : public osg::Operation
+{
+  TrackSimUpdate(TrackSimVector& sims) : osg::Operation("tracksim", true), _sims(sims) { }
+
+  void operator()(osg::Object* obj)
+  {
+    osg::View* view = dynamic_cast<osg::View*>(obj);
+    double t = view->getFrameStamp()->getSimulationTime();
+    for(TrackSimVector::iterator i = _sims.begin(); i != _sims.end(); ++i)
+      i->get()->update(t);
+  }
+
+  TrackSimVector& _sims;
+};
+
+TrackNode* createTrack(TrackNodeFieldSchema& schema, osg::Image* image, const std::string& name, MapNode* mapNode, const osg::Vec3d& center, double radius, double time, TrackSimVector& trackSims)
+{
+  TrackNode* track = new TrackNode(mapNode, center, image, schema);
+  track->setFieldValue(TRACK_FIELD_NAME, name);
+
+  AnnotationData* data = new AnnotationData();
+  data->setName(name);
+  data->setViewpoint(osgEarth::Viewpoint(center, 0.0, -90.0, 1e5));
+  track->setAnnotationData( data );
+
+  trackSims.push_back(new TrackSim(track, center, radius, time, mapNode));
+
+  return track;
+}
+
+void createTrackSchema(TrackNodeFieldSchema& schema)
+{
+    // draw the track name above the icon:
+    TextSymbol* nameSymbol = new TextSymbol();
+    nameSymbol->pixelOffset()->set( 0, 2+TRACK_ICON_SIZE/2 );
+    nameSymbol->alignment() = TextSymbol::ALIGN_CENTER_BOTTOM;
+    nameSymbol->halo()->color() = Color::Black;
+    schema[TRACK_FIELD_NAME] = TrackNodeField(nameSymbol, false);
+}
+
+//------------------------------------------------------------------
 
 int
 main(int argc, char** argv)
@@ -141,58 +231,42 @@ main(int argc, char** argv)
 
     QApplication app(argc, argv);
 
-    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
-    osg::ref_ptr<osgEarth::QtGui::DataManager> dataManager = new osgEarth::QtGui::DataManager(mapNode);
-    DemoMainWindow appWin(dataManager.get(), mapNode, s_annoGroup);
+    osg::ref_ptr<osgEarth::MapNode> mapNode = osgEarth::MapNode::findMapNode( earthNode );
+    osg::ref_ptr<osgEarth::QtGui::DataManager> dataManager = new osgEarth::QtGui::DataManager(mapNode.get());
+    DemoMainWindow appWin(dataManager.get(), mapNode.get(), s_annoGroup);
 
     // install an event handler for picking and selection
     AnnotationEventCallback* cb = new AnnotationEventCallback();
     cb->addHandler(new MyAnnoEventHandler(dataManager.get()));
     s_annoGroup->addEventCallback(cb);
-
-    // add an annotation for demo purposes
-    if (mapNode)
-    {
-      osgEarth::Annotation::AnnotationNode* annotation = new osgEarth::Annotation::PlaceNode(
-        mapNode, 
-        osg::Vec3d(-77.04, 38.85, 0),
-        osgDB::readImageFile("../data/placemark32.png"),
-        "Washington, DC");
-
-      osgEarth::Annotation::AnnotationData* data = new osgEarth::Annotation::AnnotationData();
-      data->setName("Washington, DC");
-      data->setViewpoint(osgEarth::Viewpoint(osg::Vec3d(-77.04, 38.85, 0), 0.0, -90.0, 1e5));
-      annotation->setAnnotationData(data);
-
-      annotation->installDecoration("selected", new osgEarth::Annotation::ScaleDecoration(2.0f));
-
-      dataManager->addAnnotation(annotation, s_annoGroup);
-    }
     
     osgEarth::QtGui::ViewVector views;
+    osgViewer::ViewerBase* viewer;
 
     // create viewer widget
     if (composite)
     {
-      osgEarth::QtGui::CompositeViewerWidget* viewer = new osgEarth::QtGui::CompositeViewerWidget(root, dataManager.get());
+      osgEarth::QtGui::CompositeViewerWidget* viewerWidget = new osgEarth::QtGui::CompositeViewerWidget(root, dataManager.get());
 
-      osgViewer::View* primary = viewer->createViewWidget(root);
+      osgViewer::View* primary = viewerWidget->createViewWidget(root);
       views.push_back(primary);
 
       for (int i=0; i < numViews - 1; i++)
-        views.push_back(viewer->createViewWidget(root, primary));
+        views.push_back(viewerWidget->createViewWidget(root, primary));
 
-      viewer->setGeometry(100, 100, 800, 600);
-      appWin.setViewerWidget(viewer, views);
+      viewerWidget->setGeometry(100, 100, 800, 600);
+      appWin.setViewerWidget(viewerWidget, views);
+
+      viewer = viewerWidget;
     }
     else
     {
-      osgEarth::QtGui::ViewerWidget* viewer = new osgEarth::QtGui::ViewerWidget(root, dataManager.get());
-      viewer->setGeometry(100, 100, 800, 600);
-      appWin.setViewerWidget(viewer);
-      views.push_back(viewer);
+      osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root, dataManager.get());
+      viewerWidget->setGeometry(100, 100, 800, 600);
+      appWin.setViewerWidget(viewerWidget);
+      views.push_back(viewerWidget);
 
-      if (mapNode)
+      if (mapNode.valid())
       {
         const Config& externals = mapNode->externalConfig();
 
@@ -204,20 +278,37 @@ main(int argc, char** argv)
           double hours = skyConf.value("hours", 12.0);
           s_sky = new osgEarth::Util::SkyNode(mapNode->getMap());
           s_sky->setDateTime(2011, 3, 6, hours);
-          s_sky->attach(viewer);
+          s_sky->attach(viewerWidget);
           root->addChild(s_sky);
 
           // Ocean surface.
           if (externals.hasChild("ocean"))
           {
-            s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode, externals.child("ocean"));
+            s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode.get(), externals.child("ocean"));
             if (s_ocean)
               root->addChild(s_ocean);
           }
         }
       }
-        
+
+      viewer = viewerWidget;
     }
+
+
+    // create demo tracks
+    TrackSimVector trackSims;
+
+    osg::ref_ptr<osg::Image> srcImage = osgDB::readImageFile(TRACK_ICON_URL);
+    osg::ref_ptr<osg::Image> image;
+    ImageUtils::resizeImage(srcImage.get(), TRACK_ICON_SIZE, TRACK_ICON_SIZE, image);
+
+    TrackNodeFieldSchema schema;
+    createTrackSchema(schema);
+    dataManager->addAnnotation(createTrack(schema, image, "Plane 1", mapNode.get(), osg::Vec3d(-121.463, 46.3548, 1348.71), 10000, 24, trackSims), s_annoGroup);
+    dataManager->addAnnotation(createTrack(schema, image, "Plane 2", mapNode.get(), osg::Vec3d(-121.656, 46.0935, 4133.06), 10000, 8, trackSims), s_annoGroup);
+    dataManager->addAnnotation(createTrack(schema, image, "Plane 3", mapNode.get(), osg::Vec3d(-121.321, 46.2589, 1390.09), 10000, 12, trackSims), s_annoGroup);
+
+    viewer->addUpdateOperation(new TrackSimUpdate(trackSims));
 
 
     // create catalog widget and add as a docked widget to the main window
@@ -231,7 +322,7 @@ main(int argc, char** argv)
 
 
     // create and dock an annotation list widget
-    QDockWidget *annoDock = new QDockWidget(QWidget::tr("Annotations"));
+    QDockWidget *annoDock = new QDockWidget;
     annoDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::AnnotationListWidget* annoList = new osgEarth::QtGui::AnnotationListWidget(dataManager.get());
     annoList->setActiveViews(views);
@@ -240,7 +331,7 @@ main(int argc, char** argv)
 
 
     // create a second catalog widget for viewpoints
-    QDockWidget *vpDock = new QDockWidget(QWidget::tr("Viewpoints"));
+    QDockWidget *vpDock = new QDockWidget;
     vpDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
     vpCatalog->setActiveViews(views);
@@ -256,6 +347,16 @@ main(int argc, char** argv)
 	  layersDock->setWidget(layerManager);
 	  appWin.addDockWidget(Qt::RightDockWidgetArea, layersDock);
 
+
+    // create and dock a LOSControlWidget
+    QDockWidget *losDock = new QDockWidget;
+    losDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    osgEarth::QtGui::LOSControlWidget* losControl = new osgEarth::QtGui::LOSControlWidget(root, mapNode.get(), dataManager.get());
+    losControl->setActiveViews(views);
+	  losDock->setWidget(losControl);
+	  appWin.addDockWidget(Qt::RightDockWidgetArea, losDock);
+
+
     // attempt to load .qss stylesheet if one was provided
     if (styled)
     {
@@ -267,6 +368,7 @@ main(int argc, char** argv)
         app.setStyleSheet(qstylesheet);
         layerManager->setStyleSheet(qstylesheet);
         annoList->setStyleSheet(qstylesheet);
+        losControl->setStyleSheet(qstylesheet);
       }
     }
 

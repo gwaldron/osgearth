@@ -25,6 +25,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Viewpoint>
 #include <osgEarth/Units>
+#include <osg/OperationThread>
 
 namespace osgEarth
 {
@@ -45,12 +46,18 @@ namespace osgEarth
         /** Indicate that the callback should be removed immediately */
         void remove() { _remove = true; }
 
+        /** whether the user called remove(). */
+        bool markedForRemoval() const { return _remove; }
+
+        
+    public:
+        TerrainCallbackContext(Terrain* terrain, osg::Referenced* cd)
+            : _terrain(terrain), _cd(cd), _remove(false) { }
+
     protected:
         bool _remove;
         osg::Referenced* _cd;
         Terrain* _terrain;
-        TerrainCallbackContext(Terrain* terrain, osg::Referenced* cd)
-            : _terrain(terrain), _cd(cd), _remove(false) { }
         friend class Terrain;
     };
 
@@ -71,7 +78,7 @@ namespace osgEarth
          * @param context
          *      Contextual information about the callback
          */
-        virtual void tileAdded(
+        virtual void onTileAdded(
             const TileKey&          key, 
             osg::Node*              tile, 
             TerrainCallbackContext& context) =0;
@@ -150,16 +157,6 @@ namespace osgEarth
         
 
     public:
-        
-        // fires the callbacks - called by the provider/engine - don't call this
-        // method directly.
-        void notifyTileAdded( const TileKey& key, osg::Node* tile );
-
-
-    private:
-        Terrain( osg::Node* graph, const Profile* profile, bool geocentric );
-
-        friend class TerrainEngineNode;
 
         // internal record of a callback registration
         struct CallbackRecord {
@@ -167,6 +164,16 @@ namespace osgEarth
             osg::observer_ptr<osg::Referenced> _clientData;
             osg::ref_ptr<TerrainCallback>      _callback;
         };
+        
+        // queues the onTileAdded callback (internal)
+        void notifyTileAdded( const TileKey& key, osg::Node* tile );
+        // fires the onTileAdded callback (internal)
+        void fireTileAdded( const TileKey& key, osg::Node* tile );
+
+    private:
+        Terrain( osg::Node* graph, const Profile* profile, bool geocentric );
+
+        friend class TerrainEngineNode;
 
         typedef std::list<CallbackRecord> CallbackList;
 
@@ -175,6 +182,8 @@ namespace osgEarth
         osg::ref_ptr<const Profile>  _profile;
         osg::observer_ptr<osg::Node> _graph;
         bool                         _geocentric;
+
+        osg::observer_ptr<osg::OperationQueue> _updateOperationQueue;
 
     };
 }

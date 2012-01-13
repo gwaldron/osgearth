@@ -23,6 +23,7 @@
 #include "CustomTerrainTechnique"
 #include "TransparentLayer"
 
+#include <OpenThreads/Atomic>
 #include <osg/MatrixTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -162,6 +163,8 @@ private:
 
     osg::ref_ptr<const TextureCompositor> _texCompositor;
     bool _frontGeodeInstalled;
+
+    OpenThreads::Atomic _atomicCallOnce;
 
 private:
 

@@ -18,12 +18,41 @@
  */
 
 #include <osgEarth/Terrain>
-
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 
+#define LC "[Terrain] "
 
 using namespace osgEarth;
+
+//---------------------------------------------------------------------------
+
+namespace
+{
+    struct BaseOp : public osg::Operation
+    {
+        BaseOp(Terrain* terrain ) : osg::Operation("",false), _terrain(terrain) { }
+        osg::ref_ptr<Terrain> _terrain;
+    };
+
+    struct OnTileAddedOperation : public BaseOp
+    {
+        TileKey _key;
+        osg::observer_ptr<osg::Node> _node;
+
+        OnTileAddedOperation(const TileKey& key, osg::Node* node, Terrain* terrain)
+            : BaseOp(terrain), _key(key), _node(node) { }
+
+        void operator()(osg::Object*)
+        {
+            osg::ref_ptr<osg::Node> node_safe = _node.get();
+            if ( node_safe.valid() && _terrain.valid() )
+                _terrain->fireTileAdded( _key, node_safe.get() );
+        }
+    };
+}
+
+//---------------------------------------------------------------------------
 
 Terrain::Terrain(osg::Node* graph, const Profile* mapProfile, bool geocentric) :
 _graph     ( graph ),
@@ -130,21 +159,31 @@ Terrain::removeTerrainCallbacksWithClientData( osg::Referenced* cd )
 void
 Terrain::notifyTileAdded( const TileKey& key, osg::Node* node )
 {
+    if ( !node )
+    {
+        OE_WARN << LC << "notify with a null node!" << std::endl;
+    }
+
+    if ( _updateOperationQueue.valid() )
+    {
+        _updateOperationQueue->add( new OnTileAddedOperation(key, node, this) );
+    }
+}
+
+void
+Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
+{
     Threading::ScopedReadLock sharedLock( _callbacksMutex );
+
     for( CallbackList::iterator i = _callbacks.begin(); i != _callbacks.end(); )
     {
         CallbackRecord& rec = *i;
-        TerrainCallbackContext context( this, rec._clientData.get() );
-        
-        rec._callback->tileAdded( key, node, context );
 
+        TerrainCallbackContext context( this, rec._clientData.get() );
+        rec._callback->onTileAdded( key, node, context );
         if ( context._remove )
-        {
             i = _callbacks.erase( i );
-        }
         else
-        {
             ++i;
-        }
     }
 }

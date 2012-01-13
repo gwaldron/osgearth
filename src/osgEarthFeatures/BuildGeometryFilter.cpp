@@ -145,66 +145,6 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 polySymbol ? polySymbol->fill()->color() :
                 lineSymbol ? lineSymbol->stroke()->color() :
                 osg::Vec4f(1,1,1,1);
-
-#if 0
-            switch( part->getType() )
-            {
-            case Geometry::TYPE_POINTSET:
-                {
-                    _hasPoints = true;
-                    primMode = osg::PrimitiveSet::POINTS;
-                    const PointSymbol* point = myStyle.getSymbol<PointSymbol>();
-                    if (point)
-                    {
-                        primaryColor = point->fill()->color();
-                    }
-                }
-                break;
-
-            case Geometry::TYPE_LINESTRING:
-                {
-                    _hasLines = true;
-                    primMode = osg::PrimitiveSet::LINE_STRIP;
-                    if ( line )
-                    {
-                        primaryColor = line->stroke()->color();
-                        width = line->stroke()->width().isSet() ? *line->stroke()->width() : 1.0f;
-                    }
-                }
-                break;
-
-            case Geometry::TYPE_RING:
-                {
-                    _hasLines = true;
-                    primMode = osg::PrimitiveSet::LINE_LOOP;
-                    if ( line )
-                    {
-                        primaryColor = line->stroke()->color();
-                        width = line->stroke()->width().isSet() ? *line->stroke()->width() : 1.0f;
-                    }
-                }
-                break;
-
-            case Geometry::TYPE_POLYGON:
-                {
-                    primMode = osg::PrimitiveSet::LINE_LOOP; // loop will tessellate into polys
-                    const PolygonSymbol* poly = myStyle.getSymbol<PolygonSymbol>();
-                    if (poly)
-                    {
-                        _hasPolygons = true;
-                        primaryColor = poly->fill()->color();
-                    }
-
-                    if (line)
-                    {
-                        // if we have a line symbol and no polygon symbol, draw as an outline.
-                        _hasLines = true;
-                        width = line->stroke()->width().isSet() ? *line->stroke()->width() : 1.0f;
-                    }
-                }
-                break;
-            }
-#endif
             
             osg::Geometry* osgGeom = new osg::Geometry();
 

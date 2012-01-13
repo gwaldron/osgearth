@@ -32,7 +32,7 @@ namespace osgEarth { namespace Annotation
      * Base class for an annotation node that it drawn in screen-space
      * (as an orthographic overlay)
      */
-    class OSGEARTHANNO_EXPORT OrthoNode : public AnnotationNode
+    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, OrthoNode );
@@ -52,7 +52,8 @@ namespace osgEarth { namespace Annotation
          */
         virtual osg::Group* getAttachPoint() { return _attachPoint; }
 
-    public:
+    public: // PositionedAnnotationNode
+
         /**
          * Sets the map position of the node. The coordinates are in the SRS
          * of the current Map. Returns true upon success.
@@ -76,6 +77,18 @@ namespace osgEarth { namespace Annotation
          */
         osg::Vec3d getPosition( const SpatialReference* srs ) const;
 
+    public:
+        /**
+         * Sets a "local offset" position - for an ECEF map, this is an offset in 
+         * the local tangent plane of the node that is applied to the geometry.
+         */
+        void setLocalOffset( const osg::Vec3d& offset );
+
+        /**
+         * Gets the local tangent plane -space offset.
+         */
+        const osg::Vec3d& getLocalOffset() const;
+
         /**
          * Enables or disable automatic horizon culling
          */
@@ -92,6 +105,8 @@ namespace osgEarth { namespace Annotation
         osg::MatrixTransform* _matxform;
         osg::Group*           _attachPoint;
         bool                  _horizonCulling;
+        osg::Vec3d            _mapPosition;
+        osg::Vec3d            _localOffset;
 
         void init();
 

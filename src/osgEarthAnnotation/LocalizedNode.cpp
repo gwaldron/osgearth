@@ -30,7 +30,6 @@ using namespace osgEarth::Annotation;
 LocalizedNode::LocalizedNode(const SpatialReference* mapSRS,
                              const osg::Vec3d&       pos,
                              bool                    is2D ) :
-AnnotationNode (),
 _mapSRS        ( mapSRS ),
 _horizonCulling( false ),
 _autoTransform ( is2D )
@@ -58,7 +57,7 @@ _autoTransform ( is2D )
 }
 
 LocalizedNode::LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op) :
-AnnotationNode( rhs, op )
+PositionedAnnotationNode( rhs, op )
 {
     _mapSRS         = rhs._mapSRS.get();
     _horizonCulling = rhs._horizonCulling;

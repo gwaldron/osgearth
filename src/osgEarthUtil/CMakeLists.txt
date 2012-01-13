@@ -19,7 +19,7 @@ SET(LIB_PUBLIC_HEADERS
     ElevationManager
     Export
     Formatters
-    Graticule
+    GeodeticGraticule
 	LineOfSight
 	MeasureTool
 	NearFarGroup	
@@ -45,7 +45,7 @@ SET(LIB_COMMON_FILES
     EarthManipulator.cpp	
     ElevationManager.cpp
     Formatters.cpp
-    Graticule.cpp
+    GeodeticGraticule.cpp
 	LineOfSight.cpp
 	MeasureTool.cpp
 	NearFarGroup.cpp

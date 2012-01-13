@@ -185,6 +185,7 @@ namespace osgEarth
 
         typedef std::list< osg::ref_ptr< TerrainChangedCallback > > TerrainChangedCallbackList;
         TerrainChangedCallbackList _terrainChangedCallbacks;
+        Threading::ReadWriteMutex _terrainChangedCallbacksMutex;
     };
 
     /**

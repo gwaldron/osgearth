@@ -29,6 +29,7 @@ SET(LIB_PUBLIC_HEADERS
     Config
     Containers
     Cube
+    CullingUtils
     DrapeableNode
     ECEF
     ElevationLayer
@@ -48,6 +49,7 @@ SET(LIB_PUBLIC_HEADERS
     IOTypes
     JsonUtils
     Layer
+    LineFunctor
     Locators
     LocalTangentPlane
     Map
@@ -122,6 +124,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CompositeTileSource.cpp
     Config.cpp
     Cube.cpp
+    CullingUtils.cpp
     DrapeableNode.cpp
     ECEF.cpp
     EGM.cpp

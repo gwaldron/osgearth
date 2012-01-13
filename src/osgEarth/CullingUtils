@@ -1,0 +1,39 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_CULLING_UTILS_H
+#define OSGEARTH_CULLING_UTILS_H 1
+
+#include <osgEarth/Common>
+
+namespace osgEarth
+{
+    class OSGEARTH_EXPORT ClusterCullingFactory
+    {
+    public:
+        /**
+         * Creates a cluster culling callback based on the data in a node graph.
+         * NOTE! Never put a CCC somewhere where it will be under a transform. They
+         * only work in absolute world space.
+         */
+        static osg::NodeCallback* create( osg::Node* node, const osg::Vec3d& ecefControlPoint );
+    };
+}
+
+#endif // OSGEARTH_CULLING_UTILS_H

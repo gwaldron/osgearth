@@ -60,7 +60,7 @@ public: // MapCallback adapter functions
 
     UID getUID() const;
     OSGTileFactory* getTileFactory() const { return _tileFactory.get(); }
-    class Terrain* getTerrain() const { return _terrain; }
+    class TerrainNode* getTerrainNode() const { return _terrain; }
 
 public: // statics    
     static void registerEngine( OSGTerrainEngineNode* engineNode );
@@ -86,8 +86,8 @@ private:
 
 private:
     osg::ref_ptr<OSGTileFactory>         _tileFactory;
-    //class CustomTerrain* _terrain;
-    class Terrain*               _terrain;
+    //class CustomTerrainNode* _terrain;
+    class TerrainNode*               _terrain;
     UID                                  _uid;
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
     Revision                             _shaderLibRev;

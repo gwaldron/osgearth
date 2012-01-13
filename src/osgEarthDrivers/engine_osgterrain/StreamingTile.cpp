@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "StreamingTile"
-#include "StreamingTerrain"
+#include "StreamingTerrainNode"
 #include "CustomTerrainTechnique"
 #include "TransparentLayer"
 
@@ -261,13 +261,13 @@ StreamingTile::setElevationLOD( int lod )
     _elevationLayerUpToDate = _elevationLOD == (int)_key.getLevelOfDetail();
 }
 
-StreamingTerrain*
+StreamingTerrainNode*
 StreamingTile::getStreamingTerrain()
 {
-    return static_cast<StreamingTerrain*>( getTerrain() );
+    return static_cast<StreamingTerrainNode*>( getTerrain() );
 }
 
-const StreamingTerrain*
+const StreamingTerrainNode*
 StreamingTile::getStreamingTerrain() const
 {
     return const_cast<StreamingTile*>(this)->getStreamingTerrain();
@@ -373,7 +373,7 @@ StreamingTile::readyForNewImagery(ImageLayer* layer, int currentLOD)
 void
 StreamingTile::installRequests( const MapFrame& mapf, int stamp )
 {
-    StreamingTerrain* terrain     = getStreamingTerrain();
+    StreamingTerrainNode* terrain     = getStreamingTerrain();
     OSGTileFactory*   tileFactory = terrain->getTileFactory();
 
     bool hasElevationLayer;
@@ -402,7 +402,7 @@ StreamingTile::resetElevationRequests( const MapFrame& mapf )
     if (_elevRequest.valid() && _elevRequest->isRunning()) _elevRequest->cancel();
     if (_elevPlaceholderRequest.valid() && _elevPlaceholderRequest->isRunning()) _elevPlaceholderRequest->cancel();
 
-    StreamingTerrain* terrain = getStreamingTerrain();
+    StreamingTerrainNode* terrain = getStreamingTerrain();
 
     // this request will load real elevation data for the tile:
     _elevRequest = new TileElevationLayerRequest(_key, mapf, terrain->getTileFactory());
@@ -433,7 +433,7 @@ StreamingTile::resetElevationRequests( const MapFrame& mapf )
 void
 StreamingTile::updateImagery( ImageLayer* imageLayer, const MapFrame& mapf, OSGTileFactory* tileFactory)
 {
-    StreamingTerrain* terrain = getStreamingTerrain();
+    StreamingTerrainNode* terrain = getStreamingTerrain();
 
     // imagery is slighty higher priority than elevation data
     TaskRequest* r = new TileColorLayerRequest( _key, mapf, tileFactory, imageLayer->getUID() );
@@ -523,7 +523,7 @@ StreamingTile::servicePendingElevationRequests( const MapFrame& mapf, int stamp,
 
     if ( _hasElevation && !_elevationLayerUpToDate && _elevRequest.valid() && _elevPlaceholderRequest.valid() )
     {  
-        StreamingTerrain* terrain = getStreamingTerrain();
+        StreamingTerrainNode* terrain = getStreamingTerrain();
 
         // update the main elevation request if it's running:
         if ( !_elevRequest->isIdle() )
@@ -642,7 +642,7 @@ StreamingTile::serviceCompletedRequests( const MapFrame& mapf, bool tileTableLoc
     // now deal with imagery.
     const LoadingPolicy& lp = getStreamingTerrain()->getLoadingPolicy();
 
-    StreamingTerrain* terrain = getStreamingTerrain();
+    StreamingTerrainNode* terrain = getStreamingTerrain();
 
     //Check each layer independently.
     for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )

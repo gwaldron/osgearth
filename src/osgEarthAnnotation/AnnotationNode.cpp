@@ -20,23 +20,51 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarth/FindNode>
-#include <osgEarth/Registry>
+#include <osgEarth/MapNode>
+#include <osgEarth/TerrainEngineNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
-AnnotationNode::AnnotationNode() :
-_dynamic ( false ),
-_activeDs( 0L )
+//-------------------------------------------------------------------
+
+namespace osgEarth { namespace Annotation
+{
+    struct AutoClampCallback : public TerrainCallback
+    {
+        AutoClampCallback( AnnotationNode* node ) : _node(node) { }
+
+        void tileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
+        {
+            osg::ref_ptr<AnnotationNode> _safeNode = _node.get();
+            if ( _safeNode.valid() )
+            {
+                _safeNode->reclamp(key, tile);
+            }
+        }
+
+        osg::observer_ptr<AnnotationNode> _node;
+    };
+}  }
+
+//-------------------------------------------------------------------
+
+AnnotationNode::AnnotationNode(MapNode* mapNode) :
+_mapNode    ( mapNode ),
+_dynamic    ( false ),
+_autoclamp  ( false ),
+_activeDs   ( 0L )
 {
     //nop
 }
 
-AnnotationNode::AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op) :
-osg::Switch(rhs, op)
+AnnotationNode::~AnnotationNode()
 {
-    _dynamic   = rhs._dynamic;
-    _annoData  = rhs._annoData.get();
+    osg::ref_ptr<MapNode> mapNodeSafe = _mapNode.get();
+    if ( mapNodeSafe.get() )
+    {
+        mapNodeSafe->getTerrain()->removeTerrainCallbacksWithClientData(this);
+    }
 }
 
 void
@@ -49,6 +77,26 @@ void
 AnnotationNode::setDynamic( bool value )
 {
     _dynamic = value;
+}
+
+void
+AnnotationNode::setAutoClamp( bool value )
+{
+    osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
+    if ( mapNode_safe.valid() )
+    {
+        if ( !_autoclamp && value )
+        {
+            setDynamic( true );
+            mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(this), this);
+        }
+        else if ( _autoclamp && !value )
+        {
+            mapNode_safe->getTerrain()->removeTerrainCallbacksWithClientData(this);
+        }
+
+        _autoclamp = value;
+    }
 }
 
 void

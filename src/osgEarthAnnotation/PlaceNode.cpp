@@ -38,7 +38,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
+OrthoNode( mapNode, position ),
 _image  ( image ),
 _text   ( text ),
 _style  ( style ),
@@ -54,7 +54,7 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode->getMap()->getProfile()->getSRS(), osg::Vec3d(x,y,0) ),
+OrthoNode( mapNode, osg::Vec3d(x,y,0) ),
 _image  ( image ),
 _text   ( text ),
 _style  ( style ),

@@ -38,7 +38,7 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        bool               draped,
                        unsigned           numSegments) :
 
-LocalizedNode( mapNode->getMapSRS(), position, false )
+LocalizedNode( mapNode, position, false )
 {
     // construct a local-origin circle.
     GeometryFactory factory;

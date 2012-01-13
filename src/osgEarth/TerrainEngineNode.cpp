@@ -114,7 +114,7 @@ _verticalScale( 1.0f ),
 _elevationSamplingRatio( 1.0f ),
 _initStage( INIT_NONE )
 {
-    //nop
+    ctor();
 }
 
 TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op ) :
@@ -124,6 +124,12 @@ _elevationSamplingRatio( rhs._elevationSamplingRatio ),
 _map( rhs._map.get() ),
 _initStage( rhs._initStage )
 {
+    ctor();
+}
+
+void
+TerrainEngineNode::ctor()
+{
     //nop
 }
 
@@ -131,6 +137,9 @@ void
 TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
     _map = map;
+    
+    // fire up a terrain utility interface
+    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric() );
 
     // set up the CSN values   
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
@@ -364,6 +373,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse( nv );
 }
 
+#if 0
 void
 TerrainEngineNode::addTerrainChangedCallback( TerrainChangedCallback* callback )
 {
@@ -385,6 +395,7 @@ TerrainEngineNode::fireTerrainChanged( const osgEarth::TileKey& tileKey, osg::No
         i->get()->onTerrainChanged(tileKey, terrain);
     }
 }
+#endif
 
 
 //------------------------------------------------------------------------

@@ -45,6 +45,11 @@ namespace osgEarth { namespace Annotation
         /**
          * Constructs an ortho node that resides at an absolute position on the map
          */
+        OrthoNode( MapNode* mapNode, const osg::Vec3d& position );
+
+        /**
+         * Constructs an ortho node that resides at an absolute position on the map
+         */
         OrthoNode( const SpatialReference* mapSRS, const osg::Vec3d& position );
 
         /**
@@ -99,6 +104,9 @@ namespace osgEarth { namespace Annotation
 
         virtual void traverse( osg::NodeVisitor& nv );
 
+    protected:
+        const SpatialReference* getMapSRS() { return _mapSRS.get(); }
+
     private:
         osg::observer_ptr<const SpatialReference> _mapSRS;
         osg::AutoTransform*   _autoxform;
@@ -112,6 +120,9 @@ namespace osgEarth { namespace Annotation
 
         // required by META_Node, but this object is not cloneable
         OrthoNode( const OrthoNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
+
+        // autoclamping.
+        virtual void reclamp( const TileKey& key, osg::Node* tile );
     };
 
 } } // namespace osgEarth::Annotation

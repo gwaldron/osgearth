@@ -20,6 +20,7 @@
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarth/Utils>
+#include <osgEarth/MapNode>
 #include <osg/AutoTransform>
 #include <osg/MatrixTransform>
 
@@ -27,10 +28,11 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
-LocalizedNode::LocalizedNode(const SpatialReference* mapSRS,
+LocalizedNode::LocalizedNode(MapNode*                mapNode,
                              const osg::Vec3d&       pos,
                              bool                    is2D ) :
-_mapSRS        ( mapSRS ),
+PositionedAnnotationNode( mapNode ),
+_mapSRS        ( mapNode ? mapNode->getMapSRS() : 0L ),
 _horizonCulling( false ),
 _autoTransform ( is2D )
 {
@@ -48,7 +50,7 @@ _autoTransform ( is2D )
     }
     _xform->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 
-    if ( mapSRS )
+    if ( _mapSRS.valid() )
     {
         setHorizonCulling( true );
     }
@@ -56,6 +58,7 @@ _autoTransform ( is2D )
     setPosition( pos );
 }
 
+#if 0
 LocalizedNode::LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op) :
 PositionedAnnotationNode( rhs, op )
 {
@@ -64,6 +67,7 @@ PositionedAnnotationNode( rhs, op )
     _autoTransform  = rhs._autoTransform;
     _xform          = osg::clone( rhs._xform.get(), op );
 }
+#endif
 
 void
 LocalizedNode::traverse( osg::NodeVisitor& nv )

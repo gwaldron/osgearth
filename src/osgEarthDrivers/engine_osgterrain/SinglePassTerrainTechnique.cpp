@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "SinglePassTerrainTechnique"
-#include "Terrain"
+#include "TerrainNode"
 #include "Tile"
 
 #include <osgEarth/Cube>

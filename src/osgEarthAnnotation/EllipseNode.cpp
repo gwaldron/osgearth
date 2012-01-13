@@ -36,7 +36,7 @@ EllipseNode::EllipseNode(MapNode*          mapNode,
                          const Style&      style,
                          bool              draped,
                          unsigned          numSegments) :
-LocalizedNode( mapNode->getMapSRS(), position )
+LocalizedNode( mapNode, position )
 {
     // construct a local-origin ellipse.
     GeometryFactory factory;

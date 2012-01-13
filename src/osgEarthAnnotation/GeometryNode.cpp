@@ -31,7 +31,7 @@ GeometryNode::GeometryNode(MapNode*     mapNode,
                            Geometry*    geom,
                            const Style& style,
                            bool         draped ) :
-LocalizedNode( mapNode->getMapSRS() )
+LocalizedNode( mapNode )
 {
     osg::ref_ptr<Feature> feature = new Feature( geom );
 

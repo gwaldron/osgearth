@@ -38,10 +38,10 @@ using namespace osgEarth;
 
 /**
  */
-class Terrain : public osg::Group //osgTerrain::Terrain
+class TerrainNode : public osg::Group //osgTerrain::Terrain
 {
 public:
-    Terrain(
+    TerrainNode(
         const MapFrame& update_mapf,
         const MapFrame& cull_mapf,
         OSGTileFactory* factory,
@@ -49,7 +49,7 @@ public:
 
     virtual const char* libraryName() const { return "osgEarth"; }
 
-    virtual const char* className() const { return "Terrain"; }
+    virtual const char* className() const { return "TerrainNode"; }
 
 public:
 
@@ -79,7 +79,7 @@ public:
 
 protected:
 
-	virtual ~Terrain();
+	virtual ~TerrainNode();
 
     // subclass can override to notify of running tasks
     virtual unsigned getNumActiveTasks() const { return 0; }

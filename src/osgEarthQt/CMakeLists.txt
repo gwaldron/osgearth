@@ -17,6 +17,7 @@ set(LIB_MOC_HDRS
     DataManager
     LayerManagerWidget
     LOSControlWidget
+    LOSCreationDialog
     MapCatalogWidget
 )
 
@@ -25,7 +26,16 @@ set(LIB_QT_RCS
     images.qrc
 )
 
+# Qt UI files
+set(LIB_QT_UIS
+    ui/LOSCreationDialog.ui
+)
+
 QT4_ADD_RESOURCES( LIB_RC_SRCS ${LIB_QT_RCS} )
+
+QT4_WRAP_UI( LIB_UI_HDRS ${LIB_QT_UIS} )
+
+QT4_WRAP_CPP( LIB_UI_SRCS ${LIB_UI_HDRS} OPTIONS "-f" )
 
 QT4_WRAP_CPP( LIB_MOC_SRCS ${LIB_MOC_HDRS} OPTIONS "-f" )
 
@@ -41,8 +51,11 @@ SET(LIB_PUBLIC_HEADERS
     GuiActions
     LayerManagerWidget
     LOSControlWidget
+    LOSCreationDialog
     MapCatalogWidget
     ViewerWidget
+    ${LIB_UI_HDRS}
+    ${LIB_QT_UIS}
     ${LIB_QT_RCS}
 )
 
@@ -50,6 +63,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ${LIB_PUBLIC_HEADERS}
 #  .cpp files go here
     ${LIB_RC_SRCS}
+    ${LIB_UI_SRCS}
     ${LIB_MOC_SRCS}
     AnnotationListWidget.cpp
     CollapsiblePairWidget.cpp
@@ -57,11 +71,12 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     DataManager.cpp
     LayerManagerWidget.cpp
     LOSControlWidget.cpp
+    LOSCreationDialog.cpp
     MapCatalogWidget.cpp
     ViewerWidget.cpp
 )
 
-INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR} ${QT_INCLUDES})
+INCLUDE_DIRECTORIES(${OSG_INCLUDE_DIR} ${OSGEARTH_SOURCE_DIR} ${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR})
 
 IF (WIN32)
   LINK_EXTERNAL(${LIB_NAME} ${TARGET_EXTERNAL_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIBRARY})

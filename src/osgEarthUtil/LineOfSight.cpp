@@ -440,17 +440,23 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
     {
         LineOfSightNode* los = static_cast<LineOfSightNode*>(node);
 
-        osg::Vec3d start = getNodeCenter( _startNode );
-        osg::Vec3d end   = getNodeCenter( _endNode );
+        if (_startNode.valid())
+        {
+            osg::Vec3d start = getNodeCenter( _startNode );
 
-        //Convert these to mappoints since that is what LOS expects
-        los->getMapNode()->getMap()->worldPointToMapPoint( start, start );
-        los->getMapNode()->getMap()->worldPointToMapPoint( end, end );
+            //Convert to mappoint since that is what LOS expects
+            los->getMapNode()->getMap()->worldPointToMapPoint( start, start );
+            los->setStart( start );
+        }
 
-        los->setStart( start );
-        los->setEnd( end );
+        if (_endNode.valid())
+        {
+            osg::Vec3d end   = getNodeCenter( _endNode );
 
-
+            //Convert to mappoint since that is what LOS expects
+            los->getMapNode()->getMap()->worldPointToMapPoint( end, end );
+            los->setEnd( end );
+        }
     }
     traverse(node, nv);
 }

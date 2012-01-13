@@ -103,6 +103,7 @@ void AnnotationListWidget::initialize()
   _annoList = new QListWidget();
   _annoList->setSelectionMode(QAbstractItemView::ExtendedSelection);
   setPrimaryWidget(_annoList);
+  setPrimaryTitle("Annotations");
 
   //create details panel
   _detailsBox = new QFrame;
@@ -131,6 +132,7 @@ void AnnotationListWidget::initialize()
   detailsLayout->addWidget(_descriptionField, 4, 0, 1, 2, Qt::AlignLeft);
 
   setSecondaryWidget(_detailsBox);
+  setSecondaryTitle("Details");
 
   //connect list events
   connect(_annoList, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(onItemDoubleClicked(QListWidgetItem*)));

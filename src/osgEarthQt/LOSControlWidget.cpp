@@ -339,8 +339,14 @@ void LOSControlWidget::onRemoveSelectedLOS()
   QListWidgetItem* item = _losList->currentItem();
   
   LOSListItem* losItem = dynamic_cast<LOSListItem*>(item);
-  if (losItem && losItem->los())
-    _root->removeChild(losItem->los());
+  if (losItem)
+  {
+    if (losItem->los())
+      _root->removeChild(losItem->los());
+
+    if (losItem->editor() && losItem->getEditing())
+      _root->removeChild(losItem->editor());
+  }
 
   delete item;
 }

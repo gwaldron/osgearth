@@ -29,6 +29,7 @@
 #include <osgEarthQt/MapCatalogWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/AnnotationListWidget>
+#include <osgEarthQt/LOSControlWidget>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
@@ -141,9 +142,9 @@ main(int argc, char** argv)
 
     QApplication app(argc, argv);
 
-    osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
-    osg::ref_ptr<osgEarth::QtGui::DataManager> dataManager = new osgEarth::QtGui::DataManager(mapNode);
-    DemoMainWindow appWin(dataManager.get(), mapNode, s_annoGroup);
+    osg::ref_ptr<osgEarth::MapNode> mapNode = osgEarth::MapNode::findMapNode( earthNode );
+    osg::ref_ptr<osgEarth::QtGui::DataManager> dataManager = new osgEarth::QtGui::DataManager(mapNode.get());
+    DemoMainWindow appWin(dataManager.get(), mapNode.get(), s_annoGroup);
 
     // install an event handler for picking and selection
     AnnotationEventCallback* cb = new AnnotationEventCallback();
@@ -151,10 +152,10 @@ main(int argc, char** argv)
     s_annoGroup->addEventCallback(cb);
 
     // add an annotation for demo purposes
-    if (mapNode)
+    if (mapNode.valid())
     {
       osgEarth::Annotation::AnnotationNode* annotation = new osgEarth::Annotation::PlaceNode(
-        mapNode, 
+        mapNode.get(), 
         osg::Vec3d(-77.04, 38.85, 0),
         osgDB::readImageFile("../data/placemark32.png"),
         "Washington, DC");
@@ -192,7 +193,7 @@ main(int argc, char** argv)
       appWin.setViewerWidget(viewer);
       views.push_back(viewer);
 
-      if (mapNode)
+      if (mapNode.valid())
       {
         const Config& externals = mapNode->externalConfig();
 
@@ -210,7 +211,7 @@ main(int argc, char** argv)
           // Ocean surface.
           if (externals.hasChild("ocean"))
           {
-            s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode, externals.child("ocean"));
+            s_ocean = new osgEarth::Drivers::OceanSurfaceNode(mapNode.get(), externals.child("ocean"));
             if (s_ocean)
               root->addChild(s_ocean);
           }
@@ -231,7 +232,7 @@ main(int argc, char** argv)
 
 
     // create and dock an annotation list widget
-    QDockWidget *annoDock = new QDockWidget(QWidget::tr("Annotations"));
+    QDockWidget *annoDock = new QDockWidget;
     annoDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::AnnotationListWidget* annoList = new osgEarth::QtGui::AnnotationListWidget(dataManager.get());
     annoList->setActiveViews(views);
@@ -240,7 +241,7 @@ main(int argc, char** argv)
 
 
     // create a second catalog widget for viewpoints
-    QDockWidget *vpDock = new QDockWidget(QWidget::tr("Viewpoints"));
+    QDockWidget *vpDock = new QDockWidget;
     vpDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     osgEarth::QtGui::MapCatalogWidget* vpCatalog = new osgEarth::QtGui::MapCatalogWidget(dataManager.get(), osgEarth::QtGui::MapCatalogWidget::VIEWPOINTS);
     vpCatalog->setActiveViews(views);
@@ -255,6 +256,16 @@ main(int argc, char** argv)
     layerManager->setActiveViews(views);
 	  layersDock->setWidget(layerManager);
 	  appWin.addDockWidget(Qt::RightDockWidgetArea, layersDock);
+
+
+    // create and dock a LOSControlWidget
+    QDockWidget *losDock = new QDockWidget;
+    losDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    osgEarth::QtGui::LOSControlWidget* losControl = new osgEarth::QtGui::LOSControlWidget(root, mapNode.get(), dataManager.get());
+    losControl->setActiveViews(views);
+	  losDock->setWidget(losControl);
+	  appWin.addDockWidget(Qt::RightDockWidgetArea, losDock);
+
 
     // attempt to load .qss stylesheet if one was provided
     if (styled)

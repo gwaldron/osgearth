@@ -91,19 +91,19 @@ void LOSCreationDialog::mapClick(const osg::Vec3d& location)
     {
       _ui.p1LonBox->setValue(location.x());
       _ui.p1LatBox->setValue(location.y());
-      _ui.p1AltBox->setValue(location.z());
+      _ui.p1AltBox->setValue((int)(location.z()) + 1.0);
     }
     else if (_activeButton == _ui.p2PointButton)
     {
       _ui.p2LonBox->setValue(location.x());
       _ui.p2LatBox->setValue(location.y());
-      _ui.p2AltBox->setValue(location.z());
+      _ui.p2AltBox->setValue((int)(location.z()) + 1.0);
     }
     else if (_activeButton == _ui.radPointButton)
     {
       _ui.radLonBox->setValue(location.x());
       _ui.radLatBox->setValue(location.y());
-      _ui.radAltBox->setValue(location.z());
+      _ui.radAltBox->setValue((int)(location.z()) + 1.0);
     }
     
     _activeButton = 0L;

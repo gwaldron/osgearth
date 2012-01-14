@@ -24,7 +24,7 @@
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
-#include <osgViewer/ViewerBase>
+#include <osgViewer/View>
 
 #define LC "[TerrainEngineNode] "
 
@@ -355,13 +355,16 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
                 osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
                 if ( cv->getCurrentCamera() )
                 {
-                    osgViewer::ViewerBase* vb = dynamic_cast<osgViewer::ViewerBase*>(cv->getCurrentCamera()->getView());
-                    osg::OperationQueue* q = vb->getUpdateOperations();
-                    if ( !q ) {
-                        q = new osg::OperationQueue();
-                        vb->setUpdateOperations( q );
+                    osgViewer::View* view = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
+                    if ( view && view->getViewerBase() )
+                    {
+                        osg::OperationQueue* q = view->getViewerBase()->getUpdateOperations();
+                        if ( !q ) {
+                            q = new osg::OperationQueue();
+                            view->getViewerBase()->setUpdateOperations( q );
+                        }
+                        _terrainInterface->_updateOperationQueue = q;
                     }
-                    _terrainInterface->_updateOperationQueue = q;
                 }                        
             }
         }

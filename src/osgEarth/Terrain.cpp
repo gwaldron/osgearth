@@ -179,11 +179,27 @@ Terrain::fireTileAdded( const TileKey& key, osg::Node* node )
     {
         CallbackRecord& rec = *i;
 
-        TerrainCallbackContext context( this, rec._clientData.get() );
-        rec._callback->onTileAdded( key, node, context );
-        if ( context._remove )
-            i = _callbacks.erase( i );
+        bool keep = true;
+        osg::ref_ptr<osg::Referenced> clientData_safe = rec._clientData.get();
+
+        // if the client data has gone away, disarcd the callback.
+        if ( rec._hasClientData && !clientData_safe.valid() )
+        {
+            keep = false;
+        }
         else
+        {
+            TerrainCallbackContext context( this, clientData_safe.get() );
+            rec._callback->onTileAdded( key, node, context );
+
+            // if the callback set the "remove" flag, discard the callback.
+            if ( context._remove )
+                keep = false;
+        }
+
+        if ( keep )
             ++i;
+        else
+            i = _callbacks.erase( i );
     }
 }

@@ -32,18 +32,11 @@ namespace osgEarth { namespace Annotation
 {
     struct AutoClampCallback : public TerrainCallback
     {
-        AutoClampCallback( AnnotationNode* node ) : _node(node) { }
-
         void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
         {
-            osg::ref_ptr<AnnotationNode> _safeNode = _node.get();
-            if ( _safeNode.valid() )
-            {
-                _safeNode->reclamp(key, tile);
-            }
+            AnnotationNode* anno = dynamic_cast<AnnotationNode*>(context.getClientData());
+            anno->reclamp( key, tile );
         }
-
-        osg::observer_ptr<AnnotationNode> _node;
     };
 }  }
 
@@ -88,7 +81,7 @@ AnnotationNode::setAutoClamp( bool value )
         if ( !_autoclamp && value )
         {
             setDynamic( true );
-            mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(this), this);
+            mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(), this);
         }
         else if ( _autoclamp && !value )
         {

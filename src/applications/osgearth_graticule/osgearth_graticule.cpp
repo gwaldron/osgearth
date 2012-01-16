@@ -19,18 +19,15 @@
 
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
-#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
 #include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/UTMGraticule>
 
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 
 int
@@ -65,9 +62,17 @@ main(int argc, char** argv)
     osg::Group* root = new osg::Group();
     root->addChild( mapNode );
 
-    // create a graticule and add it:
-    GeodeticGraticule* grat = new GeodeticGraticule( mapNode );
-    root->addChild( grat );
+    if ( arguments.read("--utm") )
+    {
+        UTMGraticule* grat = new UTMGraticule( mapNode );
+        root->addChild( grat );
+    }
+    else // if (arguments.read("--geodetic")
+    {
+        // create a graticule and add it:
+        GeodeticGraticule* grat = new GeodeticGraticule( mapNode );
+        root->addChild( grat );
+    }
 
     // finalize setup and run.
     viewer.setSceneData( root );

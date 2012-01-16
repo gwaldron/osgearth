@@ -32,6 +32,7 @@ SET(LIB_PUBLIC_HEADERS
     StarData
     TMS
     TMSPackager
+    UTMGraticule
 	WFS
     WMS
 )
@@ -57,6 +58,7 @@ SET(LIB_COMMON_FILES
     SkyNode.cpp
     TMS.cpp
     TMSPackager.cpp
+    UTMGraticule.cpp
 	WFS.cpp
     WMS.cpp
 )

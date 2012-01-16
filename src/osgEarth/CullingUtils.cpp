@@ -174,3 +174,21 @@ ClusterCullingFactory::create( osg::Node* node, const osg::Vec3d& ecefControlPoi
     }
     return ccc;
 }
+
+osg::Node*
+ClusterCullingFactory::createAndInstall( osg::Node* node, const osg::Vec3d& ecefControlPoint )
+{
+    osg::NodeCallback* cb = create(node, ecefControlPoint);
+    if ( cb )
+    {
+        if ( dynamic_cast<osg::Transform*>(node) )
+        {
+            osg::Group* group = new osg::Group();
+            group->addChild( node );
+            node = group;
+        }
+
+        node->addCullCallback( cb );
+    }
+    return node;
+}

@@ -24,11 +24,12 @@
 
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
+#include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/GeodeticGraticule>
 #include <osgEarthUtil/UTMGraticule>
+#include <osgEarthUtil/Formatters>
 
 using namespace osgEarth::Util;
-using namespace osgEarth::Symbology;
 
 int
 usage( const std::string& msg )
@@ -50,6 +51,11 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
+    // parse command line:
+    bool isUTM = arguments.read("--utm");
+    bool isMGRS = arguments.read("--mrgs");
+    bool isGeodetic = !isUTM && !isMGRS;
+
     // load the .earth file from the command line.
     MapNode* mapNode = MapNode::load( arguments );
     if ( !mapNode )
@@ -62,17 +68,31 @@ main(int argc, char** argv)
     osg::Group* root = new osg::Group();
     root->addChild( mapNode );
 
-    if ( arguments.read("--utm") )
+    Formatter* formatter = 0L;
+    if ( isUTM )
     {
         UTMGraticule* grat = new UTMGraticule( mapNode );
         root->addChild( grat );
+        formatter = new MGRSFormatter();
     }
-    else // if (arguments.read("--geodetic")
+    else if ( isMGRS )
+    {
+        //TODO
+    }
+    else // if ( isGeodetic )
     {
         // create a graticule and add it:
         GeodeticGraticule* grat = new GeodeticGraticule( mapNode );
         root->addChild( grat );
+        formatter = new LatLongFormatter();
     }
+
+    // mouse coordinate readout:
+    LabelControl* readout = new LabelControl();
+    ControlCanvas::get( &viewer, true )->addControl( readout );
+    MouseCoordsTool* tool = new MouseCoordsTool( mapNode );
+    tool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
+    viewer.addEventHandler( tool );
 
     // finalize setup and run.
     viewer.setSceneData( root );

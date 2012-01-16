@@ -40,7 +40,21 @@ _prec         ( 5 )
 }
 
 std::string
-LatLongFormatter::format( const Angular& angle, int precision, const AngularFormat& format )
+LatLongFormatter::format( const osg::Vec3d& coords, const SpatialReference* srs ) const
+{
+    osg::Vec3d geo = coords;
+    if ( srs && !srs->isGeographic() )
+    {
+        srs->transform( coords, srs->getGeographicSRS(), geo );
+    }
+    return Stringify()
+        << format( Angular(geo.y()) )
+        << ", "
+        << format( Angular(geo.x()) );
+}
+
+std::string
+LatLongFormatter::format( const Angular& angle, int precision, const AngularFormat& format ) const
 {
     std::stringstream buf;
     std::string result;
@@ -243,6 +257,17 @@ _options  ( options )
             eName.find("clark")  != std::string::npos ||
             eName.find("clrk")   != std::string::npos;
     }
+}
+
+std::string
+MGRSFormatter::format( const osg::Vec3d& coords, const SpatialReference* srs ) const
+{
+    osg::Vec3d geo = coords;
+    if ( srs && !srs->isGeographic() )
+    {
+        srs->transform( coords, srs->getGeographicSRS(), geo );
+    }
+    return format( geo.y(), geo.x() );
 }
 
 std::string

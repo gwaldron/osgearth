@@ -125,70 +125,6 @@ struct ClickViewpointHandler : public ControlEventHandler
     }
 };
 
-struct MouseCoordsHandler : public osgGA::GUIEventHandler
-{
-    MouseCoordsHandler( LabelControl* label, osgEarth::MapNode* mapNode )
-        : _label( label ),
-          _mapNode( mapNode )
-    {
-        _mapNodePath.push_back( mapNode->getTerrainEngine() );
-    }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-        if (ea.getEventType() == ea.MOVE || ea.getEventType() == ea.DRAG)
-        {
-            osgUtil::LineSegmentIntersector::Intersections results;
-            if ( view->computeIntersections( ea.getX(), ea.getY(), _mapNodePath, results ) )
-            {
-                // find the first hit under the mouse:
-                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-                osg::Vec3d point = first.getWorldIntersectPoint();
-                osg::Vec3d lla;
-
-                // transform it to map coordinates:
-                _mapNode->getMap()->worldPointToMapPoint(point, lla);
-
-                std::stringstream ss;
-
-                if ( s_mgrs )
-                {
-                    MGRSFormatter f( MGRSFormatter::PRECISION_1M );
-                    ss << "MGRS: " << f.format(lla.y(), lla.x()) << "   ";
-                }
-                 // lat/long
-                {
-                    LatLongFormatter::AngularFormat fFormat = s_dms?
-                        LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS :
-                        LatLongFormatter::FORMAT_DECIMAL_DEGREES;
-                    
-                    LatLongFormatter f( fFormat );
-
-                    ss 
-                        << "Lat: " << f.format( Angular(lla.y(),Units::DEGREES), 4 ) << "  "
-                        << "Lon: " << f.format( Angular(lla.x(),Units::DEGREES), 5 );
-                }
-                std::string str;
-                str = ss.str();
-                _label->setText( str );
-            }
-            else
-            {
-                //Clear the text
-                _label->setText( "" );
-            }
-        }
-        return false;
-    }
-
-    osg::ref_ptr< LabelControl > _label;
-    MapNode*                     _mapNode;
-    osg::NodePath                _mapNodePath;
-};
-
-
-
 void
 createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
 {
@@ -339,23 +275,6 @@ struct KMLUIBuilder : public osg::NodeVisitor
     Grid*          _grid;
 };
 
-/** 
- * Adds a control that display the coordinates under the mouse cursor.
- */
-void addMouseCoords(osgViewer::Viewer* viewer, osgEarth::MapNode* mapNode)
-{
-    ControlCanvas* canvas = ControlCanvas::get( viewer );
-    LabelControl* mouseCoords = new LabelControl();
-    mouseCoords->setHorizAlign(Control::ALIGN_CENTER );
-    mouseCoords->setVertAlign(Control::ALIGN_BOTTOM );
-    mouseCoords->setBackColor(0,0,0,0.5);    
-    mouseCoords->setSize(400,50);
-    mouseCoords->setMargin( 10 );
-    canvas->addControl( mouseCoords );
-
-    viewer->addEventHandler( new MouseCoordsHandler(mouseCoords, mapNode ) );
-}
-
 /**
  * Handler that dumps the current viewpoint out to the console.
  */
@@ -494,9 +413,6 @@ main(int argc, char** argv)
         {
             createControlPanel(&viewer, viewpoints);
         }
-
-        // Add a mouse-coordinate display
-        addMouseCoords( &viewer, mapNode );
 
         // Load a KML file if specified
         if ( !kmlFile.empty() )

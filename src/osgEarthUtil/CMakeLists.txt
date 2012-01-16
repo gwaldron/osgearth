@@ -22,6 +22,7 @@ SET(LIB_PUBLIC_HEADERS
     GeodeticGraticule
 	LineOfSight
 	MeasureTool
+	MouseCoordsTool
 	NearFarGroup	
     ObjectPlacer
     ObjectLocator
@@ -49,6 +50,7 @@ SET(LIB_COMMON_FILES
     GeodeticGraticule.cpp
 	LineOfSight.cpp
 	MeasureTool.cpp
+	MouseCoordsTool.cpp
 	NearFarGroup.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp

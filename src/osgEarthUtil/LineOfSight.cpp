@@ -25,7 +25,7 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
 
-class LineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainEngineNode::TerrainChangedCallback
+class LineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainCallback
 {
 public:
     LineOfSightNodeTerrainChangedCallback( LineOfSightNode* los ):
@@ -33,7 +33,7 @@ public:
     {
     }
 
-    virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain)
+    virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&)
     {
         _los->terrainChanged( tileKey, terrain );
     }
@@ -116,13 +116,13 @@ void
 LineOfSightNode::subscribeToTerrain()
 {
     _terrainChangedCallback = new LineOfSightNodeTerrainChangedCallback( this );
-    _mapNode->getTerrainEngine()->addTerrainChangedCallback( _terrainChangedCallback.get() );        
+    _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );        
 }
 
 LineOfSightNode::~LineOfSightNode()
 {
     //Unsubscribe to the terrain callback
-    _mapNode->getTerrainEngine()->removeTerrainChangedCallback( _terrainChangedCallback.get() );
+    _mapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
 }
 
 void
@@ -463,7 +463,7 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
 /**********************************************************************/
 
-class RadialLineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainEngineNode::TerrainChangedCallback
+class RadialLineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainCallback
 {
 public:
     RadialLineOfSightNodeTerrainChangedCallback( RadialLineOfSightNode* los ):
@@ -471,7 +471,7 @@ public:
     {
     }
 
-    virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain)
+    virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext& )
     {
         _los->terrainChanged( tileKey, terrain );
     }
@@ -494,13 +494,13 @@ _altitudeMode( ALTITUDE_ABSOLUTE )
 {
     compute(_mapNode.get());
     _terrainChangedCallback = new RadialLineOfSightNodeTerrainChangedCallback( this );
-    _mapNode->getTerrainEngine()->addTerrainChangedCallback( _terrainChangedCallback.get() );        
+    _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );        
     setNumChildrenRequiringUpdateTraversal( 1 );
 }
 
 RadialLineOfSightNode::~RadialLineOfSightNode()
 {    
-    _mapNode->getTerrainEngine()->removeTerrainChangedCallback( _terrainChangedCallback.get() );
+    _mapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
 }
 
 double

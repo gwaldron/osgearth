@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Color>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
+#include <osgEarth/MapNode>
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>
 #include <osgUtil/IntersectionVisitor>
@@ -31,18 +32,32 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
+OrthoNode::OrthoNode(MapNode*          mapNode,
+                     const osg::Vec3d& pos ) :
+
+PositionedAnnotationNode( mapNode ),
+_mapSRS                 ( mapNode ? mapNode->getMapSRS() : 0L ),
+_horizonCulling         ( false )
+{
+    init();
+    if ( _mapSRS.valid() )
+    {
+        setHorizonCulling( true );
+    }
+    setPosition( pos );
+}
+
 OrthoNode::OrthoNode(const SpatialReference* mapSRS,
-                     const osg::Vec3d&       pos ) :
+                     const osg::Vec3d&       pos) :
+
 _mapSRS        ( mapSRS ),
 _horizonCulling( false )
 {
     init();
-
-    if ( mapSRS )
+    if ( _mapSRS.valid() )
     {
         setHorizonCulling( true );
     }
-
     setPosition( pos );
 }
 
@@ -237,3 +252,41 @@ OrthoNode::setHorizonCulling( bool value )
         }
     }
 }
+
+void
+OrthoNode::reclamp( const TileKey& key, osg::Node* tile )
+{
+    // first verify that the label position intersects the tile:
+    osg::Vec3d mapPos = getPosition();
+    if ( !key.getExtent().contains( mapPos.x(), mapPos.y() ) )
+        return;
+
+    // next perform an intersection test
+    osg::Vec3d start(mapPos.x(), mapPos.y(),  50000.0);
+    osg::Vec3d end  (mapPos.x(), mapPos.y(), -50000.0);
+
+    if ( _mapNode->isGeocentric() )
+    {
+        getMapSRS()->transformToECEF(start, start);
+        getMapSRS()->transformToECEF(end, end);
+    }
+
+    osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
+    osgUtil::IntersectionVisitor iv( lsi );
+    tile->accept( iv );
+
+    osgUtil::LineSegmentIntersector::Intersections& results = lsi->getIntersections();
+    if ( !results.empty() )
+    {
+        const osgUtil::LineSegmentIntersector::Intersection& firstHit = *results.begin();
+        mapPos = firstHit.getWorldIntersectPoint();
+
+        if ( _mapNode->isGeocentric() )
+        {
+            getMapSRS()->transformFromECEF(mapPos, mapPos);
+        }
+
+        setPosition(mapPos);
+    }
+}
+

@@ -35,7 +35,7 @@ using namespace OpenThreads;
 SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder*             builder,
                                            const OSGTerrainOptions& options,
                                            const MapInfo&           mapInfo,
-                                           Terrain*                 terrain,
+                                           TerrainNode*             terrain,
                                            UID                      engineUID ) :
 _builder( builder ),
 _options( options ),

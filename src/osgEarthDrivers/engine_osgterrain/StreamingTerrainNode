@@ -19,7 +19,7 @@
 #ifndef OSGEARTH_ENGINE_OSGTERRAIN_STREAMING_TERRAIN
 #define OSGEARTH_ENGINE_OSGTERRAIN_STREAMING_TERRAIN 1
 
-#include "Terrain"
+#include "TerrainNode"
 #include "StreamingTile"
 #include <osgEarth/TaskService>
 
@@ -28,17 +28,17 @@ using namespace osgEarth;
 /**
  * Terrain implementation that supports the SEQUENTIAL and PREEMPTIVE loading policies.
  */
-class StreamingTerrain : public Terrain
+class StreamingTerrainNode : public TerrainNode
 {
 public:
-    StreamingTerrain(
+    StreamingTerrainNode(
         const MapFrame& update_mapf,
         const MapFrame& cull_mapf,
         OSGTileFactory* factory,
         bool            quickReleaseGLObjects );
 
     virtual const char* libraryName() const { return "osgEarth"; }
-    virtual const char* className() const { return "StreamingTerrain"; }
+    virtual const char* className() const { return "StreamingTerrainNode"; }
     
     //override
     virtual Tile* createTile(const TileKey& key, GeoLocator* locator) const;
@@ -60,7 +60,7 @@ public:
 
 protected:
 
-	virtual ~StreamingTerrain();
+	virtual ~StreamingTerrainNode();
 
     //override
     virtual unsigned getNumActiveTasks() const;

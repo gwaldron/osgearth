@@ -36,7 +36,7 @@ TrackNode::TrackNode(MapNode*                    mapNode,
                      osg::Image*                 image,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
-OrthoNode   ( mapNode ? mapNode->getMap()->getProfile()->getSRS() : 0L, position ),
+OrthoNode   ( mapNode, position ),
 _image      ( image )
 {
     init( fieldSchema );

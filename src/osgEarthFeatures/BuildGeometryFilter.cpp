@@ -47,17 +47,22 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
-    void applyLineSymbology( osg::StateSet* stateSet, const LineSymbol* lineSymbol )
+    void applyLineAndPointSymbology( osg::StateSet* stateSet, const LineSymbol* line, const PointSymbol* point )
     {
-        if ( lineSymbol )
+        if ( line )
         {
-            float width = std::max( 1.0f, *lineSymbol->stroke()->width() );
+            float width = std::max( 1.0f, *line->stroke()->width() );
             stateSet->setAttributeAndModes(new osg::LineWidth(width), 1);
-            if ( lineSymbol->stroke()->stipple().isSet() )
+            if ( line->stroke()->stipple().isSet() )
             {
-                stateSet->setAttributeAndModes(
-                    new osg::LineStipple(1, *lineSymbol->stroke()->stipple()) );
+                stateSet->setAttributeAndModes( new osg::LineStipple(1, *line->stroke()->stipple()) );
             }
+        }
+
+        if ( point )
+        {
+            float size = std::max( 0.1f, *point->size() );
+            stateSet->setAttributeAndModes(new osg::Point(size), 1);
         }
     }
 }
@@ -111,8 +116,9 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             float width              = 1.0f;
             bool  hasPolyOutline     = false;
 
-            const LineSymbol*    lineSymbol = myStyle.get<LineSymbol>();
-            const PolygonSymbol* polySymbol = myStyle.get<PolygonSymbol>();
+            const PointSymbol*   pointSymbol = myStyle.get<PointSymbol>();
+            const LineSymbol*    lineSymbol  = myStyle.get<LineSymbol>();
+            const PolygonSymbol* polySymbol  = myStyle.get<PolygonSymbol>();
 
             // resolve the geometry type from the component type and the symbology:
             Geometry::Type renderType;
@@ -144,6 +150,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             osg::Vec4f primaryColor =
                 polySymbol ? polySymbol->fill()->color() :
                 lineSymbol ? lineSymbol->stroke()->color() :
+                pointSymbol ? pointSymbol->fill()->color() :
                 osg::Vec4f(1,1,1,1);
             
             osg::Geometry* osgGeom = new osg::Geometry();
@@ -164,7 +171,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             }
             else
             {
-                // line geometry
+                // line or point geometry
                 GLenum primMode = 
                     renderType == Geometry::TYPE_LINESTRING ? GL_LINE_STRIP :
                     renderType == Geometry::TYPE_RING       ? GL_LINE_LOOP :
@@ -174,7 +181,13 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( primMode, 0, part->size() ) );
                 osgGeom->setVertexArray( allPoints );
 
-                applyLineSymbology( osgGeom->getOrCreateStateSet(), lineSymbol );
+                applyLineAndPointSymbology( osgGeom->getOrCreateStateSet(), lineSymbol, pointSymbol );
+
+                if ( primMode == GL_POINTS && allPoints->size() == 1 )
+                {
+                    const osg::Vec3d& center = (*allPoints)[0];
+                    osgGeom->setInitialBound( osg::BoundingBox(center-osg::Vec3(.5,.5,.5), center+osg::Vec3(.5,.5,.5)) );
+                }
             }
 
             // assign the primary color:
@@ -205,14 +218,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 osg::Geometry*  outline = new osg::Geometry();
 
                 buildPolygon(part, featureSRS, mapSRS, makeECEF, false, outline);
-#if 0
 
-                osg::Vec3Array* outlineVerts = new osg::Vec3Array();
-                outline->setVertexArray(outlineVerts);
-
-                transformAndLocalize( part->asVector(), featureSRS, outlineVerts, mapSRS, _world2local, makeECEF );
-                outline->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, 0, part->size() ) );
-#endif
                 osg::Vec4Array* outlineColors = new osg::Vec4Array();
                 outline->setColorArray(outlineColors);
                 outline->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
@@ -234,7 +240,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                         ms.run( *outline, threshold, *_geoInterp );
                 }
 
-                applyLineSymbology( outline->getOrCreateStateSet(), lineSymbol );
+                applyLineAndPointSymbology( outline->getOrCreateStateSet(), lineSymbol, 0L );
 
                 _geode->addDrawable( outline );
             }

@@ -212,7 +212,7 @@ namespace osgEarth { namespace Util
 
         ChangedCallbackList _changedCallbacks;
 
-        osg::ref_ptr < osgEarth::TerrainEngineNode::TerrainChangedCallback > _terrainChangedCallback;
+        osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
 
         osg::ref_ptr< osg::Node > _pendingNode;
     };
@@ -380,7 +380,7 @@ namespace osgEarth { namespace Util
         AltitudeMode _altitudeMode;
         ChangedCallbackList _changedCallbacks;
         osg::ref_ptr< osg::Node > _pendingNode;
-        osg::ref_ptr < osgEarth::TerrainEngineNode::TerrainChangedCallback > _terrainChangedCallback;
+        osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
     };
 
     /**********************************************************************/

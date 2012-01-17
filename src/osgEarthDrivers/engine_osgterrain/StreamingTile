@@ -86,8 +86,8 @@ public:
     void setElevationLOD( int lod );
 
     /** Gets the terrain object to which this tile belongs. */
-    class StreamingTerrain* getStreamingTerrain();
-    const class StreamingTerrain* getStreamingTerrain() const;
+    class StreamingTerrainNode* getStreamingTerrain();
+    const class StreamingTerrainNode* getStreamingTerrain() const;
 
     // updates one image layer
     void updateImagery( ImageLayer* layer, const MapFrame& mapf, OSGTileFactory* factory );

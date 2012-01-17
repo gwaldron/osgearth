@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "Terrain"
+#include "TerrainNode"
 #include "Tile"
 #include "TransparentLayer"
 
@@ -65,14 +65,14 @@ namespace
     // release GL memory on any expired tiles.
     struct QuickReleaseGLCallback : public NestingDrawCallback
     {
-	    typedef std::vector< osg::observer_ptr<Terrain> > ObserverTerrainList;
+	    typedef std::vector< osg::observer_ptr<TerrainNode> > ObserverTerrainList;
 
         QuickReleaseGLCallback( TerrainNode* terrain, osg::Camera::DrawCallback* next )
             : NestingDrawCallback(next), _terrain(terrain) { }
 
         virtual void operator()( osg::RenderInfo& renderInfo ) const
         {
-            osg::ref_ptr<Terrain> terrainSafe = _terrain.get();
+            osg::ref_ptr<TerrainNode> terrainSafe = _terrain.get();
             if ( terrainSafe.valid() )
             {
                 terrainSafe->releaseGLObjectsForTiles( renderInfo.getState() );
@@ -80,16 +80,16 @@ namespace
             dispatch( renderInfo );
         }
 
-        osg::observer_ptr<Terrain> _terrain;
+        osg::observer_ptr<TerrainNode> _terrain;
     };
 }
 
 //----------------------------------------------------------------------------
 
-Terrain::Terrain(const MapFrame& update_mapf, 
-                 const MapFrame& cull_mapf, 
-                 OSGTileFactory* tileFactory,
-                 bool            quickReleaseGLObjects ) :
+TerrainNode::TerrainNode(const MapFrame& update_mapf, 
+                         const MapFrame& cull_mapf, 
+                         OSGTileFactory* tileFactory,
+                         bool            quickReleaseGLObjects ) :
 
 _tileFactory( tileFactory ),
 _registeredWithReleaseGLCallback( false ),
@@ -112,9 +112,9 @@ _verticalScale( 1.0f )
     setNumChildrenRequiringEventTraversal( 1 );    
 }
 
-Terrain::~Terrain()
+TerrainNode::~TerrainNode()
 {
-    // detach all the tiles from the terrain first. Otherwise osgTerrain::Terrain
+    // detach all the tiles from the terrain first. Otherwise osgTerrainNode::Terrain
     // will crap out.
     for( TileTable::iterator i = _tiles.begin(); i != _tiles.end(); ++i )
     {
@@ -124,25 +124,25 @@ Terrain::~Terrain()
 }
 
 void
-Terrain::setTechniquePrototype( TerrainTechnique* value )
+TerrainNode::setTechniquePrototype( TerrainTechnique* value )
 {
     _techPrototype = value;
 }
 
 TerrainTechnique*
-Terrain::cloneTechnique() const
+TerrainNode::cloneTechnique() const
 {
     return osg::clone( _techPrototype.get(), osg::CopyOp::DEEP_COPY_ALL );
 }
 
 Tile*
-Terrain::createTile(const TileKey& key, GeoLocator* keyLocator) const
+TerrainNode::createTile(const TileKey& key, GeoLocator* keyLocator) const
 {
     return new Tile( key, keyLocator, this->getQuickReleaseGLObjects() );
 }
 
 void
-Terrain::setVerticalScale( float value )
+TerrainNode::setVerticalScale( float value )
 {
     if ( value != _verticalScale )
     {
@@ -151,7 +151,7 @@ Terrain::setVerticalScale( float value )
 }
 
 void
-Terrain::setSampleRatio( float value )
+TerrainNode::setSampleRatio( float value )
 {
     if ( value != _sampleRatio )
     {
@@ -160,7 +160,7 @@ Terrain::setSampleRatio( float value )
 }
 
 void
-Terrain::getTiles( TileVector& out )
+TerrainNode::getTiles( TileVector& out )
 {
     Threading::ScopedReadLock lock( _tilesMutex );
     out.clear();
@@ -170,7 +170,7 @@ Terrain::getTiles( TileVector& out )
 }
 
 void
-Terrain::registerTile( Tile* newTile )
+TerrainNode::registerTile( Tile* newTile )
 {
     Threading::ScopedWriteLock exclusiveTileTableLock( _tilesMutex );
     _tiles[ newTile->getTileId() ] = newTile;
@@ -179,7 +179,7 @@ Terrain::registerTile( Tile* newTile )
 // immediately release GL memory for any expired tiles.
 // called from the DRAW thread (QuickReleaseGLCallback). 
 void
-Terrain::releaseGLObjectsForTiles(osg::State* state)
+TerrainNode::releaseGLObjectsForTiles(osg::State* state)
 {
     OpenThreads::ScopedLock<Mutex> lock( _tilesToReleaseMutex );
 
@@ -198,7 +198,7 @@ Terrain::releaseGLObjectsForTiles(osg::State* state)
 }
 
 void
-Terrain::traverse( osg::NodeVisitor &nv )
+TerrainNode::traverse( osg::NodeVisitor &nv )
 {
     // UPDATE runs whenever a Tile runs its update traversal on the first pass.
     // i.e., only runs then a new Tile is born.
@@ -306,7 +306,7 @@ Terrain::traverse( osg::NodeVisitor &nv )
 }
 
 void
-Terrain::setDelay( unsigned frames )
+TerrainNode::setDelay( unsigned frames )
 {
     if ( _onDemandDelay == 0 && !_alwaysUpdate )
     {
@@ -316,7 +316,7 @@ Terrain::setDelay( unsigned frames )
 }
 
 void
-Terrain::decDelay()
+TerrainNode::decDelay()
 {
     _onDemandDelay--;
     if ( _onDemandDelay == 0 && !_alwaysUpdate )

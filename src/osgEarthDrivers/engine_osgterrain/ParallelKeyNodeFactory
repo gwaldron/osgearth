@@ -31,7 +31,7 @@ public:
         TileBuilder*             builder,
         const OSGTerrainOptions& options,
         const MapInfo&           mapInfo,
-        Terrain*         terrain,
+        TerrainNode*             terrain,
         UID                      engineUID );
 
     osg::Node* createNode( const TileKey& key );

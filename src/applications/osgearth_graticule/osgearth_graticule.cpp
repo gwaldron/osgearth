@@ -25,9 +25,11 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/UTMGraticule>
 #include <osgEarthUtil/Formatters>
+
+#include <osgEarthUtil/GeodeticGraticule>
+#include <osgEarthUtil/MGRSGraticule>
+#include <osgEarthUtil/UTMGraticule>
 
 using namespace osgEarth::Util;
 
@@ -53,7 +55,7 @@ main(int argc, char** argv)
 
     // parse command line:
     bool isUTM = arguments.read("--utm");
-    bool isMGRS = arguments.read("--mrgs");
+    bool isMGRS = arguments.read("--mgrs");
     bool isGeodetic = !isUTM && !isMGRS;
 
     // load the .earth file from the command line.
@@ -71,19 +73,20 @@ main(int argc, char** argv)
     Formatter* formatter = 0L;
     if ( isUTM )
     {
-        UTMGraticule* grat = new UTMGraticule( mapNode );
-        root->addChild( grat );
+        UTMGraticule* gr = new UTMGraticule( mapNode );
+        root->addChild( gr );
         formatter = new MGRSFormatter();
     }
     else if ( isMGRS )
     {
-        //TODO
+        MGRSGraticule* gr = new MGRSGraticule( mapNode );
+        root->addChild( gr );
+        formatter = new MGRSFormatter();
     }
     else // if ( isGeodetic )
     {
-        // create a graticule and add it:
-        GeodeticGraticule* grat = new GeodeticGraticule( mapNode );
-        root->addChild( grat );
+        GeodeticGraticule* gr = new GeodeticGraticule( mapNode );
+        root->addChild( gr );
         formatter = new LatLongFormatter();
     }
 

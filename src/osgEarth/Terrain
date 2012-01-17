@@ -112,20 +112,36 @@ namespace osgEarth
          */
         bool isGeocentric() const { return _geocentric; }
 
+
     public: // Intersection Utilities
 
         /**
          * Intersects the terrain at the map location x, y and returns the height. This is the
          * height above the reference geometry per the profile's vertical SRS.
          *
-         * @param mapPos
+         * @param mapCoords
          *      Map coordinates at which to query the height
          * @param out_height
          *      Results of the query go here (if the method returns true).
          */
         bool getHeight( 
-            const osg::Vec3d& mapPos,
+            const osg::Vec3d& mapCoords,
             double&           out_height ) const;
+
+        /**
+         * Returns the world coordinates under the mouse.
+         * @param view
+         *      View in which to do the query
+         * @param mx, my
+         *      Mouse coordinates
+         * @param out_coords 
+         *      Stores the world coordinates under the mouse (when returning true)
+         */
+        bool getWorldCoordsUnderMouse(
+            osg::View*  view,
+            float       mx,
+            float       my,
+            osg::Vec3d& out_world ) const;
 
     public:
         /**

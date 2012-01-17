@@ -22,19 +22,26 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Viewpoint>
+
+#include <osgEarthSymbology/Color>
+
+#include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthAnnotation/Decluttering>
+
+#include <osgEarthDrivers/kml/KML>
+#include <osgEarthDrivers/ocean_surface/OceanSurface>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthUtil/Formatters>
-#include <osgEarthSymbology/Color>
-#include <osgEarthAnnotation/AnnotationData>
-#include <osgEarthAnnotation/Decluttering>
-#include <osgEarthDrivers/kml/KML>
-#include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarthUtil/MouseCoordsTool>
+
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -62,8 +69,7 @@ static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
 static OceanSurfaceNode* s_ocean         =0L;
-static bool              s_dms           =false;
-static bool              s_mgrs          =false;
+
 
 struct SkySliderHandler : public ControlEventHandler
 {
@@ -321,8 +327,6 @@ main(int argc, char** argv)
     bool useAutoClip  = arguments.read( "--autoclip" );
     bool useSky       = arguments.read( "--sky" );
     bool useOcean     = arguments.read( "--ocean" );
-    s_dms             = arguments.read( "--dms" );
-    s_mgrs            = arguments.read( "--mgrs" );
 
     // reads in a KML file:
     std::string kmlFile;
@@ -431,6 +435,17 @@ main(int argc, char** argv)
             }
         }
     }
+    
+    // readout for coordinates under the mouse   
+    LabelControl* mouseCoords = new LabelControl();
+    mouseCoords->setHorizAlign( Control::ALIGN_RIGHT );
+    mouseCoords->setVertAlign( Control::ALIGN_BOTTOM );
+    ControlCanvas::get(&viewer, false)->addControl(mouseCoords);
+
+    Formatter* formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
+    MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
+    mcTool->addCallback( new MouseCoordsLabelCallback(mouseCoords, formatter) );
+    viewer.addEventHandler( mcTool );
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.

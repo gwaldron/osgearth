@@ -181,6 +181,7 @@ namespace osgEarth
          */
         void setCompositorTechnique( class TextureCompositorTechnique* tech );
 
+
     public: //override osg::Node
 
         virtual osg::BoundingSphere computeBound() const;

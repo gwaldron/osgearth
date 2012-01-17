@@ -49,13 +49,8 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Annotation;
 
-static Threading::Mutex s_graticuleMutex;
-typedef std::map<unsigned int, osg::ref_ptr<UTMGraticule> > UTMGraticuleRegistry;
-static UTMGraticuleRegistry s_graticuleRegistry;
-
-#define UTM_GRATICULE_EXTENSION "osgearthutil_utm_graticule"
-#define TEXT_MARKER "t"
-#define GRID_MARKER "g"
+Threading::Mutex UTMGraticule::s_graticuleMutex;
+UTMGraticule::UTMGraticuleRegistry UTMGraticule::s_graticuleRegistry;
 
 //---------------------------------------------------------------------------
 
@@ -184,17 +179,17 @@ UTMGraticule::rebuild()
         _root->removeChildren(0, _root->getNumChildren());
     }
 
-    // build the base grid.
-    static std::string s_utmRows( "CDEFGHJKLMNPQRSTUVWX" );
-    std::map<std::string, GeoExtent> zoneMap;
+    // build the base Grid Zone Designator (GZD) loolup table. This is a table
+    // that maps the GZD string to its extent.
+    static std::string s_gzdRows( "CDEFGHJKLMNPQRSTUVWX" );
     const SpatialReference* geosrs = _profile->getSRS()->getGeographicSRS();
 
     // build the lateral zones:
     for( unsigned zone = 0; zone < 60; ++zone )
     {
-        for( unsigned row = 0; row < s_utmRows.size(); ++row )
+        for( unsigned row = 0; row < s_gzdRows.size(); ++row )
         {
-            double yMaxExtra = row == s_utmRows.size()-1 ? 4.0 : 0.0; // extra 4 deg for row X
+            double yMaxExtra = row == s_gzdRows.size()-1 ? 4.0 : 0.0; // extra 4 deg for row X
 
             GeoExtent cellExtent(
                 geosrs,
@@ -203,38 +198,44 @@ UTMGraticule::rebuild()
                 -180.0 + double(zone+1)*6.0,
                 -80.0  + double(row+1)*8.0 + yMaxExtra );
 
-            zoneMap[ Stringify() << (zone+1) << s_utmRows[row] ] = cellExtent;
+            _gzd[ Stringify() << (zone+1) << s_gzdRows[row] ] = cellExtent;
         }        
     }
 
+    // the polar zones (UPS):
+    _gzd["1Y"] = GeoExtent( geosrs, -90.0,  84.0,  90.0,  90.0 );
+    _gzd["1Z"] = GeoExtent( geosrs,  90.0,  84.0, 180.0,  90.0 );
+    _gzd["1A"] = GeoExtent( geosrs, -90.0, -90.0,  90.0, -80.0 );
+    _gzd["1B"] = GeoExtent( geosrs,  90.0, -90.0, 180.0, -80.0 );
+
     // replace the "exception" zones in Norway and Svalbard
-    zoneMap["31V"] = GeoExtent( geosrs, 0.0, 56.0, 3.0, 64.0 );
-    zoneMap["32V"] = GeoExtent( geosrs, 3.0, 56.0, 12.0, 64.0 );
-    zoneMap["31X"] = GeoExtent( geosrs, 0.0, 72.0, 9.0, 84.0 );
-    zoneMap["33X"] = GeoExtent( geosrs, 9.0, 72.0, 21.0, 84.0 );
-    zoneMap["35X"] = GeoExtent( geosrs, 21.0, 72.0, 33.0, 84.0 );
-    zoneMap["37X"] = GeoExtent( geosrs, 33.0, 72.0, 42.0, 84.0 );
+    _gzd["31V"] = GeoExtent( geosrs, 0.0, 56.0, 3.0, 64.0 );
+    _gzd["32V"] = GeoExtent( geosrs, 3.0, 56.0, 12.0, 64.0 );
+    _gzd["31X"] = GeoExtent( geosrs, 0.0, 72.0, 9.0, 84.0 );
+    _gzd["33X"] = GeoExtent( geosrs, 9.0, 72.0, 21.0, 84.0 );
+    _gzd["35X"] = GeoExtent( geosrs, 21.0, 72.0, 33.0, 84.0 );
+    _gzd["37X"] = GeoExtent( geosrs, 33.0, 72.0, 42.0, 84.0 );
 
     // ..and remove the non-existant zones:
-    zoneMap.erase( "32X" );
-    zoneMap.erase( "34X" );
-    zoneMap.erase( "36X" );
+    _gzd.erase( "32X" );
+    _gzd.erase( "34X" );
+    _gzd.erase( "36X" );
 
-    // now build the lateral tiles.
-    for( std::map<std::string,GeoExtent>::iterator i = zoneMap.begin(); i != zoneMap.end(); ++i )
+    // now build the lateral tiles for the GZD level.
+    for( std::map<std::string,GeoExtent>::iterator i = _gzd.begin(); i != _gzd.end(); ++i )
     {
-        osg::Node* tile = buildUTMTile( i->first, i->second );
+        osg::Node* tile = buildLateralGZDTile( i->first, i->second );
         if ( tile )
             _root->addChild( tile );
     }
 
-    // and the polar tiles.
-    _root->addChild( buildUPSTiles() );
+    // and the polar tile GZDs.
+    //_root->addChild( buildPolarGZDTiles() );
 }
 
 
 osg::Node*
-UTMGraticule::buildUTMTile( const std::string& name, const GeoExtent& extent )
+UTMGraticule::buildLateralGZDTile( const std::string& name, const GeoExtent& extent )
 {
     osg::Group* group = new osg::Group();
 
@@ -312,37 +313,12 @@ UTMGraticule::buildUTMTile( const std::string& name, const GeoExtent& extent )
 
     osg::NodeCallback* ccc = 0L;
     // set up cluster culling.
-    if ( extent.getSRS()->isGeographic() && extent.width() < 90.0 && extent.height() < 90.0 )
+    //if ( extent.getSRS()->isGeographic() && extent.width() < 90.0 && extent.height() < 90.0 )
     {
         ccc = ClusterCullingFactory::create( group, centerECEF );
     }
 
-#if 0
-    // add a paging node for higher LODs:
-    if ( key.getLevelOfDetail() + 1 < _options->levels().size() )
-    {
-        const GeodeticGraticuleOptions::Level& nextLevel = _options->levels()[key.getLevelOfDetail()+1];
-
-        osg::BoundingSphere bs = group->getBound();
-
-        std::string uri = Stringify() << key.str() << "_" << getID() << "." << GRID_MARKER << "." << GRATICULE_EXTENSION;
-
-        osg::PagedLOD* plod = new osg::PagedLOD();
-        plod->setCenter( bs.center() );
-        plod->addChild( group, std::max(level._minRange,nextLevel._maxRange), FLT_MAX );
-        plod->setFileName( 1, uri );
-        plod->setRange( 1, 0, nextLevel._maxRange );
-        group = plod;
-    }
-
-    // or, if this is the deepest level and there's a minRange set, we need an LOD:
-    else if ( level._minRange > 0.0f )
-    {
-        osg::LOD* lod = new osg::LOD();
-        lod->addChild( group, level._minRange, FLT_MAX );
-        group = lod;
-    }
-#endif
+    group = buildGZDChildren( group, name );
 
     if ( ccc )
     {
@@ -356,7 +332,7 @@ UTMGraticule::buildUTMTile( const std::string& name, const GeoExtent& extent )
 }
 
 osg::Node*
-UTMGraticule::buildUPSTiles()
+UTMGraticule::buildPolarGZDTiles()
 {
     osg::Group* group = new osg::Group();
 
@@ -431,7 +407,7 @@ UTMGraticule::buildUPSTiles()
         osg::Vec3d aPos( -90, -85.0, 0 );
         geosrs->transformToECEF(aPos, aPos);
         osg::Matrixd aLocal2World = ECEF::createLocalToWorld( aPos );
-        aText->setRotation( aLocal2World.getRotate() );
+        aText->setRotation( osg::Quat(osg::PI,osg::Vec3(0,0,1)) * aLocal2World.getRotate() );
         aText->setPosition( aPos - southECEF );
         geode->addDrawable( aText );
 

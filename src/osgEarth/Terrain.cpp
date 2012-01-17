@@ -20,6 +20,7 @@
 #include <osgEarth/Terrain>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
+#include <osgViewer/View>
 
 #define LC "[Terrain] "
 
@@ -69,14 +70,15 @@ Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height) const
         return 0L;
 
     // trivially reject a point that lies outside the terrain:
-    if ( !_profile->getExtent().contains(mapPos.x(), mapPos.y()) )
+    if ( getProfile()->getExtent().contains(mapPos.x(), mapPos.y()) )
+    //if ( !_profile->getExtent().contains(mapPos.x(), mapPos.y()) )
         return 0L;
 
     // calculate the endpoints for an intersection test:
     osg::Vec3d start(mapPos.x(), mapPos.y(),  50000.0);
     osg::Vec3d end  (mapPos.x(), mapPos.y(), -50000.0);
 
-    if ( _geocentric )
+    if ( isGeocentric() ) //_geocentric )
     {
         getSRS()->transformToECEF(start, start);
         getSRS()->transformToECEF(end, end);
@@ -92,12 +94,34 @@ Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height) const
         const osgUtil::LineSegmentIntersector::Intersection& firstHit = *results.begin();
         osg::Vec3d hit = firstHit.getWorldIntersectPoint();
 
-        if ( _geocentric )
+        if ( isGeocentric() )
         {
             getSRS()->transformFromECEF(hit, hit);
         }
 
         out_height = hit.z();
+        return true;
+    }
+    return false;
+}
+
+bool
+Terrain::getWorldCoordsUnderMouse(osg::View* view, float x, float y, osg::Vec3d& out_coords ) const
+{
+    osgViewer::View* view2 = dynamic_cast<osgViewer::View*>(view);
+    if ( !view2 || !_graph.valid() )
+        return false;
+
+    osgUtil::LineSegmentIntersector::Intersections results;
+
+    osg::NodePath path;
+    path.push_back( _graph.get() );
+
+    if ( view2->computeIntersections( x, y, path, results ) )
+    {
+        // find the first hit under the mouse:
+        osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
+        out_coords = first.getWorldIntersectPoint();
         return true;
     }
     return false;

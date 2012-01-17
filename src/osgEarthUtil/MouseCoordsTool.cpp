@@ -40,27 +40,21 @@ MouseCoordsTool::addCallback( MouseCoordsTool::Callback* cb )
 bool
 MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
-    osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
     if (ea.getEventType() == ea.MOVE || ea.getEventType() == ea.DRAG)
     {
-        osgUtil::LineSegmentIntersector::Intersections results;
-        if ( view->computeIntersections( ea.getX(), ea.getY(), _mapNodePath, results ) )
+        osg::Vec3d world;
+        if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
         {
-            // find the first hit under the mouse:
-            osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-            osg::Vec3d world = first.getWorldIntersectPoint();
             osg::Vec3d map;
-
-            // transform it to map coordinates:
-            _mapNode->getMap()->worldPointToMapPoint(world, map);
+            _mapNode->getMap()->worldPointToMapPoint( world, map );
 
             for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-                i->get()->set( map, view, _mapNode );
+                i->get()->set( map, aa.asView(), _mapNode );
         }
         else
         {
             for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-                i->get()->reset( view, _mapNode );
+                i->get()->reset( aa.asView(), _mapNode );
         }
     }
 

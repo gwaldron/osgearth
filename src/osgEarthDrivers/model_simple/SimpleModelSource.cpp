@@ -28,39 +28,44 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-#include <osgEarth/HTTPClient>
+//--------------------------------------------------------------------------
 
-class LODScaleOverrideNode : public osg::Group
+namespace
 {
-public:
-	LODScaleOverrideNode() : m_lodScale(1.0f) {}
-	virtual				~LODScaleOverrideNode() {}
-public:
-	void setLODScale(float scale) { m_lodScale = scale; }
-	float getLODScale() const { return m_lodScale; }
+    class LODScaleOverrideNode : public osg::Group
+    {
+    public:
+        LODScaleOverrideNode() : m_lodScale(1.0f) {}
+        virtual	~LODScaleOverrideNode() {}
+    public:
+        void setLODScale(float scale) { m_lodScale = scale; }
+        float getLODScale() const { return m_lodScale; }
 
-	virtual void		traverse(osg::NodeVisitor& nv)
-	{
-		if(nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
-		{
-			osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
-			if(cullStack)
-			{
-				float oldLODScale = cullStack->getLODScale();
-				cullStack->setLODScale(oldLODScale * m_lodScale);
-				osg::Group::traverse(nv);
-				cullStack->setLODScale(oldLODScale);
-			}
-			else
-				osg::Group::traverse(nv);
-		}
-		else
-			osg::Group::traverse(nv);
-	}
+        virtual void traverse(osg::NodeVisitor& nv)
+        {
+            if(nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+            {
+                osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
+                if(cullStack)
+                {
+                    float oldLODScale = cullStack->getLODScale();
+                    cullStack->setLODScale(oldLODScale * m_lodScale);
+                    osg::Group::traverse(nv);
+                    cullStack->setLODScale(oldLODScale);
+                }
+                else
+                    osg::Group::traverse(nv);
+            }
+            else
+                osg::Group::traverse(nv);
+        }
 
-private:
-	float				m_lodScale;
-};
+    private:
+        float m_lodScale;
+    };
+}
+
+//--------------------------------------------------------------------------
 
 class SimpleModelSource : public ModelSource
 {
@@ -85,10 +90,10 @@ public:
 
         result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
 
-		if(_options.lod_scale().isSet())
+		if(_options.lodScale().isSet())
 		{
 			LODScaleOverrideNode * node = new LODScaleOverrideNode;
-			node->setLODScale(_options.lod_scale().value());
+			node->setLODScale(_options.lodScale().value());
 			node->addChild(result.release());
 			result = node;
 		}

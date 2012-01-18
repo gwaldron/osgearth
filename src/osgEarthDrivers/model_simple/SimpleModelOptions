@@ -33,8 +33,8 @@ namespace osgEarth { namespace Drivers
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
 
-        optional<float>& lod_scale() { return _lod_scale; }
-        const optional<float>& lod_scale() const { return _lod_scale; }
+        optional<float>& lodScale() { return _lod_scale; }
+        const optional<float>& lodScale() const { return _lod_scale; }
 
     public:
         SimpleModelOptions( const ConfigOptions& options ) : ModelSourceOptions( options ) {

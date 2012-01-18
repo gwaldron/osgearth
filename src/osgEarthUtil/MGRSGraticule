@@ -34,12 +34,18 @@ namespace osgEarth { namespace Util
     public:
         MGRSGraticuleOptions( const Config& conf =Config() );
 
+        /** Symbology for SQID lines and text */
+        optional<Style>& secondaryStyle() { return _secondaryStyle; }
+        const optional<Style>& secondaryStyle() const { return _secondaryStyle; }
+
     public:
         Config getConfig() const;
 
     protected:
 
         void mergeConfig( const Config& conf );
+
+        optional<Style> _secondaryStyle;
     };
 
 
@@ -85,6 +91,8 @@ namespace osgEarth { namespace Util
 
     protected:
         virtual osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
+        
+        GeoExtent getExtent( const std::string& gzd, const std::string& sqid );
 
         friend class MGRSGraticuleFactory;
     };

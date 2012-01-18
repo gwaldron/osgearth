@@ -100,6 +100,14 @@ namespace osgEarth { namespace Util
 
     //------------------------------------------------------------------------
 
+    struct MGRSCoord
+    {
+        std::string gzd;
+        std::string sqid;
+        unsigned    x;
+        unsigned    y;
+    };
+
     /**
      * Formats coordinate data as MGRS.
      *
@@ -151,10 +159,15 @@ namespace osgEarth { namespace Util
             return format(latDeg, lonDeg);
         }
 
+        /**
+         * Transforms input coords into MGRS.
+         */
+        bool transform( const osg::Vec3d& coords, const SpatialReference* srs, MGRSCoord& out_mgrs ) const;
+
 
     public: // Formatter
 
-        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* srs ) const;
+        virtual std::string format( const osg::Vec3d& coords, const SpatialReference* srs ) const;
 
 
     private:

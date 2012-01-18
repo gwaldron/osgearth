@@ -70,6 +70,7 @@ namespace osgEarth { namespace Symbology
 
         /** Adds a symbol to the collection. */
         void addSymbol(Symbol* symbol);
+        void add(Symbol* symbol) { addSymbol(symbol); }
 
 		/** Remove a symbol from the collection */
 		bool removeSymbol (Symbol* symbol);

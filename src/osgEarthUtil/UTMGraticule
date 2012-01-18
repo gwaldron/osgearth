@@ -41,13 +41,9 @@ namespace osgEarth { namespace Util
 
     public:
 
-        /** Default style for grid lines */
-        optional<Style>& lineStyle() { return _defaultLineStyle; }
-        const optional<Style>& lineStyle() const { return _defaultLineStyle; }
-
-        /** Default style for text labels */
-        optional<Style>& textStyle() { return _defaultTextStyle; }
-        const optional<Style>& textStyle() const { return _defaultTextStyle; }
+        /** Default style for grid lines and text */
+        optional<Style>& primaryStyle() { return _primaryStyle; }
+        const optional<Style>& primaryStyle() const { return _primaryStyle; }
 
         /** Text scale factor (default = 1) */
         optional<float>& textScale() { return _textScale; }
@@ -57,8 +53,7 @@ namespace osgEarth { namespace Util
         Config getConfig() const;
 
     protected:
-        optional<Style>    _defaultLineStyle;
-        optional<Style>    _defaultTextStyle;
+        optional<Style>    _primaryStyle;
         optional<float>    _textScale;
 
         void mergeConfig( const Config& conf );
@@ -110,15 +105,15 @@ namespace osgEarth { namespace Util
 
         optional<UTMGraticuleOptions> _options;
 
-        typedef std::map<std::string, GeoExtent> GZDTable;
-        GZDTable _gzd;
+        typedef std::map<std::string, GeoExtent> SectorTable;
+        SectorTable _gzd;
 
     protected:
         unsigned int getID() const { return _id; }
         void init();
         void rebuild();
-        osg::Node* buildLateralGZDTile( const std::string& name, const GeoExtent& extent );
-        osg::Node* buildPolarGZDTiles();
+        osg::Node* buildGZDTile( const std::string& name, const GeoExtent& extent );
+        //osg::Node* buildPolarGZDTiles();
 
         virtual osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd ) {
             return node; }

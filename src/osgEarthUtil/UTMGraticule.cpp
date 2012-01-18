@@ -131,26 +131,24 @@ UTMGraticule::init()
 
     //todo: do this right..
     osg::StateSet* set = this->getOrCreateStateSet();
-    set->setRenderBinDetails( 9999, "RenderBin" );
     set->setMode( GL_LIGHTING, 0 );
+    set->setMode( GL_BLEND, 1 );
 
     // set up default options if the caller did not supply them
     if ( !_options.isSet() )
     {
-        _options->lineStyle() = Style();
+        _options->primaryStyle()= Style();
 
-        LineSymbol* line = _options->lineStyle()->getOrCreate<LineSymbol>();
+        LineSymbol* line = _options->primaryStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color::Gray;
         line->stroke()->width() = 1.0;
 
-        AltitudeSymbol* alt = _options->lineStyle()->getOrCreate<AltitudeSymbol>();
-        alt->verticalOffset() = NumericExpression(5000.0);
+        AltitudeSymbol* alt = _options->primaryStyle()->getOrCreate<AltitudeSymbol>();
+        alt->verticalOffset() = NumericExpression(4900.0);
 
-        _options->textStyle() = Style();
-        _options->textStyle()->addSymbol( alt );
-
-        TextSymbol* text = _options->textStyle()->getOrCreate<TextSymbol>();
-        text->fill()->color() = Color(Color::Gray,0.6f);
+        TextSymbol* text = _options->primaryStyle()->getOrCreate<TextSymbol>();
+        text->fill()->color() = Color(Color::White, 0.3f);
+        text->halo()->color() = Color(Color::Black, 0.2f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
 
@@ -222,9 +220,9 @@ UTMGraticule::rebuild()
     _gzd.erase( "36X" );
 
     // now build the lateral tiles for the GZD level.
-    for( std::map<std::string,GeoExtent>::iterator i = _gzd.begin(); i != _gzd.end(); ++i )
+    for( SectorTable::iterator i = _gzd.begin(); i != _gzd.end(); ++i )
     {
-        osg::Node* tile = buildLateralGZDTile( i->first, i->second );
+        osg::Node* tile = buildGZDTile( i->first, i->second );
         if ( tile )
             _root->addChild( tile );
     }
@@ -235,14 +233,18 @@ UTMGraticule::rebuild()
 
 
 osg::Node*
-UTMGraticule::buildLateralGZDTile( const std::string& name, const GeoExtent& extent )
+UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
 {
     osg::Group* group = new osg::Group();
 
-    const Style& lineStyle = *_options->lineStyle();
-    Style textStyle = *_options->textStyle();
+    Style lineStyle;
+    lineStyle.add( _options->primaryStyle()->get<LineSymbol>() );
+    lineStyle.add( _options->primaryStyle()->get<AltitudeSymbol>() );
 
-    bool hasText = textStyle.get<TextSymbol>() != 0L;
+    //const Style& lineStyle = *_options->lineStyle();
+    //Style textStyle = *_options->textStyle();
+
+    bool hasText = _options->primaryStyle()->get<TextSymbol>() != 0L;
 
     GeometryCompiler compiler;
     osg::ref_ptr<Session> session = new Session( _mapNode->getMap() );
@@ -297,40 +299,33 @@ UTMGraticule::buildLateralGZDTile( const std::string& name, const GeoExtent& ext
         extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMin(),tileCenter.y(),0), west );
         extent.getSRS()->transformToECEF(osg::Vec3d(extent.xMax(),tileCenter.y(),0), east );
 
-        TextSymbol* textSym = textStyle.get<TextSymbol>();
+        TextSymbol* textSym = _options->primaryStyle()->getOrCreate<TextSymbol>();
         textSym->size() = (west-east).length() / 3.0;
 
         TextSymbolizer ts( textSym );
         
-        osg::Geode* geode = new osg::Geode();
+        osg::Geode* textGeode = new osg::Geode();
+        textGeode->getOrCreateStateSet()->setRenderBinDetails( 9998, "DepthSortedBin" );   
+        textGeode->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false), 1 );
+        
         osg::Drawable* d = ts.create(name);
-        geode->addDrawable(d);
+        d->getOrCreateStateSet()->setRenderBinToInherit();
+
+        textGeode->addDrawable(d);
         osg::MatrixTransform* mt = new osg::MatrixTransform(ECEF::createLocalToWorld(centerECEF));
-        mt->addChild(geode);
+        mt->addChild(textGeode);
        
         group->addChild(mt);
     }
 
-    osg::NodeCallback* ccc = 0L;
-    // set up cluster culling.
-    //if ( extent.getSRS()->isGeographic() && extent.width() < 90.0 && extent.height() < 90.0 )
-    {
-        ccc = ClusterCullingFactory::create( group, centerECEF );
-    }
-
     group = buildGZDChildren( group, name );
 
-    if ( ccc )
-    {
-        osg::Group* cccGroup = new osg::Group();
-        cccGroup->addCullCallback( ccc );
-        cccGroup->addChild( group );
-        group = cccGroup;
-    }
+    group = ClusterCullingFactory::createAndInstall( group, centerECEF )->asGroup();
 
     return group;
 }
 
+#if 0
 osg::Node*
 UTMGraticule::buildPolarGZDTiles()
 {
@@ -430,7 +425,7 @@ UTMGraticule::buildPolarGZDTiles()
 
     return group;
 }
-
+#endif
 
 #if 0
 osg::Node*

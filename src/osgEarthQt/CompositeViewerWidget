@@ -19,9 +19,7 @@
 #ifndef OSGEARTHQT_COMPOSITEVIEWERWIDGET_H
 #define OSGEARTHQT_COMPOSITEVIEWERWIDGET_H 1
 
-#include <osgEarthQt/Actions>
 #include <osgEarthQt/Common>
-#include <osgEarthQt/DataManager>
 
 #include <osgEarth/Map>
 
@@ -38,14 +36,13 @@ namespace osgEarth { namespace QtGui
     class OSGEARTHQT_EXPORT CompositeViewerWidget : public QWidget, public osgViewer::CompositeViewer
     {
     public:
-      CompositeViewerWidget(osg::Node* scene=0L, DataManager* manager=0L);
+      CompositeViewerWidget(osg::Node* scene=0L);
 
       osgViewer::View* createViewWidget(osg::Node* scene=0L, osgViewer::View* shared=0L);
       virtual void layoutWidgets();
 
     protected:
       QTimer _timer;
-      osg::ref_ptr<DataManager> _manager;
 
       void initialize();
       osg::Camera* createCamera(int x, int y, int width, int height, osg::GraphicsContext* shared=0L);

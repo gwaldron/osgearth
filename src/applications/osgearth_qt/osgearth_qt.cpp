@@ -33,6 +33,7 @@
 #include <osgEarthQt/AnnotationListWidget>
 #include <osgEarthQt/LOSControlWidget>
 #include <osgEarthUtil/AnnotationEvents>
+#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/SkyNode>
 #include <osgEarthDrivers/ocean_surface/OceanSurface>
 
@@ -246,13 +247,18 @@ main(int argc, char** argv)
     // create viewer widget
     if (composite)
     {
-      osgEarth::QtGui::CompositeViewerWidget* viewerWidget = new osgEarth::QtGui::CompositeViewerWidget(root, dataManager.get());
+      osgEarth::QtGui::CompositeViewerWidget* viewerWidget = new osgEarth::QtGui::CompositeViewerWidget(root);
 
       osgViewer::View* primary = viewerWidget->createViewWidget(root);
+      primary->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
       views.push_back(primary);
 
       for (int i=0; i < numViews - 1; i++)
-        views.push_back(viewerWidget->createViewWidget(root, primary));
+      {
+        osgViewer::View* view = viewerWidget->createViewWidget(root, primary);
+        view->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
+        views.push_back(view);
+      }
 
       viewerWidget->setGeometry(100, 100, 800, 600);
       appWin.setViewerWidget(viewerWidget, views);
@@ -261,8 +267,9 @@ main(int argc, char** argv)
     }
     else
     {
-      osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root, dataManager.get());
+      osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
       viewerWidget->setGeometry(100, 100, 800, 600);
+      viewerWidget->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
       appWin.setViewerWidget(viewerWidget);
       views.push_back(viewerWidget);
 

@@ -17,11 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthQt/ViewerWidget>
-#include <osgEarthQt/Actions>
-#include <osgEarthQt/DataManager>
-#include <osgEarthQt/GuiActions>
 
-#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/EarthManipulator>
 
 #include <osgGA/StateSetManipulator>
@@ -37,7 +33,7 @@ using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
 
-ViewerWidget::ViewerWidget(osg::Node* scene, DataManager* manager) : _manager(manager)
+ViewerWidget::ViewerWidget(osg::Node* scene)
 {
   initialize();
 
@@ -52,9 +48,6 @@ void ViewerWidget::initialize()
   setThreadingModel(osgViewer::Viewer::DrawThreadPerContext);
   setCamera(createCamera());
   setCameraManipulator(new osgEarth::Util::EarthManipulator());
-  
-  if (_manager.valid())
-    getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(_manager->map()));
 
   addEventHandler(new osgViewer::StatsHandler());
   addEventHandler(new osgGA::StateSetManipulator());

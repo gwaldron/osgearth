@@ -33,6 +33,9 @@ namespace osgEarth { namespace Drivers
         optional<URI>& url() { return _url; }
         const optional<URI>& url() const { return _url; }
 
+        optional<float>& lod_scale() { return _lod_scale; }
+        const optional<float>& lod_scale() const { return _lod_scale; }
+
     public:
         SimpleModelOptions( const ConfigOptions& options ) : ModelSourceOptions( options ) {
             setDriver( "simple" );
@@ -43,6 +46,7 @@ namespace osgEarth { namespace Drivers
         Config getConfig() const {
             Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
+			conf.updateIfSet( "lod_scale", _lod_scale );
             return conf;
         }
 
@@ -55,9 +59,11 @@ namespace osgEarth { namespace Drivers
     private:
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
+			conf.getIfSet( "lod_scale", _lod_scale );
         }
 
         optional<URI> _url;
+		optional<float> _lod_scale;
     };
 
 } } // namespace osgEarth::Drivers

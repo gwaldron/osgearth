@@ -79,14 +79,25 @@ namespace
      */
     struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
     {
-        CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
-            : OverlayDecorator::InternalNodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN),
-              _bbox(out_bbox),
-              _original( polytope ),
-              _coarse( false )
+        CoarsePolytopeIntersector(
+            const MyConvexPolyhedron& polytope,
+            osg::NodeVisitor*         proxyNV,
+            osg::BoundingBox&         out_bbox) :
+
+        OverlayDecorator::InternalNodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN),
+            _bbox    (out_bbox),
+            _original( polytope ),
+            _proxyNV ( proxyNV ),
+            _coarse  ( false )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );
+        }
+
+        // override from NodeVisitor to support LOD processing
+        virtual float getDistanceToViewPoint(const osg::Vec3& pos, bool useLODScale) const
+        {
+            return _proxyNV->getDistanceToViewPoint(pos, useLODScale);
         }
 
         void apply( osg::Node& node )
@@ -181,6 +192,7 @@ namespace
         }
 
         osg::BoundingBox& _bbox;
+        osg::NodeVisitor* _proxyNV;
         MyConvexPolyhedron _original;
         std::stack<MyConvexPolyhedron> _polytopeStack;
         std::stack<osg::Matrixd> _matrixStack;
@@ -814,7 +826,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 
     // get the bounds of the overlay graph model. 
     osg::BoundingBox visibleOverlayBBox;
-    CoarsePolytopeIntersector cpi( frustumPH, visibleOverlayBBox );
+    CoarsePolytopeIntersector cpi( frustumPH, cv, visibleOverlayBBox );
     _overlayGraph->accept( cpi );
     visiblePH.setToBoundingBox( visibleOverlayBBox );
 

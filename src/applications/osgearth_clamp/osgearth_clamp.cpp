@@ -29,9 +29,10 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/ObjectLocator>
 
+using namespace osgEarth;
 using namespace osgEarth::Util;
 
-class ClampObjectLocatorCallback : public osgEarth::TerrainEngineNode::TerrainChangedCallback
+class ClampObjectLocatorCallback : public osgEarth::TerrainCallback
 {
 public:
     ClampObjectLocatorCallback(ObjectLocatorNode* locator):
@@ -41,7 +42,7 @@ public:
     {
     }
 
-    virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain)
+    virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&)
     {           
         if ((int)tileKey.getLevelOfDetail() > _minLevel && _maxLevel < (int)tileKey.getLevelOfDetail())
         {
@@ -155,7 +156,7 @@ main(int argc, char** argv)
         locator->getLocator()->setPosition(osg::Vec3d(lon,  lat, 0 ) );        
         locator->addChild( mt );
         root->addChild( locator );
-        mapNode->getTerrainEngine()->addTerrainChangedCallback( new ClampObjectLocatorCallback(locator) );        
+        mapNode->getTerrain()->addTerrainCallback( new ClampObjectLocatorCallback(locator) );        
     }    
     
     manip->setHomeViewpoint(Viewpoint( "Mt Rainier",        osg::Vec3d(    centerLon,   centerLat, 0.0 ), 0.0, -90, 45000 ));

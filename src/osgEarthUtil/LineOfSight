@@ -212,7 +212,7 @@ namespace osgEarth { namespace Util
 
         ChangedCallbackList _changedCallbacks;
 
-        osg::ref_ptr < osgEarth::TerrainEngineNode::TerrainChangedCallback > _terrainChangedCallback;
+        osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
 
         osg::ref_ptr< osg::Node > _pendingNode;
     };
@@ -283,6 +283,11 @@ namespace osgEarth { namespace Util
          * Gets the number of spokes in the radial line of sight calculation
          */
         int getNumSpokes() const;
+
+        /**
+         * Gets the center point in world coordinates
+         */
+        const osg::Vec3d& getCenterWorld() const;
 
         /**
          * Gets the center point
@@ -370,11 +375,12 @@ namespace osgEarth { namespace Util
         osg::Vec4 _badColor;
         osg::Vec4 _outlineColor;
         osg::Vec3d _center;
+        osg::Vec3d _centerWorld;
         osg::ref_ptr< MapNode > _mapNode;
         AltitudeMode _altitudeMode;
         ChangedCallbackList _changedCallbacks;
         osg::ref_ptr< osg::Node > _pendingNode;
-        osg::ref_ptr < osgEarth::TerrainEngineNode::TerrainChangedCallback > _terrainChangedCallback;
+        osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
     };
 
     /**********************************************************************/

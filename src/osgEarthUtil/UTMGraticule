@@ -1,0 +1,129 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_UTM_GRATICLE
+#define OSGEARTHUTIL_UTM_GRATICLE
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/MapNode>
+#include <osgEarthSymbology/Style>
+#include <osgEarthFeatures/Feature>
+#include <vector>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Features;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Configuration options for the geodetic graticule.
+     */
+    class OSGEARTHUTIL_EXPORT UTMGraticuleOptions : public ConfigOptions
+    {
+    public:
+        UTMGraticuleOptions( const Config& conf =Config() );
+
+    public:
+
+        /** Default style for grid lines and text */
+        optional<Style>& primaryStyle() { return _primaryStyle; }
+        const optional<Style>& primaryStyle() const { return _primaryStyle; }
+
+        /** Text scale factor (default = 1) */
+        optional<float>& textScale() { return _textScale; }
+        const optional<float>& textScale() const { return _textScale; }
+
+    public:
+        Config getConfig() const;
+
+    protected:
+        optional<Style>    _primaryStyle;
+        optional<float>    _textScale;
+
+        void mergeConfig( const Config& conf );
+    };
+
+
+    /**
+     * Implements a UTM map graticule. 
+     * 
+     * NOTE: So far, this only works for geocentric maps.
+     * TODO: Add projected support; add text label support
+     */
+    class OSGEARTHUTIL_EXPORT UTMGraticule : public osg::Group
+    {
+    public:
+
+        /**
+         * Constructs a new graticule for use with the specified map. The graticule
+         * is created with several default levels. If you call addLevel(), the 
+         * default levels are deleted.
+         *
+         * @param map
+         *      Map with which you will use this graticule
+         * @param options
+         *      Optional "options" that configure the graticule. Defaults will be used
+         *      if you don't specify this.
+         */
+        UTMGraticule( MapNode* mapNode );
+        UTMGraticule( MapNode* mapNode, const UTMGraticuleOptions& options);
+
+        /** 
+         * Applies a new set of options. The graticule will be rebuilt if necessary.
+         */
+        void setOptions( const UTMGraticuleOptions& options );
+
+        /**
+         * Gets the options with which the graticule was built.
+         */
+        const UTMGraticuleOptions& getOptions() const { return _options.value(); }
+
+
+    protected:
+        osg::ref_ptr<const Profile>        _profile;
+        osg::ref_ptr<const FeatureProfile> _featureProfile;
+
+        unsigned int               _id;
+        osg::observer_ptr<MapNode> _mapNode;
+        osg::Group*                _root;
+
+        optional<UTMGraticuleOptions> _options;
+
+        typedef std::map<std::string, GeoExtent> SectorTable;
+        SectorTable _gzd;
+
+    protected:
+        unsigned int getID() const { return _id; }
+        void init();
+        void rebuild();
+        osg::Node* buildGZDTile( const std::string& name, const GeoExtent& extent );
+        //osg::Node* buildPolarGZDTiles();
+
+        virtual osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd ) {
+            return node; }
+
+    public:
+        static Threading::Mutex s_graticuleMutex;
+        typedef std::map<unsigned, osg::ref_ptr<UTMGraticule> > UTMGraticuleRegistry;
+        static UTMGraticuleRegistry s_graticuleRegistry;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_UTM_GRATICLE

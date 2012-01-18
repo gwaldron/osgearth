@@ -1,0 +1,102 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHUTIL_MGRS_GRATICLE
+#define OSGEARTHUTIL_MGRS_GRATICLE
+
+#include <osgEarthUtil/UTMGraticule>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Configuration options for the geodetic graticule.
+     */
+    class OSGEARTHUTIL_EXPORT MGRSGraticuleOptions : public UTMGraticuleOptions
+    {
+    public:
+        MGRSGraticuleOptions( const Config& conf =Config() );
+
+        /** Symbology for SQID lines and text */
+        optional<Style>& secondaryStyle() { return _secondaryStyle; }
+        const optional<Style>& secondaryStyle() const { return _secondaryStyle; }
+
+    public:
+        Config getConfig() const;
+
+    protected:
+
+        void mergeConfig( const Config& conf );
+
+        optional<Style> _secondaryStyle;
+    };
+
+
+    /**
+     * Implements a MGRS (Military Grid Reference System) map graticule. 
+     * 
+     * NOTE: So far, this only works for geocentric maps.
+     * TODO: Add projected support; add text label support
+     */
+    class OSGEARTHUTIL_EXPORT MGRSGraticule : public UTMGraticule
+    {
+    public:
+
+        /**
+         * Constructs a new graticule for use with the specified map. The graticule
+         * is created with several default levels. If you call addLevel(), the 
+         * default levels are deleted.
+         *
+         * @param map
+         *      Map with which you will use this graticule
+         * @param options
+         *      Optional "options" that configure the graticule. Defaults will be used
+         *      if you don't specify this.
+         */
+        MGRSGraticule( MapNode* mapNode );
+        MGRSGraticule( MapNode* mapNode, const MGRSGraticuleOptions& options);
+
+        /** 
+         * Applies a new set of options. The graticule will be rebuilt if necessary.
+         */
+        void setOptions( const MGRSGraticuleOptions& options );
+
+        /**
+         * Gets the options with which the graticule was built.
+         */
+        const MGRSGraticuleOptions& getOptions() const { return _options.value(); }
+
+    public:
+        osg::Node* buildSQIDTiles( const std::string& gzd );
+
+    protected:
+        optional<MGRSGraticuleOptions> _options;
+
+    protected:
+        virtual osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );
+        
+        GeoExtent getExtent( const std::string& gzd, const std::string& sqid );
+
+        friend class MGRSGraticuleFactory;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_UTM_GRATICLE

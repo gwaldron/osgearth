@@ -24,6 +24,7 @@
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
+#include <osgViewer/View>
 
 #define LC "[TerrainEngineNode] "
 
@@ -114,7 +115,7 @@ _verticalScale( 1.0f ),
 _elevationSamplingRatio( 1.0f ),
 _initStage( INIT_NONE )
 {
-    //nop
+    ctor();
 }
 
 TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op ) :
@@ -124,6 +125,12 @@ _elevationSamplingRatio( rhs._elevationSamplingRatio ),
 _map( rhs._map.get() ),
 _initStage( rhs._initStage )
 {
+    ctor();
+}
+
+void
+TerrainEngineNode::ctor()
+{
     //nop
 }
 
@@ -131,6 +138,9 @@ void
 TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
 {
     _map = map;
+    
+    // fire up a terrain utility interface
+    _terrainInterface = new Terrain( this, map->getProfile(), map->isGeocentric() );
 
     // set up the CSN values   
     _map->getProfile()->getSRS()->populateCoordinateSystemNode( this );
@@ -335,6 +345,31 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
 {
     if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
     {
+        // see if we need to set up the Terrain object with an update ops queue.
+        if ( !_terrainInterface->_updateOperationQueue.valid() )
+        {
+            static Threading::Mutex s_opqlock;
+            Threading::ScopedMutexLock lock(s_opqlock);
+            if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
+            {
+                osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+                if ( cv->getCurrentCamera() )
+                {
+                    osgViewer::View* view = dynamic_cast<osgViewer::View*>(cv->getCurrentCamera()->getView());
+                    if ( view && view->getViewerBase() )
+                    {
+                        osg::OperationQueue* q = view->getViewerBase()->getUpdateOperations();
+                        if ( !q ) {
+                            q = new osg::OperationQueue();
+                            view->getViewerBase()->setUpdateOperations( q );
+                        }
+                        _terrainInterface->_updateOperationQueue = q;
+                    }
+                }                        
+            }
+        }
+
+
         if ( Registry::instance()->getCapabilities().supportsGLSL() )
         {
             _updateLightingUniformsHelper.cullTraverse( this, &nv );
@@ -364,15 +399,18 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
     osg::CoordinateSystemNode::traverse( nv );
 }
 
+#if 0
 void
 TerrainEngineNode::addTerrainChangedCallback( TerrainChangedCallback* callback )
 {
+    Threading::ScopedWriteLock lock( _terrainChangedCallbacksMutex );
     _terrainChangedCallbacks.push_back( callback );
 }
 
 void
 TerrainEngineNode::removeTerrainChangedCallback( TerrainChangedCallback* callback)
 {
+    Threading::ScopedWriteLock lock( _terrainChangedCallbacksMutex );
     TerrainChangedCallbackList::iterator i = std::find(_terrainChangedCallbacks.begin(), _terrainChangedCallbacks.end(), callback);
     if (i != _terrainChangedCallbacks.end()) _terrainChangedCallbacks.erase( i );    
 }
@@ -380,11 +418,13 @@ TerrainEngineNode::removeTerrainChangedCallback( TerrainChangedCallback* callbac
 void
 TerrainEngineNode::fireTerrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
 {    
+    Threading::ScopedReadLock lock( _terrainChangedCallbacksMutex );
     for (TerrainChangedCallbackList::iterator i = _terrainChangedCallbacks.begin(); i != _terrainChangedCallbacks.end(); i++)
     {
         i->get()->onTerrainChanged(tileKey, terrain);
     }
 }
+#endif
 
 
 //------------------------------------------------------------------------

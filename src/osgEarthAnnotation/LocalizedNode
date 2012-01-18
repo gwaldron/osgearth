@@ -30,7 +30,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Base class for node that is localized at a specific geographic point.
      */
-    class OSGEARTHANNO_EXPORT LocalizedNode : public AnnotationNode
+    class OSGEARTHANNO_EXPORT LocalizedNode : public PositionedAnnotationNode
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, LocalizedNode);
@@ -43,12 +43,9 @@ namespace osgEarth { namespace Annotation
          * @param is2D    Whether to autotransform the node to face/scale to the screen
          */
         LocalizedNode( 
-            const SpatialReference* mapSRS   =0L,
+            MapNode*                mapNode  =0L,
             const osg::Vec3d&       pos      =osg::Vec3d(0,0,0), 
             bool                    is2D     =false );
-        
-        // copy constructor
-        LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL);
 
 
     public:
@@ -98,6 +95,9 @@ namespace osgEarth { namespace Annotation
         bool _autoTransform;
 
         friend class Decoration;
+        
+        // copy constructor
+        LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
     };
 
 } } // namespace osgEarth::Annotation

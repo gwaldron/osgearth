@@ -76,6 +76,7 @@ SET(LIB_PUBLIC_HEADERS
     SpatialReference
     StringUtils
     TaskService
+    Terrain
     TerrainLayer
     TerrainOptions
     TerrainEngineNode
@@ -168,6 +169,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     SpatialReference.cpp
     StringUtils.cpp
     TaskService.cpp
+    Terrain.cpp
     TerrainLayer.cpp
     TerrainOptions.cpp
     TerrainEngineNode.cpp

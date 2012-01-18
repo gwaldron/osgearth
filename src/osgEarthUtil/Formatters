@@ -21,13 +21,21 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/SpatialReference>
+#include <osgEarth/StringUtils>
 #include <osgEarth/Units>
 
 namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
-    class OSGEARTHUTIL_EXPORT LatLongFormatter
+    class Formatter : public osg::Referenced
+    {
+    public:
+        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* mapSRS ) const =0;
+    };
+
+
+    class OSGEARTHUTIL_EXPORT LatLongFormatter : public Formatter
     {
     public:
         enum AngularFormat {
@@ -64,12 +72,12 @@ namespace osgEarth { namespace Util
         std::string format(
             const Angular&       angle,
             int                  precision =-1, 
-            const AngularFormat& outputFormat    =FORMAT_DEFAULT);
+            const AngularFormat& outputFormat    =FORMAT_DEFAULT) const;
 
         std::string operator()(
             const Angular&       angle,
             int                  precision =-1, 
-            const AngularFormat& outputFormat =FORMAT_DEFAULT)
+            const AngularFormat& outputFormat =FORMAT_DEFAULT) const
         {
             return format(angle, precision, outputFormat);
         }
@@ -79,6 +87,11 @@ namespace osgEarth { namespace Util
          */
         bool parseAngle( const std::string& input, Angular& out_value );
 
+    public: // Formatter
+
+        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* srs ) const;
+
+
     protected:
         unsigned      _options;
         AngularFormat _defaultFormat;
@@ -86,6 +99,14 @@ namespace osgEarth { namespace Util
     };
 
     //------------------------------------------------------------------------
+
+    struct MGRSCoord
+    {
+        std::string gzd;
+        std::string sqid;
+        unsigned    x;
+        unsigned    y;
+    };
 
     /**
      * Formats coordinate data as MGRS.
@@ -95,7 +116,7 @@ namespace osgEarth { namespace Util
      *
      * See: http://en.wikipedia.org/wiki/Military_grid_reference_system
      */
-    class OSGEARTHUTIL_EXPORT MGRSFormatter
+    class OSGEARTHUTIL_EXPORT MGRSFormatter : public Formatter
     {
     public:
         enum Precision
@@ -134,7 +155,20 @@ namespace osgEarth { namespace Util
          */
         std::string format( double latDeg, double lonDeg ) const;
 
-        std::string operator()(double latDeg, double lonDeg ) const { return format(latDeg, lonDeg); }
+        std::string operator()(double latDeg, double lonDeg ) const { 
+            return format(latDeg, lonDeg);
+        }
+
+        /**
+         * Transforms input coords into MGRS.
+         */
+        bool transform( const osg::Vec3d& coords, const SpatialReference* srs, MGRSCoord& out_mgrs ) const;
+
+
+    public: // Formatter
+
+        virtual std::string format( const osg::Vec3d& coords, const SpatialReference* srs ) const;
+
 
     private:
         osg::ref_ptr<const SpatialReference> _refSRS;

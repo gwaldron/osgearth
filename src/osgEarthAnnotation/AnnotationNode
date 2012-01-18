@@ -22,12 +22,17 @@
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/Decoration>
+#include <osgEarth/TileKey>
 #include <osg/Switch>
 
 #define META_AnnotationNode(library,type) \
     META_Node(library,type); \
     virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
 
+namespace osgEarth
+{
+    class MapNode;
+}
 
 namespace osgEarth { namespace Annotation
 {	
@@ -42,16 +47,6 @@ namespace osgEarth { namespace Annotation
         META_AnnotationNode(osgEarthAnnotation, AnnotationNode);
 
         /**
-         * Default constructor.
-         */
-        AnnotationNode();
-
-        /**
-         * Copy constructor.
-         */
-        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL);
-
-        /**
          * Annotation data attached to this annotation node.
          */
         virtual void setAnnotationData( AnnotationData* data );
@@ -62,6 +57,11 @@ namespace osgEarth { namespace Annotation
          * safely change it at runtime.
          */
         virtual void setDynamic( bool value );
+
+        /**
+         * Sets the node to automatically re-clamp to the terrain (if applicable)
+         */
+        virtual void setAutoClamp( bool value );
 
         /** 
          * Gets the attach point for children of this node
@@ -96,16 +96,68 @@ namespace osgEarth { namespace Annotation
          */
         bool hasDecoration( const std::string& name ) const;
 
-
     protected:
 
+        osg::observer_ptr<MapNode>   _mapNode;
         osg::ref_ptr<AnnotationData> _annoData;
         bool                         _dynamic;
+        bool                         _autoclamp;
 
         typedef std::map<std::string, osg::ref_ptr<Decoration> > DecorationMap;
         DecorationMap _dsMap;
         Decoration*   _activeDs;
-        std::string  _activeDsName;
+        std::string   _activeDsName;
+
+        // hidden default ctor
+        AnnotationNode( MapNode* mapNode =0L );
+
+        // hidden copy ctor
+        AnnotationNode(const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
+
+
+    public: // internal methods; do not call directly
+
+        virtual void reclamp( const TileKey& key, osg::Node* tile ) { }
+
+        virtual ~AnnotationNode();
+
+    };
+
+    /**
+     * Virtual class for AnnotationNodes with the set/getPosition method
+     */
+    class PositionedAnnotationNode : public AnnotationNode
+    {
+    public:
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * of the current Map. Returns true upon success.
+         */
+        virtual bool setPosition( const osg::Vec3d& pos ) =0;
+
+        /**
+         * Sets the map position of the node. The coordinates are in the SRS
+         * passed in, and will be reprojected to Map coordinates.
+         * Returns true upon success.
+         */
+        virtual bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs ) =0;
+
+        /**
+         * Gets the position (in map coordinates) of the node
+         */
+        virtual osg::Vec3d getPosition() const =0;
+
+        /**
+         * Gets the position (in the requested coordinate system)
+         */
+        virtual osg::Vec3d getPosition( const SpatialReference* srs ) const =0;
+
+    protected:
+        PositionedAnnotationNode(MapNode* mapNode =0L) : AnnotationNode(mapNode) { }
+
+        //PositionedAnnotationNode( const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) 
+        //    : AnnotationNode( rhs, op ) { }
+        
     };
 
 } } // namespace osgEarth::Annotation

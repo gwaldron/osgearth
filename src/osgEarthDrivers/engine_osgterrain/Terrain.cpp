@@ -67,7 +67,7 @@ namespace
     {
 	    typedef std::vector< osg::observer_ptr<Terrain> > ObserverTerrainList;
 
-        QuickReleaseGLCallback( Terrain* terrain, osg::Camera::DrawCallback* next )
+        QuickReleaseGLCallback( TerrainNode* terrain, osg::Camera::DrawCallback* next )
             : NestingDrawCallback(next), _terrain(terrain) { }
 
         virtual void operator()( osg::RenderInfo& renderInfo ) const

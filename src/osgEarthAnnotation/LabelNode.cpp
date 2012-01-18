@@ -23,6 +23,8 @@
 #include <osgEarthSymbology/Color>
 #include <osgText/Text>
 #include <osg/Depth>
+#include <osgUtil/IntersectionVisitor>
+#include <osgUtil/LineSegmentIntersector>
 
 #define LC "[LabelNode] "
 
@@ -38,7 +40,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const Style&        style ) :
 
-OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
+OrthoNode( mapNode, position ),
 _text    ( text ),
 _geode   ( 0L )
 {
@@ -50,7 +52,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const TextSymbol*   symbol ) :
 
-OrthoNode( mapNode->getMap()->getProfile()->getSRS(), position ),
+OrthoNode( mapNode, position ),
 _text    ( text ),
 _geode   ( 0L )
 {
@@ -63,7 +65,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const Style&        style ) :
 
-OrthoNode( mapNode->getMap()->getProfile()->getSRS(), osg::Vec3d(x,y,0) ),
+OrthoNode( mapNode, osg::Vec3d(x,y,0) ),
 _text    ( text ),
 _geode   ( 0L )
 {
@@ -111,7 +113,7 @@ LabelNode::init( const TextSymbol* symbol )
 void
 LabelNode::setText( const std::string& text )
 {
-    if ( !_dynamic )
+    if ( !_dynamic && getNumParents() > 0 )
     {
         OE_WARN << LC << "Illegal state: cannot change a LabelNode that is not dynamic" << std::endl;
         return;

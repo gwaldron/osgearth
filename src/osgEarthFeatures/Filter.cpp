@@ -37,7 +37,7 @@ FeaturesToNodeFilter::computeLocalizers( const FilterContext& context )
                 osg::Vec3d centroid, centroidECEF;
                 geodExtent.getCentroid( centroid.x(), centroid.y() );
                 geogSRS->transformToECEF( centroid, centroidECEF );
-                _local2world = ECEF::createInverseRefFrame( centroidECEF );
+                _local2world = ECEF::createLocalToWorld( centroidECEF );
                 _world2local.invert( _local2world );
             }
         }

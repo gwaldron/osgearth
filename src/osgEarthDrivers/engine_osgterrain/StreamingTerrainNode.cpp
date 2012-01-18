@@ -16,7 +16,7 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#include "StreamingTerrain"
+#include "StreamingTerrainNode"
 #include "StreamingTile"
 #include "TransparentLayer"
 
@@ -34,16 +34,16 @@
 using namespace osgEarth;
 using namespace OpenThreads;
 
-#define LC "[StreamingTerrain] "
+#define LC "[StreamingTerrainNode] "
 
 //----------------------------------------------------------------------------
 
-StreamingTerrain::StreamingTerrain(const MapFrame& update_mapf, 
-                                   const MapFrame& cull_mapf, 
-                                   OSGTileFactory* tileFactory,
-                                   bool            quickReleaseGLObjects ) :
+StreamingTerrainNode::StreamingTerrainNode(const MapFrame& update_mapf, 
+                                           const MapFrame& cull_mapf, 
+                                           OSGTileFactory* tileFactory,
+                                           bool            quickReleaseGLObjects ) :
 
-Terrain( update_mapf, cull_mapf, tileFactory, quickReleaseGLObjects ),
+TerrainNode( update_mapf, cull_mapf, tileFactory, quickReleaseGLObjects ),
 _numLoadingThreads( 0 )
 {
     _loadingPolicy = tileFactory->getTerrainOptions().loadingPolicy().get();
@@ -55,23 +55,23 @@ _numLoadingThreads( 0 )
     OE_INFO << LC << "Using a total of " << _numLoadingThreads << " loading threads " << std::endl;
 }
 
-StreamingTerrain::~StreamingTerrain()
+StreamingTerrainNode::~StreamingTerrainNode()
 {
     //nop
 }
 
 Tile*
-StreamingTerrain::createTile(const TileKey& key, GeoLocator* locator) const
+StreamingTerrainNode::createTile(const TileKey& key, GeoLocator* locator) const
 {
     return new StreamingTile( key, locator, this->getQuickReleaseGLObjects() );
 }
 
-// This method is called by StreamingTerrain::traverse() in the UPDATE TRAVERSAL.
+// This method is called by StreamingTerrainNode::traverse() in the UPDATE TRAVERSAL.
 void
-StreamingTerrain::refreshFamily(const MapInfo&           mapInfo,
-                                const TileKey&           key,
-                                StreamingTile::Relative* family,
-                                bool                     tileTableLocked )
+StreamingTerrainNode::refreshFamily(const MapInfo&           mapInfo,
+                                    const TileKey&           key,
+                                    StreamingTile::Relative* family,
+                                    bool                     tileTableLocked )
 {
     osgTerrain::TileID tileId = key.getTileId();
 
@@ -193,9 +193,9 @@ StreamingTerrain::refreshFamily(const MapInfo&           mapInfo,
 }
 
 unsigned
-StreamingTerrain::getNumActiveTasks() const
+StreamingTerrainNode::getNumActiveTasks() const
 {
-    ScopedLock<Mutex> lock(const_cast<StreamingTerrain*>(this)->_taskServiceMutex );
+    ScopedLock<Mutex> lock(const_cast<StreamingTerrainNode*>(this)->_taskServiceMutex );
 
     unsigned int total = 0;
     for (TaskServiceMap::const_iterator itr = _taskServices.begin(); itr != _taskServices.end(); ++itr)
@@ -206,7 +206,7 @@ StreamingTerrain::getNumActiveTasks() const
 }
 
 void
-StreamingTerrain::updateTraversal( osg::NodeVisitor& nv )
+StreamingTerrainNode::updateTraversal( osg::NodeVisitor& nv )
 {
     // this stamp keeps track of when requests are dispatched. If a request's stamp gets too
     // old, it is considered "expired" and subject to cancelation
@@ -241,7 +241,7 @@ StreamingTerrain::updateTraversal( osg::NodeVisitor& nv )
 }
 
 TaskService*
-StreamingTerrain::createTaskService( const std::string& name, int id, int numThreads )
+StreamingTerrainNode::createTaskService( const std::string& name, int id, int numThreads )
 {
     ScopedLock<Mutex> lock( _taskServiceMutex );
 
@@ -257,7 +257,7 @@ StreamingTerrain::createTaskService( const std::string& name, int id, int numThr
 }
 
 TaskService*
-StreamingTerrain::getTaskService(int id)
+StreamingTerrainNode::getTaskService(int id)
 {
     ScopedLock<Mutex> lock( _taskServiceMutex );
     TaskServiceMap::iterator itr = _taskServices.find(id);
@@ -272,7 +272,7 @@ StreamingTerrain::getTaskService(int id)
 #define TILE_GENERATION_TASK_SERVICE_ID 10000
 
 TaskService*
-StreamingTerrain::getElevationTaskService()
+StreamingTerrainNode::getElevationTaskService()
 {
     TaskService* service = getTaskService( ELEVATION_TASK_SERVICE_ID );
     if (!service)
@@ -284,7 +284,7 @@ StreamingTerrain::getElevationTaskService()
 
 
 TaskService*
-StreamingTerrain::getImageryTaskService(int layerId)
+StreamingTerrainNode::getImageryTaskService(int layerId)
 {
     TaskService* service = getTaskService( layerId );
     if (!service)
@@ -299,7 +299,7 @@ StreamingTerrain::getImageryTaskService(int layerId)
 }
 
 TaskService*
-StreamingTerrain::getTileGenerationTaskService()
+StreamingTerrainNode::getTileGenerationTaskService()
 {
     TaskService* service = getTaskService( TILE_GENERATION_TASK_SERVICE_ID );
     if (!service)
@@ -314,7 +314,7 @@ StreamingTerrain::getTileGenerationTaskService()
 }
 
 void
-StreamingTerrain::updateTaskServiceThreads( const MapFrame& mapf )
+StreamingTerrainNode::updateTaskServiceThreads( const MapFrame& mapf )
 {
     //Get the maximum elevation weight
     float elevationWeight = 0.0f;

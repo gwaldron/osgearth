@@ -71,10 +71,8 @@ namespace osgEarth { namespace QtGui
   };
 } }
 
-const std::string AnnotationListWidget::DEFAULT_STYLESHEET = "#oeFrameContainer, #oeFrameContainer * { background-color: rgba(255, 255, 255, 100%) } #oeItemHeader, #oeItemHeader * { background-color: grey; color: white; }";
-
 AnnotationListWidget::AnnotationListWidget(DataManager* dm)
-  : _manager(dm), _updating(0), _showIcon(":/images/plus.png"), _hideIcon(":/images/minus.png")
+  : _manager(dm), _updating(0)
 {
   initialize();
 
@@ -99,87 +97,13 @@ void AnnotationListWidget::setActiveViews(const ViewVector& views)
   _views.insert(_views.end(), views.begin(), views.end());
 }
 
-void AnnotationListWidget::resetStyleSheet()
-{
-  setStyleSheet(tr(DEFAULT_STYLESHEET.c_str()));
-}
-
 void AnnotationListWidget::initialize()
 {
-  // object name for custom stylesheets
-  setObjectName("oeFrameContainer");
-
-  // create the primary vertical layout
-  QVBoxLayout* primaryLayout = new QVBoxLayout;
-	primaryLayout->setSpacing(0);
-	primaryLayout->setContentsMargins(0, 0, 0, 0);
-  setLayout(primaryLayout);
-
-  // create parent widget to hold list and header
-  _listGroup = new QWidget;
-  QVBoxLayout* listGroupLayout = new QVBoxLayout;
-  listGroupLayout->setSpacing(0);
-  listGroupLayout->setContentsMargins(0, 0, 0, 0);
-  _listGroup->setLayout(listGroupLayout);
-
-  // create list header
-  QFrame* listHeader = new QFrame;
-  listHeader->setFrameStyle(QFrame::Box | QFrame::Plain);
-  listHeader->setLineWidth(1);
-  listHeader->setMaximumHeight(20);
-
-  QHBoxLayout* listHeaderLayout = new QHBoxLayout;
-  listHeaderLayout->setSpacing(4);
-  listHeaderLayout->setContentsMargins(2, 2, 2, 2);
-  listHeader->setLayout(listHeaderLayout);
-  listHeader->setObjectName("oeItemHeader");
-
-  listHeaderLayout->addWidget(new QLabel(tr("Annotations")));
-  listHeaderLayout->addStretch();
-
-  _listHideButton = new QPushButton(_hideIcon, tr(""));
-  _listHideButton->setFlat(true);
-  _listHideButton->setMaximumSize(16, 16);
-  listHeaderLayout->addWidget(_listHideButton);
-
-  listGroupLayout->addWidget(listHeader);
-
   //create list
   _annoList = new QListWidget();
   _annoList->setSelectionMode(QAbstractItemView::ExtendedSelection);
-  listGroupLayout->addWidget(_annoList);
-
-  primaryLayout->addWidget(_listGroup);
-
-  // create parent widget to hold details and header
-  _detailsGroup = new QWidget;
-  _detailsGroup->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-  QVBoxLayout* detailsGroupLayout = new QVBoxLayout;
-  detailsGroupLayout->setSpacing(0);
-  detailsGroupLayout->setContentsMargins(0, 0, 0, 0);
-  _detailsGroup->setLayout(detailsGroupLayout);
-
-  //create details header
-  QFrame* detailsHeader = new QFrame;
-  detailsHeader->setFrameStyle(QFrame::Box | QFrame::Plain);
-  detailsHeader->setLineWidth(1);
-  detailsHeader->setMaximumHeight(20);
-
-  QHBoxLayout* detailsHeaderLayout = new QHBoxLayout;
-  detailsHeaderLayout->setSpacing(4);
-  detailsHeaderLayout->setContentsMargins(2, 2, 2, 2);
-  detailsHeader->setLayout(detailsHeaderLayout);
-  detailsHeader->setObjectName("oeItemHeader");
-
-  detailsHeaderLayout->addWidget(new QLabel(tr("Details")));
-  detailsHeaderLayout->addStretch();
-
-  _detailsHideButton = new QPushButton(_hideIcon, tr(""));
-  _detailsHideButton->setFlat(true);
-  _detailsHideButton->setMaximumSize(16, 16);
-  detailsHeaderLayout->addWidget(_detailsHideButton);
-
-  detailsGroupLayout->addWidget(detailsHeader);
+  setPrimaryWidget(_annoList);
+  setPrimaryTitle("Annotations");
 
   //create details panel
   _detailsBox = new QFrame;
@@ -207,27 +131,14 @@ void AnnotationListWidget::initialize()
   _descriptionField->setIndent(6);
   detailsLayout->addWidget(_descriptionField, 4, 0, 1, 2, Qt::AlignLeft);
 
-  detailsGroupLayout->addWidget(_detailsBox);
-  primaryLayout->addWidget(_detailsGroup);
-
-  //create widget with a stretch child for layout purposes (not ideal)
-  _stretchBox = new QWidget;
-  QVBoxLayout* stretchLayout = new QVBoxLayout;
-  _stretchBox->setLayout(stretchLayout);
-  stretchLayout->addStretch();
-  primaryLayout->addWidget(_stretchBox);
-  _stretchBox->setVisible(false);
-
-  //connect show/hide button click events
-  connect(_listHideButton, SIGNAL(clicked(bool)), this, SLOT(onListHideClicked(bool)));
-  connect(_detailsHideButton, SIGNAL(clicked(bool)), this, SLOT(onDetailsHideClicked(bool)));
+  setSecondaryWidget(_detailsBox);
+  setSecondaryTitle("Details");
 
   //connect list events
   connect(_annoList, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(onItemDoubleClicked(QListWidgetItem*)));
   connect(_annoList, SIGNAL(itemChanged(QListWidgetItem*)), this, SLOT(onItemChanged(QListWidgetItem*)));
   connect(_annoList, SIGNAL(itemSelectionChanged()), this, SLOT(onListSelectionChanged()));
 
-  resetStyleSheet();
   refresh();
 }
 
@@ -268,26 +179,11 @@ void AnnotationListWidget::refresh()
 
     _nameField->setText(tr(annoData ? annoData->getName().c_str() : "-----"));
     _priorityField->setText(annoData ? QString::number(annoData->getPriority()) : tr("-----"));
-    _viewpointField->setText(tr(annoData ? annoData->getViewpoint()->toString().c_str() : "-----"));
+    _viewpointField->setText(tr(annoData && annoData->getViewpoint() ? annoData->getViewpoint()->toString().c_str() : "-----"));
     _descriptionField->setText(tr(annoData ? annoData->getDescription().c_str() : ""));
   }
 
   _updating--;
-}
-
-void AnnotationListWidget::onListHideClicked(bool checked)
-{
-  bool show = _annoList->isHidden();
-  _listHideButton->setIcon(show ? _hideIcon : _showIcon);
-  _annoList->setHidden(!show);
-  _stretchBox->setVisible(!show);
-}
-
-void AnnotationListWidget::onDetailsHideClicked(bool checked)
-{
-  bool show = _detailsBox->isHidden();
-  _detailsHideButton->setIcon(show ? _hideIcon : _showIcon);
-  _detailsBox->setHidden(!show);
 }
 
 void AnnotationListWidget::onMapChanged()

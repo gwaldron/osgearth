@@ -19,19 +19,19 @@
 
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
-#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarthUtil/Controls>
-#include <osgEarthUtil/GeodeticGraticule>
+#include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/Formatters>
 
+#include <osgEarthUtil/GeodeticGraticule>
+#include <osgEarthUtil/MGRSGraticule>
+#include <osgEarthUtil/UTMGraticule>
+
 using namespace osgEarth::Util;
-using namespace osgEarth::Util::Controls;
-using namespace osgEarth::Symbology;
 
 int
 usage( const std::string& msg )
@@ -53,6 +53,11 @@ main(int argc, char** argv)
     osg::ArgumentParser arguments(&argc,argv);
     osgViewer::Viewer viewer(arguments);
 
+    // parse command line:
+    bool isUTM = arguments.read("--utm");
+    bool isMGRS = arguments.read("--mgrs");
+    bool isGeodetic = !isUTM && !isMGRS;
+
     // load the .earth file from the command line.
     MapNode* mapNode = MapNode::load( arguments );
     if ( !mapNode )
@@ -65,9 +70,32 @@ main(int argc, char** argv)
     osg::Group* root = new osg::Group();
     root->addChild( mapNode );
 
-    // create a graticule and add it:
-    GeodeticGraticule* grat = new GeodeticGraticule( mapNode );
-    root->addChild( grat );
+    Formatter* formatter = 0L;
+    if ( isUTM )
+    {
+        UTMGraticule* gr = new UTMGraticule( mapNode );
+        root->addChild( gr );
+        formatter = new MGRSFormatter();
+    }
+    else if ( isMGRS )
+    {
+        MGRSGraticule* gr = new MGRSGraticule( mapNode );
+        root->addChild( gr );
+        formatter = new MGRSFormatter();
+    }
+    else // if ( isGeodetic )
+    {
+        GeodeticGraticule* gr = new GeodeticGraticule( mapNode );
+        root->addChild( gr );
+        formatter = new LatLongFormatter();
+    }
+
+    // mouse coordinate readout:
+    LabelControl* readout = new LabelControl();
+    ControlCanvas::get( &viewer, true )->addControl( readout );
+    MouseCoordsTool* tool = new MouseCoordsTool( mapNode );
+    tool->addCallback( new MouseCoordsLabelCallback(readout, formatter) );
+    viewer.addEventHandler( tool );
 
     // finalize setup and run.
     viewer.setSceneData( root );

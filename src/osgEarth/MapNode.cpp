@@ -127,7 +127,7 @@ public:
 MapNode*
 MapNode::load(osg::ArgumentParser& args)
 {
-    for( unsigned i=1; i<args.argc(); ++i )
+    for( int i=1; i<args.argc(); ++i )
     {
         if ( args[i] && endsWith(args[i], ".earth") )
         {
@@ -350,6 +350,12 @@ const SpatialReference*
 MapNode::getMapSRS() const
 {
     return getMap()->getProfile()->getSRS();
+}
+
+Terrain*
+MapNode::getTerrain()
+{
+    return getTerrainEngine()->getTerrain();
 }
 
 TerrainEngineNode*

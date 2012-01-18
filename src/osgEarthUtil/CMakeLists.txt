@@ -22,6 +22,8 @@ SET(LIB_PUBLIC_HEADERS
     GeodeticGraticule
 	LineOfSight
 	MeasureTool
+	MGRSGraticule
+	MouseCoordsTool
 	NearFarGroup	
     ObjectPlacer
     ObjectLocator
@@ -32,6 +34,7 @@ SET(LIB_PUBLIC_HEADERS
     StarData
     TMS
     TMSPackager
+    UTMGraticule
 	WFS
     WMS
 )
@@ -48,6 +51,8 @@ SET(LIB_COMMON_FILES
     GeodeticGraticule.cpp
 	LineOfSight.cpp
 	MeasureTool.cpp
+	MGRSGraticule.cpp
+	MouseCoordsTool.cpp
 	NearFarGroup.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
@@ -57,6 +62,7 @@ SET(LIB_COMMON_FILES
     SkyNode.cpp
     TMS.cpp
     TMSPackager.cpp
+    UTMGraticule.cpp
 	WFS.cpp
     WMS.cpp
 )

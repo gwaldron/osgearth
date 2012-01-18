@@ -17,8 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "OSGTileFactory"
-#include "Terrain"
-#include "StreamingTerrain"
+#include "TerrainNode"
+#include "StreamingTerrainNode"
 #include "FileLocationCallback"
 #include "TransparentLayer"
 
@@ -119,7 +119,7 @@ OSGTileFactory::getTransformFromExtents(double minX, double minY, double maxX, d
 }
 
 osg::Node*
-OSGTileFactory::createSubTiles( const MapFrame& mapf, Terrain* terrain, const TileKey& key, bool populateLayers )
+OSGTileFactory::createSubTiles( const MapFrame& mapf, TerrainNode* terrain, const TileKey& key, bool populateLayers )
 {
     TileKey k0 = key.createChildKey(0);
     TileKey k1 = key.createChildKey(1);
@@ -356,7 +356,7 @@ OSGTileFactory::createPlaceholderHeightfieldLayer(osg::HeightField* ancestorHF,
 
 osg::Node*
 OSGTileFactory::createTile(const MapFrame&  mapf, 
-                           Terrain*         terrain, 
+                           TerrainNode*         terrain, 
                            const TileKey&   key, 
                            bool             populateLayers, 
                            bool             wrapInPagedLOD, 
@@ -374,7 +374,7 @@ OSGTileFactory::createTile(const MapFrame&  mapf,
 
         return createPlaceholderTile(
             mapf, 
-            static_cast<StreamingTerrain*>(terrain),
+            static_cast<StreamingTerrainNode*>(terrain),
             key );
     }
 }
@@ -383,7 +383,7 @@ OSGTileFactory::createTile(const MapFrame&  mapf,
 
 osg::Node*
 OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
-                                      StreamingTerrain* terrain,
+                                      StreamingTerrainNode* terrain,
                                       const TileKey&    key )
 {
     // Start out by finding the nearest registered ancestor tile, since the placeholder is
@@ -524,7 +524,7 @@ namespace
 
 osg::Node*
 OSGTileFactory::createPopulatedTile(const MapFrame&  mapf, 
-                                    Terrain*         terrain, 
+                                    TerrainNode*         terrain, 
                                     const TileKey&   key, 
                                     bool             wrapInPagedLOD, 
                                     bool             fallback, 

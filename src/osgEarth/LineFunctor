@@ -616,21 +616,21 @@ namespace osgEarth
         // simulate triangles
         void operator()(GLuint i0, GLuint i1, GLuint i2)
         {
-            line(i0,i1);
-            line(i1,i2);
-            line(i2,i1);
+            T::line(i0,i1);
+            T::line(i1,i2);
+            T::line(i2,i1);
         }
         void operator()(GLushort i0, GLushort i1, GLushort i2)
         {
-            line(i0,i1);
-            line(i1,i2);
-            line(i2,i1);
+            T::line(i0,i1);
+            T::line(i1,i2);
+            T::line(i2,i1);
         }
         void operator()(GLubyte i0, GLubyte i1, GLubyte i2)
         {
-            line(i0,i1);
-            line(i1,i2);
-            line(i2,i1);
+            T::line(i0,i1);
+            T::line(i1,i2);
+            T::line(i2,i1);
         }
 
 
@@ -693,7 +693,7 @@ namespace osgEarth
                     for(GLsizei i=1;i<count;i+=2,pos+=2)
                     {
                         //this->operator()(pos,pos+1);
-                        line(pos,pos+1);
+                        T::line(pos,pos+1);
                     }
                     break;
                 }
@@ -702,7 +702,7 @@ namespace osgEarth
                     unsigned pos=first;
                     for(GLsizei i=1;i<count;i+=1,pos+=1)
                     {
-                        line(pos,pos+1);
+                        T::line(pos,pos+1);
                     }
                     break;
                 }
@@ -711,11 +711,11 @@ namespace osgEarth
                     unsigned pos=first;
                     for(GLsizei i=1; i<count; i+=1, pos+=1)
                     {
-                        line(pos,pos+1);
+                        T::line(pos,pos+1);
                     }
                     if (count > 0 )
                     {
-                        line(pos,first);
+                        T::line(pos,first);
                     }
                     break;
                 }
@@ -790,7 +790,7 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=2,iptr+=2)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
                     break;
                 }
@@ -800,7 +800,7 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=1,++iptr)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
                     break;
                 }
@@ -810,9 +810,9 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=1,++iptr)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
-                    line(*iptr,first);
+                    T::line(*iptr,first);
                     break;
                 }
 
@@ -888,7 +888,7 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=2,iptr+=2)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
                     break;
                 }
@@ -898,7 +898,7 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=1,++iptr)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
                     break;
                 }
@@ -908,9 +908,9 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=1,++iptr)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
-                    line(*iptr,first);
+                    T::line(*iptr,first);
                     break;
                 }
 
@@ -986,7 +986,7 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=2,iptr+=2)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
                     break;
                 }
@@ -996,7 +996,7 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=1,++iptr)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
                     break;
                 }
@@ -1006,9 +1006,9 @@ namespace osgEarth
                     Index first = *iptr;
                     for(GLsizei i=1;i<count;i+=1,++iptr)
                     {
-                        line(*iptr,*(iptr+1));
+                        T::line(*iptr,*(iptr+1));
                     }
-                    line(*iptr,first);
+                    T::line(*iptr,first);
                     break;
                 }
 

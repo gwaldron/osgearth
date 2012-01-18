@@ -48,8 +48,19 @@ _filters( filters )
         OGR_SCOPED_LOCK;
 
         std::string expr;
-        std::string from = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ));
-        from = std::string("'") + from + std::string("'");
+        std::string from = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ));        
+        //If the from field contains a space, quote it.
+        if (from.find(" ") != std::string::npos)
+        {
+            std::string driverName = OGR_Dr_GetName( OGR_DS_GetDriver( dsHandle ) );
+            std::string delim = "'";  //Use single quotes by default
+            if (driverName.compare("PostgreSQL") == 0)
+            {
+                //PostgreSQL uses double quotes as identifier delimeters
+                delim = "\"";
+            }            
+            from = delim + from + delim;            
+        }
 
         if ( query.expression().isSet() )
         {

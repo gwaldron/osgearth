@@ -27,9 +27,8 @@ using namespace osgEarth;
 
 
 osg::Matrixd
-ECEF::createInverseRefFrame( const osg::Vec3d& input )
+ECEF::createLocalToWorld( const osg::Vec3d& input )
 {
-    // convert to geocentric first:
     double X = input.x(), Y = input.y(), Z = input.z();
 
     osg::Matrixd localToWorld;

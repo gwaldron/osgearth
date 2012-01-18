@@ -25,7 +25,7 @@ using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Annotation;
 
-class LineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainEngineNode::TerrainChangedCallback
+class LineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainCallback
 {
 public:
     LineOfSightNodeTerrainChangedCallback( LineOfSightNode* los ):
@@ -33,7 +33,7 @@ public:
     {
     }
 
-    virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain)
+    virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&)
     {
         _los->terrainChanged( tileKey, terrain );
     }
@@ -116,13 +116,13 @@ void
 LineOfSightNode::subscribeToTerrain()
 {
     _terrainChangedCallback = new LineOfSightNodeTerrainChangedCallback( this );
-    _mapNode->getTerrainEngine()->addTerrainChangedCallback( _terrainChangedCallback.get() );        
+    _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );        
 }
 
 LineOfSightNode::~LineOfSightNode()
 {
     //Unsubscribe to the terrain callback
-    _mapNode->getTerrainEngine()->removeTerrainChangedCallback( _terrainChangedCallback.get() );
+    _mapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
 }
 
 void
@@ -440,24 +440,30 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
     {
         LineOfSightNode* los = static_cast<LineOfSightNode*>(node);
 
-        osg::Vec3d start = getNodeCenter( _startNode );
-        osg::Vec3d end   = getNodeCenter( _endNode );
+        if (_startNode.valid())
+        {
+            osg::Vec3d start = getNodeCenter( _startNode );
 
-        //Convert these to mappoints since that is what LOS expects
-        los->getMapNode()->getMap()->worldPointToMapPoint( start, start );
-        los->getMapNode()->getMap()->worldPointToMapPoint( end, end );
+            //Convert to mappoint since that is what LOS expects
+            los->getMapNode()->getMap()->worldPointToMapPoint( start, start );
+            los->setStart( start );
+        }
 
-        los->setStart( start );
-        los->setEnd( end );
+        if (_endNode.valid())
+        {
+            osg::Vec3d end   = getNodeCenter( _endNode );
 
-
+            //Convert to mappoint since that is what LOS expects
+            los->getMapNode()->getMap()->worldPointToMapPoint( end, end );
+            los->setEnd( end );
+        }
     }
     traverse(node, nv);
 }
 
 /**********************************************************************/
 
-class RadialLineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainEngineNode::TerrainChangedCallback
+class RadialLineOfSightNodeTerrainChangedCallback : public osgEarth::TerrainCallback
 {
 public:
     RadialLineOfSightNodeTerrainChangedCallback( RadialLineOfSightNode* los ):
@@ -465,7 +471,7 @@ public:
     {
     }
 
-    virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain)
+    virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext& )
     {
         _los->terrainChanged( tileKey, terrain );
     }
@@ -488,13 +494,13 @@ _altitudeMode( ALTITUDE_ABSOLUTE )
 {
     compute(_mapNode.get());
     _terrainChangedCallback = new RadialLineOfSightNodeTerrainChangedCallback( this );
-    _mapNode->getTerrainEngine()->addTerrainChangedCallback( _terrainChangedCallback.get() );        
+    _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );        
     setNumChildrenRequiringUpdateTraversal( 1 );
 }
 
 RadialLineOfSightNode::~RadialLineOfSightNode()
 {    
-    _mapNode->getTerrainEngine()->removeTerrainChangedCallback( _terrainChangedCallback.get() );
+    _mapNode->getTerrain()->removeTerrainCallback( _terrainChangedCallback.get() );
 }
 
 double
@@ -527,6 +533,14 @@ void RadialLineOfSightNode::setNumSpokes(int numSpokes)
         compute(_mapNode.get());
     }
 }
+
+const osg::Vec3d&
+RadialLineOfSightNode::getCenterWorld() const
+{
+    return _centerWorld;
+}
+
+
 
 const osg::Vec3d&
 RadialLineOfSightNode::getCenter() const
@@ -576,18 +590,17 @@ RadialLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::No
 void
 RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 {    
-    //Get the center point in geocentric
-    osg::Vec3d centerWorld;
+    //Get the center point in geocentric    
     if (_altitudeMode == ALTITUDE_ABSOLUTE)
     {
-        _mapNode->getMap()->mapPointToWorldPoint( _center, centerWorld );
+        _mapNode->getMap()->mapPointToWorldPoint( _center, _centerWorld );
     }
     else
     {
-        getRelativeWorld(_center.x(), _center.y(), _center.z(), _mapNode.get(), centerWorld );
+        getRelativeWorld(_center.x(), _center.y(), _center.z(), _mapNode.get(), _centerWorld );
     }
 
-    osg::Vec3d up = centerWorld;
+    osg::Vec3d up = osg::Vec3d(_centerWorld);
     up.normalize();
 
     //Get the "side" vector
@@ -618,8 +631,8 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
         double angle = delta * (double)i;
         osg::Quat quat(angle, up );
         osg::Vec3d spoke = quat * (side * _radius);
-        osg::Vec3d end = centerWorld + spoke;        
-        los.addLOS( centerWorld, end);      
+        osg::Vec3d end = _centerWorld + spoke;        
+        los.addLOS( _centerWorld, end);      
     }
 
     los.computeIntersections(node);
@@ -639,8 +652,8 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 
         if (hasLOS)
         {
-            verts->push_back( start - centerWorld );
-            verts->push_back( end - centerWorld );
+            verts->push_back( start - _centerWorld );
+            verts->push_back( end - _centerWorld );
             colors->push_back( _goodColor );
             colors->push_back( _goodColor );
         }
@@ -648,20 +661,20 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
         {
             if (_displayMode == MODE_SPLIT)
             {
-                verts->push_back( start - centerWorld );
-                verts->push_back( hit - centerWorld  );
+                verts->push_back( start - _centerWorld );
+                verts->push_back( hit - _centerWorld  );
                 colors->push_back( _goodColor );
                 colors->push_back( _goodColor );
 
-                verts->push_back( hit - centerWorld );
-                verts->push_back( end - centerWorld );
+                verts->push_back( hit - _centerWorld );
+                verts->push_back( end - _centerWorld );
                 colors->push_back( _badColor );
                 colors->push_back( _badColor );
             }
             else if (_displayMode == MODE_SINGLE)
             {
-                verts->push_back( start - centerWorld );
-                verts->push_back( end - centerWorld );
+                verts->push_back( start - _centerWorld );
+                verts->push_back( end - _centerWorld );
                 colors->push_back( _badColor );                                
                 colors->push_back( _badColor );                
             }
@@ -670,8 +683,8 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 
         if (i > 0)
         {
-            verts->push_back( end - centerWorld );
-            verts->push_back( previousEnd - centerWorld );
+            verts->push_back( end - _centerWorld );
+            verts->push_back( previousEnd - _centerWorld );
             colors->push_back( _outlineColor );
             colors->push_back( _outlineColor );
         }
@@ -685,8 +698,8 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 
 
     //Add the last outside of circle
-    verts->push_back( firstEnd - centerWorld );
-    verts->push_back( previousEnd - centerWorld );
+    verts->push_back( firstEnd - _centerWorld );
+    verts->push_back( previousEnd - _centerWorld );
     colors->push_back( osg::Vec4(1,1,1,1));
     colors->push_back( osg::Vec4(1,1,1,1));
 
@@ -698,7 +711,7 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
     getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
     osg::MatrixTransform* mt = new osg::MatrixTransform;
-    mt->setMatrix(osg::Matrixd::translate(centerWorld));
+    mt->setMatrix(osg::Matrixd::translate(_centerWorld));
     mt->addChild(geode);
     
     if (!backgroundThread)
@@ -711,6 +724,11 @@ RadialLineOfSightNode::compute(osg::Node* node, bool backgroundThread)
     {
         _pendingNode = mt;
     }
+
+    for( ChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
+    {
+        i->get()->onChanged();
+    }	
 }
 
 void
@@ -1053,7 +1071,13 @@ public:
                       * command.getLocalToWorld() * _worldToLocal;
 
                   osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
+
                   osg::Vec3d location = getLocation( newMatrix );
+                  if (_los->getAltitudeMode() == ALTITUDE_RELATIVE)
+                  {
+                      double z = _los->getCenter().z();
+                      location = osg::Vec3d(location.x(), location.y(), z);
+                  }                  
                   _los->setCenter( location );
                   return true;
               }
@@ -1111,7 +1135,7 @@ RadialLineOfSightEditor::updateDraggers()
     const osg::EllipsoidModel* em = _los->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
 
     osg::Matrixd matrix;
-    osg::Vec3d center = _los->getCenter();        
-    em->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(center.y()), osg::DegreesToRadians(center.x()), center.z(), matrix);    
+    osg::Vec3d center = _los->getCenterWorld();             
+    em->computeLocalToWorldTransformFromXYZ(center.x(), center.y(), center.z(), matrix);
     _dragger->setMatrix(matrix);        
 }

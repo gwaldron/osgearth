@@ -144,8 +144,6 @@ namespace osgEarth { namespace Symbology
         void init();
     };
 
-
-
 } } // namespace osgEarth::Symbology
 
 #endif // OSGEARTHSYMBOLOGY_EXPRESSION_H

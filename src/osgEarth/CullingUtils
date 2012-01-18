@@ -33,6 +33,13 @@ namespace osgEarth
          * only work in absolute world space.
          */
         static osg::NodeCallback* create( osg::Node* node, const osg::Vec3d& ecefControlPoint );
+
+        /**
+         * Creates a cluster culling callback and installs it on the node. If the node is
+         * a transform, it will create a group above the transform and install the callback
+         * on that group instead.
+         */
+        static osg::Node* createAndInstall( osg::Node* node, const osg::Vec3d& ecefControlPoint );
     };
 }
 

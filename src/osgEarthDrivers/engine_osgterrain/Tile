@@ -28,7 +28,7 @@
 #include <osgEarth/TerrainOptions>
 #include <osgEarth/Map>
 #include <osgEarth/ThreadingUtils>
-#include "Terrain"
+#include "TerrainNode"
 #include "Tile"
 #include <list>
 #include <queue>
@@ -80,11 +80,11 @@ public:
     const TileKey& getKey() const { return _key; }
 
     /** Gets the terrain object to which this tile belongs. */
-    class Terrain* getTerrain() { return _terrain.get(); }
-    const class Terrain* getTerrain() const { return _terrain.get(); }
+    class TerrainNode* getTerrain() { return _terrain.get(); }
+    const class TerrainNode* getTerrain() const { return _terrain.get(); }
 
     // attaches this tile to a terrain and registers it.
-    void attachToTerrain( Terrain* terrain );
+    void attachToTerrain( TerrainNode* terrain );
 
     /** intializes the tile and clears its dirty flag */
     void init();
@@ -153,7 +153,7 @@ protected:
     TileKey                        _key;
     osgTerrain::TileID             _tileId;
     osg::ref_ptr<GeoLocator>       _locator;
-    osg::observer_ptr<Terrain>     _terrain;
+    osg::observer_ptr<TerrainNode> _terrain;
     MaskLayerVector                _masks;
 
     Threading::ReadWriteMutex _tileLayersMutex;

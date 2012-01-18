@@ -55,7 +55,13 @@ namespace osgEarth { namespace Symbology
         /** RGBA constructor */
         Color( unsigned rgba );
 
-        /** Construct a color from an HTML string (e.g., "#FF0004F") */
+        /**
+         * Construct a color from a hex string in one of the following formats, (with or
+         * without the component order reversed):
+         *   RRGGBB or RRGGBBAA
+         *   #RRGGBB or #RRGGBBAA (HTML style - preceding hash)
+         *   0xRRGGBB or 0xRRGGBBAA (C style - preceding "0x")
+         */
         Color( const std::string& html, Format format =RGBA );
 
         /** Encode the color at an HTML color string (e.g., "#FF004F78") */
@@ -84,9 +90,12 @@ namespace osgEarth { namespace Symbology
         static Color Fuchsia;
         static Color Purple;
         static Color Orange;
-        static Color Cyan;
 
+        // others:
+        static Color Cyan;
         static Color DarkGray;
+        static Color Magenta;
+        static Color Brown;
     };
 
 } } // namespace osgEarth::Symbology

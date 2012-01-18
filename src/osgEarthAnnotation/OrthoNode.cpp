@@ -23,6 +23,7 @@
 #include <osgEarthSymbology/Color>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/Utils>
+#include <osgEarth/MapNode>
 #include <osgText/Text>
 #include <osg/ComputeBoundsVisitor>
 #include <osgUtil/IntersectionVisitor>
@@ -31,18 +32,32 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
+OrthoNode::OrthoNode(MapNode*          mapNode,
+                     const osg::Vec3d& pos ) :
+
+PositionedAnnotationNode( mapNode ),
+_mapSRS                 ( mapNode ? mapNode->getMapSRS() : 0L ),
+_horizonCulling         ( false )
+{
+    init();
+    if ( _mapSRS.valid() )
+    {
+        setHorizonCulling( true );
+    }
+    setPosition( pos );
+}
+
 OrthoNode::OrthoNode(const SpatialReference* mapSRS,
-                     const osg::Vec3d&       pos ) :
+                     const osg::Vec3d&       pos) :
+
 _mapSRS        ( mapSRS ),
 _horizonCulling( false )
 {
     init();
-
-    if ( mapSRS )
+    if ( _mapSRS.valid() )
     {
         setHorizonCulling( true );
     }
-
     setPosition( pos );
 }
 
@@ -145,13 +160,14 @@ OrthoNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
     // update the transform:
     if ( !_mapSRS.valid() )
     {
-        _autoxform->setPosition( mapPos );
-        _matxform->setMatrix( osg::Matrix::translate(pos) );
+        _autoxform->setPosition( mapPos + _localOffset );
+        _matxform->setMatrix( osg::Matrix::translate(mapPos + _localOffset) );
     }
     else
     {
         osg::Matrixd local2world;
         _mapSRS->createLocal2World( mapPos, local2world );
+        local2world.preMult( osg::Matrix::translate(_localOffset) );
         _autoxform->setPosition( local2world.getTrans() );
         _matxform->setMatrix( local2world );
         
@@ -159,19 +175,34 @@ OrthoNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
             culler->_world = local2world.getTrans();
     }
 
+    _mapPosition = mapPos;
+
     return true;
 }
 
 osg::Vec3d
 OrthoNode::getPosition() const
 {
-    return getPosition( 0L );
+    return _mapPosition;
+    //return getPosition( 0L );
 }
 
 osg::Vec3d
 OrthoNode::getPosition( const SpatialReference* srs ) const
 {
-    osg::Vec3d world = _autoxform->getPosition();
+    if ( _mapSRS.valid() && srs && !_mapSRS->isEquivalentTo( srs ) )
+    {
+        osg::Vec3d output;
+        _mapSRS->transform( _mapPosition, srs, output );
+        return output;
+    }
+    else
+    {
+        return _mapPosition;
+    }
+
+#if 0
+    osg::Vec3d world = _position; //_autoxform->getPosition();
     if ( _mapSRS.valid() )
     {
         osg::Vec3d output = world;
@@ -187,6 +218,20 @@ OrthoNode::getPosition( const SpatialReference* srs ) const
     {
         return world;
     }
+#endif
+}
+
+void
+OrthoNode::setLocalOffset( const osg::Vec3d& offset )
+{
+    _localOffset = offset;
+    setPosition( _mapPosition );
+}
+
+const osg::Vec3d&
+OrthoNode::getLocalOffset() const
+{
+    return _localOffset;
 }
 
 void
@@ -207,3 +252,41 @@ OrthoNode::setHorizonCulling( bool value )
         }
     }
 }
+
+void
+OrthoNode::reclamp( const TileKey& key, osg::Node* tile )
+{
+    // first verify that the label position intersects the tile:
+    osg::Vec3d mapPos = getPosition();
+    if ( !key.getExtent().contains( mapPos.x(), mapPos.y() ) )
+        return;
+
+    // next perform an intersection test
+    osg::Vec3d start(mapPos.x(), mapPos.y(),  50000.0);
+    osg::Vec3d end  (mapPos.x(), mapPos.y(), -50000.0);
+
+    if ( _mapNode->isGeocentric() )
+    {
+        getMapSRS()->transformToECEF(start, start);
+        getMapSRS()->transformToECEF(end, end);
+    }
+
+    osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
+    osgUtil::IntersectionVisitor iv( lsi );
+    tile->accept( iv );
+
+    osgUtil::LineSegmentIntersector::Intersections& results = lsi->getIntersections();
+    if ( !results.empty() )
+    {
+        const osgUtil::LineSegmentIntersector::Intersection& firstHit = *results.begin();
+        mapPos = firstHit.getWorldIntersectPoint();
+
+        if ( _mapNode->isGeocentric() )
+        {
+            getMapSRS()->transformFromECEF(mapPos, mapPos);
+        }
+
+        setPosition(mapPos);
+    }
+}
+

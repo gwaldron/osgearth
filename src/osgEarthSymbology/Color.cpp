@@ -91,7 +91,9 @@ Color Color::Purple   ( 0x800080ff );
 Color Color::Orange   ( 0xffa500ff );
 
 Color Color::DarkGray ( 0x404040ff );
+Color Color::Magenta  ( 0xc000c0ff );
 Color Color::Cyan     ( 0x00ffffff );
+Color Color::Brown    ( 0xaa5500ff );
 
 Color::Color( unsigned rgba )
 {
@@ -108,23 +110,30 @@ osg::Vec4f( rhs )
     (*this)[3] = a;
 }
 
-/** Parses an HTML color ("#rrggbb" or "#rrggbbaa") into an OSG color. */
-Color::Color( const std::string& html, Format format )
+/** Parses a hex color string ("#rrggbb", "#rrggbbaa", "0xrrggbb", etc.) into an OSG color. */
+Color::Color( const std::string& input, Format format )
 {
-    std::string t = html;
+    std::string t = input;
     std::transform( t.begin(), t.end(), t.begin(), ::tolower );
     osg::Vec4ub c(0,0,0,255);
-    if ( t.length() >= 7 ) {
-        c.r() |= t[1]<='9' ? (t[1]-'0')<<4 : (10+(t[1]-'a'))<<4;
-        c.r() |= t[2]<='9' ? (t[2]-'0')    : (10+(t[2]-'a'));
-        c.g() |= t[3]<='9' ? (t[3]-'0')<<4 : (10+(t[3]-'a'))<<4;
-        c.g() |= t[4]<='9' ? (t[4]-'0')    : (10+(t[4]-'a'));
-        c.b() |= t[5]<='9' ? (t[5]-'0')<<4 : (10+(t[5]-'a'))<<4;
-        c.b() |= t[6]<='9' ? (t[6]-'0')    : (10+(t[6]-'a'));
-        if ( t.length() == 9 ) {
+
+    unsigned e = 
+        t.size() >= 2 && t[0] == '0' && t[1] == 'x' ? 2 :
+        t.size() >= 1 && t[0] == '#' ? 1 :
+        0;
+    unsigned len = t.length() - e;
+
+    if ( len >= 6 ) {
+        c.r() |= t[e+0]<='9' ? (t[e+0]-'0')<<4 : (10+(t[e+0]-'a'))<<4;
+        c.r() |= t[e+1]<='9' ? (t[e+1]-'0')    : (10+(t[e+1]-'a'));
+        c.g() |= t[e+2]<='9' ? (t[e+2]-'0')<<4 : (10+(t[e+2]-'a'))<<4;
+        c.g() |= t[e+3]<='9' ? (t[e+3]-'0')    : (10+(t[e+3]-'a'));
+        c.b() |= t[e+4]<='9' ? (t[e+4]-'0')<<4 : (10+(t[e+4]-'a'))<<4;
+        c.b() |= t[e+5]<='9' ? (t[e+5]-'0')    : (10+(t[e+5]-'a'));
+        if ( t.length() >= 8 ) {
             c.a() = 0;
-            c.a() |= t[7]<='9' ? (t[7]-'0')<<4 : (10+(t[7]-'a'))<<4;
-            c.a() |= t[8]<='9' ? (t[8]-'0')    : (10+(t[8]-'a'));
+            c.a() |= t[e+6]<='9' ? (t[e+6]-'0')<<4 : (10+(t[e+6]-'a'))<<4;
+            c.a() |= t[e+7]<='9' ? (t[e+7]-'0')    : (10+(t[e+7]-'a'));
         }
     }
     float w = ((float)c.r())/255.0f;
@@ -150,15 +159,22 @@ Color::toHTML( Format format ) const
         w = a(), x = b(), y = g(), z = r();
     }
 
-    std::stringstream buf;
-    buf << "#";
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(w*255.0f);
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(x*255.0f);
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(y*255.0f);
-    buf << std::hex << std::setw(2) << std::setfill('0') << (int)(z*255.0f);
-    std::string ssStr;
-    ssStr = buf.str();
-    return ssStr;
+#if 1
+    return Stringify()
+        << "#"
+        << std::hex << std::setw(2) << std::setfill('0') << (int)(w*255.0f)
+        << std::hex << std::setw(2) << std::setfill('0') << (int)(x*255.0f)
+        << std::hex << std::setw(2) << std::setfill('0') << (int)(y*255.0f)
+        << std::hex << std::setw(2) << std::setfill('0') << (int)(z*255.0f);
+#else
+    return Stringify()
+        << "#"
+        << std::hex << std::setw(2) << std::setfill('0')
+        << (int)(w*255.0f)
+        << (int)(x*255.0f)
+        << (int)(y*255.0f)
+        << (int)(z*255.0f);
+#endif
 }
 
 Color

@@ -47,6 +47,7 @@ SET(LIB_PUBLIC_HEADERS
     Script
     ScriptEngine
     SubstituteModelFilter
+    TextSymbolizer
     TransformFilter
     VirtualFeatureSource
 )
@@ -85,6 +86,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ScatterFilter.cpp
     ScriptEngine.cpp
     SubstituteModelFilter.cpp
+    TextSymbolizer.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp
 )

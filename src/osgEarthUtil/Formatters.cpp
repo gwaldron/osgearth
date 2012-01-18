@@ -40,7 +40,21 @@ _prec         ( 5 )
 }
 
 std::string
-LatLongFormatter::format( const Angular& angle, int precision, const AngularFormat& format )
+LatLongFormatter::format( const osg::Vec3d& coords, const SpatialReference* srs ) const
+{
+    osg::Vec3d geo = coords;
+    if ( srs && !srs->isGeographic() )
+    {
+        srs->transform( coords, srs->getGeographicSRS(), geo );
+    }
+    return Stringify()
+        << format( Angular(geo.y()) )
+        << ", "
+        << format( Angular(geo.x()) );
+}
+
+std::string
+LatLongFormatter::format( const Angular& angle, int precision, const AngularFormat& format ) const
 {
     std::stringstream buf;
     std::string result;
@@ -246,8 +260,24 @@ _options  ( options )
 }
 
 std::string
-MGRSFormatter::format( double latDeg, double lonDeg ) const
+MGRSFormatter::format( const osg::Vec3d& coords, const SpatialReference* srs ) const
 {
+    osg::Vec3d geo = coords;
+    if ( srs && !srs->isGeographic() )
+    {
+        srs->transform( coords, srs->getGeographicSRS(), geo );
+    }
+    return format( geo.y(), geo.x() );
+}
+
+bool
+MGRSFormatter::transform( const osg::Vec3d& input, const SpatialReference* inputSRS, MGRSCoord& out ) const
+{
+    // convert to lat/long if necessary:
+    osg::Vec3d inputGeo = input;
+    if ( inputSRS && !inputSRS->isGeographic() )
+        inputSRS->transform(input, inputSRS->getGeographicSRS(), inputGeo);
+
     unsigned    zone;
     char        gzd;
     unsigned    x=0, y=0;
@@ -260,6 +290,9 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
     sqid[0] = '?';
     sqid[1] = '?';
     sqid[2] = 0;
+
+    double latDeg = inputGeo.y();
+    double lonDeg = inputGeo.x();
 
     if ( latDeg >= 84.0 || latDeg <= -80.0 ) // polar projection
     {
@@ -275,14 +308,14 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
         if ( !ups.valid() )
         {
             OE_WARN << LC << "Failed to create UPS SRS" << std::endl;
-            return "";
+            return false;
         }
 
         double upsX, upsY;
         if ( _refSRS->transform2D( lonDeg, latDeg, ups.get(), upsX, upsY ) == false )
         {
             OE_WARN << LC << "Failed to transform lat/long to UPS" << std::endl;
-            return "";
+            return false;
         }
 
         int sqXOffset = upsX >= 0.0 ? (int)floor(upsX/100000.0) : -(int)floor(1.0-(upsX/100000.0));
@@ -320,7 +353,7 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
         if ( _refSRS->transform2D( lonDeg, latDeg, utm.get(), utmX, utmY ) == false )
         {
             OE_WARN << LC << "Error transforming lat/long into UTM" << std::endl;
-            return "";
+            return false;
         }
 
         // the alphabet set:
@@ -345,33 +378,54 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
         y = utmY - (100000.0*(double)sqEquatorOffset);
     }
 
-    std::stringstream buf;
-
     if ( (unsigned)_precision > PRECISION_1M )
     {
         x /= (unsigned)_precision;
         y /= (unsigned)_precision;
     }
 
-    buf << (zone+1) << gzd << space << sqid;
+    out.gzd  = Stringify() << (zone+1) << gzd;
+    out.sqid = sqid;
+    out.x    = x;
+    out.y    = y;
 
-    if ( (unsigned)_precision < PRECISION_100000M )
-    {
-        int sigdigs =
-            _precision == PRECISION_10000M ? 1 :
-            _precision == PRECISION_1000M  ? 2 :
-            _precision == PRECISION_100M   ? 3 :
-            _precision == PRECISION_10M    ? 4 :
-            5;
+    return true;
+}
 
-        buf << space
-            << std::setfill('0')
-            << std::setw(sigdigs) << x
-            << space
-            << std::setw(sigdigs) << y;
-    }
+std::string
+MGRSFormatter::format( double latDeg, double lonDeg ) const
+{
+    std::string space;
+
+    if ( _options & USE_SPACES )
+        space = " ";
 
     std::string result;
-    result = buf.str();
+
+    MGRSCoord mgrs;
+    if ( transform( osg::Vec3d(lonDeg, latDeg, 0), 0L, mgrs ) )
+    {
+        std::stringstream buf;
+        buf << mgrs.gzd << space << mgrs.sqid;
+
+        if ( (unsigned)_precision < PRECISION_100000M )
+        {
+            int sigdigs =
+                _precision == PRECISION_10000M ? 1 :
+                _precision == PRECISION_1000M  ? 2 :
+                _precision == PRECISION_100M   ? 3 :
+                _precision == PRECISION_10M    ? 4 :
+                5;
+
+            buf << space
+                << std::setfill('0')
+                << std::setw(sigdigs) << mgrs.x
+                << space
+                << std::setw(sigdigs) << mgrs.y;
+        }
+
+        result = buf.str();
+    }
+
     return result;
 }

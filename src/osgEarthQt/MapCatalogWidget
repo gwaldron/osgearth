@@ -1,0 +1,95 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_MAPCATALOGWIDGET_H
+#define OSGEARTHQT_MAPCATALOGWIDGET_H 1
+
+#include <osgEarthQt/Common>
+#include <osgEarthQt/DataManager>
+
+#include <osgEarth/Map>
+
+#include <QWidget>
+#include <QTreeWidget>
+
+namespace osgEarth { namespace QtGui 
+{
+    using namespace osgEarth;
+
+    class OSGEARTHQT_EXPORT MapCatalogWidget : public QFrame
+    {
+    Q_OBJECT
+
+    public:
+      enum DisplayFields {
+        ELEVATION_LAYERS = 0x01,
+        IMAGE_LAYERS = 0x02,
+        MODEL_LAYERS = 0x04,
+        ALL_LAYERS = 0x07,
+        ANNOTATIONS = 0x08,
+        LAYERS_AND_ANNOTATIONS = 0x0F,
+        MASK_LAYERS = 0x10,
+        VIEWPOINTS = 0x20,
+        ALL = 0xFF
+      };
+
+      MapCatalogWidget(DataManager* dm, unsigned int fields=ALL_LAYERS);
+      MapCatalogWidget(osgEarth::Map* map, unsigned int fields=ALL_LAYERS);
+
+      void setActiveView(osgViewer::View* view);
+      void setActiveViews(const ViewVector& views);
+
+      void setHideEmptyGroups(bool hide);
+
+    private slots:
+	    void onMapChanged();
+      void onSelectionChanged(/*const AnnotationVector& selection*/);
+	    void onTreeItemDoubleClicked(QTreeWidgetItem* item, int col);
+      void onTreeItemChanged(QTreeWidgetItem* item, int col);
+      void onTreeSelectionChanged();
+
+    protected:
+      friend class MapCatalogActionCallbackProxy;
+
+      void initUi();
+      void refreshAll();
+      void refreshElevationLayers();
+      void refreshImageLayers();
+      void refreshModelLayers();
+      void refreshAnnotations();
+      void refreshMaskLayers();
+      void refreshViewpoints();
+
+      QTreeWidget* _tree;
+      QTreeWidgetItem* _elevationsItem;
+      QTreeWidgetItem* _imagesItem;
+      QTreeWidgetItem* _modelsItem;
+      QTreeWidgetItem* _annotationsItem;
+      QTreeWidgetItem* _masksItem;
+      QTreeWidgetItem* _viewpointsItem;
+
+      osg::ref_ptr<DataManager> _manager;
+      osg::ref_ptr<osgEarth::Map> _map;
+      ViewVector _views;
+      unsigned int _fields;
+      bool _hideEmptyGroups;
+      bool _updating;
+    };
+} }
+
+#endif // OSGEARTHQT_MAPCATALOGWIDGET_H

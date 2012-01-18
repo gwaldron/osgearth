@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "Tile"
-#include "Terrain"
+#include "TerrainNode"
 #include "CustomTerrainTechnique"
 #include "TransparentLayer"
 
@@ -85,7 +85,7 @@ Tile::setTerrainTechnique( TerrainTechnique* tech )
 }
 
 void
-Tile::attachToTerrain( Terrain* terrain )
+Tile::attachToTerrain( TerrainNode* terrain )
 {
     _terrain = terrain;
     if ( terrain )
@@ -286,7 +286,7 @@ Tile::traverse( osg::NodeVisitor& nv )
     {
         osg::ref_ptr<Tile> parentTile;
         //Take a reference
-        osg::ref_ptr< Terrain > terrain = _terrain.get();
+        osg::ref_ptr< TerrainNode > terrain = _terrain.get();
         if (terrain.valid())
         {
             terrain->getTile( _key.createParentKey().getTileId(), parentTile );
@@ -359,7 +359,7 @@ _tileKey(tile->getKey())
     _colorLayers    = tile->_colorLayers;
     _elevationLayer = tile->getElevationLayer();
     _locator        = tile->getLocator();
-    osg::ref_ptr< Terrain > terrain = tile->getTerrain();
+    osg::ref_ptr< TerrainNode > terrain = tile->getTerrain();
     if (terrain.valid())
     {
         _sampleRatio  = terrain->getSampleRatio();

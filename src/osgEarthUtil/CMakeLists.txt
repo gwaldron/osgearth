@@ -19,9 +19,10 @@ SET(LIB_PUBLIC_HEADERS
     ElevationManager
     Export
     Formatters
-    Graticule
+    GeodeticGraticule
+	LineOfSight
 	MeasureTool
-	NearFarGroup
+	NearFarGroup	
     ObjectPlacer
     ObjectLocator
     #OceanSurfaceNode
@@ -29,6 +30,8 @@ SET(LIB_PUBLIC_HEADERS
     SkyNode
     SpatialData
     StarData
+    TMS
+    TMSPackager
 	WFS
     WMS
 )
@@ -42,7 +45,8 @@ SET(LIB_COMMON_FILES
     EarthManipulator.cpp	
     ElevationManager.cpp
     Formatters.cpp
-    Graticule.cpp
+    GeodeticGraticule.cpp
+	LineOfSight.cpp
 	MeasureTool.cpp
 	NearFarGroup.cpp
     ObjectPlacer.cpp
@@ -51,6 +55,8 @@ SET(LIB_COMMON_FILES
     Pickers.cpp
     SpatialData.cpp
     SkyNode.cpp
+    TMS.cpp
+    TMSPackager.cpp
 	WFS.cpp
     WMS.cpp
 )

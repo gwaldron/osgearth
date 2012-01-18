@@ -22,6 +22,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
+#include <osgEarth/Utils>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
@@ -332,7 +333,7 @@ namespace
         "    return x/(x+y-y*x); \n"
         "} \n";
 
-    static char s_atmosphereVertexSource[] =
+    static char s_atmosphereVertexDeclarations[] =
         "uniform mat4 osg_ViewMatrixInverse;     // camera position \n"
         "uniform vec3 atmos_v3LightPos;        // The direction vector to the light source \n"
         "uniform vec3 atmos_v3InvWavelength;   // 1 / pow(wavelength,4) for the rgb channels \n"
@@ -356,8 +357,9 @@ namespace
 
         "vec3 vVec; \n"
         "float atmos_fCameraHeight;    // The camera's current height \n"		
-        "float atmos_fCameraHeight2;   // fCameraHeight^2 \n"
+        "float atmos_fCameraHeight2;   // fCameraHeight^2 \n";
 
+    static char s_atmosphereVertexShared[] =
         "float atmos_scale(float fCos) \n"	
         "{ \n"
         "    float x = 1.0 - fCos; \n"
@@ -456,8 +458,10 @@ namespace
         "  atmos_mieColor      = v3FrontColor * atmos_fKmESun; \n"			
         "  atmos_rayleighColor = v3FrontColor * (atmos_v3InvWavelength * atmos_fKrESun); \n"				
         "  atmos_v3Direction = vVec - v3Pos; \n"				
-        "} \n"
+        "} \n";
 
+
+    static char s_atmosphereVertexMain[] =
         "void main(void) \n"
         "{ \n"
         "  // Get camera position and height \n"
@@ -472,8 +476,8 @@ namespace
         "      SkyFromAtmosphere(); \n"
         "  } \n"
         "} \n";
-        
-    static char s_atmosphereFragmentSource[] =
+
+    static char s_atmosphereFragmentDeclarations[] =
         "uniform vec3 atmos_v3LightPos; \n"							
         "uniform float atmos_g; \n"				
         "uniform float atmos_g2; \n"
@@ -483,8 +487,12 @@ namespace
         "varying vec3 atmos_mieColor; \n"
         "varying vec3 atmos_rayleighColor; \n"
 
-        "const float fExposure = 4.0; \n"
+        "const float fExposure = 4.0; \n";
 
+    //static char s_atmosphereFragmentShared[] =
+    //    "void applyFragLighting( inout color )
+        
+    static char s_atmosphereFragmentMain[] =
         "void main(void) \n"			
         "{ \n"				
         "    float fCos = dot(atmos_v3LightPos, atmos_v3Direction) / length(atmos_v3Direction); \n"
@@ -527,8 +535,8 @@ namespace
     static const char s_starVertexSource[] = 
         "void main() \n"
         "{ \n"
-        "    gl_FrontColor = vec4(1,1,1,1); \n"
-        "    gl_PointSize = gl_Color.r + 1.0; \n"
+        "    gl_FrontColor = gl_Color; \n" //vec4(1,1,1,1); \n"
+        "    gl_PointSize = gl_Color.r * 2.0; \n"
         "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
         "} \n";
 
@@ -564,7 +572,7 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     _defaultPerViewData._starsVisible = true;
     
     // set up the astronomical parameters:
-    _ellipsoidModel =  map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
+    _ellipsoidModel = map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
     _innerRadius = _ellipsoidModel->getRadiusPolar();
     _outerRadius = _innerRadius * 1.025f;
     _sunDistance = _innerRadius * 12000.0f;
@@ -608,7 +616,10 @@ SkyNode::traverse( osg::NodeVisitor& nv )
         }
     }
 
-    osg::Group::traverse( nv );
+    else
+    {
+        osg::Group::traverse( nv );
+    }
 
     if ( cv )
     {
@@ -651,6 +662,9 @@ SkyNode::attach( osg::View* view, int lightNum )
 
     data._cullContainer->addChild( _atmosphere.get() );
     data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
+
+    // node to traverse the child nodes
+    data._cullContainer->addChild( new TraverseNode<osg::Group>(this) );
 
     view->setLightingMode( osg::View::SKY_LIGHT );
     view->setLight( data._light.get() );
@@ -837,12 +851,16 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     osg::Shader* vs = new osg::Shader( osg::Shader::VERTEX, Stringify()
         << s_versionString
         << s_mathUtils
-        << s_atmosphereVertexSource );
+        << s_atmosphereVertexDeclarations
+        << s_atmosphereVertexShared
+        << s_atmosphereVertexMain );
     program->addShader( vs );
     osg::Shader* fs = new osg::Shader( osg::Shader::FRAGMENT, Stringify()
         << s_versionString
         << s_mathUtils
-        << s_atmosphereFragmentSource );
+        << s_atmosphereFragmentDeclarations
+        //<< s_atmosphereFragmentShared
+        << s_atmosphereFragmentMain );
     program->addShader( fs );
     set->setAttributeAndModes( program, osg::StateAttribute::ON );
 

@@ -100,7 +100,6 @@ int main(int argc, char** argv)
     // That's it, the map is ready; now create a MapNode to render the Map:
     MapNodeOptions mapNodeOptions;
     mapNodeOptions.enableLighting() = false;
-    mapNodeOptions.overlayMipMapping() = true;
     MapNode* mapNode = new MapNode( map, mapNodeOptions );
    
     if (useStencil)

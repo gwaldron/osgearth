@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "SinglePassTerrainTechnique"
-#include "Terrain"
+#include "TerrainNode"
 #include "Tile"
 
 #include <osgEarth/Cube>
@@ -70,6 +70,7 @@ namespace
 SinglePassTerrainTechnique::SinglePassTerrainTechnique( TextureCompositor* compositor ) :
 CustomTerrainTechnique(),
 _verticalScaleOverride(1.0f),
+_atomicCallOnce(0),
 _initCount(0),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate(false),
@@ -84,6 +85,7 @@ _debug( false )
 SinglePassTerrainTechnique::SinglePassTerrainTechnique(const SinglePassTerrainTechnique& rhs, const osg::CopyOp& copyop):
 CustomTerrainTechnique( rhs, copyop ),
 _verticalScaleOverride( rhs._verticalScaleOverride ),
+_atomicCallOnce( 0 ),
 _initCount( 0 ),
 _pendingFullUpdate( false ),
 _pendingGeometryUpdate( false ),
@@ -139,6 +141,14 @@ SinglePassTerrainTechnique::compile( const TileUpdate& update, ProgressCallback*
     if ( !_tile ) 
     {
         OE_WARN << LC << "Illegal; terrain tile is null" << std::endl;
+        return;
+    }
+
+    // only legal to call this once and only once.
+    // lame. i know. but it's friday
+    if ( _atomicCallOnce.OR(0x01) != 0 )
+    {
+        //OE_WARN << LC << "Tried to call more than once and was locked out" << std::endl;
         return;
     }
 

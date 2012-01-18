@@ -80,7 +80,7 @@ namespace
     struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
     {
         CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
-            : OverlayDecorator::InternalNodeVisitor(),
+            : OverlayDecorator::InternalNodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN),
               _bbox(out_bbox),
               _original( polytope ),
               _coarse( false )
@@ -299,7 +299,7 @@ OverlayDecorator::reinit()
             _projTexture->setInternalFormat( GL_RGBA8 );
             _projTexture->setSourceFormat( GL_RGBA );
             _projTexture->setSourceType( GL_UNSIGNED_BYTE );
-            _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR );
+            _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
             _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
             _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
             _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
@@ -329,25 +329,19 @@ OverlayDecorator::reinit()
             else
                 _rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
 
-            _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+            osg::StateSet* rttStateSet = _rttCamera->getOrCreateStateSet();
+
+            rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
 
             if ( _rttBlending )
             {
                 osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-                _rttCamera->getOrCreateStateSet()->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+                rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
             }
             else
             {
-                _rttCamera->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+                rttStateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
             }
-            //Enable blending on the RTT camera with pre-multiplied alpha.
-            //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-                
-
-            // texture coordinate generator:
-            _texGenNode = new osg::TexGenNode();
-            _texGenNode->setTextureUnit( *_textureUnit );
-            _texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR );
             
             // attach the overlay graph to the RTT camera.
             if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != _rttCamera.get() ))
@@ -357,6 +351,11 @@ OverlayDecorator::reinit()
                 else
                     _rttCamera->addChild( _overlayGraph.get() );
             }
+
+            // overlay geometry is rendered with no depth testing, and in the order it's found in the
+            // scene graph... until further notice...
+            rttStateSet->setMode(GL_DEPTH_TEST, 0);
+            rttStateSet->setBinName( "TraversalOrderBin" );
         }
     }
 
@@ -371,11 +370,6 @@ OverlayDecorator::reinit()
         _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
         _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
         _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
-
-        // decalling (note: this has no effect when using shaders.. remove? -gw)
-        //osg::TexEnv* env = new osg::TexEnv();
-        //env->setMode( osg::TexEnv::DECAL );
-        //_subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
         
         // set up the shaders
         if ( _useShaders )
@@ -678,9 +672,6 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
     _rttCamera->setProjectionMatrix( _rttProjMatrix );
 
     osg::Matrix MVPT = _projectorViewMatrix * _projectorProjMatrix * normalizeMatrix;
-
-    //_texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR ); // moved to initialization
-    _texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
     
     // uniform update:
     if ( _useShaders )
@@ -943,9 +934,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                 cull( cv );
             }
             _rttCamera->accept( nv );
-            
-            // note: texgennode doesn't need a cull, and the subgraph
-            // is traversed in cull().
         }
 
         else
@@ -955,7 +943,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                 updateRTTCamera( nv );
             }
             _rttCamera->accept( nv );
-            _texGenNode->accept( nv );
 
             osg::Group::traverse( nv );
         }    

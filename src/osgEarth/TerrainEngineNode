@@ -20,6 +20,7 @@
 #define OSGEARTH_MAP_ENGINE_NODE_H 1
 
 #include <osgEarth/Map>
+#include <osgEarth/Terrain>
 #include <osgEarth/ShaderUtils>
 #include <osg/CoordinateSystemNode>
 #include <osg/Geode>
@@ -41,48 +42,14 @@ namespace osgEarth
         /** Gets the map that this engine is rendering. */
         const Map* getMap() const { return _map.get(); }
 
+        /** Gets the Terrain interface for interacting with the scene graph */
+        Terrain* getTerrain() const { return _terrainInterface.get(); }
+
         /** Gets the property set in use by this map engine. */
         virtual const TerrainOptions& getTerrainOptions() const =0;
 
         /** Accesses the compositor that controls the rendering of image layers */
         TextureCompositor* getTextureCompositor() const { return _texCompositor.get(); }
-
-        /**
-         * A callback that is called when osgEarth pages in new terrain data.
-         * Note:  This callback will be called from a background thread and thus anything
-         *        you do in this callback should be threadsafe.
-         */
-        class TerrainChangedCallback : public osg::Referenced
-        {
-        public:
-            /**
-             *Called when new terrain data is paged in.
-             *@param tileKey
-             *       The tileKey for the terrain tile that is paged in.
-             *@param terrain
-             *       The osg::Node for the new terrain.  Note, this is only the terrain for the new tile, not the entire terrain.
-             */
-            virtual void onTerrainChanged(const osgEarth::TileKey& tileKey, osg::Node* terrain) {};
-        };
-
-        /**
-         * Adds a TerrainChangedCallback
-         */
-        void addTerrainChangedCallback( TerrainChangedCallback* callback );
-
-        /**
-         * Removes a TerrainChangedCallback
-         */
-        void removeTerrainChangedCallback( TerrainChangedCallback* callback);
-
-        /**
-         *Notifies this TerrainEngineNode that new data has been loaded for the given TileKey.         
-         *@param tileKey
-         *       The tileKey for the terrain tile that is paged in.
-         *@param terrain
-         *       The osg::Node for the new terrain.  Note, this is only the terrain for the new tile, not the entire terrain.
-         */    
-        void fireTerrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain );
 
     public: // Runtime properties
 
@@ -114,30 +81,26 @@ namespace osgEarth
         virtual void onElevationSamplingRatioChanged() { }
 
     protected:
+        friend class MapNode;
         friend class TerrainEngineNodeFactory;
 
         virtual void validateTerrainOptions( TerrainOptions& options );
 
-    private:
-        friend struct TerrainEngineNodeCallbackProxy;
-
-        void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
-        //void onMapProfileEstablished( const Profile* profile );
-        void onMapModelChanged( const MapModelChange& change );
-
-    protected:
         /** Attaches a map to the terrain engine and initialized it.*/
         virtual void preInitialize( const Map* map, const TerrainOptions& options );
         virtual void postInitialize( const Map* map, const TerrainOptions& options );
-        friend class MapNode;
 
         // allow subclasses direct access for convenience.
         osg::ref_ptr<TextureCompositor> _texCompositor;
 
     private:
+        friend struct TerrainEngineNodeCallbackProxy;
         friend struct MapNodeMapLayerController;
 
-        virtual void updateImageUniforms();
+        void ctor();
+        void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
+        void onMapModelChanged( const MapModelChange& change );
+        void updateImageUniforms();
 
     private:
         UpdateLightingUniformsHelper _updateLightingUniformsHelper;
@@ -155,18 +118,6 @@ namespace osgEarth
             ArrayUniform _layerEnabledUniform;
             ArrayUniform _layerRangeUniform;
 
-            //// a uniform array marking the opacity of each image layer
-            //osg::ref_ptr< ArrayUniform > _layerOpacityUniform;
-            ////osg::ref_ptr< osg::Uniform > _layerOpacityUniform;
-
-            //// a uniform array marking the enabled state of each image layer
-            //osg::ref_ptr< ArrayUniform > _layerEnabledUniform;
-            ////osg::ref_ptr< osg::Uniform > _layerEnabledUniform;
-
-            //// a uniform array holding the min and max visible range of each image layer
-            //osg::ref_ptr< ArrayUniform > _layerRangeUniform;
-            ////osg::ref_ptr< osg::Uniform > _layerRangeUniform;
-
         private:
             MapFrame _mapf;
         };
@@ -183,8 +134,12 @@ namespace osgEarth
         };
         InitStage _initStage;
 
+#if 0
         typedef std::list< osg::ref_ptr< TerrainChangedCallback > > TerrainChangedCallbackList;
         TerrainChangedCallbackList _terrainChangedCallbacks;
+#endif
+
+        osg::ref_ptr<Terrain> _terrainInterface;
     };
 
     /**

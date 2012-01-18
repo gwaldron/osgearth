@@ -20,8 +20,8 @@
 #include "MultiPassTerrainTechnique"
 #include "ParallelKeyNodeFactory"
 #include "SinglePassTerrainTechnique"
-#include "Terrain"
-#include "StreamingTerrain"
+#include "TerrainNode"
+#include "StreamingTerrainNode"
 #include "TileBuilder"
 #include "TransparentLayer"
 
@@ -205,7 +205,7 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
         // update the terrain revision in threaded mode
         if ( _isStreaming )
         {
-            static_cast<StreamingTerrain*>(_terrain)->updateTaskServiceThreads( *_update_mapf );
+            static_cast<StreamingTerrainNode*>(_terrain)->updateTaskServiceThreads( *_update_mapf );
         }
 
         updateTextureCombining();
@@ -251,12 +251,12 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     // go through and build the root nodesets.
     if ( !_isStreaming )
     {
-        _terrain = new Terrain(
+        _terrain = new TerrainNode(
             *_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );
     }
     else
     {
-        _terrain = new StreamingTerrain(
+        _terrain = new StreamingTerrainNode(
             *_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );
     }
 
@@ -440,7 +440,7 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     if ( _isStreaming )
     {
         //getTerrain()->incrementRevision();
-        static_cast<StreamingTerrain*>(_terrain)->updateTaskServiceThreads( *_update_mapf );
+        static_cast<StreamingTerrainNode*>(_terrain)->updateTaskServiceThreads( *_update_mapf );
     }
 }
 

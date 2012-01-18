@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "MultiPassTerrainTechnique"
-#include "Terrain"
+#include "TerrainNode"
 #include "TransparentLayer"
 #include <osgEarth/ImageUtils>
 

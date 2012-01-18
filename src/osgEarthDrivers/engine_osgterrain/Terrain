@@ -116,7 +116,7 @@ public:
     template<typename T>
     void getTile(const osgTerrain::TileID& id, osg::ref_ptr<T>& out_tile, bool lock =true ) const {
         if ( lock ) {
-            Threading::ScopedReadLock lock( const_cast<Terrain*>(this)->_tilesMutex );
+            Threading::ScopedReadLock lock( const_cast<TerrainNode*>(this)->_tilesMutex );
             TileTable::const_iterator i = _tiles.find( id );
             out_tile = i != _tiles.end()? static_cast<T*>(i->second.get()) : 0L;
         }

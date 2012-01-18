@@ -413,6 +413,8 @@ namespace osgEarth
 
         Config newConfig() const { Config c; c.setReferrer(referrer()); return c; }
 
+        bool empty() const { return _conf.empty(); }
+
     protected:
         virtual void mergeConfig( const Config& conf ) { }
 

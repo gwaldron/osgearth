@@ -21,7 +21,7 @@
 
 #include "Common"
 #include "KeyNodeFactory"
-#include "Terrain"
+#include "TerrainNode"
 #include "TileBuilder"
 
 using namespace osgEarth;
@@ -33,7 +33,7 @@ public:
         TileBuilder*             builder,
         const OSGTerrainOptions& options,
         const MapInfo&           mapInfo,
-        Terrain*         terrain,
+        TerrainNode*             terrain,
         UID                      engineUID );
 
     osg::Node* createNode( const TileKey& key );
@@ -44,7 +44,7 @@ protected:
     TileBuilder*             _builder;
     const OSGTerrainOptions& _options;
     const MapInfo            _mapInfo;
-    Terrain*         _terrain;
+    TerrainNode*             _terrain;
     UID                      _engineUID;
 };
 

@@ -100,10 +100,10 @@ public:
                 // assemble the key and create the node:
                 const Profile* profile = engineNode->getMap()->getProfile();
                 TileKey key( lod, x, y, profile );
-                osg::Node* node = engineNode->createNode( key );
+                osg::ref_ptr< osg::Node > node = engineNode->createNode( key );
                 
                 // Blacklist the tile if we couldn't load it
-                if ( !node )
+                if ( !node.valid() )
                 {
                     OE_DEBUG << LC << "Blacklisting " << uri << std::endl;
                     osgEarth::Registry::instance()->blacklist( uri );
@@ -112,12 +112,12 @@ public:
                 else
                 {   
                     osg::Timer_t start = osg::Timer::instance()->tick();
-                    engineNode->fireTerrainChanged( key, node );
+                    engineNode->getTerrain()->notifyTileAdded(key, node.get());
                     osg::Timer_t end = osg::Timer::instance()->tick();
                     OE_DEBUG << "Took " << osg::Timer::instance()->delta_m(start, end) << "ms to fire terrain callbacks" << std::endl;
                 }
 
-                return ReadResult( node, ReadResult::FILE_LOADED );
+                return ReadResult( node.get(), ReadResult::FILE_LOADED );
             }
             else
             {

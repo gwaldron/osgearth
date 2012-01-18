@@ -108,6 +108,11 @@ namespace osgEarth
         const SpatialReference* getMapSRS() const;
 
         /**
+         * Gets an interface for querying the in-memory terrain scene graph directly.
+         */
+        Terrain* getTerrain();
+
+        /**
          * Finds the topmost Map node in the specified scene graph, or returns NULL if
          * no Map node exists in the graph.
          *

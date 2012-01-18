@@ -30,7 +30,7 @@ using namespace OpenThreads;
 ParallelKeyNodeFactory::ParallelKeyNodeFactory(TileBuilder*             builder,
                                                const OSGTerrainOptions& options,
                                                const MapInfo&           mapInfo,
-                                               Terrain*         terrain,
+                                               TerrainNode*         terrain,
                                                UID                      engineUID ) :
 
 SerialKeyNodeFactory( builder, options, mapInfo, terrain, engineUID )

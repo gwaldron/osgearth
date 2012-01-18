@@ -139,7 +139,8 @@ namespace osgEarth
     public:
         // marker class for DrapeableNode support.
         struct InternalNodeVisitor : public osg::NodeVisitor {
-            InternalNodeVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
+            InternalNodeVisitor(const osg::NodeVisitor::TraversalMode& mode) : 
+                osg::NodeVisitor(mode) { }
         };
     };
 

@@ -37,8 +37,8 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-class Terrain;
-class StreamingTerrain;
+class TerrainNode;
+class StreamingTerrainNode;
 class Tile;
 class StreamingTile;
 
@@ -60,7 +60,7 @@ public:
     */
     osg::Node* createSubTiles(
         const MapFrame&  mapf,
-        Terrain*         terrain,
+        TerrainNode*     terrain,
         const TileKey&   key,
         bool             populateLayers );
 
@@ -69,7 +69,7 @@ public:
     */
     osg::Node* createTile(
         const MapFrame&  mapf,
-        Terrain*         terrain,
+        TerrainNode*     terrain,
         const TileKey&   key,
         bool             populateLayers,
         bool             wrapInPagedLOD,
@@ -103,7 +103,7 @@ public:
      */
     osg::Node* prepareTile( 
         Tile*            tile, 
-        Terrain*         terrain,
+        TerrainNode*         terrain,
         const MapInfo&   mapInfo,
         bool             wrapInPagedLOD );
 
@@ -134,12 +134,12 @@ protected:
 
     osg::Node* createPlaceholderTile(
         const MapFrame&   mapf,
-        StreamingTerrain* terrain,
+        StreamingTerrainNode* terrain,
         const TileKey&    key );
 
     osg::Node* createPopulatedTile(
         const MapFrame&  mapf,
-        Terrain*         terrain,
+        TerrainNode*         terrain,
         const TileKey&   key,
         bool             wrapInPagedLOD,
         bool             fallback,

@@ -146,7 +146,7 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
 
     FeatureList features;
 
-    // UTM zones:
+    // UTM:
     if ( letter > 'B' && letter < 'Y' )
     {
         // grab the SRS for the current UTM zone:
@@ -213,6 +213,11 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
             xlimit = gzdUtmSE.x() + r * (gzdUtmNE.x() - gzdUtmSE.x());
             if ( se.x() > xlimit ) se.x() = xlimit;
 
+            // at the northernmost GZD (lateral band X), clamp the northernmost SQIDs to the upper latitude.
+            if ( letter == 'X' && nw.y() > gzdUtmNW.y() ) 
+                nw.y() = gzdUtmNW.y();
+
+            // need this in order to calculate the font size:
             double utmWidth = se.x() - sw.x();
 
             // now transform the corner points back into the map SRS:
@@ -248,7 +253,6 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
                 {
                     textSym->size() = utmWidth/3.0;        
                     osgText::Text* d = ts.create( mgrsCoord.sqid );
-                    //d->getOrCreateStateSet()->setRenderBinToInherit();
 
                     osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
 

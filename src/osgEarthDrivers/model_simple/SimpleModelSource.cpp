@@ -30,6 +30,38 @@ using namespace osgEarth::Drivers;
 
 #include <osgEarth/HTTPClient>
 
+class LODScaleOverrideNode : public osg::Group
+{
+public:
+	LODScaleOverrideNode() : m_lodScale(1.0f) {}
+	virtual				~LODScaleOverrideNode() {}
+public:
+	void setLODScale(float scale) { m_lodScale = scale; }
+	float getLODScale() const { return m_lodScale; }
+
+	virtual void		traverse(osg::NodeVisitor& nv)
+	{
+		if(nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+		{
+			osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
+			if(cullStack)
+			{
+				float oldLODScale = cullStack->getLODScale();
+				cullStack->setLODScale(oldLODScale * m_lodScale);
+				osg::Group::traverse(nv);
+				cullStack->setLODScale(oldLODScale);
+			}
+			else
+				osg::Group::traverse(nv);
+		}
+		else
+			osg::Group::traverse(nv);
+	}
+
+private:
+	float				m_lodScale;
+};
+
 class SimpleModelSource : public ModelSource
 {
 public:
@@ -51,7 +83,17 @@ public:
         osg::ref_ptr<osgDB::Options> localOptions = _dbOptions.get() ? new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
         localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
-        return _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
+        result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
+
+		if(_options.lod_scale().isSet())
+		{
+			LODScaleOverrideNode * node = new LODScaleOverrideNode;
+			node->setLODScale(_options.lod_scale().value());
+			node->addChild(result.release());
+			result = node;
+		}
+
+        return result.release();
     }
 
 protected:

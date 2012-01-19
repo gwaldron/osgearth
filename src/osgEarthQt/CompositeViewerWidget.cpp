@@ -17,11 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthQt/CompositeViewerWidget>
-#include <osgEarthQt/Actions>
-#include <osgEarthQt/DataManager>
-#include <osgEarthQt/GuiActions>
 
-#include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/EarthManipulator>
 
 #include <osgGA/StateSetManipulator>
@@ -37,8 +33,7 @@ using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
 
-CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene, DataManager* manager)
-: _manager(manager)
+CompositeViewerWidget::CompositeViewerWidget(osg::Node* scene)
 {
   initialize();
 
@@ -56,9 +51,6 @@ osgViewer::View* CompositeViewerWidget::createViewWidget(osg::Node* scene, osgVi
   osgViewer::View* view = new osgViewer::View();
   view->setCamera(createCamera(0, 0, 100, 100, (shared ? shared->getCamera()->getGraphicsContext() : 0L)));
   view->setCameraManipulator(new osgEarth::Util::EarthManipulator());
-  
-  if (_manager.valid())
-    view->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(_manager->map()));
 
   view->addEventHandler(new osgViewer::StatsHandler());
   view->addEventHandler(new osgGA::StateSetManipulator());

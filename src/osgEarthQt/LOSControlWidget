@@ -33,6 +33,7 @@
 #include <QDoubleSpinBox>
 #include <QFrame>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QPointer>
 #include <QSpinBox>
@@ -59,8 +60,9 @@ namespace osgEarth { namespace QtGui
       void onItemChanged(QListWidgetItem* item);
       void onItemSelectionChanged();
 
+      void onNameEdited(const QString& text);
+      void onDepthBoxChanged(int state);
       void onDragBoxChanged(int state);
-
       void onRadiusValueChanged(double value);
       void onSpokesValueChanged(int value);
 
@@ -79,7 +81,9 @@ namespace osgEarth { namespace QtGui
 
       QListWidget*       _losList;
       QFrame*            _detailsBox;
+      QLineEdit*         _nameEdit;
       QLabel*            _typeField;
+      QCheckBox*         _depthBox;
       QCheckBox*         _dragBox;
       QDoubleSpinBox*    _radiusBox;
       QSpinBox*          _spokesBox;

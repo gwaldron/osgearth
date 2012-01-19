@@ -23,9 +23,11 @@
 #include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
+#include <osgEarth/Registry>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
+#include <osg/PointSprite>
 #include <osg/BlendFunc>
 #include <osg/FrontFace>
 #include <osg/CullFace>
@@ -532,19 +534,46 @@ namespace
 
 namespace
 {
-    static const char s_starVertexSource[] = 
-        "void main() \n"
-        "{ \n"
-        "    gl_FrontColor = gl_Color; \n" //vec4(1,1,1,1); \n"
-        "    gl_PointSize = gl_Color.r * 2.0; \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "} \n";
+    static std::string s_createStarVertexSource()
+    {
+        float glslVersion = Registry::instance()->getCapabilities().getGLSLVersion();
 
-    static const char s_starFragmentSource[] = 
-        "void main( void ) \n"
-        "{ \n"
-        "    gl_FragColor = gl_Color; \n"
-        "} \n";
+        return Stringify()
+            << "#version " << (glslVersion < 1.2f ? "110" : "120") << "\n"
+            << "void main() \n"
+            << "{ \n"
+            << "    gl_FrontColor = gl_Color; \n"
+            << "    gl_PointSize = gl_Color.r * " << (glslVersion < 1.2f ? "2.0" : "12.5") << ";\n"
+            << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+            << "} \n";
+    }
+
+    static std::string s_createStarFragmentSource()
+    {
+        float glslVersion = Registry::instance()->getCapabilities().getGLSLVersion();
+
+        if ( glslVersion < 1.2f )
+        {
+            return Stringify()
+                << "#version 110 \n"
+                << "void main( void ) \n"
+                << "{ \n"
+                << "    gl_FragColor = gl_Color; \n"
+                << "} \n";
+        }
+        else
+        {
+            return Stringify()
+                << "#version 120 \n"
+                << "void main( void ) \n"
+                << "{ \n"
+                << "    float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); \n"
+                << "    float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); \n"
+                << "    float i = b1*b1*b1 * b2*b2*b2; \n"
+                << "    gl_FragColor = gl_Color * i; \n"
+                << "} \n";
+        }
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -1026,17 +1055,18 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
   geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
 
-  osg::StateSet* sset = new osg::StateSet;
+  osg::StateSet* sset = geometry->getOrCreateStateSet();
 
+  sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
   sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
+
   osg::Program* program = new osg::Program;
-  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_starVertexSource) );
-  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_starFragmentSource) );
+  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_createStarVertexSource()) );
+  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_createStarFragmentSource()) );
   sset->setAttributeAndModes( program, osg::StateAttribute::ON );
 
   sset->setRenderBinDetails( BIN_STARS, "RenderBin");
   sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
-  geometry->setStateSet( sset );
 
   osg::Geode* starGeode = new osg::Geode;
   starGeode->addDrawable( geometry );

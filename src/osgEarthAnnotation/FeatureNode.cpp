@@ -19,21 +19,26 @@
 
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/MeshClamper>
+#include <osgEarthFeatures/DepthAdjustment>
+#include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>
+#include <osgEarth/Registry>
 #include <osg/Transform>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
+
 
 FeatureNode::FeatureNode(MapNode* mapNode, 
                          Feature* feature, 
                          bool     draped,
                          const GeometryCompilerOptions& options ) :
-AnnotationNode(),
-_mapNode( mapNode ),
+AnnotationNode( mapNode ),
 _feature( feature ),
 _draped ( draped ),
 _options( options )
@@ -54,7 +59,16 @@ FeatureNode::init()
     // build the new feature geometry
     if ( _feature.valid() && _feature->getGeometry() && _mapNode.valid() )
     {
-        GeometryCompiler compiler( _options );
+        GeometryCompilerOptions options = _options;
+        
+        bool autoClamping = supportsAutoClamping(*_feature->style());
+
+        if ( autoClamping )
+        {
+            options.ignoreAltitudeSymbol() = true;
+        }
+
+        GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
         GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
@@ -81,6 +95,13 @@ FeatureNode::init()
                 this->addChild( _attachPoint );
             }
         }
+
+        // workaround until we can auto-clamp extruded/sub'd geometries.
+        if ( autoClamping )
+        {
+            applyStyle( *_feature->style(), _draped );
+            clampMesh( _mapNode->getTerrain()->getGraph() );
+        }
     }
 }
 
@@ -104,4 +125,24 @@ FeatureNode::getAttachPoint()
 
     // failing that, use the artificial attach group we created.
     return _attachPoint;
+}
+
+void
+FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
+{
+    if ( key.getExtent().bounds().intersects( _feature->getGeometry()->getBounds() ) )
+    {
+        clampMesh( tile );
+    }
+}
+
+void
+FeatureNode::clampMesh( osg::Node* terrainModel )
+{
+    double scale = _altitude.valid() ? _feature->eval( _altitude->verticalScale().temp_copy() ) : 1.0;
+    double offset = _altitude.valid() ? _feature->eval( _altitude->verticalOffset().temp_copy() ) : 0.0;
+
+    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), scale, offset );
+    this->accept( clamper );
+    this->dirtyBound();
 }

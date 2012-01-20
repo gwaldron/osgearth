@@ -1,0 +1,67 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
+#ifndef OSGEARTHFEATURES_TESSELLATE_OPERATOR_H
+#define OSGEARTHFEATURES_TESSELLATE_OPERATOR_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FilterContext>
+
+namespace osgEarth { namespace Features
+{
+    /**
+     * Tessellates linear data in a feature geometry by subdividing each
+     * line segment a specified # of times.
+     */
+    class OSGEARTHFEATURES_EXPORT TessellateOperator
+    {
+    public:
+        /**
+         * Constructs a new tessellation operator.
+         * @param numPartitions
+         *      Each geometry segment should be subdivided into this many partitions
+         * @param referenceSRS
+         *      Feature geometry is assumed to be expressed in this SRS; if NULL, assume
+         *      geometry is geodetic (lat/long degrees).
+         * @param defaultInterp
+         *      If the feature does not specifiy an interpolation method, use this one
+         */
+        TessellateOperator( 
+            unsigned                numPartitions =20,
+            GeoInterpolation        defaultInterp =GEOINTERP_GREAT_CIRCLE );
+
+        void setNumPartitions( unsigned value ) { _numPartitions = value; }
+
+        void setDefaultGeoInterp( GeoInterpolation value ) { _defaultInterp = value; }
+
+    public:
+        /**
+         * Operate on a feature
+         */
+        void operator()( Feature* feature, FilterContext& context ) const;
+
+    protected:
+        unsigned                             _numPartitions;
+        GeoInterpolation                     _defaultInterp;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_TESSELLATE_OPERATOR_H

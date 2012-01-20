@@ -98,6 +98,9 @@ PlaceNode::init()
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
     getAttachPoint()->addChild( _geode );
+
+    // for clamping
+    applyStyle( _style );
 }
 
 void

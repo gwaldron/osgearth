@@ -123,16 +123,17 @@ GeoMath::interpolate(double lat1Rad, double lon1Rad,
     osg::Vec3d v0, v1;
 
     em.convertLatLongHeightToXYZ(lat1Rad, lon1Rad, 0, v0.x(), v0.y(), v0.z());
+    double r0 = v0.length();
     v0.normalize();
     em.convertLatLongHeightToXYZ(lat2Rad, lon2Rad, 0, v1.x(), v1.y(), v1.z());
+    double r1 = v1.length();
     v1.normalize();
 
     osg::Vec3d axis = v0 ^ v1;
     double angle = acos( v0 * v1 );
     osg::Quat q( angle * t, axis );
 
-    v0 = q * v0;
-    v0 *= 0.5 * (em.getRadiusEquator()+em.getRadiusPolar());
+    v0 = (q * v0) * 0.5*(r0 + r1);
 
     double dummy;
     em.convertXYZToLatLongHeight( v0.x(), v0.y(), v0.z(), out_latRad, out_lonRad, dummy );

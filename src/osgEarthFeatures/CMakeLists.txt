@@ -21,6 +21,7 @@ SET(LIB_PUBLIC_HEADERS
     Common
     ConvertTypeFilter
     CropFilter
+    DepthAdjustment
     ExtrudeGeometryFilter
     Feature
     FeatureCursor
@@ -38,6 +39,7 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
 	GeometryUtils
     LabelSource
+    MeshClamper
 	OgrUtils
     OptimizerHints	
     ResampleFilter
@@ -47,6 +49,7 @@ SET(LIB_PUBLIC_HEADERS
     Script
     ScriptEngine
     SubstituteModelFilter
+    TessellateOperator
     TextSymbolizer
     TransformFilter
     VirtualFeatureSource
@@ -62,6 +65,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
+    DepthAdjustment.cpp
     ExtrudeGeometryFilter.cpp
     Feature.cpp
     FeatureCursor.cpp
@@ -79,6 +83,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryCompiler.cpp
 	GeometryUtils.cpp
     LabelSource.cpp
+    MeshClamper.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
@@ -86,6 +91,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ScatterFilter.cpp
     ScriptEngine.cpp
     SubstituteModelFilter.cpp
+    TessellateOperator.cpp
     TextSymbolizer.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp

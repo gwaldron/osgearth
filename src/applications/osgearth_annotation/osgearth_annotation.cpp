@@ -37,6 +37,7 @@
 #include <osgEarthAnnotation/HighlightDecoration>
 #include <osgEarthAnnotation/ScaleDecoration>
 
+#include <osgEarthFeatures/DepthAdjustment>
 #include <osgEarthSymbology/GeometryFactory>
 
 #include <osgViewer/Viewer>
@@ -116,6 +117,7 @@ main(int argc, char** argv)
     // set up a style to use for labels:
     Style labelStyle;
     labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+    labelStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     //--------------------------------------------------------------------
 
@@ -123,21 +125,19 @@ main(int argc, char** argv)
 
     osg::Image* pushpin = osgDB::readImageFile( "../data/placemark32.png" );
 
-    labelGroup->addChild( new PlaceNode(mapNode, -74.0, 40.71, pushpin, "New York") );
-    labelGroup->addChild( new PlaceNode(mapNode, -77.04, 38.85, pushpin, "Washington, DC") );
-    labelGroup->addChild( new PlaceNode(mapNode, -87.65, 41.90, pushpin, "Chicago") );
-    labelGroup->addChild( new PlaceNode(mapNode, -118.4, 33.93, pushpin, "Los Angeles") );
-    labelGroup->addChild( new PlaceNode(mapNode, -71.03, 42.37, pushpin, "Boston") );
-    labelGroup->addChild( new PlaceNode(mapNode, -157.93, 21.35, pushpin, "Honolulu") );
-    labelGroup->addChild( new PlaceNode(mapNode, 138.75, 35.68, pushpin, "Tokyo") );
-    labelGroup->addChild( new PlaceNode(mapNode, -90.25, 29.98, pushpin, "New Orleans") );
-    labelGroup->addChild( new PlaceNode(mapNode, -80.28, 25.82, pushpin, "Miami") );
+    labelGroup->addChild( new PlaceNode(mapNode,  -74.00, 40.71, pushpin, "New York",       labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -77.04, 38.85, pushpin, "Washington, DC", labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -87.65, 41.90, pushpin, "Chicago",        labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode, -118.40, 33.93, pushpin, "Los Angeles",    labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -71.03, 42.37, pushpin, "Boston",         labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode, -157.93, 21.35, pushpin, "Honolulu",       labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  138.75, 35.68, pushpin, "Tokyo",          labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -90.25, 29.98, pushpin, "New Orleans",    labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -80.28, 25.82, pushpin, "Miami",          labelStyle) );
 
     //--------------------------------------------------------------------
 
-#if 1
     // a box that follows lines of latitude (rhumb line interpolation, the default)
-
     Geometry* geom = new Polygon();
     geom->push_back( osg::Vec3d(0,   40, 0) );
     geom->push_back( osg::Vec3d(-60, 40, 0) );
@@ -146,17 +146,15 @@ main(int argc, char** argv)
     Style geomStyle;
     geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
     geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
-    FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geomStyle), true );
+    geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+    FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geomStyle));
     annoGroup->addChild( gnode );
 
     labelGroup->addChild( new LabelNode(mapNode, -30, 50, "Rhumb line polygon", labelStyle) );
-#endif
 
     //--------------------------------------------------------------------
 
-#if 1
-    // Another path using great-circle interpolation.
-
+    // A path using great-circle interpolation.
     Geometry* path = new LineString();
     path->push_back( osg::Vec3d(-74, 40.714, 0) );    // New York
     path->push_back( osg::Vec3d(-87.65, 41.90, 0) );  // Chicago
@@ -164,15 +162,17 @@ main(int argc, char** argv)
 
     Style pathStyle;
     pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
-    pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 10.0f;
+    pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
+    pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     Feature* pathFeature = new Feature(path, pathStyle);
     pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
-    FeatureNode* pathNode = new FeatureNode(mapNode, pathFeature, true);
+    FeatureNode* pathNode = new FeatureNode(mapNode, pathFeature);
     annoGroup->addChild( pathNode );
 
+    pathNode->getOrCreateStateSet()->setAttributeAndModes( DepthAdjustment::getOrCreateProgram() );
+
     labelGroup->addChild( new LabelNode(mapNode, -170, 61.2, "Great circle path", labelStyle) );
-#endif
 
     //--------------------------------------------------------------------
 
@@ -190,9 +190,7 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
-#if 1
     // An draped ellipse around Miami.
-
     Style ellipseStyle;
     ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
     EllipseNode* ellipse = new EllipseNode(
@@ -204,7 +202,6 @@ main(int argc, char** argv)
         ellipseStyle,
         true );
     annoGroup->addChild( ellipse );
-#endif
 
     //--------------------------------------------------------------------
 
@@ -225,7 +222,7 @@ main(int argc, char** argv)
     utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
 
     Feature*     utahFeature = new Feature(utah, utahStyle);
-    FeatureNode* featureNode = new FeatureNode(mapNode, utahFeature, false);
+    FeatureNode* featureNode = new FeatureNode(mapNode, utahFeature);
     annoGroup->addChild( featureNode );
 
     //--------------------------------------------------------------------

@@ -50,6 +50,9 @@ namespace osgEarth
         /** maximum number of openGL lights */
         int getMaxLights() const { return _maxLights; }
 
+        /** bits in depth buffer */
+        int getDepthBufferBits() const { return _depthBits; }
+
         /** whether the GPU supports shaders */
         bool supportsGLSL(float minimumVersion =1.0f) const { 
             return _supportsGLSL && _GLSLversion >= minimumVersion; }
@@ -91,6 +94,7 @@ namespace osgEarth
         int  _maxTextureSize;
         int  _maxFastTextureSize;
         int  _maxLights;
+        int  _depthBits;
         bool _supportsGLSL;
         float _GLSLversion;
         bool _supportsTextureArrays;

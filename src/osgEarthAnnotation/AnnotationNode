@@ -22,6 +22,8 @@
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/Decoration>
+#include <osgEarthSymbology/Style>
+#include <osgEarth/Terrain>
 #include <osgEarth/TileKey>
 #include <osg/Switch>
 
@@ -37,6 +39,7 @@ namespace osgEarth
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * Base class for all annotation node types.
@@ -57,11 +60,6 @@ namespace osgEarth { namespace Annotation
          * safely change it at runtime.
          */
         virtual void setDynamic( bool value );
-
-        /**
-         * Sets the node to automatically re-clamp to the terrain (if applicable)
-         */
-        virtual void setAutoClamp( bool value );
 
         /** 
          * Gets the attach point for children of this node
@@ -102,11 +100,40 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<AnnotationData> _annoData;
         bool                         _dynamic;
         bool                         _autoclamp;
+        bool                         _depthAdj;
+        osg::ref_ptr<const AltitudeSymbol> _altitude;
 
         typedef std::map<std::string, osg::ref_ptr<Decoration> > DecorationMap;
         DecorationMap _dsMap;
         Decoration*   _activeDs;
         std::string   _activeDsName;
+
+
+        bool supportsAutoClamping( const Style& style ) const;
+
+        // Apply general style information. You can pass "noClamp=true" as a hint
+        // that no clamping logic is necessary
+        virtual void applyStyle( const Style&, bool noClampHint =false );
+        
+        /**
+         * Sets the node to automatically re-clamp to the terrain (if applicable).
+         * Note: you usually don't need to call this directly; it is automatically set
+         * based on the symbology. But you can call it to override the automatic setting.
+         */
+        virtual void setAutoClamp( bool value );
+
+        /**
+         * Whether to activate depth adjustment.
+         * Note: you usually don't need to call this directly; it is automatically set
+         * based on the symbology. But you can call it to override the automatic setting.
+         */
+        virtual void setDepthAdjustment( bool value );
+
+        /**
+         * Clamps a point to the terrain.
+         */
+        void clamp( osg::Vec3d& mapPos ) const;
+
 
         // hidden default ctor
         AnnotationNode( MapNode* mapNode =0L );
@@ -117,7 +144,7 @@ namespace osgEarth { namespace Annotation
 
     public: // internal methods; do not call directly
 
-        virtual void reclamp( const TileKey& key, osg::Node* tile ) { }
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain ) { }
 
         virtual ~AnnotationNode();
 

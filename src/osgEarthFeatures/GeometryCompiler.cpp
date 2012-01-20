@@ -25,6 +25,7 @@
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TransformFilter>
+#include <osgEarthFeatures/TessellateOperator>
 #include <osg/MatrixTransform>
 #include <osg/Timer>
 #include <osgDB/WriteFile>
@@ -47,10 +48,11 @@ namespace
 //-----------------------------------------------------------------------
 
 GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
-ConfigOptions( conf ),
+ConfigOptions      ( conf ),
 _maxGranularity_deg( 1.0 ),
-_mergeGeometry( false ),
-_clustering( true )
+_mergeGeometry     ( false ),
+_clustering        ( true ),
+_ignoreAlt         ( false )
 {
     fromConfig(_conf);
 }
@@ -62,6 +64,7 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "merge_geometry",  _mergeGeometry );
     conf.getIfSet   ( "clustering",      _clustering );
     conf.getObjIfSet( "feature_name",    _featureNameExpr );
+    conf.getIfSet   ( "ignore_altitude", _ignoreAlt );
     conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
 }
@@ -74,6 +77,7 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "merge_geometry",  _mergeGeometry );
     conf.addIfSet   ( "clustering",      _clustering );
     conf.addObjIfSet( "feature_name",    _featureNameExpr );
+    conf.addIfSet   ( "ignore_altitude", _ignoreAlt );
     conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
     conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     return conf;
@@ -113,11 +117,6 @@ GeometryCompiler::compile(Feature*              feature,
                           const Style&          style,
                           const FilterContext&  context)
 {
-    //if ( !context.profile() ) {
-    //    OE_WARN << LC << "Valid feature profile required" << std::endl;
-    //    return 0L;
-    //}
-
     FeatureList workingSet;
     workingSet.push_back(feature);
     return compile(workingSet, style, context);
@@ -129,16 +128,6 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
                           const FilterContext&  context)
 
 {
-    //if ( !context.profile() ) {
-    //    OE_WARN << LC << "Valid feature profile required" << std::endl;
-    //    return 0L;
-    //}
-
-    //if ( style.empty() ) {
-    //    OE_WARN << LC << "Non-empty style required" << std::endl;
-    //    return 0L;
-    //}
-
     // start by making a working copy of the feature set
     FeatureList workingSet;
     cursor->fill( workingSet );
@@ -184,6 +173,14 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
 
+    // check whether we need tessellation:
+    if ( line && line->tessellation().isSet() )
+    {
+        TemplateFeatureFilter<TessellateOperator> filter;
+        filter.setNumPartitions( *line->tessellation() );
+        sharedCX = filter.push( workingSet, sharedCX );
+    }
+
     // if the style was empty, use some defaults based on the geometry type of the
     // first feature.
     if ( !point && !line && !polygon && !marker && !extrusion && !text && workingSet.size() > 0 )
@@ -217,6 +214,7 @@ GeometryCompiler::compile(FeatureList&          workingSet,
     }    
     
     bool altRequired =
+        _options.ignoreAltitudeSymbol() != true &&
         altitude && (
             altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
             altitude->verticalOffset().isSet() ||

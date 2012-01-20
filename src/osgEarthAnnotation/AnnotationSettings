@@ -1,0 +1,57 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNOTATION_SETTINGS_H
+#define OSGEARTH_ANNOTATION_SETTINGS_H 1
+
+#include <osgEarthAnnotation/Common>
+#include <osg/NodeVisitor>
+
+namespace osgEarth { namespace Annotation
+{	
+    /**
+     * Global default settings for controlling annotation behavior
+     */
+    class OSGEARTHANNO_EXPORT AnnotationSettings
+    {
+    public:
+        /**
+         * Whether to apply automatic re-clamping of CLAMP_TO_TERRAIN geometry
+         * whenever a terrain tile under the geometry changes due to paging
+         * DEFAULT: true
+         */
+        static void setContinuousClamping( bool value ) { _continuousClamping = value; }
+        static bool getContinuousClamping() { return _continuousClamping; }
+
+        /**
+         * Whether to apply a depth-adjustment program to any line geometry in an 
+         * AnnotationNode that is created with a CLAMP_TO_TERRAIN altitude symbol. 
+         * The depth adjustment will mitigate z-fighting for clamped lines in many cases.
+         * DEFAULT: true
+         */
+        static void setApplyDepthAdjustmentToClampedLines( bool value ) { _autoDepthAdj = value; }
+        static bool getApplyDepthAdjustmentToClampedLines() { return _autoDepthAdj; }
+
+    private:
+        static bool _continuousClamping;
+        static bool _autoDepthAdj;
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif //OSGEARTH_ANNOTATION_SETTINGS_H

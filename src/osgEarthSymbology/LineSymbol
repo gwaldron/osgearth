@@ -41,12 +41,17 @@ namespace osgEarth { namespace Symbology
         optional<Stroke>& stroke() { return _stroke; }
         const optional<Stroke>& stroke() const { return _stroke; }
 
+        /** Whether to tessellate line geometry (# of subdivision per segment) */
+        optional<unsigned>& tessellation() { return _tessellation; }
+        const optional<unsigned>& tessellation() const { return _tessellation; }
+
     public:
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        optional<Stroke> _stroke;
+        optional<Stroke>   _stroke;
+        optional<unsigned> _tessellation;
     };
 
 } } // namespace osgEarth::Symbology

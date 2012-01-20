@@ -25,6 +25,7 @@ using namespace osgEarth;
 
 struct KML_LinearRing : public KML_Geometry
 {
+    virtual void parseStyle( const Config& conf, KMLContext& cs, Style& style );
     virtual void parseCoords( const Config& conf, KMLContext& cx );
 };
 

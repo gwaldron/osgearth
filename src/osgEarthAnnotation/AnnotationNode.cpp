@@ -18,13 +18,18 @@
 */
 
 #include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarthAnnotation/AnnotationSettings>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthFeatures/DepthAdjustment>
+
 #include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Features;
 
 //-------------------------------------------------------------------
 
@@ -34,8 +39,8 @@ namespace osgEarth { namespace Annotation
     {
         void onTileAdded( const TileKey& key, osg::Node* tile, TerrainCallbackContext& context )
         {
-            AnnotationNode* anno = dynamic_cast<AnnotationNode*>(context.getClientData());
-            anno->reclamp( key, tile );
+            AnnotationNode* anno = static_cast<AnnotationNode*>(context.getClientData());
+            anno->reclamp( key, tile, context.getTerrain() );
         }
     };
 }  }
@@ -46,6 +51,7 @@ AnnotationNode::AnnotationNode(MapNode* mapNode) :
 _mapNode    ( mapNode ),
 _dynamic    ( false ),
 _autoclamp  ( false ),
+_depthAdj   ( false ),
 _activeDs   ( 0L )
 {
     //nop
@@ -89,6 +95,44 @@ AnnotationNode::setAutoClamp( bool value )
         }
 
         _autoclamp = value;
+    }
+}
+
+void
+AnnotationNode::setDepthAdjustment( bool enable )
+{
+    if ( enable )
+    {
+        osg::StateSet* s = this->getOrCreateStateSet();
+        osg::Program* daProgram = DepthAdjustment::getOrCreateProgram(); // cached, not a leak.
+        osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
+        if ( !p || p != daProgram )
+            s->setAttributeAndModes( daProgram );
+
+        s->addUniform( DepthAdjustment::createUniform(this) );
+    }
+    else if ( this->getStateSet() )
+    {
+        this->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
+    }
+}
+
+void
+AnnotationNode::clamp( osg::Vec3d& mapCoord ) const
+{
+    osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
+    if ( mapNode_safe.valid() )
+    { 
+        double height;
+        if ( mapNode_safe->getTerrain()->getHeight(mapCoord, height) )
+        {
+            if ( _altitude.valid() )
+            {
+                height *= _altitude->verticalScale()->eval();
+                height += _altitude->verticalOffset()->eval();
+            }
+            mapCoord.z() = height;
+        }
     }
 }
 
@@ -165,4 +209,52 @@ AnnotationNode::getAttachPoint()
 {
     osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
     return t ? (osg::Group*)t : (osg::Group*)this;
+}
+
+bool
+AnnotationNode::supportsAutoClamping( const Style& style ) const
+{
+    return
+        !style.has<ExtrusionSymbol>()  &&
+        !style.has<MarkerSymbol>()     &&
+        style.has<AltitudeSymbol>()    &&
+        style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN;
+}
+
+void
+AnnotationNode::applyStyle( const Style& style, bool noClampHint )
+{
+    bool wantAutoClamp = false;
+    bool wantDepthAdjustment = false;
+    
+    if ( !noClampHint && supportsAutoClamping(style) )
+    {
+        const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN )
+        {
+            // continuous clamping: automatically re-clamp whenever a new terrain tile
+            // appears under the geometry
+            if ( AnnotationSettings::getContinuousClamping() )
+            {
+                wantAutoClamp = true;
+                _altitude = alt;
+            }
+
+            // depth adjustment: twiddle the Z buffering to help rid clamped line
+            // geometry of its z-fighting tendencies
+            if ( AnnotationSettings::getApplyDepthAdjustmentToClampedLines() )
+            {
+                // verify that the geometry if polygon-less:
+                PrimitiveSetTypeCounter counter;
+                this->accept(counter);
+                if ( counter._polygon == 0 && (counter._line > 0 || counter._point > 0) )
+                {
+                    wantDepthAdjustment = true;
+                }
+            }
+        }
+    }
+
+    setAutoClamp( wantAutoClamp );
+    setDepthAdjustment( wantDepthAdjustment );
 }

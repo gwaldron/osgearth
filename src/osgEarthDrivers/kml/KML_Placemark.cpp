@@ -19,10 +19,13 @@
 #include "KML_Placemark"
 #include "KML_Geometry"
 #include "KML_Style"
+
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/Decluttering>
+
+#include <osg/Depth>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
@@ -45,7 +48,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         kmlStyle.scan( conf.child("style"), cx );
         style = cx._activeStyle;
     }
-    
+
+    // KML's default altitude mode is clampToGround.
+    if ( style.get<AltitudeSymbol>() == 0L )
+        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
     // parse the geometry. the placemark must have geometry to be valid.
     KML_Geometry geometry;
     geometry.build(conf, cx, style);
@@ -115,10 +122,12 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
             const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
 
-            bool draped =            
-                (ex == 0L && alt == 0L && isPoly) || 
-                (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
-                //&& (!marker);
+            bool draped =
+                (isPoly && ex == 0L && (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN));
+            
+            //bool draped =            
+            //    (ex == 0L && alt == 0L && isPoly) || 
+            //    (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
 
             // this will confuse the GeometryCompiler into thinking we want point-model sub..
             // probably need a more elegant solution here..
@@ -131,8 +140,10 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             Feature* feature = new Feature(geometry._geom.get(), style);
             fNode = new FeatureNode( cx._mapNode, feature, draped, options );
 
-            if ( draped )
+            if ( !ex )
+            {
                 fNode->getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
+            }
         }
         
         if ( pNode && fNode )

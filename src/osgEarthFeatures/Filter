@@ -48,6 +48,19 @@ namespace osgEarth { namespace Features
 
     typedef std::list< osg::ref_ptr<FeatureFilter> > FeatureFilterList;
 
+
+    template<typename T>
+    class TemplateFeatureFilter : public Filter, public T
+    {
+    public:
+        FilterContext push( FeatureList& input, FilterContext& context ) {
+            for( FeatureList::iterator i = input.begin(); i != input.end(); ++i ) {
+                operator()( i->get(), context );
+            }
+            return context;
+        }
+    };
+
     /**
      * Base class for a filter that converts features into an osg Node.
      */

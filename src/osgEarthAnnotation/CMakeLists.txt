@@ -9,6 +9,7 @@ set(LIB_NAME osgEarthAnnotation)
 set(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 
 set(LIB_PUBLIC_HEADERS  
+    AnnotationSettings
     AnnotationData
     AnnotationNode
     AnnotationUtils
@@ -31,6 +32,7 @@ set(LIB_PUBLIC_HEADERS
 )
 
 set(LIB_COMMON_FILES
+    AnnotationSettings.cpp
     AnnotationData.cpp
     AnnotationNode.cpp
     AnnotationUtils.cpp

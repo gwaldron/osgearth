@@ -57,6 +57,11 @@ namespace osgEarth { namespace Features
         optional<bool>& clustering() { return _clustering; }
         const optional<bool>& clustering() const { return _clustering; }
 
+        /** Whether to ignore the altitude filter (e.g. if you plan to do auto-clamping layer) */
+        optional<bool>& ignoreAltitudeSymbol() { return _ignoreAlt; }
+        const optional<bool>& ignoreAltitudeSymbol() const { return _ignoreAlt; }
+
+
         //todo: merge this with geoInterp()
         optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() { return _resampleMode;}
         const optional<osgEarth::Features::ResampleFilter::ResampleMode>& resampleMode() const { return _resampleMode;}
@@ -75,8 +80,9 @@ namespace osgEarth { namespace Features
         optional<bool>                 _mergeGeometry;
         optional<StringExpression>     _featureNameExpr;
         optional<bool>                 _clustering;
-        optional<osgEarth::Features::ResampleFilter::ResampleMode> _resampleMode;
+        optional<ResampleFilter::ResampleMode> _resampleMode;
         optional<double>               _resampleMaxLength;
+        optional<bool>                 _ignoreAlt;
 
         void fromConfig( const Config& conf );
     };

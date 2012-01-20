@@ -20,6 +20,7 @@
 #include <osgEarth/NodeUtils>
 #include <osg/TemplatePrimitiveFunctor>
 #include <osg/Geode>
+#include <osg/Geometry>
 #include <osg/CullSettings>
 #include <vector>
 
@@ -299,4 +300,46 @@ RemoveEmptyGroupsVisitor::apply( osg::Group& group )
     }
 
     traverse(group);
+}
+
+//------------------------------------------------------------------------
+
+PrimitiveSetTypeCounter::PrimitiveSetTypeCounter() :
+osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
+_point  ( 0 ),
+_line   ( 0 ),
+_polygon( 0 )
+{
+    //nop
+}
+
+void
+PrimitiveSetTypeCounter::apply(osg::Geode& geode)
+{
+    const osg::Geode::DrawableList& drawables = geode.getDrawableList();
+    for( osg::Geode::DrawableList::const_iterator i = drawables.begin(); i != drawables.end(); ++i )
+    {
+        osg::Geometry* g = i->get()->asGeometry();
+        if ( g )
+        {
+            const osg::Geometry::PrimitiveSetList& primSets = g->getPrimitiveSetList();
+            for( osg::Geometry::PrimitiveSetList::const_iterator j = primSets.begin(); j != primSets.end(); ++j )
+            {
+                switch( j->get()->getMode() )
+                {
+                case GL_POINTS:
+                    _point++;
+                    break;
+                case GL_LINES:
+                case GL_LINE_LOOP:
+                case GL_LINE_STRIP:
+                    _line++;
+                    break;
+                default:
+                    _polygon++;
+                    break;
+                }
+            }
+        }
+    }
 }

@@ -35,7 +35,7 @@ using namespace OpenThreads;
 SerialKeyNodeFactory::SerialKeyNodeFactory(TileBuilder*             builder,
                                            const OSGTerrainOptions& options,
                                            const MapInfo&           mapInfo,
-                                           Terrain*                 terrain,
+                                           TerrainNode*             terrain,
                                            UID                      engineUID ) :
 _builder( builder ),
 _options( options ),
@@ -109,7 +109,7 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
     }
 
     // this one rejects back-facing tiles:
-    if ( _mapInfo.isGeocentric() )
+    if ( _mapInfo.isGeocentric() && _options.clusterCulling() == true )
     {
         result->addCullCallback( HeightFieldUtils::createClusterCullingCallback(
             static_cast<osgTerrain::HeightFieldLayer*>(tile->getElevationLayer())->getHeightField(),
@@ -138,7 +138,7 @@ SerialKeyNodeFactory::createNode( const TileKey& key )
 
     osg::Group* root = 0L;
 
-    if ( tileHasAnyRealData )
+    if ( tileHasAnyRealData || key.getLevelOfDetail() == 0 )
     {
         // Now postprocess them and assemble into a tile group.
         root = new osg::Group();

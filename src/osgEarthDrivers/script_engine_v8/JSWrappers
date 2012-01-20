@@ -1,0 +1,231 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_DRIVER_JS_FEATURE_CONTEXT_H
+#define OSGEARTH_DRIVER_JS_FEATURE_CONTEXT_H 1
+
+#include <osgEarth/StringUtils>
+#include <osgEarthFeatures/Feature>
+//#include <osgEarthFeatures/Script>
+//#include <osgEarthFeatures/ScriptEngine>
+
+#include <v8.h>
+
+// ---------------------------------------------------------------------------
+
+class JSFeature
+{
+public:
+  static v8::Handle<v8::Object> WrapFeature(osgEarth::Features::Feature* feature, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::ObjectTemplate> GetAttributesObjectTemplate();
+
+  static v8::Handle<v8::Value> GetFeatureAttr(const std::string& attr, osgEarth::Features::Feature const* feature);
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+  static v8::Handle<v8::Value> AttrPropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+
+  static void FreeFeatureCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSSymbologyGeometry
+{
+public:
+  static v8::Handle<v8::Object> WrapGeometry(osgEarth::Symbology::Geometry* geometry, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+  static v8::Handle<v8::Value> IndexedPropertyCallback(uint32_t index, const v8::AccessorInfo& info);
+
+  static void FreeGeometryCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSBounds
+{
+public:
+  static v8::Handle<v8::Object> WrapBounds(osgEarth::Bounds* bounds, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+  
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+
+  static v8::Handle<v8::Value> ContainsCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> UnionCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> IntersectionCallback(const v8::Arguments& args);
+
+  static void FreeBoundsCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSVec3d
+{
+public:
+  static v8::Handle<v8::Object> WrapVec3d(osg::Vec3d* vec, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+  static v8::Handle<v8::Value> IndexedPropertyCallback(uint32_t index, const v8::AccessorInfo& info);
+
+  static void FreeVecCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSFilterContext
+{
+public:
+  static v8::Handle<v8::Object> WrapFilterContext(osgEarth::Features::FilterContext* context, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+
+  static v8::Handle<v8::Value> ToLocalCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> ToWorldCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> ToMapCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> FromMapCallback(const v8::Arguments& args);
+
+  static void FreeContextCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSSession
+{
+public:
+  static v8::Handle<v8::Object> WrapSession(osgEarth::Features::Session* session, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+
+#if 0
+  static v8::Handle<v8::Value> ResolveUriCallback(const v8::Arguments& args);
+#endif
+
+  static void FreeSessionCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSMapInfo
+{
+public:
+  static v8::Handle<v8::Object> WrapMapInfo(osgEarth::MapInfo* mapInfo, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+
+  static v8::Handle<v8::Value> ToMapCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> MapToWorldCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> WorldToMapCallback(const v8::Arguments& args);
+
+  static void FreeMapInfoCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSFeatureProfile
+{
+public:
+  static v8::Handle<v8::Object> WrapFeatureProfile(osgEarth::Features::FeatureProfile* context, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+
+  static void FreeProfileCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSGeoExtent
+{
+public:
+  static v8::Handle<v8::Object> WrapGeoExtent(osgEarth::GeoExtent* extent, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+
+  static v8::Handle<v8::Value> ContainsCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> IntersectsCallback(const v8::Arguments& args);
+
+  static void FreeGeoExtentCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+class JSSpatialReference
+{
+public:
+  static v8::Handle<v8::Object> WrapSpatialReference(osgEarth::SpatialReference* srs, bool freeObject=false);
+  static const std::string& GetObjectType() { return _objectType; }
+
+protected:
+  static const std::string _objectType;
+
+  static v8::Handle<v8::ObjectTemplate> GetObjectTemplate();
+  static v8::Handle<v8::Value> PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info);
+
+  static v8::Handle<v8::Value> EquivalenceCallback(const v8::Arguments& args);
+  static v8::Handle<v8::Value> TangentPlaneCallback(const v8::Arguments& args);
+
+  static void FreeSpatialReferenceCallback(v8::Persistent<v8::Value> object, void *parameter);
+};
+
+// ---------------------------------------------------------------------------
+
+#endif // OSGEARTH_DRIVER_JS_FEATURE_CONTEXT_H

@@ -52,16 +52,13 @@ namespace osgEarth { namespace Features
          *      Model source options
          * @param factory
          *      Node factory that will be invoked to compile feature data into nodes
-         * @param styles
-         *      Stylesheet for this graph
-         * @param sessoin
+         * @param session
          *      Session under which to create elements in this graph
          */
         FeatureModelGraph( 
             FeatureSource*                   source,
             const FeatureModelSourceOptions& options,
             FeatureNodeFactory*              factory,
-            const StyleSheet&                styles,
             Session*                         session );
 
         /**
@@ -69,8 +66,9 @@ namespace osgEarth { namespace Features
          */
         osg::Node* load( unsigned lod, unsigned tileX, unsigned tileY, const std::string& uri );
 
-        const StyleSheet& getStyles();
-        void setStyle(const StyleSheet& styles);
+        StyleSheet* getStyles() { return _session->styles(); }
+
+        void setStyles( StyleSheet* styles );
 
         void dirty();
 
@@ -92,9 +90,8 @@ namespace osgEarth { namespace Features
        
         osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent, const MapFrame* mapf ) const;
 
-        void buildSubTiles(
-            unsigned levelIndex, unsigned lod, unsigned tileX, unsigned tileY,
-            const FeatureLevel* nextLevel, unsigned nextLOD, 
+        void buildSubTilePagedLODs(
+            unsigned lod, unsigned tileX, unsigned tileY,
             const MapFrame* mapFrame, osg::Group* parent);
 
         void redraw();
@@ -104,7 +101,6 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<FeatureSource>      _source;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
-        StyleSheet                       _styles;
         UID                              _uid;
         std::set<std::string>            _blacklist;
         Threading::ReadWriteMutex        _blacklistMutex;
@@ -115,6 +111,7 @@ namespace osgEarth { namespace Features
         bool                             _useTiledSource;
         osgEarth::Revision               _revision;
         bool                             _dirty;
+        std::vector<const FeatureLevel*> _lodmap;
     };
 
 } } // namespace osgEarth::Features

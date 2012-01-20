@@ -1,0 +1,77 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_COLLAPSIBLEPAIRWIDGET_H
+#define OSGEARTHQT_COLLAPSIBLEPAIRWIDGET_H 1
+
+#include <osgEarthQt/Common>
+
+#include <QFrame>
+#include <QLabel>
+#include <QPushButton>
+#include <QWidget>
+
+namespace osgEarth { namespace QtGui 
+{
+    using namespace osgEarth;
+
+    class OSGEARTHQT_EXPORT CollapsiblePairWidget : public QFrame
+    {
+    Q_OBJECT
+
+    public:
+      CollapsiblePairWidget();
+      CollapsiblePairWidget(const QString& primaryTitle, QWidget* primaryWidget, const QString& secondaryTitle, QWidget* secondaryWidget);
+
+      void setPrimaryVisible(bool visible) { _primaryGroup->setVisible(visible); }
+      void setSecondaryVisible(bool visible) { _secondaryGroup->setVisible(visible); }
+
+      void setPrimaryTitle(const std::string& title) { _primaryTitle->setText(tr(title.c_str())); }
+      void setSecondaryTitle(const std::string& title) { _secondaryTitle->setText(tr(title.c_str())); }
+
+      void setPrimaryWidget(QWidget* widget);
+      void setSecondaryWidget(QWidget* widget);
+
+      void setPrimaryCollapsed(bool collapsed);
+      void setSecondaryCollapsed(bool collapsed);
+
+      void resetStyleSheet();
+
+    private slots:
+      void onPrimaryHideClicked(bool checked);
+      void onSecondaryHideClicked(bool checked);
+
+    protected:
+      static const std::string DEFAULT_STYLESHEET;
+
+      void initialize();
+
+      QIcon            _showIcon, _hideIcon;
+      QWidget*         _primaryGroup;
+      QWidget*         _secondaryGroup;
+      QLabel*          _primaryTitle;
+      QLabel*          _secondaryTitle;
+      QFrame*          _primaryContainer;
+      QFrame*          _secondaryContainer;
+      QPushButton*     _primaryHideButton;
+      QPushButton*     _secondaryHideButton;
+      QWidget*         _stretchBox;
+    };
+} }
+
+#endif // OSGEARTHQT_COLLAPSIBLEPAIRWIDGET_H

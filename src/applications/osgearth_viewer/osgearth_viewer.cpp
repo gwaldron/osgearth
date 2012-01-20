@@ -22,38 +22,54 @@
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Viewpoint>
+
+#include <osgEarthSymbology/Color>
+
+#include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthAnnotation/Decluttering>
+
+#include <osgEarthDrivers/kml/KML>
+#include <osgEarthDrivers/ocean_surface/OceanSurface>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
-#include <osgEarthUtil/Viewpoint>
-#include <osgEarthSymbology/Color>
+#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/MouseCoordsTool>
+
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
+using namespace osgEarth::Drivers;
+using namespace osgEarth::Annotation;
 
 int
 usage( const std::string& msg )
 {
     OE_NOTICE << msg << std::endl;
     OE_NOTICE << std::endl;
-    OE_NOTICE << "USAGE: osgearth_viewer [--graticule] [--autoclip] file.earth" << std::endl;
-    OE_NOTICE << "   --graticule     : displays a lat/long grid in geocentric mode" << std::endl;
+    OE_NOTICE << "USAGE: osgearth_viewer [options] file.earth" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
-    OE_NOTICE << "   --animateSky    : animates the sun across the sky" << std::endl;
+    OE_NOTICE << "   --ocean         : activates the ocean surface model" << std::endl;
     OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
-    OE_NOTICE << "   --jump          : automatically jumps to first viewpoint" << std::endl;
+    OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
+    OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
+    
         
     return -1;
 }
 
-static EarthManipulator* s_manip         = 0L;
+static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
+static OceanSurfaceNode* s_ocean         =0L;
+
 
 struct SkySliderHandler : public ControlEventHandler
 {
@@ -63,61 +79,57 @@ struct SkySliderHandler : public ControlEventHandler
     }
 };
 
+struct ChangeSeaLevel : public ControlEventHandler
+{
+    virtual void onValueChanged( class Control* control, float value )
+    {
+        s_ocean->options().seaLevel() = value;
+        s_ocean->dirty();
+    }
+};
+
+struct ChangeLowFeather : public ControlEventHandler
+{
+    virtual void onValueChanged( class Control* control, float value )
+    {
+        s_ocean->options().lowFeatherOffset() = value;
+        s_ocean->dirty();
+    }
+};
+
+struct ChangeHighFeather : public ControlEventHandler
+{
+    virtual void onValueChanged( class Control* control, float value )
+    {
+        s_ocean->options().highFeatherOffset() = value;
+        s_ocean->dirty();
+    }
+};
+
+struct ToggleNodeHandler : public ControlEventHandler
+{
+    ToggleNodeHandler( osg::Node* node ) : _node(node) { }
+
+    virtual void onValueChanged( class Control* control, bool value )
+    {
+        osg::ref_ptr<osg::Node> safeNode = _node.get();
+        if ( safeNode.valid() )
+            safeNode->setNodeMask( value ? ~0 : 0 );
+    }
+
+    osg::observer_ptr<osg::Node> _node;
+};
+
 struct ClickViewpointHandler : public ControlEventHandler
 {
     ClickViewpointHandler( const Viewpoint& vp ) : _vp(vp) { }
     Viewpoint _vp;
 
-    virtual void onClick( class Control* control, int buttonMask )
+    virtual void onClick( class Control* control )
     {
         s_manip->setViewpoint( _vp, 4.5 );
     }
 };
-
-struct MouseCoordsHandler : public osgGA::GUIEventHandler
-{
-    MouseCoordsHandler( LabelControl* label, const osgEarth::Map* map )
-        : _label( label ),
-          _map( map)
-        {}
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-        if (ea.getEventType() == ea.MOVE || ea.getEventType() == ea.DRAG)
-        {
-            osgUtil::LineSegmentIntersector::Intersections results;
-            if ( view->computeIntersections( ea.getX(), ea.getY(), results ) )
-            {
-                // find the first hit under the mouse:
-                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-                osg::Vec3d point = first.getWorldIntersectPoint();
-                osg::Vec3d lla;
-
-                // transform it to map coordinates:
-                _map->worldPointToMapPoint(point, lla);
-                std::stringstream ss;
-                ss << std::fixed << std::setprecision(2) << "lat " << lla.y() << "° lon " << lla.x() << "° elev " << lla.z() << "m";
-                _label->setText( ss.str() );
-            }
-            else
-            {
-                //Clear the text
-                _label->setText( "" );
-            }
-        }
-        return false;
-    }
-
-    osg::ref_ptr< LabelControl > _label;
-    const Map*                   _map;
-};
-
-
-
-
-
-
 
 void
 createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
@@ -145,7 +157,9 @@ createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
             const Viewpoint& vp = vps[i];
             std::stringstream buf;
             buf << (i+1);
-            Control* num = new LabelControl(buf.str(), 16.0f, osg::Vec4f(1,1,0,1));
+            std::string str;
+            str = buf.str();
+            Control* num = new LabelControl(str, 16.0f, osg::Vec4f(1,1,0,1));
             num->setPadding( 4 );
             g->setControl( 0, i, num );
 
@@ -162,21 +176,61 @@ createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
     // sky time slider:
     if ( s_sky )
     {
-        HBox* skyBox = new HBox();
+        HBox* skyBox = main->addControl(new HBox());
         skyBox->setChildVertAlign( Control::ALIGN_CENTER );
         skyBox->setChildSpacing( 10 );
         skyBox->setHorizFill( true );
 
         skyBox->addControl( new LabelControl("Time: ", 16) );
 
-        HSliderControl* skySlider = new HSliderControl( 0.0f, 24.0f, 18.0f );
+        HSliderControl* skySlider = skyBox->addControl(new HSliderControl( 0.0f, 24.0f, 18.0f ));
         skySlider->setBackColor( Color::Gray );
         skySlider->setHeight( 12 );
         skySlider->setHorizFill( true, 200 );
         skySlider->addEventHandler( new SkySliderHandler );
-        skyBox->addControl( skySlider );
+    }
 
-        main->addControl( skyBox );
+    // ocean sliders:
+    if ( s_ocean )
+    {
+        HBox* oceanBox1 = main->addControl( new HBox() );
+        oceanBox1->setChildVertAlign( Control::ALIGN_CENTER );
+        oceanBox1->setChildSpacing( 10 );
+        oceanBox1->setHorizFill( true );
+
+        oceanBox1->addControl( new LabelControl("Sea Level: ", 16) );
+
+        HSliderControl* mslSlider = oceanBox1->addControl(new HSliderControl( -250.0f, 250.0f, 0.0f ));
+        mslSlider->setBackColor( Color::Gray );
+        mslSlider->setHeight( 12 );
+        mslSlider->setHorizFill( true, 200 );
+        mslSlider->addEventHandler( new ChangeSeaLevel() );
+
+        HBox* oceanBox2 = main->addControl(new HBox());
+        oceanBox2->setChildVertAlign( Control::ALIGN_CENTER );
+        oceanBox2->setChildSpacing( 10 );
+        oceanBox2->setHorizFill( true );
+
+        oceanBox2->addControl( new LabelControl("Low Feather: ", 16) );
+
+        HSliderControl* lfSlider = oceanBox2->addControl(new HSliderControl( -1000.0, 250.0f, -100.0f ));
+        lfSlider->setBackColor( Color::Gray );
+        lfSlider->setHeight( 12 );
+        lfSlider->setHorizFill( true, 200 );
+        lfSlider->addEventHandler( new ChangeLowFeather() );
+
+        HBox* oceanBox3 = main->addControl(new HBox());
+        oceanBox3->setChildVertAlign( Control::ALIGN_CENTER );
+        oceanBox3->setChildSpacing( 10 );
+        oceanBox3->setHorizFill( true );
+
+        oceanBox3->addControl( new LabelControl("High Feather: ", 16) );
+
+        HSliderControl* hfSlider = oceanBox3->addControl(new HSliderControl( -500.0f, 500.0f, -10.0f ));
+        hfSlider->setBackColor( Color::Gray );
+        hfSlider->setHeight( 12 );
+        hfSlider->setHorizFill( true, 200 );
+        hfSlider->addEventHandler( new ChangeHighFeather() );
     }
     
     canvas->addControl( main );
@@ -184,32 +238,52 @@ createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
     s_controlPanel = main;
 }
 
-void addMouseCoords(osgViewer::Viewer* viewer, const osgEarth::Map* map)
+/**
+ * Visitor that builds a UI control for a loaded KML file.
+ */
+struct KMLUIBuilder : public osg::NodeVisitor
 {
-    ControlCanvas* canvas = ControlCanvas::get( viewer );
-    LabelControl* mouseCoords = new LabelControl();
-    mouseCoords->setHorizAlign(Control::ALIGN_CENTER );
-    mouseCoords->setVertAlign(Control::ALIGN_BOTTOM );
-    mouseCoords->setBackColor(0,0,0,0.5);    
-    mouseCoords->setSize(400,50);
-    mouseCoords->setMargin( 10 );
-    canvas->addControl( mouseCoords );
-
-    viewer->addEventHandler( new MouseCoordsHandler(mouseCoords, map ) );
-}
-
-
-struct AnimateSunCallback : public osg::NodeCallback
-{
-    void operator()( osg::Node* node, osg::NodeVisitor* nv )
+    KMLUIBuilder( ControlCanvas* canvas ) : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _canvas(canvas)
     {
-        SkyNode* skyNode = static_cast<SkyNode*>(node);
-        double hours = fmod( osg::Timer::instance()->time_s()/4.0, 24.0 );
-        skyNode->setDateTime( 2011, 6, 6, hours );
-        OE_INFO << "TIME: " << hours << std::endl;
+        _grid = new Grid();
+        _grid->setAbsorbEvents( true );
+        _grid->setPadding( 5 );
+        _grid->setVertAlign( Control::ALIGN_TOP );
+        _grid->setHorizAlign( Control::ALIGN_LEFT );
+        _grid->setBackColor( Color(Color::Black,0.5) );
+        _canvas->addControl( _grid );
     }
+
+    void apply( osg::Node& node )
+    {
+        AnnotationData* data = dynamic_cast<AnnotationData*>( node.getUserData() );
+        if ( data )
+        {
+            ControlVector row;
+            CheckBoxControl* cb = new CheckBoxControl( node.getNodeMask() != 0, new ToggleNodeHandler( &node ) );
+            cb->setSize( 12, 12 );
+            row.push_back( cb );
+            std::string name = data->getName().empty() ? "<unnamed>" : data->getName();
+            LabelControl* label = new LabelControl( name, 14.0f );
+            label->setMargin(Gutter(0,0,0,(this->getNodePath().size()-3)*20));
+            if ( data->getViewpoint() )
+            {
+                label->addEventHandler( new ClickViewpointHandler(*data->getViewpoint()) );
+                label->setActiveColor( Color::Blue );
+            }
+            row.push_back( label );
+            _grid->addControls( row );
+        }
+        traverse(node);
+    }
+
+    ControlCanvas* _canvas;
+    Grid*          _grid;
 };
 
+/**
+ * Handler that dumps the current viewpoint out to the console.
+ */
 struct ViewpointHandler : public osgGA::GUIEventHandler
 {
     ViewpointHandler( const std::vector<Viewpoint>& viewpoints )
@@ -226,8 +300,7 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
             }
             else if ( ea.getKey() == 'v' )
             {
-                Viewpoint vp = s_manip->getViewpoint();
-                XmlDocument xml( vp.getConfig() );
+                XmlDocument xml( s_manip->getViewpoint().getConfig() );
                 xml.store( std::cout );
                 std::cout << std::endl;
             }
@@ -242,48 +315,44 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
     std::vector<Viewpoint> _viewpoints;
 };
 
+//------------------------------------------------------------------------
+
 int
 main(int argc, char** argv)
 {
     osg::ArgumentParser arguments(&argc,argv);
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
+    osgViewer::Viewer viewer(arguments);
 
-    bool useGraticule = arguments.read( "--graticule" );
     bool useAutoClip  = arguments.read( "--autoclip" );
-    bool animateSky   = arguments.read( "--animateSky");
-    bool useSky       = arguments.read( "--sky" ) || animateSky;
-    bool jump         = arguments.read( "--jump" );
+    bool useSky       = arguments.read( "--sky" );
+    bool useOcean     = arguments.read( "--ocean" );
+
+    // reads in a KML file:
+    std::string kmlFile;
+    arguments.read( "--kml", kmlFile );
 
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
         return usage( "Unable to load earth model." );
-
-    osgViewer::Viewer viewer(arguments);
     
+    // install our default manipulator:
     s_manip = new EarthManipulator();
+    s_manip->getSettings()->setArcViewpointTransitions( true );
     viewer.setCameraManipulator( s_manip );
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
 
-    // create a graticule and clip plane handler.
-    Graticule* graticule = 0L;
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
     {
+        // look for external data:
         const Config& externals = mapNode->externalConfig();
 
         if ( mapNode->getMap()->isGeocentric() )
         {
-            // the Graticule is a lat/long grid that overlays the terrain. It only works
-            // in a round-earth geocentric terrain.
-            if ( useGraticule )
-            {
-                graticule = new Graticule( mapNode->getMap() );
-                root->addChild( graticule );
-            }
-
             // Sky model.
             Config skyConf = externals.child( "sky" );
             if ( !skyConf.empty() )
@@ -296,22 +365,31 @@ main(int argc, char** argv)
                 s_sky->setDateTime( 2011, 3, 6, hours );
                 s_sky->attach( &viewer );
                 root->addChild( s_sky );
-                if ( animateSky )
-                {
-                    s_sky->setUpdateCallback( new AnimateSunCallback());
-                }
             }
 
-            if ( externals.hasChild("autoclip") )
-                useAutoClip = externals.child("autoclip").boolValue( useAutoClip );
+            // Ocean surface.
+            if ( externals.hasChild( "ocean" ) )
+                useOcean = true;
 
-            // the AutoClipPlaneHandler will automatically adjust the near/far clipping
+            if ( useOcean )
+            {
+                s_ocean = new OceanSurfaceNode( mapNode, externals.child("ocean") );
+                if ( s_ocean )
+                    root->addChild( s_ocean );
+            }
+
+            // The automatic clip plane generator will adjust the near/far clipping
             // planes based on your view of the horizon. This prevents near clipping issues
             // when you are very close to the ground. If your app never brings a user very
             // close to the ground, you may not need this.
-            if ( useSky || useAutoClip )
+            if ( externals.hasChild("autoclip") )
             {
-                viewer.getCamera()->addEventCallback( new AutoClipPlaneCallback() );
+                useAutoClip = externals.child("autoclip").boolValue( useAutoClip );
+            }
+
+            if ( useSky || useAutoClip || useOcean )
+            {
+                viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
             }
         }
 
@@ -320,24 +398,54 @@ main(int argc, char** argv)
         const ConfigSet children = externals.children("viewpoint");
         if ( children.size() > 0 )
         {
-            s_manip->getSettings()->setArcViewpointTransitions( true );
-
             for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
                 viewpoints.push_back( Viewpoint(*i) );
 
             viewer.addEventHandler( new ViewpointHandler(viewpoints) );
-            if ( jump )
-                s_manip->setViewpoint(viewpoints[0]);
         }
 
+        // Configure the de-cluttering engine for labels and annotations:
+        const Config& declutterConf = externals.child("decluttering");
+        if ( !declutterConf.empty() )
+        {
+            Decluttering::setOptions( DeclutteringOptions(declutterConf) );
+        }
 
-        //Add a control panel to the scene
+        // Add a control panel to the scene
         root->addChild( ControlCanvas::get( &viewer ) );
-        if ( viewpoints.size() > 0 || s_sky )
+        if ( viewpoints.size() > 0 || s_sky || s_ocean )
+        {
             createControlPanel(&viewer, viewpoints);
+        }
 
-        addMouseCoords( &viewer, mapNode->getMap() );
+        // Load a KML file if specified
+        if ( !kmlFile.empty() )
+        {
+            KMLOptions kmlo;
+            kmlo.declutter() = true;
+            kmlo.defaultIconImage() = URI("http://www.osgearth.org/chrome/site/pushpin_yellow.png").getImage();
+
+            osg::Node* kml = KML::load( URI(kmlFile), mapNode, kmlo );
+            if ( kml )
+            {
+                root->addChild( kml );
+
+                KMLUIBuilder uibuilder( ControlCanvas::get(&viewer) );
+                root->accept( uibuilder );                
+            }
+        }
     }
+    
+    // readout for coordinates under the mouse   
+    LabelControl* mouseCoords = new LabelControl();
+    mouseCoords->setHorizAlign( Control::ALIGN_RIGHT );
+    mouseCoords->setVertAlign( Control::ALIGN_BOTTOM );
+    ControlCanvas::get(&viewer, false)->addControl(mouseCoords);
+
+    Formatter* formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
+    MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
+    mcTool->addCallback( new MouseCoordsLabelCallback(mouseCoords, formatter) );
+    viewer.addEventHandler( mcTool );
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.
@@ -351,7 +459,6 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::ThreadingHandler());
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
-    viewer.addEventHandler(new osgViewer::HelpHandler(arguments.getApplicationUsage()));
 
     return viewer.run();
 }

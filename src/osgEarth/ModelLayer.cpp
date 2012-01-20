@@ -113,9 +113,9 @@ ModelLayer::copyOptions()
 }
 
 void
-ModelLayer::initialize( const std::string& referenceURI, const Map* map )
+ModelLayer::initialize( const osgDB::Options* dbOptions, const Map* map )
 {
-    _referenceURI = referenceURI;
+    _dbOptions = osg::clone(dbOptions);
 
     if ( !_modelSource.valid() && _initOptions.driver().isSet() )
     {
@@ -124,7 +124,7 @@ ModelLayer::initialize( const std::string& referenceURI, const Map* map )
 
     if ( _modelSource.valid() )
     {
-        _modelSource->initialize( _referenceURI, map );
+        _modelSource->initialize( dbOptions, map );
     }
 }
 
@@ -175,9 +175,15 @@ ModelLayer::getEnabled() const
 void
 ModelLayer::setEnabled(bool enabled)
 {
-    _runtimeOptions.enabled() = enabled;
-    if ( _node.valid() )
-        _node->setNodeMask( enabled ? ~0 : 0 );
+    if ( _runtimeOptions.enabled() != enabled )
+    {
+        _runtimeOptions.enabled() = enabled;
+
+        if ( _node.valid() )
+            _node->setNodeMask( enabled ? ~0 : 0 );
+
+        fireCallback( &ModelLayerCallback::onEnabledChanged );
+    }
 }
 
 void

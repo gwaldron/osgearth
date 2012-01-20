@@ -19,12 +19,14 @@
 #include "GeometryCompiler"
 #include <osgEarthFeatures/BuildGeometryFilter>
 #include <osgEarthFeatures/BuildTextFilter>
-#include <osgEarthFeatures/ClampFilter>
+#include <osgEarthFeatures/AltitudeFilter>
+#include <osgEarthFeatures/CentroidFilter>
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/TransformFilter>
 #include <osg/MatrixTransform>
+#include <osg/Timer>
 #include <osgDB/WriteFile>
 
 #define LC "[GeometryCompiler] "
@@ -35,9 +37,18 @@ using namespace osgEarth::Symbology;
 
 //-----------------------------------------------------------------------
 
+namespace
+{
+    osg::ref_ptr<PointSymbol>   s_defaultPointSymbol   = new PointSymbol();
+    osg::ref_ptr<LineSymbol>    s_defaultLineSymbol    = new LineSymbol();
+    osg::ref_ptr<PolygonSymbol> s_defaultPolygonSymbol = new PolygonSymbol();
+}
+
+//-----------------------------------------------------------------------
+
 GeometryCompilerOptions::GeometryCompilerOptions( const ConfigOptions& conf ) :
 ConfigOptions( conf ),
-_maxGranularity_deg( 5.0 ),
+_maxGranularity_deg( 1.0 ),
 _mergeGeometry( false ),
 _clustering( true )
 {
@@ -51,6 +62,8 @@ GeometryCompilerOptions::fromConfig( const Config& conf )
     conf.getIfSet   ( "merge_geometry",  _mergeGeometry );
     conf.getIfSet   ( "clustering",      _clustering );
     conf.getObjIfSet( "feature_name",    _featureNameExpr );
+    conf.getIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.getIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
 }
 
 Config
@@ -61,6 +74,8 @@ GeometryCompilerOptions::getConfig() const
     conf.addIfSet   ( "merge_geometry",  _mergeGeometry );
     conf.addIfSet   ( "clustering",      _clustering );
     conf.addObjIfSet( "feature_name",    _featureNameExpr );
+    conf.addIfSet   ( "geo_interpolation", "great_circle", _geoInterp, GEOINTERP_GREAT_CIRCLE );
+    conf.addIfSet   ( "geo_interpolation", "rhumb_line",   _geoInterp, GEOINTERP_RHUMB_LINE );
     return conf;
 }
 
@@ -85,37 +100,80 @@ _options( options )
 }
 
 osg::Node*
+GeometryCompiler::compile(Geometry*             geometry,
+                          const Style&          style,
+                          const FilterContext&  context)
+{
+    osg::ref_ptr<Feature> f = new Feature(geometry);
+    return compile(f.get(), style, context);
+}
+
+osg::Node*
+GeometryCompiler::compile(Feature*              feature,
+                          const Style&          style,
+                          const FilterContext&  context)
+{
+    //if ( !context.profile() ) {
+    //    OE_WARN << LC << "Valid feature profile required" << std::endl;
+    //    return 0L;
+    //}
+
+    FeatureList workingSet;
+    workingSet.push_back(feature);
+    return compile(workingSet, style, context);
+}
+
+osg::Node*
 GeometryCompiler::compile(FeatureCursor*        cursor,
                           const Style&          style,
                           const FilterContext&  context)
 
 {
-    if ( !context.profile() ) {
-        OE_WARN << LC << "Valid feature profile required" << std::endl;
-        return 0L;
-    }
+    //if ( !context.profile() ) {
+    //    OE_WARN << LC << "Valid feature profile required" << std::endl;
+    //    return 0L;
+    //}
 
-    if ( style.empty() ) {
-        OE_WARN << LC << "Non-empty style required" << std::endl;
-        return 0L;
-    }
-
-    osg::ref_ptr<osg::Group> resultGroup = new osg::Group();
+    //if ( style.empty() ) {
+    //    OE_WARN << LC << "Non-empty style required" << std::endl;
+    //    return 0L;
+    //}
 
     // start by making a working copy of the feature set
     FeatureList workingSet;
     cursor->fill( workingSet );
 
+    return compile(workingSet, style, context);
+}
+
+osg::Node*
+GeometryCompiler::compile(FeatureList&          workingSet,
+                          const Style&          style,
+                          const FilterContext&  context)
+{
+#ifdef PROFILING
+    osg::Timer_t p_start = osg::Timer::instance()->tick();
+    unsigned p_features = workingSet.size();
+#endif
+
+    osg::ref_ptr<osg::Group> resultGroup = new osg::Group();
+
     // create a filter context that will track feature data through the process
     FilterContext sharedCX = context;
-    if ( !sharedCX.extent().isSet() )
+    if ( !sharedCX.extent().isSet() && sharedCX.profile() )
+    {
         sharedCX.extent() = sharedCX.profile()->getExtent();
+    }
 
     // only localize coordinates if the map is geocentric AND the extent is
     // less than 180 degrees.
-    const MapInfo& mi = sharedCX.getSession()->getMapInfo();
-    GeoExtent workingExtent = sharedCX.extent()->transform( sharedCX.profile()->getSRS()->getGeographicSRS() );
-    bool localize = mi.isGeocentric() && workingExtent.width() < 180.0;
+    bool localize = false;
+    if ( sharedCX.isGeoreferenced() )
+    {
+        const MapInfo& mi = sharedCX.getSession()->getMapInfo();
+        GeoExtent workingExtent = sharedCX.extent()->transform( sharedCX.profile()->getSRS()->getGeographicSRS() );
+        localize = mi.isGeocentric() && workingExtent.width() < 180.0;
+    }
 
     // go through the Style and figure out which filters to use.
     const MarkerSymbol*    marker    = style.get<MarkerSymbol>();
@@ -125,6 +183,27 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
     const ExtrusionSymbol* extrusion = style.get<ExtrusionSymbol>();
     const AltitudeSymbol*  altitude  = style.get<AltitudeSymbol>();
     const TextSymbol*      text      = style.get<TextSymbol>();
+
+    // if the style was empty, use some defaults based on the geometry type of the
+    // first feature.
+    if ( !point && !line && !polygon && !marker && !extrusion && !text && workingSet.size() > 0 )
+    {
+        Feature* first = workingSet.begin()->get();
+        Geometry* geom = first->getGeometry();
+        if ( geom )
+        {
+            switch( geom->getComponentType() )
+            {
+            case Geometry::TYPE_LINESTRING:
+            case Geometry::TYPE_RING:
+                line = s_defaultLineSymbol.get(); break;
+            case Geometry::TYPE_POINTSET:
+                point = s_defaultPointSymbol.get(); break;
+            case Geometry::TYPE_POLYGON:
+                polygon = s_defaultPolygonSymbol.get(); break;
+            }
+        }
+    }
 
     if (_options.resampleMode().isSet())
     {
@@ -137,15 +216,11 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
         sharedCX = resample.push( workingSet, sharedCX );        
     }    
     
-    bool clampRequired =
-        altitude && altitude->clamping() != AltitudeSymbol::CLAMP_NONE;
-    
-    // transform the features into the map profile
-    TransformFilter xform( mi.getProfile()->getSRS(), mi.isGeocentric() );   
-    xform.setLocalizeCoordinates( localize );
-    if ( altitude && altitude->verticalOffset().isSet() && !clampRequired )
-        xform.setMatrix( osg::Matrixd::translate(0, 0, *altitude->verticalOffset()) );
-    sharedCX = xform.push( workingSet, sharedCX );
+    bool altRequired =
+        altitude && (
+            altitude->clamping() != AltitudeSymbol::CLAMP_NONE ||
+            altitude->verticalOffset().isSet() ||
+            altitude->verticalScale().isSet() );
 
     // model substitution
     if ( marker )
@@ -162,82 +237,62 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
             scatter.setRandomSeed( *marker->randomSeed() );
             markerCX = scatter.push( workingSet, markerCX );
         }
-
-        if ( clampRequired )
+        else if ( marker->placement() == MarkerSymbol::PLACEMENT_CENTROID )
         {
-            ClampFilter clamp;
-            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-            clamp.setOffsetZ( *altitude->verticalOffset() );
+            CentroidFilter centroid;
+            centroid.push( workingSet, markerCX );
+        }
+
+        if ( altRequired )
+        {
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
             markerCX = clamp.push( workingSet, markerCX );
 
             // don't set this; we changed the input data.
-            //clampRequired = false;
+            //altRequired = false;
         }
 
         SubstituteModelFilter sub( style );
-        sub.setClustering( *_options.clustering() );
         if ( marker->scale().isSet() )
-            sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
+        {
+            //Turn on GL_NORMALIZE so lighting works properly
+            resultGroup->getOrCreateStateSet()->setMode(GL_NORMALIZE, osg::StateAttribute::ON );
+            //sub.setModelMatrix( osg::Matrixd::scale( *marker->scale() ) );
+        }
+
+        sub.setClustering( *_options.clustering() );
         if ( _options.featureName().isSet() )
             sub.setFeatureNameExpr( *_options.featureName() );
 
-        markerCX = sub.push( workingSet, markerCX );
-
-        osg::Node* node = sub.getNode();
+        osg::Node* node = sub.push( workingSet, markerCX );
         if ( node )
         {
-            if ( markerCX.hasReferenceFrame() )
-            {
-                osg::MatrixTransform* delocalizer = new osg::MatrixTransform( markerCX.inverseReferenceFrame() );
-                delocalizer->addChild( node );
-                node = delocalizer;
-            }
-
             resultGroup->addChild( node );
         }
     }
 
     // extruded geometry
-    if ( extrusion && ( line || polygon ) )
+    if ( extrusion )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
-            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-            if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
-                clamp.setMaxZAttributeName( "__max_z");
-            clamp.setOffsetZ( *altitude->verticalOffset() );
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         ExtrudeGeometryFilter extrude;
-        if ( extrusion )
-        {
-            if ( extrusion->height().isSet() )
-                extrude.setExtrusionHeight( *extrusion->height() );
-            if ( extrusion->heightExpression().isSet() )
-                extrude.setExtrusionExpr( *extrusion->heightExpression() );
-            if ( extrusion->heightReference() == ExtrusionSymbol::HEIGHT_REFERENCE_MSL )
-                extrude.setHeightOffsetExpression( NumericExpression("[__max_z]") );
-            if ( _options.featureName().isSet() )
-                extrude.setFeatureNameExpr( *_options.featureName() );
-            extrude.setFlatten( *extrusion->flatten() );
-        }
-        if ( polygon )
-        {
-            extrude.setColor( polygon->fill()->color() );
-        }
+        extrude.setStyle( style );
+
+        // apply per-feature naming if requested.
+        if ( _options.featureName().isSet() )
+            extrude.setFeatureNameExpr( *_options.featureName() );
 
         osg::Node* node = extrude.push( workingSet, sharedCX );
         if ( node )
         {
-            if ( sharedCX.hasReferenceFrame() )
-            {
-                osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
-                delocalizer->addChild( node );
-                node = delocalizer;
-            }
             resultGroup->addChild( node );
         }
     }
@@ -245,82 +300,59 @@ GeometryCompiler::compile(FeatureCursor*        cursor,
     // simple geometry
     else if ( point || line || polygon )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
-            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-            clamp.setOffsetZ( *altitude->verticalOffset() );
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         BuildGeometryFilter filter( style );
         if ( _options.maxGranularity().isSet() )
             filter.maxGranularity() = *_options.maxGranularity();
+        if ( _options.geoInterp().isSet() )
+            filter.geoInterp() = *_options.geoInterp();
         if ( _options.mergeGeometry().isSet() )
             filter.mergeGeometry() = *_options.mergeGeometry();
         if ( _options.featureName().isSet() )
             filter.featureName() = *_options.featureName();
-        sharedCX = filter.push( workingSet, sharedCX );
 
-        osg::Node* node = filter.getNode();
+        osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
         {
-            if ( sharedCX.hasReferenceFrame() )
-            {
-                osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
-                delocalizer->addChild( node );
-                node = delocalizer;
-            }
             resultGroup->addChild( node );
         }
     }
 
     if ( text )
     {
-        if ( clampRequired )
+        if ( altRequired )
         {
-            ClampFilter clamp;
-            clamp.setIgnoreZ( altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN );
-            clamp.setOffsetZ( *altitude->verticalOffset() );
+            AltitudeFilter clamp;
+            clamp.setPropertiesFromStyle( style );
             sharedCX = clamp.push( workingSet, sharedCX );
-            clampRequired = false;
+            altRequired = false;
         }
 
         BuildTextFilter filter( style );
-        sharedCX = filter.push( workingSet, sharedCX );
-
-        osg::Node* node = filter.takeNode();
+        osg::Node* node = filter.push( workingSet, sharedCX );
         if ( node )
         {
-            if ( sharedCX.hasReferenceFrame() )
-            {
-                osg::MatrixTransform* delocalizer = new osg::MatrixTransform( sharedCX.inverseReferenceFrame() );
-                delocalizer->addChild( node );
-                node = delocalizer;
-            }
             resultGroup->addChild( node );
         }
     }
 
-    //else // insufficient symbology
-    //{
-    //    OE_WARN << LC << "Insufficient symbology; no geometry created" << std::endl;
-    //}
-
-#if 0
-    // install the localization transform if necessary.
-    if ( cx.hasReferenceFrame() )
-    {
-        osg::MatrixTransform* delocalizer = new osg::MatrixTransform( cx.inverseReferenceFrame() );
-        delocalizer->addChild( resultGroup.get() );
-        resultGroup = delocalizer;
-    }
-#endif
-
     resultGroup->getOrCreateStateSet()->setMode( GL_BLEND, 1 );
 
     //osgDB::writeNodeFile( *(resultGroup.get()), "out.osg" );
+
+#ifdef PROFILING
+    osg::Timer_t p_end = osg::Timer::instance()->tick();
+    OE_INFO << LC
+        << "features = " << p_features <<
+        << " ,time = " << osg::Timer::instance()->delta_s(p_start, p_end) << " s." << std::endl;
+#endif
 
     return resultGroup.release();
 }

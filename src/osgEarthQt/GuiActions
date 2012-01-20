@@ -1,0 +1,151 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_GUIACTIONS_H
+#define OSGEARTHQT_GUIACTIONS_H 1
+
+#include <osgEarthQt/Common>
+#include <osgEarthQt/Actions>
+
+#include <osgEarth/Viewpoint>
+#include <osgEarthUtil/EarthManipulator>
+
+#include <osgViewer/Viewer>
+
+namespace osgEarth { namespace QtGui 
+{
+
+  //---------------------------------------------------------------------------
+  // SetLayerEnabledAction
+
+  class OSGEARTHQT_EXPORT SetLayerEnabledAction : public Action
+  {
+  public:
+    SetLayerEnabledAction(osgEarth::Layer* layer, bool enabled): Action(), _layer(layer), _enabled(enabled) { }
+
+    bool doAction( void* sender, DataManager* manager )
+    {
+      if (!_layer.valid())
+        return false;
+
+      osgEarth::TerrainLayer* terrain = dynamic_cast<osgEarth::TerrainLayer*>(_layer.get());
+      if (terrain)
+      {
+        terrain->getProfile()->getLatLongExtent().xMin();
+        if (terrain->getEnabled() != _enabled)
+        {
+          terrain->setEnabled(_enabled);
+          return true;
+        }
+      }
+      else
+      {
+        osgEarth::ModelLayer* model = dynamic_cast<osgEarth::ModelLayer*>(_layer.get());
+        if (model)
+        {
+          if (model->getEnabled() != _enabled)
+          {
+            model->setEnabled(_enabled);
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    osgEarth::Layer* getLayer() { return _layer.get(); }
+
+	protected:
+    osg::ref_ptr<osgEarth::Layer> _layer;
+    bool _enabled;
+  };
+
+
+  //---------------------------------------------------------------------------
+  // ToggleNodeAction
+
+  class OSGEARTHQT_EXPORT ToggleNodeAction : public Action
+  {
+  public:
+    ToggleNodeAction(osg::Node* node, bool visible): Action(), _node(node), _visible(visible) { }
+
+    bool doAction( void* sender, DataManager* manager )
+    {
+      if (_node.valid())
+      {
+        _node->setNodeMask(_visible ? ~0 : 0);
+        return true;
+      }
+
+      return false;
+    }
+
+    osg::Node* getNode() { return _node.get(); }
+
+	protected:
+    osg::ref_ptr<osg::Node> _node;
+    bool _visible;
+  };
+
+
+  //---------------------------------------------------------------------------
+  // SetViewpointAction
+
+  class OSGEARTHQT_EXPORT SetViewpointAction : public Action
+  {
+  public:
+    SetViewpointAction(osgEarth::Viewpoint viewpoint, osgViewer::View* view, double duration=4.5)
+      : Action(), _viewpoint(viewpoint), _duration(duration)
+    {
+      if (view)
+        _views.push_back(view);
+    }
+
+    SetViewpointAction(osgEarth::Viewpoint viewpoint, const ViewVector& views, double duration=4.5)
+      : Action(), _viewpoint(viewpoint), _views(views), _duration(duration) { }
+
+    bool doAction( void* sender, DataManager* manager )
+    {
+      bool success = false;
+
+      for (ViewVector::iterator it = _views.begin(); it != _views.end(); ++it)
+      {
+        osgEarth::Util::EarthManipulator* manip = dynamic_cast<osgEarth::Util::EarthManipulator*>((*it)->getCameraManipulator());
+        if (manip)
+        {
+          manip->setViewpoint(_viewpoint, _duration);
+          success = true;
+        }
+      }
+
+      return success;
+    }
+
+    const osgEarth::Viewpoint& viewpoint() { return _viewpoint; }
+
+	protected:
+		osgEarth::Viewpoint _viewpoint;
+    ViewVector _views;
+    double _duration;
+  };
+
+} }
+
+#endif // OSGEARTHQT_GUIACTIONS_H
+

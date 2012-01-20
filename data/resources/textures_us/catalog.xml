@@ -1,0 +1,428 @@
+<?xml version="1.0" ?>
+<resources name="texlib-us">
+
+  <!-- tiled barriers textures -->
+
+    <skin name="fence" tags="barrier fence">
+        <url>barriers/fence2.png</url>
+        <tiled>false</tiled>
+        <image_width>2</image_width>
+        <image_height>2</image_height>
+        <texture_mode>blend</texture_mode>
+    </skin>
+
+    <skin name="stone-wall" type="skin" tags="barrier wall tile stone gray">
+        <url>barriers/stonewall.jpg</url>
+        <tiled>true</tiled>
+        <image_width>8</image_width>
+        <image_height>4</image_height>
+        <texture_mode>modulate</texture_mode>
+    </skin>
+
+  <!-- city office no reps -->
+
+    <skin name="50stOfficeGlassModern1" tags="building commercial us modern steel glass">
+        <url>commercial/50storySteelGlassmodern1.jpg</url>
+        <image_width>27</image_width>
+        <min_object_height>148</min_object_height>
+        <max_object_height>999</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="45stOfficeGlassModern1" tags="building commercial us modern glass">
+        <url>commercial/45storyglassmodern.jpg</url>
+        <image_width>40</image_width>
+        <min_object_height>136</min_object_height>
+        <max_object_height>148</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="42stOfficeModern2" tags="building commercial us modern steel glass">
+        <url>commercial/US-OfficeModern-42st.jpg</url>
+        <image_width>39</image_width>
+        <min_object_height>129</min_object_height>
+        <max_object_height>136</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="41stOfficeGlassWhiteModern" tags="building commercial us modern concrete glass white">
+        <url>commercial/41storyconcrglasswhitemodern2.jpg</url>
+        <image_width>20</image_width>
+        <min_object_height>125</min_object_height>
+        <max_object_height>133</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="40stOfficeModern" tags="building commercial us modern steel glass">
+        <url>commercial/40storymodern.jpg</url>
+        <image_width>40</image_width>
+        <min_object_height>118</min_object_height>
+        <max_object_height>127</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="36stGlassOfficeModern" tags="building commercial us modern steel glass">
+        <url>commercial/36storyconcrglassmodern.jpg</url>
+        <image_width>32</image_width>
+        <min_object_height>98</min_object_height>
+        <max_object_height>118</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="35stConcreteOfficeWhiteModern" tags="building commercial us modern concrete white">
+        <url>commercial/35storyconcrmodernwhite.jpg</url>
+        <image_width>25</image_width>
+        <min_object_height>104</min_object_height>
+        <max_object_height>116</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="30stOfficeConcrBrown" tags="building commercial us concrete brown">
+        <url>commercial/30storyconcrbrown4.jpg</url>
+        <image_width>29</image_width>
+        <min_object_height>91</min_object_height>
+        <max_object_height>98</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="28stOfficeGlassModern" tags="building commercial us steel modern">
+        <url>commercial/28storymodern.jpg</url>
+        <image_width>29</image_width>
+        <min_object_height>85</min_object_height>
+        <max_object_height>91</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="27stOfficeModernBrownConcrGlass" tags="building commercial us concrete brown modern">
+        <url>commercial/27storyConcrBrownGlass.jpg</url>
+        <image_width>17</image_width>
+        <min_object_height>79</min_object_height>
+        <max_object_height>89</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="25storyBrownWide1" tags="building commercial us concrete brown">
+        <url>commercial/25storyBrownWide1.jpg</url>
+        <image_width>60</image_width>
+        <min_object_height>67</min_object_height>
+        <max_object_height>179</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="20stOfficeBrownModern" tags="building commercial us concrete modern brown">
+        <url>commercial/20storybrownconcrmodern.jpg</url>
+        <image_width>29</image_width>
+        <min_object_height>61</min_object_height>
+        <max_object_height>67</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="20stGovtGrey" tags="building govt us concrete glass grey">
+        <url>commercial/20storygreycncrglassmodern.jpg</url>
+        <image_width>27</image_width>
+        <min_object_height>61</min_object_height>
+        <max_object_height>67</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="19stCommHotelWhite" tags="building commercial hotel us concrete glass white">
+        <url>commercial/19storyretromodern.jpg</url>
+        <image_width>30</image_width>
+        <min_object_height>53</min_object_height>
+        <max_object_height>61</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="18stOffice1" tags="building commercial us concrete tan">
+        <url>commercial/18storyoffice.jpg</url>
+        <image_width>28</image_width>
+        <min_object_height>49</min_object_height>
+        <max_object_height>58</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="16stOfficeGreyModern" tags="building commercial us concrete glass grey">
+        <url>commercial/16storyconcrglassgreymodern4.jpg</url>
+        <image_width>14</image_width>
+        <min_object_height>39</min_object_height>
+        <max_object_height>49</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="15stOfficeBrownConcrete" tags="building commercial us concrete brown">
+        <url>commercial/15storybrownconcr.jpg</url>
+        <image_width>38</image_width>
+        <min_object_height>44</min_object_height>
+        <max_object_height>51</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="15stOfficeLtBrownConcrete" tags="building commercial us concrete brown">
+        <url>commercial/15storyltbrownconcroffice3.jpg</url>
+        <image_width>29</image_width>
+        <min_object_height>45</min_object_height>
+        <max_object_height>51</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="12stGovtModern2" tags="building commercial us concrete glass brown">
+        <url>commercial/12storygovtmodern.jpg</url>
+        <image_width>21</image_width>
+        <min_object_height>37</min_object_height>
+        <max_object_height>45</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="10stOfficeWhite" tags="building commercial us concrete glass white">
+        <url>commercial/10storymodernconcrete.jpg</url>
+        <image_width>27</image_width>
+        <min_object_height>29</min_object_height>
+        <max_object_height>37</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="8stOffice" tags="building commercial us dc concrete white">
+        <url>commercial/US-dcofficeconcrwhite8st.jpg</url>
+        <image_width>24</image_width>
+        <min_object_height>19</min_object_height>
+        <max_object_height>29</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="8stHotel" tags="building commercial us dc concrete white">
+        <url>commercial/US-dchotelDC2_8st.jpg</url>
+        <image_width>15</image_width>
+        <min_object_height>18</min_object_height>
+        <max_object_height>26</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="7stWideOffice" tags="building commercial us dc concrete glass white">
+        <url>commercial/US-dcofficeconcrwhite6-7st.jpg</url>
+        <image_width>34</image_width>
+        <min_object_height>17</min_object_height>
+        <max_object_height>24</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="7stwhite" tags="building commercial us concrete white tree">
+        <url>commercial/7storymodernsq.jpg</url>
+        <image_width>19</image_width>
+        <min_object_height>16</min_object_height>
+        <max_object_height>23</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="5stwhite" tags="building commercial us arch white">
+        <url>commercial/US-dcdupontconcr5st.jpg</url>
+        <image_width>7</image_width>
+        <min_object_height>12</min_object_height>
+        <max_object_height>18</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="5stwhite" tags="building commercial us arch white">
+        <url>commercial/5storywhite.jpg</url>
+        <image_width>12</image_width>
+        <min_object_height>12</min_object_height>
+        <max_object_height>18</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="4stCommGovt" tags="building govt us dc concrete white">
+        <url>commercial/US-dcgovtconcrtan4st.jpg</url>
+        <image_width>18</image_width>
+        <min_object_height>12</min_object_height>
+        <max_object_height>17</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="3stStorefront" tags="building commercial us storefront concrete">
+        <url>commercial/3storystorefronttown.jpg</url>
+        <image_width>9</image_width>
+        <min_object_height>7</min_object_height>
+        <max_object_height>12</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="3stStoreFront2" tags="building commercial us storefront concrete">
+        <url>commercial/salmon_3_story_0_scale.jpg</url>
+        <image_width>8</image_width>
+        <min_object_height>6</min_object_height>
+        <max_object_height>11</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="2stCommFancyfront" tags="building commercial us me concrete">
+        <url>commercial/2stFancyconcrete1.jpg</url>
+        <image_width>14</image_width>
+        <min_object_height>1</min_object_height>
+        <max_object_height>7</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="2stGovtConcrete" tags="building govt us concrete tan">
+        <url>commercial/US-dcwhiteconcr2st.jpg</url>
+        <image_width>16</image_width>
+        <min_object_height>2</min_object_height>
+        <max_object_height>7</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+    <skin name="2stCommDarkBrick" tags="building commercial us brick brown">
+        <url>commercial/US-dctbrickcomm2st.jpg</url>
+        <image_width>21</image_width>
+        <min_object_height>2</min_object_height>
+        <max_object_height>7</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+
+  <!-- small offices and industrial -->
+
+   <skin name="4stCommIndstrGlass" tags="building commercial us glass concrete">
+        <url>commercial/USUAE-4stCommercial.jpg</url>
+        <image_width>20</image_width>
+        <min_object_height>11</min_object_height>
+        <max_object_height>14</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+
+   <skin name="2stIndstrBrn" tags="building industrial us me glass brick brown">
+        <url>commercial/US-OfficeComm-2st.jpg</url>
+        <image_width>15</image_width>
+        <min_object_height>4</min_object_height>
+        <max_object_height>7</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+
+   <skin name="1stIndWarehouse1" tags="building industrial us warehouse concrete white">
+        <url>commercial/US-1stCommWarehousewhite1.jpg</url>
+        <image_width>15</image_width>
+        <min_object_height>1</min_object_height>
+        <max_object_height>4</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+
+   <skin name="1stCommWarehouse1" tags="building industrial us warehouse concrete brown">
+        <url>commercial/US-1stCommBrick2.jpg</url>
+        <image_width>15</image_width>
+        <min_object_height>1</min_object_height>
+        <max_object_height>4</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+
+   <skin name="1stCommStorefront1" tags="building commercial us storefront">
+        <url>commercial/US-1stCommStFront3.jpg</url>
+        <image_width>10</image_width>
+        <min_object_height>1</min_object_height>
+        <max_object_height>4</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+
+
+  <!-- residential -->
+
+   <skin name="8stResditentialTileApt" tags="building tile residential apt us concrete">
+        <url>residential/tiles/USUAE-8stTile_rep.jpg</url>
+        <image_width>19</image_width>
+        <min_object_height>21</min_object_height>
+        <max_object_height>29</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+
+   <skin name="6stBrickBrownApt" tags="building residential us apt brick brown">
+        <url>residential/6storybrickbrown1.jpg</url>
+        <image_width>21</image_width>
+        <min_object_height>21</min_object_height>
+        <max_object_height>26</max_object_height>
+        <tiled>false</tiled>
+    </skin>
+
+   <skin name="5stResidentialCondoWhite2" tags="building residential apt us white">
+        <url>residential/5storyCondo_concrglasswhite.jpg</url>
+        <image_width>14</image_width>
+        <min_object_height>14</min_object_height>
+        <max_object_height>21</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+
+   <skin name="4stResidentialBrownBrick" tags="building residential apt us brick brown">
+        <url>residential/US-CityCondo_brick_4st.jpg</url>
+        <image_width>16</image_width>
+        <min_object_height>9</min_object_height>
+        <max_object_height>14</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+
+   <skin name="2stResidentialDarkApt" tags="building residential apt us brown">
+        <url>residential/US-CityCondo2st.jpg</url>
+        <image_width>11</image_width>
+        <min_object_height>4</min_object_height>
+        <max_object_height>7</max_object_height>
+        <tiled>false</tiled>
+   </skin>
+   
+<!-- rooftops : tiled -->
+
+   <skin name="roof_tiled1" tags="rooftop">
+       <url>rooftop/tiled/roof_tiled1.jpg</url>
+       <image_width>25</image_width>
+       <image_height>25</image_height>
+       <tiled>true</tiled>
+   </skin>
+
+   <skin name="roof_tiled2" tags="rooftop">
+       <url>rooftop/tiled/roof_tiled2.jpg</url>
+       <image_width>25</image_width>
+       <image_height>25</image_height>
+       <tiled>true</tiled>
+   </skin>
+
+   <skin name="roof_tiled3" tags="rooftop">
+       <url>rooftop/tiled/roof_tiled3.jpg</url>
+       <image_width>25</image_width>
+       <image_height>25</image_height>
+       <tiled>true</tiled>
+   </skin>
+   
+<!-- rooftops : non-tiled -->
+   
+   <skin name="roof_misc2" tags="rooftop">
+       <url>rooftop/roof_misc2.jpg</url>
+       <image_width>25</image_width>
+       <image_height>25</image_height>
+       <tiled>false</tiled>
+   </skin>
+   
+   <skin name="roof_misc3" tags="rooftop">
+       <url>rooftop/roof_misc3.jpg</url>
+       <image_width>25</image_width>
+       <image_height>25</image_height>
+       <tiled>false</tiled>
+   </skin>
+   
+   <skin name="roof_misc4" tags="rooftop">
+       <url>rooftop/roof_misc4.jpg</url>
+       <image_width>25</image_width>
+       <image_height>25</image_height>
+       <tiled>false</tiled>
+   </skin>
+   
+   <skin name="roof_misc5" tags="rooftop">
+       <url>rooftop/roof_misc5.jpg</url>
+       <image_width>25</image_width>
+       <image_height>25</image_height>
+       <tiled>false</tiled>
+   </skin>
+   
+ <!-- test patterns -->
+
+   <skin name="test-grid" tags="grid">
+       <url>misc/grid.png</url>
+       <image_width>50</image_width>
+       <image_height>50</image_height>
+       <tiled>true</tiled>
+   </skin>   
+
+</resources>

@@ -1,7 +1,16 @@
 <!--
 osgEarth Sample
 
-This one demonstrates how to use the OGR feature driver to define inline feature geometry.
+This demonstrates how to use the OGR feature driver to define inline feature geometry.
+
+You can define an inline geometry in WKT format.
+* See: http://en.wikipedia.org/wiki/Well-known_text#Geometric_objects
+
+Notice the different interpolation types for each layer, and the difference in the
+display. The options are:
+ "rhumb_line" - maintains a constant bearing between two points (default), or
+ "great_circle" - takes the shortest elliptical distance between two points.
+
 -->
 
 <map name="Feature Geometry Demo" type="geocentric" version="2">
@@ -14,22 +23,39 @@ This one demonstrates how to use the OGR feature driver to define inline feature
         <url>../data/world.tif</url>
     </image>
     
-    <model name="states" driver="feature_stencil">
-
-	    <!-- Define an inline geometry in WKT format.
-		     See: http://en.wikipedia.org/wiki/Well-known_text#Geometric_objects -->
+    
+    <model name="great_circle" driver="feature_geom" overlay="true">
 	    <features driver="ogr">
 			<geometry>
-				LINESTRING(-100 30, -100 40, -100 50, -90 50, -80 50, -70 50, -70 50, -70 40, -70 30, -80 30, -90 30, -100 30)
+				POLYGON((-120 30, -120 50, -70 50, -70 30))
 			</geometry>
 		</features>
         
-        <!-- Appearance details -->
+        <geo_interpolation>great_circle</geo_interpolation>
+        
         <styles>
             <style type="text/css">
                 default {
-                   stroke: #ffff00;
-                   stroke-width: 0.5;
+                   fill: #ffff006f;
+                }                    
+            </style>
+        </styles>
+        
+    </model>
+    
+    <model name="rhumb_line" driver="feature_geom" overlay="true">
+	    <features driver="ogr">
+			<geometry>
+				POLYGON((-68 30, -68 50, -20 50, -20 30))
+			</geometry>
+		</features>
+        
+        <geo_interpolation>rhumb_line</geo_interpolation>
+        
+        <styles>
+            <style type="text/css">
+                default {
+                   fill: #ff00ff6f;
                 }                    
             </style>
         </styles>

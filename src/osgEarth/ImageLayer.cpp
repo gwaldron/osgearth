@@ -22,6 +22,7 @@
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/StringUtils>
+#include <osgEarth/URI>
 #include <osg/Version>
 #include <memory.h>
 #include <limits.h>
@@ -30,6 +31,10 @@ using namespace osgEarth;
 using namespace OpenThreads;
 
 #define LC "[ImageLayer] "
+
+// TESTING
+//#undef  OE_DEBUG
+//#define OE_DEBUG OE_INFO
 
 //------------------------------------------------------------------------
 
@@ -51,7 +56,6 @@ void
 ImageLayerOptions::setDefaults()
 {
     _opacity.init( 1.0f );
-    _gamma.init( 1.0f );
     _transparentColor.init( osg::Vec4ub(0,0,0,0) );
     _minRange.init( -FLT_MAX );
     _maxRange.init( FLT_MAX );
@@ -70,57 +74,28 @@ ImageLayerOptions::fromConfig( const Config& conf )
 {
     conf.getIfSet( "nodata_image", _noDataImageFilename );
     conf.getIfSet( "opacity", _opacity );
-    conf.getIfSet( "gamma", _gamma );
     conf.getIfSet( "min_range", _minRange );
     conf.getIfSet( "max_range", _maxRange );
     conf.getIfSet( "lod_blending", _lodBlending );
 
     if ( conf.hasValue( "transparent_color" ) )
-        _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));
-
-	//Load the filter settings
-	conf.getIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.getIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.getIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
+        _transparentColor = stringToColor( conf.value( "transparent_color" ), osg::Vec4ub(0,0,0,0));	
 }
 
 Config
-ImageLayerOptions::getConfig() const
+ImageLayerOptions::getConfig( bool isolate ) const
 {
-    Config conf = TerrainLayerOptions::getConfig();
+    Config conf = TerrainLayerOptions::getConfig( isolate );
+
     conf.updateIfSet( "nodata_image", _noDataImageFilename );
     conf.updateIfSet( "opacity", _opacity );
-    conf.updateIfSet( "gamma", _gamma );
     conf.updateIfSet( "min_range", _minRange );
     conf.updateIfSet( "max_range", _maxRange );
     conf.updateIfSet( "lod_blending", _lodBlending );
 
 	if (_transparentColor.isSet())
         conf.update("transparent_color", colorToString( _transparentColor.value()));
-
-    //Save the filter settings
-	conf.updateIfSet("mag_filter","LINEAR",                _magFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_LINEAR",  _magFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","LINEAR_MIPMAP_NEAREST", _magFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST",               _magFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_LINEAR", _magFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("mag_filter","NEAREST_MIPMAP_NEAREST",_magFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","LINEAR",                _minFilter,osg::Texture::LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_LINEAR",  _minFilter,osg::Texture::LINEAR_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","LINEAR_MIPMAP_NEAREST", _minFilter,osg::Texture::LINEAR_MIPMAP_NEAREST);
-    conf.updateIfSet("min_filter","NEAREST",               _minFilter,osg::Texture::NEAREST);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_LINEAR", _minFilter,osg::Texture::NEAREST_MIPMAP_LINEAR);
-    conf.updateIfSet("min_filter","NEAREST_MIPMAP_NEAREST",_minFilter,osg::Texture::NEAREST_MIPMAP_NEAREST);
-
+    
     return conf;
 }
 
@@ -151,27 +126,28 @@ namespace
 
 //------------------------------------------------------------------------
 
-ImageLayerTileProcessor::ImageLayerTileProcessor( const ImageLayerOptions& options )
+ImageLayerTileProcessor::ImageLayerTileProcessor(const ImageLayerOptions& options)
 {
-    init( options, false );
+    init( options, 0L, false );
 }
 
 void
-ImageLayerTileProcessor::init( const ImageLayerOptions& options, bool layerInTargetProfile )
+ImageLayerTileProcessor::init(const ImageLayerOptions& options,
+                              const osgDB::Options*    dbOptions, 
+                              bool                     layerInTargetProfile )
 {
     _options = options;
     _layerInTargetProfile = layerInTargetProfile;
 
-    if ( _layerInTargetProfile )
-        OE_DEBUG << LC << "Good, the layer and map have the same profile." << std::endl;
+    //if ( _layerInTargetProfile )
+    //    OE_DEBUG << LC << "Good, the layer and map have the same profile." << std::endl;
 
     const osg::Vec4ub& ck= *_options.transparentColor();
     _chromaKey.set( ck.r() / 255.0f, ck.g() / 255.0f, ck.b() / 255.0f, 1.0 );
 
     if ( _options.noDataImageFilename().isSet() && !_options.noDataImageFilename()->empty() )
     {
-        //OE_INFO << "Setting nodata image to \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
-        _noDataImage = osgDB::readImageFile( _options.noDataImageFilename().value() );
+        _noDataImage = URI( *_options.noDataImageFilename() ).readImage(dbOptions).getImage();
         if ( !_noDataImage.valid() )
         {
             OE_WARN << "Warning: Could not read nodata image from \"" << _options.noDataImageFilename().value() << "\"" << std::endl;
@@ -230,22 +206,22 @@ ImageLayerTileProcessor::process( osg::ref_ptr<osg::Image>& image ) const
 //------------------------------------------------------------------------
 
 ImageLayer::ImageLayer( const ImageLayerOptions& options ) :
-TerrainLayer(),
-_options( options )
+TerrainLayer( options, &_runtimeOptions ),
+_runtimeOptions( options )
 {
     init();
 }
 
 ImageLayer::ImageLayer( const std::string& name, const TileSourceOptions& driverOptions ) :
-TerrainLayer(),
-_options( ImageLayerOptions(name, driverOptions) )
+TerrainLayer   ( ImageLayerOptions(name, driverOptions), &_runtimeOptions ),
+_runtimeOptions( ImageLayerOptions(name, driverOptions) )
 {
     init();
 }
 
 ImageLayer::ImageLayer( const ImageLayerOptions& options, TileSource* tileSource ) :
-TerrainLayer( tileSource ),
-_options( options )
+TerrainLayer   ( options, &_runtimeOptions, tileSource ),
+_runtimeOptions( options )
 {
     init();
 }
@@ -253,13 +229,7 @@ _options( options )
 void
 ImageLayer::init()
 {
-    // intialize the runtime actuals from the initialization options:
-    _actualOpacity     = _options.opacity().value();
-    _actualGamma       = _options.gamma().value();
-    _actualLODBlending = _options.lodBlending().value();
-
-    //TODO: probably should graduate this to the superclass.
-    _actualEnabled = _options.enabled().value();
+    //nop
 }
 
 void
@@ -299,21 +269,14 @@ ImageLayer::fireCallback( ImageLayerCallbackMethodPtr method )
 void
 ImageLayer::setOpacity( float value ) 
 {
-    _actualOpacity = osg::clampBetween( value, 0.0f, 1.0f );
+    _runtimeOptions.opacity() = osg::clampBetween( value, 0.0f, 1.0f );
     fireCallback( &ImageLayerCallback::onOpacityChanged );
-}
-
-void
-ImageLayer::setGamma( float value )
-{
-    _actualGamma = value;
-    fireCallback( &ImageLayerCallback::onGammaChanged );
 }
 
 void 
 ImageLayer::disableLODBlending()
 {
-    _actualLODBlending = false;
+    _runtimeOptions.lodBlending() = false;
 }
 
 void
@@ -341,272 +304,68 @@ ImageLayer::initPreCacheOp()
 {
     bool layerInTargetProfile = 
         _targetProfileHint.valid() &&
-        getProfile() &&
+        getProfile()               &&
         _targetProfileHint->isEquivalentTo( getProfile() );
 
     ImageLayerPreCacheOperation* op = new ImageLayerPreCacheOperation();    
-    op->_processor.init( _options, layerInTargetProfile );
+    op->_processor.init( _runtimeOptions, _dbOptions.get(), layerInTargetProfile );
 
     _preCacheOp = op;
-
 }
 
 GeoImage
-ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
+ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback )
 {
+    OE_DEBUG << LC << "Layer \"" << getName() << "\" create image for \"" << key.str() << "\"" << std::endl;
+
     GeoImage result;
 
-	//OE_NOTICE << "[osgEarth::MapLayer::createImage] " << key.str() << std::endl;
-	if ( !_actualCacheOnly && !getTileSource()  )
-	{
-		OE_WARN << LC << "Error:  MapLayer does not have a valid TileSource, cannot create image " << std::endl;
+    // If the layer is disabled, bail out.
+    if ( _runtimeOptions.enabled().isSetTo( false ) )
+    {
+        return GeoImage::INVALID;
+    }
+
+    CacheBin* cacheBin = getCacheBin( key.getProfile() );
+
+    // validate that we have either a valid tile source, or we're cache-only.
+    if ( ! (getTileSource() || (isCacheOnly() && cacheBin) ) )
+    {
+		OE_WARN << LC << "Error: layer does not have a valid TileSource, cannot create image " << std::endl;
+        _runtimeOptions.enabled() = false;
 		return GeoImage::INVALID;
 	}
 
-    const Profile* layerProfile = getProfile();
-    const Profile* mapProfile = key.getProfile();
-
-    if ( !getProfile() )
-	{
-		OE_WARN << LC << "Could not get a valid profile for Layer \"" << getName() << "\"" << std::endl;
+    // validate the existance of a valid layer profile (unless we're in cache-only mode, in which
+    // case there is no layer profile)
+    if ( !isCacheOnly() && !getProfile() )
+    {
+		OE_WARN << LC << "Could not establish a valid profile for Layer \"" << getName() << "\"" << std::endl;
+        _runtimeOptions.enabled() = false;
         return GeoImage::INVALID;
 	}
 
-	//Determine whether we should cache in the Map profile or the Layer profile.
-	bool cacheInMapProfile = true;
-	if (mapProfile->isEquivalentTo( layerProfile ))
-	{
-		OE_DEBUG << LC << "Layer \"" << getName() << "\": Map and Layer profiles are equivalent " << std::endl;
-	}
-	//If the map profile and layer profile are in the same SRS but with different tiling scemes and exact cropping is not required, cache in the layer profile.
-    else if (mapProfile->getSRS()->isEquivalentTo( layerProfile->getSRS()) && _options.exactCropping() == false )
-	{
-		OE_DEBUG << LC << "Layer \"" << getName() << "\": Map and Layer profiles are in the same SRS and non-exact cropping is allowed, caching in layer profile." << std::endl;
-		cacheInMapProfile = false;
-	}
-
-	bool cacheInLayerProfile = !cacheInMapProfile;
-
-    //Write the cache TMS file if it hasn't been written yet.
-    if (!_cacheProfile.valid() && _cache.valid() && _options.cacheEnabled() == true && _tileSource.valid())
+    // First, attempt to read from the cache. Since the cached data is stored in the
+    // map profile, we can try this first.
+    if ( cacheBin && _runtimeOptions.cachePolicy()->isCacheReadable() )
     {
-        _cacheProfile = cacheInMapProfile ? mapProfile : _profile.get();
-        _cache->storeProperties( _cacheSpec, _cacheProfile.get(), _tileSource->getPixelsPerTile() );
-    }
-
-	if (cacheInMapProfile)
-	{
-		OE_DEBUG << LC << "Layer \"" << getName() << "\" caching in Map profile " << std::endl;
-	}
-
-	//If we are caching in the map profile, try to get the image immediately.
-    if (cacheInMapProfile && _cache.valid() && _options.cacheEnabled() == true )
-	{
-        osg::ref_ptr<const osg::Image> cachedImage;
-        if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
-		{
-			OE_DEBUG << LC << "Layer \"" << getName()<< "\" got tile " << key.str() << " from map cache " << std::endl;
-
-            result = GeoImage( ImageUtils::cloneImage(cachedImage.get()), key.getExtent() );
-            ImageUtils::normalizeImage( result.getImage() );
-            return result;
-		}
-	}
-
-	//If the key profile and the source profile exactly match, simply request the image from the source
-    if ( mapProfile->isEquivalentTo( layerProfile ) )
-    {
-		OE_DEBUG << LC << "Key and source profiles are equivalent, requesting single tile" << std::endl;
-        osg::ref_ptr<const osg::Image> image;
-        osg::Image* im = createImageWrapper( key, cacheInLayerProfile, progress );
-        if ( im )
+        ReadResult r = cacheBin->readImage( key.str() );
+        if ( r.succeeded() )
         {
-            result = GeoImage( im, key.getExtent() );
+            ImageUtils::normalizeImage( r.getImage() );
+            return GeoImage( r.releaseImage(), key.getExtent() );
         }
     }
-
-    // Otherwise, we need to process the tiles.
-    else
+    
+    // The data was not in the cache. If we are cache-only, fail sliently
+    if ( isCacheOnly() )
     {
-		OE_DEBUG << LC << "Key and source profiles are different, creating mosaic" << std::endl;
-		GeoImage mosaic;
-
-		// Determine the intersecting keys and create and extract an appropriate image from the tiles
-		std::vector<TileKey> intersectingTiles;
-
-        //Scale the extent if necessary
-        GeoExtent ext = key.getExtent();
-        if ( _options.edgeBufferRatio().isSet() )
-        {
-            double ratio = _options.edgeBufferRatio().get();
-            ext.scale(ratio, ratio);
-        }
-
-        layerProfile->getIntersectingTiles(ext, intersectingTiles);
-
-		if (intersectingTiles.size() > 0)
-		{
-			double dst_minx, dst_miny, dst_maxx, dst_maxy;
-			key.getExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
-
-			osg::ref_ptr<ImageMosaic> mi = new ImageMosaic;
-			std::vector<TileKey> missingTiles;
-
-            bool retry = false;
-			for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
-			{
-				double minX, minY, maxX, maxY;
-				intersectingTiles[j].getExtent().getBounds(minX, minY, maxX, maxY);
-
-				OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
-
-				osg::ref_ptr<osg::Image> img;
-                img = createImageWrapper( intersectingTiles[j], cacheInLayerProfile, progress );
-
-                if ( img.valid() )
-                {
-                    if (img->getPixelFormat() != GL_RGBA || img->getDataType() != GL_UNSIGNED_BYTE || img->getInternalTextureFormat() != GL_RGBA8 )
-					{
-                        osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(img.get());
-                        if (convertedImg.valid())
-                        {
-                            img = convertedImg;
-                        }
-					}
-					mi->getImages().push_back(TileImage(img.get(), intersectingTiles[j]));
-				}
-				else
-				{
-                    if (progress && (progress->isCanceled() || progress->needsRetry()))
-                    {
-                        retry = true;
-                        break;
-                    }
-					missingTiles.push_back(intersectingTiles[j]);
-				}
-			}
-
-			//if (mi->getImages().empty() || missingTiles.size() > 0)
-            if (mi->getImages().empty() || retry)
-			{
-				OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
-                return GeoImage::INVALID;
-			}
-			else if (missingTiles.size() > 0)
-			{                
-                osg::ref_ptr<const osg::Image> validImage = mi->getImages()[0].getImage();
-                unsigned int tileWidth = validImage->s();
-                unsigned int tileHeight = validImage->t();
-                unsigned int tileDepth = validImage->r();
-                for (unsigned int j = 0; j < missingTiles.size(); ++j)
-                {
-                    // Create transparent image which size equals to the size of a valid image
-                    osg::ref_ptr<osg::Image> newImage = new osg::Image;
-                    newImage->allocateImage(tileWidth, tileHeight, tileDepth, validImage->getPixelFormat(), validImage->getDataType());
-                    unsigned char *data = newImage->data(0,0);
-                    memset(data, 0, newImage->getTotalSizeInBytes());
-
-                    mi->getImages().push_back(TileImage(newImage.get(), missingTiles[j]));
-                }
-			}
-
-			double rxmin, rymin, rxmax, rymax;
-			mi->getExtents( rxmin, rymin, rxmax, rymax );
-
-			mosaic = GeoImage(
-				mi->createImage(),
-				GeoExtent( layerProfile->getSRS(), rxmin, rymin, rxmax, rymax ) );
-		}
-
-		if ( mosaic.valid() )
-        {
-            // the imagery must be reprojected iff:
-            //  * the SRS of the image is different from the SRS of the key;
-            //  * UNLESS they are both geographic SRS's (in which case we can skip reprojection)
-            bool needsReprojection =
-                !mosaic.getSRS()->isEquivalentTo( key.getProfile()->getSRS()) &&
-                !(mosaic.getSRS()->isGeographic() && key.getProfile()->getSRS()->isGeographic());
-
-            bool needsLeftBorder = false;
-            bool needsRightBorder = false;
-            bool needsTopBorder = false;
-            bool needsBottomBorder = false;
-
-            // If we don't need to reproject the data, we had to mosaic the data, so check to see if we need to add
-            // an extra, transparent pixel on the sides because the data doesn't encompass the entire map.
-            if (!needsReprojection)
-            {
-                GeoExtent keyExtent = key.getExtent();
-                // If the key is geographic and the mosaic is mercator, we need to get the mercator
-                // extents to determine if we need to add the border or not
-                // (TODO: this might be OBE due to the elimination of the Mercator fast-path -gw)
-                if (key.getExtent().getSRS()->isGeographic() && mosaic.getSRS()->isMercator())
-                {
-                    keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( 
-                        key.getExtent( ));
-                }
-
-
-                //Use an epsilon to only add the border if it is significant enough.
-                double eps = 1e-6;
-                
-                double leftDiff = mosaic.getExtent().xMin() - keyExtent.xMin();
-                if (leftDiff > eps)
-                {
-                    needsLeftBorder = true;
-                }
-
-                double rightDiff = keyExtent.xMax() - mosaic.getExtent().xMax();
-                if (rightDiff > eps)
-                {
-                    needsRightBorder = true;
-                }
-
-                double bottomDiff = mosaic.getExtent().yMin() - keyExtent.yMin();
-                if (bottomDiff > eps)
-                {
-                    needsBottomBorder = true;
-                }
-
-                double topDiff = keyExtent.yMax() - mosaic.getExtent().yMax();
-                if (topDiff > eps)
-                {
-                    needsTopBorder = true;
-                }
-            }
-
-            if ( needsReprojection )
-            {
-				OE_DEBUG << LC << "  Reprojecting image" << std::endl;
-
-                // We actually need to reproject the image.  Note: GeoImage::reproject() will automatically
-                // crop the image to the correct extents, so there is no need to crop after reprojection.
-                result = mosaic.reproject( 
-                    key.getProfile()->getSRS(),
-                    &key.getExtent(), 
-                    _options.reprojectedTileSize().value(), _options.reprojectedTileSize().value() );
-            }
-            else
-            {
-				OE_DEBUG << LC << "  Cropping image" << std::endl;
-                // crop to fit the map key extents
-                GeoExtent clampedMapExt = layerProfile->clampAndTransformExtent( key.getExtent() );
-                if ( clampedMapExt.isValid() )
-				{
-                    int size = _options.exactCropping() == true ? _options.reprojectedTileSize().value() : 0;
-                    result = mosaic.crop(clampedMapExt, _options.exactCropping().value(), size, size);
-				}
-                else
-                    result = GeoImage::INVALID;
-            }
-
-            //Add the transparent pixel AFTER the crop so that it doesn't get cropped out
-            if (result.valid() && (needsLeftBorder || needsRightBorder || needsBottomBorder || needsTopBorder))
-            {
-                result = result.addTransparentBorder(needsLeftBorder, needsRightBorder, needsBottomBorder, needsTopBorder);
-            }
-        }
+        return GeoImage::INVALID;
     }
+
+    // Get an image from the underlying TileSource.
+    osg::Image* image = createImageFromTileSource( key, progress, forceFallback );
+    result = GeoImage( image, key.getExtent() );
 
     // Normalize the image if necessary
     if ( result.valid() )
@@ -614,92 +373,324 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress)
         ImageUtils::normalizeImage( result.getImage() );
     }
 
-	//If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
-    if (result.valid() && _cache.valid() && _options.cacheEnabled() == true && cacheInMapProfile)
+	// If we got a result, the cache is valid and we are caching in the map profile, write to the map cache.
+    if ( result.valid() &&
+         cacheBin       && 
+         _runtimeOptions.cachePolicy()->isCacheWriteable() )
 	{
-		OE_DEBUG << LC << "Layer \"" << getName() << "\" writing tile " << key.str() << " to cache " << std::endl;
-		_cache->setImage( key, _cacheSpec, result.getImage());
+        cacheBin->write( key.str(), result.getImage() );
 	}
+
     return result;
 }
 
+
 osg::Image*
-ImageLayer::createImageWrapper(const TileKey& key,
-                               bool cacheInLayerProfile,
-                               ProgressCallback* progress )
+ImageLayer::createImageFromTileSource(const TileKey&    key,
+                                      ProgressCallback* progress,
+                                      bool              forceFallback)
 {
     // Results:
+    // 
+    // * return an osg::Image matching the key extent is all goes well;
     //
     // * return NULL to indicate that the key exceeds the maximum LOD of the source data,
-    //   and that the engine may need to generate a "fallback" tile if necessary.
+    //   and that the engine may need to generate a "fallback" tile if necessary;
     //
+    // deprecated:
     // * return an "empty image" if the LOD is valid BUT the key does not intersect the
     //   source's data extents.
 
-    osg::Image* result = 0L;
+    TileSource* source = getTileSource();
+    if ( !source )
+        return 0L;
 
-    // first check the cache.
-    // TODO: find a way to avoid caching/checking when the LOD falls
-    if (_cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
+    // If the profiles are different, use a compositing method to assemble the tile.
+    if ( !key.getProfile()->isEquivalentTo( getProfile() ) )
+        return assembleImageFromTileSource( key, progress, forceFallback );
+
+    // Fail is the image is blacklisted.
+    // ..unless there will be a fallback attempt.
+    if ( source->getBlacklist()->contains( key.getTileId() ) && !forceFallback )
+        return 0L;
+
+    // Fail if no data is available for this key.
+    if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) && !forceFallback )
+        return 0L;
+
+#if 0
+    // Return an empty image if there's no data in the requested extent
+    // (even though the LOD is valid)
+    if ( !source->hasDataInExtent( key.getExtent() ) )
     {
-        osg::ref_ptr<const osg::Image> cachedImage;
-		if ( _cache->getImage( key, _cacheSpec, cachedImage ) )
-	    {
-            OE_INFO << LC << " Layer \"" << getName() << "\" got " << key.str() << " from cache " << std::endl;
-            return ImageUtils::cloneImage(cachedImage.get());
-    	}
+        return ImageUtils::createEmptyImage();
     }
+#endif
 
-	if ( !_actualCacheOnly )
-	{
-        TileSource* source = getTileSource();
-        if ( !source )
-            return 0L;
+    if ( !source->hasDataInExtent( key.getExtent() ) )
+        return 0L;
 
-        // Only try to get the image if it's not in the blacklist
-        if ( !source->getBlacklist()->contains(key.getTileId()) )
+    // Good to go, ask the tile source for an image:
+    osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
+
+    osg::ref_ptr<osg::Image> result;
+    bool fellBack = false;
+
+    if ( forceFallback )
+    {
+        TileKey finalKey = key;
+        while( !result.valid() && finalKey.valid() )
         {
-            // if the tile source cannot service this key's LOD, return NULL.
-            if ( source->hasDataAtLOD( key.getLevelOfDetail() ) )
+            if ( !source->getBlacklist()->contains( finalKey.getTileId() ) )
             {
-                // if the key's extent intersects the source's extent, ask the
-                // source for an image.
-                if ( source->hasDataInExtent( key.getExtent() ) )
+                result = source->createImage( finalKey, op.get(), progress );
+                if ( result.valid() )
                 {
-                    //Take a reference to the preCacheOp, there is a potential for it to be
-                    //overwritten and deleted if this ImageLayer is added to another Map
-                    //while createImage is going on.
-                    osg::ref_ptr< TileSource::ImageOperation > op = _preCacheOp;
-                    result = source->createImage( key, op.get(), progress );
-
-                    // if no result was created, add this key to the blacklist.
-                    if ( result == 0L && (!progress || !progress->isCanceled()) )
+                    if ( finalKey.getLevelOfDetail() != key.getLevelOfDetail() )
                     {
-                        //Add the tile to the blacklist
-                        source->getBlacklist()->add(key.getTileId());
+                        GeoImage raw( result.get(), finalKey.getExtent() );
+                        GeoImage cropped = raw.crop( key.getExtent(), true );
+                        result = cropped.takeImage();
+                        fellBack = true;
                     }
                 }
-
-                // otherwise, generate an empty image.
-                else
-                {
-                    result = ImageUtils::createEmptyImage();
-                }
             }
-
-            else
-            {
-                // in this case, the source cannot service the LOD
-                result = NULL;
-            }            
+            if ( !result.valid() )
+                finalKey = finalKey.createParentKey();
         }
 
-        // Cache is necessary:
-        if ( result && _cache.valid() && cacheInLayerProfile && _options.cacheEnabled() == true )
-		{
-			_cache->setImage( key, _cacheSpec, result );
-		}
-	}
+        if ( !result.valid() )
+        {
+            result = ImageUtils::createEmptyImage();
+        }
+    }
 
-    return result;
+    else
+    {
+        result = source->createImage( key, op.get(), progress );
+    }
+    
+    // If image creation failed (but was not intentionally canceled),
+    // blacklist this tile for future requests.
+    if ( result == 0L && (!progress || !progress->isCanceled()) )
+    {
+        source->getBlacklist()->add( key.getTileId() );
+    }
+
+    return result.release();
+}
+
+osg::Image*
+ImageLayer::assembleImageFromTileSource(const TileKey&    key, 
+                                        ProgressCallback* progress,
+                                        bool              forceFallback )
+{
+    GeoImage mosaic, result;
+
+    // Scale the extent if necessary to apply an "edge buffer"
+    GeoExtent ext = key.getExtent();
+    if ( _runtimeOptions.edgeBufferRatio().isSet() )
+    {
+        double ratio = _runtimeOptions.edgeBufferRatio().get();
+        ext.scale(ratio, ratio);
+    }
+
+    // Get a set of layer tiles that intersect the requested extent.
+    std::vector<TileKey> intersectingTiles;
+    getProfile()->getIntersectingTiles( ext, intersectingTiles );
+
+    if ( intersectingTiles.size() > 0 )
+    {
+        double dst_minx, dst_miny, dst_maxx, dst_maxy;
+        key.getExtent().getBounds(dst_minx, dst_miny, dst_maxx, dst_maxy);
+
+        osg::ref_ptr<ImageMosaic> mi = new ImageMosaic();
+        std::vector<TileKey> missingTiles;
+
+        bool retry = false;
+        for (unsigned int j = 0; j < intersectingTiles.size(); ++j)
+        {
+            double minX, minY, maxX, maxY;
+            intersectingTiles[j].getExtent().getBounds(minX, minY, maxX, maxY);
+
+            OE_DEBUG << LC << "\t Intersecting Tile " << j << ": " << minX << ", " << minY << ", " << maxX << ", " << maxY << std::endl;
+
+            osg::ref_ptr<osg::Image> img;
+            if ( forceFallback )
+            {
+                TileKey finalKey = intersectingTiles[j];
+                while( !img.valid() && finalKey.valid() )
+                {
+                    img = createImageFromTileSource( finalKey, progress, false );
+                    if ( img.valid() && finalKey.getLevelOfDetail() < intersectingTiles[j].getLevelOfDetail() )
+                    {
+                        GeoImage raw( img.get(), finalKey.getExtent() );
+                        GeoImage cropped = raw.crop( intersectingTiles[j].getExtent() );
+                        img = cropped.takeImage();
+                    }
+                    else
+                    {
+                        finalKey = finalKey.createParentKey();
+                    }
+                }
+            }
+            else
+            {
+                img = createImageFromTileSource( intersectingTiles[j], progress, false );
+            }
+
+            if ( img.valid() )
+            {
+                // make sure the image is RGBA:
+                if (img->getPixelFormat() != GL_RGBA || img->getDataType() != GL_UNSIGNED_BYTE || img->getInternalTextureFormat() != GL_RGBA8 )
+                {
+                    osg::ref_ptr<osg::Image> convertedImg = ImageUtils::convertToRGBA8(img.get());
+                    if (convertedImg.valid())
+                    {
+                        img = convertedImg;
+                    }
+                }
+                // add it to our list of images to be mosaiced:
+                mi->getImages().push_back( TileImage(img.get(), intersectingTiles[j]) );
+            }
+            else
+            {
+                // the tile source did not return a tile, so make a note of it.
+                if (progress && (progress->isCanceled() || progress->needsRetry()))
+                {
+                    retry = true;
+                    break;
+                }
+                missingTiles.push_back( intersectingTiles[j] );
+            }
+        }
+
+        if ( mi->getImages().empty() || retry )
+        {
+            // if we didn't get any data, fail
+            OE_DEBUG << LC << "Couldn't create image for ImageMosaic " << std::endl;
+            return 0L;
+        }
+        else if ( missingTiles.size() > 0 )
+        {
+            // if we have missing tiles, replace them with transparent regions:
+            osg::ref_ptr<const osg::Image> validImage = mi->getImages()[0].getImage();
+            unsigned int tileWidth = validImage->s();
+            unsigned int tileHeight = validImage->t();
+            unsigned int tileDepth = validImage->r();
+
+            for (unsigned int j = 0; j < missingTiles.size(); ++j)
+            {
+                // Create transparent image which size equals to the size of a valid image
+                osg::ref_ptr<osg::Image> newImage = new osg::Image;
+                newImage->allocateImage(tileWidth, tileHeight, tileDepth, validImage->getPixelFormat(), validImage->getDataType());
+                unsigned char *data = newImage->data(0,0);
+                memset(data, 0, newImage->getTotalSizeInBytes());
+
+                mi->getImages().push_back( TileImage(newImage.get(), missingTiles[j]) );
+            }
+        }
+
+        // all set. Mosaic all the images together.
+        double rxmin, rymin, rxmax, rymax;
+        mi->getExtents( rxmin, rymin, rxmax, rymax );
+
+        mosaic = GeoImage(
+            mi->createImage(),
+            GeoExtent( getProfile()->getSRS(), rxmin, rymin, rxmax, rymax ) );
+    }
+
+    if ( mosaic.valid() )
+    {
+        // the imagery must be reprojected iff:
+        //  * the SRS of the image is different from the SRS of the key;
+        //  * UNLESS they are both geographic SRS's (in which case we can skip reprojection)
+        bool needsReprojection =
+            !mosaic.getSRS()->isEquivalentTo( key.getProfile()->getSRS()) &&
+            !(mosaic.getSRS()->isGeographic() && key.getProfile()->getSRS()->isGeographic());
+
+        bool needsLeftBorder = false;
+        bool needsRightBorder = false;
+        bool needsTopBorder = false;
+        bool needsBottomBorder = false;
+
+        // If we don't need to reproject the data, we still had to mosaic the data, so check to see
+        // whether we need to add an extra, transparent pixel on the sides because the data doesn't 
+        // encompass the entire map.
+        if ( !needsReprojection )
+        {
+            GeoExtent keyExtent = key.getExtent();
+
+            // If the key is geographic and the mosaic is mercator, we need to get the mercator
+            // extents to determine if we need to add the border or not
+            // (TODO: this might be OBE due to the elimination of the Mercator fast-path -gw)
+            if (key.getExtent().getSRS()->isGeographic() && mosaic.getSRS()->isMercator())
+            {
+                keyExtent = osgEarth::Registry::instance()->getGlobalMercatorProfile()->clampAndTransformExtent( 
+                    key.getExtent( ));
+            }
+
+            // Use an epsilon to only add the border if it is significant enough.
+            double eps = 1e-6;
+
+            double leftDiff = mosaic.getExtent().xMin() - keyExtent.xMin();
+            if (leftDiff > eps)
+            {
+                needsLeftBorder = true;
+            }
+
+            double rightDiff = keyExtent.xMax() - mosaic.getExtent().xMax();
+            if (rightDiff > eps)
+            {
+                needsRightBorder = true;
+            }
+
+            double bottomDiff = mosaic.getExtent().yMin() - keyExtent.yMin();
+            if (bottomDiff > eps)
+            {
+                needsBottomBorder = true;
+            }
+
+            double topDiff = keyExtent.yMax() - mosaic.getExtent().yMax();
+            if (topDiff > eps)
+            {
+                needsTopBorder = true;
+            }
+        }
+
+        if ( needsReprojection )
+        {
+            OE_DEBUG << LC << "  Reprojecting image" << std::endl;
+
+            // We actually need to reproject the image.  Note: GeoImage::reproject() will automatically
+            // crop the image to the correct extents, so there is no need to crop after reprojection.
+            result = mosaic.reproject( 
+                key.getProfile()->getSRS(),
+                &key.getExtent(), 
+                *_runtimeOptions.reprojectedTileSize(), 
+                *_runtimeOptions.reprojectedTileSize() );
+        }
+        else
+        {
+            // No reprojection needed, so crop to fit the requested key extent.
+            OE_DEBUG << LC << "  Cropping image" << std::endl;
+
+            GeoExtent clampedMapExt = getProfile()->clampAndTransformExtent( key.getExtent() );
+            if ( clampedMapExt.isValid() )
+            {
+                int size = _runtimeOptions.exactCropping() == true ? _runtimeOptions.reprojectedTileSize().value() : 0;
+                result = mosaic.crop(clampedMapExt, _runtimeOptions.exactCropping().value(), size, size);
+            }
+            else
+                result = GeoImage::INVALID;
+        }
+
+        // Add the transparent pixel AFTER the crop so that it doesn't get cropped out
+        if (result.valid() && (needsLeftBorder || needsRightBorder || needsBottomBorder || needsTopBorder))
+        {
+            result = result.addTransparentBorder(needsLeftBorder, needsRightBorder, needsBottomBorder, needsTopBorder);
+        }
+    }
+
+    return result.takeImage();
 }

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include "MultiPassTerrainTechnique"
-#include "Terrain"
+#include "TerrainNode"
 #include "TransparentLayer"
 #include <osgEarth/ImageUtils>
 
@@ -777,10 +777,10 @@ osg::Geode* MultiPassTerrainTechnique::createPass(unsigned int            order,
                 texture2D->setMaxAnisotropy(16.0f);
                 texture2D->setResizeNonPowerOfTwoHint(false);
 
-                texture2D->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+                texture2D->setFilter( osg::Texture::MAG_FILTER, *_texCompositor->getOptions().magFilter() );
                 if (ImageUtils::isPowerOfTwo( img ) && !(!img->isMipmap() && ImageUtils::isCompressed(img)))
                 {
-                    texture2D->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+                    texture2D->setFilter( osg::Texture::MIN_FILTER, *_texCompositor->getOptions().minFilter() );
                 }
                 else
                 {
@@ -819,7 +819,7 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
     if (_transform.valid())
     {
         _transform->removeChildren( 0, _transform->getNumChildren() );
-        _transform->addChild(_passes);
+        _transform->addChild(_passes.get());
     }
 
     typedef std::map<int, osg::ref_ptr<osg::Geode> > OrderedGeodes;
@@ -833,7 +833,7 @@ void MultiPassTerrainTechnique::generateGeometry(osgTerrain::Locator* masterLoca
     if ( tilef._colorLayers.size() == 0 )
     {
         // if there's no data, just make a placeholder pass
-		osg::Geode* geode = createPass(0, 0L, masterLocator, centerModel, prototype);
+		osg::Geode* geode = createPass(0, 0L, masterLocator, centerModel, prototype.get());
 		_passes->addChild( geode );
 	}
     else

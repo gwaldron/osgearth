@@ -1,0 +1,96 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHUTIL_MOUSE_COORDS_TOOL_H
+#define OSGEARTHUTIL_MOUSE_COORDS_TOOL_H 1
+
+#include <osgEarthUtil/Common>
+#include <osgEarthUtil/Controls>
+#include <osgEarthUtil/Formatters>
+#include <osgEarth/MapNode>
+
+#include <osgGA/GUIEventHandler>
+
+namespace osgEarth { namespace Util
+{
+    using namespace Controls;
+
+    /**
+     * Tool that prints the map coordinates under the mouse into a 
+     * LabelControl.
+     */
+    class OSGEARTHUTIL_EXPORT MouseCoordsTool : public osgGA::GUIEventHandler
+    {
+    public:
+        struct Callback : public osg::Referenced
+        {
+            // called when valid map coordinates are found under the mouse
+            virtual void set( const osg::Vec3d& mapCoords, osg::View* view, MapNode* mapNode ) =0;
+
+            // called when no map coords are found under the mouse
+            virtual void reset( osg::View* view, MapNode* mapNode ) =0;
+        };
+
+    public:
+        /**
+         * Constructs a new handler
+         * @param label
+         *      Label control that will accept the coordinate readout
+         * @param mapNode
+         *      Map node from which to query coordinates
+         */
+        MouseCoordsTool( MapNode* mapNode );
+
+        /**
+         * Adds a readout callback.
+         */
+        void addCallback( Callback* callback );
+
+
+    public: // GUIEventHandler
+
+        bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa );
+
+    protected:
+        MapNode*      _mapNode;
+        osg::NodePath _mapNodePath;
+        typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
+        Callbacks _callbacks;
+    };
+
+
+    /**
+     * A sample callback that will display the mouse coords in a LabelControl.
+     */
+    class OSGEARTHUTIL_EXPORT MouseCoordsLabelCallback : public MouseCoordsTool::Callback
+    {
+    public:
+        MouseCoordsLabelCallback( LabelControl* label, Formatter* formatter );
+
+        virtual void set( const osg::Vec3d& mapCoords, osg::View* view, MapNode* mapNode );
+        virtual void reset( osg::View* view, MapNode* mapNode );
+
+    protected:
+        osg::observer_ptr<LabelControl> _label;
+        osg::ref_ptr<Formatter>         _formatter;
+    };
+
+} } // namespace osgEarthUtil
+
+#endif // OSGEARTHUTIL_MOUSE_COORDS_TOOL_H

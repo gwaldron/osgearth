@@ -29,8 +29,8 @@ namespace osgEarth { namespace Drivers
     class TileCacheOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
         optional<std::string>& layer() { return _layer; }
         const optional<std::string>& layer() const { return _layer; }
@@ -65,7 +65,9 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet( "format", _format );
         }
 
-        optional<std::string> _url, _layer, _format;
+        optional<URI>         _url;
+        optional<std::string> _layer;
+        optional<std::string> _format;
     };
 
 } } // namespace osgEarth::Drivers

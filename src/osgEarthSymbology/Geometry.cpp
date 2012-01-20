@@ -85,7 +85,10 @@ Geometry::cloneAs( const Geometry::Type& newType ) const
     case TYPE_RING:
         return new Ring( &this->asVector() );
     case TYPE_POLYGON:
-        return new Polygon( &this->asVector() );
+        if ( dynamic_cast<const Polygon*>(this) )
+            return new Polygon( *static_cast<const Polygon*>(this) );
+        else
+            return new Polygon( &this->asVector() );
     default:
         break;
     }
@@ -163,7 +166,7 @@ Geometry::buffer(double distance,
         //     This seems to only effect the Linux build, Windows works fine
         int geosQuadSegs = params._cornerSegs > 0 
             ? params._cornerSegs
-            : 8;//buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS;
+            : 8; //buffer::BufferParameters::DEFAULT_QUADRANT_SEGMENTS;
 
         geom::Geometry* outGeom = NULL;
 
@@ -173,23 +176,27 @@ Geometry::buffer(double distance,
         geosBufferParams.setJoinStyle( geosJoinStyle );
         buffer::BufferBuilder bufBuilder( geosBufferParams );
 
-        if (params._singleSided)
+        try
         {
-            outGeom = bufBuilder.bufferLineSingleSided(inGeom, distance, params._leftSide );
+            if (params._singleSided)
+            {
+                outGeom = bufBuilder.bufferLineSingleSided(inGeom, distance, params._leftSide );
+            }
+            else
+            {
+                outGeom = bufBuilder.buffer(inGeom, distance );
+            }
         }
-        else
+        catch( const util::TopologyException& ex )
         {
-            outGeom = bufBuilder.buffer(inGeom, distance );
+            OE_WARN << LC << "GEOS buffer: " << ex.what() << std::endl;
+            outGeom = 0L;
         }
 
         if ( outGeom )
         {
             output = GEOSUtils::exportGeometry( outGeom );
             outGeom->getFactory()->destroyGeometry( outGeom );
-        }
-        else
-        {
-            OE_INFO << LC << "Buffer: no output geometry" << std::endl;
         }
 
         inGeom->getFactory()->destroyGeometry( inGeom );
@@ -605,6 +612,15 @@ MultiGeometry::getTotalPointCount() const
     int total = 0;
     for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
         total += i->get()->getTotalPointCount();
+    return total;
+}
+
+unsigned
+MultiGeometry::getNumGeometries() const
+{
+    unsigned total = 0;
+    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+        total += i->get()->getNumGeometries();
     return total;
 }
 

@@ -92,11 +92,12 @@ public:
     }
 
     //override
-    void initialize( const std::string& referenceURI )
+    void initialize( const osgDB::Options* dbOptions )
     {
         if ( _options.url().isSet() )
         {
-            _source = osgEarth::getFullPath( referenceURI, _options.url().value() );
+            _source = _options.url()->full();
+            //_source = osgEarth::getFullPath( referenceURI, _options.url()->full() );
         }
         else if ( _options.connection().isSet() )
         {
@@ -110,17 +111,20 @@ public:
     {
         FeatureProfile* result = 0L;
 
+        // see if we have a custom profile.
+        osg::ref_ptr<const Profile> profile;
+        if ( _options.profile().isSet() )
+        {
+            profile = Profile::create( *_options.profile() );
+        }
+
         if ( _geometry.valid() )
         {
             // if the user specified explicit geometry/profile, use that:
             GeoExtent ex;
-            if ( _options.geometryProfileOptions().isSet() )
+            if ( profile.valid() )
             {
-                osg::ref_ptr<const Profile> _profile = Profile::create( 
-                    ProfileOptions(_options.geometryProfileOptions().value())  );
-
-                if ( _profile.valid() )
-                    ex = _profile->getExtent();
+                ex = profile->getExtent();
             }
 
             if ( !ex.isValid() )
@@ -130,6 +134,7 @@ public:
             }
             result = new FeatureProfile( ex );
         }
+
         else if ( !_source.empty() )
         {
             // otherwise, assume we're loading from the URL:
@@ -154,21 +159,30 @@ public:
                 {                    
                     GeoExtent extent;
 
-                    // extract the SRS and Extent:                
-                    OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef( _layerHandle );
-                    if ( srHandle )
+                    // if the user provided a profile, user that:
+                    if ( profile.valid() )
                     {
-                        osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle, false );
-                        if ( srs.valid() )
+                        result = new FeatureProfile( profile->getExtent() );
+                    }
+
+                    else
+                    {
+                        // extract the SRS and Extent:                
+                        OGRSpatialReferenceH srHandle = OGR_L_GetSpatialRef( _layerHandle );
+                        if ( srHandle )
                         {
-                            // extract the full extent of the layer:
-                            OGREnvelope env;
-                            if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) == OGRERR_NONE )
+                            osg::ref_ptr<SpatialReference> srs = SpatialReference::createFromHandle( srHandle, false );
+                            if ( srs.valid() )
                             {
-                                GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
-                                
-                                // got enough info to make the profile!
-                                result = new FeatureProfile( extent );
+                                // extract the full extent of the layer:
+                                OGREnvelope env;
+                                if ( OGR_L_GetExtent( _layerHandle, &env, 1 ) == OGRERR_NONE )
+                                {
+                                    GeoExtent extent( srs.get(), env.MinX, env.MinY, env.MaxX, env.MaxY );
+                                    
+                                    // got enough info to make the profile!
+                                    result = new FeatureProfile( extent );
+                                }
                             }
                         }
                     }
@@ -176,16 +190,13 @@ public:
                     // assuming we successfully opened the layer, build a spatial index if requested.
                     if ( _options.buildSpatialIndex() == true )
                     {
-                        OE_INFO << LC << "Building spatial index for " << getName() << " ..." << std::flush;
-
+                        OE_INFO << LC << "Building spatial index for " << getName() << std::endl;
                         std::stringstream buf;
                         const char* name = OGR_FD_GetName( OGR_L_GetLayerDefn( _layerHandle ) );
                         buf << "CREATE SPATIAL INDEX ON " << name; 
 					    std::string bufStr;
 					    bufStr = buf.str();
                         OGR_DS_ExecuteSQL( _dsHandle, bufStr.c_str(), 0L, 0L );
-
-                        OE_INFO << LC << "...done." << std::endl;
                     }
 
                     //Get the feature count
@@ -423,10 +434,10 @@ protected:
     // read the WKT geometry from a URL, then parse into a Geometry.
     Symbology::Geometry* parseGeometryUrl( const std::string& geomUrl )
     {
-        std::string wkt;
-        if ( HTTPClient::readString( geomUrl, wkt ) == HTTPClient::RESULT_OK )
+        ReadResult r = URI(geomUrl).readString( 0L, CachePolicy::NO_CACHE );
+        if ( r.succeeded() )
         {
-            Config conf( "geometry", wkt );
+            Config conf( "geometry", r.getString() );
             return parseGeometry( conf );
         }
         return 0L;

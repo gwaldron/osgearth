@@ -30,14 +30,14 @@ namespace osgEarth { namespace Drivers
     class WMSOptions : public TileSourceOptions // NO EXPORT; header only
     {
     public:
-        optional<std::string>& url() { return _url; }
-        const optional<std::string>& url() const { return _url; }
+        optional<URI>& url() { return _url; }
+        const optional<URI>& url() const { return _url; }
 
-        optional<std::string>& capabilitiesUrl() { return _capabilitiesUrl; }
-        const optional<std::string>& capabilitiesUrl() const { return _capabilitiesUrl; }
+        optional<URI>& capabilitiesUrl() { return _capabilitiesUrl; }
+        const optional<URI>& capabilitiesUrl() const { return _capabilitiesUrl; }
 
-        optional<std::string>& tileServiceUrl() { return _tileServiceUrl; }
-        const optional<std::string>& tileServiceUrl() const { return _tileServiceUrl; }
+        optional<URI>& tileServiceUrl() { return _tileServiceUrl; }
+        const optional<URI>& tileServiceUrl() const { return _tileServiceUrl; }
 
         optional<std::string>& layers() { return _layers; }
         const optional<std::string>& layers() const { return _layers; }
@@ -122,9 +122,9 @@ namespace osgEarth { namespace Drivers
             conf.getIfSet("seconds_per_frame", _secondsPerFrame );
         }
 
-        optional<std::string> _url;
-        optional<std::string> _capabilitiesUrl;
-        optional<std::string> _tileServiceUrl;
+        optional<URI>         _url;
+        optional<URI>         _capabilitiesUrl;
+        optional<URI>         _tileServiceUrl;
         optional<std::string> _layers;
         optional<std::string> _style;
         optional<std::string> _format;

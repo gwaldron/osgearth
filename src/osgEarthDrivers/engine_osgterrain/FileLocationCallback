@@ -43,7 +43,7 @@ public:
         //OE_NOTICE<<"fileLocation = "<<filename<<std::endl;
 
         unsigned int lod, x, y, id;
-        sscanf(filename.c_str(), "%d_%d_%d.%d", &lod, &x, &y, &id);
+        sscanf(filename.c_str(), "%d/%d/%d.%d", &lod, &x, &y, &id);
 
         osg::ref_ptr<OSGTerrainEngineNode> engine;
         OSGTerrainEngineNode::getEngineByUID( (UID)id, engine );
@@ -65,6 +65,17 @@ public:
                     break;
                 }
             }
+            
+            /*
+            if (result == LOCAL_FILE)
+            {
+                OE_NOTICE << filename << " is local" << std::endl;
+            }
+            else
+            {
+                OE_NOTICE << filename << " is remote" << std::endl;
+            } 
+            */
             //if ( engine->getTileFactory()->areChildrenCached( engine->getMap(), mapKey ) )
             //{
             //    result = LOCAL_FILE;

@@ -34,6 +34,8 @@ namespace osgEarth
     {
     public:
         TextureCompositorTexArray( const TerrainOptions& options );
+        
+        static bool isSupported();
 
     public:
         void updateMasterStateSet( osg::StateSet* stateSet, const TextureLayout& layout ) const;

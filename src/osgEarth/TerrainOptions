@@ -177,6 +177,12 @@ namespace osgEarth
         const optional<float>& lodTransitionTime() const { return _lodTransitionTimeSeconds; }
 
         /**
+         * Whether cluster culling is enabled on terrain tiles (default = true)
+         */
+        optional<bool>& clusterCulling() { return _clusterCulling; }
+        const optional<bool>& clusterCulling() const { return _clusterCulling; }
+
+        /**
          * Available techniques for compositing image layers at runtime.
          */
         enum CompositingTechnique
@@ -185,7 +191,8 @@ namespace osgEarth
             COMPOSITING_TEXTURE_ARRAY,
             COMPOSITING_MULTITEXTURE_GPU,
             COMPOSITING_MULTITEXTURE_FFP,
-            COMPOSITING_MULTIPASS
+            COMPOSITING_MULTIPASS,
+            COMPOSITING_USER
         };
 
         /**
@@ -207,16 +214,29 @@ namespace osgEarth
         const optional<bool>& enableLighting() const { return _enableLighting; }  
     
         /**
-         * The interpolation method to use when sampling heightfields.
-         */
-        optional<ElevationInterpolation>& elevationInterpolation(void) { return _elevationInterpolation; }
-        const optional<ElevationInterpolation>& elevationInterpolation(void) const { return _elevationInterpolation;}
-
-        /**
          * Whether to enable mipmaping and mipmap generation on textures
          */
         optional<bool>& enableMipmapping() { return _enableMipmapping; }
         const optional<bool>& enableMipmapping() const { return _enableMipmapping; }
+
+        /**
+         * The min filter to be applied to textures
+         */
+        optional<osg::Texture::FilterMode> minFilter() { return _minFilter;}
+        const optional<osg::Texture::FilterMode> minFilter() const { return _minFilter;}
+
+        /**
+         * The mag filter to be applied to textures
+         */
+        optional<osg::Texture::FilterMode> magFilter() { return _magFilter;}
+        const optional<osg::Texture::FilterMode> magFilter() const { return _magFilter;}
+
+            
+        /**
+         * Whether to enable blending
+         */
+        optional<bool>& enableBlending() { return _enableBlending; }
+        const optional<bool>& enableBlending() const { return _enableBlending; }
    
     public:
         virtual Config getConfig() const;
@@ -229,7 +249,7 @@ namespace osgEarth
 
     private:
         void fromConfig( const Config& conf );
-            
+                    
         optional<float> _verticalScale;
         optional<float> _heightFieldSampleRatio;
         optional<float> _minTileRangeFactor;
@@ -243,10 +263,10 @@ namespace osgEarth
         optional<bool> _lodBlending;
         optional<float> _lodTransitionTimeSeconds;
         optional<bool>  _enableMipmapping;
-#if 0
-        optional<osg::Texture::FilterMode> _contourMagFilter;
-        optional<osg::Texture::FilterMode> _contourMinFilter;
-#endif
+        optional<bool> _clusterCulling;
+        optional<bool> _enableBlending;
+        optional<osg::Texture::FilterMode> _magFilter;
+        optional<osg::Texture::FilterMode> _minFilter;
         optional<ElevationInterpolation> _elevationInterpolation;
     };
 }

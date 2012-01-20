@@ -36,6 +36,8 @@ const char* builtinMimeTypeExtMappings[] =
     "application/x-world","wrl",
     "application/x-zip-compressed","zip",
     "application/zip","zip",
+    "application/vnd.google-earth.kml+xml","kml",
+    "application/vnd.google-earth.kmz","kmz",
     "drawing/x-dwf(old)","dwf",
     "image/bmp","bmp",
     "image/cmu-raster","ras",

@@ -29,6 +29,8 @@
 #include <osgEarthSymbology/ExtrusionSymbol>
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/Skins>
+#include <osgEarthSymbology/ResourceLibrary>
 
 #include <osgEarth/Config>
 #include <osgEarth/Revisioning>
@@ -38,9 +40,10 @@
 namespace osgEarth { namespace Symbology 
 {
     /**
-     * A Style is an unordered collection of Symbols.
+     * Style is an unordered collection of Symbols that describes how to render
+     * geometry and other objects.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT Style // : public osgEarth::Revisioned<osg::Object>
+    class OSGEARTHSYMBOLOGY_EXPORT Style
     {
     public:
         /** Constructs a new, empty style. */
@@ -67,14 +70,18 @@ namespace osgEarth { namespace Symbology
 
         /** Adds a symbol to the collection. */
         void addSymbol(Symbol* symbol);
+        void add(Symbol* symbol) { addSymbol(symbol); }
 
+		/** Remove a symbol from the collection */
+		bool removeSymbol (Symbol* symbol);
+		
         /** Gets a typed symbol from the style (the first one found). */
         template<typename T>
         T* getSymbol()
         {
             for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
             {
-                Symbol* symbol = *it;
+                Symbol* symbol = (*it).get();
                 T* s = dynamic_cast<T*>(symbol);
                 if (s)
                     return s;
@@ -89,7 +96,7 @@ namespace osgEarth { namespace Symbology
         {
             for (SymbolList::const_iterator it = _symbols.begin(); it != _symbols.end(); ++it)
             {
-                Symbol* symbol = *it;
+                Symbol* symbol = (*it).get();
                 const T* s = dynamic_cast<const T*>(symbol);
                 if (s)
                     return s;
@@ -124,19 +131,11 @@ namespace osgEarth { namespace Symbology
         SymbolList                  _symbols;
         std::string                 _origType;
         std::string                 _origData;
-        optional<std::string>       _url;
-
-        //typedef std::map<std::string,osg::ref_ptr<Style> > StylesByName;
-        //StylesByName _subStyles;
+        optional<URI>               _uri;
     };
 
-    typedef std::vector<Style> StyleList;
+    typedef std::vector<Style>           StyleList;
     typedef std::map<std::string, Style> StyleMap;
-
-
-    class OSGEARTHSYMBOLOGY_EXPORT StyleComponent
-    {
-    };
 
     /**
      * A style selector lets you classify styles based on rules, such as a
@@ -144,7 +143,7 @@ namespace osgEarth { namespace Symbology
      * same name as the selector, but you can override this by settings
      * the styleName property.
      */
-    class OSGEARTHSYMBOLOGY_EXPORT StyleSelector : public StyleComponent
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSelector
     {
     public:
         StyleSelector( const Config& conf =Config() );
@@ -176,31 +175,88 @@ namespace osgEarth { namespace Symbology
         optional<Query>       _query;
     };
 
-    typedef std::list<StyleSelector> StyleSelectorList;
+    typedef std::list<StyleSelector>   StyleSelectorList;
     typedef std::vector<StyleSelector> StyleSelectorVector;
 
 
-
-    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet : public Configurable
+    /**
+     * A complete definition of style information.
+     */
+    class OSGEARTHSYMBOLOGY_EXPORT StyleSheet : public osg::Referenced
     {
     public:
+      /**
+       * A simple representation of a script used locally
+       */
+      struct Script : osg::Referenced
+      {
+        Script(const std::string& code, const std::string& language, const std::string& name) :
+          code(code), language(language), name(name) { }
+
+        std::string code;
+        std::string language;
+        std::string name;
+      };
+
+    public:
+        /** Constructs a new style sheet, optionally from a Config serialization. */
         StyleSheet( const Config& conf =Config() );
 
+        /** Gets the context for relative path resolution */
+        const URIContext& uriContext() const { return _uriContext; }
+
+        /** Adds a style to this sheet. */
+        void addStyle( const Style& style );
+
+        /** Removes a style from this sheet. */
+        void removeStyle( const std::string& name );
+        
+        /** Gets a named style from this sheet. If the name isn't found, optionally falls back on the
+            "default" style. Note: if the name has a hashtag prefix (e.g., "#name") it will search for
+            the name with and without the hash. (they are considered equivalent) */
+        Style* getStyle( const std::string& name, bool fallBackOnDefault =true );
+        const Style* getStyle( const std::string& name, bool fallBackOnDefault =true ) const;
+
+        /** Gets the default style in this sheet. */
+        Style* getDefaultStyle();
+        const Style* getDefaultStyle() const;
+
+        /** Selectors pick a style from the sheet based on some criteria. */
         StyleSelectorList& selectors() { return _selectors; }
         const StyleSelectorList& selectors() const { return _selectors; }
 
-        void addStyle( const Style& style );
-        void removeStyle( const std::string& name );
-        bool getStyle( const std::string& name, Style& out_style, bool fallBackOnDefault =true ) const;
-        bool getDefaultStyle( Style& out_style ) const;
+        /** Adds a resource library. */
+        void addResourceLibrary( ResourceLibrary* library );
+
+        /** Gets a resource library by name. */
+        ResourceLibrary* getResourceLibrary( const std::string& name, const osgDB::Options* dbOptions ) const;
+
+        /** Resource libraries in this sheet. */
+        //const ResourceLibraryMap& resourceLibraries() const { return _libraries; }
+
+        /** Gets the script */
+        Script* script() const { return _script.get(); }
+
+    public: // serialization functions
 
         virtual Config getConfig() const;
         virtual void mergeConfig( const Config& conf );
 
     protected:
-        StyleSelectorList _selectors;
-        StyleMap _styles;
-        Style _emptyStyle;
+        URIContext                   _uriContext;
+        osg::ref_ptr<Script>         _script;
+        StyleSelectorList            _selectors;
+        StyleMap                     _styles;
+        Style                        _emptyStyle;
+
+        //typedef std::pair<URI, osg::ref_ptr<ResourceLibrary> > ResourceLibraryEntry;
+        //typedef std::map<std::string, ResourceLibraryEntry> ResourceLibraryEntries;
+        //ResourceLibraryEntries     _resLibs;
+        
+        typedef std::map<std::string, osg::ref_ptr<ResourceLibrary> > ResourceLibraries;
+        ResourceLibraries          _resLibs;
+        Threading::ReadWriteMutex  _resLibsMutex;
+
     };
 
 } } // namespace osgEarth::Symbology

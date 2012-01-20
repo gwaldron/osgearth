@@ -44,6 +44,9 @@ namespace osgEarth
         /** maximum supported size (in pixels) of a texture */
         int getMaxTextureSize() const { return _maxTextureSize; }
 
+        /** maximum texture size that doesn't cause a slowdown (vendor-specific) */
+        int getMaxFastTextureSize() const { return _maxFastTextureSize; }
+
         /** maximum number of openGL lights */
         int getMaxLights() const { return _maxLights; }
 
@@ -75,7 +78,10 @@ namespace osgEarth
         /** whether the GPU properly supports updating an existing texture with a new mipmapped image */
         bool supportsMipmappedTextureUpdates() const { return _supportsMipmappedTextureUpdates; }
 
-    private:
+        /** whether the GPU supports DEPTH_PACKED_STENCIL buffer */
+        bool supportsDepthPackedStencilBuffer() const { return _supportsDepthPackedStencilBuffer; }
+
+    protected:
         Capabilities();
 
     private:
@@ -83,6 +89,7 @@ namespace osgEarth
         int  _maxGPUTextureUnits;
         int  _maxGPUTextureCoordSets;
         int  _maxTextureSize;
+        int  _maxFastTextureSize;
         int  _maxLights;
         bool _supportsGLSL;
         float _GLSLversion;
@@ -93,6 +100,7 @@ namespace osgEarth
         bool _supportsTwoSidedStencil;
         bool _supportsTexture2DLod;
         bool _supportsMipmappedTextureUpdates;
+        bool _supportsDepthPackedStencilBuffer;
         std::string _vendor;
         std::string _renderer;
         std::string _version;

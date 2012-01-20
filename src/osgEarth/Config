@@ -32,17 +32,10 @@
 
 namespace osgEarth
 {
+    class URI;
+
     typedef std::list<class Config> ConfigSet;
 
-    /**
-     * Probably to be deprecated
-     */
-    class Configurable : public osg::Referenced // marker interface class
-    {
-    public:
-        virtual class Config getConfig() const =0;
-        virtual void mergeConfig( const Config& conf ) =0;
-    };
 
     // general-purpose name/value pair set.
     struct Properties : public std::map<std::string,std::string> {
@@ -61,16 +54,32 @@ namespace osgEarth
     class OSGEARTH_EXPORT Config
     {
     public:
-        Config() { }
-        Config( const std::string& key ) : _key(key) { }
-        Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ) { }
+        Config() : _emptyConfig(0L) { }
 
-        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _attrs(rhs._attrs), _children(rhs._children), _refMap(rhs._refMap) { }
+        Config( const std::string& key ) : _key(key), _emptyConfig(0L) { }
+
+        Config( const std::string& key, const std::string& value ) : _key( key ), _defaultValue( value ), _emptyConfig(0L) { }
+
+        Config( const Config& rhs ) : _key(rhs._key), _defaultValue(rhs._defaultValue), _children(rhs._children), _refMap(rhs._refMap), _referrer(rhs._referrer), _emptyConfig(0L) { }
+
+        ~Config() { if ( _emptyConfig ) delete _emptyConfig; }
+
+        /** Context for resolving relative URIs that occur in this Config */
+        void setReferrer( const std::string& value );
+        const std::string& referrer() const { return _referrer; }
 
         bool loadXML( std::istream& in );
 
+        std::string toJSON( bool pretty =false ) const;
+
+        bool fromJSON( const std::string& json );
+
         bool empty() const {
             return _key.empty() && _defaultValue.empty() && _children.empty();
+        }
+
+        bool isSimple() const {
+            return !_key.empty() && !_defaultValue.empty() && _children.empty();
         }
 
         std::string& key() { return _key; }
@@ -79,17 +88,6 @@ namespace osgEarth
         const std::string& value() const { return _defaultValue; }
         std::string& value() { return _defaultValue; }
 
-        Properties& attrs() { return _attrs; }
-        const Properties& attrs() const { return _attrs; }
-
-        std::string attr( const std::string& name ) const {
-            Properties::const_iterator i = _attrs.find(name);
-            return i != _attrs.end()? trim(i->second) : "";
-        }
-
-        std::string& attr( const std::string& name ) { return _attrs[name]; }
-        
-        ConfigSet& children() { return _children; }
         const ConfigSet& children() const { return _children; }
 
         const ConfigSet children( const std::string& key ) const {
@@ -109,7 +107,6 @@ namespace osgEarth
         }
 
         void remove( const std::string& key ) {
-            _attrs.erase(key);            
             for(ConfigSet::iterator i = _children.begin(); i != _children.end(); ) {
                 if ( i->key() == key )
                     i = _children.erase( i );
@@ -118,7 +115,9 @@ namespace osgEarth
             }
         }
 
-        const Config& child( const std::string& key ) const;
+        Config child( const std::string& key ) const;
+
+        Config* mutable_child( const std::string& key );
 
         void merge( const Config& rhs );
 
@@ -159,6 +158,7 @@ namespace osgEarth
 
         void add( const std::string& key, const std::string& value ) {
             _children.push_back( Config( key, value ) );
+            _children.back().setReferrer( _referrer );
         }
 
         void addChild( const Config& conf ) {
@@ -167,6 +167,7 @@ namespace osgEarth
 
         void add( const Config& conf ) {
             _children.push_back( conf );
+            _children.back().setReferrer( _referrer );
         }
 
         void add( const std::string& key, const Config& conf ) {
@@ -177,7 +178,7 @@ namespace osgEarth
 
         void add( const ConfigSet& set ) {
             for( ConfigSet::const_iterator i = set.begin(); i != set.end(); i++ )
-                _children.push_back( *i );
+                add( *i );
         }
 
         template<typename T>
@@ -222,7 +223,8 @@ namespace osgEarth
 
         void update( const std::string& key, const std::string& value ) {
             remove(key);
-            _children.push_back( Config( key, value ) );
+            add( Config(key, value) );
+            //_children.push_back( Config( key, value ) );
         }
 
         void updateChild( const Config& conf ) {
@@ -231,7 +233,8 @@ namespace osgEarth
 
         void update( const Config& conf ) {
             remove(conf.key());
-            _children.push_back( conf );
+            add( conf );
+            //_children.push_back( conf );
         }
 
         void update( const std::string& key, const Config& conf ) {
@@ -241,6 +244,9 @@ namespace osgEarth
             add( temp );
         }
 
+        void set( const std::string& key, const std::string& value ) {
+            update( key, value );
+        }
 
         bool hasValue( const std::string& key ) const {
             return !value(key).empty();
@@ -248,16 +254,16 @@ namespace osgEarth
 
         const std::string value( const std::string& key ) const {
             std::string r = trim(child(key).value());
-            if ( r.empty() )
-                r = attr(key);
+            if ( r.empty() && _key == key )
+                r = _defaultValue;
             return r;
         }
 
         // populates a primitive value.
         template<typename T>
         T value( const std::string& key, T fallback ) const {
-            std::string r = attr(key);
-            if ( r.empty() && hasChild( key ) )
+            std::string r;
+            if ( hasChild( key ) )
                 r = child(key).value();
             return osgEarth::as<T>( r, fallback );
         }
@@ -269,8 +275,8 @@ namespace osgEarth
         // populates the output value iff the Config exists.
         template<typename T>
         bool getIfSet( const std::string& key, optional<T>& output ) const {
-            std::string r = attr(key);
-            if ( r.empty() && hasChild(key) )
+            std::string r;
+            if ( hasChild(key) )
                 r = child(key).value();
             if ( !r.empty() ) {
                 output = osgEarth::as<T>( r, output.defaultValue() );
@@ -312,9 +318,9 @@ namespace osgEarth
                 return false;
         }
 
-        std::string toString( int indent =0 ) const;
+        //std::string toString( int indent =0 ) const;
 
-        std::string toHashString() const;
+        //std::string toHashString() const;
 
         /** support for conveying non-serializable objects in a Config (in memory only) */
 
@@ -334,11 +340,15 @@ namespace osgEarth
             return i == _refMap.end() ? 0 : dynamic_cast<X*>( i->second.get() );
         }
 
+        // remove everything from (this) that also appears in rhs
+        Config operator - ( const Config& rhs ) const;
+
     protected:
         std::string _key;
         std::string _defaultValue;
-        Properties  _attrs;
         ConfigSet   _children;   
+        std::string _referrer;
+        Config*     _emptyConfig;
 
         RefMap _refMap;
     };
@@ -353,7 +363,6 @@ namespace osgEarth
         }
     }
 
-    // specialization for Config
     template<> inline
     void Config::updateIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
         if ( opt.isSet() ) {
@@ -364,7 +373,6 @@ namespace osgEarth
         }
     }
 
-    // specialization for Config.
     template<> inline
     bool Config::getIfSet<Config>( const std::string& key, optional<Config>& output ) const {
         if ( hasChild( key ) ) {
@@ -385,6 +393,8 @@ namespace osgEarth
             : _conf( conf ) { }
         ConfigOptions( const ConfigOptions& rhs )
             : _conf( rhs.getConfig() ) { }
+        
+        const std::string& referrer() const { return _conf.referrer(); }
 
         ConfigOptions& operator = ( const ConfigOptions& rhs ) {
             if ( this != &rhs ) {
@@ -400,6 +410,10 @@ namespace osgEarth
         }
 
         virtual Config getConfig() const { return _conf; }
+
+        Config newConfig() const { Config c; c.setReferrer(referrer()); return c; }
+
+        bool empty() const { return _conf.empty(); }
 
     protected:
         virtual void mergeConfig( const Config& conf ) { }
@@ -420,15 +434,10 @@ namespace osgEarth
         void setDriver( const std::string& value ) { _driver = value; }
         const std::string& getDriver() const { return _driver; }
 
-        ///** Gets or sets the name of the object */
-        //void setName( const std::string& value ) { _name = value; }
-        //const std::string& getName() const { return _name; }
-
     public:
         virtual Config getConfig() const {
             Config conf = ConfigOptions::getConfig();
-            //conf.attr("name") = _name;
-            conf.attr("driver") = _driver;
+            conf.set("driver", _driver);
             return conf;
         }
 
@@ -439,7 +448,6 @@ namespace osgEarth
 
     public:
         void fromConfig( const Config& conf ) {
-            //_name = conf.value( "name" );
             _driver = conf.value( "driver" );
             if ( _driver.empty() && conf.hasValue("type") )
                 _driver = conf.value("type");

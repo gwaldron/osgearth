@@ -17,7 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/Utils>
+#include <osg/Version>
 #include <osg/CoordinateSystemNode>
+#include <osg/MatrixTransform>
 
 using namespace osgEarth;
 
@@ -36,6 +38,7 @@ void osgEarth::removeEventHandler(osgViewer::View* view, osgGA::GUIEventHandler*
 
 CullNodeByHorizon::CullNodeByHorizon( const osg::Vec3d& world, const osg::EllipsoidModel* model ) :
 _world(world),
+_r(model->getRadiusPolar()),
 _r2(model->getRadiusPolar() * model->getRadiusPolar())
 {
     //nop
@@ -46,18 +49,45 @@ CullNodeByHorizon::operator()(osg::Node* node, osg::NodeVisitor* nv)
 {
     if ( nv )
     {
-        osg::Vec3d eye, center, up;
         osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( nv );
-        cv->getCurrentCamera()->getViewMatrixAsLookAt(eye,center,up);
 
-        double d2 = eye.length2();
-        double horiz2 = d2 - _r2;
+        // get the viewpoint. It will be relative to the current reference location (world).
+        osg::Matrix l2w = osg::computeLocalToWorld( nv->getNodePath(), true );
+        osg::Vec3d vp  = cv->getViewPoint() * l2w;
 
-        double dist2 = (_world-eye).length2();
-
-        if ( dist2 < horiz2 )
+        // same quadrant:
+        if ( vp * _world >= 0.0 )
         {
-            traverse(node, nv);
+            double d2 = vp.length2();
+            double horiz2 = d2 - _r2;
+            double dist2 = (_world-vp).length2();
+            if ( dist2 < horiz2 )
+            {
+                traverse(node, nv);
+            }
+        }
+
+        // different quadrants:
+        else
+        {
+            // there's a horizon between them; now see if the thing is visible.
+            // find the triangle formed by the viewpoint, the target point, and 
+            // the center of the earth.
+            double a = (_world-vp).length();
+            double b = _world.length();
+            double c = vp.length();
+
+            // Heron's formula for triangle area:
+            double s = 0.5*(a+b+c);
+            double area = 0.25*sqrt( s*(s-a)*(s-b)*(s-c) );
+
+            // Get the triangle's height:
+            double h = (2*area)/a;
+
+            if ( h >= _r )
+            {
+                traverse(node, nv);
+            }
         }
     }
 }
@@ -86,6 +116,25 @@ CullNodeByNormal::operator()(osg::Node* node, osg::NodeVisitor* nv)
     if ( dotProduct > 0.0 )
     {
         traverse(node, nv);
+    }
+}
+
+//------------------------------------------------------------------------
+
+void
+DoNotComputeNearFarCullCallback::operator()(osg::Node* node, osg::NodeVisitor* nv)
+{
+    osgUtil::CullVisitor* cv = static_cast< osgUtil::CullVisitor*>( nv );
+    osg::CullSettings::ComputeNearFarMode oldMode;
+    if( cv )
+    {
+        oldMode = cv->getComputeNearFarMode();
+        cv->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    }
+    traverse(node, nv);
+    if( cv )
+    {
+        cv->setComputeNearFarMode(oldMode);
     }
 }
 
@@ -182,6 +231,104 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
 
                 _matrixDirty = true;
             }
+
+            if (_autoRotateMode==ROTATE_TO_SCREEN)
+            {
+                osg::Vec3d translation;
+                osg::Quat rotation;
+                osg::Vec3d scale;
+                osg::Quat so;
+
+                cs->getModelViewMatrix()->decompose( translation, rotation, scale, so );
+
+                setRotation(rotation.inverse());
+            }
+            else if (_autoRotateMode==ROTATE_TO_CAMERA)
+            {
+                osg::Vec3d PosToEye = _position - eyePoint;
+                osg::Matrix lookto = osg::Matrix::lookAt(
+                    osg::Vec3d(0,0,0), PosToEye, localUp);
+                osg::Quat q;
+                q.set(osg::Matrix::inverse(lookto));
+                setRotation(q);
+            }
+
+#if OSG_MIN_VERSION_REQUIRED(3,0,0)
+            else if (_autoRotateMode==ROTATE_TO_AXIS)
+            {
+                osg::Matrix matrix;
+                osg::Vec3 ev(eyePoint - _position);
+
+                switch(_cachedMode)
+                {
+                case(AXIAL_ROT_Z_AXIS):
+                    {
+                        ev.z() = 0.0f;
+                        float ev_length = ev.length();
+                        if (ev_length>0.0f)
+                        {
+                            //float rotation_zrotation_z = atan2f(ev.x(),ev.y());
+                            //mat.makeRotate(inRadians(rotation_z),0.0f,0.0f,1.0f);
+                            float inv = 1.0f/ev_length;
+                            float s = ev.x()*inv;
+                            float c = -ev.y()*inv;
+                            matrix(0,0) = c;
+                            matrix(1,0) = -s;
+                            matrix(0,1) = s;
+                            matrix(1,1) = c;
+                        }
+                        break;
+                    }
+                case(AXIAL_ROT_Y_AXIS):
+                    {
+                        ev.y() = 0.0f;
+                        float ev_length = ev.length();
+                        if (ev_length>0.0f)
+                        {
+                            //float rotation_zrotation_z = atan2f(ev.x(),ev.y());
+                            //mat.makeRotate(inRadians(rotation_z),0.0f,0.0f,1.0f);
+                            float inv = 1.0f/ev_length;
+                            float s = -ev.z()*inv;
+                            float c = ev.x()*inv;
+                            matrix(0,0) = c;
+                            matrix(2,0) = s;
+                            matrix(0,2) = -s;
+                            matrix(2,2) = c;
+                        }
+                        break;
+                    }
+                case(AXIAL_ROT_X_AXIS):
+                    {
+                        ev.x() = 0.0f;
+                        float ev_length = ev.length();
+                        if (ev_length>0.0f)
+                        {
+                            //float rotation_zrotation_z = atan2f(ev.x(),ev.y());
+                            //mat.makeRotate(inRadians(rotation_z),0.0f,0.0f,1.0f);
+                            float inv = 1.0f/ev_length;
+                            float s = -ev.z()*inv;
+                            float c = -ev.y()*inv;
+                            matrix(1,1) = c;
+                            matrix(2,1) = -s;
+                            matrix(1,2) = s;
+                            matrix(2,2) = c;
+                        }
+                        break;
+                    }
+                case(ROTATE_TO_AXIS): // need to implement 
+                    {
+                        float ev_side = ev*_side;
+                        float ev_normal = ev*_normal;
+                        float rotation = atan2f(ev_side,ev_normal);
+                        matrix.makeRotate(rotation,_axis);
+                        break;
+                    }
+                }
+                osg::Quat q;
+                q.set(matrix);
+                setRotation(q);
+            }
+#endif
 
             _dirty = false;
         }

@@ -17,13 +17,12 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "OSGTileFactory"
-#include "Terrain"
-#include "StreamingTerrain"
+#include "TerrainNode"
+#include "StreamingTerrainNode"
 #include "FileLocationCallback"
 #include "TransparentLayer"
 
 #include <osgEarth/Map>
-#include <osgEarth/Caching>
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
@@ -120,7 +119,7 @@ OSGTileFactory::getTransformFromExtents(double minX, double minY, double maxX, d
 }
 
 osg::Node*
-OSGTileFactory::createSubTiles( const MapFrame& mapf, Terrain* terrain, const TileKey& key, bool populateLayers )
+OSGTileFactory::createSubTiles( const MapFrame& mapf, TerrainNode* terrain, const TileKey& key, bool populateLayers )
 {
     TileKey k0 = key.createChildKey(0);
     TileKey k1 = key.createChildKey(1);
@@ -357,7 +356,7 @@ OSGTileFactory::createPlaceholderHeightfieldLayer(osg::HeightField* ancestorHF,
 
 osg::Node*
 OSGTileFactory::createTile(const MapFrame&  mapf, 
-                           Terrain*         terrain, 
+                           TerrainNode*         terrain, 
                            const TileKey&   key, 
                            bool             populateLayers, 
                            bool             wrapInPagedLOD, 
@@ -375,7 +374,7 @@ OSGTileFactory::createTile(const MapFrame&  mapf,
 
         return createPlaceholderTile(
             mapf, 
-            static_cast<StreamingTerrain*>(terrain),
+            static_cast<StreamingTerrainNode*>(terrain),
             key );
     }
 }
@@ -384,7 +383,7 @@ OSGTileFactory::createTile(const MapFrame&  mapf,
 
 osg::Node*
 OSGTileFactory::createPlaceholderTile(const MapFrame&   mapf,
-                                      StreamingTerrain* terrain,
+                                      StreamingTerrainNode* terrain,
                                       const TileKey&    key )
 {
     // Start out by finding the nearest registered ancestor tile, since the placeholder is
@@ -525,7 +524,7 @@ namespace
 
 osg::Node*
 OSGTileFactory::createPopulatedTile(const MapFrame&  mapf, 
-                                    Terrain*         terrain, 
+                                    TerrainNode*         terrain, 
                                     const TileKey&   key, 
                                     bool             wrapInPagedLOD, 
                                     bool             fallback, 
@@ -565,7 +564,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
     osg::ref_ptr<osg::HeightField> hf;
     if ( mapf.elevationLayers().size() > 0 )
     {
-        mapf.getHeightField( key, false, hf, 0L, _terrainOptions.elevationInterpolation().value());     
+        mapf.getHeightField( key, false, hf, 0L);     
     }
 
     //If we are on the first LOD and we couldn't get a heightfield tile, just create an empty one.  Otherwise you can run into the situation
@@ -633,7 +632,7 @@ OSGTileFactory::createPopulatedTile(const MapFrame&  mapf,
         else
         {
             //Try to get a heightfield again, but this time fallback on parent tiles
-            if ( mapf.getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value() ) )
+            if ( mapf.getHeightField( key, true, hf, 0L ) )
             {
                 hasElevation = true;
             }
@@ -865,7 +864,7 @@ OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key
 
     // try to create a heightfield at native res:
     osg::ref_ptr<osg::HeightField> hf;
-    if ( !mapf.getHeightField( key, !exactOnly, hf, 0L, _terrainOptions.elevationInterpolation().value() ) )
+    if ( !mapf.getHeightField( key, !exactOnly, hf, 0L ) )
     {
         if ( exactOnly )
             return NULL;
@@ -876,7 +875,7 @@ OSGTileFactory::createHeightFieldLayer( const MapFrame& mapf, const TileKey& key
     // In a Plate Carre tesselation, scale the heightfield elevations from meters to degrees
     if ( isPlateCarre )
     {
-        HeightFieldUtils::scaleHeightFieldToDegrees( hf );
+        HeightFieldUtils::scaleHeightFieldToDegrees( hf.get() );
     }
 
     osgTerrain::HeightFieldLayer* hfLayer = new osgTerrain::HeightFieldLayer( hf.get() );

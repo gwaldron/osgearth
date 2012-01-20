@@ -1,0 +1,22 @@
+#oeFrameContainer, #oeFrameContainer * {
+  background-color: darkgrey;
+  color: white;
+} 
+
+#oeItem, #oeItem * {
+  background-color: lightgrey;
+  color: white;
+}
+
+#oeItemHeader, #oeItemHeader * {
+  background-color: orange;
+  color: white;
+} 
+
+#oeDropTarget, #oeDropTarget * {
+  background: qlineargradient(x1:0 y1:0, x2:0 y2:1, stop:0 orange, stop:1 lightgrey);
+}
+
+QTreeView::item::has-children {
+  background-color: orange;
+}

@@ -23,11 +23,15 @@ SET(TARGET_COMMON_LIBRARIES
     osgEarth
 )
 
+# Folder name for plugins
+SET(OSGEARTH_PLUGINS_FOLDER Plugins)
+
 ############################################################
 #
 #  NodeKit/Psudo loader plugins
 #
 ADD_SUBDIRECTORY(earth)
+ADD_SUBDIRECTORY(kml)
 
 ADD_SUBDIRECTORY(wcs)
 ADD_SUBDIRECTORY(wms)
@@ -42,6 +46,9 @@ ADD_SUBDIRECTORY(osg)
 ADD_SUBDIRECTORY(agglite)
 ADD_SUBDIRECTORY(model_simple)
 ADD_SUBDIRECTORY(debug)
+ADD_SUBDIRECTORY(cache_filesystem)
+ADD_SUBDIRECTORY(ocean_surface)
+ADD_SUBDIRECTORY(refresh)
 
 IF(LIBZIP_FOUND)
   ADD_SUBDIRECTORY(zipfs)
@@ -52,17 +59,21 @@ IF(GDAL_FOUND)
   ADD_SUBDIRECTORY(gdal)
   ADD_SUBDIRECTORY(feature_ogr)
   ADD_SUBDIRECTORY(feature_wfs)  
-#  ADD_SUBDIRECTORY(model_feature_overlay)
+  ADD_SUBDIRECTORY(feature_tfs)
   ADD_SUBDIRECTORY(model_feature_stencil)
   ADD_SUBDIRECTORY(model_feature_geom)
-  ADD_SUBDIRECTORY(model_feature_label)
   ADD_SUBDIRECTORY(mask_feature)
   ADD_SUBDIRECTORY(label_overlay)
+  ADD_SUBDIRECTORY(label_annotation)
 ENDIF(GDAL_FOUND)
 
 IF(SQLITE3_FOUND)
-  ADD_SUBDIRECTORY(cache_sqlite3)
+#  ADD_SUBDIRECTORY(cache_sqlite3)
   ADD_SUBDIRECTORY(mbtiles)
 ENDIF(SQLITE3_FOUND)
 
 ADD_SUBDIRECTORY(engine_osgterrain)
+
+IF(V8_FOUND)
+  ADD_SUBDIRECTORY(script_engine_v8)
+ENDIF(V8_FOUND)

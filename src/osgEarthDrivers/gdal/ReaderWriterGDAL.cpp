@@ -21,6 +21,7 @@
 #include <osgEarth/FileUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ImageUtils>
+#include <osgEarth/URI>
 
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -77,15 +78,6 @@ float Hue_2_RGB( float v1, float v2, float vH )
 using namespace std;
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
-
-//#define PROPERTY_URL            "url"
-//#define PROPERTY_TILE_SIZE      "tile_size"
-//#define PROPERTY_EXTENTSIONS    "extensions"
-//#define PROPERTY_INTERPOLATION  "interpolation"
-//#define PROPERTY_DEFAULT_TILE_SIZE "default_tile_size"
-
-//static OpenThreads::ReentrantMutex s_mutex;
-
 
 #define GEOTRSFRM_TOPLEFT_X            0
 #define GEOTRSFRM_WE_RES               1
@@ -227,10 +219,10 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
             if (!proj || strlen(proj) == 0)
             {                
                 std::string prjLocation = osgDB::getNameLessExtension( std::string(dsFileName) ) + std::string(".prj");
-                std::string wkt;
-                if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
-                {                    
-                    proj = CPLStrdup( wkt.c_str() );
+                ReadResult r = URI(prjLocation).readString();
+                if ( r.succeeded() )
+                {
+                    proj = CPLStrdup( r.getString().c_str() );
                 }                
             }
 
@@ -648,7 +640,7 @@ public:
     }
 
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {   
         GDAL_SCOPED_LOCK;
 
@@ -658,20 +650,23 @@ public:
             return;
         }
 
-        std::string path = _options.url().value();
+        URI uri = _options.url().value();
 
+#if 0 //OBE
         //Find the full path to the URL
         //If we have a relative path and the map file contains a server address, just concat the server path and the _url together
-        if (osgEarth::isRelativePath(path) && osgDB::containsServerAddress(referenceURI))
+
+        if (osgEarth::isRelativePath(uri.full()) && osgDB::containsServerAddress(referenceURI))
         {
-            path = osgDB::getFilePath(referenceURI) + std::string("/") + path;
+            uri = URI(osgDB::getFilePath(referenceURI) + std::string("/") + uri.full());
         }
 
         //If the path doesn't contain a server address, get the full path to the file.
-        if (!osgDB::containsServerAddress(path))
+        if (!osgDB::containsServerAddress(uri.full()))
         {
-            path = osgEarth::getFullPath(referenceURI, path);
+            uri = URI(uri.full(), referenceURI);
         }
+#endif
 
         StringTokenizer izer( ";" );
         StringVector exts;
@@ -685,7 +680,7 @@ public:
             OE_DEBUG << LC << "Using Extension: " << exts[i] << std::endl;
         }
         std::vector<std::string> files;
-        getFiles(path, exts, files);
+        getFiles(uri.full(), exts, files);
 
         OE_INFO << LC << "Driver found " << files.size() << " files:" << std::endl;
         for (unsigned int i = 0; i < files.size(); ++i)
@@ -743,16 +738,17 @@ public:
         if ( !src_srs.valid() )
         {
             // not found in the dataset; try loading a .prj file
-            std::string prjLocation = osgDB::getNameLessExtension( path ) + std::string(".prj");
-            std::string wkt;
-            if ( HTTPClient::readString( prjLocation, wkt ) == HTTPClient::RESULT_OK )
+            std::string prjLocation = osgDB::getNameLessExtension( uri.full() ) + std::string(".prj");
+
+            ReadResult r = URI(prjLocation).readString( 0L, CachePolicy::NO_CACHE );
+            if ( r.succeeded() )
             {
-                src_srs = SpatialReference::create( wkt );
+                src_srs = SpatialReference::create( r.getString() );
             }
 
             if ( !src_srs.valid() )
             {
-                OE_WARN << LC << "Dataset has no spatial reference information: " << path << std::endl;
+                OE_WARN << LC << "Dataset has no spatial reference information: " << uri.full() << std::endl;
                 return;
             }
         }
@@ -875,7 +871,7 @@ public:
                 //_warpedDS->GetProjectionRef(),
                 _extentsMin.x(), _extentsMin.y(), _extentsMax.x(), _extentsMax.y() );
 
-            OE_INFO << LC << "" << path << " is projected, SRS = " 
+            OE_INFO << LC << "" << uri.full() << " is projected, SRS = " 
                 << warpedSRSWKT << std::endl;
                 //<< _warpedDS->GetProjectionRef() << std::endl;
         }
@@ -942,14 +938,92 @@ public:
         return 0;
     }
 
+    static void getPalleteIndexColor(GDALRasterBand* band, int index, osg::Vec4ub& color)
+    {
+        const GDALColorEntry *colorEntry = band->GetColorTable()->GetColorEntry( index );
+        GDALPaletteInterp interp = band->GetColorTable()->GetPaletteInterpretation();
+        if (!colorEntry)
+        {
+            //FIXME: What to do here?
+
+            //OE_INFO << "NO COLOR ENTRY FOR COLOR " << rawImageData[i] << std::endl;
+            color.r() = 255;
+            color.g() = 0;
+            color.b() = 0;
+            color.a() = 1;
+
+        }
+        else
+        {
+            if (interp == GPI_RGB)
+            {
+                color.r() = colorEntry->c1;
+                color.g() = colorEntry->c2;
+                color.b() = colorEntry->c3;
+                color.a() = colorEntry->c4;
+            }
+            else if (interp == GPI_CMYK)
+            {
+                // from wikipedia.org
+                short C = colorEntry->c1;
+                short M = colorEntry->c2;
+                short Y = colorEntry->c3;
+                short K = colorEntry->c4;
+                color.r() = 255 - C*(255 - K) - K;
+                color.g() = 255 - M*(255 - K) - K;
+                color.b() = 255 - Y*(255 - K) - K;
+                color.a() = 255;
+            }
+            else if (interp == GPI_HLS)
+            {
+                // from easyrgb.com
+                float H = colorEntry->c1;
+                float S = colorEntry->c3;
+                float L = colorEntry->c2;
+                float R, G, B;
+                if ( S == 0 )                       //HSL values = 0 - 1
+                {
+                    R = L;                      //RGB results = 0 - 1 
+                    G = L;
+                    B = L;
+                }
+                else
+                {
+                    float var_2, var_1;
+                    if ( L < 0.5 )
+                        var_2 = L * ( 1 + S );
+                    else
+                        var_2 = ( L + S ) - ( S * L );
+
+                    var_1 = 2 * L - var_2;
+
+                    R = Hue_2_RGB( var_1, var_2, H + ( 1 / 3 ) );
+                    G = Hue_2_RGB( var_1, var_2, H );
+                    B = Hue_2_RGB( var_1, var_2, H - ( 1 / 3 ) );                                
+                } 
+                color.r() = static_cast<unsigned char>(R*255.0f);
+                color.g() = static_cast<unsigned char>(G*255.0f);
+                color.b() = static_cast<unsigned char>(B*255.0f);
+                color.a() = static_cast<unsigned char>(255.0f);
+            }
+            else if (interp == GPI_Gray)
+            {
+                color.r() = static_cast<unsigned char>(colorEntry->c1*255.0f);
+                color.g() = static_cast<unsigned char>(colorEntry->c1*255.0f);
+                color.b() = static_cast<unsigned char>(colorEntry->c1*255.0f);
+                color.a() = static_cast<unsigned char>(255.0f);
+            }
+        }
+    }
+
     void pixelToGeo(double x, double y, double &geoX, double &geoY)
     {
         geoX = _geotransform[0] + _geotransform[1] * x + _geotransform[2] * y;
         geoY = _geotransform[3] + _geotransform[4] * x + _geotransform[5] * y;
     }
 
-    osg::Image* createImage( const TileKey& key,
-                             ProgressCallback* progress)
+    osg::Image* createImage( const TileKey&        key,
+                             ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
@@ -968,6 +1042,10 @@ public:
             //Get the extents of the tile
             double xmin, ymin, xmax, ymax;
             key.getExtent().getBounds(xmin, ymin, xmax, ymax);
+
+            double dx       = (xmax - xmin) / (tileSize-1); 
+            double dy       = (ymax - ymin) / (tileSize-1); 
+
 
             int target_width = tileSize;
             int target_height = tileSize;
@@ -1045,36 +1123,58 @@ public:
                 //Initialize the alpha values to 255.
                 memset(alpha, 255, target_width * target_height);
 
-
-                bandRed->RasterIO(GF_Read, off_x, off_y, width, height, red, target_width, target_height, GDT_Byte, 0, 0);
-                bandGreen->RasterIO(GF_Read, off_x, off_y, width, height, green, target_width, target_height, GDT_Byte, 0, 0);
-                bandBlue->RasterIO(GF_Read, off_x, off_y, width, height, blue, target_width, target_height, GDT_Byte, 0, 0);
-
-                if (bandAlpha)
-                {
-                    bandAlpha->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
-                }
-
                 image = new osg::Image;
                 image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
-                for (int src_row = 0, dst_row = tile_offset_top;
-                    src_row < target_height;
-                    src_row++, dst_row++)
+                //Nearest interpolation just uses RasterIO to sample the imagery and should be very fast.
+                if (!*_options.interpolateImagery() || _options.interpolation() == INTERP_NEAREST)
                 {
-                    for (int src_col = 0, dst_col = tile_offset_left;
-                        src_col < target_width;
-                        ++src_col, ++dst_col)
-                    {
-                        *(image->data(dst_col, dst_row) + 0) = red[src_col + src_row * target_width];
-                        *(image->data(dst_col, dst_row) + 1) = green[src_col + src_row * target_width];
-                        *(image->data(dst_col, dst_row) + 2) = blue[src_col + src_row * target_width];
-						*(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
-					}
-                }
+                    bandRed->RasterIO(GF_Read, off_x, off_y, width, height, red, target_width, target_height, GDT_Byte, 0, 0);
+                    bandGreen->RasterIO(GF_Read, off_x, off_y, width, height, green, target_width, target_height, GDT_Byte, 0, 0);
+                    bandBlue->RasterIO(GF_Read, off_x, off_y, width, height, blue, target_width, target_height, GDT_Byte, 0, 0);
 
-                image->flipVertical();
+                    if (bandAlpha)
+                    {
+                        bandAlpha->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
+                    }
+
+                    for (int src_row = 0, dst_row = tile_offset_top;
+                        src_row < target_height;
+                        src_row++, dst_row++)
+                    {
+                        for (int src_col = 0, dst_col = tile_offset_left;
+                            src_col < target_width;
+                            ++src_col, ++dst_col)
+                        {
+                            *(image->data(dst_col, dst_row) + 0) = red[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 1) = green[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 2) = blue[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                        }
+                    }
+
+                    image->flipVertical();
+                }
+                else
+                {
+                    //Sample each point exactly
+                    for (unsigned int c = 0; c < tileSize; ++c)
+                    {
+                        double geoX = xmin + (dx * (double)c); 
+                        for (unsigned int r = 0; r < tileSize; ++r)
+                        {
+                            double geoY = ymin + (dy * (double)r); 
+                            *(image->data(c,r) + 0) = getInterpolatedValue(bandRed,  geoX,geoY,false); 
+                            *(image->data(c,r) + 1) = getInterpolatedValue(bandGreen,geoX,geoY,false); 
+                            *(image->data(c,r) + 2) = getInterpolatedValue(bandBlue, geoX,geoY,false); 
+                            if (bandAlpha != NULL) 
+                                *(image->data(c,r) + 3) = getInterpolatedValue(bandAlpha,geoX, geoY, false); 
+                            else 
+                                *(image->data(c,r) + 3) = 255; 
+                        }
+                    }
+                }
 
                 delete []red;
                 delete []green;
@@ -1089,47 +1189,74 @@ public:
                 //Initialize the alpha values to 255.
                 memset(alpha, 255, target_width * target_height);
 
-                bandGray->RasterIO(GF_Read, off_x, off_y, width, height, gray, target_width, target_height, GDT_Byte, 0, 0);
-
-                if (bandAlpha)
-                {
-                    bandAlpha->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
-                }
-
                 image = new osg::Image;
                 image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
                 memset(image->data(), 0, image->getImageSizeInBytes());
 
-                for (int src_row = 0, dst_row = tile_offset_top;
-                    src_row < target_height;
-                    src_row++, dst_row++)
+
+                if (!*_options.interpolateImagery() || _options.interpolation() == INTERP_NEAREST)
                 {
-                    for (int src_col = 0, dst_col = tile_offset_left;
-                        src_col < target_width;
-                        ++src_col, ++dst_col)
+                    bandGray->RasterIO(GF_Read, off_x, off_y, width, height, gray, target_width, target_height, GDT_Byte, 0, 0);
+
+                    if (bandAlpha)
                     {
-                        *(image->data(dst_col, dst_row) + 0) = gray[src_col + src_row * target_width];
-                        *(image->data(dst_col, dst_row) + 1) = gray[src_col + src_row * target_width];
-                        *(image->data(dst_col, dst_row) + 2) = gray[src_col + src_row * target_width];
-                        *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                        bandAlpha->RasterIO(GF_Read, off_x, off_y, width, height, alpha, target_width, target_height, GDT_Byte, 0, 0);
+                    }
+
+                    for (int src_row = 0, dst_row = tile_offset_top;
+                        src_row < target_height;
+                        src_row++, dst_row++)
+                    {
+                        for (int src_col = 0, dst_col = tile_offset_left;
+                            src_col < target_width;
+                            ++src_col, ++dst_col)
+                        {
+                            *(image->data(dst_col, dst_row) + 0) = gray[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 1) = gray[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 2) = gray[src_col + src_row * target_width];
+                            *(image->data(dst_col, dst_row) + 3) = alpha[src_col + src_row * target_width];
+                        }
+                    }
+
+                    image->flipVertical();
+                }
+                else
+                {
+                    for (int c = 0; c < tileSize; ++c) 
+                    { 
+                        double geoX = xmin + (dx * (double)c); 
+
+                        for (int r = 0; r < tileSize; ++r) 
+                        { 
+                            double geoY   = ymin + (dy * (double)r); 
+                            float  color = getInterpolatedValue(bandGray,geoX,geoY,false); 
+
+                            *(image->data(c,r) + 0) = color; 
+                            *(image->data(c,r) + 1) = color; 
+                            *(image->data(c,r) + 2) = color; 
+                            if (bandAlpha != NULL) 
+                                *(image->data(c,r) + 3) = getInterpolatedValue(bandAlpha,geoX,geoY,false); 
+                            else 
+                                *(image->data(c,r) + 3) = 255; 
+                        }
                     }
                 }
-
-                image->flipVertical();
 
                 delete []gray;
                 delete []alpha;
 
             }
 			else if (bandPalette)
-			{
+            {
+                //Pallete indexed imagery doesn't support interpolation currently and only uses nearest
+                //b/c interpolating pallete indexes doesn't make sense.
 				unsigned char *palette = new unsigned char[target_width * target_height];
 
-				bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
+                image = new osg::Image;
+                image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
+                memset(image->data(), 0, image->getImageSizeInBytes());
 
-				image = new osg::Image;
-				image->allocateImage(tileSize, tileSize, 1, pixelFormat, GL_UNSIGNED_BYTE);
-				memset(image->data(), 0, image->getImageSizeInBytes());
+				bandPalette->RasterIO(GF_Read, off_x, off_y, width, height, palette, target_width, target_height, GDT_Byte, 0, 0);
 
 				for (int src_row = 0, dst_row = tile_offset_top;
 					src_row < target_height;
@@ -1139,98 +1266,26 @@ public:
 						src_col < target_width;
 						++src_col, ++dst_col)
 					{
-						unsigned char r,g,b,a;
-						const GDALColorEntry *colorEntry = bandPalette->GetColorTable()->GetColorEntry(palette[src_col + src_row * target_width]);
-						GDALPaletteInterp interp = bandPalette->GetColorTable()->GetPaletteInterpretation();
-						if (!colorEntry)
-						{
-							//FIXME: What to do here?
+                        osg::Vec4ub color;
+                        getPalleteIndexColor( bandPalette, palette[src_col + src_row * target_width], color );						
 
-							//OE_INFO << "NO COLOR ENTRY FOR COLOR " << rawImageData[i] << std::endl;
-							r = 255;
-							g = 0;
-							b = 0;
-							a = 1;
-
-						}
-						else
-						{
-							if (interp == GPI_RGB)
-							{
-								r = colorEntry->c1;
-								g = colorEntry->c2;
-								b = colorEntry->c3;
-								a = colorEntry->c4;
-							}
-							else if (interp == GPI_CMYK)
-							{
-								// from wikipedia.org
-								short C = colorEntry->c1;
-								short M = colorEntry->c2;
-								short Y = colorEntry->c3;
-								short K = colorEntry->c4;
-								r = 255 - C*(255 - K) - K;
-								g = 255 - M*(255 - K) - K;
-								b = 255 - Y*(255 - K) - K;
-								a = 255;
-							}
-							else if (interp == GPI_HLS)
-							{
-								// from easyrgb.com
-								float H = colorEntry->c1;
-								float S = colorEntry->c3;
-								float L = colorEntry->c2;
-								float R, G, B;
-								if ( S == 0 )                       //HSL values = 0 - 1
-								{
-									R = L;                      //RGB results = 0 - 1 
-									G = L;
-									B = L;
-								}
-								else
-								{
-									float var_2, var_1;
-									if ( L < 0.5 )
-										var_2 = L * ( 1 + S );
-									else
-										var_2 = ( L + S ) - ( S * L );
-
-									var_1 = 2 * L - var_2;
-
-									R = Hue_2_RGB( var_1, var_2, H + ( 1 / 3 ) );
-									G = Hue_2_RGB( var_1, var_2, H );
-									B = Hue_2_RGB( var_1, var_2, H - ( 1 / 3 ) );                                
-								} 
-								r = static_cast<unsigned char>(R*255.0f);
-								g = static_cast<unsigned char>(G*255.0f);
-								b = static_cast<unsigned char>(B*255.0f);
-								a = static_cast<unsigned char>(255.0f);
-							}
-							else if (interp == GPI_Gray)
-							{
-								r = static_cast<unsigned char>(colorEntry->c1*255.0f);
-								g = static_cast<unsigned char>(colorEntry->c1*255.0f);
-								b = static_cast<unsigned char>(colorEntry->c1*255.0f);
-								a = static_cast<unsigned char>(255.0f);
-							}
-
-							*(image->data(dst_col, dst_row) + 0) = r;
-							*(image->data(dst_col, dst_row) + 1) = g;
-							*(image->data(dst_col, dst_row) + 2) = b;
-							*(image->data(dst_col, dst_row) + 3) = a;
-						}
+                        *(image->data(dst_col, dst_row) + 0) = color.r();
+                        *(image->data(dst_col, dst_row) + 1) = color.g();
+                        *(image->data(dst_col, dst_row) + 2) = color.b();
+                        *(image->data(dst_col, dst_row) + 3) = color.a();
 					}
 				}
 
 				image->flipVertical();
 
 				delete [] palette;
-			}
+
+            }
             else
             {
                 OE_WARN 
                     << LC << "Could not find red, green and blue bands or gray bands in "
-                    << _options.url().value()
+                    << _options.url()->full()
                     << ".  Cannot create image. " << std::endl;
 
                 return NULL;
@@ -1276,7 +1331,7 @@ public:
     }
 
 
-    float getInterpolatedValue(GDALRasterBand *band, double x, double y)
+    float getInterpolatedValue(GDALRasterBand *band, double x, double y, bool applyOffset=true)
     {
         double r, c;
         GDALApplyGeoTransform(_invtransform, x, y, &c, &r);
@@ -1288,29 +1343,32 @@ public:
         if (osg::equivalent(c, (double)_warpedDS->GetRasterXSize(), eps)) c = _warpedDS->GetRasterXSize();
         if (osg::equivalent(r, (double)_warpedDS->GetRasterYSize(), eps)) r = _warpedDS->GetRasterYSize();
 
-        //Apply half pixel offset
-        r-= 0.5;
-        c-= 0.5;
+        if (applyOffset)
+        {
+            //Apply half pixel offset
+            r-= 0.5;
+            c-= 0.5;
 
-        //Account for the half pixel offset in the geotransform.  If the pixel value is -0.5 we are still technically in the dataset
-        //since 0,0 is now the center of the pixel.  So, if are within a half pixel above or a half pixel below the dataset just use
-        //the edge values
-        if (c < 0 && c >= -0.5)
-        {
-            c = 0;
-        }
-        else if (c > _warpedDS->GetRasterXSize()-1 && c <= _warpedDS->GetRasterXSize()-0.5)
-        {
-            c = _warpedDS->GetRasterXSize()-1;
-        }
+            //Account for the half pixel offset in the geotransform.  If the pixel value is -0.5 we are still technically in the dataset
+            //since 0,0 is now the center of the pixel.  So, if are within a half pixel above or a half pixel below the dataset just use
+            //the edge values
+            if (c < 0 && c >= -0.5)
+            {
+                c = 0;
+            }
+            else if (c > _warpedDS->GetRasterXSize()-1 && c <= _warpedDS->GetRasterXSize()-0.5)
+            {
+                c = _warpedDS->GetRasterXSize()-1;
+            }
 
-        if (r < 0 && r >= -0.5)
-        {
-            r = 0;
-        }
-        else if (r > _warpedDS->GetRasterYSize()-1 && r <= _warpedDS->GetRasterYSize()-0.5)
-        {
-            r = _warpedDS->GetRasterYSize()-1;
+            if (r < 0 && r >= -0.5)
+            {
+                r = 0;
+            }
+            else if (r > _warpedDS->GetRasterYSize()-1 && r <= _warpedDS->GetRasterYSize()-0.5)
+            {
+                r = _warpedDS->GetRasterYSize()-1;
+            }
         }
 
         float result = 0.0f;
@@ -1404,8 +1462,8 @@ public:
     }
 
 
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey&        key,
+                                         ProgressCallback*     progress)
     {
         if (key.getLevelOfDetail() > _maxDataLevel)
         {
@@ -1471,13 +1529,7 @@ private:
     osg::Vec2d _extentsMin;
     osg::Vec2d _extentsMax;
 
-    //std::string     _url;
-    //int             _tile_size;
-    //std::string     _extensions;
-    //ElevationInterpolation   _interpolation;
-
     const GDALOptions _options;
-    //osg::ref_ptr<const GDALOptions> _settings;
 
     unsigned int _maxDataLevel;
 };

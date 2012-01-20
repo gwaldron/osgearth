@@ -43,7 +43,7 @@ namespace
     class MyConvexPolyhedron : public osgShadow::ConvexPolyhedron
     {
     public:       
-        bool contains(const osg::BoundingSphere& bs) const
+        bool intersects(const osg::BoundingSphere& bs) const
         {
             for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
             {
@@ -55,7 +55,7 @@ namespace
             return true;
         }
 
-        bool contains(const osg::BoundingBox& box) const
+        bool intersects(const osg::BoundingBox& box) const
         {
             for( Faces::const_iterator i = _faces.begin(); i != _faces.end(); ++i )
             {
@@ -77,22 +77,33 @@ namespace
      * It's called "Coarse" because it does not traverse to the Drawable level, just to
      * the Geode bounding sphere level.
      */
-    struct CoarsePolytopeIntersector : public osg::NodeVisitor
+    struct CoarsePolytopeIntersector : public OverlayDecorator::InternalNodeVisitor
     {
-        CoarsePolytopeIntersector(const MyConvexPolyhedron& polytope, osg::BoundingBox& out_bbox)
-            : osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN ),
-              _bbox(out_bbox),
-              _original( polytope ),
-              _coarse( true )
+        CoarsePolytopeIntersector(
+            const MyConvexPolyhedron& polytope,
+            osg::NodeVisitor*         proxyNV,
+            osg::BoundingBox&         out_bbox) :
+
+        OverlayDecorator::InternalNodeVisitor(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN),
+            _bbox    (out_bbox),
+            _original( polytope ),
+            _proxyNV ( proxyNV ),
+            _coarse  ( false )
         {
             _polytopeStack.push( polytope );
             _matrixStack.push( osg::Matrix::identity() );
         }
 
+        // override from NodeVisitor to support LOD processing
+        virtual float getDistanceToViewPoint(const osg::Vec3& pos, bool useLODScale) const
+        {
+            return _proxyNV->getDistanceToViewPoint(pos, useLODScale);
+        }
+
         void apply( osg::Node& node )
         {
             const osg::BoundingSphere& bs = node.getBound();
-            if ( _polytopeStack.top().contains( bs ) )
+            if ( _polytopeStack.top().intersects( bs ) )
             {
                 traverse( node );
             }
@@ -102,12 +113,40 @@ namespace
         {
             const osg::BoundingSphere& bs = node.getBound();
 
-            if ( _polytopeStack.top().contains( bs ) )
+            if ( _polytopeStack.top().intersects( bs ) )
             {
                 if ( _coarse )
                 {
-                    _bbox.expandBy(
-                        osg::BoundingSphere( bs.center() * _matrixStack.top(), bs.radius() ) );
+                    osg::BoundingSphere bsphere = bs;
+
+                    osg::BoundingSphere::vec_type xdash = bsphere._center;
+                    xdash.x() += bsphere._radius;
+                    xdash = xdash*_matrixStack.top();
+
+                    osg::BoundingSphere::vec_type ydash = bsphere._center;
+                    ydash.y() += bsphere._radius;
+                    ydash = ydash*_matrixStack.top();
+
+                    osg::BoundingSphere::vec_type zdash = bsphere._center;
+                    zdash.z() += bsphere._radius;
+                    zdash = zdash*_matrixStack.top();
+
+                    bsphere._center = bsphere._center*_matrixStack.top();
+
+                    xdash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_xdash = xdash.length();
+
+                    ydash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_ydash = ydash.length();
+
+                    zdash -= bsphere._center;
+                    osg::BoundingSphere::value_type len_zdash = zdash.length();
+
+                    bsphere._radius = len_xdash;
+                    if (bsphere._radius<len_ydash) bsphere._radius = len_ydash;
+                    if (bsphere._radius<len_zdash) bsphere._radius = len_zdash;
+
+                    _bbox.expandBy(bsphere);
                 }
                 else
                 {
@@ -123,18 +162,23 @@ namespace
         {
             const osg::BoundingBox& box = drawable->getBound();
 
-            if ( _polytopeStack.top().contains( box ) )
+            if ( _polytopeStack.top().intersects( box ) )
             {
-                osg::Vec3d bmin = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
-                osg::Vec3d bmax = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
+                // apply an eplison to avoid a bbox with a zero dimension
+                static float e = 0.001;
+
+                osg::Vec3d b0 = osg::Vec3(box.xMin(), box.yMin(), box.zMin()) * _matrixStack.top();
+                osg::Vec3d b1 = osg::Vec3(box.xMax(), box.yMax(), box.zMax()) * _matrixStack.top();
                   
-                _bbox.expandBy( osg::BoundingBox(bmin, bmax) );
+                _bbox.expandBy( std::min(b0.x(),b1.x())-e, std::min(b0.y(),b1.y())-e, std::min(b0.z(),b1.z())-e );
+                _bbox.expandBy( std::max(b0.x(),b1.x())+e, std::max(b0.y(),b1.y())+e, std::max(b0.z(),b1.z())+e );
             }
         }
 
         void apply( osg::Transform& transform )
         {
             osg::Matrixd matrix;
+            if ( !_matrixStack.empty() ) matrix = _matrixStack.top();
             transform.computeLocalToWorldMatrix( matrix, this );
 
             _matrixStack.push( matrix );
@@ -148,6 +192,7 @@ namespace
         }
 
         osg::BoundingBox& _bbox;
+        osg::NodeVisitor* _proxyNV;
         MyConvexPolyhedron _original;
         std::stack<MyConvexPolyhedron> _polytopeStack;
         std::stack<osg::Matrixd> _matrixStack;
@@ -216,13 +261,14 @@ namespace
 //---------------------------------------------------------------------------
 
 OverlayDecorator::OverlayDecorator() :
-_textureUnit( 1 ),
-_textureSize( 1024 ),
-_useShaders( false ),
-_useWarping( false ),
-_warp( 1.0f ),
+_textureUnit  ( 1 ),
+_textureSize  ( 1024 ),
+_useShaders   ( false ),
+_useWarping   ( false ),
+_warp         ( 1.0f ),
 _visualizeWarp( false ),
-_mipmapping( true )
+_mipmapping   ( false ),
+_rttBlending  ( true )
 {
     // nop
 }
@@ -265,7 +311,7 @@ OverlayDecorator::reinit()
             _projTexture->setInternalFormat( GL_RGBA8 );
             _projTexture->setSourceFormat( GL_RGBA );
             _projTexture->setSourceType( GL_UNSIGNED_BYTE );
-            _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR : osg::Texture::LINEAR );
+            _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
             _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
             _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
             _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
@@ -275,23 +321,39 @@ OverlayDecorator::reinit()
             // set up the RTT camera:
             _rttCamera = new osg::Camera();
             _rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
-            _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF );
+            _rttCamera->setClearStencil( 0 );
+            _rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+            // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
+            // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
+            _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
             _rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
             _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
             _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
             _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+
             _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
-            _rttCamera->getOrCreateStateSet()->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+            
+            // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
+            // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
+            // a PBUFFER_RTT impl
+            if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
+                _rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
+            else
+                _rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
 
-            //Enable blending on the RTT camera with pre-multiplied alpha.
-            osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO);
-            _rttCamera->getOrCreateStateSet()->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-                
+            osg::StateSet* rttStateSet = _rttCamera->getOrCreateStateSet();
 
-            // texture coordinate generator:
-            _texGenNode = new osg::TexGenNode();
-            _texGenNode->setTextureUnit( *_textureUnit );
-            _texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR );
+            rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
+            if ( _rttBlending )
+            {
+                osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+            }
+            else
+            {
+                rttStateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
+            }
             
             // attach the overlay graph to the RTT camera.
             if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != _rttCamera.get() ))
@@ -301,6 +363,11 @@ OverlayDecorator::reinit()
                 else
                     _rttCamera->addChild( _overlayGraph.get() );
             }
+
+            // overlay geometry is rendered with no depth testing, and in the order it's found in the
+            // scene graph... until further notice...
+            rttStateSet->setMode(GL_DEPTH_TEST, 0);
+            rttStateSet->setBinName( "TraversalOrderBin" );
         }
     }
 
@@ -315,11 +382,6 @@ OverlayDecorator::reinit()
         _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
         _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
         _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
-
-        // decalling (note: this has no effect when using shaders.. remove? -gw)
-        osg::TexEnv* env = new osg::TexEnv();
-        env->setMode( osg::TexEnv::DECAL );
-        _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, env, osg::StateAttribute::ON );
         
         // set up the shaders
         if ( _useShaders )
@@ -386,7 +448,8 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
             << "} \n";
     }
 
-    std::string vertSource = buf.str();
+    std::string vertSource;
+    vertSource = buf.str();
     program->addShader( new osg::Shader( osg::Shader::VERTEX, vertSource ) );
 
     std::stringstream fragBuf;
@@ -396,10 +459,12 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
                << "{\n"                              
                << "    vec4 tex = texture2D(texture_0, gl_TexCoord[0].xy);\n"
                << "    vec3 mixed_color = mix(gl_Color.rgb, tex.rgb, tex.a);\n"
+               //<< "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
                << "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
                << "}\n";
     
-    std::string fragSource = fragBuf.str();
+    std::string fragSource;
+    fragSource = fragBuf.str();
     
     program->addShader( new osg::Shader( osg::Shader::FRAGMENT, fragSource ) );
     set->addUniform(new osg::Uniform("texture_0",0));
@@ -430,7 +495,8 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
         << "    gl_TexCoord["<< *_textureUnit << "] = osgearth_overlay_TexGenMatrix * osg_ViewMatrixInverse * gl_ModelViewMatrix * gl_Vertex; \n"
         << "} \n";
 
-    std::string vertexSource = buf.str();
+    std::string vertexSource;
+    vertexSource = buf.str();
     vp->setFunction( "osgearth_overlay_vertex", vertexSource, ShaderComp::LOCATION_VERTEX_POST_LIGHTING );
 
     // fragment shader - subgraph
@@ -478,7 +544,8 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
         << "    color = vec4( mix( color.rgb, texel.rgb, texel.a ), color.a); \n"
         << "} \n";
 
-    std::string fragmentSource = buf.str();
+    std::string fragmentSource;
+    fragmentSource = buf.str();
     vp->setFunction( "osgearth_overlay_fragment", fragmentSource, ShaderComp::LOCATION_FRAGMENT_PRE_LIGHTING );
 }
 
@@ -522,12 +589,15 @@ OverlayDecorator::setTextureUnit( int texUnit )
 }
 
 void
-OverlayDecorator::setMipmapping( bool value )
+OverlayDecorator::setMipMapping( bool value )
 {
     if ( value != _mipmapping )
     {
         _mipmapping = value;
         reinit();
+
+        if ( _mipmapping )
+            OE_INFO << LC << "Overlay mipmapping " << (value?"enabled":"disabled") << std::endl;
     }
 }
 
@@ -538,6 +608,22 @@ OverlayDecorator::setVertexWarping( bool value )
     {
         _useWarping = value;
         reinit();
+        
+        if ( _useWarping )
+            OE_INFO << LC << "Vertex warping " << (value?"enabled":"disabled")<< std::endl;
+    }
+}
+
+void
+OverlayDecorator::setOverlayBlending( bool value )
+{
+    if ( value != _rttBlending )
+    {
+        _rttBlending = value;
+        reinit();
+        
+        if ( _rttBlending )
+            OE_INFO << LC << "Overlay blending " << (value?"enabled":"disabled")<< std::endl;
     }
 }
 
@@ -565,8 +651,8 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
 
     if ( !_textureSize.isSet() )
     {
-        int maxSize = Registry::instance()->getCapabilities().getMaxTextureSize();
-        _textureSize.init( osg::minimum( 4096, maxSize ) );
+        unsigned maxSize = Registry::instance()->getCapabilities().getMaxFastTextureSize();
+        _textureSize.init( osg::minimum( 4096u, maxSize ) );
 
         OE_INFO << LC << "Using texture size = " << *_textureSize << std::endl;
     }
@@ -597,14 +683,7 @@ OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
     _rttCamera->setViewMatrix( _rttViewMatrix );
     _rttCamera->setProjectionMatrix( _rttProjMatrix );
 
-    // configure the Projector camera:
-    //osg::Matrix MVP = _projectorViewMatrix * _projectorProjMatrix;
-    //osg::Matrix MVPT = MVP * normalizeMatrix; //osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
-
     osg::Matrix MVPT = _projectorViewMatrix * _projectorProjMatrix * normalizeMatrix;
-
-    //_texGenNode->getTexGen()->setMode( osg::TexGen::EYE_LINEAR ); // moved to initialization
-    _texGenNode->getTexGen()->setPlanesFromMatrix( MVPT );
     
     // uniform update:
     if ( _useShaders )
@@ -689,60 +768,49 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     double eMin = 0.1;
     double eMax = DBL_MAX;
 
+    // Save and reset the current near/far planes before traversing the subgraph.
+    // We do this because we want a projection matrix that includes ONLY the clip
+    // planes from the subgraph, and not anything traversed up to this point.
+    double zSavedNear = cv->getCalculatedNearPlane();
+    double zSavedFar  = cv->getCalculatedFarPlane();
+
+    cv->setCalculatedNearPlane( FLT_MAX );
+    cv->setCalculatedFarPlane( -FLT_MAX );
+
     // cull the subgraph here. This doubles as the subgraph's official cull traversal
     // and a gathering of its clip planes.
     cv->pushStateSet( _subgraphStateSet.get() );
     osg::Group::traverse( *cv );
     cv->popStateSet();
 
-#if 0
-    // --- FIRST PASS ------------------------
-    // First, intersect the view frustum with the overlay geometry. This will provide
-    // a maximum required extent for our ortho RTT camera. Depending on the layout of
-    // the geometry in the overlay graph, this may or may not be optimal ... we will
-    // work to refine it in later passes if necessary.
-
-    cv->computeNearPlane();
-    double znear = cv->getCalculatedNearPlane();
-    double zfar  = cv->getCalculatedFarPlane();
+    // Pull a copy of the projection matrix; we will use this to calculate the optimum
+    // projected texture extent
     osg::Matrixd projMatrix = *cv->getProjectionMatrix();
-    cv->clampProjectionMatrixImplementation( projMatrix, znear, zfar );
 
-    // collect the bounds of overlay geometry that intersects the view frustum.
-    MyConvexPolyhedron viewPT;
-    viewPT.setToUnitFrustum( true, true );
-    osg::Matrixd viewMVP = (*cv->getModelViewMatrix()) * projMatrix;
-    viewPT.transform( osg::Matrix::inverse(viewMVP), viewMVP );
+    // Clamp the projection matrix to the newly calculated clip planes. This prevents
+    // any "leakage" from outside the subraph.
+    double zNear = cv->getCalculatedNearPlane();
+    double zFar  = cv->getCalculatedFarPlane();
+    cv->clampProjectionMatrix( projMatrix, zNear, zFar );
 
-    osg::BoundingBox viewbbox;
-    CoarsePolytopeIntersector cpi( viewPT, viewbbox );
-    _overlayGraph->accept( cpi );
+    //OE_NOTICE << std::fixed << "zNear = " << zNear << ", zFar = " << zFar << std::endl;
 
-    //TODO: sometimes this viewbbox goes invalid even though there's clearly goemetry
-    //      in view. Happens when you zoom in really close. Need to investigate -gw
-    //OE_INFO << LC << "OV radius = " << viewbbox.radius() << std::endl;
-    if ( viewbbox.valid() )
+    if ( _isGeocentric )
     {
-        getMinMaxExtentInSilhouette( from, rttLookVec, viewbbox, eMin, eMax );
-        eMax = osg::minimum( eMax, horizonDistanceInRTTPlane ); 
+        // in geocentric mode, clamp the far clip plane to the horizon.
+        double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
+        maxDistance *= 1.5;
+        if (zFar - zNear >= maxDistance)
+            zFar = zNear + maxDistance;
+
+        cv->clampProjectionMatrix( projMatrix, zNear, zFar );
     }
 
-    if ( !_isGeocentric )
-        eyeLen = zfar;
-#endif
-
-    // --- SECOND PASS --------------------
-    // Remake the projection matrix with better hueristic for the far clipping plane.
-    // (Jason's method)
-    osg::Matrixd projMatrix = *cv->getProjectionMatrix();
-    double fovy, aspectRatio, zfar, znear;
-    cv->getProjectionMatrix()->getPerspective( fovy, aspectRatio, znear, zfar );
-    double maxDistance = (1.0 - haslWeight)  * horizonDistance  + haslWeight * hasl;
-    maxDistance *= 1.5;
-    if (zfar - znear >= maxDistance)
-        zfar = znear + maxDistance;
-    projMatrix.makePerspective( fovy, aspectRatio, znear, zfar );
-   
+    // restore the clip planes in the cull visitor, now that we have our subgraph
+    // projection matrix.
+    cv->setCalculatedNearPlane( osg::minimum(zSavedNear, zNear) );
+    cv->setCalculatedFarPlane( osg::maximum(zSavedFar, zFar) );
+       
     // contruct the polyhedron representing the viewing frustum.
     //osgShadow::ConvexPolyhedron frustumPH;
     MyConvexPolyhedron frustumPH;
@@ -756,19 +824,11 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     // intersect the viewing frustum:
     osgShadow::ConvexPolyhedron visiblePH;
 
-    // get the bounds of the overlay graph //model. 
-#if 0
-    //const osg::BoundingSphere& bs = osg::Group::getBound();
-    osg::ComputeBoundsVisitor cbbv(osg::NodeVisitor::TRAVERSE_ACTIVE_CHILDREN);
-    //this->accept(cbbv);
-    _overlayGraph->accept(cbbv);
-    visiblePH.setToBoundingBox(cbbv.getBoundingBox());
-#else
+    // get the bounds of the overlay graph model. 
     osg::BoundingBox visibleOverlayBBox;
-    CoarsePolytopeIntersector cpi( frustumPH, visibleOverlayBBox );
+    CoarsePolytopeIntersector cpi( frustumPH, cv, visibleOverlayBBox );
     _overlayGraph->accept( cpi );
     visiblePH.setToBoundingBox( visibleOverlayBBox );
-#endif
 
     // this intersects the viewing frustum with the subgraph's bounding box, basically giving us
     // a "minimal" polyhedron containing all potentially visible geometry. (It can't be truly 
@@ -820,6 +880,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         eMax = std::min( eMax, new_eMax ); 
         _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
     }
+
+    //OE_NOTICE << LC << "EMIN = " << eMin << ", EMAX = " << eMax << std::endl;
 
     if ( _useWarping )
     {
@@ -884,9 +946,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                 cull( cv );
             }
             _rttCamera->accept( nv );
-            
-            // note: texgennode doesn't need a cull, and the subgraph
-            // is traversed in cull().
         }
 
         else
@@ -896,9 +955,7 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                 updateRTTCamera( nv );
             }
             _rttCamera->accept( nv );
-            _texGenNode->accept( nv );
 
-            //_subgraphContainer->accept( nv );
             osg::Group::traverse( nv );
         }    
     }
@@ -915,44 +972,6 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
 
         if ( cv )
             cv->popStateSet();
-        //_subgraphContainer->accept( nv );
     }
 }
 
-
-#if 0
-/** Override all the osg::Group methods: */
-
-bool 
-OverlayDecorator::addChild( Node *child ) {
-    if ( !child ) return false;
-    dirtyBound();
-    return _subgraphContainer->addChild( child );
-}
-bool 
-OverlayDecorator::insertChild( unsigned int index, Node *child ) {
-    if ( !child ) return false;
-    dirtyBound();
-    return _subgraphContainer->insertChild( index, child );
-}
-bool 
-OverlayDecorator::removeChildren(unsigned int pos,unsigned int numChildrenToRemove) {
-    dirtyBound();
-    return _subgraphContainer->removeChildren( pos, numChildrenToRemove );
-}
-bool 
-OverlayDecorator::replaceChild( Node *origChild, Node* newChild ) {
-    dirtyBound();
-    return _subgraphContainer->replaceChild( origChild, newChild );
-}
-bool 
-OverlayDecorator::setChild( unsigned  int i, Node* node ) {
-    dirtyBound();
-    return _subgraphContainer->setChild( i, node );
-}
-
-osg::BoundingSphere
-OverlayDecorator::computeBound() const {
-    return _subgraphContainer->computeBound();
-}
-#endif

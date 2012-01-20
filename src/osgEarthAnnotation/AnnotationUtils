@@ -1,0 +1,103 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNOTATION_ANNOTATION_UTILS_H
+#define OSGEARTH_ANNOTATION_ANNOTATION_UTILS_H 1
+
+#include <osgEarthAnnotation/Common>
+#include <osgEarthSymbology/TextSymbol>
+#include <osg/AutoTransform>
+#include <osg/Drawable>
+#include <osg/Geometry>
+
+namespace osgEarth { namespace Annotation
+{
+    using namespace osgEarth;
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Internal tools used by the annotation library.
+     */
+    struct AnnotationUtils
+    {
+        static const std::string& UNIFORM_HIGHLIGHT();
+
+        static const std::string& UNIFORM_IS_TEXT();
+
+        static const std::string& UNIFORM_FADE();
+
+        static const std::string& PROGRAM_NAME();
+
+        /**
+         * Creates a drawable representing a symbolized text label in
+         * pixel space.
+         */
+        static osg::Drawable* createTextDrawable(
+            const std::string& text,
+            const TextSymbol*  symbol,
+            const osg::Vec3&   positionOffset );
+
+        /**
+         * Creates the basic geometry to draw an image texture-mapped to
+         * a quad in pixel space.
+         */
+        static osg::Geometry* createImageGeometry(
+            osg::Image*       image,
+            const osg::Vec2s& pixelOffsets,
+            unsigned          textureUnit       =0 );
+
+        /**
+         * Creates a fading uniform that the decluttering engine can use
+         * to adjust the alpha of annotation drawables.
+         */
+        static osg::Uniform* createFadeUniform();
+
+        /**
+         * Creates a boolean uniform used to indicate a hightlighted state.
+         */
+        static osg::Uniform* createHighlightUniform();
+
+        /**
+         * Gets a program that implements fading, highligting, etc. on annotation 
+         * objects.
+         */
+        static osg::Program* getAnnotationProgram();
+
+
+        /**
+         * Internal - A customized AutoTransform used by the OrthoNode to
+         * support intersections that are compatible with the decluttering engine
+         */
+        struct OrthoNodeAutoTransform : public osg::AutoTransform
+        {
+            void acceptCullNoTraverse( osg::CullStack* cs );
+        };
+
+        // some geometry creation utilities
+        static osg::Drawable* create2DQuad( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
+
+        static osg::Drawable* create2DOutline( const osg::BoundingBox& box, float padding, const osg::Vec4& color );
+
+        static osg::Node* createFullScreenQuad( const osg::Vec4& color );
+
+        static osg::Node* createGeodesicSphere( float r, const osg::Vec4& color );
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif //OSGEARTH_ANNOTATION_ANNOTATION_UTILS_H

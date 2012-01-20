@@ -25,6 +25,7 @@
 #include <osgEarth/MapNodeOptions>
 #include <osgEarth/OverlayDecorator>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/SpatialReference>
 #include <osg/CoordinateSystemNode>
 #include <osgSim/OverlayNode>
 
@@ -82,6 +83,13 @@ namespace osgEarth
          */
         MapNode( Map* map, const MapNodeOptions& options );
 
+        /**
+         * Attempts to load a MapNOde from a ".earth" file in the arguments list
+         */
+        static MapNode* load( class osg::ArgumentParser& arguments );        
+
+
+
     public:
 
         virtual const char* libraryName() const { return "osgEarth"; }
@@ -91,6 +99,18 @@ namespace osgEarth
          * Gets the Map that this MapNode is rendering.
          */
         Map* getMap();
+        const Map* getMap() const;
+
+        /**
+         * Gets the spatial reference system of the underlying map.
+         * Convenience function.
+         */
+        const SpatialReference* getMapSRS() const;
+
+        /**
+         * Gets an interface for querying the in-memory terrain scene graph directly.
+         */
+        Terrain* getTerrain();
 
         /**
          * Finds the topmost Map node in the specified scene graph, or returns NULL if
@@ -123,14 +143,16 @@ namespace osgEarth
         void removeTerrainDecorator( osg::Group* decorator );
 
         /**
-         * Installs an OverlayNode atop the terrain engine.
+         * Accesses the group containing anything that will be "draped" on the terrain
+         * via the OverlayDecorator.
          */
-        void installOverlayNode( osgSim::OverlayNode* overlay );
-
+        osg::Group* getOverlayGroup() { return _overlayModels.get(); }
+        
         /**
-         * Removes an OverlayNode installed with installOverlayNode
+         * If you add or remove children to/fro the overlay group above, call this
+         * method to refresh the overlay graph.
          */
-        void uninstallOverlayNode( osgSim::OverlayNode* overlay );
+        void updateOverlayGraph();
 
         /**
          * Gets the engine properties associated with this node. The engine
@@ -150,6 +172,15 @@ namespace osgEarth
          */
         Config& externalConfig() { return _externalConf; }
         const Config& externalConfig() const { return _externalConf; }
+
+        /**
+         * Sets a custom texture compositor technique on the underlying terrain engine.
+         * This method is here b/c just calling getTerrainEngine()->getTextureCompositor()
+         * ->setTechnique() has problems (with init order of the terrain engine). Someday
+         * this needs to be cleaned up.
+         */
+        void setCompositorTechnique( class TextureCompositorTechnique* tech );
+
 
     public: //override osg::Node
 
@@ -202,13 +233,11 @@ namespace osgEarth
     private:
 
         osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
-        osg::ref_ptr< MapCallback > _mapCallback;
+        osg::ref_ptr< MapCallback > _mapCallback;        
+        
     
         void init();
-        //void adjustUpdateTraversalCount( int delta );
         void adjustEventTraversalCount( int delta );
-
-        void updateOverlayGraph();
     };
 
 } // namespace osgEarth

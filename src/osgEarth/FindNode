@@ -23,7 +23,7 @@
 namespace osgEarth 
 {
     /**
-     * Visitor that located a node by its type
+     * Visitor that locates a node by its type
      */
     template<typename T>
     class FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
@@ -50,17 +50,37 @@ namespace osgEarth
           T* _foundNode;
     };
 
+    /** 
+     * Collects all the nodes of type "T"
+     */
+    template<typename T>
+    struct FindNodesVisitor : public osg::NodeVisitor
+    {
+        FindNodesVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
+
+        void apply(osg::Node& node)
+        {
+            T* result = dynamic_cast<T*>( &node );
+            if ( result )
+                _results.push_back( result );
+            traverse(node);
+        }
+
+        std::vector<T*> _results;
+    };
+
     /**
      * Searchs the scene graph downward starting at [node] and returns the first node found
      * that matches the template parameter type.
      */
     template<typename T>
-    T* findTopMostNodeOfType(osg::Node* node)
+    T* findTopMostNodeOfType(osg::Node* node, unsigned traversalMask =~0)
     {
         if (!node) return 0;
 
         FindTopMostNodeOfTypeVisitor<T> fnotv;
         fnotv.setTraversalMode(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN);
+        fnotv.setTraversalMask(traversalMask);
         node->accept(fnotv);
 
         return fnotv._foundNode;
@@ -71,12 +91,13 @@ namespace osgEarth
      * that matches the template parameter type.
      */
     template<typename T>
-    T* findFirstParentOfType(osg::Node* node)
+    T* findFirstParentOfType(osg::Node* node, unsigned traversalMask =~0)
     {
         if (!node) return 0;
 
         FindTopMostNodeOfTypeVisitor<T> fnotv;
         fnotv.setTraversalMode(osg::NodeVisitor::TRAVERSE_PARENTS);
+        fnotv.setTraversalMask(traversalMask);
         node->accept(fnotv);
 
         return fnotv._foundNode;
@@ -87,12 +108,12 @@ namespace osgEarth
      * that matches the template parameter type. First searched upward, then downward.
      */
     template<typename T>
-    T* findRelativeNodeOfType(osg::Node* node)
+    T* findRelativeNodeOfType(osg::Node* node, unsigned traversalMask =~0)
     {
         if ( !node ) return 0;
-        T* result = findFirstParentOfType<T>( node );
+        T* result = findFirstParentOfType<T>( node, traversalMask );
         if ( !result )
-            result = findTopMostNodeOfType<T>( node );
+            result = findTopMostNodeOfType<T>( node, traversalMask );
         return result;
     }
 

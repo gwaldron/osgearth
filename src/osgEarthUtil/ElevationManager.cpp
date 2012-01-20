@@ -76,6 +76,18 @@ ElevationManager::getMaxTilesToCache() const
 }
 
 void
+ElevationManager::setMaxLevelOverride(int maxLevelOverride)
+{
+    _maxLevelOverride = maxLevelOverride;
+}
+
+int
+ElevationManager::getMaxLevelOverride() const
+{
+    return _maxLevelOverride;
+}
+
+void
 ElevationManager::setInterpolation( ElevationInterpolation interp)
 {
     _interpolation = interp;
@@ -128,7 +140,7 @@ ElevationManager::getElevationImpl(double x, double y,
     double map_x = x, map_y = y;
     if ( srs && !srs->isEquivalentTo( _mapf.getProfile()->getSRS() ) )
     {
-        if ( !srs->transform( x, y, _mapf.getProfile()->getSRS(), map_x, map_y ) )
+        if ( !srs->transform2D( x, y, _mapf.getProfile()->getSRS(), map_x, map_y ) )
         {
             OE_WARN << LC << "Fail: coord transform failed" << std::endl;
             return false;
@@ -179,7 +191,7 @@ ElevationManager::getElevationImpl(double x, double y,
 
         // generate the heightfield corresponding to the tile key, automatically falling back
         // on lower resolution if necessary:
-        _mapf.getHeightField( key, true, hf, 0L, _interpolation );
+        _mapf.getHeightField( key, true, hf, 0L );
 
         // bail out if we could not make a heightfield a all.
         if ( !hf.valid() )
@@ -300,7 +312,7 @@ ElevationManager::getPlacementMatrix(double x, double y, double z,
     double map_x = x, map_y = y;
     if ( srs && !srs->isEquivalentTo( mapSRS ) )
     {
-        if ( !srs->transform( x, y, mapSRS, map_x, map_y ) )
+        if ( !srs->transform2D( x, y, mapSRS, map_x, map_y ) )
         {
             OE_WARN << LC << "getPlacementMatrix: coord transform failed" << std::endl;
             return false;

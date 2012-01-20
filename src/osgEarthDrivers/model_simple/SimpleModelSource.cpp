@@ -28,11 +28,44 @@
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
 
-#include <osgEarth/HTTPClient>
-//#include <osgEarthSymbology/MarkerSymbolizer>
-//#include <osgEarthSymbology/Style>
-//#include <osgEarthSymbology/MarkerSymbol>
-//#include <osgEarthSymbology/SymbolicNode>
+//--------------------------------------------------------------------------
+
+namespace
+{
+    class LODScaleOverrideNode : public osg::Group
+    {
+    public:
+        LODScaleOverrideNode() : m_lodScale(1.0f) {}
+        virtual	~LODScaleOverrideNode() {}
+    public:
+        void setLODScale(float scale) { m_lodScale = scale; }
+        float getLODScale() const { return m_lodScale; }
+
+        virtual void traverse(osg::NodeVisitor& nv)
+        {
+            if(nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR)
+            {
+                osg::CullStack* cullStack = dynamic_cast<osg::CullStack*>(&nv);
+                if(cullStack)
+                {
+                    float oldLODScale = cullStack->getLODScale();
+                    cullStack->setLODScale(oldLODScale * m_lodScale);
+                    osg::Group::traverse(nv);
+                    cullStack->setLODScale(oldLODScale);
+                }
+                else
+                    osg::Group::traverse(nv);
+            }
+            else
+                osg::Group::traverse(nv);
+        }
+
+    private:
+        float m_lodScale;
+    };
+}
+
+//--------------------------------------------------------------------------
 
 class SimpleModelSource : public ModelSource
 {
@@ -41,11 +74,9 @@ public:
         : ModelSource( options ), _options(options) { }
 
     //override
-    void initialize( const std::string& referenceURI, const osgEarth::Map* map )
+    void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
     {
-        ModelSource::initialize( referenceURI, map );
-
-        _url = osgEarth::getFullPath( referenceURI, _options.url().value() );
+        ModelSource::initialize( dbOptions, map );
     }
 
     // override
@@ -54,16 +85,26 @@ public:
         osg::ref_ptr<osg::Node> result;
 
         // required if the model includes local refs, like PagedLOD or ProxyNode:
-        osg::ref_ptr<osgDB::Options> options = new osgDB::Options();
-        options->getDatabasePathList().push_back( osgDB::getFilePath(_url) );
+        osg::ref_ptr<osgDB::Options> localOptions = _dbOptions.get() ? new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
+        localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
-        HTTPClient::readNodeFile( _url, result, options.get(), progress ); //_settings.get(), progress );
+        result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
+
+		if(_options.lodScale().isSet())
+		{
+			LODScaleOverrideNode * node = new LODScaleOverrideNode;
+			node->setLODScale(_options.lodScale().value());
+			node->addChild(result.release());
+			result = node;
+		}
+
         return result.release();
     }
 
 protected:
-    std::string _url;
-    const SimpleModelOptions _options;
+
+    const SimpleModelOptions           _options;
+    const osg::ref_ptr<osgDB::Options> _dbOptions;
 };
 
 

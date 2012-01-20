@@ -21,10 +21,20 @@
 #define OSGEARTH_GEOMATH_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/SpatialReference>
 #include <osg/CoordinateSystemNode>
 
 namespace osgEarth
 {
+    /**
+     * Types of interpolation between two geodetic locations.
+     */
+    enum GeoInterpolation
+    {
+        GEOINTERP_GREAT_CIRCLE,
+        GEOINTERP_RHUMB_LINE
+    };
+
     /**
      * Useful calculations for lat/long points.
      * Converted from http://www.movable-type.co.uk/scripts/latlong.html
@@ -50,6 +60,18 @@ namespace osgEarth
         static double distance(double lat1Rad, double lon1Rad,
                                double lat2Rad, double lon2Rad,
                                double radius = osg::WGS_84_RADIUS_EQUATOR);
+
+        /**
+         *Computes the distance covered by the given path in meters using the Haversine formula
+         *Assumes the points in Lon, Lat in degrees
+         */
+        static double distance(const std::vector< osg::Vec3d > &points, double radius = osg::WGS_84_RADIUS_EQUATOR);
+
+        /**
+         * Computes the distance between two points, in meters.
+         */
+        static double distance(const osg::Vec3d& p1, const osg::Vec3d& p2, const SpatialReference* srs);
+            
 
         /**
          * Computes the initial bearing from one point to the next in radians
@@ -85,6 +107,16 @@ namespace osgEarth
         static void midpoint(double lat1Rad, double lon1Rad,
             double lat2Rad, double lon2Rad,
             double &out_latRad, double &out_lonRad);
+
+        /**
+         * Computes a great-circle interpolation from one lat/long to another,
+         * where t => [0..1].
+         */
+        static void interpolate(
+            double lat1Rad, double lon1Rad,
+            double lat2Rad, double lon2Rad,
+            double t,
+            double& out_latRad, double& out_lonRad );
 
         /**
          * Computes the destination point given a start point, a bearing and a distance
@@ -126,6 +158,14 @@ namespace osgEarth
         static double rhumbDistance(double lat1Rad, double lon1Rad,
                                     double lat2Rad, double lon2Rad,
                                     double radius = osg::WGS_84_RADIUS_EQUATOR);
+
+
+        /**
+        * Computes the distance between two points in meters following a rhumb line
+        * Assumes the points are in Lon, Lat in degrees
+        */
+        static double rhumbDistance(const std::vector< osg::Vec3d > &points, double radius = osg::WGS_84_RADIUS_EQUATOR);
+
 
         /**
          *Computes the bearing of the rhumb line between two points in radians

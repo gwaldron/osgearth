@@ -21,14 +21,16 @@
 #define OSGEARTH_REGISTRY 1
 
 #include <osgEarth/Common>
-#include <osgEarth/Caching>
+#include <osgEarth/CachePolicy>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
-#include <osgEarth/ShaderComposition>
+#include <osgEarth/IOTypes>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
+#include <osgDB/ReaderWriter>
+#include <osgText/Font>
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
@@ -36,6 +38,9 @@
 
 namespace osgEarth
 {    
+    class Cache;
+    class ShaderFactory;
+
     /**
      * Application-wide global repository.
      */
@@ -60,9 +65,13 @@ namespace osgEarth
         /** Access to the application-wide GDAL serialization mutex. GDAL is not thread-safe. */
         OpenThreads::ReentrantMutex& getGDALMutex();
 
-        /** Global override of map caching settings. */
-		Cache* getCacheOverride() const;
-		void setCacheOverride( Cache* cacheOverride );
+        /** The system-wide default cache. */
+        Cache* getCache() const;
+        void setCache( Cache* cache );
+
+        /** The system-wide default cache policy */
+        const CachePolicy& defaultCachePolicy() const { return _defaultCachePolicy; }
+        void setDefaultCachePolicy( const CachePolicy& policy ) { _defaultCachePolicy = policy; }
 
         /** Registers a mapping of a mime-type to an extension. A process fetching data
           * over HTTP can use this facility to determine the proper ReaderWriter to use
@@ -100,9 +109,16 @@ namespace osgEarth
         const VerticalSpatialReference* getDefaultVSRS() const;
 
         /**
-         * Gets the graphics hardware capabilities for this platform
+         * Sets or gets a default system font to use
+         */
+        void setDefaultFont( osgText::Font* font );
+        osgText::Font* getDefaultFont();
+
+        /**
+         * The graphics hardware capabilities for this platform.
          */
         const Capabilities& getCapabilities() const;
+        void setCapabilities( Capabilities* caps );
 
         /**
          * Gets or sets the default shader factory. You can replace the default
@@ -123,10 +139,30 @@ namespace osgEarth
          */
         UID createUID();
 
+        /**
+         * Sets a global read callback for URI objects.
+         */
+        void setURIReadCallback( URIReadCallback* callback ) { _uriReadCallback = callback; }
+
+        /**
+         * Gets the global read callback for URI objects.
+         */
+        URIReadCallback* getURIReadCallback() const { return _uriReadCallback.get(); }
+
+        /**
+         * Gets the default set of osgDB::Options to use.
+         */
+        const osgDB::Options* getDefaultOptions() const { return _defaultOptions.get(); }
+
+        /**
+         * Clones an options structure (fixing the archive caching), or creates
+         * a new one.
+         */
+        osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L ) const;
+
     protected:
         virtual ~Registry();
         Registry();
-
 
         void destruct();
 
@@ -137,18 +173,20 @@ namespace osgEarth
         osg::ref_ptr<const Profile> _global_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
-        OpenThreads::Mutex _regMutex;        
+        Threading::ReadWriteMutex _regMutex;
+        //OpenThreads::Mutex _regMutex;        
         int _numGdalMutexGets;
         
         typedef std::map< std::string, std::string> MimeTypeExtensionMap;
         // maps mime-types to extensions.
         MimeTypeExtensionMap _mimeTypeExtMap;
 
-		osg::ref_ptr<Cache> _cacheOverride;
+		osg::ref_ptr<Cache> _cache;
+        CachePolicy         _defaultCachePolicy;
 
         typedef std::set<std::string> StringSet;
         StringSet _blacklistedFilenames;
-        OpenThreads::Mutex _blacklistMutex;
+        Threading::ReadWriteMutex _blacklistMutex;
 
         osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
@@ -160,6 +198,12 @@ namespace osgEarth
 
         osg::ref_ptr< Capabilities > _caps;
         void initCapabilities();
+
+        osg::ref_ptr<osgDB::Options> _defaultOptions;
+
+        osg::ref_ptr<URIReadCallback> _uriReadCallback;
+
+        osg::ref_ptr<osgText::Font> _defaultFont;
     };
 }
 

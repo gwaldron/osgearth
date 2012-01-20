@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include "Tile"
-#include "Terrain"
+#include "TerrainNode"
 #include "CustomTerrainTechnique"
 #include "TransparentLayer"
 
@@ -85,7 +85,7 @@ Tile::setTerrainTechnique( TerrainTechnique* tech )
 }
 
 void
-Tile::attachToTerrain( Terrain* terrain )
+Tile::attachToTerrain( TerrainNode* terrain )
 {
     _terrain = terrain;
     if ( terrain )
@@ -282,14 +282,19 @@ void
 Tile::traverse( osg::NodeVisitor& nv )
 {    
     // set the parent tile in the technique:
-    if ( !_parentTileSet )
+    if ( !_parentTileSet && _terrain.valid() )
     {
         osg::ref_ptr<Tile> parentTile;
-        _terrain->getTile( _key.createParentKey().getTileId(), parentTile );
-        CustomTerrainTechnique* tech = dynamic_cast<CustomTerrainTechnique*>( _tech.get() );
-        if ( tech )
-            tech->setParentTile( parentTile.get() );
-        _parentTileSet = true;
+        //Take a reference
+        osg::ref_ptr< TerrainNode > terrain = _terrain.get();
+        if (terrain.valid())
+        {
+            terrain->getTile( _key.createParentKey().getTileId(), parentTile );
+            CustomTerrainTechnique* tech = dynamic_cast<CustomTerrainTechnique*>( _tech.get() );
+            if ( tech )
+                tech->setParentTile( parentTile.get() );
+            _parentTileSet = true;
+        }
     }
 
     // this block runs the first time the tile is traversed while in the scene graph.
@@ -354,6 +359,10 @@ _tileKey(tile->getKey())
     _colorLayers    = tile->_colorLayers;
     _elevationLayer = tile->getElevationLayer();
     _locator        = tile->getLocator();
-    _sampleRatio    = tile->getTerrain()->getSampleRatio();
+    osg::ref_ptr< TerrainNode > terrain = tile->getTerrain();
+    if (terrain.valid())
+    {
+        _sampleRatio  = terrain->getSampleRatio();
+    }
     _masks          = MaskLayerVector(tile->getTerrainMasks());
 }

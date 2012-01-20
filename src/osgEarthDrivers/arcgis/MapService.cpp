@@ -146,7 +146,7 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
     double ymin = doc["fullExtent"].get("ymin", 0).asDouble();
     double xmax = doc["fullExtent"].get("xmax", 0).asDouble();
     double ymax = doc["fullExtent"].get("ymax", 0).asDouble();
-    int srs = doc["fullExtent"].get("spatialReference", "").get("wkid", 0).asInt();
+    int srs = doc["fullExtent"].get("spatialReference", osgEarth::Json::Value::null).get("wkid", 0).asInt();
     
     //Assumes the SRS is going to be an EPSG code
     std::stringstream ss;
@@ -235,8 +235,8 @@ MapService::init( const std::string& _url, const osgDB::ReaderWriter::Options* o
         }
     }
 
-	std::string ssStr;
-	ssStr = ss.str();
+	 std::string ssStr;
+	 ssStr = ss.str();
 
     osg::ref_ptr< SpatialReference > spatialReference = SpatialReference::create( ssStr );
     if (spatialReference->isGeographic())

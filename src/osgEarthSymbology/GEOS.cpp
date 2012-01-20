@@ -174,6 +174,7 @@ GEOSUtils::importGeometry( const Symbology::Geometry* input )
         output = import( input, f );
 
         // if output is ok, it will have a pointer to f. this is probably a leak.
+        // TODO: Check whether this is a leak!! -gw
         if ( !output )
             delete f;
     }

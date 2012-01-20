@@ -19,17 +19,19 @@
 
 #include <osg/Notify>
 #include <osgGA/StateSetManipulator>
+#include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-#include <osgGA/GUIEventHandler>
-#include <osgEarth/Map>
-#include <osgEarth/MapNode>
-#include <osgEarthUtil/EarthManipulator>
-#include <osgEarth/Utils>
-#include <osgEarth/CompositeTileSource>
-
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
+
+
+#include <osgEarth/CompositeTileSource>
+#include <osgEarth/Map>
+#include <osgEarth/MapNode>
+#include <osgEarth/Utils>
+#include <osgEarth/URI>
+#include <osgEarthUtil/EarthManipulator>
 
 #include <osgEarthDrivers/gdal/GDALOptions>
 
@@ -111,7 +113,7 @@ int main(int argc, char** argv)
 
     //Add a base layer
     GDALOptions basemapOpt;
-    basemapOpt.url() = "../data/world.tif";
+    basemapOpt.url() = URI("../data/world.tif");
     map->addImageLayer( new ImageLayer( ImageLayerOptions("basemap", basemapOpt) ) );    
 
     osgEarth::CompositeTileSourceOptions compositeOpt; 
@@ -119,7 +121,10 @@ int main(int argc, char** argv)
     { 
         GDALOptions gdalOpt; 
         gdalOpt.url() = files[i];
-        compositeOpt.add( gdalOpt); 
+        ImageLayerOptions ilo(files[i], gdalOpt);
+        //Set the transparent color on each image        
+        //ilo.transparentColor() = osg::Vec4ub(255, 255, 206, 0); 
+        compositeOpt.add( ilo );
         OE_NOTICE << "Added file " << files[i] << std::endl;
     } 
 

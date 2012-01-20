@@ -28,6 +28,7 @@
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/SparseTexture2DArray>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/TileKey>
 
 using namespace osgEarth;
 
@@ -135,7 +136,8 @@ s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, f
     buf << "    color = vec4(color3.rgb, color.a); \n"
         << "} \n";
 
-    std::string str = buf.str();
+    std::string str;
+    str = buf.str();
     return new osg::Shader( osg::Shader::FRAGMENT, str );
 }
 }
@@ -194,7 +196,8 @@ namespace
     {
         std::stringstream sstream;
         sstream << "tex" << unit;
-        std::string str = sstream.str();
+        std::string str;
+        str = sstream.str();
         osg::ref_ptr<osg::Uniform> sampler = ss->getUniform(str);
         int samplerUnit = -1;
         if (sampler.valid() && sampler->getType() == osg::Uniform::SAMPLER_2D_ARRAY)
@@ -203,9 +206,9 @@ namespace
         {
             sampler = new osg::Uniform(osg::Uniform::SAMPLER_2D_ARRAY, str);
             sampler->set(unit);
-            ss->addUniform(sampler);
+            ss->addUniform(sampler.get());
         }
-        return sampler;
+        return sampler.get();
     }
 
     void assignImage(osg::Texture2DArray* texture, int slot, osg::Image* image)
@@ -242,6 +245,13 @@ namespace
 }
 
 //------------------------------------------------------------------------
+
+bool
+TextureCompositorTexArray::isSupported()
+{
+    const Capabilities& caps = osgEarth::Registry::instance()->getCapabilities();
+    return caps.supportsGLSL(1.30f) && caps.supportsTextureArrays();
+}
 
 TextureCompositorTexArray::TextureCompositorTexArray( const TerrainOptions& options ) :
 _lodTransitionTime( *options.lodTransitionTime() )
@@ -410,7 +420,8 @@ TextureCompositorTexArray::createSamplerFunction(UID layerUID,
             << "    return texture2DArray( tex0, vec3(u,v,"<< slot <<") ); \n"
             << "} \n";
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         result = new osg::Shader( type, str );
     }
     return result;

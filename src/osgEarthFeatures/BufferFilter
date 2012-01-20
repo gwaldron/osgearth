@@ -76,8 +76,6 @@ namespace osgEarth { namespace Features
         optional<double> _distance;
         int _numQuadSegs;
         Stroke::LineCapStyle _capStyle;
-
-        bool push( Feature* input, FilterContext& context );
     };
 
 } } // namespace osgEarth::Features

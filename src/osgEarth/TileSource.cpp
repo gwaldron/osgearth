@@ -33,6 +33,9 @@
 
 using namespace osgEarth;
 
+//#undef OE_DEBUG
+//#define OE_DEBUG OE_INFO
+
 //------------------------------------------------------------------------
 
 TileBlacklist::TileBlacklist()
@@ -189,16 +192,16 @@ TileSource::getPixelsPerTile() const
 }
 
 osg::Image*
-TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCallback* progress)
+TileSource::createImage(const TileKey&        key,
+                        ImageOperation*       prepOp, 
+                        ProgressCallback*     progress )
 {
     // Try to get it from the memcache fist
     if (_memCache.valid())
     {
-        osg::ref_ptr<const osg::Image> cachedImage;
-        if ( _memCache->getImage( key, CacheSpec(), cachedImage ) )
-        {
-            return ImageUtils::cloneImage(cachedImage.get());
-        }
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readImage( key.str() );
+        if ( r.succeeded() )
+            return r.releaseImage();
     }
 
     osg::ref_ptr<osg::Image> newImage = createImage(key, progress);
@@ -209,23 +212,23 @@ TileSource::createImage(const TileKey& key, ImageOperation* prepOp, ProgressCall
     if ( newImage.valid() && _memCache.valid() )
     {
         // cache it to the memory cache.
-        _memCache->setImage( key, CacheSpec(), newImage.get() );
+        _memCache->getOrCreateDefaultBin()->write( key.str(), newImage.get() );
     }
 
     return newImage.release();
 }
 
 osg::HeightField*
-TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, ProgressCallback* progress )
+TileSource::createHeightField(const TileKey&        key,
+                              HeightFieldOperation* prepOp, 
+                              ProgressCallback*     progress )
 {
     // Try to get it from the memcache first:
 	if (_memCache.valid())
 	{
-        osg::ref_ptr<const osg::HeightField> cachedHF;
-		if ( _memCache->getHeightField( key, CacheSpec(), cachedHF ) )
-        {
-            return new osg::HeightField( *cachedHF.get() );
-        }
+        ReadResult r = _memCache->getOrCreateDefaultBin()->readObject( key.str() );
+        if ( r.succeeded() )
+            return r.release<osg::HeightField>();
 	}
 
     osg::ref_ptr<osg::HeightField> newHF = createHeightField( key, progress );
@@ -235,7 +238,7 @@ TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, 
 
     if ( newHF.valid() && _memCache.valid() )
     {
-        _memCache->setHeightField( key, CacheSpec(), newHF.get() );
+        _memCache->getOrCreateDefaultBin()->write( key.str(), newHF.get() );
     }
 
     //TODO: why not just newHF.release()? -gw
@@ -243,9 +246,10 @@ TileSource::createHeightField(const TileKey& key, HeightFieldOperation* prepOp, 
 }
 
 osg::HeightField*
-TileSource::createHeightField( const TileKey& key,
-                               ProgressCallback* progress)
+TileSource::createHeightField(const TileKey&        key,
+                              ProgressCallback*     progress)
 {
+    //osg::ref_ptr<osg::Image> image = createImage(key, dbOptions, progress);
     osg::ref_ptr<osg::Image> image = createImage(key, progress);
     osg::HeightField* hf = 0;
     if (image.valid())
@@ -278,7 +282,7 @@ unsigned int
 TileSource::getMaxDataLevel() const
 {
     //If we have no data extents, just use a reasonably high number
-    if (_dataExtents.size() == 0) return 35;
+    if (_dataExtents.size() == 0) return 23;
 
     unsigned int maxDataLevel = 0;
     for (DataExtentList::const_iterator itr = _dataExtents.begin(); itr != _dataExtents.end(); ++itr)

@@ -21,6 +21,8 @@
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/ShaderUtils>
+#include <osgEarth/TileKey>
+#include <osgEarth/StringUtils>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
 #include <osg/TexEnvCombine>
@@ -34,12 +36,19 @@ using namespace osgEarth;
 
 namespace
 {
+    static std::string makeSamplerName(int slot)
+    {
+        return Stringify() << "tex" << slot;
+    }
+
     static osg::Shader*
     s_createTextureVertexShader( const TextureLayout& layout, bool blending )
     {
         std::stringstream buf;
        
         const TextureLayout::TextureSlotVector& slots = layout.getTextureSlots();
+
+        buf << "#version 110 \n";
 
         if ( blending )
         {
@@ -74,7 +83,8 @@ namespace
             
         buf << "} \n";
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         return new osg::Shader( osg::Shader::VERTEX, str );
     }
 
@@ -85,7 +95,7 @@ namespace
 
         std::stringstream buf;
 
-        buf << "#version 120 \n";
+        buf << "#version 110 \n";
 
         if ( blending )
         {
@@ -96,7 +106,8 @@ namespace
         }
 
         buf << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
-            << "uniform bool  osgearth_ImageLayerEnabled[" << maxSlots << "]; \n"
+            //The enabled array is a fixed size.  Make sure this corresponds EXCATLY to the size definition in TerrainEngineNode.cpp
+            << "uniform bool  osgearth_ImageLayerEnabled[" << MAX_IMAGE_LAYERS << "]; \n"
             << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
             << "uniform float osgearth_ImageLayerAttenuation; \n"
             << "uniform float osgearth_CameraElevation; \n"
@@ -108,7 +119,7 @@ namespace
         {
             if ( slots[i] >= 0 )
             {
-                buf << "uniform sampler2D tex" << i << ";\n";
+                buf << "uniform sampler2D " << makeSamplerName(i) << ";\n";
             }
         }
 
@@ -116,7 +127,8 @@ namespace
             << "{ \n"
             << "    vec3 color3 = color.rgb; \n"
             << "    vec4 texel; \n"
-            << "    float dmin, dmax, atten_min, atten_max, age; \n";
+            << "    float maxOpacity = 0.0; \n"
+            << "    float dmin, dmax, atten_min, atten_max, age; \n";           
 
         for( unsigned int i=0; i < order.size(); ++i )
         {
@@ -130,9 +142,9 @@ namespace
                 << "        dmin = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q << "]; \n"
                 << "        dmax = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
 
-                << "        if (dmin >= 0 && dmax <= 0.0) { \n"
-                << "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0 ) / osgearth_ImageLayerAttenuation; \n"
-                << "            atten_min =  clamp( dmin, 0, osgearth_ImageLayerAttenuation ) / osgearth_ImageLayerAttenuation; \n";
+                << "        if (dmin >= 0.0 && dmax <= 0.0) { \n"
+                << "            atten_max = -clamp( dmax, -osgearth_ImageLayerAttenuation, 0.0 ) / osgearth_ImageLayerAttenuation; \n"
+                << "            atten_min =  clamp( dmin, 0.0, osgearth_ImageLayerAttenuation ) / osgearth_ImageLayerAttenuation; \n";
 
             if ( secondarySlot >= 0 ) // LOD blending enabled for this layer
             {
@@ -140,8 +152,8 @@ namespace
 
                 buf << "            age = "<< invFadeInDuration << " * min( "<< fadeInDuration << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
                     << "            age = clamp(age, 0.0, 1.0); \n"
-                    << "            vec4 texel0 = texture2D(tex" << slot << ", gl_TexCoord["<< slot << "].st);\n"
-                    << "            vec4 texel1 = texture2D(tex" << secondarySlot << ", gl_TexCoord["<< secondarySlot << "].st);\n"
+                    << "            vec4 texel0 = texture2D(" << makeSamplerName(slot) << ", gl_TexCoord["<< slot << "].st);\n"
+                    << "            vec4 texel1 = texture2D(" << makeSamplerName(secondarySlot) << ", gl_TexCoord["<< secondarySlot << "].st);\n"
                     << "            float mixval = age * osgearth_LODRangeFactor;\n"
 
                     // pre-multiply alpha before mixing:
@@ -156,18 +168,25 @@ namespace
             }
             else
             {
-                buf << "            texel = texture2D(tex" << slot << ", gl_TexCoord["<< slot <<"].st); \n";
+                buf << "            texel = texture2D(" << makeSamplerName(slot) << ", gl_TexCoord["<< slot <<"].st); \n";
             }
-                    
-            buf << "            color3 = mix(color3, texel.rgb, texel.a * osgearth_ImageLayerOpacity[" << i << "] * atten_max * atten_min); \n"
+            
+            buf << "            float opacity =  texel.a * osgearth_ImageLayerOpacity[" << i << "];\n"
+                << "            color3 = mix(color3, texel.rgb, opacity * atten_max * atten_min); \n"
+                << "            if (opacity > maxOpacity) {\n"
+                << "              maxOpacity = opacity;\n"
+                << "            }\n"                
                 << "        } \n"
                 << "    } \n";
         }
+        
+            buf << "    color = vec4(color3, maxOpacity);\n"
+                << "} \n";
 
-        buf << "    color = vec4(color3,color.a); \n"
-            << "} \n";
 
-        std::string str = buf.str();
+
+        std::string str;
+        str = buf.str();
         //OE_INFO << std::endl << str;
         return new osg::Shader( osg::Shader::FRAGMENT, str );
     }
@@ -176,16 +195,9 @@ namespace
 //------------------------------------------------------------------------
 
 namespace
-{
-    static std::string makeSamplerName(int slot)
-    {
-        std::stringstream buf;
-        buf << "tex" << slot;
-        return buf.str();
-    }
-    
+{    
     static osg::Texture2D*
-    s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout, osg::StateSet* parentStateSet)
+        s_getTexture( osg::StateSet* stateSet, UID layerUID, const TextureLayout& layout, osg::StateSet* parentStateSet, osg::Texture::FilterMode minFilter, osg::Texture::FilterMode magFilter)
     {
         int slot = layout.getSlot( layerUID, 0 );
         if ( slot < 0 )
@@ -203,8 +215,8 @@ namespace
             tex->setMaxAnisotropy( 16.0f );
 
             tex->setResizeNonPowerOfTwoHint(false);
-            tex->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            tex->setFilter( osg::Texture::MAG_FILTER, magFilter );
+            tex->setFilter( osg::Texture::MIN_FILTER, minFilter );
 
             // configure the wrapping
             tex->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_EDGE );
@@ -253,9 +265,21 @@ namespace
 
 //------------------------------------------------------------------------
 
+bool
+TextureCompositorMultiTexture::isSupported( bool useGPU )
+{
+    const Capabilities& caps = osgEarth::Registry::instance()->getCapabilities();
+    if ( useGPU )
+        return caps.supportsGLSL( 1.10f ) && caps.supportsMultiTexture();
+    else
+        return caps.supportsMultiTexture();
+}
+
 TextureCompositorMultiTexture::TextureCompositorMultiTexture( bool useGPU, const TerrainOptions& options ) :
 _lodTransitionTime( *options.lodTransitionTime() ),
 _enableMipmapping( *options.enableMipmapping() ),
+_minFilter( *options.minFilter() ),
+_magFilter( *options.magFilter() ),
 _useGPU( useGPU )
 {
     _enableMipmappingOnUpdatedTextures = Registry::instance()->getCapabilities().supportsMipmappedTextureUpdates();
@@ -269,7 +293,7 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
                                                 const TextureLayout& layout,
                                                 osg::StateSet*       parentStateSet) const
 {
-    osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, parentStateSet);
+    osg::Texture2D* tex = s_getTexture( stateSet, layerUID, layout, parentStateSet, _minFilter, _magFilter);
     if ( tex )
     {
         osg::Image* image = preparedImage.getImage();
@@ -282,8 +306,8 @@ TextureCompositorMultiTexture::applyLayerUpdate(osg::StateSet*       stateSet,
             ImageUtils::isPowerOfTwo( image ) && 
             !(!image->isMipmap() && ImageUtils::isCompressed(image)) )
         {
-            if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR_MIPMAP_LINEAR )
-                tex->setFilter( osg::Texture::MIN_FILTER, osg::Texture::LINEAR_MIPMAP_LINEAR );
+            if ( tex->getFilter(osg::Texture::MIN_FILTER) != _minFilter )
+                tex->setFilter( osg::Texture::MIN_FILTER, _minFilter );
         }
         else if ( tex->getFilter(osg::Texture::MIN_FILTER) != osg::Texture::LINEAR )
         {
@@ -474,7 +498,8 @@ TextureCompositorMultiTexture::createSamplerFunction(UID layerUID,
 
         buf << "} \n";
 
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         result = new osg::Shader( type, str );
     }
     return result;

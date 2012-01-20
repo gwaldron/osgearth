@@ -23,6 +23,7 @@
 #include <osgEarth/Capabilities>
 #include <osgEarth/ImageUtils>
 #include <osgEarth/Registry>
+#include <osgEarth/Map>
 #include <osg/Texture2DArray>
 #include <osg/Texture2D>
 #include <osg/Texture3D>
@@ -475,11 +476,20 @@ TextureCompositor::createSamplerFunction(UID                layerUID,
         std::string fname = !functionName.empty() ? functionName : "defaultSamplerFunction";
         std::stringstream buf;
         buf << "vec4 " << functionName << "() { \n return vec4(0,0,0,0); \n } \n";
-        std::string str = buf.str();
+        std::string str;
+        str = buf.str();
         result = new osg::Shader( type, str );
     }
 
     return result;
+}
+
+void
+TextureCompositor::setTechnique( TextureCompositorTechnique* tech )
+{
+    _tech = TerrainOptions::COMPOSITING_USER;
+    _impl = tech;
+    OE_INFO << LC << "Custom texture compositing technique installed" << std::endl;
 }
 
 void
@@ -497,7 +507,7 @@ TextureCompositor::init()
     // MULTITEXTURE_GPU is the current default.
     
     if (_tech == TerrainOptions::COMPOSITING_MULTITEXTURE_GPU ||
-        (isAuto && caps.supportsGLSL(1.20f) && caps.supportsMultiTexture()) ) 
+        ( isAuto && TextureCompositorMultiTexture::isSupported(true) ) )
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_GPU;
         _impl = new TextureCompositorMultiTexture( true, _options );
@@ -508,7 +518,7 @@ TextureCompositor::init()
 
     else
     if (_tech == TerrainOptions::COMPOSITING_TEXTURE_ARRAY || 
-        (isAuto && caps.supportsGLSL(1.30f) && caps.supportsTextureArrays()) )
+        ( isAuto && TextureCompositorTexArray::isSupported() ) )
     {
         _tech = TerrainOptions::COMPOSITING_TEXTURE_ARRAY;
         _impl = new TextureCompositorTexArray( _options );
@@ -518,7 +528,8 @@ TextureCompositor::init()
 #endif // OSG_VERSION_GREATER_OR_EQUAL( 2, 9, 8 )
 
     else
-    if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || (isAuto && caps.supportsMultiTexture()) )
+    if ( _tech == TerrainOptions::COMPOSITING_MULTITEXTURE_FFP || 
+        (isAuto && TextureCompositorMultiTexture::isSupported(false) ) )
     {
         _tech = TerrainOptions::COMPOSITING_MULTITEXTURE_FFP;
         _impl = new TextureCompositorMultiTexture( false, _options );

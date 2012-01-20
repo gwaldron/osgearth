@@ -18,10 +18,10 @@
  */
 
 #include <curl/curl.h>
-#include <curl/types.h>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgEarth/Version>
+#include <osgDB/ReadFile>
 #include <osgDB/Registry>
 #include <osgDB/FileNameUtils>
 #include <osg/Notify>
@@ -33,9 +33,6 @@
 #include <algorithm>
 
 #define LC "[HTTPClient] "
-
-#undef  OE_DEBUG
-#define OE_DEBUG OE_NULL
 
 using namespace osgEarth;
 
@@ -138,7 +135,7 @@ HTTPRequest::addParameter( const std::string& name, int value )
 {
     std::stringstream buf;
     buf << value;
-	std::string bufStr;
+	 std::string bufStr;
     bufStr = buf.str();
     _parameters[name] = bufStr;
 }
@@ -148,7 +145,7 @@ HTTPRequest::addParameter( const std::string& name, double value )
 {
     std::stringstream buf;
     buf << value;
-	std::string bufStr;
+	 std::string bufStr;
     bufStr = buf.str();
     _parameters[name] = bufStr;
 }
@@ -175,8 +172,8 @@ HTTPRequest::getURL() const
             buf << ( i == _parameters.begin() && _url.find( "?" ) == std::string::npos? "?" : "&" );
             buf << i->first << "=" << i->second;
         }
-		std::string bufStr;
-		bufStr = buf.str();
+		 std::string bufStr;
+		 bufStr = buf.str();
         return bufStr;
     }
 }
@@ -199,7 +196,7 @@ _cancelled( rhs._cancelled )
     //nop
 }
 
-long
+unsigned
 HTTPResponse::getCode() const {
     return _response_code;
 }
@@ -236,8 +233,8 @@ HTTPResponse::getPartStream( unsigned int n ) const {
 
 std::string
 HTTPResponse::getPartAsString( unsigned int n ) const {
-	std::string streamStr;
-	streamStr = _parts[n]->_stream.str();
+	 std::string streamStr;
+	 streamStr = _parts[n]->_stream.str();
     return streamStr;
 }
 
@@ -246,20 +243,47 @@ HTTPResponse::getMimeType() const {
     return _mimeType;
 }
 
+Config
+HTTPResponse::getHeadersAsConfig() const
+{
+    Config conf;
+    if ( _parts.size() > 0 )
+    {
+        for( Part::Headers::const_iterator i = _parts[0]->_headers.begin(); i != _parts[0]->_headers.end(); ++i )
+        {
+            conf.set(i->first, i->second);
+        }
+    }
+    return conf;
+}
+
 /****************************************************************************/
 
 #define QUOTE_(X) #X
 #define QUOTE(X) QUOTE_(X)
 #define USER_AGENT "osgearth" QUOTE(OSGEARTH_MAJOR_VERSION) "." QUOTE(OSGEARTH_MINOR_VERSION)
 
-typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> >    ThreadClientMap;        
-static Threading::ReadWriteMutex   _threadClientMapMutex;
-static ThreadClientMap             _threadClientMap;
+
 static optional<ProxySettings>     _proxySettings;
 static std::string                 _userAgent = USER_AGENT;
 
-HTTPClient& HTTPClient::getClient()
+
+HTTPClient&
+HTTPClient::getClient()
 {
+#if 1
+    static Threading::PerThread< osg::ref_ptr<HTTPClient> > s_clientPerThread;
+
+    osg::ref_ptr<HTTPClient>& client = s_clientPerThread.get();
+    if ( !client.valid() )
+        client = new HTTPClient();
+
+    return *client.get();
+#else
+    typedef std::map< OpenThreads::Thread*, osg::ref_ptr<HTTPClient> > ThreadClientMap;        
+    static Threading::ReadWriteMutex   _threadClientMapMutex;
+    static ThreadClientMap             _threadClientMap;
+
     OpenThreads::Thread* current = OpenThreads::Thread::CurrentThread();
 
     // first try the map:
@@ -280,6 +304,7 @@ HTTPClient& HTTPClient::getClient()
         _threadClientMap[current] = client;
         return *client;
     }
+#endif
 }
 
 HTTPClient::HTTPClient()
@@ -330,7 +355,7 @@ void  HTTPClient::setUserAgent(const std::string& userAgent)
 }
 
 void
-HTTPClient::readOptions( const osgDB::ReaderWriter::Options* options, std::string& proxy_host, std::string& proxy_port) const
+HTTPClient::readOptions(const osgDB::Options* options, std::string& proxy_host, std::string& proxy_port) const
 {
     // try to set proxy host/port by reading the CURL proxy options
     if ( options )
@@ -465,49 +490,62 @@ HTTPClient::decodeMultipartStream(const std::string&   boundary,
 }
 
 HTTPResponse
-HTTPClient::get( const HTTPRequest& request,
-                 const osgDB::ReaderWriter::Options* options,
-                 ProgressCallback* callback)
+HTTPClient::get( const HTTPRequest&    request,
+                 const osgDB::Options* options,
+                 ProgressCallback*     callback)
 {
     return getClient().doGet( request, options, callback );
 }
 
 HTTPResponse 
-HTTPClient::get( const std::string &url,
-                 const osgDB::ReaderWriter::Options* options,
-                 ProgressCallback* callback)
+HTTPClient::get( const std::string&    url,
+                 const osgDB::Options* options,
+                 ProgressCallback*     callback)
 {
     return getClient().doGet( url, options, callback);
 }
 
-HTTPClient::ResultCode
-HTTPClient::readImageFile(const std::string &filename,
-                          osg::ref_ptr<osg::Image>& output,
-                          const osgDB::ReaderWriter::Options *options,
-                          osgEarth::ProgressCallback *callback)
+ReadResult
+HTTPClient::readImage(const std::string&    location,
+                      const osgDB::Options* options,
+                      ProgressCallback*     callback)
 {
-    return getClient().doReadImageFile( filename, output, options, callback );
+    return getClient().doReadImage( location, options, callback );
 }
 
-HTTPClient::ResultCode
-HTTPClient::readNodeFile(const std::string& filename,
-                         osg::ref_ptr<osg::Node>& output,
-                         const osgDB::ReaderWriter::Options *options,
-                         osgEarth::ProgressCallback *callback)
+ReadResult
+HTTPClient::readNode(const std::string&    location,
+                     const osgDB::Options* options,
+                     ProgressCallback*     callback)
 {
-    return getClient().doReadNodeFile( filename, output, options, callback );
+    return getClient().doReadNode( location, options, callback );
 }
 
-HTTPClient::ResultCode
-HTTPClient::readString(const std::string& filename,
-                       std::string& output,
-                       osgEarth::ProgressCallback* callback)
+ReadResult
+HTTPClient::readObject(const std::string&    location,
+                       const osgDB::Options* options,
+                       ProgressCallback*     callback)
 {
-    return getClient().doReadString( filename, output, callback );
+    return getClient().doReadObject( location, options, callback );
+}
+
+ReadResult
+HTTPClient::readString(const std::string&    location,
+                       const osgDB::Options* options,
+                       ProgressCallback*     callback)
+{
+    return getClient().doReadString( location, options, callback );
+}
+
+bool
+HTTPClient::download(const std::string& uri,
+                     const std::string& localPath)
+{
+    return getClient().doDownload( uri, localPath );
 }
 
 HTTPResponse
-HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
+HTTPClient::doGet( const HTTPRequest& request, const osgDB::Options* options, ProgressCallback* callback) const
 {
     OE_DEBUG << LC << "doGet " << request.getURL() << std::endl;
 
@@ -519,6 +557,9 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     std::string proxy_port = "8080";
 
 	std::string proxy_auth;
+
+    //TODO: don't do all this proxy setup on every GET. Just do it once per client, or only when 
+    // the proxy information changes.
 
 	//Try to get the proxy settings from the global settings
 	if (_proxySettings.isSet())
@@ -532,7 +573,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 		std::string proxy_password = _proxySettings.get().password();
 		if (!proxy_username.empty() && !proxy_password.empty())
 		{
-			proxy_auth = proxy_username + ":" + proxy_password;
+            proxy_auth = proxy_username + std::string(":") + proxy_password;
 		}
 	}
 
@@ -640,6 +681,9 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     curl_easy_setopt( _curl_handle, CURLOPT_WRITEDATA, (void*)0 );
     curl_easy_setopt( _curl_handle, CURLOPT_PROGRESSDATA, (void*)0);
 
+    //Disable peer certificate verification to allow us to access in https servers where the peer certificate cannot be verified.
+    curl_easy_setopt( _curl_handle, CURLOPT_SSL_VERIFYPEER, (void*)0 );
+
     long response_code = 0L;
 	if (!proxy_addr.empty())
 	{
@@ -650,7 +694,7 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 	
     curl_easy_getinfo( _curl_handle, CURLINFO_RESPONSE_CODE, &response_code );     
 
-	OE_DEBUG << LC << "got response, code = " << response_code << std::endl;
+	//OE_DEBUG << LC << "got response, code = " << response_code << std::endl;
 
     HTTPResponse response( response_code );
    
@@ -672,17 +716,22 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
         //   content type ...
 
         std::string content_type( content_type_cp );
-        //OE_NOTICE << "[osgEarth.HTTPClient] content-type = \"" << content_type << "\"" << std::endl;
+
+        //OE_DEBUG << LC << "content-type = \"" << content_type << "\"" << std::endl;
+
         if ( content_type.length() > 9 && ::strstr( content_type.c_str(), "multipart" ) == content_type.c_str() )
         //if ( content_type == "multipart/mixed; boundary=wcs" ) //todo: parse this.
         {
-            //OE_NOTICE << "[osgEarth.HTTPClient] detected multipart data; decoding..." << std::endl;
+            OE_DEBUG << LC << "detected multipart data; decoding..." << std::endl;
+
             //TODO: parse out the "wcs" -- this is WCS-specific
             decodeMultipartStream( "wcs", part.get(), response._parts );
         }
         else
         {
-            //OE_NOTICE << "[osgEarth.HTTPClient] detected single part data" << std::endl;
+            // store headers that we care about
+            part->_headers[IOMetadata::CONTENT_TYPE] = content_type;
+
             response._parts.push_back( part.get() );
         }
     }
@@ -690,23 +739,6 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
     {
         //If we were aborted by a callback, then it was cancelled by a user
         response._cancelled = true;
-    }
-    else
-    {        
-        //if ( callback )
-        //{
-        //    if ( errorBuf[0] ) {
-        //        callback->message() = errorBuf;
-        //    }
-        //    else {
-        //        std::stringstream buf;
-        //        buf << "HTTP Code " << response.getCode();
-        //        callback->message() = buf.str();
-        //    }
-        //}
-        //else {
-        //    OE_NOTICE << "[osgEarth] [HTTP] error, code = " << code << std::endl;
-        //}
     }
 
     // Store the mime-type, if any. (Note: CURL manages the buffer returned by
@@ -722,13 +754,13 @@ HTTPClient::doGet( const HTTPRequest& request, const osgDB::ReaderWriter::Option
 
 
 HTTPResponse
-HTTPClient::doGet( const std::string& url, const osgDB::ReaderWriter::Options* options, ProgressCallback* callback) const
+HTTPClient::doGet( const std::string& url, const osgDB::Options* options, ProgressCallback* callback) const
 {
-    return doGet( HTTPRequest( url ), options, callback );
+    return doGet( HTTPRequest(url), options, callback );
 }
 
 bool
-HTTPClient::downloadFile(const std::string &url, const std::string &filename)
+HTTPClient::doDownload(const std::string& url, const std::string& filename)
 {
     // download the data
     HTTPResponse response = this->doGet( HTTPRequest(url) );
@@ -759,235 +791,234 @@ HTTPClient::downloadFile(const std::string &url, const std::string &filename)
     } 
 }
 
-HTTPClient::ResultCode
-HTTPClient::doReadImageFile(const std::string& filename, 
-                            osg::ref_ptr<osg::Image>& output,
-                            const osgDB::ReaderWriter::Options *options,
-                            osgEarth::ProgressCallback *callback)
+namespace
 {
-    ResultCode result = RESULT_OK;
-
-    if ( osgDB::containsServerAddress( filename ) )
+    osgDB::ReaderWriter*
+    getReader( const std::string& url, const HTTPResponse& response )
     {
-        HTTPResponse response = this->doGet(filename, options, callback);
+        osgDB::ReaderWriter* reader = 0L;
 
-        if (response.isOK())
+        // try to look up a reader by mime-type first:
+        std::string mimeType = response.getMimeType();
+        if ( !mimeType.empty() )
         {
-            osgDB::ReaderWriter* reader = 0L;
+            reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
+        }
 
-            // try to look up a reader by mime-type first:
-            std::string mimeType = response.getMimeType();
-            OE_DEBUG << LC << "Looking up extension for mime-type " << mimeType << std::endl;
-            if ( !mimeType.empty() )
+        if ( !reader )
+        {
+            // Try to find a reader by file extension.
+            std::string ext = osgDB::getFileExtension( url );
+            reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
+        }
+
+        return reader;
+    }
+}
+
+ReadResult
+HTTPClient::doReadImage(const std::string&    location,
+                        const osgDB::Options* options,
+                        ProgressCallback*     callback)
+{
+    ReadResult result;
+
+    HTTPResponse response = this->doGet(location, options, callback);
+
+    if (response.isOK())
+    {
+        osgDB::ReaderWriter* reader = getReader(location, response);
+        if (!reader)
+        {
+            OE_WARN << LC << "Can't find an OSG plugin to read "<<location<<std::endl;
+            result = ReadResult(ReadResult::RESULT_NO_READER);
+        }
+
+        else 
+        {
+            osgDB::ReaderWriter::ReadResult rr = reader->readImage(response.getPartStream(0), options);
+            if ( rr.validImage() )
             {
-                reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
+                result = ReadResult(rr.takeImage(), response.getHeadersAsConfig() );
             }
-
-            if ( !reader )
-            {
-                // Try to find a reader by file extension. If this fails, we will fetch the file
-                // anyway and try to get a reader via mime-type.
-                std::string ext = osgDB::getFileExtension( filename );
-                reader = osgDB::Registry::instance()->getReaderWriterForExtension( ext );
-                //OE_NOTICE << "Reading " << filename << " with mime " << response.getMimeType() << std::endl;
-            }
-
-            if (!reader)
-            {
-                OE_WARN << LC << "Can't find an OSG plugin to read "<<filename<<std::endl;
-                result = RESULT_NO_READER;
-            }
-
             else 
             {
-                osgDB::ReaderWriter::ReadResult rr = reader->readImage(response.getPartStream(0), options);
-                if ( rr.validImage() )
+                if ( !rr.message().empty() )
                 {
-                    output = rr.takeImage();
+                    OE_WARN << LC << "HTTP error: " << rr.message() << std::endl;
                 }
-                else 
-                {
-                    if ( !rr.message().empty() )
-                    {
-                        OE_WARN << LC << "HTTP error: " << rr.message() << std::endl;
-                    }
-                    OE_WARN << LC << reader->className() << " failed to read image from " << filename << std::endl;
-                    result = RESULT_READER_ERROR;
-                }
+                OE_WARN << LC << reader->className() << " failed to read image from " << location << std::endl;
+                result = ReadResult(ReadResult::RESULT_READER_ERROR);
             }
-        }
-        else
-        {
-            result =
-                response.isCancelled() ? RESULT_CANCELED :
-                response.getCode() == HTTPResponse::NOT_FOUND ? RESULT_NOT_FOUND :
-                response.getCode() == HTTPResponse::SERVER_ERROR ? RESULT_SERVER_ERROR :
-                RESULT_UNKNOWN_ERROR;
-
-            //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
-            if (HTTPClient::isRecoverable( result ) )
-            {
-                if (callback)
-                {
-                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
-                    callback->setNeedsRetry( true );
-                }
-            }
-
-            //if ( response.isCancelled() )
-            //    OE_NOTICE << "HTTP cancel: " << filename << std::endl;
-            //else
-            //    OE_NOTICE << "HTTP ERROR " << response.getCode() << ": " << filename << std::endl;
-
-            /*if (response.isCancelled())
-                OE_NOTICE << "Request for " << filename << " was cancelled " << std::endl;*/
         }
     }
     else
     {
-        output = osgDB::readImageFile( filename, options );
-        if ( !output.valid() )
-            result = RESULT_NOT_FOUND;
+        result = ReadResult(
+            response.isCancelled() ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
+            ReadResult::RESULT_UNKNOWN_ERROR );
+
+        //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+        if (HTTPClient::isRecoverable( result.code() ) )
+        {
+            if (callback)
+            {
+                OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;
+                callback->setNeedsRetry( true );
+            }
+        }
     }
 
     return result;
 }
 
-HTTPClient::ResultCode
-HTTPClient::doReadNodeFile(const std::string& filename,
-                           osg::ref_ptr<osg::Node>& output,
-                           const osgDB::ReaderWriter::Options *options,
-                           osgEarth::ProgressCallback *callback)
+ReadResult
+HTTPClient::doReadNode(const std::string&    location,
+                       const osgDB::Options* options,
+                       ProgressCallback*     callback)
 {
-    ResultCode result = RESULT_OK;
+    ReadResult result;
 
-    if ( osgDB::containsServerAddress( filename ) )
+    HTTPResponse response = this->doGet(location, options, callback);
+
+    if (response.isOK())
     {
-        HTTPResponse response = this->doGet(filename, options, callback);
-        if (response.isOK())
+        osgDB::ReaderWriter* reader = getReader(location, response);
+        if (!reader)
         {
-            // Try to find a reader by file extension. If this fails, we will fetch the file
-            // anyway and try to get a reader via mime-type.
-            std::string ext = osgDB::getFileExtension( filename );
-            osgDB::ReaderWriter *reader =
-                osgDB::Registry::instance()->getReaderWriterForExtension( ext );
-
-            //If we didn't get a reader by extension, try to get it via mime type
-            if (!reader)
-            {
-                std::string mimeType = response.getMimeType();
-                OE_DEBUG << LC << "Looking up extension for mime-type " << mimeType << std::endl;
-                if ( mimeType.length() > 0 )
-                {
-                    reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
-                }
-            }
-
-            // if we still didn't get it, bad news
-            if (!reader)
-            {
-                OE_NOTICE<<LC<<"Error: No ReaderWriter for file "<<filename<<std::endl;
-                result = RESULT_NO_READER;
-            }
-
-            else
-            {
-                osgDB::ReaderWriter::ReadResult rr = reader->readNode(response.getPartStream(0), options);
-                if ( rr.validNode() )
-                {
-                    output = rr.takeNode();
-                }
-                else
-                {
-                    if ( rr.error() )
-                    {
-                        OE_WARN << LC << "HTTP Reader Error: " << rr.message() << std::endl;
-                    }
-                    result = RESULT_READER_ERROR;
-                }
-            }
+            OE_WARN << LC << "Can't find an OSG plugin to read "<<location<<std::endl;
+            result = ReadResult(ReadResult::RESULT_NO_READER);
         }
-        else
-        {
-            result =
-                response.isCancelled() ? RESULT_CANCELED :
-                response.getCode() == HTTPResponse::NOT_FOUND ? RESULT_NOT_FOUND :
-                response.getCode() == HTTPResponse::SERVER_ERROR ? RESULT_SERVER_ERROR :
-                RESULT_UNKNOWN_ERROR;
 
-            //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
-            if (HTTPClient::isRecoverable( result ) )
+        else 
+        {
+            osgDB::ReaderWriter::ReadResult rr = reader->readNode(response.getPartStream(0), options);
+            if ( rr.validNode() )
             {
-                if (callback)
-                {
-                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
-                    callback->setNeedsRetry( true );
-                }
+                result = ReadResult(rr.takeNode(), response.getHeadersAsConfig());
             }
-               
-            /*if (response.isCancelled())
-                OE_NOTICE << "Request for " << filename << " was cancelled " << std::endl;*/
+            else 
+            {
+                if ( !rr.message().empty() )
+                {
+                    OE_WARN << LC << "HTTP error: " << rr.message() << std::endl;
+                }
+                OE_WARN << LC << reader->className() << " failed to read node from " << location << std::endl;
+                result = ReadResult(ReadResult::RESULT_READER_ERROR);
+            }
         }
     }
     else
     {
-        output = osgDB::readNodeFile( filename, options );
-        if ( !output.valid() )
-            result = RESULT_NOT_FOUND;
+        result = ReadResult(
+            response.isCancelled() ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
+            ReadResult::RESULT_UNKNOWN_ERROR );
+
+        //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+        if (HTTPClient::isRecoverable( result.code() ) )
+        {
+            if (callback)
+            {
+                OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;
+                callback->setNeedsRetry( true );
+            }
+        }
+    }
+
+    return result;
+}
+
+ReadResult
+HTTPClient::doReadObject(const std::string&    location,
+                         const osgDB::Options* options,
+                         ProgressCallback*     callback)
+{
+    ReadResult result;
+
+    HTTPResponse response = this->doGet(location, options, callback);
+
+    if (response.isOK())
+    {
+        osgDB::ReaderWriter* reader = getReader(location, response);
+        if (!reader)
+        {
+            OE_WARN << LC << "Can't find an OSG plugin to read "<<location<<std::endl;
+            result = ReadResult(ReadResult::RESULT_NO_READER);
+        }
+
+        else 
+        {
+            osgDB::ReaderWriter::ReadResult rr = reader->readObject(response.getPartStream(0), options);
+            if ( rr.validObject() )
+            {
+                result = ReadResult(rr.takeObject(), response.getHeadersAsConfig());
+            }
+            else 
+            {
+                if ( !rr.message().empty() )
+                {
+                    OE_WARN << LC << "HTTP error: " << rr.message() << std::endl;
+                }
+                OE_WARN << LC << reader->className() << " failed to read object from " << location << std::endl;
+                result = ReadResult(ReadResult::RESULT_READER_ERROR);
+            }
+        }
+    }
+    else
+    {
+        result = ReadResult(
+            response.isCancelled() ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
+            ReadResult::RESULT_UNKNOWN_ERROR );
+
+        //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+        if (HTTPClient::isRecoverable( result.code() ) )
+        {
+            if (callback)
+            {
+                OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;
+                callback->setNeedsRetry( true );
+            }
+        }
     }
 
     return result;
 }
 
 
-HTTPClient::ResultCode 
-HTTPClient::doReadString(const std::string& filename,
-                         std::string& output,
-                         osgEarth::ProgressCallback* callback )
+ReadResult
+HTTPClient::doReadString(const std::string&    location,
+                         const osgDB::Options* options,
+                         ProgressCallback*     callback )
 {
-    ResultCode result = RESULT_OK;
+    ReadResult result;
 
-    if ( osgDB::containsServerAddress( filename ) )
+    HTTPResponse response = this->doGet( location, options, callback );
+    if ( response.isOK() )
     {
-        HTTPResponse response = this->doGet( filename, NULL, callback );
-        if ( response.isOK() )
-        {
-            output = response.getPartAsString( 0 );
-        }
-        else
-        {
-            result =
-                response.isCancelled() ? RESULT_CANCELED :
-                response.getCode() == HTTPResponse::NOT_FOUND ? RESULT_NOT_FOUND :
-                response.getCode() == HTTPResponse::SERVER_ERROR ? RESULT_SERVER_ERROR :
-                RESULT_UNKNOWN_ERROR;
-
-            //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
-            if (HTTPClient::isRecoverable( result ) )
-            {
-                if (callback)
-                {
-                    OE_DEBUG << "Error in HTTPClient for " << filename << " but it's recoverable" << std::endl;
-                    callback->setNeedsRetry( true );
-                }
-            }
-        }
+        result = ReadResult( new StringObject(response.getPartAsString(0)), response.getHeadersAsConfig());
     }
     else
     {
-        std::ifstream input( filename.c_str() );
-        if ( input.is_open() )
+        result = ReadResult(
+            response.isCancelled() ? ReadResult::RESULT_CANCELED :
+            response.getCode() == HTTPResponse::NOT_FOUND ? ReadResult::RESULT_NOT_FOUND :
+            response.getCode() == HTTPResponse::SERVER_ERROR ? ReadResult::RESULT_SERVER_ERROR :
+            ReadResult::RESULT_UNKNOWN_ERROR );
+
+        //If we have an error but it's recoverable, like a server error or timeout then set the callback to retry.
+        if (HTTPClient::isRecoverable( result.code() ) )
         {
-            input >> std::noskipws;
-            std::stringstream buf;
-            buf << input.rdbuf();
-			std::string bufStr;
-		    bufStr = buf.str();
-            output = bufStr;
-        }
-        else
-        {
-            result = RESULT_NOT_FOUND;
+            if (callback)
+            {
+                OE_DEBUG << "Error in HTTPClient for " << location << " but it's recoverable" << std::endl;
+                callback->setNeedsRetry( true );
+            }
         }
     }
 

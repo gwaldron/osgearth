@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/LineFunctor>
+#include <osgEarth/LineFunctor>
 #include <osgEarth/GeoMath>
 #include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
@@ -35,6 +35,15 @@ using namespace osgEarth::Symbology;
 
 namespace
 {
+    // returns the geocentric bisection vector
+    osg::Vec3d
+    bisector( const osg::Vec3d& v0, const osg::Vec3d& v1 )
+    {
+        osg::Vec3d f = (v0+v1)*0.5;
+        f.normalize();
+        return f * 0.5*(v0.length() + v1.length());
+    }
+
     // convert geocenric coords to spherical geodetic coords in radians.
     void
     geocentricToGeodetic( const osg::Vec3d& g, osg::Vec2d& out_geod )
@@ -54,27 +63,36 @@ namespace
             out_mid.set( 0.5*((g0.x()+2*osg::PI)+g1.x()), 0.5*(g0.y()+g1.y()) );
         else
            out_mid.set( 0.5*(g0.x()+(g1.x()+2*osg::PI)), 0.5*(g0.y()+g1.y()) );
+
+        //GeoMath::midpoint(g0.y(), g0.x(), g1.y(), g1.x(), out_mid.y(), out_mid.x());
     }
 
     // finds the midpoint between two geocentric coordinates. We have to convert
     // back to geographic in order to get the correct interpolation. Spherical
     // conversion is good enough
     osg::Vec3d
-    geocentricMidpoint( const osg::Vec3d& v0, const osg::Vec3d& v1 )
+    geocentricMidpoint( const osg::Vec3d& v0, const osg::Vec3d& v1, GeoInterpolation interp )
     {
-        // geocentric to spherical:
-        osg::Vec2d g0, g1;
-        geocentricToGeodetic(v0, g0);
-        geocentricToGeodetic(v1, g1);
+        if ( interp == GEOINTERP_GREAT_CIRCLE )
+        {
+            return bisector(v0, v1);
+        }
+        else
+        {
+            // geocentric to spherical:
+            osg::Vec2d g0, g1;
+            geocentricToGeodetic(v0, g0);
+            geocentricToGeodetic(v1, g1);
 
-        osg::Vec2d mid;
-        geodeticMidpoint(g0, g1, mid);
+            osg::Vec2d mid;
+            geodeticMidpoint(g0, g1, mid);
 
-        double size = 0.5*(v0.length() + v1.length());
+            double size = 0.5*(v0.length() + v1.length());
 
-        // spherical to geocentric:
-        double sin_lat = sin(mid.y());
-        return osg::Vec3d( cos(mid.x())*sin_lat, sin(mid.x())*sin_lat, cos(mid.y()) ) * size;
+            // spherical to geocentric:
+            double sin_lat = sin(mid.y());
+            return osg::Vec3d( cos(mid.x())*sin_lat, sin(mid.x())*sin_lat, cos(mid.y()) ) * size;
+        }
     }
 
     // the approximate surface-distance between two geocentric points (spherical)
@@ -85,16 +103,7 @@ namespace
         geocentricToGeodetic(v0, g0);
         geocentricToGeodetic(v1, g1);
         return GeoMath::distance( v0.y(), v0.x(), v1.y(), v1.x() );
-    }    
-
-    // returns the geocentric bisection vector
-    osg::Vec3d
-    bisector( const osg::Vec3d& v0, const osg::Vec3d& v1 )
-    {
-        osg::Vec3d f = (v0+v1)*0.5;
-        f.normalize();
-        return f * 0.5*(v0.length() + v1.length());
-    }    
+    }
 
     // the angle between two 3d vectors
     double
@@ -124,15 +133,18 @@ namespace
         typedef std::map<osg::Vec3,GLuint> VertMap;        
         VertMap _vertMap;
         osg::Vec3Array* _sourceVerts;
+        osg::Vec4Array* _sourceColors;
         osg::Vec2Array* _sourceTexCoords;
         osg::ref_ptr<osg::Vec3Array> _verts;        
+        osg::ref_ptr<osg::Vec4Array> _colors;
         osg::ref_ptr<osg::Vec2Array> _texcoords;
         TriangleQueue _tris;
         
         TriangleData()
         {            
-            _verts = new osg::Vec3Array();             
-            _sourceVerts = 0;
+            _verts           = new osg::Vec3Array();             
+            _sourceVerts     = 0;
+            _sourceColors    = 0;
             _sourceTexCoords = 0;
         }       
 
@@ -141,13 +153,25 @@ namespace
             _sourceVerts = sourceVerts;
         }
 
-        void setSourceTexCoords(osg::Vec2Array* sourceTexCoords)
+        void setSourceColors(osg::Vec4Array* sourceColors)
         {
-            _sourceTexCoords = sourceTexCoords;
-            _texcoords = new osg::Vec2Array();
+            if ( sourceColors )
+            {
+                _sourceColors = sourceColors;
+                _colors       = new osg::Vec4Array();
+            }
         }
 
-        GLuint record( const osg::Vec3& v, const osg::Vec2f& t )
+        void setSourceTexCoords(osg::Vec2Array* sourceTexCoords)
+        {
+            if ( sourceTexCoords )
+            {
+                _sourceTexCoords = sourceTexCoords;
+                _texcoords       = new osg::Vec2Array();
+            }
+        }
+
+        GLuint record( const osg::Vec3& v, const osg::Vec2f& t, const osg::Vec4f& c )
         {
             VertMap::iterator i = _vertMap.find(v);
             if ( i == _vertMap.end() )
@@ -158,7 +182,11 @@ namespace
                 //Only push back the texture coordinate if it's valid
                 if (_texcoords)
                 {
-                  _texcoords->push_back( t );
+                    _texcoords->push_back( t );
+                }
+                if (_colors)
+                {
+                    _colors->push_back( c );
                 }
                 return index;
             }
@@ -173,7 +201,8 @@ namespace
         {
             const osg::Vec3 v0 = (*_sourceVerts)[p1];
             const osg::Vec3 v1 = (*_sourceVerts)[p2];
-            const osg::Vec3 v2 = (*_sourceVerts)[p3];            
+            const osg::Vec3 v2 = (*_sourceVerts)[p3];   
+
             osg::Vec2 t0, t1, t2;
             if (_sourceTexCoords)
             {
@@ -181,8 +210,16 @@ namespace
                 t1 = (*_sourceTexCoords)[p2];
                 t2 = (*_sourceTexCoords)[p3];
             }
-            _tris.push( Triangle(record(v0, t0), record(v1, t1), record(v2, t2)) );            
-            //OE_NOTICE << "Incoming verts " << p1 << ", " << p2 << ", " << p3 << std::endl;
+            
+            osg::Vec4 c0, c1, c2;
+            if (_sourceColors)
+            {
+                c0 = (*_sourceColors)[p1];
+                c1 = (*_sourceColors)[p2];
+                c2 = (*_sourceColors)[p3];
+            }
+
+            _tris.push( Triangle(record(v0, t0, c0), record(v1, t1, c1), record(v2, t2, c2)) );
         }
     };      
 
@@ -255,19 +292,37 @@ namespace
         GLuint _i0, _i1;
     };
 
-    typedef std::queue<Line> LineQueue;
+    typedef std::queue<Line>  LineQueue;
     typedef std::vector<Line> LineVector;
 
+#if 0
     struct LineData
     {
         typedef std::map<osg::Vec3,GLuint> VertMap;
         VertMap _vertMap;
+        osg::Vec3Array* _sourceVerts;
+        osg::Vec4Array* _sourceColors;
         osg::Vec3Array* _verts;
+        osg::Vec4Array* _colors;
         LineQueue _lines;
         
         LineData()
         {
+            _sourceVerts = 0L;
+            _sourceColors = 0L;
             _verts = new osg::Vec3Array();
+        }
+
+        void setSourceVerts( osg::Vec3Array* verts ) 
+        {
+            _sourceVerts = verts;
+        }
+
+        void setSourceColors( osg::Vec4Array* colors )
+        {
+            _sourceColors = colors;
+            if ( colors )
+                _colors = new osg::Vec4Array();
         }
 
         GLuint record( const osg::Vec3& v )
@@ -290,7 +345,106 @@ namespace
         {
             _lines.push( Line( record(v0), record(v1) ) );
         }
-    };       
+
+        void line(unsigned i0, unsigned i1)
+        {
+            _lines.push( Line(
+        }
+    };    
+#endif
+
+    struct LineData
+    {
+        typedef std::map<osg::Vec3,GLuint> VertMap;        
+        VertMap _vertMap;
+        osg::Vec3Array* _sourceVerts;
+        osg::Vec4Array* _sourceColors;
+        osg::Vec2Array* _sourceTexCoords;
+        osg::ref_ptr<osg::Vec3Array> _verts;        
+        osg::ref_ptr<osg::Vec4Array> _colors;
+        osg::ref_ptr<osg::Vec2Array> _texcoords;
+        LineQueue _lines;
+        
+        LineData()
+        {            
+            _verts           = new osg::Vec3Array();      
+            _colors          = 0;
+            _texcoords       = 0;
+            _sourceVerts     = 0;
+            _sourceColors    = 0;
+            _sourceTexCoords = 0;
+        }       
+
+        void setSourceVerts(osg::Vec3Array* sourceVerts )
+        {
+            _sourceVerts = sourceVerts;
+        }
+
+        void setSourceColors(osg::Vec4Array* sourceColors )
+        {
+            if ( sourceColors )
+            {
+                _sourceColors = sourceColors;
+                _colors       = new osg::Vec4Array();
+            }
+        }
+
+        void setSourceTexCoords(osg::Vec2Array* sourceTexCoords)
+        {
+            if ( sourceTexCoords )
+            {
+                _sourceTexCoords = sourceTexCoords;
+                _texcoords       = new osg::Vec2Array();
+            }
+        }
+
+        GLuint record( const osg::Vec3& v, const osg::Vec2f& t, const osg::Vec4f& c )
+        {
+            VertMap::iterator i = _vertMap.find(v);
+            if ( i == _vertMap.end() )
+            {
+                GLuint index = _verts->size();
+                _verts->push_back(v);                
+                _vertMap[v] = index;
+                if (_texcoords)
+                {
+                    _texcoords->push_back( t );
+                }
+                if (_colors)
+                {
+                    _colors->push_back( c );
+                }
+                return index;
+            }
+            else
+            {
+                return i->second;
+            }
+        }
+       
+
+        void line(unsigned p0, unsigned p1)
+        {
+            const osg::Vec3 v0 = (*_sourceVerts)[p0];
+            const osg::Vec3 v1 = (*_sourceVerts)[p1];   
+
+            osg::Vec2 t0, t1;
+            if (_sourceTexCoords)
+            {
+                t0 = (*_sourceTexCoords)[p0];
+                t1 = (*_sourceTexCoords)[p1];
+            }
+            
+            osg::Vec4 c0, c1;
+            if (_sourceColors)
+            {
+                c0 = (*_sourceColors)[p0];
+                c1 = (*_sourceColors)[p1];
+            }
+
+            _lines.push( Line(record(v0,t0,c0), record(v1,t1,c1)) );
+        }
+    };         
     
     /**
      * Populates the geometry object with a collection of index elements primitives.
@@ -342,14 +496,19 @@ namespace
      * the data in the Geometry object with the new vertex and primitive data.
      */
     void subdivideLines(
-        double granularity,
-        osg::Geometry& geom,
-        const osg::Matrixd& W2L, // world=>local xform
-        const osg::Matrixd& L2W, // local=>world xform
-        unsigned int maxElementsPerEBO )
+        double               granularity,
+        GeoInterpolation     interp,
+        osg::Geometry&       geom,
+        const osg::Matrixd&  W2L, // world=>local xform
+        const osg::Matrixd&  L2W, // local=>world xform
+        unsigned int         maxElementsPerEBO )
     {
         // collect all the line segments in the geometry.
-        LineFunctor<LineData> data;
+        LineIndexFunctor<LineData> data;
+        data.setSourceVerts( static_cast<osg::Vec3Array*>(geom.getVertexArray()) );
+        if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX )
+            data.setSourceColors( static_cast<osg::Vec4Array*>(geom.getColorArray()) );
+        //LineFunctor<LineData> data;
         geom.accept( data );
     
         int numLinesIn = data._lines.size();
@@ -370,7 +529,22 @@ namespace
 
             if ( g0 > granularity )
             {
-                data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
+                data._verts->push_back( geocentricMidpoint(v0_w, v1_w, interp) * W2L );
+
+                if ( data._colors )
+                {
+                    const osg::Vec4f& c0 = (*data._colors)[line._i0];
+                    const osg::Vec4f& c1 = (*data._colors)[line._i1];
+                    data._colors->push_back( (c0 + c1) / 2.0 );
+                }
+
+                if ( data._texcoords )
+                {
+                    const osg::Vec2& t0 = (*data._texcoords)[line._i0];
+                    const osg::Vec2& t1 = (*data._texcoords)[line._i1];
+                    data._texcoords->push_back( (t0 + t1) / 2.0 );
+                }
+
                 GLuint i = data._verts->size()-1;
 
                 data._lines.push( Line( line._i0, i ) );
@@ -390,6 +564,9 @@ namespace
 
             // set the new VBO.
             geom.setVertexArray( data._verts );
+
+            if ( data._colors )
+                geom.setColorArray( data._colors );
 
             if ( data._verts->size() < 256 )
                 populateLines<osg::DrawElementsUByte,GLubyte>( geom, done, maxElementsPerEBO );
@@ -413,19 +590,22 @@ namespace
      * (c) Copyright 2010 Patrick Cozzi and Deron Ohlarik, MIT License.
      */
     void subdivideTriangles(
-        double granularity,
-        osg::Geometry& geom,
-        const osg::Matrixd& W2L, // world=>local xform
-        const osg::Matrixd& L2W, // local=>world xform
-        unsigned int maxElementsPerEBO )
+        double               granularity,
+        GeoInterpolation     interp,
+        osg::Geometry&       geom,
+        const osg::Matrixd&  W2L, // world=>local xform
+        const osg::Matrixd&  L2W, // local=>world xform
+        unsigned int         maxElementsPerEBO )
     {
         
         // collect all the triangled in the geometry.
         osg::TriangleIndexFunctor<TriangleData> data;;
         data.setSourceVerts(dynamic_cast<osg::Vec3Array*>(geom.getVertexArray()));
         data.setSourceTexCoords(dynamic_cast<osg::Vec2Array*>(geom.getTexCoordArray(0)));
+        if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX )
+            data.setSourceColors(dynamic_cast<osg::Vec4Array*>(geom.getColorArray()));
+        //TODO normals
         geom.accept( data );
-
         
         int numTrisIn = data._tris.size();        
 
@@ -445,9 +625,21 @@ namespace
             osg::Vec3d v1_w = (*data._verts)[tri._i1] * L2W;
             osg::Vec3d v2_w = (*data._verts)[tri._i2] * L2W;
 
-            osg::Vec2  t0 = (*data._texcoords)[tri._i0];
-            osg::Vec2  t1 = (*data._texcoords)[tri._i1];
-            osg::Vec2  t2 = (*data._texcoords)[tri._i2];
+            osg::Vec2 t0,t1,t2;
+            if ( data._texcoords.valid() )
+            {
+                t0 = (*data._texcoords)[tri._i0];
+                t1 = (*data._texcoords)[tri._i1];
+                t2 = (*data._texcoords)[tri._i2];
+            }
+
+            osg::Vec4f c0,c1,c2;
+            if ( data._colors.valid() )
+            {
+                c0 = (*data._colors)[tri._i0];
+                c1 = (*data._colors)[tri._i1];
+                c2 = (*data._colors)[tri._i2];
+            }
 
             double g0 = angleBetween(v0_w, v1_w);
             double g1 = angleBetween(v1_w, v2_w);
@@ -464,8 +656,11 @@ namespace
                     GLuint i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( geocentricMidpoint(v0_w, v1_w) * W2L );
-                        data._texcoords->push_back( (t0 + t1) / 2.0f );
+                        data._verts->push_back( geocentricMidpoint(v0_w, v1_w, interp) * W2L );
+                        if ( data._colors.valid() )
+                            data._colors->push_back( (c0 + c1) / 2.0f );
+                        if ( data._texcoords.valid() )
+                            data._texcoords->push_back( (t0 + t1) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -485,8 +680,11 @@ namespace
                     GLuint i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( geocentricMidpoint(v1_w, v2_w) * W2L );
-                        data._texcoords->push_back( (t1 + t2) / 2.0f );
+                        data._verts->push_back( geocentricMidpoint(v1_w, v2_w, interp) * W2L );
+                        if ( data._colors.valid() )
+                            data._colors->push_back( (c1 + c2) / 2.0f );
+                        if ( data._texcoords.valid() )
+                            data._texcoords->push_back( (t1 + t2) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -506,8 +704,11 @@ namespace
                     GLuint i;
                     if ( ei == edges.end() )
                     {
-                        data._verts->push_back( geocentricMidpoint(v2_w, v0_w) * W2L );
-                        data._texcoords->push_back( (t2 + t0) / 2.0f );
+                        data._verts->push_back( geocentricMidpoint(v2_w, v0_w, interp) * W2L );
+                        if ( data._colors.valid() )
+                            data._colors->push_back( (c2 + c0) / 2.0f );
+                        if ( data._texcoords.valid() )
+                            data._texcoords->push_back( (t2 + t0) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -535,7 +736,7 @@ namespace
 
             // set the new VBO.
             geom.setVertexArray( data._verts.get() );
-
+            geom.setColorArray( data._colors.get() );
             geom.setTexCoordArray(0, data._texcoords.get() );
 
             if ( data._verts->size() < 256 )
@@ -548,11 +749,12 @@ namespace
     }
 
     void subdivide(
-        double granularity,
-        osg::Geometry& geom,
-        const osg::Matrixd& W2L, // world=>local xform
-        const osg::Matrixd& L2W, // local=>world xform
-        unsigned int maxElementsPerEBO )
+        double               granularity,
+        GeoInterpolation     interp,
+        osg::Geometry&       geom,
+        const osg::Matrixd&  W2L, // world=>local xform
+        const osg::Matrixd&  L2W, // local=>world xform
+        unsigned int         maxElementsPerEBO )
     {
         GLenum mode = geom.getPrimitiveSet(0)->getMode();
 
@@ -561,11 +763,11 @@ namespace
 
         if ( mode == GL_LINES || mode == GL_LINE_STRIP || mode == GL_LINE_LOOP )
         {
-            subdivideLines( granularity, geom, W2L, L2W, maxElementsPerEBO );
+            subdivideLines( granularity, interp, geom, W2L, L2W, maxElementsPerEBO );
         }
         else
         {
-            subdivideTriangles( granularity, geom, W2L, L2W, maxElementsPerEBO );
+            subdivideTriangles( granularity, interp, geom, W2L, L2W, maxElementsPerEBO );
 
             //osgUtil::VertexCacheVisitor cacheOptimizer;
             //cacheOptimizer.optimizeVertices( geom );
@@ -591,10 +793,10 @@ _maxElementsPerEBO( INT_MAX )
 }
 
 void
-MeshSubdivider::run(double granularity, osg::Geometry& geom)
+MeshSubdivider::run(osg::Geometry& geom, double granularity, GeoInterpolation interp)
 {
     if ( geom.getNumPrimitiveSets() < 1 )
         return;
 
-    subdivide( granularity, geom, _world2local, _local2world, _maxElementsPerEBO );
+    subdivide( granularity, interp, geom, _world2local, _local2world, _maxElementsPerEBO );
 }

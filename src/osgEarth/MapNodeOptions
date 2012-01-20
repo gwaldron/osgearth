@@ -67,6 +67,24 @@ namespace osgEarth
         const optional<bool>& overlayVertexWarping() const { return _overlayVertexWarping; }
 
         /**
+         * Whether to enable blending on the overlay decorator subgraph. See OverlayDecorator
+         */
+        optional<bool>& overlayBlending() { return _overlayBlending; }
+        const optional<bool>& overlayBlending() const { return _overlayBlending; }
+
+        /**
+         * Texture size to use for the overlay RTT camera.
+         */
+        optional<unsigned>& overlayTextureSize() { return _overlayTextureSize; }
+        const optional<unsigned>& overlayTextureSize() const { return _overlayTextureSize; }
+
+        /**
+         * Texture size to use for the overlay RTT camera.
+         */
+        optional<bool>& overlayMipMapping() { return _overlayMipMapping; }
+        const optional<bool>& overlayMipMapping() const { return _overlayMipMapping; }
+
+        /**
          * Options to conigure the terrain engine (the component that renders the
          * terrain surface).
          */
@@ -83,7 +101,11 @@ namespace osgEarth
         optional<ProxySettings> _proxySettings;
         optional<bool> _cacheOnly;
         optional<bool> _enableLighting;
-        optional<bool> _overlayVertexWarping;
+
+        optional<bool>     _overlayVertexWarping;
+        optional<bool>     _overlayBlending;
+        optional<unsigned> _overlayTextureSize;
+        optional<bool>     _overlayMipMapping;
 
         optional<Config> _terrainOptionsConf;
         TerrainOptions* _terrainOptions;

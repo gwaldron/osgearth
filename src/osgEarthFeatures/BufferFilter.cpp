@@ -18,6 +18,8 @@
  */
 #include <osgEarthFeatures/BufferFilter>
 
+#define LC "[BufferFilter] "
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -39,45 +41,19 @@ BufferFilter::isSupported()
         OE_NOTICE << "BufferFilter NOT SUPPORTED - please compile osgEarth with GEOS" << std::endl; }
 
 BufferFilter::BufferFilter() :
-_distance( 1.0 ),
+_distance   ( 1.0 ),
 _numQuadSegs( 0 ),
-_capStyle( Stroke::LINECAP_DEFAULT )
+_capStyle   ( Stroke::LINECAP_DEFAULT )
 {
     //NOP
 }
 
 BufferFilter::BufferFilter( const BufferFilter& rhs ) :
-_distance( rhs._distance ),
+_distance   ( rhs._distance ),
 _numQuadSegs( rhs._numQuadSegs ),
-_capStyle( rhs._capStyle )
+_capStyle   ( rhs._capStyle )
 {
     //NOP
-}
-
-bool
-BufferFilter::push( Feature* input, FilterContext& context )
-{
-    if ( !input || !input->getGeometry() )
-        return true;
-
-    osg::ref_ptr<Symbology::Geometry> output;
-
-    Symbology::BufferParameters params;
-    
-    params._capStyle =
-            _capStyle == Stroke::LINECAP_ROUND  ? Symbology::BufferParameters::CAP_ROUND :
-            _capStyle == Stroke::LINECAP_SQUARE ? Symbology::BufferParameters::CAP_SQUARE :
-            _capStyle == Stroke::LINECAP_BUTT   ? Symbology::BufferParameters::CAP_FLAT :
-            Symbology::BufferParameters::CAP_SQUARE;
-
-    params._cornerSegs = _numQuadSegs;
-
-    if ( input->getGeometry()->buffer( _distance.value(), output, params ) )
-    {
-        input->setGeometry( output.get() );
-    }
-
-    return output.valid();
 }
 
 FilterContext
@@ -90,10 +66,35 @@ BufferFilter::push( FeatureList& input, FilterContext& context )
     }
 
     //OE_NOTICE << "Buffer: input = " << input.size() << " features" << std::endl;
-    bool ok = true;
-    for( FeatureList::iterator i = input.begin(); i != input.end(); ++i )
-        if ( !push( i->get(), context ) )
-            ok = false;
+    for( FeatureList::iterator i = input.begin(); i != input.end(); )
+    {
+        Feature* feature = i->get();
+        if ( !feature || !feature->getGeometry() )
+            continue;
+
+        osg::ref_ptr<Symbology::Geometry> output;
+
+        Symbology::BufferParameters params;
+        
+        params._capStyle =
+                _capStyle == Stroke::LINECAP_ROUND  ? Symbology::BufferParameters::CAP_ROUND :
+                _capStyle == Stroke::LINECAP_SQUARE ? Symbology::BufferParameters::CAP_SQUARE :
+                _capStyle == Stroke::LINECAP_BUTT   ? Symbology::BufferParameters::CAP_FLAT :
+                Symbology::BufferParameters::CAP_SQUARE;
+
+        params._cornerSegs = _numQuadSegs;
+
+        if ( feature->getGeometry()->buffer( _distance.value(), output, params ) )
+        {
+            feature->setGeometry( output.get() );
+            ++i;
+        }
+        else
+        {
+            i = input.erase( i );
+            OE_INFO << LC << "feature " << feature->getFID() << " yielded no geometry" << std::endl;
+        }
+    }
 
     return context;
 }

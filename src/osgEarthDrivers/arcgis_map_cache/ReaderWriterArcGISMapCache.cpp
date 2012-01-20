@@ -19,6 +19,8 @@
 
 #include <osgEarth/TileSource>
 #include <osgEarth/Registry>
+#include <osgEarth/URI>
+
 #include <osg/Notify>
 #include <osgDB/FileNameUtils>
 #include <osgDB/FileUtils>
@@ -65,8 +67,10 @@ public:
             _format = "png";
     }
 
-    void initialize( const std::string& referenceURI, const Profile* overrideProfile)
+    void initialize( const osgDB::Options* dbOptions, const Profile* overrideProfile)
     {
+        _dbOptions = dbOptions;
+
         //Set the profile to global geodetic.
         setProfile(osgEarth::Registry::instance()->getGlobalGeodeticProfile());
     }
@@ -74,16 +78,8 @@ public:
     // override
     osg::Image* createImage( const TileKey& key, ProgressCallback* progress)
     {
-        //If we are given a PlateCarreTileKey, use the MercatorTileConverter to create the image
-        //if ( dynamic_cast<const PlateCarreTileKey&>( key ) )
-        //{
-        //    MercatorTileConverter converter( this );
-        //    return converter.createImage( static_cast<const PlateCarreTileKey&>( key ) );
-        //}
-
         std::stringstream buf;
 
-        //int level = key.getLevelOfDetail();
         int level = key.getLevelOfDetail()-1;
 
         unsigned int tile_x, tile_y;
@@ -94,21 +90,16 @@ public:
             << "/L" << std::hex << std::setw(2) << std::setfill('0') << level
             << "/R" << std::hex << std::setw(8) << std::setfill('0') << tile_y
             << "/C" << std::hex << std::setw(8) << std::setfill('0') << tile_x << "." << _format;
-
-        //OE_NOTICE << "Key = " << key.str() << ", URL = " << buf.str() << std::endl;
-        //return osgDB::readImageFile( buf.str(), getOptions() );
-        //return HTTPClient::readImageFile( buf.str(), getOptions(), progress);
         
         osg::ref_ptr<osg::Image> image;
 		std::string bufStr;
 		bufStr = buf.str();
-        HTTPClient::readImageFile( bufStr, image, 0L, progress ); //getOptions(), progress );
-        return image.release();
+
+        return URI(bufStr).readImage( _dbOptions.get(), CachePolicy::NO_CACHE, progress ).releaseImage();
     }
 
     // override
-    osg::HeightField* createHeightField( const TileKey& key,
-                                         ProgressCallback* progress)
+    osg::HeightField* createHeightField( const TileKey& key, ProgressCallback* progress)
     {
         //TODO
         return NULL;
@@ -125,6 +116,7 @@ private:
     std::string _map;
     std::string _layer;
     std::string _format;
+    osg::ref_ptr<const osgDB::Options> _dbOptions;
 };
 
 

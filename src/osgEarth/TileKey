@@ -159,16 +159,7 @@ namespace osgEarth
 
         unsigned int getTileX() const { return _x; }
         unsigned int getTileY() const { return _y; }
-
-        /** Whether or not the profile for this TileKey is Projected */
-        bool isProjected() const;
-
-        /** Whether or not the profile for this TileKey is in the Mercator projection */
-        bool isMercator() const;
-
-        /** Whether or not the profile for this TileKey is in the Geodetic projection */
-        bool isGeodetic() const;
-
+        
 		static inline int getLOD(const osgTerrain::TileID& id)
 		{
 			//The name of the lod changed after OSG 2.6 from layer to level

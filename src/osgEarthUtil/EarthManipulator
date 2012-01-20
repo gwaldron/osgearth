@@ -20,26 +20,18 @@
 #define OSGEARTHUTIL_EARTHMANIPULATOR
 
 #include <osgEarthUtil/Common>
-#include <osgEarthUtil/Viewpoint>
+#include <osgEarth/Common>
+#include <osgEarth/Viewpoint>
 #include <osgEarth/MapNode>
 #include <osg/Timer>
 #include <map>
 #include <list>
 #include <utility>
 
-#if OSG_MIN_VERSION_REQUIRED(2,9,8)
-#  include <osgGA/CameraManipulator>
-    namespace osgGA {
-        typedef CameraManipulator MatrixManipulator;
-    };
-#  include <osg/ObserverNodePath>
-#  define USE_OBSERVER_NODE_PATH 1
-#else
-#  include <osgGA/MatrixManipulator>
-#endif
-
 namespace osgEarth { namespace Util
 {
+    using namespace osgEarth;
+
     /** 
      * A programmable manipulator suitable for use with geospatial terrains.
      *
@@ -527,6 +519,12 @@ namespace osgEarth { namespace Util
          */
         virtual void setViewpoint( const Viewpoint& vp, double duration_s =0.0 );
 
+        
+        /**
+         * Cancels a viewpoint transition if one is in progress
+         */
+        void cancelViewpointTransition() { _setting_viewpoint = false; }
+
         /**
          * Sets the viewpoint to activate when performing the ACTION_HOME action.
          */
@@ -608,6 +606,7 @@ namespace osgEarth { namespace Util
 		 * Sets the rotation of the manipulator.  Note:  This rotation is in addition to the rotation needed to center the view on the focal point.
 		 */
 		void  setRotation( const osg::Quat& rotation) { _rotation = rotation; }
+
 
 
     public: // osgGA::MatrixManipulator
@@ -811,7 +810,7 @@ namespace osgEarth { namespace Util
         double                  _set_viewpoint_accel;
         double                  _set_viewpoint_accel_2;
 
-        bool                    _after_first_frame;
+        unsigned                _frame_count;
 
         osg::ref_ptr<Settings> _settings;		
 

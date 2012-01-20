@@ -22,6 +22,8 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/Config>
+#include <osgEarth/StringUtils>
+#include <osgEarth/URI>
 #include <osg/Referenced>
 #include <osg/ref_ptr>
 #include <string>
@@ -33,8 +35,6 @@
 
 namespace osgEarth
 {
-    extern std::string trim( const std::string& in );
-
     class OSGEARTH_EXPORT XmlNode : public osg::Referenced
     {
     public:
@@ -88,7 +88,7 @@ namespace osgEarth
 
         void addSubElement(const std::string& tag, const Properties& attrs, const std::string& text);
 
-        Config getConfig() const;
+        virtual Config getConfig() const;
 
     public: // XmlNode
         virtual bool isElement() const { return true; }
@@ -128,22 +128,28 @@ namespace osgEarth
     class OSGEARTH_EXPORT XmlDocument : public XmlElement
     {
     public:
-        XmlDocument( const std::string& source_uri ="" );
+        XmlDocument();
 
         XmlDocument( const Config& conf );
         
         virtual ~XmlDocument();
+
+        static XmlDocument* load( const std::string& location, const osgDB::Options* dbOptions =0L );
+
+        static XmlDocument* load( const URI& uri, const osgDB::Options* dbOptions =0L );
         
-        static XmlDocument* load( std::istream& in );
-        
+        static XmlDocument* load( std::istream& in, const URIContext& context =URIContext() );
+
         void store( std::ostream& out ) const;
 
         const std::string& getName() const;
 
+        virtual Config getConfig() const;
+
     protected:
-        std::string source_uri;
-        std::string name;
-        osg::ref_ptr<XmlElement> root;
+        URI                      _sourceURI;
+        std::string              _name;
+        osg::ref_ptr<XmlElement> _root;
     };
 }
 

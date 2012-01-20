@@ -35,6 +35,40 @@ GeoMath::distance(double lat1Rad, double lon1Rad, double lat2Rad, double lon2Rad
 }
 
 double
+GeoMath::distance(const std::vector< osg::Vec3d > &points, double radius)
+{
+    double length = 0;
+
+    if (points.size() > 1)
+    {
+        for (unsigned int i = 0; i < points.size()-1; ++i)
+        {
+            const osg::Vec3d& current = points[i];
+            const osg::Vec3d& next    = points[i+1];
+            length += GeoMath::distance(osg::DegreesToRadians(current.y()), osg::DegreesToRadians(current.x()),
+                osg::DegreesToRadians(next.y()), osg::DegreesToRadians(next.x()), radius);
+        }
+    }
+    return length;
+}
+
+double
+GeoMath::distance(const osg::Vec3d& p1, const osg::Vec3d& p2, const SpatialReference* srs )
+{
+    if ( srs == 0L || srs->isProjected() )
+    {
+        return (p2-p1).length();
+    }
+    else
+    {
+        return distance(
+            osg::DegreesToRadians( p1.y() ), osg::DegreesToRadians( p1.x() ),
+            osg::DegreesToRadians( p2.y() ), osg::DegreesToRadians( p2.x() ),
+            srs->getEllipsoid()->getRadiusEquator() );
+    }
+}
+
+double
 GeoMath::bearing(double lat1Rad, double lon1Rad,
                  double lat2Rad, double lon2Rad)
 {
@@ -78,6 +112,31 @@ GeoMath::destination(double lat1Rad, double lon1Rad,
                                  cos(dR)-sin(lat1Rad)*sin(out_latRad));
 }
 
+void
+GeoMath::interpolate(double lat1Rad, double lon1Rad,
+                     double lat2Rad, double lon2Rad,
+                     double t,
+                     double& out_latRad, double& out_lonRad)
+{
+    static osg::EllipsoidModel em;
+
+    osg::Vec3d v0, v1;
+
+    em.convertLatLongHeightToXYZ(lat1Rad, lon1Rad, 0, v0.x(), v0.y(), v0.z());
+    v0.normalize();
+    em.convertLatLongHeightToXYZ(lat2Rad, lon2Rad, 0, v1.x(), v1.y(), v1.z());
+    v1.normalize();
+
+    osg::Vec3d axis = v0 ^ v1;
+    double angle = acos( v0 * v1 );
+    osg::Quat q( angle * t, axis );
+
+    v0 = q * v0;
+    v0 *= 0.5 * (em.getRadiusEquator()+em.getRadiusPolar());
+
+    double dummy;
+    em.convertXYZToLatLongHeight( v0.x(), v0.y(), v0.z(), out_latRad, out_lonRad, dummy );
+}
 
 double
 GeoMath::rhumbDistance(double lat1Rad, double lon1Rad,
@@ -93,6 +152,23 @@ GeoMath::rhumbDistance(double lat1Rad, double lon1Rad,
     if (dLon > osg::PI) dLon = 2.0*osg::PI - dLon;
     double dist = sqrt(dLat*dLat + q*q*dLon*dLon) * radius; 
     return dist;
+}
+
+double
+GeoMath::rhumbDistance(const std::vector< osg::Vec3d > &points, double radius)
+{
+    double length = 0;
+    if (points.size() > 1)
+    {
+        for (unsigned int i = 0; i < points.size()-1; ++i)
+        {
+            const osg::Vec3d& current = points[i];
+            const osg::Vec3d& next    = points[i+1];
+            length += GeoMath::rhumbDistance(osg::DegreesToRadians(current.y()), osg::DegreesToRadians(current.x()),
+                                             osg::DegreesToRadians(next.y()), osg::DegreesToRadians(next.x()), radius);                                             
+        }
+    }
+    return length;
 }
 
 double

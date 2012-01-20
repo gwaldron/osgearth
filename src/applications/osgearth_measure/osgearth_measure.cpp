@@ -24,12 +24,11 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
+#include <osgEarth/Viewpoint>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/Graticule>
 #include <osgEarthUtil/SkyNode>
-#include <osgEarthUtil/Viewpoint>
 #include <osgEarthSymbology/Color>
 
 #include <osgEarthUtil/MeasureTool>
@@ -49,8 +48,10 @@ public:
     virtual void onDistanceChanged(MeasureToolHandler* sender, double distance)
     {
         std::stringstream ss;
-        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl;        
-        _label->setText( ss.str() );
+        ss << "Distance = " << std::setprecision(10) << distance << "m" << std::endl; 
+        std::string str;
+        str = ss.str();
+        _label->setText( str );
     }
     LabelControl* _label;
 };
@@ -75,13 +76,13 @@ struct ToggleModeHandler : public ControlEventHandler
     { }
 
     virtual void onValueChanged(Control* control, bool value) {
-        if (_tool->getMode() == MeasureToolHandler::MODE_GREATCIRCLE)
+        if (_tool->getGeoInterpolation() == GEOINTERP_GREAT_CIRCLE)
         {
-            _tool->setMode( MeasureToolHandler::MODE_RHUMB);
+            _tool->setGeoInterpolation( GEOINTERP_RHUMB_LINE);
         }
         else
         {
-            _tool->setMode( MeasureToolHandler::MODE_GREATCIRCLE);
+            _tool->setGeoInterpolation( GEOINTERP_GREAT_CIRCLE);
         }        
     }
 
@@ -155,6 +156,10 @@ main(int argc, char** argv)
 
     //Add a callback to update the label when the distance changes
     measureTool->addEventHandler( new MyMeasureToolCallback(label) );
+    
+    Style style;
+    style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Yellow;
+    measureTool->setLineStyle(style);
 
     //Add a checkbox to control if we are doing path based measurement or just point to point
     grid->setControl( 0, 1, new LabelControl("Path"));

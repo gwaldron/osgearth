@@ -20,8 +20,8 @@
 #include "MultiPassTerrainTechnique"
 #include "ParallelKeyNodeFactory"
 #include "SinglePassTerrainTechnique"
-#include "Terrain"
-#include "StreamingTerrain"
+#include "TerrainNode"
+#include "StreamingTerrainNode"
 #include "TileBuilder"
 #include "TransparentLayer"
 
@@ -205,7 +205,7 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
         // update the terrain revision in threaded mode
         if ( _isStreaming )
         {
-            static_cast<StreamingTerrain*>(_terrain)->updateTaskServiceThreads( *_update_mapf );
+            static_cast<StreamingTerrainNode*>(_terrain)->updateTaskServiceThreads( *_update_mapf );
         }
 
         updateTextureCombining();
@@ -224,17 +224,19 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 osg::BoundingSphere
 OSGTerrainEngineNode::computeBound() const
 {
-    if ( _terrain )
+    if ( _terrain && _terrain->getNumChildren() > 0 )
+    {
         return _terrain->getBound();
+    }
     else
+    {
         return TerrainEngineNode::computeBound();
+    }
 }
 
 void
 OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
-    OE_INFO << LC << "Map profile established" << std::endl;
-    
     LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
     OE_INFO << LC << "Loading policy mode = " <<
         ( mode == LoadingPolicy::MODE_PREEMPTIVE ? "PREEMPTIVE" :
@@ -249,12 +251,12 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     // go through and build the root nodesets.
     if ( !_isStreaming )
     {
-        _terrain = new Terrain(
+        _terrain = new TerrainNode(
             *_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );
     }
     else
     {
-        _terrain = new StreamingTerrain(
+        _terrain = new StreamingTerrainNode(
             *_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );
     }
 
@@ -263,6 +265,11 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     // set the initial properties from the options structure:
     _terrain->setVerticalScale( _terrainOptions.verticalScale().value() );
     _terrain->setSampleRatio  ( _terrainOptions.heightFieldSampleRatio().value() );
+
+    if (_terrainOptions.enableBlending().value())
+    {
+        _terrain->getOrCreateStateSet()->setMode(GL_BLEND , osg::StateAttribute::ON);    
+    }
 
     OE_INFO << LC << "Sample ratio = " << _terrainOptions.heightFieldSampleRatio().value() << std::endl;
 
@@ -279,7 +286,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
         CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
 
         // prepare the interpolation technique for generating triangles:
-        if ( _terrainOptions.elevationInterpolation() == INTERP_TRIANGULATE )
+        if ( mapInfo.getElevationInterpolation() == INTERP_TRIANGULATE )
             tech->setOptimizeTriangleOrientation( false );
 
         _terrain->setTechniquePrototype( tech );
@@ -356,7 +363,11 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
     if ( getNumParents() == 0 )
         return 0L;
 
+    OE_DEBUG << LC << "Create node for \"" << key.str() << "\"" << std::endl;
+
+#ifdef PROFILING
     osg::Timer_t start = _timer.tick();
+#endif
 
     osg::Node* result = 0L;
 
@@ -372,8 +383,8 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
         result = _keyNodeFactory->createNode( key );
     }
 
+#ifdef PROFILING
     osg::Timer_t end = osg::Timer::instance()->tick();
-
     if ( result )
     {
         _tileCount++;
@@ -384,6 +395,7 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
                 << " ms, tiles per sec = " << (double)_tileCount/_timer.time_s() << std::endl;
         }
     }
+#endif
 
     return result;
 }
@@ -428,7 +440,7 @@ OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     if ( _isStreaming )
     {
         //getTerrain()->incrementRevision();
-        static_cast<StreamingTerrain*>(_terrain)->updateTaskServiceThreads( *_update_mapf );
+        static_cast<StreamingTerrainNode*>(_terrain)->updateTaskServiceThreads( *_update_mapf );
     }
 }
 
@@ -561,7 +573,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
             osg::ref_ptr<osg::HeightField> hf;
 
             if (hasElevation)
-                _update_mapf->getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value());
+                _update_mapf->getHeightField( key, true, hf, 0L);
 
             if (!hf.valid()) 
                 hf = OSGTileFactory::createEmptyHeightField( key );
@@ -596,7 +608,7 @@ OSGTerrainEngineNode::updateElevation( Tile* tile )
                 if (stile->getKey().getLevelOfDetail() == 1)
                 {
                     osg::ref_ptr<osg::HeightField> hf;
-                    _update_mapf->getHeightField( key, true, hf, 0L, _terrainOptions.elevationInterpolation().value());
+                    _update_mapf->getHeightField( key, true, hf, 0L);
                     if (!hf.valid()) 
                         hf = OSGTileFactory::createEmptyHeightField( key );
                     heightFieldLayer->setHeightField( hf.get() );

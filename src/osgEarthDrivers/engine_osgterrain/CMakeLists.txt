@@ -11,9 +11,9 @@ SET(TARGET_SRC
     Plugin.cpp
     SerialKeyNodeFactory.cpp
     SinglePassTerrainTechnique.cpp    
-    StreamingTerrain.cpp
+    StreamingTerrainNode.cpp
     StreamingTile.cpp
-    Terrain.cpp
+    TerrainNode.cpp
     Tile.cpp
     TileBuilder.cpp
 )
@@ -32,9 +32,9 @@ SET(TARGET_H
     OSGTileFactory
     SerialKeyNodeFactory
     SinglePassTerrainTechnique
-    StreamingTerrain
+    StreamingTerrainNode
     StreamingTile
-    Terrain
+    TerrainNode
     Tile
     TileBuilder
     TransparentLayer

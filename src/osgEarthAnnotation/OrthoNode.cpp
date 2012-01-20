@@ -155,6 +155,10 @@ OrthoNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
     if ( posSRS && _mapSRS.valid() && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
         return false;
 
+    // clamp if necessary:
+    if ( _autoclamp )
+        clamp( mapPos );
+
     CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(this->getCullCallback());
 
     // update the transform:

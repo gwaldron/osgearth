@@ -115,6 +115,9 @@ main(int argc, char** argv)
     annoGroup->addChild( labelGroup );
     
     // set up a style to use for labels:
+    Style placeStyle;
+    placeStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
     Style labelStyle;
     labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     labelStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
@@ -125,15 +128,15 @@ main(int argc, char** argv)
 
     osg::Image* pushpin = osgDB::readImageFile( "../data/placemark32.png" );
 
-    labelGroup->addChild( new PlaceNode(mapNode,  -74.00, 40.71, pushpin, "New York",       labelStyle) );
-    labelGroup->addChild( new PlaceNode(mapNode,  -77.04, 38.85, pushpin, "Washington, DC", labelStyle) );
-    labelGroup->addChild( new PlaceNode(mapNode,  -87.65, 41.90, pushpin, "Chicago",        labelStyle) );
-    labelGroup->addChild( new PlaceNode(mapNode, -118.40, 33.93, pushpin, "Los Angeles",    labelStyle) );
-    labelGroup->addChild( new PlaceNode(mapNode,  -71.03, 42.37, pushpin, "Boston",         labelStyle) );
-    labelGroup->addChild( new PlaceNode(mapNode, -157.93, 21.35, pushpin, "Honolulu",       labelStyle) );
-    labelGroup->addChild( new PlaceNode(mapNode,  138.75, 35.68, pushpin, "Tokyo",          labelStyle) );
-    labelGroup->addChild( new PlaceNode(mapNode,  -90.25, 29.98, pushpin, "New Orleans",    labelStyle) );
-    labelGroup->addChild( new PlaceNode(mapNode,  -80.28, 25.82, pushpin, "Miami",          labelStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -74.00, 40.71, pushpin, "New York",       placeStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -77.04, 38.85, pushpin, "Washington, DC", placeStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -87.65, 41.90, pushpin, "Chicago",        placeStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode, -118.40, 33.93, pushpin, "Los Angeles",    placeStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -71.03, 42.37, pushpin, "Boston",         placeStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode, -157.93, 21.35, pushpin, "Honolulu",       placeStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  138.75, 35.68, pushpin, "Tokyo",          placeStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -90.25, 29.98, pushpin, "New Orleans",    placeStyle) );
+    labelGroup->addChild( new PlaceNode(mapNode,  -80.28, 25.82, pushpin, "Miami",          placeStyle) );
 
     //--------------------------------------------------------------------
 

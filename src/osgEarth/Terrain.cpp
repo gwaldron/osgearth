@@ -70,7 +70,7 @@ Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height, osg::Node* patc
         return 0L;
 
     // trivially reject a point that lies outside the terrain:
-    if ( getProfile()->getExtent().contains(mapPos.x(), mapPos.y()) )
+    if ( !getProfile()->getExtent().contains(mapPos.x(), mapPos.y()) )
         return 0L;
 
     // calculate the endpoints for an intersection test:

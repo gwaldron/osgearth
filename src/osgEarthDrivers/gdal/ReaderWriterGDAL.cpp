@@ -182,7 +182,7 @@ getFiles(const std::string &file, const std::vector<std::string> &exts, std::vec
  * DEALINGS IN THE SOFTWARE.
  ****************************************************************************/
 static GDALDatasetH
-build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy)
+build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy, bool allowProjectionDifference)
 {
     GDAL_SCOPED_LOCK;
 
@@ -289,9 +289,11 @@ build_vrt(std::vector<std::string> &files, ResolutionStrategy resolutionStrategy
                     (proj == NULL && projectionRef != NULL) ||
                     (proj != NULL && projectionRef != NULL && EQUAL(proj, projectionRef) == FALSE))
                 {
-                    fprintf( stderr, "gdalbuildvrt does not support heterogenous projection. Skipping %s\n",dsFileName);
-                    GDALClose(hDS);
-                    continue;
+					if(!allowProjectionDifference) {
+						fprintf( stderr, "gdalbuildvrt does not support heterogenous projection. Skipping %s\n",dsFileName);
+						GDALClose(hDS);
+						continue;
+					}
                 }
                 int _nBands = GDALGetRasterCount(hDS);
                 if (nBands != _nBands)
@@ -695,7 +697,7 @@ public:
         //If we found more than one file, try to combine them into a single logical dataset
         if (files.size() > 1)
         {
-            _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION);
+            _srcDS = (GDALDataset*)build_vrt(files, HIGHEST_RESOLUTION, _options.gdalAllowProjectionDifference().value());
             if (!_srcDS)
             {
                 OE_WARN << "[osgEarth::GDAL] Failed to build VRT from input datasets" << std::endl;

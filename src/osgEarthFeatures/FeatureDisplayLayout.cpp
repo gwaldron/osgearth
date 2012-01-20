@@ -79,6 +79,11 @@ FeatureLevel::getConfig() const
     return conf;
 }
 
+void FeatureLevel::addStyleSelector(const StyleSelector& selector)
+{
+	_selectors.push_back( StyleSelector(selector) );
+}
+
 //------------------------------------------------------------------------
 
 FeatureDisplayLayout::FeatureDisplayLayout( const Config& conf ) :

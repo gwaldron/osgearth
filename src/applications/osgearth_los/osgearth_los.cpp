@@ -191,6 +191,11 @@ main(int argc, char** argv)
     RadialLineOfSightNode* tetheredRadial = new RadialLineOfSightNode( mapNode );    
     tetheredRadial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);    
     tetheredRadial->setRadius( 5000 );
+
+    //This RadialLineOfSightNode is going to be filled, so set some alpha values for the colors so it's partially transparent
+    tetheredRadial->setFill( true );
+    tetheredRadial->setGoodColor( osg::Vec4(0,1,0,0.3) );
+    tetheredRadial->setBadColor( osg::Vec4(1,0,0,0.3) );
     tetheredRadial->setNumSpokes( 100 );
     root->addChild( tetheredRadial );
     tetheredRadial->setUpdateCallback( new RadialLineOfSightTether( plane3 ) );      

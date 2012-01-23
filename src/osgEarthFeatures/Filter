@@ -55,7 +55,7 @@ namespace osgEarth { namespace Features
     public:
         FilterContext push( FeatureList& input, FilterContext& context ) {
             for( FeatureList::iterator i = input.begin(); i != input.end(); ++i ) {
-                operator()( i->get(), context );
+                T::operator()( i->get(), context );
             }
             return context;
         }

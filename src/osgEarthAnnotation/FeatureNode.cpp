@@ -139,9 +139,15 @@ FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 void
 FeatureNode::clampMesh( osg::Node* terrainModel )
 {
-    double scale = _altitude.valid() ? _feature->eval( _altitude->verticalScale().temp_copy() ) : 1.0;
-    double offset = _altitude.valid() ? _feature->eval( _altitude->verticalOffset().temp_copy() ) : 0.0;
-
+    double scale = 1.0;
+    double offset = 0.0;
+    if (_altitude.valid())
+    {
+        NumericExpression scale(_altitude->verticalScale().value());
+        NumericExpression offset(_altitude->verticalOffset().value());
+        scale = _feature->eval(scale);
+        offset = _feature->eval(offset);
+    }
     MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), scale, offset );
     this->accept( clamper );
     this->dirtyBound();

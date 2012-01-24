@@ -233,6 +233,36 @@ LineOfSightNode::removeChangedCallback( ChangedCallback* callback )
 }
 
 
+bool
+LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit )
+{
+    osg::Vec3d startWorld, endWorld;
+    if (altitudeMode == ALTITUDE_ABSOLUTE)
+    {
+        mapNode->getMap()->mapPointToWorldPoint( start, startWorld );
+        mapNode->getMap()->mapPointToWorldPoint( end, endWorld );
+    }
+    else
+    {
+        getRelativeWorld(start.x(), start.y(), start.z(), mapNode, startWorld);
+        getRelativeWorld(end.x(), end.y(), end.z(), mapNode, endWorld);
+    }
+    
+    osgSim::LineOfSight los;
+    los.setDatabaseCacheReadCallback(0);
+    unsigned int index = los.addLOS(startWorld, endWorld);
+    los.computeIntersections(mapNode);
+    osgSim::LineOfSight::Intersections hits = los.getIntersections(0);    
+    if (hits.size() > 0)
+    {
+        osg::Vec3d hitWorld = *hits.begin();
+        mapNode->getMap()->worldPointToMapPoint(hitWorld, hit);
+        return false;
+    }
+    return true;
+}
+
+
 
 void
 LineOfSightNode::compute(osg::Node* node, bool backgroundThread)

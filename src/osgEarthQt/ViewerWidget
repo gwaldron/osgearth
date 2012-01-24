@@ -20,8 +20,6 @@
 #define OSGEARTHQT_VIEWERWIDGET_H 1
 
 #include <osgEarthQt/Common>
-#include <osgEarthQt/Actions>
-#include <osgEarthQt/DataManager>
 
 #include <osgEarth/Map>
 
@@ -37,13 +35,12 @@ namespace osgEarth { namespace QtGui
     class OSGEARTHQT_EXPORT ViewerWidget : public osgQt::GLWidget, public osgViewer::Viewer
     {
     public:
-      ViewerWidget(osg::Node* scene=0L, DataManager* manager=0L);
+      ViewerWidget(osg::Node* scene=0L);
 
     protected:
       ~ViewerWidget() { }
 
       QTimer _timer;
-      osg::ref_ptr<DataManager> _manager;
 
       void initialize();
       osg::Camera* createCamera();

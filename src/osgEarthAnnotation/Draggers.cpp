@@ -275,7 +275,12 @@ bool IntersectingDragger::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
 
                 _pointer.reset();
 
-                if (view->computeIntersections(ea.getX(),ea.getY(),intersections))
+                //Only check to see if the mouse is intersecting us, we don't care about the other nodes
+                //This is a change from the original osgManipulator code but seems like it would be a good idea.
+                osg::NodePath myNodePath;
+                myNodePath.push_back( this );
+
+                if (view->computeIntersections(ea.getX(),ea.getY(), myNodePath, intersections))
                 {
                     for(osgUtil::LineSegmentIntersector::Intersections::iterator hitr = intersections.begin();
                         hitr != intersections.end();

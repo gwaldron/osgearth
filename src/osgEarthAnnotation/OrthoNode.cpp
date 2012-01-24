@@ -155,6 +155,10 @@ OrthoNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
     if ( posSRS && _mapSRS.valid() && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
         return false;
 
+    // clamp if necessary:
+    if ( _autoclamp )
+        clamp( mapPos );
+
     CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(this->getCullCallback());
 
     // update the transform:
@@ -254,39 +258,14 @@ OrthoNode::setHorizonCulling( bool value )
 }
 
 void
-OrthoNode::reclamp( const TileKey& key, osg::Node* tile )
+OrthoNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
 {
     // first verify that the label position intersects the tile:
     osg::Vec3d mapPos = getPosition();
     if ( !key.getExtent().contains( mapPos.x(), mapPos.y() ) )
         return;
 
-    // next perform an intersection test
-    osg::Vec3d start(mapPos.x(), mapPos.y(),  50000.0);
-    osg::Vec3d end  (mapPos.x(), mapPos.y(), -50000.0);
-
-    if ( _mapNode->isGeocentric() )
-    {
-        getMapSRS()->transformToECEF(start, start);
-        getMapSRS()->transformToECEF(end, end);
-    }
-
-    osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
-    osgUtil::IntersectionVisitor iv( lsi );
-    tile->accept( iv );
-
-    osgUtil::LineSegmentIntersector::Intersections& results = lsi->getIntersections();
-    if ( !results.empty() )
-    {
-        const osgUtil::LineSegmentIntersector::Intersection& firstHit = *results.begin();
-        mapPos = firstHit.getWorldIntersectPoint();
-
-        if ( _mapNode->isGeocentric() )
-        {
-            getMapSRS()->transformFromECEF(mapPos, mapPos);
-        }
-
-        setPosition(mapPos);
-    }
+    // if clamping is on, this will automatically work
+    setPosition(mapPos);
 }
 

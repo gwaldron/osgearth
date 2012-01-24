@@ -90,6 +90,9 @@ namespace osgEarth { namespace Symbology
         }
         template<typename T> T* get() { return getSymbol<T>(); } // alias
 
+        template<typename T> bool has() { return get<T>() != 0L; }
+        template<typename T> const bool has() const { return get<T>() != 0L; }
+
         /** Gets a typed symbol from the style (the first one found) */
         template<typename T>
         const T* getSymbol() const

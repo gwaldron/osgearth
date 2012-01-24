@@ -64,5 +64,7 @@ LocalizedNode( mapNode, position, false )
                 this->addChild( getAttachPoint() );
             }
         }
+
+        applyStyle( style, draped );
     }
 }

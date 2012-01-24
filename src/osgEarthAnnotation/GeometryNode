@@ -45,6 +45,12 @@ namespace osgEarth { namespace Annotation
             Geometry*    geom, 
             const Style& style, 
             bool         draped     =false );
+
+    protected:
+        
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+
+        Bounds _geomBounds;
     };
 
 } } // namespace osgEarth::Annotation

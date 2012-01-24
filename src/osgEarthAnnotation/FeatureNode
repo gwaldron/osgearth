@@ -43,7 +43,7 @@ namespace osgEarth { namespace Annotation
         FeatureNode( 
             MapNode* mapNode, 
             Feature* feature, 
-            bool     draped   =true, 
+            bool     draped   =false, 
             const GeometryCompilerOptions& options = GeometryCompilerOptions() );
 
         void setFeature( Feature* feature );
@@ -55,7 +55,6 @@ namespace osgEarth { namespace Annotation
         virtual osg::Group* getAttachPoint();
 
     protected:
-        osg::observer_ptr<MapNode>  _mapNode;
         osg::ref_ptr<Feature>       _feature;
         optional<Style>             _style;
         GeometryCompilerOptions     _options;
@@ -65,6 +64,10 @@ namespace osgEarth { namespace Annotation
         FeatureNode() { }
         FeatureNode(const FeatureNode& rhs, const osg::CopyOp& op) { }
         
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+        
+    private:
+        void clampMesh( osg::Node* terrainModel );
     };
 
 } } // namespace osgEarth::Annotation

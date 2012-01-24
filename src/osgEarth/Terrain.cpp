@@ -64,21 +64,20 @@ _geocentric( geocentric )
 }
 
 bool
-Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height) const
+Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height, osg::Node* patch) const
 {
-    if ( !_graph.valid() )
+    if ( !_graph.valid() && !patch )
         return 0L;
 
     // trivially reject a point that lies outside the terrain:
-    if ( getProfile()->getExtent().contains(mapPos.x(), mapPos.y()) )
-    //if ( !_profile->getExtent().contains(mapPos.x(), mapPos.y()) )
+    if ( !getProfile()->getExtent().contains(mapPos.x(), mapPos.y()) )
         return 0L;
 
     // calculate the endpoints for an intersection test:
     osg::Vec3d start(mapPos.x(), mapPos.y(),  50000.0);
     osg::Vec3d end  (mapPos.x(), mapPos.y(), -50000.0);
 
-    if ( isGeocentric() ) //_geocentric )
+    if ( isGeocentric() )
     {
         getSRS()->transformToECEF(start, start);
         getSRS()->transformToECEF(end, end);
@@ -86,7 +85,11 @@ Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height) const
 
     osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
     osgUtil::IntersectionVisitor iv( lsi );
-    _graph->accept( iv );
+
+    if ( patch )
+        patch->accept( iv );
+    else
+        _graph->accept( iv );
 
     osgUtil::LineSegmentIntersector::Intersections& results = lsi->getIntersections();
     if ( !results.empty() )

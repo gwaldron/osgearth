@@ -122,7 +122,7 @@ namespace osgEarth { namespace Annotation
         OrthoNode( const OrthoNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
 
         // autoclamping.
-        virtual void reclamp( const TileKey& key, osg::Node* tile );
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
     };
 
 } } // namespace osgEarth::Annotation

@@ -54,6 +54,21 @@ namespace osgEarth
         RemoveEmptyGroupsVisitor();
         void apply( osg::Group& group ); //override
     };
+
+    /**
+     * Visitor that counts the number of point, line, and polygon primitive sets
+     * in a scene graph.
+     */
+    class OSGEARTH_EXPORT PrimitiveSetTypeCounter : public osg::NodeVisitor
+    {
+    public:
+        PrimitiveSetTypeCounter();
+        void apply(class osg::Geode&);
+
+        unsigned _point;
+        unsigned _line;
+        unsigned _polygon;
+    };
 }
 
 #endif // OSGEARTH_CACHING_H

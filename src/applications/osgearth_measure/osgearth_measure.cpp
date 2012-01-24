@@ -157,8 +157,9 @@ main(int argc, char** argv)
     //Add a callback to update the label when the distance changes
     measureTool->addEventHandler( new MyMeasureToolCallback(label) );
     
-    Style style;
-    style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Yellow;
+    Style style = measureTool->getLineStyle();
+    style.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;
+    style.getOrCreate<LineSymbol>()->stroke()->width() = 4.0f;
     measureTool->setLineStyle(style);
 
     //Add a checkbox to control if we are doing path based measurement or just point to point
@@ -176,9 +177,6 @@ main(int argc, char** argv)
     grid->setControl( 1, 2, mode);
 
 
-    
-
-   
     viewer.setSceneData( root );
 
     // add some stock OSG handlers:

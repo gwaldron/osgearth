@@ -147,7 +147,7 @@ namespace osgEarth { namespace Features
 
         /** Geodetic interpolation method. */
         optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
-        const optional<GeoInterpolation>& geomInterp() const { return _geoInterp; }
+        const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
         /** populates the variables of an expression with attribute values and evals the expression. */
         double eval( NumericExpression& expr, FilterContext const* context=0L ) const;

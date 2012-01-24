@@ -18,6 +18,7 @@
 */
 
 #include <osg/Notify>
+
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
@@ -61,7 +62,6 @@ usage( const std::string& msg )
     OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
     OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
     
-        
     return -1;
 }
 
@@ -69,7 +69,6 @@ static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
 static OceanSurfaceNode* s_ocean         =0L;
-
 
 struct SkySliderHandler : public ControlEventHandler
 {
@@ -344,6 +343,7 @@ main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
+
 
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )

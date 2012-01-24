@@ -44,7 +44,7 @@ OrthoNode( mapNode, position ),
 _text    ( text ),
 _geode   ( 0L )
 {
-    init( style.get<TextSymbol>() );
+    init( style );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -56,7 +56,9 @@ OrthoNode( mapNode, position ),
 _text    ( text ),
 _geode   ( 0L )
 {
-    init( symbol );
+    Style style;
+    style.add( const_cast<TextSymbol*>(symbol) );
+    init( style );
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
@@ -69,7 +71,7 @@ OrthoNode( mapNode, osg::Vec3d(x,y,0) ),
 _text    ( text ),
 _geode   ( 0L )
 {
-    init( style.get<TextSymbol>() );
+    init( style );
 }
 
 LabelNode::LabelNode(const SpatialReference* mapSRS,
@@ -81,7 +83,9 @@ OrthoNode( mapSRS, position ),
 _text    ( text ),
 _geode   ( 0L )
 {
-    init( symbol );
+    Style style;
+    style.add( const_cast<TextSymbol*>(symbol) );
+    init( style );
 }
 
 LabelNode::LabelNode(const std::string&  text,
@@ -90,12 +94,14 @@ OrthoNode(),
 _text    ( text ),
 _geode   ( 0L )
 {
-    init( style.get<TextSymbol>() );
+    init( style );
 }
 
 void
-LabelNode::init( const TextSymbol* symbol )
+LabelNode::init( const Style& style )
 {
+    const TextSymbol* symbol = style.get<TextSymbol>();
+
     // The following setup will result is a proper dynamic bounding box for the text.
     // If you just use osgText's rotate-to-screen and SCREEN_COORDS setup, you do not
     // get a proper bounds.
@@ -108,6 +114,8 @@ LabelNode::init( const TextSymbol* symbol )
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
     getAttachPoint()->addChild( _geode );
+
+    applyStyle( style );
 }
 
 void

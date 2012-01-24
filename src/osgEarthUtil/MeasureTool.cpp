@@ -51,17 +51,20 @@ _intersectionMask(0xffffffff)
     //Define a style for the line
     Style style;
     LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
-    ls->stroke()->color() = osg::Vec4f( 1,0,0,1 );
-    ls->stroke()->width() = 2.0f;   
+    ls->stroke()->color() = Color::Yellow;
+    ls->stroke()->width() = 2.0f;
+    ls->tessellation() = 20;
+    
+    style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     _feature->style() = style;
 
-    _featureNode = new FeatureNode( _mapNode.get(), _feature.get(), false);
+    _featureNode = new FeatureNode( _mapNode.get(), _feature.get() );
     
 
     //Disable lighting and depth testing for the feature graph
     _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    _featureNode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+    //_featureNode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
     _group->addChild (_featureNode.get() );
 }
@@ -114,7 +117,6 @@ MeasureToolHandler::setLineStyle( const Style& style )
      _feature->style() = style;
      _featureNode->init();
 }
-
 
 bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {    

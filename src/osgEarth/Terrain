@@ -123,10 +123,14 @@ namespace osgEarth
          *      Map coordinates at which to query the height
          * @param out_height
          *      Results of the query go here (if the method returns true).
+         * @param patch (optional)
+         *      If you want to query just a specific terrain path, instead of the entire
+         *      terrain, specify it here.
          */
         bool getHeight( 
             const osg::Vec3d& mapCoords,
-            double&           out_height ) const;
+            double&           out_height,
+            osg::Node*        patch        =0L) const;
 
         /**
          * Returns the world coordinates under the mouse.
@@ -173,6 +177,9 @@ namespace osgEarth
         
 
     public:
+
+        // access the raw terrain graph
+        osg::Node* getGraph() { return _graph.get(); }
 
         // internal record of a callback registration
         struct CallbackRecord {

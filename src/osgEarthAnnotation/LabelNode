@@ -97,7 +97,7 @@ namespace osgEarth { namespace Annotation
         virtual void setDynamic( bool value );
 
     protected:
-        void init( const TextSymbol* symbol );
+        void init( const Style& style );
 
         std::string       _text;
         class osg::Geode* _geode;

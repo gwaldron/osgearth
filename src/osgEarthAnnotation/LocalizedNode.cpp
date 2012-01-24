@@ -58,17 +58,6 @@ _autoTransform ( is2D )
     setPosition( pos );
 }
 
-#if 0
-LocalizedNode::LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op) :
-PositionedAnnotationNode( rhs, op )
-{
-    _mapSRS         = rhs._mapSRS.get();
-    _horizonCulling = rhs._horizonCulling;
-    _autoTransform  = rhs._autoTransform;
-    _xform          = osg::clone( rhs._xform.get(), op );
-}
-#endif
-
 void
 LocalizedNode::traverse( osg::NodeVisitor& nv )
 {
@@ -93,6 +82,10 @@ LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSR
     osg::Vec3d mapPos = pos;
     if ( posSRS && _mapSRS.valid() && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
         return false;
+
+    // clamp if necessary:
+    if ( _autoclamp )
+        clamp( mapPos );
 
     CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
 

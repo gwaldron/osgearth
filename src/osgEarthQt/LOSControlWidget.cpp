@@ -30,6 +30,7 @@
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QScrollArea>
 #include <QSizePolicy>
@@ -143,30 +144,39 @@ void LOSControlWidget::initialize()
   _detailsBox->setLayout(detailsLayout);
   _detailsBox->setObjectName("oeFrameContainer");
 
-  detailsLayout->addWidget(new QLabel(tr("Type:")), 0, 0, Qt::AlignLeft);
+  detailsLayout->addWidget(new QLabel(tr("Name:")), 0, 0, Qt::AlignLeft);
+  _nameEdit = new QLineEdit;
+  detailsLayout->addWidget(_nameEdit, 0, 1, Qt::AlignLeft);
+  _nameEdit->setEnabled(false);
+
+  detailsLayout->addWidget(new QLabel(tr("Type:")), 1, 0, Qt::AlignLeft);
   _typeField = new QLabel(tr("-----"));
-  detailsLayout->addWidget(_typeField, 0, 1, Qt::AlignLeft);
+  detailsLayout->addWidget(_typeField, 1, 1, Qt::AlignLeft);
+
+  _depthBox = new QCheckBox(tr("Enable depth test"));
+  detailsLayout->addWidget(_depthBox, 2, 0, Qt::AlignLeft);
+  _depthBox->setEnabled(false);
 
   _dragBox = new QCheckBox(tr("Allow drag"));
-  detailsLayout->addWidget(_dragBox, 1, 0, Qt::AlignLeft);
+  detailsLayout->addWidget(_dragBox, 3, 0, Qt::AlignLeft);
   _dragBox->setEnabled(false);
 
-  detailsLayout->addWidget(new QLabel(tr("Radius:")), 2, 0, Qt::AlignLeft);
+  detailsLayout->addWidget(new QLabel(tr("Radius:")), 4, 0, Qt::AlignLeft);
   _radiusBox = new QDoubleSpinBox;
   _radiusBox->setMinimum(0.1);
   _radiusBox->setMaximum(40075160.0);
   _radiusBox->setSingleStep(1.0);
   _radiusBox->setValue(2000.0);
-  detailsLayout->addWidget(_radiusBox, 2, 1, Qt::AlignLeft);
+  detailsLayout->addWidget(_radiusBox, 4, 1, Qt::AlignLeft);
   _radiusBox->setEnabled(false);
 
-  detailsLayout->addWidget(new QLabel(tr("Spokes:")), 3, 0, Qt::AlignLeft);
+  detailsLayout->addWidget(new QLabel(tr("Spokes:")), 5, 0, Qt::AlignLeft);
   _spokesBox = new QSpinBox;
   _spokesBox->setMinimum(2);
   _spokesBox->setMaximum(10000);
   _spokesBox->setSingleStep(1);
   _spokesBox->setValue(100);
-  detailsLayout->addWidget(_spokesBox, 3, 1, Qt::AlignLeft);
+  detailsLayout->addWidget(_spokesBox, 5, 1, Qt::AlignLeft);
   _spokesBox->setEnabled(false);
 
   setSecondaryWidget(_detailsBox);
@@ -177,10 +187,10 @@ void LOSControlWidget::initialize()
   connect(_losList, SIGNAL(itemChanged(QListWidgetItem*)), this, SLOT(onItemChanged(QListWidgetItem*)));
   connect(_losList, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
 
-  //connect editor checkbox signal
+  //connect option signals
+  connect(_nameEdit, SIGNAL(textEdited(const QString&)), this, SLOT(onNameEdited(const QString&)));
+  connect(_depthBox, SIGNAL(stateChanged(int)), this, SLOT(onDepthBoxChanged(int)));
   connect(_dragBox, SIGNAL(stateChanged(int)), this, SLOT(onDragBoxChanged(int)));
-
-  //connect radial options signals
   connect(_radiusBox, SIGNAL(valueChanged(double)), this, SLOT(onRadiusValueChanged(double)));
   connect(_spokesBox, SIGNAL(valueChanged(int)), this, SLOT(onSpokesValueChanged(int)));
 }
@@ -238,38 +248,71 @@ void LOSControlWidget::onItemChanged(QListWidgetItem* item)
 void LOSControlWidget::onItemSelectionChanged()
 {
   _activeRadial = 0L;
+  _nameEdit->setText("");
+  _nameEdit->setEnabled(false);
   _typeField->setText("-----");
+  _depthBox->setCheckState(Qt::Unchecked);
+  _depthBox->setEnabled(false);
   _dragBox->setEnabled(false);
   _radiusBox->setEnabled(false);
   _spokesBox->setEnabled(false);
   _removeAction->setEnabled(false);
 
-  LOSListItem* losItem = dynamic_cast<LOSListItem*>(_losList->currentItem());
-  if (losItem)
+  QListWidgetItem* item = _losList->currentItem();
+  if (item)
   {
-    _removeAction->setEnabled(true);
-    _dragBox->setEnabled(losItem->editor());
-    _dragBox->setCheckState(losItem->getEditing() ? Qt::Checked : Qt::Unchecked);
+    _nameEdit->setText(item->text());
+    _nameEdit->setEnabled(true);
 
-    osgEarth::Util::LineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LineOfSightNode*>(losItem->los());
-    if (p2pNode)
+    LOSListItem* losItem = dynamic_cast<LOSListItem*>(_losList->currentItem());
+    if (losItem)
     {
-      _typeField->setText("Point-to-Point");
-    }
-    else
-    {
-      osgEarth::Util::RadialLineOfSightNode* radNode = dynamic_cast<osgEarth::Util::RadialLineOfSightNode*>(losItem->los());
-      if (radNode)
+      _removeAction->setEnabled(true);
+      _dragBox->setEnabled(losItem->editor());
+      _dragBox->setCheckState(losItem->getEditing() ? Qt::Checked : Qt::Unchecked);
+
+      osgEarth::Util::LineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LineOfSightNode*>(losItem->los());
+      if (p2pNode)
       {
-        _typeField->setText("Radial");
-        _radiusBox->setEnabled(true);
-        _radiusBox->setValue(radNode->getRadius());
-        _spokesBox->setEnabled(true);
-        _spokesBox->setValue(radNode->getNumSpokes());
-        _activeRadial = radNode;
+        _typeField->setText("Point-to-Point");
+        _depthBox->setCheckState(p2pNode->getOrCreateStateSet()->getMode(GL_DEPTH_TEST) == osg::StateAttribute::OFF ? Qt::Unchecked : Qt::Checked);
+        _depthBox->setEnabled(true);
+      }
+      else
+      {
+        osgEarth::Util::RadialLineOfSightNode* radNode = dynamic_cast<osgEarth::Util::RadialLineOfSightNode*>(losItem->los());
+        if (radNode)
+        {
+          _typeField->setText("Radial");
+          _depthBox->setCheckState(radNode->getOrCreateStateSet()->getMode(GL_DEPTH_TEST) == osg::StateAttribute::OFF ? Qt::Unchecked : Qt::Checked);
+          _depthBox->setEnabled(true);
+
+          _radiusBox->setEnabled(true);
+          _radiusBox->setValue(radNode->getRadius());
+          _spokesBox->setEnabled(true);
+          _spokesBox->setValue(radNode->getNumSpokes());
+          _activeRadial = radNode;
+        }
       }
     }
   }
+}
+
+void LOSControlWidget::onNameEdited(const QString& text)
+{
+  QListWidgetItem* item = _losList->currentItem();
+
+  if (item)
+    item->setText(text);
+}
+
+void LOSControlWidget::onDepthBoxChanged(int state)
+{
+  QListWidgetItem* item = _losList->currentItem();
+  
+  LOSListItem* losItem = dynamic_cast<LOSListItem*>(item);
+  if (losItem)
+    losItem->los()->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, state == Qt::Checked ? osg::StateAttribute::ON : osg::StateAttribute::OFF);
 }
 
 void LOSControlWidget::onDragBoxChanged(int state)

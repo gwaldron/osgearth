@@ -19,6 +19,7 @@
 
 #include <osgEarthAnnotation/GeometryNode>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/MeshClamper>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
 
@@ -50,6 +51,30 @@ LocalizedNode( mapNode )
         else
         {
             this->addChild( getTransform() );
+        }
+
+        // this will activate the clamping logic
+        applyStyle( style, draped );
+    }
+}
+
+void
+GeometryNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
+{
+    // since a GeometyNode is always local-tangent plane, we only need to reclamp
+    // the reference position (and not all the verts)
+    osg::Vec3d mapPos = getPosition();
+    if ( key.getExtent().contains(mapPos.x(), mapPos.y()) )
+    {
+        double height;
+        if ( terrain->getHeight(mapPos, height, tile) )
+        {
+            if ( _altitude.valid() )
+            {
+                height *= _altitude->verticalScale()->eval();
+                height += _altitude->verticalOffset()->eval();
+            }
+            setPosition( osg::Vec3d(mapPos.x(), mapPos.y(), height) );
         }
     }
 }

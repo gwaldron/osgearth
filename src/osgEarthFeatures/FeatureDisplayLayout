@@ -46,6 +46,8 @@ namespace osgEarth { namespace Features
 
         const StyleSelectorVector& selectors() const { return _selectors; }
 
+        void addStyleSelector(const StyleSelector& selector);
+
     public:
         Config getConfig() const;
 

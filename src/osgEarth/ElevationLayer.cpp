@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarth/ElevationLayer>
-#include <osgEarth/Registry>
 #include <osg/Version>
 
 using namespace osgEarth;

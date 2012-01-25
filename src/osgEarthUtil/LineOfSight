@@ -188,6 +188,21 @@ namespace osgEarth { namespace Util
 
         virtual void traverse(osg::NodeVisitor& nv);
 
+        /**
+         * Utility method to compute LOS with a MapNode
+         * @param mapNode
+         *        The MapNode to intersect
+         * @param start
+         *        The start point in map coordinates
+         * @param end
+         *        The end point in map coordinates
+         * @param hit
+         *        The hit point, in map coordinates.
+         * @returns
+         *        Whether or not there is line of sight from start to end.  hit is only valid if this function return false.
+         */
+        static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit );
+
 
     private:
         void compute(osg::Node* node, bool backgroundThread = false);
@@ -342,6 +357,16 @@ namespace osgEarth { namespace Util
         void setDisplayMode( LOSDisplayMode displayMode );
 
         /**
+         * Gets whether to draw the fill of this RadialLineOfSightNode
+         */
+        bool getFill() const;
+
+        /*
+         * Sets whether to draw the fill of this RadialLineOfSightNode
+         */
+        void setFill( bool fill );
+
+        /**
          * Gets the altitude mode
          */
         AltitudeMode getAltitudeMode() const;
@@ -367,10 +392,13 @@ namespace osgEarth { namespace Util
 
     private:
         void compute(osg::Node* node, bool backgroundThread = false);
+        void compute_line(osg::Node* node, bool backgroundThread = false);
+        void compute_fill(osg::Node* node, bool backgroundThread = false);
         int _numSpokes;
         double _radius;
 
         LOSDisplayMode _displayMode;    
+        bool _fill;
         osg::Vec4 _goodColor;
         osg::Vec4 _badColor;
         osg::Vec4 _outlineColor;

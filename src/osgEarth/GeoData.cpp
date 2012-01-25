@@ -229,7 +229,7 @@ _east   ( east ),
 _south  ( south ),
 _north  ( north )
 {
-    if ( srs && srs->isGeographic() )
+    if ( isValid() && srs->isGeographic() )
     {
         s_normalizeLongitude( _west );
         s_normalizeLongitude( _east );
@@ -244,7 +244,7 @@ _east   ( bounds.xMax() ),
 _south  ( bounds.yMin() ),
 _north  ( bounds.yMax() )
 {
-    if ( srs && srs->isGeographic() )
+    if ( isValid() && srs->isGeographic() )
     {
         s_normalizeLongitude( _west );
         s_normalizeLongitude( _east );
@@ -398,6 +398,9 @@ GeoExtent::bounds() const
 bool
 GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 {
+    if ( isInvalid() )
+        return false;
+
     double local_x = x, local_y = y;
     if (srs &&
         !srs->isEquivalentTo( _srs.get() ) &&
@@ -570,11 +573,6 @@ GeoExtent::expandToInclude( double x, double y )
 void
 GeoExtent::expandToInclude(const Bounds& rhs)
 {
-    //expandToInclude( rhs.xMin(), rhs.yMin() );
-    //expandToInclude( rhs.xMin(), rhs.yMax() );
-    //expandToInclude( rhs.xMax(), rhs.yMin() );
-    //expandToInclude( rhs.xMax(), rhs.yMax() );
-
     expandToInclude( rhs.center() );
     expandToInclude( rhs.xMin(), rhs.yMin() );
     expandToInclude( rhs.xMax(), rhs.yMax() );
@@ -630,26 +628,11 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
 
     GeoExtent result( *this );
 
-    // use spherical vectors to consolidate in longitude:
-    //osg::Vec3d westVec, eastVec, rhsWestVec, rhsEastVec;
-    //getSRS()->transformToECEF(osg::Vec3d(west(), 0., 0.), westVec);
-    //westVec.normalize();
-    //getSRS()->transformToECEF(osg::Vec3d(east(), 0., 0.), eastVec);
-    //eastVec.normalize();
-    //getSRS()->transformToECEF(osg::Vec3d(rhs.west(), 0., 0.), rhsWestVec);
-    //rhsWestVec.normalize();
-    //getSRS()->transformToECEF(osg::Vec3d(rhs.east(), 0., 0.), rhsEastVec);
-    //rhsEastVec.normalize();
-
-    //double widthAngle = osg::DegreesToRadians(width());
-
     double westAngle, eastAngle;
     
     // see if the rhs western boundary intersects our extent:
     westAngle = s_westToEastLongitudeDistance( west(), rhs.west() );
     eastAngle = s_westToEastLongitudeDistance( rhs.west(), east() );
-    //westAngle = acos(westVec*rhsWestVec);
-    //eastAngle = acos(rhsWestVec*eastVec);
     if ( westAngle < width() && eastAngle < width() ) // yes, so adjust the result eastward:
     {
         result._west += westAngle;
@@ -658,8 +641,6 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
     // now see if the rhs eastern boundary intersects out extent:
     westAngle = s_westToEastLongitudeDistance( west(), rhs.east() );
     eastAngle = s_westToEastLongitudeDistance( rhs.east(), east() );
-    //westAngle = acos(westVec*rhsEastVec);
-    //eastAngle = acos(rhsEastVec*eastVec);
     if ( westAngle < width() && eastAngle < width() ) // yes, so adjust again:
     {
         result._east -= eastAngle;
@@ -683,6 +664,9 @@ GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
 void
 GeoExtent::scale(double x_scale, double y_scale)
 {
+    if ( isInvalid() )
+        return;
+
     double orig_width = width();
     double orig_height = height();
 
@@ -701,6 +685,9 @@ GeoExtent::scale(double x_scale, double y_scale)
 void
 GeoExtent::expand( double x, double y )
 {
+    if ( isInvalid() )
+        return;
+
     _west  -= .5*x;
     _east  += .5*x;
     _south -= .5*y;
@@ -710,7 +697,7 @@ GeoExtent::expand( double x, double y )
 double
 GeoExtent::area() const
 {
-    return width() * height();
+    return isValid() ? width() * height() : 0.0;
 }
 
 std::string

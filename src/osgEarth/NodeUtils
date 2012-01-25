@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osg/ClusterCullingCallback>
+#include <osgUtil/LineSegmentIntersector>
 
 namespace osgEarth
 {
@@ -68,6 +69,21 @@ namespace osgEarth
         unsigned _point;
         unsigned _line;
         unsigned _polygon;
+    };
+    
+    class OSGEARTH_EXPORT DPLineSegmentIntersector : public osgUtil::LineSegmentIntersector
+    {
+    public:
+        DPLineSegmentIntersector(const osgUtil::Intersector::CoordinateFrame& cf, const osg::Vec3d& start, const osg::Vec3d& end)
+            : osgUtil::LineSegmentIntersector(cf, start, end) { }
+
+        DPLineSegmentIntersector(const osg::Vec3d& start, const osg::Vec3d& end)
+            : osgUtil::LineSegmentIntersector(start, end) { }
+
+    public: // overrides
+        
+        virtual osgUtil::Intersector* clone(osgUtil::IntersectionVisitor& iv);
+        virtual void intersect(osgUtil::IntersectionVisitor& iv, osg::Drawable* drawable);
     };
 }
 

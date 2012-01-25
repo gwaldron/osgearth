@@ -37,7 +37,7 @@ FeatureModelSourceOptions::FeatureModelSourceOptions( const ConfigOptions& optio
 ModelSourceOptions ( options ),
 _geomTypeOverride  ( Geometry::TYPE_UNKNOWN ),
 _lit               ( true ),
-_maxGranularity_deg( 5.0 ),
+_maxGranularity_deg( 1.0 ),
 _mergeGeometry     ( false ),
 _clusterCulling    ( true )
 {

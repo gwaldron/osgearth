@@ -86,6 +86,7 @@ GeometryFeatureCursor::nextFeature()
     {
         _lastFeature = new Feature();
         _lastFeature->setGeometry( _geom.get() );
+        _lastFeature->setSRS( _featureProfile.valid() ? _featureProfile->getSRS() : 0L );
         FilterContext cx;
         cx.profile() = _featureProfile.get();
         FeatureList list;

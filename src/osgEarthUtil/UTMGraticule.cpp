@@ -259,7 +259,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     LineString* lon = new LineString(2);
     lon->push_back( osg::Vec3d(extent.xMin(), extent.yMax(), 0) );
     lon->push_back( osg::Vec3d(extent.xMin(), extent.yMin(), 0) );
-    Feature* lonFeature = new Feature(lon);
+    Feature* lonFeature = new Feature(lon, extent.getSRS());
     lonFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
     features.push_back( lonFeature );
 
@@ -267,7 +267,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     LineString* lat = new LineString(2);
     lat->push_back( osg::Vec3d(extent.xMin(), extent.yMin(), 0) );
     lat->push_back( osg::Vec3d(extent.xMax(), extent.yMin(), 0) );
-    Feature* latFeature = new Feature(lat);
+    Feature* latFeature = new Feature(lat, extent.getSRS());
     latFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
     features.push_back( latFeature );
 
@@ -277,7 +277,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         LineString* lat = new LineString(2);
         lat->push_back( osg::Vec3d(extent.xMin(), extent.yMax(), 0) );
         lat->push_back( osg::Vec3d(extent.xMax(), extent.yMax(), 0) );
-        Feature* latFeature = new Feature(lat);
+        Feature* latFeature = new Feature(lat, extent.getSRS());
         latFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
         features.push_back( latFeature );
     }

@@ -528,7 +528,7 @@ SpatialReference::createTangentPlaneSRS( const osg::Vec3d& pos ) const
     osg::Vec3d lla;
     if ( this->transform(pos, this->getGeographicSRS(), lla) )
     {
-        result = new LTPSpatialReference( this->getGeographicSRS()->_handle, lla );
+        result = new TangentPlaneSpatialReference( this->getGeographicSRS()->_handle, lla );
     }
     else
     {

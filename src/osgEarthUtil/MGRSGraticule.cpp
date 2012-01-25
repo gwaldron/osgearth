@@ -228,13 +228,13 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
             // and draw valid sqid geometry.
             if ( sw.x() < se.x() )
             {
-                Feature* lat = new Feature(new LineString(2));
+                Feature* lat = new Feature(new LineString(2), extent.getSRS());
                 lat->geoInterp() = GEOINTERP_RHUMB_LINE;
                 lat->getGeometry()->push_back( sw );
                 lat->getGeometry()->push_back( se );
                 features.push_back(lat);
 
-                Feature* lon = new Feature(new LineString(2));
+                Feature* lon = new Feature(new LineString(2), extent.getSRS());
                 lon->geoInterp() = GEOINTERP_GREAT_CIRCLE;
                 lon->getGeometry()->push_back( sw );
                 lon->getGeometry()->push_back( nw );

@@ -60,11 +60,8 @@ namespace osgEarth
     };
 
     /**
-     * A georeferenced extent. A bounding box that is aligned with a
+     * An axis-aligned geospatial extent. A bounding box that is aligned with a
      * spatial reference's coordinate system.
-     *
-     * TODO: this class needs better integrated support for geographic extents
-     * that cross the date line.
      */
     class OSGEARTH_EXPORT GeoExtent
     {
@@ -75,8 +72,11 @@ namespace osgEarth
         /** Contructs a valid extent */
         GeoExtent(
             const SpatialReference* srs,
-            double xmin = FLT_MAX, double ymin = FLT_MAX,
-            double xmax = -FLT_MAX, double ymax = -FLT_MAX );
+            double west, double south,
+            double east, double north );
+
+        /** Contructs an invalid extent that you can grow with the expandToInclude method */
+        GeoExtent( const SpatialReference* srs );
 
         /** Copy ctor */
         GeoExtent( const GeoExtent& rhs );
@@ -88,27 +88,41 @@ namespace osgEarth
         bool operator != ( const GeoExtent& rhs ) const;
 
         /** Gets the spatial reference system underlying this extent. */
-        const SpatialReference* getSRS() const;
+        const SpatialReference* getSRS() const { return _srs.get(); }
 
-        double xMin() const { return _xmin; }
-        double& xMin() { return _xmin; }
-        double yMin() const { return _ymin; }
-        double& yMin() { return _ymin; }
-        double xMax() const { return _xmax; }
-        double& xMax() { return _xmax; }
-        double yMax() const { return _ymax; }
-        double& yMax() { return _ymax; }
+        double west() const { return _west; }
+        double east() const { return _east; }
+        double south() const { return _south; }
+        double north() const { return _north; }
+
+        double xMin() const { return west(); }
+        double xMax() const { return east(); }
+        double yMin() const { return south(); }
+        double yMax() const { return north(); }
+
+        //double xMin() const { return _xmin-_xoffset; }
+        //double& xMin() { return _xmin; }
+        //double yMin() const { return _ymin; }
+        //double& yMin() { return _ymin; }
+        //double xMax() const { return _xmax-_xoffset; }
+        //double& xMax() { return _xmax; }
+        //double yMax() const { return _ymax; }
+        //double& yMax() { return _ymax; }
 
         double width() const;
         double height() const;
 
-        void getCentroid( double& out_x, double& out_y ) const;
+        /**
+         * Gets the centroid of the bounds
+         */
+        bool getCentroid( double& out_x, double& out_y ) const;
+        osg::Vec3d getCentroid() const { osg::Vec3d r; getCentroid(r.x(), r.y()); return r; }
 
         /**
          * Returns true is that extent is in a Geographic (lat/long) SRS that spans
-         * the international date line.
+         * the antimedirian (180 degrees east/west).
          */
-        bool crossesDateLine() const;
+        bool crossesAntimeridian() const;
 
         /**
          * Returns the raw bounds in a single function call
@@ -118,13 +132,14 @@ namespace osgEarth
         /** True if this object defines a real, valid extent with positive area */
         bool isValid() const;
         bool defined() const { return isValid(); }
+        bool isInvalid() const { return !isValid(); }
 
         /**
          * If this extent crosses the international date line, populates two extents, one for
          * each side, and returns true. Otherwise returns false and leaves the reference
          * parameters untouched.
          */
-        bool splitAcrossDateLine( GeoExtent& first, GeoExtent& second ) const;
+        bool splitAcrossAntimeridian( GeoExtent& first, GeoExtent& second ) const;
 
         /**
          * Returns this extent transformed into another spatial reference. 
@@ -146,7 +161,13 @@ namespace osgEarth
          *      SRS of input x and y coordinates; if null, the method assumes x and y
          *      are in the same SRS as this object.
          */
-        bool contains(double x, double y, const SpatialReference* xy_srs =0L) const;
+        bool contains(double x, double y, const SpatialReference* srs =0L) const;
+        bool contains(const osg::Vec3d& xy, const SpatialReference* srs =0L) const { return contains(xy.x(),xy.y(),srs); }
+
+        /**
+         * Returns true if this extent fully contains another extent.
+         */
+        bool contains( const GeoExtent& rhs ) const;
 
         /**
          * Returns true if this extent fully contains the target bounds.
@@ -158,26 +179,29 @@ namespace osgEarth
          */
         bool intersects( const GeoExtent& rhs ) const;
 
-        /** Direct access to the anonymous bounding box */
+        /**
+         * Copy of the anonymous bounding box
+         */
         Bounds bounds() const;
 
         /**
          * Grow this extent to include the specified point (which is assumed to be
          * in the extent's SRS.
          */
-        void expandToInclude( double x, double y );
+        void expandToInclude( double x, double y ); 
+        void expandToInclude( const osg::Vec3d& v ) { expandToInclude(v.x(), v.y()); }
+        void expandToInclude( const Bounds& bounds );
 
         /**
-         * Grow this extent to include the specified GeoExtent (which is assumed to be
-         * in the extent's SRS.
+         * Expand this extent to include the bounds of another extent.
          */
-        void expandToInclude( const Bounds& rhs );
+        bool expandToInclude( const GeoExtent& rhs );
         
         /**
          * Intersect this extent with another extent in the same SRS and return the
          * result.
          */
-        GeoExtent intersectionSameSRS( const Bounds& rhs ) const;
+        GeoExtent intersectionSameSRS( const GeoExtent& rhs ) const; //const Bounds& rhs ) const;
 
         /**
          * Returns a human-readable string containing the extent data (without the SRS)
@@ -204,7 +228,7 @@ namespace osgEarth
 
     private:
         osg::ref_ptr<const SpatialReference> _srs;
-        double _xmin, _ymin, _xmax, _ymax;
+        double _west, _east, _south, _north;
     };
 
     /**

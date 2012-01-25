@@ -169,6 +169,13 @@ namespace osgEarth { namespace Symbology
 
         virtual Geometry* clone() const { return cloneAs(getType()); }
 
+        void push_back(const osg::Vec3d& v ) {
+            osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(v); }
+        void push_back(double x, double y) { 
+            osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,0.)); }
+        void push_back(double x, double y, double z) { 
+            osgEarth::MixinVector<osg::Vec3d,osg::Referenced>::push_back(osg::Vec3d(x,y,z)); }
+
     protected:
         Geometry( int capacity =0 );
         Geometry( const Geometry& rhs );
@@ -383,7 +390,7 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT ConstSegmentIterator
     {
     public:
-        ConstSegmentIterator( const Geometry* verts, bool closedLoop );        
+        ConstSegmentIterator( const Geometry* verts, bool forceClosedLoop =false );        
         bool hasMore() const { return !_done; }
         Segment next();
 

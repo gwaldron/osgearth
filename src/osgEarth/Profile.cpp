@@ -525,7 +525,7 @@ void
 Profile::addIntersectingTiles(const GeoExtent& key_ext, std::vector<TileKey>& out_intersectingKeys) const
 {
     // assume a non-crossing extent here.
-    if ( key_ext.crossesDateLine() )
+    if ( key_ext.crossesAntimeridian() )
     {
         OE_WARN << "Profile::addIntersectingTiles cannot process date-line cross" << std::endl;
         return;
@@ -624,10 +624,10 @@ Profile::getIntersectingTiles(const GeoExtent& extent, std::vector<TileKey>& out
             return;
     }
 
-    if ( ext.crossesDateLine() )
+    if ( ext.crossesAntimeridian() )
     {
         GeoExtent first, second;
-        if (ext.splitAcrossDateLine( first, second ))
+        if (ext.splitAcrossAntimeridian( first, second ))
         {
             addIntersectingTiles( first, out_intersectingKeys );
             addIntersectingTiles( second, out_intersectingKeys );

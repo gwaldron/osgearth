@@ -318,7 +318,9 @@ public:
         OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
         if (handle)
         {
-            result = OgrUtils::createFeature( handle );
+            const FeatureProfile* p = getFeatureProfile();
+            const SpatialReference* srs = p ? p->getSRS() : 0L;
+            result = OgrUtils::createFeature( handle, srs );
             OGR_F_Destroy( handle );
         }
         return result;

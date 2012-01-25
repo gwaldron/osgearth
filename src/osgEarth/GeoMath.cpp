@@ -80,6 +80,52 @@ GeoMath::bearing(double lat1Rad, double lon1Rad,
 }
 
 void
+GeoMath::greatCircleMinMaxLatitude(double lat1Rad, double lon1Rad,
+                                   double lat2Rad, double lon2Rad,
+                                   double& out_minLatRad, double& out_maxLatRad)
+{
+    out_minLatRad = std::min(lat1Rad, lat2Rad);
+    out_maxLatRad = std::max(lat1Rad, lat2Rad);
+
+    // apply some spherical trig
+    // http://en.wikipedia.org/wiki/Spherical_trigonometry
+
+    double a = fabs(bearing(lat1Rad, lon1Rad, lat2Rad, lon2Rad)); // initial azimuth from p1=>p2
+    double b = fabs(bearing(lat2Rad, lon2Rad, lat1Rad, lon1Rad)); // initial azimuth from p2=>p1
+
+    // form a spherical triangle with the 2 points and the north pole, and 
+    // use the law of sines to calculate the point at which the great circle
+    // crosses a meridian (thereby make a right angle and demarking the maximum
+    // latitude of the arc). Test whether that point actually lies between the
+    // two points: the angles made by each point and the north pole must be
+    // less than 90 degrees.
+
+    double B = osg::PI_2 - lat1Rad;                       // angle between p1 and the pole
+    if ( a < osg::PI_2 && b < osg::PI_2 )
+        out_maxLatRad = std::max( out_maxLatRad, osg::PI_2 - asin(sin(B)*sin(a)) );
+    //out_maxLatRad = a < osg::PI_2 && b < osg::PI_2 ? 
+    //    osg::PI_2 - asin( sin(B)*sin(a) ) : 
+    //    std::max(lat1Rad,lat2Rad);
+
+    // flip over to the triangle formed by the south pole:
+    a = osg::PI - a, b = osg::PI - b;
+    B = osg::PI - B; //lat1Rad - (-osg::PI_2);
+
+    if ( a < osg::PI_2 && b < osg::PI_2 )
+        out_minLatRad = std::min( out_minLatRad, -osg::PI_2 + asin(sin(B)*sin(a)) );
+    //out_minLatRad = a < osg::PI_2 && b < osg::PI_2 ? 
+    //    osg::PI_2 - asin( sin(B)*sin(a) ) :
+    //    std::min(lat1Rad,lat2Rad);
+
+    //OE_INFO 
+    //    << "a = " << osg::RadiansToDegrees(a)
+    //    << ", b = " << osg::RadiansToDegrees(b)
+    //    << ", maxLat = " << osg::RadiansToDegrees(out_maxLatRad)
+    //    << ", minLat = " << osg::RadiansToDegrees(out_minLatRad)
+    //    << std::endl;
+}
+
+void
 GeoMath::midpoint(double lat1Rad, double lon1Rad,
                   double lat2Rad, double lon2Rad,
                   double &out_latRad, double &out_lonRad)

@@ -29,10 +29,10 @@ using namespace osgEarth::Symbology;
 //----------------------------------------------------------------------------
 
 FeatureProfile::FeatureProfile( const GeoExtent& extent ) :
-_extent( extent ),
-_firstLevel(0),
-_maxLevel(-1),
-_tiled(false)
+_extent    ( extent ),
+_firstLevel( 0 ),
+_maxLevel  ( -1 ),
+_tiled     ( false )
 {
     //nop
 }
@@ -138,13 +138,15 @@ AttributeValue::getBool( bool defaultValue ) const
 //----------------------------------------------------------------------------
 
 Feature::Feature( FeatureID fid ) :
-_fid( fid )
+_fid( fid ),
+_srs( 0L )
 {
     //NOP
 }
 
-Feature::Feature( Geometry* geom, const Style& style, FeatureID fid ) :
+Feature::Feature( Geometry* geom, const SpatialReference* srs, const Style& style, FeatureID fid ) :
 _geom ( geom ),
+_srs  ( srs ),
 _fid  ( fid )
 {
     if ( !style.empty() )
@@ -155,10 +157,10 @@ Feature::Feature( const Feature& rhs, const osg::CopyOp& copyOp ) :
 _fid      ( rhs._fid ),
 _attrs    ( rhs._attrs ),
 _style    ( rhs._style ),
-_geoInterp( rhs._geoInterp )
+_geoInterp( rhs._geoInterp ),
+_srs      ( rhs._srs.get() )
 {
     if ( rhs._geom.valid() )
-        //_geom = dynamic_cast<Geometry*>( copyOp( rhs._geom.get() ) );
         _geom = rhs._geom->clone();
 }
 
@@ -166,6 +168,27 @@ FeatureID
 Feature::getFID() const 
 {
     return _fid;
+}
+
+void
+Feature::setSRS( const SpatialReference* srs )
+{
+    _srs = srs;
+    dirty();
+}
+
+void
+Feature::setGeometry( Geometry* geom )
+{
+    _geom = geom;
+    dirty();
+}
+
+void
+Feature::dirty()
+{
+    _cachedExtent = GeoExtent::INVALID;
+    _cachedGeocentricBound._radius = -1.0; // invalidate
 }
 
 void
@@ -293,8 +316,110 @@ Feature::eval( StringExpression& expr, FilterContext const* context ) const
       }
 
       if (!val.empty())
-        expr.set( *i, val ); //getAttr(i->first) );
+        expr.set( *i, val );
     }
 
     return expr.eval();
 }
+
+#if 0
+#define SIGN_OF(x) double(int(x > 0.0) - int(x < 0.0))
+
+//TODO:
+// This almost works but not quite. There are 2 more things required to make it work
+// (I think).
+//
+// First, GeoExtent.expandToInclude has no knowledge of connectivity, so
+// it can expand the extent in the wrong direction if the feature goes around the globe.
+// So it needs another function that helps preserve connectivity by taking the "previous"
+// point along with the new point, calculating the extent of those 2 points, and unioning
+// that with the existing extent.
+//
+// Second, this needs support for polygons, whose extent includes the interior of the poly.
+// For this we can calculate the geocentric bbox of the ECEF feature points, and use the 
+// min/max Z of that box to determine the min/max latitude of the polygon extent.
+
+const GeoExtent&
+Feature::getExtent() const
+{
+    if ( !_cachedExtent.isValid() )
+    {
+        if ( getGeometry() && getSRS() )
+        {
+            if ( getSRS()->isGeographic() )
+            {
+                GeoExtent e( getSRS() );
+
+                if ( _geoInterp.value() == GEOINTERP_GREAT_CIRCLE )
+                {
+                    const osg::EllipsoidModel* em = getSRS()->getEllipsoid();
+
+                    // find the GC "cutting plane" with the greatest inclination.
+                    ConstSegmentIterator i( getGeometry() );
+                    while( i.hasMore() )
+                    {
+                        Segment s = i.next();
+
+                        double minLat, maxLat;
+
+                        GeoMath::greatCircleMinMaxLatitude( 
+                            osg::DegreesToRadians(s.first.y()), osg::DegreesToRadians(s.first.x()),
+                            osg::DegreesToRadians(s.second.y()), osg::DegreesToRadians(s.second.x()),
+                            minLat, maxLat);
+
+                        minLat = osg::RadiansToDegrees( minLat );
+                        maxLat = osg::RadiansToDegrees( maxLat );
+
+                        e.expandToInclude( s.first.x(), minLat );
+                        e.expandToInclude( s.second.x(), maxLat );
+                        //e.expandToInclude( e.getCentroid().x(), std::min(minLat, e.south()) );
+                        //e.expandToInclude( e.getCentroid().x(), std::max(maxLat, e.north()) );
+                    }
+                }
+                else // RHUMB_LINE
+                {
+                    ConstGeometryIterator i( getGeometry(), true );
+                    while( i.hasMore() )
+                    {
+                        const Geometry* g = i.next();
+                        for( Geometry::const_iterator v = g->begin(); v != g->end(); ++v )
+                            e.expandToInclude( v->x(), v->y() );
+                    }
+                }
+
+                const_cast<Feature*>(this)->_cachedExtent = e;
+            }
+            else
+            {
+                const_cast<Feature*>(this)->_cachedExtent = GeoExtent(getSRS(), getGeometry()->getBounds());
+            }
+        }
+    }
+    return _cachedExtent;
+}
+#endif
+
+
+const osg::BoundingSphere&
+Feature::getGeocentricBound() const
+{
+    if ( !_cachedGeocentricBound.valid() )
+    {
+        if ( getSRS() && getGeometry() )
+        {
+            ConstGeometryIterator i( getGeometry(), false); 
+            while( i.hasMore() )
+            {
+                const Geometry* g = i.next();
+                for( Geometry::const_iterator p = g->begin(); p != g->end(); ++p )
+                {
+                    osg::Vec3d ecef;
+                    getSRS()->transformToECEF( *p, ecef );
+                    const_cast<Feature*>(this)->_cachedGeocentricBound.expandBy( ecef );
+                }
+            }
+        }
+    }
+    return _cachedGeocentricBound;
+}
+

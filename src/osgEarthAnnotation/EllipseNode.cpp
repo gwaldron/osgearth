@@ -44,7 +44,7 @@ LocalizedNode( mapNode, position )
     if ( geom )
     {
         GeometryCompiler compiler;
-        osg::ref_ptr<Feature> feature = new Feature(geom);
+        osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
         osg::Node* node = compiler.compile( feature.get(), style, FilterContext(0L) );
         if ( node )
         {

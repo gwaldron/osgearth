@@ -25,4 +25,4 @@ using namespace osgEarth::Annotation;
 
 // static defaults
 bool AnnotationSettings::_continuousClamping = true;
-bool AnnotationSettings::_autoDepthAdj = true;
+bool AnnotationSettings::_autoDepthOffset = true;

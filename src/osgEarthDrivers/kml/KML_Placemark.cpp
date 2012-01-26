@@ -123,7 +123,9 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
 
             bool draped =
-                (isPoly && ex == 0L && (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN));
+                isPoly   && 
+                ex == 0L && 
+                (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
 
             // this will confuse the GeometryCompiler into thinking we want point-model sub..
             // probably need a more elegant solution here..

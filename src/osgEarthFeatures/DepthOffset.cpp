@@ -16,22 +16,26 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/DepthAdjustment>
+#include <osgEarthFeatures/DepthOffset>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/Registry>
+#include <osgEarth/FindNode>
 
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osgText/Text>
 #include <sstream>
 
-#define LC "[DepthAdjustment] "
+#define LC "[DepthOffset] "
 
 using namespace osgEarth;
 using namespace osgEarth::Features;
 
-#define UNIFORM_NAME "osgearth_depthAdjRes"
+#define MIN_OFFSET_UNIFORM "osgearth_depthoffset_minoffset"
+#define IS_TEXT_UNIFORM    "osgearth_depthoffset_istext"
+
 #define MAX_DEPTH_OFFSET 10000.0
 
 // undef this if you want to adjust in the normal direction (of a geocentric point) instead
@@ -40,9 +44,48 @@ using namespace osgEarth::Features;
 
 //------------------------------------------------------------------------
 
-        
 namespace
 {
+    struct SegmentAnalyzer
+    {
+        SegmentAnalyzer() : _maxLen2(0) { }
+        void operator()( const osg::Vec3& v0, const osg::Vec3& v1, bool ) {
+            double len2 = (v1-v0).length2();
+            if ( len2 > _maxLen2 ) _maxLen2 = len2;
+        }
+        double _maxLen2;
+    };
+
+    struct GeometryAnalysisVisitor : public osg::NodeVisitor
+    {
+        GeometryAnalysisVisitor()
+            : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN), _analyzeSegments(true) { }
+
+        void apply( osg::Geode& geode )
+        {
+            for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+            {
+                osg::Drawable* d = geode.getDrawable(i);
+
+                if ( _analyzeSegments && d->asGeometry() )
+                {
+                    d->accept( _segmentAnalyzer );
+                }
+                else if ( dynamic_cast<osgText::Text*>(d) )
+                {
+                    d->getOrCreateStateSet()->addUniform( DepthOffsetUtils::getIsTextUniform() );
+                }
+            }
+        }
+        LineFunctor<SegmentAnalyzer> _segmentAnalyzer;
+        bool                         _analyzeSegments;
+    };
+
+
+    //...............................
+    // Shader code:
+
+
     static char remapFunction[] =
         "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
         "{ \n"
@@ -55,13 +98,8 @@ namespace
         "    return mat3( m[0].xyz, m[1].xyz, m[2].xyz ); \n"
         "} \n";
 
-    static std::string createVertexShader( const std::string& shaderCompName, float fixedMinDepthOffset )
+    static std::string createVertexShader( const std::string& shaderCompName )
     {
-        std::stringstream buf;
-
-        std::string minDepthOffset = fixedMinDepthOffset == FLT_MAX ? 
-            std::string(UNIFORM_NAME) :
-            Stringify() << "float(" << fixedMinDepthOffset << ")";
 
         float glslVersion = Registry::instance()->getCapabilities().getGLSLVersion();
 
@@ -70,6 +108,7 @@ namespace
         std::string castMat4ToMat3 = glslVersion < 1.2f ? "castMat4ToMat3Function" : "mat3";
         
 
+        std::stringstream buf;
         buf
             << versionString
             << remapFunction;
@@ -80,12 +119,9 @@ namespace
         buf
             << "uniform mat4 osg_ViewMatrix; \n"
             << "uniform mat4 osg_ViewMatrixInverse; \n"
-            << "varying vec4 adjV; \n"
-            << "varying float adjZ; \n";
-
-        // FLT_MAX is a special value that means "use a uniform"
-        if ( fixedMinDepthOffset == FLT_MAX )
-            buf << "uniform float " << UNIFORM_NAME << "; \n";
+            << "uniform float " << MIN_OFFSET_UNIFORM << "; \n"
+            << "uniform bool " << IS_TEXT_UNIFORM << "; \n"
+            << "varying vec4 adjV; \n";
 
         if ( !shaderCompName.empty() )
             buf << "void " << shaderCompName << "() { \n";
@@ -113,7 +149,7 @@ namespace
 
             // remap depth offset based on camera distance to vertex. The farther you are away,
             // the more of an offset you need.        
-            "float offset = remap( range, 1000.0, 10000000.0, " << minDepthOffset << ", 10000.0); \n"
+            "float offset = remap( range, 1000.0, 10000000.0, " << MIN_OFFSET_UNIFORM << ", 10000.0); \n"
 
             // adjust the Z (distance from the eye) by our offset value:
             "vertEye3 -= adjVecEye3 * offset; \n"
@@ -128,7 +164,9 @@ namespace
             buf << 
                 "gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
                 //"gl_Position = adjV; \n" // <-- uncomment for debugging
-                "gl_FrontColor = gl_Color; \n";
+                "gl_FrontColor = gl_Color; \n"
+                "gl_TexCoord[0] = gl_MultiTexCoord0; \n";
+            
         }
 
         buf << "} \n";
@@ -147,9 +185,17 @@ namespace
             // deactivate early-Z optimizations; so be it!!
             return 
                 "#version 110 \n"
+                "uniform bool " IS_TEXT_UNIFORM "; \n"
+                "uniform sampler2D tex0; \n"
                 "varying vec4 adjV; \n"
                 "void main(void) { \n"
-                "    gl_FragColor = gl_Color; \n"
+                "    if (" IS_TEXT_UNIFORM ") { \n"
+                "        float alpha = texture2D(tex0,gl_TexCoord[0].st).a; \n"
+                "        gl_FragColor = vec4( gl_Color.rgb, gl_Color.a * alpha); \n"
+                "    } \n"
+                "    else { \n"
+                "        gl_FragColor = gl_Color; \n"
+                "    } \n"
                 "    float z = adjV.z/adjV.w; \n"
                 "    gl_FragDepth = 0.5*(1.0+z); \n"
                 "} \n";
@@ -158,61 +204,92 @@ namespace
         {
             return Stringify() <<
                 "#version 110 \n"
-                "varying float adjZ; \n"
+                "varying vec4 adjV; \n"
                 "void " << shaderCompName << "(inout vec4 color) { \n"
-                "    gl_FragDepth = 0.5*(1.0+adjZ); \n"
+                "    float z = adjV.z/adjV.w; \n"
+                "    gl_FragDepth = 0.5*(1.0+z); \n"
                 "} \n";
         }
     }
 }
 
-//------------------------------------------------------------------------
-
-namespace
-{
-    struct SegmentAnalyzer {
-        SegmentAnalyzer() : _maxLen2(0) { }
-        void operator()( const osg::Vec3& v0, const osg::Vec3& v1, bool ) {
-            double len2 = (v1-v0).length2();
-            if ( len2 > _maxLen2 ) _maxLen2 = len2;
-        }
-        double _maxLen2;
-    };
-
-    struct SegmentAnalyzerVisitor : public osg::NodeVisitor {
-        SegmentAnalyzerVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
-        void apply( osg::Geode& geode ) {
-            for( unsigned i=0; i<geode.getNumDrawables(); ++i ) {
-                osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-                if ( geom )
-                    geom->accept(_a);
-            }
-        }
-        LineFunctor<SegmentAnalyzer> _a;
-    };
-}
+//---------------------------------------------------------------------------
 
 osg::Uniform*
-DepthAdjustment::createUniform( osg::Node* graph )
+DepthOffsetUtils::createMinOffsetUniform( osg::Node* graph )
+{
+    osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, MIN_OFFSET_UNIFORM);
+    u->set( graph ? recalculate(graph) : 0.0f );
+    return u;
+}
+
+float
+DepthOffsetUtils::recalculate( osg::Node* graph )
 {
     double minDepthOffset = 0.0;
     if ( graph )
     {
-        SegmentAnalyzerVisitor v;
+        GeometryAnalysisVisitor v;
+        v._analyzeSegments = true;
         graph->accept( v );
-        double maxLen = sqrt(v._a._maxLen2);
+        double maxLen = sqrt(v._segmentAnalyzer._maxLen2);
         minDepthOffset = sqrt(maxLen)*19.0;
 
         OE_DEBUG << LC << std::fixed << std::setprecision(2)
             << "max res = " << maxLen << ", min offset = " << minDepthOffset << std::endl;
     }
-    osg::Uniform* u = new osg::Uniform(osg::Uniform::FLOAT, UNIFORM_NAME);
-    u->set( float(minDepthOffset) );
-    return u;
+    return float(minDepthOffset);
+}
+
+void
+DepthOffsetUtils::prepareGraph( osg::Node* graph )
+{
+    if ( graph )
+    {
+        GeometryAnalysisVisitor v;
+        v._analyzeSegments = false;
+        graph->accept( v );
+    }
+}
+
+osg::Uniform*
+DepthOffsetUtils::getIsTextUniform()
+{
+    static osg::ref_ptr<osg::Uniform> s_uniform;
+    static Threading::Mutex           s_mutex;
+
+    if ( !s_uniform.valid() )
+    {
+        Threading::ScopedMutexLock exclusive(s_mutex);
+        if ( !s_uniform.valid() )
+        {
+            s_uniform = new osg::Uniform(osg::Uniform::BOOL, IS_TEXT_UNIFORM);
+            s_uniform->set( true );
+        }
+    }
+    return s_uniform.get();
+}
+
+osg::Uniform*
+DepthOffsetUtils::getIsNotTextUniform()
+{
+    static osg::ref_ptr<osg::Uniform> s_uniform;
+    static Threading::Mutex           s_mutex;
+
+    if ( !s_uniform.valid() )
+    {
+        Threading::ScopedMutexLock exclusive(s_mutex);
+        if ( !s_uniform.valid() )
+        {
+            s_uniform = new osg::Uniform(osg::Uniform::BOOL, IS_TEXT_UNIFORM);
+            s_uniform->set( false );
+        }
+    }
+    return s_uniform.get();
 }
 
 osg::Program*
-DepthAdjustment::getOrCreateProgram()
+DepthOffsetUtils::getOrCreateProgram()
 {
     static osg::ref_ptr<osg::Program> s_singleton;
     static Threading::Mutex           s_mutex;
@@ -223,7 +300,7 @@ DepthAdjustment::getOrCreateProgram()
         if ( !s_singleton.valid() )
         {
             s_singleton = new osg::Program();
-            s_singleton->addShader( new osg::Shader(osg::Shader::VERTEX, createVertexShader("", FLT_MAX)) );
+            s_singleton->addShader( new osg::Shader(osg::Shader::VERTEX, createVertexShader("")) );
             s_singleton->addShader( new osg::Shader(osg::Shader::FRAGMENT, createFragmentShader("")) );
         }
     }
@@ -231,8 +308,9 @@ DepthAdjustment::getOrCreateProgram()
     return s_singleton.get();
 }
 
+#if 0
 osg::Program*
-DepthAdjustment::getOrCreateProgram( float staticDepthOffset )
+DepthOffsetUtils::getOrCreateProgram( float staticDepthOffset )
 {
     static std::map<float, osg::ref_ptr<osg::Program> > s_programs;
     static Threading::Mutex                             s_mutex;
@@ -252,16 +330,90 @@ DepthAdjustment::getOrCreateProgram( float staticDepthOffset )
         return p;
     }
 }
-
+#endif
 
 std::string
-DepthAdjustment::createVertexFunction( const std::string& funcName )
+DepthOffsetUtils::createVertexFunction( const std::string& funcName )
 {
-    return createVertexShader( funcName, FLT_MAX );
+    return createVertexShader( funcName );
 }
 
 std::string
-DepthAdjustment::createFragmentFunction( const std::string& funcName )
+DepthOffsetUtils::createFragmentFunction( const std::string& funcName )
 {
     return createFragmentShader( funcName );
+}
+
+//------------------------------------------------------------------------
+
+DepthOffsetGroup::DepthOffsetGroup() :
+_auto ( true ),
+_dirty( false )
+{
+    osg::StateSet* s = this->getOrCreateStateSet();
+
+    osg::Program* program = DepthOffsetUtils::getOrCreateProgram();
+    s->setAttributeAndModes( program, 1 );
+
+    _minOffsetUniform = DepthOffsetUtils::createMinOffsetUniform();
+    s->addUniform( _minOffsetUniform );
+
+    s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
+}
+
+void
+DepthOffsetGroup::setMinimumOffset( float value )
+{
+    _auto = false;
+    _minOffsetUniform->set( std::max(0.0f, value) );
+}
+
+void
+DepthOffsetGroup::setAutoMinimumOffset()
+{
+    _auto = true;
+    dirty();
+}
+
+void
+DepthOffsetGroup::dirty()
+{
+    if ( !_dirty )
+    {
+        _dirty = true;
+        ADJUST_UPDATE_TRAV_COUNT(this, 1);
+    }
+}
+
+osg::BoundingSphere
+DepthOffsetGroup::computeBound() const
+{
+    const_cast<DepthOffsetGroup*>(this)->dirty();
+    return osg::Group::computeBound();
+}
+
+void
+DepthOffsetGroup::traverse(osg::NodeVisitor& nv)
+{
+    if ( _dirty && nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        update();
+        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        _dirty = false;
+    }
+    osg::Group::traverse( nv );
+}
+
+void
+DepthOffsetGroup::update()
+{
+    GeometryAnalysisVisitor v;
+    v._analyzeSegments = _auto;
+    this->accept( v );
+
+    if ( _auto )
+    {
+        double maxLen = sqrt(v._segmentAnalyzer._maxLen2);
+        _minOffsetUniform->set( float(sqrt(maxLen)*19.0) );
+    }
 }

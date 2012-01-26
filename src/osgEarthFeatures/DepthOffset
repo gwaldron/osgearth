@@ -31,7 +31,7 @@ namespace osgEarth { namespace Features
      * Utilities to manage depth testing for feature data. Handy especially
      * for terrain-conforming lines.
      */
-    class OSGEARTHFEATURES_EXPORT DepthAdjustment
+    class OSGEARTHFEATURES_EXPORT DepthOffsetUtils
     {
     public:
         /**
@@ -41,7 +41,20 @@ namespace osgEarth { namespace Features
          * will analyze it and attempt to come up with a reasonable default
          * minimum offset.
          */
-        static osg::Uniform* createUniform( osg::Node* graphToAdjust =0L );
+        static osg::Uniform* createMinOffsetUniform( osg::Node* graphToAdjust =0L );
+
+        /**
+         * Analyses a graph, calculates a suitable minimum depth offset, and
+         * returns it. Also may install support uniforms within the graph as
+         * necessary to support depth offsetting.
+         */
+        static float recalculate( osg::Node* graph );
+
+        /**
+         * Traverses a graph and applies the necessary uniforms to statesets
+         * so they'll work with depth offsetting.
+         */
+        static void prepareGraph( osg::Node* graph );
 
         /**
          * Creates a complete shader program that you can use to implement vertex
@@ -55,7 +68,19 @@ namespace osgEarth { namespace Features
          * offset specified. This program does not use a uniform, it just hard-
          * codes the minimum offset.
          */
-        static osg::Program* getOrCreateProgram( float staticMinimumOffset );
+        //static osg::Program* getOrCreateProgram( float staticMinimumOffset );
+
+        /**
+         * Returns a uniform that, when used with the Program, can inform the program
+         * whether the underlying drawables are osgText drawables.
+         */
+        static osg::Uniform* getIsTextUniform();
+
+        /**
+         * Returns a uniform that, when used with the Program, can inform the program
+         * whether the underlying drawables are NOT osgText drawables.
+         */
+        static osg::Uniform* getIsNotTextUniform();
 
         /**
          * Creates the source for a depth adjustment vertex shader. Use this instead
@@ -72,6 +97,32 @@ namespace osgEarth { namespace Features
          */
         static std::string createFragmentFunction(
             const std::string& funcName ="osgearth_depth_adjustment_fragment" );
+    };
+
+    /**
+     * Group that applies the depth offset technique to its children.
+     */
+    class OSGEARTHFEATURES_EXPORT DepthOffsetGroup : public osg::Group
+    {
+    public:
+        DepthOffsetGroup();
+
+        void setMinimumOffset( float value );
+
+        void setAutoMinimumOffset();
+
+    public: // osg::Node
+
+        virtual osg::BoundingSphere computeBound() const;
+
+        virtual void traverse(osg::NodeVisitor& );
+
+    protected:
+        bool _auto;
+        bool _dirty;
+        osg::Uniform* _minOffsetUniform;
+        void update();
+        void dirty();
     };
 
 } } // namespace osgEarth::Features

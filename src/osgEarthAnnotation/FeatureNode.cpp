@@ -20,7 +20,6 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/MeshClamper>
-#include <osgEarthFeatures/DepthAdjustment>
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/FindNode>

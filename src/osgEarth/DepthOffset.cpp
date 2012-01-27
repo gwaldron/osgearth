@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthFeatures/DepthOffset>
+#include <osgEarth/DepthOffset>
 #include <osgEarth/StringUtils>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/LineFunctor>
@@ -31,7 +31,6 @@
 #define LC "[DepthOffset] "
 
 using namespace osgEarth;
-using namespace osgEarth::Features;
 
 #define MIN_OFFSET_UNIFORM "osgearth_depthoffset_minoffset"
 #define IS_TEXT_UNIFORM    "osgearth_depthoffset_istext"
@@ -121,7 +120,9 @@ namespace
             << "uniform mat4 osg_ViewMatrixInverse; \n"
             << "uniform float " << MIN_OFFSET_UNIFORM << "; \n"
             << "uniform bool " << IS_TEXT_UNIFORM << "; \n"
-            << "varying vec4 adjV; \n";
+            << "varying vec4 adjV; \n"
+            << "varying float simRange; \n";
+        
 
         if ( !shaderCompName.empty() )
             buf << "void " << shaderCompName << "() { \n";
@@ -157,6 +158,10 @@ namespace
 
             // Transform the new adjusted vertex into clip space and pass it to the fragment shader.
             "adjV = gl_ProjectionMatrix * vertEye; \n"
+
+            // Also pass along the simulated range (eye=>vertex distance). We will need this
+            // to detect when the depth offset has pushed the Z value "behind" the camera.
+            "simRange = range - offset; \n"
             ;
 
         if ( shaderCompName.empty() )
@@ -185,19 +190,34 @@ namespace
             // deactivate early-Z optimizations; so be it!!
             return 
                 "#version 110 \n"
+
                 "uniform bool " IS_TEXT_UNIFORM "; \n"
                 "uniform sampler2D tex0; \n"
                 "varying vec4 adjV; \n"
-                "void main(void) { \n"
-                "    if (" IS_TEXT_UNIFORM ") { \n"
+                "varying float simRange; \n"
+
+                "void main(void) \n"
+                "{ \n"
+                "    if (" IS_TEXT_UNIFORM ") \n"
+                "    { \n"
                 "        float alpha = texture2D(tex0,gl_TexCoord[0].st).a; \n"
                 "        gl_FragColor = vec4( gl_Color.rgb, gl_Color.a * alpha); \n"
                 "    } \n"
-                "    else { \n"
+                "    else \n"
+                "    { \n"
                 "        gl_FragColor = gl_Color; \n"
                 "    } \n"
-                "    float z = adjV.z/adjV.w; \n"
-                "    gl_FragDepth = 0.5*(1.0+z); \n"
+
+                // transform clipspace depth into [0..1] for FragDepth:
+                "    float z = 0.5 * (1.0+(adjV.z/adjV.w)); \n"
+
+                // if the offset pushed the Z behind the eye, the projection mapping will
+                // result in a z>1. We need to bring these values back down to the 
+                // near clip plan (z=0). We need to check simRange too before doing this
+                // so we don't draw fragments that are legitimently beyond the far clip plane.
+                "    if ( z > 1.0 && simRange < 0.0 ) { z = 0.0; } \n"
+
+                "    gl_FragDepth = max(0.0, z); \n"
                 "} \n";
         }
         else
@@ -205,9 +225,12 @@ namespace
             return Stringify() <<
                 "#version 110 \n"
                 "varying vec4 adjV; \n"
-                "void " << shaderCompName << "(inout vec4 color) { \n"
-                "    float z = adjV.z/adjV.w; \n"
-                "    gl_FragDepth = 0.5*(1.0+z); \n"
+                "varying float simRange; \n"
+                "void " << shaderCompName << "(inout vec4 color) \n"
+                "{ \n"
+                "    float z = 0.5 * (1.0+(adjV.z/adjV.w)); \n"
+                "    if ( z > 1.0 && simRange < 0.0 ) { z = 0.0; } \n"
+                "    gl_FragDepth = max(0.0,z); \n"
                 "} \n";
         }
     }

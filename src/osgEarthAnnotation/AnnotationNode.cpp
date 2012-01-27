@@ -20,8 +20,8 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationSettings>
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthFeatures/DepthOffset>
 
+#include <osgEarth/DepthOffset>
 #include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
@@ -29,7 +29,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 
 //-------------------------------------------------------------------
 

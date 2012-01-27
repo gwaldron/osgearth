@@ -18,7 +18,7 @@
  */
 #include <osgEarthFeatures/MeshClamper>
 
-#include <osgEarth/NodeUtils>
+#include <osgEarth/DPLineSegmentIntersector>
 
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
@@ -70,9 +70,11 @@ MeshClamper::apply( osg::Geode& geode )
     const osg::EllipsoidModel* em = _terrainSRS->getEllipsoid();
     osg::Vec3d n_vector(0,0,1), start, end, msl;
 
+    // use a double-precision intersector b/c our intersection segment will be really long :)
     DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(start, end);
-    //osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
     osgUtil::IntersectionVisitor iv( lsi );
+
+    double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
 
     for( unsigned i=0; i<geode.getNumDrawables(); ++i )
     {
@@ -102,8 +104,8 @@ MeshClamper::apply( osg::Geode& geode )
                 }
 
                 lsi->reset();
-                lsi->setStart( vw + n_vector*50000.0*_scale );
-                lsi->setEnd( vw - n_vector*em->getRadiusPolar() ); //up*50000.0*_scale );
+                lsi->setStart( vw + n_vector*r*_scale );
+                lsi->setEnd( vw - n_vector*r );
 
                 _terrainPatch->accept( iv );
 

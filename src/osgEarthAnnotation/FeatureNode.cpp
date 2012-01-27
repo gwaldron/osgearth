@@ -25,7 +25,12 @@
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+
+#include <osg/BoundingSphere>
+#include <osg/Polytope>
 #include <osg/Transform>
+
+#define LC "[FeatureNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -130,7 +135,8 @@ FeatureNode::getAttachPoint()
 void
 FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 {
-    if ( _feature->getGeocentricBound().intersects( tile->getBound() ) )
+    osg::Polytope p = _feature->getWorldBoundingPolytope();
+    if ( p.contains( tile->getBound() ) )
     {
         clampMesh( tile );
     }

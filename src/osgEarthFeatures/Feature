@@ -25,6 +25,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
+#include <osg/Shape>
 #include <map>
 #include <list>
 
@@ -148,6 +149,13 @@ namespace osgEarth { namespace Features
          */
         const osg::BoundingSphere& getGeocentricBound() const;
 
+        /** 
+         * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
+         * geographic extents covered by this feature. This is useful for roughly
+         * intersecting the feature with the terrain graph.
+         */
+        const osg::Polytope& getWorldBoundingPolytope() const;
+
         const AttributeTable& getAttrs() const { return _attrs; }
 
         void set( const std::string& name, const std::string& value );
@@ -185,6 +193,8 @@ namespace osgEarth { namespace Features
         optional<GeoInterpolation>           _geoInterp;
         GeoExtent                            _cachedExtent;
         osg::BoundingSphere                  _cachedGeocentricBound;
+        osg::Polytope                        _cachedBoundingPolytope;
+        bool                                 _cachedBoundingPolytopeValid;
 
         void dirty();
     };

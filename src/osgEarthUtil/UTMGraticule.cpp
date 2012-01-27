@@ -21,13 +21,13 @@
 
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/TextSymbolizer>
-#include <osgEarthFeatures/DepthOffset>
 
 #include <osgEarthSymbology/Geometry>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/Decluttering>
 
 #include <osgEarth/Registry>
+#include <osgEarth/DepthOffset>
 #include <osgEarth/ECEF>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>

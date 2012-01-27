@@ -17,21 +17,40 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-#ifndef OSGEARTHFEATURES_DEPTH_ADJUSTMENT_H
-#define OSGEARTHFEATURES_DEPTH_ADJUSTMENT_H 1
+#ifndef OSGEARTH_DEPTH_ADJUSTMENT_H
+#define OSGEARTH_DEPTH_ADJUSTMENT_H 1
 
-#include <osgEarthFeatures/Common>
+#include <osgEarth/Common>
 #include <osg/Program>
+#include <osg/Uniform>
 
-namespace osgEarth { namespace Features
+/**
+* Depth offsetting mitigates z-fighting artifacts for geometry that is very close
+* together, e.g. terrain-following lines. It uses a shader program to apply a 
+* simulated eye-space offset, writing values to the z-buffer as if the geometry were
+* drawn closer to the camera than they actually are. The effect is similar to what
+* glPolygonOffset is *supposed* to do (but doesn't). You get rid of z-fighting but
+* still maintain local occlusion.
+*
+* There is a trade off. You need to set a "minimum offset" that the technique will
+* apply to the geometry. From there, it uses distance-to-vertex to ramp between that and
+* a set maximum offset. The appropriate minimum offset depends a lot on the tessellation
+* of your geometry, so it's wise to use a higher offset for geometry with longer 
+* segments when in a round-earth situation. The automatic setting (the default) analyzes
+* the subgraph and picks a decent value, but you can always override this is you like.
+*
+* Caveat: for higher offsets, the near clip plane will come into effect when you get too
+* close. There's probably a fix but I haven't figured it out yet. This isn't usually an
+* issue, since geometry with long segments is typically something meant to be viewed
+* from far away (like a country boundary for example).
+*/
+namespace osgEarth
 {
-    using namespace osgEarth;
-
     /**
      * Utilities to manage depth testing for feature data. Handy especially
      * for terrain-conforming lines.
      */
-    class OSGEARTHFEATURES_EXPORT DepthOffsetUtils
+    class OSGEARTH_EXPORT DepthOffsetUtils
     {
     public:
         /**
@@ -62,13 +81,6 @@ namespace osgEarth { namespace Features
          * the depth offset value.
          */
         static osg::Program* getOrCreateProgram();
-
-        /**
-         * Returns a program that statically performs a depth adjustment using the
-         * offset specified. This program does not use a uniform, it just hard-
-         * codes the minimum offset.
-         */
-        //static osg::Program* getOrCreateProgram( float staticMinimumOffset );
 
         /**
          * Returns a uniform that, when used with the Program, can inform the program
@@ -102,13 +114,26 @@ namespace osgEarth { namespace Features
     /**
      * Group that applies the depth offset technique to its children.
      */
-    class OSGEARTHFEATURES_EXPORT DepthOffsetGroup : public osg::Group
+    class OSGEARTH_EXPORT DepthOffsetGroup : public osg::Group
     {
     public:
+        /**
+         * Constructs a new depth offset group
+         */
         DepthOffsetGroup();
 
+        /**
+         * Sets a minimum depth offset range (in scene units, e.g. meters)
+         * This is the minimim simulated depth offset that will be applied to 
+         * geometry under this group.
+         */
         void setMinimumOffset( float value );
 
+        /**
+         * Sets the group to automatically calculate an "appropriate" minimum
+         * depth offset based on the child geometry. Whenever the child graph
+         * changes, it will attempt to recalculate the best offset to use.
+         */
         void setAutoMinimumOffset();
 
     public: // osg::Node
@@ -125,6 +150,6 @@ namespace osgEarth { namespace Features
         void dirty();
     };
 
-} } // namespace osgEarth::Features
+} // namespace osgEarth
 
-#endif // OSGEARTHFEATURES_CENTROID_FILTER_H
+#endif // OSGEARTH_DEPTH_ADJUSTMENT_H

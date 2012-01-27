@@ -19,11 +19,11 @@
 #include <osgEarthUtil/MGRSGraticule>
 #include <osgEarthUtil/Formatters>
 
-#include <osgEarthFeatures/DepthOffset>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/TextSymbolizer>
 
 #include <osgEarth/ECEF>
+#include <osgEarth/DepthOffset>
 
 #include <osg/BlendFunc>
 #include <osg/PagedLOD>

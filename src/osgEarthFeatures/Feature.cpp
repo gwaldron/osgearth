@@ -139,7 +139,8 @@ AttributeValue::getBool( bool defaultValue ) const
 
 Feature::Feature( FeatureID fid ) :
 _fid( fid ),
-_srs( 0L )
+_srs( 0L ),
+_cachedBoundingPolytopeValid( false )
 {
     //NOP
 }
@@ -147,7 +148,8 @@ _srs( 0L )
 Feature::Feature( Geometry* geom, const SpatialReference* srs, const Style& style, FeatureID fid ) :
 _geom ( geom ),
 _srs  ( srs ),
-_fid  ( fid )
+_fid  ( fid ),
+_cachedBoundingPolytopeValid( false )
 {
     if ( !style.empty() )
         _style = style;
@@ -158,7 +160,8 @@ _fid      ( rhs._fid ),
 _attrs    ( rhs._attrs ),
 _style    ( rhs._style ),
 _geoInterp( rhs._geoInterp ),
-_srs      ( rhs._srs.get() )
+_srs      ( rhs._srs.get() ),
+_cachedBoundingPolytopeValid( false )
 {
     if ( rhs._geom.valid() )
         _geom = rhs._geom->clone();
@@ -189,6 +192,7 @@ Feature::dirty()
 {
     _cachedExtent = GeoExtent::INVALID;
     _cachedGeocentricBound._radius = -1.0; // invalidate
+    _cachedBoundingPolytopeValid = false;
 }
 
 void
@@ -418,8 +422,56 @@ Feature::getGeocentricBound() const
                     const_cast<Feature*>(this)->_cachedGeocentricBound.expandBy( ecef );
                 }
             }
+            if ( _cachedGeocentricBound.valid() && _cachedGeocentricBound.radius() == 0.0 )
+            {
+                const_cast<Feature*>(this)->_cachedGeocentricBound.radius() = 1.0;
+            }
         }
     }
     return _cachedGeocentricBound;
 }
 
+const osg::Polytope&
+Feature::getWorldBoundingPolytope() const
+{
+    if ( !_cachedBoundingPolytopeValid )
+    {
+        const osg::BoundingSphere& bs = getGeocentricBound();
+        if ( bs.valid() )
+        {
+            const osg::EllipsoidModel* e = getSRS()->getEllipsoid();
+
+            osg::Polytope& p = const_cast<osg::Polytope&>(_cachedBoundingPolytope);
+
+            // add planes for the four sides of the BS (in local space). Normals point inwards.
+            p.add( osg::Plane(osg::Vec3d( 1, 0,0), osg::Vec3d(-bs.radius(),0,0)) );
+            p.add( osg::Plane(osg::Vec3d(-1, 0,0), osg::Vec3d( bs.radius(),0,0)) );
+            p.add( osg::Plane(osg::Vec3d( 0, 1,0), osg::Vec3d(0, -bs.radius(),0)) );
+            p.add( osg::Plane(osg::Vec3d( 0,-1,0), osg::Vec3d(0,  bs.radius(),0)) );
+
+            // for a projected feature, we're done. For a geocentric one, transform the polytope
+            // into world (ECEF) space.
+            if ( getSRS()->isGeographic() )
+            {
+                // add a bottom cap, unless the bounds are sufficiently large.
+                double minRad = std::min(e->getRadiusPolar(), e->getRadiusEquator());
+                double maxRad = std::max(e->getRadiusPolar(), e->getRadiusEquator());
+                double zeroOffset = bs.center().length();
+                if ( zeroOffset > minRad * 0.1 )
+                {
+                    p.add( osg::Plane(osg::Vec3d(0,0,1), osg::Vec3d(0,0,-maxRad+zeroOffset)) );
+                }
+
+                // transform the clipping planes ito ECEF space
+                osg::Matrix local2world;
+                getSRS()->getEllipsoid()->computeLocalToWorldTransformFromXYZ( 
+                    bs.center().x(), bs.center().y(), bs.center().z(),
+                    local2world );
+                p.transform( local2world );
+            }
+
+            const_cast<Feature*>(this)->_cachedBoundingPolytopeValid = true;
+        }
+    }
+    return _cachedBoundingPolytope;
+}

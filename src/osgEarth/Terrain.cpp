@@ -18,6 +18,7 @@
  */
 
 #include <osgEarth/Terrain>
+#include <osgEarth/DPLineSegmentIntersector>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 #include <osgViewer/View>
@@ -73,9 +74,12 @@ Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height, osg::Node* patc
     if ( !getProfile()->getExtent().contains(mapPos.x(), mapPos.y()) )
         return 0L;
 
+    const osg::EllipsoidModel* em = getSRS()->getEllipsoid();
+    double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
+
     // calculate the endpoints for an intersection test:
-    osg::Vec3d start(mapPos.x(), mapPos.y(),  50000.0);
-    osg::Vec3d end  (mapPos.x(), mapPos.y(), -50000.0);
+    osg::Vec3d start(mapPos.x(), mapPos.y(),  r);
+    osg::Vec3d end  (mapPos.x(), mapPos.y(), -r);
 
     if ( isGeocentric() )
     {

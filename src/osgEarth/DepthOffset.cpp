@@ -255,7 +255,7 @@ DepthOffsetUtils::recalculate( osg::Node* graph )
         GeometryAnalysisVisitor v;
         v._analyzeSegments = true;
         graph->accept( v );
-        double maxLen = sqrt(v._segmentAnalyzer._maxLen2);
+        double maxLen = std::max(1.0, sqrt(v._segmentAnalyzer._maxLen2));
         minDepthOffset = sqrt(maxLen)*19.0;
 
         OE_DEBUG << LC << std::fixed << std::setprecision(2)

@@ -25,10 +25,15 @@ using namespace osgEarth::Util;
 
 //-----------------------------------------------------------------------
 
-MouseCoordsTool::MouseCoordsTool( MapNode* mapNode ) :
+MouseCoordsTool::MouseCoordsTool( MapNode* mapNode, LabelControl* label, Formatter* formatter ) :
 _mapNode( mapNode )
 {
     _mapNodePath.push_back( mapNode->getTerrainEngine() );
+
+    if ( label )
+    {
+        addCallback( new MouseCoordsLabelCallback(label, formatter) );
+    }
 }
 
 void

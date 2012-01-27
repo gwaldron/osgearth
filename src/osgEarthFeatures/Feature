@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
 #ifndef OSGEARTHFEATURES_FEATURE_H
 #define OSGEARTHFEATURES_FEATURE_H 1
 
@@ -26,6 +25,7 @@
 #include <osgEarthSymbology/Style>
 #include <osgEarth/SpatialReference>
 #include <osg/Array>
+#include <osg/Shape>
 #include <map>
 #include <list>
 
@@ -110,7 +110,7 @@ namespace osgEarth { namespace Features
     public:
         Feature( FeatureID fid =0L );
 
-        Feature( Geometry* geom, const Style& style =Style(), FeatureID fid =0L );
+        Feature( Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0L );
 
         /** Copy contructor */
         Feature( const Feature& rhs, const osg::CopyOp& copyop =osg::CopyOp::DEEP_COPY_ALL );
@@ -119,13 +119,42 @@ namespace osgEarth { namespace Features
 
     public:
 
+        /**
+         * The unique ID of this feature (unique relative to its provider)
+         */
         FeatureID getFID() const;
 
-        void setGeometry( Symbology::Geometry* geom ) { _geom = geom; }
-
-        Symbology::Geometry* getGeometry() { return _geom.get(); }
-
+        /**
+         * The geometry in this feature.
+         */
+        void setGeometry( Symbology::Geometry* geom );
+        Symbology::Geometry* getGeometry() { dirty(); return _geom.get(); }
         const Symbology::Geometry* getGeometry() const { return _geom.get(); }
+
+        /**
+         * The spatial reference of the geometry in this feature.
+         */
+        const SpatialReference* getSRS() const { return _srs.get(); }
+        void setSRS( const SpatialReference* srs );
+
+        /**
+         * Gets the geospatial extent of this feature. Both the Geometry and the SRS
+         * must be non-NULL for this to work.
+         */
+        //const GeoExtent& getExtent() const;
+
+        /** 
+         * Gets the geocentric bounding box that contains the data in this 
+         * feature's geometry.
+         */
+        const osg::BoundingSphere& getGeocentricBound() const;
+
+        /** 
+         * Gets a polytope, in world coordinates (proj or ECEF) that bounds the
+         * geographic extents covered by this feature. This is useful for roughly
+         * intersecting the feature with the terrain graph.
+         */
+        const osg::Polytope& getWorldBoundingPolytope() const;
 
         const AttributeTable& getAttrs() const { return _attrs; }
 
@@ -146,7 +175,7 @@ namespace osgEarth { namespace Features
         const optional<Style>& style() const { return _style; }
 
         /** Geodetic interpolation method. */
-        optional<GeoInterpolation>& geoInterp() { return _geoInterp; }
+        optional<GeoInterpolation>& geoInterp() { dirty(); return _geoInterp; }
         const optional<GeoInterpolation>& geoInterp() const { return _geoInterp; }
 
         /** populates the variables of an expression with attribute values and evals the expression. */
@@ -156,11 +185,18 @@ namespace osgEarth { namespace Features
         const std::string& eval( StringExpression& expr, FilterContext const* context=0L ) const;
 
     protected:
-        FeatureID                         _fid;
-        osg::ref_ptr<Symbology::Geometry> _geom;
-        AttributeTable                    _attrs;
-        optional<Style>                   _style;
-        optional<GeoInterpolation>        _geoInterp;
+        FeatureID                            _fid;
+        osg::ref_ptr<Symbology::Geometry>    _geom;
+        osg::ref_ptr<const SpatialReference> _srs;
+        AttributeTable                       _attrs;
+        optional<Style>                      _style;
+        optional<GeoInterpolation>           _geoInterp;
+        GeoExtent                            _cachedExtent;
+        osg::BoundingSphere                  _cachedGeocentricBound;
+        osg::Polytope                        _cachedBoundingPolytope;
+        bool                                 _cachedBoundingPolytopeValid;
+
+        void dirty();
     };
 
     typedef std::list< osg::ref_ptr<Feature> > FeatureList;

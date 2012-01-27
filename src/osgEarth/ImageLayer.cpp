@@ -316,8 +316,6 @@ ImageLayer::initPreCacheOp()
 GeoImage
 ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback )
 {
-    OE_DEBUG << LC << "Layer \"" << getName() << "\" create image for \"" << key.str() << "\"" << std::endl;
-
     GeoImage result;
 
     // If the layer is disabled, bail out.
@@ -325,6 +323,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool fo
     {
         return GeoImage::INVALID;
     }
+
+    OE_DEBUG << LC << "Layer \"" << getName() << "\" create image for \"" << key.str() << "\"" << std::endl;
 
     CacheBin* cacheBin = getCacheBin( key.getProfile() );
 
@@ -351,7 +351,8 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool fo
     {
         ReadResult r = cacheBin->readImage( key.str() );
         if ( r.succeeded() )
-        {
+        {            
+            OE_DEBUG << LC << getName() << " : " << key.str() << " cache hit" << std::endl;
             ImageUtils::normalizeImage( r.getImage() );
             return GeoImage( r.releaseImage(), key.getExtent() );
         }
@@ -382,6 +383,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool fo
         cacheBin->write( key.str(), result.getImage() );
 	}
 
+    OE_DEBUG << LC << getName() << " : " << key.str() << " result " << (result.valid()? "ok" : "invalid") << std::endl;
     return result;
 }
 
@@ -405,7 +407,6 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 
     TileSource* source = getTileSource();
     if ( !source )
-        //return 0L;
         return GeoImage::INVALID;
 
     // If the profiles are different, use a compositing method to assemble the tile.
@@ -415,11 +416,17 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
     // Fail is the image is blacklisted.
     // ..unless there will be a fallback attempt.
     if ( source->getBlacklist()->contains( key.getTileId() ) && !forceFallback )
-        return GeoImage::INVALID;//return 0L;
+    {
+        OE_DEBUG << LC << "createImageFromTileSource: blacklisted(" << key.str() << ")" << std::endl;
+        return GeoImage::INVALID;
+    }
 
     // Fail if no data is available for this key.
     if ( !source->hasDataAtLOD( key.getLevelOfDetail() ) && !forceFallback )
-        return GeoImage::INVALID;//return 0L;
+    {
+        OE_DEBUG << LC << "createImageFromTileSource: hasDataAtLOD(" << key.str() << ") == false" << std::endl;
+        return GeoImage::INVALID;
+    }
 
 #if 0
     // Return an empty image if there's no data in the requested extent
@@ -431,7 +438,10 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
 #endif
 
     if ( !source->hasDataInExtent( key.getExtent() ) )
-        return GeoImage::INVALID;//return 0L;
+    {
+        OE_DEBUG << LC << "createImageFromTileSource: hasDataInExtent(" << key.str() << ") == false" << std::endl;
+        return GeoImage::INVALID;
+    }
 
     // Good to go, ask the tile source for an image:
     osg::ref_ptr<TileSource::ImageOperation> op = _preCacheOp;
@@ -604,6 +614,10 @@ ImageLayer::assembleImageFromTileSource(const TileKey&    key,
         mosaic = GeoImage(
             mi->createImage(),
             GeoExtent( getProfile()->getSRS(), rxmin, rymin, rxmax, rymax ) );
+    }
+    else
+    {
+        OE_DEBUG << LC << "assembleImageFromTileSource: no intersections (" << key.str() << ")" << std::endl;
     }
 
     if ( mosaic.valid() )

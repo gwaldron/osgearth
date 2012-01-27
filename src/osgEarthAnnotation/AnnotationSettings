@@ -44,12 +44,12 @@ namespace osgEarth { namespace Annotation
          * The depth adjustment will mitigate z-fighting for clamped lines in many cases.
          * DEFAULT: true
          */
-        static void setApplyDepthAdjustmentToClampedLines( bool value ) { _autoDepthAdj = value; }
-        static bool getApplyDepthAdjustmentToClampedLines() { return _autoDepthAdj; }
+        static void setApplyDepthOffsetToClampedLines( bool value ) { _autoDepthOffset = value; }
+        static bool getApplyDepthOffsetToClampedLines() { return _autoDepthOffset; }
 
     private:
         static bool _continuousClamping;
-        static bool _autoDepthAdj;
+        static bool _autoDepthOffset;
     };
 
 } } // namespace osgEarth::Annotation

@@ -14,7 +14,6 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Controls
     ClampCallback
-    DPLineSegmentIntersector
     EarthManipulator
     ElevationManager
     Export
@@ -44,7 +43,6 @@ SET(LIB_COMMON_FILES
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
-    DPLineSegmentIntersector.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
     Formatters.cpp

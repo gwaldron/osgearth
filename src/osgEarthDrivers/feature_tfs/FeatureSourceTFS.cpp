@@ -215,13 +215,15 @@ public:
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if ( layer )
         {
+            const SpatialReference* srs = SpatialReference::create("epsg:4326");
+
             OGR_L_ResetReading(layer);                                
             OGRFeatureH feat_handle;
             while ((feat_handle = OGR_L_GetNextFeature( layer )) != NULL)
             {
                 if ( feat_handle )
                 {
-                    Feature* f = OgrUtils::createFeature( feat_handle );
+                    Feature* f = OgrUtils::createFeature( feat_handle, srs );
                     if ( f ) 
                     {
                         features.push_back( f );

@@ -129,35 +129,56 @@ public:
         creation implies that the datasource opened succesfully. */
     const FeatureProfile* createFeatureProfile()
     {
-        FeatureProfile* result = NULL;
-        if (_capabilities.valid())
+        if ( !_featureProfile.valid() )
         {
-            //Find the feature type by name
-            osg::ref_ptr< WFSFeatureType > featureType = _capabilities->getFeatureTypeByName( _options.typeName().get() );
-            if (featureType.valid())
+            static Threading::Mutex s_mutex;
+            Threading::ScopedMutexLock lock(s_mutex);
+            
+            if ( !_featureProfile.valid() )
             {
-                if (featureType->getExtent().isValid())
-                {
-                    result = new FeatureProfile(featureType->getExtent());
+                FeatureProfile* result = 0L;
 
-                    if (featureType->getTiled())
-                    {                        
-                        result->setTiled( true );
-                        result->setFirstLevel( featureType->getFirstLevel() );
-                        result->setMaxLevel( featureType->getMaxLevel() );
-                        result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), featureType->getExtent().xMin(), featureType->getExtent().yMin(), featureType->getExtent().xMax(), featureType->getExtent().yMax(), 0, 1, 1) );
+                if (_capabilities.valid())
+                {
+                    //Find the feature type by name
+                    osg::ref_ptr< WFSFeatureType > featureType = _capabilities->getFeatureTypeByName( _options.typeName().get() );
+                    if (featureType.valid())
+                    {
+                        if (featureType->getExtent().isValid())
+                        {
+                            result = new FeatureProfile(featureType->getExtent());
+
+                            if (featureType->getTiled())
+                            {                        
+                                result->setTiled( true );
+                                result->setFirstLevel( featureType->getFirstLevel() );
+                                result->setMaxLevel( featureType->getMaxLevel() );
+                                result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), featureType->getExtent().xMin(), featureType->getExtent().yMin(), featureType->getExtent().xMax(), featureType->getExtent().yMax(), 0, 1, 1) );
+                            }
+                        }
                     }
                 }
+
+                if (!result)
+                {
+                    result = new FeatureProfile(GeoExtent(SpatialReference::create( "epsg:4326" ), -180, -90, 180, 90));
+                }
+                
+                _featureProfile = result;
             }
         }
 
-        if (!result)
-        {
-            result = new FeatureProfile(GeoExtent(SpatialReference::create( "epsg:4326" ), -180, -90, 180, 90));
-        }
-        return result;        
+        return _featureProfile.get();
     }
 
+    FeatureProfile* getFeatureProfile()
+    {
+        if ( !_featureProfile.valid() )
+        {
+            createFeatureProfile();
+        }
+        return _featureProfile.get();
+    }
 
     bool getFeatures( const std::string& buffer, const std::string& mimeType, FeatureList& features )
     {
@@ -187,13 +208,16 @@ public:
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if ( layer )
         {
+            FeatureProfile* fp = getFeatureProfile();
+            const SpatialReference* srs = fp ? fp->getSRS() : 0L;
+
             OGR_L_ResetReading(layer);                                
             OGRFeatureH feat_handle;
             while ((feat_handle = OGR_L_GetNextFeature( layer )) != NULL)
             {
                 if ( feat_handle )
                 {
-                    Feature* f = OgrUtils::createFeature( feat_handle );
+                    Feature* f = OgrUtils::createFeature( feat_handle, srs );
                     if ( f ) 
                     {
                         features.push_back( f );
@@ -359,6 +383,7 @@ public:
 private:
     const WFSFeatureOptions         _options;  
     osg::ref_ptr< WFSCapabilities > _capabilities;
+    osg::ref_ptr< FeatureProfile >  _featureProfile;
     FeatureSchema                   _schema;
     osg::ref_ptr<CacheBin>          _cacheBin;
     osg::ref_ptr<osgDB::Options>    _dbOptions;

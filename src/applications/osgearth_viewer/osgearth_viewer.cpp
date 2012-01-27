@@ -323,9 +323,9 @@ main(int argc, char** argv)
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
     osgViewer::Viewer viewer(arguments);
 
-    bool useAutoClip  = arguments.read( "--autoclip" );
-    bool useSky       = arguments.read( "--sky" );
-    bool useOcean     = arguments.read( "--ocean" );
+    bool dontUseAutoClip = arguments.read( "--noautoclip" );
+    bool useSky          = arguments.read( "--sky" );
+    bool useOcean        = arguments.read( "--ocean" );
 
     // reads in a KML file:
     std::string kmlFile;
@@ -382,12 +382,12 @@ main(int argc, char** argv)
             // planes based on your view of the horizon. This prevents near clipping issues
             // when you are very close to the ground. If your app never brings a user very
             // close to the ground, you may not need this.
-            if ( externals.hasChild("autoclip") )
+            if ( externals.hasChild("noautoclip") )
             {
-                useAutoClip = externals.child("autoclip").boolValue( useAutoClip );
+                dontUseAutoClip = externals.child("noautoclip").boolValue( dontUseAutoClip );
             }
 
-            if ( useSky || useAutoClip || useOcean )
+            if ( useSky || useOcean || !dontUseAutoClip )
             {
                 viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
             }

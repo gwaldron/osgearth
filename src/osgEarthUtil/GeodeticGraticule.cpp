@@ -267,6 +267,9 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
     if ( hasText )
         labels = new osg::Group();
 
+    // spatial ref for features:
+    const SpatialReference* srs = tileExtent.getSRS()->getGeographicSRS();
+
     // longitude lines
     for( unsigned cx = 0; cx < cellsPerTileX; ++cx )
     {
@@ -274,7 +277,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
         LineString* lon = new LineString(2);
         lon->push_back( osg::Vec3d(clon, tileExtent.yMin(), 0) );
         lon->push_back( osg::Vec3d(clon, tileExtent.yMax(), 0) );
-        lonLines.push_back( new Feature(lon) );
+        lonLines.push_back( new Feature(lon, srs) );
 
         if ( hasText )
         {
@@ -301,7 +304,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
         LineString* lat = new LineString(2);
         lat->push_back( osg::Vec3d(tileExtent.xMin(), clat, 0) );
         lat->push_back( osg::Vec3d(tileExtent.xMax(), clat, 0) );
-        latLines.push_back( new Feature(lat) );
+        latLines.push_back( new Feature(lat, srs) );
 
         if ( hasText )
         {

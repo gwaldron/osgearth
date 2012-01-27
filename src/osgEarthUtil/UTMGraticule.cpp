@@ -27,6 +27,7 @@
 #include <osgEarthAnnotation/Decluttering>
 
 #include <osgEarth/Registry>
+#include <osgEarth/DepthOffset>
 #include <osgEarth/ECEF>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>
@@ -142,15 +143,19 @@ UTMGraticule::init()
         LineSymbol* line = _options->primaryStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color::Gray;
         line->stroke()->width() = 1.0;
+        line->tessellation() = 20;
 
         AltitudeSymbol* alt = _options->primaryStyle()->getOrCreate<AltitudeSymbol>();
-        alt->verticalOffset() = NumericExpression(4900.0);
+        //alt->verticalOffset() = NumericExpression(4900.0);
 
         TextSymbol* text = _options->primaryStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
         text->halo()->color() = Color(Color::Black, 0.2f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
+
+    // make the shared depth attr:
+    _depthAttribute = new osg::Depth(osg::Depth::LEQUAL,0,1,false);
 
     // this will intialize the graph.
     rebuild();
@@ -171,6 +176,14 @@ UTMGraticule::rebuild()
     {
         _root = new DrapeableNode( _mapNode.get(), false );
         this->addChild( _root );
+
+        // set up depth offsetting.
+        osg::StateSet* s = _root->getOrCreateStateSet();
+        s->setAttributeAndModes( DepthOffsetUtils::getOrCreateProgram(), 1 );
+        s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
+        osg::Uniform* u = DepthOffsetUtils::createMinOffsetUniform();
+        u->set( 10000.0f );
+        s->addUniform( u );
     }
     else
     {
@@ -229,6 +242,8 @@ UTMGraticule::rebuild()
 
     // and the polar tile GZDs.
     //_root->addChild( buildPolarGZDTiles() );
+
+    DepthOffsetUtils::prepareGraph( _root );
 }
 
 
@@ -259,7 +274,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     LineString* lon = new LineString(2);
     lon->push_back( osg::Vec3d(extent.xMin(), extent.yMax(), 0) );
     lon->push_back( osg::Vec3d(extent.xMin(), extent.yMin(), 0) );
-    Feature* lonFeature = new Feature(lon);
+    Feature* lonFeature = new Feature(lon, extent.getSRS());
     lonFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
     features.push_back( lonFeature );
 
@@ -267,7 +282,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     LineString* lat = new LineString(2);
     lat->push_back( osg::Vec3d(extent.xMin(), extent.yMin(), 0) );
     lat->push_back( osg::Vec3d(extent.xMax(), extent.yMin(), 0) );
-    Feature* latFeature = new Feature(lat);
+    Feature* latFeature = new Feature(lat, extent.getSRS());
     latFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
     features.push_back( latFeature );
 
@@ -277,7 +292,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         LineString* lat = new LineString(2);
         lat->push_back( osg::Vec3d(extent.xMin(), extent.yMax(), 0) );
         lat->push_back( osg::Vec3d(extent.xMax(), extent.yMax(), 0) );
-        Feature* latFeature = new Feature(lat);
+        Feature* latFeature = new Feature(lat, extent.getSRS());
         latFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
         features.push_back( latFeature );
     }
@@ -306,7 +321,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         
         osg::Geode* textGeode = new osg::Geode();
         textGeode->getOrCreateStateSet()->setRenderBinDetails( 9998, "DepthSortedBin" );   
-        textGeode->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false), 1 );
+        textGeode->getOrCreateStateSet()->setAttributeAndModes( _depthAttribute, 1 );
         
         osg::Drawable* d = ts.create(name);
         d->getOrCreateStateSet()->setRenderBinToInherit();

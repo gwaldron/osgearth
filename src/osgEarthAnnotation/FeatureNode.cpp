@@ -20,13 +20,17 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/MeshClamper>
-#include <osgEarthFeatures/DepthAdjustment>
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+
+#include <osg/BoundingSphere>
+#include <osg/Polytope>
 #include <osg/Transform>
+
+#define LC "[FeatureNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -57,7 +61,6 @@ FeatureNode::init()
     this->removeChildren( 0, this->getNumChildren() );
 
     // build the new feature geometry
-    if ( _feature.valid() && _feature->getGeometry() && _mapNode.valid() )
     {
         GeometryCompilerOptions options = _options;
         
@@ -71,12 +74,14 @@ FeatureNode::init()
         GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
         GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
+        //osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( _feature->getExtent() );
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
         FilterContext context( session, profile.get(), extent );
+        //FilterContext context( session, profile.get(), _feature->getExtent() );
 
         // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
         // of the geometry when performing localization or converting to geocentric.
-        osg::ref_ptr< Feature > clone = new osgEarth::Features::Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
+        osg::ref_ptr< Feature > clone = new Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
 
         osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         if ( node )
@@ -130,7 +135,8 @@ FeatureNode::getAttachPoint()
 void
 FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 {
-    if ( key.getExtent().bounds().intersects( _feature->getGeometry()->getBounds() ) )
+    osg::Polytope p = _feature->getWorldBoundingPolytope();
+    if ( p.contains( tile->getBound() ) )
     {
         clampMesh( tile );
     }

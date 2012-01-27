@@ -66,11 +66,11 @@ ElevationQuery::getTechnique() const
     return _technique;
 }
 
-void
-ElevationQuery::setTechnique( ElevationQuery::Technique technique )
-{
-    _technique = technique;
-}
+//void
+//ElevationQuery::setTechnique( ElevationQuery::Technique technique )
+//{
+//    _technique = technique;
+//}
 
 void
 ElevationQuery::setMaxTilesToCache( int value )
@@ -139,6 +139,10 @@ ElevationQuery::getElevations(const std::vector<osg::Vec3d>& points,
         if ( getElevationImpl( *i, pointsSRS, elevation, desiredResolution ) )
         {
             out_elevations.push_back( elevation );
+        }
+        else
+        {
+            out_elevations.push_back( 0.0 );
         }
     }
     return true;

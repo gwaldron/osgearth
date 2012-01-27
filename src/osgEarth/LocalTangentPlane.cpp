@@ -29,15 +29,15 @@ using namespace osgEarth;
 
 // --------------------------------------------------------------------------
 
-LTPSpatialReference::LTPSpatialReference( void* handle, const osg::Vec3d& worldPointLLA ) :
+TangentPlaneSpatialReference::TangentPlaneSpatialReference( void* handle, const osg::Vec3d& originLLA ) :
 SpatialReference( handle, false ),
-_worldPointLLA  ( worldPointLLA )
+_originLLA      ( originLLA )
 {
-    //todo, set proper init string
+    //todo, set proper init string?
 }
 
 void
-LTPSpatialReference::_init()
+TangentPlaneSpatialReference::_init()
 {
     SpatialReference::_init();
 
@@ -50,16 +50,16 @@ LTPSpatialReference::_init()
     // set up the LTP matrixes.
 
     getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
-        osg::DegreesToRadians(_worldPointLLA.y()),
-        osg::DegreesToRadians(_worldPointLLA.x()),
-        _worldPointLLA.z(),
+        osg::DegreesToRadians(_originLLA.y()),
+        osg::DegreesToRadians(_originLLA.x()),
+        _originLLA.z(),
         _local2world);
 
     _world2local.invert( _local2world );
 }
 
 bool
-LTPSpatialReference::preTransform(double& x, double& y, double& z, void* context) const
+TangentPlaneSpatialReference::preTransform(double& x, double& y, double& z, void* context) const
 {
     osg::Vec3d world = osg::Vec3d(x,y,z) * _local2world;
     double lat, lon, height;
@@ -71,7 +71,7 @@ LTPSpatialReference::preTransform(double& x, double& y, double& z, void* context
 }
 
 bool
-LTPSpatialReference::postTransform(double& x, double& y, double& z, void* context) const
+TangentPlaneSpatialReference::postTransform(double& x, double& y, double& z, void* context) const
 {
     osg::Vec3d world;
     getEllipsoid()->convertLatLongHeightToXYZ(
@@ -83,10 +83,10 @@ LTPSpatialReference::postTransform(double& x, double& y, double& z, void* contex
 }
 
 bool
-LTPSpatialReference::_isEquivalentTo( const SpatialReference* srs ) const
+TangentPlaneSpatialReference::_isEquivalentTo( const SpatialReference* srs ) const
 {
     return 
         srs->isLTP() && 
-        _worldPointLLA == static_cast<const LTPSpatialReference*>(srs)->_worldPointLLA ;
-    // todo: check the reference ellipsoids
+        _originLLA == static_cast<const TangentPlaneSpatialReference*>(srs)->_originLLA ;
+    // todo: check the reference ellipsoids?
 }

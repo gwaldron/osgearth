@@ -124,7 +124,6 @@ namespace osgEarth
         /**
          * Sets the technique to use for height determination. See the Technique
          * enum in this class. The default is TECHNIQUE_PARAMETRIC.
-         */
         void setTechnique( Technique technique );
 
         /**

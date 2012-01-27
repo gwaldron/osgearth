@@ -215,9 +215,7 @@ PixelAutoTransform::accept( osg::NodeVisitor& nv )
                     double scaledMinPixels = _minPixels * _minimumScale;
                     double scale = pixels < scaledMinPixels ? scaledMinPixels / pixels : 1.0;
 
-                    OE_DEBUG << LC
-                        << "Pixels = " << pixels << ", minPix = " << _minPixels << ", scale = " << scale
-                        << std::endl;
+                    //OE_DEBUG << LC << "Pixels = " << pixels << ", minPix = " << _minPixels << ", scale = " << scale << std::endl;
 
                     setScale( scale );
                 }

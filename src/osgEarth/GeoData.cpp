@@ -38,6 +38,27 @@
 using namespace osgEarth;
 
 
+namespace
+{
+    void s_normalizeLongitude( double& x )
+    {
+        while( x < -180. ) x += 360.;
+        while( x >  180. ) x -= 360.;
+    }
+
+    bool s_crossesAntimeridian( double x0, double x1 )
+    {
+        return ((x0 < 0.0 && x1 > 0.0 && x0-x1 < -180.0) ||
+                (x1 < 0.0 && x0 > 0.0 && x1-x0 < -180.0));
+    }
+
+    double s_westToEastLongitudeDistance( double west, double east )
+    {
+        return west < east ? east-west : fmod(east,360.)-west;
+    }
+}
+
+
 Bounds::Bounds() :
 osg::BoundingBoxImpl<osg::Vec3d>( DBL_MAX, DBL_MAX, DBL_MAX, -DBL_MAX, -DBL_MAX, -DBL_MAX )
 {
@@ -182,36 +203,60 @@ GeoExtent GeoExtent::INVALID = GeoExtent();
 
 
 GeoExtent::GeoExtent():
-_xmin(FLT_MAX),
-_ymin(FLT_MAX),
-_xmax(-FLT_MAX),
-_ymax(-FLT_MAX)
+_west   ( DBL_MAX ),
+_east   ( DBL_MAX ),
+_south  ( DBL_MAX ),
+_north  ( DBL_MAX )
 {
     //NOP - invalid
 }
 
-GeoExtent::GeoExtent(const SpatialReference* srs,
-                     double xmin, double ymin, double xmax, double ymax) :
-_srs( srs ),
-_xmin(xmin),_ymin(ymin),_xmax(xmax),_ymax(ymax)
-{
-    //NOP
-}
-
-
-GeoExtent::GeoExtent( const SpatialReference* srs, const Bounds& bounds ) :
-_srs( srs ),
-_xmin( bounds.xMin() ),
-_ymin( bounds.yMin() ),
-_xmax( bounds.xMax() ),
-_ymax( bounds.yMax() )
+GeoExtent::GeoExtent(const SpatialReference* srs) :
+_srs    ( srs ),
+_west   ( DBL_MAX ),
+_east   ( DBL_MAX ),
+_south  ( DBL_MAX ),
+_north  ( DBL_MAX )
 {
     //nop
 }
 
+GeoExtent::GeoExtent(const SpatialReference* srs,
+                     double west, double south, double east, double north ) :
+_srs    ( srs ),
+_west   ( west ),
+_east   ( east ),
+_south  ( south ),
+_north  ( north )
+{
+    if ( isValid() && srs->isGeographic() )
+    {
+        s_normalizeLongitude( _west );
+        s_normalizeLongitude( _east );
+    }
+}
+
+
+GeoExtent::GeoExtent( const SpatialReference* srs, const Bounds& bounds ) :
+_srs    ( srs ),
+_west   ( bounds.xMin() ),
+_east   ( bounds.xMax() ),
+_south  ( bounds.yMin() ),
+_north  ( bounds.yMax() )
+{
+    if ( isValid() && srs->isGeographic() )
+    {
+        s_normalizeLongitude( _west );
+        s_normalizeLongitude( _east );
+    }
+}
+
 GeoExtent::GeoExtent( const GeoExtent& rhs ) :
-_srs( rhs._srs ),
-_xmin( rhs._xmin ), _ymin( rhs._ymin ), _xmax( rhs._xmax ), _ymax( rhs._ymax )
+_srs  ( rhs._srs ),
+_east ( rhs._east ),
+_west ( rhs._west ),
+_south( rhs._south ),
+_north( rhs._north )
 {
     //NOP
 }
@@ -222,13 +267,14 @@ GeoExtent::operator == ( const GeoExtent& rhs ) const
     if ( !isValid() && !rhs.isValid() )
         return true;
 
-    else return
-        isValid() && rhs.isValid() &&
-        _xmin == rhs._xmin &&
-        _ymin == rhs._ymin &&
-        _xmax == rhs._xmax &&
-        _ymax == rhs._ymax &&
-        _srs.valid() && rhs._srs.valid() &&
+    if ( !isValid() || !rhs.isValid() )
+        return false;
+
+    return
+        west()  == rhs.west()  &&
+        east()  == rhs.east()  &&
+        south() == rhs.south() &&
+        north() == rhs.north() &&
         _srs->isEquivalentTo( rhs._srs.get() );
 }
 
@@ -241,65 +287,76 @@ GeoExtent::operator != ( const GeoExtent& rhs ) const
 bool
 GeoExtent::isValid() const
 {
-    return _srs.valid() && width() > 0 && height() > 0;
-}
-
-const SpatialReference*
-GeoExtent::getSRS() const {
-    return _srs.get(); 
+    return 
+        _srs.valid()       && 
+        _east  != DBL_MAX  &&
+        _west  != DBL_MAX  &&
+        _north != DBL_MAX  &&
+        _south != DBL_MAX;
 }
 
 double
 GeoExtent::width() const
 {
-    return crossesDateLine()?
-        (180-_xmin) + (_xmax+180) :
-        _xmax - _xmin;
+    return crossesAntimeridian() ?
+        (180.0-_west) + (_east+180.0) :
+        _east - _west;
 }
 
 double
 GeoExtent::height() const
 {
-    return _ymax - _ymin;
+    return _north - _south;
 }
 
-void
+bool
 GeoExtent::getCentroid( double& out_x, double& out_y ) const
 {
-    out_x = _xmin+width()/2.0;
-    out_y = _ymin+height()/2.0;
+    if ( isInvalid() ) return false;
+
+    out_y = south() + 0.5*height();
+    out_x = west() + 0.5*width();
+    s_normalizeLongitude( out_x );
+    return true;
 }
 
 bool
-GeoExtent::crossesDateLine() const
+GeoExtent::crossesAntimeridian() const
 {
-    return _xmax < _xmin;
-    //return _srs.valid() && _srs->isGeographic() && _xmax < _xmin;
+    return _srs.valid() && _srs->isGeographic() && east() < west();
 }
 
 bool
-GeoExtent::splitAcrossDateLine( GeoExtent& out_first, GeoExtent& out_second ) const
+GeoExtent::splitAcrossAntimeridian( GeoExtent& out_west, GeoExtent& out_east ) const
 {
     bool success = false;
 
-    if ( crossesDateLine() )
+    if ( crossesAntimeridian() )
     {
-        if ( _srs->isGeographic() )
+        out_west._srs   = _srs.get();
+        out_west._west  = west();
+        out_west._south = south();
+        out_west._east  = 180.0;
+        out_west._north = north();
+
+        out_east._srs   = _srs.get();
+        out_east._west  = -180.0;
+        out_east._south = south();
+        out_east._east  = east();
+        out_east._north = north();
+
+        success = true;
+    }
+    else if ( !_srs->isGeographic() )
+    {
+        //note: may not actually work.
+        GeoExtent latlong_extent = transform( _srs->getGeographicSRS() );
+        GeoExtent w, e;
+        if ( latlong_extent.splitAcrossAntimeridian( w, e ) )
         {
-            out_first = GeoExtent( _srs.get(), _xmin, _ymin, 180.0, _ymax );
-            out_second = GeoExtent( _srs.get(), -180.0, _ymin, _xmax, _ymax );
-            success = true;
-        }
-        else
-        {
-            GeoExtent latlong_extent = transform( _srs->getGeographicSRS() );
-            GeoExtent first, second;
-            if ( latlong_extent.splitAcrossDateLine( first, second ) )
-            {
-                out_first = first.transform( _srs.get() );
-                out_second = second.transform( _srs.get() );
-                success = out_first.isValid() && out_second.isValid();
-            }
+            out_west = w.transform( _srs.get() );
+            out_east = e.transform( _srs.get() );
+            success = out_west.isValid() && out_east.isValid();
         }
     }
     return success;
@@ -308,10 +365,11 @@ GeoExtent::splitAcrossDateLine( GeoExtent& out_first, GeoExtent& out_second ) co
 GeoExtent
 GeoExtent::transform( const SpatialReference* to_srs ) const 
 {       
+    //TODO: this probably doesn't work across the antimeridian
     if ( _srs.valid() && to_srs )
     {
-        double xmin = _xmin, ymin = _ymin;
-        double xmax = _xmax, ymax = _ymax;
+        double xmin = west(), ymin = south();
+        double xmax = east(), ymax = north();
         
         if ( _srs->transformExtent( to_srs, xmin, ymin, xmax, ymax ) )
         {
@@ -325,22 +383,24 @@ GeoExtent::transform( const SpatialReference* to_srs ) const
 void
 GeoExtent::getBounds(double &xmin, double &ymin, double &xmax, double &ymax) const
 {
-    xmin = _xmin;
-    ymin = _ymin;
-    xmax = _xmax;
-    ymax = _ymax;
+    xmin = west();
+    ymin = south();
+    xmax = east();
+    ymax = north();
 }
 
 Bounds
 GeoExtent::bounds() const
 {
-    return Bounds( _xmin, _ymin, _xmax, _ymax );
+    return Bounds( _west, _south, _east, _north );
 }
 
-//TODO:: support crossesDateLine!
 bool
 GeoExtent::contains(double x, double y, const SpatialReference* srs) const
 {
+    if ( isInvalid() )
+        return false;
+
     double local_x = x, local_y = y;
     if (srs &&
         !srs->isEquivalentTo( _srs.get() ) &&
@@ -350,52 +410,175 @@ GeoExtent::contains(double x, double y, const SpatialReference* srs) const
     }
     else
     {
+        // normalize a geographic longitude to -180:+180
+        if ( _srs->isGeographic() )
+            s_normalizeLongitude(x);
+
         //Account for small rounding errors along the edges of the extent
-        if (osg::equivalent(_xmin, local_x)) local_x = _xmin;
-        if (osg::equivalent(_xmax, local_x)) local_x = _xmax;
-        if (osg::equivalent(_ymin, local_y)) local_y = _ymin;
-        if (osg::equivalent(_ymax, local_y)) local_y = _ymax;
-        return local_x >= _xmin && local_x <= _xmax && local_y >= _ymin && local_y <= _ymax;
+        if (osg::equivalent(_west, local_x)) local_x = _west;
+        if (osg::equivalent(_east, local_x)) local_x = _east;
+        if (osg::equivalent(_south, local_y)) local_y = _south;
+        if (osg::equivalent(_north, local_y)) local_y = _north;
+
+        if ( crossesAntimeridian() )
+        {
+            if ( local_x > 0.0 )
+            {
+                return local_x >= _west && local_x <= 180.0 && local_y >= _south && local_y <= _north;
+            }
+            else
+            {
+                return local_x >= -180.0 && local_x <= _east && local_y >= _south && local_y <= _north;
+            }
+        }
+        else
+        {
+            return local_x >= _west && local_x <= _east && local_y >= _south && local_y <= _north;
+        }
     }
 }
 
 bool
 GeoExtent::contains( const Bounds& rhs ) const
 {
-    return 
-        rhs.xMin() >= _xmin &&
-        rhs.yMin() >= _ymin &&
-        rhs.xMax() <= _xmax &&
-        rhs.yMax() <= _ymax;
+    return
+        isValid() &&
+        rhs.isValid() &&
+        contains( rhs.xMin(), rhs.yMin() ) &&
+        contains( rhs.xMax(), rhs.yMax() ) &&
+        contains( rhs.center() );
+}
+
+bool
+GeoExtent::contains( const GeoExtent& rhs ) const
+{
+    return
+        isValid() &&
+        rhs.isValid() &&
+        contains( rhs.west(), rhs.south() ) &&
+        contains( rhs.east(), rhs.north() ) &&
+        contains( rhs.getCentroid() );   // this accounts for the antimeridian
 }
 
 bool
 GeoExtent::intersects( const GeoExtent& rhs ) const
 {
-    bool valid = isValid();
-    if ( !valid ) return false;
-    bool exclusive =
-        _xmin > rhs.xMax() ||
-        _xmax < rhs.xMin() ||
-        _ymin > rhs.yMax() ||
-        _ymax < rhs.yMin();
-    return !exclusive;
+    if ( !isValid() ) return false;
+
+    if ( rhs.crossesAntimeridian() )
+    {
+        GeoExtent rhsWest, rhsEast;
+        rhs.splitAcrossAntimeridian( rhsWest, rhsEast );
+        return rhsWest.intersects(*this) || rhsEast.intersects(*this);
+    }
+    else if ( crossesAntimeridian() )
+    {
+        GeoExtent west, east;
+        splitAcrossAntimeridian(west, east);
+        return rhs.intersects(west) || rhs.intersects(east);
+    }
+    else
+    {
+        bool exclusive =
+            _west >= rhs.east() ||
+            _east <= rhs.west() ||
+            _south >= rhs.north() ||
+            _north <= rhs.south();
+
+        return !exclusive;
+    }
 }
 
 void
 GeoExtent::expandToInclude( double x, double y )
 {
-    if ( x < _xmin ) _xmin = x;
-    if ( x > _xmax ) _xmax = x;
-    if ( y < _ymin ) _ymin = y;
-    if ( y > _ymax ) _ymax = y;
+    if ( west() == DBL_MAX )
+    {
+        _west = x;
+        _east = x;
+        _south = y;
+        _north = y;
+    }
+    else if ( getSRS() && getSRS()->isGeographic() )
+    {
+        s_normalizeLongitude(x);
+
+        // calculate possible expansion distances. The lesser of the two
+        // will be the direction in which we expand.
+
+        // west:
+        double dw;
+        if ( x > west() )
+            dw = west() - (x-360.);
+        else
+            dw = west() - x;
+
+        // east:
+        double de;
+        if ( x < east() )
+            de = (x+360.) - east();
+        else
+            de = x - east();
+
+        // this is the empty space available - growth beyond this 
+        // automatically yields full extent [-180..180]
+        double maxWidth = 360.0-width();
+
+        // if both are > 180, then the point is already in our extent.
+        if ( dw <= 180. || de <= 180. )
+        {
+            if ( dw < de )
+            {
+                if ( dw < maxWidth )
+                {
+                    // expand westward
+                    _west -= dw;
+                    s_normalizeLongitude( _west );
+                }
+                else
+                {
+                    // reached full extent
+                    _west = -180.0;
+                    _east =  180.0;
+                }
+            }
+            else
+            {
+                if ( de < maxWidth )
+                {
+                    // expand eastward
+                    _east += de;
+                    s_normalizeLongitude(_east);
+                }
+                else
+                {
+                    // reached full extent.
+                    _west = -180.0;
+                    _east =  180.0;
+                }
+            }
+        }
+        //else already inside longitude extent
+    }
+    else
+    {
+        _west = std::min(_west, x);
+        _east = std::max(_east, x);
+    }
+
+    _south = std::min(_south, y);
+    _north = std::max(_north, y);
 }
 
-void GeoExtent::expandToInclude(const Bounds& rhs)
+void
+GeoExtent::expandToInclude(const Bounds& rhs)
 {
+    expandToInclude( rhs.center() );
     expandToInclude( rhs.xMin(), rhs.yMin() );
     expandToInclude( rhs.xMax(), rhs.yMax() );
 }
+
+#if 0
 
 GeoExtent
 GeoExtent::intersectionSameSRS( const Bounds& rhs ) const
@@ -408,10 +591,82 @@ GeoExtent::intersectionSameSRS( const Bounds& rhs ) const
 
     return b.width() > 0 && b.height() > 0 ? GeoExtent( getSRS(), b ) : GeoExtent::INVALID;
 }
+#endif
+
+bool
+GeoExtent::expandToInclude( const GeoExtent& rhs )
+{
+    if ( isInvalid() || rhs.isInvalid() ) return false;
+
+    if ( !rhs.getSRS()->isEquivalentTo( _srs.get() ) )
+    {
+        return expandToInclude( transform(rhs.getSRS()) );
+    }
+    else
+    {
+        // include the centroid first in order to honor an 
+        // antimeridian-crossing profile
+        expandToInclude( rhs.getCentroid() );
+        expandToInclude( rhs.west(), rhs.south() );
+        expandToInclude( rhs.east(), rhs.north() );
+        return true;
+    }
+}
+
+GeoExtent
+GeoExtent::intersectionSameSRS( const GeoExtent& rhs ) const
+{
+    if ( isInvalid() || rhs.isInvalid() || !_srs->isEquivalentTo( rhs.getSRS() ) )
+        return GeoExtent::INVALID;
+
+    if ( !intersects(rhs) )
+    {
+        OE_DEBUG << "Extents " << toString() << " and " << rhs.toString() << " do not intersect."
+            << std::endl;
+        return GeoExtent::INVALID;
+    }
+
+    GeoExtent result( *this );
+
+    double westAngle, eastAngle;
+    
+    // see if the rhs western boundary intersects our extent:
+    westAngle = s_westToEastLongitudeDistance( west(), rhs.west() );
+    eastAngle = s_westToEastLongitudeDistance( rhs.west(), east() );
+    if ( westAngle < width() && eastAngle < width() ) // yes, so adjust the result eastward:
+    {
+        result._west += westAngle;
+    }
+
+    // now see if the rhs eastern boundary intersects out extent:
+    westAngle = s_westToEastLongitudeDistance( west(), rhs.east() );
+    eastAngle = s_westToEastLongitudeDistance( rhs.east(), east() );
+    if ( westAngle < width() && eastAngle < width() ) // yes, so adjust again:
+    {
+        result._east -= eastAngle;
+    }
+
+    // normalize our new longitudes
+    s_normalizeLongitude( result._west );
+    s_normalizeLongitude( result._east );
+
+    // latitude is easy, just clamp it
+    result._south = std::max( south(), rhs.south() );
+    result._north = std::min( north(), rhs.north() );
+
+    OE_DEBUG << "Intersection of " << this->toString() << " and " << rhs.toString() << " is: " 
+        << result.toString()
+        << std::endl;
+
+    return result;
+}
 
 void
 GeoExtent::scale(double x_scale, double y_scale)
 {
+    if ( isInvalid() )
+        return;
+
     double orig_width = width();
     double orig_height = height();
 
@@ -421,25 +676,28 @@ GeoExtent::scale(double x_scale, double y_scale)
     double halfXDiff = (new_width - orig_width) / 2.0;
     double halfYDiff = (new_height - orig_height) /2.0;
 
-    _xmin -= halfXDiff;
-    _xmax += halfXDiff;
-    _ymin -= halfYDiff;
-    _ymax += halfYDiff;
+    _west  -= halfXDiff;
+    _east  += halfXDiff;
+    _south -= halfYDiff;
+    _north += halfYDiff;
 }
 
 void
 GeoExtent::expand( double x, double y )
 {
-    _xmin -= .5*x;
-    _xmax += .5*x;
-    _ymin -= .5*y;
-    _ymax += .5*y;
+    if ( isInvalid() )
+        return;
+
+    _west  -= .5*x;
+    _east  += .5*x;
+    _south -= .5*y;
+    _north += .5*y;
 }
 
 double
 GeoExtent::area() const
 {
-    return width() * height();
+    return isValid() ? width() * height() : 0.0;
 }
 
 std::string
@@ -449,12 +707,12 @@ GeoExtent::toString() const
     if ( !isValid() )
         buf << "INVALID";
     else
-        buf << "MIN=" << _xmin << "," << _ymin << " MAX=" << _xmax << "," << _ymax;
+        buf << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
 
     buf << ", SRS=" << _srs->getName();
 
-	 std::string bufStr;
-	 bufStr = buf.str();
+    std::string bufStr;
+    bufStr = buf.str();
     return bufStr;
 }
 
@@ -537,11 +795,13 @@ GeoImage::crop( const GeoExtent& extent, bool exact, unsigned int width, unsigne
             //Suggest an output image size
             if (width == 0 || height == 0)
             {
-                double xRes = (getExtent().xMax() - getExtent().xMin()) / (double)_image->s();
-                double yRes = (getExtent().yMax() - getExtent().yMin()) / (double)_image->t();
+                double xRes = getExtent().width() / (double)_image->s(); //(getExtent().xMax() - getExtent().xMin()) / (double)_image->s();
+                double yRes = getExtent().height() / (double)_image->t(); //(getExtent().yMax() - getExtent().yMin()) / (double)_image->t();
 
-                width =  osg::maximum(1u, (unsigned int)((extent.xMax() - extent.xMin()) / xRes));
-                height = osg::maximum(1u, (unsigned int)((extent.yMax() - extent.yMin()) / yRes));
+                width =  osg::maximum(1u, (unsigned int)(extent.width() / xRes));
+                height = osg::maximum(1u, (unsigned int)(extent.height() / yRes));
+                //width =  osg::maximum(1u, (unsigned int)((extent.xMax() - extent.xMin()) / xRes));
+                //height = osg::maximum(1u, (unsigned int)((extent.yMax() - extent.yMin()) / yRes));
 
                 OE_DEBUG << "[osgEarth::GeoImage::crop] Computed output image size " << width << "x" << height << std::endl;
             }

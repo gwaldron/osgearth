@@ -21,7 +21,6 @@ SET(LIB_PUBLIC_HEADERS
     Common
     ConvertTypeFilter
     CropFilter
-    DepthAdjustment
     ExtrudeGeometryFilter
     Feature
     FeatureCursor
@@ -65,7 +64,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     CentroidFilter.cpp
     ConvertTypeFilter.cpp
     CropFilter.cpp
-    DepthAdjustment.cpp
     ExtrudeGeometryFilter.cpp
     Feature.cpp
     FeatureCursor.cpp

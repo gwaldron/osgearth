@@ -16,12 +16,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthUtil/DPLineSegmentIntersector>
+#include <osgEarth/DPLineSegmentIntersector>
 #include <osg/KdTree>
 #include <osg/TriangleFunctor>
 
 using namespace osgEarth;
-using namespace osgEarth::Util;
 
 namespace
 {

@@ -65,19 +65,17 @@ FeatureNode::init()
         GeometryCompilerOptions options = _options;
         
         bool autoClamping = supportsAutoClamping(*_feature->style());
-
         if ( autoClamping )
         {
             options.ignoreAltitudeSymbol() = true;
         }
 
+        // prep the compiler:
         GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
         GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
-        //osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( _feature->getExtent() );
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
         FilterContext context( session, profile.get(), extent );
-        //FilterContext context( session, profile.get(), _feature->getExtent() );
 
         // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
         // of the geometry when performing localization or converting to geocentric.
@@ -145,16 +143,21 @@ FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 void
 FeatureNode::clampMesh( osg::Node* terrainModel )
 {
-    double scale = 1.0;
+    double scale  = 1.0;
     double offset = 0.0;
+    bool   relative = false;
+
     if (_altitude.valid())
     {
         NumericExpression scale(_altitude->verticalScale().value());
         NumericExpression offset(_altitude->verticalOffset().value());
         scale = _feature->eval(scale);
         offset = _feature->eval(offset);
+        relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
     }
-    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), scale, offset );
+
+    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), relative, scale, offset );
     this->accept( clamper );
+
     this->dirtyBound();
 }

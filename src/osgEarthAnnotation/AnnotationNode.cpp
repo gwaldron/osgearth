@@ -218,7 +218,8 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
         !style.has<ExtrusionSymbol>()  &&
         !style.has<MarkerSymbol>()     &&
         style.has<AltitudeSymbol>()    &&
-        style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN;
+        (style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
+         style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN);
 }
 
 void
@@ -230,7 +231,8 @@ AnnotationNode::applyStyle( const Style& style, bool noClampHint )
     if ( !noClampHint && supportsAutoClamping(style) )
     {
         const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
-        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN )
+        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
+            alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
         {
             // continuous clamping: automatically re-clamp whenever a new terrain tile
             // appears under the geometry

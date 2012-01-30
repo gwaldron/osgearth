@@ -16,11 +16,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTH_UTIL_FORMATTERS_H
-#define OSGEARTH_UTIL_FORMATTERS_H
+#ifndef OSGEARTH_UTIL_MGRS_FORMATTER_H
+#define OSGEARTH_UTIL_MGRS_FORMATTER_H
 
-#include <osgEarthUtil/Common>
-#include <osgEarth/SpatialReference>
+#include <osgEarthUtil/Formatter>
 #include <osgEarth/StringUtils>
 #include <osgEarth/Units>
 
@@ -28,78 +27,9 @@ namespace osgEarth { namespace Util
 {
     using namespace osgEarth;
 
-    class Formatter : public osg::Referenced
-    {
-    public:
-        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* mapSRS ) const =0;
-    };
-
-
-    class OSGEARTHUTIL_EXPORT LatLongFormatter : public Formatter
-    {
-    public:
-        enum AngularFormat {
-            FORMAT_DEFAULT,
-            FORMAT_DECIMAL_DEGREES,
-            FORMAT_DEGREES_DECIMAL_MINUTES,
-            FORMAT_DEGREES_MINUTES_SECONDS
-        };
-
-        enum Options {
-            USE_SYMBOLS     = 1 << 0,   // whether to use symbols
-            USE_COLONS      = 1 << 1,   // whether to separate components with colons
-            USE_SPACES      = 1 << 2    // whether to separate components with spaces
-        };
-
-    public:
-        LatLongFormatter(          
-            const AngularFormat& defaultFormat =FORMAT_DECIMAL_DEGREES,
-            unsigned             optionsMask   =0u );
-
-        /**
-         * Sets the output precision for decimal numbers  (default is 5)
-         */
-        void setPrecision( int value ) { _prec = value; }
-
-        /**
-         * Sets the formatting options
-         */
-        void setOptions( const Options& options ) { _options = options; }
-
-        /** 
-         * Formats an angle into one of the supported angular formats
-         */
-        std::string format(
-            const Angular&       angle,
-            int                  precision =-1, 
-            const AngularFormat& outputFormat    =FORMAT_DEFAULT) const;
-
-        std::string operator()(
-            const Angular&       angle,
-            int                  precision =-1, 
-            const AngularFormat& outputFormat =FORMAT_DEFAULT) const
-        {
-            return format(angle, precision, outputFormat);
-        }
-
-        /**
-         * Parses a string into an angle (returning false if parsing fails).
-         */
-        bool parseAngle( const std::string& input, Angular& out_value );
-
-    public: // Formatter
-
-        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* srs ) const;
-
-
-    protected:
-        unsigned      _options;
-        AngularFormat _defaultFormat;
-        int           _prec;
-    };
-
-    //------------------------------------------------------------------------
-
+    /**
+     * Represents an MGRS coordinate in its parts 
+     */
     struct MGRSCoord
     {
         std::string gzd;
@@ -112,7 +42,8 @@ namespace osgEarth { namespace Util
      * Formats coordinate data as MGRS.
      *
      * NOTE: This class does not yet handle the special UTM zone exceptions for
-     *       southwest Norway (zone 32V) and Svalbard (31X, 33X, 35X, 37X).
+     *       southwest Norway (zone 32V) and Svalbard (31X, 33X, 35X, 37X).. 
+     *       mainly because I have not found sufficient documentation on them
      *
      * See: http://en.wikipedia.org/wiki/Military_grid_reference_system
      */
@@ -181,4 +112,4 @@ namespace osgEarth { namespace Util
 
 } } // namespace osgEarth::Util
 
-#endif // OSGEARTH_UTIL_FORMATTERS_H
+#endif // OSGEARTH_UTIL_MGRS_FORMATTER_H

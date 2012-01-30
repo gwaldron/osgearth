@@ -60,6 +60,33 @@ ElevationQuery::sync()
     }
 }
 
+unsigned int
+ElevationQuery::getMaxLevel( double x, double y ) const
+{
+    unsigned int maxLevel = 0;
+    for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
+    {
+        unsigned int layerMax = 0;
+        osgEarth::TileSource* ts = i->get()->getTileSource();
+        if (ts)
+        {
+            for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
+            {
+                if (j->getMaxLevel() > layerMax && j->contains( x, y ))
+                {
+                    layerMax = j->getMaxLevel();
+                }
+            }
+        }
+        else
+        {
+            layerMax = i->get()->getMaxDataLevel();
+        }
+        if (layerMax > maxLevel) maxLevel = layerMax;
+    }
+    return maxLevel;
+}
+
 ElevationQuery::Technique
 ElevationQuery::getTechnique() const
 {
@@ -159,18 +186,20 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
         out_elevation = 0.0;
         return true;
     }
-   
-    // this is the ideal LOD for the requested resolution:
-    unsigned int idealLevel = desiredResolution > 0.0
-        ? _mapf.getProfile()->getLevelOfDetailForHorizResolution( desiredResolution, _tileSize )
-        : _maxDataLevel;        
 
-    // based on the heightfields available, this is the best we can theorically do:
-    unsigned int bestAvailLevel = osg::minimum( idealLevel, _maxDataLevel );
-    if (_maxLevelOverride >= 0)
+    
+    //This is the max resolution that we actually have data at this point
+    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y());
+
+    if (desiredResolution > 0.0)
     {
-        bestAvailLevel = osg::minimum(bestAvailLevel, (unsigned int)_maxLevelOverride);
+        unsigned int desiredLevel = _mapf.getProfile()->getLevelOfDetailForHorizResolution( desiredResolution, _tileSize );
+        if (desiredLevel < bestAvailLevel) bestAvailLevel = desiredLevel;
     }
+    //OE_NOTICE << "Best available data level " << point.x() << ", " << point.y() << " = "  << bestAvailLevel << std::endl;
+
+
+    
     
     // transform the input coords to map coords:
     osg::Vec3d mapPoint = point;

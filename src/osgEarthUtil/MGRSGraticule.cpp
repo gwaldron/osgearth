@@ -78,11 +78,8 @@ UTMGraticule( 0L )
     if ( !_options->secondaryStyle().isSet() )
     {
         LineSymbol* line = _options->secondaryStyle()->getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color(Color::Yellow, 0.4f);
+        line->stroke()->color() = Color(Color::Black, 0.4f);
         line->stroke()->stipple() = 0x1111;
-
-        //AltitudeSymbol* alt = _options->secondaryStyle()->getOrCreate<AltitudeSymbol>();
-        //alt->verticalOffset() = 5000.0;
 
         TextSymbol* text = _options->secondaryStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
@@ -150,6 +147,8 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
 
     FeatureList features;
 
+    std::vector<GeoExtent> sqidExtents;
+
     // UTM:
     if ( letter > 'B' && letter < 'Y' )
     {
@@ -166,8 +165,6 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
         double remainder = fmod( southSQIDBoundary, 100000.0 );
         if ( remainder > 0.0 )
             southSQIDBoundary += (100000.0 - remainder);
-
-        std::vector<GeoExtent> sqidExtents;
 
         // Record the UTM extent of each SQID cell in this tile.
         // Go from the south boundary northwards:
@@ -262,6 +259,252 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
 
                     d->setPosition( sqidLocal );
                     textGeode->addDrawable( d );
+                }
+            }
+        }
+    }
+
+    else if ( letter == 'A' || letter == 'B' )
+    {
+        // SRS for south polar region UPS projection. This projection has (0,0) at the
+        // south pole, with +X extending towards 90 degrees E longitude and +Y towards
+        // 0 degrees longitude.
+        const SpatialReference* ups = SpatialReference::create(
+            "+proj=stere +lat_ts=-90 +lat_0=-90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0");
+
+        osg::Vec3d gtemp;
+        double r = GeoMath::distance(-osg::PI_2, 0.0, -1.3962634, 0.0); // -90 => -80 latitude
+        double r2 = r*r;
+
+        if ( letter == 'A' )
+        {
+            for( double x = 0.0; x < 1200000.0; x += 100000.0 )
+            {
+                double yminmax = sqrt( r2 - x*x );
+                Feature* f = new Feature( new LineString(2), extent.getSRS() );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                osg::Vec3d p0, p1;
+                ups->transform( osg::Vec3d(-x, -yminmax, 0), extent.getSRS(), p0 );
+                ups->transform( osg::Vec3d(-x,  yminmax, 0), extent.getSRS(), p1 );
+                f->getGeometry()->push_back( p0 );
+                f->getGeometry()->push_back( p1 );
+                features.push_back( f );
+            }
+
+            for( double y = -1100000.0; y < 1200000.0; y += 100000.0 )
+            {
+                double xmax = sqrt( r2 - y*y );
+                Feature* f = new Feature( new LineString(2), extent.getSRS() );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                osg::Vec3d p0, p1;
+                ups->transform( osg::Vec3d(-xmax, y, 0), extent.getSRS(), p0 );
+                ups->transform( osg::Vec3d(    0, y, 0), extent.getSRS(), p1 );
+                f->getGeometry()->push_back( p0 );
+                f->getGeometry()->push_back( p1 );
+                features.push_back( f );
+            }
+
+            for( double x = -1200000.0; x < 0.0; x += 100000.0 )
+            {
+                for( double y = -1200000.0; y < 1200000.0; y += 100000.0 )
+                {
+                    osg::Vec3d sqidTextMap;
+                    ups->transform( osg::Vec3d(x+50000.0, y+50000.0, 0), extent.getSRS(), sqidTextMap);
+                    if ( sqidTextMap.y() < -80.0 )
+                    {
+                        sqidTextMap.z() += 1000.0;
+                        osg::Vec3d sqidTextECEF;
+                        extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                        osg::Vec3d sqidLocal = sqidTextECEF * world2local;
+
+                        MGRSCoord mgrsCoord;
+                        if ( mgrs.transform(sqidTextMap, extent.getSRS(), mgrsCoord) )
+                        {
+                            textSym->size() = 33000.0;
+                            osgText::Text* d = ts.create( mgrsCoord.sqid );
+                            osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                            d->setPosition( sqidLocal );
+                            textGeode->addDrawable( d );
+                        }
+                    }
+                }
+            }
+        }
+
+        else if ( letter == 'B' )
+        {
+            for( double x = 100000.0; x < 1200000.0; x += 100000.0 )
+            {
+                double yminmax = sqrt( r2 - x*x );
+                Feature* f = new Feature( new LineString(2), extent.getSRS() );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                osg::Vec3d p0, p1;
+                ups->transform( osg::Vec3d(x, -yminmax, 0), extent.getSRS(), p0 );
+                ups->transform( osg::Vec3d(x,  yminmax, 0), extent.getSRS(), p1 );
+                f->getGeometry()->push_back( p0 );
+                f->getGeometry()->push_back( p1 );
+                features.push_back( f );
+            }
+
+            for( double y = -1100000.0; y < 1200000.0; y += 100000.0 )
+            {
+                double xmax = sqrt( r2 - y*y );
+                Feature* f = new Feature( new LineString(2), extent.getSRS() );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                osg::Vec3d p0, p1;
+                ups->transform( osg::Vec3d(    0, y, 0), extent.getSRS(), p0 );
+                ups->transform( osg::Vec3d( xmax, y, 0), extent.getSRS(), p1 );
+                f->getGeometry()->push_back( p0 );
+                f->getGeometry()->push_back( p1 );
+                features.push_back( f );
+            }
+
+            for( double x = 0.0; x < 1200000.0; x += 100000.0 )
+            {
+                for( double y = -1200000.0; y < 1200000.0; y += 100000.0 )
+                {
+                    osg::Vec3d sqidTextMap;
+                    ups->transform( osg::Vec3d(x+50000.0, y+50000.0, 0), extent.getSRS(), sqidTextMap);
+                    if ( sqidTextMap.y() < -80.0 )
+                    {
+                        sqidTextMap.z() += 1000.0;
+                        osg::Vec3d sqidTextECEF;
+                        extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                        osg::Vec3d sqidLocal = sqidTextECEF * world2local;
+
+                        MGRSCoord mgrsCoord;
+                        if ( mgrs.transform(sqidTextMap, extent.getSRS(), mgrsCoord) )
+                        {
+                            textSym->size() = 33000.0;
+                            osgText::Text* d = ts.create( mgrsCoord.sqid );
+                            osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                            d->setPosition( sqidLocal );
+                            textGeode->addDrawable( d );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    else if ( letter == 'Y' || letter == 'Z' )
+    {
+        // SRS for north polar region UPS projection. This projection has (0,0) at the
+        // south pole, with +X extending towards 90 degrees E longitude and +Y towards
+        // 180 degrees longitude.
+        const SpatialReference* ups = SpatialReference::create(
+            "+proj=stere +lat_ts=90 +lat_0=90 +lon_0=0 +k_0=1 +x_0=0 +y_0=0");
+
+        osg::Vec3d gtemp;
+        double r = GeoMath::distance(osg::PI_2, 0.0, 1.46607657, 0.0); // 90 -> 84 latitude
+        double r2 = r*r;
+
+        if ( letter == 'Y' )
+        {
+            for( double x = 0.0; x < 700000.0; x += 100000.0 )
+            {
+                double yminmax = sqrt( r2 - x*x );
+                Feature* f = new Feature( new LineString(2), extent.getSRS() );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                osg::Vec3d p0, p1;
+                ups->transform( osg::Vec3d(-x, -yminmax, 0), extent.getSRS(), p0 );
+                ups->transform( osg::Vec3d(-x,  yminmax, 0), extent.getSRS(), p1 );
+                f->getGeometry()->push_back( p0 );
+                f->getGeometry()->push_back( p1 );
+                features.push_back( f );
+            }
+
+            for( double y = -600000.0; y < 700000.0; y += 100000.0 )
+            {
+                double xmax = sqrt( r2 - y*y );
+                Feature* f = new Feature( new LineString(2), extent.getSRS() );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                osg::Vec3d p0, p1;
+                ups->transform( osg::Vec3d(-xmax, y, 0), extent.getSRS(), p0 );
+                ups->transform( osg::Vec3d(    0, y, 0), extent.getSRS(), p1 );
+                f->getGeometry()->push_back( p0 );
+                f->getGeometry()->push_back( p1 );
+                features.push_back( f );
+            }
+
+            for( double x = -700000.0; x < 0.0; x += 100000.0 )
+            {
+                for( double y = -700000.0; y < 700000.0; y += 100000.0 )
+                {
+                    osg::Vec3d sqidTextMap;
+                    ups->transform( osg::Vec3d(x+50000.0, y+50000.0, 0), extent.getSRS(), sqidTextMap);
+                    if ( sqidTextMap.y() > 84.0 )
+                    {
+                        sqidTextMap.z() += 1000.0;
+                        osg::Vec3d sqidTextECEF;
+                        extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                        osg::Vec3d sqidLocal = sqidTextECEF * world2local;
+
+                        MGRSCoord mgrsCoord;
+                        if ( mgrs.transform(sqidTextMap, extent.getSRS(), mgrsCoord) )
+                        {
+                            textSym->size() = 33000.0;
+                            osgText::Text* d = ts.create( mgrsCoord.sqid );
+                            osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                            d->setPosition( sqidLocal );
+                            textGeode->addDrawable( d );
+                        }
+                    }
+                }
+            }
+        }
+
+        else if ( letter == 'Z' )
+        {
+            for( double x = 100000.0; x < 700000.0; x += 100000.0 )
+            {
+                double yminmax = sqrt( r2 - x*x );
+                Feature* f = new Feature( new LineString(2), extent.getSRS() );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                osg::Vec3d p0, p1;
+                ups->transform( osg::Vec3d(x, -yminmax, 0), extent.getSRS(), p0 );
+                ups->transform( osg::Vec3d(x,  yminmax, 0), extent.getSRS(), p1 );
+                f->getGeometry()->push_back( p0 );
+                f->getGeometry()->push_back( p1 );
+                features.push_back( f );
+            }
+
+            for( double y = -600000.0; y < 700000.0; y += 100000.0 )
+            {
+                double xmax = sqrt( r2 - y*y );
+                Feature* f = new Feature( new LineString(2), extent.getSRS() );
+                f->geoInterp() = GEOINTERP_GREAT_CIRCLE;
+                osg::Vec3d p0, p1;
+                ups->transform( osg::Vec3d(    0, y, 0), extent.getSRS(), p0 );
+                ups->transform( osg::Vec3d( xmax, y, 0), extent.getSRS(), p1 );
+                f->getGeometry()->push_back( p0 );
+                f->getGeometry()->push_back( p1 );
+                features.push_back( f );
+            }
+
+            for( double x = 0.0; x < 700000.0; x += 100000.0 )
+            {
+                for( double y = -700000.0; y < 700000.0; y += 100000.0 )
+                {
+                    osg::Vec3d sqidTextMap;
+                    ups->transform( osg::Vec3d(x+50000.0, y+50000.0, 0), extent.getSRS(), sqidTextMap);
+                    if ( sqidTextMap.y() > 84.0 )
+                    {
+                        sqidTextMap.z() += 1000.0;
+                        osg::Vec3d sqidTextECEF;
+                        extent.getSRS()->transformToECEF(sqidTextMap, sqidTextECEF);
+                        osg::Vec3d sqidLocal = sqidTextECEF * world2local;
+
+                        MGRSCoord mgrsCoord;
+                        if ( mgrs.transform(sqidTextMap, extent.getSRS(), mgrsCoord) )
+                        {
+                            textSym->size() = 33000.0;
+                            osgText::Text* d = ts.create( mgrsCoord.sqid );
+                            osg::Matrixd textLocal2World = ECEF::createLocalToWorld( sqidTextECEF );
+                            d->setPosition( sqidLocal );
+                            textGeode->addDrawable( d );
+                        }
+                    }
                 }
             }
         }

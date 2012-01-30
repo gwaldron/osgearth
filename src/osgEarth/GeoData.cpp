@@ -199,6 +199,9 @@ Bounds::transform( const SpatialReference* from, const SpatialReference* to )
 
 /*************************************************************/
 
+#undef  LC
+#define LC "[GeoExtent] "
+
 GeoExtent GeoExtent::INVALID = GeoExtent();
 
 
@@ -741,11 +744,14 @@ DataExtent::getMaxLevel() const
 
 /***************************************************************************/
 
+#undef  LC
+#define LC "[GeoImage] "
+
 // static
 GeoImage GeoImage::INVALID( 0L, GeoExtent::INVALID );
 
 GeoImage::GeoImage() :
-_image(0L),
+_image ( 0L ),
 _extent( GeoExtent::INVALID )
 {
     //nop
@@ -756,7 +762,16 @@ GeoImage::GeoImage( osg::Image* image, const GeoExtent& extent ) :
 _image(image),
 _extent(extent)
 {
-    //NOP
+    if ( _image.valid() && extent.isInvalid() )
+    {
+        OE_WARN << LC << "ILLEGAL: created a GeoImage with a valid image and an invalid extent" << std::endl;
+    }
+}
+
+bool
+GeoImage::valid() const 
+{
+    return _image.valid() && _extent.isValid();
 }
 
 osg::Image*
@@ -1237,6 +1252,9 @@ GeoImage::takeImage()
 
 /***************************************************************************/
 
+#undef  LC
+#define LC "[GeoHeightField] "
+
 // static
 GeoHeightField GeoHeightField::INVALID( 0L, GeoExtent::INVALID, 0L );
 
@@ -1252,10 +1270,16 @@ GeoHeightField::GeoHeightField(osg::HeightField* heightField,
                                const GeoExtent& extent,
                                const VerticalSpatialReference* vsrs) :
 _heightField( heightField ),
-_extent( extent ),
-_vsrs( vsrs )
+_extent     ( extent ),
+_vsrs       ( vsrs )
 {
-    if ( _heightField )
+
+    if ( _heightField.valid() && extent.isInvalid() )
+    {
+        OE_WARN << LC << "Created with a valid heightfield AND INVALID extent" << std::endl;
+    }
+
+    else if ( _heightField )
     {
         double minx, miny, maxx, maxy;
         _extent.getBounds(minx, miny, maxx, maxy);
@@ -1265,6 +1289,12 @@ _vsrs( vsrs )
         _heightField->setYInterval( (maxy - miny)/(double)(_heightField->getNumRows()-1) );
         _heightField->setBorderWidth( 0 );
     }
+}
+
+bool
+GeoHeightField::valid() const
+{
+    return _heightField.valid() && _extent.isValid();
 }
 
 bool

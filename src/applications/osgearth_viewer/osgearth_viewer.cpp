@@ -400,9 +400,8 @@ main(int argc, char** argv)
         {
             for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
                 viewpoints.push_back( Viewpoint(*i) );
-
-            viewer.addEventHandler( new ViewpointHandler(viewpoints) );
         }
+        viewer.addEventHandler( new ViewpointHandler(viewpoints) );
 
         // Configure the de-cluttering engine for labels and annotations:
         const Config& declutterConf = externals.child("decluttering");

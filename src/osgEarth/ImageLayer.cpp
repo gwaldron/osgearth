@@ -469,12 +469,15 @@ ImageLayer::createImageFromTileSource(const TileKey&    key,
                 }
             }
             if ( !result.valid() )
+            {
                 finalKey = finalKey.createParentKey();
+            }
         }
 
         if ( !result.valid() )
         {
             result = ImageUtils::createEmptyImage();
+            finalKey = key;
         }
     }
 

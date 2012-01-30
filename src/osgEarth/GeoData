@@ -273,7 +273,7 @@ namespace osgEarth
         /**
          * True if this is a valid geo image. 
          */
-        bool valid() const { return _image.valid(); }
+        bool valid() const;
 
         /**
          * Gets a pointer to the underlying OSG image.
@@ -378,7 +378,7 @@ namespace osgEarth
         /**
          * True if this is a valid heightfield. 
          */
-        bool valid() const { return _heightField.valid(); }
+        bool valid() const;
 
         /**
          * Gets the elevation value at a specified point.

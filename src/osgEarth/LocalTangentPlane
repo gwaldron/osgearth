@@ -31,10 +31,10 @@ namespace osgEarth
      * Local Tangent Plane SRS.
      * Please call SpatialReference::createLTP() to construct one of these.
      */
-    class LTPSpatialReference : public SpatialReference
+    class TangentPlaneSpatialReference : public SpatialReference
     {
     public:
-        LTPSpatialReference(void* handle, const osg::Vec3d& worldPointLLA);
+        TangentPlaneSpatialReference(void* handle, const osg::Vec3d& originLLA);
 
         // CUBE is a projected coordinate system.
         virtual bool isGeographic() const { return false; }
@@ -53,7 +53,7 @@ namespace osgEarth
 
     private:
 
-        osg::Vec3d   _worldPointLLA;
+        osg::Vec3d   _originLLA;
         osg::Matrixd _local2world, _world2local;
 
     };

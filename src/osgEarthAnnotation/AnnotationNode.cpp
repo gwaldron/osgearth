@@ -20,8 +20,8 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationSettings>
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthFeatures/DepthAdjustment>
 
+#include <osgEarth/DepthOffset>
 #include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
@@ -29,7 +29,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 
 //-------------------------------------------------------------------
 
@@ -104,12 +103,13 @@ AnnotationNode::setDepthAdjustment( bool enable )
     if ( enable )
     {
         osg::StateSet* s = this->getOrCreateStateSet();
-        osg::Program* daProgram = DepthAdjustment::getOrCreateProgram(); // cached, not a leak.
+        osg::Program* daProgram = DepthOffsetUtils::getOrCreateProgram(); // cached, not a leak.
         osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( !p || p != daProgram )
             s->setAttributeAndModes( daProgram );
 
-        s->addUniform( DepthAdjustment::createUniform(this) );
+        s->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
+        s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
     }
     else if ( this->getStateSet() )
     {
@@ -242,7 +242,7 @@ AnnotationNode::applyStyle( const Style& style, bool noClampHint )
 
             // depth adjustment: twiddle the Z buffering to help rid clamped line
             // geometry of its z-fighting tendencies
-            if ( AnnotationSettings::getApplyDepthAdjustmentToClampedLines() )
+            if ( AnnotationSettings::getApplyDepthOffsetToClampedLines() )
             {
                 // verify that the geometry if polygon-less:
                 PrimitiveSetTypeCounter counter;

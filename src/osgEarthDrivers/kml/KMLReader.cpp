@@ -62,6 +62,7 @@ KMLReader::read( const Config& conf )
     cx._sheet = new StyleSheet();
     cx._groupStack.push( root );
     cx._options = _options;
+    cx._srs = SpatialReference::create( "wgs84" );
 
     if ( cx._options->iconAndLabelGroup().valid() && cx._options->declutter() == true )
     {

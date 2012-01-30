@@ -18,6 +18,8 @@
  */
 #include <osgEarthFeatures/MeshClamper>
 
+#include <osgEarth/DPLineSegmentIntersector>
+
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
 
@@ -66,10 +68,13 @@ MeshClamper::apply( osg::Geode& geode )
     world2local.invert( local2world );
 
     const osg::EllipsoidModel* em = _terrainSRS->getEllipsoid();
-    osg::Vec3d up(0,0,1), start, end, msl;
+    osg::Vec3d n_vector(0,0,1), start, end, msl;
 
-    osgUtil::LineSegmentIntersector* lsi = new osgUtil::LineSegmentIntersector(start, end);
+    // use a double-precision intersector b/c our intersection segment will be really long :)
+    DPLineSegmentIntersector* lsi = new DPLineSegmentIntersector(start, end);
     osgUtil::IntersectionVisitor iv( lsi );
+
+    double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
 
     for( unsigned i=0; i<geode.getNumDrawables(); ++i )
     {
@@ -86,27 +91,27 @@ MeshClamper::apply( osg::Geode& geode )
 
                 if ( _geocentric )
                 {
-                    up = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
+                    // normal to the ellipsoid:
+                    n_vector = em->computeLocalUpVector(vw.x(),vw.y(),vw.z());
 
                     // if we're scaling, we need to know the MSL coord
                     if ( _scale != 1.0 )
                     {
                         double lat,lon,height;
                         em->convertXYZToLatLongHeight(vw.x(), vw.y(), vw.z(), lat, lon, height);
-                        em->convertLatLongHeightToXYZ(lat,lon,0.0,msl.x(),msl.y(),msl.z());
+                        msl = vw - n_vector*height;
                     }
                 }
 
                 lsi->reset();
-                lsi->setStart( vw + up*50000.0*_scale );
-                lsi->setEnd( vw - up*50000.0*_scale );
+                lsi->setStart( vw + n_vector*r*_scale );
+                lsi->setEnd( vw - n_vector*r );
 
                 _terrainPatch->accept( iv );
 
                 if ( lsi->containsIntersections() )
                 {
                     osg::Vec3d fw = lsi->getFirstIntersection().getWorldIntersectPoint();
-
                     if ( _scale != 1.0 )
                     {
                         osg::Vec3d delta = fw - msl;
@@ -114,7 +119,7 @@ MeshClamper::apply( osg::Geode& geode )
                     }
                     if ( _offset != 0.0 )
                     {
-                        fw += up*_offset;
+                        fw += n_vector*_offset;
                     }
 
                     *k = (fw * world2local);

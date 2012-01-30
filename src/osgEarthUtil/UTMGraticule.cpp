@@ -27,6 +27,7 @@
 #include <osgEarthAnnotation/Decluttering>
 
 #include <osgEarth/Registry>
+#include <osgEarth/DepthOffset>
 #include <osgEarth/ECEF>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>
@@ -142,15 +143,19 @@ UTMGraticule::init()
         LineSymbol* line = _options->primaryStyle()->getOrCreate<LineSymbol>();
         line->stroke()->color() = Color::Gray;
         line->stroke()->width() = 1.0;
+        line->tessellation() = 20;
 
         AltitudeSymbol* alt = _options->primaryStyle()->getOrCreate<AltitudeSymbol>();
-        alt->verticalOffset() = NumericExpression(4900.0);
+        //alt->verticalOffset() = NumericExpression(4900.0);
 
         TextSymbol* text = _options->primaryStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
         text->halo()->color() = Color(Color::Black, 0.2f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
+
+    // make the shared depth attr:
+    _depthAttribute = new osg::Depth(osg::Depth::LEQUAL,0,1,false);
 
     // this will intialize the graph.
     rebuild();
@@ -171,6 +176,14 @@ UTMGraticule::rebuild()
     {
         _root = new DrapeableNode( _mapNode.get(), false );
         this->addChild( _root );
+
+        // set up depth offsetting.
+        osg::StateSet* s = _root->getOrCreateStateSet();
+        s->setAttributeAndModes( DepthOffsetUtils::getOrCreateProgram(), 1 );
+        s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
+        osg::Uniform* u = DepthOffsetUtils::createMinOffsetUniform();
+        u->set( 10000.0f );
+        s->addUniform( u );
     }
     else
     {
@@ -201,10 +214,10 @@ UTMGraticule::rebuild()
     }
 
     // the polar zones (UPS):
-    _gzd["1Y"] = GeoExtent( geosrs, -90.0,  84.0,  90.0,  90.0 );
-    _gzd["1Z"] = GeoExtent( geosrs,  90.0,  84.0, 180.0,  90.0 );
-    _gzd["1A"] = GeoExtent( geosrs, -90.0, -90.0,  90.0, -80.0 );
-    _gzd["1B"] = GeoExtent( geosrs,  90.0, -90.0, 180.0, -80.0 );
+    _gzd["1Y"] = GeoExtent( geosrs, -180.0,  84.0,   0.0,  90.0 );
+    _gzd["1Z"] = GeoExtent( geosrs,    0.0,  84.0, 180.0,  90.0 );
+    _gzd["1A"] = GeoExtent( geosrs, -180.0, -90.0,   0.0, -80.0 );
+    _gzd["1B"] = GeoExtent( geosrs,    0.0, -90.0, 180.0, -80.0 );
 
     // replace the "exception" zones in Norway and Svalbard
     _gzd["31V"] = GeoExtent( geosrs, 0.0, 56.0, 3.0, 64.0 );
@@ -229,6 +242,8 @@ UTMGraticule::rebuild()
 
     // and the polar tile GZDs.
     //_root->addChild( buildPolarGZDTiles() );
+
+    DepthOffsetUtils::prepareGraph( _root );
 }
 
 
@@ -259,7 +274,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     LineString* lon = new LineString(2);
     lon->push_back( osg::Vec3d(extent.xMin(), extent.yMax(), 0) );
     lon->push_back( osg::Vec3d(extent.xMin(), extent.yMin(), 0) );
-    Feature* lonFeature = new Feature(lon);
+    Feature* lonFeature = new Feature(lon, extent.getSRS());
     lonFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
     features.push_back( lonFeature );
 
@@ -267,7 +282,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     LineString* lat = new LineString(2);
     lat->push_back( osg::Vec3d(extent.xMin(), extent.yMin(), 0) );
     lat->push_back( osg::Vec3d(extent.xMax(), extent.yMin(), 0) );
-    Feature* latFeature = new Feature(lat);
+    Feature* latFeature = new Feature(lat, extent.getSRS());
     latFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
     features.push_back( latFeature );
 
@@ -277,7 +292,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         LineString* lat = new LineString(2);
         lat->push_back( osg::Vec3d(extent.xMin(), extent.yMax(), 0) );
         lat->push_back( osg::Vec3d(extent.xMax(), extent.yMax(), 0) );
-        Feature* latFeature = new Feature(lat);
+        Feature* latFeature = new Feature(lat, extent.getSRS());
         latFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
         features.push_back( latFeature );
     }
@@ -306,7 +321,7 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
         
         osg::Geode* textGeode = new osg::Geode();
         textGeode->getOrCreateStateSet()->setRenderBinDetails( 9998, "DepthSortedBin" );   
-        textGeode->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false), 1 );
+        textGeode->getOrCreateStateSet()->setAttributeAndModes( _depthAttribute, 1 );
         
         osg::Drawable* d = ts.create(name);
         d->getOrCreateStateSet()->setRenderBinToInherit();
@@ -325,189 +340,4 @@ UTMGraticule::buildGZDTile( const std::string& name, const GeoExtent& extent )
     return group;
 }
 
-#if 0
-osg::Node*
-UTMGraticule::buildPolarGZDTiles()
-{
-    osg::Group* group = new osg::Group();
-
-    const Style& lineStyle = *_options->lineStyle();
-    Style textStyle = *_options->textStyle();
-    TextSymbol* ts = textStyle.getOrCreate<TextSymbol>();
-    const SpatialReference* geosrs = _mapNode->getMapSRS()->getGeographicSRS();
-
-    osg::Vec3d northECEF(0, 0, geosrs->getEllipsoid()->getRadiusPolar());
-
-    GeometryCompiler compiler;
-    compiler.options().maxGranularity() = 1.0;
-    osg::ref_ptr<Session> session = new Session( _mapNode->getMap() );
-    GeoExtent extent( _mapNode->getMap()->getProfile()->getExtent() );
-    FilterContext context( session.get(), _featureProfile.get(), extent );
-    TextSymbolizer symbolizer( textStyle.get<TextSymbol>() );
-
-    osg::ref_ptr<Feature> northF = new Feature(new LineString(2));
-    northF->getGeometry()->push_back( osg::Vec3d(0.0, 84.0, 0) );
-    northF->getGeometry()->push_back( osg::Vec3d(180.0, 84, 0) );
-    northF->geoInterp() = GEOINTERP_GREAT_CIRCLE;
-    osg::Node* northNode = compiler.compile(northF.get(), lineStyle, context);
-    if ( northNode )
-    {
-        osg::Group* northGroup = new osg::Group();
-        northGroup->addChild( northNode );
-        
-        osg::Geode* geode = new osg::Geode();
-        ts->size() = 120000.0;
-
-        osgText::Text* yText = symbolizer.create("Y");
-        osg::Vec3d yPos( -90, 87.0, 0 );
-        geosrs->transformToECEF(yPos, yPos);
-        osg::Matrixd yLocal2World = ECEF::createLocalToWorld( yPos );
-        yText->setRotation( yLocal2World.getRotate() );
-        yText->setPosition( yPos - northECEF );
-        geode->addDrawable( yText );
-
-        osgText::Text* zText = symbolizer.create("Z");
-        osg::Vec3d zPos(  90, 87.0, 0 );
-        geosrs->transformToECEF(zPos, zPos);
-        osg::Matrixd zLocal2World = ECEF::createLocalToWorld( zPos );
-        zText->setRotation( yLocal2World.getRotate() * osg::Quat(osg::PI,osg::Vec3(0,0,1)) );
-        zText->setPosition( zPos - northECEF );
-        geode->addDrawable( zText );
-
-        osg::MatrixTransform* mt = new osg::MatrixTransform( osg::Matrix::translate(northECEF) );
-        mt->addChild( geode );
-
-        northGroup->addChild( mt );
-        northGroup = ClusterCullingFactory::createAndInstall(northGroup, northECEF)->asGroup();
-
-        group->addChild( northGroup );
-    }
-
-    osg::ref_ptr<Feature> southF = new Feature(new LineString(2));
-    southF->getGeometry()->push_back( osg::Vec3d(0.0, -80.0, 0) );
-    southF->getGeometry()->push_back( osg::Vec3d(180.0, -80.0, 0) );
-    southF->geoInterp() = GEOINTERP_GREAT_CIRCLE;
-    osg::Node* southNode = compiler.compile(southF.get(), lineStyle, context);
-    if ( southNode )
-    {
-        osg::Vec3d southECEF = -northECEF;
-
-        osg::Group* southGroup = new osg::Group();
-        southGroup->addChild( southNode );
-        
-        osg::Geode* geode = new osg::Geode();
-        ts->size() = 120000.0;
-
-        osgText::Text* aText = symbolizer.create("A");
-        osg::Vec3d aPos( -90, -85.0, 0 );
-        geosrs->transformToECEF(aPos, aPos);
-        osg::Matrixd aLocal2World = ECEF::createLocalToWorld( aPos );
-        aText->setRotation( osg::Quat(osg::PI,osg::Vec3(0,0,1)) * aLocal2World.getRotate() );
-        aText->setPosition( aPos - southECEF );
-        geode->addDrawable( aText );
-
-        osgText::Text* bText = symbolizer.create("B");
-        osg::Vec3d bPos(  90, -85.0, 0 );
-        geosrs->transformToECEF(bPos, bPos);
-        osg::Matrixd bLocal2World = ECEF::createLocalToWorld( bPos );
-        bText->setRotation( osg::Quat(osg::PI,osg::Vec3(0,0,1)) * bLocal2World.getRotate() );
-        bText->setPosition( bPos - southECEF );
-        geode->addDrawable( bText );
-
-        osg::MatrixTransform* mt = new osg::MatrixTransform( osg::Matrix::translate(southECEF) );
-        mt->addChild( geode );
-
-        southGroup->addChild( mt );
-        southGroup = ClusterCullingFactory::createAndInstall(southGroup, southECEF)->asGroup();
-
-        group->addChild( southGroup );
-    }
-
-    return group;
-}
-#endif
-
-#if 0
-osg::Node*
-GeodeticGraticule::buildChildren( unsigned level, unsigned x, unsigned y ) const
-{
-    osg::ref_ptr<MapNode> mapNodeSafe = _mapNode.get();
-    if ( mapNodeSafe.valid() )
-    {
-        TileKey parent(level, x, y, _profile.get());
-        osg::Group* g = new osg::Group();
-        for( unsigned q=0; q<4; ++q )
-        {
-            TileKey child = parent.createChildKey( q );
-            osg::Node* n = buildTile(child, mapNodeSafe->getMap() );
-            if ( n )
-                g->addChild( n );
-        }
-        return g;
-    }
-    else return 0L;
-}
-
-void
-GeodeticGraticule::traverse( osg::NodeVisitor& nv )
-{
-    if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
-    {
-    }
-    osg::Group::traverse( nv );
-}
-#endif
-
-/**************************************************************************/
-
-#if 0
-namespace osgEarth { namespace Util
-{
-    // OSG Plugin for loading subsequent graticule levels
-    class GeodeticGraticuleFactory : public osgDB::ReaderWriter
-    {
-    public:
-        virtual const char* className()
-        {
-            supportsExtension( UTM_GRATICULE_EXTENSION, "osgEarth UTM raticule" );
-            return "osgEarth UTM graticule LOD loader";
-        }
-
-        virtual bool acceptsExtension(const std::string& extension) const
-        {
-            return osgDB::equalCaseInsensitive(extension, UTM_GRATICULE_EXTENSION);
-        }
-
-        virtual ReadResult readNode(const std::string& uri, const Options* options) const
-        {        
-            std::string ext = osgDB::getFileExtension( uri );
-            if ( !acceptsExtension( ext ) )
-                return ReadResult::FILE_NOT_HANDLED;
-
-            // the graticule definition is formatted: LEVEL_ID.MARKER.EXTENSION
-            std::string def = osgDB::getNameLessExtension( uri );
-            
-            std::string marker = osgDB::getFileExtension( def );
-            def = osgDB::getNameLessExtension( def );
-
-            int levelNum, x, y, id;
-            sscanf( def.c_str(), "%d/%d/%d_%d", &levelNum, &x, &y, &id );
-
-            // look up the graticule referenced in the location name:
-            UTMGraticule* graticule = 0L;
-            {
-                Threading::ScopedMutexLock lock( s_graticuleMutex );
-                UTMGraticuleRegistry::iterator i = s_graticuleRegistry.find(id);
-                if ( i != s_graticuleRegistry.end() )
-                    graticule = i->second.get();
-            }
-
-            osg::Node* result = graticule->buildChildren( levelNum, x, y );
-            return result ? ReadResult(result) : ReadResult::ERROR_IN_READING_FILE;
-        }
-    };
-    REGISTER_OSGPLUGIN(UTM_GRATICULE_EXTENSION, UTMGraticuleFactory)
-
-} } // namespace osgEarth::Util
-#endif
 

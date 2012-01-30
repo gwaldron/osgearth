@@ -34,7 +34,7 @@ GeometryNode::GeometryNode(MapNode*     mapNode,
                            bool         draped ) :
 LocalizedNode( mapNode )
 {
-    osg::ref_ptr<Feature> feature = new Feature( geom );
+    osg::ref_ptr<Feature> feature = new Feature( geom, 0L ); //todo:consider the SRS
 
     GeometryCompiler compiler;
     FilterContext cx( 0L );

@@ -54,8 +54,14 @@ namespace osgEarth { namespace Util
          *      Label control that will accept the coordinate readout
          * @param mapNode
          *      Map node from which to query coordinates
+         * @param label
+         *     (optional) label control to use for readout (automatically installs
+         *     a MouseCoordsLabelCallback)
+         * @param formatter
+         *     (optional) When used with the label, specifies a formatter to use
+         *     for the readout.
          */
-        MouseCoordsTool( MapNode* mapNode );
+        MouseCoordsTool( MapNode* mapNode, LabelControl* label =0L, Formatter* formatter =0L );
 
         /**
          * Adds a readout callback.

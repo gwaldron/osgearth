@@ -329,21 +329,21 @@ SpatialReference::SpatialReference(void* handle,
                                    const std::string& init_type,
                                    const std::string& init_str,
                                    const std::string& name ) :
-osg::Referenced( true ),
-_initialized( false ),
-_handle( handle ),
-_owns_handle( true ),
-_name( name ),
-_init_type( init_type ),
-_init_str( init_str ),
-_is_geographic( false ),
-_is_mercator( false ),
-_is_north_polar( false ), 
-_is_south_polar( false ),
-_is_cube( false ),
-_is_contiguous( false ),
+osg::Referenced ( true ),
+_initialized    ( false ),
+_handle         ( handle ),
+_owns_handle    ( true ),
+_name           ( name ),
+_init_type      ( init_type ),
+_init_str       ( init_str ),
+_is_geographic  ( false ),
+_is_mercator    ( false ),
+_is_north_polar ( false ), 
+_is_south_polar ( false ),
+_is_cube        ( false ),
+_is_contiguous  ( false ),
 _is_user_defined( false ),
-_is_ltp( false )
+_is_ltp         ( false )
 {
     _init_str_lc = init_str;
     std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
@@ -351,9 +351,10 @@ _is_ltp( false )
 
 SpatialReference::SpatialReference(void* handle, bool ownsHandle) :
 osg::Referenced( true ),
-_initialized( false ),
-_handle( handle ),
-_owns_handle( ownsHandle )
+_initialized   ( false ),
+_handle        ( handle ),
+_owns_handle   ( ownsHandle ),
+_is_ltp        ( false )
 {
     //nop
 }
@@ -528,7 +529,7 @@ SpatialReference::createTangentPlaneSRS( const osg::Vec3d& pos ) const
     osg::Vec3d lla;
     if ( this->transform(pos, this->getGeographicSRS(), lla) )
     {
-        result = new LTPSpatialReference( this->getGeographicSRS()->_handle, lla );
+        result = new TangentPlaneSpatialReference( this->getGeographicSRS()->_handle, lla );
     }
     else
     {
@@ -1157,11 +1158,11 @@ SpatialReference::_init()
         _is_north_polar = lat > 0.0;
         _is_south_polar = lat < 0.0;
     }
-	else
-	{
-		_is_north_polar = false;
-		_is_south_polar = false;
-	}
+    else
+    {
+      _is_north_polar = false;
+      _is_south_polar = false;
+    }
 
     // Give the SRS a name if it doesn't have one:
     if ( _name == "unnamed" || _name.empty() )

@@ -53,8 +53,8 @@ namespace osgEarth { namespace Util
 
     public:
         LatLongFormatter(          
-            const AngularFormat& defaultFormat =FORMAT_DEGREES_MINUTES_SECONDS,
-            unsigned             optionsMask   =(USE_SYMBOLS | USE_SPACES) );
+            const AngularFormat& defaultFormat =FORMAT_DECIMAL_DEGREES,
+            unsigned             optionsMask   =0u );
 
         /**
          * Sets the output precision for decimal numbers  (default is 5)

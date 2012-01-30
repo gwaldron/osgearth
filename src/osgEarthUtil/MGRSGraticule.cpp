@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/TextSymbolizer>
 
 #include <osgEarth/ECEF>
+#include <osgEarth/DepthOffset>
 
 #include <osg/BlendFunc>
 #include <osg/PagedLOD>
@@ -80,14 +81,17 @@ UTMGraticule( 0L )
         line->stroke()->color() = Color(Color::Yellow, 0.4f);
         line->stroke()->stipple() = 0x1111;
 
-        AltitudeSymbol* alt = _options->secondaryStyle()->getOrCreate<AltitudeSymbol>();
-        alt->verticalOffset() = 5000.0;
+        //AltitudeSymbol* alt = _options->secondaryStyle()->getOrCreate<AltitudeSymbol>();
+        //alt->verticalOffset() = 5000.0;
 
         TextSymbol* text = _options->secondaryStyle()->getOrCreate<TextSymbol>();
         text->fill()->color() = Color(Color::White, 0.3f);
         text->halo()->color() = Color(Color::Black, 0.1f);
         text->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     }
+
+    _minDepthOffset = DepthOffsetUtils::createMinOffsetUniform();
+    _minDepthOffset->set( 11000.0f );
 }
 
 MGRSGraticule::MGRSGraticule( MapNode* mapNode, const MGRSGraticuleOptions& options ) :
@@ -128,13 +132,13 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
         textSym = _options->primaryStyle()->getOrCreate<TextSymbol>();
 
     AltitudeSymbol* alt = _options->secondaryStyle()->get<AltitudeSymbol>();
-    double h = alt ? alt->verticalOffset()->eval() : 5000.0;
+    double h = 0.0; //alt ? alt->verticalOffset()->eval() : 5000.0;
 
     TextSymbolizer ts( textSym );
     MGRSFormatter mgrs(MGRSFormatter::PRECISION_100000M);
     osg::Geode* textGeode = new osg::Geode();
     textGeode->getOrCreateStateSet()->setRenderBinDetails( 9999, "DepthSortedBin" );    
-    textGeode->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS,0,1,false), 1 );
+    textGeode->getOrCreateStateSet()->setAttributeAndModes( _depthAttribute, 1 );
 
     osg::Vec3d centerMap, centerECEF;
     extent.getCentroid(centerMap.x(), centerMap.y());
@@ -228,13 +232,13 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
             // and draw valid sqid geometry.
             if ( sw.x() < se.x() )
             {
-                Feature* lat = new Feature(new LineString(2));
+                Feature* lat = new Feature(new LineString(2), extent.getSRS());
                 lat->geoInterp() = GEOINTERP_RHUMB_LINE;
                 lat->getGeometry()->push_back( sw );
                 lat->getGeometry()->push_back( se );
                 features.push_back(lat);
 
-                Feature* lon = new Feature(new LineString(2));
+                Feature* lon = new Feature(new LineString(2), extent.getSRS());
                 lon->geoInterp() = GEOINTERP_GREAT_CIRCLE;
                 lon->getGeometry()->push_back( sw );
                 lon->getGeometry()->push_back( nw );
@@ -280,9 +284,13 @@ MGRSGraticule::buildSQIDTiles( const std::string& gzd )
     if ( geomNode ) 
         group->addChild( geomNode );
 
-    osg::MatrixTransform* mt = new osg::MatrixTransform(local2world); //osg::Matrix::translate(centerECEF)); //ECEF::createLocalToWorld(centerECEF));
+    osg::MatrixTransform* mt = new osg::MatrixTransform(local2world);
     mt->addChild(textGeode);
     group->addChild( mt );
+
+    // prep for depth offset:
+    DepthOffsetUtils::prepareGraph( group );
+    group->getOrCreateStateSet()->addUniform( _minDepthOffset.get() );
 
     return group;
 }

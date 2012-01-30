@@ -165,28 +165,30 @@ AltitudeFilter::pushAndClamp( FeatureList& features, FilterContext& cx )
             {
                 std::vector<double> elevations;
                 elevations.reserve( geom->size() );
-                eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes );
-                for( unsigned i=0; i<geom->size(); ++i )
+                if ( eq.getElevations( geom->asVector(), featureSRS, elevations, _maxRes ) )
                 {
-                    double z = (*geom)[i].z() * scaleZ + offsetZ;
-                    double hat =
-                        _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ? z - elevations[i] :
-                        z;
+                    for( unsigned i=0; i<geom->size(); ++i )
+                    {
+                        double z = (*geom)[i].z() * scaleZ + offsetZ;
+                        double hat =
+                            _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ? z - elevations[i] :
+                            z;
 
-                    if ( hat > maxHAT )
-                        maxHAT = hat;
-                    if ( hat < minHAT )
-                        minHAT = hat;
+                        if ( hat > maxHAT )
+                            maxHAT = hat;
+                        if ( hat < minHAT )
+                            minHAT = hat;
 
-                    double elev = elevations[i];
-                    if ( elev > maxTerrainZ )
-                        maxTerrainZ = elev;
-                    if ( elev < minTerrainZ )
-                        minTerrainZ = elev;
+                        double elev = elevations[i];
+                        if ( elev > maxTerrainZ )
+                            maxTerrainZ = elev;
+                        if ( elev < minTerrainZ )
+                            minTerrainZ = elev;
 
-                    (*geom)[i].z() =
-                        _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ? z :
-                        z + elevations[i];
+                        (*geom)[i].z() =
+                            _altitude->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ? z :
+                            z + elevations[i];
+                    }
                 }
             }
             else

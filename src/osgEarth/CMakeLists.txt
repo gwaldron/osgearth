@@ -30,6 +30,8 @@ SET(LIB_PUBLIC_HEADERS
     Containers
     Cube
     CullingUtils
+    DepthOffset
+    DPLineSegmentIntersector
     DrapeableNode
     ECEF
     ElevationLayer
@@ -126,6 +128,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Config.cpp
     Cube.cpp
     CullingUtils.cpp
+    DepthOffset.cpp
+    DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
     ECEF.cpp
     EGM.cpp

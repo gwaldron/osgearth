@@ -86,6 +86,9 @@ namespace osgEarth { namespace Util
         osg::ref_ptr< osgEarth::Annotation::FeatureNode > _featureNode;
         osg::ref_ptr< osgEarth::Features::Feature >  _feature;
 
+        osg::ref_ptr< osgEarth::Annotation::FeatureNode > _extentFeatureNode;
+        osg::ref_ptr< osgEarth::Features::Feature >       _extentFeature;
+
         MeasureToolEventHandlerList _eventHandlers;
         bool _isPath;        
         osg::ref_ptr< MapNode > _mapNode;

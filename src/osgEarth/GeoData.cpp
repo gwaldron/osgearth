@@ -319,7 +319,8 @@ GeoExtent::getCentroid( double& out_x, double& out_y ) const
 
     out_y = south() + 0.5*height();
     out_x = west() + 0.5*width();
-    s_normalizeLongitude( out_x );
+    if ( _srs->isGeographic() )
+        s_normalizeLongitude( out_x );
     return true;
 }
 

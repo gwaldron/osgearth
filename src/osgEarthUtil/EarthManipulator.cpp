@@ -449,8 +449,8 @@ EarthManipulator::configureDefaultSettings()
 
     _settings->bindKey( ACTION_HOME, osgGA::GUIEventAdapter::KEY_Space );
 
-    //_settings->bindMouse( ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
-    _settings->bindMouse( ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
+    _settings->bindMouse( ACTION_PAN, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
+    //_settings->bindMouse( ACTION_EARTH_DRAG, osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON );
 
     // zoom as you hold the right button:
     options.clear();

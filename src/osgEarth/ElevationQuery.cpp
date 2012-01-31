@@ -68,11 +68,18 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) c
     {
         unsigned int layerMax = 0;
         osgEarth::TileSource* ts = i->get()->getTileSource();
-        if (ts)
+        if ( ts && ts->getDataExtents().size() > 0 )
         {
+            double tsX = x, tsY = y;
+            const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
+            if ( srs && tsSRS )
+                srs->transform2D( x, y, tsSRS, tsX, tsY );
+            else
+                tsSRS = srs;
+            
             for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
             {
-                if (j->getMaxLevel() > layerMax && j->contains( x, y, srs ))
+                if (j->getMaxLevel() > layerMax && j->contains( tsX, tsY, tsSRS ))
                 {
                     layerMax = j->getMaxLevel();
                 }

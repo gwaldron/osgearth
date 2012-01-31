@@ -141,6 +141,16 @@ namespace osgEarth
                                 double radius = osg::WGS_84_RADIUS_EQUATOR);
 
         /**
+         * Calculates the minimum and maximum latitudes along a great circle
+         * between the two geodetic input points.
+         */
+        static void greatCircleMinMaxLatitude(
+            double lat1Rad, double lon1Rad,
+            double lat2Rad, double lon2Rad,
+            double& out_minLatRad, double& out_maxLatRad);
+
+
+        /**
          * Computes the distance between two points in meters following a rhumb line
          * @param lat1Rad
          *   The start latitude in radians

@@ -36,10 +36,27 @@ namespace osgEarth { namespace Features
     class OSGEARTHFEATURES_EXPORT MeshClamper : public osg::NodeVisitor
     {
     public:
+        /**
+         * Construct a new mesh clamper.
+         *
+         * @param terrainPatch
+         *      Node graph to which to clamp visited geometry.
+         * @param terrainSRS
+         *      Spatial reference of the map represented by the terrain patch.
+         * @param geocentric
+         *      Whether the terrain is geocentric (ECEF)
+         * @param preserveZ
+         *      Whether to preserve the original Z (the height above sea level) as an offset
+         * @param scale
+         *      (optional) Scale factor for the clamped height value
+         * @param offset
+         *      (optional) Static offset for the clamped height value
+         */
         MeshClamper( 
             osg::Node*              terrainPatch, 
             const SpatialReference* terrainSRS, 
             bool                    geocentric,
+            bool                    preserveZ     =false,
             double                  scale         =1.0,
             double                  offset        =0.0 );
 
@@ -58,6 +75,7 @@ namespace osgEarth { namespace Features
         osg::ref_ptr<osg::Node>              _terrainPatch;
         osg::ref_ptr<const SpatialReference> _terrainSRS;
         bool                                 _geocentric;
+        bool                                 _preserveZ;
         double                               _scale;
         double                               _offset;
         osg::fast_back_stack<osg::Matrixd>   _matrixStack;

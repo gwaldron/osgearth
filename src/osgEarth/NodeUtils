@@ -21,6 +21,7 @@
 
 #include <osgEarth/Common>
 #include <osg/ClusterCullingCallback>
+#include <osgUtil/LineSegmentIntersector>
 
 namespace osgEarth
 {

@@ -1028,8 +1028,8 @@ JSGeoExtent::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo
     return v8::Number::New(extent->width());
   if (prop == "height")
     return v8::Number::New(extent->height());
-  if (prop == "crossesDateLine")
-    return v8::Boolean::New(extent->crossesDateLine());
+  if (prop == "crossesAntimeridian")
+    return v8::Boolean::New(extent->crossesAntimeridian());
   if (prop == "valid")
     return v8::Boolean::New(extent->isValid());
   if (prop == "defined")

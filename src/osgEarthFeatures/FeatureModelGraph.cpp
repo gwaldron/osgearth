@@ -56,7 +56,7 @@ namespace
         return str;
     }
 
-    osg::Group* createPagedNode( const osg::BoundingSphered& bs, const std::string& uri, float minRange, float maxRange )
+    osg::Group* createPagedNode( const osg::BoundingSphered& bs, const std::string& uri, float minRange, float maxRange, float priOffset, float priScale )
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
         osg::ProxyNode* p = new osg::ProxyNode();
@@ -70,6 +70,8 @@ namespace
         p->setRadius(std::max((float)bs.radius(),maxRange));
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
+        p->setPriorityOffset( 0, priOffset );
+        p->setPriorityScale( 0, priScale );
 #endif
         return p;
     }
@@ -284,7 +286,14 @@ FeatureModelGraph::setupPaging()
     std::string uri = s_makeURI( _uid, 0, 0, 0 );
 
     // bulid the top level Paged LOD:
-    osg::Group* pagedNode = createPagedNode( bs, uri, 0.0f, maxRange );
+    osg::Group* pagedNode = createPagedNode( 
+        bs, 
+        uri, 
+        0.0f, 
+        maxRange, 
+        *_options.layout()->priorityOffset(), 
+        *_options.layout()->priorityScale() );
+
     this->addChild( pagedNode );
 }
 
@@ -476,7 +485,13 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     << "; radius = " << subtile_bs.radius()
                     << std::endl;
 
-                osg::Group* pagedNode = createPagedNode( subtile_bs, uri, 0.0f, maxRange );
+                osg::Group* pagedNode = createPagedNode( 
+                    subtile_bs, 
+                    uri, 
+                    0.0f, maxRange, 
+                    *_options.layout()->priorityOffset(), 
+                    *_options.layout()->priorityScale() );
+
                 parent->addChild( pagedNode );
             }
         }

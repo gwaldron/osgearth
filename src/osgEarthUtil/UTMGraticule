@@ -108,6 +108,8 @@ namespace osgEarth { namespace Util
         typedef std::map<std::string, GeoExtent> SectorTable;
         SectorTable _gzd;
 
+        osg::StateAttribute* _depthAttribute;
+
     protected:
         unsigned int getID() const { return _id; }
         void init();

@@ -90,7 +90,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         // place a 3D model:
         if ( markerModel.valid() )
         {
-            Feature* feature = new Feature(geometry._geom.get(), style);
+            Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
             fNode = new FeatureNode( cx._mapNode, feature, false ); //, options );
         }
 
@@ -123,11 +123,9 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
 
             bool draped =
-                (isPoly && ex == 0L && (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN));
-            
-            //bool draped =            
-            //    (ex == 0L && alt == 0L && isPoly) || 
-            //    (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
+                isPoly   && 
+                ex == 0L && 
+                (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
 
             // this will confuse the GeometryCompiler into thinking we want point-model sub..
             // probably need a more elegant solution here..
@@ -137,7 +135,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             // Make a feature node; drape if we're not extruding.
             GeometryCompilerOptions options;
             options.clustering() = false;            
-            Feature* feature = new Feature(geometry._geom.get(), style);
+            Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
             fNode = new FeatureNode( cx._mapNode, feature, draped, options );
 
             if ( !ex )

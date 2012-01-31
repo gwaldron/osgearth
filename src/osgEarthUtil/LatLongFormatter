@@ -1,0 +1,103 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_UTIL_LATLONG_FORMATTER_H
+#define OSGEARTH_UTIL_LATLONG_FORMATTER_H
+
+#include <osgEarthUtil/Formatter>
+#include <osgEarth/StringUtils>
+#include <osgEarth/Units>
+
+namespace osgEarth { namespace Util
+{
+    using namespace osgEarth;
+
+    /**
+     * Formats geodetic (latitude/longitude) coordinates.
+     */
+    class OSGEARTHUTIL_EXPORT LatLongFormatter : public Formatter
+    {
+    public:
+        /** Output format for angles. */
+        enum AngularFormat {
+            FORMAT_DEFAULT,
+            FORMAT_DECIMAL_DEGREES,
+            FORMAT_DEGREES_DECIMAL_MINUTES,
+            FORMAT_DEGREES_MINUTES_SECONDS
+        };
+
+        /** Formatting options. */
+        enum Options {
+            USE_SYMBOLS     = 1 << 0,   // whether to use symbols
+            USE_COLONS      = 1 << 1,   // whether to separate components with colons
+            USE_SPACES      = 1 << 2    // whether to separate components with spaces
+        };
+
+    public:
+        /**
+         * Constructs a lat-long formatter.
+         */
+        LatLongFormatter(          
+            const AngularFormat& defaultFormat =FORMAT_DECIMAL_DEGREES,
+            unsigned             optionsMask   =0u );
+
+        /**
+         * Sets the output precision for decimal numbers  (default is 5)
+         */
+        void setPrecision( int value ) { _prec = value; }
+
+        /**
+         * Sets the formatting options
+         */
+        void setOptions( const Options& options ) { _options = options; }
+
+        /** 
+         * Formats an angle into one of the supported angular formats
+         */
+        std::string format(
+            const Angular&       angle,
+            int                  precision =-1, 
+            const AngularFormat& outputFormat    =FORMAT_DEFAULT) const;
+
+        std::string operator()(
+            const Angular&       angle,
+            int                  precision =-1, 
+            const AngularFormat& outputFormat =FORMAT_DEFAULT) const
+        {
+            return format(angle, precision, outputFormat);
+        }
+
+        /**
+         * Parses a string into an angle (returning false if parsing fails).
+         */
+        bool parseAngle( const std::string& input, Angular& out_value );
+
+    public: // Formatter
+
+        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* srs ) const;
+
+
+    protected:
+        unsigned      _options;
+        AngularFormat _defaultFormat;
+        int           _prec;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTH_UTIL_LATLONG_FORMATTER_H

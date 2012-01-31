@@ -108,7 +108,7 @@ GeometryCompiler::compile(Geometry*             geometry,
                           const Style&          style,
                           const FilterContext&  context)
 {
-    osg::ref_ptr<Feature> f = new Feature(geometry);
+    osg::ref_ptr<Feature> f = new Feature(geometry, 0L); // no SRS
     return compile(f.get(), style, context);
 }
 

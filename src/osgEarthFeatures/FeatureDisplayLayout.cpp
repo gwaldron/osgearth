@@ -88,7 +88,9 @@ void FeatureLevel::addStyleSelector(const StyleSelector& selector)
 
 FeatureDisplayLayout::FeatureDisplayLayout( const Config& conf ) :
 _tileSizeFactor( 15.0f ),
-_cropFeatures( false )
+_cropFeatures  ( false ),
+_priorityOffset( 0.0f ),
+_priorityScale ( 1.0f )
 {
     fromConfig( conf );
 }
@@ -98,6 +100,8 @@ FeatureDisplayLayout::fromConfig( const Config& conf )
 {
     conf.getIfSet( "tile_size_factor", _tileSizeFactor );
     conf.getIfSet( "crop_features",    _cropFeatures );
+    conf.getIfSet( "priority_offset",  _priorityOffset );
+    conf.getIfSet( "priority_scale",   _priorityScale );
     ConfigSet children = conf.children( "level" );
     for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
         addLevel( FeatureLevel( *i ) );
@@ -109,6 +113,8 @@ FeatureDisplayLayout::getConfig() const
     Config conf( "layout" );
     conf.addIfSet( "tile_size_factor", _tileSizeFactor );
     conf.addIfSet( "crop_features",    _cropFeatures );
+    conf.addIfSet( "priority_offset",  _priorityOffset );
+    conf.addIfSet( "priority_scale",   _priorityScale );
     for( Levels::const_iterator i = _levels.begin(); i != _levels.end(); ++i )
         conf.add( i->second.getConfig() );
     return conf;

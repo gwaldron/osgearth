@@ -1313,11 +1313,11 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             addMouseEvent( ea );
             if (_mouse_down_event)
             {
-	        action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
-	        if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
-		    aa.requestRedraw();
-	        resetMouse( aa );
-	        handled = true;
+                action = _settings->getAction( EVENT_MOUSE_DOUBLE_CLICK, _mouse_down_event->getButtonMask(), _mouse_down_event->getModKeyMask() );
+                if ( handlePointAction( action, ea.getX(), ea.getY(), aa.asView() ) )
+                    aa.requestRedraw();
+                resetMouse( aa );
+                handled = true;
             }
             break;
 
@@ -1857,11 +1857,75 @@ EarthManipulator::zoom( double dx, double dy )
     setDistance( _distance * scale );    
 }
 
+
 bool
 EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d& out_coords ) const
 {
     osgViewer::View* view = dynamic_cast<osgViewer::View*>( theView );
     if ( !view || !view->getCamera() )
+        return false;
+
+    osg::NodePath nodePath;
+    _csnObserverPath.getNodePath(nodePath);
+    if ( nodePath.empty() )
+        return false;
+
+    float local_x, local_y = 0.0;
+    const osg::Camera* camera = view->getCameraContainingPosition(x, y, local_x, local_y);
+    if ( !camera )
+        return false;
+
+    osg::Matrixd matrix;
+    if (nodePath.size()>1)
+    {
+        osg::NodePath prunedNodePath(nodePath.begin(),nodePath.end()-1);
+        matrix = osg::computeLocalToWorld(prunedNodePath);
+    }
+
+    matrix.postMult(camera->getViewMatrix());
+    matrix.postMult(camera->getProjectionMatrix());
+
+    double zNear = -1.0;
+    double zFar = 1.0;
+    if (camera->getViewport())
+    {
+        matrix.postMult(camera->getViewport()->computeWindowMatrix());
+        zNear = 0.0;
+        zFar = 1.0;
+    }
+
+    osg::Matrixd inverse;
+    inverse.invert(matrix);
+
+    osg::Vec3d startVertex = osg::Vec3d(local_x,local_y,zNear) * inverse;
+    osg::Vec3d endVertex = osg::Vec3d(local_x,local_y,zFar) * inverse;
+
+    osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::MODEL, startVertex, endVertex);
+
+    osgUtil::IntersectionVisitor iv(picker.get());
+    iv.setTraversalMask(_intersectTraversalMask);
+    nodePath.back()->accept(iv);
+
+    if ( picker->containsIntersections() )
+    {
+        osgUtil::LineSegmentIntersector::Intersections& results = picker->getIntersections();
+        out_coords = results.begin()->getWorldIntersectPoint();
+        return true;
+    }
+
+    return false;
+}
+
+#if 0
+bool
+EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d& out_coords ) const
+{
+    osgViewer::View* view = dynamic_cast<osgViewer::View*>( theView );
+    if ( !view || !view->getCamera() )
+        return false;
+
+    osg::ref_ptr<osg::Node> csnSafe = _csn.get();
+    if ( !csnSafe.valid() )
         return false;
 
     float local_x, local_y = 0.0;    
@@ -1879,6 +1943,7 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
 
     const_cast<osg::Camera*>(camera)->accept(iv);
 
+
     if ( picker->containsIntersections() )
     {
         osgUtil::LineSegmentIntersector::Intersections& results = picker->getIntersections();
@@ -1888,6 +1953,7 @@ EarthManipulator::screenToWorld(float x, float y, osg::View* theView, osg::Vec3d
 
     return false;
 }
+#endif
 
 void
 EarthManipulator::setDistance( double distance )

@@ -171,7 +171,7 @@ FeatureCursorOGR::readChunk()
 
     if ( _nextHandleToQueue )
     {
-        Feature* f = OgrUtils::createFeature( _nextHandleToQueue );
+        Feature* f = OgrUtils::createFeature( _nextHandleToQueue, _profile->getSRS() );
         if ( f ) 
         {
             _queue.push( f );
@@ -190,7 +190,7 @@ FeatureCursorOGR::readChunk()
         OGRFeatureH handle = OGR_L_GetNextFeature( _resultSetHandle );
         if ( handle )
         {
-            Feature* f = OgrUtils::createFeature( handle );
+            Feature* f = OgrUtils::createFeature( handle, _profile->getSRS() );
             if ( f ) 
             {
                 _queue.push( f );

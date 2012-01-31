@@ -88,6 +88,7 @@ namespace osgEarth { namespace Util
 
     protected:
         optional<MGRSGraticuleOptions> _options;
+        osg::ref_ptr<osg::Uniform>     _minDepthOffset;
 
     protected:
         virtual osg::Group* buildGZDChildren( osg::Group* node, const std::string& gzd );

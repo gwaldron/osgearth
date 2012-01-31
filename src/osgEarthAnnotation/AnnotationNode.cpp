@@ -20,8 +20,8 @@
 #include <osgEarthAnnotation/AnnotationNode>
 #include <osgEarthAnnotation/AnnotationSettings>
 #include <osgEarthAnnotation/AnnotationUtils>
-#include <osgEarthFeatures/DepthAdjustment>
 
+#include <osgEarth/DepthOffset>
 #include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
@@ -29,7 +29,6 @@
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
-using namespace osgEarth::Features;
 
 //-------------------------------------------------------------------
 
@@ -104,12 +103,13 @@ AnnotationNode::setDepthAdjustment( bool enable )
     if ( enable )
     {
         osg::StateSet* s = this->getOrCreateStateSet();
-        osg::Program* daProgram = DepthAdjustment::getOrCreateProgram(); // cached, not a leak.
+        osg::Program* daProgram = DepthOffsetUtils::getOrCreateProgram(); // cached, not a leak.
         osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( !p || p != daProgram )
             s->setAttributeAndModes( daProgram );
 
-        s->addUniform( DepthAdjustment::createUniform(this) );
+        s->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
+        s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
     }
     else if ( this->getStateSet() )
     {
@@ -218,7 +218,8 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
         !style.has<ExtrusionSymbol>()  &&
         !style.has<MarkerSymbol>()     &&
         style.has<AltitudeSymbol>()    &&
-        style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN;
+        (style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN ||
+         style.get<AltitudeSymbol>()->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN);
 }
 
 void
@@ -230,7 +231,8 @@ AnnotationNode::applyStyle( const Style& style, bool noClampHint )
     if ( !noClampHint && supportsAutoClamping(style) )
     {
         const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
-        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN )
+        if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
+            alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
         {
             // continuous clamping: automatically re-clamp whenever a new terrain tile
             // appears under the geometry
@@ -242,7 +244,7 @@ AnnotationNode::applyStyle( const Style& style, bool noClampHint )
 
             // depth adjustment: twiddle the Z buffering to help rid clamped line
             // geometry of its z-fighting tendencies
-            if ( AnnotationSettings::getApplyDepthAdjustmentToClampedLines() )
+            if ( AnnotationSettings::getApplyDepthOffsetToClampedLines() )
             {
                 // verify that the geometry if polygon-less:
                 PrimitiveSetTypeCounter counter;

@@ -20,13 +20,17 @@
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/MeshClamper>
-#include <osgEarthFeatures/DepthAdjustment>
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/FindNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
+
+#include <osg/BoundingSphere>
+#include <osg/Polytope>
 #include <osg/Transform>
+
+#define LC "[FeatureNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -57,17 +61,16 @@ FeatureNode::init()
     this->removeChildren( 0, this->getNumChildren() );
 
     // build the new feature geometry
-    if ( _feature.valid() && _feature->getGeometry() && _mapNode.valid() )
     {
         GeometryCompilerOptions options = _options;
         
         bool autoClamping = supportsAutoClamping(*_feature->style());
-
         if ( autoClamping )
         {
             options.ignoreAltitudeSymbol() = true;
         }
 
+        // prep the compiler:
         GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
         GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
@@ -76,7 +79,7 @@ FeatureNode::init()
 
         // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
         // of the geometry when performing localization or converting to geocentric.
-        osg::ref_ptr< Feature > clone = new osgEarth::Features::Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
+        osg::ref_ptr< Feature > clone = new Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
 
         osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         if ( node )
@@ -130,7 +133,8 @@ FeatureNode::getAttachPoint()
 void
 FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 {
-    if ( key.getExtent().bounds().intersects( _feature->getGeometry()->getBounds() ) )
+    osg::Polytope p = _feature->getWorldBoundingPolytope();
+    if ( p.contains( tile->getBound() ) )
     {
         clampMesh( tile );
     }
@@ -139,16 +143,21 @@ FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
 void
 FeatureNode::clampMesh( osg::Node* terrainModel )
 {
-    double scale = 1.0;
+    double scale  = 1.0;
     double offset = 0.0;
+    bool   relative = false;
+
     if (_altitude.valid())
     {
         NumericExpression scale(_altitude->verticalScale().value());
         NumericExpression offset(_altitude->verticalOffset().value());
         scale = _feature->eval(scale);
         offset = _feature->eval(offset);
+        relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
     }
-    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), scale, offset );
+
+    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), relative, scale, offset );
     this->accept( clamper );
+
     this->dirtyBound();
 }

@@ -85,6 +85,27 @@ namespace osgEarth { namespace Features
         optional<bool>& cropFeatures() { return _cropFeatures; }
         const optional<bool>& cropFeatures() const { return _cropFeatures; }
 
+        /**
+         * Sets the offset that will be applied to the computed paging priority
+         * of tiles in this layout. Adjusting this can affect the priority of this
+         * data with respect to other paged data in the scene (like terrain or other
+         * feature layers).
+         * Default = 0.0
+         */
+        optional<float>& priorityOffset() { return _priorityOffset; }
+        const optional<float>& priorityOffset() const { return _priorityOffset; }
+
+        /**
+         * Sets the scale factor to be applied to the computed paging priority
+         * of tiles in this layout. Adjusting this can affect the priority of this
+         * data with respect to other paged data in the scene (like terrain or other
+         * feature layers).
+         * Default = 1.0.
+         */
+        optional<float>& priorityScale() { return _priorityScale; }
+        const optional<float>& priorityScale() const { return _priorityScale; }
+
+
         /** Adds a new feature level */
         void addLevel( const FeatureLevel& level );
 
@@ -109,6 +130,8 @@ namespace osgEarth { namespace Features
     protected:
         optional<float> _tileSizeFactor;
         optional<bool>  _cropFeatures;
+        optional<float> _priorityOffset;
+        optional<float> _priorityScale;
         typedef std::multimap<float,FeatureLevel> Levels;
         Levels _levels;
 

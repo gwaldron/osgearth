@@ -14,17 +14,18 @@ SET(LIB_PUBLIC_HEADERS
     Common
     Controls
     ClampCallback
-    DPLineSegmentIntersector
     EarthManipulator
     ElevationManager
     Export
-    Formatters
+    Formatter
     GeodeticGraticule
-	LineOfSight
-	MeasureTool
-	MGRSGraticule
-	MouseCoordsTool
-	NearFarGroup	
+    LatLongFormatter
+    LineOfSight
+    MeasureTool
+    MGRSFormatter
+    MGRSGraticule
+    MouseCoordsTool
+    #NearFarGroup	
     ObjectPlacer
     ObjectLocator
     #OceanSurfaceNode
@@ -35,7 +36,7 @@ SET(LIB_PUBLIC_HEADERS
     TMS
     TMSPackager
     UTMGraticule
-	WFS
+    WFS
     WMS
 )
 
@@ -44,16 +45,16 @@ SET(LIB_COMMON_FILES
     AutoClipPlaneHandler.cpp
     ClampCallback.cpp
     Controls.cpp
-    DPLineSegmentIntersector.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
-    Formatters.cpp
     GeodeticGraticule.cpp
-	LineOfSight.cpp
-	MeasureTool.cpp
-	MGRSGraticule.cpp
-	MouseCoordsTool.cpp
-	NearFarGroup.cpp
+    LatLongFormatter.cpp
+    LineOfSight.cpp
+    MeasureTool.cpp
+    MGRSFormatter.cpp
+    MGRSGraticule.cpp
+    MouseCoordsTool.cpp
+    #NearFarGroup.cpp
     ObjectPlacer.cpp
     ObjectLocator.cpp
     #OceanSurfaceNode.cpp
@@ -63,7 +64,7 @@ SET(LIB_COMMON_FILES
     TMS.cpp
     TMSPackager.cpp
     UTMGraticule.cpp
-	WFS.cpp
+    WFS.cpp
     WMS.cpp
 )
 

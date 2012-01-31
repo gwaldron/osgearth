@@ -25,7 +25,8 @@
 #include <osgEarth/MapNode>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/MouseCoordsTool>
-#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/MGRSFormatter>
+#include <osgEarthUtil/LatLongFormatter>
 
 #include <osgEarthUtil/GeodeticGraticule>
 #include <osgEarthUtil/MGRSGraticule>

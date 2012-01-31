@@ -1,0 +1,155 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTH_DEPTH_ADJUSTMENT_H
+#define OSGEARTH_DEPTH_ADJUSTMENT_H 1
+
+#include <osgEarth/Common>
+#include <osg/Program>
+#include <osg/Uniform>
+
+/**
+* Depth offsetting mitigates z-fighting artifacts for geometry that is very close
+* together, e.g. terrain-following lines. It uses a shader program to apply a 
+* simulated eye-space offset, writing values to the z-buffer as if the geometry were
+* drawn closer to the camera than they actually are. The effect is similar to what
+* glPolygonOffset is *supposed* to do (but doesn't). You get rid of z-fighting but
+* still maintain local occlusion.
+*
+* There is a trade off. You need to set a "minimum offset" that the technique will
+* apply to the geometry. From there, it uses distance-to-vertex to ramp between that and
+* a set maximum offset. The appropriate minimum offset depends a lot on the tessellation
+* of your geometry, so it's wise to use a higher offset for geometry with longer 
+* segments when in a round-earth situation. The automatic setting (the default) analyzes
+* the subgraph and picks a decent value, but you can always override this is you like.
+*
+* Caveat: for higher offsets, the near clip plane will come into effect when you get too
+* close. There's probably a fix but I haven't figured it out yet. This isn't usually an
+* issue, since geometry with long segments is typically something meant to be viewed
+* from far away (like a country boundary for example).
+*/
+namespace osgEarth
+{
+    /**
+     * Utilities to manage depth testing for feature data. Handy especially
+     * for terrain-conforming lines.
+     */
+    class OSGEARTH_EXPORT DepthOffsetUtils
+    {
+    public:
+        /**
+         * Creates a uniform that will configure the depth adjustment program.
+         * The value of the uniform is the minimum depth offset applied to 
+         * geometry under the program's stateset. If you pass in a graph, it
+         * will analyze it and attempt to come up with a reasonable default
+         * minimum offset.
+         */
+        static osg::Uniform* createMinOffsetUniform( osg::Node* graphToAdjust =0L );
+
+        /**
+         * Analyses a graph, calculates a suitable minimum depth offset, and
+         * returns it. Also may install support uniforms within the graph as
+         * necessary to support depth offsetting.
+         */
+        static float recalculate( osg::Node* graph );
+
+        /**
+         * Traverses a graph and applies the necessary uniforms to statesets
+         * so they'll work with depth offsetting.
+         */
+        static void prepareGraph( osg::Node* graph );
+
+        /**
+         * Creates a complete shader program that you can use to implement vertex
+         * depth adjustment. Use createUniform() to make a uniform for tweaking
+         * the depth offset value.
+         */
+        static osg::Program* getOrCreateProgram();
+
+        /**
+         * Returns a uniform that, when used with the Program, can inform the program
+         * whether the underlying drawables are osgText drawables.
+         */
+        static osg::Uniform* getIsTextUniform();
+
+        /**
+         * Returns a uniform that, when used with the Program, can inform the program
+         * whether the underlying drawables are NOT osgText drawables.
+         */
+        static osg::Uniform* getIsNotTextUniform();
+
+        /**
+         * Creates the source for a depth adjustment vertex shader. Use this instead
+         * of createProgram() if you want you are using the shader composition framework.
+         * You can install this in any FunctionLocation.
+         */
+        static std::string createVertexFunction(
+            const std::string& funcName ="osgearth_depth_adjustment_vertex" );
+
+        /**
+         * Creates the source for a depth adjustment fragment shader. Use this instead
+         * of createProgram() if you want you are using the shader composition framework.
+         * You can install this in any FunctionLocation.
+         */
+        static std::string createFragmentFunction(
+            const std::string& funcName ="osgearth_depth_adjustment_fragment" );
+    };
+
+    /**
+     * Group that applies the depth offset technique to its children.
+     */
+    class OSGEARTH_EXPORT DepthOffsetGroup : public osg::Group
+    {
+    public:
+        /**
+         * Constructs a new depth offset group
+         */
+        DepthOffsetGroup();
+
+        /**
+         * Sets a minimum depth offset range (in scene units, e.g. meters)
+         * This is the minimim simulated depth offset that will be applied to 
+         * geometry under this group.
+         */
+        void setMinimumOffset( float value );
+
+        /**
+         * Sets the group to automatically calculate an "appropriate" minimum
+         * depth offset based on the child geometry. Whenever the child graph
+         * changes, it will attempt to recalculate the best offset to use.
+         */
+        void setAutoMinimumOffset();
+
+    public: // osg::Node
+
+        virtual osg::BoundingSphere computeBound() const;
+
+        virtual void traverse(osg::NodeVisitor& );
+
+    protected:
+        bool _auto;
+        bool _dirty;
+        osg::Uniform* _minOffsetUniform;
+        void update();
+        void dirty();
+    };
+
+} // namespace osgEarth
+
+#endif // OSGEARTH_DEPTH_ADJUSTMENT_H

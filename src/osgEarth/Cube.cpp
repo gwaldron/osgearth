@@ -683,7 +683,7 @@ UnifiedCubeProfile::getIntersectingTiles(
         // and south polar tile regions.
         for( int face=0; face<6; ++face )
         {
-            GeoExtent partExtent_gcs = _faceExtent_gcs[face].intersectionSameSRS( remoteExtent_gcs.bounds() );
+            GeoExtent partExtent_gcs = _faceExtent_gcs[face].intersectionSameSRS( remoteExtent_gcs );
             if ( partExtent_gcs.isValid() )
             {
                 GeoExtent partExtent = transformGcsExtentOnFace( partExtent_gcs, face );

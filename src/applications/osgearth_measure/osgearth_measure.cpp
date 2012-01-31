@@ -29,6 +29,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/SkyNode>
+#include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthSymbology/Color>
 
 #include <osgEarthUtil/MeasureTool>
@@ -147,12 +148,13 @@ main(int argc, char** argv)
 
     //Add a label to display the distance
     // Add a text label:
+    grid->setControl( 0, 0, new LabelControl("Distance:") );
     LabelControl* label = new LabelControl();
     label->setFont( osgText::readFontFile( "arialbd.ttf" ) );
     label->setFontSize( 24.0f );
     label->setHorizAlign( Control::ALIGN_LEFT );    
-    label->setText("Distance");
-    grid->setControl( 0, 0, label);
+    label->setText("click to measure");
+    grid->setControl( 1, 0, label );
 
     //Add a callback to update the label when the distance changes
     measureTool->addEventHandler( new MyMeasureToolCallback(label) );
@@ -176,6 +178,11 @@ main(int argc, char** argv)
     mode->addEventHandler( new ToggleModeHandler(measureTool));
     grid->setControl( 1, 2, mode);
 
+    //Add a mouse coords readout:
+    LabelControl* mouseLabel = new LabelControl();
+    grid->setControl( 0, 3, new LabelControl("Mouse:"));
+    grid->setControl( 1, 3, mouseLabel );
+    viewer.addEventHandler(new MouseCoordsTool(mapNode, mouseLabel) );
 
     viewer.setSceneData( root );
 

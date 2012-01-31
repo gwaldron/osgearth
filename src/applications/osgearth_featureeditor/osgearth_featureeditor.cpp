@@ -230,6 +230,7 @@ int main(int argc, char** argv)
     line->push_back( osg::Vec3d(-60, 60, 0) );
     Feature *feature = new Feature(s_fid++);
     feature->setGeometry( line );
+    feature->setSRS( SpatialReference::create("wgs84") );
     s_source->insertFeature( feature );
     s_activeFeature = feature;
   

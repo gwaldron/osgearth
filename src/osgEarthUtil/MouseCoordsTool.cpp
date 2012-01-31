@@ -18,6 +18,7 @@
  */
 
 #include <osgEarthUtil/MouseCoordsTool>
+#include <osgEarthUtil/LatLongFormatter>
 #include <osgViewer/View>
 
 using namespace osgEarth;
@@ -25,10 +26,15 @@ using namespace osgEarth::Util;
 
 //-----------------------------------------------------------------------
 
-MouseCoordsTool::MouseCoordsTool( MapNode* mapNode ) :
+MouseCoordsTool::MouseCoordsTool( MapNode* mapNode, LabelControl* label, Formatter* formatter ) :
 _mapNode( mapNode )
 {
     _mapNodePath.push_back( mapNode->getTerrainEngine() );
+
+    if ( label )
+    {
+        addCallback( new MouseCoordsLabelCallback(label, formatter) );
+    }
 }
 
 void
@@ -76,7 +82,10 @@ MouseCoordsLabelCallback::set( const osg::Vec3d& mapCoords, osg::View* view, Map
 {
     if ( _label.valid() )
     {
-        _label->setText( _formatter->format(mapCoords, mapNode->getMapSRS()) );
+        _label->setText( Stringify()
+            <<  _formatter->format(mapCoords, mapNode->getMapSRS())
+            << " "
+            << mapCoords.z() );            
     }
 }
 

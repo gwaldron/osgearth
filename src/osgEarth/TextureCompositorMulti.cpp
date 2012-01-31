@@ -150,7 +150,9 @@ namespace
             {
                 float invFadeInDuration = 1.0f/fadeInDuration;
 
-                buf << "            age = "<< invFadeInDuration << " * min( "<< fadeInDuration << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
+                buf << std::fixed
+                    << std::setprecision(1)
+                    << "            age = "<< invFadeInDuration << " * min( "<< fadeInDuration << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
                     << "            age = clamp(age, 0.0, 1.0); \n"
                     << "            vec4 texel0 = texture2D(" << makeSamplerName(slot) << ", gl_TexCoord["<< slot << "].st);\n"
                     << "            vec4 texel1 = texture2D(" << makeSamplerName(secondarySlot) << ", gl_TexCoord["<< secondarySlot << "].st);\n"

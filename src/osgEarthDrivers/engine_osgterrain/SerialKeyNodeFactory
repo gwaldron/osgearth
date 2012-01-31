@@ -41,10 +41,10 @@ public:
 protected:
     void addTile(Tile* tile, bool tileHasRealData, bool tileHasLodBlending, osg::Group* parent );
 
-    TileBuilder*             _builder;
+    osg::ref_ptr< TileBuilder> _builder;
     const OSGTerrainOptions& _options;
     const MapInfo            _mapInfo;
-    TerrainNode*             _terrain;
+    osg::ref_ptr< TerrainNode > _terrain;
     UID                      _engineUID;
 };
 

@@ -158,7 +158,7 @@ namespace osgEarth
          */
         double getAverageQueryTime() const { return _queries > 0.0 ? _totalTime/_queries : 0.0; }
 
-        unsigned int getMaxLevel(double x, double y ) const;
+        unsigned int getMaxLevel(double x, double y, const SpatialReference* srs ) const;
 
     private:
         MapFrame _mapf;

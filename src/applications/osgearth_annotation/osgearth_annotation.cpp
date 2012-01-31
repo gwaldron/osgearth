@@ -21,7 +21,6 @@
 #include <osgEarth/ECEF>
 
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Formatters>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 

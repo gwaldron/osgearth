@@ -24,7 +24,7 @@
 #include <osgEarth/Units>
 #include <osgEarth/StringUtils>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/MGRSFormatter>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthAnnotation/TrackNode>

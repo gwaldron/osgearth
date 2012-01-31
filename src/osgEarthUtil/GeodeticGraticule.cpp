@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/GeodeticGraticule>
-#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/LatLongFormatter>
 
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/Geometry>

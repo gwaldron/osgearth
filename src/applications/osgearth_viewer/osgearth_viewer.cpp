@@ -40,7 +40,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/SkyNode>
-#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/MouseCoordsTool>
 
 

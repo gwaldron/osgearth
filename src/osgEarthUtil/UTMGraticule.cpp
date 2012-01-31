@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/UTMGraticule>
-#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/MGRSFormatter>
 
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/TextSymbolizer>

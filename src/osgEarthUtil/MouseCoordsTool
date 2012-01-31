@@ -22,7 +22,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarthUtil/Controls>
-#include <osgEarthUtil/Formatters>
+#include <osgEarthUtil/Formatter>
 #include <osgEarth/MapNode>
 
 #include <osgGA/GUIEventHandler>

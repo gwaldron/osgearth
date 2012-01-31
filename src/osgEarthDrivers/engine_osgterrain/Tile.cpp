@@ -79,9 +79,12 @@ Tile::init()
 void
 Tile::setTerrainTechnique( TerrainTechnique* tech )
 {
-    tech->_tile = this;
-    _tech = tech;
-    _dirty = true;
+    if (tech)
+    {
+        tech->_tile = this;
+        _tech = tech;
+        _dirty = true;
+    }
 }
 
 void

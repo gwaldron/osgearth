@@ -235,6 +235,53 @@ OSGTerrainEngineNode::computeBound() const
 }
 
 void
+OSGTerrainEngineNode::refresh()
+{
+    if (_terrain)
+    {
+        removeChild( _terrain );
+    }
+
+
+    _terrain = new TerrainNode(*_update_mapf, *_cull_mapf, _tileFactory.get(), *_terrainOptions.quickReleaseGLObjects() );    
+
+   CustomTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
+
+
+    // prepare the interpolation technique for generating triangles:
+    if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
+        tech->setOptimizeTriangleOrientation( false );   
+
+    _terrain->setTechniquePrototype( tech );
+
+    const MapInfo& mapInfo = _update_mapf->getMapInfo();
+    _keyNodeFactory = new SerialKeyNodeFactory( _tileBuilder.get(), _terrainOptions, mapInfo, _terrain, _uid );
+
+    // Build the first level of the terrain.
+    // Collect the tile keys comprising the root tiles of the terrain.
+    std::vector< TileKey > keys;
+    _update_mapf->getProfile()->getRootKeys( keys );
+
+    addChild( _terrain );
+
+    for( unsigned i=0; i<keys.size(); ++i )
+    {
+        osg::Node* node;
+        if ( _keyNodeFactory.valid() )
+            node = _keyNodeFactory->createNode( keys[i] );
+        else
+            node = _tileFactory->createSubTiles( *_update_mapf, _terrain, keys[i], true );
+
+        if ( node )
+            _terrain->addChild( node );
+        else
+            OE_WARN << LC << "Couldn't make tile for root key: " << keys[i].str() << std::endl;
+    }
+
+    updateTextureCombining();
+}
+
+void
 OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
 {
     LoadingPolicy::Mode mode = *_terrainOptions.loadingPolicy()->mode();
@@ -371,16 +418,23 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
 
     osg::Node* result = 0L;
 
+    osg::ref_ptr< TerrainNode > terrain = _terrain;
+
+    osg::ref_ptr< KeyNodeFactory > keyNodeFactory = _keyNodeFactory;
+
     if ( _isStreaming )
     {
         // sequential or preemptive mode only.
         // create a map frame so we can safely create tiles from this dbpager thread
         MapFrame mapf( getMap(), Map::TERRAIN_LAYERS, "dbpager::earth plugin" );
-        result = getTileFactory()->createSubTiles( mapf, _terrain, key, false );
+        result = getTileFactory()->createSubTiles( mapf, terrain.get(), key, false );
     }
     else
     {
-        result = _keyNodeFactory->createNode( key );
+        if (keyNodeFactory.valid() && terrain.valid())
+        {
+            result = keyNodeFactory->createNode( key );
+        }
     }
 
 #ifdef PROFILING
@@ -450,93 +504,107 @@ OSGTerrainEngineNode::addImageLayer( ImageLayer* layerAdded )
     if ( !layerAdded || !layerAdded->getTileSource() )
         return;
 
-    // visit all existing terrain tiles and inform each one of the new image layer:
-    TileVector tiles;
-    _terrain->getTiles( tiles );
-
-    for( TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr )
+    if (!_isStreaming)
     {
-        Tile* tile = itr->get();
-
-        StreamingTile* streamingTile = 0L;
-
-        GeoImage geoImage;
-        bool needToUpdateImagery = false;
-        int imageLOD = -1;
-
-        if ( !_isStreaming || tile->getKey().getLevelOfDetail() == 1 )
-        {
-            // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
-            TileKey geoImageKey = tile->getKey();
-            _tileFactory->createValidGeoImage( layerAdded, tile->getKey(), geoImage, geoImageKey );
-            imageLOD = tile->getKey().getLevelOfDetail();
-        }
-        else
-        {
-            // in seq/pre mode, set up a placeholder and mark the tile as dirty.
-            geoImage = GeoImage(ImageUtils::createEmptyImage(), tile->getKey().getExtent() );
-            needToUpdateImagery = true;
-            streamingTile = static_cast<StreamingTile*>(tile);
-        }
-
-        if (geoImage.valid())
-        {
-            const MapInfo& mapInfo = _update_mapf->getMapInfo();
-
-            double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
-            geoImage.getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
-
-            //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
-            osg::ref_ptr<GeoLocator> img_locator = tile->getKey().getProfile()->getSRS()->createLocator( 
-                img_min_lon, img_min_lat, img_max_lon, img_max_lat, 
-                !mapInfo.isGeocentric() );
-            
-            //Set the CS to geocentric if we are dealing with a geocentric map
-            if ( mapInfo.isGeocentric() )
-            {
-                img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
-            }
-
-            tile->setCustomColorLayer( CustomColorLayer(
-                layerAdded,
-                geoImage.getImage(),
-                img_locator.get(), imageLOD,  tile->getKey() ) );
-
-            // if necessary, tell the tile to queue up a new imagery request (since we
-            // just installed a placeholder)
-            if ( needToUpdateImagery )
-            {
-                streamingTile->updateImagery( layerAdded, *_update_mapf, _tileFactory.get() );
-            }
-        }
-        else
-        {
-            // this can happen if there's no data in the new layer for the given tile.
-            // we will rely on the driver to dump out a warning if this is an error.
-        }
-
-        tile->applyImmediateTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getUID() );
+        refresh();
     }
+    else
+    {
+        // visit all existing terrain tiles and inform each one of the new image layer:
+        TileVector tiles;
+        _terrain->getTiles( tiles );
 
-    updateTextureCombining();
+        for( TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr )
+        {
+            Tile* tile = itr->get();
+
+            StreamingTile* streamingTile = 0L;
+
+            GeoImage geoImage;
+            bool needToUpdateImagery = false;
+            int imageLOD = -1;
+
+            if ( !_isStreaming || tile->getKey().getLevelOfDetail() == 1 )
+            {
+                // in standard mode, or at the first LOD in seq/pre mode, fetch the image immediately.
+                TileKey geoImageKey = tile->getKey();
+                _tileFactory->createValidGeoImage( layerAdded, tile->getKey(), geoImage, geoImageKey );
+                imageLOD = tile->getKey().getLevelOfDetail();
+            }
+            else
+            {
+                // in seq/pre mode, set up a placeholder and mark the tile as dirty.
+                geoImage = GeoImage(ImageUtils::createEmptyImage(), tile->getKey().getExtent() );
+                needToUpdateImagery = true;
+                streamingTile = static_cast<StreamingTile*>(tile);
+            }
+
+            if (geoImage.valid())
+            {
+                const MapInfo& mapInfo = _update_mapf->getMapInfo();
+
+                double img_min_lon, img_min_lat, img_max_lon, img_max_lat;
+                geoImage.getExtent().getBounds(img_min_lon, img_min_lat, img_max_lon, img_max_lat);
+
+                //Specify a new locator for the color with the coordinates of the TileKey that was actually used to create the image
+                osg::ref_ptr<GeoLocator> img_locator = tile->getKey().getProfile()->getSRS()->createLocator( 
+                    img_min_lon, img_min_lat, img_max_lon, img_max_lat, 
+                    !mapInfo.isGeocentric() );
+
+                //Set the CS to geocentric if we are dealing with a geocentric map
+                if ( mapInfo.isGeocentric() )
+                {
+                    img_locator->setCoordinateSystemType( osgTerrain::Locator::GEOCENTRIC );
+                }
+
+                tile->setCustomColorLayer( CustomColorLayer(
+                    layerAdded,
+                    geoImage.getImage(),
+                    img_locator.get(), imageLOD,  tile->getKey() ) );
+
+                // if necessary, tell the tile to queue up a new imagery request (since we
+                // just installed a placeholder)
+                if ( needToUpdateImagery )
+                {
+                    streamingTile->updateImagery( layerAdded, *_update_mapf, _tileFactory.get() );
+                }
+            }
+            else
+            {
+                // this can happen if there's no data in the new layer for the given tile.
+                // we will rely on the driver to dump out a warning if this is an error.
+            }
+
+            tile->applyImmediateTileUpdate( TileUpdate::ADD_IMAGE_LAYER, layerAdded->getUID() );
+        }
+
+        updateTextureCombining();
+    }
 }
 
 void
 OSGTerrainEngineNode::removeImageLayer( ImageLayer* layerRemoved )
 {
-    // make a thread-safe copy of the tile table
-    TileVector tiles;
-    _terrain->getTiles( tiles );
-
-    for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    if (!_isStreaming)
     {
-        Tile* tile = itr->get();
-
-        // critical section
-        tile->removeCustomColorLayer( layerRemoved->getUID() );
+        refresh();
     }
-    
-    updateTextureCombining();
+    else
+    {
+        // make a thread-safe copy of the tile table
+        TileVector tiles;
+        _terrain->getTiles( tiles );
+
+        for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        {
+            Tile* tile = itr->get();
+
+            // critical section
+            tile->removeCustomColorLayer( layerRemoved->getUID() );
+        }
+
+        updateTextureCombining();
+    }
 }
 
 void
@@ -633,41 +701,62 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 {
     if ( !layer || !layer->getTileSource() )
         return;
-    
-    TileVector tiles;
-    _terrain->getTiles( tiles );
 
-    OE_DEBUG << LC << "Found " << tiles.size() << std::endl;
-
-    for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    if (!_isStreaming)
     {
-        updateElevation( itr->get() );
+        refresh();
+    }
+    else
+    {    
+        TileVector tiles;
+        _terrain->getTiles( tiles );
+
+        OE_DEBUG << LC << "Found " << tiles.size() << std::endl;
+
+        for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        {
+            updateElevation( itr->get() );
+        }
     }
 }
 
 void
 OSGTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 {
-    TileVector tiles;
-    _terrain->getTiles( tiles );
-
-    for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    if (!_isStreaming)
     {
-        updateElevation( itr->get() );
+        refresh();
+    }
+    else
+    {
+        TileVector tiles;
+        _terrain->getTiles( tiles );
+
+        for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        {
+            updateElevation( itr->get() );
+        }
     }
 }
 
 void
 OSGTerrainEngineNode::moveElevationLayer( unsigned int oldIndex, unsigned int newIndex )
 {
-    TileVector tiles;
-    _terrain->getTiles( tiles );
-
-    OE_DEBUG << "Found " << tiles.size() << std::endl;
-
-    for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+    if (!_isStreaming)
     {
-        updateElevation( itr->get() );
+        refresh();
+    }
+    else
+    {
+        TileVector tiles;
+        _terrain->getTiles( tiles );
+
+        OE_DEBUG << "Found " << tiles.size() << std::endl;
+
+        for (TileVector::iterator itr = tiles.begin(); itr != tiles.end(); ++itr)
+        {
+            updateElevation( itr->get() );
+        }
     }
 }
 

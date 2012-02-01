@@ -319,6 +319,8 @@ namespace osgEarth { namespace Symbology
         GeometryCollection& getComponents() { return _parts; }
         const GeometryCollection& getComponents() const { return _parts; }
 
+        Geometry* add( Geometry* geom ) { _parts.push_back(geom); return geom; }
+
     protected:
         GeometryCollection _parts;
     };

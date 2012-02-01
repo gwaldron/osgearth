@@ -61,18 +61,25 @@ ElevationQuery::sync()
 }
 
 unsigned int
-ElevationQuery::getMaxLevel( double x, double y ) const
+ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) const
 {
     unsigned int maxLevel = 0;
     for( ElevationLayerVector::const_iterator i = _mapf.elevationLayers().begin(); i != _mapf.elevationLayers().end(); ++i )
     {
         unsigned int layerMax = 0;
         osgEarth::TileSource* ts = i->get()->getTileSource();
-        if (ts)
+        if ( ts && ts->getDataExtents().size() > 0 )
         {
+            double tsX = x, tsY = y;
+            const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
+            if ( srs && tsSRS )
+                srs->transform2D( x, y, tsSRS, tsX, tsY );
+            else
+                tsSRS = srs;
+            
             for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
             {
-                if (j->getMaxLevel() > layerMax && j->contains( x, y ))
+                if (j->getMaxLevel() > layerMax && j->contains( tsX, tsY, tsSRS ))
                 {
                     layerMax = j->getMaxLevel();
                 }
@@ -193,7 +200,7 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
 
     
     //This is the max resolution that we actually have data at this point
-    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y());
+    unsigned int bestAvailLevel = getMaxLevel( point.x(), point.y(), pointSRS);
 
     if (desiredResolution > 0.0)
     {

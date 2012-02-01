@@ -33,7 +33,7 @@ namespace osgEarth { namespace Annotation
     /**
      * Internal tools used by the annotation library.
      */
-    struct AnnotationUtils
+    struct OSGEARTHANNO_EXPORT AnnotationUtils
     {
         static const std::string& UNIFORM_HIGHLIGHT();
 
@@ -95,7 +95,31 @@ namespace osgEarth { namespace Annotation
 
         static osg::Node* createFullScreenQuad( const osg::Vec4& color );
 
-        static osg::Node* createGeodesicSphere( float r, const osg::Vec4& color );
+        /**
+         * Builds a sphere geometry.
+         * @param r        Radius
+         * @param color    Color
+         * @param maxAngle Maximum angle between verts (controls tessellation)
+         */
+        static osg::Node* createSphere( float r, const osg::Vec4& color, float maxAngle =15.0f );
+
+        /**
+         * Builds a hemisphere geometry.
+         * @param r        Radius
+         * @param color    Color
+         * @param maxAngle Maximum angle between verts (controls tessellation)
+         */
+        static osg::Node* createHemisphere( float r, const osg::Vec4& color, float maxAngle =15.0f );
+
+        /**
+         * Builds an ellipsoid geometry.
+         * @param xr       X-axis radius
+         * @param yr       Y-axis radius
+         * @param zr       Z-axis radius
+         * @param color    Color
+         * @param maxAngle Maximum angle between verts (controls tessellation)
+         */
+        static osg::Node* createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle =15.0f );
     };
 
 } } // namespace osgEarth::Annotation

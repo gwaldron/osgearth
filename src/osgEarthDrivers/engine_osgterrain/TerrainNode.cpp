@@ -300,6 +300,8 @@ TerrainNode::traverse( osg::NodeVisitor &nv )
             ev->getActionAdapter()->requestRedraw();
             decDelay();
         }
+
+        //OE_INFO << "Tiles = " << _tiles.size() << std::endl;
     }
 
     osg::Group::traverse( nv );

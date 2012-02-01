@@ -30,7 +30,7 @@ namespace osgEarth { namespace Annotation
     using namespace osgEarth::Symbology;
 
     /**
-     * Simple node that renders a Geometry into a scene graph node. The geometry
+     * Simple node that renders geometry into a scene graph node. The geometry
      * is in a local tangent plane that may be positioned somewhere on the 
      * Map's surface.
      */
@@ -38,11 +38,21 @@ namespace osgEarth { namespace Annotation
     {
     public:
         /**
-         * Constructs a new draped geometry node
+         * Constructs a new localized node that renders a Geometry
          */
         GeometryNode( 
             MapNode*     mapNode,
             Geometry*    geom, 
+            const Style& style, 
+            bool         draped     =false );
+
+        /**
+         * Construcst a new localized node that renders a pre-built
+         * node (in a local cartesian space)
+         */
+        GeometryNode( 
+            MapNode*     mapNode,
+            osg::Node*   node, 
             const Style& style, 
             bool         draped     =false );
 

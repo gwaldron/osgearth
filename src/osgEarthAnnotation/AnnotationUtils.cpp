@@ -376,7 +376,7 @@ AnnotationUtils::OrthoNodeAutoTransform::acceptCullNoTraverse( osg::CullStack* c
 }
 
 osg::Node* 
-AnnotationUtils::createGeodesicSphere( float r, const osg::Vec4& color )
+AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
 {
     osg::Geometry* geom = new osg::Geometry();
 
@@ -388,6 +388,83 @@ AnnotationUtils::createGeodesicSphere( float r, const osg::Vec4& color )
     v->push_back( osg::Vec3(r,0,0) ); // right
     v->push_back( osg::Vec3(0,r,0) ); // back
     v->push_back( osg::Vec3(0,-r,0) ); // front
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+    b->reserve(24);
+    b->push_back(0); b->push_back(3); b->push_back(4);
+    b->push_back(0); b->push_back(4); b->push_back(2);
+    b->push_back(0); b->push_back(2); b->push_back(5);
+    b->push_back(0); b->push_back(5); b->push_back(3);
+    b->push_back(1); b->push_back(3); b->push_back(5);
+    b->push_back(1); b->push_back(4); b->push_back(3);
+    b->push_back(1); b->push_back(2); b->push_back(4);
+    b->push_back(1); b->push_back(5); b->push_back(2);
+    geom->addPrimitiveSet( b );
+
+    MeshSubdivider ms;
+    ms.run( *geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( geom );
+
+    return geode;
+}
+
+osg::Node* 
+AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAngle )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(5);
+    v->push_back( osg::Vec3(0,0,r) ); // top
+    v->push_back( osg::Vec3(-r,0,0) ); // left
+    v->push_back( osg::Vec3(r,0,0) ); // right
+    v->push_back( osg::Vec3(0,r,0) ); // back
+    v->push_back( osg::Vec3(0,-r,0) ); // front
+    geom->setVertexArray(v);
+
+    osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);
+    b->reserve(24);
+    b->push_back(0); b->push_back(2); b->push_back(3);
+    b->push_back(0); b->push_back(3); b->push_back(1);
+    b->push_back(0); b->push_back(1); b->push_back(4);
+    b->push_back(0); b->push_back(4); b->push_back(2);
+    geom->addPrimitiveSet( b );
+
+    MeshSubdivider ms;
+    ms.run( *geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE );
+
+    osg::Vec4Array* c = new osg::Vec4Array(1);
+    (*c)[0] = color;
+    geom->setColorArray( c );
+    geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+    osg::Geode* geode = new osg::Geode();
+    geode->addDrawable( geom );
+
+    return geode;
+}
+
+osg::Node* 
+AnnotationUtils::createEllipsoid( float xr, float yr, float zr, const osg::Vec4& color, float maxAngle )
+{
+    osg::Geometry* geom = new osg::Geometry();
+
+    osg::Vec3Array* v = new osg::Vec3Array();
+    v->reserve(6);
+    v->push_back( osg::Vec3(0,0, zr) ); // top
+    v->push_back( osg::Vec3(0,0,-zr) ); // bottom
+    v->push_back( osg::Vec3(-xr,0,0) ); // left
+    v->push_back( osg::Vec3( xr,0,0) ); // right
+    v->push_back( osg::Vec3(0, yr,0) ); // back
+    v->push_back( osg::Vec3(0,-yr,0) ); // front
     geom->setVertexArray(v);
 
     osg::DrawElementsUByte* b = new osg::DrawElementsUByte(GL_TRIANGLES);

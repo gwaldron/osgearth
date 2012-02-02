@@ -587,9 +587,14 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 roofLine->addElement( basePartPtr + i*2 );
             outline->addPrimitiveSet( roofLine );
 
+            // if the outline is tessellated, we only want outlines on the original 
+            // points (not the inserted points)
+            unsigned step = std::max( 1u, 
+                _outlineSymbol->tessellation().isSet() ? *_outlineSymbol->tessellation() : 1u );
+
             osg::DrawElementsUShort* wallLines = new osg::DrawElementsUShort( GL_LINES );
             wallLines->reserve( len*2 );
-            for( unsigned i=0; i<len; ++i )
+            for( unsigned i=0; i<len; i+=step )
             {
                 wallLines->push_back( basePartPtr + i*2 );
                 wallLines->push_back( basePartPtr + i*2 + 1 );

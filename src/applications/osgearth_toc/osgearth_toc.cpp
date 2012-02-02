@@ -33,7 +33,9 @@ void updateControlPanel();
 
 static osg::ref_ptr<Map> s_activeMap;
 static osg::ref_ptr<Map> s_inactiveMap;
-static Grid* s_layerBox;
+static Grid* s_masterGrid;
+static Grid* s_imageBox;
+static Grid* s_elevationBox;
 static bool s_updateRequired = true;
 
 //------------------------------------------------------------------------
@@ -108,11 +110,11 @@ main( int argc, char** argv )
 
 struct LayerEnabledHandler : public ControlEventHandler
 {
-    LayerEnabledHandler( ImageLayer* layer ) : _layer(layer) { }
+    LayerEnabledHandler( TerrainLayer* layer ) : _layer(layer) { }
     void onValueChanged( Control* control, bool value ) {
         _layer->setEnabled( value );
     }
-    ImageLayer* _layer;
+    TerrainLayer* _layer;
 };
 
 struct LayerOpacityHandler : public ControlEventHandler
@@ -126,31 +128,64 @@ struct LayerOpacityHandler : public ControlEventHandler
 
 struct AddLayerHandler : public ControlEventHandler
 {
-    AddLayerHandler( ImageLayer* layer ) : _layer(layer) { }
+    AddLayerHandler( TerrainLayer* layer ) : _layer(layer) { }
     void onClick( Control* control, int mouseButtonMask ) {
-        s_inactiveMap->removeImageLayer( _layer.get() );
-        s_activeMap->addImageLayer( _layer.get() );
+
+        ImageLayer* imageLayer = dynamic_cast< ImageLayer*>( _layer.get() );
+        ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer*>( _layer.get() );
+
+        if (imageLayer)
+        {
+            s_inactiveMap->removeImageLayer( imageLayer );
+            s_activeMap->addImageLayer( imageLayer );
+        }
+        else
+        {
+            s_inactiveMap->removeElevationLayer( elevationLayer );
+            s_activeMap->addElevationLayer( elevationLayer );
+        }
     }
-    osg::ref_ptr<ImageLayer> _layer;
+    osg::ref_ptr<TerrainLayer> _layer;
 };
 
 struct RemoveLayerHandler : public ControlEventHandler
 {
-    RemoveLayerHandler( ImageLayer* layer ) : _layer(layer) { }
-    void onClick( Control* control, int mouseButtonMask ) {
-        s_inactiveMap->addImageLayer( _layer.get() );
-        s_activeMap->removeImageLayer( _layer.get() );
+    RemoveLayerHandler( TerrainLayer* layer ) : _layer(layer) { }
+    void onClick( Control* control, int mouseButtonMask ) {        
+        ImageLayer* imageLayer = dynamic_cast< ImageLayer*>( _layer.get() );
+        ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer*>( _layer.get() );
+
+        if (imageLayer)
+        {
+            s_inactiveMap->addImageLayer( imageLayer );
+            s_activeMap->removeImageLayer( imageLayer );
+        }
+        else
+        {
+            s_inactiveMap->addElevationLayer( elevationLayer );
+            s_activeMap->removeElevationLayer( elevationLayer );
+        }
     }
-    osg::ref_ptr<ImageLayer> _layer;
+    osg::ref_ptr<TerrainLayer> _layer;
 };
 
 struct MoveLayerHandler : public ControlEventHandler
 {
-    MoveLayerHandler( ImageLayer* layer, int newIndex ) : _layer(layer), _newIndex(newIndex) { }
+    MoveLayerHandler( TerrainLayer* layer, int newIndex ) : _layer(layer), _newIndex(newIndex) { }
     void onClick( Control* control, int mouseButtonMask ) {
-        s_activeMap->moveImageLayer( _layer, _newIndex );
+        ImageLayer* imageLayer = dynamic_cast< ImageLayer*>( _layer );
+        ElevationLayer* elevationLayer = dynamic_cast< ElevationLayer*>( _layer );
+
+        if (imageLayer)
+        {
+            s_activeMap->moveImageLayer( imageLayer, _newIndex );
+        }
+        else
+        {
+            s_activeMap->moveElevationLayer( elevationLayer, _newIndex );
+        }
     }
-    ImageLayer* _layer;
+    TerrainLayer* _layer;
     int _newIndex;
 };
 
@@ -162,38 +197,64 @@ createControlPanel( osgViewer::View* view )
 {
     ControlCanvas* canvas = ControlCanvas::get( view );
 
-    // the outer container:
-    s_layerBox = new Grid();
-    s_layerBox->setBackColor(0,0,0,0.5);
-    s_layerBox->setMargin( 10 );
-    s_layerBox->setPadding( 10 );
-    s_layerBox->setChildSpacing( 10 );
-    s_layerBox->setChildVertAlign( Control::ALIGN_CENTER );
-    s_layerBox->setAbsorbEvents( true );
-    s_layerBox->setVertAlign( Control::ALIGN_BOTTOM );
+    s_masterGrid = new Grid();
+    s_masterGrid->setBackColor(0,0,0,0.5);
+    s_masterGrid->setMargin( 10 );
+    s_masterGrid->setPadding( 10 );
+    s_masterGrid->setChildSpacing( 10 );
+    s_masterGrid->setChildVertAlign( Control::ALIGN_CENTER );
+    s_masterGrid->setAbsorbEvents( true );
+    s_masterGrid->setVertAlign( Control::ALIGN_BOTTOM );
 
-    canvas->addControl( s_layerBox );
+    //The image layers
+    s_imageBox = new Grid();
+    s_imageBox->setBackColor(0,0,0,0.5);
+    s_imageBox->setMargin( 10 );
+    s_imageBox->setPadding( 10 );
+    s_imageBox->setChildSpacing( 10 );
+    s_imageBox->setChildVertAlign( Control::ALIGN_CENTER );
+    s_imageBox->setAbsorbEvents( true );
+    s_imageBox->setVertAlign( Control::ALIGN_BOTTOM );
+    s_masterGrid->setControl( 0, 0, s_imageBox );
+
+    //the elevation layers
+    s_elevationBox = new Grid();
+    s_elevationBox->setBackColor(0,0,0,0.5);
+    s_elevationBox->setMargin( 10 );
+    s_elevationBox->setPadding( 10 );
+    s_elevationBox->setChildSpacing( 10 );
+    s_elevationBox->setChildVertAlign( Control::ALIGN_CENTER );
+    s_elevationBox->setAbsorbEvents( true );
+    s_elevationBox->setVertAlign( Control::ALIGN_BOTTOM );
+    s_masterGrid->setControl( 1, 0, s_elevationBox );
+
+    canvas->addControl( s_masterGrid );
+
     return canvas;
 }
 
 void
-createLayerItem( int gridRow, int layerIndex, int numLayers, ImageLayer* layer, bool isActive )
+createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, TerrainLayer* layer, bool isActive )
 {
     // a checkbox to enable/disable the layer:
     CheckBoxControl* enabled = new CheckBoxControl( layer->getEnabled() );
     enabled->addEventHandler( new LayerEnabledHandler(layer) );
-    s_layerBox->setControl( 0, gridRow, enabled );
+    grid->setControl( 0, gridRow, enabled );
 
     // the layer name
     LabelControl* name = new LabelControl( layer->getName() );
-    s_layerBox->setControl( 1, gridRow, name );
+    grid->setControl( 1, gridRow, name );
 
-    // an opacity slider
-    HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, layer->getOpacity() );
-    opacity->setWidth( 125 );
-    opacity->setHeight( 12 );
-    opacity->addEventHandler( new LayerOpacityHandler(layer) );
-    s_layerBox->setControl( 2, gridRow, opacity );
+    ImageLayer* imageLayer = dynamic_cast< ImageLayer* > (layer );
+    if (imageLayer)
+    {
+        // an opacity slider
+        HSliderControl* opacity = new HSliderControl( 0.0f, 1.0f, imageLayer->getOpacity() );
+        opacity->setWidth( 125 );
+        opacity->setHeight( 12 );
+        opacity->addEventHandler( new LayerOpacityHandler(imageLayer) );
+        grid->setControl( 2, gridRow, opacity );
+    }
 
     // move buttons
     if ( layerIndex < numLayers-1 && isActive )
@@ -202,7 +263,7 @@ createLayerItem( int gridRow, int layerIndex, int numLayers, ImageLayer* layer, 
         upButton->setBackColor( .4,.4,.4,1 );
         upButton->setActiveColor( .8,0,0,1 );
         upButton->addEventHandler( new MoveLayerHandler( layer, layerIndex+1 ) );
-        s_layerBox->setControl( 3, gridRow, upButton );
+        grid->setControl( 3, gridRow, upButton );
     }
     if ( layerIndex > 0 && isActive)
     {
@@ -210,7 +271,7 @@ createLayerItem( int gridRow, int layerIndex, int numLayers, ImageLayer* layer, 
         upButton->setBackColor( .4,.4,.4,1 );
         upButton->setActiveColor( .8,0,0,1 );
         upButton->addEventHandler( new MoveLayerHandler( layer, layerIndex-1 ) );
-        s_layerBox->setControl( 4, gridRow, upButton );
+        grid->setControl( 4, gridRow, upButton );
     }
 
     // add/remove button:
@@ -222,35 +283,65 @@ createLayerItem( int gridRow, int layerIndex, int numLayers, ImageLayer* layer, 
         addRemove->addEventHandler( new RemoveLayerHandler(layer) );
     else
         addRemove->addEventHandler( new AddLayerHandler(layer) );
-    s_layerBox->setControl( 5, gridRow, addRemove );
+    grid->setControl( 5, gridRow, addRemove );
 }
 
 void
 updateControlPanel()
 {
     // erase all child controls and just rebuild them b/c we're lazy.
-    s_layerBox->clearControls();
+
+    //Rebuild all the image layers    
+    s_imageBox->clearControls();
 
     int row = 0;
 
-    LabelControl* activeLabel = new LabelControl( "Map Layers", 20, osg::Vec4f(1,1,0,1) );
-    s_layerBox->setControl( 1, row++, activeLabel );
+    LabelControl* activeLabel = new LabelControl( "Image Layers", 20, osg::Vec4f(1,1,0,1) );
+    s_imageBox->setControl( 1, row++, activeLabel );
 
     // the active map layers:
-    MapFrame mapf( s_activeMap.get(), Map::IMAGE_LAYERS );
+    MapFrame mapf( s_activeMap.get() );
     int layerNum = mapf.imageLayers().size()-1;
     for( ImageLayerVector::const_reverse_iterator i = mapf.imageLayers().rbegin(); i != mapf.imageLayers().rend(); ++i )
-        createLayerItem( row++, layerNum--, mapf.imageLayers().size(), i->get(), true );
+        createLayerItem( s_imageBox, row++, layerNum--, mapf.imageLayers().size(), i->get(), true );
 
-    MapFrame mapf2( s_inactiveMap.get(), Map::IMAGE_LAYERS );
+    MapFrame mapf2( s_inactiveMap.get() );
     if ( mapf2.imageLayers().size() > 0 )
     {
         LabelControl* inactiveLabel = new LabelControl( "Removed:", 18, osg::Vec4f(1,1,0,1) );
-        s_layerBox->setControl( 1, row++, inactiveLabel );
+        s_imageBox->setControl( 1, row++, inactiveLabel );
 
         for( unsigned int i=0; i<mapf2.imageLayers().size(); ++i )
         {
-            createLayerItem( row++, -1, -1, mapf2.getImageLayerAt(i), false );
+            createLayerItem( s_imageBox, row++, -1, -1, mapf2.getImageLayerAt(i), false );
         }
     }
+
+
+
+
+    //Rebuild the elevation layers
+    s_elevationBox->clearControls();
+
+    row = 0;
+
+    activeLabel = new LabelControl( "Elevation Layers", 20, osg::Vec4f(1,1,0,1) );
+    s_elevationBox->setControl( 1, row++, activeLabel );
+
+    // the active map layers:
+    layerNum = mapf.elevationLayers().size()-1;
+    for( ElevationLayerVector::const_reverse_iterator i = mapf.elevationLayers().rbegin(); i != mapf.elevationLayers().rend(); ++i )
+        createLayerItem( s_elevationBox, row++, layerNum--, mapf.elevationLayers().size(), i->get(), true );
+
+    if ( mapf2.elevationLayers().size() > 0 )
+    {
+        LabelControl* inactiveLabel = new LabelControl( "Removed:", 18, osg::Vec4f(1,1,0,1) );
+        s_elevationBox->setControl( 1, row++, inactiveLabel );
+
+        for( unsigned int i=0; i<mapf2.elevationLayers().size(); ++i )
+        {
+            createLayerItem( s_elevationBox, row++, -1, -1, mapf2.getElevationLayerAt(i), false );
+        }
+    }
+
 }

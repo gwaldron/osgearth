@@ -118,7 +118,6 @@ _terrain( terrain )
 void
 OSGTerrainEngineNode::ElevationChangedCallback::onEnabledChanged( TerrainLayer* layer )
 {
-    OE_NOTICE << "Layer changed" << std::endl;
     _terrain->refresh();
 }
 

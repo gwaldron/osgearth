@@ -38,7 +38,6 @@ SET(LIB_PUBLIC_HEADERS
     ElevationLayer
     ElevationQuery
     Export
-    EGM
     FileUtils
 	FindNode
     GeoData
@@ -135,7 +134,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
     ECEF.cpp
-    EGM.cpp
     ElevationLayer.cpp
     ElevationQuery.cpp
     FileUtils.cpp

@@ -123,9 +123,8 @@ Profile::create(const std::string& srsInitString,
                 unsigned int numTilesHighAtLod0)
 {
     return new Profile(
-        SpatialReference::create( srsInitString ),
+        SpatialReference::create( srsInitString, vsrsInitString ),
         xmin, ymin, xmax, ymax,
-        VerticalSpatialReference::create( vsrsInitString ),
         numTilesWideAtLod0,
         numTilesHighAtLod0 );
 }
@@ -133,14 +132,12 @@ Profile::create(const std::string& srsInitString,
 const Profile*
 Profile::create(const SpatialReference* srs,
                 double xmin, double ymin, double xmax, double ymax,
-                const VerticalSpatialReference* vsrs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
     return new Profile(
         srs,
         xmin, ymin, xmax, ymax,
-        vsrs,
         numTilesWideAtLod0,
         numTilesHighAtLod0 );
 }
@@ -149,7 +146,6 @@ const Profile*
 Profile::create(const SpatialReference* srs,
                 double xmin, double ymin, double xmax, double ymax,
                 double geoxmin, double geoymin, double geoxmax, double geoymax,
-                const VerticalSpatialReference* vsrs,
                 unsigned int numTilesWideAtLod0,
                 unsigned int numTilesHighAtLod0)
 {
@@ -157,7 +153,6 @@ Profile::create(const SpatialReference* srs,
         srs,
         xmin, ymin, xmax, ymax,
         geoxmin, geoymin, geoxmax, geoymax,
-        vsrs,
         numTilesWideAtLod0,
         numTilesHighAtLod0 );
 }
@@ -172,25 +167,25 @@ Profile::create(const std::string& srsInitString,
     if ( named )
         return const_cast<Profile*>( named );
 
-    osg::ref_ptr<const SpatialReference> srs = SpatialReference::create( srsInitString );
-
-    osg::ref_ptr<const VerticalSpatialReference> vsrs = VerticalSpatialReference::create( vsrsInitString );
+    osg::ref_ptr<const SpatialReference> srs = SpatialReference::create( srsInitString, vsrsInitString );
 
     if ( srs.valid() && srs->isGeographic() )
     {
         return new Profile(
             srs.get(),
             -180.0, -90.0, 180.0, 90.0,
-            vsrs.get(),
             numTilesWideAtLod0, numTilesHighAtLod0 );
     }
     else if ( srs.valid() && srs->isMercator() )
     {
         // automatically figure out proper mercator extents:
-        GDAL_SCOPED_LOCK;
-        double e, dummy;
-        srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs.get(), e, dummy );
-        return Profile::create( srs.get(), -e, -e, e, e, vsrs.get(), numTilesWideAtLod0, numTilesHighAtLod0 );
+        osg::Vec3d point(180.0, 0.0, 0.0);
+        srs->getGeographicSRS()->transform(point, srs.get(), point);
+        double e = point.x();
+        //GDAL_SCOPED_LOCK;
+        //double e, dummy;
+        //srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs.get(), e, dummy );
+        return Profile::create( srs.get(), -e, -e, e, e, numTilesWideAtLod0, numTilesHighAtLod0 );
     }
     else
     {
@@ -255,11 +250,10 @@ Profile::create( const ProfileOptions& options )
 
 Profile::Profile(const SpatialReference* srs,
                  double xmin, double ymin, double xmax, double ymax,
-                 const VerticalSpatialReference* vsrs,
                  unsigned int numTilesWideAtLod0,
                  unsigned int numTilesHighAtLod0) :
-osg::Referenced( true ),
-_vsrs          ( vsrs )
+
+osg::Referenced( true )
 {
     _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
 
@@ -271,21 +265,26 @@ _vsrs          ( vsrs )
         _extent :
         _extent.transform( _extent.getSRS()->getGeographicSRS() );
 
-    if ( !_vsrs.valid() )
-        _vsrs = Registry::instance()->getDefaultVSRS();
+    //if ( !_vsrs.valid() )
+    //    _vsrs = Registry::instance()->getDefaultVSRS();
 
     // gen the signature
-    _signature = Stringify() << std::hex << hashString( toProfileOptions().getConfig().toJSON() );
+    //_signature = Stringify() << std::hex << hashString( toProfileOptions().getConfig().toJSON() );
+
+    // make a profile sig (sans srs) and an srs sig for quick comparisons.
+    ProfileOptions temp = toProfileOptions();
+    _fullSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+    temp.vsrsString() = "";
+    _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
 }
 
 Profile::Profile(const SpatialReference* srs,
                  double xmin, double ymin, double xmax, double ymax,
                  double geo_xmin, double geo_ymin, double geo_xmax, double geo_ymax,
-                 const VerticalSpatialReference* vsrs,
                  unsigned int numTilesWideAtLod0,
                  unsigned int numTilesHighAtLod0 ) :
-osg::Referenced( true ),
-_vsrs          ( vsrs )
+
+osg::Referenced( true )
 {
     _extent = GeoExtent( srs, xmin, ymin, xmax, ymax );
 
@@ -296,11 +295,14 @@ _vsrs          ( vsrs )
         srs->getGeographicSRS(),
         geo_xmin, geo_ymin, geo_xmax, geo_ymax );
 
-    if ( !_vsrs.valid() )
-        _vsrs = Registry::instance()->getDefaultVSRS();
+    //if ( !_vsrs.valid() )
+    //    _vsrs = Registry::instance()->getDefaultVSRS();
 
-    // gen the signature
-    _signature = Stringify() << std::hex << hashString( toProfileOptions().getConfig().toJSON() );
+    // make a profile sig (sans srs) and an srs sig for quick comparisons.
+    ProfileOptions temp = toProfileOptions();
+    _fullSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
+    temp.vsrsString() = "";
+    _horizSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
 }
 
 Profile::ProfileType
@@ -336,11 +338,12 @@ Profile::getLatLongExtent() const {
 std::string
 Profile::toString() const
 {
+    const SpatialReference* srs = _extent.getSRS();
     std::stringstream buf;
-    buf << "[srs=" << _extent.getSRS()->getName() << ", min=" << _extent.xMin() << "," << _extent.yMin()
+    buf << "[srs=" << srs->getName() << ", min=" << _extent.xMin() << "," << _extent.yMin()
         << " max=" << _extent.xMax() << "," << _extent.yMax()
         << " lod0=" << _numTilesWideAtLod0 << "," << _numTilesHighAtLod0
-        << " vsrs=" << ( _vsrs.valid() ? _vsrs->getName() : "default" )
+        << " vdatum=" << (srs->getVerticalDatum() ? srs->getVerticalDatum()->getName() : "geodetic")
         << "]";
     std::string bufStr;
 	bufStr = buf.str();
@@ -351,8 +354,8 @@ ProfileOptions
 Profile::toProfileOptions() const
 {
     ProfileOptions op;
-    op.srsString() = getSRS()->getInitString();
-    op.vsrsString() = getVerticalSRS()->getInitString();
+    op.srsString() = getSRS()->getHorizInitString();
+    op.vsrsString() = getSRS()->getVertInitString();
     op.bounds()->xMin() = _extent.xMin();
     op.bounds()->yMin() = _extent.yMin();
     op.bounds()->xMax() = _extent.xMax();
@@ -406,13 +409,13 @@ Profile::getProfileTypeFromSRS(const std::string& srs_string)
 bool
 Profile::isEquivalentTo( const Profile* rhs ) const
 {
-    return rhs && getSignature() == rhs->getSignature();
-    //return
-    //    rhs &&
-    //    _extent.isValid() && rhs->getExtent().isValid() &&
-    //    _extent == rhs->getExtent() &&
-    //    _numTilesWideAtLod0 == rhs->_numTilesWideAtLod0 &&
-    //    _numTilesHighAtLod0 == rhs->_numTilesHighAtLod0;
+    return rhs && getFullSignature() == rhs->getFullSignature();
+}
+
+bool
+Profile::isHorizEquivalentTo( const Profile* rhs ) const
+{
+    return rhs && getHorizSignature() == rhs->getHorizSignature();
 }
 
 void

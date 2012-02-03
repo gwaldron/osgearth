@@ -70,18 +70,52 @@ namespace
         }
         return s;
     }
+    
+
+    // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
+    //bool mercatorToGeographic( double* x, double* y, double* z, int numPoints )
+    bool mercatorToGeographic( std::vector<osg::Vec3d>& points )
+    {
+        for( unsigned i=0; i<points.size(); ++i )
+        {
+            double xr = -osg::PI + ((points[i].x()-MERC_MINX)/MERC_WIDTH)*2.0*osg::PI;
+            double yr = -osg::PI + ((points[i].y()-MERC_MINY)/MERC_HEIGHT)*2.0*osg::PI;
+            points[i].x() = osg::RadiansToDegrees( xr );
+            points[i].y() = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
+            // z doesn't change here.
+        }
+        return true;
+    }
+
+    // http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
+    bool geographicToMercator( std::vector<osg::Vec3d>& points )
+    {
+        for( unsigned i=0; i<points.size(); ++i )
+        {
+            double xr = (osg::DegreesToRadians(points[i].x()) - (-osg::PI)) / (2.0*osg::PI);
+            double sinLat = sin(osg::DegreesToRadians(points[i].y()));
+            double oneMinusSinLat = 1-sinLat;
+            if ( oneMinusSinLat != 0.0 )
+            {
+                double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
+                points[0].x() = MERC_MINX + (xr * MERC_WIDTH);
+                points[i].y() = MERC_MINY + (yr * MERC_HEIGHT);
+                // z doesn't change here.
+            }
+        }
+        return true;
+    }
 }
 
 //------------------------------------------------------------------------
 
-SpatialReference::SpatialReferenceCache& SpatialReference::getSpatialReferenceCache()
+SpatialReference::SRSCache& SpatialReference::getSRSCache()
 {
     //Make sure the registry is created before the cache
     osgEarth::Registry::instance();
-    static SpatialReferenceCache s_cache;
+    static SRSCache s_cache;
     return s_cache;
 }
-
 
 SpatialReference*
 SpatialReference::createFromPROJ4( const std::string& init, const std::string& init_alias, const std::string& name )
@@ -122,45 +156,6 @@ SpatialReference::createCube()
     return result;
 }
 
-#if 0
-SpatialReference*
-SpatialReference::createLTP( const osg::Vec3d& refPointLLA, const SpatialReference* geoSRS )
-{
-    GDAL_SCOPED_LOCK;
-
-    void* handle = OSRNewSpatialReference( NULL );
-    bool ok = false;
-    SpatialReference* result = 0L;
-
-    if ( geoSRS )
-    {
-        std::string init = geoSRS->getGeographicSRS()->getWKT();
-        char buf[4096];
-        char* buf_ptr = &buf[0];
-	    strcpy( buf, init.c_str() );
-        ok = ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE );
-    }
-    else 
-    {
-        std::string init = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs";
-        ok = ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE );
-    }
-
-    if ( ok )
-    {
-        result = new LTPSpatialReference( handle, refPointLLA );
-    }
-    else
-    {
-        OE_WARN << LC << "Unable to create LTP SRS" << std::endl;
-        if ( handle )
-		    OSRDestroySpatialReference( handle );
-    }
-
-    return result;
-}
-#endif
-
 SpatialReference*
 SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
 {
@@ -184,21 +179,47 @@ SpatialReference::createFromWKT( const std::string& init, const std::string& ini
 }
 
 SpatialReference*
+SpatialReference::create( const std::string& init, const std::string& vinit )
+{
+    return vinit.empty() ?
+        create( init ) :
+        create( Stringify() << init << ";vdatum=" << vinit );
+}
+
+SpatialReference*
 SpatialReference::create( const std::string& init )
 {
+    // force it to lower case:
+    std::string low = toLower(init);
+
     static OpenThreads::Mutex s_mutex;
     OpenThreads::ScopedLock<OpenThreads::Mutex> exclusiveLock(s_mutex);
 
-    std::string low = init;
-    std::transform( low.begin(), low.end(), low.begin(), ::tolower );
-
-    SpatialReferenceCache::iterator itr = getSpatialReferenceCache().find(init);
-    if (itr != getSpatialReferenceCache().end())
+    // first, check the SRS cache to see if it already exists:
+    SRSCache::iterator itr = getSRSCache().find(low);
+    if (itr != getSRSCache().end())
     {
-        //OE_NOTICE << "Returning cached SRS" << std::endl;
         return itr->second.get();
     }
 
+    // next, check to see if this is a "unified" string (includes a vdatum)
+    std::string vlow;
+    StringVector tokens;
+    StringTokenizer( low, tokens, ";", "" );
+    if ( tokens.size() == 2 && startsWith(tokens[1], "vdatum=") )
+    {
+        low = tokens[0];
+        vlow = tokens[1].substr(7);
+    }
+
+    return createFromInitStrings( low, vlow );
+}
+
+
+SpatialReference*
+SpatialReference::createFromInitStrings(const std::string& low, const std::string& vlow)
+{
+    // now try to resolve the horizontal SRS:
     osg::ref_ptr<SpatialReference> srs;
 
     // shortcut for spherical-mercator:
@@ -209,7 +230,7 @@ SpatialReference::create( const std::string& init )
         // adjusted +a by ONE to work around osg manipulator error until we can figure out why.. GW
         srs = createFromPROJ4(
             "+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs",
-            init,
+            low,
             "Spherical Mercator" );
     }
 
@@ -218,7 +239,7 @@ SpatialReference::create( const std::string& init )
     {
         srs = createFromPROJ4(
             "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
-            init,
+            low,
             "World Mercator" );
     }
 
@@ -227,7 +248,7 @@ SpatialReference::create( const std::string& init )
     {
         srs = createFromPROJ4(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
-            init,
+            low,
             "WGS84" );
     }
 
@@ -239,25 +260,40 @@ SpatialReference::create( const std::string& init )
 
     else if ( low.find( "+" ) == 0 )
     {
-        srs = createFromPROJ4( low, init );
+        srs = createFromPROJ4( low, low );
     }
     else if ( low.find( "epsg:" ) == 0 || low.find( "osgeo:" ) == 0 )
     {
-        srs = createFromPROJ4( std::string("+init=") + low, init );
+        srs = createFromPROJ4( std::string("+init=") + low, low );
     }
     else if ( low.find( "projcs" ) == 0 || low.find( "geogcs" ) == 0 )
     {
-        srs = createFromWKT( init, init );
+        srs = createFromWKT( low, low );
     }
     else
     {
         return NULL;
     }
 
-    getSpatialReferenceCache()[init] = srs;
+    // next, resolve the vertical SRS:
+    if ( !vlow.empty() )
+    {
+        srs->_vdatum = VerticalDatum::get(vlow);
+        if ( !srs->_vdatum.valid() )
+        {
+            OE_WARN << LC << "Failed to locate vertical datum \"" << vlow << "\"" << std::endl;
+        }
+    }
+
+    // set up init strings.
+    srs->_init_str = vlow.empty() ? low : Stringify() << low << ";vdatum=" << vlow;
+    srs->_horiz_init_str = low;
+    srs->_vert_init_str = vlow;
+
+    // cache it - each unique SRS only exists once.
+    getSRSCache()[low] = srs;
     return srs.get();
 }
-
 
 SpatialReference*
 SpatialReference::create( osg::CoordinateSystemNode* csn )
@@ -269,7 +305,6 @@ SpatialReference::create( osg::CoordinateSystemNode* csn )
     }
     return result;
 }
-
 
 SpatialReference*
 SpatialReference::createFromHandle( void* ogrHandle, bool xferOwnership )
@@ -325,7 +360,7 @@ SpatialReference::validate()
 /****************************************************************************/
 
 
-SpatialReference::SpatialReference(void* handle, 
+SpatialReference::SpatialReference(void*              handle, 
                                    const std::string& init_type,
                                    const std::string& init_str,
                                    const std::string& name ) :
@@ -345,8 +380,9 @@ _is_contiguous  ( false ),
 _is_user_defined( false ),
 _is_ltp         ( false )
 {
-    _init_str_lc = init_str;
-    std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
+    _init_str_lc = toLower(init_str);
+    //_init_str_lc = init_str;
+    //std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
 }
 
 SpatialReference::SpatialReference(void* handle, bool ownsHandle) :
@@ -443,17 +479,45 @@ SpatialReference::getInitType() const
     return _init_type;
 }
 
+const VerticalDatum*
+SpatialReference::getVerticalDatum() const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _vdatum.get();
+}
+
 bool
 SpatialReference::isEquivalentTo( const SpatialReference* rhs ) const
 {
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
-
-    return _isEquivalentTo( rhs );
+    return _isEquivalentTo( rhs, true );
 }
 
 bool
-SpatialReference::_isEquivalentTo( const SpatialReference* rhs ) const
+SpatialReference::isHorizEquivalentTo( const SpatialReference* rhs ) const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+    return _isEquivalentTo( rhs, false );
+}
+
+bool
+SpatialReference::isVertEquivalentTo( const SpatialReference* rhs ) const
+{
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
+    // vertical equivalence means the same vertical datum and the same
+    // reference ellipsoid.
+    return
+        _vdatum.get() == rhs->_vdatum.get() &&
+        _ellipsoidId  == rhs->_ellipsoidId;
+}
+
+bool
+SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDatum ) const
 {
     if ( !rhs )
         return false;
@@ -472,6 +536,9 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs ) const
     {
         return false;
     }
+
+    if ( considerVDatum && (_vdatum.get() != rhs->_vdatum.get()) )
+        return false;
 
     if ( _init_str_lc == rhs->_init_str_lc )
         return true;
@@ -510,7 +577,10 @@ SpatialReference::getGeographicSRS() const
             int err = OSRCopyGeogCSFrom( new_handle, _handle );
             if ( err == OGRERR_NONE )
             {
-                const_cast<SpatialReference*>(this)->_geo_srs = new SpatialReference( new_handle );
+                // make a new geographic srs, and copy over the vertical datum
+                SpatialReference* ncthis = const_cast<SpatialReference*>(this);
+                ncthis->_geo_srs = new SpatialReference( new_handle );
+                ncthis->_geo_srs->_vdatum = _vdatum.get();
             }
             else
             {
@@ -543,13 +613,11 @@ SpatialReference::createTransMercFromLongitude( const Angular& lon ) const
 {
     // note. using tmerc with +lat_0 <> 0 is sloooooow.
     std::string datum = getDatumName();
-    std::stringstream buf;
-    buf << "+proj=tmerc +lat_0=0"
+    std::string horiz = Stringify()
+        << "+proj=tmerc +lat_0=0"
         << " +lon_0=" << lon.as(Units::DEGREES)
         << " +datum=" << (!datum.empty() ? "wgs84" : datum);
-    std::string projstr;
-    projstr = buf.str();
-    return create( projstr );
+    return create( horiz, getVertInitString() );
 }
 
 SpatialReference*
@@ -558,12 +626,10 @@ SpatialReference::createUTMFromLongitude( const Angular& lon ) const
     // note. UTM is up to 10% faster than TMERC for the same meridian.
     unsigned zone = 1 + (unsigned)floor((lon.as(Units::DEGREES)+180.0)/6.0);
     std::string datum = getDatumName();
-    std::stringstream buf;
-    buf << "+proj=utm +zone=" << zone
+    std::string horiz = Stringify()
+        << "+proj=utm +zone=" << zone
         << " +datum=" << (!datum.empty() ? "wgs84" : datum);
-    std::string projstr;
-    projstr = buf.str();
-    return create( projstr );
+    return create( horiz, getVertInitString() );
 }
 
 bool
@@ -706,9 +772,12 @@ SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_loc
     }
     else
     {
+        double latRad = osg::DegreesToRadians( xyz.y() );
+        double lonRad = osg::DegreesToRadians( xyz.x() );
+        double hae    = _vdatum.valid() ? _vdatum->msl2hae(xyz.y(), xyz.x(), xyz.z()) : xyz.z();
+
         getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
-            osg::DegreesToRadians(xyz.y()), osg::DegreesToRadians(xyz.x()), xyz.z(),
-            out_local2world);
+            latRad, lonRad, hae, out_local2world );
     }
 }
 
@@ -722,13 +791,272 @@ SpatialReference::createWorld2Local(const osg::Vec3d& xyz, osg::Matrixd& out_wor
     else
     {
         osg::Matrix local2world;
-        getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
-            osg::DegreesToRadians(xyz.y()), osg::DegreesToRadians(xyz.x()), xyz.z(),
-            local2world);
+        createLocal2World( xyz, local2world );
+        out_world2local.invert( local2world );
 
-        out_world2local = osg::Matrix::inverse(local2world);
+        //double latRad = osg::DegreesToRadians( xyz.y() );
+        //double lonRad = osg::DegreesToRadians( xyz.x() );
+        //double hae    = _vdatum.valid() ? _vdatum->getHeight(xyz.y(), xyz.x(), xyz.z()) : xyz.z();
+
+        //getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
+        //    latRad, lonRad, hae, local2world );
+
+        //out_world2local = osg::Matrix::inverse(local2world);
     }
 }
+
+
+
+bool
+SpatialReference::transform(const osg::Vec3d&       input,
+                            const SpatialReference* outputSRS,
+                            osg::Vec3d&             output) const
+{
+    if ( !outputSRS )
+        return false;
+
+    std::vector<osg::Vec3d> v(1, input);
+
+    if ( transform(v, outputSRS) )
+    {
+        output = v[0];
+        return true;
+    }
+    return false;
+}
+
+
+bool
+SpatialReference::transform(std::vector<osg::Vec3d>& points,
+                            const SpatialReference*  outputSRS) const
+{
+    if ( !outputSRS )
+        return false;
+
+    if ( !_initialized )
+        const_cast<SpatialReference*>(this)->init();
+
+    // trivial equivalency:
+    if ( isEquivalentTo(outputSRS) )
+        return true;
+
+    // if the ellipsoids differ, do an ECEF transformation; this will automatically
+    // take care of vertical datums as well
+    if ( _ellipsoidId != outputSRS->_ellipsoidId )
+    {
+        transformToECEF(points);
+        outputSRS->transformFromECEF(points);
+        return true;
+    }
+
+    // do the pre-transformation pass:
+    preTransform( points );
+    
+    bool success = false;
+
+#ifdef USE_CUSTOM_MERCATOR_TRANSFORM
+
+    if ( isGeographic() && outputSRS->isMercator() )
+    {
+        transformZ( points, outputSRS, true );
+        success = geographicToMercator( points );
+        return success;
+    }
+
+    else if ( isMercator() && outputSRS->isGeographic() )
+    {
+        success = mercatorToGeographic( points );
+        transformZ( points, outputSRS, true );
+        return success;
+    }
+
+#endif // USE_CUSTOM_MERCATOR_TRANSFORM
+
+
+    // if the points are starting as geographic, do the Z's first to avoid an unneccesary
+    // transformation in the case of differing vdatums.
+    bool z_done = false;
+    if ( isGeographic() )
+    {
+        z_done = transformZ( points, outputSRS, true );
+    }
+
+    // move the xy data into straight arrays that OGR can use
+    unsigned count = points.size();
+    double* x = new double[count];
+    double* y = new double[count];
+
+    for( unsigned i=0; i<count; i++ )
+    {
+        x[i] = points[i].x();
+        y[i] = points[i].y();
+    }
+
+    success = transformXYPointArrays( x, y, count, outputSRS );
+
+    if ( success )
+    {
+        for( unsigned i=0; i<count; i++ )
+        {
+            points[i].x() = x[i];
+            points[i].y() = y[i];
+        }
+    }
+
+    delete[] x;
+    delete[] y;
+
+    // calculate the Zs if we haven't already done so
+    if ( !z_done )
+    {
+        z_done = transformZ( points, outputSRS, outputSRS->isGeographic() );
+    }   
+
+    // run the user post-transform code
+    postTransform( points );
+
+    return success;
+}
+
+
+
+bool 
+SpatialReference::transform2D(double x, double y,
+                              const SpatialReference* outputSRS,
+                              double& out_x, double& out_y ) const
+{
+    osg::Vec3d temp(x,y,0);
+    bool ok = transform(temp, outputSRS, temp);
+    if ( ok ) {
+        out_x = temp.x();
+        out_y = temp.y();
+    }
+    return ok;
+}
+
+
+
+bool
+SpatialReference::transformXYPointArrays(double*  x,
+                                         double*  y,
+                                         unsigned count,
+                                         const SpatialReference* out_srs) const
+{  
+    // Transform the X and Y values inside an exclusive GDAL/OGR lock
+    GDAL_SCOPED_LOCK;
+
+    void* xform_handle = NULL;
+    TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
+    if (itr != _transformHandleCache.end())
+    {
+        //OE_DEBUG << "using cached transform handle" << std::endl;
+        xform_handle = itr->second;
+    }
+    else
+    {
+        //OE_DEBUG << "allocating new OCT Transform" << std::endl;
+        xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
+        const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
+    }
+
+    if ( !xform_handle )
+    {
+        OE_WARN << LC
+            << "SRS xform not possible" << std::endl
+            << "    From => " << getName() << std::endl
+            << "    To   => " << out_srs->getName() << std::endl;
+        return false;
+    }
+
+    return OCTTransform( xform_handle, count, x, y, 0L ) > 0;
+}
+
+
+bool
+SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
+                             const SpatialReference*  outputSRS,
+                             bool                     pointsAreGeodetic) const
+{
+    const VerticalDatum* outVDatum = outputSRS->getVerticalDatum();
+
+    // same vdatum, no xformation necessary.
+    if ( _vdatum.get() == outVDatum )
+        return true;
+
+    Units inUnits = _vdatum.valid() ? _vdatum->getUnits() : Units::METERS;
+    Units outUnits = outVDatum ? outVDatum->getUnits() : inUnits;
+
+    bool isgeo = isGeographic() || pointsAreGeodetic;
+    if ( isgeo )
+    {
+        for( unsigned i=0; i<points.size(); ++i )
+        {
+            if ( _vdatum.valid() )
+            {
+                // to HAE:
+                points[i].z() = _vdatum->msl2hae( points[i].y(), points[i].x(), points[i].z() );
+            }
+
+            // do the units conversion:
+            points[i].z() = inUnits.convertTo(outUnits, points[i].z());
+
+            if ( outVDatum )
+            {
+                // to MSL:
+                points[i].z() = outVDatum->hae2msl( points[i].y(), points[i].x(), points[i].z() );
+            }
+        }
+    }
+
+    else // need to xform input points
+    {
+        // copy the points and convert them to geodetic coords:
+        std::vector<osg::Vec3d> geopoints(points);
+        transform(geopoints, getGeographicSRS());
+
+        for( unsigned i=0; i<geopoints.size(); ++i )
+        {
+            if ( _vdatum.valid() )
+            {
+                // to HAE:
+                points[i].z() = _vdatum->msl2hae( geopoints[i].y(), geopoints[i].x(), points[i].z() );
+            }
+
+            // do the units conversion:
+            points[i].z() = inUnits.convertTo(outUnits, points[i].z());
+
+            if ( outVDatum )
+            {
+                // to MSL:
+                points[i].z() = outVDatum->hae2msl( geopoints[i].y(), geopoints[i].x(), points[i].z() );
+            }
+        }
+    }
+
+    return true;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#if 0 // ..................................................................
+
+
+
 
 bool
 SpatialReference::transform(double x, double y, double z,
@@ -751,45 +1079,15 @@ SpatialReference::transform(double x, double y, double z,
     out_x = x;
     out_y = y;
     out_z = z;
-    bool result = transformPoints(out_srs, &out_x, &out_y, &out_z, 1, context);
+    //bool result = transformPoints(out_srs, &out_x, &out_y, &out_z, 1, context);
+    bool result = transformPoints(out_srs, &out_x, &out_y, 0L, 1, context);
+
+    transformZs( &z, &out_z, 1 );
 
     return result;
 }
 
-// http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
-static bool
-mercatorToGeographic( double* x, double* y, double* z, int numPoints )
-{
-    for( int i=0; i<numPoints; i++ )
-    {
-        double xr = -osg::PI + ((x[i]-MERC_MINX)/MERC_WIDTH)*2.0*osg::PI;
-        double yr = -osg::PI + ((y[i]-MERC_MINY)/MERC_HEIGHT)*2.0*osg::PI;
-        x[i] = osg::RadiansToDegrees( xr );
-        y[i] = osg::RadiansToDegrees( 2.0 * atan( exp(yr) ) - osg::PI_2 );
-        // z doesn't change
-    }
-    return true;
-}
 
-// http://en.wikipedia.org/wiki/Mercator_projection#Mathematics_of_the_projection
-static bool
-geographicToMercator( double* x, double* y, double* z, int numPoints )
-{
-    for( int i=0; i<numPoints; i++ )
-    {
-        double xr = (osg::DegreesToRadians(x[i]) - (-osg::PI)) / (2.0*osg::PI);
-        double sinLat = sin(osg::DegreesToRadians(y[i]));
-        double oneMinusSinLat = 1-sinLat;
-        if ( oneMinusSinLat != 0.0 )
-        {
-            double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
-            x[i] = MERC_MINX + (xr * MERC_WIDTH);
-            y[i] = MERC_MINY + (yr * MERC_HEIGHT);
-            // z doesn't change
-        }
-    }
-    return true;
-}
 
 bool
 SpatialReference::transformPoints(const SpatialReference* out_srs,
@@ -824,48 +1122,60 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     if ( isGeographic() && out_srs->isMercator() )
     {
         success = geographicToMercator( x, y, z, numPoints );
+        transformZarray( x, y, z, numPoints, out_srs );
     }
 
     else if ( isMercator() && out_srs->isGeographic() )
     {
         success = mercatorToGeographic( x, y, z, numPoints );
+        transformZarray( x, y, z, numPoints, out_srs );
     }
 
     else
 #endif
 
     {    
-        GDAL_SCOPED_LOCK;
-
-        void* xform_handle = NULL;
-        TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
-        if (itr != _transformHandleCache.end())
+        // transform the XY's first
         {
-            //OE_DEBUG << "SpatialRefernece: using cached transform handle" << std::endl;
-            xform_handle = itr->second;
+            GDAL_SCOPED_LOCK;
+
+            void* xform_handle = NULL;
+            TransformHandleCache::const_iterator itr = _transformHandleCache.find(out_srs->getWKT());
+            if (itr != _transformHandleCache.end())
+            {
+                //OE_DEBUG << "SpatialRefernece: using cached transform handle" << std::endl;
+                xform_handle = itr->second;
+            }
+            else
+            {
+                xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
+                const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
+            }
+
+            if ( !xform_handle )
+            {
+                OE_WARN << LC
+                    << "SRS xform not possible" << std::endl
+                    << "    From => " << getName() << std::endl
+                    << "    To   => " << out_srs->getName() << std::endl;
+                return false;
+            }
+
+            //success = OCTTransform( xform_handle, numPoints, x, y, z ) > 0;
+            success = OCTTransform( xform_handle, numPoints, x, y, 0L ) > 0;
+
+            // END GDAL_SCOPE_LOCK
         }
-        else
+
+        // next the Z's.
+        // now, since transformZarray has to work on geodetic coordinates, a nice optimization
+        // would be to detect whether to call this before or after the x/y transformation in
+        // order to avoid any unnecessary xforms. -gw
+        if ( z && (success || ignore_errors) )
         {
-            xform_handle = OCTNewCoordinateTransformation( _handle, out_srs->_handle);
-            const_cast<SpatialReference*>(this)->_transformHandleCache[out_srs->getWKT()] = xform_handle;
+            transformZarray( x, y, z, out_srs->getVerticalDatum() );
         }
 
-        if ( !xform_handle )
-        {
-            OE_WARN << LC
-                << "SRS xform not possible" << std::endl
-                << "    From => " << getName() << std::endl
-                << "    To   => " << out_srs->getName() << std::endl;
-            return false;
-        }
-
-        //double* temp_z = new double[numPoints];
-        //success = OCTTransform( xform_handle, numPoints, x, y, temp_z ) > 0;
-        //delete[] temp_z;
-        
-        success = OCTTransform( xform_handle, numPoints, x, y, z ) > 0;
-
-        // END GDAL_SCOPE_LOCK
     }
 
     if ( success || ignore_errors )
@@ -904,6 +1214,8 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     if (isEquivalentTo(out_srs)) 
         return true;
 
+    // If both SRS have the same ellipsoid, do it this way
+
     int numPoints = points.size();
     double* x = new double[numPoints];
     double* y = new double[numPoints];
@@ -935,28 +1247,88 @@ SpatialReference::transformPoints(const SpatialReference* out_srs,
     return success;
 }
 
+
+
+#endif //..................................................................
+
+bool 
+SpatialReference::transformToWorld(const osg::Vec3d& input,
+                                   osg::Vec3d&       output,
+                                   bool              worldIsECEF ) const
+{
+    if ( worldIsECEF )
+    {
+        return transformToECEF(input, output);
+    }
+    else
+    {
+        // flat map - convert MSL to absolute Z if necessary.
+        output = input;
+        if ( _vdatum.valid() )
+        {
+            osg::Vec3d geo(input);
+            if ( !isGeographic() )
+                transform( input, getGeographicSRS(), geo );
+
+            output.z() = _vdatum->msl2hae( geo.y(), geo.x(), input.z() );
+        }
+        return true;
+    }
+}
+
+bool 
+SpatialReference::transformFromWorld(const osg::Vec3d& input,
+                                     osg::Vec3d&       output,
+                                     bool              worldIsECEF ) const
+{
+    if ( worldIsECEF )
+    {
+        return transformFromECEF(input, output);
+    }
+    else
+    {
+        // flat map - convert absolute Z to MSL if necessary.
+        output = input;
+        if ( _vdatum.valid() )
+        {
+            osg::Vec3d geo(input);
+            if ( !isGeographic() )
+                transform( input, getGeographicSRS(), geo );
+
+            output.z() = _vdatum->hae2msl( geo.y(), geo.x(), input.z() );
+        }
+        return true;
+    }
+}
+
+
 bool 
 SpatialReference::transformToECEF(const osg::Vec3d& input,
                                   osg::Vec3d&       output ) const
 {
-    double lat = input.y(), lon = input.x(), alt = input.z();
+    osg::Vec3d geo(input);
     
     // first convert to lat/long if necessary:
     if ( !isGeographic() )
-        transform( input.x(), input.y(), input.z(), getGeographicSRS(), lon, lat, alt );
+    {
+        transform( input, getGeographicSRS(), geo );
+    }
+    else if ( _vdatum.valid() ) // alt is MSL
+    {
+        // MSL => HAE
+        geo.z() = _vdatum->msl2hae(geo.y(), geo.x(), geo.z());
+    }
 
     // then convert to ECEF.
-    //double z = input.z();
     getGeographicSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
-        osg::DegreesToRadians( lat ), osg::DegreesToRadians( lon ), alt,
+        osg::DegreesToRadians( geo.y() ), osg::DegreesToRadians( geo.x() ), geo.z(),
         output.x(), output.y(), output.z() );
 
     return true;
 }
 
 bool 
-SpatialReference::transformToECEF(std::vector<osg::Vec3d>& points,
-                                  bool                     ignoreErrors ) const
+SpatialReference::transformToECEF(std::vector<osg::Vec3d>& points) const
 {
     if ( points.size() == 0 )
         return false;
@@ -964,12 +1336,20 @@ SpatialReference::transformToECEF(std::vector<osg::Vec3d>& points,
     const SpatialReference*    geoSRS    = getGeographicSRS();
     const osg::EllipsoidModel* ellipsoid = geoSRS->getEllipsoid();
 
+    // transform the points to lat/long first:
+    if ( !transform(points, geoSRS) )
+        return false;
+
+    // then convert to ECEF after adjusting for a vertial datum:
     for( unsigned i=0; i<points.size(); ++i )
     {
         osg::Vec3d& p = points[i];
 
-        if ( !isGeographic() )
-            transform( p.x(), p.y(), p.z(), geoSRS, p.x(), p.y(), p.z() );
+        if ( _vdatum.valid() )
+        {
+            // MSL -> HAE
+            p.z() = _vdatum->msl2hae(p.y(), p.x(), p.z());
+        }
 
         ellipsoid->convertLatLongHeightToXYZ(
             osg::DegreesToRadians( p.y() ), osg::DegreesToRadians( p.x() ), p.z(),
@@ -994,22 +1374,31 @@ SpatialReference::transformFromECEF(const osg::Vec3d& input,
     if ( isGeographic() )
     {
         output.set( osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()), geo.z() );
+        if ( _vdatum.valid() )
+        {
+            // HAE -> MSL
+            geo.z() = _vdatum->hae2msl(geo.y(), geo.x(), geo.z());
+        }
     }
     else
     {
-        getGeographicSRS()->transform( 
-            osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()), geo.z(),
+        getGeographicSRS()->transform(
+            osg::Vec3d(osg::RadiansToDegrees(geo.x()), osg::RadiansToDegrees(geo.y()), geo.z()),
             this,
-            output.x(), output.y(), output.z() );
-        //output.z() = geo.z();
+            output);
+
+        if ( _vdatum.valid() )
+        {
+            // HAE -> MSL
+            output.z() = _vdatum->hae2msl(geo.y(), geo.x(), output.z());
+        }
     }
 
     return true;
 }
 
 bool 
-SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points,
-                                    bool                     ignoreErrors ) const
+SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points) const
 {
     bool ok = true;
 
@@ -1024,58 +1413,49 @@ SpatialReference::transformFromECEF(std::vector<osg::Vec3d>& points,
         geo.x() = osg::RadiansToDegrees( geo.x() );
         geo.y() = osg::RadiansToDegrees( geo.y() );
         p = geo;
+
+        if ( _vdatum.valid() )
+        {
+            // HAE -> MSL
+            p.z() = _vdatum->hae2msl(geo.y(), geo.x(), p.z());
+        }
     }
 
     // then convert them all to the local SRS if necessary.
     if ( !isGeographic() )
     {
-        ok = getGeographicSRS()->transformPoints( this, points, 0L, ignoreErrors );
+        ok = getGeographicSRS()->transform( points, this );
     }
 
     return ok;
 }
 
 bool
-SpatialReference::transformExtent(const SpatialReference* to_srs,
-                                  double&                 in_out_xmin,
-                                  double&                 in_out_ymin,
-                                  double&                 in_out_xmax,
-                                  double&                 in_out_ymax,
-                                  void*                   context ) const
+SpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
+                                       double&                 in_out_xmin,
+                                       double&                 in_out_ymin,
+                                       double&                 in_out_xmax,
+                                       double&                 in_out_ymax  ) const
 {
     if ( !_initialized )
         const_cast<SpatialReference*>(this)->init();
 
-    int oks = 0;
+    // Transform all points and take the maximum bounding rectangle the resulting points
+    std::vector<osg::Vec3d> v;
+    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymin, 0) ); // ll
+    v.push_back( osg::Vec3d(in_out_xmin, in_out_ymax, 0) ); // lr
+    v.push_back( osg::Vec3d(in_out_xmax, in_out_ymax, 0) ); // ur
+    v.push_back( osg::Vec3d(in_out_xmax, in_out_ymin, 0) ); // ul
 
-    //Transform all points and take the maximum bounding rectangle the resulting points
-    double llx, lly;
-    double ulx, uly;
-    double urx, ury;
-    double lrx, lry;
-    double dummyZ = 0;
-
-    //Lower Left
-    oks += transform( in_out_xmin, in_out_ymin, 0, to_srs, llx, lly, dummyZ, context ) == true;
-
-    //Upper Left
-    oks += transform( in_out_xmin, in_out_ymax, 0, to_srs, ulx, uly, dummyZ, context ) == true;
-
-    //Upper Right
-    oks += transform( in_out_xmax, in_out_ymax, 0, to_srs, urx, ury, dummyZ, context ) == true;
-
-    //Lower Right
-    oks += transform( in_out_xmax, in_out_ymin, 0, to_srs, lrx, lry, dummyZ, context ) == true;
-
-
-    if (oks == 4)
+    if ( transform(v, to_srs) )
     {
-        in_out_xmin = osg::minimum(llx, ulx);
-        in_out_xmax = osg::maximum(lrx, urx);
-        in_out_ymin = osg::minimum(lly, lry);
-        in_out_ymax = osg::maximum(uly, ury);
+        in_out_xmin = std::min( v[0].x(), v[3].x() );
+        in_out_xmax = std::max( v[1].x(), v[2].x() );
+        in_out_ymin = std::min( v[0].y(), v[1].y() );
+        in_out_ymax = std::max( v[2].y(), v[3].y() );
         return true;
     }
+
     return false;
 }
 
@@ -1083,9 +1463,10 @@ bool SpatialReference::transformExtentPoints(const SpatialReference* to_srs,
                                              double in_xmin, double in_ymin,
                                              double in_xmax, double in_ymax,
                                              double* x, double* y,
-                                             unsigned int numx, unsigned int numy,
-                                             void* context, bool ignore_errors ) const
+                                             unsigned int numx, unsigned int numy ) const
 {
+    std::vector<osg::Vec3d> points;
+
     const double dx = (in_xmax - in_xmin) / (numx - 1);
     const double dy = (in_ymax - in_ymin) / (numy - 1);
 
@@ -1099,12 +1480,25 @@ bool SpatialReference::transformExtentPoints(const SpatialReference* to_srs,
         {
             const double dest_y = in_ymin + fr * dy;
 
-            x[pixel] = dest_x;
-            y[pixel] = dest_y;
+            points.push_back(osg::Vec3d(dest_x, dest_y, 0));
+            //x[pixel] = dest_x;
+            //y[pixel] = dest_y;
             pixel++;     
         }
     }
-    return transformPoints(to_srs, x, y, 0L, numx * numy, context, ignore_errors);
+
+    if ( transform( points, to_srs ) )
+    {
+        for( unsigned i=0; i<points.size(); ++i )
+        {
+            x[i] = points[i].x();
+            y[i] = points[i].y();
+        }
+        return true;
+    }
+    return false;
+
+//    return transformPoints(to_srs, x, y, 0L, numx * numy, context, ignore_errors);
 }
 
 void
@@ -1135,6 +1529,11 @@ SpatialReference::_init()
     double semi_major_axis = OSRGetSemiMajor( _handle, &err );
     double semi_minor_axis = OSRGetSemiMinor( _handle, &err );
     _ellipsoid = new osg::EllipsoidModel( semi_major_axis, semi_minor_axis );
+
+    // unique ID for comparing ellipsoids quickly:
+    _ellipsoidId = hashString( Stringify() 
+        << std::fixed << std::setprecision(10) 
+        << _ellipsoid->getRadiusEquator() << ";" << _ellipsoid->getRadiusPolar() );
 
     // try to get an ellipsoid name:
     _ellipsoid->setName( getOGRAttrValue(_handle, "SPHEROID", 0, true) );
@@ -1184,7 +1583,12 @@ SpatialReference::_init()
     // If the user did not specify and initialization string, use the WKT.
     if ( _init_str.empty() )
     {
-        _init_str = _wkt;
+        _horiz_init_str = _wkt;
+        if ( _vdatum.valid() )
+            _vert_init_str = _vdatum->getInitString();
+        _init_str = _vert_init_str.empty() ? _horiz_init_str : Stringify() << _horiz_init_str << ";vdatum="
+            << _vert_init_str;
+        //_init_str = _wkt;
         _init_type = "WKT";
     }
     

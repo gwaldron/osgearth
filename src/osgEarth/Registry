@@ -106,7 +106,7 @@ namespace osgEarth
         /**
          * The system wide default vertical spatial reference system.
          */
-        const VerticalSpatialReference* getDefaultVSRS() const;
+        //const VerticalSpatialReference* getDefaultVSRS() const;
 
         /**
          * Sets or gets a default system font to use
@@ -188,7 +188,7 @@ namespace osgEarth
         StringSet _blacklistedFilenames;
         Threading::ReadWriteMutex _blacklistMutex;
 
-        osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
+        //osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
         osg::ref_ptr<ShaderFactory> _shaderLib;
 

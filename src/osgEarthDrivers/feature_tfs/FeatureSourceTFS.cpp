@@ -181,7 +181,7 @@ public:
             result->setTiled( true );
             result->setFirstLevel( _layer._firstLevel);
             result->setMaxLevel( _layer._maxLevel);
-            result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), _layer._extent.xMin(), _layer._extent.yMin(), _layer._extent.xMax(), _layer._extent.yMax(), 0, 1, 1) );
+            result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), _layer._extent.xMin(), _layer._extent.yMin(), _layer._extent.xMax(), _layer._extent.yMax(), 1, 1) );
         }
         return result;        
     }

@@ -149,7 +149,8 @@ ObjectPlacer::createPlacerMatrix( double lat_deg, double lon_deg, double height,
         osg::Vec3d local(0, 0, height);
         
         // first convert the input coords to the map srs:
-        srs->getGeographicSRS()->transform2D( lon_deg, lat_deg, srs, local.x(), local.y());
+        srs->getGeographicSRS()->transform( osg::Vec3d(lon_deg, lat_deg, height), srs, local );
+        //srs->getGeographicSRS()->transform2D( lon_deg, lat_deg, srs, local.x(), local.y());
 
         if ( _clamp )
         {

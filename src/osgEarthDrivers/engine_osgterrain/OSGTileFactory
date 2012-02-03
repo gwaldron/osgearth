@@ -121,8 +121,8 @@ public:
 
     static osg::HeightField* createEmptyHeightField(
         const TileKey& key,
-        int            numCols =8,
-        int            numRows =8 );
+        unsigned       numCols =8,
+        unsigned       numRows =8 );
 
     osgTerrain::HeightFieldLayer* createPlaceholderHeightfieldLayer(
         osg::HeightField* ancestorHF,

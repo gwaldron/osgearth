@@ -138,7 +138,6 @@ GeodeticGraticule::init()
         mapProfile->getExtent().yMin(),
         mapProfile->getExtent().xMax(),
         mapProfile->getExtent().yMax(),
-        mapProfile->getVerticalSRS(),
         8, 4 );
 
     _featureProfile = new FeatureProfile(_profile->getSRS());

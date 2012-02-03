@@ -962,11 +962,18 @@ namespace
 {
     typedef std::pair<ElevationLayer*, GeoHeightField> GeoHFPair;
 
+    /**
+     * Returns a heightfield corresponding to the input key by compositing
+     * elevation data for a vector of elevation layers. The resulting 
+     * heightfield's height values will be expressed relative to the vertical
+     * datum in the requesting key (which is usually that of the Map itself).
+     */
     bool
     s_getHeightField(const TileKey&                  key,
                      const ElevationLayerVector&     elevLayers,
                      const Profile*                  mapProfile,
                      bool                            fallback,
+                     bool                            convertToHAE,
                      ElevationInterpolation          interpolation,
                      ElevationSamplePolicy           samplePolicy,
                      osg::ref_ptr<osg::HeightField>& out_result,
@@ -1066,15 +1073,18 @@ namespace
             double dx = (maxx - minx)/(double)(out_result->getNumColumns()-1);
             double dy = (maxy - miny)/(double)(out_result->getNumRows()-1);
 
-            const VerticalSpatialReference* vsrs = mapProfile->getVerticalSRS();
+            const SpatialReference* keySRS = key.getExtent().getSRS();
+
+            // prepare the output vdatum (for when the caller wants to height field as HAE)
+            const SpatialReference* vdatumSRS = convertToHAE? 0L : keySRS;
             
 		    //Create the new heightfield by sampling all of them.
             for (unsigned int c = 0; c < width; ++c)
             {
-                double geoX = minx + (dx * (double)c);
+                double x = minx + (dx * (double)c);
                 for (unsigned r = 0; r < height; ++r)
                 {
-                    double geoY = miny + (dy * (double)r);
+                    double y = miny + (dy * (double)r);
 
                     //Collect elevations from all of the layers. Iterate BACKWARDS because the last layer
                     // is the highest priority.
@@ -1084,7 +1094,7 @@ namespace
                         const GeoHeightField& geoHF = *itr;
 
                         float elevation = 0.0f;
-                        if ( geoHF.getElevation(key.getExtent().getSRS(), geoX, geoY, interpolation, vsrs, elevation) )
+                        if ( geoHF.getElevation(keySRS, x, y, interpolation, vdatumSRS, elevation) )
                         {
                             if (elevation != NO_DATA_VALUE)
                             {
@@ -1165,6 +1175,7 @@ Map::getHeightField(const TileKey&                  key,
                     bool                            fallback,
                     osg::ref_ptr<osg::HeightField>& out_result,
                     bool*                           out_isFallback,
+                    bool                            convertToHAE,
                     ElevationSamplePolicy           samplePolicy,
                     ProgressCallback*               progress) const
 {
@@ -1173,9 +1184,15 @@ Map::getHeightField(const TileKey&                  key,
     ElevationInterpolation interp = getMapOptions().elevationInterpolation().get();    
 
     return s_getHeightField(
-        key, _elevationLayers, getProfile(), fallback, 
-        interp, samplePolicy, 
-        out_result, out_isFallback,
+        key, 
+        _elevationLayers, 
+        getProfile(), 
+        fallback, 
+        convertToHAE,
+        interp, 
+        samplePolicy, 
+        out_result, 
+        out_isFallback,
         progress );
 }
 
@@ -1253,56 +1270,19 @@ Map::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 bool
 MapInfo::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output ) const
 {
-    if ( !inputSRS )
-        return false;
-
-    const SpatialReference* mapSRS = _profile->getSRS();
-
-    if ( inputSRS->isEquivalentTo( mapSRS ) )
-    {
-        output = input;
-        return true;
-    }
-
-    return inputSRS->transform(
-        input.x(), input.y(), input.z(),
-        mapSRS,
-        output.x(), output.y(), output.z() );
+    return inputSRS ? inputSRS->transform(input, _profile->getSRS(), output ) : false;
 }
 
 bool
 MapInfo::mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 {
-    if ( _isGeocentric )
-    {
-        _profile->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(
-            osg::DegreesToRadians( input.y() ), osg::DegreesToRadians( input.x() ), input.z(),
-            output.x(), output.y(), output.z() );
-    }
-    else
-    {
-        output = input;
-    }
-    return true;
+    return _profile->getSRS()->transformToWorld(input, output, _isGeocentric);
 }
 
 bool
 MapInfo::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 {
-    if ( _isGeocentric )
-    { 
-        _profile->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(
-            input.x(), input.y(), input.z(),
-            output.y(), output.x(), output.z() );
-
-        output.y() = osg::RadiansToDegrees(output.y());
-        output.x() = osg::RadiansToDegrees(output.x());
-    }
-    else
-    {
-        output = input;
-    }
-    return true;
+    return _profile->getSRS()->transformFromWorld(input, output, _isGeocentric);
 }
 
 //------------------------------------------------------------------------
@@ -1342,11 +1322,22 @@ bool
 MapFrame::getHeightField(const TileKey&                  key,
                          bool                            fallback,
                          osg::ref_ptr<osg::HeightField>& out_hf,
-                         bool*                           out_isFallback,                         
+                         bool*                           out_isFallback,    
+                         bool                            convertToHAE,
                          ElevationSamplePolicy           samplePolicy,
                          ProgressCallback*               progress) const
 {
-    return s_getHeightField( key, _elevationLayers, _mapInfo.getProfile(), fallback, _mapInfo.getElevationInterpolation(), samplePolicy, out_hf, out_isFallback, progress );
+    return s_getHeightField( 
+        key, 
+        _elevationLayers, 
+        _mapInfo.getProfile(), 
+        fallback, 
+        convertToHAE,
+        _mapInfo.getElevationInterpolation(), 
+        samplePolicy, 
+        out_hf, 
+        out_isFallback,
+        progress );
 }
 
 int

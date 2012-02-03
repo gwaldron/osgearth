@@ -70,16 +70,16 @@ ElevationQuery::getMaxLevel( double x, double y, const SpatialReference* srs ) c
         osgEarth::TileSource* ts = i->get()->getTileSource();
         if ( ts && ts->getDataExtents().size() > 0 )
         {
-            double tsX = x, tsY = y;
+            osg::Vec3d tsCoord(x, y, 0);
             const SpatialReference* tsSRS = ts->getProfile() ? ts->getProfile()->getSRS() : 0L;
             if ( srs && tsSRS )
-                srs->transform2D( x, y, tsSRS, tsX, tsY );
+                srs->transform(tsCoord, tsSRS, tsCoord);
             else
                 tsSRS = srs;
             
             for (osgEarth::DataExtentList::iterator j = ts->getDataExtents().begin(); j != ts->getDataExtents().end(); j++)
             {
-                if (j->getMaxLevel() > layerMax && j->contains( tsX, tsY, tsSRS ))
+                if (j->getMaxLevel() > layerMax && j->contains( tsCoord.x(), tsCoord.y(), tsSRS ))
                 {
                     layerMax = j->getMaxLevel();
                 }
@@ -216,7 +216,8 @@ ElevationQuery::getElevationImpl(const osg::Vec3d&       point,
     osg::Vec3d mapPoint = point;
     if ( pointSRS && !pointSRS->isEquivalentTo( _mapf.getProfile()->getSRS() ) )
     {
-        if ( !pointSRS->transform2D( point.x(), point.y(), _mapf.getProfile()->getSRS(), mapPoint.x(), mapPoint.y() ) )
+        if ( !pointSRS->transform(point, _mapf.getProfile()->getSRS(), mapPoint) )
+        //if ( !pointSRS->transform2D( point.x(), point.y(), _mapf.getProfile()->getSRS(), mapPoint.x(), mapPoint.y() ) )
         {
             OE_WARN << LC << "Fail: coord transform failed" << std::endl;
             return false;

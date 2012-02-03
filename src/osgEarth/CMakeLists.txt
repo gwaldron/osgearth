@@ -19,6 +19,7 @@ SET(LIB_NAME osgEarth)
 
 SET(HEADER_PATH ${OSGEARTH_SOURCE_DIR}/include/${LIB_NAME})
 SET(LIB_PUBLIC_HEADERS
+    Bounds
     Cache
     CacheBin
     CachePolicy
@@ -41,6 +42,7 @@ SET(LIB_PUBLIC_HEADERS
     FileUtils
 	FindNode
     GeoData
+    Geoid
     GeoMath
     HeightFieldUtils
     HTTPClient
@@ -93,7 +95,7 @@ SET(LIB_PUBLIC_HEADERS
     URI
     Utils
 	Version
-    VerticalSpatialReference
+	VerticalDatum
     Viewpoint
     XmlUtils
 )
@@ -120,6 +122,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 #    ${OSGEARTH_USER_DEFINED_DYNAMIC_OR_STATIC}
     ${LIB_PUBLIC_HEADERS}
     ${TINYXML_SRC}
+    Bounds.cpp
     Cache.cpp
     CachePolicy.cpp
     CacheSeed.cpp
@@ -137,6 +140,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ElevationQuery.cpp
     FileUtils.cpp
     GeoData.cpp
+    Geoid.cpp
     GeoMath.cpp
     HeightFieldUtils.cpp
     HTTPClient.cpp
@@ -187,7 +191,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     URI.cpp
     Utils.cpp
     Version.cpp
-    VerticalSpatialReference.cpp
+	VerticalDatum.cpp
     Viewpoint.cpp
     XmlUtils.cpp
 )

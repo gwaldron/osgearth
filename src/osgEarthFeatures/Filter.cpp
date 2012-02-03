@@ -78,7 +78,8 @@ FeaturesToNodeFilter::transformAndLocalize(const std::vector<osg::Vec3d>& input,
     else if ( inputSRS )
     {
         std::vector<osg::Vec3d> temp( input );
-        inputSRS->transformPoints( outputSRS, temp );
+        inputSRS->transform( temp, outputSRS );
+
         for( std::vector<osg::Vec3d>::const_iterator i = temp.begin(); i != temp.end(); ++i )
         {
             output->push_back( (*i) * world2local );

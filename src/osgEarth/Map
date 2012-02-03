@@ -309,18 +309,37 @@ namespace osgEarth
 
         /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
-         * lower resolutions if necessary. 
+         * lower resolutions if necessary.
+         *
+         * NOTE: By default, this method will return a heightfield with HAE (height above ellipsoid) 
+         * values, even if the TileKey profile has an MSL vertical datum. That's because this 
+         * method is usually called to produce a renderable height field. You can override this
+         * behavior by passing in convertToHAE=false.
          *
          * @param key
          *      Tile key defining the region (and ideal LOD) for which to return a heightfield
+         * @param fallbackIfNecessary
+         *      If the map can't generate a true heightfield for the key, fall back on lower
+         *      levels of detail until it can make one.
+         * @param out_hf
+         *      Resulting heightfield is written here.
+         * @param out_isFallback
+         *      Output flag telling the caller whether the method had to "fall back" on a 
+         *      lower level of detail.
+         * @param convertToHAE
+         *      Whether to return height-above-ellipsoid values in the heightfield, even if the
+         *      input tile key has an SRS with an MSL vertical datum.
          * @param samplePolicy
-         *      See enum SamplePolicy in this class.
+         *      How to intepolate heightfield samples.
+         * @param progress
+         *      (optional) progress callback.
          */
         bool getHeightField(
             const TileKey&                  key,
             bool                            fallbackIfNeessary,
             osg::ref_ptr<osg::HeightField>& out_hf,
             bool*                           out_isFallback =0L,            
+            bool                            convertToHAE   =true,
             ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
             ProgressCallback*               progress       =0L)  const;
 
@@ -519,12 +538,13 @@ namespace osgEarth
          * snapshot in this MapFrame.
          */
         bool getHeightField(
-            const TileKey& key,
-            bool fallback,
+            const TileKey&                  key,
+            bool                            fallback,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            bool* out_isFallback =0L,            
-            ElevationSamplePolicy samplePolicy   =SAMPLE_FIRST_VALID,
-            ProgressCallback* progress = 0) const; 
+            bool*                           out_isFallback =0L,   
+            bool                            convertToHAE   =true,         
+            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress       =0L ) const;
 
     private:
         bool _initialized;

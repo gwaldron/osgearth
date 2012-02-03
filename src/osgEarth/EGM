@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+#if 0
 #ifndef OSGEARTH_EGM
 #define OSGEARTH_EGM
 
@@ -35,3 +36,4 @@ namespace osgEarth
 }
 
 #endif // OSGEARTH_EGM
+#endif

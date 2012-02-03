@@ -84,8 +84,7 @@ MouseCoordsLabelCallback::set( const osg::Vec3d& mapCoords, osg::View* view, Map
     {
         _label->setText( Stringify()
             <<  _formatter->format(mapCoords, mapNode->getMapSRS())
-            << " "
-            << mapCoords.z() );            
+            << ", " << mapCoords.z() );            
     }
 }
 

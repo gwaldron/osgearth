@@ -77,3 +77,5 @@ ADD_SUBDIRECTORY(engine_osgterrain)
 IF(V8_FOUND)
   ADD_SUBDIRECTORY(script_engine_v8)
 ENDIF(V8_FOUND)
+
+ADD_SUBDIRECTORY(vdatum_egm84)

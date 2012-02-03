@@ -58,6 +58,31 @@ LocalizedNode( mapNode )
     }
 }
 
+GeometryNode::GeometryNode(MapNode*     mapNode,
+                           osg::Node*   content,
+                           const Style& style,
+                           bool         draped ) :
+LocalizedNode( mapNode )
+{
+    if ( content )
+    {
+        getTransform()->addChild( content );
+        if ( draped )
+        {
+            DrapeableNode* dn = new DrapeableNode(mapNode);
+            dn->addChild( getTransform() );
+            this->addChild( dn );
+        }
+        else
+        {
+            this->addChild( getTransform() );
+        }
+
+        // this will activate the clamping logic
+        applyStyle( style, draped );
+    }
+}
+
 void
 GeometryNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
 {

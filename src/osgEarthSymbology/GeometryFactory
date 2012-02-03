@@ -48,11 +48,13 @@ namespace osgEarth { namespace Symbology
          * @param center Center point (must be in map SRS if a map was provided in ctor)
          * @param radius Circle radius
          * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         * @param geomToUse Use this geometry instead of creating a Polygon.
          */
         Geometry* createCircle( 
             const osg::Vec3d& center,
             const Linear&     radius,
-            unsigned          numSegments =0);
+            unsigned          numSegments =0,
+            Geometry*         geomToUse   =0L);
 
         /**
          * Creates an arc geometry.
@@ -76,13 +78,15 @@ namespace osgEarth { namespace Symbology
          * @param radiusMinor Minor radius (Y-axis) length
          * @param rotationAngle with respect to the X-axis
          * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         * @param geomToUse Use this geometry instead of creating a Polygon.
          */
         Geometry* createEllipse(
             const osg::Vec3d& center,
             const Linear&     radiusMajor,
             const Linear&     radiusMinor,
             const Angular&    rotationAngle,
-            unsigned          numSegments =0);
+            unsigned          numSegments =0,
+            Geometry*         geomToUse   =0L);
 
     protected:
 

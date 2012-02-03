@@ -33,9 +33,10 @@ _srs( srs )
 Geometry*
 GeometryFactory::createCircle(const osg::Vec3d& center,
                               const Linear&     radius,
-                              unsigned          numSegments)
+                              unsigned          numSegments,
+                              Geometry*         geomToUse)
 {
-    Polygon* geom = new Polygon();
+    Geometry* geom = geomToUse ? geomToUse : new Polygon();
 
     if ( numSegments == 0 )
     {
@@ -140,9 +141,10 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
                                const Linear&     radiusMajor,
                                const Linear&     radiusMinor,
                                const Angular&    rotationAngle,
-                               unsigned          numSegments)
+                               unsigned          numSegments,
+                               Geometry*         geomToUse)
 {
-    Polygon* geom = new Polygon();
+    Geometry* geom = geomToUse ? geomToUse : new Polygon();
 
     if ( numSegments == 0 )
     {

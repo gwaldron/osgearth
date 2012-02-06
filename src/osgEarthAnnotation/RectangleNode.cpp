@@ -82,6 +82,19 @@ RectangleNode::setSize( const Linear& width, const Linear& height)
     }
 }
 
+const Style&
+RectangleNode::getStyle() const
+{
+    return _style;
+}
+
+void
+RectangleNode::setStyle( const Style& style )
+{
+    _style = style;
+    rebuild();
+}
+
 void
 RectangleNode::rebuild()
 {    

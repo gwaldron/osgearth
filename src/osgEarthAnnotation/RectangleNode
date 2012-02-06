@@ -86,6 +86,16 @@ namespace osgEarth { namespace Annotation
          */
         void setSize( const Linear& width, const Linear& height);
 
+        /**
+         * Gets the style
+         */
+        const Style& getStyle() const;
+
+        /**
+         * Sets the style
+         */
+        void setStyle( const Style& style );
+
 
     private:
         RectangleNode() { }

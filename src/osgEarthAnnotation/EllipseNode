@@ -60,9 +60,77 @@ namespace osgEarth { namespace Annotation
             bool                    draped      =true,
             unsigned                numSegments =0 );
 
+
+        /**
+         * Gets the major radius
+         */
+        const Linear& getRadiusMajor() const;
+
+        /**
+         * Gets the minor radius
+         */
+        const Linear& getRadiusMinor() const;
+
+        /**
+         * Sets the major radius
+         */
+        void setRadiusMajor( const Linear& radiusMajor );
+
+        /**
+         * Sets the minor radius
+         */
+        void setRadiusMinor( const Linear& radiusMinor );
+
+        /**
+         * Sets the major and minor radii
+         */
+        void setRadii( const Linear& radiusMajor, const Linear& radiusMinor );
+
+        /*
+         * Gets the rotation angle
+         */
+        const Angular& getRotationAngle() const;
+
+
+        /**
+         * Sets the rotation angle
+         */
+        void setRotationAngle(Angular& rotationAngle);
+
+        /**
+         * Gets the number of segments
+         */
+        unsigned int getNumSegments() const;
+
+        /**
+         * Sets the number of segments
+         */
+        void setNumSegments(unsigned int numSegments );
+
+
+        /**
+         * Gets the style
+         */
+        const Style& getStyle() const;
+
+        /**
+         * Sets the style
+         */
+        void setStyle( const Style& style );
+
+
     private:
         EllipseNode() { }
         EllipseNode(const EllipseNode& rhs, const osg::CopyOp& op) { }
+
+        void rebuild();
+        
+        Style _style;
+        bool _draped;
+        Angular _rotationAngle;
+        Linear _radiusMajor;
+        Linear _radiusMinor;
+        unsigned int _numSegments;
     };
 
 } } // namespace osgEarth::Annotation

@@ -259,7 +259,7 @@ main(int argc, char** argv)
     // an image overlay
     {
         ImageOverlay* imageOverlay = 0L;
-        osg::Image* image = osgDB::readImageFile( "E:/devel/osgearth/2.x/repo/data/USFLAG.TGA" );
+        osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
         if ( image )
         {
             imageOverlay = new ImageOverlay(mapNode, image);

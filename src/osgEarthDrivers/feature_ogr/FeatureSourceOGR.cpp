@@ -51,6 +51,7 @@ public:
     OGRFeatureSource( const OGRFeatureOptions& options ) : FeatureSource( options ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
+      _layerIndex( 0 ),
       _ogrDriverHandle( 0L ),
       _options( options ),
       _featureCount(-1),
@@ -153,10 +154,15 @@ public:
 	        if ( _dsHandle )
 	        {
                 if (openMode == 1) _writable = true;
+                
+                if ( _options.layer().isSet() )
+                {
+                    _layerIndex = _options.layer().value();
+                }                
 
-		        _layerHandle = OGR_DS_GetLayer( _dsHandle, 0 ); // default to layer 0 for now
+		        _layerHandle = OGR_DS_GetLayer( _dsHandle, _layerIndex );
                 if ( _layerHandle )
-                {                    
+                {                                     
                     GeoExtent extent;
 
                     // if the user provided a profile, user that:
@@ -253,6 +259,8 @@ public:
                 << "Feature Source: no valid source data available" << std::endl;
         }
 
+        OE_NOTICE << "Geometyr type = " << _geometryType << std::endl;
+
         return result;
     }
 
@@ -278,7 +286,7 @@ public:
 	        OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
 	        if ( dsHandle )
 	        {
-                OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, 0 );
+                OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, _layerIndex );
 
                 return new FeatureCursorOGR( 
                     dsHandle,
@@ -466,6 +474,7 @@ private:
     std::string _source;
     OGRDataSourceH _dsHandle;
     OGRLayerH _layerHandle;
+    unsigned int _layerIndex;
     OGRSFDriverH _ogrDriverHandle;
     osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
     const OGRFeatureOptions _options;

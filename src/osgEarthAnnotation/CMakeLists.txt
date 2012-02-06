@@ -27,6 +27,7 @@ set(LIB_PUBLIC_HEADERS
     LocalizedNode
     OrthoNode
     PlaceNode
+	RectangleNode
     ScaleDecoration
     TrackNode
 )
@@ -46,6 +47,7 @@ set(LIB_COMMON_FILES
     ImageOverlay.cpp
     LabelNode.cpp
     LocalizedNode.cpp
+	RectangleNode.cpp
     OrthoNode.cpp
     PlaceNode.cpp
     TrackNode.cpp

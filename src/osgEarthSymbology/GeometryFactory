@@ -88,6 +88,18 @@ namespace osgEarth { namespace Symbology
             unsigned          numSegments =0,
             Geometry*         geomToUse   =0L);
 
+        /**
+         * Creates a rectangle geometry
+         * @param center Center point (must be in map SRS if the map was provided in ctor)
+         * @param width The width of the rectangle
+         * @param height The height of the rectangle
+         */
+        Geometry* createRectangle(
+            const osg::Vec3d& center,
+            const Linear& width,
+            const Linear& height
+            );
+
     protected:
 
         osg::ref_ptr<const SpatialReference> _srs;

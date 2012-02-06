@@ -201,3 +201,51 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
 
     return geom;
 }
+
+Geometry*
+GeometryFactory::createRectangle(
+                                 const osg::Vec3d& center,
+                                 const Linear& width,
+                                 const Linear& height
+                                 )
+{
+    Geometry* geom = new Polygon();
+    
+    if ( _srs.valid() && _srs->isGeographic() )
+    {
+        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
+        double lat = osg::DegreesToRadians(center.y());
+        double lon = osg::DegreesToRadians(center.x());
+        double halfWidthMeters  = width.as(Units::METERS) / 2.0;
+        double halfHeightMeters  = height.as(Units::METERS) / 2.0;   
+
+        double eastLon, eastLat;
+        double westLon, westLat;
+        double northLon, northLat;
+        double southLon, southLat;
+        
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLon, eastLat, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLon, westLat, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLon, northLat, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLon, southLat, earthRadius );
+
+        geom->push_back( osg::RadiansToDegrees( westLon ), osg::RadiansToDegrees( southLat ), center.z());
+        geom->push_back( osg::RadiansToDegrees( eastLon ), osg::RadiansToDegrees( southLat ), center.z());
+        geom->push_back( osg::RadiansToDegrees( eastLon ), osg::RadiansToDegrees( northLat ), center.z());
+        geom->push_back( osg::RadiansToDegrees( westLon ), osg::RadiansToDegrees( northLat ), center.z());        
+    }
+
+    else
+    {
+        double halfWidthMeters = width.as(Units::METERS) / 2.0;
+        double halfHeightMeters = height.as(Units::METERS) / 2.0;
+
+        
+        geom->push_back( center.x() - halfWidthMeters, center.y() - halfHeightMeters, center.z());
+        geom->push_back( center.x() + halfWidthMeters, center.y() - halfHeightMeters, center.z());
+        geom->push_back( center.x() + halfWidthMeters, center.y() + halfHeightMeters, center.z());
+        geom->push_back( center.x() - halfWidthMeters, center.y() + halfHeightMeters, center.z());        
+    }
+
+    return geom;
+}

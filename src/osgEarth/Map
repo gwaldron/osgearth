@@ -328,7 +328,9 @@ namespace osgEarth
          *      lower level of detail.
          * @param convertToHAE
          *      Whether to return height-above-ellipsoid values in the heightfield, even if the
-         *      input tile key has an SRS with an MSL vertical datum.
+         *      input tile key's SRS specifies a vertical datum (which would normally result in
+         *      a heightfield expressed relative to MSL). This is typical for when you are building
+         *      the actual 3D terrain.
          * @param samplePolicy
          *      How to intepolate heightfield samples.
          * @param progress

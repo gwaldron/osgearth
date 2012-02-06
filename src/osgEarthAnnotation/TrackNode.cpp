@@ -32,11 +32,22 @@ using namespace osgEarth::Symbology;
 //------------------------------------------------------------------------
 
 TrackNode::TrackNode(MapNode*                    mapNode, 
-                     const osg::Vec3d&           position,
+                     const GeoPoint&             position,
                      osg::Image*                 image,
                      const TrackNodeFieldSchema& fieldSchema ) :
 
 OrthoNode   ( mapNode, position ),
+_image      ( image )
+{
+    init( fieldSchema );
+}
+
+TrackNode::TrackNode(MapNode*                    mapNode, 
+                     const osg::Vec3d&           positionInMapCoords,
+                     osg::Image*                 image,
+                     const TrackNodeFieldSchema& fieldSchema ) :
+
+OrthoNode   ( mapNode, GeoPoint(mapNode->getMapSRS(),positionInMapCoords) ),
 _image      ( image )
 {
     init( fieldSchema );

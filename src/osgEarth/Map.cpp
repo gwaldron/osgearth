@@ -955,6 +955,18 @@ Map::calculateProfile()
                 layer->setTargetProfileHint( _profile.get() );
             }
         }
+
+        // create a "proxy" profile to use when querying elevation layers with a vertical datum
+        if ( _profile->getSRS()->getVerticalDatum() != 0L )
+        {
+            ProfileOptions po = _profile->toProfileOptions();
+            po.vsrsString().unset();
+            _profileNoVDatum = Profile::create(po);
+        }
+        else
+        {
+            _profileNoVDatum = _profile;
+        }
     }
 }
 
@@ -971,9 +983,8 @@ namespace
     bool
     s_getHeightField(const TileKey&                  key,
                      const ElevationLayerVector&     elevLayers,
-                     const Profile*                  mapProfile,
                      bool                            fallback,
-                     bool                            convertToHAE,
+                     const Profile*                  haeProfile,
                      ElevationInterpolation          interpolation,
                      ElevationSamplePolicy           samplePolicy,
                      osg::ref_ptr<osg::HeightField>& out_result,
@@ -993,18 +1004,28 @@ namespace
             *out_isFallback = false;
         }
 
+        // if the caller provided an "HAE map profile", he wants an HAE elevation grid even if
+        // the map profile has a vertical datum. This is the usual case when building the 3D
+        // terrain, for example. Construct a temporary key that doesn't have the vertical
+        // datum info and use that to query the elevation data.
+        TileKey keyToUse = key;
+        if ( haeProfile )
+        {
+            keyToUse = TileKey(key.getLevelOfDetail(), key.getTileX(), key.getTileY(), haeProfile );
+        }
+
         // Generate a heightfield for each elevation layer.
         for( ElevationLayerVector::const_iterator i = elevLayers.begin(); i != elevLayers.end(); i++ )
         {
             ElevationLayer* layer = i->get();
             if ( layer->getEnabled() )
             {
-                GeoHeightField geoHF = layer->createHeightField( key, progress );
+                GeoHeightField geoHF = layer->createHeightField( keyToUse, progress );
 
                 // if "fallback" is set, try to fall back on lower LODs.
                 if ( !geoHF.valid() && fallback )
                 {
-                    TileKey hf_key = key;
+                    TileKey hf_key = keyToUse;
 
                     while ( hf_key.valid() && !geoHF.valid() )
                     {
@@ -1073,10 +1094,7 @@ namespace
             double dx = (maxx - minx)/(double)(out_result->getNumColumns()-1);
             double dy = (maxy - miny)/(double)(out_result->getNumRows()-1);
 
-            const SpatialReference* keySRS = key.getExtent().getSRS();
-
-            // prepare the output vdatum (for when the caller wants to height field as HAE)
-            const SpatialReference* vdatumSRS = convertToHAE? 0L : keySRS;
+            const SpatialReference* keySRS = keyToUse.getProfile()->getSRS();
             
 		    //Create the new heightfield by sampling all of them.
             for (unsigned int c = 0; c < width; ++c)
@@ -1094,7 +1112,7 @@ namespace
                         const GeoHeightField& geoHF = *itr;
 
                         float elevation = 0.0f;
-                        if ( geoHF.getElevation(keySRS, x, y, interpolation, vdatumSRS, elevation) )
+                        if ( geoHF.getElevation(keySRS, x, y, interpolation, keySRS, elevation) )
                         {
                             if (elevation != NO_DATA_VALUE)
                             {
@@ -1143,12 +1161,27 @@ namespace
             }
 	    }
 
-	    //Replace any NoData areas with 0
+        // Replace any NoData areas with the reference value. This is zero for HAE datums,
+        // and some geoid height for orthometric datums.
 	    if (out_result.valid())
 	    {
-		    ReplaceInvalidDataOperator o;
-		    o.setValidDataOperator(new osgTerrain::NoDataValue(NO_DATA_VALUE));
-		    o( out_result.get() );
+            const Geoid*         geoid = 0L;
+            const VerticalDatum* vdatum = key.getProfile()->getSRS()->getVerticalDatum();
+
+            if ( haeProfile && vdatum )
+            {
+                geoid = vdatum->getGeoid();
+            }
+
+            HeightFieldUtils::resolveInvalidHeights(
+                out_result.get(),
+                key.getExtent(),
+                NO_DATA_VALUE,
+                geoid );
+
+		    //ReplaceInvalidDataOperator o;
+		    //o.setValidDataOperator(new osgTerrain::NoDataValue(NO_DATA_VALUE));
+		    //o( out_result.get() );
 	    }
 
 	    //Initialize the HF values for osgTerrain
@@ -1186,12 +1219,11 @@ Map::getHeightField(const TileKey&                  key,
     return s_getHeightField(
         key, 
         _elevationLayers, 
-        getProfile(), 
         fallback, 
-        convertToHAE,
+        convertToHAE ? _profileNoVDatum.get() : 0L,
         interp, 
         samplePolicy, 
-        out_result, 
+        out_result,  
         out_isFallback,
         progress );
 }
@@ -1248,19 +1280,19 @@ Map::sync( MapFrame& frame ) const
 }
 
 bool
-Map::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output ) const
+Map::toMapPoint( const GeoPoint& input, GeoPoint& output ) const
 {
-    return MapInfo(this).toMapPoint(input, inputSRS, output);
+    return MapInfo(this).toMapPoint(input, output);
 }
 
 bool
-Map::mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+Map::toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const
 {
-    return MapInfo(this).mapPointToWorldPoint(input, output);
+    return MapInfo(this).toWorldPoint(input, output);
 }
 
 bool
-Map::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+Map::worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const
 {
     return MapInfo(this).worldPointToMapPoint(input, output);
 }
@@ -1268,21 +1300,27 @@ Map::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
 //------------------------------------------------------------------------
 
 bool
-MapInfo::toMapPoint( const osg::Vec3d& input, const SpatialReference* inputSRS, osg::Vec3d& output ) const
+MapInfo::toMapPoint( const GeoPoint& input, GeoPoint& output ) const
 {
-    return inputSRS ? inputSRS->transform(input, _profile->getSRS(), output ) : false;
+    return input.isValid() ? input.transform(_profile->getSRS(), output) : false;
 }
 
 bool
-MapInfo::mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+MapInfo::toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const
 {
-    return _profile->getSRS()->transformToWorld(input, output, _isGeocentric);
+    return input.isValid() ?
+        input.getSRS()->transformToWorld(input.vec3d(), output, _isGeocentric) :
+        false;
 }
 
 bool
-MapInfo::worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const
+MapInfo::worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const
 {
-    return _profile->getSRS()->transformFromWorld(input, output, _isGeocentric);
+    osg::Vec3d temp;
+    bool ok = _profile->getSRS()->transformFromWorld(input, temp, _isGeocentric);
+    if ( ok )
+        output.set(_profile->getSRS(), temp);
+    return ok;
 }
 
 //------------------------------------------------------------------------
@@ -1329,10 +1367,9 @@ MapFrame::getHeightField(const TileKey&                  key,
 {
     return s_getHeightField( 
         key, 
-        _elevationLayers, 
-        _mapInfo.getProfile(), 
+        _elevationLayers,
         fallback, 
-        convertToHAE,
+        convertToHAE ? _map->getProfileNoVDatum() : 0L,
         _mapInfo.getElevationInterpolation(), 
         samplePolicy, 
         out_hf, 

@@ -124,7 +124,7 @@ AnnotationNode::clamp( osg::Vec3d& mapCoord ) const
     if ( mapNode_safe.valid() )
     { 
         double height;
-        if ( mapNode_safe->getTerrain()->getHeight(mapCoord, height) )
+        if ( mapNode_safe->getTerrain()->getHeightAboveMSL(mapCoord.x(), mapCoord.y(), height) )
         {
             if ( _altitude.valid() )
             {

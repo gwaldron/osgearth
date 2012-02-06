@@ -55,6 +55,7 @@ VerticalDatum::get( const std::string& initString )
 
     if ( !result )
     {
+        OE_INFO << LC << "Initializing vertical datum: " << initString << std::endl;
         result = VerticalDatumFactory::create( initString );
         if ( result )
             _vdatumCache[s] = result;
@@ -166,47 +167,6 @@ VerticalDatum::transform(const VerticalDatum* from,
 
     return true;
 }
-
-#if 0
-bool 
-VerticalDatum::transform(const VerticalDatum* toSRS, 
-                         double lat_deg, double lon_deg, double in_z,
-                         double& out_z ) const
-{    
-    if ( this->isEquivalentTo( toSRS ) )
-    {
-        out_z = in_z;
-    }
-    else
-    {
-        double workZ = in_z;
-
-        // transform out of the source vdatum (this) into HAE:
-        if ( _geoid.valid() )
-        {
-            // MSL -> HAE:
-            workZ += _geoid->getHeight( lat_deg, lon_deg, INTERP_BILINEAR );
-        }
-
-        // convert the value to output units:
-        Units::convert( getUnits(), toSRS->getUnits(), workZ, workZ );
-
-        // transform into the target VSRS:
-        if ( toSRS->_geoid.valid() )
-        {
-            if ( !toSRS->_geoid->isValid() )
-                return false;
-        
-            // HAE -> MSL.
-            workZ -= toSRS->_geoid->getHeight( lat_deg, lon_deg, INTERP_BILINEAR );
-        }
-
-        out_z = workZ;
-    }
-
-    return true;
-}
-#endif
 
 double 
 VerticalDatum::msl2hae( double lat_deg, double lon_deg, double msl ) const

@@ -388,9 +388,10 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 // --------------------------------------------------------------------------
 
 CubeSpatialReference::CubeSpatialReference( void* handle ) :
-SpatialReference( handle, "OSGEARTH", "unified-cube", "Unified Cube" )
+SpatialReference( handle, "OSGEARTH", "Unified Cube" )
 {
     //nop
+    _key.first = "unified-cube";
 }
 
 void
@@ -399,10 +400,11 @@ CubeSpatialReference::_init()
     SpatialReference::_init();
 
     _is_user_defined = true;
-    _is_cube = true;
-    _is_contiguous = false;
-    _is_geographic = false;
-    _name = "Unified Cube";
+    _is_cube         = true;
+    _is_contiguous  = false;
+    _is_geographic  = false;
+    _key.first      = "unified-cube";
+    _name           = "Unified Cube";
 }
 
 GeoLocator*

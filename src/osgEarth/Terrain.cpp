@@ -65,21 +65,21 @@ _geocentric( geocentric )
 }
 
 bool
-Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height, osg::Node* patch) const
+Terrain::getHeightAboveMSL(double mapX, double mapY, double& out_height, osg::Node* patch) const
 {
     if ( !_graph.valid() && !patch )
         return 0L;
 
     // trivially reject a point that lies outside the terrain:
-    if ( !getProfile()->getExtent().contains(mapPos.x(), mapPos.y()) )
+    if ( !getProfile()->getExtent().contains(mapX, mapY) )
         return 0L;
 
     const osg::EllipsoidModel* em = getSRS()->getEllipsoid();
     double r = std::min( em->getRadiusEquator(), em->getRadiusPolar() );
 
     // calculate the endpoints for an intersection test:
-    osg::Vec3d start(mapPos.x(), mapPos.y(),  r);
-    osg::Vec3d end  (mapPos.x(), mapPos.y(), -r);
+    osg::Vec3d start(mapX, mapY, r);
+    osg::Vec3d end  (mapX, mapY, -r);
 
     if ( isGeocentric() )
     {
@@ -101,10 +101,11 @@ Terrain::getHeight(const osg::Vec3d& mapPos, double& out_height, osg::Node* patc
         const osgUtil::LineSegmentIntersector::Intersection& firstHit = *results.begin();
         osg::Vec3d hit = firstHit.getWorldIntersectPoint();
 
-        if ( isGeocentric() )
-        {
-            getSRS()->transformFromECEF(hit, hit);
-        }
+        getSRS()->transformFromWorld(hit, hit, isGeocentric());
+        //if ( isGeocentric() )
+        //{
+        //    getSRS()->transformFromECEF(hit, hit);
+        //}
 
         out_height = hit.z();
         return true;

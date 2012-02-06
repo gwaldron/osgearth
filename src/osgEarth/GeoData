@@ -33,6 +33,99 @@
 namespace osgEarth
 {
     /**
+     * A georeferenced 3D point.
+     */
+    class OSGEARTH_EXPORT GeoPoint
+    {
+    public:
+        /**
+         * Constructs a GeoPoint.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            double x = 0.0,
+            double y = 0.0,
+            double z = 0.0 );
+
+        /**
+         * Constructs a geopoint.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            const osg::Vec3d&       xyz );
+
+        /**
+         * Constructs a new GeoPoint by transforming an existing GeoPoint into
+         * the specified spatial reference.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            const GeoPoint&         rhs );
+
+        /**
+         * Copy constructor
+         */
+        GeoPoint(const GeoPoint& rhs);
+
+        /**
+         * Constructs an empty (and invalid) geopoint.
+         */
+        GeoPoint();
+
+        /**
+         * Sets the SRS and coords 
+         */
+        void set(
+            const SpatialReference* srs,
+            const osg::Vec3d&       xyz );
+
+        // component getter/setters
+
+        double& x() { return _p.x(); }
+        double  x() const { return _p.x(); }
+
+        double& y() { return _p.y(); }
+        double  y() const { return _p.y(); }
+
+        double& z() { return _p.z(); }
+        double  z() const { return _p.z(); }
+
+        osg::Vec3d& vec3d() { return _p; }
+        const osg::Vec3d& vec3d() const { return _p; }
+
+        const SpatialReference* getSRS() const { return _srs.get(); }
+
+
+        /**
+         * Transforms this geopoint into another SRS and returns it.
+         */
+        GeoPoint transform(const SpatialReference* outSRS) const;
+
+        bool transform(const SpatialReference* outSRS, GeoPoint& output) const;
+
+        bool toECEF( osg::Vec3d& out_ecef ) const;
+
+        static GeoPoint fromECEF(const SpatialReference* srs, const osg::Vec3d& ecef);
+
+        bool createLocal2World( osg::Matrixd& out_local2world ) const;
+
+        bool createWorld2Local( osg::Matrixd& out_world2local ) const;
+
+        bool operator == (const GeoPoint& rhs) const;
+
+        bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }
+
+        bool isValid() const { return _srs.valid(); }
+
+    public:
+        static GeoPoint INVALID;
+
+    protected:
+        osg::ref_ptr<const SpatialReference> _srs;
+        osg::Vec3d _p;
+    };
+
+    /**
      * An axis-aligned geospatial extent. A bounding box that is aligned with a
      * spatial reference's coordinate system.
      */

@@ -21,6 +21,7 @@
 #define OSGEARTH_MAP_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoData>
 #include <osgEarth/Profile>
 #include <osgEarth/MapOptions>
 #include <osgEarth/ImageLayer>
@@ -294,7 +295,6 @@ namespace osgEarth
          * Gets the user-provided options structure stored in this map.
          */
         const osgDB::ReaderWriter::Options* getGlobalOptions() const;
-
         void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
 
         /**
@@ -369,17 +369,17 @@ namespace osgEarth
         /**
          * Convenience function to convert an arbitrary point to map coordinates.
          */
-        bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
+        bool toMapPoint( const GeoPoint& input, GeoPoint& output ) const;
 
         /**
          * Convenience function to convert a point (in map coordinates) to world-space (XYZ) coordinates.
          */
-        bool mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const;
 
         /**
          * Convenience function to convert a world-space (XYZ) point to map coordinates.
          */
-        bool worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const;
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.
@@ -403,6 +403,8 @@ namespace osgEarth
          */
         const osgDB::Options* getDBOptions() const { return _dbOptions.get(); }
 
+        const Profile* getProfileNoVDatum() const { return _profileNoVDatum.get(); }
+
     protected:
 
         ~Map() { }
@@ -419,12 +421,15 @@ namespace osgEarth
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<const Profile> _profileNoVDatum;
 		osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _dbOptions;
 
     private:
         void calculateProfile();
+
+        friend class MapInfo;
     };
 
 
@@ -461,9 +466,9 @@ namespace osgEarth
 
         ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
         
-        bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
-        bool mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
-        bool worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool toMapPoint( const GeoPoint& input, GeoPoint& output ) const;
+        bool toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const;
+        bool worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const;
 
     private:
         osg::ref_ptr<const Profile> _profile;

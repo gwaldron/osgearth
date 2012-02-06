@@ -322,7 +322,7 @@ TileMap::generateTileSets(unsigned int numLevels)
     }
 }
 
-std::string getSRSString(const osgEarth::SpatialReference* srs)
+std::string getHorizSRSString(const osgEarth::SpatialReference* srs)
 {
     if (srs->isMercator())
     {
@@ -334,7 +334,7 @@ std::string getSRSString(const osgEarth::SpatialReference* srs)
     }
     else
     {
-        return srs->getInitString(); //srs();
+        return srs->getHorizInitString(); //srs();
     }	
 }
 
@@ -355,7 +355,7 @@ TileMap::create(const std::string& url,
     tileMap->setExtents(ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax());
     tileMap->setOrigin(ex.xMin(), ex.yMin());
     tileMap->_filename = url;
-    tileMap->_srs = getSRSString(profile->getSRS());
+    tileMap->_srs = getHorizSRSString(profile->getSRS());
     tileMap->_vsrs = profile->getSRS()->getVertInitString();
     //tileMap->_vsrs = profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : "";
     tileMap->_format.setWidth( tile_width );
@@ -378,7 +378,7 @@ TileMap* TileMap::create(const TileSource* tileSource, const Profile* profile)
 
     const GeoExtent& ex = profile->getExtent();
     
-    tileMap->_srs = getSRSString(profile->getSRS()); //srs();
+    tileMap->_srs = getHorizSRSString(profile->getSRS()); //srs();
     tileMap->_vsrs = profile->getSRS()->getVertInitString(); //profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : 0L;
     tileMap->_originX = ex.xMin();
     tileMap->_originY = ex.yMin();

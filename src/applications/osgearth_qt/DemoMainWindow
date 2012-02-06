@@ -64,7 +64,7 @@ class DemoMainWindow : public QMainWindow
 
   private slots:
 
-		void addRemoveLayer()
+    void addRemoveLayer()
     {
       if (!_testLayer.valid())
       {
@@ -89,11 +89,11 @@ class DemoMainWindow : public QMainWindow
       }
     }
 
-		void addAnnotation()
+	void addAnnotation()
     {
       osgEarth::Annotation::PlaceNode* annotation = new osgEarth::Annotation::PlaceNode(
         _mapNode.get(), 
-        osg::Vec3d(-74, 40.714, 0), 
+        -74.0, 40.714,
         osgDB::readImageFile("../data/placemark32.png"),
         "New York");
 

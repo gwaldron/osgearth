@@ -41,7 +41,7 @@ namespace osgEarth { namespace Util
         struct Callback : public osg::Referenced
         {
             // called when valid map coordinates are found under the mouse
-            virtual void set( const osg::Vec3d& mapCoords, osg::View* view, MapNode* mapNode ) =0;
+            virtual void set( const GeoPoint& coords, osg::View* view, MapNode* mapNode ) =0;
 
             // called when no map coords are found under the mouse
             virtual void reset( osg::View* view, MapNode* mapNode ) =0;
@@ -89,7 +89,7 @@ namespace osgEarth { namespace Util
     public:
         MouseCoordsLabelCallback( LabelControl* label, Formatter* formatter );
 
-        virtual void set( const osg::Vec3d& mapCoords, osg::View* view, MapNode* mapNode );
+        virtual void set( const GeoPoint& coords, osg::View* view, MapNode* mapNode );
         virtual void reset( osg::View* view, MapNode* mapNode );
 
     protected:

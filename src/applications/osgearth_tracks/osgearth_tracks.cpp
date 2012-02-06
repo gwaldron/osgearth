@@ -165,13 +165,18 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
     // make some tracks, choosing a random simulation for each.
     Random prng;
+    const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
 
     for( unsigned i=0; i<g_numTracks; ++i )
     {
         double lon0 = -180.0 + prng.next() * 360.0;
         double lat0 = -80.0 + prng.next() * 160.0;
 
-        TrackNode* track = new TrackNode( mapNode, osg::Vec3d(lon0, lat0, 0), image, schema );
+        TrackNode* track = new TrackNode( 
+            mapNode, 
+            GeoPoint(geoSRS, lon0, lat0),
+            image,
+            schema );
 
         track->setFieldValue( FIELD_NAME,     Stringify() << "Track:" << i );
         track->setFieldValue( FIELD_POSITION, Stringify() << s_format(lat0, lon0) );

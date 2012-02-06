@@ -22,7 +22,7 @@
 #include <osgEarth/Cube>
 #include <osgEarth/LocalTangentPlane>
 #include <osgEarth/ECEF>
-#include <OpenThreads/ScopedLock>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Notify>
 #include <ogr_api.h>
 #include <ogr_spatialref.h>
@@ -118,18 +118,18 @@ SpatialReference::SRSCache& SpatialReference::getSRSCache()
 }
 
 SpatialReference*
-SpatialReference::createFromPROJ4( const std::string& init, const std::string& init_alias, const std::string& name )
+SpatialReference::createFromPROJ4( const std::string& proj4, const std::string& name )
 {
     SpatialReference* result = NULL;
     GDAL_SCOPED_LOCK;
 	void* handle = OSRNewSpatialReference( NULL );
-    if ( OSRImportFromProj4( handle, init.c_str() ) == OGRERR_NONE )
+    if ( OSRImportFromProj4( handle, proj4.c_str() ) == OGRERR_NONE )
 	{
-        result = new SpatialReference( handle, "PROJ4", init_alias, name );
+        result = new SpatialReference( handle, "PROJ4", name );
 	}
 	else 
 	{
-        OE_WARN << LC << "Unable to create spatial reference from PROJ4: " << init << std::endl;
+        OE_WARN << LC << "Unable to create spatial reference from PROJ4: " << proj4 << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
     return result;
@@ -157,118 +157,93 @@ SpatialReference::createCube()
 }
 
 SpatialReference*
-SpatialReference::createFromWKT( const std::string& init, const std::string& init_alias, const std::string& name )
+SpatialReference::createFromWKT( const std::string& wkt, const std::string& name )
 {
     osg::ref_ptr<SpatialReference> result;
     GDAL_SCOPED_LOCK;
 	void* handle = OSRNewSpatialReference( NULL );
     char buf[4096];
     char* buf_ptr = &buf[0];
-	strcpy( buf, init.c_str() );
+	strcpy( buf, wkt.c_str() );
 	if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
 	{
-        result = new SpatialReference( handle, "WKT", init_alias, name );
-        result = result->validate();
+        result = new SpatialReference( handle, "WKT", name );
+        result = result->fixWKT();
 	}
 	else 
 	{
-		OE_WARN << LC << "Unable to create spatial reference from WKT: " << init << std::endl;
+		OE_WARN << LC << "Unable to create spatial reference from WKT: " << wkt << std::endl;
 		OSRDestroySpatialReference( handle );
 	}
     return result.release();
 }
 
 SpatialReference*
-SpatialReference::create( const std::string& init, const std::string& vinit )
+SpatialReference::create( const std::string& horiz_init, const std::string& vert_init )
 {
-    return vinit.empty() ?
-        create( init ) :
-        create( Stringify() << init << ";vdatum=" << vinit );
-}
+    std::string horiz = toLower(horiz_init);
+    std::string vert  = toLower(vert_init);
 
-SpatialReference*
-SpatialReference::create( const std::string& init )
-{
-    // force it to lower case:
-    std::string low = toLower(init);
-
-    static OpenThreads::Mutex s_mutex;
-    OpenThreads::ScopedLock<OpenThreads::Mutex> exclusiveLock(s_mutex);
+    // serialized access to SRS creation.
+    static Threading::Mutex s_mutex;
+    Threading::ScopedMutexLock exclusive(s_mutex);
 
     // first, check the SRS cache to see if it already exists:
-    SRSCache::iterator itr = getSRSCache().find(low);
+    Key key(horiz, vert);
+
+    SRSCache::iterator itr = getSRSCache().find(key);
     if (itr != getSRSCache().end())
     {
         return itr->second.get();
     }
 
-    // next, check to see if this is a "unified" string (includes a vdatum)
-    std::string vlow;
-    StringVector tokens;
-    StringTokenizer( low, tokens, ";", "" );
-    if ( tokens.size() == 2 && startsWith(tokens[1], "vdatum=") )
-    {
-        low = tokens[0];
-        vlow = tokens[1].substr(7);
-    }
-
-    return createFromInitStrings( low, vlow );
-}
-
-
-SpatialReference*
-SpatialReference::createFromInitStrings(const std::string& low, const std::string& vlow)
-{
     // now try to resolve the horizontal SRS:
     osg::ref_ptr<SpatialReference> srs;
 
     // shortcut for spherical-mercator:
-    if (low == "spherical-mercator" || low == "epsg:900913" || low == "epsg:3785" ||
-        low == "epsg:41001" || low == "epsg:102113" || low == "epsg:102100")
+    if (horiz == "spherical-mercator" || horiz == "epsg:900913" || horiz == "epsg:3785" ||
+        horiz == "epsg:41001"         || horiz == "epsg:102113" || horiz == "epsg:102100")
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
         // adjusted +a by ONE to work around osg manipulator error until we can figure out why.. GW
         srs = createFromPROJ4(
             "+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs",
-            low,
             "Spherical Mercator" );
     }
 
     // ellipsoidal ("world") mercator:
-    else if (low == "epsg:54004" || low == "epsg:9804" || low == "epsg:3832")
+    else if (horiz == "epsg:54004" || horiz == "epsg:9804" || horiz == "epsg:3832")
     {
         srs = createFromPROJ4(
             "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
-            low,
             "World Mercator" );
     }
 
     // common WGS84:
-    else if (low == "epsg:4326" || low == "wgs84")
+    else if (horiz == "epsg:4326" || horiz == "wgs84")
     {
         srs = createFromPROJ4(
             "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs",
-            low,
             "WGS84" );
     }
 
     // custom srs for the unified cube
-    else if ( low == "unified-cube" )
+    else if ( horiz == "unified-cube" )
     {
         srs = createCube();
     }
 
-    else if ( low.find( "+" ) == 0 )
+    else if ( horiz.find( "+" ) == 0 )
     {
-        srs = createFromPROJ4( low, low );
+        srs = createFromPROJ4( horiz, horiz );
     }
-    else if ( low.find( "epsg:" ) == 0 || low.find( "osgeo:" ) == 0 )
+    else if ( horiz.find( "epsg:" ) == 0 || horiz.find( "osgeo:" ) == 0 )
     {
-        srs = createFromPROJ4( std::string("+init=") + low, low );
+        srs = createFromPROJ4( std::string("+init=") + horiz, horiz );
     }
-    else if ( low.find( "projcs" ) == 0 || low.find( "geogcs" ) == 0 )
+    else if ( horiz.find( "projcs" ) == 0 || horiz.find( "geogcs" ) == 0 )
     {
-        srs = createFromWKT( low, low );
+        srs = createFromWKT( horiz, horiz );
     }
     else
     {
@@ -276,22 +251,19 @@ SpatialReference::createFromInitStrings(const std::string& low, const std::strin
     }
 
     // next, resolve the vertical SRS:
-    if ( !vlow.empty() )
+    if ( !vert.empty() )
     {
-        srs->_vdatum = VerticalDatum::get(vlow);
+        srs->_vdatum = VerticalDatum::get(vert);
         if ( !srs->_vdatum.valid() )
         {
-            OE_WARN << LC << "Failed to locate vertical datum \"" << vlow << "\"" << std::endl;
+            OE_WARN << LC << "Failed to locate vertical datum \"" << vert << "\"" << std::endl;
         }
     }
 
-    // set up init strings.
-    srs->_init_str = vlow.empty() ? low : Stringify() << low << ";vdatum=" << vlow;
-    srs->_horiz_init_str = low;
-    srs->_vert_init_str = vlow;
+    srs->_key = key;
 
     // cache it - each unique SRS only exists once.
-    getSRSCache()[low] = srs;
+    getSRSCache()[key] = srs;
     return srs.get();
 }
 
@@ -314,7 +286,7 @@ SpatialReference::createFromHandle( void* ogrHandle, bool xferOwnership )
 }
 
 SpatialReference*
-SpatialReference::validate()
+SpatialReference::fixWKT()
 {
     std::string proj = getOGRAttrValue( _handle, "PROJECTION", 0 );
 
@@ -333,7 +305,7 @@ SpatialReference::validate()
 
         OE_INFO << LC << "Morphing Lambert_Conformal_Conic to 1SP/2SP" << std::endl;
         
-        return createFromWKT( new_wkt, _init_str, _name );
+        return createFromWKT( new_wkt, _name );
     }
 
     // fixes for ESRI Plate_Carree and Equidistant_Cylindrical projections:
@@ -342,14 +314,14 @@ SpatialReference::validate()
         std::string new_wkt = getWKT();
         replaceIn( new_wkt, "Plate_Carree", "Equirectangular" );
         OE_INFO << LC << "Morphing Plate_Carree to Equirectangular" << std::endl;
-        return createFromWKT( new_wkt, _init_str, _name ); //, input->getReferenceFrame() );
+        return createFromWKT( new_wkt, _name ); //, input->getReferenceFrame() );
     }
     else if ( proj == "Equidistant_Cylindrical" )
     {
         std::string new_wkt = getWKT();
         OE_INFO << LC << "Morphing Equidistant_Cylindrical to Equirectangular" << std::endl;
         replaceIn( new_wkt, "Equidistant_Cylindrical", "Equirectangular" );
-        return createFromWKT( new_wkt, _init_str, _name );
+        return createFromWKT( new_wkt, _name );
     }
 
     // no changes.
@@ -362,7 +334,6 @@ SpatialReference::validate()
 
 SpatialReference::SpatialReference(void*              handle, 
                                    const std::string& init_type,
-                                   const std::string& init_str,
                                    const std::string& name ) :
 osg::Referenced ( true ),
 _initialized    ( false ),
@@ -370,7 +341,6 @@ _handle         ( handle ),
 _owns_handle    ( true ),
 _name           ( name ),
 _init_type      ( init_type ),
-_init_str       ( init_str ),
 _is_geographic  ( false ),
 _is_mercator    ( false ),
 _is_north_polar ( false ), 
@@ -380,7 +350,8 @@ _is_contiguous  ( false ),
 _is_user_defined( false ),
 _is_ltp         ( false )
 {
-    _init_str_lc = toLower(init_str);
+    //nop
+    //_init_str_lc = toLower(init_str);
     //_init_str_lc = init_str;
     //std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
 }
@@ -463,13 +434,13 @@ SpatialReference::getWKT() const
     return _wkt;
 }
 
-const std::string&
-SpatialReference::getInitString() const
-{
-    if ( !_initialized )
-        const_cast<SpatialReference*>(this)->init();
-    return _init_str;
-}
+//const std::string&
+//SpatialReference::getInitString() const
+//{
+//    if ( !_initialized )
+//        const_cast<SpatialReference*>(this)->init();
+//    return _init_str;
+//}
 
 const std::string&
 SpatialReference::getInitType() const
@@ -540,22 +511,30 @@ SpatialReference::_isEquivalentTo( const SpatialReference* rhs, bool considerVDa
     if ( considerVDatum && (_vdatum.get() != rhs->_vdatum.get()) )
         return false;
 
-    if ( _init_str_lc == rhs->_init_str_lc )
-        return true;
-
-    if ( this->getWKT() == rhs->getWKT() )
-        return true;
-
-    if (this->isGeographic() && rhs->isGeographic() &&
-        this->getEllipsoid()->getRadiusEquator() == rhs->getEllipsoid()->getRadiusEquator() &&
-        this->getEllipsoid()->getRadiusPolar() == rhs->getEllipsoid()->getRadiusPolar())
+    if (_key.first == rhs->_key.first &&
+        (!considerVDatum || (_key.second == rhs->_key.second) ) )
     {
         return true;
     }
 
+    if ( _proj4 == rhs->_proj4 )
+        return true;
+
+    if ( _wkt == rhs->_wkt )
+        return true;
+
+    if (this->isGeographic() && rhs->isGeographic())
+    {
+        return (
+            this->getEllipsoid()->getRadiusEquator() == rhs->getEllipsoid()->getRadiusEquator() &&
+            this->getEllipsoid()->getRadiusPolar() == rhs->getEllipsoid()->getRadiusPolar() );
+    }
+
     // last resort, since it requires the lock
-    GDAL_SCOPED_LOCK;
-    return TRUE == ::OSRIsSame( _handle, rhs->_handle );
+    {
+        GDAL_SCOPED_LOCK;
+        return TRUE == ::OSRIsSame( _handle, rhs->_handle );
+    }
 }
 
 const SpatialReference*
@@ -713,7 +692,7 @@ SpatialReference::populateCoordinateSystemNode( osg::CoordinateSystemNode* csn )
     else
     {
         csn->setFormat( _init_type );
-        csn->setCoordinateSystem( _init_str );
+        csn->setCoordinateSystem( getKey().first );
     }
     
     csn->setEllipsoidModel( _ellipsoid.get() );
@@ -763,7 +742,7 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
     return locator;
 }
 
-void
+bool
 SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
 {
     if ( isProjected() )
@@ -779,9 +758,10 @@ SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_loc
         getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
             latRad, lonRad, hae, out_local2world );
     }
+    return true;
 }
 
-void
+bool
 SpatialReference::createWorld2Local(const osg::Vec3d& xyz, osg::Matrixd& out_world2local ) const
 {
     if ( isProjected() )
@@ -793,16 +773,8 @@ SpatialReference::createWorld2Local(const osg::Vec3d& xyz, osg::Matrixd& out_wor
         osg::Matrix local2world;
         createLocal2World( xyz, local2world );
         out_world2local.invert( local2world );
-
-        //double latRad = osg::DegreesToRadians( xyz.y() );
-        //double lonRad = osg::DegreesToRadians( xyz.x() );
-        //double hae    = _vdatum.valid() ? _vdatum->getHeight(xyz.y(), xyz.x(), xyz.z()) : xyz.z();
-
-        //getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
-        //    latRad, lonRad, hae, local2world );
-
-        //out_world2local = osg::Matrix::inverse(local2world);
     }
+    return true;
 }
 
 
@@ -1563,6 +1535,9 @@ SpatialReference::_init()
       _is_south_polar = false;
     }
 
+    // Try to extract the horizontal datum
+    _datum = getOGRAttrValue( _handle, "DATUM", 0, true );
+
     // Give the SRS a name if it doesn't have one:
     if ( _name == "unnamed" || _name.empty() )
     {
@@ -1570,26 +1545,6 @@ SpatialReference::_init()
             _is_geographic? "Geographic CS" :
             _is_mercator? "Mercator CS" :
             ( !proj.empty()? proj : "Projected CS" );
-    }
-
-    // Try to extract the OGC well-known-text (WKT) string:
-    char* wktbuf;
-    if ( OSRExportToWkt( _handle, &wktbuf ) == OGRERR_NONE )
-    {
-        _wkt = wktbuf;
-        OGRFree( wktbuf );
-    }
-
-    // If the user did not specify and initialization string, use the WKT.
-    if ( _init_str.empty() )
-    {
-        _horiz_init_str = _wkt;
-        if ( _vdatum.valid() )
-            _vert_init_str = _vdatum->getInitString();
-        _init_str = _vert_init_str.empty() ? _horiz_init_str : Stringify() << _horiz_init_str << ";vdatum="
-            << _vert_init_str;
-        //_init_str = _wkt;
-        _init_type = "WKT";
     }
     
     // Try to extract the PROJ4 initialization string:
@@ -1600,8 +1555,29 @@ SpatialReference::_init()
         OGRFree( proj4buf );
     }
 
-    // Try to extract the datum
-    _datum = getOGRAttrValue( _handle, "DATUM", 0, true );
+    // Try to extract the OGC well-known-text (WKT) string:
+    char* wktbuf;
+    if ( OSRExportToWkt( _handle, &wktbuf ) == OGRERR_NONE )
+    {
+        _wkt = wktbuf;
+        OGRFree( wktbuf );
+    }
+
+    // Build a 'normalized' initialization key.
+    if ( !_proj4.empty() )
+    {
+        _key.first = _proj4;
+        _init_type = "PROJ4";
+    }
+    else if ( !_wkt.empty() )
+    {
+        _key.first = _wkt;
+        _init_type = "WKT";
+    }
+    if ( _vdatum.valid() )
+    {
+        _key.second = _vdatum->getInitString();
+    }
 
     _initialized = true;
 }

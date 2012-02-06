@@ -212,10 +212,10 @@ void AnnotationListWidget::onItemDoubleClicked(QListWidgetItem* item)
     {
       osg::Vec3d center = annoItem->annotation()->getBound().center();
 
-      osg::Vec3d output;
+      GeoPoint output;
       _manager->map()->worldPointToMapPoint(center, output);
 
-      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output, 0.0, -90.0, 1e5), _views));
+      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), _views));
     }
   }
 }

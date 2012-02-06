@@ -48,18 +48,11 @@ namespace osgEarth
     {
     public:
         /**
-         * Creates an SRS from a unified initialization string. This can be a variety of
-         * things, including a WKT spec, a PROJ4 init string, or a "well-known"
-         * idenfitier (e.g., "WGS84" or "spherical-mercator"). You can also specify a vertical
-         * SRS by appending its initialization string after a semicolon, e.g.: "WGS84;EGM96".
+         * Creates an SRS from two intialization strings; the first for the horizontal datum and
+         * the second for the vertical datum. If you omit the vertical datum, it will default to
+         * the geodetic datum for the ellipsoid.
          */
-        static SpatialReference* create( const std::string& init );
-
-        /**
-         * Creates an SRS from two intialization strings; one for the horizontal datum and
-         * the second for the vertical datum.
-         */
-        static SpatialReference* create( const std::string& init, const std::string& vinit );
+        static SpatialReference* create( const std::string& init, const std::string& vinit ="" );
 
         /**
          * Attempts to create a spatial reference def from a pre-existing CSN, returning
@@ -96,7 +89,6 @@ namespace osgEarth
         virtual bool transform(
             std::vector<osg::Vec3d>& input,
             const SpatialReference*  outputSRS ) const;
-
         
         /**
          * Transform a 2D point directly. (Convenience function)
@@ -117,7 +109,7 @@ namespace osgEarth
          */
         bool transformToWorld(
             const osg::Vec3d& input,
-            osg::Vec3d&       output,
+            osg::Vec3d&       out_world,
             bool              worldIsGeocentric =true ) const;
 
         /**
@@ -126,11 +118,11 @@ namespace osgEarth
          */
         bool transformFromWorld(
             const osg::Vec3d& world,
-            osg::Vec3d&       output,
+            osg::Vec3d&       out_local,
             bool              worldIsGeocentric =true ) const;
 
 
-    public:  // ECEF transformations. (deprecate??)
+    public:  // ECEF transformations.
 
         /**
          * Transforms a point to geocentric/ECEF coordinates.
@@ -172,8 +164,6 @@ namespace osgEarth
             double&                 in_out_ymin,
             double&                 in_out_xmax, 
             double&                 in_out_ymax ) const;
-
-
         
         virtual bool transformExtentPoints(
             const SpatialReference* to_srs,
@@ -182,56 +172,10 @@ namespace osgEarth
             double* x, double* y,
             unsigned numx, unsigned numy ) const;
 
-#if 0
 
-        /** 
-         * Transform a point to another SRS.
-         */
-        virtual bool transform(
-            double x, double y, double z,
-            const SpatialReference* to_srs,
-            double& out_x, double& out_y, double& out_z,
-            void* context =0L ) const;
+    public: // properties
 
-        bool transform(
-            const osg::Vec3d&       input,
-            const SpatialReference* to_srs,
-            osg::Vec3d&             output,
-            void*                   context =0L) const
-        {
-            return transform(input.x(), input.y(), input.z(), to_srs, output.x(), output.y(), output.z(), context);
-        }
-
-        bool transform2D(
-            double x, double y,
-            const SpatialReference* to_srs,
-            double& out_x, double& out_y,
-            void* context =0L ) const
-        {
-            double dummyZ;
-            return transform(x, y, dummyZ, to_srs, out_x, out_y, dummyZ, context);
-        }
-
-        /**
-         * Transforms an array of 3D points from this SRS to another SRS.
-         */
-        virtual bool transformPoints(
-            const SpatialReference* to_srs, 
-            double* x, double* y, double* z,
-            unsigned int numPoints,
-            void* context =0L,
-            bool ignore_errors =false) const;
-
-        /**
-         * Transforms an array of points from this SRS to another SRS.
-         */
-        virtual bool transformPoints(
-            const SpatialReference*  to_srs,
-            std::vector<osg::Vec3d>& points,
-            void* context =0L,
-            bool ignore_errors =false) const;
-#endif
-
+        typedef std::pair<std::string,std::string> Key;
 
         /** True is this is a geographic SRS (i.e. unprojected lat/long) */
         virtual bool isGeographic() const;
@@ -273,15 +217,18 @@ namespace osgEarth
         /** Gets the initialization type (PROJ4, WKT, etc.) */
         const std::string& getInitType() const;
 
+        /** Gets the initialization key. */
+        const Key& getKey() const { return _key; }
+
         /** Gets the initialization string for the horizontal datum */
-        const std::string& getHorizInitString() const { return _horiz_init_str; }
+        const std::string& getHorizInitString() const { return _key.first; } //_horiz_init_str; }
 
         /** Gets the initialization string for the vertical datum */
-        const std::string& getVertInitString() const { return _vert_init_str; }
+        const std::string& getVertInitString() const { return _key.second; } // _vert_init_str; }
 
         /** Gets the string that was used to initialize this SRS - a concatentation
             of the horizontal and vertical initializations strings */
-        const std::string& getInitString() const;
+        //const std::string& getInitString() const;
 
         /** Gets the datum identifier of this SRS (or empty string if not available) */
         const std::string& getDatumName() const;
@@ -302,10 +249,10 @@ namespace osgEarth
         const VerticalDatum* getVerticalDatum() const;
 
         /** Creates a localizer matrix based on a point in this SRS. */
-        void createLocal2World( const osg::Vec3d& point, osg::Matrixd& out_local2world ) const;
+        bool createLocal2World( const osg::Vec3d& point, osg::Matrixd& out_local2world ) const;
 
         /** Create a de-localizer matrix based on a point in this SRS. */
-        void createWorld2Local( const osg::Vec3d& point, osg::Matrix& out_world2local ) const;
+        bool createWorld2Local( const osg::Vec3d& point, osg::Matrix& out_world2local ) const;
 
         /** Creates and returns a local trangent plane SRS at the given reference location.
             The reference location is expressed in this object's SRS, but it tangent to
@@ -346,7 +293,8 @@ namespace osgEarth
         virtual ~SpatialReference();
 
     protected:
-        SpatialReference( void* handle, const std::string& type, const std::string& init_str, const std::string& name );
+
+        SpatialReference( void* handle, const std::string& type, const std::string& name );
         SpatialReference( void* handle, bool ownsHandle =true );
         void init();
 
@@ -362,13 +310,14 @@ namespace osgEarth
         bool _is_ltp;
         unsigned _ellipsoidId;
         std::string _name;
+        Key _key;
         std::string _wkt;
         std::string _proj4;
         std::string _init_type;
-        std::string _init_str;
-        std::string _init_str_lc;
-        std::string _horiz_init_str;
-        std::string _vert_init_str;
+        //std::string _init_str;
+        //std::string _init_str_lc;
+        //std::string _horiz_init_str;
+        //std::string _vert_init_str;
         std::string _datum;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference>    _geo_srs;
@@ -397,26 +346,26 @@ namespace osgEarth
             const SpatialReference*  outputSRS,
             bool                     pointsAreGeodetic) const;
 
-
-        typedef std::map< std::string, osg::ref_ptr<SpatialReference> > SRSCache;
+        typedef std::map<Key, osg::ref_ptr<SpatialReference> > SRSCache;
         static SRSCache& getSRSCache();
 
 
     private:
 
-        static SpatialReference* createFromInitStrings( 
-            const std::string& init, const std::string& vinit );
+        static SpatialReference* create( const Key& key );
 
         static SpatialReference* createFromWKT(
-            const std::string& wkt, const std::string& alias, const std::string& name ="" );
+            const std::string& wkt,
+            const std::string& name ="" );
 
         static SpatialReference* createFromPROJ4(
-            const std::string& proj4, const std::string& alias, const std::string& name ="" );
+            const std::string& proj4,
+            const std::string& name = "" );
 
         static SpatialReference* createCube();
 
 
-        SpatialReference* validate();
+        SpatialReference* fixWKT();
     };
 }
 

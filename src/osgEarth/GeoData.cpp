@@ -59,7 +59,119 @@ namespace
     }
 }
 
-/*************************************************************/
+//------------------------------------------------------------------------
+
+#undef  LC
+#define LC "[GeoPoint] "
+
+GeoPoint GeoPoint::INVALID;
+
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   double x,
+                   double y,
+                   double z ) :
+_srs(srs),
+_p  (x, y, z)
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   const osg::Vec3d&       xyz ) :
+_srs(srs),
+_p  (xyz)
+{
+    //nop
+}
+
+GeoPoint::GeoPoint(const SpatialReference* srs,
+                   const GeoPoint&         rhs)
+{
+     rhs.transform(srs, *this);
+}
+
+GeoPoint::GeoPoint(const GeoPoint& rhs) :
+_srs( rhs._srs.get() ),
+_p  ( rhs._p )
+{
+    //nop
+}
+
+GeoPoint::GeoPoint() :
+_srs( 0L )
+{
+    //nop
+}
+
+void
+GeoPoint::set(const SpatialReference* srs,
+              const osg::Vec3d&       xyz)
+{
+    _srs = srs;
+    _p   = xyz;
+}
+
+bool 
+GeoPoint::operator == (const GeoPoint& rhs) const
+{
+    return
+        isValid() == rhs.isValid() &&
+        _p == rhs._p &&
+        _srs->isEquivalentTo( rhs._srs.get() );
+}
+
+GeoPoint
+GeoPoint::transform(const SpatialReference* outSRS) const
+{
+    if ( isValid() && outSRS )
+    {
+        osg::Vec3d out;
+        if ( _srs->transform(_p, outSRS, out) )
+            return GeoPoint(outSRS, out);
+    }
+    return GeoPoint::INVALID;
+}
+
+bool
+GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
+{
+    output = transform(outSRS);
+    return output.isValid();
+}
+
+bool
+GeoPoint::toECEF( osg::Vec3d& out_ecef ) const
+{
+    return isValid() ? _srs->transformToECEF( _p, out_ecef ) : false;
+}
+
+GeoPoint
+GeoPoint::fromECEF(const SpatialReference* srs, const osg::Vec3d& ecef)
+{
+    if ( srs )
+    {
+        osg::Vec3d p;
+        if ( srs->transformFromECEF(ecef, p) )
+            return GeoPoint(srs, p);
+    }
+    return GeoPoint::INVALID;
+}
+
+bool
+GeoPoint::createLocal2World( osg::Matrixd& out_l2w ) const
+{
+    return isValid() ? _srs->createLocal2World( _p, out_l2w ) : false;
+}
+
+bool
+GeoPoint::createWorld2Local( osg::Matrixd& out_w2l ) const
+{
+    return isValid() ? _srs->createWorld2Local( _p, out_w2l ) : false;
+}
+
+
+//------------------------------------------------------------------------
 
 #undef  LC
 #define LC "[GeoExtent] "
@@ -1171,9 +1283,11 @@ GeoHeightField::getElevation(const SpatialReference* inputSRS,
 {
     osg::Vec3d xy(x, y, 0);
     osg::Vec3d local = xy;
+    const SpatialReference* extentSRS = _extent.getSRS();
+
 
     // first xform the input point into our local SRS:
-    if ( inputSRS && !inputSRS->transform(xy, _extent.getSRS(), local) )
+    if ( inputSRS && !inputSRS->transform(xy, extentSRS, local) )
         return false;
 
     // check that the point falls within the heightfield bounds:
@@ -1192,12 +1306,11 @@ GeoHeightField::getElevation(const SpatialReference* inputSRS,
             interp);
 
         // if the vertical datums don't match, do a conversion:
-        if ( out_elevation != NO_DATA_VALUE && !inputSRS->isVertEquivalentTo(outputSRS) )
+        if ( out_elevation != NO_DATA_VALUE && !extentSRS->isVertEquivalentTo(outputSRS) )
         {
             // if the caller provided a custom output SRS, perform the appropriate
             // Z transformation. This requires a lat/long point:
 
-            const SpatialReference* extentSRS = _extent.getSRS();
             osg::Vec3d geolocal(local);
             if ( !extentSRS->isGeographic() )
             {

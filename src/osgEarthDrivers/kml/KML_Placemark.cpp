@@ -61,7 +61,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     {
         Geometry* geom = geometry._geom.get();
 
-        osg::Vec3d position = geom->getBounds().center();
+        GeoPoint position(cx._srs.get(), geom->getBounds().center());
+        //osg::Vec3d position = geom->getBounds().center();
         bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
         bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
 
@@ -91,7 +92,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         if ( markerModel.valid() )
         {
             Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
-            fNode = new FeatureNode( cx._mapNode, feature, false ); //, options );
+            fNode = new FeatureNode( cx._mapNode, feature, false );
         }
 
         // Place node (icon + text) or Label node (text only)

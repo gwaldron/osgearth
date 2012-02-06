@@ -154,7 +154,7 @@ void computeTerrainProfile( osgEarth::MapNode* mapNode, double startX, double st
         double lat, lon;
         GeoMath::interpolate( startYRad, startXRad, endYRad, endXRad, t, lat, lon );
         double height;
-        mapNode->getTerrain()->getHeight( osg::Vec3d( osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat), 0.0), height);
+        mapNode->getTerrain()->getHeightAboveMSL( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), height);
         profile.addElevation( height );
     }
 }
@@ -258,13 +258,13 @@ public:
             osg::Vec3d world;
             if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
             {
-                osg::Vec3d map;
-                _mapNode->getMap()->worldPointToMapPoint( world, map );
+                GeoPoint mapPoint;
+                _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
 
                 if (!_startValid)
                 {
                     _startValid = true;
-                    _start = map;
+                    _start = mapPoint.vec3d();
                     if (_featureNode.valid())
                     {
                         _root->removeChild( _featureNode.get() );
@@ -273,7 +273,7 @@ public:
                 }
                 else
                 {
-                    _end = map;
+                    _end = mapPoint.vec3d();
                     compute();
                     _startValid = false;                    
                 }

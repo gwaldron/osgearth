@@ -51,7 +51,7 @@ MouseCoordsTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         osg::Vec3d world;
         if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
         {
-            osg::Vec3d map;
+            GeoPoint map;
             _mapNode->getMap()->worldPointToMapPoint( world, map );
 
             for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
@@ -78,12 +78,12 @@ _formatter( formatter )
 }
 
 void
-MouseCoordsLabelCallback::set( const osg::Vec3d& mapCoords, osg::View* view, MapNode* mapNode )
+MouseCoordsLabelCallback::set( const GeoPoint& mapCoords, osg::View* view, MapNode* mapNode )
 {
     if ( _label.valid() )
     {
         _label->setText( Stringify()
-            <<  _formatter->format(mapCoords, mapNode->getMapSRS())
+            <<  _formatter->format(mapCoords.vec3d(), mapNode->getMapSRS())
             << ", " << mapCoords.z() );            
     }
 }

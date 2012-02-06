@@ -30,6 +30,7 @@ namespace osgEarth
 #define NO_DATA_VALUE -FLT_MAX
 
     class GeoExtent;
+    class Geoid;
 
     /**
      * Heightfield interpolation methods.
@@ -120,6 +121,16 @@ namespace osgEarth
             int newX,
             int newY,
             ElevationInterpolation interp = INTERP_BILINEAR );
+
+        /**
+         * Resolves any "invalid" height values in the hieghtfield, replacing them
+         * with valid values from a Geoid (or zero if no geoid).
+         */
+        static void resolveInvalidHeights(
+            osg::HeightField* grid,
+            const GeoExtent&  extent,
+            float             invalidValue,
+            const Geoid*      geoid );
         
         /**
          * Creates a new cluster culler based on a heightfield.

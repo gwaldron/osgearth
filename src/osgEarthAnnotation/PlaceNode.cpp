@@ -33,7 +33,7 @@ using namespace osgEarth::Symbology;
 
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
-                     const osg::Vec3d&  position,
+                     const GeoPoint&    position,
                      osg::Image*        image,
                      const std::string& text,
                      const Style&       style ) :
@@ -54,11 +54,11 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode, osg::Vec3d(x,y,0) ),
-_image  ( image ),
-_text   ( text ),
-_style  ( style ),
-_geode  ( 0L )
+OrthoNode( mapNode, osg::Vec3d(x, y, 0) ),
+_image   ( image ),
+_text    ( text ),
+_style   ( style ),
+_geode   ( 0L )
 {
     init();
 }

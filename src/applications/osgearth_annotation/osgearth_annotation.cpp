@@ -120,6 +120,9 @@ main(int argc, char** argv)
     labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
     labelStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
+    // A lat/long SRS for specifying points.
+    const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
+
     //--------------------------------------------------------------------
 
     // A series of place nodes (an icon with a text label)
@@ -150,7 +153,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Cyan;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 5.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, mapNode->getMapSRS(), geomStyle));
+        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
         labelGroup->addChild( new LabelNode(mapNode, -30, 50, "Rhumb line polygon", labelStyle) );
@@ -169,7 +172,7 @@ main(int argc, char** argv)
         geomStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Lime;
         geomStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         geomStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
-        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, mapNode->getMapSRS(), geomStyle));
+        FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
         labelGroup->addChild( new LabelNode(mapNode, -175, -35, "Antimeridian polygon", labelStyle) );
@@ -188,7 +191,7 @@ main(int argc, char** argv)
         pathStyle.getOrCreate<LineSymbol>()->stroke()->width() = 3.0f;
         pathStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
-        Feature* pathFeature = new Feature(path, mapNode->getMapSRS(), pathStyle);
+        Feature* pathFeature = new Feature(path, geoSRS, pathStyle);
         pathFeature->geoInterp() = GEOINTERP_GREAT_CIRCLE;
 
         //OE_INFO << "Path extent = " << pathFeature->getExtent().toString() << std::endl;
@@ -207,7 +210,7 @@ main(int argc, char** argv)
         circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
         CircleNode* circle = new CircleNode(
             mapNode, 
-            osg::Vec3d( -90.25, 29.98, 0 ),
+            GeoPoint(geoSRS, -90.25, 29.98),
             Linear(300, Units::KILOMETERS ),
             circleStyle,
             false );
@@ -222,7 +225,7 @@ main(int argc, char** argv)
         ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
         EllipseNode* ellipse = new EllipseNode(
             mapNode, 
-            osg::Vec3d(-80.28,25.82,0), 
+            GeoPoint(geoSRS, -80.28, 25.82),
             Linear(200, Units::MILES),
             Linear(100, Units::MILES),
             Angular(45, Units::DEGREES),
@@ -249,7 +252,7 @@ main(int argc, char** argv)
         utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL
         utahStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::White, 0.8);
 
-        Feature*     utahFeature = new Feature(utah, mapNode->getMapSRS(), utahStyle);
+        Feature*     utahFeature = new Feature(utah, geoSRS, utahStyle);
         FeatureNode* featureNode = new FeatureNode(mapNode, utahFeature);
         annoGroup->addChild( featureNode );
     }

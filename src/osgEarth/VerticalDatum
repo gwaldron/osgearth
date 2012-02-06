@@ -100,6 +100,9 @@ namespace osgEarth
         /** Gets the string that was used to initialize this SRS */
         const std::string& getInitString() const { return _initString; }
 
+        /** Gets the underlying geoid */
+        const Geoid* getGeoid() const { return _geoid.get(); }
+
         /** Tests this SRS for equivalence with another. */
         virtual bool isEquivalentTo( const VerticalDatum* rhs ) const;
         

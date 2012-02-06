@@ -56,12 +56,14 @@ set(LIB_COMMON_FILES
 if( NOT ${OPENSCENEGRAPH_VERSION} VERSION_LESS "2.9.6" )
 
     set(LIB_PUBLIC_HEADERS ${LIB_PUBLIC_HEADERS}
+	    AnnotationEditing
         Draggers
 	    FeatureEditing
 	    ImageOverlayEditor
     )
     	
     set(LIB_COMMON_FILES ${LIB_COMMON_FILES} 
+	    AnnotationEditing.cpp
         Draggers.cpp
 	    FeatureEditing.cpp
         ImageOverlayEditor.cpp

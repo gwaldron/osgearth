@@ -211,6 +211,12 @@ AnnotationNode::getAttachPoint()
     return t ? (osg::Group*)t : (osg::Group*)this;
 }
 
+osgEarth::MapNode*
+AnnotationNode::getMapNode() const
+{
+    return _mapNode.get();
+}
+
 bool
 AnnotationNode::supportsAutoClamping( const Style& style ) const
 {

@@ -66,6 +66,12 @@ namespace osgEarth { namespace Annotation
          */
         virtual osg::Group* getAttachPoint();
 
+        /**
+         Gets the MapNode that this AnnotationNode is attached to
+         */
+        osgEarth::MapNode* getMapNode() const;
+
+
 
     public: // decoration support
 

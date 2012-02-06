@@ -259,8 +259,6 @@ public:
                 << "Feature Source: no valid source data available" << std::endl;
         }
 
-        OE_NOTICE << "Geometyr type = " << _geometryType << std::endl;
-
         return result;
     }
 

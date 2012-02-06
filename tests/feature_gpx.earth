@@ -2,6 +2,8 @@
 osgEarth Sample
 
 This one demonstrates how to read feature data from a GPX file, or any other file with multiple layers.
+
+Note:  You must have GDAL built with Expat support to read GPX files
 -->
 
 <map name="Feature GPX Demo" type="geocentric" version="2">

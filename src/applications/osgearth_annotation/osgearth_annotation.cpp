@@ -255,10 +255,10 @@ main(int argc, char** argv)
             osg::Vec3d( -90.25, 29.98, 0 ),
             Linear(300, Units::KILOMETERS ),
             circleStyle,
-            false );
-        annoGroup->addChild( circle );
+            true );
+        annoGroup->addChild( circle );        
 
-        editorGroup->addChild( new LocalizedNodeEditor( circle ) );
+        editorGroup->addChild( new CircleNodeEditor( circle ) );
     }
 
     //--------------------------------------------------------------------
@@ -270,14 +270,14 @@ main(int argc, char** argv)
         EllipseNode* ellipse = new EllipseNode(
             mapNode, 
             osg::Vec3d(-80.28,25.82,0), 
-            Linear(200, Units::MILES),
+            Linear(500, Units::MILES),
             Linear(100, Units::MILES),
-            Angular(45, Units::DEGREES),
+            Angular(0, Units::DEGREES),
             ellipseStyle,
+
             true );
         annoGroup->addChild( ellipse );
-
-        editorGroup->addChild( new LocalizedNodeEditor( ellipse ) );
+        editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
     }
 
     {

@@ -98,6 +98,9 @@ RectangleNode::setStyle( const Style& style )
 void
 RectangleNode::rebuild()
 {    
+    std::string currentDecoration = getDecoration();
+    clearDecoration();
+
     //Remove all children from this node
     removeChildren( 0, getNumChildren() );
 
@@ -131,4 +134,6 @@ RectangleNode::rebuild()
 
         applyStyle( _style, _draped );
     }
+
+    setDecoration( currentDecoration );
 }

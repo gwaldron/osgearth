@@ -784,16 +784,30 @@ SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_loc
 {
     if ( isProjected() )
     {
-        out_local2world = osg::Matrix::translate(xyz);
+        osg::Vec3d world;
+        if ( !transformToWorld( xyz, world ) )
+            return false;
+        out_local2world = osg::Matrix::translate(world);
     }
     else
     {
-        double latRad = osg::DegreesToRadians( xyz.y() );
-        double lonRad = osg::DegreesToRadians( xyz.x() );
-        double hae    = _vdatum.valid() ? _vdatum->msl2hae(xyz.y(), xyz.x(), xyz.z()) : xyz.z();
+        // convert MSL to HAE if necessary:
+        osg::Vec3d geodetic;
+        if ( !isGeodetic() )
+        {
+            if ( !transform( xyz, getGeodeticSRS(), geodetic ) )
+                return false;
+        }
+        else
+        {
+            geodetic = xyz;
+        }
 
         getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(
-            latRad, lonRad, hae, out_local2world );
+            osg::DegreesToRadians( geodetic.y() ),
+            osg::DegreesToRadians( geodetic.x() ),
+            geodetic.z(),
+            out_local2world );
     }
     return true;
 }
@@ -801,19 +815,12 @@ SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_loc
 bool
 SpatialReference::createWorld2Local(const osg::Vec3d& xyz, osg::Matrixd& out_world2local ) const
 {
-    if ( isProjected() )
-    {
-        out_world2local = osg::Matrix::translate(-xyz);
-    }
-    else
-    {
-        osg::Matrix local2world;
-        createLocal2World( xyz, local2world );
-        out_world2local.invert( local2world );
-    }
+    osg::Matrixd local2world;
+    if ( !createLocal2World(xyz, local2world) )
+        return false;
+    out_world2local.invert(local2world);
     return true;
 }
-
 
 
 bool
@@ -1046,31 +1053,22 @@ SpatialReference::transformZ(std::vector<osg::Vec3d>& points,
 
 bool 
 SpatialReference::transformToWorld(const osg::Vec3d& input,
-                                   osg::Vec3d&       output,
-                                   bool              worldIsECEF ) const
+                                   osg::Vec3d&       output ) const
 {
-    if ( worldIsECEF )
+    if ( isGeographic() )
     {
         return transformToECEF(input, output);
     }
-    else
+    else // isProjected
     {
-        // flat map - convert MSL to HAE Z if necessary.
         output = input;
         if ( _vdatum.valid() )
         {
-            if ( isProjected() )
-            {
-                osg::Vec3d geo(input);
-                if ( !transform( input, getGeographicSRS(), geo ) )
-                    return false;
+            osg::Vec3d geo(input);
+            if ( !transform( input, getGeographicSRS(), geo ) )
+                return false;
 
-                output.z() = _vdatum->msl2hae( geo.y(), geo.x(), input.z() );
-            }
-            else // plate carre
-            {
-                output.z() = _vdatum->hae2msl( input.y(), input.x(), input.z() );
-            }
+            output.z() = _vdatum->msl2hae( geo.y(), geo.x(), input.z() );
         }
         return true;
     }
@@ -1079,16 +1077,14 @@ SpatialReference::transformToWorld(const osg::Vec3d& input,
 bool 
 SpatialReference::transformFromWorld(const osg::Vec3d& world,
                                      osg::Vec3d&       output,
-                                     bool              worldIsECEF,
                                      double*           out_haeZ ) const
 {
-    if ( worldIsECEF )
+    if ( isGeographic() )
     {
         return transformFromECEF(world, output, out_haeZ);
     }
-    else
+    else // isProjected
     {
-        // flat map - convert absolute Z to MSL if necessary.
         output = world;
 
         if (out_haeZ)
@@ -1096,19 +1092,12 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
 
         if ( _vdatum.valid() )
         {
-            if ( isProjected() )
-            {
-                // get the geographic coords by converting x/y/hae -> lat/long/msl:
-                osg::Vec3d lla;
-                if ( !transform(world, getGeographicSRS(), lla) )
-                    return false;
+            // get the geographic coords by converting x/y/hae -> lat/long/msl:
+            osg::Vec3d lla;
+            if ( !transform(world, getGeographicSRS(), lla) )
+                return false;
 
-                output.z() = lla.z();
-            }
-            else // plate carre
-            {
-                output.z() = _vdatum->hae2msl(world.y(), world.x(), world.z());
-            }
+            output.z() = lla.z();
         }
 
         return true;

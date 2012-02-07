@@ -24,9 +24,11 @@
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 
+#include <osgEarthAnnotation/AnnotationEditing>
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthAnnotation/ImageOverlayEditor>
 #include <osgEarthAnnotation/CircleNode>
+#include <osgEarthAnnotation/RectangleNode>
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
@@ -77,6 +79,24 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 
 //------------------------------------------------------------------
 
+struct ToggleNodeHandler : public ControlEventHandler
+{
+    ToggleNodeHandler( osg::Node* node ):
+_node(node)
+    {
+    }
+
+    void onValueChanged( Control* control, bool value )
+    {
+        _node->setNodeMask( value ? ~0 : 0 );
+    }
+
+    osg::Node* _node;
+};
+
+//------------------------------------------------------------------
+
+
 int
 main(int argc, char** argv)
 {
@@ -100,10 +120,34 @@ main(int argc, char** argv)
 
     root->addChild( mapNode );
 
+    osgViewer::Viewer viewer(arguments);
+
 
     // Group to hold all our annotation elements.
     osg::Group* annoGroup = new osg::Group();
     root->addChild( annoGroup );
+
+    //A group for all the editors
+    osg::Group* editorGroup = new osg::Group;
+    root->addChild( editorGroup );
+    editorGroup->setNodeMask( 0 );
+
+    // create a surface to house the controls
+    ControlCanvas* cs = ControlCanvas::get( &viewer );
+    root->addChild( cs );
+
+    HBox* box = new HBox();    
+    box->setChildSpacing( 5 );
+    //Add a toggle button to toggle editing
+    CheckBoxControl* editCheckbox = new CheckBoxControl( false );    
+    editCheckbox->addEventHandler( new ToggleNodeHandler( editorGroup ) );
+    box->addControl( editCheckbox );
+    LabelControl* labelControl = new LabelControl( "Edit Annotations" );
+    labelControl->setFontSize( 24.0f );
+    box->addControl( labelControl  );
+    cs->addControl( box );
+
+
 
 
     // Make a group for 2D items, and activate the decluttering engine. Decluttering
@@ -138,6 +182,7 @@ main(int argc, char** argv)
         labelGroup->addChild( new PlaceNode(mapNode,  139.75, 35.68, pushpin, "Tokyo",          placeStyle) );
         labelGroup->addChild( new PlaceNode(mapNode,  -90.25, 29.98, pushpin, "New Orleans",    placeStyle) );
         labelGroup->addChild( new PlaceNode(mapNode,  -80.28, 25.82, pushpin, "Miami",          placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, -117.17, 32.72, pushpin, "San Diego",      placeStyle) );
     }
 
     //--------------------------------------------------------------------
@@ -215,6 +260,8 @@ main(int argc, char** argv)
             circleStyle,
             false );
         annoGroup->addChild( circle );
+
+        editorGroup->addChild( new LocalizedNodeEditor( circle ) );
     }
 
     //--------------------------------------------------------------------
@@ -232,7 +279,27 @@ main(int argc, char** argv)
             ellipseStyle,
             true );
         annoGroup->addChild( ellipse );
+
+        editorGroup->addChild( new LocalizedNodeEditor( ellipse ) );
     }
+
+    {
+        // A rectangle around San Diego
+        Style rectStyle;
+        rectStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Green, 0.5);
+        RectangleNode* rect = new RectangleNode(
+            mapNode, 
+            GeoPoint(geoSRS, -117.172, 32.721, 0 ),
+            Linear(300, Units::KILOMETERS ),
+            Linear(600, Units::KILOMETERS ),
+            rectStyle,
+            true );
+        annoGroup->addChild( rect );
+
+        editorGroup->addChild( new LocalizedNodeEditor( rect ) );
+    }
+
+    
 
     //--------------------------------------------------------------------
 
@@ -262,12 +329,14 @@ main(int argc, char** argv)
     // an image overlay
     {
         ImageOverlay* imageOverlay = 0L;
-        osg::Image* image = osgDB::readImageFile( "E:/devel/osgearth/2.x/repo/data/USFLAG.TGA" );
+        osg::Image* image = osgDB::readImageFile( "../data/USFLAG.TGA" );
         if ( image )
         {
             imageOverlay = new ImageOverlay(mapNode, image);
             imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
             annoGroup->addChild( imageOverlay );
+
+            editorGroup->addChild( new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode ) );
         }
     }
     
@@ -293,8 +362,7 @@ main(int argc, char** argv)
 
     //--------------------------------------------------------------------
 
-    // initialize a viewer:
-    osgViewer::Viewer viewer(arguments);
+    // initialize the viewer:    
     viewer.setCameraManipulator( new EarthManipulator() );
     viewer.setSceneData( root );
 

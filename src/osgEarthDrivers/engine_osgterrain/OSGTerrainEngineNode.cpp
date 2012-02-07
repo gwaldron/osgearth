@@ -110,6 +110,19 @@ OSGTerrainEngineNode::getUID() const
 
 //------------------------------------------------------------------------
 
+OSGTerrainEngineNode::ElevationChangedCallback::ElevationChangedCallback( OSGTerrainEngineNode* terrain ):
+_terrain( terrain )
+{
+}
+
+void
+OSGTerrainEngineNode::ElevationChangedCallback::onEnabledChanged( TerrainLayer* layer )
+{
+    _terrain->refresh();
+}
+
+//------------------------------------------------------------------------
+
 OSGTerrainEngineNode::OSGTerrainEngineNode() :
 TerrainEngineNode(),
 _terrain( 0L ),
@@ -120,6 +133,8 @@ _tileCreationTime( 0.0 )
 {
     _uid = Registry::instance()->createUID();
     _taskServiceMgr = Registry::instance()->getTaskServiceManager();
+
+    _elevationCallback = new ElevationChangedCallback( this );
 }
 
 OSGTerrainEngineNode::OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op ) :
@@ -213,6 +228,16 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 
     // install a layer callback for processing further map actions:
     map->addMapCallback( new OSGTerrainEngineNodeMapCallbackProxy(this) );
+
+    //Attach to all of the existing elevation layers
+    ElevationLayerVector elevationLayers;
+    map->getElevationLayers( elevationLayers );
+    for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
+    {
+        i->get()->addCallback( _elevationCallback.get() );
+    }
+
+    //Attach a callback to all of the 
 
     // register me.
     registerEngine( this );
@@ -702,6 +727,9 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
     if ( !layer || !layer->getTileSource() )
         return;
 
+    layer->addCallback( _elevationCallback.get() );
+
+
     if (!_isStreaming)
     {
         refresh();
@@ -723,6 +751,8 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 void
 OSGTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 {
+    layerRemoved->removeCallback( _elevationCallback.get() );
+
     if (!_isStreaming)
     {
         refresh();

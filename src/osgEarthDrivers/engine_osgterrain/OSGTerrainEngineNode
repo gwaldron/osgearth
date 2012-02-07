@@ -67,6 +67,18 @@ public: // statics
     static void unregisterEngine( UID uid );
     static void getEngineByUID( UID uid, osg::ref_ptr<OSGTerrainEngineNode>& output );
 
+public:
+    class ElevationChangedCallback : public ElevationLayerCallback
+    {
+    public:
+        ElevationChangedCallback( OSGTerrainEngineNode* terrain );
+
+       virtual void onEnabledChanged( TerrainLayer* layer );
+
+        OSGTerrainEngineNode* _terrain;
+        friend class OSGTerrainEngineNode;
+    };
+
 private:
     void init();
     void syncMapModel();
@@ -98,6 +110,8 @@ private:
     osgEarth::Drivers::OSGTerrainOptions _terrainOptions;
     Revision                             _shaderLibRev;
     osg::ref_ptr<TaskServiceManager>     _taskServiceMgr;
+
+    osg::ref_ptr< ElevationChangedCallback > _elevationCallback;
 
     // store a separate map frame for each of the traversal threads
     MapFrame* _update_mapf; // map frame for the main/update traversal thread

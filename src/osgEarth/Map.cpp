@@ -1309,7 +1309,7 @@ bool
 MapInfo::toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const
 {
     return input.isValid() ?
-        input.getSRS()->transformToWorld(input.vec3d(), output, _isGeocentric) :
+        input.getSRS()->transformToWorld(input.vec3d(), output) :
         false;
 }
 
@@ -1317,7 +1317,7 @@ bool
 MapInfo::worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const
 {
     osg::Vec3d temp;
-    bool ok = _profile->getSRS()->transformFromWorld(input, temp, _isGeocentric);
+    bool ok = _profile->getSRS()->transformFromWorld(input, temp);
     if ( ok )
         output.set(_profile->getSRS(), temp);
     return ok;

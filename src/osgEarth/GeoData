@@ -103,9 +103,13 @@ namespace osgEarth
 
         bool transform(const SpatialReference* outSRS, GeoPoint& output) const;
 
-        bool toECEF( osg::Vec3d& out_ecef ) const;
+        //bool toECEF( osg::Vec3d& out_ecef ) const;
 
-        static GeoPoint fromECEF(const SpatialReference* srs, const osg::Vec3d& ecef);
+        //static GeoPoint fromECEF(const SpatialReference* srs, const osg::Vec3d& world);
+
+        bool toWorld( osg::Vec3d& out_world ) const;
+
+        static GeoPoint fromWorld(const SpatialReference* srs, const osg::Vec3d& world);
 
         bool createLocal2World( osg::Matrixd& out_local2world ) const;
 

@@ -105,7 +105,7 @@ Terrain::getHeight(double     mapX,
         const osgUtil::LineSegmentIntersector::Intersection& firstHit = *results.begin();
         osg::Vec3d hit = firstHit.getWorldIntersectPoint();
 
-        getSRS()->transformFromWorld(hit, hit, isGeocentric(), out_hae);
+        getSRS()->transformFromWorld(hit, hit, out_hae);
         if ( out_hamsl )
             *out_hamsl = hit.z();
 

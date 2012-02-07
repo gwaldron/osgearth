@@ -101,7 +101,6 @@ namespace osgEarth
 
     public: // ECEF transformations.
 
-
         /**
          * Transforms a point from this SRS into "world" coordinates. This normalizes
          * the Z coordinate (according to the vertical datum) and converts to ECEF
@@ -109,8 +108,7 @@ namespace osgEarth
          */
         bool transformToWorld(
             const osg::Vec3d& input,
-            osg::Vec3d&       out_world,
-            bool              worldIsGeocentric =true ) const;
+            osg::Vec3d&       out_world ) const;
 
         /**
          * Transforms a point from the "world" coordinate system into this spatial
@@ -127,8 +125,7 @@ namespace osgEarth
         bool transformFromWorld(
             const osg::Vec3d& world,
             osg::Vec3d&       out_local,
-            bool              worldIsGeocentric =true,
-            double*           out_geodeticZ     =0L ) const;
+            double*           out_geodeticZ =0L ) const;
 
 
     public:  // ECEF transformations.

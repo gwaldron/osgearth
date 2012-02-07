@@ -127,9 +127,7 @@ LocalizedNode::getPosition() const
 
     if ( _mapSRS.valid() )
     {
-        osg::Vec3d mapPos;
-        _mapSRS->transformToWorld( mapPos, world, _mapNode->isGeocentric() );
-        return GeoPoint( _mapSRS.get(), mapPos );
+        return GeoPoint::fromWorld( _mapSRS.get(), world );
     }
     else
     {

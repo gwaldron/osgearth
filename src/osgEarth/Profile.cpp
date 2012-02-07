@@ -62,7 +62,9 @@ ProfileOptions::fromConfig( const Config& conf )
         _namedProfile = conf.value();
 
     conf.getIfSet( "srs", _srsInitString );
-    conf.getIfSet( "vsrs", _vsrsInitString );
+
+    conf.getIfSet( "vdatum", _vsrsInitString );
+    conf.getIfSet( "vsrs", _vsrsInitString ); // back compat
 
     if ( conf.hasValue( "xmin" ) && conf.hasValue( "ymin" ) && conf.hasValue( "xmax" ) && conf.hasValue( "ymax" ) )
     {
@@ -88,7 +90,7 @@ ProfileOptions::getConfig() const
     else
     {
         conf.updateIfSet( "srs", _srsInitString );
-        conf.updateIfSet( "vsrs", _vsrsInitString );
+        conf.updateIfSet( "vdatum", _vsrsInitString );
 
         if ( _bounds.isSet() )
         {

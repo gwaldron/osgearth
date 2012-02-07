@@ -86,6 +86,8 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "max_data_level", _maxDataLevel);
     conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
 
+    conf.updateIfSet( "vdatum", _vertDatum );
+
     conf.updateIfSet   ( "cacheid",      _cacheId );
     conf.updateIfSet   ( "cache_format", _cacheFormat );
     conf.updateObjIfSet( "cache_policy", _cachePolicy );
@@ -111,6 +113,9 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getObjIfSet( "profile", _profile );
     conf.getIfSet( "max_data_level", _maxDataLevel);
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
+
+    conf.getIfSet( "vdatum", _vertDatum );
+    conf.getIfSet( "vsrs", _vertDatum );    // back compat
 
     conf.getIfSet   ( "cacheid",      _cacheId );
     conf.getIfSet   ( "cache_format", _cacheFormat );
@@ -271,6 +276,18 @@ TerrainLayer::getProfile() const
         if ( _tileSource.valid() && !_profile.valid() )
         {
             const_cast<TerrainLayer*>(this)->_profile = _tileSource->getProfile();
+
+            // check for a vertical datum override:
+            if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
+            {
+                std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
+                if ( _profile->getSRS()->getVertInitString() != vdatum )
+                {
+                    ProfileOptions po = _profile->toProfileOptions();
+                    po.vsrsString() = vdatum;
+                    const_cast<TerrainLayer*>(this)->_profile = Profile::create(po);
+                }
+            }
         }
     }
     

@@ -55,6 +55,13 @@ namespace osgEarth
         const optional<ProfileOptions>& profile() const { return _profile; }
 
         /**
+         * Gets the explicity vertical datum identifier that will override a vertical
+         * datum specified by the tile source.
+         */
+        optional<std::string>& verticalDatum() { return _vertDatum; }
+        const optional<std::string>& verticalDatum() const { return _vertDatum; }
+
+        /**
          * Options for the underlyint tile source driver.
          */
         optional<TileSourceOptions>& driver() { return _driver; }
@@ -154,6 +161,7 @@ namespace osgEarth
        
         std::string                 _name;
         optional<ProfileOptions>    _profile;
+        optional<std::string>       _vertDatum;
         optional<TileSourceOptions> _driver;
         optional<unsigned>          _minLevel;
         optional<unsigned>          _maxLevel;

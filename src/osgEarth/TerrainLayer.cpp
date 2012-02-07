@@ -321,9 +321,23 @@ TerrainLayer::getCacheBin( const Profile* profile )
         return 0L;
     }
 
-    // the cache bin ID is the cache IF concatenated with the profile signature.
+    // the cache bin ID is the cache ID concatenated with the FULL profile signature.
     std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getFullSignature();
 
+    return getCacheBin( profile, binId );
+}
+
+CacheBin*
+TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
+{
+    // in no-cache mode, there are no cache bins.
+    if (_runtimeOptions->cachePolicy().isSet() &&
+        _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE )
+    {
+        return 0L;
+    }
+
+    // see if the cache bin already exists and return it if so
     {
         Threading::ScopedReadLock shared(_cacheBinsMutex);
         CacheBinInfoMap::iterator i = _cacheBins.find( binId );
@@ -331,6 +345,7 @@ TerrainLayer::getCacheBin( const Profile* profile )
             return i->second._bin.get();
     }
 
+    // create/open the cache bin.
     {
         Threading::ScopedWriteLock exclusive(_cacheBinsMutex);
 

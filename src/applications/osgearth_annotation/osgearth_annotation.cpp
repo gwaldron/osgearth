@@ -135,7 +135,7 @@ main(int argc, char** argv)
         labelGroup->addChild( new PlaceNode(mapNode, -118.40, 33.93, pushpin, "Los Angeles",    placeStyle) );
         labelGroup->addChild( new PlaceNode(mapNode,  -71.03, 42.37, pushpin, "Boston",         placeStyle) );
         labelGroup->addChild( new PlaceNode(mapNode, -157.93, 21.35, pushpin, "Honolulu",       placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode,  138.75, 35.68, pushpin, "Tokyo",          placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode,  139.75, 35.68, pushpin, "Tokyo",          placeStyle) );
         labelGroup->addChild( new PlaceNode(mapNode,  -90.25, 29.98, pushpin, "New Orleans",    placeStyle) );
         labelGroup->addChild( new PlaceNode(mapNode,  -80.28, 25.82, pushpin, "Miami",          placeStyle) );
     }
@@ -183,8 +183,8 @@ main(int argc, char** argv)
     // A path using great-circle interpolation.
     {
         Geometry* path = new LineString();
-        path->push_back( osg::Vec3d(-74, 40.714, 0) );    // New York
-        path->push_back( osg::Vec3d(139.75, 35.685, 0) ); // Tokyo
+        path->push_back( osg::Vec3d(-74, 40.714, 0) );   // New York
+        path->push_back( osg::Vec3d(139.75, 35.68, 0) ); // Tokyo
 
         Style pathStyle;
         pathStyle.getOrCreate<LineSymbol>()->stroke()->color() = Color::Red;

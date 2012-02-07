@@ -91,15 +91,15 @@ GeometryNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terra
     GeoPoint mapPos = getPosition();
     if ( key.getExtent().contains(mapPos.x(), mapPos.y()) )
     {
-        double height;
-        if ( terrain->getHeightAboveMSL(mapPos.x(), mapPos.y(), height, tile) )
+        double hamsl;
+        if ( terrain->getHeight(mapPos.x(), mapPos.y(), &hamsl, 0L, tile) )
         {
             if ( _altitude.valid() )
             {
-                height *= _altitude->verticalScale()->eval();
-                height += _altitude->verticalOffset()->eval();
+                hamsl *= _altitude->verticalScale()->eval();
+                hamsl += _altitude->verticalOffset()->eval();
             }
-            mapPos.z() = height;
+            mapPos.z() = hamsl;
             setPosition( mapPos );
         }
     }

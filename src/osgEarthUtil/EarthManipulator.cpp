@@ -735,7 +735,7 @@ EarthManipulator::getSRS() const
 
         if ( _cached_srs.valid() )
         {
-            OE_INFO << "[EarthManip] cached SRS: "
+            OE_DEBUG << "[EarthManip] cached SRS: "
                 << _cached_srs->getName()
                 << ", geocentric=" << _is_geocentric
                 << std::endl;

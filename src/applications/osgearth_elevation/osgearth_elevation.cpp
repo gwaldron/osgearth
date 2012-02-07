@@ -39,6 +39,7 @@ static MapNode*       s_mapNode     = 0L;
 static LabelControl*  s_posLabel    = 0L;
 static LabelControl*  s_vdaLabel    = 0L;
 static LabelControl*  s_mslLabel    = 0L;
+static LabelControl*  s_haeLabel    = 0L;
 static LabelControl*  s_resLabel    = 0L;
 
 
@@ -69,24 +70,29 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
             // do an elevation query:
             double query_resolution = 0.1; // 1/10th of a degree
-            double out_elevation    = 0.0;
+            double out_hamsl        = 0.0;
             double out_resolution   = 0.0;
 
             bool ok = _query.getElevation( 
                 mapPoint,
-                out_elevation, 
+                out_hamsl,
                 query_resolution, 
                 &out_resolution );
 
             if ( ok )
             {
+                // convert to geodetic to get the HAE:
+                mapPoint.z() = out_hamsl;
+                GeoPoint mapPointGeodetic( s_mapNode->getMapSRS()->getGeodeticSRS(), mapPoint );
+
                 static LatLongFormatter s_f;
 
                 s_posLabel->setText( Stringify()
                     << std::fixed << std::setprecision(2) 
                     << s_f.format(mapPoint.y()) << ", " << s_f.format(mapPoint.x()) );
 
-                s_mslLabel->setText( Stringify() << out_elevation );
+                s_mslLabel->setText( Stringify() << out_hamsl );
+                s_haeLabel->setText( Stringify() << mapPointGeodetic.z() );
                 s_resLabel->setText( Stringify() << out_resolution );
                 yes = true;
             }
@@ -96,6 +102,7 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
         {
             s_posLabel->setText( "-" );
             s_mslLabel->setText( "-" );
+            s_haeLabel->setText( "-" );
             s_resLabel->setText( "-" );
         }
     }
@@ -142,12 +149,14 @@ int main(int argc, char** argv)
     grid->setControl(0,0,new LabelControl("Coords (Lat, Long):"));
     grid->setControl(0,1,new LabelControl("Vertical Datum:"));
     grid->setControl(0,2,new LabelControl("Height (MSL):"));
-    grid->setControl(0,3,new LabelControl("Resolution:"));
+    grid->setControl(0,3,new LabelControl("Height (HAE):"));
+    grid->setControl(0,4,new LabelControl("Resolution:"));
 
     s_posLabel = grid->setControl(1,0,new LabelControl(""));
     s_vdaLabel = grid->setControl(1,1,new LabelControl(""));
     s_mslLabel = grid->setControl(1,2,new LabelControl(""));
-    s_resLabel = grid->setControl(1,3,new LabelControl(""));
+    s_haeLabel = grid->setControl(1,3,new LabelControl(""));
+    s_resLabel = grid->setControl(1,4,new LabelControl(""));
 
     const SpatialReference* mapSRS = s_mapNode->getMapSRS();
     s_vdaLabel->setText( mapSRS->getVerticalDatum() ? 

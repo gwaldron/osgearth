@@ -65,7 +65,11 @@ _geocentric( geocentric )
 }
 
 bool
-Terrain::getHeightAboveMSL(double mapX, double mapY, double& out_height, osg::Node* patch) const
+Terrain::getHeight(double     mapX, 
+                   double     mapY, 
+                   double*    out_hamsl,
+                   double*    out_hae,
+                   osg::Node* patch ) const
 {
     if ( !_graph.valid() && !patch )
         return 0L;
@@ -101,13 +105,10 @@ Terrain::getHeightAboveMSL(double mapX, double mapY, double& out_height, osg::No
         const osgUtil::LineSegmentIntersector::Intersection& firstHit = *results.begin();
         osg::Vec3d hit = firstHit.getWorldIntersectPoint();
 
-        getSRS()->transformFromWorld(hit, hit, isGeocentric());
-        //if ( isGeocentric() )
-        //{
-        //    getSRS()->transformFromECEF(hit, hit);
-        //}
+        getSRS()->transformFromWorld(hit, hit, isGeocentric(), out_hae);
+        if ( out_hamsl )
+            *out_hamsl = hit.z();
 
-        out_height = hit.z();
         return true;
     }
     return false;

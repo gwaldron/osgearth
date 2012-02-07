@@ -115,11 +115,20 @@ namespace osgEarth
         /**
          * Transforms a point from the "world" coordinate system into this spatial
          * reference.
+         * @param world
+         *      World point to transform
+         * @param out_local
+         *      Output coords in local (SRS) coords
+         * @param worldIsGeocentric
+         *      Whether the incoming world coordinates are ECEF/geocentric coords
+         * @param out_geodeticZ
+         *      (optional) Outputs the geodetic (HAE) Z if applicable
          */
         bool transformFromWorld(
             const osg::Vec3d& world,
             osg::Vec3d&       out_local,
-            bool              worldIsGeocentric =true ) const;
+            bool              worldIsGeocentric =true,
+            double*           out_geodeticZ     =0L ) const;
 
 
     public:  // ECEF transformations.
@@ -139,10 +148,18 @@ namespace osgEarth
 
         /**
          * Transforms a point from geocentric/ECEF coordinates into this SRS.
+         * @param input
+         *      ECEF point to transform
+         * @param output
+         *      Result placed in this output parameter upon success
+         * @param out_geodeticZ
+         *      (optional) Geodetic (height above ellipsoid) Z placed here; it will
+         *      only differ from output.z() if a vertidal datum exists in this SRS
          */
         bool transformFromECEF(
             const osg::Vec3d& input,
-            osg::Vec3d&       output ) const;
+            osg::Vec3d&       output,
+            double*           out_geodeticZ =0L ) const;
 
         /**
          * Transforms an array of points from geocentric/ECEF coordinates into this SRS.
@@ -177,8 +194,11 @@ namespace osgEarth
 
         typedef std::pair<std::string,std::string> Key;
 
-        /** True is this is a geographic SRS (i.e. unprojected lat/long) */
+        /** True if this is a geographic SRS (lat/long/msl) */
         virtual bool isGeographic() const;
+
+        /** True if this is a geodetic SRS (lat/long/hae) */
+        virtual bool isGeodetic() const;
 
         /** True if this is a projected SRS (i.e. local coordinate system) */
         virtual bool isProjected() const;
@@ -244,6 +264,11 @@ namespace osgEarth
 
         /** Gets a reference to this SRS's underlying geographic SRS. */
         const SpatialReference* getGeographicSRS() const;
+
+        /** Gets a reference to this SRS's underlying geodetic SRS. This is the same as the
+            geographic SRS [see getGeographicSRS()] but with a geodetic vertical datum (in
+            which Z is expressed as height above the geodetic ellipsoid). */
+        const SpatialReference* getGeodeticSRS() const;
 
         /** Gets the vertical datum. If null, this SRS uses a default geodetic vertical datum */
         const VerticalDatum* getVerticalDatum() const;
@@ -314,13 +339,10 @@ namespace osgEarth
         std::string _wkt;
         std::string _proj4;
         std::string _init_type;
-        //std::string _init_str;
-        //std::string _init_str_lc;
-        //std::string _horiz_init_str;
-        //std::string _vert_init_str;
         std::string _datum;
         osg::ref_ptr<osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<SpatialReference>    _geo_srs;
+        osg::ref_ptr<SpatialReference>    _geodetic_srs;  // _geo_srs with a NULL vdatum.
         osg::ref_ptr<VerticalDatum>       _vdatum;
 
         typedef std::map<std::string,void*> TransformHandleCache;

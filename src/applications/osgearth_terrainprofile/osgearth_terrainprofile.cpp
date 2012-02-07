@@ -153,9 +153,9 @@ void computeTerrainProfile( osgEarth::MapNode* mapNode, double startX, double st
         double t = (double)i / (double)numSamples;
         double lat, lon;
         GeoMath::interpolate( startYRad, startXRad, endYRad, endXRad, t, lat, lon );
-        double height;
-        mapNode->getTerrain()->getHeightAboveMSL( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), height);
-        profile.addElevation( height );
+        double hamsl;
+        mapNode->getTerrain()->getHeight( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), &hamsl );
+        profile.addElevation( hamsl );
     }
 }
 

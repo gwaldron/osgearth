@@ -36,23 +36,124 @@ EllipseNode::EllipseNode(MapNode*          mapNode,
                          const Style&      style,
                          bool              draped,
                          unsigned          numSegments) :
-LocalizedNode( mapNode, position )
+LocalizedNode( mapNode, position ),
+_radiusMajor( radiusMajor ),
+_radiusMinor( radiusMinor ),
+_rotationAngle( rotationAngle ),
+_style(style ),
+_draped( draped ),
+_numSegments( numSegments )
 {
+    rebuild();
+}
+
+const Style&
+EllipseNode::getStyle() const
+{
+    return _style;
+}
+
+void
+EllipseNode::setStyle( const Style& style )
+{
+    _style = style;
+    rebuild();
+}
+
+unsigned int
+EllipseNode::getNumSegments() const
+{
+    return _numSegments;
+}
+
+void
+EllipseNode::setNumSegments(unsigned int numSegments )
+{
+    if (_numSegments != numSegments )
+    {
+        _numSegments = numSegments;
+        rebuild();
+    }
+}
+
+
+const Linear&
+EllipseNode::getRadiusMajor() const
+{
+    return _radiusMajor;
+}
+
+const Linear&
+EllipseNode::getRadiusMinor() const
+{
+    return _radiusMinor;
+}
+
+void
+EllipseNode::setRadiusMajor( const Linear& radiusMajor )
+{
+    setRadii( radiusMajor, _radiusMinor );
+}
+
+
+void
+EllipseNode::setRadiusMinor( const Linear& radiusMinor )
+{
+    setRadii( _radiusMajor, radiusMinor );
+}
+
+void
+EllipseNode::setRadii( const Linear& radiusMajor, const Linear& radiusMinor )
+{
+    if (_radiusMajor != radiusMajor || _radiusMinor != radiusMinor )
+    {
+        _radiusMajor = radiusMajor;
+        _radiusMinor = radiusMinor;
+        rebuild();
+    }
+}
+
+const Angular&
+EllipseNode::getRotationAngle() const
+{
+    return _rotationAngle;
+}
+
+void 
+EllipseNode::setRotationAngle(Angular& rotationAngle)
+{
+    if (_rotationAngle != rotationAngle)
+    {
+        _rotationAngle = rotationAngle;
+        rebuild();
+    }
+}
+
+
+void
+EllipseNode::rebuild()
+{
+    //Remove all children from this node
+    removeChildren( 0, getNumChildren() );
+
+    //Remove all children from the attach point
+    getAttachPoint()->removeChildren( 0, getAttachPoint()->getNumChildren() );
+
     // construct a local-origin ellipse.
     GeometryFactory factory;
-    Geometry* geom = factory.createEllipse(osg::Vec3d(0,0,0), radiusMajor, radiusMinor, rotationAngle, numSegments);
+    Geometry* geom = factory.createEllipse(osg::Vec3d(0,0,0), _radiusMajor, _radiusMinor, _rotationAngle, _numSegments);
     if ( geom )
     {
         GeometryCompiler compiler;
         osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
-        osg::Node* node = compiler.compile( feature.get(), style, FilterContext(0L) );
+        osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
         {
             getAttachPoint()->addChild( node );
 
-            if ( draped )
+            if ( _draped )
             {
-                DrapeableNode* drapeable = new DrapeableNode( mapNode );
+                DrapeableNode* drapeable = new DrapeableNode( _mapNode.get() );
                 drapeable->addChild( getAttachPoint() );
                 this->addChild( drapeable );
             }
@@ -63,6 +164,6 @@ LocalizedNode( mapNode, position )
             }
         }
 
-        applyStyle( style, draped );
+        applyStyle( _style, _draped );
     }
 }

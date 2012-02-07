@@ -1,0 +1,53 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHANNO_ANNOTATION_EDITING_H
+#define OSGEARTHANNO_ANNOTATION_EDITING_H 1
+
+#include <osgEarthAnnotation/Common>
+#include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/Draggers>
+#include <osgEarth/MapNode>
+
+namespace osgEarth { namespace Annotation {
+
+     /**
+     * An editor node that allows you to move the position of LocalizedNode annotations    
+     */
+    class OSGEARTHANNO_EXPORT LocalizedNodeEditor : public osg::Group
+    {
+    public:
+        /**
+         * Create a new LocalizedAnnotationEditor
+         * @param localizedNode
+         *        The LocalizedNode to edit
+         */
+        LocalizedNodeEditor(LocalizedNode* localizedNode);    
+        
+        ~LocalizedNodeEditor();    
+
+        void updateDraggers();
+
+    private:
+        osg::ref_ptr< LocalizedNode > _node;
+        osgEarth::Annotation::IntersectingDragger* _dragger;
+    };
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTHANNO_FEATURE_EDITING_H

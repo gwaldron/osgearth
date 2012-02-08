@@ -260,6 +260,10 @@ namespace osgEarth
          */
         const std::string& getHorizSignature() const { return _horizSignature; }
 
+    public:
+
+        void overrideSRS( const SpatialReference* srs );
+
     protected:       
 
         Profile(

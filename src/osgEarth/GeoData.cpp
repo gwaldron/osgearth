@@ -140,26 +140,6 @@ GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
     return output.isValid();
 }
 
-#if 0
-bool
-GeoPoint::toECEF( osg::Vec3d& out_ecef ) const
-{
-    return isValid() ? _srs->transformToECEF( _p, out_ecef ) : false;
-}
-
-GeoPoint
-GeoPoint::fromECEF(const SpatialReference* srs, const osg::Vec3d& ecef)
-{
-    if ( srs )
-    {
-        osg::Vec3d p;
-        if ( srs->transformFromECEF(ecef, p) )
-            return GeoPoint(srs, p);
-    }
-    return GeoPoint::INVALID;
-}
-#endif
-
 bool
 GeoPoint::toWorld( osg::Vec3d& out_world ) const
 {

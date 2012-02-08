@@ -1243,7 +1243,7 @@ JSSpatialReference::TangentPlaneCallback(const v8::Arguments& args)
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
-      return JSSpatialReference::WrapSpatialReference(srs->createTangentPlaneSRS(*vec), true);
+      return JSSpatialReference::WrapSpatialReference(const_cast<SpatialReference*>(srs->createTangentPlaneSRS(*vec)), true);
     }
   }
 

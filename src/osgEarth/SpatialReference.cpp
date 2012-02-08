@@ -125,7 +125,7 @@ SpatialReference::createFromPROJ4( const std::string& proj4, const std::string& 
 	void* handle = OSRNewSpatialReference( NULL );
     if ( OSRImportFromProj4( handle, proj4.c_str() ) == OGRERR_NONE )
 	{
-        result = new SpatialReference( handle, "PROJ4", name );
+        result = new SpatialReference( handle, "PROJ4" );
 	}
 	else 
 	{
@@ -167,7 +167,7 @@ SpatialReference::createFromWKT( const std::string& wkt, const std::string& name
 	strcpy( buf, wkt.c_str() );
 	if ( OSRImportFromWkt( handle, &buf_ptr ) == OGRERR_NONE )
 	{
-        result = new SpatialReference( handle, "WKT", name );
+        result = new SpatialReference( handle, "WKT" );
         result = result->fixWKT();
 	}
 	else 
@@ -184,21 +184,31 @@ SpatialReference::create( const std::string& horiz_init, const std::string& vert
     std::string horiz = toLower(horiz_init);
     std::string vert  = toLower(vert_init);
 
+    return create( Key(horiz, vert), true );
+}
+
+SpatialReference*
+SpatialReference::create( const Key& key, bool useCache )
+{
     // serialized access to SRS creation.
     static Threading::Mutex s_mutex;
     Threading::ScopedMutexLock exclusive(s_mutex);
 
     // first, check the SRS cache to see if it already exists:
-    Key key(horiz, vert);
-
-    SRSCache::iterator itr = getSRSCache().find(key);
-    if (itr != getSRSCache().end())
+    if ( useCache )
     {
-        return itr->second.get();
+        SRSCache::iterator itr = getSRSCache().find(key);
+        if (itr != getSRSCache().end())
+        {
+            return itr->second.get();
+        }
     }
 
     // now try to resolve the horizontal SRS:
     osg::ref_ptr<SpatialReference> srs;
+
+    const std::string& horiz = key.first;
+    const std::string& vert  = key.second;
 
     // shortcut for spherical-mercator:
     if (horiz == "spherical-mercator" || horiz == "epsg:900913" || horiz == "epsg:3785" ||
@@ -262,9 +272,13 @@ SpatialReference::create( const std::string& horiz_init, const std::string& vert
 
     srs->_key = key;
 
-    // cache it - each unique SRS only exists once.
-    getSRSCache()[key] = srs;
-    return srs.get();
+    if ( useCache )
+    {
+        // cache it - each unique SRS only exists once.
+        getSRSCache()[key] = srs;
+    }
+
+    return useCache ? srs.get() : srs.release();
 }
 
 SpatialReference*
@@ -333,13 +347,11 @@ SpatialReference::fixWKT()
 
 
 SpatialReference::SpatialReference(void*              handle, 
-                                   const std::string& init_type,
-                                   const std::string& name ) :
+                                   const std::string& init_type) :
 osg::Referenced ( true ),
 _initialized    ( false ),
 _handle         ( handle ),
 _owns_handle    ( true ),
-_name           ( name ),
 _init_type      ( init_type ),
 _is_geographic  ( false ),
 _is_mercator    ( false ),
@@ -348,12 +360,10 @@ _is_south_polar ( false ),
 _is_cube        ( false ),
 _is_contiguous  ( false ),
 _is_user_defined( false ),
-_is_ltp         ( false )
+_is_ltp         ( false ),
+_is_plate_carre ( false )
 {
-    //nop
-    //_init_str_lc = toLower(init_str);
-    //_init_str_lc = init_str;
-    //std::transform( _init_str_lc.begin(), _init_str_lc.end(), _init_str_lc.begin(), ::tolower );
+    // nop
 }
 
 SpatialReference::SpatialReference(void* handle, bool ownsHandle) :
@@ -361,7 +371,8 @@ osg::Referenced( true ),
 _initialized   ( false ),
 _handle        ( handle ),
 _owns_handle   ( ownsHandle ),
-_is_ltp        ( false )
+_is_ltp        ( false ),
+_is_plate_carre( false )
 {
     //nop
 }
@@ -608,7 +619,7 @@ SpatialReference::getGeodeticSRS() const
     return _geodetic_srs.get();
 }
 
-SpatialReference*
+const SpatialReference*
 SpatialReference::createTangentPlaneSRS( const osg::Vec3d& pos ) const
 {
     SpatialReference* result = 0L;
@@ -624,7 +635,7 @@ SpatialReference::createTangentPlaneSRS( const osg::Vec3d& pos ) const
     return result;
 }
 
-SpatialReference*
+const SpatialReference*
 SpatialReference::createTransMercFromLongitude( const Angular& lon ) const
 {
     // note. using tmerc with +lat_0 <> 0 is sloooooow.
@@ -636,7 +647,7 @@ SpatialReference::createTransMercFromLongitude( const Angular& lon ) const
     return create( horiz, getVertInitString() );
 }
 
-SpatialReference*
+const SpatialReference*
 SpatialReference::createUTMFromLongitude( const Angular& lon ) const
 {
     // note. UTM is up to 10% faster than TMERC for the same meridian.
@@ -646,6 +657,14 @@ SpatialReference::createUTMFromLongitude( const Angular& lon ) const
         << "+proj=utm +zone=" << zone
         << " +datum=" << (!datum.empty() ? "wgs84" : datum);
     return create( horiz, getVertInitString() );
+}
+
+const SpatialReference* 
+SpatialReference::createPlateCarreGeographicSRS() const
+{
+    SpatialReference* pc = create( getKey(), false );
+    if ( pc ) pc->_is_plate_carre = true;
+    return pc;
 }
 
 bool
@@ -782,7 +801,7 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
 bool
 SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
 {
-    if ( isProjected() )
+    if ( isProjected() || _is_plate_carre )
     {
         osg::Vec3d world;
         if ( !transformToWorld( xyz, world ) )
@@ -1055,17 +1074,17 @@ bool
 SpatialReference::transformToWorld(const osg::Vec3d& input,
                                    osg::Vec3d&       output ) const
 {
-    if ( isGeographic() )
+    if ( isGeographic() && !_is_plate_carre )
     {
         return transformToECEF(input, output);
     }
-    else // isProjected
+    else // isProjected || _is_plate_carre
     {
         output = input;
         if ( _vdatum.valid() )
         {
             osg::Vec3d geo(input);
-            if ( !transform( input, getGeographicSRS(), geo ) )
+            if ( !transform(input, getGeographicSRS(), geo) )
                 return false;
 
             output.z() = _vdatum->msl2hae( geo.y(), geo.x(), input.z() );
@@ -1079,11 +1098,11 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
                                      osg::Vec3d&       output,
                                      double*           out_haeZ ) const
 {
-    if ( isGeographic() )
+    if ( isGeographic() && !_is_plate_carre )
     {
         return transformFromECEF(world, output, out_haeZ);
     }
-    else // isProjected
+    else // isProjected || _is_plate_carre
     {
         output = world;
 
@@ -1094,7 +1113,7 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
         {
             // get the geographic coords by converting x/y/hae -> lat/long/msl:
             osg::Vec3d lla;
-            if ( !transform(world, getGeographicSRS(), lla) )
+            if (!transform(world, getGeographicSRS(), lla) )
                 return false;
 
             output.z() = lla.z();

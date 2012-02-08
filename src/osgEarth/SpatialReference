@@ -222,6 +222,9 @@ namespace osgEarth
         /** Tests whether this SRS is a Local Tangent Plane projection (osgEarth-internal) */
         virtual bool isLTP() const { return _is_ltp; }
 
+        /** Whether this is a geographic plate carre SRS */
+        virtual bool isPlateCarre() const { return _is_plate_carre; }
+
         /** Gets the readable name of this SRS. */
         const std::string& getName() const;
 
@@ -238,14 +241,10 @@ namespace osgEarth
         const Key& getKey() const { return _key; }
 
         /** Gets the initialization string for the horizontal datum */
-        const std::string& getHorizInitString() const { return _key.first; } //_horiz_init_str; }
+        const std::string& getHorizInitString() const { return _key.first; }
 
         /** Gets the initialization string for the vertical datum */
-        const std::string& getVertInitString() const { return _key.second; } // _vert_init_str; }
-
-        /** Gets the string that was used to initialize this SRS - a concatentation
-            of the horizontal and vertical initializations strings */
-        //const std::string& getInitString() const;
+        const std::string& getVertInitString() const { return _key.second; }
 
         /** Gets the datum identifier of this SRS (or empty string if not available) */
         const std::string& getDatumName() const;
@@ -279,15 +278,20 @@ namespace osgEarth
         /** Creates and returns a local trangent plane SRS at the given reference location.
             The reference location is expressed in this object's SRS, but it tangent to
             the globe at getGeographicSRS(). LTP units are in meters. */
-        SpatialReference* createTangentPlaneSRS( const osg::Vec3d& refPos ) const;
+        const SpatialReference* createTangentPlaneSRS( const osg::Vec3d& refPos ) const;
 
         /** Creates a transverse mercator projection centered at the specified longitude. */
-        SpatialReference* createTransMercFromLongitude( const Angular& lon ) const;
+        const SpatialReference* createTransMercFromLongitude( const Angular& lon ) const;
 
         /** Creates a UTM (universal transverse mercator) projection in the UTM zone
             containing the specified longitude. NOTE: this is slightly faster than using
             basic tmerc (transverse mercator) above. */
-        SpatialReference* createUTMFromLongitude( const Angular& lon ) const;
+        const SpatialReference* createUTMFromLongitude( const Angular& lon ) const;
+
+        /** Creates a copy of this SRS, but flags the new SRS so that it will operate in
+            Plate Carre mode for the purposes of world coordinate conversion. The SRS is
+            otherwise mathematically equivalent to its vanilla counterpart. */
+        const SpatialReference* createPlateCarreGeographicSRS() const;
 
         /** Creates a new CSN based on this spatial reference. */
         osg::CoordinateSystemNode* createCoordinateSystemNode() const;
@@ -316,7 +320,7 @@ namespace osgEarth
 
     protected:
 
-        SpatialReference( void* handle, const std::string& type, const std::string& name );
+        SpatialReference( void* handle, const std::string& type );
         SpatialReference( void* handle, bool ownsHandle =true );
         void init();
 
@@ -330,6 +334,7 @@ namespace osgEarth
         bool _is_contiguous;
         bool _is_user_defined;
         bool _is_ltp;
+        bool _is_plate_carre;
         unsigned _ellipsoidId;
         std::string _name;
         Key _key;
@@ -371,7 +376,7 @@ namespace osgEarth
 
     private:
 
-        static SpatialReference* create( const Key& key );
+        static SpatialReference* create( const Key& key, bool useCache );
 
         static SpatialReference* createFromWKT(
             const std::string& wkt,

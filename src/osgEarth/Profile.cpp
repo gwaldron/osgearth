@@ -267,12 +267,6 @@ osg::Referenced( true )
         _extent :
         _extent.transform( _extent.getSRS()->getGeographicSRS() );
 
-    //if ( !_vsrs.valid() )
-    //    _vsrs = Registry::instance()->getDefaultVSRS();
-
-    // gen the signature
-    //_signature = Stringify() << std::hex << hashString( toProfileOptions().getConfig().toJSON() );
-
     // make a profile sig (sans srs) and an srs sig for quick comparisons.
     ProfileOptions temp = toProfileOptions();
     _fullSignature = Stringify() << std::hex << hashString( temp.getConfig().toJSON() );
@@ -365,6 +359,17 @@ Profile::toProfileOptions() const
     op.numTilesWideAtLod0() = _numTilesWideAtLod0;
     op.numTilesHighAtLod0() = _numTilesHighAtLod0;
     return op;
+}
+
+void
+Profile::overrideSRS( const SpatialReference* srs )
+{
+    _extent = GeoExtent(
+        srs,
+        _extent.xMin(),
+        _extent.yMin(),
+        _extent.xMax(),
+        _extent.yMax() );
 }
 
 void

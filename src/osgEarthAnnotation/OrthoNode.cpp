@@ -40,7 +40,7 @@ _mapSRS                 ( mapNode ? mapNode->getMapSRS() : 0L ),
 _horizonCulling         ( false )
 {
     init();
-    if ( _mapSRS.valid() )
+    if ( mapNode && mapNode->isGeocentric() )
     {
         setHorizonCulling( true );
     }
@@ -55,7 +55,7 @@ _mapSRS                 ( mapNode ? mapNode->getMapSRS() : 0L ),
 _horizonCulling         ( false )
 {
     init();
-    if ( _mapSRS.valid() )
+    if ( mapNode && mapNode->isGeocentric() )
     {
         setHorizonCulling( true );
     }
@@ -69,7 +69,7 @@ _mapSRS        ( mapSRS ),
 _horizonCulling( false )
 {
     init();
-    if ( _mapSRS.valid() )
+    if ( _mapSRS.valid() && _mapSRS->isGeographic() && !_mapSRS->isPlateCarre() )
     {
         setHorizonCulling( true );
     }

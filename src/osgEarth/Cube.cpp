@@ -388,10 +388,11 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 // --------------------------------------------------------------------------
 
 CubeSpatialReference::CubeSpatialReference( void* handle ) :
-SpatialReference( handle, "OSGEARTH", "Unified Cube" )
+SpatialReference( handle, "OSGEARTH" )
 {
     //nop
     _key.first = "unified-cube";
+    _name      = "Unified Cube";
 }
 
 void

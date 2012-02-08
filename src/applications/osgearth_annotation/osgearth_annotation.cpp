@@ -148,8 +148,6 @@ main(int argc, char** argv)
     cs->addControl( box );
 
 
-
-
     // Make a group for 2D items, and activate the decluttering engine. Decluttering
     // will migitate overlap between elements that occupy the same screen real estate.
     osg::Group* labelGroup = new osg::Group();
@@ -171,18 +169,18 @@ main(int argc, char** argv)
 
     // A series of place nodes (an icon with a text label)
     {
-        osg::Image* pushpin = osgDB::readImageFile( "../data/placemark32.png" );
+        osg::Image* pin = osgDB::readImageFile( "../data/placemark32.png" );
 
-        labelGroup->addChild( new PlaceNode(mapNode,  -74.00, 40.71, pushpin, "New York",       placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode,  -77.04, 38.85, pushpin, "Washington, DC", placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode,  -87.65, 41.90, pushpin, "Chicago",        placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, -118.40, 33.93, pushpin, "Los Angeles",    placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode,  -71.03, 42.37, pushpin, "Boston",         placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, -157.93, 21.35, pushpin, "Honolulu",       placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode,  139.75, 35.68, pushpin, "Tokyo",          placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode,  -90.25, 29.98, pushpin, "New Orleans",    placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode,  -80.28, 25.82, pushpin, "Miami",          placeStyle) );
-        labelGroup->addChild( new PlaceNode(mapNode, -117.17, 32.72, pushpin, "San Diego",      placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -74.00, 40.71), pin, "New York",       placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -77.04, 38.85), pin, "Washington, DC", placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -87.65, 41.90), pin, "Chicago",        placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-118.40, 33.93), pin, "Los Angeles",    placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -71.03, 42.37), pin, "Boston",         placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-157.93, 21.35), pin, "Honolulu",       placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, 139.75, 35.68), pin, "Tokyo",          placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -90.25, 29.98), pin, "New Orleans",    placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS, -80.28, 25.82), pin, "Miami",          placeStyle) );
+        labelGroup->addChild( new PlaceNode(mapNode, GeoPoint(geoSRS,-117.17, 32.72), pin, "San Diego",      placeStyle) );
     }
 
     //--------------------------------------------------------------------
@@ -201,7 +199,7 @@ main(int argc, char** argv)
         FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
-        labelGroup->addChild( new LabelNode(mapNode, -30, 50, "Rhumb line polygon", labelStyle) );
+        labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-30, 50), "Rhumb line polygon", labelStyle) );
     }
 
     //--------------------------------------------------------------------
@@ -220,7 +218,7 @@ main(int argc, char** argv)
         FeatureNode* gnode = new FeatureNode(mapNode, new Feature(geom, geoSRS, geomStyle));
         annoGroup->addChild( gnode );
 
-        labelGroup->addChild( new LabelNode(mapNode, -175, -35, "Antimeridian polygon", labelStyle) );
+        labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS, -175, -35), "Antimeridian polygon", labelStyle) );
     }
 
     //--------------------------------------------------------------------
@@ -244,7 +242,7 @@ main(int argc, char** argv)
         FeatureNode* pathNode = new FeatureNode(mapNode, pathFeature);
         annoGroup->addChild( pathNode );
 
-        labelGroup->addChild( new LabelNode(mapNode, -170, 61.2, "Great circle path", labelStyle) );
+        labelGroup->addChild( new LabelNode(mapNode, GeoPoint(geoSRS,-170, 61.2), "Great circle path", labelStyle) );
     }
 
     //--------------------------------------------------------------------
@@ -289,7 +287,7 @@ main(int argc, char** argv)
         rectStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Green, 0.5);
         RectangleNode* rect = new RectangleNode(
             mapNode, 
-            GeoPoint(geoSRS, -117.172, 32.721, 0 ),
+            GeoPoint(geoSRS, -117.172, 32.721),
             Linear(300, Units::KILOMETERS ),
             Linear(600, Units::KILOMETERS ),
             rectStyle,
@@ -308,12 +306,12 @@ main(int argc, char** argv)
     // annotation.
     {
         Geometry* utah = new Polygon();
-        utah->push_back( osg::Vec3d(-114.052, 37, 0) );
-        utah->push_back( osg::Vec3d(-109.054, 37, 0) );
-        utah->push_back( osg::Vec3d(-109.054, 41, 0) );
-        utah->push_back( osg::Vec3d(-111.04, 41, 0) );
-        utah->push_back( osg::Vec3d(-111.08, 42.059, 0) );
-        utah->push_back( osg::Vec3d(-114.08, 42.024, 0) );
+        utah->push_back( -114.052, 37.0   );
+        utah->push_back( -109.054, 37.0   );
+        utah->push_back( -109.054, 41.0   );
+        utah->push_back( -111.040, 41.0   );
+        utah->push_back( -111.080, 42.059 );
+        utah->push_back( -114.080, 42.024 );
 
         Style utahStyle;
         utahStyle.getOrCreate<ExtrusionSymbol>()->height() = 250000.0; // meters MSL

@@ -458,10 +458,11 @@ namespace osgEarth
              { }              
         
         const Profile* getProfile() const { return _profile.get(); }
+        const SpatialReference* getSRS() const { return _profile->getSRS(); }
 
         bool isGeocentric() const { return _isGeocentric; }
         bool isCube() const { return _isCube; }
-        bool isPlateCarre() const { return !_isGeocentric && isGeographicSRS(); }
+        bool isPlateCarre() const { return _profile->getSRS()->isPlateCarre(); } //!_isGeocentric && isGeographicSRS(); }
 
         bool isProjectedSRS() const { return !isGeographicSRS(); }
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }        

@@ -954,7 +954,6 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
 }
 
 
-
 bool 
 SpatialReference::transform2D(double x, double y,
                               const SpatialReference* outputSRS,
@@ -968,7 +967,6 @@ SpatialReference::transform2D(double x, double y,
     }
     return ok;
 }
-
 
 
 bool

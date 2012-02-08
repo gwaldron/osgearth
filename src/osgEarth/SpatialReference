@@ -94,9 +94,11 @@ namespace osgEarth
          * Transform a 2D point directly. (Convenience function)
          */
         bool transform2D(
-            double x, double y,
+            double                  x, 
+            double                  y,
             const SpatialReference* outputSRS,
-            double& out_x, double& out_y ) const;
+            double&                 out_x,
+            double&                 out_y ) const;
 
 
     public: // ECEF transformations.

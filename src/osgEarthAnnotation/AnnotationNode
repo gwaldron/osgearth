@@ -86,6 +86,11 @@ namespace osgEarth { namespace Annotation
         void uninstallDecoration( const std::string& name );
 
         /**
+         * Gets the current decoration
+         */
+        const std::string& getDecoration() const;
+
+        /**
          * Activates a named decoration that was installed previously
          */
         virtual void setDecoration( const std::string& name );

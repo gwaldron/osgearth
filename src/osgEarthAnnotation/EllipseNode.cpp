@@ -133,6 +133,9 @@ EllipseNode::setRotationAngle(Angular& rotationAngle)
 void
 EllipseNode::rebuild()
 {
+    std::string currentDecoration = getDecoration();
+    clearDecoration();
+
     //Remove all children from this node
     removeChildren( 0, getNumChildren() );
 
@@ -166,4 +169,6 @@ EllipseNode::rebuild()
 
         applyStyle( _style, _draped );
     }
+
+    setDecoration( currentDecoration );
 }

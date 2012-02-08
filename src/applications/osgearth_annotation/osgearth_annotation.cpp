@@ -256,10 +256,10 @@ main(int argc, char** argv)
             GeoPoint(geoSRS, -90.25, 29.98),
             Linear(300, Units::KILOMETERS ),
             circleStyle,
-            false );
-        annoGroup->addChild( circle );
+            true );
+        annoGroup->addChild( circle );        
 
-        editorGroup->addChild( new LocalizedNodeEditor( circle ) );
+        editorGroup->addChild( new CircleNodeEditor( circle ) );
     }
 
     //--------------------------------------------------------------------
@@ -271,14 +271,14 @@ main(int argc, char** argv)
         EllipseNode* ellipse = new EllipseNode(
             mapNode, 
             GeoPoint(geoSRS, -80.28, 25.82),
-            Linear(200, Units::MILES),
+            Linear(500, Units::MILES),
             Linear(100, Units::MILES),
-            Angular(45, Units::DEGREES),
+            Angular(0, Units::DEGREES),
             ellipseStyle,
+
             true );
         annoGroup->addChild( ellipse );
-
-        editorGroup->addChild( new LocalizedNodeEditor( ellipse ) );
+        editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
     }
 
     {

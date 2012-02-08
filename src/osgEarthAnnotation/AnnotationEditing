@@ -22,6 +22,8 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/LocalizedNode>
+#include <osgEarthAnnotation/CircleNode>
+#include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/Draggers>
 #include <osgEarth/MapNode>
 
@@ -42,11 +44,50 @@ namespace osgEarth { namespace Annotation {
         
         ~LocalizedNodeEditor();    
 
-        void updateDraggers();
+        virtual void updateDraggers();
 
-    private:
+    protected:
         osg::ref_ptr< LocalizedNode > _node;
-        osgEarth::Annotation::IntersectingDragger* _dragger;
+        IntersectingDragger* _dragger;
+    };
+
+    class OSGEARTHANNO_EXPORT CircleNodeEditor : public LocalizedNodeEditor
+    {
+    public:
+        /**
+         * Create a new CircleEditor
+         * @param circleNode
+         *        The CircleNode to edit
+         */
+        CircleNodeEditor(CircleNode* circleNode);    
+        
+        ~CircleNodeEditor();    
+
+        void computeBearing();
+
+        virtual void updateDraggers();
+
+        double _bearing;
+
+        IntersectingDragger* _radiusDragger;
+    };
+
+    class OSGEARTHANNO_EXPORT EllipseNodeEditor : public LocalizedNodeEditor
+    {
+    public:
+        /**
+         * Create a new EllipseNodeEditor
+         * @param localizedNode
+         *        The LocalizedNode to edit
+         */
+        EllipseNodeEditor(EllipseNode* ellipseNode);    
+        
+        ~EllipseNodeEditor();    
+
+        virtual void updateDraggers();
+
+        IntersectingDragger* _majorDragger;
+        IntersectingDragger* _minorDragger;
     };
 } } // namespace osgEarth::Annotation
 

@@ -161,6 +161,12 @@ AnnotationNode::uninstallDecoration( const std::string& name )
     _dsMap.erase( name );
 }
 
+const std::string&
+AnnotationNode::getDecoration() const
+{
+    return _activeDsName;
+}
+
 void
 AnnotationNode::setDecoration( const std::string& name )
 {

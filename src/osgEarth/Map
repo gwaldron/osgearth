@@ -161,7 +161,7 @@ namespace osgEarth
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        Revision getElevationLayers( ElevationLayerVector& out_layers ) const; //, bool validLayersOnly =false ) const;
+        Revision getElevationLayers( ElevationLayerVector& out_layers ) const;
 
         /**
          * Gets the number of elevation layers in the map.

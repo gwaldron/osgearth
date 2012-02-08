@@ -78,6 +78,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             ReadResult result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
             markerImage = result.getImage();
             markerModel = result.getNode();
+
+            // We can't leave the marker symbol in the style, or the GeometryCompiler will
+            // think we want to do Point-model substitution. So remove it. A bit of a hack
+            if ( marker )
+                style.removeSymbol(marker);
         }
 
         std::string text = 
@@ -127,11 +132,6 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                 isPoly   && 
                 ex == 0L && 
                 (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
-
-            // this will confuse the GeometryCompiler into thinking we want point-model sub..
-            // probably need a more elegant solution here..
-            if ( marker )
-                style.removeSymbol(marker);
 
             // Make a feature node; drape if we're not extruding.
             GeometryCompilerOptions options;

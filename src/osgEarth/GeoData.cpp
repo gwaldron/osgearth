@@ -112,6 +112,16 @@ GeoPoint::set(const SpatialReference* srs,
     _p   = xyz;
 }
 
+void
+GeoPoint::set(const SpatialReference* srs,
+              double                  x,
+              double                  y,
+              double                  z)
+{
+    _srs = srs;
+    _p.set(x, y, z);
+}
+
 bool 
 GeoPoint::operator == (const GeoPoint& rhs) const
 {

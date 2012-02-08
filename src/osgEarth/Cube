@@ -125,8 +125,8 @@ namespace osgEarth
 
         // This SRS uses a WGS84 lat/long SRS under the hood for reprojection. So we need the
         // pre/post transforms to move from cube to latlong and back.
-        virtual bool preTransform ( osg::Vec3d& point ) const;
-        virtual bool postTransform( osg::Vec3d& point ) const;
+        virtual bool preTransform ( std::vector<osg::Vec3d>& points ) const;
+        virtual bool postTransform( std::vector<osg::Vec3d>& points ) const;
 
         virtual bool transformExtentToMBR(
             const SpatialReference* to_srs,

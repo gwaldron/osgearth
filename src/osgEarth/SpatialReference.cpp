@@ -801,7 +801,7 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
 bool
 SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
 {
-    if ( isProjected() || _is_plate_carre )
+    if ( (isProjected() || _is_plate_carre) && !isCube() )
     {
         osg::Vec3d world;
         if ( !transformToWorld( xyz, world ) )
@@ -948,7 +948,7 @@ SpatialReference::transform(std::vector<osg::Vec3d>& points,
     }   
 
     // run the user post-transform code
-    postTransform( points );
+    outputSRS->postTransform( points );
 
     return success;
 }
@@ -1072,7 +1072,7 @@ bool
 SpatialReference::transformToWorld(const osg::Vec3d& input,
                                    osg::Vec3d&       output ) const
 {
-    if ( isGeographic() && !_is_plate_carre )
+    if ( (isGeographic() && !isPlateCarre()) || isCube() ) //isGeographic() && !_is_plate_carre )
     {
         return transformToECEF(input, output);
     }
@@ -1096,7 +1096,7 @@ SpatialReference::transformFromWorld(const osg::Vec3d& world,
                                      osg::Vec3d&       output,
                                      double*           out_haeZ ) const
 {
-    if ( isGeographic() && !_is_plate_carre )
+    if ( (isGeographic() && !isPlateCarre()) || isCube() ) //isGeographic() && !_is_plate_carre )
     {
         return transformFromECEF(world, output, out_haeZ);
     }

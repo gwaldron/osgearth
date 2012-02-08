@@ -429,54 +429,63 @@ CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, doubl
 }
 
 bool
-CubeSpatialReference::preTransform( osg::Vec3d& p ) const
+CubeSpatialReference::preTransform( std::vector<osg::Vec3d>& points ) const
 {
-    // Convert the incoming points from cube => face => lat/long.
-    int face;
-    if ( !CubeUtils::cubeToFace( p.x(), p.y(), face ) )
+    for( unsigned i=0; i<points.size(); ++i )
     {
-        OE_WARN << LC << "Failed to convert (" << p.x() << "," << p.y() << ") into face coordinates." << std::endl;
-        return false;
-    }
+        osg::Vec3d& p = points[i];
 
-    double lat_deg, lon_deg;
-    bool success = CubeUtils::faceCoordsToLatLon( p.x(), p.y(), face, lat_deg, lon_deg );
-    if (!success)
-    {
-        OE_WARN << LC << "Could not transform face coordinates to lat lon" << std::endl;
-        return false;
+        // Convert the incoming points from cube => face => lat/long.
+        int face;
+        if ( !CubeUtils::cubeToFace( p.x(), p.y(), face ) )
+        {
+            OE_WARN << LC << "Failed to convert (" << p.x() << "," << p.y() << ") into face coordinates." << std::endl;
+            return false;
+        }
+
+        double lat_deg, lon_deg;
+        bool success = CubeUtils::faceCoordsToLatLon( p.x(), p.y(), face, lat_deg, lon_deg );
+        if (!success)
+        {
+            OE_WARN << LC << "Could not transform face coordinates to lat lon" << std::endl;
+            return false;
+        }
+        p.x() = lon_deg;
+        p.y() = lat_deg;
     }
-    p.x() = lon_deg;
-    p.y() = lat_deg;
     return true;
 }
 
 bool
-CubeSpatialReference::postTransform( osg::Vec3d& p ) const
+CubeSpatialReference::postTransform( std::vector<osg::Vec3d>& points) const
 {
-    //Convert the incoming points from lat/lon back to face coordinates
-    int face;
-    double out_x, out_y;
-
-    // convert from lat/long to x/y/face
-    bool success = CubeUtils::latLonToFaceCoords( p.y(), p.x(), out_x, out_y, face );
-    if (!success)
+    for( unsigned i=0; i<points.size(); ++i )
     {
-        OE_WARN << LC << "Could not transform face coordinates to lat lon" << std::endl;
-        return false;
+        osg::Vec3d& p = points[i];
+
+        //Convert the incoming points from lat/lon back to face coordinates
+        int face;
+        double out_x, out_y;
+
+        // convert from lat/long to x/y/face
+        bool success = CubeUtils::latLonToFaceCoords( p.y(), p.x(), out_x, out_y, face );
+        if (!success)
+        {
+            OE_WARN << LC << "Could not transform face coordinates to lat lon" << std::endl;
+            return false;
+        }
+
+        //TODO: what to do about boundary points?
+
+        if ( !CubeUtils::faceToCube( out_x, out_y, face ) )
+        {
+            OE_WARN << LC << "fromFace(" << out_x << "," << out_y << "," << face << ") failed" << std::endl;
+            return false;
+        }
+        
+        p.x() = out_x;
+        p.y() = out_y;
     }
-
-    //TODO: what to do about boundary points?
-
-    if ( !CubeUtils::faceToCube( out_x, out_y, face ) )
-    {
-        OE_WARN << LC << "fromFace(" << out_x << "," << out_y << "," << face << ") failed" << std::endl;
-        return false;
-    }
-    
-    p.x() = out_x;
-    p.y() = out_y;
-
     return true;
 }
 

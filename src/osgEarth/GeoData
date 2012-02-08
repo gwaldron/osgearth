@@ -79,6 +79,12 @@ namespace osgEarth
             const SpatialReference* srs,
             const osg::Vec3d&       xyz );
 
+        void set(
+            const SpatialReference* srs,
+            double                  x = 0.0,
+            double                  y = 0.0,
+            double                  z = 0.0 );
+
         // component getter/setters
 
         double& x() { return _p.x(); }

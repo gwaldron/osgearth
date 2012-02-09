@@ -89,7 +89,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
                 s_posLabel->setText( Stringify()
                     << std::fixed << std::setprecision(2) 
-                    << s_f.format(mapPoint.y()) << ", " << s_f.format(mapPoint.x()) );
+                    << s_f.format(mapPoint.y())
+                    << ", " 
+                    << s_f.format(mapPoint.x()) );
 
                 s_mslLabel->setText( Stringify() << out_hamsl );
                 s_haeLabel->setText( Stringify() << mapPointGeodetic.z() );

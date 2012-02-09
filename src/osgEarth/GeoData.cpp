@@ -144,6 +144,15 @@ GeoPoint::transform(const SpatialReference* outSRS) const
 }
 
 bool
+GeoPoint::makeGeographic()
+{
+    if ( !isValid() ) return false;
+    if ( !_srs->isGeographic() )
+        return _srs->transform( _p, _srs->getGeographicSRS(), _p);
+    return true;
+}
+
+bool
 GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
 {
     output = transform(outSRS);

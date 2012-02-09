@@ -20,7 +20,7 @@
 #define OSGEARTH_UTIL_FORMATTER_H
 
 #include <osgEarthUtil/Common>
-#include <osgEarth/SpatialReference>
+#include <osgEarth/GeoData>
 
 namespace osgEarth { namespace Util
 {
@@ -32,7 +32,8 @@ namespace osgEarth { namespace Util
     class Formatter : public osg::Referenced
     {
     public:
-        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* mapSRS ) const =0;
+        virtual std::string format( const GeoPoint& mapCoords ) const =0;
+        std::string operator()(const GeoPoint& p) const { return format(p); }
     };
 
 } } // namespace osgEarth::Util

@@ -103,28 +103,45 @@ namespace osgEarth
 
 
         /**
-         * Transforms this geopoint into another SRS and returns it.
+         * Returns a copy of this geopoint transformed into another SRS.
          */
         GeoPoint transform(const SpatialReference* outSRS) const;
 
+        /**
+         * Transforms this geopoint into another SRS.
+         */
         bool transform(const SpatialReference* outSRS, GeoPoint& output) const;
 
-        //bool toECEF( osg::Vec3d& out_ecef ) const;
+        /**
+         * Transforms this GeoPoint to geographic (lat/long) coords in place.
+         */
+        bool makeGeographic();
 
-        //static GeoPoint fromECEF(const SpatialReference* srs, const osg::Vec3d& world);
-
+        /**
+         * Outputs world coordinates corresponding to this point
+         */
         bool toWorld( osg::Vec3d& out_world ) const;
 
+        /**
+         * Converts world coordinates into a geopoint
+         */
         static GeoPoint fromWorld(const SpatialReference* srs, const osg::Vec3d& world);
 
+        /**
+         * Outputs a matrix that will transform scene coordinates localized around this 
+         * geopoint into absolute world coords.
+         */
         bool createLocal2World( osg::Matrixd& out_local2world ) const;
 
+        /**
+         * Outputs a matrix that will transform absolute world coordiantes so they are
+         * localized into a local tangent place around this geopoint.
+         */
         bool createWorld2Local( osg::Matrixd& out_world2local ) const;
 
+
         bool operator == (const GeoPoint& rhs) const;
-
         bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }
-
         bool isValid() const { return _srs.valid(); }
 
     public:

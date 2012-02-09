@@ -83,7 +83,7 @@ MouseCoordsLabelCallback::set( const GeoPoint& mapCoords, osg::View* view, MapNo
     if ( _label.valid() )
     {
         _label->setText( Stringify()
-            <<  _formatter->format(mapCoords.vec3d(), mapNode->getMapSRS())
+            <<  _formatter->format( mapCoords )
             << ", " << mapCoords.z() );            
     }
 }

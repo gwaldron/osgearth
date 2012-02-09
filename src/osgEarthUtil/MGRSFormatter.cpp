@@ -113,24 +113,16 @@ _options  ( options )
     }
 }
 
-std::string
-MGRSFormatter::format( const osg::Vec3d& coords, const SpatialReference* srs ) const
-{
-    osg::Vec3d geo = coords;
-    if ( srs && !srs->isGeographic() )
-    {
-        srs->transform( coords, srs->getGeographicSRS(), geo );
-    }
-    return format( geo.y(), geo.x() );
-}
-
 bool
-MGRSFormatter::transform( const osg::Vec3d& input, const SpatialReference* inputSRS, MGRSCoord& out ) const
+MGRSFormatter::transform( const GeoPoint& input, MGRSCoord& out ) const
 {
+    if ( !input.isValid() )
+        return false;
+
     // convert to lat/long if necessary:
-    osg::Vec3d inputGeo = input;
-    if ( inputSRS && !inputSRS->isGeographic() )
-        inputSRS->transform(input, inputSRS->getGeographicSRS(), inputGeo);
+    GeoPoint inputGeo = input;
+    if ( !inputGeo.makeGeographic() )
+        return false;
 
     unsigned    zone;
     char        gzd;
@@ -247,7 +239,7 @@ MGRSFormatter::transform( const osg::Vec3d& input, const SpatialReference* input
 }
 
 std::string
-MGRSFormatter::format( double latDeg, double lonDeg ) const
+MGRSFormatter::format( const GeoPoint& input ) const
 {
     std::string space;
 
@@ -257,7 +249,7 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
     std::string result;
 
     MGRSCoord mgrs;
-    if ( transform( osg::Vec3d(lonDeg, latDeg, 0), 0L, mgrs ) )
+    if ( transform( input, mgrs ) )
     {
         std::stringstream buf;
         buf << mgrs.gzd << space << mgrs.sqid;

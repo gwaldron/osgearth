@@ -54,6 +54,9 @@ public: // TerrainEngineNode overrides
     virtual void traverse( osg::NodeVisitor& );
     virtual osg::BoundingSphere computeBound() const;    
 
+    // for standalone tile creation outside of a terrain
+    osg::Node* createTile(const TileKey& key);
+
 public: // MapCallback adapter functions
     void onMapInfoEstablished( const MapInfo& mapInfo ); // not virtual!
     void onMapModelChanged( const MapModelChange& change ); // not virtual!

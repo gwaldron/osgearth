@@ -120,6 +120,9 @@ public:
 
     osg::StateSet* getActiveStateSet() const;
 
+    /** Gets to the underlying transform that parents the actual constructed geometry. */
+    osg::Transform* getTransform() const { return _transform.get(); }
+    osg::Transform* takeTransform() { return _transform.release(); }
 
 protected:
 

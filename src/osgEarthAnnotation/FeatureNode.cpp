@@ -73,7 +73,7 @@ FeatureNode::init()
         // prep the compiler:
         GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
-        GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
+        GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
         FilterContext context( session, profile.get(), extent );
 

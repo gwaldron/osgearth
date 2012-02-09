@@ -64,7 +64,7 @@ namespace osgEarth
         static bool cubeToFace( 
             double& in_out_x, 
             double& in_out_y, 
-            int& out_face );
+            int&    out_face );
 
         /**
          * Converts cube coordinates (0,0=>6,1) to face coordinates (0,0=>1,1,F). This
@@ -74,14 +74,14 @@ namespace osgEarth
         static bool cubeToFace( 
             double& in_out_xmin, double& in_out_ymin, 
             double& in_out_xmax, double& in_out_ymax, 
-            int& out_face );
+            int&    out_face );
 
         /**
          * Converts face coordinates (0,0=>1,1 +F) to cube coordinates (0,0=>6,1).
          */
         static bool faceToCube(
             double& in_out_x, double& in_out_y, 
-            int face );
+            int     face );
     };
 
     /**
@@ -125,16 +125,15 @@ namespace osgEarth
 
         // This SRS uses a WGS84 lat/long SRS under the hood for reprojection. So we need the
         // pre/post transforms to move from cube to latlong and back.
-        virtual bool preTransform(double& x, double& y, double& z, void* context) const;
-        virtual bool postTransform(double& x, double& y, double& z, void* context) const;
+        virtual bool preTransform ( std::vector<osg::Vec3d>& points ) const;
+        virtual bool postTransform( std::vector<osg::Vec3d>& points ) const;
 
-        virtual bool transformExtent(
+        virtual bool transformExtentToMBR(
             const SpatialReference* to_srs,
-            double& in_out_xmin,
-            double& in_out_ymin,
-            double& in_out_xmax,
-            double& in_out_ymax,
-            void* context) const;
+            double&                 in_out_xmin,
+            double&                 in_out_ymin,
+            double&                 in_out_xmax,
+            double&                 in_out_ymax ) const;
 
     protected: // SpatialReference overrides
 

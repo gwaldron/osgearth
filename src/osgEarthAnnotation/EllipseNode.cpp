@@ -29,7 +29,7 @@ using namespace osgEarth::Symbology;
 
 
 EllipseNode::EllipseNode(MapNode*          mapNode,
-                         const osg::Vec3d& position,
+                         const GeoPoint&   position,
                          const Linear&     radiusMajor,
                          const Linear&     radiusMinor,
                          const Angular&    rotationAngle,

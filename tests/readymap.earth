@@ -16,10 +16,6 @@ http://readymap.org
     <image name="ReadyMap.org - Imagery" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/7/</url>
     </image>
-
-    <image name="ReadyMap.org - Street Map" driver="tms">
-        <url>http://readymap.org/readymap/tiles/1.0.0/35/</url>
-    </image>
         
     <elevation name="ReadyMap.org - Elevation" driver="tms">
         <url>http://readymap.org/readymap/tiles/1.0.0/9/</url>

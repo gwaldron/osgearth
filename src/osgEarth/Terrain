@@ -116,21 +116,26 @@ namespace osgEarth
     public: // Intersection Utilities
 
         /**
-         * Intersects the terrain at the map location x, y and returns the height. This is the
-         * height above the reference geometry per the profile's vertical SRS.
+         * Intersects the terrain at the map location x, y and returns the height data.
          *
-         * @param mapCoords
+         * @param mapX, mapY
          *      Map coordinates at which to query the height
-         * @param out_height
-         *      Results of the query go here (if the method returns true).
+         * @param out_heightAboveMSL
+         *      The resulting relative height goes here. The height is relative to MSL
+         *      (mean sea level) as expressed by the map's vertical datum.
+         * @param out_heightAboveEllipsoid
+         *      The resulting geodetic height goes here. The height is relative to the
+         *      geodetic ellipsoid expressed by the map's SRS.
          * @param patch (optional)
          *      If you want to query just a specific terrain path, instead of the entire
          *      terrain, specify it here.
          */
-        bool getHeight( 
-            const osg::Vec3d& mapCoords,
-            double&           out_height,
-            osg::Node*        patch        =0L) const;
+        bool getHeight(
+            double     mapX,
+            double     mapY,
+            double*    out_heightAboveMSL,
+            double*    out_heightAboveEllipsoid =0L,
+            osg::Node* patch                    =0L) const;
 
         /**
          * Returns the world coordinates under the mouse.

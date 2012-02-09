@@ -32,7 +32,7 @@ using namespace osgEarth::Symbology;
 
 
 CircleNode::CircleNode(MapNode*           mapNode,
-                       const osg::Vec3d&  position,
+                       const GeoPoint&    position,
                        const Linear&      radius,
                        const Style&       style,
                        bool               draped,

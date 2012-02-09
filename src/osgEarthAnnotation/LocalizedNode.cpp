@@ -29,7 +29,7 @@ using namespace osgEarth::Annotation;
 
 
 LocalizedNode::LocalizedNode(MapNode*                mapNode,
-                             const osg::Vec3d&       pos,
+                             const GeoPoint&         position,
                              bool                    is2D ) :
 PositionedAnnotationNode( mapNode ),
 _mapSRS        ( mapNode ? mapNode->getMapSRS() : 0L ),
@@ -55,7 +55,7 @@ _autoTransform ( is2D )
         setHorizonCulling( true );
     }
     
-    setPosition( pos );
+    setPosition( position );
 }
 
 void
@@ -70,22 +70,22 @@ LocalizedNode::traverse( osg::NodeVisitor& nv )
 }
 
 bool
-LocalizedNode::setPosition( const osg::Vec3d& pos )
+LocalizedNode::setPosition( const osg::Vec3d& position )
 {
-    return setPosition( pos, 0L );
+    return setPosition( GeoPoint(_mapSRS.get(), position) );
 }
 
 bool
-LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
+LocalizedNode::setPosition( const GeoPoint& pos )
 {
     // first transform the point to the map's SRS:
-    osg::Vec3d mapPos = pos;
-    if ( posSRS && _mapSRS.valid() && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
+    GeoPoint mapPos = _mapSRS.get() ? pos.transform(_mapSRS.get()) : pos;
+    if ( !mapPos.isValid() )
         return false;
 
     // clamp if necessary:
     if ( _autoclamp )
-        clamp( mapPos );
+        clamp( mapPos.vec3d() );
 
     CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
 
@@ -93,14 +93,16 @@ LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSR
     if ( !_mapSRS.valid() )
     {
         if ( _autoTransform )
-            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( mapPos );
+            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( mapPos.vec3d() );
         else
-            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( osg::Matrix::translate(pos) );
+            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( osg::Matrix::translate(mapPos.vec3d()) );
     }
     else
     {
         osg::Matrixd local2world;
-        _mapSRS->createLocal2World( mapPos, local2world );
+        mapPos.createLocal2World( local2world );
+
+        //_mapSRS->createLocal2World( mapPos, local2world );
 
         if ( _autoTransform )
             static_cast<osg::AutoTransform*>(_xform.get())->setPosition( local2world.getTrans() );
@@ -114,14 +116,8 @@ LocalizedNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSR
     return true;
 }
 
-osg::Vec3d
+GeoPoint
 LocalizedNode::getPosition() const
-{
-    return getPosition( 0L );
-}
-
-osg::Vec3d
-LocalizedNode::getPosition( const SpatialReference* srs ) const
 {
     osg::Vec3d world;
     if ( _autoTransform )
@@ -131,18 +127,11 @@ LocalizedNode::getPosition( const SpatialReference* srs ) const
 
     if ( _mapSRS.valid() )
     {
-        osg::Vec3d output = world;
-        if ( _mapSRS->isGeographic() )
-            _mapSRS->transformFromECEF( world, output );
-    
-        if ( srs )
-            _mapSRS->transform( output, srs, output );
-
-        return output;
+        return GeoPoint::fromWorld( _mapSRS.get(), world );
     }
     else
     {
-        return world;
+        return GeoPoint(0L, world);
     }
 }
 
@@ -169,38 +158,3 @@ LocalizedNode::setHorizonCulling( bool value )
         }
     }
 }
-
-#if 0
-void
-LocalizedNode::setAltDrawState( const std::string& name )
-{
-    if ( !_activeDsTech || _activeDsName != name )
-    {
-        clearAltDrawState();
-        
-        DrawStateTechMap::iterator i = _dsTechMap.find(name);
-        if ( i != _dsTechMap.end() )
-        {
-            DrawState* tech = i->second.get();
-            if ( tech->enable( _xform ) )
-            {
-                _activeDsTech = tech;
-                _activeDsName = name;
-            }
-        }
-    }
-}
-
-void
-LocalizedNode::clearAltDrawState()
-{
-    if ( _activeDsTech )
-    {
-        if ( _activeDsTech->disable( _xform ) )
-        {
-            _activeDsTech = 0L;
-            _activeDsName = "";
-        }
-    }
-}
-#endif

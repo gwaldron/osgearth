@@ -88,18 +88,19 @@ GeometryNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terra
 {
     // since a GeometyNode is always local-tangent plane, we only need to reclamp
     // the reference position (and not all the verts)
-    osg::Vec3d mapPos = getPosition();
+    GeoPoint mapPos = getPosition();
     if ( key.getExtent().contains(mapPos.x(), mapPos.y()) )
     {
-        double height;
-        if ( terrain->getHeight(mapPos, height, tile) )
+        double hamsl;
+        if ( terrain->getHeight(mapPos.x(), mapPos.y(), &hamsl, 0L, tile) )
         {
             if ( _altitude.valid() )
             {
-                height *= _altitude->verticalScale()->eval();
-                height += _altitude->verticalOffset()->eval();
+                hamsl *= _altitude->verticalScale()->eval();
+                hamsl += _altitude->verticalOffset()->eval();
             }
-            setPosition( osg::Vec3d(mapPos.x(), mapPos.y(), height) );
+            mapPos.z() = hamsl;
+            setPosition( mapPos );
         }
     }
 }

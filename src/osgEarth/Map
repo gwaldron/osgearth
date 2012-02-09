@@ -21,6 +21,7 @@
 #define OSGEARTH_MAP_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/GeoData>
 #include <osgEarth/Profile>
 #include <osgEarth/MapOptions>
 #include <osgEarth/ImageLayer>
@@ -133,7 +134,7 @@ namespace osgEarth
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        Revision getImageLayers( ImageLayerVector& out_layers ) const; //, bool validLayersOnly =false ) const;
+        Revision getImageLayers( ImageLayerVector& out_layers ) const;
 
         /**
          * Gets the number of image layers in the map.
@@ -160,7 +161,7 @@ namespace osgEarth
          * This method is thread safe. It returns the map revision that was
          * in effect when the data was copied.
          */
-        Revision getElevationLayers( ElevationLayerVector& out_layers ) const; //, bool validLayersOnly =false ) const;
+        Revision getElevationLayers( ElevationLayerVector& out_layers ) const;
 
         /**
          * Gets the number of elevation layers in the map.
@@ -294,7 +295,6 @@ namespace osgEarth
          * Gets the user-provided options structure stored in this map.
          */
         const osgDB::ReaderWriter::Options* getGlobalOptions() const;
-
         void setGlobalOptions( const osgDB::ReaderWriter::Options* options );
 
         /**
@@ -309,18 +309,39 @@ namespace osgEarth
 
         /**
          * Creates a heightfield for the region covered by the given TileKey, falling back on
-         * lower resolutions if necessary. 
+         * lower resolutions if necessary.
+         *
+         * NOTE: By default, this method will return a heightfield with HAE (height above ellipsoid) 
+         * values, even if the TileKey profile has an MSL vertical datum. That's because this 
+         * method is usually called to produce a renderable height field. You can override this
+         * behavior by passing in convertToHAE=false.
          *
          * @param key
          *      Tile key defining the region (and ideal LOD) for which to return a heightfield
+         * @param fallbackIfNecessary
+         *      If the map can't generate a true heightfield for the key, fall back on lower
+         *      levels of detail until it can make one.
+         * @param out_hf
+         *      Resulting heightfield is written here.
+         * @param out_isFallback
+         *      Output flag telling the caller whether the method had to "fall back" on a 
+         *      lower level of detail.
+         * @param convertToHAE
+         *      Whether to return height-above-ellipsoid values in the heightfield, even if the
+         *      input tile key's SRS specifies a vertical datum (which would normally result in
+         *      a heightfield expressed relative to MSL). This is typical for when you are building
+         *      the actual 3D terrain.
          * @param samplePolicy
-         *      See enum SamplePolicy in this class.
+         *      How to intepolate heightfield samples.
+         * @param progress
+         *      (optional) progress callback.
          */
         bool getHeightField(
             const TileKey&                  key,
             bool                            fallbackIfNeessary,
             osg::ref_ptr<osg::HeightField>& out_hf,
             bool*                           out_isFallback =0L,            
+            bool                            convertToHAE   =true,
             ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
             ProgressCallback*               progress       =0L)  const;
 
@@ -350,17 +371,17 @@ namespace osgEarth
         /**
          * Convenience function to convert an arbitrary point to map coordinates.
          */
-        bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
+        bool toMapPoint( const GeoPoint& input, GeoPoint& output ) const;
 
         /**
          * Convenience function to convert a point (in map coordinates) to world-space (XYZ) coordinates.
          */
-        bool mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const;
 
         /**
          * Convenience function to convert a world-space (XYZ) point to map coordinates.
          */
-        bool worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const;
 
         /**
          * Synronizes a map frame to the current revision of the map's data model.
@@ -384,6 +405,8 @@ namespace osgEarth
          */
         const osgDB::Options* getDBOptions() const { return _dbOptions.get(); }
 
+        const Profile* getProfileNoVDatum() const { return _profileNoVDatum.get(); }
+
     protected:
 
         ~Map() { }
@@ -400,12 +423,15 @@ namespace osgEarth
         osg::ref_ptr<const osgDB::ReaderWriter::Options> _globalOptions;
         Threading::ReadWriteMutex _mapDataMutex;
         osg::ref_ptr<const Profile> _profile;
+        osg::ref_ptr<const Profile> _profileNoVDatum;
 		osg::ref_ptr<Cache> _cache;
         Revision _dataModelRevision;
         osg::ref_ptr<osgDB::Options> _dbOptions;
 
     private:
         void calculateProfile();
+
+        friend class MapInfo;
     };
 
 
@@ -432,19 +458,20 @@ namespace osgEarth
              { }              
         
         const Profile* getProfile() const { return _profile.get(); }
+        const SpatialReference* getSRS() const { return _profile->getSRS(); }
 
         bool isGeocentric() const { return _isGeocentric; }
         bool isCube() const { return _isCube; }
-        bool isPlateCarre() const { return !_isGeocentric && isGeographicSRS(); }
+        bool isPlateCarre() const { return _profile->getSRS()->isPlateCarre(); } //!_isGeocentric && isGeographicSRS(); }
 
         bool isProjectedSRS() const { return !isGeographicSRS(); }
         bool isGeographicSRS() const { return _profile->getSRS()->isGeographic(); }        
 
         ElevationInterpolation getElevationInterpolation() const { return _elevationInterpolation;}
         
-        bool toMapPoint( const osg::Vec3d& input, const SpatialReference* input_srs, osg::Vec3d& output ) const;
-        bool mapPointToWorldPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
-        bool worldPointToMapPoint( const osg::Vec3d& input, osg::Vec3d& output ) const;
+        bool toMapPoint( const GeoPoint& input, GeoPoint& output ) const;
+        bool toWorldPoint( const GeoPoint& input, osg::Vec3d& output ) const;
+        bool worldPointToMapPoint( const osg::Vec3d& input, GeoPoint& output ) const;
 
     private:
         osg::ref_ptr<const Profile> _profile;
@@ -519,12 +546,13 @@ namespace osgEarth
          * snapshot in this MapFrame.
          */
         bool getHeightField(
-            const TileKey& key,
-            bool fallback,
+            const TileKey&                  key,
+            bool                            fallback,
             osg::ref_ptr<osg::HeightField>& out_hf,
-            bool* out_isFallback =0L,            
-            ElevationSamplePolicy samplePolicy   =SAMPLE_FIRST_VALID,
-            ProgressCallback* progress = 0) const; 
+            bool*                           out_isFallback =0L,   
+            bool                            convertToHAE   =true,         
+            ElevationSamplePolicy           samplePolicy   =SAMPLE_FIRST_VALID,
+            ProgressCallback*               progress       =0L ) const;
 
     private:
         bool _initialized;

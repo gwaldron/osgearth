@@ -33,7 +33,7 @@ using namespace osgEarth::Symbology;
 
 RectangleNode::RectangleNode(
             MapNode*          mapNode,
-            const osg::Vec3d& position,
+            const GeoPoint&   position,
             const Linear&     width,
             const Linear&     height,
             const Style&      style,

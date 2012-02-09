@@ -148,11 +148,12 @@ _cachedBoundingPolytopeValid( false )
 Feature::Feature( Geometry* geom, const SpatialReference* srs, const Style& style, FeatureID fid ) :
 _geom ( geom ),
 _srs  ( srs ),
-_fid  ( fid ),
-_cachedBoundingPolytopeValid( false )
+_fid  ( fid )
 {
     if ( !style.empty() )
         _style = style;
+
+    dirty();
 }
 
 Feature::Feature( const Feature& rhs, const osg::CopyOp& copyOp ) :
@@ -160,11 +161,12 @@ _fid      ( rhs._fid ),
 _attrs    ( rhs._attrs ),
 _style    ( rhs._style ),
 _geoInterp( rhs._geoInterp ),
-_srs      ( rhs._srs.get() ),
-_cachedBoundingPolytopeValid( false )
+_srs      ( rhs._srs.get() )
 {
     if ( rhs._geom.valid() )
         _geom = rhs._geom->clone();
+
+    dirty();
 }
 
 FeatureID

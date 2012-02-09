@@ -24,7 +24,6 @@
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
-#include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/TessellateOperator>
 #include <osg/MatrixTransform>
 #include <osg/Timer>

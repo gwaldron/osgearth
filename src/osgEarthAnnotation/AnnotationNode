@@ -167,34 +167,27 @@ namespace osgEarth { namespace Annotation
     class PositionedAnnotationNode : public AnnotationNode
     {
     public:
+
         /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * of the current Map. Returns true upon success.
+         * Sets the map position of the node.
+         * Returns true upon success.
+         */
+        virtual bool setPosition( const GeoPoint& p ) =0;
+
+        /**
+         * Sets the map position of the node, in map coordinates.
+         * Returns true upon success.
          */
         virtual bool setPosition( const osg::Vec3d& pos ) =0;
 
         /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * passed in, and will be reprojected to Map coordinates.
-         * Returns true upon success.
-         */
-        virtual bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs ) =0;
-
-        /**
          * Gets the position (in map coordinates) of the node
          */
-        virtual osg::Vec3d getPosition() const =0;
-
-        /**
-         * Gets the position (in the requested coordinate system)
-         */
-        virtual osg::Vec3d getPosition( const SpatialReference* srs ) const =0;
+        virtual GeoPoint getPosition() const =0;
 
     protected:
-        PositionedAnnotationNode(MapNode* mapNode =0L) : AnnotationNode(mapNode) { }
 
-        //PositionedAnnotationNode( const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) 
-        //    : AnnotationNode( rhs, op ) { }
+        PositionedAnnotationNode(MapNode* mapNode =0L) : AnnotationNode(mapNode) { }
         
     };
 

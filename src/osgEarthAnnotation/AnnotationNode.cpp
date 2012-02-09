@@ -123,15 +123,15 @@ AnnotationNode::clamp( osg::Vec3d& mapCoord ) const
     osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
     if ( mapNode_safe.valid() )
     { 
-        double height;
-        if ( mapNode_safe->getTerrain()->getHeight(mapCoord, height) )
+        double hamsl;
+        if ( mapNode_safe->getTerrain()->getHeight(mapCoord.x(), mapCoord.y(), &hamsl) )
         {
             if ( _altitude.valid() )
             {
-                height *= _altitude->verticalScale()->eval();
-                height += _altitude->verticalOffset()->eval();
+                hamsl *= _altitude->verticalScale()->eval();
+                hamsl += _altitude->verticalOffset()->eval();
             }
-            mapCoord.z() = height;
+            mapCoord.z() = hamsl;
         }
     }
 }

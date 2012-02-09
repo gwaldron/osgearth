@@ -44,8 +44,9 @@ private:
 
 static bool getRelativeWorld(double x, double y, double relativeHeight, MapNode* mapNode, osg::Vec3d& world )
 {
+    GeoPoint mapPoint(mapNode->getMapSRS(), x, y);
     osg::Vec3d pos;
-    mapNode->getMap()->mapPointToWorldPoint(osg::Vec3d(x, y, 0), pos);
+    mapNode->getMap()->toWorldPoint(mapPoint, pos);
 
     osg::Vec3d up(0,0,1);
     const osg::EllipsoidModel* em = mapNode->getMap()->getProfile()->getSRS()->getEllipsoid();
@@ -236,11 +237,13 @@ LineOfSightNode::removeChangedCallback( ChangedCallback* callback )
 bool
 LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit )
 {
+    const SpatialReference* mapSRS = mapNode->getMapSRS();
+
     osg::Vec3d startWorld, endWorld;
     if (altitudeMode == ALTITUDE_ABSOLUTE)
     {
-        mapNode->getMap()->mapPointToWorldPoint( start, startWorld );
-        mapNode->getMap()->mapPointToWorldPoint( end, endWorld );
+        mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, start), startWorld );
+        mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS, end), endWorld );
     }
     else
     {
@@ -256,7 +259,9 @@ LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start
     if (hits.size() > 0)
     {
         osg::Vec3d hitWorld = *hits.begin();
-        mapNode->getMap()->worldPointToMapPoint(hitWorld, hit);
+        GeoPoint mapHit;
+        mapNode->getMap()->worldPointToMapPoint(hitWorld, mapHit);
+        hit = mapHit.vec3d();
         return false;
     }
     return true;
@@ -267,11 +272,13 @@ LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start
 void
 LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 {
+    const SpatialReference* mapSRS = _mapNode->getMapSRS();
+
     //Computes the LOS and redraws the scene
     if (_altitudeMode == ALTITUDE_ABSOLUTE)
     {
-        _mapNode->getMap()->mapPointToWorldPoint( _start, _startWorld );
-        _mapNode->getMap()->mapPointToWorldPoint( _end, _endWorld );
+        _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_start), _startWorld );
+        _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_end), _endWorld );
     }
     else
     {
@@ -288,7 +295,9 @@ LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
     {
         _hasLOS = false;
         _hitWorld = *hits.begin();
-        _mapNode->getMap()->worldPointToMapPoint( _hitWorld, _hit);
+        GeoPoint mapHit;
+        _mapNode->getMap()->worldPointToMapPoint( _hitWorld, mapHit);
+        _hit = mapHit.vec3d();
     }
     else
     {
@@ -472,20 +481,22 @@ LineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
 
         if (_startNode.valid())
         {
-            osg::Vec3d start = getNodeCenter( _startNode );
+            osg::Vec3d worldStart = getNodeCenter(_startNode);
 
             //Convert to mappoint since that is what LOS expects
-            los->getMapNode()->getMap()->worldPointToMapPoint( start, start );
-            los->setStart( start );
+            GeoPoint mapStart;
+            los->getMapNode()->getMap()->worldPointToMapPoint( worldStart, mapStart );
+            los->setStart( mapStart.vec3d() );
         }
 
         if (_endNode.valid())
         {
-            osg::Vec3d end   = getNodeCenter( _endNode );
+            osg::Vec3d worldEnd = getNodeCenter( _endNode );
 
             //Convert to mappoint since that is what LOS expects
-            los->getMapNode()->getMap()->worldPointToMapPoint( end, end );
-            los->setEnd( end );
+            GeoPoint mapEnd;
+            los->getMapNode()->getMap()->worldPointToMapPoint( worldEnd, mapEnd );
+            los->setEnd( mapEnd.vec3d() );
         }
     }
     traverse(node, nv);
@@ -653,7 +664,8 @@ RadialLineOfSightNode::compute_line(osg::Node* node, bool backgroundThread)
     //Get the center point in geocentric    
     if (_altitudeMode == ALTITUDE_ABSOLUTE)
     {
-        _mapNode->getMap()->mapPointToWorldPoint( _center, _centerWorld );
+        GeoPoint center(_mapNode->getMapSRS(),_center);
+        _mapNode->getMap()->toWorldPoint( center, _centerWorld );
     }
     else
     {
@@ -797,7 +809,8 @@ RadialLineOfSightNode::compute_fill(osg::Node* node, bool backgroundThread)
     //Get the center point in geocentric    
     if (_altitudeMode == ALTITUDE_ABSOLUTE)
     {
-        _mapNode->getMap()->mapPointToWorldPoint( _center, _centerWorld );
+        GeoPoint centerMap(_mapNode->getMapSRS(), _center);
+        _mapNode->getMap()->toWorldPoint( centerMap, _centerWorld );
     }
     else
     {
@@ -1087,12 +1100,13 @@ RadialLineOfSightTether::operator()(osg::Node* node, osg::NodeVisitor* nv)
     {
         RadialLineOfSightNode* los = static_cast<RadialLineOfSightNode*>(node);
 
-        osg::Vec3d center = getNodeCenter( _node );
+        osg::Vec3d worldCenter = getNodeCenter( _node );
 
         //Convert center to mappoint since that is what LOS expects
-        los->getMapNode()->getMap()->worldPointToMapPoint( center, center );
+        GeoPoint mapCenter;
+        los->getMapNode()->getMap()->worldPointToMapPoint( worldCenter, mapCenter );
 
-        los->setCenter( center );      
+        los->setCenter( mapCenter.vec3d() );      
     }
     traverse(node, nv);
 }

@@ -42,7 +42,7 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             MapNode*                mapNode,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const Style&            style =Style() );
 
@@ -51,7 +51,7 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             MapNode*                mapNode,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const TextSymbol*       symbol );
 
@@ -71,7 +71,7 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             const SpatialReference* mapSRS,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const TextSymbol*       symbol );
 
@@ -83,6 +83,13 @@ namespace osgEarth { namespace Annotation
         LabelNode(
             const std::string& text   ="",
             const Style&       style =Style() );
+
+        /**
+         * Constructs an empty label node 
+         */
+        LabelNode(
+            MapNode*          mapNode,
+            const TextSymbol* symbol );
 
         /**
          * Sets the text content.

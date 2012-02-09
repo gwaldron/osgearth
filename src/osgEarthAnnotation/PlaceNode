@@ -45,7 +45,7 @@ namespace osgEarth { namespace Annotation
          */
         PlaceNode(
             MapNode*           mapNode,
-            const osg::Vec3d&  position,
+            const GeoPoint&    position,
             osg::Image*        iconImage,
             const std::string& labelText,
             const Style&       style =Style() );

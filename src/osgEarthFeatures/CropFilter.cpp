@@ -50,16 +50,6 @@ CropFilter::push( FeatureList& input, FilterContext& context )
             bool keepFeature = false;
 
             Feature* feature = i->get();
-
-#if 0
-            const GeoExtent& featureExtent = feature->getExtent();
-            if ( featureExtent.isValid() && extent.contains(featureExtent.getCentroid()) )
-            {
-                keepFeature = true;
-                newExtent.expandToInclude( featureExtent );
-            }
-
-#else
             Geometry* featureGeom = feature->getGeometry();
 
             if ( featureGeom && featureGeom->isValid() )
@@ -75,7 +65,6 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     }
                 }
             }
-#endif
 
             if ( keepFeature )
                 ++i;
@@ -97,43 +86,6 @@ CropFilter::push( FeatureList& input, FilterContext& context )
 
             Feature* feature = i->get();
 
-#if 0
-            const GeoExtent& featureExtent = feature->getExtent();
-            if ( featureExtent.isValid() )
-            {
-                // trivial acceptance?
-                if ( extent.contains(featureExtent) )
-                {
-                    keepFeature = true;
-                    newExtent.expandToInclude(featureExtent);
-                }
-
-                // move on the the cropping operation:
-                else
-                {
-                    if ( !poly.valid() )
-                    {
-                        poly = new Symbology::Polygon();
-                        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMin(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMin(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMax(), extent.yMax(), 0 ));
-                        poly->push_back( osg::Vec3d( extent.xMin(), extent.yMax(), 0 ));
-                    }
-
-                    osg::ref_ptr<Geometry> croppedGeometry;
-                    if ( feature->getGeometry()->crop( poly.get(), croppedGeometry ) )
-                    {
-                        if ( croppedGeometry->isValid() )
-                        {
-                            feature->setGeometry( croppedGeometry.get() );
-                            keepFeature = true;
-                            newExtent.expandToInclude( feature->getExtent() ); //croppedGeometry->getExtent() ); //->getBounds() );
-                        }
-                    }
-                }
-            }
-
-#else
             Symbology::Geometry* featureGeom = feature->getGeometry();
             if ( featureGeom && featureGeom->isValid() )
             {
@@ -174,7 +126,6 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     }
                 }
             }
-#endif
 
             if ( keepFeature )
                 ++i;

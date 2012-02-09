@@ -14,7 +14,7 @@ exaggeration in order to make the geoid's shape stand out.
     <options>
         <profile>
             <srs>epsg:4326</srs>
-            <vsrs>egm96-meters</vsrs>
+            <vdatum>egm96</vdatum>
         </profile>
         <terrain>
             <vertical_scale>5000.0</vertical_scale>

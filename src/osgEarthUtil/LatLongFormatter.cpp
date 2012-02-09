@@ -40,13 +40,12 @@ _prec         ( 5 )
 }
 
 std::string
-LatLongFormatter::format( const osg::Vec3d& coords, const SpatialReference* srs ) const
+LatLongFormatter::format( const GeoPoint& p ) const
 {
-    osg::Vec3d geo = coords;
-    if ( srs && !srs->isGeographic() )
-    {
-        srs->transform( coords, srs->getGeographicSRS(), geo );
-    }
+    GeoPoint geo = p;
+    if ( !geo.makeGeographic() )
+        return "";
+
     return Stringify()
         << format( Angular(geo.y()) )
         << ", "

@@ -54,7 +54,7 @@ BuildTextFilter::push( FeatureList& input, FilterContext& context )
         osg::ref_ptr<LabelSource> source = LabelSourceFactory::create( options );
         if ( source.valid() )
         {
-            result = source->createNode( input, text, context );
+            result = source->createNode( input, _style, context );
         }
         else
         {

@@ -38,9 +38,12 @@ public:
       osg::Vec3d getLocation(const osg::Matrixd& matrix)
       {
           osg::Vec3d trans = matrix.getTrans();
-          double lat, lon, height;
-          _ellipsoid->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
-          return osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), height);
+
+          GeoPoint p = GeoPoint::fromWorld(_node->getMapNode()->getMapSRS(), trans);
+          return p.vec3d();
+          //double lat, lon, height;
+          //_ellipsoid->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
+          //return osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), height);
       }
 
       virtual bool receive(const osgManipulator::MotionCommand& command)
@@ -50,10 +53,15 @@ public:
           case osgManipulator::MotionCommand::START:
               {
                   // Save the current matrix
-                  osg::Vec3d location = _node->getPosition();
-                  double x, y, z;
-                  _ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), location.z(), x, y, z);
-                  _startMotionMatrix = osg::Matrixd::translate(x, y, z);
+
+                  osg::Vec3d locationWorld;
+                  _node->getPosition().toWorld( locationWorld );
+
+                  _startMotionMatrix = osg::Matrixd::translate(locationWorld);
+
+                  //double x, y, z;
+                  //_ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), location.z(), x, y, z);
+                  //_startMotionMatrix = osg::Matrixd::translate(x, y, z);
 
                   // Get the LocalToWorld and WorldToLocal matrix for this node.
                   osg::NodePath nodePathToRoot;
@@ -120,11 +128,14 @@ LocalizedNodeEditor::~LocalizedNodeEditor()
 void
 LocalizedNodeEditor::updateDraggers()
 {
-    const osg::EllipsoidModel* em = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
+    //const osg::EllipsoidModel* em = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
 
     osg::Matrixd matrix;
-    osg::Vec3d location = _node->getPosition();    
-    em->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians( location.y() ),  osg::DegreesToRadians(location.x()), location.z(), matrix);
+    _node->getPosition().createLocal2World(matrix);
+
+    //osg::Vec3d location = _node->getPosition();    
+    //em->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians( location.y() ),  osg::DegreesToRadians(location.x()), location.z(), matrix);
+
     _dragger->setMatrix(matrix);        
 }
 
@@ -176,7 +187,7 @@ public:
                   osg::Vec3d radiusLocation = getLocation( newMatrix );
 
                   //Figure out the distance between the center of the circle and this new location
-                  osg::Vec3d center = _node->getPosition();
+                  GeoPoint center = _node->getPosition();
                   double distance = GeoMath::distance(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
                                                       osg::DegreesToRadians( radiusLocation.y() ), osg::DegreesToRadians( radiusLocation.x() ),
                                                       _ellipsoid->getRadiusEquator());
@@ -236,7 +247,7 @@ CircleNodeEditor::computeBearing()
     if (!_radiusDragger->getMatrix().isIdentity())
     {
         //Get the current location of the center of the circle
-        osg::Vec3d location = _node->getPosition();
+        GeoPoint location = _node->getPosition();
 
         const osg::EllipsoidModel* em = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
 
@@ -261,7 +272,7 @@ CircleNodeEditor::updateDraggers()
         const osg::EllipsoidModel* em = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
         
         //Get the current location of the center of the circle
-        osg::Vec3d location = _node->getPosition();    
+        GeoPoint location = _node->getPosition();    
         
         //Get the radius of the circle in meters
         double r = static_cast<CircleNode*>(_node.get())->getRadius().as(Units::METERS);
@@ -326,7 +337,7 @@ public:
                   osg::Vec3d radiusLocation = getLocation( newMatrix );
 
                   //Figure out the distance between the center of the circle and this new location
-                  osg::Vec3d center = _node->getPosition();
+                  GeoPoint center = _node->getPosition();
                   double distance = GeoMath::distance(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
                                                       osg::DegreesToRadians( radiusLocation.y() ), osg::DegreesToRadians( radiusLocation.x() ),
                                                       _ellipsoid->getRadiusEquator());
@@ -414,7 +425,7 @@ EllipseNodeEditor::updateDraggers()
         const osg::EllipsoidModel* em = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
         
         //Get the current location of the center of the circle
-        osg::Vec3d location = _node->getPosition();    
+        GeoPoint location = _node->getPosition();    
         
         //Get the raddi of the ellipse in meters
         EllipseNode* ellipse = static_cast<EllipseNode*>(_node.get());

@@ -20,7 +20,7 @@
 #define OSGEARTH_ANNO_LOCALIZED_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
-#include <osgEarth/SpatialReference>
+#include <osgEarth/GeoData>
 #include <osg/Transform>
 
 namespace osgEarth { namespace Annotation
@@ -43,46 +43,38 @@ namespace osgEarth { namespace Annotation
          * @param is2D    Whether to autotransform the node to face/scale to the screen
          */
         LocalizedNode( 
-            MapNode*                mapNode  =0L,
-            const osg::Vec3d&       pos      =osg::Vec3d(0,0,0), 
-            bool                    is2D     =false );
+            MapNode*          mapNode  =0L,
+            const GeoPoint&   pos      =GeoPoint::INVALID,
+            bool              is2D     =false );
+
+        LocalizedNode(
+            MapNode*          mapNode,
+            const osg::Vec3d& pos,
+            bool              is2D    =false );
 
 
-    public:
-        /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * of the current Map. Returns true upon success.
-         */
-        bool setPosition( const osg::Vec3d& pos );
+    public: // PositionedAnnotationNode
 
-        /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * passed in, and will be reprojected to Map coordinates.
-         * Returns true upon success.
-         */
-        bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs );
+        /** Sets the node position */
+        virtual bool setPosition( const GeoPoint& p );
 
-        /**
-         * Gets the position (in map coordinates) of the node
-         */
-        osg::Vec3d getPosition() const;
+        /** Sets the position (in map coordinates) */
+        virtual bool setPosition( const osg::Vec3d& p );
 
-        /**
-         * Gets the position (in the requested coordinate system)
-         */
-        osg::Vec3d getPosition( const SpatialReference* srs ) const;
-
-        /**
-         * Enables or disable automatic horizon culling
-         */
-        void setHorizonCulling( bool value );
-        bool getHorizonCulling() const;
+        /** Gets the node position (in map coords) */
+        virtual GeoPoint getPosition() const;
 
     public: // osg::Node
 
         virtual void traverse( osg::NodeVisitor& nv );
 
     public:
+
+        /**
+         * Enables or disable automatic horizon culling
+         */
+        void setHorizonCulling( bool value );
+        bool getHorizonCulling() const;
 
         virtual osg::Group* getAttachPoint() { return _xform.get(); }
 

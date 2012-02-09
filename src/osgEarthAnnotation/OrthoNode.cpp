@@ -32,33 +32,48 @@ using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
 
-OrthoNode::OrthoNode(MapNode*          mapNode,
-                     const osg::Vec3d& pos ) :
+OrthoNode::OrthoNode(MapNode*        mapNode,
+                     const GeoPoint& position ) :
 
 PositionedAnnotationNode( mapNode ),
 _mapSRS                 ( mapNode ? mapNode->getMapSRS() : 0L ),
 _horizonCulling         ( false )
 {
     init();
-    if ( _mapSRS.valid() )
+    if ( mapNode && mapNode->isGeocentric() )
     {
         setHorizonCulling( true );
     }
-    setPosition( pos );
+    setPosition( position );
+}
+
+OrthoNode::OrthoNode(MapNode*          mapNode,
+                     const osg::Vec3d& position ) :
+
+PositionedAnnotationNode( mapNode ),
+_mapSRS                 ( mapNode ? mapNode->getMapSRS() : 0L ),
+_horizonCulling         ( false )
+{
+    init();
+    if ( mapNode && mapNode->isGeocentric() )
+    {
+        setHorizonCulling( true );
+    }
+    setPosition( GeoPoint(_mapSRS.get(), position) );
 }
 
 OrthoNode::OrthoNode(const SpatialReference* mapSRS,
-                     const osg::Vec3d&       pos) :
+                     const GeoPoint&         position ) :
 
 _mapSRS        ( mapSRS ),
 _horizonCulling( false )
 {
     init();
-    if ( _mapSRS.valid() )
+    if ( _mapSRS.valid() && _mapSRS->isGeographic() && !_mapSRS->isPlateCarre() )
     {
         setHorizonCulling( true );
     }
-    setPosition( pos );
+    setPosition( position );
 }
 
 OrthoNode::OrthoNode() :
@@ -142,35 +157,37 @@ OrthoNode::traverse( osg::NodeVisitor& nv )
 }
 
 bool
-OrthoNode::setPosition( const osg::Vec3d& pos )
+OrthoNode::setPosition( const osg::Vec3d& position )
 {
-    return setPosition( pos, 0L );
+    return setPosition( GeoPoint(_mapSRS.get(), position) );
 }
 
 bool
-OrthoNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
+OrthoNode::setPosition( const GeoPoint& position )
 {
     // first transform the point to the map's SRS:
-    osg::Vec3d mapPos = pos;
-    if ( posSRS && _mapSRS.valid() && !posSRS->transform(pos, _mapSRS.get(), mapPos) )
+    GeoPoint mapPos = _mapSRS.valid() ? position.transform(_mapSRS.get()) : position;
+    if ( !mapPos.isValid() )
         return false;
 
     // clamp if necessary:
     if ( _autoclamp )
-        clamp( mapPos );
+        clamp( mapPos.vec3d() );
 
     CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(this->getCullCallback());
 
     // update the transform:
     if ( !_mapSRS.valid() )
     {
-        _autoxform->setPosition( mapPos + _localOffset );
-        _matxform->setMatrix( osg::Matrix::translate(mapPos + _localOffset) );
+        _autoxform->setPosition( mapPos.vec3d() + _localOffset );
+        _matxform->setMatrix( osg::Matrix::translate(mapPos.vec3d() + _localOffset) );
     }
     else
     {
         osg::Matrixd local2world;
-        _mapSRS->createLocal2World( mapPos, local2world );
+        mapPos.createLocal2World(local2world);
+
+        //_mapSRS->createLocal2World( mapPos, local2world );
         local2world.preMult( osg::Matrix::translate(_localOffset) );
         _autoxform->setPosition( local2world.getTrans() );
         _matxform->setMatrix( local2world );
@@ -184,45 +201,10 @@ OrthoNode::setPosition( const osg::Vec3d& pos, const SpatialReference* posSRS )
     return true;
 }
 
-osg::Vec3d
+GeoPoint
 OrthoNode::getPosition() const
 {
     return _mapPosition;
-    //return getPosition( 0L );
-}
-
-osg::Vec3d
-OrthoNode::getPosition( const SpatialReference* srs ) const
-{
-    if ( _mapSRS.valid() && srs && !_mapSRS->isEquivalentTo( srs ) )
-    {
-        osg::Vec3d output;
-        _mapSRS->transform( _mapPosition, srs, output );
-        return output;
-    }
-    else
-    {
-        return _mapPosition;
-    }
-
-#if 0
-    osg::Vec3d world = _position; //_autoxform->getPosition();
-    if ( _mapSRS.valid() )
-    {
-        osg::Vec3d output = world;
-        if ( _mapSRS->isGeographic() )
-            _mapSRS->transformFromECEF( world, output );
-    
-        if ( srs )
-            _mapSRS->transform( output, srs, output );
-
-        return output;
-    }
-    else
-    {
-        return world;
-    }
-#endif
 }
 
 void
@@ -261,11 +243,9 @@ void
 OrthoNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
 {
     // first verify that the label position intersects the tile:
-    osg::Vec3d mapPos = getPosition();
-    if ( !key.getExtent().contains( mapPos.x(), mapPos.y() ) )
+    if ( !key.getExtent().contains( _mapPosition.x(), _mapPosition.y() ) )
         return;
 
     // if clamping is on, this will automatically work
-    setPosition(mapPos);
+    setPosition(_mapPosition);
 }
-

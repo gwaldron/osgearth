@@ -226,12 +226,12 @@ void LOSControlWidget::onItemDoubleClicked(QListWidgetItem* item)
   {
     osg::Vec3d center = losItem->los()->getBound().center();
 
-    osg::Vec3d output;
+    GeoPoint output;
     _map->worldPointToMapPoint(center, output);
 
     double range = losItem->los()->getBound().radius() / 0.267949849;
 
-    _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output, 0.0, -90.0, range), _views));
+    _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, range), _views));
   }
 }
 

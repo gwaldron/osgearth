@@ -50,7 +50,7 @@ namespace osgEarth { namespace Annotation
          */
         CircleNode(
             MapNode*          mapNode,
-            const osg::Vec3d& position,
+            const GeoPoint&   position,
             const Linear&     radius,
             const Style&      style,
             bool              draped      =true,

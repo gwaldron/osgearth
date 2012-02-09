@@ -1034,7 +1034,7 @@ namespace
                 // if "fallback" is set, try to fall back on lower LODs.
                 if ( !geoHF.valid() && fallback )
                 {
-                    TileKey hf_key = keyToUse;
+                    TileKey hf_key = keyToUse.createParentKey();
 
                     while ( hf_key.valid() && !geoHF.valid() )
                     {
@@ -1063,7 +1063,17 @@ namespace
         // If we didn't get any heightfields and weren't requested to fallback, just return NULL
         if ( heightFields.size() == 0 )
         {
-            return false;
+            if ( fallback )
+            {
+                out_result = HeightFieldUtils::createReferenceHeightField( keyToUse.getExtent(), 8, 8 );
+                if ( out_isFallback )
+                    *out_isFallback = true;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
 	    else if (heightFields.size() == 1)

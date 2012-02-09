@@ -207,7 +207,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         unsigned int desiredLevel = _mapf.getProfile()->getLevelOfDetailForHorizResolution( desiredResolution, _tileSize );
         if (desiredLevel < bestAvailLevel) bestAvailLevel = desiredLevel;
     }
-    //OE_NOTICE << "Best available data level " << point.x() << ", " << point.y() << " = "  << bestAvailLevel << std::endl;
+    OE_NOTICE << "Best available data level " << point.x() << ", " << point.y() << " = "  << bestAvailLevel << std::endl;
 
 
     // transform the input coords to map coords:

@@ -447,7 +447,11 @@ CubeSpatialReference::preTransform( std::vector<osg::Vec3d>& points ) const
         bool success = CubeUtils::faceCoordsToLatLon( p.x(), p.y(), face, lat_deg, lon_deg );
         if (!success)
         {
-            OE_WARN << LC << "Could not transform face coordinates to lat lon" << std::endl;
+            OE_WARN << LC << 
+                std::fixed << std::setprecision(2)
+                << "Could not transform face coordinates ["
+                << p.x() << ", " << p.y() << ", " << face << "] to lat lon"
+                << std::endl;
             return false;
         }
         p.x() = lon_deg;
@@ -471,7 +475,11 @@ CubeSpatialReference::postTransform( std::vector<osg::Vec3d>& points) const
         bool success = CubeUtils::latLonToFaceCoords( p.y(), p.x(), out_x, out_y, face );
         if (!success)
         {
-            OE_WARN << LC << "Could not transform face coordinates to lat lon" << std::endl;
+            OE_WARN << LC
+                << std::fixed << std::setprecision(2)
+                << "Could not transform lat long ["
+                << p.y() << ", " << p.x() << "] coordinates to face" 
+                << std::endl;
             return false;
         }
 

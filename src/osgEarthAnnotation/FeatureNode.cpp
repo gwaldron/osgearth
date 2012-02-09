@@ -64,6 +64,9 @@ FeatureNode::init()
     {
         GeometryCompilerOptions options = _options;
         
+        // have to disable compiler clamping if we're doing auto-clamping; especially
+        // in terrain-relative mode because the auto-clamper will think the clamped
+        // coords are the relative coords.
         bool autoClamping = supportsAutoClamping(*_feature->style());
         if ( autoClamping )
         {

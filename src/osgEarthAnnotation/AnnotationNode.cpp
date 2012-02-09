@@ -161,6 +161,12 @@ AnnotationNode::uninstallDecoration( const std::string& name )
     _dsMap.erase( name );
 }
 
+const std::string&
+AnnotationNode::getDecoration() const
+{
+    return _activeDsName;
+}
+
 void
 AnnotationNode::setDecoration( const std::string& name )
 {
@@ -209,6 +215,12 @@ AnnotationNode::getAttachPoint()
 {
     osg::Transform* t = osgEarth::findTopMostNodeOfType<osg::Transform>(this);
     return t ? (osg::Group*)t : (osg::Group*)this;
+}
+
+osgEarth::MapNode*
+AnnotationNode::getMapNode() const
+{
+    return _mapNode.get();
 }
 
 bool

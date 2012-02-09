@@ -66,6 +66,12 @@ namespace osgEarth { namespace Annotation
          */
         virtual osg::Group* getAttachPoint();
 
+        /**
+         Gets the MapNode that this AnnotationNode is attached to
+         */
+        osgEarth::MapNode* getMapNode() const;
+
+
 
     public: // decoration support
 
@@ -78,6 +84,11 @@ namespace osgEarth { namespace Annotation
          * Uninstalls a decoration on this annotation node.
          */
         void uninstallDecoration( const std::string& name );
+
+        /**
+         * Gets the current decoration
+         */
+        const std::string& getDecoration() const;
 
         /**
          * Activates a named decoration that was installed previously

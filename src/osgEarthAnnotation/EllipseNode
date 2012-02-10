@@ -95,7 +95,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Sets the rotation angle
          */
-        void setRotationAngle(Angular& rotationAngle);
+        void setRotationAngle(const Angular& rotationAngle);
 
         /**
          * Gets the number of segments

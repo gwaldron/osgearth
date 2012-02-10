@@ -120,7 +120,7 @@ EllipseNode::getRotationAngle() const
 }
 
 void 
-EllipseNode::setRotationAngle(Angular& rotationAngle)
+EllipseNode::setRotationAngle(const Angular& rotationAngle)
 {
     if (_rotationAngle != rotationAngle)
     {

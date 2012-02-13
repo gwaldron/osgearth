@@ -444,6 +444,7 @@ Feature::getWorldBoundingPolytope() const
             const osg::EllipsoidModel* e = getSRS()->getEllipsoid();
 
             osg::Polytope& p = const_cast<osg::Polytope&>(_cachedBoundingPolytope);
+            p.clear();
 
             // add planes for the four sides of the BS (in local space). Normals point inwards.
             p.add( osg::Plane(osg::Vec3d( 1, 0,0), osg::Vec3d(-bs.radius(),0,0)) );
@@ -461,7 +462,7 @@ Feature::getWorldBoundingPolytope() const
                 double zeroOffset = bs.center().length();
                 if ( zeroOffset > minRad * 0.1 )
                 {
-                    //p.add( osg::Plane(osg::Vec3d(0,0,1), osg::Vec3d(0,0,-maxRad+zeroOffset)) );
+                    p.add( osg::Plane(osg::Vec3d(0,0,1), osg::Vec3d(0,0,-maxRad+zeroOffset)) );
                 }
 
                 // transform the clipping planes ito ECEF space

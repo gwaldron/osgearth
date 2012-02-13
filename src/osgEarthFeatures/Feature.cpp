@@ -461,7 +461,7 @@ Feature::getWorldBoundingPolytope() const
                 double zeroOffset = bs.center().length();
                 if ( zeroOffset > minRad * 0.1 )
                 {
-                    p.add( osg::Plane(osg::Vec3d(0,0,1), osg::Vec3d(0,0,-maxRad+zeroOffset)) );
+                    //p.add( osg::Plane(osg::Vec3d(0,0,1), osg::Vec3d(0,0,-maxRad+zeroOffset)) );
                 }
 
                 // transform the clipping planes ito ECEF space

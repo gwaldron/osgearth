@@ -272,10 +272,10 @@ namespace osgEarth
         const VerticalDatum* getVerticalDatum() const;
 
         /** Creates a localizer matrix based on a point in this SRS. */
-        bool createLocal2World( const osg::Vec3d& point, osg::Matrixd& out_local2world ) const;
+        bool createLocalToWorld( const osg::Vec3d& point, osg::Matrixd& out_local2world ) const;
 
         /** Create a de-localizer matrix based on a point in this SRS. */
-        bool createWorld2Local( const osg::Vec3d& point, osg::Matrix& out_world2local ) const;
+        bool createWorldToLocal( const osg::Vec3d& point, osg::Matrix& out_world2local ) const;
 
         /** Creates and returns a local trangent plane SRS at the given reference location.
             The reference location is expressed in this object's SRS, but it tangent to

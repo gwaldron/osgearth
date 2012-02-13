@@ -799,7 +799,7 @@ SpatialReference::createLocator(double xmin, double ymin, double xmax, double ym
 }
 
 bool
-SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
+SpatialReference::createLocalToWorld(const osg::Vec3d& xyz, osg::Matrixd& out_local2world ) const
 {
     if ( (isProjected() || _is_plate_carre) && !isCube() )
     {
@@ -832,10 +832,10 @@ SpatialReference::createLocal2World(const osg::Vec3d& xyz, osg::Matrixd& out_loc
 }
 
 bool
-SpatialReference::createWorld2Local(const osg::Vec3d& xyz, osg::Matrixd& out_world2local ) const
+SpatialReference::createWorldToLocal(const osg::Vec3d& xyz, osg::Matrixd& out_world2local ) const
 {
     osg::Matrixd local2world;
-    if ( !createLocal2World(xyz, local2world) )
+    if ( !createLocalToWorld(xyz, local2world) )
         return false;
     out_world2local.invert(local2world);
     return true;

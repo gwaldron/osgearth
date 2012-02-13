@@ -81,10 +81,7 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
 
 struct ToggleNodeHandler : public ControlEventHandler
 {
-    ToggleNodeHandler( osg::Node* node ):
-_node(node)
-    {
-    }
+    ToggleNodeHandler( osg::Node* node ) : _node(node) { }
 
     void onValueChanged( Control* control, bool value )
     {
@@ -160,6 +157,7 @@ main(int argc, char** argv)
 
     Style labelStyle;
     labelStyle.getOrCreate<TextSymbol>()->alignment() = TextSymbol::ALIGN_CENTER_CENTER;
+    labelStyle.getOrCreate<TextSymbol>()->fill()->color() = Color::Yellow;
     labelStyle.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     // A lat/long SRS for specifying points.
@@ -253,10 +251,10 @@ main(int argc, char** argv)
         circleStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Cyan, 0.5);
         CircleNode* circle = new CircleNode(
             mapNode, 
-            GeoPoint(geoSRS, -90.25, 29.98),
+            GeoPoint(geoSRS, -90.25, 29.98, 1000., AltitudeMode::RELATIVE_TO_TERRAIN),
             Linear(300, Units::KILOMETERS ),
             circleStyle,
-            true );
+            false );
         annoGroup->addChild( circle );        
 
         editorGroup->addChild( new CircleNodeEditor( circle ) );
@@ -270,7 +268,7 @@ main(int argc, char** argv)
         ellipseStyle.getOrCreate<PolygonSymbol>()->fill()->color() = Color(Color::Orange, 0.75);
         EllipseNode* ellipse = new EllipseNode(
             mapNode, 
-            GeoPoint(geoSRS, -80.28, 25.82),
+            GeoPoint(geoSRS, -80.28, 25.82, 0.0, AltitudeMode::RELATIVE_TO_TERRAIN),
             Linear(500, Units::MILES),
             Linear(100, Units::MILES),
             Angular(0, Units::DEGREES),

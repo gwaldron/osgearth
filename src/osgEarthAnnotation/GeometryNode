@@ -58,9 +58,7 @@ namespace osgEarth { namespace Annotation
 
     protected:
         
-        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
-
-        Bounds _geomBounds;
+        //virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
     };
 
 } } // namespace osgEarth::Annotation

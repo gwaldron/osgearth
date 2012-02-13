@@ -32,6 +32,21 @@
 
 namespace osgEarth
 {
+    class Terrain;
+
+    /**
+     * Indicates how to interpret a Z coordinate.
+     */
+    namespace AltitudeMode
+    { 
+        enum Enum
+        {
+            ABSOLUTE,            // Z value is the absolute height above MSL/HAE.
+            RELATIVE_TO_TERRAIN  // Z value is the height above the terrain elevation.
+        };
+    }
+    typedef AltitudeMode::Enum AltitudeModeEnum;
+
     /**
      * A georeferenced 3D point.
      */
@@ -45,14 +60,16 @@ namespace osgEarth
             const SpatialReference* srs,
             double x = 0.0,
             double y = 0.0,
-            double z = 0.0 );
+            double z = 0.0,
+            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
 
         /**
          * Constructs a geopoint.
          */
         GeoPoint(
             const SpatialReference* srs,
-            const osg::Vec3d&       xyz );
+            const osg::Vec3d&       xyz,
+            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
 
         /**
          * Constructs a new GeoPoint by transforming an existing GeoPoint into
@@ -77,13 +94,15 @@ namespace osgEarth
          */
         void set(
             const SpatialReference* srs,
-            const osg::Vec3d&       xyz );
+            const osg::Vec3d&       xyz,
+            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
 
         void set(
             const SpatialReference* srs,
-            double                  x = 0.0,
-            double                  y = 0.0,
-            double                  z = 0.0 );
+            double                  x    =0.0,
+            double                  y    =0.0,
+            double                  z    =0.0,
+            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
 
         // component getter/setters
 
@@ -96,11 +115,16 @@ namespace osgEarth
         double& z() { return _p.z(); }
         double  z() const { return _p.z(); }
 
+        double& alt() { return _p.z(); }
+        double  alt() const { return _p.z(); }
+
         osg::Vec3d& vec3d() { return _p; }
         const osg::Vec3d& vec3d() const { return _p; }
 
         const SpatialReference* getSRS() const { return _srs.get(); }
 
+        AltitudeModeEnum& altitudeMode() { return _altMode; }
+        const AltitudeModeEnum& altitudeMode() const { return _altMode; }
 
         /**
          * Returns a copy of this geopoint transformed into another SRS.
@@ -111,6 +135,26 @@ namespace osgEarth
          * Transforms this geopoint into another SRS.
          */
         bool transform(const SpatialReference* outSRS, GeoPoint& output) const;
+
+        /**
+         * Transforms this geopoint's Z coordinate (in place)
+         */
+        bool transformZ(const AltitudeModeEnum& altMode, const Terrain* );
+
+        /**
+         * Transforms and returns the geopoints Z coordinate.
+         */
+        bool transformZ(const AltitudeModeEnum& altMode, const Terrain*, double& out_z) const;
+
+        /**
+         * Transforms this geopoint's Z to be absolute w.r.t. the vertical datum
+         */
+        bool makeAbsolute(const Terrain* t) { return transformZ(AltitudeMode::ABSOLUTE, t); }
+
+        /**
+         * Transforms this geopoint's Z to be terrain-relative.
+         */
+        bool makeRelative(const Terrain* t) { return transformZ(AltitudeMode::RELATIVE_TO_TERRAIN, t); }
 
         /**
          * Transforms this GeoPoint to geographic (lat/long) coords in place.
@@ -125,19 +169,18 @@ namespace osgEarth
         /**
          * Converts world coordinates into a geopoint
          */
-        static GeoPoint fromWorld(const SpatialReference* srs, const osg::Vec3d& world);
+        bool fromWorld(const SpatialReference* srs, const osg::Vec3d& world);
 
         /**
-         * Outputs a matrix that will transform scene coordinates localized around this 
          * geopoint into absolute world coords.
          */
-        bool createLocal2World( osg::Matrixd& out_local2world ) const;
+        bool createLocalToWorld( osg::Matrixd& out_local2world ) const;
 
         /**
          * Outputs a matrix that will transform absolute world coordiantes so they are
          * localized into a local tangent place around this geopoint.
          */
-        bool createWorld2Local( osg::Matrixd& out_world2local ) const;
+        bool createWorldToLocal( osg::Matrixd& out_world2local ) const;
 
 
         bool operator == (const GeoPoint& rhs) const;
@@ -149,7 +192,8 @@ namespace osgEarth
 
     protected:
         osg::ref_ptr<const SpatialReference> _srs;
-        osg::Vec3d _p;
+        osg::Vec3d       _p;
+        AltitudeModeEnum _altMode;
     };
 
     /**

@@ -22,6 +22,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Cube>
 #include <osgEarth/VerticalDatum>
+#include <osgEarth/Terrain>
 
 #include <osg/Notify>
 #include <osg/Timer>
@@ -70,17 +71,21 @@ GeoPoint GeoPoint::INVALID;
 GeoPoint::GeoPoint(const SpatialReference* srs,
                    double x,
                    double y,
-                   double z ) :
-_srs(srs),
-_p  (x, y, z)
+                   double z,
+                   const AltitudeModeEnum& altMode) :
+_srs    ( srs ),
+_p      ( x, y, z ),
+_altMode( altMode )
 {
     //nop
 }
 
 GeoPoint::GeoPoint(const SpatialReference* srs,
-                   const osg::Vec3d&       xyz ) :
+                   const osg::Vec3d&       xyz,
+                   const AltitudeModeEnum& altMode) :
 _srs(srs),
-_p  (xyz)
+_p  (xyz),
+_altMode( altMode )
 {
     //nop
 }
@@ -92,34 +97,40 @@ GeoPoint::GeoPoint(const SpatialReference* srs,
 }
 
 GeoPoint::GeoPoint(const GeoPoint& rhs) :
-_srs( rhs._srs.get() ),
-_p  ( rhs._p )
+_srs    ( rhs._srs.get() ),
+_p      ( rhs._p ),
+_altMode( rhs._altMode )
 {
     //nop
 }
 
 GeoPoint::GeoPoint() :
-_srs( 0L )
+_srs    ( 0L ),
+_altMode( AltitudeMode::ABSOLUTE )
 {
     //nop
 }
 
 void
 GeoPoint::set(const SpatialReference* srs,
-              const osg::Vec3d&       xyz)
+              const osg::Vec3d&       xyz,
+              const AltitudeModeEnum& altMode)
 {
     _srs = srs;
     _p   = xyz;
+    _altMode = altMode;
 }
 
 void
 GeoPoint::set(const SpatialReference* srs,
               double                  x,
               double                  y,
-              double                  z)
+              double                  z,
+              const AltitudeModeEnum& altMode)
 {
     _srs = srs;
     _p.set(x, y, z);
+    _altMode = altMode;
 }
 
 bool 
@@ -127,8 +138,10 @@ GeoPoint::operator == (const GeoPoint& rhs) const
 {
     return
         isValid() == rhs.isValid() &&
-        _p == rhs._p &&
-        _srs->isEquivalentTo( rhs._srs.get() );
+        _p        == rhs._p        &&
+        _altMode  == rhs._altMode  &&
+        ((_altMode == AltitudeMode::ABSOLUTE && _srs->isEquivalentTo(rhs._srs.get())) ||
+         (_altMode == AltitudeMode::RELATIVE_TO_TERRAIN && _srs->isHorizEquivalentTo(rhs._srs.get())));
 }
 
 GeoPoint
@@ -137,10 +150,72 @@ GeoPoint::transform(const SpatialReference* outSRS) const
     if ( isValid() && outSRS )
     {
         osg::Vec3d out;
-        if ( _srs->transform(_p, outSRS, out) )
-            return GeoPoint(outSRS, out);
+        if ( _altMode == AltitudeMode::ABSOLUTE )
+        {
+            if ( _srs->transform(_p, outSRS, out) )
+                return GeoPoint(outSRS, out);
+        }
+        else // if ( _altMode == AltitudeMode::RELATIVE_TO_TERRAIN )
+        {
+            out.z() = _p.z();
+            if ( _srs->transform2D(_p.x(), _p.y(), outSRS, out.x(), out.y()) )
+                return GeoPoint(outSRS, out);
+        }
     }
     return GeoPoint::INVALID;
+}
+
+bool
+GeoPoint::transformZ(const AltitudeModeEnum& altMode, const Terrain* terrain ) 
+{
+    double z;
+    if ( transformZ(altMode, terrain, z) )
+    {
+        _p.z() = z;
+        _altMode = altMode;
+        return true;
+    }
+    return false;
+}
+
+bool
+GeoPoint::transformZ(const AltitudeModeEnum& altMode, const Terrain* terrain, double& out_z ) const
+{
+    if ( !isValid() ) return false;
+    
+    // already in the target mode? just return z.
+    if ( _altMode == altMode ) 
+    {
+        out_z = z();
+        return true;
+    }
+
+    if ( !terrain ) return false;
+
+    // convert to geographic is necessary and sample the MSL height under the point.
+    double out_hamsl;
+    if ( _srs->isGeographic() )
+    {
+        if ( !terrain->getHeight( x(), y(), &out_hamsl ) )
+            return false;
+    }
+    else
+    {
+        GeoPoint( _srs->getGeographicSRS(), *this );
+        if ( !terrain->getHeight( x(), y(), &out_hamsl ) )
+            return false;
+    }
+
+    // convert the Z value as appropriate.
+    if ( altMode == AltitudeMode::RELATIVE_TO_TERRAIN )
+    {
+        out_z = z() - out_hamsl;
+    }
+    else // if ( altMode == AltitudeMode::ABSOLUTE )
+    {
+        out_z = z() + out_hamsl;
+    }
+    return true;
 }
 
 bool
@@ -162,33 +237,53 @@ GeoPoint::transform(const SpatialReference* outSRS, GeoPoint& output) const
 bool
 GeoPoint::toWorld( osg::Vec3d& out_world ) const
 {
-    return isValid() ? _srs->transformToWorld( _p, out_world ) : false;
+    if ( !isValid() ) return false;
+    if ( _altMode != AltitudeMode::ABSOLUTE )
+    {
+        OE_WARN << LC << "Illegal: called GeoPoint::toWorld with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        return false;
+    }
+    return _srs->transformToWorld( _p, out_world );
 }
 
-GeoPoint
+bool
 GeoPoint::fromWorld(const SpatialReference* srs, const osg::Vec3d& world)
 {
     if ( srs )
     {
         osg::Vec3d p;
         if ( srs->transformFromWorld(world, p) )
-            return GeoPoint(srs, p);
+        {
+            set( srs, p, AltitudeMode::ABSOLUTE );
+            return true;
+        }
     }
-    return GeoPoint::INVALID;
+    return false;
 }
 
 bool
-GeoPoint::createLocal2World( osg::Matrixd& out_l2w ) const
+GeoPoint::createLocalToWorld( osg::Matrixd& out_l2w ) const
 {
-    return isValid() ? _srs->createLocal2World( _p, out_l2w ) : false;
+    if ( !isValid() ) return false;
+    if ( _altMode != AltitudeMode::ABSOLUTE )
+    {
+        OE_WARN << LC << "Illegal: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        return false;
+    }
+    return _srs->createLocalToWorld( _p, out_l2w );
 }
 
 bool
-GeoPoint::createWorld2Local( osg::Matrixd& out_w2l ) const
+GeoPoint::createWorldToLocal( osg::Matrixd& out_w2l ) const
 {
-    return isValid() ? _srs->createWorld2Local( _p, out_w2l ) : false;
+    if ( !isValid() ) return false;
+    if ( _altMode != AltitudeMode::ABSOLUTE )
+    {
+        OE_WARN << LC << "Illegal: called GeoPoint::createLocal2World with AltitudeMode = RELATIVE_TO_TERRAIN" << std::endl;
+        return false;
+    }
+    return _srs->createWorldToLocal( _p, out_w2l );
 }
-
 
 //------------------------------------------------------------------------
 

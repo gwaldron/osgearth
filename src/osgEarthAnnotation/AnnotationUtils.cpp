@@ -224,6 +224,14 @@ AnnotationUtils::getAnnotationProgram()
         Threading::ScopedMutexLock lock(s_mutex);
         if ( !s_program.valid() )
         {
+            std::string vert_source = Stringify() <<
+                "#version 110 \n"
+                "void main() { \n"
+                "    gl_FrontColor = gl_Color; \n"
+                "    gl_TexCoord[0] = gl_MultiTexCoord0; \n"
+                "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+                "} \n";
+
             std::string frag_source = Stringify() <<
                 "uniform float     " << UNIFORM_FADE()      << "; \n"
                 "uniform bool      " << UNIFORM_IS_TEXT()   << "; \n"
@@ -246,6 +254,7 @@ AnnotationUtils::getAnnotationProgram()
 
             s_program = new osg::Program();
             s_program->setName( PROGRAM_NAME() );
+            s_program->addShader( new osg::Shader(osg::Shader::VERTEX,   vert_source) );
             s_program->addShader( new osg::Shader(osg::Shader::FRAGMENT, frag_source) );
         }
     }

@@ -83,34 +83,47 @@ LocalizedNode::setPosition( const GeoPoint& pos )
     if ( !mapPos.isValid() )
         return false;
 
-    // clamp if necessary:
-    if ( _autoclamp )
-        clamp( mapPos.vec3d() );
+    // store it:
+    _mapPosition = mapPos;
 
-    CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
+    // make sure the node is set up for auto-z-update if necessary:
+    configureForAltitudeMode( pos.altitudeMode() );
+
+    // update the node.
+    if ( !updateTransforms( _mapPosition ) )
+        return false;
+
+    return true;
+}
+
+bool
+LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
+{
+    GeoPoint absPos(p);
+    if ( !makeAbsolute(absPos, patch) )
+        return false;
 
     // update the transform:
-    if ( !_mapSRS.valid() )
-    {
-        if ( _autoTransform )
-            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( mapPos.vec3d() );
-        else
-            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( osg::Matrix::translate(mapPos.vec3d()) );
-    }
-    else
+    if ( _mapSRS.valid() )
     {
         osg::Matrixd local2world;
-        mapPos.createLocal2World( local2world );
-
-        //_mapSRS->createLocal2World( mapPos, local2world );
+        absPos.createLocalToWorld( local2world );
 
         if ( _autoTransform )
             static_cast<osg::AutoTransform*>(_xform.get())->setPosition( local2world.getTrans() );
         else
             static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( local2world );
         
+        CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
         if ( culler )
             culler->_world = local2world.getTrans();
+    }
+    else
+    {
+        if ( _autoTransform )
+            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( absPos.vec3d() );
+        else
+            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( osg::Matrix::translate(absPos.vec3d()) );
     }
 
     return true;
@@ -119,20 +132,7 @@ LocalizedNode::setPosition( const GeoPoint& pos )
 GeoPoint
 LocalizedNode::getPosition() const
 {
-    osg::Vec3d world;
-    if ( _autoTransform )
-        world = static_cast<osg::AutoTransform*>(_xform.get())->getPosition();
-    else
-        world = static_cast<osg::MatrixTransform*>(_xform.get())->getMatrix().getTrans();
-
-    if ( _mapSRS.valid() )
-    {
-        return GeoPoint::fromWorld( _mapSRS.get(), world );
-    }
-    else
-    {
-        return GeoPoint(0L, world);
-    }
+    return _mapPosition;
 }
 
 void
@@ -156,5 +156,15 @@ LocalizedNode::setHorizonCulling( bool value )
         {
             _xform->removeCullCallback( _xform->getCullCallback() );
         }
+    }
+}
+
+void
+LocalizedNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
+{
+    // first verify that the control position intersects the tile:
+    if ( key.getExtent().contains( _mapPosition.x(), _mapPosition.y() ) )
+    {
+        updateTransforms(_mapPosition, tile);
     }
 }

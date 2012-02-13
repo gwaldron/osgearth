@@ -170,34 +170,47 @@ OrthoNode::setPosition( const GeoPoint& position )
     if ( !mapPos.isValid() )
         return false;
 
-    // clamp if necessary:
-    if ( _autoclamp )
-        clamp( mapPos.vec3d() );
+    // store it for auto-clamping later:
+    _mapPosition = mapPos;
 
-    CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(this->getCullCallback());
+    // make sure the node is set up for auto-z-update if necessary:
+    configureForAltitudeMode( mapPos.altitudeMode() );
 
-    // update the transform:
-    if ( !_mapSRS.valid() )
-    {
-        _autoxform->setPosition( mapPos.vec3d() + _localOffset );
-        _matxform->setMatrix( osg::Matrix::translate(mapPos.vec3d() + _localOffset) );
-    }
-    else
+    // and update the node.
+    if ( !updateTransforms(_mapPosition) )
+        return false;
+
+    return true;
+}
+
+bool
+OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
+{
+    // make sure the point is absolute to terrain
+    GeoPoint absPos(p);
+    if ( !makeAbsolute(absPos, patch) )
+        return false;
+
+    if ( _mapSRS.valid() )
     {
         osg::Matrixd local2world;
-        mapPos.createLocal2World(local2world);
+        if ( !absPos.createLocalToWorld(local2world) )
+            return false;
 
-        //_mapSRS->createLocal2World( mapPos, local2world );
         local2world.preMult( osg::Matrix::translate(_localOffset) );
         _autoxform->setPosition( local2world.getTrans() );
         _matxform->setMatrix( local2world );
         
+
+        CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(this->getCullCallback());
         if ( culler )
             culler->_world = local2world.getTrans();
     }
-
-    _mapPosition = mapPos;
-
+    else
+    {
+        _autoxform->setPosition( absPos.vec3d() + _localOffset );
+        _matxform->setMatrix( osg::Matrix::translate(absPos.vec3d() + _localOffset) );
+    }
     return true;
 }
 
@@ -243,9 +256,8 @@ void
 OrthoNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
 {
     // first verify that the label position intersects the tile:
-    if ( !key.getExtent().contains( _mapPosition.x(), _mapPosition.y() ) )
-        return;
-
-    // if clamping is on, this will automatically work
-    setPosition(_mapPosition);
+    if ( key.getExtent().contains( _mapPosition.x(), _mapPosition.y() ) )
+    {
+        updateTransforms( _mapPosition, tile );
+    }
 }

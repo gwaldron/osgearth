@@ -121,6 +121,8 @@ namespace osgEarth { namespace Annotation
 
 
         bool supportsAutoClamping( const Style& style ) const;
+        
+        void configureForAltitudeMode( const AltitudeModeEnum& mode );
 
         // Apply general style information. You can pass "noClamp=true" as a hint
         // that no clamping logic is necessary
@@ -143,8 +145,10 @@ namespace osgEarth { namespace Annotation
         /**
          * Clamps a point to the terrain.
          */
-        void clamp( osg::Vec3d& mapPos ) const;
+        //void clamp( osg::Vec3d& mapPos ) const;
 
+        // utility funcion to make a geopoint absolute height
+        bool makeAbsolute( GeoPoint& mapPoint, osg::Node* patch =0L ) const;
 
         // hidden default ctor
         AnnotationNode( MapNode* mapNode =0L );

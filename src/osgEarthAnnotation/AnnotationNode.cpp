@@ -86,7 +86,11 @@ AnnotationNode::setAutoClamp( bool value )
         if ( !_autoclamp && value )
         {
             setDynamic( true );
-            mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(), this);
+
+            if ( AnnotationSettings::getContinuousClamping() )
+            {
+                mapNode_safe->getTerrain()->addTerrainCallback(new AutoClampCallback(), this);
+            }
         }
         else if ( _autoclamp && !value )
         {
@@ -94,6 +98,28 @@ AnnotationNode::setAutoClamp( bool value )
         }
 
         _autoclamp = value;
+        
+        if ( _autoclamp && AnnotationSettings::getApplyDepthOffsetToClampedLines() )
+        {
+            if ( !_depthAdj )
+            {
+                // verify that the geometry if polygon-less:
+                bool wantDepthAdjustment = false;
+                PrimitiveSetTypeCounter counter;
+                this->accept(counter);
+                if ( counter._polygon == 0 && (counter._line > 0 || counter._point > 0) )
+                {
+                    wantDepthAdjustment = true;
+                }
+
+                setDepthAdjustment( wantDepthAdjustment );
+            }
+            else
+            {
+                // update depth adjustment calculation
+                getOrCreateStateSet()->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
+            }
+        }
     }
 }
 
@@ -106,7 +132,7 @@ AnnotationNode::setDepthAdjustment( bool enable )
         osg::Program* daProgram = DepthOffsetUtils::getOrCreateProgram(); // cached, not a leak.
         osg::Program* p = dynamic_cast<osg::Program*>( s->getAttribute(osg::StateAttribute::PROGRAM) );
         if ( !p || p != daProgram )
-            s->setAttributeAndModes( daProgram );
+            s->setAttributeAndModes( daProgram, osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
 
         s->addUniform( DepthOffsetUtils::createMinOffsetUniform(this) );
         s->addUniform( DepthOffsetUtils::getIsNotTextUniform() );
@@ -115,26 +141,51 @@ AnnotationNode::setDepthAdjustment( bool enable )
     {
         this->getStateSet()->removeAttribute(osg::StateAttribute::PROGRAM);
     }
+
+    _depthAdj = enable;
 }
 
-void
-AnnotationNode::clamp( osg::Vec3d& mapCoord ) const
+bool
+AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
 {
+    // in terrain-clamping mode, force it to HAT=0:
+    if ( _altitude.valid() && _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN )
+    {
+        mapPoint.altitudeMode() = AltitudeMode::RELATIVE_TO_TERRAIN;
+        mapPoint.z() = 0.0;
+    }
+
+    // if the point's already absolute and we're not clamping it, nop.
+    if ( mapPoint.altitudeMode() == AltitudeMode::ABSOLUTE )
+    {
+        return true;
+    }
+
+    // calculate the absolute Z of the map point.
     osg::ref_ptr<MapNode> mapNode_safe = _mapNode.get();
     if ( mapNode_safe.valid() )
-    { 
+    {
+        // find the terrain height at the map point:
         double hamsl;
-        if ( mapNode_safe->getTerrain()->getHeight(mapCoord.x(), mapCoord.y(), &hamsl) )
+        if (mapNode_safe->getTerrain()->getHeight(mapPoint.x(), mapPoint.y(), &hamsl, 0L, patch))
         {
+            // apply any scale/offset in the symbology:
             if ( _altitude.valid() )
             {
-                hamsl *= _altitude->verticalScale()->eval();
-                hamsl += _altitude->verticalOffset()->eval();
+                if ( _altitude->verticalScale().isSet() )
+                    hamsl *= _altitude->verticalScale()->eval();
+                if ( _altitude->verticalOffset().isSet() )
+                    hamsl += _altitude->verticalOffset()->eval();
             }
-            mapCoord.z() = hamsl;
+            mapPoint.z() += hamsl;
         }
+        mapPoint.altitudeMode() = AltitudeMode::ABSOLUTE;
+        return true;
     }
+
+    return false;
 }
+
 
 void
 AnnotationNode::installDecoration( const std::string& name, Decoration* ds )
@@ -235,14 +286,31 @@ AnnotationNode::supportsAutoClamping( const Style& style ) const
 }
 
 void
+AnnotationNode::configureForAltitudeMode( const AltitudeModeEnum& mode )
+{
+    setAutoClamp(
+        mode == AltitudeMode::RELATIVE_TO_TERRAIN ||
+        (_altitude.valid() && _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN) );
+}
+
+void
 AnnotationNode::applyStyle( const Style& style, bool noClampHint )
 {
+    if ( !noClampHint && supportsAutoClamping(style) )
+    {
+        _altitude = style.get<AltitudeSymbol>();
+        setAutoClamp( true );
+    }
+
+#if 0
+    if ( _autoClamp )
     bool wantAutoClamp = false;
     bool wantDepthAdjustment = false;
     
     if ( !noClampHint && supportsAutoClamping(style) )
     {
         const AltitudeSymbol* alt = style.get<AltitudeSymbol>();
+
         if (alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
             alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
         {
@@ -271,4 +339,5 @@ AnnotationNode::applyStyle( const Style& style, bool noClampHint )
 
     setAutoClamp( wantAutoClamp );
     setDepthAdjustment( wantDepthAdjustment );
+#endif
 }

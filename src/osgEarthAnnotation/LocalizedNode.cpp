@@ -34,7 +34,8 @@ LocalizedNode::LocalizedNode(MapNode*                mapNode,
 PositionedAnnotationNode( mapNode ),
 _mapSRS        ( mapNode ? mapNode->getMapSRS() : 0L ),
 _horizonCulling( false ),
-_autoTransform ( is2D )
+_autoTransform ( is2D ),
+_scale         ( 1.0f, 1.0f, 1.0f )
 {
     if ( _autoTransform )
     {
@@ -96,6 +97,13 @@ LocalizedNode::setPosition( const GeoPoint& pos )
     return true;
 }
 
+void
+LocalizedNode::setScale( const osg::Vec3f& scale )
+{
+    _scale = scale;
+    updateTransforms( getPosition() );
+}
+
 bool
 LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
 {
@@ -110,9 +118,16 @@ LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
         absPos.createLocalToWorld( local2world );
 
         if ( _autoTransform )
+        {
             static_cast<osg::AutoTransform*>(_xform.get())->setPosition( local2world.getTrans() );
+            static_cast<osg::AutoTransform*>(_xform.get())->setScale( _scale );
+        }
         else
-            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( local2world );
+        {
+            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( 
+                osg::Matrix::scale(_scale) * local2world  );
+        }
+
         
         CullNodeByHorizon* culler = dynamic_cast<CullNodeByHorizon*>(_xform->getCullCallback());
         if ( culler )
@@ -121,9 +136,15 @@ LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
     else
     {
         if ( _autoTransform )
+        {
             static_cast<osg::AutoTransform*>(_xform.get())->setPosition( absPos.vec3d() );
+            static_cast<osg::AutoTransform*>(_xform.get())->setScale( _scale );
+        }
         else
-            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix( osg::Matrix::translate(absPos.vec3d()) );
+        {
+            static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix(
+                osg::Matrix::scale(_scale) * osg::Matrix::translate(absPos.vec3d()) );
+        }
     }
 
     return true;

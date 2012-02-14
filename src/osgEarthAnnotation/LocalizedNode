@@ -76,6 +76,10 @@ namespace osgEarth { namespace Annotation
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
 
+        void setScale( const osg::Vec3f& scale );
+
+        const osg::Vec3f& getScale() const { return _scale; }
+
         virtual osg::Group* getAttachPoint() { return _xform.get(); }
 
         virtual osg::Transform* getTransform() { return _xform.get(); }
@@ -86,6 +90,7 @@ namespace osgEarth { namespace Annotation
         bool _horizonCulling;
         bool _autoTransform;
         GeoPoint _mapPosition;
+        osg::Vec3f _scale;
 
         friend class Decoration;
         

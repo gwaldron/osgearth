@@ -149,7 +149,9 @@ bool
 AnnotationNode::makeAbsolute( GeoPoint& mapPoint, osg::Node* patch ) const
 {
     // in terrain-clamping mode, force it to HAT=0:
-    if ( _altitude.valid() && _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN )
+    if ( _altitude.valid() && (
+        _altitude->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN || 
+        _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN) )
     {
         mapPoint.altitudeMode() = AltitudeMode::RELATIVE_TO_TERRAIN;
         mapPoint.z() = 0.0;

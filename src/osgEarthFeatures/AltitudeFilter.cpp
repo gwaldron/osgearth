@@ -75,8 +75,9 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
     for( FeatureList::iterator i = features.begin(); i != features.end(); ++i )
     {
         Feature* feature = i->get();
-        //double maxGeomZ     = -DBL_MAX;
-        //double minGeomZ     =  DBL_MAX;
+
+        double minHAT       =  DBL_MAX;
+        double maxHAT       = -DBL_MAX;
 
         double scaleZ = 1.0;
         if ( _altitude.valid() && _altitude->verticalScale().isSet() )
@@ -90,23 +91,23 @@ AltitudeFilter::pushAndDontClamp( FeatureList& features, FilterContext& cx )
         while( gi.hasMore() )
         {
             Geometry* geom = gi.next();
-            for( Geometry::iterator i = geom->begin(); i != geom->end(); ++i )
+            for( Geometry::iterator g = geom->begin(); g != geom->end(); ++g )
             {
-                i->z() *= scaleZ;
-                i->z() += offsetZ;
+                g->z() *= scaleZ;
+                g->z() += offsetZ;
 
-                //if ( i->z() > maxGeomZ )
-                //    maxGeomZ = i->z();
-                //if ( i->z() < minGeomZ )
-                //    minGeomZ = i->z();
+                if ( g->z() < minHAT )
+                    minHAT = g->z();
+                if ( g->z() > maxHAT )
+                    maxHAT = g->z();
             }
         }
 
-        //if ( minGeomZ != DBL_MAX )
-        //{
-        //    feature->set( "__min_geom_z", minGeomZ );
-        //    feature->set( "__max_geom_z", maxGeomZ );
-        //}
+        if ( minHAT != DBL_MAX )
+        {
+            feature->set( "__min_hat", minHAT );
+            feature->set( "__max_hat", maxHAT );
+        }
     }
 }
 

@@ -116,7 +116,7 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
             // clamping, THAT means that we want to extrude DOWN from the geometry to the ground
             // (instead of from the geometry.)
             AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
-            if ( alt && !_extrusionSymbol->heightExpression().isSet() )
+            if ( alt && !_extrusionSymbol->heightExpression().isSet() && !_extrusionSymbol->height().isSet() )
             {
                 if (alt->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ||
                     alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )

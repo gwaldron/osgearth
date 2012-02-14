@@ -207,8 +207,8 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
         unsigned int desiredLevel = _mapf.getProfile()->getLevelOfDetailForHorizResolution( desiredResolution, _tileSize );
         if (desiredLevel < bestAvailLevel) bestAvailLevel = desiredLevel;
     }
-    OE_NOTICE << "Best available data level " << point.x() << ", " << point.y() << " = "  << bestAvailLevel << std::endl;
 
+    OE_DEBUG << "Best available data level " << point.x() << ", " << point.y() << " = "  << bestAvailLevel << std::endl;
 
     // transform the input coords to map coords:
     GeoPoint mapPoint = point;
@@ -238,7 +238,7 @@ ElevationQuery::getElevationImpl(const GeoPoint& point,
     // cache will store not only the heightfield, but also the tesselated tile in the event
     // that we're using GEOMETRIC mode. Second, since the call the getHeightField can 
     // fallback on a lower resolution, this cache will hold the final resolution heightfield
-    // instead of trying to fetch the higher resolution one each tiem.
+    // instead of trying to fetch the higher resolution one each item.
 
     TileCache::Record record = _tileCache.get( key );
     if ( record.valid() )

@@ -30,6 +30,8 @@
 #include <osg/Shape>
 #include <osgTerrain/Locator>
 
+#undef ABSOLUTE
+
 namespace osgEarth
 {
     class Terrain;

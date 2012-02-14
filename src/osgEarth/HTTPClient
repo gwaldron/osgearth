@@ -22,8 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/IOTypes>
 #include <osgEarth/Progress>
-#include <osgEarth/TerrainOptions>
-#include <OpenThreads/Thread>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -292,31 +290,6 @@ namespace osgEarth
             const std::string&    location,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
-
-#if 0
-        ResultCode doReadObjectFile(
-            const std::string&                  url,
-            osg::ref_ptr<osg::Object>&          output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback*                   callback = 0);
-
-        ResultCode doReadImageFile(
-            const std::string& filename,
-            osg::ref_ptr<osg::Image>& output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback *callback = 0);
-
-        ResultCode doReadNodeFile(
-            const std::string& filename,
-            osg::ref_ptr<osg::Node>& output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback *callback = 0);
-
-        ResultCode doReadString(
-            const std::string& filename,
-            std::string& output,
-            ProgressCallback *callback = 0);
-#endif
 
         /**
          * Convenience method for downloading a URL directly to a file

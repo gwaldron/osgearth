@@ -101,6 +101,10 @@ GeometryFactory::createArc(const osg::Vec3d& center,
 
     double startRad = std::min( start.as(Units::RADIANS), end.as(Units::RADIANS) );
     double endRad   = std::max( start.as(Units::RADIANS), end.as(Units::RADIANS) );
+
+    if ( endRad == startRad )
+        endRad += 2*osg::PI;
+
     double span     = endRad - startRad;    
     double step     = span/(double)numSegments;
 

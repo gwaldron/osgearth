@@ -55,10 +55,6 @@ namespace osgEarth { namespace Annotation
             osg::Node*   node, 
             const Style& style, 
             bool         draped     =false );
-
-    protected:
-        
-        //virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
     };
 
 } } // namespace osgEarth::Annotation

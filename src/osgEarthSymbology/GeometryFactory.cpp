@@ -86,9 +86,10 @@ GeometryFactory::createArc(const osg::Vec3d& center,
                            const Linear&     radius,
                            const Angular&    start,
                            const Angular&    end,
-                           unsigned          numSegments)
+                           unsigned          numSegments,
+                           Geometry*         geomToUse)
 {
-    Geometry* geom = new LineString();
+    Geometry* geom = geomToUse? geomToUse : new LineString();
 
     if ( numSegments == 0 )
     {

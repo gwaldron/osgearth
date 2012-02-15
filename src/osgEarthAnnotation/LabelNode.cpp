@@ -36,7 +36,7 @@ using namespace osgEarth::Symbology;
 //-------------------------------------------------------------------
 
 LabelNode::LabelNode(MapNode*            mapNode,
-                     const osg::Vec3d&   position,
+                     const GeoPoint&     position,
                      const std::string&  text,
                      const Style&        style ) :
 
@@ -48,7 +48,7 @@ _geode   ( 0L )
 }
 
 LabelNode::LabelNode(MapNode*            mapNode,
-                     const osg::Vec3d&   position,
+                     const GeoPoint&     position,
                      const std::string&  text,
                      const TextSymbol*   symbol ) :
 
@@ -67,7 +67,7 @@ LabelNode::LabelNode(MapNode*            mapNode,
                      const std::string&  text,
                      const Style&        style ) :
 
-OrthoNode( mapNode, osg::Vec3d(x,y,0) ),
+OrthoNode( mapNode, GeoPoint(mapNode->getMapSRS(), x, y, 0) ),
 _text    ( text ),
 _geode   ( 0L )
 {
@@ -75,7 +75,7 @@ _geode   ( 0L )
 }
 
 LabelNode::LabelNode(const SpatialReference* mapSRS,
-                     const osg::Vec3d&       position,
+                     const GeoPoint&         position,
                      const std::string&      text,
                      const TextSymbol*       symbol ) :
 
@@ -94,6 +94,16 @@ OrthoNode(),
 _text    ( text ),
 _geode   ( 0L )
 {
+    init( style );
+}
+
+LabelNode::LabelNode(MapNode*          mapNode,
+                     const TextSymbol* symbol ) :
+OrthoNode( mapNode, GeoPoint(mapNode->getMapSRS()) ),
+_geode   ( 0L )
+{
+    Style style;
+    style.add( const_cast<TextSymbol*>(symbol) );
     init( style );
 }
 

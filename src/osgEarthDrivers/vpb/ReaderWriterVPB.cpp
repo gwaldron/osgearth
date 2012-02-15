@@ -197,7 +197,7 @@ public:
                 
                 OE_INFO << LC << "Loaded root "<< _url.full() <<", path="<<_path<<" base_name="<<_baseNameToUse<<" extension="<<_extension<<std::endl;
                 
-                std::string srs = _profile->getSRS()->getInitString(); //.srs();
+                std::string srs = _profile->getSRS()->getHorizInitString(); //->getInitString(); //.srs();
                 
                 osg::CoordinateSystemNode* csn = dynamic_cast<osg::CoordinateSystemNode*>(_rootNode.get());
                 if (csn)

@@ -16,8 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#include <curl/curl.h>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgEarth/Version>
@@ -31,6 +29,7 @@
 #include <iterator>
 #include <iostream>
 #include <algorithm>
+#include <curl/curl.h>
 
 #define LC "[HTTPClient] "
 

@@ -24,7 +24,6 @@
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
 #include <osgEarthFeatures/ScatterFilter>
 #include <osgEarthFeatures/SubstituteModelFilter>
-#include <osgEarthFeatures/TransformFilter>
 #include <osgEarthFeatures/TessellateOperator>
 #include <osg/MatrixTransform>
 #include <osg/Timer>
@@ -108,7 +107,7 @@ GeometryCompiler::compile(Geometry*             geometry,
                           const Style&          style,
                           const FilterContext&  context)
 {
-    osg::ref_ptr<Feature> f = new Feature(geometry, 0L); // no SRS
+    osg::ref_ptr<Feature> f = new Feature(geometry, 0L); // no SRS!
     return compile(f.get(), style, context);
 }
 

@@ -113,24 +113,16 @@ _options  ( options )
     }
 }
 
-std::string
-MGRSFormatter::format( const osg::Vec3d& coords, const SpatialReference* srs ) const
-{
-    osg::Vec3d geo = coords;
-    if ( srs && !srs->isGeographic() )
-    {
-        srs->transform( coords, srs->getGeographicSRS(), geo );
-    }
-    return format( geo.y(), geo.x() );
-}
-
 bool
-MGRSFormatter::transform( const osg::Vec3d& input, const SpatialReference* inputSRS, MGRSCoord& out ) const
+MGRSFormatter::transform( const GeoPoint& input, MGRSCoord& out ) const
 {
+    if ( !input.isValid() )
+        return false;
+
     // convert to lat/long if necessary:
-    osg::Vec3d inputGeo = input;
-    if ( inputSRS && !inputSRS->isGeographic() )
-        inputSRS->transform(input, inputSRS->getGeographicSRS(), inputGeo);
+    GeoPoint inputGeo = input;
+    if ( !inputGeo.makeGeographic() )
+        return false;
 
     unsigned    zone;
     char        gzd;
@@ -165,23 +157,23 @@ MGRSFormatter::transform( const osg::Vec3d& input, const SpatialReference* input
             return false;
         }
 
-        double upsX, upsY;
-        if ( _refSRS->transform2D( lonDeg, latDeg, ups.get(), upsX, upsY ) == false )
+        osg::Vec3d upsCoord;
+        if ( _refSRS->transform(osg::Vec3d(lonDeg,latDeg,0), ups.get(), upsCoord) == false )
         {
             OE_WARN << LC << "Failed to transform lat/long to UPS" << std::endl;
             return false;
         }
 
-        int sqXOffset = upsX >= 0.0 ? (int)floor(upsX/100000.0) : -(int)floor(1.0-(upsX/100000.0));
-        int sqYOffset = upsY >= 0.0 ? (int)floor(upsY/100000.0) : -(int)floor(1.0-(upsY/100000.0));
+        int sqXOffset = upsCoord.x() >= 0.0 ? (int)floor(upsCoord.x()/100000.0) : -(int)floor(1.0-(upsCoord.x()/100000.0));
+        int sqYOffset = upsCoord.y() >= 0.0 ? (int)floor(upsCoord.y()/100000.0) : -(int)floor(1.0-(upsCoord.y()/100000.0));
 
         int alphaOffset = isNorth ? 7 : 12;
 
         sqid[0] = UPS_COL_ALPHABET[ (UPS_COL_ALPHABET_SIZE+sqXOffset) % UPS_COL_ALPHABET_SIZE ];
         sqid[1] = UPS_ROW_ALPHABET[alphaOffset + sqYOffset];
 
-        x = upsX - (100000.0*(double)sqXOffset);
-        y = upsY - (100000.0*(double)sqYOffset);
+        x = upsCoord.x() - (100000.0*(double)sqXOffset);
+        y = upsCoord.y() - (100000.0*(double)sqYOffset);
     }
 
     else // UTM
@@ -203,8 +195,8 @@ MGRSFormatter::transform( const osg::Vec3d& input, const SpatialReference* input
         if ( !utm.valid() )
             utm = SpatialReference::create( s_lateralZoneSpecs[zone] );
 
-        double utmX, utmY;
-        if ( _refSRS->transform2D( lonDeg, latDeg, utm.get(), utmX, utmY ) == false )
+        osg::Vec3d utmCoord;
+        if ( _refSRS->transform( osg::Vec3d(lonDeg,latDeg,0), utm.get(), utmCoord) == false )
         {
             OE_WARN << LC << "Error transforming lat/long into UTM" << std::endl;
             return false;
@@ -215,21 +207,21 @@ MGRSFormatter::transform( const osg::Vec3d& input, const SpatialReference* input
 
         // find the horizontal SQID offset (100KM increments) from the central meridian:
         unsigned xSetOffset = 8 * (set % 3);
-        double xMeridianOffset = utmX - 500000.0;
+        double xMeridianOffset = utmCoord.x() - 500000.0;
         int sqMeridianOffset = xMeridianOffset >= 0.0 ? (int)floor(xMeridianOffset/100000.0) : -(int)floor(1.0-(xMeridianOffset/100000.0));
         unsigned indexOffset = (4 + sqMeridianOffset);
         sqid[0] = UTM_COL_ALPHABET[xSetOffset + indexOffset];
         double xWest = 500000.0 + (100000.0*(double)sqMeridianOffset);
-        x = utmX - xWest;
+        x = utmCoord.x() - xWest;
 
         // find the vertical SQID offset (100KM increments) from the equator:
         unsigned ySetOffset = 5 * (zone % 2); //(set % 2);
-        int sqEquatorOffset = (int)floor(utmY/100000.0);
+        int sqEquatorOffset = (int)floor(utmCoord.y()/100000.0);
         int absOffset = ySetOffset + sqEquatorOffset + (10 * UTM_ROW_ALPHABET_SIZE);
         if ( _useAL )
             absOffset += 10;
         sqid[1] = UTM_ROW_ALPHABET[absOffset % UTM_ROW_ALPHABET_SIZE];
-        y = utmY - (100000.0*(double)sqEquatorOffset);
+        y = utmCoord.y() - (100000.0*(double)sqEquatorOffset);
     }
 
     if ( (unsigned)_precision > PRECISION_1M )
@@ -247,7 +239,7 @@ MGRSFormatter::transform( const osg::Vec3d& input, const SpatialReference* input
 }
 
 std::string
-MGRSFormatter::format( double latDeg, double lonDeg ) const
+MGRSFormatter::format( const GeoPoint& input ) const
 {
     std::string space;
 
@@ -257,7 +249,7 @@ MGRSFormatter::format( double latDeg, double lonDeg ) const
     std::string result;
 
     MGRSCoord mgrs;
-    if ( transform( osg::Vec3d(lonDeg, latDeg, 0), 0L, mgrs ) )
+    if ( transform( input, mgrs ) )
     {
         std::stringstream buf;
         buf << mgrs.gzd << space << mgrs.sqid;

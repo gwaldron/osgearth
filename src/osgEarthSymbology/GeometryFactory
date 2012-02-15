@@ -69,7 +69,8 @@ namespace osgEarth { namespace Symbology
             const Linear&     radius,
             const Angular&    startAngle,
             const Angular&    endAngle,
-            unsigned          numSegments =0);
+            unsigned          numSegments =0,
+            Geometry*         geomToUse   =0L);
 
         /**
          * Creates a ellipse geometry.

@@ -123,11 +123,11 @@ namespace
                 if ( !dynamic_cast<osg::MatrixTransform*>( temp.get() ) )
                   center += bs.center();
 
-                osg::Vec3d output;
+                GeoPoint output;
                 _map->worldPointToMapPoint(center, output);
 
                 //TODO: make a better range calculation
-                return new SetViewpointAction(osgEarth::Viewpoint(output, 0.0, -90.0, bs.radius() * 4.0), views);
+                return new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, bs.radius() * 4.0), views);
               }
             }
           }
@@ -181,10 +181,10 @@ namespace
         {
           osg::Vec3d center = _annotation->getBound().center();
 
-          osg::Vec3d output;
+          GeoPoint output;
           _map->worldPointToMapPoint(center, output);
 
-          return new SetViewpointAction(osgEarth::Viewpoint(output, 0.0, -90.0, 1e5), views);
+          return new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), views);
         }
       }
 

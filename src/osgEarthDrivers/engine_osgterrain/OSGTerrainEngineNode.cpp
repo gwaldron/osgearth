@@ -479,6 +479,33 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
     return result;
 }
 
+osg::Node*
+OSGTerrainEngineNode::createTile( const TileKey& key )
+{
+    if ( !_tileBuilder.valid() )
+        return 0L;
+
+    osg::ref_ptr<Tile> tile;
+    bool hasRealData, hasLodBlendedLayers;
+
+    _tileBuilder->createTile(
+        key,
+        false,
+        tile,
+        hasRealData,
+        hasLodBlendedLayers );
+
+    if ( !tile.valid() )
+        return 0L;
+
+    // code block required in order to properly manage the ref count of the transform
+    SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
+    tile->setTerrainTechnique( tech );
+    tile->init();
+    
+    return tech->takeTransform();
+}
+
 void
 OSGTerrainEngineNode::onMapModelChanged( const MapModelChange& change )
 {

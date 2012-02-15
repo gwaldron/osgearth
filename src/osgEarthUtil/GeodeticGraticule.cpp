@@ -138,7 +138,6 @@ GeodeticGraticule::init()
         mapProfile->getExtent().yMin(),
         mapProfile->getExtent().xMax(),
         mapProfile->getExtent().yMax(),
-        mapProfile->getVerticalSRS(),
         8, 4 );
 
     _featureProfile = new FeatureProfile(_profile->getSRS());
@@ -268,7 +267,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
         labels = new osg::Group();
 
     // spatial ref for features:
-    const SpatialReference* srs = tileExtent.getSRS()->getGeographicSRS();
+    const SpatialReference* geoSRS = tileExtent.getSRS()->getGeographicSRS();
 
     // longitude lines
     for( unsigned cx = 0; cx < cellsPerTileX; ++cx )
@@ -277,7 +276,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
         LineString* lon = new LineString(2);
         lon->push_back( osg::Vec3d(clon, tileExtent.yMin(), 0) );
         lon->push_back( osg::Vec3d(clon, tileExtent.yMax(), 0) );
-        lonLines.push_back( new Feature(lon, srs) );
+        lonLines.push_back( new Feature(lon, geoSRS) );
 
         if ( hasText )
         {
@@ -285,8 +284,8 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
             {
                 double clat = tileExtent.yMin() + (0.5*cellHeight) + cellHeight*(double)cy;
                 LabelNode* label = new LabelNode( 
-                    _mapNode.get(), 
-                    osg::Vec3d(clon, clat, 0), 
+                    _mapNode.get(),
+                    GeoPoint(geoSRS, clon, clat),
                     s_llf.format(clon),
                     textStyle );
                 labels->addChild( label );
@@ -304,7 +303,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
         LineString* lat = new LineString(2);
         lat->push_back( osg::Vec3d(tileExtent.xMin(), clat, 0) );
         lat->push_back( osg::Vec3d(tileExtent.xMax(), clat, 0) );
-        latLines.push_back( new Feature(lat, srs) );
+        latLines.push_back( new Feature(lat, geoSRS) );
 
         if ( hasText )
         {
@@ -313,7 +312,7 @@ GeodeticGraticule::buildTile( const TileKey& key, Map* map ) const
                 double clon = tileExtent.xMin() + (0.5*cellWidth) + cellWidth*(double)cy;
                 LabelNode* label = new LabelNode( 
                     _mapNode.get(), 
-                    osg::Vec3d(clon, clat, 0), 
+                    GeoPoint(geoSRS, clon, clat),
                     s_llf.format(clat),
                     textStyle );
                 labels->addChild( label );

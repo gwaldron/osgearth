@@ -64,6 +64,9 @@ FeatureNode::init()
     {
         GeometryCompilerOptions options = _options;
         
+        // have to disable compiler clamping if we're doing auto-clamping; especially
+        // in terrain-relative mode because the auto-clamper will think the clamped
+        // coords are the relative coords.
         bool autoClamping = supportsAutoClamping(*_feature->style());
         if ( autoClamping )
         {
@@ -73,7 +76,7 @@ FeatureNode::init()
         // prep the compiler:
         GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
-        GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
+        GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
         FilterContext context( session, profile.get(), extent );
 

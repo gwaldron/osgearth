@@ -172,8 +172,8 @@ _mapNodeOptions( options )
 void
 MapNode::init()
 {
-	// Protect the MapNode from the Optimizer
-	setDataVariance(osg::Object::DYNAMIC);
+    // Protect the MapNode from the Optimizer
+    setDataVariance(osg::Object::DYNAMIC);
 
     setName( "osgEarth::MapNode" );
 
@@ -191,7 +191,7 @@ MapNode::init()
     // TODO: this should probably happen elsewhere, like in the registry?
     if ( _mapNodeOptions.proxySettings().isSet() )
     {
-		HTTPClient::setProxySettings( _mapNodeOptions.proxySettings().get() );
+        HTTPClient::setProxySettings( _mapNodeOptions.proxySettings().get() );
     }
 
     // establish global driver options. These are OSG reader-writer options that
@@ -278,14 +278,6 @@ MapNode::init()
     {
         onModelLayerAdded( k->get(), modelLayerIndex );
     }
-
-#if 0
-    // install any pre-existing mask layer:
-    if ( _map->getTerrainMaskLayer() )
-    {
-        onMaskLayerAdded( _map->getTerrainMaskLayer() );
-    }
-#endif
 
     _mapCallback = new MapNodeMapCallbackProxy(this);
     // install a layer callback for processing further map actions:

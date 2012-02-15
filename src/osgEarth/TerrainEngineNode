@@ -93,6 +93,15 @@ namespace osgEarth
         // allow subclasses direct access for convenience.
         osg::ref_ptr<TextureCompositor> _texCompositor;
 
+    public: // utility
+
+        /**
+         * Utility function that will return an osg::Node representing the geometry
+         * for a tile key. The node is standalone; it has no ability to load children
+         * or receive updates.
+         */
+        virtual osg::Node* createTile( const TileKey& key ) =0;
+
     private:
         friend struct TerrainEngineNodeCallbackProxy;
         friend struct MapNodeMapLayerController;

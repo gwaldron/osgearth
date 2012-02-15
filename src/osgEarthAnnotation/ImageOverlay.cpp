@@ -262,38 +262,43 @@ ImageOverlay::setBoundsAndRotation(const osgEarth::Bounds& b, const Angular& rot
     }
     else
     {
-        osg::Vec2d ll( b.xMin(), b.yMin() );
-        osg::Vec2d ul( b.xMin(), b.yMax() );
-        osg::Vec2d ur( b.xMax(), b.yMax() );
-        osg::Vec2d lr( b.xMax(), b.yMin() );
+        osg::Vec3d ll( b.xMin(), b.yMin(), 0 );
+        osg::Vec3d ul( b.xMin(), b.yMax(), 0 );
+        osg::Vec3d ur( b.xMax(), b.yMax(), 0 );
+        osg::Vec3d lr( b.xMax(), b.yMin(), 0 );
 
         double sinR = sin(-rot_rad), cosR = cos(-rot_rad);
 
-        osg::Vec2d c( 0.5*(b.xMax()+b.xMin()), 0.5*(b.yMax()+b.yMin()) );
+        osg::Vec3d c( 0.5*(b.xMax()+b.xMin()), 0.5*(b.yMax()+b.yMin()), 0);
 
         // there must be a better way, but my internet is down so i can't look it up with now..
 
-        osg::ref_ptr<SpatialReference> srs = SpatialReference::create("wgs84");
-        osg::ref_ptr<SpatialReference> utm = srs->createUTMFromLongitude( c.x() );
+        osg::ref_ptr<const SpatialReference> srs = SpatialReference::create("wgs84");
+        osg::ref_ptr<const SpatialReference> utm = srs->createUTMFromLongitude( c.x() );
 
-        osg::Vec2d ll_utm, ul_utm, ur_utm, lr_utm, c_utm;
-        srs->transform2D( ll.x(), ll.y(), utm.get(), ll_utm.x(), ll_utm.y() );
-        srs->transform2D( ul.x(), ul.y(), utm.get(), ul_utm.x(), ul_utm.y() );
-        srs->transform2D( ur.x(), ur.y(), utm.get(), ur_utm.x(), ur_utm.y() );
-        srs->transform2D( lr.x(), lr.y(), utm.get(), lr_utm.x(), lr_utm.y() );
-        srs->transform2D( c.x(),  c.y(),  utm.get(), c_utm.x(),  c_utm.y()  );
+        osg::Vec3d ll_utm, ul_utm, ur_utm, lr_utm, c_utm;
+        
+        srs->transform( ll, utm.get(), ll_utm );
+        srs->transform( ul, utm.get(), ul_utm );
+        srs->transform( ur, utm.get(), ur_utm );
+        srs->transform( lr, utm.get(), lr_utm );
+        srs->transform( c,  utm.get(), c_utm  );
 
-        osg::Vec2d llp( cosR*(ll_utm.x()-c_utm.x()) - sinR*(ll_utm.y()-c_utm.y()), sinR*(ll_utm.x()-c_utm.x()) + cosR*(ll_utm.y()-c_utm.y()) );
-        osg::Vec2d ulp( cosR*(ul_utm.x()-c_utm.x()) - sinR*(ul_utm.y()-c_utm.y()), sinR*(ul_utm.x()-c_utm.x()) + cosR*(ul_utm.y()-c_utm.y()) );
-        osg::Vec2d urp( cosR*(ur_utm.x()-c_utm.x()) - sinR*(ur_utm.y()-c_utm.y()), sinR*(ur_utm.x()-c_utm.x()) + cosR*(ur_utm.y()-c_utm.y()) );
-        osg::Vec2d lrp( cosR*(lr_utm.x()-c_utm.x()) - sinR*(lr_utm.y()-c_utm.y()), sinR*(lr_utm.x()-c_utm.x()) + cosR*(lr_utm.y()-c_utm.y()) );    
+        osg::Vec3d llp( cosR*(ll_utm.x()-c_utm.x()) - sinR*(ll_utm.y()-c_utm.y()), sinR*(ll_utm.x()-c_utm.x()) + cosR*(ll_utm.y()-c_utm.y()), 0 );
+        osg::Vec3d ulp( cosR*(ul_utm.x()-c_utm.x()) - sinR*(ul_utm.y()-c_utm.y()), sinR*(ul_utm.x()-c_utm.x()) + cosR*(ul_utm.y()-c_utm.y()), 0 );
+        osg::Vec3d urp( cosR*(ur_utm.x()-c_utm.x()) - sinR*(ur_utm.y()-c_utm.y()), sinR*(ur_utm.x()-c_utm.x()) + cosR*(ur_utm.y()-c_utm.y()), 0 );
+        osg::Vec3d lrp( cosR*(lr_utm.x()-c_utm.x()) - sinR*(lr_utm.y()-c_utm.y()), sinR*(lr_utm.x()-c_utm.x()) + cosR*(lr_utm.y()-c_utm.y()), 0 );    
 
-        utm->transform2D( (llp+c_utm).x(), (llp+c_utm).y(), srs.get(), ll.x(), ll.y() );
-        utm->transform2D( (ulp+c_utm).x(), (ulp+c_utm).y(), srs.get(), ul.x(), ul.y() );
-        utm->transform2D( (urp+c_utm).x(), (urp+c_utm).y(), srs.get(), ur.x(), ur.y() );
-        utm->transform2D( (lrp+c_utm).x(), (lrp+c_utm).y(), srs.get(), lr.x(), lr.y() );
+        utm->transform( (llp+c_utm), srs.get(), ll );
+        utm->transform( (ulp+c_utm), srs.get(), ul );
+        utm->transform( (urp+c_utm), srs.get(), ur );
+        utm->transform( (lrp+c_utm), srs.get(), lr );
 
-        setCorners( ll, lr, ul, ur );
+        setCorners( 
+            osg::Vec2d(ll.x(), ll.y()), 
+            osg::Vec2d(lr.x(), lr.y()),
+            osg::Vec2d(ul.x(), ul.y()),
+            osg::Vec2d(ur.x(), ur.y()) );
     }
 }
 

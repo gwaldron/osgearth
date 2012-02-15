@@ -522,10 +522,12 @@ JSFilterContext::GetObjectTemplate()
     template_instance->SetInternalFieldCount(1);
     template_instance->SetNamedPropertyHandler(PropertyCallback);
 
+#if 0
     template_instance->Set(v8::String::New("toLocal"), v8::FunctionTemplate::New(ToLocalCallback));
     template_instance->Set(v8::String::New("toWorld"), v8::FunctionTemplate::New(ToWorldCallback));
     template_instance->Set(v8::String::New("toMap"), v8::FunctionTemplate::New(ToMapCallback));
     template_instance->Set(v8::String::New("fromMap"), v8::FunctionTemplate::New(FromMapCallback));
+#endif
   }
 
   return template_instance;
@@ -778,9 +780,11 @@ JSMapInfo::GetObjectTemplate()
     template_instance->SetInternalFieldCount(1);
     template_instance->SetNamedPropertyHandler(PropertyCallback);
 
+#if 0
     template_instance->Set(v8::String::New("toMapPoint"), v8::FunctionTemplate::New(ToMapCallback));
     template_instance->Set(v8::String::New("mapPointToWorldPoint"), v8::FunctionTemplate::New(MapToWorldCallback));
     template_instance->Set(v8::String::New("worldPointToMapPoint"), v8::FunctionTemplate::New(WorldToMapCallback));
+#endif
   }
 
   return template_instance;
@@ -811,6 +815,7 @@ JSMapInfo::PropertyCallback(v8::Local<v8::String> name, const v8::AccessorInfo& 
   return v8::Handle<v8::Value>();
 }
 
+#if 0
 v8::Handle<v8::Value>
 JSMapInfo::ToMapCallback(const v8::Arguments& args)
 {
@@ -882,6 +887,7 @@ JSMapInfo::WorldToMapCallback(const v8::Arguments& args)
 
   return v8::Undefined();
 }
+#endif
 
 void
 JSMapInfo::FreeMapInfoCallback(v8::Persistent<v8::Value> object, void *parameter)
@@ -1188,8 +1194,10 @@ JSSpatialReference::PropertyCallback(v8::Local<v8::String> name, const v8::Acces
     return v8::String::New(srs->getWKT().c_str());
   if (prop == "initType")
     return v8::String::New(srs->getInitType().c_str());
-  if (prop == "initString")
-    return v8::String::New(srs->getInitString().c_str());
+  if (prop == "horizInitString")
+    return v8::String::New(srs->getHorizInitString().c_str());
+  if (prop == "vertInitString")
+    return v8::String::New(srs->getVertInitString().c_str());
   if (prop == "datumName")
     return v8::String::New(srs->getDatumName().c_str());
   if (prop == "geographicSRS")
@@ -1235,7 +1243,7 @@ JSSpatialReference::TangentPlaneCallback(const v8::Arguments& args)
     if (V8Util::CheckObjectType(obj, JSVec3d::GetObjectType()))
     {
       osg::Vec3d* vec = V8Util::UnwrapObject<osg::Vec3d>(obj);
-      return JSSpatialReference::WrapSpatialReference(srs->createTangentPlaneSRS(*vec), true);
+      return JSSpatialReference::WrapSpatialReference(const_cast<SpatialReference*>(srs->createTangentPlaneSRS(*vec)), true);
     }
   }
 

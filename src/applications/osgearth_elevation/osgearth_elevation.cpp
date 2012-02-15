@@ -25,17 +25,22 @@
 #include <osgEarth/MapNode>
 #include <osgEarth/ElevationQuery>
 #include <osgEarth/StringUtils>
+#include <osgEarth/Terrain>
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarthUtil/ObjectLocator>
-#include <osgEarthAnnotation/LabelNode>
+#include <osgEarthUtil/Controls>
+#include <osgEarthUtil/LatLongFormatter>
 #include <iomanip>
 
 using namespace osgEarth;
-using namespace osgEarth::Annotation;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
 
-static MapNode*       s_mapNode    = 0L;
-static LabelNode*     s_labelNode  = 0L;
+static MapNode*       s_mapNode     = 0L;
+static LabelControl*  s_posLabel    = 0L;
+static LabelControl*  s_vdaLabel    = 0L;
+static LabelControl*  s_mslLabel    = 0L;
+static LabelControl*  s_haeLabel    = 0L;
+static LabelControl*  s_resLabel    = 0L;
 
 
 // An event handler that will print out the elevation at the clicked point
@@ -43,7 +48,8 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 {
     QueryElevationHandler()
         : _mouseDown( false ),
-          _query( s_mapNode->getMap() )
+          _terrain  ( s_mapNode->getTerrain() ),
+          _query    ( s_mapNode->getMap() )
     {
         _map = s_mapNode->getMap();
         _query.setMaxTilesToCache(10);
@@ -52,55 +58,54 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
 
     void update( float x, float y, osgViewer::View* view )
     {
-        osgUtil::LineSegmentIntersector::Intersections results;
+        bool yes = false;
 
-        if ( view->computeIntersections( x, y, _path, results ) )
+        // look under the mouse:
+        osg::Vec3d world;
+        if ( _terrain->getWorldCoordsUnderMouse(view, x, y, world) )
         {
-            // find the first hit under the mouse:
-            osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-            osg::Vec3d point = first.getWorldIntersectPoint();
-            osg::Vec3d lla;
-            
-            // transform it to map coordinates:
-            _map->worldPointToMapPoint(point, lla);
+            // convert to map coords:
+            GeoPoint mapPoint;
+            _map->worldPointToMapPoint(world, mapPoint);
 
-            // find the elevation at that map point:
-            osg::Matrixd out_mat;
+            // do an elevation query:
             double query_resolution = 0.1; // 1/10th of a degree
-            double out_elevation = 0.0;
-            double out_resolution = 0.0;
+            double out_hamsl        = 0.0;
+            double out_resolution   = 0.0;
 
             bool ok = _query.getElevation( 
-                lla,
-                _map->getProfile()->getSRS(),
-                out_elevation, 
+                mapPoint,
+                out_hamsl,
                 query_resolution, 
                 &out_resolution );
 
             if ( ok )
             {
-                s_labelNode->setPosition( osg::Vec3d(lla.x(), lla.y(), out_elevation) );
+                // convert to geodetic to get the HAE:
+                mapPoint.z() = out_hamsl;
+                GeoPoint mapPointGeodetic( s_mapNode->getMapSRS()->getGeodeticSRS(), mapPoint );
 
-                s_labelNode->setText( Stringify()
+                static LatLongFormatter s_f;
+
+                s_posLabel->setText( Stringify()
                     << std::fixed << std::setprecision(2) 
-                    << "Pos: " << lla.x() << ", " << lla.y() << "\n"
-                    << "Elv: " << out_elevation << "m" << "\n"
-                    << "X:   " << point.x() << "\n"
-                    << "Y:   " << point.y() << "\n"
-                    << "Z:   " << point.z() );
+                    << s_f.format(mapPoint.y())
+                    << ", " 
+                    << s_f.format(mapPoint.x()) );
 
-                s_labelNode->setNodeMask( ~0 );
+                s_mslLabel->setText( Stringify() << out_hamsl );
+                s_haeLabel->setText( Stringify() << mapPointGeodetic.z() );
+                s_resLabel->setText( Stringify() << out_resolution );
+                yes = true;
             }
-            else
-            {
-                OE_NOTICE
-                    << "getElevation FAILED! at (" << point.x() << ", " << point.y() << ")" << std::endl;
-            }
-
         }
-        else
+
+        if (!yes)
         {
-            s_labelNode->setNodeMask( 0 );
+            s_posLabel->setText( "-" );
+            s_mslLabel->setText( "-" );
+            s_haeLabel->setText( "-" );
+            s_resLabel->setText( "-" );
         }
     }
 
@@ -116,9 +121,9 @@ struct QueryElevationHandler : public osgGA::GUIEventHandler
     }
 
     const Map*       _map;
+    const Terrain*   _terrain;
     bool             _mouseDown;
     ElevationQuery   _query;
-    ObjectLocator*   _flagLocator;
     osg::NodePath    _path;
 };
 
@@ -141,14 +146,26 @@ int main(int argc, char** argv)
     // The MapNode will render the Map object in the scene graph.
     root->addChild( s_mapNode );
 
-    // style the text
-    TextSymbol* sym = new TextSymbol();
-    sym->halo()->color().set(0,0,0,1);
+    // Make the readout:
+    Grid* grid = new Grid();
+    grid->setControl(0,0,new LabelControl("Coords (Lat, Long):"));
+    grid->setControl(0,1,new LabelControl("Vertical Datum:"));
+    grid->setControl(0,2,new LabelControl("Height (MSL):"));
+    grid->setControl(0,3,new LabelControl("Height (HAE):"));
+    grid->setControl(0,4,new LabelControl("Resolution:"));
 
-    s_labelNode = new LabelNode( s_mapNode, osg::Vec3d(0,0,0), "", sym );
-    s_labelNode->setDynamic( true );
+    s_posLabel = grid->setControl(1,0,new LabelControl(""));
+    s_vdaLabel = grid->setControl(1,1,new LabelControl(""));
+    s_mslLabel = grid->setControl(1,2,new LabelControl(""));
+    s_haeLabel = grid->setControl(1,3,new LabelControl(""));
+    s_resLabel = grid->setControl(1,4,new LabelControl(""));
 
-    root->addChild( s_labelNode );
+    const SpatialReference* mapSRS = s_mapNode->getMapSRS();
+    s_vdaLabel->setText( mapSRS->getVerticalDatum() ? 
+        mapSRS->getVerticalDatum()->getName() : 
+        Stringify() << "geodetic (" << mapSRS->getEllipsoid()->getName() << ")" );
+
+    ControlCanvas::get(&viewer,true)->addControl(grid);
 
     viewer.setSceneData( root );
 

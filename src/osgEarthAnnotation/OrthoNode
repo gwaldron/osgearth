@@ -44,43 +44,45 @@ namespace osgEarth { namespace Annotation
 
         /**
          * Constructs an ortho node that resides at an absolute position on the map
+         * @param mapNode  MapNode used to referenced the ortho node
+         * @param position Starting position
          */
-        OrthoNode( MapNode* mapNode, const osg::Vec3d& position );
+        OrthoNode( 
+            MapNode*        mapNode, 
+            const GeoPoint& position );
+
+        /**
+         * Constructs an ortho node that resides at an absolute map position
+         * @param mapNode  MapNode used to reference the ortho node
+         * @param position Starting position (in map coordinates)
+         */
+        OrthoNode(
+            MapNode*          mapNode,
+            const osg::Vec3d& position );
 
         /**
          * Constructs an ortho node that resides at an absolute position on the map
          */
-        OrthoNode( const SpatialReference* mapSRS, const osg::Vec3d& position );
+        OrthoNode(
+            const SpatialReference* mapSRS, 
+            const GeoPoint&         position );
 
         /**
          * Attaches a child node to the transforms. Use this instead of addChild.
          */
         virtual osg::Group* getAttachPoint() { return _attachPoint; }
 
+
     public: // PositionedAnnotationNode
 
-        /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * of the current Map. Returns true upon success.
-         */
-        bool setPosition( const osg::Vec3d& pos );
+        /** Sets the node position */
+        virtual bool setPosition( const GeoPoint& pos );
 
-        /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * passed in, and will be reprojected to Map coordinates.
-         * Returns true upon success.
-         */
-        bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs );
+        /** Sets the node position (in map coords) */
+        virtual bool setPosition( const osg::Vec3d& pos );
 
-        /**
-         * Gets the position (in map coordinates) of the node
-         */
-        osg::Vec3d getPosition() const;
-
-        /**
-         * Gets the position (in the requested coordinate system)
-         */
-        osg::Vec3d getPosition( const SpatialReference* srs ) const;
+        /** Gets the position (in map coordinates) of the node */
+        virtual GeoPoint getPosition() const;
 
     public:
         /**
@@ -113,7 +115,7 @@ namespace osgEarth { namespace Annotation
         osg::MatrixTransform* _matxform;
         osg::Group*           _attachPoint;
         bool                  _horizonCulling;
-        osg::Vec3d            _mapPosition;
+        GeoPoint              _mapPosition;
         osg::Vec3d            _localOffset;
 
         void init();
@@ -123,6 +125,8 @@ namespace osgEarth { namespace Annotation
 
         // autoclamping.
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* );
+
+        bool updateTransforms( const GeoPoint& mappos, osg::Node* patch =0L );
     };
 
 } } // namespace osgEarth::Annotation

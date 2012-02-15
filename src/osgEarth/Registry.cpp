@@ -204,7 +204,7 @@ Registry::getGlobalMercatorProfile() const
             /*const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
                 srs, -e, -e, e, e, 0L, 1, 1 );*/
             const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-                srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 0L, 1, 1 );
+                srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 1, 1 );
         }
     }
     return _global_mercator_profile.get();
@@ -238,13 +238,13 @@ Registry::getNamedProfile( const std::string& name ) const
         return NULL;
 }
 
-const VerticalSpatialReference*
-Registry::getDefaultVSRS() const
-{
-    if ( !_defaultVSRS.valid() )
-        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
-    return _defaultVSRS.get();
-}
+//const VerticalSpatialReference*
+//Registry::getDefaultVSRS() const
+//{
+//    if ( !_defaultVSRS.valid() )
+//        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
+//    return _defaultVSRS.get();
+//}
 
 osgEarth::Cache*
 Registry::getCache() const

@@ -61,7 +61,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     {
         Geometry* geom = geometry._geom.get();
 
-        osg::Vec3d position = geom->getBounds().center();
+        GeoPoint position(cx._srs.get(), geom->getBounds().center());
+        //osg::Vec3d position = geom->getBounds().center();
         bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
         bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
 
@@ -77,6 +78,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             ReadResult result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
             markerImage = result.getImage();
             markerModel = result.getNode();
+
+            // We can't leave the marker symbol in the style, or the GeometryCompiler will
+            // think we want to do Point-model substitution. So remove it. A bit of a hack
+            if ( marker )
+                style.removeSymbol(marker);
         }
 
         std::string text = 
@@ -91,7 +97,7 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         if ( markerModel.valid() )
         {
             Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
-            fNode = new FeatureNode( cx._mapNode, feature, false ); //, options );
+            fNode = new FeatureNode( cx._mapNode, feature, false );
         }
 
         // Place node (icon + text) or Label node (text only)
@@ -126,11 +132,6 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
                 isPoly   && 
                 ex == 0L && 
                 (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
-
-            // this will confuse the GeometryCompiler into thinking we want point-model sub..
-            // probably need a more elegant solution here..
-            if ( marker )
-                style.removeSymbol(marker);
 
             // Make a feature node; drape if we're not extruding.
             GeometryCompilerOptions options;

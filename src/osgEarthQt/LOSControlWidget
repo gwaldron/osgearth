@@ -134,12 +134,13 @@ namespace osgEarth { namespace QtGui
                 // find the first hit under the mouse:
                 osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
                 osg::Vec3d point = first.getWorldIntersectPoint();
-                osg::Vec3d lla;
-
+                
+                GeoPoint lla;
+                //osg::Vec3d lla;
                 // transform it to map coordinates:
                 _mapNode->getMap()->worldPointToMapPoint(point, lla);
 
-                _losControl->mapClick(lla);
+                _losControl->mapClick(lla.vec3d());
               }
             }
 

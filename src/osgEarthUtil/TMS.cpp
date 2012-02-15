@@ -274,20 +274,26 @@ TileMap::getURL(const osgEarth::TileKey& tilekey, bool invertY)
 bool
 TileMap::intersectsKey(const TileKey& tilekey)
 {
-    double keyMinX, keyMinY, keyMaxX, keyMaxY;
+    osg::Vec3d keyMin, keyMax;
+
+    //double keyMinX, keyMinY, keyMaxX, keyMaxY;
 
     //Check to see if the key overlaps the bounding box using lat/lon.  This is necessary to check even in 
     //Mercator situations in case the BoundingBox is described using lat/lon coordinates such as those produced by GDAL2Tiles
     //This should be considered a bug on the TMS production side, but we can work around it for now...
-    tilekey.getExtent().getBounds(keyMinX, keyMinY, keyMaxX, keyMaxY);
+    tilekey.getExtent().getBounds(keyMin.x(), keyMin.y(), keyMax.x(), keyMax.y());
+    //tilekey.getExtent().getBounds(keyMinX, keyMinY, keyMaxX, keyMaxY);
 
-    bool inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
+    bool inter = intersects(_minX, _minY, _maxX, _maxY, keyMin.x(), keyMin.y(), keyMax.x(), keyMax.y() ); //keyMinX, keyMinY, keyMaxX, keyMaxY);
 
     if (!inter && tilekey.getProfile()->getSRS()->isMercator())
     {
-        tilekey.getProfile()->getSRS()->transform2D(keyMinX, keyMinY, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMinX, keyMinY);
-        tilekey.getProfile()->getSRS()->transform2D(keyMaxX, keyMaxY, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMaxX, keyMaxY);
-        inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
+        tilekey.getProfile()->getSRS()->transform(keyMin, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMin );
+        tilekey.getProfile()->getSRS()->transform(keyMax, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMax );
+        inter = intersects(_minX, _minY, _maxX, _maxY, keyMin.x(), keyMin.y(), keyMax.x(), keyMax.y() );
+        //tilekey.getProfile()->getSRS()->transform2D(keyMinX, keyMinY, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMinX, keyMinY);
+        //tilekey.getProfile()->getSRS()->transform2D(keyMaxX, keyMaxY, tilekey.getProfile()->getSRS()->getGeographicSRS(), keyMaxX, keyMaxY);
+        //inter = intersects(_minX, _minY, _maxX, _maxY, keyMinX, keyMinY, keyMaxX, keyMaxY);
     }
 
     return inter;
@@ -316,7 +322,7 @@ TileMap::generateTileSets(unsigned int numLevels)
     }
 }
 
-std::string getSRSString(const osgEarth::SpatialReference* srs)
+std::string getHorizSRSString(const osgEarth::SpatialReference* srs)
 {
     if (srs->isMercator())
     {
@@ -328,7 +334,7 @@ std::string getSRSString(const osgEarth::SpatialReference* srs)
     }
     else
     {
-        return srs->getInitString(); //srs();
+        return srs->getHorizInitString(); //srs();
     }	
 }
 
@@ -349,8 +355,9 @@ TileMap::create(const std::string& url,
     tileMap->setExtents(ex.xMin(), ex.yMin(), ex.xMax(), ex.yMax());
     tileMap->setOrigin(ex.xMin(), ex.yMin());
     tileMap->_filename = url;
-    tileMap->_srs = getSRSString(profile->getSRS());
-    tileMap->_vsrs = profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : "";
+    tileMap->_srs = getHorizSRSString(profile->getSRS());
+    tileMap->_vsrs = profile->getSRS()->getVertInitString();
+    //tileMap->_vsrs = profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : "";
     tileMap->_format.setWidth( tile_width );
     tileMap->_format.setHeight( tile_height );
     tileMap->_format.setExtension( format );
@@ -371,8 +378,8 @@ TileMap* TileMap::create(const TileSource* tileSource, const Profile* profile)
 
     const GeoExtent& ex = profile->getExtent();
     
-    tileMap->_srs = getSRSString(profile->getSRS()); //srs();
-    tileMap->_vsrs = profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : 0L;
+    tileMap->_srs = getHorizSRSString(profile->getSRS()); //srs();
+    tileMap->_vsrs = profile->getSRS()->getVertInitString(); //profile->getVerticalSRS() ? profile->getVerticalSRS()->getInitString() : 0L;
     tileMap->_originX = ex.xMin();
     tileMap->_originY = ex.yMin();
     tileMap->_minX = ex.xMin();

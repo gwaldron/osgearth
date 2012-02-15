@@ -86,9 +86,10 @@ GeometryFactory::createArc(const osg::Vec3d& center,
                            const Linear&     radius,
                            const Angular&    start,
                            const Angular&    end,
-                           unsigned          numSegments)
+                           unsigned          numSegments,
+                           Geometry*         geomToUse)
 {
-    Geometry* geom = new LineString();
+    Geometry* geom = geomToUse? geomToUse : new LineString();
 
     if ( numSegments == 0 )
     {
@@ -100,6 +101,10 @@ GeometryFactory::createArc(const osg::Vec3d& center,
 
     double startRad = std::min( start.as(Units::RADIANS), end.as(Units::RADIANS) );
     double endRad   = std::max( start.as(Units::RADIANS), end.as(Units::RADIANS) );
+
+    if ( endRad == startRad )
+        endRad += 2*osg::PI;
+
     double span     = endRad - startRad;    
     double step     = span/(double)numSegments;
 

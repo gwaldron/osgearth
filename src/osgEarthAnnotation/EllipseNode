@@ -52,7 +52,7 @@ namespace osgEarth { namespace Annotation
          */
         EllipseNode( 
             MapNode*                mapNode,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const Linear&           radiusMajor,
             const Linear&           radiusMinor,
             const Angular&          rotationAngle,
@@ -95,7 +95,7 @@ namespace osgEarth { namespace Annotation
         /**
          * Sets the rotation angle
          */
-        void setRotationAngle(Angular& rotationAngle);
+        void setRotationAngle(const Angular& rotationAngle);
 
         /**
          * Gets the number of segments

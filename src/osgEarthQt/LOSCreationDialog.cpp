@@ -141,7 +141,7 @@ bool LOSCreationDialog::doClose()
         los->setStart(osg::Vec3d(_ui.p1LonBox->value(), _ui.p1LatBox->value(), _ui.p1AltBox->value()));
 
         if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-          los->setAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
+          los->setAltitudeMode( AltitudeMode::RELATIVE_TO_TERRAIN );
 
         p1Set = true;
       }
@@ -160,7 +160,7 @@ bool LOSCreationDialog::doClose()
         los->setEnd(osg::Vec3d(_ui.p2LonBox->value(), _ui.p2LatBox->value(), _ui.p2AltBox->value()));
 
         if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-          los->setAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
+          los->setAltitudeMode(AltitudeMode::RELATIVE_TO_TERRAIN);
 
         p2Set = true;
       }
@@ -204,7 +204,7 @@ bool LOSCreationDialog::doClose()
         los->setCenter(osg::Vec3d(_ui.radLonBox->value(), _ui.radLatBox->value(), _ui.radAltBox->value()));
 
         if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
-          los->setAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
+          los->setAltitudeMode(AltitudeMode::RELATIVE_TO_TERRAIN);
 
         _editor = new osgEarth::Util::RadialLineOfSightEditor(los);
 
@@ -243,10 +243,10 @@ void LOSCreationDialog::centerMapOnNode(osg::Node* node)
     {
       osg::Vec3d center = node->getBound().center();
 
-      osg::Vec3d output;
+      GeoPoint output;
       _map->worldPointToMapPoint(center, output);
 
-      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output, 0.0, -90.0, 1e5), *_views));
+      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), *_views));
     }
   }
 }

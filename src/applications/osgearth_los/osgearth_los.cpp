@@ -45,8 +45,9 @@ osg::AnimationPath* createAnimationPath( MapNode* mapNode, const osg::Vec3& cent
     double delta = osg::PI * 2.0 / (double)numSamples;
 
     //Get the center point in geocentric
+    GeoPoint centerMap(mapNode->getMapSRS(), center);
     osg::Vec3d centerWorld;
-    mapNode->getMap()->mapPointToWorldPoint( center, centerWorld );
+    mapNode->getMap()->toWorldPoint( centerMap, centerWorld );
 
     osg::Vec3d up = centerWorld;
     up.normalize();
@@ -137,7 +138,7 @@ main(int argc, char** argv)
 
     //Create a relative point to point LineOfSightNode.
     LineOfSightNode* relativeLOS = new LineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
-    relativeLOS->setAltitudeMode( ALTITUDE_RELATIVE );
+    relativeLOS->setAltitudeMode( AltitudeMode::RELATIVE_TO_TERRAIN );
     root->addChild( relativeLOS );
     relativeLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
@@ -157,7 +158,7 @@ main(int argc, char** argv)
     //Create a relative RadialLineOfSightNode that allows you to do a 360 degree line of sight analysis.
     RadialLineOfSightNode* radialRelative = new RadialLineOfSightNode( mapNode );
     radialRelative->setCenter( osg::Vec3d(-121.2, 46.054, 10) );
-    radialRelative->setAltitudeMode( ALTITUDE_RELATIVE );
+    radialRelative->setAltitudeMode( AltitudeMode::RELATIVE_TO_TERRAIN );
     radialRelative->setRadius( 3000 );
     radialRelative->setNumSpokes(60);    
     radialRelative->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);

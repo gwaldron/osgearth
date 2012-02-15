@@ -26,13 +26,6 @@ EarthFileSerializer2::deserialize( const Config& conf, const std::string& refere
 {
     MapOptions mapOptions( conf.child( "options" ) );
 
-    // manually extract the "type" from the main tag:
-    const std::string& csVal = conf.value("type");
-    mapOptions.coordSysType() = 
-        csVal == "cube" ? MapOptions::CSTYPE_GEOCENTRIC_CUBE :
-        csVal == "projected" || csVal == "flat" ? MapOptions::CSTYPE_PROJECTED :
-        MapOptions::CSTYPE_GEOCENTRIC;
-
     // legacy: check for name/type in top-level attrs:
     if ( conf.hasValue( "name" ) || conf.hasValue( "type" ) )
     {

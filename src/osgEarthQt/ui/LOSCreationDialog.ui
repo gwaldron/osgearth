@@ -128,6 +128,9 @@
                <property name="maximum">
                 <double>1000000000.000000000000000</double>
                </property>
+               <property name="value">
+                <double>2.000000000000000</double>
+               </property>
               </widget>
              </item>
              <item>
@@ -256,6 +259,9 @@
                <property name="maximum">
                 <double>1000000000.000000000000000</double>
                </property>
+               <property name="value">
+                <double>2.000000000000000</double>
+               </property>
               </widget>
              </item>
              <item>
@@ -303,7 +309,10 @@
        <item>
         <widget class="QCheckBox" name="p2pRelativeCheckBox">
          <property name="text">
-          <string>relative altitude(s)</string>
+          <string>relative altitudes</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -411,12 +420,18 @@
                <property name="maximum">
                 <double>1000000000.000000000000000</double>
                </property>
+               <property name="value">
+                <double>2.000000000000000</double>
+               </property>
               </widget>
              </item>
              <item>
               <widget class="QCheckBox" name="radRelativeCheckBox">
                <property name="text">
                 <string>relative altitude</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
                </property>
               </widget>
              </item>
@@ -570,6 +585,9 @@
     <widget class="QCheckBox" name="depthTestCheckBox">
      <property name="text">
       <string>Enable Depth Test</string>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
      </property>
     </widget>
    </item>

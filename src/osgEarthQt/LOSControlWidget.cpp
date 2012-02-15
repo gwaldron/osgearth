@@ -210,10 +210,10 @@ void LOSControlWidget::addLOSNode(osg::Group* los, const QString& name, osg::Gro
   _root->addChild(los);
 }
 
-void LOSControlWidget::mapClick(const osg::Vec3d& location)
+void LOSControlWidget::mapClick(const osg::Vec3d& point)
 {
   if (!_newDialog.isNull())
-    _newDialog->mapClick(location);
+    _newDialog->mapClick(point);
 }
 
 void LOSControlWidget::onItemDoubleClicked(QListWidgetItem* item)
@@ -352,7 +352,7 @@ void LOSControlWidget::onSpokesValueChanged(int value)
 
 void LOSControlWidget::onAddLOS()
 {
-  _newDialog = new LOSCreationDialog(_mapNode.get(), _losCounter, _manager.get(), &_views);
+  _newDialog = new LOSCreationDialog(_mapNode.get(), _root.get(), _losCounter, _manager.get(), &_views);
 
   if (!_newDialog.isNull())
   {

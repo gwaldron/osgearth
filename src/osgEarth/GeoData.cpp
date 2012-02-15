@@ -1473,6 +1473,22 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation
     double x, y;
     int col, row;
 
+    double x0 = (destEx.xMin()-_extent.xMin())/_extent.width();
+    double y0 = (destEx.yMin()-_extent.yMin())/_extent.height();
+    double xstep = div/double(w-1);
+    double ystep = div/double(h-1);
+
+    for( x = x0, col = 0; col < w; x += xstep, col++ )
+    {
+        for( y = y0, row = 0; row < h; y += ystep, row++ )
+        {
+            float height = HeightFieldUtils::getHeightAtNormalizedLocation(
+                _heightField.get(), x, y, interpolation );
+            dest->setHeight( col, row, height );
+        }
+    }
+
+#if 0
     for( x = destEx.xMin(), col=0; col < w; x += dx, col++ )
     {
         for( y = destEx.yMin(), row=0; row < h; y += dy, row++ )
@@ -1481,6 +1497,7 @@ GeoHeightField::createSubSample( const GeoExtent& destEx, ElevationInterpolation
             dest->setHeight( col, row, height );
         }
     }
+#endif
 
     osg::Vec3d orig( destEx.xMin(), destEx.yMin(), _heightField->getOrigin().z() );
     dest->setOrigin( orig );

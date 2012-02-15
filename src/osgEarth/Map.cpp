@@ -1076,12 +1076,12 @@ namespace
             }
         }
 
-	    else if (heightFields.size() == 1)
-	    {
+        else if (heightFields.size() == 1)
+        {
             if ( lowestLOD == key.getLevelOfDetail() )
             {
-		        //If we only have on heightfield, just return it.
-		        out_result = heightFields[0].takeHeightField();
+                //If we only have on heightfield, just return it.
+                out_result = heightFields[0].takeHeightField();
             }
             else
             {
@@ -1089,7 +1089,7 @@ namespace
                 out_result = geoHF.takeHeightField();
                 hfInitialized = true;
             }
-	    }
+        }
 
 	    else
 	    {

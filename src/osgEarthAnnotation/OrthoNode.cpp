@@ -165,16 +165,22 @@ OrthoNode::setPosition( const osg::Vec3d& position )
 bool
 OrthoNode::setPosition( const GeoPoint& position )
 {
-    // first transform the point to the map's SRS:
-    GeoPoint mapPos = _mapSRS.valid() ? position.transform(_mapSRS.get()) : position;
-    if ( !mapPos.isValid() )
-        return false;
+    if ( _mapSRS.valid() )
+    {
+        // first transform the point to the map's SRS:
+        GeoPoint mapPos = _mapSRS.valid() ? position.transform(_mapSRS.get()) : position;
+        if ( !mapPos.isValid() )
+            return false;
 
-    // store it for auto-clamping later:
-    _mapPosition = mapPos;
+        _mapPosition = mapPos;
+    }
+    else
+    {
+        _mapPosition = position;
+    }
 
     // make sure the node is set up for auto-z-update if necessary:
-    configureForAltitudeMode( mapPos.altitudeMode() );
+    configureForAltitudeMode( _mapPosition.altitudeMode() );
 
     // and update the node.
     if ( !updateTransforms(_mapPosition) )
@@ -186,18 +192,21 @@ OrthoNode::setPosition( const GeoPoint& position )
 bool
 OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
 {
-    // make sure the point is absolute to terrain
-    GeoPoint absPos(p);
-    if ( !makeAbsolute(absPos, patch) )
-        return false;
-
     if ( _mapSRS.valid() )
     {
+        // make sure the point is absolute to terrain
+        GeoPoint absPos(p);
+        if ( !makeAbsolute(absPos, patch) )
+            return false;
+
         osg::Matrixd local2world;
         if ( !absPos.createLocalToWorld(local2world) )
             return false;
 
+        // apply the local tangent plane offset:
         local2world.preMult( osg::Matrix::translate(_localOffset) );
+
+        // update the xforms:
         _autoxform->setPosition( local2world.getTrans() );
         _matxform->setMatrix( local2world );
         
@@ -208,8 +217,9 @@ OrthoNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
     }
     else
     {
-        _autoxform->setPosition( absPos.vec3d() + _localOffset );
-        _matxform->setMatrix( osg::Matrix::translate(absPos.vec3d() + _localOffset) );
+        osg::Vec3d absPos = p.vec3d() + _localOffset;
+        _autoxform->setPosition( absPos );
+        _matxform->setMatrix( osg::Matrix::translate(absPos) );
     }
     return true;
 }

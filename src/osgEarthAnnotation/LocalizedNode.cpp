@@ -79,16 +79,22 @@ LocalizedNode::setPosition( const osg::Vec3d& position )
 bool
 LocalizedNode::setPosition( const GeoPoint& pos )
 {
-    // first transform the point to the map's SRS:
-    GeoPoint mapPos = _mapSRS.get() ? pos.transform(_mapSRS.get()) : pos;
-    if ( !mapPos.isValid() )
-        return false;
+    if ( _mapSRS.valid() )
+    {
+        // first transform the point to the map's SRS:
+        GeoPoint mapPos = _mapSRS.get() ? pos.transform(_mapSRS.get()) : pos;
+        if ( !mapPos.isValid() )
+            return false;
 
-    // store it:
-    _mapPosition = mapPos;
+        _mapPosition = mapPos;
+    }
+    else
+    {
+        _mapPosition = pos;
+    }
 
     // make sure the node is set up for auto-z-update if necessary:
-    configureForAltitudeMode( pos.altitudeMode() );
+    configureForAltitudeMode( _mapPosition.altitudeMode() );
 
     // update the node.
     if ( !updateTransforms( _mapPosition ) )
@@ -107,15 +113,17 @@ LocalizedNode::setScale( const osg::Vec3f& scale )
 bool
 LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
 {
-    GeoPoint absPos(p);
-    if ( !makeAbsolute(absPos, patch) )
-        return false;
-
-    // update the transform:
     if ( _mapSRS.valid() )
     {
+        GeoPoint absPos(p);
+        if ( !makeAbsolute(absPos, patch) )
+            return false;
+
         osg::Matrixd local2world;
         absPos.createLocalToWorld( local2world );
+        
+        // apply the local offset
+        local2world.preMult( osg::Matrix::translate(_localOffset) );
 
         if ( _autoTransform )
         {
@@ -135,15 +143,17 @@ LocalizedNode::updateTransforms( const GeoPoint& p, osg::Node* patch )
     }
     else
     {
+        osg::Vec3d absPos = p.vec3d() + _localOffset;
+
         if ( _autoTransform )
         {
-            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( absPos.vec3d() );
+            static_cast<osg::AutoTransform*>(_xform.get())->setPosition( absPos );
             static_cast<osg::AutoTransform*>(_xform.get())->setScale( _scale );
         }
         else
         {
             static_cast<osg::MatrixTransform*>(_xform.get())->setMatrix(
-                osg::Matrix::scale(_scale) * osg::Matrix::translate(absPos.vec3d()) );
+                osg::Matrix::scale(_scale) * osg::Matrix::translate(absPos) );
         }
     }
 
@@ -154,6 +164,19 @@ GeoPoint
 LocalizedNode::getPosition() const
 {
     return _mapPosition;
+}
+
+void
+LocalizedNode::setLocalOffset( const osg::Vec3d& offset )
+{
+    _localOffset = offset;
+    setPosition( _mapPosition );
+}
+
+const osg::Vec3d&
+LocalizedNode::getLocalOffset() const
+{
+    return _localOffset;
 }
 
 void

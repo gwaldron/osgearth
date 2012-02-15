@@ -69,6 +69,16 @@ namespace osgEarth { namespace Annotation
         virtual void traverse( osg::NodeVisitor& nv );
 
     public:
+        /**
+         * Sets a "local offset" position - for an ECEF map, this is an offset in 
+         * the local tangent plane of the node that is applied to the geometry.
+         */
+        void setLocalOffset( const osg::Vec3d& offset );
+
+        /**
+         * Gets the local tangent plane -space offset.
+         */
+        const osg::Vec3d& getLocalOffset() const;
 
         /**
          * Enables or disable automatic horizon culling
@@ -91,6 +101,7 @@ namespace osgEarth { namespace Annotation
         bool _autoTransform;
         GeoPoint _mapPosition;
         osg::Vec3f _scale;
+        osg::Vec3d _localOffset;
 
         friend class Decoration;
         

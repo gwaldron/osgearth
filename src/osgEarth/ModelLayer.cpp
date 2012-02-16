@@ -52,7 +52,8 @@ ModelLayerOptions::setDefaults()
 Config
 ModelLayerOptions::getConfig() const
 {
-    Config conf = ConfigOptions::getConfig();
+    //Config conf = ConfigOptions::getConfig();
+    Config conf = ConfigOptions::newConfig();
 
     conf.updateIfSet( "name", _name );
     conf.updateIfSet( "overlay", _overlay );

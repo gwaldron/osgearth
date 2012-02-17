@@ -413,6 +413,17 @@ AnnotationUtils::createSphere( float r, const osg::Vec4& color, float maxAngle )
     b->push_back(1); b->push_back(5); b->push_back(2);
     geom->addPrimitiveSet( b );
 
+    osg::Vec3Array* n = new osg::Vec3Array();
+    n->reserve(6);
+    n->push_back( osg::Vec3( 0, 0, 1) );
+    n->push_back( osg::Vec3( 0, 0,-1) );
+    n->push_back( osg::Vec3(-1, 0, 0) );
+    n->push_back( osg::Vec3( 1, 0, 0) );
+    n->push_back( osg::Vec3( 0, 1, 0) );
+    n->push_back( osg::Vec3( 0,-1, 0) );
+    geom->setNormalArray(n);
+    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
     MeshSubdivider ms;
     ms.run( *geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE );
 

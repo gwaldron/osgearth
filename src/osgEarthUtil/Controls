@@ -64,10 +64,14 @@ namespace osgEarth { namespace Util { namespace Controls
         bool operator !=( const Gutter& rhs ) const {
             return top() != rhs.top() || right() != rhs.right() || bottom() != rhs.bottom() || left() != rhs.left(); }
 
-        float top()  const { return _top; }
-        float left() const { return _left; }
-        float right() const { return _right; }
-        float bottom() const { return _bottom; }
+        float  top()  const { return _top; }
+        float& top() { return _top; }
+        float  left() const { return _left; }
+        float& left() { return _left; }
+        float  right() const { return _right; }
+        float& right() { return _right; }
+        float  bottom() const { return _bottom; }
+        float& bottom() { return _bottom; }
 
         float x() const { return _left + _right; }
         float y() const { return _top + _bottom; }
@@ -162,11 +166,13 @@ namespace osgEarth { namespace Util { namespace Controls
         void setSize( float w, float h );
 
         void setMargin( const Gutter& value );
+        Gutter& margin() { dirty(); return _margin; }
         const Gutter& margin() const { return _margin; }
 
         // space between container and its content
         void setPadding( const Gutter& value );
         void setPadding( float globalValue );
+        Gutter& padding() { dirty(); return _padding; }
         const Gutter& padding() const { return _padding; }
 
         void setVertAlign( const Alignment& value );

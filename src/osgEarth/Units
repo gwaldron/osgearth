@@ -214,22 +214,28 @@ namespace osgEarth
 
     struct Linear : public qualified_double<Linear> {
         Linear() : qualified_double<Linear>(0, Units::METERS) { }
+        Linear(double value ) : qualified_double<Linear>(value, Units::METERS) { }
         Linear(double value, const Units& units) : qualified_double<Linear>(value, units) { }
-    };
+    };   
+    typedef Linear Distance;
 
     struct Angular : public qualified_double<Angular> {
         Angular() : qualified_double<Angular>(0, Units::DEGREES) { }
         Angular(double value) : qualified_double<Angular>(value, Units::DEGREES) { }
         Angular(double value, const Units& units) : qualified_double<Angular>(value, units) { }
     };
+    typedef Angular Angle;
 
     struct Temporal : public qualified_double<Temporal> {
         Temporal() : qualified_double<Temporal>(0, Units::SECONDS) { }
+        Temporal(double value) : qualified_double<Temporal>(value, Units::SECONDS) { }
         Temporal(double value, const Units& units) : qualified_double<Temporal>(value, units) { }
     };
+    typedef Temporal Duration;
 
     struct Speed : public qualified_double<Speed> {
         Speed() : qualified_double<Speed>(0, Units::METERS_PER_SECOND) { }
+        Speed(double value) : qualified_double<Speed>(value, Units::METERS_PER_SECOND) { }
         Speed(double value, const Units& units) : qualified_double<Speed>(value, units) { }
     };
 }

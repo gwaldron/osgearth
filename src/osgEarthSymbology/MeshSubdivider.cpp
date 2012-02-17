@@ -121,7 +121,7 @@ namespace
         Triangle() { }
         Triangle(GLuint i0, GLuint i1, GLuint i2) : 
         _i0(i0), _i1(i1), _i2(i2){}                 
-        GLuint _i0, _i1, _i2;        
+        GLuint _i0, _i1, _i2;
     };
 
     typedef std::queue<Triangle> TriangleQueue;
@@ -135,9 +135,11 @@ namespace
         osg::Vec3Array* _sourceVerts;
         osg::Vec4Array* _sourceColors;
         osg::Vec2Array* _sourceTexCoords;
+        osg::Vec3Array* _sourceNormals;
         osg::ref_ptr<osg::Vec3Array> _verts;        
         osg::ref_ptr<osg::Vec4Array> _colors;
         osg::ref_ptr<osg::Vec2Array> _texcoords;
+        osg::ref_ptr<osg::Vec3Array> _normals;
         TriangleQueue _tris;
         
         TriangleData()
@@ -146,6 +148,7 @@ namespace
             _sourceVerts     = 0;
             _sourceColors    = 0;
             _sourceTexCoords = 0;
+            _sourceNormals   = 0;
         }       
 
         void setSourceVerts(osg::Vec3Array* sourceVerts )
@@ -171,7 +174,16 @@ namespace
             }
         }
 
-        GLuint record( const osg::Vec3& v, const osg::Vec2f& t, const osg::Vec4f& c )
+        void setSourceNormals(osg::Vec3Array* sourceNormals)
+        {
+            if ( sourceNormals )
+            {
+                _sourceNormals = sourceNormals;
+                _normals       = new osg::Vec3Array();
+            }
+        }
+
+        GLuint record( const osg::Vec3& v, const osg::Vec2f& t, const osg::Vec4f& c, const osg::Vec3& n )
         {
             VertMap::iterator i = _vertMap.find(v);
             if ( i == _vertMap.end() )
@@ -187,6 +199,10 @@ namespace
                 if (_colors)
                 {
                     _colors->push_back( c );
+                }
+                if ( _normals )
+                {
+                    _normals->push_back( n );
                 }
                 return index;
             }
@@ -219,7 +235,15 @@ namespace
                 c2 = (*_sourceColors)[p3];
             }
 
-            _tris.push( Triangle(record(v0, t0, c0), record(v1, t1, c1), record(v2, t2, c2)) );
+            osg::Vec3 n0, n1, n2;
+            if (_sourceNormals)
+            {
+                n0 = (*_sourceNormals)[p1];
+                n1 = (*_sourceNormals)[p2];
+                n2 = (*_sourceNormals)[p3];
+            }
+
+            _tris.push( Triangle(record(v0, t0, c0, n0), record(v1, t1, c1, n1), record(v2, t2, c2, n2)) );
         }
     };      
 
@@ -294,64 +318,6 @@ namespace
 
     typedef std::queue<Line>  LineQueue;
     typedef std::vector<Line> LineVector;
-
-#if 0
-    struct LineData
-    {
-        typedef std::map<osg::Vec3,GLuint> VertMap;
-        VertMap _vertMap;
-        osg::Vec3Array* _sourceVerts;
-        osg::Vec4Array* _sourceColors;
-        osg::Vec3Array* _verts;
-        osg::Vec4Array* _colors;
-        LineQueue _lines;
-        
-        LineData()
-        {
-            _sourceVerts = 0L;
-            _sourceColors = 0L;
-            _verts = new osg::Vec3Array();
-        }
-
-        void setSourceVerts( osg::Vec3Array* verts ) 
-        {
-            _sourceVerts = verts;
-        }
-
-        void setSourceColors( osg::Vec4Array* colors )
-        {
-            _sourceColors = colors;
-            if ( colors )
-                _colors = new osg::Vec4Array();
-        }
-
-        GLuint record( const osg::Vec3& v )
-        {
-            VertMap::iterator i = _vertMap.find(v);
-            if ( i == _vertMap.end() )
-            {
-                GLuint index = _verts->size();
-                _verts->push_back(v);
-                _vertMap[v] = index;
-                return index;
-            }
-            else
-            {
-                return i->second;
-            }
-        }
-        
-        void operator()( const osg::Vec3& v0, const osg::Vec3& v1, bool temp )
-        {
-            _lines.push( Line( record(v0), record(v1) ) );
-        }
-
-        void line(unsigned i0, unsigned i1)
-        {
-            _lines.push( Line(
-        }
-    };    
-#endif
 
     struct LineData
     {
@@ -604,6 +570,9 @@ namespace
         data.setSourceTexCoords(dynamic_cast<osg::Vec2Array*>(geom.getTexCoordArray(0)));
         if ( geom.getColorBinding() == osg::Geometry::BIND_PER_VERTEX )
             data.setSourceColors(dynamic_cast<osg::Vec4Array*>(geom.getColorArray()));
+        if ( geom.getNormalBinding() == osg::Geometry::BIND_PER_VERTEX )
+            data.setSourceNormals(dynamic_cast<osg::Vec3Array*>(geom.getNormalArray()));
+
         //TODO normals
         geom.accept( data );
         
@@ -641,6 +610,14 @@ namespace
                 c2 = (*data._colors)[tri._i2];
             }
 
+            osg::Vec3 n0,n1,n2;
+            if ( data._normals.valid() )
+            {
+                n0 = (*data._normals)[tri._i0];
+                n1 = (*data._normals)[tri._i1];
+                n2 = (*data._normals)[tri._i2];
+            }
+
             double g0 = angleBetween(v0_w, v1_w);
             double g1 = angleBetween(v1_w, v2_w);
             double g2 = angleBetween(v2_w, v0_w);
@@ -661,6 +638,8 @@ namespace
                             data._colors->push_back( (c0 + c1) / 2.0f );
                         if ( data._texcoords.valid() )
                             data._texcoords->push_back( (t0 + t1) / 2.0f );
+                        if ( data._normals.valid() )
+                            data._normals->push_back( (n0 + n1) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -685,6 +664,8 @@ namespace
                             data._colors->push_back( (c1 + c2) / 2.0f );
                         if ( data._texcoords.valid() )
                             data._texcoords->push_back( (t1 + t2) / 2.0f );
+                        if ( data._normals.valid() )
+                            data._normals->push_back( (n1 + n2) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -709,6 +690,8 @@ namespace
                             data._colors->push_back( (c2 + c0) / 2.0f );
                         if ( data._texcoords.valid() )
                             data._texcoords->push_back( (t2 + t0) / 2.0f );
+                        if ( data._normals.valid() )
+                            data._normals->push_back( (n2 + n0) / 2.0f );
                         i = data._verts->size() - 1;
                         edges[edge] = i;
                     }
@@ -738,6 +721,7 @@ namespace
             geom.setVertexArray( data._verts.get() );
             geom.setColorArray( data._colors.get() );
             geom.setTexCoordArray(0, data._texcoords.get() );
+            geom.setNormalArray( data._normals.get() );
 
             if ( data._verts->size() < 256 )
                 populateTriangles<osg::DrawElementsUByte,GLubyte>( geom, done, maxElementsPerEBO );

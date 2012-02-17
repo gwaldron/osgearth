@@ -32,7 +32,7 @@ _srs( srs )
 
 Geometry*
 GeometryFactory::createCircle(const osg::Vec3d& center,
-                              const Linear&     radius,
+                              const Distance&   radius,
                               unsigned          numSegments,
                               Geometry*         geomToUse)
 {
@@ -83,9 +83,9 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
 
 Geometry*
 GeometryFactory::createArc(const osg::Vec3d& center,
-                           const Linear&     radius,
-                           const Angular&    start,
-                           const Angular&    end,
+                           const Distance&   radius,
+                           const Angle&      start,
+                           const Angle&      end,
                            unsigned          numSegments,
                            Geometry*         geomToUse)
 {
@@ -138,14 +138,16 @@ GeometryFactory::createArc(const osg::Vec3d& center,
         }
     }
 
+    geom->rewind(Geometry::ORIENTATION_CCW);
+
     return geom;
 }
 
 Geometry*
 GeometryFactory::createEllipse(const osg::Vec3d& center,
-                               const Linear&     radiusMajor,
-                               const Linear&     radiusMinor,
-                               const Angular&    rotationAngle,
+                               const Distance&   radiusMajor,
+                               const Distance&   radiusMinor,
+                               const Angle&      rotationAngle,
                                unsigned          numSegments,
                                Geometry*         geomToUse)
 {
@@ -208,11 +210,9 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
 }
 
 Geometry*
-GeometryFactory::createRectangle(
-                                 const osg::Vec3d& center,
-                                 const Linear& width,
-                                 const Linear& height
-                                 )
+GeometryFactory::createRectangle(const osg::Vec3d& center,
+                                 const Distance&   width,
+                                 const Distance&   height )
 {
     Geometry* geom = new Polygon();
     

@@ -52,7 +52,7 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createCircle( 
             const osg::Vec3d& center,
-            const Linear&     radius,
+            const Distance&   radius,
             unsigned          numSegments =0,
             Geometry*         geomToUse   =0L);
 
@@ -66,9 +66,9 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createArc(
             const osg::Vec3d& center,
-            const Linear&     radius,
-            const Angular&    startAngle,
-            const Angular&    endAngle,
+            const Distance&   radius,
+            const Angle&      startAngle,
+            const Angle&      endAngle,
             unsigned          numSegments =0,
             Geometry*         geomToUse   =0L);
 
@@ -83,9 +83,9 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createEllipse(
             const osg::Vec3d& center,
-            const Linear&     radiusMajor,
-            const Linear&     radiusMinor,
-            const Angular&    rotationAngle,
+            const Distance&   radiusMajor,
+            const Distance&   radiusMinor,
+            const Angle&      rotationAngle,
             unsigned          numSegments =0,
             Geometry*         geomToUse   =0L);
 
@@ -97,9 +97,8 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createRectangle(
             const osg::Vec3d& center,
-            const Linear& width,
-            const Linear& height
-            );
+            const Distance&   width,
+            const Distance&   height );
 
     protected:
 

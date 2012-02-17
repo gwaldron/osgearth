@@ -37,12 +37,12 @@ LocalizedNode( mapNode )
     osg::ref_ptr<Feature> feature = new Feature( geom, 0L );
 
     GeometryCompiler compiler;
-    FilterContext cx( new Session(mapNode->getMap()) );
+    FilterContext cx( mapNode ? new Session(mapNode->getMap()) : 0L );
     osg::Node* node = compiler.compile( feature.get(), style, cx );
     if ( node )
     {
         getTransform()->addChild( node );
-        if ( draped )
+        if ( draped && mapNode )
         {
             DrapeableNode* dn = new DrapeableNode(mapNode);
             dn->addChild( getTransform() );
@@ -57,11 +57,6 @@ LocalizedNode( mapNode )
         applyStyle( style, draped );
     }
 }
-
-#if 0
-...NOTE to self: FeatureNode autoclamp is working. Test new GeometryNode clamp
-and orthonode autoclamp...then get back to working on the SIMDIS relative stuff....
-#endif
 
 GeometryNode::GeometryNode(MapNode*     mapNode,
                            osg::Node*   content,

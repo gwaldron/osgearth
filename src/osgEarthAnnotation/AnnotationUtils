@@ -21,6 +21,7 @@
 
 #include <osgEarthAnnotation/Common>
 #include <osgEarthSymbology/TextSymbol>
+#include <osgEarthSymbology/Style>
 #include <osg/AutoTransform>
 #include <osg/Drawable>
 #include <osg/Geometry>
@@ -78,6 +79,18 @@ namespace osgEarth { namespace Annotation
          */
         static osg::Program* getAnnotationProgram();
 
+        /**
+         * Builds a graph on top of the specified that that implements a 2-pass
+         * rendering scheme for self-occluding or self-intersecting geometies that
+         * would not otherwise properly blend. The scheme renders the back faces
+         * first, followed by the front faces, ensuring proper blending.
+         */
+        static osg::Node* installTwoPassAlpha( osg::Node* );
+
+        /**
+         * Checks whether using a style will require transparency blending.
+         */
+        static bool styleRequiresAlphaBlending( const Style& style );
 
         /**
          * Internal - A customized AutoTransform used by the OrthoNode to

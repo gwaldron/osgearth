@@ -52,8 +52,12 @@ namespace osgEarth { namespace Symbology
         /** Constructs a style by deserializing it from a Config. */
         Style(const Config& conf);
 
-        /** Copy constructor. */
-        Style(const Style& rhs); 
+        /** Copy constructor. By default, duplicates all the symbols; but if you 
+            specify SHALLOW_COPY, the new one will point to the same symbols. */
+        Style(const Style& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ); 
+
+        /** assignment operator */
+        Style& operator = (const Style& rhs);
 
         /** Gets the name of this style */
         const std::string& getName() const { return _name; }

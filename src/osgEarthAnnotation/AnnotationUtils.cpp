@@ -24,6 +24,8 @@
 #include <osgEarth/Registry>
 #include <osgText/Text>
 #include <osg/Depth>
+#include <osg/BlendFunc>
+#include <osg/CullFace>
 #include <osg/MatrixTransform>
 
 using namespace osgEarth;
@@ -447,6 +449,16 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     b->push_back(0); b->push_back(4); b->push_back(2);
     geom->addPrimitiveSet( b );
 
+    osg::Vec3Array* n = new osg::Vec3Array();
+    n->reserve(5);
+    n->push_back( osg::Vec3(0,0,1) );
+    n->push_back( osg::Vec3(-1,0,0) );
+    n->push_back( osg::Vec3(1,0,0) );
+    n->push_back( osg::Vec3(0,1,0) );
+    n->push_back( osg::Vec3(0,-1,0) );
+    geom->setNormalArray(n);
+    geom->setNormalBinding( osg::Geometry::BIND_PER_VERTEX );
+
     MeshSubdivider ms;
     ms.run( *geom, osg::DegreesToRadians(maxAngle), GEOINTERP_GREAT_CIRCLE );
 
@@ -458,7 +470,8 @@ AnnotationUtils::createHemisphere( float r, const osg::Vec4& color, float maxAng
     osg::Geode* geode = new osg::Geode();
     geode->addDrawable( geom );
 
-    return geode;
+    // need 2-pass alpha so you can view it properly from below.
+    return installTwoPassAlpha( geode );
 }
 
 osg::Node* 
@@ -601,4 +614,64 @@ AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, co
     geom->getOrCreateStateSet()->addUniform( s_isNotTextUniform.get() );
 
     return geom;
+}
+
+
+osg::Node*
+AnnotationUtils::installTwoPassAlpha(osg::Node* node)
+{
+  // first, get the whole thing under a depth-sorted bin:
+  osg::Group* g1 = new osg::Group();
+  g1->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
+  g1->getOrCreateStateSet()->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1);
+
+  // next start a traversal order bin so we draw in the proper order:
+  osg::Group* g2 = new osg::Group();
+  g2->getOrCreateStateSet()->setBinName("TraversalOrderBin");
+  g1->addChild( g2 );
+
+  // next, create a group for the first pass (backfaces only):
+  osg::Group* backPass = new osg::Group();
+  backPass->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(osg::CullFace::FRONT), 1 );
+  backPass->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL,0,1,false), 1);
+  g2->addChild( backPass );
+
+  // and a group for the front-face pass:
+  osg::Group* frontPass = new osg::Group();
+  frontPass->getOrCreateStateSet()->setAttributeAndModes( new osg::CullFace(osg::CullFace::BACK), 1 );
+  g2->addChild( frontPass );
+
+  // finally, attach the geometry to both passes.
+  backPass->addChild( node );
+  frontPass->addChild( node );
+
+  return g1;
+}
+
+
+bool 
+AnnotationUtils::styleRequiresAlphaBlending( const Style& style )
+{
+    if (style.has<PolygonSymbol>() &&
+        style.get<PolygonSymbol>()->fill().isSet() &&
+        style.get<PolygonSymbol>()->fill()->color().a() < 1.0)
+    {
+        return true;
+    }
+
+    if (style.has<LineSymbol>() &&
+        style.get<LineSymbol>()->stroke().isSet() &&
+        style.get<LineSymbol>()->stroke()->color().a() < 1.0 )
+    {
+        return true;
+    }
+
+    if (style.has<PointSymbol>() &&
+        style.get<PointSymbol>()->fill().isSet() &&
+        style.get<PointSymbol>()->fill()->color().a() < 1.0 )
+    {
+        return true;
+    }
+
+    return false;
 }

@@ -49,7 +49,6 @@ _scale         ( 1.0f, 1.0f, 1.0f )
     {
         _xform = new osg::MatrixTransform();
     }
-    _xform->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
 
     if ( _mapSRS.valid() )
     {

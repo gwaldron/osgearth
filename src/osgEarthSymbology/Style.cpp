@@ -36,14 +36,34 @@ _name( name )
     //NOP
 }
 
-Style::Style(const Style& rhs) :
+Style::Style(const Style& rhs, const osg::CopyOp& op) :
 _name    ( rhs._name ),
 _symbols ( rhs._symbols ),
 _origType( rhs._origType ),
 _origData( rhs._origData ),
 _uri     ( rhs._uri )
 {
-    //nop
+    if ( op.getCopyFlags() == osg::CopyOp::SHALLOW_COPY )
+    {
+        _symbols = rhs._symbols;
+    }
+    else
+    {
+        _symbols.clear();
+        mergeConfig( rhs.getConfig() );
+    }
+}
+
+Style&
+Style::operator = ( const Style& rhs )
+{
+    _name.clear();
+    _origType.clear();
+    _origData.clear();
+    _uri.unset();
+    _symbols.clear();
+    mergeConfig( rhs.getConfig() );
+    return *this;
 }
 
 void Style::addSymbol(Symbol* symbol)

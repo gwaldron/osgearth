@@ -98,7 +98,7 @@ namespace
             if ( oneMinusSinLat != 0.0 )
             {
                 double yr = ((0.5 * log( (1+sinLat)/oneMinusSinLat )) - (-osg::PI)) / (2.0*osg::PI);
-                points[0].x() = MERC_MINX + (xr * MERC_WIDTH);
+                points[i].x() = MERC_MINX + (xr * MERC_WIDTH);
                 points[i].y() = MERC_MINY + (yr * MERC_HEIGHT);
                 // z doesn't change here.
             }

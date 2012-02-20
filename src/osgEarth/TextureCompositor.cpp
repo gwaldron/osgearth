@@ -87,7 +87,8 @@ TextureLayout::assignPrimarySlot( ImageLayer* layer, int orderIndex )
         // negative UID means the slot is empty.
         bool slotAvailable = (*i < 0) && (_reservedSlots.find(slot) == _reservedSlots.end());
         if ( slotAvailable )
-        {            
+        {  
+            *i = layer->getUID();
             found = true;
             break;
         }
@@ -98,8 +99,9 @@ TextureLayout::assignPrimarySlot( ImageLayer* layer, int orderIndex )
         // put the UID in the next available slot (that's not reserved).
         while( _reservedSlots.find(_slots.size()) != _reservedSlots.end() )
             _slots.push_back( -1 );
+
         slot = _slots.size();
-        _slots.push_back( layer->getUID() );        
+        _slots.push_back( layer->getUID() );     
     }
 
     // record the render order of this slot:
@@ -115,6 +117,7 @@ TextureLayout::assignPrimarySlot( ImageLayer* layer, int orderIndex )
         else
             _order.insert(_order.begin() + orderIndex, slot);
     }
+
 
 
     OE_INFO << LC << "Allocated SLOT " << slot << "; primary slot for layer \"" << layer->getName() << "\"" << std::endl;

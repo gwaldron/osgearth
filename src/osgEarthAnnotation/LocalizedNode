@@ -81,6 +81,17 @@ namespace osgEarth { namespace Annotation
         const osg::Vec3d& getLocalOffset() const;
 
         /**
+         * Sets a local rotation - a rotation relative to the local tangent plane
+         * of the geometry.
+         */
+        void setLocalRotation( const osg::Quat& rotation );
+
+        /**
+         * Gets the local tangent plane -space rotation.
+         */
+        const osg::Quat& getLocalRotation() const;
+
+        /**
          * Enables or disable automatic horizon culling
          */
         void setHorizonCulling( bool value );
@@ -102,6 +113,7 @@ namespace osgEarth { namespace Annotation
         GeoPoint _mapPosition;
         osg::Vec3f _scale;
         osg::Vec3d _localOffset;
+        osg::Quat  _localRotation;
 
         friend class Decoration;
         

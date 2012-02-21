@@ -96,3 +96,11 @@ osg::Camera* ViewerWidget::createCamera()
   
   return camera.release();
 }
+      
+void ViewerWidget::paintEvent(QPaintEvent* e)
+{
+    if ( getRunFrameScheme() == CONTINUOUS || checkNeedToDoFrame() )
+    {
+        frame();
+    }
+}

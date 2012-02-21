@@ -147,3 +147,13 @@ void CompositeViewerWidget::layoutWidgets()
   delete layout();
   setLayout( grid );
 }
+
+
+void CompositeViewerWidget::paintEvent(QPaintEvent* e)
+{
+    if ( getRunFrameScheme() == CONTINUOUS || checkNeedToDoFrame() )
+    {
+        frame();
+    }
+}
+

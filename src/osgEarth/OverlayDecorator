@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Camera>
 #include <osg/CoordinateSystemNode>
 #include <osg/Texture2D>
@@ -135,6 +136,8 @@ namespace osgEarth
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<osgEarth::VirtualProgram>  _vp;
         osg::ref_ptr<TerrainEngineNode>         _engine;
+
+        bool checkNeedsUpdate(osg::View* view);
 
     public:
         // marker class for DrapeableNode support.

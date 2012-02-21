@@ -127,6 +127,17 @@ namespace osgEarth
         if ( oldCount + DELTA >= 0 ) \
             NODE ->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + DELTA ) ); \
     }
+
+    /**
+     * Adjusts a node's event traversal count by a delta.
+     * Only safe to call from the main/event/update threads
+     */
+#define ADJUST_EVENT_TRAV_COUNT( NODE, DELTA ) \
+    { \
+        int oldCount = NODE ->getNumChildrenRequiringEventTraversal(); \
+        if ( oldCount + DELTA >= 0 ) \
+            NODE ->setNumChildrenRequiringEventTraversal( (unsigned int)(oldCount + DELTA ) ); \
+    }
 }
 
 #endif //OSGEARTH_FINDNODE

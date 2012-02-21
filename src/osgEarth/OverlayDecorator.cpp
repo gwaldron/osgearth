@@ -24,6 +24,7 @@
 #include <osg/TexEnv>
 #include <osg/BlendFunc>
 #include <osg/ComputeBoundsVisitor>
+#include <osgGA/EventVisitor>
 #include <osgShadow/ConvexPolyhedron>
 #include <osgUtil/LineSegmentIntersector>
 #include <iomanip>
@@ -348,6 +349,8 @@ OverlayDecorator::reinit()
             if ( _rttBlending )
             {
                 osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                //Sure it shouldn't be this? -gw
+                //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
             }
             else
@@ -556,11 +559,14 @@ OverlayDecorator::setOverlayGraph( osg::Node* node )
     {
         if ( _overlayGraph.valid() && node == 0L )
         {
-            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+            // un-register for traversals.
+            setNumChildrenRequiringUpdateTraversal( 0 );
+            setNumChildrenRequiringEventTraversal( 0 );
         }
         else if ( !_overlayGraph.valid() && node != 0L )
         {
-            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+            // request that OSG give this node an event traversal.
+            setNumChildrenRequiringEventTraversal( 1 );
         }
 
         _overlayGraph = node;
@@ -950,10 +956,30 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
 
         else
         {
+            // during the event traversal, check to see whether any of the camera
+            // matrices have changed from the previous frame. If so, active the update
+            // visitor to update the RTT camera.
+            if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+            {
+                osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(&nv);
+                osg::View* view = ev->getActionAdapter()->asView();
+
+                if ( checkNeedsUpdate(view) )
+                {
+                    ev->getActionAdapter()->requestRedraw();
+                    this->setNumChildrenRequiringUpdateTraversal( 1 );
+                }
+            }
+
+            // if we get an update traversal, recalculate the RTT camera parameters.
+            // TODO: update this to support multiple views..?
             if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
             {
+                OE_DEBUG << LC << "Updated RTT camera, frame = " << nv.getFrameStamp()->getFrameNumber() << std::endl;
                 updateRTTCamera( nv );
+                this->setNumChildrenRequiringUpdateTraversal( 0 );
             }
+
             _rttCamera->accept( nv );
 
             osg::Group::traverse( nv );
@@ -975,3 +1001,12 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
     }
 }
 
+
+bool
+OverlayDecorator::checkNeedsUpdate( osg::View* view )
+{
+    //TODO: update for per-view support later
+    return
+        _rttCamera->getViewMatrix()       != _rttViewMatrix ||
+        _rttCamera->getProjectionMatrix() != _rttProjMatrix;
+}

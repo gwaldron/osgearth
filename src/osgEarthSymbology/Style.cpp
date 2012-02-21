@@ -50,7 +50,7 @@ _uri     ( rhs._uri )
     else
     {
         _symbols.clear();
-        mergeConfig( rhs.getConfig() );
+        mergeConfig( rhs.getConfig(false) );
     }
 }
 
@@ -62,7 +62,7 @@ Style::operator = ( const Style& rhs )
     _origData.clear();
     _uri.unset();
     _symbols.clear();
-    mergeConfig( rhs.getConfig() );
+    mergeConfig( rhs.getConfig(false) );
     return *this;
 }
 

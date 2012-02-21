@@ -104,6 +104,7 @@ namespace
             if ( ea.getEventType() == ea.KEYDOWN && ea.getKey() >= '1' && ea.getKey() <= '6' )
             {
                 _manip->setViewpoint( VPs[ea.getKey()-'1'], 4.0 );
+                aa.requestRedraw();
             }
             return false;
         }
@@ -122,9 +123,9 @@ namespace
         {
             if (ea.getEventType() == ea.KEYDOWN && ea.getKey() == _key)
             {
-                bool lockAzimuth
-                    = _manip->getSettings()->getLockAzimuthWhilePanning();
+                bool lockAzimuth = _manip->getSettings()->getLockAzimuthWhilePanning();
                 _manip->getSettings()->setLockAzimuthWhilePanning(!lockAzimuth);
+                aa.requestRedraw();
                 return true;
             }
             return false;
@@ -133,8 +134,7 @@ namespace
         void getUsage(osg::ApplicationUsage& usage) const
         {
             using namespace std;
-            usage.addKeyboardMouseBinding(string(1, _key),
-                string("Toggle azimuth locking"));
+            usage.addKeyboardMouseBinding(string(1, _key), string("Toggle azimuth locking"));
         }
 
         char _key;

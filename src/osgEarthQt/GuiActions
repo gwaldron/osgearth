@@ -130,6 +130,7 @@ namespace osgEarth { namespace QtGui
         if (manip)
         {
           manip->setViewpoint(_viewpoint, _duration);
+          (*it)->requestRedraw();
           success = true;
         }
       }
@@ -139,10 +140,10 @@ namespace osgEarth { namespace QtGui
 
     const osgEarth::Viewpoint& viewpoint() { return _viewpoint; }
 
-	protected:
-		osgEarth::Viewpoint _viewpoint;
-    ViewVector _views;
-    double _duration;
+  protected:
+      osgEarth::Viewpoint _viewpoint;
+      ViewVector _views;
+      double _duration;
   };
 
 } }

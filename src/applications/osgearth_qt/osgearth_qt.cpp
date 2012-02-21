@@ -71,7 +71,7 @@ usage( const std::string& msg )
     OE_NOTICE << "USAGE: osgearth_qt [options] file.earth" << std::endl;
     OE_NOTICE << "   --composite n           : use a composite viewer with n initial views" << std::endl;
     OE_NOTICE << "   --stylesheet filename   : optional Qt stylesheet" << std::endl;
-    OE_NOTICE << "   --on-demand             : use the OSG ON_DEMAND frame scheme" << std::endl;
+    OE_NOTICE << "   --run-on-demand         : use the OSG ON_DEMAND frame scheme" << std::endl;
     OE_NOTICE << "   --tracks                : create some moving track data" << std::endl;
         
     return -1;
@@ -208,7 +208,7 @@ main(int argc, char** argv)
     std::string stylesheet;
     bool styled = arguments.read("--stylesheet", stylesheet);
 
-    bool on_demand = arguments.read("--on-demand");
+    bool on_demand = arguments.read("--run-on-demand");
 
     bool trackData = arguments.read("--tracks");
 

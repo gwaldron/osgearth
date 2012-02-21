@@ -468,6 +468,7 @@ Control::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa, 
                 {
                     osg::Vec2f relXY( ea.getX() - _renderPos.x(), cx._vp->height() - ea.getY() - _renderPos.y() );
                     i->get()->onClick( this, relXY, ea.getButtonMask() );
+                    aa.requestRedraw();
                 }
             }
         }
@@ -942,6 +943,8 @@ HSliderControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapte
         float relX = ea.getX() - _renderPos.x();
 
         setValue( _min + (_max-_min) * ( relX/_renderSize.x() ) );
+        aa.requestRedraw();
+
         return true;
     }
     return Control::handle( ea, aa, cx );
@@ -1034,6 +1037,7 @@ CheckBoxControl::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
     if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
     {
         setValue( !_value );
+        aa.requestRedraw();
         return true;
     }
     return Control::handle( ea, aa, cx );
@@ -2235,14 +2239,12 @@ ControlCanvas::get( osg::View* view, bool installInSceneData )
 
 // ---------------------------------------------------------------------------
 
-ControlCanvas::ControlCanvas( osgViewer::View* view ) :
-_contextDirty(true)
+ControlCanvas::ControlCanvas( osgViewer::View* view )
 {
     init( view, true );
 }
 
-ControlCanvas::ControlCanvas( osgViewer::View* view, bool registerCanvas ) :
-_contextDirty( true )
+ControlCanvas::ControlCanvas( osgViewer::View* view, bool registerCanvas )
 {
     init( view, registerCanvas );
 }
@@ -2250,6 +2252,9 @@ _contextDirty( true )
 void
 ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
 {
+    _contextDirty  = true;
+    _updatePending = false;
+
     this->setDataVariance( osg::Object::DYNAMIC );
 
     view->addEventHandler( new ViewportHandler(this) );
@@ -2261,8 +2266,8 @@ ControlCanvas::init( osgViewer::View* view, bool registerCanvas )
     setRenderOrder(osg::Camera::POST_RENDER, 25000);
     setAllowEventFocus( true );
     
-    // activate the update traversal
-    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+    // register for event traversals.
+    ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     osg::StateSet* ss = getOrCreateStateSet();
     ss->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
@@ -2434,9 +2439,37 @@ ControlCanvas::update( const osg::FrameStamp* frameStamp )
 void
 ControlCanvas::traverse( osg::NodeVisitor& nv )
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    {
+        if ( !_updatePending )
+        {
+            bool needsUpdate = _contextDirty;
+            if ( !needsUpdate )
+            {
+                for( ControlList::iterator i = _controls.begin(); i != _controls.end(); ++i )
+                {
+                    Control* control = i->get();
+                    if ( control->isDirty() )
+                    {
+                        needsUpdate = true;
+                        break;
+                    }
+                }
+            }
+
+            if ( needsUpdate )
+            {
+                _updatePending = true;
+                ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+            }
+        }
+    }
+
+    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
     {
         update( nv.getFrameStamp() );
+        ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        _updatePending = false;
     }
 
     osg::Camera::traverse( nv );

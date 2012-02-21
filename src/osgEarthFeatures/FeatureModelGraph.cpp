@@ -22,6 +22,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ElevationQuery>
+#include <osgEarth/FindNode>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osgDB/FileNameUtils>
@@ -156,11 +157,12 @@ FeatureModelGraph::FeatureModelGraph(FeatureSource*                   source,
                                      const FeatureModelSourceOptions& options,
                                      FeatureNodeFactory*              factory,
                                      Session*                         session) :
-_source   ( source ),
-_options  ( options ),
-_factory  ( factory ),
-_session  ( session ),
-_dirty    ( false )
+_source       ( source ),
+_options      ( options ),
+_factory      ( factory ),
+_session      ( session ),
+_dirty        ( false ),
+_pendingUpdate( false )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
@@ -214,7 +216,7 @@ _dirty    ( false )
         }
     }
 
-    setNumChildrenRequiringUpdateTraversal( 1 );
+    ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     redraw();
 }
@@ -756,13 +758,25 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
 void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
     {
-        if (_source->outOfSyncWith(_revision) || _dirty)
+        if ( !_pendingUpdate && (_dirty || _source->outOfSyncWith(_revision)) )
         {
-            redraw();
+            _pendingUpdate = true;
+            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
         }
     }
+
+    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        if ( _pendingUpdate )
+        {
+            redraw();
+            _pendingUpdate = false;
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
+    }
+
     osg::Group::traverse(nv);
 }
 

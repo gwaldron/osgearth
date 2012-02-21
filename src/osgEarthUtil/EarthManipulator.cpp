@@ -1221,7 +1221,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 _time_s_set_viewpoint = _time_s_now;
 
             updateSetViewpoint();
-            aa.requestRedraw();
+
+            aa.requestContinuousUpdate( _setting_viewpoint );
         }
 
         if ( _thrown || _continuous )
@@ -1236,10 +1237,9 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             _continuous_dy = 0.0;
         }
         
-        if ( _task.valid() )
+        if ( _task.valid() && _task->_type != TASK_NONE )
         {
-            if ( serviceTask() )
-                aa.requestRedraw();
+            aa.requestContinuousUpdate( serviceTask() );
         }
 
         _frame_count++;

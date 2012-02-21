@@ -737,6 +737,7 @@ namespace osgEarth { namespace Util { namespace Controls
         GeodeTable      _geodeTable;
         ControlContext  _context;
         bool            _contextDirty;
+        bool            _updatePending;
 
         osg::ref_ptr<ControlNodeBin> _controlNodeBin;
 

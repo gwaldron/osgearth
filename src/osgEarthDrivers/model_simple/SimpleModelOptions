@@ -36,6 +36,14 @@ namespace osgEarth { namespace Drivers
         optional<float>& lodScale() { return _lod_scale; }
         const optional<float>& lodScale() const { return _lod_scale; }
 
+        optional<osg::Vec3>& location() { return _location; }
+        const optional<osg::Vec3>& location() const { return _location; }
+
+        optional<osg::Vec3>& orientation() { return _orientation;}
+        const optional<osg::Vec3>& orientation() const { return _orientation;}
+
+
+
     public:
         SimpleModelOptions( const ConfigOptions& options ) : ModelSourceOptions( options ) {
             setDriver( "simple" );
@@ -47,6 +55,8 @@ namespace osgEarth { namespace Drivers
             Config conf = ModelSourceOptions::getConfig();
             conf.updateIfSet( "url", _url );
 			conf.updateIfSet( "lod_scale", _lod_scale );
+            conf.updateIfSet( "location", _location );
+            conf.updateIfSet( "orientation", _orientation);
             return conf;
         }
 
@@ -60,10 +70,14 @@ namespace osgEarth { namespace Drivers
         void fromConfig( const Config& conf ) {
             conf.getIfSet( "url", _url );
 			conf.getIfSet( "lod_scale", _lod_scale );
+            conf.getIfSet( "location", _location);
+            conf.getIfSet( "orientation", _orientation);
         }
 
         optional<URI> _url;
 		optional<float> _lod_scale;
+        optional<osg::Vec3> _location;
+        optional<osg::Vec3> _orientation;
     };
 
 } } // namespace osgEarth::Drivers

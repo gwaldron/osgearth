@@ -24,7 +24,7 @@
 #include <osgEarthAnnotation/LabelNode>
 
 #include <osgEarth/Registry>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/DrapeableNode>

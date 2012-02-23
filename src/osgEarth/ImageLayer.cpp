@@ -328,7 +328,7 @@ ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool fo
     GeoImage result;
 
     // If the layer is disabled, bail out.
-    if ( _runtimeOptions.enabled().isSetTo( false ) )
+    if ( !getEnabled() )
     {
         return GeoImage::INVALID;
     }

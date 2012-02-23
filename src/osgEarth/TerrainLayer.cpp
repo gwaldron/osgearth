@@ -41,6 +41,7 @@ _cachePolicy        ( CachePolicy::USAGE_DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
 _enabled            ( true ),
+_visible            ( true ),
 _reprojectedTileSize( 256 )
 
 {
@@ -61,6 +62,7 @@ void
 TerrainLayerOptions::setDefaults()
 {
     _enabled.init( true );
+    _visible.init( true );
     _exactCropping.init( false );
     _reprojectedTileSize.init( 256 );
     _cachePolicy.init( CachePolicy() );
@@ -81,6 +83,7 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "max_level_resolution", _maxLevelResolution );
     conf.updateIfSet( "loading_weight", _loadingWeight );
     conf.updateIfSet( "enabled", _enabled );
+    conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.updateObjIfSet( "profile", _profile );
     conf.updateIfSet( "max_data_level", _maxDataLevel);
@@ -109,6 +112,7 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "max_level_resolution", _maxLevelResolution );
     conf.getIfSet( "loading_weight", _loadingWeight );
     conf.getIfSet( "enabled", _enabled );
+    conf.getIfSet( "visible", _visible );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getObjIfSet( "profile", _profile );
     conf.getIfSet( "max_data_level", _maxDataLevel);
@@ -598,10 +602,10 @@ TerrainLayer::isCached(const TileKey& key) const
 }
 
 void
-TerrainLayer::setEnabled( bool value )
+TerrainLayer::setVisible( bool value )
 {
-    _runtimeOptions->enabled() = value;
-    fireCallback( &TerrainLayerCallback::onEnabledChanged );
+    _runtimeOptions->visible() = value;
+    fireCallback( &TerrainLayerCallback::onVisibleChanged );
 }
 
 void

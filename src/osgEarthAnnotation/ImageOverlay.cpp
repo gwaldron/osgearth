@@ -18,11 +18,10 @@
 */
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osg/Geode>
 #include <osg/ShapeDrawable>
 #include <osg/Texture2D>
-#include <osgEarth/FindNode>
 #include <osg/io_utils>
 #include <algorithm>
 

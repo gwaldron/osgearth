@@ -259,7 +259,7 @@ main(int argc, char** argv)
         views.push_back(view);
       }
 
-      viewerWidget->setGeometry(100, 100, 800, 600);
+      viewerWidget->setGeometry(50, 50, 1024, 768);
       appWin.setViewerWidget(viewerWidget, views);
 
       viewer = viewerWidget;
@@ -267,7 +267,7 @@ main(int argc, char** argv)
     else
     {
       osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
-      viewerWidget->setGeometry(100, 100, 800, 600);
+      viewerWidget->setGeometry(50, 50, 1024, 768);
       viewerWidget->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
       appWin.setViewerWidget(viewerWidget);
       views.push_back(viewerWidget);

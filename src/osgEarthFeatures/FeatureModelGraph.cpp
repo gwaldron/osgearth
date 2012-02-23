@@ -22,7 +22,6 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ElevationQuery>
-#include <osgEarth/FindNode>
 #include <osg/PagedLOD>
 #include <osg/ProxyNode>
 #include <osgDB/FileNameUtils>

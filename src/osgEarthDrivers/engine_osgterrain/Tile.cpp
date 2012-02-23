@@ -24,7 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Locators>
 #include <osgEarth/Map>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>

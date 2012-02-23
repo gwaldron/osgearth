@@ -19,7 +19,7 @@
 
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgUtil/IntersectionVisitor>
 
 #define LC "[DrapeableNode] "

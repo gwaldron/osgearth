@@ -22,7 +22,7 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 
 #include <osg/NodeCallback>

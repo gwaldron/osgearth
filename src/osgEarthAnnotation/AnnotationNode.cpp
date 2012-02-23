@@ -22,7 +22,6 @@
 #include <osgEarthAnnotation/AnnotationUtils>
 
 #include <osgEarth/DepthOffset>
-#include <osgEarth/FindNode>
 #include <osgEarth/MapNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/TerrainEngineNode>

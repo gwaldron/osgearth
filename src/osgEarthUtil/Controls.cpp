@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/Controls>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osg/Geometry>
 #include <osg/NodeCallback>
 #include <osg/Depth>

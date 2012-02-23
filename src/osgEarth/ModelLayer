@@ -60,10 +60,16 @@ namespace osgEarth
         const optional<bool>& lightingEnabled() const { return _lighting; }
 
         /**
-         * Whether this layer will be drawn.
+         * Whether this layer is active
          */
         optional<bool>& enabled() { return _enabled; }
         const optional<bool>& enabled() const { return _enabled; }
+
+        /**
+         * Whether this layer is visible
+         */
+        optional<bool>& visible() { return _visible; }
+        const optional<bool>& visible() const { return _visible; }
 
         /**
          * Whether to drape the model geometry over the terrain as a projected overlay.
@@ -84,6 +90,7 @@ namespace osgEarth
         optional<bool> _overlay;
         optional<ModelSourceOptions> _driver;
         optional<bool> _enabled;
+        optional<bool> _visible;
         optional<bool> _lighting;
     };
 
@@ -92,7 +99,7 @@ namespace osgEarth
     */
     struct ModelLayerCallback : public osg::Referenced
     {
-        virtual void onEnabledChanged( class ModelLayer* layer ) { }
+        virtual void onVisibleChanged( class ModelLayer* layer ) { }
         virtual void onOverlayChanged( class ModelLayer* layer ) { }
     };
 
@@ -147,8 +154,11 @@ namespace osgEarth
     public: // properties
 
         /** Whether this layer is rendered. */
+        bool getVisible() const;
+        void setVisible(bool value);
+
+        /** Whether this layer is used at all. */
         bool getEnabled() const;
-        void setEnabled(bool enabled);
 
         /** Whether this layer is drawn as normal geometry or as a draped overlay. */
         bool getOverlay() const;

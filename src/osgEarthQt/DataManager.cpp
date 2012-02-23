@@ -320,6 +320,13 @@ bool DataManager::doAction( void* sender, Action* action_, bool reversible )
             j->get()->operator()( sender, action.get() );
     }
 
+    if ( actionSucceeded )
+    {
+        ViewVector& views = action_->getViews();
+        for( ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+            i->get()->requestRedraw();
+    }
+
     return actionSucceeded;
 }
 
@@ -328,19 +335,26 @@ bool DataManager::undoAction()
     if ( !canUndo() )
         return false;
 
-		osg::ref_ptr<ReversibleAction> action = static_cast<ReversibleAction*>( _undoStack.back().get() );
-		_undoStack.pop_back();
+	osg::ref_ptr<ReversibleAction> action = static_cast<ReversibleAction*>( _undoStack.back().get() );
+	_undoStack.pop_back();
 
-		bool undoSucceeded = action->undoAction( this, this );
+	bool undoSucceeded = action->undoAction( this, this );
 
-		// if the undo failed, we are probably in some undefined application state, so
+    // if the undo failed, we are probably in some undefined application state, so
     // clear out the undo stack just to be safe.
     if ( !undoSucceeded )
     {
         clearUndoActions();
     }
 
-		return undoSucceeded;
+    if ( undoSucceeded )
+    {
+        ViewVector& views = action->getViews();
+        for( ViewVector::iterator i = views.begin(); i != views.end(); ++i )
+            i->get()->requestRedraw();
+    }
+
+    return undoSucceeded;
 }
 
 bool DataManager::canUndo() const

@@ -18,7 +18,7 @@
 */
 #include <osgEarth/MapNode>
 #include <osgEarth/MaskNode>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/OverlayDecorator>
@@ -399,6 +399,9 @@ MapNode::isGeocentric() const
 void
 MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
+    if ( !layer->getEnabled() )
+        return;
+
     osg::Node* node = layer->getOrCreateNode();
 
     layer->addCallback(_modelLayerCallback.get() );

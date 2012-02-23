@@ -20,7 +20,7 @@
 #include <osgEarthUtil/StarData>
 
 #include <osgEarth/ShaderComposition>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>

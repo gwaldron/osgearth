@@ -29,7 +29,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/DepthOffset>
 #include <osgEarth/ECEF>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/CullingUtils>
 #include <osgEarth/DrapeableNode>

@@ -19,8 +19,8 @@
 #include <osgEarth/TerrainEngineNode>
 #include <osgEarth/Capabilities>
 #include <osgEarth/Registry>
-#include <osgEarth/FindNode>
 #include <osgEarth/TextureCompositor>
+#include <osgEarth/NodeUtils>
 #include <osgDB/ReadFile>
 #include <osg/CullFace>
 #include <osg/PolygonOffset>
@@ -55,17 +55,22 @@ namespace osgEarth
     };
 }
 
+
 //------------------------------------------------------------------------
 
-TerrainEngineNode::ImageLayerController::ImageLayerController( const Map* map ) :
-_mapf( map, Map::IMAGE_LAYERS, "TerrainEngineNode.ImageLayerController" )
+
+TerrainEngineNode::ImageLayerController::ImageLayerController(const Map*         map,
+                                                              TerrainEngineNode* engine) :
+_mapf  ( map, Map::IMAGE_LAYERS, "TerrainEngineNode.ImageLayerController" ),
+_engine( engine )
 {
     //nop
 }
 
+
 // this handler adjusts the uniform set when a terrain layer's "enabed" state changes
 void
-TerrainEngineNode::ImageLayerController::onEnabledChanged( TerrainLayer* layer )
+TerrainEngineNode::ImageLayerController::onVisibleChanged( TerrainLayer* layer )
 {
     if ( !Registry::instance()->getCapabilities().supportsGLSL() )
         return;
@@ -73,25 +78,13 @@ TerrainEngineNode::ImageLayerController::onEnabledChanged( TerrainLayer* layer )
     _mapf.sync();
     int layerNum = _mapf.indexOf( static_cast<ImageLayer*>(layer) );
     if ( layerNum >= 0 )
-        _layerEnabledUniform.setElement( layerNum, layer->getEnabled() );
+        _layerVisibleUniform.setElement( layerNum, layer->getVisible() );
     else
-        OE_WARN << LC << "Odd, updateLayerOpacity did not find layer" << std::endl;
+        OE_WARN << LC << "Odd, onVisibleChanged did not find layer" << std::endl;
+
+    _engine->dirty();
 }
 
-TerrainEngineNode::~TerrainEngineNode()
-{
-    //Remove any callbacks added to the image layers
-    if (_map.valid())
-    {
-        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::~TerrainEngineNode" );
-        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
-        {
-            i->get()->removeCallback( _imageLayerController.get() );
-        }
-    }
-
-
-}
 
 // this handler adjusts the uniform set when a terrain layer's "opacity" value changes
 void
@@ -106,33 +99,50 @@ TerrainEngineNode::ImageLayerController::onOpacityChanged( ImageLayer* layer )
         _layerOpacityUniform.setElement( layerNum, layer->getOpacity() );
     else
         OE_WARN << LC << "Odd, onOpacityChanged did not find layer" << std::endl;
+
+    _engine->dirty();
 }
+
 
 //------------------------------------------------------------------------
 
+
 TerrainEngineNode::TerrainEngineNode() :
-_verticalScale( 1.0f ),
+_verticalScale         ( 1.0f ),
 _elevationSamplingRatio( 1.0f ),
-_initStage( INIT_NONE )
+_initStage             ( INIT_NONE ),
+_dirtyCount            ( 0 )
 {
-    ctor();
+    // register for event traversals so we can properly reset the dirtyCount
+    ADJUST_EVENT_TRAV_COUNT( this, 1 );
 }
 
-TerrainEngineNode::TerrainEngineNode( const TerrainEngineNode& rhs, const osg::CopyOp& op ) :
-osg::CoordinateSystemNode( rhs, op ),
-_verticalScale( rhs._verticalScale ),
-_elevationSamplingRatio( rhs._elevationSamplingRatio ),
-_map( rhs._map.get() ),
-_initStage( rhs._initStage )
+
+TerrainEngineNode::~TerrainEngineNode()
 {
-    ctor();
+    //Remove any callbacks added to the image layers
+    if (_map.valid())
+    {
+        MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::~TerrainEngineNode" );
+        for( ImageLayerVector::const_iterator i = mapf.imageLayers().begin(); i != mapf.imageLayers().end(); ++i )
+        {
+            i->get()->removeCallback( _imageLayerController.get() );
+        }
+    }
 }
+
 
 void
-TerrainEngineNode::ctor()
+TerrainEngineNode::dirty()
 {
-    //nop
+    if ( 0 == _dirtyCount++ )
+    {
+        // notify any attached Views
+        ViewVisitor<RequestRedraw> visitor;
+        this->accept(visitor);
+    }
 }
+
 
 void
 TerrainEngineNode::preInitialize( const Map* map, const TerrainOptions& options )
@@ -191,7 +201,7 @@ TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options
             onMapInfoEstablished( MapInfo(_map.get()) );
 
         // create a layer controller. This object affects the uniforms that control layer appearance properties
-        _imageLayerController = new ImageLayerController( _map.get() );
+        _imageLayerController = new ImageLayerController( _map.get(), this );
 
         // register the layer Controller it with all pre-existing image layers:
         MapFrame mapf( _map.get(), Map::IMAGE_LAYERS, "TerrainEngineNode::initialize" );
@@ -201,10 +211,6 @@ TerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& options
         }
 
         updateImageUniforms();
-
-        // then register the callback
-        // NOTE: moved this into preInitialize
-        //_map->addMapCallback( new TerrainEngineNodeCallbackProxy( this ) );
     }
 
     _initStage = INIT_POSTINIT_COMPLETE;
@@ -278,6 +284,9 @@ TerrainEngineNode::onMapModelChanged( const MapModelChange& change )
     {
         _texCompositor->applyMapModelChange( change );
     }
+
+    // notify that a redraw is required.
+    dirty();
 }
 
 void
@@ -293,7 +302,7 @@ TerrainEngineNode::updateImageUniforms()
     // get a copy of the image layer stack:
     MapFrame mapf( _map.get(), Map::IMAGE_LAYERS );
 
-    _imageLayerController->_layerEnabledUniform.detach();
+    _imageLayerController->_layerVisibleUniform.detach();
     _imageLayerController->_layerOpacityUniform.detach();
     _imageLayerController->_layerRangeUniform.detach();
     
@@ -303,7 +312,7 @@ TerrainEngineNode::updateImageUniforms()
         // layer count has changed, but the shader has not yet caught up. In the future we might use this to disable
         // "ghost" layers that used to exist at a given index, but no longer do.
         
-        _imageLayerController->_layerEnabledUniform.attach( "osgearth_ImageLayerEnabled", osg::Uniform::BOOL,  stateSet, MAX_IMAGE_LAYERS );
+        _imageLayerController->_layerVisibleUniform.attach( "osgearth_ImageLayerVisible", osg::Uniform::BOOL,  stateSet, MAX_IMAGE_LAYERS );
         _imageLayerController->_layerOpacityUniform.attach( "osgearth_ImageLayerOpacity", osg::Uniform::FLOAT, stateSet, mapf.imageLayers().size() );
         _imageLayerController->_layerRangeUniform.attach  ( "osgearth_ImageLayerRange",   osg::Uniform::FLOAT, stateSet, 2 * mapf.imageLayers().size() );
 
@@ -312,16 +321,20 @@ TerrainEngineNode::updateImageUniforms()
             ImageLayer* layer = i->get();
             int index = (int)(i - mapf.imageLayers().begin());
 
+            _imageLayerController->_layerVisibleUniform.setElement( index, layer->getVisible() );
             _imageLayerController->_layerOpacityUniform.setElement( index, layer->getOpacity() );
-            _imageLayerController->_layerEnabledUniform.setElement( index, layer->getEnabled() );
             _imageLayerController->_layerRangeUniform.setElement( (2*index), layer->getImageLayerOptions().minVisibleRange().value() );
             _imageLayerController->_layerRangeUniform.setElement( (2*index)+1, layer->getImageLayerOptions().maxVisibleRange().value() );
         }
 
         // set the remainder of the layers to disabled 
-        for( int j=mapf.imageLayers().size(); j<_imageLayerController->_layerEnabledUniform.getNumElements(); ++j)
-            _imageLayerController->_layerEnabledUniform.setElement( j, false );
+        for( int j=mapf.imageLayers().size(); j<_imageLayerController->_layerVisibleUniform.getNumElements(); ++j)
+        {
+            _imageLayerController->_layerVisibleUniform.setElement( j, false );
+        }
     }
+
+    dirty();
 }
 
 void
@@ -352,6 +365,7 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
             Threading::ScopedMutexLock lock(s_opqlock);
             if ( !_terrainInterface->_updateOperationQueue.valid() ) // double check pattern
             {
+                //TODO: think, will this work with >1 view?
                 osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
                 if ( cv->getCurrentCamera() )
                 {
@@ -390,42 +404,13 @@ TerrainEngineNode::traverse( osg::NodeVisitor& nv )
         }
     }
 
-    //else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
-    //{
-    //    if ( Registry::instance()->getCapabilities().supportsGLSL() )
-    //        _updateLightingUniformsHelper.updateTraverse( this );
-    //}
+    else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
+    {
+        _dirtyCount = 0;
+    }
 
     osg::CoordinateSystemNode::traverse( nv );
 }
-
-#if 0
-void
-TerrainEngineNode::addTerrainChangedCallback( TerrainChangedCallback* callback )
-{
-    Threading::ScopedWriteLock lock( _terrainChangedCallbacksMutex );
-    _terrainChangedCallbacks.push_back( callback );
-}
-
-void
-TerrainEngineNode::removeTerrainChangedCallback( TerrainChangedCallback* callback)
-{
-    Threading::ScopedWriteLock lock( _terrainChangedCallbacksMutex );
-    TerrainChangedCallbackList::iterator i = std::find(_terrainChangedCallbacks.begin(), _terrainChangedCallbacks.end(), callback);
-    if (i != _terrainChangedCallbacks.end()) _terrainChangedCallbacks.erase( i );    
-}
-
-void
-TerrainEngineNode::fireTerrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
-{    
-    Threading::ScopedReadLock lock( _terrainChangedCallbacksMutex );
-    for (TerrainChangedCallbackList::iterator i = _terrainChangedCallbacks.begin(); i != _terrainChangedCallbacks.end(); i++)
-    {
-        i->get()->onTerrainChanged(tileKey, terrain);
-    }
-}
-#endif
-
 
 //------------------------------------------------------------------------
 

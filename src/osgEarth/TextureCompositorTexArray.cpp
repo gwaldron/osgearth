@@ -65,7 +65,7 @@ s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, f
 
     buf << "uniform float region[ " << 8*numSlots << "]; \n"
         << "uniform float osgearth_ImageLayerOpacity[" << numSlots << "]; \n"
-        << "uniform bool  osgearth_ImageLayerEnabled[" << numSlots << "]; \n"
+        << "uniform bool  osgearth_ImageLayerVisible[" << numSlots << "]; \n"
         << "uniform float osgearth_ImageLayerRange[" << 2*numSlots << "]; \n"
         << "uniform float osgearth_ImageLayerAttenuation; \n"
         << "varying float osgearth_CameraRange; \n"
@@ -86,7 +86,7 @@ s_createTextureFragShaderFunction( const TextureLayout& layout, bool blending, f
         int r = 8 * slot;
         UID uid = slots[slot];
 
-        buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) \n"
+        buf << "    if (osgearth_ImageLayerVisible["<< i << "]) \n"
             << "    { \n"
             << "        u = region["<< r <<"] + (region["<< r+2 <<"] * gl_TexCoord[0].s); \n"
             << "        v = region["<< r+1 <<"] + (region["<< r+3 <<"] * gl_TexCoord[0].t); \n"

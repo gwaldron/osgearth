@@ -39,7 +39,6 @@ class OSGTerrainEngineNode : public TerrainEngineNode
 {
 public:
     OSGTerrainEngineNode();
-    OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL );
     META_Node(osgEarth,OSGTerrainEngineNode);
     ~OSGTerrainEngineNode();
 
@@ -128,6 +127,8 @@ private:
     unsigned   _tileCount;
     double     _tileCreationTime;
     bool       _isStreaming;
+
+    OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }
 };
 
 #endif // OSGEARTH_ENGINE_OSGTERRAIN_ENGINE_NODE_H

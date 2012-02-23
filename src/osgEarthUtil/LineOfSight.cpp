@@ -87,7 +87,8 @@ _hasLOS( true ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
-_altitudeMode( ALTITUDE_ABSOLUTE )
+_startAltitudeMode( ALTITUDE_ABSOLUTE ),
+_endAltitudeMode( ALTITUDE_ABSOLUTE )
 {
     compute(_mapNode.get());
     subscribeToTerrain();
@@ -104,7 +105,8 @@ _hasLOS( true ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
-_altitudeMode( ALTITUDE_ABSOLUTE )
+_startAltitudeMode( ALTITUDE_ABSOLUTE ),
+_endAltitudeMode( ALTITUDE_ABSOLUTE )
 {
     compute(_mapNode.get());    
     subscribeToTerrain();
@@ -201,17 +203,33 @@ LineOfSightNode::getHasLOS() const
 }
 
 AltitudeMode
-LineOfSightNode::getAltitudeMode() const
+LineOfSightNode::getStartAltitudeMode() const
 {
-    return _altitudeMode;
+    return _startAltitudeMode;
+}
+
+AltitudeMode
+LineOfSightNode::getEndAltitudeMode() const
+{
+    return _endAltitudeMode;
 }
 
 void
-LineOfSightNode::setAltitudeMode( AltitudeMode mode )
+LineOfSightNode::setStartAltitudeMode( AltitudeMode mode )
 {
-    if (_altitudeMode != mode)
+    if (_startAltitudeMode != mode)
     {
-        _altitudeMode = mode;
+        _startAltitudeMode = mode;
+        compute(_mapNode.get());
+    }
+}
+
+void
+LineOfSightNode::setEndAltitudeMode( AltitudeMode mode )
+{
+    if (_endAltitudeMode != mode)
+    {
+        _endAltitudeMode = mode;
         compute(_mapNode.get());
     }
 }
@@ -268,16 +286,17 @@ void
 LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 {
     //Computes the LOS and redraws the scene
-    if (_altitudeMode == ALTITUDE_ABSOLUTE)
-    {
+    if (_startAltitudeMode == ALTITUDE_ABSOLUTE)
         _mapNode->getMap()->mapPointToWorldPoint( _start, _startWorld );
-        _mapNode->getMap()->mapPointToWorldPoint( _end, _endWorld );
-    }
     else
-    {
         getRelativeWorld(_start.x(), _start.y(), _start.z(), _mapNode.get(), _startWorld);
+
+    if (_endAltitudeMode == ALTITUDE_ABSOLUTE)
+        _mapNode->getMap()->mapPointToWorldPoint( _end, _endWorld );
+    else
         getRelativeWorld(_end.x(), _end.y(), _end.z(), _mapNode.get(), _endWorld);
-    }
+
+    
     
     osgSim::LineOfSight los;
     los.setDatabaseCacheReadCallback(0);
@@ -1146,17 +1165,18 @@ public:
 
                   osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
                   osg::Vec3d location = getLocation( newMatrix );
-                  if (_los->getAltitudeMode() == ALTITUDE_RELATIVE)
-                  {
-                      double z = _start ? _los->getStart().z() : _los->getEnd().z();
-                      location = osg::Vec3d(location.x(), location.y(), z);
-                  }
                   if (_start)
                   {
+                      if (_los->getStartAltitudeMode() == ALTITUDE_RELATIVE)
+                          location = osg::Vec3d(location.x(), location.y(), _los->getStart().z());
+
                       _los->setStart( location );
                   }
                   else
                   {
+                      if (_los->getEndAltitudeMode() == ALTITUDE_RELATIVE)
+                          location = osg::Vec3d(location.x(), location.y(), _los->getEnd().z());
+
                       _los->setEnd( location );
                   }
 

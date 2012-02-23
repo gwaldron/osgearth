@@ -83,7 +83,7 @@ namespace
               osg::Vec3d losLoc;
               _dialog->getLOSPoint(_point, losLoc, true);
               double z = losLoc.z();
-              location = osg::Vec3d(location.x(), location.y(), z);
+              location = osg::Vec3d(location.x(), location.y(), location.z() - z);
             }
 
             _dialog->setLOSPoint(_point, location);
@@ -121,18 +121,32 @@ LOSCreationDialog::LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* roo
   if (_manager.valid())
     _manager->getAnnotations(_annotations);
 
-  initUi(losCount);
+  // create a default name
+  std::stringstream losName;
+  losName << "Line-of-Sight " << losCount;
+
+  initUi(losName.str());
 }
 
-void LOSCreationDialog::initUi(int losCount)
+LOSCreationDialog::LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* root, osg::Group* losNode, const std::string& name, osgEarth::QtGui::DataManager *manager, ViewVector* views)
+  : _mapNode(mapNode), _root(root), _manager(manager), _views(views), _activeButton(0L), _updatingUi(false)
+{
+  if (_mapNode.valid())
+    _map = _mapNode->getMap();
+
+  if (_manager.valid())
+    _manager->getAnnotations(_annotations);
+
+  initUi(name, losNode);
+}
+
+void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
 {
   // setup UI
   _ui.setupUi(this);
 
-  // set a default name
-  std::stringstream losName;
-  losName << "Line-of-Sight " << losCount;
-  _ui.nameBox->setText(tr(losName.str().c_str()));
+  // set the name
+  _ui.nameBox->setText(tr(name.c_str()));
 
   // fill annotation list
   // TODO: if more node types beyond Annotation are added, this will need to be moved
@@ -146,12 +160,13 @@ void LOSCreationDialog::initUi(int losCount)
     _ui.radNodeCombo->addItem(tr(annoName.c_str()));
   }
 
+
   // create map point draggers
   _p1Dragger  = new LOSIntersectingDragger;
   _p1Dragger->setNode( _mapNode );    
   _p1Dragger->setHandleEvents( true );
   _p1Dragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, LOSPoint::P2P_START));
-  _p1Dragger->setColor(osg::Vec4(0,1,0,0));
+  _p1Dragger->setColor(osg::Vec4(0,1,1,0));
   _p1Dragger->setPickColor(osg::Vec4(1,0,1,0));
   _p1Dragger->setupDefaultGeometry();
   _p1BaseAlt = 0.0;
@@ -160,7 +175,7 @@ void LOSCreationDialog::initUi(int losCount)
   _p2Dragger->setNode( _mapNode );    
   _p2Dragger->setHandleEvents( true );
   _p2Dragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, LOSPoint::P2P_END));    
-  _p2Dragger->setColor(osg::Vec4(0,1,0,0));
+  _p2Dragger->setColor(osg::Vec4(0,1,1,0));
   _p2Dragger->setPickColor(osg::Vec4(1,0,1,0));
   _p2Dragger->setupDefaultGeometry();
   _p2BaseAlt = 0.0;
@@ -169,10 +184,11 @@ void LOSCreationDialog::initUi(int losCount)
   _radDragger->setNode( _mapNode );    
   _radDragger->setHandleEvents( true );
   _radDragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, LOSPoint::RADIAL_CENTER));    
-  _radDragger->setColor(osg::Vec4(0,1,0,0));
+  _radDragger->setColor(osg::Vec4(0,1,1,0));
   _radDragger->setPickColor(osg::Vec4(1,0,1,0));
   _radDragger->setupDefaultGeometry();
   _radBaseAlt = 0.0;
+
 
   // connect type combobox signals
   connect(_ui.p1TypeCombo, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onP1TypeChange(const QString&)));
@@ -202,7 +218,25 @@ void LOSCreationDialog::initUi(int losCount)
   connect(_ui.radLonBox, SIGNAL(valueChanged(double)), this, SLOT(onLocationValueChanged(double)));
   connect(_ui.radAltBox, SIGNAL(valueChanged(double)), this, SLOT(onLocationValueChanged(double)));
 
+  connect(_ui.p2pRelativeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onRelativeCheckChanged(int)));
+  connect(_ui.radRelativeCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onRelativeCheckChanged(int)));
+
+  // connect annotation combobox signals
+  connect(_ui.p1NodeCombo, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onNodeComboChange(const QString&)));
+  connect(_ui.p2NodeCombo, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onNodeComboChange(const QString&)));
+  connect(_ui.radNodeCombo, SIGNAL(currentIndexChanged(const QString&)), this, SLOT(onNodeComboChange(const QString&)));
+
+  connect(_ui.depthTestCheckBox, SIGNAL(stateChanged(int)), this, SLOT(onDepthTestChanged(int)));
   connect(_ui.typeTabs, SIGNAL(currentChanged(int)), this, SLOT(onCurrentTabChanged(int)));
+
+  // connect radial specific signals
+  connect(_ui.spokesSpinBox, SIGNAL(valueChanged(int)), this, SLOT(onSpokesBoxChanged(int)));
+  connect(_ui.radiusSpinBox, SIGNAL(valueChanged(double)), this, SLOT(onRadiusBoxChanged(double)));
+
+
+  // Create los nodes and initialize
+  _p2p = new osgEarth::Util::LineOfSightNode(_mapNode.get());
+  _radial = new osgEarth::Util::RadialLineOfSightNode(_mapNode.get());
 
   // simulate type change to force UI update
   onP1TypeChange("Point");
@@ -210,6 +244,186 @@ void LOSCreationDialog::initUi(int losCount)
   onRadTypeChange("Point");
 
   onCurrentTabChanged(0);
+
+
+  // If an los node was passed in, initialize components accordingly
+  if (los)
+  {
+    osgEarth::Util::LineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LineOfSightNode*>(los);
+    if (p2pNode)
+    {
+      _ui.typeTabs->setCurrentIndex(0);
+      _ui.typeTabs->setTabEnabled(1, false);
+
+      _ui.depthTestCheckBox->setCheckState(p2pNode->getOrCreateStateSet()->getMode(GL_DEPTH_TEST) == osg::StateAttribute::OFF ? Qt::Unchecked : Qt::Checked);
+
+      bool p1Set=false, p2Set=false;
+      
+      osgEarth::Util::LineOfSightTether* tether = dynamic_cast<osgEarth::Util::LineOfSightTether*>(p2pNode->getUpdateCallback());
+      if (tether)
+      {
+        if (tether->startNode())
+        {
+          _ui.p1TypeCombo->setCurrentIndex(1); // "Annotation"
+
+          int i = findAnnotationIndex(tether->startNode());
+          if (i >= 0)
+            _ui.p1NodeCombo->setCurrentIndex(i);
+          else
+            _ui.p1NodeCombo->setCurrentIndex(0);  // unlikely case where annotation is not found (perhaps deleted)
+
+          p1Set = true;
+        }
+
+        if (tether->endNode())
+        {
+          _ui.p2TypeCombo->setCurrentIndex(1); // "Annotation"
+
+          int i = findAnnotationIndex(tether->endNode());
+          if (i >= 0)
+            _ui.p2NodeCombo->setCurrentIndex(i);
+          else
+            _ui.p2NodeCombo->setCurrentIndex(0);  // unlikely case where annotation is not found (perhaps deleted)
+
+          p2Set = true;
+        }
+      }
+
+      if (!p1Set)
+      {
+        _ui.p1TypeCombo->setCurrentIndex(0); // "Point"
+        onP1TypeChange("Point");  // Necessary to init UI because above setCurrentIndex call will not
+        updateDraggerNodes();     // fire an event since the index defaults to 0
+
+        _ui.p2pRelativeCheckBox->setChecked(p2pNode->getStartAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE);
+
+        osg::Vec3d pos(p2pNode->getStart());
+
+        if (p2pNode->getStartAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE)
+        {
+          double hat = pos.z();
+
+          double height;
+          if (_mapNode->getTerrain()->getHeight(pos, height))
+            pos.set(pos.x(), pos.y(), height);
+
+          setLOSPoint(LOSPoint::P2P_START, pos, true);
+
+          if (_ui.p1AltBox->value() == hat)
+          {
+            updatePoint(LOSPoint::P2P_START);
+            updateLOSNodes();
+          }
+          else
+          {
+            _ui.p1AltBox->setValue(hat);
+          }
+        }
+        else
+        {
+          setLOSPoint(LOSPoint::P2P_START, pos, true);
+        }
+      }
+
+      if (!p2Set)
+      {
+        _ui.p2TypeCombo->setCurrentIndex(0); // "Point"
+        onP2TypeChange("Point");  // Necessary to init UI because above setCurrentIndex call will not
+        updateDraggerNodes();     // fire an event since the index defaults to 0
+
+        _ui.p2pRelativeCheckBox->setChecked(p2pNode->getEndAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE);
+
+        osg::Vec3d pos(p2pNode->getEnd());
+
+        if (p2pNode->getEndAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE)
+        {
+          double hat = pos.z();
+
+          double height;
+          if (_mapNode->getTerrain()->getHeight(pos, height))
+            pos.set(pos.x(), pos.y(), height);
+
+          setLOSPoint(LOSPoint::P2P_END, pos, true);
+
+          if (_ui.p2AltBox->value() == hat)
+          {
+            updatePoint(LOSPoint::P2P_END);
+            updateLOSNodes();
+          }
+          else
+          {
+            _ui.p2AltBox->setValue(hat);
+          }
+        }
+        else
+        {
+          setLOSPoint(LOSPoint::P2P_END, pos, true);
+        }
+      }
+    }
+    else
+    {
+      osgEarth::Util::RadialLineOfSightNode* radNode = dynamic_cast<osgEarth::Util::RadialLineOfSightNode*>(los);
+      if (radNode)
+      {
+        _ui.typeTabs->setCurrentIndex(1);
+        _ui.typeTabs->setTabEnabled(0, false);
+
+        _ui.radiusSpinBox->setValue(radNode->getRadius());
+        _ui.spokesSpinBox->setValue(radNode->getNumSpokes());
+
+        _ui.depthTestCheckBox->setCheckState(radNode->getOrCreateStateSet()->getMode(GL_DEPTH_TEST) == osg::StateAttribute::OFF ? Qt::Unchecked : Qt::Checked);
+
+        osgEarth::Util::RadialLineOfSightTether* tether = dynamic_cast<osgEarth::Util::RadialLineOfSightTether*>(radNode->getUpdateCallback());
+        if (tether)
+        {
+          _ui.radTypeCombo->setCurrentIndex(1); // "Annotation"
+
+          int i = findAnnotationIndex(tether->node());
+          if (i >= 0)
+            _ui.radNodeCombo->setCurrentIndex(i);
+          else
+            _ui.radNodeCombo->setCurrentIndex(0);  // unlikely case where annotation is not found (perhaps deleted)
+        }
+        else
+        {
+          _ui.radTypeCombo->setCurrentIndex(0); // "Point"
+          
+          onRadTypeChange("Point"); // Necessary to init UI because above setCurrentIndex call will not
+          updateDraggerNodes();     // fire an event since the index defaults to 0
+
+          _ui.radRelativeCheckBox->setChecked(radNode->getAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE);
+
+          osg::Vec3d pos(radNode->getCenter());
+
+          if (radNode->getAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE)
+          {
+            double hat = pos.z();
+
+            double height;
+            if (_mapNode->getTerrain()->getHeight(pos, height))
+              pos.set(pos.x(), pos.y(), height);
+
+            setLOSPoint(LOSPoint::RADIAL_CENTER, pos, true);
+            
+            if (_ui.radAltBox->value() == hat)
+            {
+              updatePoint(LOSPoint::RADIAL_CENTER);
+              updateLOSNodes();
+            }
+            else
+            {
+              _ui.radAltBox->setValue(hat);
+            }
+          }
+          else
+          {
+            setLOSPoint(LOSPoint::RADIAL_CENTER, pos, true);
+          }
+        }
+      }
+    }
+  }
 
   this->resize(721, this->height());
 }
@@ -267,6 +481,127 @@ void LOSCreationDialog::updateDragger(osgEarth::Annotation::IntersectingDragger*
   dragger->setMatrix(matrix);
 }
 
+void LOSCreationDialog::updateDraggerNodes()
+{
+  if (_root.valid())
+  {
+    if (_ui.typeTabs->tabText(_ui.typeTabs->currentIndex()) == "Point-to-Point")
+    {
+      _root->removeChild(_radDragger);
+
+      if (_ui.p1TypeCombo->currentText() == "Point")
+      {
+        if (!_root->containsNode(_p1Dragger))
+          _root->addChild(_p1Dragger);
+      }
+      else
+      {
+        _root->removeChild(_p1Dragger);
+      }
+        
+      if (_ui.p2TypeCombo->currentText() == "Point")
+      {
+        if (!_root->containsNode(_p2Dragger))
+          _root->addChild(_p2Dragger);
+      }
+      else
+      {
+        _root->removeChild(_p2Dragger);
+      }
+    }
+    else if (_ui.typeTabs->tabText(_ui.typeTabs->currentIndex()) == "Radial")
+    {
+      _root->removeChild(_p1Dragger);
+      _root->removeChild(_p2Dragger);
+
+      if (_ui.radTypeCombo->currentText() == "Point")
+      {
+        if (!_root->containsNode(_radDragger))
+          _root->addChild(_radDragger);
+      }
+      else
+      {
+        _root->removeChild(_radDragger);
+      }
+    }
+  }
+}
+
+void LOSCreationDialog::updatePoint(LOSPoint point)
+{
+  switch(point)
+  {
+    case LOSPoint::P2P_START:
+      {
+        double alt = _ui.p1AltBox->value();
+        if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
+        {
+          _p1Dragger->setHeightAboveTerrain(_ui.p1AltBox->value());
+          alt += _p1BaseAlt;
+        }
+        else
+        {
+          _p1Dragger->setHeightAboveTerrain(0.0);
+        }
+
+        double x, y, z;
+        _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.p1LatBox->value()), osg::DegreesToRadians(_ui.p1LonBox->value()), alt, x, y, z);
+        updateDragger(_p1Dragger, osg::Vec3d(x, y, z));
+      }
+      break;
+    case LOSPoint::P2P_END:
+      {
+        double alt = _ui.p2AltBox->value();
+        if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
+        {
+          _p2Dragger->setHeightAboveTerrain(_ui.p2AltBox->value());
+          alt += _p2BaseAlt;
+        }
+        else
+        {
+          _p2Dragger->setHeightAboveTerrain(0.0);
+        }
+
+        double x, y, z;
+        _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.p2LatBox->value()), osg::DegreesToRadians(_ui.p2LonBox->value()), alt, x, y, z);
+        updateDragger(_p2Dragger, osg::Vec3d(x, y, z));
+      }
+      break;
+    case LOSPoint::RADIAL_CENTER:
+      {
+        double alt = _ui.radAltBox->value();
+        if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
+        {
+          _radDragger->setHeightAboveTerrain(_ui.radAltBox->value());
+          alt += _radBaseAlt;
+        }
+        else
+        {
+          _radDragger->setHeightAboveTerrain(0.0);
+        }
+
+        double x, y, z;
+        _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.radLatBox->value()), osg::DegreesToRadians(_ui.radLonBox->value()), alt, x, y, z);
+        updateDragger(_radDragger, osg::Vec3d(x, y, z));
+      }
+      break;
+  }
+}
+
+int LOSCreationDialog::findAnnotationIndex(osg::Node* annotation)
+{
+  int index = 0;
+  for (AnnotationVector::const_iterator it = _annotations.begin(); it != _annotations.end(); ++it)
+  {
+    if ((*it).get() == annotation)
+      return index;
+
+    index++;
+  }
+
+  return -1;
+}
+
 void LOSCreationDialog::getLOSPoint(LOSPoint point, osg::Vec3d& out_point, bool relative)
 {
   double alt = 0.0;
@@ -294,25 +629,40 @@ void LOSCreationDialog::getLOSPoint(LOSPoint point, osg::Vec3d& out_point, bool 
   }
 }
 
-void LOSCreationDialog::setLOSPoint(LOSPoint point, const osg::Vec3d& value)
+void LOSCreationDialog::setLOSPoint(LOSPoint point, const osg::Vec3d& value, bool updateUi)
 {
-  _updatingUi = true;
+  _updatingUi = !updateUi;
   switch(point)
   {
     case LOSPoint::P2P_START:
       _ui.p1LatBox->setValue(value.y());
       _ui.p1LonBox->setValue(value.x());
-      _ui.p1AltBox->setValue(value.z());
+
+      _p1BaseAlt = value.z();
+
+      if (!isAltitudeRelative(point))
+        _ui.p1AltBox->setValue(value.z());
+
       break;
     case LOSPoint::P2P_END:
       _ui.p2LatBox->setValue(value.y());
       _ui.p2LonBox->setValue(value.x());
-      _ui.p2AltBox->setValue(value.z());
+
+      _p2BaseAlt = value.z();
+
+      if (!isAltitudeRelative(point))
+        _ui.p2AltBox->setValue(value.z());
+
       break;
     case LOSPoint::RADIAL_CENTER:
       _ui.radLatBox->setValue(value.y());
       _ui.radLonBox->setValue(value.x());
-      _ui.radAltBox->setValue(value.z());
+
+      _radBaseAlt = value.z();
+
+      if (!isAltitudeRelative(point))
+        _ui.radAltBox->setValue(value.z());
+
       break;
   }
   _updatingUi = false;
@@ -334,145 +684,122 @@ bool LOSCreationDialog::isAltitudeRelative(LOSPoint point)
 
 void LOSCreationDialog::closeEvent(QCloseEvent* event)
 {
-  cleanupDraggers();
+  cleanupNodes();
   QDialog::closeEvent(event);
 }
 
 void LOSCreationDialog::accept()
 {
-  if (doClose())
-  {
-    cleanupDraggers();
-    QDialog::accept();
-  }
+  cleanupNodes();
+  QDialog::accept();
 }
 
 void LOSCreationDialog::reject()
 {
-  cleanupDraggers();
+  cleanupNodes();
   QDialog::reject();
 }
 
-bool LOSCreationDialog::doClose()
+void LOSCreationDialog::updateLOSNodes(bool updateAll)
 {
-  bool ok = false;
-
-  if (_mapNode.valid())
+  if (_p2p.valid() && (updateAll || _ui.typeTabs->tabText(_ui.typeTabs->currentIndex()) == "Point-to-Point"))
   {
-    if (_ui.typeTabs->tabText(_ui.typeTabs->currentIndex()) == "Point-to-Point")
+    if (_ui.depthTestCheckBox->checkState() == Qt::Checked)
+      _p2p->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
+    else
+      _p2p->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+
+    bool p1Set = false;
+    bool p2Set = false;
+    osg::Node* p1Node = 0L;
+    osg::Node* p2Node = 0L;
+
+    // get start point or node
+    if (_ui.p1TypeCombo->currentText() == "Point")
     {
-      osgEarth::Util::LineOfSightNode* los = new osgEarth::Util::LineOfSightNode(_mapNode.get());
+      _p2p->setStart(osg::Vec3d(_ui.p1LonBox->value(), _ui.p1LatBox->value(), _ui.p1AltBox->value()));
 
-      if (_ui.depthTestCheckBox->checkState() == Qt::Unchecked)
-        los->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-
-      bool p1Set = false;
-      bool p2Set = false;
-      osg::Node* p1Node = 0L;
-      osg::Node* p2Node = 0L;
-
-      // get start point or node
-      if (_ui.p1TypeCombo->currentText() == "Point")
-      {
-        los->setStart(osg::Vec3d(_ui.p1LonBox->value(), _ui.p1LatBox->value(), _ui.p1AltBox->value()));
-
-        if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-          los->setAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
-
-        p1Set = true;
-      }
-      else if (_ui.p1TypeCombo->currentText() == "Annotation")
-      {
-        if (_ui.p1NodeCombo->currentIndex() >= 0 && _annotations.size() > _ui.p1NodeCombo->currentIndex())
-        {
-          p1Node = _annotations[_ui.p1NodeCombo->currentIndex()];
-          p1Set = true;
-        }
-      }
-
-      // get end point or node
-      if (_ui.p2TypeCombo->currentText() == "Point")
-      {
-        los->setEnd(osg::Vec3d(_ui.p2LonBox->value(), _ui.p2LatBox->value(), _ui.p2AltBox->value()));
-
-        if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-          los->setAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
-
-        p2Set = true;
-      }
-      else if (_ui.p2TypeCombo->currentText() == "Annotation")
-      {
-        if (_ui.p2NodeCombo->currentIndex() >= 0 && _annotations.size() > _ui.p2NodeCombo->currentIndex())
-        {
-          p2Node = _annotations[_ui.p2NodeCombo->currentIndex()];
-          p2Set = true;
-        }
-      }
-
-      // set _node to los if ok, else clean up allocated memory
-      ok = p1Set && p2Set;
-      if (ok)
-      {
-        _node = los;
-
-        if (p1Node || p2Node)
-          los->setUpdateCallback(new osgEarth::Util::LineOfSightTether(p1Node, p2Node));
-        else
-        _editor = new osgEarth::Util::LineOfSightEditor(los);
-      }
+      if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
+        _p2p->setStartAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
       else
-      {
-        delete los;
-      }
+        _p2p->setStartAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+
+      p1Set = true;
     }
-    else if (_ui.typeTabs->tabText(_ui.typeTabs->currentIndex()) == "Radial")
+    else if (_ui.p1TypeCombo->currentText() == "Annotation")
     {
-      osgEarth::Util::RadialLineOfSightNode* los = new osgEarth::Util::RadialLineOfSightNode(_mapNode.get());
-      los->setRadius(_ui.radiusSpinBox->value());
-      los->setNumSpokes(_ui.spokesSpinBox->value());
+      _p2p->setStartAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+      p1Node = _annotations[_ui.p1NodeCombo->currentIndex()];
+      p1Set = true;
+    }
 
-      if (_ui.depthTestCheckBox->checkState() == Qt::Unchecked)
-        los->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+    // get end point or node
+    if (_ui.p2TypeCombo->currentText() == "Point")
+    {
+      _p2p->setEnd(osg::Vec3d(_ui.p2LonBox->value(), _ui.p2LatBox->value(), _ui.p2AltBox->value()));
 
-      // get center point or node to attach to
-      if (_ui.radTypeCombo->currentText() == "Point")
-      {
-        los->setCenter(osg::Vec3d(_ui.radLonBox->value(), _ui.radLatBox->value(), _ui.radAltBox->value()));
-
-        if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
-          los->setAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
-
-        _editor = new osgEarth::Util::RadialLineOfSightEditor(los);
-
-        ok = true;
-      }
-      else if (_ui.radTypeCombo->currentText() == "Annotation")
-      {
-        if (_ui.radNodeCombo->currentIndex() >= 0 && _annotations.size() > _ui.radNodeCombo->currentIndex())
-        {
-          los->setUpdateCallback(new osgEarth::Util::RadialLineOfSightTether(_annotations[_ui.radNodeCombo->currentIndex()]));
-          ok = true;
-        }
-      }
-
-      // set _node to los if ok, else clean up allocated memory
-      if (ok)
-        _node = los;
+      if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
+        _p2p->setEndAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
       else
-        delete los;
+        _p2p->setEndAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+
+      p2Set = true;
+    }
+    else if (_ui.p2TypeCombo->currentText() == "Annotation")
+    {
+      _p2p->setEndAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+      p2Node = _annotations[_ui.p2NodeCombo->currentIndex()];
+      p2Set = true;
+    }
+
+    // set update callback if tethered, else clear it
+    if (p1Node || p2Node)
+      _p2p->setUpdateCallback(new osgEarth::Util::LineOfSightTether(p1Node, p2Node));
+    else
+      _p2p->setUpdateCallback(0L);
+  }
+  
+  if (_radial.valid() && (updateAll || _ui.typeTabs->tabText(_ui.typeTabs->currentIndex()) == "Radial"))
+  {
+    _radial->setRadius(_ui.radiusSpinBox->value());
+    _radial->setNumSpokes(_ui.spokesSpinBox->value());
+
+    if (_ui.depthTestCheckBox->checkState() == Qt::Checked)
+      _radial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON);
+    else
+      _radial->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+
+    // get center point or node to attach to
+    if (_ui.radTypeCombo->currentText() == "Point")
+    {
+      _radial->setCenter(osg::Vec3d(_ui.radLonBox->value(), _ui.radLatBox->value(), _ui.radAltBox->value()));
+
+      if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
+        _radial->setAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
+      else
+        _radial->setAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+
+      // clear update callback
+      _radial->setUpdateCallback(0L);
+    }
+    else if (_ui.radTypeCombo->currentText() == "Annotation")
+    {
+      _radial->setAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+      _radial->setUpdateCallback(new osgEarth::Util::RadialLineOfSightTether(_annotations[_ui.radNodeCombo->currentIndex()]));
     }
   }
-
-  return ok;
 }
 
-void LOSCreationDialog::cleanupDraggers()
+void LOSCreationDialog::cleanupNodes()
 {
   if (_root.valid())
   {
     _root->removeChild(_p1Dragger);
     _root->removeChild(_p2Dragger);
     _root->removeChild(_radDragger);
+
+    _root->removeChild(_p2p);
+    _root->removeChild(_radial);
   }
 }
 
@@ -511,6 +838,9 @@ void LOSCreationDialog::onP1TypeChange(const QString& text)
     _ui.p1NodeOptions->setVisible(true);
     _ui.p2pRelativeCheckBox->setEnabled(_ui.p2TypeCombo->currentText() == "Point");
   }
+
+  updateDraggerNodes();
+  updateLOSNodes();
 }
 
 void LOSCreationDialog::onP2TypeChange(const QString& text)
@@ -527,6 +857,9 @@ void LOSCreationDialog::onP2TypeChange(const QString& text)
     _ui.p2NodeOptions->setVisible(true);
     _ui.p2pRelativeCheckBox->setEnabled(_ui.p1TypeCombo->currentText() == "Point");
   }
+
+  updateDraggerNodes();
+  updateLOSNodes();
 }
 
 void LOSCreationDialog::onRadTypeChange(const QString& text)
@@ -541,6 +874,9 @@ void LOSCreationDialog::onRadTypeChange(const QString& text)
     _ui.radPointOptions->setVisible(false);
     _ui.radNodeOptions->setVisible(true);
   }
+
+  updateDraggerNodes();
+  updateLOSNodes();
 }
 
 void LOSCreationDialog::onP1MapButtonClicked(bool checked)
@@ -586,68 +922,79 @@ void LOSCreationDialog::onLocationValueChanged(double d)
     QObject* s = sender();
 
     if (s == _ui.p1LatBox || s == _ui.p1LonBox || s == _ui.p1AltBox)
-    {
-      double alt = _ui.p1AltBox->value();
-      if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-      {
-        _p1Dragger->setHeightAboveTerrain(_ui.p1AltBox->value());
-        alt += _p1BaseAlt;
-      }
-
-      double x, y, z;
-      _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.p1LatBox->value()), osg::DegreesToRadians(_ui.p1LonBox->value()), alt, x, y, z);
-      updateDragger(_p1Dragger, osg::Vec3d(x, y, z));
-    }
+      updatePoint(LOSPoint::P2P_START);
     else if (s == _ui.p2LatBox || s == _ui.p2LonBox || s == _ui.p2AltBox)
-    {
-      double alt = _ui.p2AltBox->value();
-      if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-      {
-        _p2Dragger->setHeightAboveTerrain(_ui.p2AltBox->value());
-        alt += _p2BaseAlt;
-      }
-
-      double x, y, z;
-      _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.p2LatBox->value()), osg::DegreesToRadians(_ui.p2LonBox->value()), alt, x, y, z);
-      updateDragger(_p2Dragger, osg::Vec3d(x, y, z));
-    }
+      updatePoint(LOSPoint::P2P_END);
     else if (s == _ui.radLatBox || s == _ui.radLonBox || s == _ui.radAltBox)
-    {
-      double alt = _ui.radAltBox->value();
-      if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
-      {
-        _radDragger->setHeightAboveTerrain(_ui.radAltBox->value());
-        alt += _radBaseAlt;
-      }
+      updatePoint(LOSPoint::RADIAL_CENTER);
+  }
 
-      double x, y, z;
-      _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.radLatBox->value()), osg::DegreesToRadians(_ui.radLonBox->value()), alt, x, y, z);
-      updateDragger(_radDragger, osg::Vec3d(x, y, z));
+  updateLOSNodes();
+}
+
+void LOSCreationDialog::onRelativeCheckChanged(int state)
+{
+  if (!_updatingUi)
+  {
+    QObject* s = sender();
+
+    if (s == _ui.p2pRelativeCheckBox)
+    {
+      updatePoint(LOSPoint::P2P_START);
+      updatePoint(LOSPoint::P2P_END);
+    }
+    else if (s == _ui.radRelativeCheckBox)
+    {
+      updatePoint(LOSPoint::RADIAL_CENTER);
     }
   }
+
+  updateDraggerNodes();
+  updateLOSNodes();
+}
+
+void LOSCreationDialog::onNodeComboChange(const QString& text)
+{
+  updateLOSNodes();
+}
+
+void LOSCreationDialog::onDepthTestChanged(int state)
+{
+  updateLOSNodes();
 }
 
 void LOSCreationDialog::onCurrentTabChanged(int index)
 {
-  if (_root.valid())
+  if (_ui.typeTabs->tabText(_ui.typeTabs->currentIndex()) == "Point-to-Point")
   {
-    _root->removeChild(_radDragger);
+    _node = _p2p;
 
-    if (_ui.typeTabs->tabText(index) == "Point-to-Point")
+    if (_root.valid())
     {
-      if (!_root->containsNode(_p1Dragger))
-        _root->addChild(_p1Dragger);
-
-      if (!_root->containsNode(_p2Dragger))
-        _root->addChild(_p2Dragger);
-    }
-    else if (_ui.typeTabs->tabText(index) == "Radial")
-    {
-      _root->removeChild(_p1Dragger);
-      _root->removeChild(_p2Dragger);
-
-      if (!_root->containsNode(_radDragger))
-        _root->addChild(_radDragger);
+      _root->removeChild(_radial);
+      _root->addChild(_p2p);
     }
   }
+  else if (_ui.typeTabs->tabText(_ui.typeTabs->currentIndex()) == "Radial")
+  {
+    _node = _radial;
+
+    if (_root.valid())
+    {
+      _root->removeChild(_p2p);
+      _root->addChild(_radial);
+    }
+  }
+
+  updateDraggerNodes();
+}
+
+void LOSCreationDialog::onSpokesBoxChanged(int value)
+{
+  updateLOSNodes();
+}
+
+void LOSCreationDialog::onRadiusBoxChanged(double value)
+{
+  updateLOSNodes();
 }

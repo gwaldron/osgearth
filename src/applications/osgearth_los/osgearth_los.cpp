@@ -137,7 +137,8 @@ main(int argc, char** argv)
 
     //Create a relative point to point LineOfSightNode.
     LineOfSightNode* relativeLOS = new LineOfSightNode( mapNode, osg::Vec3d(-121.2, 46.1, 10), osg::Vec3d(-121.488, 46.2054, 10));
-    relativeLOS->setAltitudeMode( ALTITUDE_RELATIVE );
+    relativeLOS->setStartAltitudeMode( ALTITUDE_RELATIVE );
+    relativeLOS->setEndAltitudeMode( ALTITUDE_RELATIVE );
     root->addChild( relativeLOS );
     relativeLOS->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 

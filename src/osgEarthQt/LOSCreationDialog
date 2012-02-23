@@ -25,6 +25,7 @@
 #include <osgEarthQt/DataManager>
 
 #include <osgEarthAnnotation/Draggers>
+#include <osgEarthUtil/LineOfSight>
 
 #include <osg/AutoTransform>
 
@@ -109,13 +110,13 @@ namespace osgEarth { namespace QtGui
     enum LOSPoint { P2P_START, P2P_END, RADIAL_CENTER };
 
     LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* root, int losCount, DataManager* manager=0L, ViewVector* views=0L);
+    LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* root, osg::Group* losNode, const std::string& name, DataManager* manager=0L, ViewVector* views=0L);
 
     osg::Group* losNode() { return _node.get(); }
-    QString losName() { return _ui.nameBox->text(); }
-    osg::Group* losEditor() { return _editor.get(); }
+    std::string losName() { return _ui.nameBox->text().toStdString(); }
 
     void getLOSPoint(LOSPoint point, osg::Vec3d& out_point, bool relative=false);
-    void setLOSPoint(LOSPoint point, const osg::Vec3d& value);
+    void setLOSPoint(LOSPoint point, const osg::Vec3d& value, bool updateUi=false);
 
     bool isAltitudeRelative(LOSPoint point);
 
@@ -139,29 +140,37 @@ namespace osgEarth { namespace QtGui
     void onRadFindNodeButtonClicked(bool checked);
 
     void onLocationValueChanged(double d);
+    void onRelativeCheckChanged(int state);
 
+    void onNodeComboChange(const QString& text);
+
+    void onDepthTestChanged(int state);
     void onCurrentTabChanged(int index);
+
+    void onSpokesBoxChanged(int value);
+    void onRadiusBoxChanged(double value);
 
   protected:
     void closeEvent(QCloseEvent* event);
 
   private:
-    void initUi(int losCount);
-    bool doClose();
-    void cleanupDraggers();
+    void initUi(const std::string& name, osg::Group* los=0L);
+    void updateLOSNodes(bool updateAll=false);
+    void cleanupNodes();
     void centerMapOnNode(osg::Node* node);
     void updateDragger(osgEarth::Annotation::IntersectingDragger* dragger, const osg::Vec3d& point);
-    void updateP1Fields(double lat, double lon, double alt);
-    void updateP2Fields(double lat, double lon, double alt);
-    void updateRadFields(double lat, double lon, double alt);
+    void updateDraggerNodes();
+    void updatePoint(LOSPoint point);
+    int findAnnotationIndex(osg::Node* annotation);
 
     Ui::LOSCreationDialog _ui;
     osg::ref_ptr<osg::Group> _node;
-    osg::ref_ptr<osg::Group> _editor;
     osg::ref_ptr<osgEarth::MapNode> _mapNode;
     osg::ref_ptr<osg::Group> _root;
     osg::ref_ptr<DataManager> _manager;
     osg::ref_ptr<osgEarth::Map> _map;
+    osg::ref_ptr<osgEarth::Util::LineOfSightNode> _p2p;
+    osg::ref_ptr<osgEarth::Util::RadialLineOfSightNode> _radial;
     osg::ref_ptr<LOSIntersectingDragger> _p1Dragger;
     osg::ref_ptr<LOSIntersectingDragger> _p2Dragger;
     osg::ref_ptr<LOSIntersectingDragger> _radDragger;

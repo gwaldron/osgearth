@@ -233,6 +233,7 @@ namespace osgEarth { namespace Util
         osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
 
         osg::ref_ptr< osg::Node > _pendingNode;
+        bool _clearNeeded;
     };
 
 

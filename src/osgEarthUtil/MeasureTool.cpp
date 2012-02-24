@@ -200,6 +200,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
 #endif
 
                     fireDistanceChanged();
+                    aa.requestRedraw();
                 }
             }
         }
@@ -208,7 +209,8 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
         if (_gotFirstLocation)
         {
             //_gotFirstLocation = false;
-            _finished = true;     
+            _finished = true;    
+            aa.requestRedraw(); 
             return true;
         }
     }
@@ -230,6 +232,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                 }
                 _featureNode->init();
                 fireDistanceChanged();
+                aa.requestRedraw();
             }
         }
     }    

@@ -166,13 +166,13 @@ namespace osgEarth { namespace Util { namespace Controls
         void setSize( float w, float h );
 
         void setMargin( const Gutter& value );
-        Gutter& margin() { dirty(); return _margin; }
+        //Gutter& margin() { dirty(); return _margin; }
         const Gutter& margin() const { return _margin; }
 
         // space between container and its content
         void setPadding( const Gutter& value );
         void setPadding( float globalValue );
-        Gutter& padding() { dirty(); return _padding; }
+        //Gutter& padding() { dirty(); return _padding; }
         const Gutter& padding() const { return _padding; }
 
         void setVertAlign( const Alignment& value );

@@ -28,7 +28,8 @@ _halo                 ( Stroke( 0.3, 0.3, 0.3, 1) ),
 _size                 ( 16.0f ),
 _removeDuplicateLabels( false ),
 _alignment            ( ALIGN_BASE_LINE ),
-_provider             ( "annotation" )
+_provider             ( "annotation" ),
+_encoding             ( ENCODING_ASCII )
 {
     mergeConfig(conf);
 }
@@ -45,6 +46,11 @@ TextSymbol::getConfig() const
     conf.addObjIfSet( "content", _content );
     conf.addObjIfSet( "priority", _priority );
     conf.addIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
+
+    conf.addIfSet( "encoding", "ascii", _encoding, ENCODING_ASCII );
+    conf.addIfSet( "encoding", "utf8",  _encoding, ENCODING_UTF8 );
+    conf.addIfSet( "encoding", "utf16", _encoding, ENCODING_UTF16 );
+    conf.addIfSet( "encoding", "utf32", _encoding, ENCODING_UTF32 );
 
 #if 0
     conf.addIfSet( "halign", "left",   _halign, HALIGN_LEFT );
@@ -103,6 +109,11 @@ TextSymbol::mergeConfig( const Config& conf )
     conf.getObjIfSet( "content", _content );
     conf.getObjIfSet( "priority", _priority );
     conf.getIfSet( "remove_duplicate_labels", _removeDuplicateLabels );
+
+    conf.getIfSet( "encoding", "ascii", _encoding, ENCODING_ASCII );
+    conf.getIfSet( "encoding", "utf8",  _encoding, ENCODING_UTF8 );
+    conf.getIfSet( "encoding", "utf16", _encoding, ENCODING_UTF16 );
+    conf.getIfSet( "encoding", "utf32", _encoding, ENCODING_UTF32 );
 
     conf.getIfSet( "alignment", "left_top",                _alignment, ALIGN_LEFT_TOP );
     conf.getIfSet( "alignment", "left_center",             _alignment, ALIGN_LEFT_CENTER );

@@ -165,7 +165,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
   _p1Dragger  = new LOSIntersectingDragger;
   _p1Dragger->setNode( _mapNode );    
   _p1Dragger->setHandleEvents( true );
-  _p1Dragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, LOSPoint::P2P_START));
+  _p1Dragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, P2P_START));
   _p1Dragger->setColor(osg::Vec4(0,1,1,0));
   _p1Dragger->setPickColor(osg::Vec4(1,0,1,0));
   _p1Dragger->setupDefaultGeometry();
@@ -174,7 +174,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
   _p2Dragger  = new LOSIntersectingDragger;
   _p2Dragger->setNode( _mapNode );    
   _p2Dragger->setHandleEvents( true );
-  _p2Dragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, LOSPoint::P2P_END));    
+  _p2Dragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, P2P_END));    
   _p2Dragger->setColor(osg::Vec4(0,1,1,0));
   _p2Dragger->setPickColor(osg::Vec4(1,0,1,0));
   _p2Dragger->setupDefaultGeometry();
@@ -183,7 +183,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
   _radDragger  = new LOSIntersectingDragger;
   _radDragger->setNode( _mapNode );    
   _radDragger->setHandleEvents( true );
-  _radDragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, LOSPoint::RADIAL_CENTER));    
+  _radDragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, RADIAL_CENTER));    
   _radDragger->setColor(osg::Vec4(0,1,1,0));
   _radDragger->setPickColor(osg::Vec4(1,0,1,0));
   _radDragger->setupDefaultGeometry();
@@ -307,11 +307,11 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
           if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
             pos.set(pos.x(), pos.y(), height);
 
-          setLOSPoint(LOSPoint::P2P_START, pos, true);
+          setLOSPoint(P2P_START, pos, true);
 
           if (_ui.p1AltBox->value() == hat)
           {
-            updatePoint(LOSPoint::P2P_START);
+            updatePoint(P2P_START);
             updateLOSNodes();
           }
           else
@@ -321,7 +321,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
         }
         else
         {
-          setLOSPoint(LOSPoint::P2P_START, pos, true);
+          setLOSPoint(P2P_START, pos, true);
         }
       }
 
@@ -343,11 +343,11 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
           if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
             pos.set(pos.x(), pos.y(), height);
 
-          setLOSPoint(LOSPoint::P2P_END, pos, true);
+          setLOSPoint(P2P_END, pos, true);
 
           if (_ui.p2AltBox->value() == hat)
           {
-            updatePoint(LOSPoint::P2P_END);
+            updatePoint(P2P_END);
             updateLOSNodes();
           }
           else
@@ -357,7 +357,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
         }
         else
         {
-          setLOSPoint(LOSPoint::P2P_END, pos, true);
+          setLOSPoint(P2P_END, pos, true);
         }
       }
     }
@@ -404,11 +404,11 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
             if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
               pos.set(pos.x(), pos.y(), height);
 
-            setLOSPoint(LOSPoint::RADIAL_CENTER, pos, true);
+            setLOSPoint(RADIAL_CENTER, pos, true);
             
             if (_ui.radAltBox->value() == hat)
             {
-              updatePoint(LOSPoint::RADIAL_CENTER);
+              updatePoint(RADIAL_CENTER);
               updateLOSNodes();
             }
             else
@@ -418,7 +418,7 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
           }
           else
           {
-            setLOSPoint(LOSPoint::RADIAL_CENTER, pos, true);
+            setLOSPoint(RADIAL_CENTER, pos, true);
           }
         }
       }
@@ -531,7 +531,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
 {
   switch(point)
   {
-    case LOSPoint::P2P_START:
+    case P2P_START:
       {
         double alt = _ui.p1AltBox->value();
         if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
@@ -549,7 +549,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
         updateDragger(_p1Dragger, osg::Vec3d(x, y, z));
       }
       break;
-    case LOSPoint::P2P_END:
+    case P2P_END:
       {
         double alt = _ui.p2AltBox->value();
         if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
@@ -567,7 +567,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
         updateDragger(_p2Dragger, osg::Vec3d(x, y, z));
       }
       break;
-    case LOSPoint::RADIAL_CENTER:
+    case RADIAL_CENTER:
       {
         double alt = _ui.radAltBox->value();
         if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
@@ -608,19 +608,19 @@ void LOSCreationDialog::getLOSPoint(LOSPoint point, osg::Vec3d& out_point, bool 
 
   switch(point)
   {
-    case LOSPoint::P2P_START:
+    case P2P_START:
       alt = _ui.p1AltBox->value();
       if (!relative && _ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
         alt += _p1BaseAlt;
       out_point.set(_ui.p1LonBox->value(), _ui.p1LatBox->value(), alt);
       break;
-    case LOSPoint::P2P_END:
+    case P2P_END:
       alt = _ui.p2AltBox->value();
       if (!relative && _ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
         alt += _p2BaseAlt;
       out_point.set(_ui.p2LonBox->value(), _ui.p2LatBox->value(), alt);
       break;
-    case LOSPoint::RADIAL_CENTER:
+    case RADIAL_CENTER:
       alt = _ui.radAltBox->value();
       if (!relative && _ui.radRelativeCheckBox->checkState() == Qt::Checked)
         alt += _radBaseAlt;
@@ -634,7 +634,7 @@ void LOSCreationDialog::setLOSPoint(LOSPoint point, const osg::Vec3d& value, boo
   _updatingUi = !updateUi;
   switch(point)
   {
-    case LOSPoint::P2P_START:
+    case P2P_START:
       _ui.p1LatBox->setValue(value.y());
       _ui.p1LonBox->setValue(value.x());
 
@@ -644,7 +644,7 @@ void LOSCreationDialog::setLOSPoint(LOSPoint point, const osg::Vec3d& value, boo
         _ui.p1AltBox->setValue(value.z());
 
       break;
-    case LOSPoint::P2P_END:
+    case P2P_END:
       _ui.p2LatBox->setValue(value.y());
       _ui.p2LonBox->setValue(value.x());
 
@@ -654,7 +654,7 @@ void LOSCreationDialog::setLOSPoint(LOSPoint point, const osg::Vec3d& value, boo
         _ui.p2AltBox->setValue(value.z());
 
       break;
-    case LOSPoint::RADIAL_CENTER:
+    case RADIAL_CENTER:
       _ui.radLatBox->setValue(value.y());
       _ui.radLonBox->setValue(value.x());
 
@@ -672,10 +672,10 @@ bool LOSCreationDialog::isAltitudeRelative(LOSPoint point)
 {
   switch(point)
   {
-    case LOSPoint::P2P_START:
-    case LOSPoint::P2P_END:
+    case P2P_START:
+    case P2P_END:
       return _ui.p2pRelativeCheckBox->checkState() == Qt::Checked;
-    case LOSPoint::RADIAL_CENTER:
+    case RADIAL_CENTER:
       return _ui.radRelativeCheckBox->checkState() == Qt::Checked;
   }
 
@@ -922,11 +922,11 @@ void LOSCreationDialog::onLocationValueChanged(double d)
     QObject* s = sender();
 
     if (s == _ui.p1LatBox || s == _ui.p1LonBox || s == _ui.p1AltBox)
-      updatePoint(LOSPoint::P2P_START);
+      updatePoint(P2P_START);
     else if (s == _ui.p2LatBox || s == _ui.p2LonBox || s == _ui.p2AltBox)
-      updatePoint(LOSPoint::P2P_END);
+      updatePoint(P2P_END);
     else if (s == _ui.radLatBox || s == _ui.radLonBox || s == _ui.radAltBox)
-      updatePoint(LOSPoint::RADIAL_CENTER);
+      updatePoint(RADIAL_CENTER);
   }
 
   updateLOSNodes();
@@ -940,12 +940,12 @@ void LOSCreationDialog::onRelativeCheckChanged(int state)
 
     if (s == _ui.p2pRelativeCheckBox)
     {
-      updatePoint(LOSPoint::P2P_START);
-      updatePoint(LOSPoint::P2P_END);
+      updatePoint(P2P_START);
+      updatePoint(P2P_END);
     }
     else if (s == _ui.radRelativeCheckBox)
     {
-      updatePoint(LOSPoint::RADIAL_CENTER);
+      updatePoint(RADIAL_CENTER);
     }
   }
 

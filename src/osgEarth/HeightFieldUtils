@@ -29,6 +29,9 @@ namespace osgEarth
 {
 #define NO_DATA_VALUE -FLT_MAX
 
+    class GeoExtent;
+    class Geoid;
+
     /**
      * Heightfield interpolation methods.
      */
@@ -88,13 +91,25 @@ namespace osgEarth
          * Plate Carre map (in which vertical units are not well defined).
          */
         static void scaleHeightFieldToDegrees( osg::HeightField* hf );
+        
+        /**
+         * Creates a heightfield containing MSL heights for the specified extent.
+         * If the SRS (in GeoExtent) has a vertical datum, the height values will be those of
+         * its reference geoid. If there is no vertical datum, we assume that MSL == the reference
+         * ellipsoid, and all the HF values will be zero.
+         */
+        static osg::HeightField* createReferenceHeightField( 
+            const GeoExtent& ex, 
+            unsigned         numCols,
+            unsigned         numRows );
 
         /**
          * Subsamples a heightfield to the specified extent.
          */
         static osg::HeightField* createSubSample(
-            osg::HeightField* input, const class GeoExtent& inputEx,
-            const class GeoExtent& outputEx,
+            osg::HeightField*      input, 
+            const GeoExtent&       inputEx,
+            const GeoExtent&       outputEx,
             ElevationInterpolation interpolation = INTERP_BILINEAR);
 
         /**
@@ -106,6 +121,16 @@ namespace osgEarth
             int newX,
             int newY,
             ElevationInterpolation interp = INTERP_BILINEAR );
+
+        /**
+         * Resolves any "invalid" height values in the hieghtfield, replacing them
+         * with valid values from a Geoid (or zero if no geoid).
+         */
+        static void resolveInvalidHeights(
+            osg::HeightField* grid,
+            const GeoExtent&  extent,
+            float             invalidValue,
+            const Geoid*      geoid );
         
         /**
          * Creates a new cluster culler based on a heightfield.

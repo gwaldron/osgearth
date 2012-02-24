@@ -19,6 +19,7 @@
 
 #include <osgEarth/HeightFieldUtils>
 #include <osgEarth/GeoData>
+#include <osgEarth/Geoid>
 #include <osg/Notify>
 
 using namespace osgEarth;
@@ -302,6 +303,90 @@ HeightFieldUtils::resizeHeightField(osg::HeightField* input, int newColumns, int
     }
 
     return output;
+}
+
+
+osg::HeightField*
+HeightFieldUtils::createReferenceHeightField( const GeoExtent& ex, unsigned numCols, unsigned numRows )
+{
+    osg::HeightField* hf = new osg::HeightField();
+    hf->allocate( numCols, numRows );
+    hf->setOrigin( osg::Vec3d( ex.xMin(), ex.yMin(), 0.0 ) );
+    hf->setXInterval( (ex.xMax() - ex.xMin())/(double)(numCols-1) );
+    hf->setYInterval( (ex.yMax() - ex.yMin())/(double)(numRows-1) );
+
+    const VerticalDatum* vdatum = ex.isValid() ? ex.getSRS()->getVerticalDatum() : 0L;
+
+    if ( vdatum )
+    {
+        // need the lat/long extent for geoid queries:
+        GeoExtent geodeticExtent = ex.getSRS()->isGeographic() ? ex : ex.transform( ex.getSRS()->getGeographicSRS() );
+        double latMin = geodeticExtent.yMin();
+        double lonMin = geodeticExtent.xMin();
+        double lonInterval = geodeticExtent.width() / (double)(numCols-1);
+        double latInterval = geodeticExtent.height() / (double)(numRows-1);
+
+        for( unsigned r=0; r<numRows; ++r )
+        {            
+            double lat = latMin + latInterval*(double)r;
+            for( unsigned c=0; c<numCols; ++c )
+            {
+                double lon = lonMin + lonInterval*(double)c;
+                double offset = vdatum->msl2hae(lat, lon, 0.0);
+                hf->setHeight( c, r, offset );
+            }
+        }
+    }
+    else
+    {
+        for(unsigned int i=0; i<hf->getHeightList().size(); i++ )
+            hf->getHeightList()[i] = 0.0;
+    }
+
+    hf->setBorderWidth( 0 );
+    return hf;    
+}
+
+void
+HeightFieldUtils::resolveInvalidHeights(osg::HeightField* grid,
+                                        const GeoExtent&  ex,
+                                        float             invalidValue,
+                                        const Geoid*      geoid)
+{
+    if ( geoid )
+    {
+        // need the lat/long extent for geoid queries:
+        unsigned numRows = grid->getNumRows();
+        unsigned numCols = grid->getNumColumns();
+        GeoExtent geodeticExtent = ex.getSRS()->isGeographic() ? ex : ex.transform( ex.getSRS()->getGeographicSRS() );
+        double latMin = geodeticExtent.yMin();
+        double lonMin = geodeticExtent.xMin();
+        double lonInterval = geodeticExtent.width() / (double)(numCols-1);
+        double latInterval = geodeticExtent.height() / (double)(numRows-1);
+
+        for( unsigned r=0; r<numRows; ++r )
+        {
+            double lat = latMin + latInterval*(double)r;
+            for( unsigned c=0; c<numCols; ++c )
+            {
+                double lon = lonMin + lonInterval*(double)c;
+                if ( grid->getHeight(c, r) == invalidValue )
+                {
+                    grid->setHeight( c, r, geoid->getHeight(lat, lon) );
+                }
+            }
+        }
+    }
+    else
+    {
+        for(unsigned int i=0; i<grid->getHeightList().size(); i++ )
+        {
+            if ( grid->getHeightList()[i] == invalidValue )
+            {
+                grid->getHeightList()[i] = 0.0;
+            }
+        }
+    }
 }
 
 osg::ClusterCullingCallback*

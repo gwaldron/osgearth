@@ -234,10 +234,8 @@ namespace osgEarth
 
         osg::ref_ptr< ModelLayerCallback > _modelLayerCallback;
         osg::ref_ptr< MapCallback > _mapCallback;        
-        
     
         void init();
-        void adjustEventTraversalCount( int delta );
     };
 
 } // namespace osgEarth

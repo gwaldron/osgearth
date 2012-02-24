@@ -82,23 +82,14 @@ namespace osgEarth { namespace Util
             unsigned                options   =0);
 
         /**
-         * Formats a lat/lon (in degrees) as an MGRS string.
-         */
-        std::string format( double latDeg, double lonDeg ) const;
-
-        std::string operator()(double latDeg, double lonDeg ) const { 
-            return format(latDeg, lonDeg);
-        }
-
-        /**
          * Transforms input coords into MGRS.
          */
-        bool transform( const osg::Vec3d& coords, const SpatialReference* srs, MGRSCoord& out_mgrs ) const;
+        bool transform( const GeoPoint& input, MGRSCoord& out_mgrs ) const;
 
 
     public: // Formatter
 
-        virtual std::string format( const osg::Vec3d& coords, const SpatialReference* srs ) const;
+        virtual std::string format( const GeoPoint& coords ) const;
 
 
     private:

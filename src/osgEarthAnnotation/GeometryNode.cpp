@@ -34,15 +34,15 @@ GeometryNode::GeometryNode(MapNode*     mapNode,
                            bool         draped ) :
 LocalizedNode( mapNode )
 {
-    osg::ref_ptr<Feature> feature = new Feature( geom, 0L ); //todo:consider the SRS
+    osg::ref_ptr<Feature> feature = new Feature( geom, 0L );
 
     GeometryCompiler compiler;
-    FilterContext cx( 0L );
+    FilterContext cx( mapNode ? new Session(mapNode->getMap()) : 0L );
     osg::Node* node = compiler.compile( feature.get(), style, cx );
     if ( node )
     {
         getTransform()->addChild( node );
-        if ( draped )
+        if ( draped && mapNode )
         {
             DrapeableNode* dn = new DrapeableNode(mapNode);
             dn->addChild( getTransform() );
@@ -53,7 +53,7 @@ LocalizedNode( mapNode )
             this->addChild( getTransform() );
         }
 
-        // this will activate the clamping logic
+        // prep for clamping
         applyStyle( style, draped );
     }
 }
@@ -80,26 +80,5 @@ LocalizedNode( mapNode )
 
         // this will activate the clamping logic
         applyStyle( style, draped );
-    }
-}
-
-void
-GeometryNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain )
-{
-    // since a GeometyNode is always local-tangent plane, we only need to reclamp
-    // the reference position (and not all the verts)
-    osg::Vec3d mapPos = getPosition();
-    if ( key.getExtent().contains(mapPos.x(), mapPos.y()) )
-    {
-        double height;
-        if ( terrain->getHeight(mapPos, height, tile) )
-        {
-            if ( _altitude.valid() )
-            {
-                height *= _altitude->verticalScale()->eval();
-                height += _altitude->verticalOffset()->eval();
-            }
-            setPosition( osg::Vec3d(mapPos.x(), mapPos.y(), height) );
-        }
     }
 }

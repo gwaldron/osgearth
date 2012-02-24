@@ -22,9 +22,7 @@
 
 #include <osg/NodeCallback>
 #include <osg/CoordinateSystemNode>
-
-
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 
 #include <osgEarthUtil/Common>

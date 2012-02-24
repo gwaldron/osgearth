@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgEarth/GeoData>
 #include <osgEarthAnnotation/Draggers>
 
 namespace osgEarth { namespace Util
@@ -43,11 +44,11 @@ namespace osgEarth { namespace Util
     /**
      * The altitude mode of the locations
      */
-    enum AltitudeMode
-    {
-        ALTITUDE_ABSOLUTE,
-        ALTITUDE_RELATIVE
-    };
+    //enum AltitudeMode
+    //{
+    //    ALTITUDE_ABSOLUTE,
+    //    ALTITUDE_RELATIVE
+    //};
 
     struct ChangedCallback : public osg::Referenced
     {
@@ -164,15 +165,14 @@ namespace osgEarth { namespace Util
         /**
          * Gets the altitude mode
          */
-        AltitudeMode getStartAltitudeMode() const;
-        AltitudeMode getEndAltitudeMode() const;
+        AltitudeModeEnum getStartAltitudeMode() const;
+        AltitudeModeEnum getEndAltitudeMode() const;
 
         /**
          * Sets the altitude mode
          */
-
-        void setStartAltitudeMode( AltitudeMode mode );
-        void setEndAltitudeMode( AltitudeMode mode );
+        void setStartAltitudeMode( AltitudeModeEnum mode );
+        void setEndAltitudeMode( AltitudeModeEnum mode );
 
 
         /**
@@ -203,7 +203,7 @@ namespace osgEarth { namespace Util
          * @returns
          *        Whether or not there is line of sight from start to end.  hit is only valid if this function return false.
          */
-        static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeMode altitudeMode, osg::Vec3d& hit );
+        static bool computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start, const osg::Vec3d& end, AltitudeModeEnum altitudeMode, osg::Vec3d& hit );
 
 
     private:
@@ -225,8 +225,8 @@ namespace osgEarth { namespace Util
         osg::Vec3d _endWorld;
         osg::Vec3d _hitWorld;
 
-        AltitudeMode _startAltitudeMode;
-        AltitudeMode _endAltitudeMode;
+        AltitudeModeEnum _startAltitudeMode;
+        AltitudeModeEnum _endAltitudeMode;
 
         ChangedCallbackList _changedCallbacks;
 
@@ -375,13 +375,13 @@ namespace osgEarth { namespace Util
         /**
          * Gets the altitude mode
          */
-        AltitudeMode getAltitudeMode() const;
+        AltitudeModeEnum getAltitudeMode() const;
 
         /**
          * Sets the altitude mode
          */
 
-        void setAltitudeMode( AltitudeMode mode );
+        void setAltitudeMode( AltitudeModeEnum mode );
 
         void addChangedCallback( ChangedCallback* callback );
         
@@ -411,7 +411,7 @@ namespace osgEarth { namespace Util
         osg::Vec3d _center;
         osg::Vec3d _centerWorld;
         osg::ref_ptr< MapNode > _mapNode;
-        AltitudeMode _altitudeMode;
+        AltitudeModeEnum _altitudeMode;
         ChangedCallbackList _changedCallbacks;
         osg::ref_ptr< osg::Node > _pendingNode;
         osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;

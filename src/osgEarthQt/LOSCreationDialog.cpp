@@ -295,16 +295,16 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
         onP1TypeChange("Point");  // Necessary to init UI because above setCurrentIndex call will not
         updateDraggerNodes();     // fire an event since the index defaults to 0
 
-        _ui.p2pRelativeCheckBox->setChecked(p2pNode->getStartAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE);
+        _ui.p2pRelativeCheckBox->setChecked(p2pNode->getStartAltitudeMode() == AltitudeMode::RELATIVE_TO_TERRAIN);
 
         osg::Vec3d pos(p2pNode->getStart());
 
-        if (p2pNode->getStartAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE)
+        if (p2pNode->getStartAltitudeMode() == AltitudeMode::RELATIVE_TO_TERRAIN)
         {
           double hat = pos.z();
 
           double height;
-          if (_mapNode->getTerrain()->getHeight(pos, height))
+          if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
             pos.set(pos.x(), pos.y(), height);
 
           setLOSPoint(LOSPoint::P2P_START, pos, true);
@@ -331,16 +331,16 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
         onP2TypeChange("Point");  // Necessary to init UI because above setCurrentIndex call will not
         updateDraggerNodes();     // fire an event since the index defaults to 0
 
-        _ui.p2pRelativeCheckBox->setChecked(p2pNode->getEndAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE);
+        _ui.p2pRelativeCheckBox->setChecked(p2pNode->getEndAltitudeMode() == AltitudeMode::RELATIVE_TO_TERRAIN);
 
         osg::Vec3d pos(p2pNode->getEnd());
 
-        if (p2pNode->getEndAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE)
+        if (p2pNode->getEndAltitudeMode() == AltitudeMode::RELATIVE_TO_TERRAIN)
         {
           double hat = pos.z();
 
           double height;
-          if (_mapNode->getTerrain()->getHeight(pos, height))
+          if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
             pos.set(pos.x(), pos.y(), height);
 
           setLOSPoint(LOSPoint::P2P_END, pos, true);
@@ -392,16 +392,16 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
           onRadTypeChange("Point"); // Necessary to init UI because above setCurrentIndex call will not
           updateDraggerNodes();     // fire an event since the index defaults to 0
 
-          _ui.radRelativeCheckBox->setChecked(radNode->getAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE);
+          _ui.radRelativeCheckBox->setChecked(radNode->getAltitudeMode() == AltitudeMode::RELATIVE_TO_TERRAIN);
 
           osg::Vec3d pos(radNode->getCenter());
 
-          if (radNode->getAltitudeMode() == osgEarth::Util::ALTITUDE_RELATIVE)
+          if (radNode->getAltitudeMode() == AltitudeMode::RELATIVE_TO_TERRAIN)
           {
             double hat = pos.z();
 
             double height;
-            if (_mapNode->getTerrain()->getHeight(pos, height))
+            if (_mapNode->getTerrain()->getHeight(pos.x(), pos.y(), &height))
               pos.set(pos.x(), pos.y(), height);
 
             setLOSPoint(LOSPoint::RADIAL_CENTER, pos, true);
@@ -433,38 +433,38 @@ void LOSCreationDialog::mapClick(const osg::Vec3d& point)
   if (_activeButton)
   {
     // transform point to map coordinates:
-    osg::Vec3d lla;
-    _map->worldPointToMapPoint(point, lla);
+    osgEarth::GeoPoint outPoint;
+    _map->worldPointToMapPoint(point, outPoint);
 
     if (_activeButton == _ui.p1PointButton)
     {
-      _p1BaseAlt = lla.z();
+      _p1BaseAlt = outPoint.z();
 
-      _ui.p1LonBox->setValue(lla.x());
-      _ui.p1LatBox->setValue(lla.y());
+      _ui.p1LonBox->setValue(outPoint.x());
+      _ui.p1LatBox->setValue(outPoint.y());
 
       if (_ui.p2pRelativeCheckBox->checkState() == Qt::Unchecked)
-        _ui.p1AltBox->setValue((int)(lla.z()) + 1.0);
+        _ui.p1AltBox->setValue((int)(outPoint.z()) + 1.0);
     }
     else if (_activeButton == _ui.p2PointButton)
     {
-      _p2BaseAlt = lla.z();
+      _p2BaseAlt = outPoint.z();
 
-      _ui.p2LonBox->setValue(lla.x());
-      _ui.p2LatBox->setValue(lla.y());
+      _ui.p2LonBox->setValue(outPoint.x());
+      _ui.p2LatBox->setValue(outPoint.y());
 
       if (_ui.p2pRelativeCheckBox->checkState() == Qt::Unchecked)
-        _ui.p2AltBox->setValue((int)(lla.z()) + 1.0);
+        _ui.p2AltBox->setValue((int)(outPoint.z()) + 1.0);
     }
     else if (_activeButton == _ui.radPointButton)
     {
-      _radBaseAlt = lla.z();
+      _radBaseAlt = outPoint.z();
 
-      _ui.radLonBox->setValue(lla.x());
-      _ui.radLatBox->setValue(lla.y());
+      _ui.radLonBox->setValue(outPoint.x());
+      _ui.radLatBox->setValue(outPoint.y());
 
       if (_ui.radRelativeCheckBox->checkState() == Qt::Unchecked)
-        _ui.radAltBox->setValue((int)(lla.z()) + 1.0);
+        _ui.radAltBox->setValue((int)(outPoint.z()) + 1.0);
     }
     
     _activeButton = 0L;
@@ -720,15 +720,15 @@ void LOSCreationDialog::updateLOSNodes(bool updateAll)
       _p2p->setStart(osg::Vec3d(_ui.p1LonBox->value(), _ui.p1LatBox->value(), _ui.p1AltBox->value()));
 
       if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-        _p2p->setStartAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
+        _p2p->setStartAltitudeMode(AltitudeMode::RELATIVE_TO_TERRAIN);
       else
-        _p2p->setStartAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+        _p2p->setStartAltitudeMode(AltitudeMode::ABSOLUTE);
 
       p1Set = true;
     }
     else if (_ui.p1TypeCombo->currentText() == "Annotation")
     {
-      _p2p->setStartAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+      _p2p->setStartAltitudeMode(AltitudeMode::ABSOLUTE);
       p1Node = _annotations[_ui.p1NodeCombo->currentIndex()];
       p1Set = true;
     }
@@ -739,15 +739,15 @@ void LOSCreationDialog::updateLOSNodes(bool updateAll)
       _p2p->setEnd(osg::Vec3d(_ui.p2LonBox->value(), _ui.p2LatBox->value(), _ui.p2AltBox->value()));
 
       if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-        _p2p->setEndAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
+        _p2p->setEndAltitudeMode(AltitudeMode::RELATIVE_TO_TERRAIN);
       else
-        _p2p->setEndAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+        _p2p->setEndAltitudeMode(AltitudeMode::ABSOLUTE);
 
       p2Set = true;
     }
     else if (_ui.p2TypeCombo->currentText() == "Annotation")
     {
-      _p2p->setEndAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+      _p2p->setEndAltitudeMode(AltitudeMode::ABSOLUTE);
       p2Node = _annotations[_ui.p2NodeCombo->currentIndex()];
       p2Set = true;
     }
@@ -775,16 +775,16 @@ void LOSCreationDialog::updateLOSNodes(bool updateAll)
       _radial->setCenter(osg::Vec3d(_ui.radLonBox->value(), _ui.radLatBox->value(), _ui.radAltBox->value()));
 
       if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
-        _radial->setAltitudeMode(osgEarth::Util::ALTITUDE_RELATIVE);
+        _radial->setAltitudeMode(AltitudeMode::RELATIVE_TO_TERRAIN);
       else
-        _radial->setAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+        _radial->setAltitudeMode(AltitudeMode::ABSOLUTE);
 
       // clear update callback
       _radial->setUpdateCallback(0L);
     }
     else if (_ui.radTypeCombo->currentText() == "Annotation")
     {
-      _radial->setAltitudeMode(osgEarth::Util::ALTITUDE_ABSOLUTE);
+      _radial->setAltitudeMode(AltitudeMode::ABSOLUTE);
       _radial->setUpdateCallback(new osgEarth::Util::RadialLineOfSightTether(_annotations[_ui.radNodeCombo->currentIndex()]));
     }
   }
@@ -816,10 +816,10 @@ void LOSCreationDialog::centerMapOnNode(osg::Node* node)
     {
       osg::Vec3d center = node->getBound().center();
 
-      osg::Vec3d output;
+      GeoPoint output;
       _map->worldPointToMapPoint(center, output);
 
-      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output, 0.0, -90.0, 1e5), *_views));
+      _manager->doAction(this, new SetViewpointAction(osgEarth::Viewpoint(output.vec3d(), 0.0, -90.0, 1e5), *_views));
     }
   }
 }

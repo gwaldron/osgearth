@@ -112,9 +112,11 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
                 _heightExpr = *_extrusionSymbol->heightExpression();
             }
 
-            // account for a "height" value that is relative to ZERO (MSL/HAE)
+            // If there is no height expression, and we have either absolute or terrain-relative
+            // clamping, THAT means that we want to extrude DOWN from the geometry to the ground
+            // (instead of from the geometry.)
             AltitudeSymbol* alt = _style.get<AltitudeSymbol>();
-            if ( alt && !_extrusionSymbol->heightExpression().isSet() )
+            if ( alt && !_extrusionSymbol->heightExpression().isSet() && !_extrusionSymbol->height().isSet() )
             {
                 if (alt->clamping() == AltitudeSymbol::CLAMP_ABSOLUTE ||
                     alt->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN )
@@ -294,7 +296,7 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
                 roofProjSRS = srs->createUTMFromLongitude( Angular(geogCenter.x()) );
                 roofBounds.transform( srs, roofProjSRS.get() );
                 osg::ref_ptr<Geometry> projectedInput = input->clone();
-                srs->transformPoints( roofProjSRS.get(), projectedInput->asVector() );
+                srs->transform( projectedInput->asVector(), roofProjSRS.get() );
                 roofRotation = getApparentRotation( projectedInput.get() );
             }
             else

@@ -23,6 +23,8 @@
 #include <osgEarth/Map>
 #include <osgEarth/FileUtils>
 #include <osg/Notify>
+#include <osg/MatrixTransform>
+#include <osg/io_utils>
 #include <osgDB/FileNameUtils>
 
 using namespace osgEarth;
@@ -71,12 +73,13 @@ class SimpleModelSource : public ModelSource
 {
 public:
     SimpleModelSource( const ModelSourceOptions& options )
-        : ModelSource( options ), _options(options) { }
+        : ModelSource( options ), _options(options), _map(0) { }
 
     //override
     void initialize( const osgDB::Options* dbOptions, const osgEarth::Map* map )
     {
         ModelSource::initialize( dbOptions, map );
+        _map = map;
     }
 
     // override
@@ -89,6 +92,32 @@ public:
         localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
         result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
+
+        if (_options.location().isSet())
+        {
+            GeoPoint geoPoint(_map->getProfile()->getSRS(), (*_options.location()).x(), (*_options.location()).y(), (*_options.location()).z());
+            OE_NOTICE << "Read location " << geoPoint.vec3d() << std::endl;
+            
+            osg::Matrixd matrix;
+            geoPoint.createLocalToWorld( matrix );                       
+
+            if (_options.orientation().isSet())
+            {
+                //Apply the rotation
+                osg::Matrix rot_mat;
+                rot_mat.makeRotate( 
+                    osg::DegreesToRadians((*_options.orientation()).y()), osg::Vec3(1,0,0),
+                    osg::DegreesToRadians((*_options.orientation()).x()), osg::Vec3(0,0,1),
+                    osg::DegreesToRadians((*_options.orientation()).z()), osg::Vec3(0,1,0) );
+                matrix.preMult(rot_mat);
+            }
+
+            osg::MatrixTransform* mt = new osg::MatrixTransform;
+            mt->setMatrix( matrix );
+            mt->addChild( result.get() );
+            result = mt;
+
+        }
 
 		if(_options.lodScale().isSet())
 		{
@@ -105,6 +134,7 @@ protected:
 
     const SimpleModelOptions           _options;
     const osg::ref_ptr<osgDB::Options> _dbOptions;
+    const Map* _map;
 };
 
 

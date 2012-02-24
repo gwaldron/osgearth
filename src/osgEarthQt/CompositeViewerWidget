@@ -46,7 +46,7 @@ namespace osgEarth { namespace QtGui
 
       void initialize();
       osg::Camera* createCamera(int x, int y, int width, int height, osg::GraphicsContext* shared=0L);
-      void paintEvent(QPaintEvent *) { frame(); }
+      void paintEvent(QPaintEvent *);
     };
 } }
 

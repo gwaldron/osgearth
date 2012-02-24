@@ -110,23 +110,31 @@ OSGTerrainEngineNode::getUID() const
 
 //------------------------------------------------------------------------
 
+OSGTerrainEngineNode::ElevationChangedCallback::ElevationChangedCallback( OSGTerrainEngineNode* terrain ):
+_terrain( terrain )
+{
+}
+
+void
+OSGTerrainEngineNode::ElevationChangedCallback::onEnabledChanged( TerrainLayer* layer )
+{
+    _terrain->refresh();
+}
+
+//------------------------------------------------------------------------
+
 OSGTerrainEngineNode::OSGTerrainEngineNode() :
 TerrainEngineNode(),
-_terrain( 0L ),
-_update_mapf( 0L ),
-_cull_mapf( 0L ),
-_tileCount( 0 ),
+_terrain         ( 0L ),
+_update_mapf     ( 0L ),
+_cull_mapf       ( 0L ),
+_tileCount       ( 0 ),
 _tileCreationTime( 0.0 )
 {
     _uid = Registry::instance()->createUID();
     _taskServiceMgr = Registry::instance()->getTaskServiceManager();
-}
 
-OSGTerrainEngineNode::OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op ) :
-TerrainEngineNode( rhs, op )
-{
-    //nop - this copy ctor will never get called since this is a plugin instance.
-    OE_WARN << LC << "ILLEGAL STATE in OSGTerrainEngineNode Copy CTOR" << std::endl;
+    _elevationCallback = new ElevationChangedCallback( this );
 }
 
 OSGTerrainEngineNode::~OSGTerrainEngineNode()
@@ -213,6 +221,16 @@ OSGTerrainEngineNode::postInitialize( const Map* map, const TerrainOptions& opti
 
     // install a layer callback for processing further map actions:
     map->addMapCallback( new OSGTerrainEngineNodeMapCallbackProxy(this) );
+
+    //Attach to all of the existing elevation layers
+    ElevationLayerVector elevationLayers;
+    map->getElevationLayers( elevationLayers );
+    for( ElevationLayerVector::const_iterator i = elevationLayers.begin(); i != elevationLayers.end(); ++i )
+    {
+        i->get()->addCallback( _elevationCallback.get() );
+    }
+
+    //Attach a callback to all of the 
 
     // register me.
     registerEngine( this );
@@ -452,6 +470,33 @@ OSGTerrainEngineNode::createNode( const TileKey& key )
 #endif
 
     return result;
+}
+
+osg::Node*
+OSGTerrainEngineNode::createTile( const TileKey& key )
+{
+    if ( !_tileBuilder.valid() )
+        return 0L;
+
+    osg::ref_ptr<Tile> tile;
+    bool hasRealData, hasLodBlendedLayers;
+
+    _tileBuilder->createTile(
+        key,
+        false,
+        tile,
+        hasRealData,
+        hasLodBlendedLayers );
+
+    if ( !tile.valid() )
+        return 0L;
+
+    // code block required in order to properly manage the ref count of the transform
+    SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
+    tile->setTerrainTechnique( tech );
+    tile->init();
+    
+    return tech->takeTransform();
 }
 
 void
@@ -702,6 +747,9 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
     if ( !layer || !layer->getTileSource() )
         return;
 
+    layer->addCallback( _elevationCallback.get() );
+
+
     if (!_isStreaming)
     {
         refresh();
@@ -723,6 +771,8 @@ OSGTerrainEngineNode::addElevationLayer( ElevationLayer* layer )
 void
 OSGTerrainEngineNode::removeElevationLayer( ElevationLayer* layerRemoved )
 {
+    layerRemoved->removeCallback( _elevationCallback.get() );
+
     if (!_isStreaming)
     {
         refresh();

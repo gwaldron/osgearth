@@ -388,9 +388,11 @@ CubeFaceLocator::convertModelToLocal(const osg::Vec3d& world, osg::Vec3d& local)
 // --------------------------------------------------------------------------
 
 CubeSpatialReference::CubeSpatialReference( void* handle ) :
-SpatialReference( handle, "OSGEARTH", "unified-cube", "Unified Cube" )
+SpatialReference( handle, "OSGEARTH" )
 {
     //nop
+    _key.first = "unified-cube";
+    _name      = "Unified Cube";
 }
 
 void
@@ -399,10 +401,11 @@ CubeSpatialReference::_init()
     SpatialReference::_init();
 
     _is_user_defined = true;
-    _is_cube = true;
-    _is_contiguous = false;
-    _is_geographic = false;
-    _name = "Unified Cube";
+    _is_cube         = true;
+    _is_contiguous  = false;
+    _is_geographic  = false;
+    _key.first      = "unified-cube";
+    _name           = "Unified Cube";
 }
 
 GeoLocator*
@@ -426,54 +429,71 @@ CubeSpatialReference::createLocator(double xmin, double ymin, double xmax, doubl
 }
 
 bool
-CubeSpatialReference::preTransform(double& x, double& y, double& z, void* context) const
+CubeSpatialReference::preTransform( std::vector<osg::Vec3d>& points ) const
 {
-    // Convert the incoming points from cube => face => lat/long.
-    int face;
-    if ( !CubeUtils::cubeToFace( x, y, face ) )
+    for( unsigned i=0; i<points.size(); ++i )
     {
-        OE_WARN << LC << "Failed to convert (" << x << "," << y << ") into face coordinates." << std::endl;
-        return false;
-    }
+        osg::Vec3d& p = points[i];
 
-    double lat_deg, lon_deg;
-    bool success = CubeUtils::faceCoordsToLatLon( x, y, face, lat_deg, lon_deg );
-    if (!success)
-    {
-        OE_WARN << LC << "Could not transform face coordinates to lat lon" << std::endl;
-        return false;
+        // Convert the incoming points from cube => face => lat/long.
+        int face;
+        if ( !CubeUtils::cubeToFace( p.x(), p.y(), face ) )
+        {
+            OE_WARN << LC << "Failed to convert (" << p.x() << "," << p.y() << ") into face coordinates." << std::endl;
+            return false;
+        }
+
+        double lat_deg, lon_deg;
+        bool success = CubeUtils::faceCoordsToLatLon( p.x(), p.y(), face, lat_deg, lon_deg );
+        if (!success)
+        {
+            OE_WARN << LC << 
+                std::fixed << std::setprecision(2)
+                << "Could not transform face coordinates ["
+                << p.x() << ", " << p.y() << ", " << face << "] to lat lon"
+                << std::endl;
+            return false;
+        }
+        p.x() = lon_deg;
+        p.y() = lat_deg;
     }
-    x = lon_deg;
-    y = lat_deg;
     return true;
 }
 
 bool
-CubeSpatialReference::postTransform(double& x, double& y, double& z, void* context) const
+CubeSpatialReference::postTransform( std::vector<osg::Vec3d>& points) const
 {
-    //Convert the incoming points from lat/lon back to face coordinates
-    int face;
-    double out_x, out_y;
-
-    // convert from lat/long to x/y/face
-    bool success = CubeUtils::latLonToFaceCoords( y, x, out_x, out_y, face );
-    if (!success)
+    for( unsigned i=0; i<points.size(); ++i )
     {
-        OE_WARN << LC << "Could not transform face coordinates to lat lon" << std::endl;
-        return false;
+        osg::Vec3d& p = points[i];
+
+        //Convert the incoming points from lat/lon back to face coordinates
+        int face;
+        double out_x, out_y;
+
+        // convert from lat/long to x/y/face
+        bool success = CubeUtils::latLonToFaceCoords( p.y(), p.x(), out_x, out_y, face );
+        if (!success)
+        {
+            OE_WARN << LC
+                << std::fixed << std::setprecision(2)
+                << "Could not transform lat long ["
+                << p.y() << ", " << p.x() << "] coordinates to face" 
+                << std::endl;
+            return false;
+        }
+
+        //TODO: what to do about boundary points?
+
+        if ( !CubeUtils::faceToCube( out_x, out_y, face ) )
+        {
+            OE_WARN << LC << "fromFace(" << out_x << "," << out_y << "," << face << ") failed" << std::endl;
+            return false;
+        }
+        
+        p.x() = out_x;
+        p.y() = out_y;
     }
-
-    //TODO: what to do about boundary points?
-
-    if ( !CubeUtils::faceToCube( out_x, out_y, face ) )
-    {
-        OE_WARN << LC << "fromFace(" << out_x << "," << out_y << "," << face << ") failed" << std::endl;
-        return false;
-    }
-    
-    x = out_x;
-    y = out_y;
-
     return true;
 }
 
@@ -485,12 +505,11 @@ CubeSpatialReference::postTransform(double& x, double& y, double& z, void* conte
 #define LARGEST( W,X,Y,Z ) osg::maximum(W, osg::maximum( X, osg::maximum( Y, Z ) ) )
 
 bool
-CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
-                                      double& in_out_xmin,
-                                      double& in_out_ymin,
-                                      double& in_out_xmax,
-                                      double& in_out_ymax,
-                                      void* context ) const
+CubeSpatialReference::transformExtentToMBR(const SpatialReference* to_srs,
+                                           double&                 in_out_xmin,
+                                           double&                 in_out_ymin,
+                                           double&                 in_out_xmax,
+                                           double&                 in_out_ymax ) const
 {
     // note: this method only works when the extent is isolated to one face of the cube. If you
     // want to transform an artibrary extent, you need to break it up into separate extents for
@@ -507,7 +526,7 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
     // pre/postTransform).
     if ( face < 4 )
     {
-        ok = SpatialReference::transformExtent( to_srs, in_out_xmin, in_out_ymin, in_out_xmax, in_out_ymax );
+        ok = SpatialReference::transformExtentToMBR( to_srs, in_out_xmin, in_out_ymin, in_out_xmax, in_out_ymax );
     }
     else
     {
@@ -522,8 +541,18 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
         if ( crosses_pole ) // full x extent.
         {
             bool north = face == 4; // else south
-            to_srs->getGeographicSRS()->transform2D( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
-            to_srs->getGeographicSRS()->transform2D( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
+            osg::Vec3d output;
+            
+            to_srs->getGeographicSRS()->transform( osg::Vec3d(-180.0, north? 45.0 : -90.0, 0), to_srs, output );
+            in_out_xmin = output.x();
+            in_out_ymin = output.y();
+
+            to_srs->getGeographicSRS()->transform( osg::Vec3d(180.0, north? 90.0 : -45.0, 0), to_srs, output );
+            in_out_xmax = output.x();
+            in_out_ymax = output.y();
+            
+            //to_srs->getGeographicSRS()->transform2D( -180.0, north? 45.0 : -90.0, to_srs, in_out_xmin, in_out_ymin );
+            //to_srs->getGeographicSRS()->transform2D( 180.0, north? 90.0 : -45.0, to_srs, in_out_xmax, in_out_ymax );
         }
 
         else
@@ -563,8 +592,21 @@ CubeSpatialReference::transformExtent(const SpatialReference* to_srs,
             }
             else
             {
-                bool ok1 = transform2D( lonmin, latmin, to_srs, in_out_xmin, in_out_ymin, context );
-                bool ok2 = transform2D( lonmax, latmax, to_srs, in_out_xmax, in_out_ymax, context );
+                osg::Vec3d output;
+
+                bool ok1 = transform( osg::Vec3d(lonmin, latmin, 0), to_srs, output );
+                if ( ok1 ) {
+                    in_out_xmin = output.x();
+                    in_out_ymin = output.y();
+                }
+                bool ok2 = transform( osg::Vec3d(lonmax, latmax, 0), to_srs, output );
+                if ( ok2 ) {
+                    in_out_xmax = output.x();
+                    in_out_ymax = output.y();
+                }
+
+                //bool ok1 = transform2D( lonmin, latmin, to_srs, in_out_xmin, in_out_ymin, context );
+                //bool ok2 = transform2D( lonmax, latmax, to_srs, in_out_xmax, in_out_ymax, context );
                 ok = ok1 && ok2;
             }
         }
@@ -579,7 +621,6 @@ UnifiedCubeProfile::UnifiedCubeProfile() :
 Profile(SpatialReference::create( "unified-cube" ),
         0.0, 0.0, 6.0, 1.0,
         -180.0, -90.0, 180.0, 90.0,
-        0L, // let it automatically create a VSRS
         6, 1 )
 
 {
@@ -593,24 +634,6 @@ Profile(SpatialReference::create( "unified-cube" ),
     _faceExtent_gcs[4] = GeoExtent( srs, -180,  45, 180,  90 ); // north polar
     _faceExtent_gcs[5] = GeoExtent( srs, -180, -90, 180, -45 ); // south polar
 }
-
-//UnifiedCubeProfile::UnifiedCubeProfile(double xmin, double ymin, double xmax, double ymax,
-//                                       double lonMin, double latMin, double lonMax, double latMax ) :
-//Profile(SpatialReference::create( "unified-cube" ),
-//        xmin, ymin, xmax, ymax,
-//        lonMin, latMin, lonMax, latMax,
-//        6, 1 )
-//{
-//    const SpatialReference* srs = getSRS()->getGeographicSRS();
-//
-//    // set up some faceextents
-//    _faceExtent_gcs[0] = GeoExtent( srs, osg::maximum(-180.,lonMin), osg::maximum(-45.,latMin), osg::minimum(-90.,lonMax), osg::minimum( 45.,latMax) );
-//    _faceExtent_gcs[1] = GeoExtent( srs, osg::maximum( -90.,lonMin), osg::maximum(-45.,latMin), osg::minimum(  0.,lonMax), osg::minimum( 45.,latMax) );
-//    _faceExtent_gcs[2] = GeoExtent( srs, osg::maximum(   0.,lonMin), osg::maximum(-45.,latMin), osg::minimum( 90.,lonMax), osg::minimum( 45.,latMax) );
-//    _faceExtent_gcs[3] = GeoExtent( srs, osg::maximum(  90.,lonMin), osg::maximum(-45.,latMin), osg::minimum(180.,lonMax), osg::minimum( 45.,latMax) );
-//    _faceExtent_gcs[4] = GeoExtent( srs, osg::maximum(-180.,lonMin), osg::maximum( 45.,latMin), osg::minimum(180.,lonMax), osg::minimum( 90.,latMax) ); // north polar
-//    _faceExtent_gcs[5] = GeoExtent( srs, osg::maximum(-180.,lonMin), osg::maximum(-90.,latMin), osg::minimum(180.,lonMax), osg::minimum(-45.,latMax) ); // south polar
-//}
 
 int
 UnifiedCubeProfile::getFace( const TileKey& key )

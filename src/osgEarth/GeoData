@@ -19,44 +19,183 @@
 #ifndef OSGEARTH_GEODATA_H
 #define OSGEARTH_GEODATA_H 1
 
+#include <osgEarth/Common>
+#include <osgEarth/Bounds>
+#include <osgEarth/SpatialReference>
+#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Units>
+
 #include <osg/Referenced>
 #include <osg/Image>
 #include <osg/Shape>
 #include <osgTerrain/Locator>
-#include <osgEarth/Common>
-#include <osgEarth/SpatialReference>
-#include <osgEarth/VerticalSpatialReference>
-#include <osgEarth/HeightFieldUtils>
-#include <osgEarth/Units>
+
+#undef ABSOLUTE
 
 namespace osgEarth
 {
+    class Terrain;
+
     /**
-     * An "anonymous" bounding extent (i.e., no geo reference information)
+     * Indicates how to interpret a Z coordinate.
      */
-    class OSGEARTH_EXPORT Bounds : public osg::BoundingBoxImpl<osg::Vec3d>
+    namespace AltitudeMode
+    { 
+        enum Enum
+        {
+            ABSOLUTE,            // Z value is the absolute height above MSL/HAE.
+            RELATIVE_TO_TERRAIN  // Z value is the height above the terrain elevation.
+        };
+    }
+    typedef AltitudeMode::Enum AltitudeModeEnum;
+
+    /**
+     * A georeferenced 3D point.
+     */
+    class OSGEARTH_EXPORT GeoPoint
     {
     public:
-        Bounds();
-        Bounds(double xmin, double ymin, double xmax, double ymax );
+        /**
+         * Constructs a GeoPoint.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            double x = 0.0,
+            double y = 0.0,
+            double z = 0.0,
+            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
 
-        double width() const;
-        double height() const;
-        double depth() const;
-        bool contains(double x, double y ) const;
-        bool contains(const Bounds& rhs) const;
-        Bounds unionWith(const Bounds& rhs) const; 
-        Bounds intersectionWith(const Bounds& rhs) const;
-        void expandBy( double x, double y );
-        void expandBy( double x, double y, double z );
-        void expandBy( const Bounds& rhs );
-        osg::Vec2d center2d() const;
-        double radius2d() const;
-        double area2d() const;
-        std::string toString() const;
-        bool isValid() const;
-        bool isEmpty() const { return !isValid(); }
-        void transform( const SpatialReference* fromSRS, const SpatialReference* toSRS );
+        /**
+         * Constructs a geopoint.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            const osg::Vec3d&       xyz,
+            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
+
+        /**
+         * Constructs a new GeoPoint by transforming an existing GeoPoint into
+         * the specified spatial reference.
+         */
+        GeoPoint(
+            const SpatialReference* srs,
+            const GeoPoint&         rhs );
+
+        /**
+         * Copy constructor
+         */
+        GeoPoint(const GeoPoint& rhs);
+
+        /**
+         * Constructs an empty (and invalid) geopoint.
+         */
+        GeoPoint();
+
+        /**
+         * Sets the SRS and coords 
+         */
+        void set(
+            const SpatialReference* srs,
+            const osg::Vec3d&       xyz,
+            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
+
+        void set(
+            const SpatialReference* srs,
+            double                  x    =0.0,
+            double                  y    =0.0,
+            double                  z    =0.0,
+            const AltitudeModeEnum& mode =AltitudeMode::ABSOLUTE );
+
+        // component getter/setters
+
+        double& x() { return _p.x(); }
+        double  x() const { return _p.x(); }
+
+        double& y() { return _p.y(); }
+        double  y() const { return _p.y(); }
+
+        double& z() { return _p.z(); }
+        double  z() const { return _p.z(); }
+
+        double& alt() { return _p.z(); }
+        double  alt() const { return _p.z(); }
+
+        osg::Vec3d& vec3d() { return _p; }
+        const osg::Vec3d& vec3d() const { return _p; }
+
+        const SpatialReference* getSRS() const { return _srs.get(); }
+
+        AltitudeModeEnum& altitudeMode() { return _altMode; }
+        const AltitudeModeEnum& altitudeMode() const { return _altMode; }
+
+        /**
+         * Returns a copy of this geopoint transformed into another SRS.
+         */
+        GeoPoint transform(const SpatialReference* outSRS) const;
+
+        /**
+         * Transforms this geopoint into another SRS.
+         */
+        bool transform(const SpatialReference* outSRS, GeoPoint& output) const;
+
+        /**
+         * Transforms this geopoint's Z coordinate (in place)
+         */
+        bool transformZ(const AltitudeModeEnum& altMode, const Terrain* );
+
+        /**
+         * Transforms and returns the geopoints Z coordinate.
+         */
+        bool transformZ(const AltitudeModeEnum& altMode, const Terrain*, double& out_z) const;
+
+        /**
+         * Transforms this geopoint's Z to be absolute w.r.t. the vertical datum
+         */
+        bool makeAbsolute(const Terrain* t) { return transformZ(AltitudeMode::ABSOLUTE, t); }
+
+        /**
+         * Transforms this geopoint's Z to be terrain-relative.
+         */
+        bool makeRelative(const Terrain* t) { return transformZ(AltitudeMode::RELATIVE_TO_TERRAIN, t); }
+
+        /**
+         * Transforms this GeoPoint to geographic (lat/long) coords in place.
+         */
+        bool makeGeographic();
+
+        /**
+         * Outputs world coordinates corresponding to this point
+         */
+        bool toWorld( osg::Vec3d& out_world ) const;
+
+        /**
+         * Converts world coordinates into a geopoint
+         */
+        bool fromWorld(const SpatialReference* srs, const osg::Vec3d& world);
+
+        /**
+         * geopoint into absolute world coords.
+         */
+        bool createLocalToWorld( osg::Matrixd& out_local2world ) const;
+
+        /**
+         * Outputs a matrix that will transform absolute world coordiantes so they are
+         * localized into a local tangent place around this geopoint.
+         */
+        bool createWorldToLocal( osg::Matrixd& out_world2local ) const;
+
+
+        bool operator == (const GeoPoint& rhs) const;
+        bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }
+        bool isValid() const { return _srs.valid(); }
+
+    public:
+        static GeoPoint INVALID;
+
+    protected:
+        osg::ref_ptr<const SpatialReference> _srs;
+        osg::Vec3d       _p;
+        AltitudeModeEnum _altMode;
     };
 
     /**
@@ -370,8 +509,7 @@ namespace osgEarth
          */
         GeoHeightField(
             osg::HeightField* heightField,
-            const GeoExtent& extent,
-            const VerticalSpatialReference* vsrs);
+            const GeoExtent&  extent );
 
         static GeoHeightField INVALID;
 
@@ -391,8 +529,10 @@ namespace osgEarth
          *      Coordinates at which to query the elevation value.
          * @param interp
          *      Interpolation method for the elevation query.
-         * @param outputVSRS
-         *      Convert the output elevation value to this VSRS (NULL to ignore)
+         * @param srsWithOutputVerticalDatum
+         *      Transform the output elevation value according to the vertical datum 
+         *      associated with this SRS. If the SRS is NULL, assume a geodetic vertical datum
+         *      relative to this object's reference ellipsoid.
          * @param out_elevation
          *      Output: the elevation value
          * @return
@@ -401,10 +541,11 @@ namespace osgEarth
          */
         bool getElevation(
             const SpatialReference* inputSRS, 
-            double x, double y,
-            ElevationInterpolation interp,
-            const VerticalSpatialReference* outputVSRS,
-            float& out_elevation ) const;
+            double                  x,
+            double                  y,
+            ElevationInterpolation  interp,
+            const SpatialReference* srsWithOutputVerticalDatum,
+            float&                  out_elevation ) const;
         
         /**
          * Subsamples the heightfield, returning a new heightfield corresponding to
@@ -431,51 +572,10 @@ namespace osgEarth
     protected:
         osg::ref_ptr<osg::HeightField> _heightField;
         GeoExtent _extent;
-        osg::ref_ptr<const VerticalSpatialReference> _vsrs;
+        //osg::ref_ptr<const VerticalSpatialReference> _vsrs;
     };
 
 	typedef std::vector<GeoHeightField> GeoHeightFieldVector;
-
-    
-    /**
-     * A representation of the surface of the earth based on a grid of
-     * height values that are relative to a reference ellipsoid.
-     */
-    class OSGEARTH_EXPORT Geoid : public osg::Referenced
-    {
-    public:
-        Geoid();
-
-        /** Gets the readable name of this geoid. */
-        void setName( const std::string& value );
-        const std::string& getName() const { return _name; }
-
-        /** Sets the underlying heightfield data */
-        void setHeightField( const GeoHeightField& hf );
-
-        /** Queries to geoid for the height offset at the specified coordinates. */
-        float getOffset(
-            double lat_deg, double lon_deg, 
-            const ElevationInterpolation& interp =INTERP_BILINEAR) const;
-
-        /** The linear units in which height values are expressed. */
-        const Units& getUnits() const { return _units; }
-        void setUnits( const Units& value );
-
-        /** Whether this is a valid object to use */
-        bool isValid() const { return _valid; }
-
-        /** True if two geoids are mathmatically equivalent. */
-        bool isEquivalentTo( const Geoid& rhs ) const;
-
-    private:
-        std::string _name;
-        GeoHeightField _hf;
-        Units _units;
-        bool _valid;
-        void validate();
-    };
-
 }
 
 #endif // OSGEARTH_GEODATA_H

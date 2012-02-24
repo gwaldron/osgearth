@@ -83,6 +83,7 @@ namespace osgEarth
         const optional<bool>& lodBlending() const { return _lodBlending; }
 
     public:
+
         virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
         
@@ -175,7 +176,12 @@ namespace osgEarth
 
     public: // runtime properties
 
+        /**
+         * Sets the opacity of this image layer.
+         * @param opacity Opacity [0..1] -> [transparent..opaque]
+         */
         void setOpacity( float opacity );
+
         float getOpacity() const { return *_runtimeOptions.opacity(); }
         
         void disableLODBlending();
@@ -187,6 +193,10 @@ namespace osgEarth
 		 * Creates a GeoImage from this MapLayer
 		 */
 		virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0, bool forceFallback =false);
+
+    public: // TerrainLayer override
+
+        CacheBin* getCacheBin( const Profile* profile );
 
     protected:
 

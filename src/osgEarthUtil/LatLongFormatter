@@ -71,16 +71,8 @@ namespace osgEarth { namespace Util
          */
         std::string format(
             const Angular&       angle,
-            int                  precision =-1, 
-            const AngularFormat& outputFormat    =FORMAT_DEFAULT) const;
-
-        std::string operator()(
-            const Angular&       angle,
-            int                  precision =-1, 
-            const AngularFormat& outputFormat =FORMAT_DEFAULT) const
-        {
-            return format(angle, precision, outputFormat);
-        }
+            int                  precision    =-1, 
+            const AngularFormat& outputFormat =FORMAT_DEFAULT) const;
 
         /**
          * Parses a string into an angle (returning false if parsing fails).
@@ -89,7 +81,7 @@ namespace osgEarth { namespace Util
 
     public: // Formatter
 
-        virtual std::string format( const osg::Vec3d& mapCoords, const SpatialReference* srs ) const;
+        virtual std::string format( const GeoPoint& p ) const;
 
 
     protected:

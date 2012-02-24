@@ -71,20 +71,20 @@ namespace osgEarth { namespace Features
          */
         virtual osg::Node* createNode(
             const FeatureList&   input,
-            const TextSymbol*    symbol,
+            const Style&         style,
             const FilterContext& context ) =0;
 
         /**
          * Creates a single labeling node.
          *
          * @param text     Text string to put in the label
-         * @param symbol   Style information for the label
+         * @param style    Style information for the label
          *
          * @return A scene graph node
          */
         virtual osg::Node* createNode(
             const std::string&  text,
-            const TextSymbol*   textSymbol ) =0;
+            const Style&        style ) =0;
 
 
     public:

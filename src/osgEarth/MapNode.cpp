@@ -18,7 +18,7 @@
 */
 #include <osgEarth/MapNode>
 #include <osgEarth/MaskNode>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/OverlayDecorator>
@@ -172,8 +172,8 @@ _mapNodeOptions( options )
 void
 MapNode::init()
 {
-	// Protect the MapNode from the Optimizer
-	setDataVariance(osg::Object::DYNAMIC);
+    // Protect the MapNode from the Optimizer
+    setDataVariance(osg::Object::DYNAMIC);
 
     setName( "osgEarth::MapNode" );
 
@@ -191,7 +191,7 @@ MapNode::init()
     // TODO: this should probably happen elsewhere, like in the registry?
     if ( _mapNodeOptions.proxySettings().isSet() )
     {
-		HTTPClient::setProxySettings( _mapNodeOptions.proxySettings().get() );
+        HTTPClient::setProxySettings( _mapNodeOptions.proxySettings().get() );
     }
 
     // establish global driver options. These are OSG reader-writer options that
@@ -279,14 +279,6 @@ MapNode::init()
         onModelLayerAdded( k->get(), modelLayerIndex );
     }
 
-#if 0
-    // install any pre-existing mask layer:
-    if ( _map->getTerrainMaskLayer() )
-    {
-        onMaskLayerAdded( _map->getTerrainMaskLayer() );
-    }
-#endif
-
     _mapCallback = new MapNodeMapCallbackProxy(this);
     // install a layer callback for processing further map actions:
     _map->addMapCallback( _mapCallback.get()  );
@@ -305,7 +297,7 @@ MapNode::init()
     dirtyBound();
 
     // register for event traversals so we can deal with blacklisted filenames
-    adjustEventTraversalCount( 1 );
+    ADJUST_EVENT_TRAV_COUNT( this, 1 );
 }
 
 MapNode::~MapNode()
@@ -407,6 +399,9 @@ MapNode::isGeocentric() const
 void
 MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
 {
+    if ( !layer->getEnabled() )
+        return;
+
     osg::Node* node = layer->getOrCreateNode();
 
     layer->addCallback(_modelLayerCallback.get() );
@@ -566,14 +561,6 @@ MapNode::removeTerrainDecorator(osg::Group* decorator)
         }
         dirtyBound();
     }
-}
-
-void
-MapNode::adjustEventTraversalCount( int delta )
-{
-    int oldCount = this->getNumChildrenRequiringEventTraversal();
-    if ( oldCount + delta >= 0 )
-        this->setNumChildrenRequiringEventTraversal( (unsigned int)(oldCount + delta) );
 }
 
 void

@@ -41,6 +41,7 @@ _cachePolicy        ( CachePolicy::USAGE_DEFAULT ),
 _loadingWeight      ( 1.0f ),
 _exactCropping      ( false ),
 _enabled            ( true ),
+_visible            ( true ),
 _reprojectedTileSize( 256 )
 
 {
@@ -61,6 +62,7 @@ void
 TerrainLayerOptions::setDefaults()
 {
     _enabled.init( true );
+    _visible.init( true );
     _exactCropping.init( false );
     _reprojectedTileSize.init( 256 );
     _cachePolicy.init( CachePolicy() );
@@ -81,10 +83,13 @@ TerrainLayerOptions::getConfig( bool isolate ) const
     conf.updateIfSet( "max_level_resolution", _maxLevelResolution );
     conf.updateIfSet( "loading_weight", _loadingWeight );
     conf.updateIfSet( "enabled", _enabled );
+    conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.updateObjIfSet( "profile", _profile );
     conf.updateIfSet( "max_data_level", _maxDataLevel);
     conf.updateIfSet( "reprojected_tilesize", _reprojectedTileSize);
+
+    conf.updateIfSet( "vdatum", _vertDatum );
 
     conf.updateIfSet   ( "cacheid",      _cacheId );
     conf.updateIfSet   ( "cache_format", _cacheFormat );
@@ -107,10 +112,14 @@ TerrainLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "max_level_resolution", _maxLevelResolution );
     conf.getIfSet( "loading_weight", _loadingWeight );
     conf.getIfSet( "enabled", _enabled );
+    conf.getIfSet( "visible", _visible );
     conf.getIfSet( "edge_buffer_ratio", _edgeBufferRatio);
     conf.getObjIfSet( "profile", _profile );
     conf.getIfSet( "max_data_level", _maxDataLevel);
     conf.getIfSet( "reprojected_tilesize", _reprojectedTileSize);
+
+    conf.getIfSet( "vdatum", _vertDatum );
+    conf.getIfSet( "vsrs", _vertDatum );    // back compat
 
     conf.getIfSet   ( "cacheid",      _cacheId );
     conf.getIfSet   ( "cache_format", _cacheFormat );
@@ -271,6 +280,18 @@ TerrainLayer::getProfile() const
         if ( _tileSource.valid() && !_profile.valid() )
         {
             const_cast<TerrainLayer*>(this)->_profile = _tileSource->getProfile();
+
+            // check for a vertical datum override:
+            if ( _profile.valid() && _runtimeOptions->verticalDatum().isSet() )
+            {
+                std::string vdatum = toLower( *_runtimeOptions->verticalDatum() );
+                if ( _profile->getSRS()->getVertInitString() != vdatum )
+                {
+                    ProfileOptions po = _profile->toProfileOptions();
+                    po.vsrsString() = vdatum;
+                    const_cast<TerrainLayer*>(this)->_profile = Profile::create(po);
+                }
+            }
         }
     }
     
@@ -321,9 +342,23 @@ TerrainLayer::getCacheBin( const Profile* profile )
         return 0L;
     }
 
-    // the cache bin ID is the cache IF concatenated with the profile signature.
-    std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getSignature();
+    // the cache bin ID is the cache ID concatenated with the FULL profile signature.
+    std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getFullSignature();
 
+    return getCacheBin( profile, binId );
+}
+
+CacheBin*
+TerrainLayer::getCacheBin( const Profile* profile, const std::string& binId )
+{
+    // in no-cache mode, there are no cache bins.
+    if (_runtimeOptions->cachePolicy().isSet() &&
+        _runtimeOptions->cachePolicy()->usage() == CachePolicy::USAGE_NO_CACHE )
+    {
+        return 0L;
+    }
+
+    // see if the cache bin already exists and return it if so
     {
         Threading::ScopedReadLock shared(_cacheBinsMutex);
         CacheBinInfoMap::iterator i = _cacheBins.find( binId );
@@ -331,6 +366,7 @@ TerrainLayer::getCacheBin( const Profile* profile )
             return i->second._bin.get();
     }
 
+    // create/open the cache bin.
     {
         Threading::ScopedWriteLock exclusive(_cacheBinsMutex);
 
@@ -430,7 +466,7 @@ bool
 TerrainLayer::getCacheBinMetadata( const Profile* profile, CacheBinMetadata& output )
 {
     // the cache bin ID is the cache IF concatenated with the profile signature.
-    std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getSignature();
+    std::string binId = *_runtimeOptions->cacheId() + std::string("_") + profile->getFullSignature();
     CacheBin* bin = getCacheBin( profile );
     if ( bin )
     {
@@ -566,10 +602,10 @@ TerrainLayer::isCached(const TileKey& key) const
 }
 
 void
-TerrainLayer::setEnabled( bool value )
+TerrainLayer::setVisible( bool value )
 {
-    _runtimeOptions->enabled() = value;
-    fireCallback( &TerrainLayerCallback::onEnabledChanged );
+    _runtimeOptions->visible() = value;
+    fireCallback( &TerrainLayerCallback::onVisibleChanged );
 }
 
 void

@@ -247,12 +247,9 @@ OSGTileFactory::hasMoreLevels( Map* map, const TileKey& key )
 }
 
 osg::HeightField*
-OSGTileFactory::createEmptyHeightField( const TileKey& key, int numCols, int numRows )
+OSGTileFactory::createEmptyHeightField( const TileKey& key, unsigned numCols, unsigned numRows )
 {
-    osg::HeightField* hf = key.getProfile()->getVerticalSRS()->createReferenceHeightField(
-        key.getExtent(), numCols, numRows );
-
-    return hf;
+    return HeightFieldUtils::createReferenceHeightField( key.getExtent(), numCols, numRows );
 }
 
 void

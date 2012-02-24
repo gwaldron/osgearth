@@ -71,6 +71,8 @@ usage( const std::string& msg )
     OE_NOTICE << "USAGE: osgearth_qt [options] file.earth" << std::endl;
     OE_NOTICE << "   --composite n           : use a composite viewer with n initial views" << std::endl;
     OE_NOTICE << "   --stylesheet filename   : optional Qt stylesheet" << std::endl;
+    OE_NOTICE << "   --run-on-demand         : use the OSG ON_DEMAND frame scheme" << std::endl;
+    OE_NOTICE << "   --tracks                : create some moving track data" << std::endl;
         
     return -1;
 }
@@ -104,15 +106,6 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
     }   
   }
 
-  //void onHoverEnter( AnnotationNode* anno, const EventArgs& args )
-  //{
-  //  anno->setDecoration( "hover" );
-  //}
-
-  //void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
-  //{
-  //  anno->clearDecoration();
-  //}
 
   osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
 };
@@ -126,7 +119,8 @@ struct TrackSim : public osg::Referenced
     : _track(track), _mapNode(mapNode), _radius(radius), _time(time)
   {
     //Get the center point in geocentric
-    mapNode->getMap()->mapPointToWorldPoint( center, _center );
+    GeoPoint centerMap(mapNode->getMapSRS(), center);
+    mapNode->getMap()->toWorldPoint( centerMap, _center );
 
     _up = _center;
     _up.normalize();
@@ -144,10 +138,10 @@ struct TrackSim : public osg::Referenced
     osg::Vec3d spoke = quat * (_side * _radius);
     osg::Vec3d end = _center + spoke;
 
-    osg::Vec3d pos;
-    _mapNode->getMap()->worldPointToMapPoint(end, pos);
+    GeoPoint mapPos;
+    _mapNode->getMap()->worldPointToMapPoint(end, mapPos);
 
-    _track->setPosition(pos);
+    _track->setPosition(mapPos);
   }
 
   TrackNode* _track;
@@ -214,6 +208,11 @@ main(int argc, char** argv)
     std::string stylesheet;
     bool styled = arguments.read("--stylesheet", stylesheet);
 
+    bool on_demand = arguments.read("--run-on-demand");
+
+    bool trackData = arguments.read("--tracks");
+
+
     // load the .earth file from the command line.
     osg::Node* earthNode = osgDB::readNodeFiles( arguments );
     if (!earthNode)
@@ -260,7 +259,7 @@ main(int argc, char** argv)
         views.push_back(view);
       }
 
-      viewerWidget->setGeometry(100, 100, 800, 600);
+      viewerWidget->setGeometry(50, 50, 1024, 768);
       appWin.setViewerWidget(viewerWidget, views);
 
       viewer = viewerWidget;
@@ -268,7 +267,7 @@ main(int argc, char** argv)
     else
     {
       osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
-      viewerWidget->setGeometry(100, 100, 800, 600);
+      viewerWidget->setGeometry(50, 50, 1024, 768);
       viewerWidget->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
       appWin.setViewerWidget(viewerWidget);
       views.push_back(viewerWidget);
@@ -301,21 +300,31 @@ main(int argc, char** argv)
       viewer = viewerWidget;
     }
 
+    // activate "on demand" rendering if requested:
+    if ( on_demand )
+    {
+        viewer->setRunFrameScheme( osgViewer::ViewerBase::ON_DEMAND );
+        OE_NOTICE << "On-demand rendering activated" << std::endl;
+    }
 
-    // create demo tracks
-    TrackSimVector trackSims;
 
-    osg::ref_ptr<osg::Image> srcImage = osgDB::readImageFile(TRACK_ICON_URL);
-    osg::ref_ptr<osg::Image> image;
-    ImageUtils::resizeImage(srcImage.get(), TRACK_ICON_SIZE, TRACK_ICON_SIZE, image);
+    if ( trackData )
+    {
+        // create demo tracks
+        TrackSimVector trackSims;
 
-    TrackNodeFieldSchema schema;
-    createTrackSchema(schema);
-    dataManager->addAnnotation(createTrack(schema, image, "Plane 1", mapNode.get(), osg::Vec3d(-121.463, 46.3548, 1348.71), 10000, 24, trackSims), s_annoGroup);
-    dataManager->addAnnotation(createTrack(schema, image, "Plane 2", mapNode.get(), osg::Vec3d(-121.656, 46.0935, 4133.06), 10000, 8, trackSims), s_annoGroup);
-    dataManager->addAnnotation(createTrack(schema, image, "Plane 3", mapNode.get(), osg::Vec3d(-121.321, 46.2589, 1390.09), 10000, 12, trackSims), s_annoGroup);
+        osg::ref_ptr<osg::Image> srcImage = osgDB::readImageFile(TRACK_ICON_URL);
+        osg::ref_ptr<osg::Image> image;
+        ImageUtils::resizeImage(srcImage.get(), TRACK_ICON_SIZE, TRACK_ICON_SIZE, image);
 
-    viewer->addUpdateOperation(new TrackSimUpdate(trackSims));
+        TrackNodeFieldSchema schema;
+        createTrackSchema(schema);
+        dataManager->addAnnotation(createTrack(schema, image, "Plane 1", mapNode.get(), osg::Vec3d(-121.463, 46.3548, 1348.71), 10000, 24, trackSims), s_annoGroup);
+        dataManager->addAnnotation(createTrack(schema, image, "Plane 2", mapNode.get(), osg::Vec3d(-121.656, 46.0935, 4133.06), 10000, 8, trackSims), s_annoGroup);
+        dataManager->addAnnotation(createTrack(schema, image, "Plane 3", mapNode.get(), osg::Vec3d(-121.321, 46.2589, 1390.09), 10000, 12, trackSims), s_annoGroup);
+
+        viewer->addUpdateOperation(new TrackSimUpdate(trackSims));
+    }
 
 
     // create catalog widget and add as a docked widget to the main window

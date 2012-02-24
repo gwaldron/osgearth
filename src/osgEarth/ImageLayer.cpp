@@ -313,13 +313,22 @@ ImageLayer::initPreCacheOp()
     _preCacheOp = op;
 }
 
+CacheBin*
+ImageLayer::getCacheBin( const Profile* profile )
+{
+    // specialize ImageLayer to only consider the horizontal signature (ignore vertical
+    // datum component for images)
+    std::string binId = *_runtimeOptions.cacheId() + "_" + profile->getHorizSignature();
+    return TerrainLayer::getCacheBin( profile, binId );
+}
+
 GeoImage
 ImageLayer::createImage( const TileKey& key, ProgressCallback* progress, bool forceFallback )
 {
     GeoImage result;
 
     // If the layer is disabled, bail out.
-    if ( _runtimeOptions.enabled().isSetTo( false ) )
+    if ( !getEnabled() )
     {
         return GeoImage::INVALID;
     }

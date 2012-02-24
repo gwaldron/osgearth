@@ -95,14 +95,18 @@ struct TrackSim : public osg::Referenced
             t,
             pos.y(), pos.x() );
 
-        pos.x() = osg::RadiansToDegrees(pos.x());
-        pos.y() = osg::RadiansToDegrees(pos.y());
+        GeoPoint geo(
+            _track->getMapNode()->getMapSRS(),
+            osg::RadiansToDegrees(pos.x()),
+            osg::RadiansToDegrees(pos.y()) );
 
         // update the position label.
-        _track->setPosition(pos);
+        _track->setPosition(geo);
 
         if ( g_showCoords )
-            _track->setFieldValue( FIELD_POSITION, s_format(pos.y(),pos.x()) );
+        {
+            _track->setFieldValue( FIELD_POSITION, s_format(geo) );
+        }
         else
             _track->setFieldValue( FIELD_POSITION, "" );
     }
@@ -165,16 +169,19 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
 
     // make some tracks, choosing a random simulation for each.
     Random prng;
+    const SpatialReference* geoSRS = mapNode->getMapSRS()->getGeographicSRS();
 
     for( unsigned i=0; i<g_numTracks; ++i )
     {
         double lon0 = -180.0 + prng.next() * 360.0;
         double lat0 = -80.0 + prng.next() * 160.0;
 
-        TrackNode* track = new TrackNode( mapNode, osg::Vec3d(lon0, lat0, 0), image, schema );
+        GeoPoint pos(geoSRS, lon0, lat0);
+
+        TrackNode* track = new TrackNode(mapNode, pos, image, schema);
 
         track->setFieldValue( FIELD_NAME,     Stringify() << "Track:" << i );
-        track->setFieldValue( FIELD_POSITION, Stringify() << s_format(lat0, lon0) );
+        track->setFieldValue( FIELD_POSITION, Stringify() << s_format(pos) );
         track->setFieldValue( FIELD_NUMBER,   Stringify() << (1 + prng.next(9)) );
 
         // add a priority
@@ -188,7 +195,7 @@ createTrackNodes( MapNode* mapNode, osg::Group* parent, const TrackNodeFieldSche
         double lon1 = -180.0 + prng.next() * 360.0;
         double lat1 = -80.0 + prng.next() * 160.0;
         TrackSim* sim = new TrackSim();
-        sim->_track = track;
+        sim->_track = track;        
         sim->_startLat = lat0; sim->_startLon = lon0;
         sim->_endLat = lat1; sim->_endLon = lon1;
         sims.push_back( sim );

@@ -21,11 +21,10 @@
 #define OSGEARTH_TILE_GRID_PROFILE_H 1
 
 #include <osgEarth/Common>
+#include <osgEarth/Bounds>
 #include <osgEarth/Config>
 #include <osgEarth/GeoData>
 #include <osgEarth/SpatialReference>
-#include <osgEarth/VerticalSpatialReference>
-#include <osg/CoordinateSystemNode>
 #include <vector>
 
 namespace osgEarth
@@ -120,14 +119,12 @@ namespace osgEarth
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
             double geoxmin, double geoymin, double geoxmax, double geoymax,
-            const VerticalSpatialReference* vsrs =0L,
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
         static const Profile* create(
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
-            const VerticalSpatialReference* vsrs =0L,
             unsigned int numTilesWideAtLod0 =0,
             unsigned int numTilesHighAtLod0 =0 );
 
@@ -161,12 +158,6 @@ namespace osgEarth
         const SpatialReference* getSRS() const;
 
         /**
-         * Gest the vertical spatial reference system underlying this profile.
-         */
-        const VerticalSpatialReference* getVerticalSRS() const { return _vsrs.get(); }
-        void setVerticalSRS( const VerticalSpatialReference* value ) { _vsrs = value; }
-
-        /**
          * Gets the profile type
          */
         ProfileType getProfileType() const;  
@@ -195,8 +186,19 @@ namespace osgEarth
 
         /**
          * Gets whether the two profiles can be treated as equivalent.
+         * @param rhs
+         *      Comparison profile
          */
         bool isEquivalentTo( const Profile* rhs ) const;
+
+        /**
+         * Gets whether the two profiles can be treated as equivalent (without regard
+         * for any vertical datum information - i.e., still returns true if the SRS
+         * vertical datums are different)
+         * @param rhs
+         *      Comparison profile
+         */
+        bool isHorizEquivalentTo( const Profile* rhs ) const;
 
         /**
          *Gets the tile dimensions at the given lod.
@@ -249,14 +251,24 @@ namespace osgEarth
         /**
          * Returns a signature hash code unique to this profile.
          */
-        const std::string& getSignature() const { return _signature; }
+        const std::string& getFullSignature() const { return _fullSignature; }
+
+        /**
+         * Returns a signature hash code that uniquely identifies this profile
+         * without including any vertical datum information. This is useful for
+         * seeing if two profiles are horizontally compatible.
+         */
+        const std::string& getHorizSignature() const { return _horizSignature; }
+
+    public:
+
+        void overrideSRS( const SpatialReference* srs );
 
     protected:       
 
         Profile(
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
-            const VerticalSpatialReference* vsrs,
             unsigned int x_tiles_at_lod0 =0,
             unsigned int y_tiles_at_lod0 =0 );      
 
@@ -264,7 +276,6 @@ namespace osgEarth
             const SpatialReference* srs,
             double xmin, double ymin, double xmax, double ymax,
             double geoxmin, double geoymin, double geoxmax, double geoymax,
-            const VerticalSpatialReference* vsrs,
             unsigned int x_tiles_at_lod0 =0,
             unsigned int y_tiles_at_lod0 =0 );
         
@@ -276,12 +287,12 @@ namespace osgEarth
 
     private:
 
-        GeoExtent _extent;
-        GeoExtent _latlong_extent;
-        osg::ref_ptr<const VerticalSpatialReference> _vsrs;
-        unsigned int _numTilesWideAtLod0;
-        unsigned int _numTilesHighAtLod0;
-        std::string _signature;
+        GeoExtent   _extent;
+        GeoExtent   _latlong_extent;
+        unsigned    _numTilesWideAtLod0;
+        unsigned    _numTilesHighAtLod0;
+        std::string _fullSignature;
+        std::string _horizSignature;
     };
 }
 

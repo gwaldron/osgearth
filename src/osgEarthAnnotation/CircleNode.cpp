@@ -32,31 +32,95 @@ using namespace osgEarth::Symbology;
 
 
 CircleNode::CircleNode(MapNode*           mapNode,
-                       const osg::Vec3d&  position,
+                       const GeoPoint&    position,
                        const Linear&      radius,
                        const Style&       style,
                        bool               draped,
                        unsigned           numSegments) :
 
-LocalizedNode( mapNode, position, false )
+LocalizedNode( mapNode, position, false ),
+_radius( radius ),
+_style( style),
+_draped( draped ),
+_numSegments( numSegments )
 {
+    rebuild();
+}
+
+const Linear&
+CircleNode::getRadius() const
+{
+    return _radius;
+}
+
+void
+CircleNode::setRadius( const Linear& radius )
+{
+    if (_radius != radius )
+    {
+        _radius = radius;
+        rebuild();
+    }
+}
+
+unsigned int
+CircleNode::getNumSegments() const
+{
+    return _numSegments;
+}
+
+void
+CircleNode::setNumSegments(unsigned int numSegments )
+{
+    if (_numSegments != numSegments )
+    {
+        _numSegments = numSegments;
+        rebuild();
+    }
+}
+
+const Style&
+CircleNode::getStyle() const
+{
+    return _style;
+}
+
+void
+CircleNode::setStyle( const Style& style )
+{
+    _style = style;
+    rebuild();
+}
+
+void
+CircleNode::rebuild()
+{
+    std::string currentDecoration = getDecoration();
+    clearDecoration();
+
+    //Remove all children from this node
+    removeChildren( 0, getNumChildren() );
+
+    //Remove all children from the attach point
+    getAttachPoint()->removeChildren( 0, getAttachPoint()->getNumChildren() );
+
     // construct a local-origin circle.
     GeometryFactory factory;
-    Geometry* geom = factory.createCircle(osg::Vec3d(0,0,0), radius, numSegments);
+    Geometry* geom = factory.createCircle(osg::Vec3d(0,0,0), _radius, _numSegments);
     if ( geom )
     {
         //const SpatialReference* featureSRS = mapNode->getMapSRS()->createTangentPlaneSRS(position);
 
         GeometryCompiler compiler;
         osg::ref_ptr<Feature> feature = new Feature(geom, 0L); //todo: consider the SRS
-        osg::Node* node = compiler.compile( feature.get(), style, FilterContext(0L) );
+        osg::Node* node = compiler.compile( feature.get(), _style, FilterContext(0L) );
         if ( node )
-        {
+        {           
             getAttachPoint()->addChild( node );
 
-            if ( draped )
+            if ( _draped )
             {
-                DrapeableNode* drapeable = new DrapeableNode( mapNode, true );
+                DrapeableNode* drapeable = new DrapeableNode( _mapNode.get(), true );
                 drapeable->addChild( getAttachPoint() );
                 this->addChild( drapeable );
             }
@@ -67,6 +131,8 @@ LocalizedNode( mapNode, position, false )
             }
         }
 
-        applyStyle( style, draped );
+        applyStyle( _style, _draped );
     }
+
+    setDecoration( currentDecoration );
 }

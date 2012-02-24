@@ -20,7 +20,7 @@
 #define OSGEARTH_ANNO_LOCALIZED_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
-#include <osgEarth/SpatialReference>
+#include <osgEarth/GeoData>
 #include <osg/Transform>
 
 namespace osgEarth { namespace Annotation
@@ -43,34 +43,53 @@ namespace osgEarth { namespace Annotation
          * @param is2D    Whether to autotransform the node to face/scale to the screen
          */
         LocalizedNode( 
-            MapNode*                mapNode  =0L,
-            const osg::Vec3d&       pos      =osg::Vec3d(0,0,0), 
-            bool                    is2D     =false );
+            MapNode*          mapNode  =0L,
+            const GeoPoint&   pos      =GeoPoint::INVALID,
+            bool              is2D     =false );
 
+        LocalizedNode(
+            MapNode*          mapNode,
+            const osg::Vec3d& pos,
+            bool              is2D    =false );
+
+
+    public: // PositionedAnnotationNode
+
+        /** Sets the node position */
+        virtual bool setPosition( const GeoPoint& p );
+
+        /** Sets the position (in map coordinates) */
+        virtual bool setPosition( const osg::Vec3d& p );
+
+        /** Gets the node position (in map coords) */
+        virtual GeoPoint getPosition() const;
+
+    public: // osg::Node
+
+        virtual void traverse( osg::NodeVisitor& nv );
 
     public:
         /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * of the current Map. Returns true upon success.
+         * Sets a "local offset" position - for an ECEF map, this is an offset in 
+         * the local tangent plane of the node that is applied to the geometry.
          */
-        bool setPosition( const osg::Vec3d& pos );
+        void setLocalOffset( const osg::Vec3d& offset );
 
         /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * passed in, and will be reprojected to Map coordinates.
-         * Returns true upon success.
+         * Gets the local tangent plane -space offset.
          */
-        bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs );
+        const osg::Vec3d& getLocalOffset() const;
 
         /**
-         * Gets the position (in map coordinates) of the node
+         * Sets a local rotation - a rotation relative to the local tangent plane
+         * of the geometry.
          */
-        osg::Vec3d getPosition() const;
+        void setLocalRotation( const osg::Quat& rotation );
 
         /**
-         * Gets the position (in the requested coordinate system)
+         * Gets the local tangent plane -space rotation.
          */
-        osg::Vec3d getPosition( const SpatialReference* srs ) const;
+        const osg::Quat& getLocalRotation() const;
 
         /**
          * Enables or disable automatic horizon culling
@@ -78,11 +97,9 @@ namespace osgEarth { namespace Annotation
         void setHorizonCulling( bool value );
         bool getHorizonCulling() const;
 
-    public: // osg::Node
+        void setScale( const osg::Vec3f& scale );
 
-        virtual void traverse( osg::NodeVisitor& nv );
-
-    public:
+        const osg::Vec3f& getScale() const { return _scale; }
 
         virtual osg::Group* getAttachPoint() { return _xform.get(); }
 
@@ -93,11 +110,21 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<osg::Transform> _xform;
         bool _horizonCulling;
         bool _autoTransform;
+        GeoPoint _mapPosition;
+        osg::Vec3f _scale;
+        osg::Vec3d _localOffset;
+        osg::Quat  _localRotation;
 
         friend class Decoration;
         
         // copy constructor
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain );
+
+            
         LocalizedNode(const LocalizedNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) { }
+
+        bool updateTransforms(const GeoPoint& absPt, osg::Node* patch =0L);
+        
     };
 
 } } // namespace osgEarth::Annotation

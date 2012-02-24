@@ -17,7 +17,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/AutoClipPlaneHandler>
-#include <osgEarth/FindNode>
 #include <osgEarth/Registry>
 #include <osgEarth/Utils>
 
@@ -274,7 +273,8 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
 
                 // get the height-above-ellipsoid. If we need to be more accurate, we can use 
                 // ElevationQuery in the future..
-                osg::Vec3d loc;
+                //osg::Vec3d loc;
+                GeoPoint loc;
                 if ( _map.valid() )
                 {
                     _map->worldPointToMapPoint( eye, loc );
@@ -282,6 +282,7 @@ AutoClipPlaneCullCallback::operator()( osg::Node* node, osg::NodeVisitor* nv )
                 else
                 {
                     static osg::EllipsoidModel em;
+                    osg::Vec3d t;
                     em.convertXYZToLatLongHeight( eye.x(), eye.y(), eye.z(), loc.y(), loc.x(), loc.z() );
                 }
                 

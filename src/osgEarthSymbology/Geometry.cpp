@@ -350,6 +350,64 @@ Geometry::delocalize( const osg::Vec3d& offset )
     }
 }
 
+void 
+Geometry::rewind( Orientation orientation )
+{
+    Orientation current = getOrientation();
+    if ( current != orientation && current != ORIENTATION_DEGENERATE && orientation != ORIENTATION_DEGENERATE )
+    {
+        std::reverse( begin(), end() );
+    }
+}
+
+Geometry::Orientation 
+Geometry::getOrientation() const
+{
+    // adjust for a non-open ring:
+    int n = size();
+    while( n > 0 && front() == back() )
+        n--;
+
+    if ( n < 3 )
+        return Geometry::ORIENTATION_DEGENERATE;
+
+    // copy the open vec:
+    std::vector<osg::Vec3d> v;
+    v.reserve( n );
+    std::copy( begin(), begin()+n, std::back_inserter(v) );
+
+    int rmin = 0;
+    double xmin = v[0].x();
+    double ymin = v[0].y();
+    v[0].z() = 0;
+    for( int i=1; i<n; ++i ) {
+        double x = v[i].x();
+        double y = v[i].y();
+        v[i].z() = 0;
+        if ( y > ymin )
+            continue;
+        if ( y == ymin ) {
+            if (x  < xmin )
+                continue;
+        }
+        rmin = i;
+        xmin = x;
+        ymin = y;
+    }
+
+    int rmin_less_1 = rmin-1 >= 0 ? rmin-1 : n-1;
+    int rmin_plus_1 = rmin+1 < n ? rmin+1 : 0;
+
+    osg::Vec3 in = v[rmin] - v[rmin_less_1]; in.normalize();
+    osg::Vec3 out = v[rmin_plus_1] - v[rmin]; out.normalize();
+    osg::Vec3 cross = in ^ out;
+
+    return
+        cross.z() < 0.0 ? Geometry::ORIENTATION_CW :
+        cross.z() > 0.0 ? Geometry::ORIENTATION_CCW :
+        Geometry::ORIENTATION_DEGENERATE;
+}
+
 //----------------------------------------------------------------------------
 
 PointSet::PointSet( const PointSet& rhs ) :
@@ -431,54 +489,6 @@ Ring::cloneAs( const Geometry::Type& newType ) const
     else return Geometry::cloneAs( newType );
 }
 
-Ring::Orientation 
-Ring::getOrientation() const
-{
-    // adjust for a non-open ring:
-    int n = size();
-    while( n > 0 && front() == back() )
-        n--;
-
-    if ( n < 3 )
-        return Ring::ORIENTATION_DEGENERATE;
-
-    // copy the open vec:
-    std::vector<osg::Vec3d> v;
-    v.reserve( n );
-    std::copy( begin(), begin()+n, std::back_inserter(v) );
-
-    int rmin = 0;
-    double xmin = v[0].x();
-    double ymin = v[0].y();
-    v[0].z() = 0;
-    for( int i=1; i<n; ++i ) {
-        double x = v[i].x();
-        double y = v[i].y();
-        v[i].z() = 0;
-        if ( y > ymin )
-            continue;
-        if ( y == ymin ) {
-            if (x  < xmin )
-                continue;
-        }
-        rmin = i;
-        xmin = x;
-        ymin = y;
-    }
-
-    int rmin_less_1 = rmin-1 >= 0 ? rmin-1 : n-1;
-    int rmin_plus_1 = rmin+1 < n ? rmin+1 : 0;
-
-    osg::Vec3 in = v[rmin] - v[rmin_less_1]; in.normalize();
-    osg::Vec3 out = v[rmin_plus_1] - v[rmin]; out.normalize();
-    osg::Vec3 cross = in ^ out;
-
-    return
-        cross.z() < 0.0 ? Ring::ORIENTATION_CW :
-        cross.z() > 0.0 ? Ring::ORIENTATION_CCW :
-        Ring::ORIENTATION_DEGENERATE;
-}
-
 // ensures that the first and last points are not idential.
 void 
 Ring::open()
@@ -509,11 +519,7 @@ void
 Ring::rewind( Orientation orientation )
 {
     open();
-    Orientation current = getOrientation();
-    if ( current != orientation && current != ORIENTATION_DEGENERATE && orientation != ORIENTATION_DEGENERATE )
-    {
-        std::reverse( begin(), end() );
-    }
+    Geometry::rewind( orientation );
 }
 
 // point-in-polygon test
@@ -660,6 +666,16 @@ MultiGeometry::isValid() const
             valid = false;
     }
     return valid;
+}
+
+// opens and rewinds the polygon to the specified orientation.
+void 
+MultiGeometry::rewind( Orientation orientation )
+{
+    for( GeometryCollection::const_iterator i = _parts.begin(); i != _parts.end(); ++i )
+    {
+        i->get()->rewind( orientation );
+    }
 }
 
 //----------------------------------------------------------------------------

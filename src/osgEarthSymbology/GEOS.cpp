@@ -197,7 +197,7 @@ exportPolygon( const geom::Polygon* input )
         }
         output->rewind( Symbology::Ring::ORIENTATION_CCW );
 
-        for( int k=0; k < input->getNumInteriorRing(); k++ )
+        for( unsigned k=0; k < input->getNumInteriorRing(); k++ )
         {
             const geom::LineString* inner = input->getInteriorRingN( k );
             const geom::CoordinateSequence* s = inner->getCoordinates();

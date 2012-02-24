@@ -40,13 +40,12 @@ _prec         ( 5 )
 }
 
 std::string
-LatLongFormatter::format( const osg::Vec3d& coords, const SpatialReference* srs ) const
+LatLongFormatter::format( const GeoPoint& p ) const
 {
-    osg::Vec3d geo = coords;
-    if ( srs && !srs->isGeographic() )
-    {
-        srs->transform( coords, srs->getGeographicSRS(), geo );
-    }
+    GeoPoint geo = p;
+    if ( !geo.makeGeographic() )
+        return "";
+
     return Stringify()
         << format( Angular(geo.y()) )
         << ", "
@@ -70,20 +69,23 @@ LatLongFormatter::format( const Angular& angle, int precision, const AngularForm
     if ( precision > 0 )
         buf << std::setprecision(precision);
 
+    double df = angle.as(Units::DEGREES);
+    while( df < -180. ) df += 360.;
+    while( df >  180. ) df -= 360.;
+
     switch( f )
     {
     case FORMAT_DECIMAL_DEGREES:
         {
             if ( _options & USE_SYMBOLS )
-                buf << angle.as(Units::DEGREES) << "\xb0";
+                buf << df << "\xb0";
             else
-                buf << angle.as(Units::DEGREES);
+                buf << df;
         }
         break;
 
     case FORMAT_DEGREES_DECIMAL_MINUTES:
         {
-            double df = angle.as(Units::DEGREES);
             int    d  = (int)floor(df);
             double mf = 60.0*(df-(double)d);
             if ( mf == 60.0 ) {
@@ -101,7 +103,6 @@ LatLongFormatter::format( const Angular& angle, int precision, const AngularForm
 
     case FORMAT_DEGREES_MINUTES_SECONDS:
         {
-            double df = angle.as(Units::DEGREES);
             int    d  = (int)floor(df);
             double mf = 60.0*(df-(double)d);
             int    m  = (int)floor(mf);

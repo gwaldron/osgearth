@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthUtil/EarthManipulator>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osg/Quat>
 #include <osg/Notify>
 #include <osg/MatrixTransform>
@@ -735,7 +735,7 @@ EarthManipulator::getSRS() const
 
         if ( _cached_srs.valid() )
         {
-            OE_INFO << "[EarthManip] cached SRS: "
+            OE_DEBUG << "[EarthManip] cached SRS: "
                 << _cached_srs->getName()
                 << ", geocentric=" << _is_geocentric
                 << std::endl;
@@ -1191,7 +1191,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         return false;
 
     // make sure the camera callback is up to date:
-    updateCamera( aa.asView()->getCamera() );
+    osg::View* view = aa.asView();
+    updateCamera( view->getCamera() );
 
     if ( ea.getEventType() == osgGA::GUIEventAdapter::FRAME )
     {
@@ -1201,12 +1202,6 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
         // this factor adjusts for the variation of frame rate relative to 60fps
         _t_factor = _delta_t / 0.01666666666;
 
-        //OE_NOTICE
-        //    << "center=(" << _center.x() << "," << _center.y() << "," << _center.z() << ")"
-        //    << ", dist=" << _distance
-        //    << ", p=" << _local_pitch
-        //    << ", h=" << _local_azim
-        //    << std::endl;
 
         if ( _has_pending_viewpoint && _node.valid() )
         {
@@ -1221,7 +1216,8 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
                 _time_s_set_viewpoint = _time_s_now;
 
             updateSetViewpoint();
-            aa.requestRedraw();
+
+            aa.requestContinuousUpdate( _setting_viewpoint );
         }
 
         if ( _thrown || _continuous )
@@ -1236,10 +1232,20 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             _continuous_dy = 0.0;
         }
         
-        if ( _task.valid() )
+        if ( _task.valid() && _task->_type != TASK_NONE )
         {
-            if ( serviceTask() )
+            bool stillRunning = serviceTask();
+            if ( stillRunning ) 
+            {
+                aa.requestContinuousUpdate( true );
+            }
+            else
+            {
+                // turn off the continuous, but we still need one last redraw
+                // to process the final state.
+                aa.requestContinuousUpdate( false );
                 aa.requestRedraw();
+            }
         }
 
         _frame_count++;
@@ -1256,6 +1262,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
    
     // form the current Action based on the event type:
     Action action = ACTION_NULL;
+    _time_s_now = osg::Timer::instance()->time_s();
 
     switch( ea.getEventType() )
     {
@@ -1273,6 +1280,7 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             {
                 // bail out of continuous mode if necessary:
                 _continuous = false;
+                aa.requestContinuousUpdate( false );
             }
             else
             {
@@ -1329,10 +1337,15 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             {
                 action = _settings->getAction( ea.getEventType(), ea.getButtonMask(), ea.getModKeyMask() );
                 addMouseEvent( ea );
+                bool wasContinuous = _continuous;
                 _continuous = action.getBoolOption(OPTION_CONTINUOUS, false);
                 if ( handleMouseAction( action, aa.asView() ) )
                     aa.requestRedraw();
-                aa.requestContinuousUpdate(false);
+
+                if ( _continuous && !wasContinuous )
+                    _last_continuous_action_time = _time_s_now;
+
+                aa.requestContinuousUpdate(_continuous);
                 _thrown = false;
                 handled = true;
             }
@@ -1365,8 +1378,16 @@ EarthManipulator::handle(const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
             break;
     }
 
+    // if a new task was started, request continuous updates.
+    if ( _task.valid() && _task->_type != TASK_NONE )
+    {
+        aa.requestContinuousUpdate( true );
+    }
+
     if ( handled && action._type != ACTION_NULL )
+    {
         _last_action = action;
+    }
 
     return handled;
 }
@@ -1447,37 +1468,35 @@ EarthManipulator::updateTether()
 bool
 EarthManipulator::serviceTask()
 {
-    bool result;
-
     if ( _task.valid() && _task->_type != TASK_NONE )
     {
+        double dt = _time_s_now - _task->_time_last_service;
+
         switch( _task->_type )
         {
             case TASK_PAN:
-                pan( _delta_t * _task->_dx, _delta_t * _task->_dy );
+                pan( dt * _task->_dx, dt * _task->_dy );
                 break;
             case TASK_ROTATE:
-                rotate( _delta_t * _task->_dx, _delta_t * _task->_dy );
+                rotate( dt * _task->_dx, dt * _task->_dy );
                 break;
             case TASK_ZOOM:
-                zoom( _delta_t * _task->_dx, _delta_t * _task->_dy );
+                zoom( dt * _task->_dx, dt * _task->_dy );
                 break;
             default: break;
         }
 
-        _task->_duration_s -= _delta_t;
+        _task->_duration_s -= dt;
+        _task->_time_last_service = _time_s_now;
+
         if ( _task->_duration_s <= 0.0 )
+        {
             _task->_type = TASK_NONE;
-
-        result = true;
-    }
-    else
-    {
-        result = false;
+        }
     }
 
-    //_time_last_frame = now;
-    return result;
+    // returns true if the task is still running.
+    return _task.valid() && _task->_type != TASK_NONE;
 }
 
 bool
@@ -2051,7 +2070,9 @@ EarthManipulator::handlePointAction( const Action& action, float mx, float my, o
 void
 EarthManipulator::handleContinuousAction( const Action& action, osg::View* view )
 {
-    handleMovementAction( action._type, _continuous_dx * _t_factor, _continuous_dy * _t_factor, view );
+    double t_factor = (_time_s_now - _last_continuous_action_time)/0.016666666;
+    _last_continuous_action_time = _time_s_now;
+    handleMovementAction( action._type, _continuous_dx * t_factor, _continuous_dy * t_factor, view );
 }
 
 void
@@ -2187,7 +2208,7 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
     case ACTION_PAN_RIGHT:
     case ACTION_PAN_UP:
     case ACTION_PAN_DOWN:
-        _task->set( TASK_PAN, dx, dy, duration );
+        _task->set( TASK_PAN, dx, dy, duration, _time_s_now );
         break;
 
     case ACTION_ROTATE:
@@ -2195,13 +2216,13 @@ EarthManipulator::handleAction( const Action& action, double dx, double dy, doub
     case ACTION_ROTATE_RIGHT:
     case ACTION_ROTATE_UP:
     case ACTION_ROTATE_DOWN:
-        _task->set( TASK_ROTATE, dx, dy, duration );
+        _task->set( TASK_ROTATE, dx, dy, duration, _time_s_now );
         break;
 
     case ACTION_ZOOM:
     case ACTION_ZOOM_IN:
     case ACTION_ZOOM_OUT:
-        _task->set( TASK_ZOOM, dx, dy, duration );
+        _task->set( TASK_ZOOM, dx, dy, duration, _time_s_now );
         break;
 
     default:

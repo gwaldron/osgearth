@@ -22,7 +22,6 @@ SET(TARGET_ADDED_LIBRARIES
     ${QT_QTCORE_LIBRARY}
     ${QT_QTGUI_LIBRARY}
     ${QT_QTOPENGL_LIBRARY}
-    ${OSGQT_LIBRARY}
 )
 
 #### end var setup  ###

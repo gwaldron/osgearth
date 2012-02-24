@@ -1,0 +1,42 @@
+<!--
+osgEarth Sample
+
+This one demonstrates how to read feature data from a GPX file, or any other file with multiple layers.
+
+Note:  You must have GDAL built with Expat support to read GPX files
+-->
+
+<map name="Feature GPX Demo" type="geocentric" version="2">
+    
+    <image name="world" driver="gdal">
+        <url>../data/world.tif</url>
+    </image>
+    
+    <model name="fells loop" driver="feature_geom">
+
+        <!-- Configure the OGR feature driver to read the gpx file -->
+        <features name="routes" driver="ogr">
+            <url>../data/fells_loop.gpx</url>
+			<!-- Specify the layer index-->
+			<layer>1</layer>
+			
+        </features>
+              
+        <!-- Appearance details -->
+        <styles>
+            <style type="text/css">
+                routes {
+                   stroke: #ffff00;                   
+                }                    
+            </style>
+        </styles>
+		
+		<lighting>false</lighting>
+        
+    </model>
+	
+	<external>
+        <viewpoint name="Fells Loop" heading="0" height="0" lat="42.43095" long="-71.1076" pitch="-90" range="5000"/>
+    </external>
+  
+</map>

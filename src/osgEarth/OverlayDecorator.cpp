@@ -17,13 +17,14 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/OverlayDecorator>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
 #include <osg/Texture2D>
 #include <osg/TexEnv>
 #include <osg/BlendFunc>
 #include <osg/ComputeBoundsVisitor>
+#include <osgGA/EventVisitor>
 #include <osgShadow/ConvexPolyhedron>
 #include <osgUtil/LineSegmentIntersector>
 #include <iomanip>
@@ -268,13 +269,14 @@ _useWarping   ( false ),
 _warp         ( 1.0f ),
 _visualizeWarp( false ),
 _mipmapping   ( false ),
-_rttBlending  ( true )
+_rttBlending  ( true ),
+_updatePending( false )
 {
     // nop
 }
 
 void
-OverlayDecorator::reinit()
+OverlayDecorator::initializeForOverlayGraph()
 {
     if ( !_engine.valid() ) return;
 
@@ -303,101 +305,108 @@ OverlayDecorator::reinit()
                 OE_WARN << LC << "Uh oh, no texture image units available." << std::endl;
             }
         }
+    }
+}
 
-        if ( _textureUnit.isSet() )
-        {
-            _projTexture = new osg::Texture2D();
-            _projTexture->setTextureSize( *_textureSize, *_textureSize );
-            _projTexture->setInternalFormat( GL_RGBA8 );
-            _projTexture->setSourceFormat( GL_RGBA );
-            _projTexture->setSourceType( GL_UNSIGNED_BYTE );
-            _projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
-            _projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
-            _projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
-            _projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
-            _projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_BORDER );
-            _projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
-            // set up the RTT camera:
-            _rttCamera = new osg::Camera();
-            _rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
-            _rttCamera->setClearStencil( 0 );
-            _rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
-            // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
-            // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
-            _rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
-            _rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
-            _rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
-            _rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
-            _rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
+void
+OverlayDecorator::initializePerViewData( PerViewData& pvd )
+{
+    if ( !_textureUnit.isSet() || !_overlayGraph.valid() )
+        return;
 
-            _rttCamera->attach( osg::Camera::COLOR_BUFFER, _projTexture.get(), 0, 0, _mipmapping );
-            
-            // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
-            // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
-            // a PBUFFER_RTT impl
-            if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
-                _rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
-            else
-                _rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
+    // create the projected texture:
+    osg::Texture2D* projTexture = new osg::Texture2D();
+    projTexture->setTextureSize( *_textureSize, *_textureSize );
+    projTexture->setInternalFormat( GL_RGBA8 );
+    projTexture->setSourceFormat( GL_RGBA );
+    projTexture->setSourceType( GL_UNSIGNED_BYTE );
+    projTexture->setFilter( osg::Texture::MIN_FILTER, _mipmapping? osg::Texture::LINEAR_MIPMAP_LINEAR: osg::Texture::LINEAR );
+    projTexture->setFilter( osg::Texture::MAG_FILTER, osg::Texture::LINEAR );
+    projTexture->setWrap( osg::Texture::WRAP_S, osg::Texture::CLAMP_TO_BORDER );
+    projTexture->setWrap( osg::Texture::WRAP_T, osg::Texture::CLAMP_TO_BORDER );
+    projTexture->setWrap( osg::Texture::WRAP_R, osg::Texture::CLAMP_TO_BORDER );
+    projTexture->setBorderColor( osg::Vec4(0,0,0,0) );
 
-            osg::StateSet* rttStateSet = _rttCamera->getOrCreateStateSet();
+    // set up the RTT camera:
+    pvd._rttCamera = new osg::Camera();
+    pvd._rttCamera->setClearColor( osg::Vec4f(0,0,0,0) );
+    pvd._rttCamera->setClearStencil( 0 );
+    pvd._rttCamera->setClearMask( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+    // this ref frame causes the RTT to inherit its viewpoint from above (in order to properly
+    // process PagedLOD's etc. -- it doesn't affect the perspective of the RTT camera though)
+    pvd._rttCamera->setReferenceFrame( osg::Camera::ABSOLUTE_RF_INHERIT_VIEWPOINT );
+    pvd._rttCamera->setViewport( 0, 0, *_textureSize, *_textureSize );
+    pvd._rttCamera->setComputeNearFarMode( osg::CullSettings::DO_NOT_COMPUTE_NEAR_FAR );
+    pvd._rttCamera->setRenderOrder( osg::Camera::PRE_RENDER );
+    pvd._rttCamera->setRenderTargetImplementation( osg::Camera::FRAME_BUFFER_OBJECT );
 
-            rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+    pvd._rttCamera->attach( osg::Camera::COLOR_BUFFER, projTexture, 0, 0, _mipmapping );
 
-            if ( _rttBlending )
-            {
-                osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-                rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
-            }
-            else
-            {
-                rttStateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
-            }
-            
-            // attach the overlay graph to the RTT camera.
-            if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != _rttCamera.get() ))
-            {
-                if ( _rttCamera->getNumChildren() > 0 )
-                    _rttCamera->replaceChild( 0, _overlayGraph.get() );
-                else
-                    _rttCamera->addChild( _overlayGraph.get() );
-            }
+    // try a depth-packed buffer. failing that, try a normal one.. if the FBO doesn't support
+    // that (which is doesn't on some GPUs like Intel), it will automatically fall back on 
+    // a PBUFFER_RTT impl
+    if ( Registry::instance()->getCapabilities().supportsDepthPackedStencilBuffer() )
+        pvd._rttCamera->attach( osg::Camera::PACKED_DEPTH_STENCIL_BUFFER, GL_DEPTH_STENCIL_EXT );
+    else
+        pvd._rttCamera->attach( osg::Camera::STENCIL_BUFFER, GL_STENCIL_INDEX );
 
-            // overlay geometry is rendered with no depth testing, and in the order it's found in the
-            // scene graph... until further notice...
-            rttStateSet->setMode(GL_DEPTH_TEST, 0);
-            rttStateSet->setBinName( "TraversalOrderBin" );
-        }
+    osg::StateSet* rttStateSet = pvd._rttCamera->getOrCreateStateSet();
+
+    rttStateSet->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED );
+
+    if ( _rttBlending )
+    {
+        osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        //Sure it shouldn't be this? -gw
+        //osg::BlendFunc* blendFunc = new osg::BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        rttStateSet->setAttributeAndModes(blendFunc, osg::StateAttribute::ON | osg::StateAttribute::OVERRIDE);
+    }
+    else
+    {
+        rttStateSet->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE);
     }
 
-    // assemble the subgraph stateset:
-    _subgraphStateSet = new osg::StateSet();
-
-    if ( _overlayGraph.valid() && _textureUnit.isSet() )
+    // attach the overlay graph to the RTT camera.
+    if ( _overlayGraph.valid() && ( _overlayGraph->getNumParents() == 0 || _overlayGraph->getParent(0) != pvd._rttCamera.get() ))
     {
-        // set up the subgraph to receive the projected texture:
-        _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
-        _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
-        _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
-        _subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
-        _subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, _projTexture.get(), osg::StateAttribute::ON );
-        
-        // set up the shaders
-        if ( _useShaders )
-        {            
-            initSubgraphShaders( _subgraphStateSet.get() );
-            initRTTShaders( _rttCamera->getOrCreateStateSet() );
+        if ( pvd._rttCamera->getNumChildren() > 0 )
+            pvd._rttCamera->replaceChild( 0, _overlayGraph.get() );
+        else
+            pvd._rttCamera->addChild( _overlayGraph.get() );
+    }
 
-            _warpUniform = this->getOrCreateStateSet()->getOrCreateUniform( "warp", osg::Uniform::FLOAT );
-            _warpUniform->set( 1.0f );
-        }
+    // overlay geometry is rendered with no depth testing, and in the order it's found in the
+    // scene graph... until further notice...
+    rttStateSet->setMode(GL_DEPTH_TEST, 0);
+    rttStateSet->setBinName( "TraversalOrderBin" );
+
+
+    // assemble the subgraph stateset:
+    pvd._subgraphStateSet = new osg::StateSet();
+
+    // set up the subgraph to receive the projected texture:
+    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_S, osg::StateAttribute::ON );
+    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_T, osg::StateAttribute::ON );
+    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_R, osg::StateAttribute::ON );
+    pvd._subgraphStateSet->setTextureMode( *_textureUnit, GL_TEXTURE_GEN_Q, osg::StateAttribute::ON );
+    pvd._subgraphStateSet->setTextureAttributeAndModes( *_textureUnit, projTexture, osg::StateAttribute::ON );
+    
+    // set up the shaders
+    if ( _useShaders )
+    {            
+        initSubgraphShaders( pvd ); //._subgraphStateSet.get() );
+        initRTTShaders( pvd ); //._rttCamera->getOrCreateStateSet() );
+        //_warpUniform = this->getOrCreateStateSet()->getOrCreateUniform( "warp", osg::Uniform::FLOAT );
+        //_warpUniform->set( 1.0f );
     }
 }
 
 void
-OverlayDecorator::initRTTShaders( osg::StateSet* set )
+OverlayDecorator::initRTTShaders( PerViewData& pvd )
 {
+    osg::StateSet* set = pvd._rttCamera->getOrCreateStateSet();
+
     //TODO: convert this to VP so the overlay graph can use shadercomp too.
     osg::Program* program = new osg::Program();
     program->setName( "OverlayDecorator RTT shader" );
@@ -459,7 +468,6 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
                << "{\n"                              
                << "    vec4 tex = texture2D(texture_0, gl_TexCoord[0].xy);\n"
                << "    vec3 mixed_color = mix(gl_Color.rgb, tex.rgb, tex.a);\n"
-               //<< "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
                << "    gl_FragColor = vec4(mixed_color, gl_Color.a); \n"
                << "}\n";
     
@@ -471,8 +479,10 @@ OverlayDecorator::initRTTShaders( osg::StateSet* set )
 }
 
 void
-OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
+OverlayDecorator::initSubgraphShaders( PerViewData& pvd )
 {
+    osg::StateSet* set = pvd._subgraphStateSet.get();
+
     VirtualProgram* vp = new VirtualProgram();
     vp->setName( "OverlayDecorator subgraph shader" );
     set->setAttributeAndModes( vp, osg::StateAttribute::ON );
@@ -481,7 +491,7 @@ OverlayDecorator::initSubgraphShaders( osg::StateSet* set )
     set->getOrCreateUniform( "osgearth_overlay_ProjTex", osg::Uniform::SAMPLER_2D )->set( *_textureUnit );
 
     // the texture projection matrix uniform.
-    _texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
+    pvd._texGenUniform = set->getOrCreateUniform( "osgearth_overlay_TexGenMatrix", osg::Uniform::FLOAT_MAT4 );
 
     std::stringstream buf;
 
@@ -556,15 +566,39 @@ OverlayDecorator::setOverlayGraph( osg::Node* node )
     {
         if ( _overlayGraph.valid() && node == 0L )
         {
-            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+            // un-register for traversals.
+            if ( _updatePending )
+            {
+                _updatePending = false;
+                ADJUST_EVENT_TRAV_COUNT( this, -1 );
+            }
+
+            ADJUST_EVENT_TRAV_COUNT( this, -1 );
         }
         else if ( !_overlayGraph.valid() && node != 0L )
         {
-            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+            // request that OSG give this node an event traversal.
+            ADJUST_EVENT_TRAV_COUNT( this, 1 );
         }
 
         _overlayGraph = node;
-        reinit();
+
+        initializeForOverlayGraph();
+
+        // go through and install the NEW overlay graph on any existing cameras.
+        {
+            Threading::ScopedWriteLock exclude( _perViewDataMutex );
+            for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
+            {
+                PerViewData& pvd = i->second;
+                if ( pvd._rttCamera->getNumChildren() > 0 )
+                    pvd._rttCamera->replaceChild( 0, _overlayGraph.get() );
+                else
+                    pvd._rttCamera->addChild( _overlayGraph.get() );
+            }
+        }
+
+        //reinit();
     }
 }
 
@@ -574,7 +608,7 @@ OverlayDecorator::setTextureSize( int texSize )
     if ( texSize != _textureSize.value() )
     {
         _textureSize = texSize;
-        reinit();
+        //reinit();
     }
 }
 
@@ -584,7 +618,7 @@ OverlayDecorator::setTextureUnit( int texUnit )
     if ( !_explicitTextureUnit.isSet() || texUnit != _explicitTextureUnit.value() )
     {
         _explicitTextureUnit = texUnit;
-        reinit();
+        //reinit();
     }
 }
 
@@ -594,7 +628,7 @@ OverlayDecorator::setMipMapping( bool value )
     if ( value != _mipmapping )
     {
         _mipmapping = value;
-        reinit();
+        //reinit();
 
         if ( _mipmapping )
             OE_INFO << LC << "Overlay mipmapping " << (value?"enabled":"disabled") << std::endl;
@@ -607,7 +641,7 @@ OverlayDecorator::setVertexWarping( bool value )
     if ( value != _useWarping )
     {
         _useWarping = value;
-        reinit();
+        //reinit();
         
         if ( _useWarping )
             OE_INFO << LC << "Vertex warping " << (value?"enabled":"disabled")<< std::endl;
@@ -620,7 +654,7 @@ OverlayDecorator::setOverlayBlending( bool value )
     if ( value != _rttBlending )
     {
         _rttBlending = value;
-        reinit();
+        //reinit();
         
         if ( _rttBlending )
             OE_INFO << LC << "Overlay blending " << (value?"enabled":"disabled")<< std::endl;
@@ -658,7 +692,7 @@ OverlayDecorator::onInstall( TerrainEngineNode* engine )
     }
 
     // rebuild dynamic elements.
-    reinit();
+    initializeForOverlayGraph();
 }
 
 void
@@ -674,28 +708,32 @@ OverlayDecorator::onUninstall( TerrainEngineNode* engine )
 }
 
 void
-OverlayDecorator::updateRTTCamera( osg::NodeVisitor& nv )
+OverlayDecorator::updateRTTCameras()
 {
     static osg::Matrix normalizeMatrix = 
         osg::Matrix::translate(1.0,1.0,1.0) * osg::Matrix::scale(0.5,0.5,0.5);
 
-    // configure the RTT camera:
-    _rttCamera->setViewMatrix( _rttViewMatrix );
-    _rttCamera->setProjectionMatrix( _rttProjMatrix );
+    Threading::ScopedWriteLock exclusive( _perViewDataMutex );
 
-    osg::Matrix MVPT = _projectorViewMatrix * _projectorProjMatrix * normalizeMatrix;
-    
-    // uniform update:
-    if ( _useShaders )
+    for( PerViewDataMap::iterator i = _perViewData.begin(); i != _perViewData.end(); ++i )
     {
-        _texGenUniform->set( MVPT );
-        if ( _useWarping )
-            _warpUniform->set( _warp );
+        PerViewData& pvd = i->second;
+    
+        pvd._rttCamera->setViewMatrix( pvd._rttViewMatrix );
+        pvd._rttCamera->setProjectionMatrix( pvd._rttProjMatrix );
+
+        if ( pvd._texGenUniform.valid() )
+        {
+            osg::Matrix MVPT = pvd._rttViewMatrix * pvd._rttProjMatrix * normalizeMatrix;
+            pvd._texGenUniform->set( MVPT );
+            //if ( _useWarping )
+            //    _warpUniform->set( _warp );
+        }
     }
 }
 
 void
-OverlayDecorator::cull( osgUtil::CullVisitor* cv )
+OverlayDecorator::cull( osgUtil::CullVisitor* cv, OverlayDecorator::PerViewData& pvd )
 {
     static int s_frame = 1;
 
@@ -747,7 +785,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         horizonDistance = DBL_MAX;
         horizonDistanceInRTTPlane = DBL_MAX;
 
-        _rttViewMatrix = osg::Matrixd::lookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
+        pvd._rttViewMatrix = osg::Matrixd::lookAt( eye, eye-worldUp*hasl, osg::Vec3(0,1,0) );
     }
 
     // create a "weighting" that weights HASL against the camera's pitch.
@@ -779,7 +817,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
 
     // cull the subgraph here. This doubles as the subgraph's official cull traversal
     // and a gathering of its clip planes.
-    cv->pushStateSet( _subgraphStateSet.get() );
+    cv->pushStateSet( pvd._subgraphStateSet.get() );
     osg::Group::traverse( *cv );
     cv->popStateSet();
 
@@ -861,8 +899,8 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         double new_eMax;
         getMinMaxExtentInSilhouette( bc, rttLookVec, verts, eMin, new_eMax );
         eMax = std::min( eMax, new_eMax );
-        _rttViewMatrix = osg::Matrixd::lookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
-        _rttProjMatrix = osg::Matrixd::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, bc.length() );
+        pvd._rttViewMatrix = osg::Matrixd::lookAt( bc, osg::Vec3d(0,0,0), osg::Vec3d(0,0,1) );
+        pvd._rttProjMatrix = osg::Matrixd::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, bc.length() );
 
         //OE_INFO << std::fixed << std::setprecision(1)
         //    << "eMax = " << eMax
@@ -878,7 +916,7 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
         double new_eMax;
         getMinMaxExtentInSilhouette( from, osg::Vec3d(0,0,-1), verts, eMin, new_eMax );   
         eMax = std::min( eMax, new_eMax ); 
-        _rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
+        pvd._rttProjMatrix = osg::Matrix::ortho( -eMax, eMax, -eMax, eMax, -eyeLen, eyeLen );
     }
 
     //OE_NOTICE << LC << "EMIN = " << eMin << ", EMAX = " << eMax << std::endl;
@@ -926,9 +964,43 @@ OverlayDecorator::cull( osgUtil::CullVisitor* cv )
     }
 #endif
 
+#if 0
     // projector matrices are the same as for the RTT camera. Tim was right.
     _projectorViewMatrix = _rttViewMatrix;
     _projectorProjMatrix = _rttProjMatrix;
+#endif
+}
+
+OverlayDecorator::PerViewData&
+OverlayDecorator::getPerViewData(osg::View* key)
+{
+    // first check for it:
+    {
+        Threading::ScopedReadLock shared( _perViewDataMutex );
+        PerViewDataMap::iterator i = _perViewData.find(key);
+        if ( i != _perViewData.end() )
+        {
+            if ( !i->second._rttCamera.valid() )
+                initializePerViewData( i->second );
+
+            return i->second;
+        }
+    }
+
+    // then exclusive lock and make/check it:
+    {
+        Threading::ScopedWriteLock exclusive( _perViewDataMutex );
+
+        // double check pattern:
+        PerViewDataMap::iterator i = _perViewData.find(key);
+        if ( i != _perViewData.end() )
+            return i->second;
+
+        PerViewData& pvd = _perViewData[key];
+        initializePerViewData(pvd);
+
+        return pvd;
+    }    
 }
 
 void
@@ -938,40 +1010,102 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
 
     if ( _overlayGraph.valid() && _textureUnit.isSet() )
     {
-        if ( isCull )
+        // in the CULL traversal, find the per-view data associated with the 
+        // cull visitor's current camera view and work with that:
+        if ( nv.getVisitorType() == osg::NodeVisitor::CULL_VISITOR )
         {
-            osgUtil::CullVisitor* cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
-            if ( cv )
+            osgUtil::CullVisitor* cv = static_cast<osgUtil::CullVisitor*>( &nv );
+            if ( cv->getCurrentCamera() )
             {
-                cull( cv );
+                PerViewData& pvd = getPerViewData( cv->getCurrentCamera()->getView() );
+                cull( cv, pvd );
+                pvd._rttCamera->accept( nv );
             }
-            _rttCamera->accept( nv );
         }
 
-        else
+        else if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
         {
-            if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+            // during the event traversal, check to see whether any of the camera
+            // matrices have changed from the previous frame. If so, active the update
+            // visitor to update the RTT camera.
+
+            osgGA::EventVisitor* ev = static_cast<osgGA::EventVisitor*>(&nv);
+            osg::View* view = ev->getActionAdapter()->asView();
+            if ( view )
             {
-                updateRTTCamera( nv );
+                PerViewData& pvd = getPerViewData(view);
+
+                // first, check whether we already have an update coming.
+                if ( !_updatePending && checkNeedsUpdate(pvd) )
+                {
+                    // need it, so schedule it.
+                    //ev->getActionAdapter()->requestRedraw(); // not needed since we are bumping the update trav
+                    _updatePending = true;
+                    ADJUST_UPDATE_TRAV_COUNT( this, 1 );
+                }
+
+                // send the event traversal down the overlay graph
+                pvd._rttCamera->accept( nv );
             }
-            _rttCamera->accept( nv );
+
+            // traverse the overlay decorators subgraph
+            osg::Group::traverse( nv );
+        }
+
+        else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+        {
+            // if we get an update traversal, recalculate the RTT camera parameters.
+            // TODO: update this to support multiple views..?
+            if ( _updatePending )
+            {
+                OE_DEBUG << LC << "Update RTT camera, frame = " << nv.getFrameStamp()->getFrameNumber() << std::endl;
+                updateRTTCameras();
+                _updatePending = false;
+                ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+            }
+
+            // skip the camera, go straight to the overlay subgraph.
+            if ( _overlayGraph.valid() )
+            {
+                _overlayGraph->accept( nv );
+            }
 
             osg::Group::traverse( nv );
         }    
+
+        else
+        {
+            // Some other type of visitor (like an intersection). Skip the RTT camera and
+            // traverse the overlay graph directly.
+            if ( _overlayGraph.valid() )
+            {
+                _overlayGraph->accept( nv );
+            }
+
+            osg::Group::traverse( nv );
+        }
     }
     else
     {
-        osgUtil::CullVisitor* cv = 0L;
-        if ( isCull )
-            cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
+        //osgUtil::CullVisitor* cv = 0L;
+        //if ( isCull )
+        //    cv = dynamic_cast<osgUtil::CullVisitor*>( &nv );
 
-        if ( cv )
-            cv->pushStateSet( _subgraphStateSet.get() );
+        //if ( cv )
+        //    cv->pushStateSet( _subgraphStateSet.get() );
 
         osg::Group::traverse( nv );
 
-        if ( cv )
-            cv->popStateSet();
+        //if ( cv )
+        //    cv->popStateSet();
     }
 }
 
+
+bool
+OverlayDecorator::checkNeedsUpdate( OverlayDecorator::PerViewData& pvd )
+{
+    return
+        pvd._rttCamera->getViewMatrix()       != pvd._rttViewMatrix ||
+        pvd._rttCamera->getProjectionMatrix() != pvd._rttProjMatrix;
+}

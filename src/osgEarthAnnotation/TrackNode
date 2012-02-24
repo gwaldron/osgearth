@@ -85,13 +85,26 @@ namespace osgEarth { namespace Annotation
         /**
          * Constructs a new track node
          * @param mapNode     Map node under which this track will live
+         * @param position    Initial position
+         * @param image       Icon image to use
+         * @param fieldSchema Schema for track label fields
+         */
+        TrackNode(
+            MapNode*                    mapNode,
+            const GeoPoint&             position,
+            osg::Image*                 image,
+            const TrackNodeFieldSchema& fieldSchema );
+
+        /**
+         * Constructs a new track node
+         * @param mapNode     Map node under which this track will live
          * @param position    Initial position (in map coordinates)
          * @param image       Icon image to use
          * @param fieldSchema Schema for track label fields
          */
         TrackNode(
             MapNode*                    mapNode,
-            const osg::Vec3d&           position,
+            const osg::Vec3d&           positionInMapCoords,
             osg::Image*                 image,
             const TrackNodeFieldSchema& fieldSchema );
 

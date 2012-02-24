@@ -65,6 +65,12 @@ namespace osgEarth { namespace Symbology
             TYPE_MULTI
         };
 
+        enum Orientation {
+            ORIENTATION_CCW,
+            ORIENTATION_CW,
+            ORIENTATION_DEGENERATE
+        };
+
         static std::string toString( Type t ) {
             return 
                 t == TYPE_POINTSET ?   "pointset" :
@@ -161,6 +167,18 @@ namespace osgEarth { namespace Symbology
          * Reverses a call the localize(), given the same offset returned by that method.
          */
         void delocalize( const osg::Vec3d& offset );
+        
+        /**
+         * Reorders the points in the geometry so that, if the last point was connected
+         * to the first in a ring, they would be would in the specified direction.
+         */
+        virtual void rewind( Orientation ori );
+
+        /**
+         * Get the winding orientation of the geometry (if you consider the last point
+         * to connect back to the first in a ring.)
+         */
+        Orientation getOrientation() const;
 
     public:
         virtual Type getType() const =0;
@@ -225,22 +243,12 @@ namespace osgEarth { namespace Symbology
     class OSGEARTHSYMBOLOGY_EXPORT Ring : public Geometry
     {
     public:
-        enum Orientation {
-            ORIENTATION_CCW,
-            ORIENTATION_CW,
-            ORIENTATION_DEGENERATE
-        };
-
-    public:
         Ring( int capacity =0 ) : Geometry( capacity ) { }
         Ring( const Ring& ring );
         Ring( const Vec3dVector* toCopy );
 
         // override
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
-
-        // gets the ring's orientation
-        Orientation getOrientation() const;
 
         // tests whether the point falls withing the ring
         virtual bool contains2D( double x, double y ) const;
@@ -250,9 +258,9 @@ namespace osgEarth { namespace Symbology
 
         // ensures that the first and last points are not idential.
         virtual void open();
-        
-        // opens and rewinds the ring to the specified orientation.
-        void rewind( Orientation ori );
+
+        // opens and winds the ring in the specified direction
+        virtual void rewind( Orientation ori );
 
     public:
         virtual Type getType() const { return Geometry::TYPE_RING; }
@@ -314,6 +322,7 @@ namespace osgEarth { namespace Symbology
         virtual Geometry* cloneAs( const Geometry::Type& newType ) const;
         virtual bool isValid() const;
         virtual Bounds getBounds() const;
+        virtual void rewind( Orientation ori );
 
     public:
         GeometryCollection& getComponents() { return _parts; }

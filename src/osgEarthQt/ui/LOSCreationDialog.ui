@@ -88,6 +88,9 @@
                <property name="maximum">
                 <double>180.000000000000000</double>
                </property>
+               <property name="singleStep">
+                <double>0.001000000000000</double>
+               </property>
               </widget>
              </item>
              <item>
@@ -107,6 +110,9 @@
                </property>
                <property name="maximum">
                 <double>90.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.001000000000000</double>
                </property>
               </widget>
              </item>
@@ -219,6 +225,9 @@
                <property name="maximum">
                 <double>180.000000000000000</double>
                </property>
+               <property name="singleStep">
+                <double>0.001000000000000</double>
+               </property>
               </widget>
              </item>
              <item>
@@ -238,6 +247,9 @@
                </property>
                <property name="maximum">
                 <double>90.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.001000000000000</double>
                </property>
               </widget>
              </item>
@@ -380,6 +392,9 @@
                <property name="maximum">
                 <double>180.000000000000000</double>
                </property>
+               <property name="singleStep">
+                <double>0.001000000000000</double>
+               </property>
               </widget>
              </item>
              <item>
@@ -399,6 +414,9 @@
                </property>
                <property name="maximum">
                 <double>90.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.001000000000000</double>
                </property>
               </widget>
              </item>

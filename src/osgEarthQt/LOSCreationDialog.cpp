@@ -113,7 +113,7 @@ namespace
 }
 
 LOSCreationDialog::LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* root, int losCount, osgEarth::QtGui::DataManager *manager, ViewVector* views)
-  : _mapNode(mapNode), _root(root), _manager(manager), _views(views), _activeButton(0L), _updatingUi(false)
+  : _mapNode(mapNode), _root(root), _manager(manager), _views(views), _activeButton(0L), _updatingUi(false), _updateAlt(true)
 {
   if (_mapNode.valid())
     _map = _mapNode->getMap();
@@ -129,7 +129,7 @@ LOSCreationDialog::LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* roo
 }
 
 LOSCreationDialog::LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* root, osg::Group* losNode, const std::string& name, osgEarth::QtGui::DataManager *manager, ViewVector* views)
-  : _mapNode(mapNode), _root(root), _manager(manager), _views(views), _activeButton(0L), _updatingUi(false)
+  : _mapNode(mapNode), _root(root), _manager(manager), _views(views), _activeButton(0L), _updatingUi(false), _updateAlt(true)
 {
   if (_mapNode.valid())
     _map = _mapNode->getMap();
@@ -440,8 +440,10 @@ void LOSCreationDialog::mapClick(const osg::Vec3d& point)
     {
       _p1BaseAlt = outPoint.z();
 
+      _updateAlt = false;
       _ui.p1LonBox->setValue(outPoint.x());
       _ui.p1LatBox->setValue(outPoint.y());
+      _updateAlt = true;
 
       if (_ui.p2pRelativeCheckBox->checkState() == Qt::Unchecked)
         _ui.p1AltBox->setValue((int)(outPoint.z()) + 1.0);
@@ -450,8 +452,10 @@ void LOSCreationDialog::mapClick(const osg::Vec3d& point)
     {
       _p2BaseAlt = outPoint.z();
 
+      _updateAlt = false;
       _ui.p2LonBox->setValue(outPoint.x());
       _ui.p2LatBox->setValue(outPoint.y());
+      _updateAlt = true;
 
       if (_ui.p2pRelativeCheckBox->checkState() == Qt::Unchecked)
         _ui.p2AltBox->setValue((int)(outPoint.z()) + 1.0);
@@ -460,8 +464,10 @@ void LOSCreationDialog::mapClick(const osg::Vec3d& point)
     {
       _radBaseAlt = outPoint.z();
 
+      _updateAlt = false;
       _ui.radLonBox->setValue(outPoint.x());
       _ui.radLatBox->setValue(outPoint.y());
+      _updateAlt = true;
 
       if (_ui.radRelativeCheckBox->checkState() == Qt::Unchecked)
         _ui.radAltBox->setValue((int)(outPoint.z()) + 1.0);
@@ -921,12 +927,51 @@ void LOSCreationDialog::onLocationValueChanged(double d)
   {
     QObject* s = sender();
 
-    if (s == _ui.p1LatBox || s == _ui.p1LonBox || s == _ui.p1AltBox)
+    if (s == _ui.p1LatBox || s == _ui.p1LonBox)
+    {
+      if (_updateAlt)
+      {
+        double alt;
+        if (_mapNode->getTerrain()->getHeight(_ui.p1LonBox->value(), _ui.p1LatBox->value(), &alt))
+          _p1BaseAlt = alt;
+      }
+
       updatePoint(P2P_START);
-    else if (s == _ui.p2LatBox || s == _ui.p2LonBox || s == _ui.p2AltBox)
+    }
+    else if (s == _ui.p1AltBox)
+    {
+      updatePoint(P2P_START);
+    }
+    else if (s == _ui.p2LatBox || s == _ui.p2LonBox)
+    {
+      if (_updateAlt)
+      {
+        double alt;
+        if (_mapNode->getTerrain()->getHeight(_ui.p2LonBox->value(), _ui.p2LatBox->value(), &alt))
+          _p2BaseAlt = alt;
+      }
+
       updatePoint(P2P_END);
-    else if (s == _ui.radLatBox || s == _ui.radLonBox || s == _ui.radAltBox)
+    }
+    else if (s == _ui.p2AltBox)
+    {
+      updatePoint(P2P_END);
+    }
+    else if (s == _ui.radLatBox || s == _ui.radLonBox)
+    {
+      if (_updateAlt)
+      {
+        double alt;
+        if (_mapNode->getTerrain()->getHeight(_ui.radLonBox->value(), _ui.radLatBox->value(), &alt))
+          _radBaseAlt = alt;
+      }
+
       updatePoint(RADIAL_CENTER);
+    }
+    else if (s == _ui.radAltBox)
+    {
+      updatePoint(RADIAL_CENTER);
+    }
   }
 
   updateLOSNodes();

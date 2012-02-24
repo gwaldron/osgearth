@@ -161,6 +161,7 @@ struct TrackSimUpdate : public osg::Operation
   {
     osg::View* view = dynamic_cast<osg::View*>(obj);
     double t = view->getFrameStamp()->getSimulationTime();
+
     for(TrackSimVector::iterator i = _sims.begin(); i != _sims.end(); ++i)
       i->get()->update(t);
   }
@@ -308,11 +309,10 @@ main(int argc, char** argv)
     }
 
 
+    TrackSimVector trackSims;
     if ( trackData )
     {
         // create demo tracks
-        TrackSimVector trackSims;
-
         osg::ref_ptr<osg::Image> srcImage = osgDB::readImageFile(TRACK_ICON_URL);
         osg::ref_ptr<osg::Image> image;
         ImageUtils::resizeImage(srcImage.get(), TRACK_ICON_SIZE, TRACK_ICON_SIZE, image);

@@ -27,6 +27,7 @@
 #include <QFrame>
 #include <QLabel>
 #include <QListWidget>
+#include <QScrollArea>
 #include <QWidget>
 
 namespace osgEarth { namespace QtGui 
@@ -57,6 +58,7 @@ namespace osgEarth { namespace QtGui
       void refresh();
 
       QListWidget*  _annoList;
+      QScrollArea*  _detailsScroll;
       QFrame*       _detailsBox;
       QLabel*       _nameField;
       QLabel*       _priorityField;

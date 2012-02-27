@@ -175,6 +175,7 @@ namespace osgEarth { namespace QtGui
     osg::ref_ptr<LOSIntersectingDragger> _p2Dragger;
     osg::ref_ptr<LOSIntersectingDragger> _radDragger;
     bool _updatingUi;
+    bool _updateAlt;
     double _p1BaseAlt;
     double _p2BaseAlt;
     double _radBaseAlt;

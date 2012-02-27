@@ -106,12 +106,15 @@ void AnnotationListWidget::initialize()
   setPrimaryTitle("Annotations");
 
   //create details panel
+  _detailsScroll = new QScrollArea;
+  _detailsScroll->setWidgetResizable(true);
   _detailsBox = new QFrame;
   QGridLayout* detailsLayout = new QGridLayout;
   detailsLayout->setSpacing(4);
   detailsLayout->setContentsMargins(2, 2, 2, 2);
   _detailsBox->setLayout(detailsLayout);
   _detailsBox->setObjectName("oeFrameContainer");
+  _detailsScroll->setWidget(_detailsBox);
 
   detailsLayout->addWidget(new QLabel(tr("Name:")), 0, 0, Qt::AlignLeft);
   _nameField = new QLabel(tr("-----"));
@@ -131,7 +134,7 @@ void AnnotationListWidget::initialize()
   _descriptionField->setIndent(6);
   detailsLayout->addWidget(_descriptionField, 4, 0, 1, 2, Qt::AlignLeft);
 
-  setSecondaryWidget(_detailsBox);
+  setSecondaryWidget(_detailsScroll);
   setSecondaryTitle("Details");
 
   //connect list events

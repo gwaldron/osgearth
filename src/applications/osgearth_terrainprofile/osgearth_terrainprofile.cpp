@@ -298,6 +298,7 @@ public:
         line->push_back( _start );
         line->push_back( _end );
         Feature* feature = new Feature();
+        feature->setSRS( _mapNode->getMapSRS());
         feature->setGeometry( line );
         feature->geoInterp() = GEOINTERP_GREAT_CIRCLE;    
 

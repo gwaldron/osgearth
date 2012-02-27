@@ -26,6 +26,7 @@
 #include <osgEarth/XmlUtils>
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
+#include <osgEarthUtil/TerrainProfile>
 #include <osgEarth/GeoMath>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
@@ -37,252 +38,7 @@ using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
 
-/***************************************************/
-class TerrainProfile
-{
-public:
-    TerrainProfile();
 
-    TerrainProfile(const TerrainProfile& profile);
-
-    double getDistance( int i ) const;
-    double getTotalDistance() const;
-
-    void getElevationRanges(double &min, double &max );
-
-    double getElevation( int i ) const;
-    unsigned int getNumElevations() const;
-
-    void setSpacing( double spacing );
-    double getSpacing() const;
-
-    void addElevation( double elevation );
-
-    void clear();
-
-private:
-    double _spacing;
-    typedef std::vector< double > ElevationList;
-    ElevationList _elevations;
-};
-
-/***************************************************/
-TerrainProfile::TerrainProfile():
-_spacing( 1.0 )
-{
-}
-
-TerrainProfile::TerrainProfile(const TerrainProfile& rhs):
-_spacing( rhs._spacing ),
-_elevations( rhs._elevations )
-{
-}
-
-void
-TerrainProfile::clear()
-{
-    _elevations.clear();
-}
-
-double
-TerrainProfile::getSpacing() const
-{
-    return _spacing;
-}
-
-void
-TerrainProfile::setSpacing( double spacing )
-{
-    _spacing = spacing;
-}
-
-void
-TerrainProfile::addElevation( double elevation )
-{
-    _elevations.push_back( elevation );
-}
-
-double
-TerrainProfile::getElevation( int i ) const
-{
-    if (i >= 0 && i < _elevations.size()) return _elevations[i];
-    return DBL_MAX;
-}
-
-double
-TerrainProfile::getDistance( int i ) const
-{
-    return (double)i * _spacing;
-}
-
-double
-TerrainProfile::getTotalDistance() const
-{
-    return getDistance( getNumElevations()-1 );
-}
-
-unsigned int
-TerrainProfile::getNumElevations() const
-{
-    return _elevations.size();
-}
-
-void
-TerrainProfile::getElevationRanges(double &min, double &max )
-{
-    min = DBL_MAX;
-    max = -DBL_MAX;
-
-    for (unsigned int i = 0; i < _elevations.size(); i++)
-    {
-        if (_elevations[i] < min) min = _elevations[i];
-        if (_elevations[i] > max) max = _elevations[i];
-    }
-}
-
-/**************************************************/
-
-class TerrainProfileCalculator : public TerrainCallback
-{
-public:
-
-    struct ChangedCallback : public osg::Referenced
-    {
-    public:
-        virtual void onChanged(const TerrainProfileCalculator* sender) {};
-    };
-
-    typedef std::list< osg::ref_ptr<ChangedCallback> > ChangedCallbackList;
-
-
-    TerrainProfileCalculator(MapNode* mapNode, const GeoPoint& start, const GeoPoint& end):
-    _mapNode( mapNode ),
-        _start( start),
-        _end( end ),
-        _numSamples( 100 )
-    {        
-        _mapNode->getTerrain()->addTerrainCallback( this );        
-        recompute();
-    }
-
-    ~TerrainProfileCalculator()
-    {
-        _mapNode->getTerrain()->removeTerrainCallback( this );
-    }
-
-    void addChangedCallback( ChangedCallback* callback )
-    {
-        _changedCallbacks.push_back( callback );
-    }
-
-    void removeChangedCallback( ChangedCallback* callback )
-    {
-        ChangedCallbackList::iterator i = std::find( _changedCallbacks.begin(), _changedCallbacks.end(), callback);
-        if (i != _changedCallbacks.end())
-        {
-            _changedCallbacks.erase( i );
-        }    
-    }
-
-    const TerrainProfile& getProfile() const
-    {
-        return _profile;
-    }
-
-    unsigned int getNumSamples() const
-    {
-        return _numSamples;
-    }
-
-    void setNumSamples( unsigned int numSamples)
-    {
-        if (_numSamples != numSamples)
-        {
-            _numSamples = numSamples;
-            recompute();
-        }
-    }
-
-    const GeoPoint& getStart() const
-    {
-        return _start;
-    }
-
-    const GeoPoint& getEnd() const
-    {
-        return _end;
-    }
-
-    void setStartEnd(const GeoPoint& start, const GeoPoint& end)
-    {
-        if (_start != start || _end != end)
-        {
-            _start = start;
-            _end = end;
-            recompute();
-        }
-    }
-
-    virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&)
-    {
-        GeoExtent extent( _start.getSRS());
-        extent.expandToInclude(_start.x(), _start.y());
-        extent.expandToInclude(_end.x(), _end.y());
-        
-        if (tileKey.getExtent().intersects( extent ))
-        {
-            recompute();
-        }
-    }
-
-    void recompute()
-    {
-        computeTerrainProfile( _mapNode.get(), _start, _end, _numSamples, _profile);
-        for( ChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
-        {
-            i->get()->onChanged(this);
-        }	
-    }
-
-    static void computeTerrainProfile( osgEarth::MapNode* mapNode, const GeoPoint& start, const GeoPoint& end, unsigned int numSamples, TerrainProfile& profile)
-    {
-        GeoPoint geoStart(start);
-        geoStart.makeGeographic();
-        
-        GeoPoint geoEnd(end);
-        geoEnd.makeGeographic();
-
-        double startXRad = osg::DegreesToRadians( geoStart.x() );
-        double startYRad = osg::DegreesToRadians( geoStart.y() );
-        double endXRad = osg::DegreesToRadians( geoEnd.x() );
-        double endYRad = osg::DegreesToRadians( geoEnd.y() );
-
-        double distance = osgEarth::GeoMath::distance(startYRad, startXRad, endYRad, endXRad );
-
-        double spacing = distance / ((double)numSamples - 1.0);
-
-        profile.setSpacing( spacing );
-        profile.clear();
-
-        for (unsigned int i = 0; i < numSamples; i++)
-        {
-            double t = (double)i / (double)numSamples;
-            double lat, lon;
-            GeoMath::interpolate( startYRad, startXRad, endYRad, endXRad, t, lat, lon );
-            double hamsl;
-            mapNode->getTerrain()->getHeight( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), &hamsl );
-            profile.addElevation( hamsl );
-        }
-    }
-
-private:
-    GeoPoint _start;
-    GeoPoint _end;
-    unsigned int _numSamples;
-    TerrainProfile _profile;
-    osg::ref_ptr< MapNode > _mapNode;
-    ChangedCallbackList _changedCallbacks;
-};
 
 osg::Node* createBackground(double width, double height, const osg::Vec4f& backgroundColor)
 {
@@ -410,10 +166,10 @@ public:
     osg::ref_ptr< GraphChangedCallback > _graphChangedCallback;
 };
 
-class TerrainProfileEventHandler : public osgGA::GUIEventHandler
+class DrawProfileEventHandler : public osgGA::GUIEventHandler
 {
 public:
-    TerrainProfileEventHandler(osgEarth::MapNode* mapNode, osg::Group* root, TerrainProfileCalculator* profileCalculator):
+    DrawProfileEventHandler(osgEarth::MapNode* mapNode, osg::Group* root, TerrainProfileCalculator* profileCalculator):
       _mapNode( mapNode ),
           _root( root ),
           _startValid( false ),
@@ -423,7 +179,6 @@ public:
           _end = profileCalculator->getEnd().vec3d();
           compute();
       }
-
 
       bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
       {
@@ -558,9 +313,7 @@ main(int argc, char** argv)
 
     viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
 
-    viewer.addEventHandler( new TerrainProfileEventHandler( mapNode, root, calculator ) );
-
-
+    viewer.addEventHandler( new DrawProfileEventHandler( mapNode, root, calculator ) );
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.

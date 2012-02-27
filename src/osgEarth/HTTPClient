@@ -202,8 +202,7 @@ namespace osgEarth
 
     public:
         /**
-         * Reads an image. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an image.
          */
         static ReadResult readImage(
             const std::string&    location,
@@ -211,8 +210,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads an osg::Node. Based on the structure of "location" it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an osg::Node.
          */
         static ReadResult readNode(
             const std::string&    location,
@@ -220,8 +218,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads an object. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an object.
          */
         static ReadResult readObject(
             const std::string&    location,
@@ -229,8 +226,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads a string. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads a string.
          */
         static ReadResult readString(
             const std::string&    location,

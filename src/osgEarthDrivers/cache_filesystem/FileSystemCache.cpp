@@ -83,8 +83,6 @@ namespace
 
         bool write( const std::string& key, const osg::Object* object, const Config& meta );
 
-        bool writeString( const std::string& key, const std::string& buffer, const Config& meta );
-
         bool isCached( const std::string& key, double maxAge =DBL_MAX );
 
         bool purge();
@@ -297,6 +295,14 @@ namespace
     ReadResult
     FileSystemCacheBin::readString(const std::string& key, double maxAge)
     {
+        ReadResult r = readObject(key, maxAge);
+        return r.succeeded() && r.get<StringObject>() ? r : ReadResult();
+    }
+
+#if 0
+    ReadResult
+    FileSystemCacheBin::readString(const std::string& key, double maxAge)
+    {
         Config      meta;
         std::string output;
 
@@ -340,6 +346,7 @@ namespace
 
         return readOK ? ReadResult( new StringObject(output), meta ) : ReadResult();
     }
+#endif
 
     bool
     FileSystemCacheBin::write( const std::string& key, const osg::Object* object, const Config& meta )
@@ -373,18 +380,18 @@ namespace
                 r = _rw->writeNode( *static_cast<const osg::Node*>(object), filename, _rwOptions.get() );
                 objWriteOK = r.success();
             }
-            else if ( dynamic_cast<const StringObject*>(object) )
-            {
-                const StringObject* so = static_cast<const StringObject*>( object );
-                std::ofstream outfile( fileURI.full().c_str() );
-                if ( outfile.is_open() )
-                {
-                    outfile << so->getString();
-                    outfile.flush();
-                    outfile.close();
-                    objWriteOK = true;
-                }
-            }
+            //else if ( dynamic_cast<const StringObject*>(object) )
+            //{
+            //    const StringObject* so = static_cast<const StringObject*>( object );
+            //    std::ofstream outfile( fileURI.full().c_str() );
+            //    if ( outfile.is_open() )
+            //    {
+            //        outfile << so->getString();
+            //        outfile.flush();
+            //        outfile.close();
+            //        objWriteOK = true;
+            //    }
+            //}
             else
             {
                 std::string filename = fileURI.full() + ".osgb";
@@ -410,56 +417,6 @@ namespace
         }
 
         return objWriteOK;
-    }
-
-    bool
-    FileSystemCacheBin::writeString(const std::string& key, const std::string& buffer, const Config& meta )
-    {
-        // convert the key into a legal filename:
-        URI fileURI( toLegalFileName(key), _metaPath );
-
-        if ( buffer.size() == 0 )
-            return false;
-
-        bool ok = false;
-        {
-            // prevent cache contention:
-            ScopedWriteLock exclusiveLock( _rwmutex );
-
-            // make a home for it..
-            if ( !osgDB::fileExists( osgDB::getFilePath(fileURI.full()) ) )
-                osgDB::makeDirectoryForFile( fileURI.full() );
-
-            // tack on the extension
-            std::string filename = fileURI.full() + ".dat";
-
-            std::ofstream outfile( filename.c_str() );
-            if ( outfile.is_open() )
-            {
-                outfile << buffer;
-                outfile.flush();
-                outfile.close();
-                ok = true;
-            }
-
-            if ( !meta.empty() )
-            {
-                std::string metaname = fileURI.full() + ".meta";
-                writeMeta( metaname, meta );
-            }
-        }
-
-        if ( ok )
-        {
-            OE_DEBUG << LC << "Wrote \"" << key << "\" to cache bin " << getID() << std::endl;
-        }
-        else
-        {
-            OE_WARN << LC << "FAILED to write \"" << key << "\" to cache bin "
-                << getID() <<  std::endl;
-        }
-
-        return ok;
     }
 
     bool

@@ -71,7 +71,7 @@ _minLevel(0),
 _maxLevel(0),
 _numTilesHigh(-1),
 _numTilesWide(-1)
-{
+{   
 }
 
 void TileMap::setOrigin(double x, double y)
@@ -403,32 +403,138 @@ TileMap* TileMap::create(const TileSource* tileSource, const Profile* profile)
 
 
 TileMap* 
-TileMapReaderWriter::read( const std::string &location, const osgDB::ReaderWriter::Options* options )
+TileMapReaderWriter::read( const std::string& location, const osgDB::ReaderWriter::Options* options )
 {
-    TileMap *tileMap = NULL;
-    if ( osgDB::containsServerAddress( location ) )
+    TileMap* tileMap = NULL;
+
+    ReadResult r = URI(location).readString();
+    if ( r.failed() )
     {
-        HTTPResponse response = HTTPClient::get( location, options );
-        if (response.isOK() && response.getNumParts() > 0 )
-        {
-            tileMap = read( response.getPartStream( 0 ) );
-        }
+        OE_WARN << LC << "Failed to read TMS tile map file from " << location << std::endl;
+        return 0L;
     }
-    else
-    {
-        if ((osgDB::fileExists(location)) && (osgDB::fileType(location) == osgDB::REGULAR_FILE))
-        {
-            std::ifstream in( location.c_str() );
-            tileMap = read( in );
-        }
-    }
+    
+    // Read tile map into a Config:
+    Config conf;
+    conf.fromXML( std::stringstream(r.getString()) );
+
+    // parse that into a tile map:        
+    tileMap = TileMapReaderWriter::read( conf );
+
     if (tileMap)
     {
         tileMap->setFilename( location );
     }
+
     return tileMap;
 }
 
+TileMap*
+TileMapReaderWriter::read( const Config& conf )
+{
+    const Config* tileMapConf = conf.find( ELEM_TILEMAP );
+    if ( !tileMapConf )
+    {
+        OE_WARN << LC << "Could not find root TileMap element " << std::endl;
+        return 0L;
+    }
+
+    TileMap* tileMap = new TileMap();
+
+    tileMap->setVersion       ( tileMapConf->value(ATTR_VERSION) );
+    tileMap->setTileMapService( tileMapConf->value(ATTR_TILEMAPSERVICE) ); 
+    tileMap->setTitle         ( tileMapConf->value(ELEM_TITLE) );
+    tileMap->setAbstract      ( tileMapConf->value(ELEM_ABSTRACT) );
+    tileMap->setSRS           ( tileMapConf->value(ELEM_SRS) );
+    tileMap->setVerticalSRS   ( tileMapConf->value(ELEM_VERTICAL_SRS) );
+
+    const Config* bboxConf = tileMapConf->find( ELEM_BOUNDINGBOX );
+    if ( bboxConf )
+    {
+        double minX = bboxConf->value<double>( ATTR_MINX, 0.0 );
+        double minY = bboxConf->value<double>( ATTR_MINY, 0.0 );
+        double maxX = bboxConf->value<double>( ATTR_MAXX, 0.0 );
+        double maxY = bboxConf->value<double>( ATTR_MAXY, 0.0 );
+        tileMap->setExtents( minX, minY, maxX, maxY);
+    }
+
+    //Read the origin
+    const Config* originConf = tileMapConf->find(ELEM_ORIGIN);
+    if ( originConf )
+    {
+        tileMap->setOriginX( originConf->value<double>( ATTR_X, 0.0) );
+        tileMap->setOriginY( originConf->value<double>( ATTR_Y, 0.0) );
+    }
+
+    //Read the tile format
+    const Config* formatConf = tileMapConf->find( ELEM_TILE_FORMAT );
+    if ( formatConf )
+    {
+        tileMap->getFormat().setExtension( formatConf->value(ATTR_EXTENSION) );
+        tileMap->getFormat().setMimeType ( formatConf->value(ATTR_MIME_TYPE) );
+        tileMap->getFormat().setWidth    ( formatConf->value<unsigned>(ATTR_WIDTH,  256) );
+        tileMap->getFormat().setHeight   ( formatConf->value<unsigned>(ATTR_HEIGHT, 256) );
+    }
+
+    //Read the tilesets
+    const Config* tileSetsConf = tileMapConf->find(ELEM_TILESETS);
+    if ( tileSetsConf )
+    {
+        //Read the profile
+        std::string profile = tileSetsConf->value(ATTR_PROFILE);
+        if (profile == "global-geodetic") tileMap->setProfileType( Profile::TYPE_GEODETIC );
+        else if (profile == "global-mercator") tileMap->setProfileType( Profile::TYPE_MERCATOR );
+        else if (profile == "local") tileMap->setProfileType( Profile::TYPE_LOCAL );
+        else tileMap->setProfileType( Profile::TYPE_UNKNOWN );
+
+        //Read each TileSet
+        const ConfigSet& setConfs = tileSetsConf->children(ELEM_TILESET);
+        for( ConfigSet::const_iterator i = setConfs.begin(); i != setConfs.end(); ++i )
+        {
+            const Config& conf = *i;
+            TileSet tileset;
+            tileset.setHref( conf.value(ATTR_HREF) );
+            tileset.setOrder( conf.value<unsigned>(ATTR_ORDER, ~0) );
+            tileset.setUnitsPerPixel( conf.value<double>(ATTR_UNITSPERPIXEL, 0.0) );
+            tileMap->getTileSets().push_back(tileset);
+        }
+    }
+
+    //Try to compute the profile based on the SRS if there was no PROFILE tag given
+    if (tileMap->getProfileType() == Profile::TYPE_UNKNOWN && !tileMap->getSRS().empty())
+    {
+        tileMap->setProfileType( Profile::getProfileTypeFromSRS(tileMap->getSRS()) );
+    }
+
+    tileMap->computeMinMaxLevel();
+    tileMap->computeNumTiles();
+
+    //Read the data areas
+    const Config* extentsConf = tileMapConf->find(ELEM_DATA_EXTENTS);
+    if ( extentsConf )
+    {
+        osg::ref_ptr< const osgEarth::Profile > profile = tileMap->createProfile();
+        OE_DEBUG << LC << "Found DataExtents " << std::endl;
+        const ConfigSet& children = extentsConf->children(ELEM_DATA_EXTENT);
+        for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
+        {
+            const Config& conf = *i;
+            double minX = conf.value<double>(ATTR_MINX, 0.0);
+            double minY = conf.value<double>(ATTR_MINY, 0.0);
+            double maxX = conf.value<double>(ATTR_MAXX, 0.0);
+            double maxY = conf.value<double>(ATTR_MAXY, 0.0);
+            unsigned int maxLevel = conf.value<unsigned>(ATTR_MAX_LEVEL, 0);
+
+            //OE_DEBUG << LC << "Read area " << minX << ", " << minY << ", " << maxX << ", " << maxY << ", minlevel=" << minLevel << " maxlevel=" << maxLevel << std::endl;
+            tileMap->getDataExtents().push_back( DataExtent(GeoExtent(profile->getSRS(), minX, minY, maxX, maxY), 0, maxLevel));
+        }
+    }
+
+
+    return tileMap;
+}
+
+#if 0
 TileMap*
 TileMapReaderWriter::read(std::istream &in)
 {
@@ -544,6 +650,7 @@ TileMapReaderWriter::read(std::istream &in)
 
     return tileMap.release();
 }
+#endif
 
 static XmlDocument*
 tileMapToXmlDocument(const TileMap* tileMap)

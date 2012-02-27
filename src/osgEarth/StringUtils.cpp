@@ -363,3 +363,31 @@ osgEarth::toLower( const std::string& input )
     std::transform( output.begin(), output.end(), output.begin(), ::tolower );
     return output;
 }
+
+namespace
+{
+    template<typename charT>
+    struct ci_equal {
+        ci_equal( const std::locale& loc ) : _loc(loc) { }
+        bool operator()(charT c1, charT c2) {
+            return std::toupper(c1,_loc) == std::toupper(c2,_loc);
+        }
+        const std::locale& _loc;
+    };
+}
+
+bool
+osgEarth::startsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
+{
+    return caseSensitive ?
+        std::search(ref.begin(), ref.begin()+pattern.length(), pattern.begin(), pattern.end()) != ref.end() :
+        std::search(ref.begin(), ref.begin()+pattern.length(), pattern.begin(), pattern.end(), ci_equal<std::string::value_type>(loc) ) != ref.end();
+}
+
+bool
+osgEarth::endsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
+{
+    return caseSensitive ?
+        std::search(ref.end()-pattern.length(), ref.end(), pattern.begin(), pattern.end()) != ref.end() :
+        std::search(ref.end()-pattern.length(), ref.end(), pattern.begin(), pattern.end(), ci_equal<std::string::value_type>(loc) ) != ref.end();
+}

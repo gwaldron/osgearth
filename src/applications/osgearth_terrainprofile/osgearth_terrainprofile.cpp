@@ -368,8 +368,7 @@ main(int argc, char** argv)
     osg::ref_ptr< TerrainProfileCalculator > calculator = new TerrainProfileCalculator(mapNode, 
         GeoPoint(mapNode->getMapSRS(), -124.0, 40.0, 0),
         GeoPoint(mapNode->getMapSRS(), -75.1, 39.2, 0)
-        );
-    calculator->setNumSamples(20);
+        );    
 
     osg::Group* profileNode = new TerrainProfileGraph( calculator.get(), graphWidth, graphHeight );
     hud->addChild( profileNode );

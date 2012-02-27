@@ -292,7 +292,7 @@ main(int argc, char** argv)
             true );
         annoGroup->addChild( rect );
 
-        editorGroup->addChild( new LocalizedNodeEditor( rect ) );
+        editorGroup->addChild( new RectangleNodeEditor( rect ) );
     }
 
     

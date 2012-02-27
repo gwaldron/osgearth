@@ -95,6 +95,274 @@ RectangleNode::setStyle( const Style& style )
     rebuild();
 }
 
+
+
+GeoPoint
+RectangleNode::getUpperLeft() const
+{
+    return getCorner( CORNER_UPPER_LEFT );
+}
+
+void
+RectangleNode::setUpperLeft( const GeoPoint& upperLeft )
+{
+    GeoPoint center = getPosition();
+
+    //Figure out the new width and height
+    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+
+    double lat = osg::DegreesToRadians(center.y());
+    double lon = osg::DegreesToRadians(center.x());
+    double halfWidthMeters  =  _width.as(Units::METERS) / 2.0;
+    double halfHeightMeters  = _height.as(Units::METERS) / 2.0;   
+
+    double eastLon, eastLat;
+    double westLon, westLat;
+    double northLon, northLat;
+    double southLon, southLat;
+
+    //Get the current corners
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLat, eastLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLat, westLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
+
+    if (osg::DegreesToRadians(upperLeft.x()) < eastLon) {
+        westLon = osg::DegreesToRadians(upperLeft.x());
+    }
+    else {
+        eastLon = osg::DegreesToRadians(upperLeft.x());
+    }
+
+    if (osg::DegreesToRadians(upperLeft.y()) > southLat) {
+        northLat = osg::DegreesToRadians(upperLeft.y());
+    }
+    else {
+        southLat = osg::DegreesToRadians(upperLeft.y());
+    }
+
+    double x = ( eastLon + westLon ) / 2.0;
+    double y = ( southLat + northLat) / 2.0;
+    setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
+
+    double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
+    double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
+    setWidth(  Linear(width,  Units::METERS ));
+    setHeight( Linear(height, Units::METERS ));
+}
+
+GeoPoint
+RectangleNode::getUpperRight() const
+{
+    return getCorner( CORNER_UPPER_RIGHT );
+}
+
+void
+RectangleNode::setUpperRight( const GeoPoint& upperRight )
+{
+     GeoPoint center = getPosition();
+
+    //Figure out the new width and height
+    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+
+    double lat = osg::DegreesToRadians(center.y());
+    double lon = osg::DegreesToRadians(center.x());
+    double halfWidthMeters  =  _width.as(Units::METERS) / 2.0;
+    double halfHeightMeters  = _height.as(Units::METERS) / 2.0;   
+
+    double eastLon, eastLat;
+    double westLon, westLat;
+    double northLon, northLat;
+    double southLon, southLat;
+
+    //Get the current corners
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLat, eastLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLat, westLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
+
+    if (osg::DegreesToRadians(upperRight.x()) > westLon) {
+        eastLon = osg::DegreesToRadians(upperRight.x());
+    }
+    else {
+        westLon = osg::DegreesToRadians(upperRight.x());
+    }
+
+    if (osg::DegreesToRadians(upperRight.y()) > southLat) {
+        northLat = osg::DegreesToRadians(upperRight.y());
+    }
+    else {
+        southLat = osg::DegreesToRadians(upperRight.y());
+    }
+
+    double x = ( eastLon + westLon ) / 2.0;
+    double y = ( southLat + northLat) / 2.0;
+    setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
+
+    double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
+    double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
+    setWidth(  Linear(width,  Units::METERS ));
+    setHeight( Linear(height, Units::METERS ));
+}
+
+GeoPoint
+RectangleNode::getLowerLeft() const
+{
+    return getCorner( CORNER_LOWER_LEFT );
+}
+
+void
+RectangleNode::setLowerLeft( const GeoPoint& lowerLeft )
+{
+    GeoPoint center = getPosition();
+
+    //Figure out the new width and height
+    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+
+    double lat = osg::DegreesToRadians(center.y());
+    double lon = osg::DegreesToRadians(center.x());
+    double halfWidthMeters  =  _width.as(Units::METERS) / 2.0;
+    double halfHeightMeters  = _height.as(Units::METERS) / 2.0;   
+
+    double eastLon, eastLat;
+    double westLon, westLat;
+    double northLon, northLat;
+    double southLon, southLat;
+
+    //Get the current corners
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLat, eastLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLat, westLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
+
+    if (osg::DegreesToRadians(lowerLeft.x()) < eastLon) {
+        westLon = osg::DegreesToRadians(lowerLeft.x());
+    }
+    else {
+        eastLon = osg::DegreesToRadians(lowerLeft.x());
+    }
+
+    if (osg::DegreesToRadians(lowerLeft.y()) < northLat) {
+        southLat = osg::DegreesToRadians(lowerLeft.y());
+    }
+    else {
+        northLat = osg::DegreesToRadians(lowerLeft.y());
+    }
+
+    double x = ( eastLon + westLon ) / 2.0;
+    double y = ( southLat + northLat) / 2.0;
+    setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
+
+    double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
+    double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
+    setWidth(  Linear(width,  Units::METERS ));
+    setHeight( Linear(height, Units::METERS ));
+}
+
+GeoPoint
+RectangleNode::getLowerRight() const
+{
+    return getCorner( CORNER_LOWER_RIGHT );
+}
+
+void
+RectangleNode::setLowerRight( const GeoPoint& lowerRight )
+{
+    GeoPoint center = getPosition();
+
+    //Figure out the new width and height
+    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+    
+    double lat = osg::DegreesToRadians(center.y());
+    double lon = osg::DegreesToRadians(center.x());
+    double halfWidthMeters  =  _width.as(Units::METERS) / 2.0;
+    double halfHeightMeters  = _height.as(Units::METERS) / 2.0;   
+
+    double eastLon, eastLat;
+    double westLon, westLat;
+    double northLon, northLat;
+    double southLon, southLat;
+    
+    //Get the current corners
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLat, eastLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLat, westLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
+    
+    if (osg::DegreesToRadians(lowerRight.x()) < westLon) {
+        westLon = osg::DegreesToRadians(lowerRight.x());
+    }
+    else {
+        eastLon = osg::DegreesToRadians(lowerRight.x());
+    }
+
+    if (osg::DegreesToRadians(lowerRight.y()) > northLat) {
+        northLat = osg::DegreesToRadians(lowerRight.y());
+    }
+    else {
+        southLat = osg::DegreesToRadians(lowerRight.y());
+    }
+
+    double x = ( eastLon + westLon ) / 2.0;
+    double y = ( southLat + northLat) / 2.0;
+    setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
+
+    double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
+    double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
+    setWidth(  Linear(width,  Units::METERS ));
+    setHeight( Linear(height, Units::METERS ));
+}
+
+GeoPoint
+RectangleNode::getCorner( Corner corner ) const
+{
+    GeoPoint center = getPosition();
+
+    double earthRadius = center.getSRS()->getEllipsoid()->getRadiusEquator();
+    double lat = osg::DegreesToRadians(center.y());
+    double lon = osg::DegreesToRadians(center.x());
+    double halfWidthMeters  =  _width.as(Units::METERS) / 2.0;
+    double halfHeightMeters  = _height.as(Units::METERS) / 2.0;   
+
+    double eastLon, eastLat;
+    double westLon, westLat;
+    double northLon, northLat;
+    double southLon, southLat;
+        
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLat, eastLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLat, westLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
+    GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
+
+    if (corner == CORNER_LOWER_LEFT)
+    {
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(southLat), 0);
+    }
+    else if (corner == CORNER_LOWER_RIGHT)
+    {
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(southLat), 0);
+    }
+    else if (corner == CORNER_UPPER_LEFT)
+    {
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(westLon), osg::RadiansToDegrees(northLat), 0);
+    }
+    else if (corner == CORNER_UPPER_RIGHT)
+    {
+        return GeoPoint(center.getSRS(), osg::RadiansToDegrees(eastLon), osg::RadiansToDegrees(northLat), 0);
+    }
+    return GeoPoint();
+}
+
+void
+RectangleNode::setCorner( Corner corner, const GeoPoint& location)
+{
+    if (corner == CORNER_LOWER_LEFT) setLowerLeft( location );
+    else if (corner == CORNER_LOWER_RIGHT) setLowerRight( location );
+    else if (corner == CORNER_UPPER_LEFT) setUpperLeft( location );
+    else if (corner == CORNER_UPPER_RIGHT) setUpperRight( location );
+}
+
+
 void
 RectangleNode::rebuild()
 {    

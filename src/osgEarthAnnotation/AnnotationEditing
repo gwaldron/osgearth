@@ -24,6 +24,7 @@
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarthAnnotation/CircleNode>
 #include <osgEarthAnnotation/EllipseNode>
+#include <osgEarthAnnotation/RectangleNode>
 #include <osgEarthAnnotation/Draggers>
 #include <osgEarth/MapNode>
 
@@ -77,8 +78,8 @@ namespace osgEarth { namespace Annotation {
     public:
         /**
          * Create a new EllipseNodeEditor
-         * @param localizedNode
-         *        The LocalizedNode to edit
+         * @param ellipseNode
+         *        The EllipseNodeEditor to edit
          */
         EllipseNodeEditor(EllipseNode* ellipseNode);    
         
@@ -89,6 +90,27 @@ namespace osgEarth { namespace Annotation {
         IntersectingDragger* _majorDragger;
         IntersectingDragger* _minorDragger;
     };
+
+    class OSGEARTHANNO_EXPORT RectangleNodeEditor : public LocalizedNodeEditor
+    {
+    public:
+        /**
+         * Create a new RectangleNodeEditor
+         * @param rectangleNode
+         *        The RectangleNodeEditor to edit
+         */
+        RectangleNodeEditor(RectangleNode* rectangleNode);    
+        
+        ~RectangleNodeEditor();    
+
+        virtual void updateDraggers();
+
+        IntersectingDragger* _llDragger;
+        IntersectingDragger* _lrDragger;
+        IntersectingDragger* _urDragger;
+        IntersectingDragger* _ulDragger;
+    };
+
 } } // namespace osgEarth::Annotation
 
 #endif // OSGEARTHANNO_FEATURE_EDITING_H

@@ -229,10 +229,11 @@ GeometryFactory::createRectangle(const osg::Vec3d& center,
         double northLon, northLat;
         double southLon, southLat;
         
-        GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLon, eastLat, earthRadius );
-        GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLon, westLat, earthRadius );
-        GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLon, northLat, earthRadius );
-        GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLon, southLat, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLat, eastLon, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLat, westLon, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
+
 
         geom->push_back( osg::RadiansToDegrees( westLon ), osg::RadiansToDegrees( southLat ), center.z());
         geom->push_back( osg::RadiansToDegrees( eastLon ), osg::RadiansToDegrees( southLat ), center.z());

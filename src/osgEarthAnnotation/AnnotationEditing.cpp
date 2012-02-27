@@ -40,15 +40,6 @@ public:
           output.fromWorld(
               _node->getMapNode()->getMapSRS(),
               matrix.getTrans() );
-#if 0
-          osg::Vec3d trans = matrix.getTrans();
-
-          GeoPoint p = GeoPoint::fromWorld(_node->getMapNode()->getMapSRS(), trans);
-          return p.vec3d();
-          //double lat, lon, height;
-          //_ellipsoid->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
-          //return osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), height);
-#endif
       }
 
       virtual bool receive(const osgManipulator::MotionCommand& command)
@@ -63,10 +54,6 @@ public:
                   _node->getPosition().toWorld( locationWorld );
 
                   _startMotionMatrix = osg::Matrixd::translate(locationWorld);
-
-                  //double x, y, z;
-                  //_ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), location.z(), x, y, z);
-                  //_startMotionMatrix = osg::Matrixd::translate(x, y, z);
 
                   // Get the LocalToWorld and WorldToLocal matrix for this node.
                   osg::NodePath nodePathToRoot;
@@ -467,4 +454,161 @@ EllipseNodeEditor::updateDraggers()
         em->computeLocalToWorldTransformFromLatLongHeight(lat, lon, 0, matrix);
         _majorDragger->setMatrix(matrix); 
     }
+}
+
+
+/***************************************************************************************************/
+class SetCornerDragger : public osgManipulator::DraggerCallback
+{
+public:
+    SetCornerDragger(RectangleNode* node, osg::MatrixTransform* dragger, RectangleNodeEditor* editor, RectangleNode::Corner corner):
+      _node(node),
+      _dragger( dragger ),
+      _editor( editor ),
+      _corner( corner )
+      {
+          _ellipsoid = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
+      }
+
+      void getLocation(const osg::Matrixd& matrix, GeoPoint& output)
+      {
+          output.fromWorld(
+              _node->getMapNode()->getMapSRS(),
+              matrix.getTrans() );
+      }
+
+      virtual bool receive(const osgManipulator::MotionCommand& command)
+      {
+          switch (command.getStage())
+          {
+          case osgManipulator::MotionCommand::START:
+              {
+                  // Save the current matrix
+                  osg::Vec3d locationWorld;
+                  _node->getCorner(_corner).toWorld( locationWorld );
+
+                  _startMotionMatrix = osg::Matrixd::translate(locationWorld);
+
+                  // Get the LocalToWorld and WorldToLocal matrix for this node.
+                  osg::NodePath nodePathToRoot;
+                  _localToWorld = osg::Matrixd::identity();
+                  _worldToLocal = osg::Matrixd::identity();
+
+                  return true;
+              }
+          case osgManipulator::MotionCommand::MOVE:
+              {
+                  // Transform the command's motion matrix into local motion matrix.
+                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
+                      * command.getMotionMatrix()
+                      * command.getLocalToWorld() * _worldToLocal;
+
+
+                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
+
+                  GeoPoint location;
+                  getLocation(newMatrix, location);                  
+
+                  _node->setCorner( _corner, location );                     
+                  _editor->updateDraggers();
+
+                  return true;
+              }
+          case osgManipulator::MotionCommand::FINISH:
+              {
+                  return true;
+              }
+          case osgManipulator::MotionCommand::NONE:
+          default:
+              return false;
+          }
+      }
+
+
+      osg::ref_ptr<const osg::EllipsoidModel>            _ellipsoid;
+      RectangleNode* _node;
+      RectangleNodeEditor* _editor;
+
+      osg::MatrixTransform* _dragger;
+      osg::Matrix _startMotionMatrix;
+
+      osg::Matrix _localToWorld;
+      osg::Matrix _worldToLocal;
+      RectangleNode::Corner _corner;
+};
+
+
+
+
+
+RectangleNodeEditor::RectangleNodeEditor( RectangleNode* node ):
+LocalizedNodeEditor( node ),
+_llDragger( 0 ),
+_lrDragger( 0 ),
+_urDragger( 0 ),
+_ulDragger( 0 )
+{
+    //Lower left
+    _llDragger  = new IntersectingDragger;
+    _llDragger->setNode( _node->getMapNode() );    
+    _llDragger->setHandleEvents( true );
+    _llDragger->addDraggerCallback(new SetCornerDragger( node, _llDragger, this, RectangleNode::CORNER_LOWER_LEFT ) );        
+    _llDragger->setColor(osg::Vec4(0,0,1,0));
+    _llDragger->setupDefaultGeometry();    
+    addChild(_llDragger);    
+
+    //Lower right
+    _lrDragger  = new IntersectingDragger;
+    _lrDragger->setNode( _node->getMapNode() );    
+    _lrDragger->setHandleEvents( true );
+    _lrDragger->addDraggerCallback(new SetCornerDragger( node, _llDragger, this, RectangleNode::CORNER_LOWER_RIGHT ) );        
+    _lrDragger->setColor(osg::Vec4(0,0,1,0));
+    _lrDragger->setupDefaultGeometry();    
+    addChild(_lrDragger);    
+
+    //Upper right
+    _urDragger  = new IntersectingDragger;
+    _urDragger->setNode( _node->getMapNode() );    
+    _urDragger->setHandleEvents( true );
+    _urDragger->addDraggerCallback(new SetCornerDragger( node, _llDragger, this, RectangleNode::CORNER_UPPER_RIGHT ) );        
+    _urDragger->setColor(osg::Vec4(0,0,1,0));
+    _urDragger->setupDefaultGeometry();    
+    addChild(_urDragger);    
+
+    //Upper left
+    _ulDragger  = new IntersectingDragger;
+    _ulDragger->setNode( _node->getMapNode() );    
+    _ulDragger->setHandleEvents( true );
+    _ulDragger->addDraggerCallback(new SetCornerDragger( node, _llDragger, this, RectangleNode::CORNER_UPPER_LEFT ) );        
+    _ulDragger->setColor(osg::Vec4(0,0,1,0));
+    _ulDragger->setupDefaultGeometry();    
+    addChild(_ulDragger);    
+
+    updateDraggers();
+}
+
+RectangleNodeEditor::~RectangleNodeEditor()
+{
+}
+
+void
+RectangleNodeEditor::updateDraggers()
+{
+    LocalizedNodeEditor::updateDraggers();    
+
+    RectangleNode* rect = static_cast<RectangleNode*>(_node.get());
+    
+    osg::Matrixd matrix;
+
+    rect->getUpperLeft().createLocalToWorld(matrix);
+    _ulDragger->setMatrix(matrix);        
+
+    rect->getLowerLeft().createLocalToWorld(matrix);
+    _llDragger->setMatrix(matrix);        
+
+    rect->getUpperRight().createLocalToWorld(matrix);
+    _urDragger->setMatrix(matrix);        
+
+    rect->getLowerRight().createLocalToWorld(matrix);
+    _lrDragger->setMatrix(matrix);        
 }

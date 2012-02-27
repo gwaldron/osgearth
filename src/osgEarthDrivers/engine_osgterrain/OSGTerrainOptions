@@ -34,7 +34,7 @@ namespace osgEarth { namespace Drivers
             _quickRelease( true ),
             _lodFallOff( 0.0 )
         {
-            setDriver( "osgTerrainNode" );
+            setDriver( "osgterrain" );
             fromConfig( _conf );
         }
 

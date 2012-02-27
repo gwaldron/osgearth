@@ -85,10 +85,12 @@ _start(0,0,0),
 _end(0,0,0),
 _hit(0,0,0),
 _hasLOS( true ),
+_clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
-_altitudeMode( AltitudeMode::ABSOLUTE )
+_startAltitudeMode( AltitudeMode::ABSOLUTE ),
+_endAltitudeMode( AltitudeMode::ABSOLUTE )
 {
     compute(_mapNode.get());
     subscribeToTerrain();
@@ -102,10 +104,12 @@ _start(start),
 _end(end),
 _hit(0,0,0),
 _hasLOS( true ),
+_clearNeeded( false ),
 _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
-_altitudeMode( AltitudeMode::ABSOLUTE )
+_startAltitudeMode( AltitudeMode::ABSOLUTE ),
+_endAltitudeMode( AltitudeMode::ABSOLUTE )
 {
     compute(_mapNode.get());    
     subscribeToTerrain();
@@ -202,17 +206,33 @@ LineOfSightNode::getHasLOS() const
 }
 
 AltitudeModeEnum
-LineOfSightNode::getAltitudeMode() const
+LineOfSightNode::getStartAltitudeMode() const
 {
-    return _altitudeMode;
+    return _startAltitudeMode;
+}
+
+AltitudeModeEnum
+LineOfSightNode::getEndAltitudeMode() const
+{
+    return _endAltitudeMode;
 }
 
 void
-LineOfSightNode::setAltitudeMode( AltitudeModeEnum mode )
+LineOfSightNode::setStartAltitudeMode( AltitudeModeEnum mode )
 {
-    if (_altitudeMode != mode)
+    if (_startAltitudeMode != mode)
     {
-        _altitudeMode = mode;
+        _startAltitudeMode = mode;
+        compute(_mapNode.get());
+    }
+}
+
+void
+LineOfSightNode::setEndAltitudeMode( AltitudeModeEnum mode )
+{
+    if (_endAltitudeMode != mode)
+    {
+        _endAltitudeMode = mode;
         compute(_mapNode.get());
     }
 }
@@ -272,37 +292,40 @@ LineOfSightNode::computeLOS( osgEarth::MapNode* mapNode, const osg::Vec3d& start
 void
 LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 {
-    const SpatialReference* mapSRS = _mapNode->getMapSRS();
+    if (_start != _end)
+    {
+      const SpatialReference* mapSRS = _mapNode->getMapSRS();
 
-    //Computes the LOS and redraws the scene
-    if (_altitudeMode == AltitudeMode::ABSOLUTE)
-    {
-        _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_start), _startWorld );
-        _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_end), _endWorld );
+      //Computes the LOS and redraws the scene
+      if (_startAltitudeMode == AltitudeMode::ABSOLUTE)
+          _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_start), _startWorld );
+      else
+          getRelativeWorld(_start.x(), _start.y(), _start.z(), _mapNode.get(), _startWorld);
+
+      if (_endAltitudeMode == AltitudeMode::ABSOLUTE)
+          _mapNode->getMap()->toWorldPoint( GeoPoint(mapSRS,_end), _endWorld );
+      else
+          getRelativeWorld(_end.x(), _end.y(), _end.z(), _mapNode.get(), _endWorld);
+      
+      osgSim::LineOfSight los;
+      los.setDatabaseCacheReadCallback(0);
+      unsigned int index = los.addLOS(_startWorld, _endWorld);
+      los.computeIntersections(node);
+      osgSim::LineOfSight::Intersections hits = los.getIntersections(0);    
+      if (hits.size() > 0)
+      {
+          _hasLOS = false;
+          _hitWorld = *hits.begin();
+          GeoPoint mapHit;
+          _mapNode->getMap()->worldPointToMapPoint( _hitWorld, mapHit);
+          _hit = mapHit.vec3d();
+      }
+      else
+      {
+          _hasLOS = true;
+      }
     }
-    else
-    {
-        getRelativeWorld(_start.x(), _start.y(), _start.z(), _mapNode.get(), _startWorld);
-        getRelativeWorld(_end.x(), _end.y(), _end.z(), _mapNode.get(), _endWorld);
-    }
-    
-    osgSim::LineOfSight los;
-    los.setDatabaseCacheReadCallback(0);
-    unsigned int index = los.addLOS(_startWorld, _endWorld);
-    los.computeIntersections(node);
-    osgSim::LineOfSight::Intersections hits = los.getIntersections(0);    
-    if (hits.size() > 0)
-    {
-        _hasLOS = false;
-        _hitWorld = *hits.begin();
-        GeoPoint mapHit;
-        _mapNode->getMap()->worldPointToMapPoint( _hitWorld, mapHit);
-        _hit = mapHit.vec3d();
-    }
-    else
-    {
-        _hasLOS = true;
-    }
+
     draw(backgroundThread);
 
     for( ChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
@@ -313,68 +336,76 @@ LineOfSightNode::compute(osg::Node* node, bool backgroundThread)
 
 void
 LineOfSightNode::draw(bool backgroundThread)
-{    
-    osg::Geometry* geometry = new osg::Geometry;
-    osg::Vec3Array* verts = new osg::Vec3Array();
-    verts->reserve(4);
-    geometry->setVertexArray( verts );
+{
+    osg::MatrixTransform* mt = 0L;
 
-    osg::Vec4Array* colors = new osg::Vec4Array();
-    colors->reserve( 4 );
-
-    geometry->setColorArray( colors );
-    geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
-
-    if (_hasLOS)
+    if (_start != _end)
     {
-        verts->push_back( _startWorld - _startWorld );
-        verts->push_back( _endWorld   - _startWorld );
-        colors->push_back( _goodColor );
-        colors->push_back( _goodColor );
-    }
-    else
-    {
-        if (_displayMode == MODE_SINGLE)
+        osg::Geometry* geometry = new osg::Geometry;
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        verts->reserve(4);
+        geometry->setVertexArray( verts );
+
+        osg::Vec4Array* colors = new osg::Vec4Array();
+        colors->reserve( 4 );
+
+        geometry->setColorArray( colors );
+        geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+
+        if (_hasLOS)
         {
             verts->push_back( _startWorld - _startWorld );
-            verts->push_back( _endWorld - _startWorld );
-            colors->push_back( _badColor );
-            colors->push_back( _badColor );
-        }
-        else if (_displayMode == MODE_SPLIT)
-        {
-            verts->push_back( _startWorld - _startWorld );
-            colors->push_back( _goodColor );
-            verts->push_back( _hitWorld   - _startWorld );
-            colors->push_back( _goodColor );
-
-            verts->push_back( _hitWorld   - _startWorld );
-            colors->push_back( _badColor );
             verts->push_back( _endWorld   - _startWorld );
-            colors->push_back( _badColor );
+            colors->push_back( _goodColor );
+            colors->push_back( _goodColor );
         }
+        else
+        {
+            if (_displayMode == MODE_SINGLE)
+            {
+                verts->push_back( _startWorld - _startWorld );
+                verts->push_back( _endWorld - _startWorld );
+                colors->push_back( _badColor );
+                colors->push_back( _badColor );
+            }
+            else if (_displayMode == MODE_SPLIT)
+            {
+                verts->push_back( _startWorld - _startWorld );
+                colors->push_back( _goodColor );
+                verts->push_back( _hitWorld   - _startWorld );
+                colors->push_back( _goodColor );
+
+                verts->push_back( _hitWorld   - _startWorld );
+                colors->push_back( _badColor );
+                verts->push_back( _endWorld   - _startWorld );
+                colors->push_back( _badColor );
+            }
+        }
+
+        geometry->addPrimitiveSet( new osg::DrawArrays( GL_LINES, 0, verts->size()) );        
+
+        osg::Geode* geode = new osg::Geode;
+        geode->addDrawable( geometry );
+
+        mt = new osg::MatrixTransform;
+        mt->setMatrix(osg::Matrixd::translate(_startWorld));
+        mt->addChild(geode);  
+
+        getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
     }
-
-    geometry->addPrimitiveSet( new osg::DrawArrays( GL_LINES, 0, verts->size()) );        
-
-    osg::Geode* geode = new osg::Geode;
-    geode->addDrawable( geometry );
-
-    osg::MatrixTransform* mt = new osg::MatrixTransform;
-    mt->setMatrix(osg::Matrixd::translate(_startWorld));
-    mt->addChild(geode);  
-
-    getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
 
 
     if (!backgroundThread)
     {
         //Remove all children from this group
         removeChildren(0, getNumChildren());
-        addChild( mt );
+
+        if (mt)
+          addChild( mt );
     }
     else
     {
+        _clearNeeded = true;
         _pendingNode = mt;
     }
 }
@@ -455,11 +486,15 @@ LineOfSightNode::traverse(osg::NodeVisitor& nv)
 {
     if (nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
     {
-        if (_pendingNode.valid())
+        if (_pendingNode.valid() || _clearNeeded)
         {
             removeChildren(0, getNumChildren());
-            addChild( _pendingNode.get());
-            _pendingNode = 0;            
+
+            if (_pendingNode.valid())
+              addChild( _pendingNode.get());
+
+            _pendingNode = 0;
+            _clearNeeded = false;
         }
     }
     osg::Group::traverse(nv);
@@ -1160,7 +1195,7 @@ public:
 
                   osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
                   osg::Vec3d location = getLocation( newMatrix );
-                  if (_los->getAltitudeMode() == AltitudeMode::RELATIVE_TO_TERRAIN)
+                  if ((_start ? _los->getStartAltitudeMode() : _los->getEndAltitudeMode()) == AltitudeMode::RELATIVE_TO_TERRAIN)
                   {
                       double z = _start ? _los->getStart().z() : _los->getEnd().z();
                       location = osg::Vec3d(location.x(), location.y(), z);

@@ -43,7 +43,7 @@ namespace
   {
   public:
     virtual Action* getDoubleClickAction(const ViewVector& views) { return 0L; }
-    virtual Action* getCheckStateAction() { return 0L; }
+    virtual Action* getCheckStateAction(ViewVector& views) { return 0L; }
     virtual Action* getSelectionAction(bool selected) { return 0L; }
   };
 
@@ -70,6 +70,7 @@ namespace
   };
 
   //---------------------------------------------------------------------------
+
   class LayerTreeItem : public QTreeWidgetItem, public ActionableTreeItem
   {
   public:
@@ -78,7 +79,10 @@ namespace
   	
 	  osgEarth::Layer* getLayer() const { return _layer.get(); }
 
-    Action* getCheckStateAction() { return new SetLayerEnabledAction(_layer.get(), checkState(0) == Qt::Checked); }
+    Action* getCheckStateAction(ViewVector& views)
+    { 
+        return new SetLayerVisibleAction(views, _layer.get(), checkState(0) == Qt::Checked); 
+    }
 
     Action* getDoubleClickAction(const ViewVector& views)
     {
@@ -292,9 +296,9 @@ void MapCatalogWidget::initUi()
   _hideEmptyGroups = false;
   _updating = false;
 
-	_tree = new QTreeWidget();
-	_tree->setColumnCount(1);
-	_tree->setHeaderHidden(true);
+  _tree = new QTreeWidget();
+  _tree->setColumnCount(1);
+  _tree->setHeaderHidden(true);
   _tree->setSelectionMode(QAbstractItemView::ExtendedSelection);
   _tree->setObjectName("oeFrameContainer");
   connect(_tree, SIGNAL(itemDoubleClicked(QTreeWidgetItem*, int)), this, SLOT(onTreeItemDoubleClicked(QTreeWidgetItem*, int)));
@@ -308,10 +312,10 @@ void MapCatalogWidget::initUi()
   _masksItem = 0;
   _viewpointsItem = 0;
 
-	QVBoxLayout *layout = new QVBoxLayout;
-	layout->setSpacing(2);
-	layout->setContentsMargins(3, 0, 3, 3);
-	layout->addWidget(_tree);
+  QVBoxLayout *layout = new QVBoxLayout;
+  layout->setSpacing(2);
+  layout->setContentsMargins(3, 0, 3, 3);
+  layout->addWidget(_tree);
   setLayout(layout);
 
   refreshAll();
@@ -334,11 +338,11 @@ void MapCatalogWidget::onTreeItemDoubleClicked(QTreeWidgetItem* item, int col)
     return;
 
   ActionableTreeItem* actionable = dynamic_cast<ActionableTreeItem*>(item);
-	if (actionable)
-	{
-    Action* action = actionable->getDoubleClickAction(_views);
-    if (action)
-      _manager->doAction(this, action);
+  if (actionable)
+  {
+      Action* action = actionable->getDoubleClickAction(_views);
+      if (action)
+          _manager->doAction(this, action);
   }
 }
 
@@ -348,11 +352,11 @@ void MapCatalogWidget::onTreeItemChanged(QTreeWidgetItem* item, int col)
     return;
 
   ActionableTreeItem* actionable = dynamic_cast<ActionableTreeItem*>(item);
-	if (actionable)
-	{
-    Action* action = actionable->getCheckStateAction();
-    if (action)
-      _manager->doAction(this, action);
+  if (actionable)
+  {
+      Action* action = actionable->getCheckStateAction(_views);
+      if (action)
+          _manager->doAction(this, action);
   }
 }
 
@@ -417,7 +421,7 @@ void MapCatalogWidget::refreshElevationLayers()
     {
       LayerTreeItem* layerItem = new LayerTreeItem(*it, _map);
       layerItem->setText(0, QString( (*it)->getName().c_str() ) );
-      //layerItem->setCheckState(0, (*it)->getEnabled() ? Qt::Checked : Qt::Unchecked);
+      //layerItem->setCheckState(0, (*it)->getVisible() ? Qt::Checked : Qt::Unchecked);
 			_elevationsItem->addChild(layerItem);
     }
 
@@ -451,7 +455,7 @@ void MapCatalogWidget::refreshImageLayers()
     {
       LayerTreeItem* layerItem = new LayerTreeItem(*it, _map);
       layerItem->setText(0, QString( (*it)->getName().c_str() ) );
-			layerItem->setCheckState(0, (*it)->getEnabled() ? Qt::Checked : Qt::Unchecked);
+			layerItem->setCheckState(0, (*it)->getVisible() ? Qt::Checked : Qt::Unchecked);
 			_imagesItem->addChild(layerItem);
     }
 
@@ -485,7 +489,7 @@ void MapCatalogWidget::refreshModelLayers()
     {
       LayerTreeItem* layerItem = new LayerTreeItem(*it, _map);
       layerItem->setText(0, QString( (*it)->getName().c_str() ) );
-			layerItem->setCheckState(0, (*it)->getEnabled() ? Qt::Checked : Qt::Unchecked);
+			layerItem->setCheckState(0, (*it)->getVisible() ? Qt::Checked : Qt::Unchecked);
 			_modelsItem->addChild(layerItem);
     }
 

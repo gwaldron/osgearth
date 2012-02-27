@@ -54,11 +54,8 @@ main( int argc, char** argv )
 {
     osg::ArgumentParser arguments( &argc,argv );
 
-    // load a graph from the command line
-    osg::Node* node = osgDB::readNodeFiles( arguments );
-
-    // make sure we loaded a .earth file
-    osgEarth::MapNode* mapNode = MapNode::findMapNode( node );
+    // Load an earth file 
+    osgEarth::MapNode* mapNode = MapNode::load( arguments );
     if ( !mapNode ) {
         OE_WARN << "No osgEarth MapNode found in the loaded file(s)." << std::endl;
         return -1;
@@ -80,7 +77,7 @@ main( int argc, char** argv )
 
     // install the control panel
     root->addChild( createControlPanel( &viewer ) );
-    root->addChild( node );
+    root->addChild( mapNode );
 
     // update the control panel with the two Maps:
     updateControlPanel();
@@ -96,7 +93,10 @@ main( int argc, char** argv )
 
     while( !viewer.done() )
     {
-        viewer.frame();
+        if ( viewer.getRunFrameScheme() == osgViewer::Viewer::CONTINUOUS || viewer.checkNeedToDoFrame() )
+        {
+            viewer.frame();
+        }
 
         if ( s_updateRequired )
         {
@@ -108,11 +108,12 @@ main( int argc, char** argv )
 
 //------------------------------------------------------------------------
 
-struct LayerEnabledHandler : public ControlEventHandler
+struct LayerVisibleHandler : public ControlEventHandler
 {
-    LayerEnabledHandler( TerrainLayer* layer ) : _layer(layer) { }
-    void onValueChanged( Control* control, bool value ) {
-        _layer->setEnabled( value );
+    LayerVisibleHandler( TerrainLayer* layer ) : _layer(layer) { }
+    void onValueChanged( Control* control, bool value )
+    {
+        _layer->setVisible( value );
     }
     TerrainLayer* _layer;
 };
@@ -120,7 +121,8 @@ struct LayerEnabledHandler : public ControlEventHandler
 struct LayerOpacityHandler : public ControlEventHandler
 {
     LayerOpacityHandler( ImageLayer* layer ) : _layer(layer) { }
-    void onValueChanged( Control* control, float value ) {
+    void onValueChanged( Control* control, float value )
+    {
         _layer->setOpacity( value );
     }
     ImageLayer* _layer;
@@ -237,8 +239,8 @@ void
 createLayerItem( Grid* grid, int gridRow, int layerIndex, int numLayers, TerrainLayer* layer, bool isActive )
 {
     // a checkbox to enable/disable the layer:
-    CheckBoxControl* enabled = new CheckBoxControl( layer->getEnabled() );
-    enabled->addEventHandler( new LayerEnabledHandler(layer) );
+    CheckBoxControl* enabled = new CheckBoxControl( layer->getVisible() );
+    enabled->addEventHandler( new LayerVisibleHandler(layer) );
     grid->setControl( 0, gridRow, enabled );
 
     // the layer name

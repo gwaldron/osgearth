@@ -702,12 +702,13 @@ namespace osgEarth { namespace Util
         struct Task : public osg::Referenced
         {
             Task() : _type(TASK_NONE) { }
-            void set( TaskType type, double dx, double dy, double duration =DBL_MAX ) {
-                _type = type; _dx = dx; _dy = dy; _duration_s = duration;
+            void set( TaskType type, double dx, double dy, double duration, double now ) {
+                _type = type; _dx = dx; _dy = dy; _duration_s = duration; _time_last_service = now;
             }
             TaskType _type;
             double   _dx, _dy;
             double   _duration_s;
+            double   _time_last_service;
         };
 
         // "ticks" the resident Task, which allows for multi-frame animation of navigation
@@ -791,6 +792,7 @@ namespace osgEarth { namespace Util
         bool                    _continuous;
         double                  _continuous_dx;
         double                  _continuous_dy;
+        double                  _last_continuous_action_time;
 
         double                  _single_axis_x;
         double                  _single_axis_y;

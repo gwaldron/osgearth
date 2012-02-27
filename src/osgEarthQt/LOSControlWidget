@@ -60,35 +60,36 @@ namespace osgEarth { namespace QtGui
       void onItemChanged(QListWidgetItem* item);
       void onItemSelectionChanged();
 
-      void onNameEdited(const QString& text);
       void onDepthBoxChanged(int state);
-      void onDragBoxChanged(int state);
       void onRadiusValueChanged(double value);
       void onSpokesValueChanged(int value);
 
       void onAddLOS();
       void onRemoveSelectedLOS();
+      void onEditSelectedLOS();
       void onCreateFinished(int result);
+      void onEditFinished(int result);
 
     protected:
       friend struct LOSControlMouseHandler;
 
       void initialize();
-      void addLOSNode(osg::Group* los, const QString& name, osg::Group* editor=0L);
+      void addLOSNode(osg::Group* los, const std::string& name);
       void addView(osgViewer::View* view);
       void removeViews();
-      void mapClick(const osg::Vec3d& location);
+      void mapClick(const osg::Vec3d& point);
 
       QListWidget*       _losList;
       QFrame*            _detailsBox;
-      QLineEdit*         _nameEdit;
+      QLabel*            _nameField;
       QLabel*            _typeField;
       QCheckBox*         _depthBox;
-      QCheckBox*         _dragBox;
       QDoubleSpinBox*    _radiusBox;
       QSpinBox*          _spokesBox;
       QAction*           _removeAction;
+      QAction*           _editAction;
       QPointer<LOSCreationDialog>  _newDialog;
+      
 
       osg::ref_ptr<osg::Group>              _root;
       osg::ref_ptr<osgEarth::MapNode>       _mapNode;
@@ -134,13 +135,8 @@ namespace osgEarth { namespace QtGui
                 // find the first hit under the mouse:
                 osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
                 osg::Vec3d point = first.getWorldIntersectPoint();
-                
-                GeoPoint lla;
-                //osg::Vec3d lla;
-                // transform it to map coordinates:
-                _mapNode->getMap()->worldPointToMapPoint(point, lla);
 
-                _losControl->mapClick(lla.vec3d());
+                _losControl->mapClick(point);
               }
             }
 

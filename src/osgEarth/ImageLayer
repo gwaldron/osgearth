@@ -176,7 +176,12 @@ namespace osgEarth
 
     public: // runtime properties
 
+        /**
+         * Sets the opacity of this image layer.
+         * @param opacity Opacity [0..1] -> [transparent..opaque]
+         */
         void setOpacity( float opacity );
+
         float getOpacity() const { return *_runtimeOptions.opacity(); }
         
         void disableLODBlending();

@@ -125,23 +125,16 @@ OSGTerrainEngineNode::ElevationChangedCallback::onEnabledChanged( TerrainLayer* 
 
 OSGTerrainEngineNode::OSGTerrainEngineNode() :
 TerrainEngineNode(),
-_terrain( 0L ),
-_update_mapf( 0L ),
-_cull_mapf( 0L ),
-_tileCount( 0 ),
+_terrain         ( 0L ),
+_update_mapf     ( 0L ),
+_cull_mapf       ( 0L ),
+_tileCount       ( 0 ),
 _tileCreationTime( 0.0 )
 {
     _uid = Registry::instance()->createUID();
     _taskServiceMgr = Registry::instance()->getTaskServiceManager();
 
     _elevationCallback = new ElevationChangedCallback( this );
-}
-
-OSGTerrainEngineNode::OSGTerrainEngineNode( const OSGTerrainEngineNode& rhs, const osg::CopyOp& op ) :
-TerrainEngineNode( rhs, op )
-{
-    //nop - this copy ctor will never get called since this is a plugin instance.
-    OE_WARN << LC << "ILLEGAL STATE in OSGTerrainEngineNode Copy CTOR" << std::endl;
 }
 
 OSGTerrainEngineNode::~OSGTerrainEngineNode()

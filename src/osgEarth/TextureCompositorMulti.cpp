@@ -107,7 +107,7 @@ namespace
 
         buf << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
             //The enabled array is a fixed size.  Make sure this corresponds EXCATLY to the size definition in TerrainEngineNode.cpp
-            << "uniform bool  osgearth_ImageLayerEnabled[" << MAX_IMAGE_LAYERS << "]; \n"
+            << "uniform bool  osgearth_ImageLayerVisible[" << MAX_IMAGE_LAYERS << "]; \n"
             << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
             << "uniform float osgearth_ImageLayerAttenuation; \n"
             << "uniform float osgearth_CameraElevation; \n"
@@ -138,7 +138,7 @@ namespace
             // if this UID has a secondyar slot, LOD blending ON.
             int secondarySlot = layout.getSlot( slots[slot], 1, maxSlots );
 
-            buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
+            buf << "    if (osgearth_ImageLayerVisible["<< i << "]) { \n"
                 << "        dmin = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q << "]; \n"
                 << "        dmax = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
 

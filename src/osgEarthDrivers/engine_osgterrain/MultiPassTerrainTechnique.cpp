@@ -920,7 +920,7 @@ void MultiPassTerrainTechnique::updateTransparency()
                     colors->dirty();
                 }
 
-				if (colorLayer.getMapLayer()->getEnabled())
+				if (colorLayer.getMapLayer()->getVisible())
 				{
 					geode->setNodeMask(0xffffffff);
 				}

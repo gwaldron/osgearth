@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarth/OverlayDecorator>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Registry>
 #include <osgEarth/TextureCompositor>
 #include <osg/Texture2D>
@@ -1039,7 +1039,7 @@ OverlayDecorator::traverse( osg::NodeVisitor& nv )
                 if ( !_updatePending && checkNeedsUpdate(pvd) )
                 {
                     // need it, so schedule it.
-                    ev->getActionAdapter()->requestRedraw();
+                    //ev->getActionAdapter()->requestRedraw(); // not needed since we are bumping the update trav
                     _updatePending = true;
                     ADJUST_UPDATE_TRAV_COUNT( this, 1 );
                 }

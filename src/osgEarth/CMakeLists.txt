@@ -39,7 +39,6 @@ SET(LIB_PUBLIC_HEADERS
     ElevationQuery
     Export
     FileUtils
-	FindNode
     GeoData
     Geoid
     GeoMath

@@ -22,7 +22,7 @@
 #include <osgEarthFeatures/MeshClamper>
 #include <osgEarthSymbology/AltitudeSymbol>
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
 #include <osgEarth/Registry>
 

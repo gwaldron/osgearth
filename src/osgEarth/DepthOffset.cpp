@@ -21,7 +21,7 @@
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/LineFunctor>
 #include <osgEarth/Registry>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 
 #include <osg/Geode>
 #include <osg/Geometry>

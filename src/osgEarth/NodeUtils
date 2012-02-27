@@ -21,6 +21,8 @@
 
 #include <osgEarth/Common>
 #include <osg/ClusterCullingCallback>
+#include <osg/View>
+#include <osgGA/GUIActionAdapter>
 #include <osgUtil/LineSegmentIntersector>
 
 namespace osgEarth
@@ -70,6 +72,152 @@ namespace osgEarth
         unsigned _line;
         unsigned _polygon;
     };
+
+    /**
+     * Visitor that finds all the parental Camera Views, and calls an operator
+     * on each one.
+     */
+    template<typename T>
+    class ViewVisitor : public osg::NodeVisitor, public T
+    {
+    public:
+        ViewVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_PARENTS) { }
+        void apply(osg::Camera& cam) {
+            osg::View* view = cam.getView();
+            if ( view ) this->operator()( view );
+            traverse(cam);
+        }
+    };
+
+    /**
+     * Functor (for use with ViewVisitor) that notifies a view that it needs to
+     * redraw the scene because something has changed
+     * Usage: ViewVisitor<RequestRedraw> vis; node->accept(vis);
+     */
+    struct RequestRedraw 
+    {
+        void operator()(osg::View* view) {
+            osgGA::GUIActionAdapter* aa = dynamic_cast<osgGA::GUIActionAdapter*>(view);
+            if ( aa ) aa->requestRedraw();
+        }
+    };
+
+    /**
+     * Visitor that locates a node by its type
+     */
+    template<typename T>
+    class FindTopMostNodeOfTypeVisitor : public osg::NodeVisitor
+    {
+    public:
+        FindTopMostNodeOfTypeVisitor():
+          osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN),
+              _foundNode(0)
+          {}
+
+          void apply(osg::Node& node)
+          {
+              T* result = dynamic_cast<T*>(&node);
+              if (result)
+              {
+                  _foundNode = result;
+              }
+              else
+              {
+                  traverse(node);
+              }
+          }
+
+          T* _foundNode;
+    };
+
+    /** 
+     * Collects all the nodes of type "T"
+     */
+    template<typename T>
+    struct FindNodesVisitor : public osg::NodeVisitor
+    {
+        FindNodesVisitor() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN) { }
+
+        void apply(osg::Node& node)
+        {
+            T* result = dynamic_cast<T*>( &node );
+            if ( result )
+                _results.push_back( result );
+            traverse(node);
+        }
+
+        std::vector<T*> _results;
+    };
+
+    /**
+     * Searchs the scene graph downward starting at [node] and returns the first node found
+     * that matches the template parameter type.
+     */
+    template<typename T>
+    T* findTopMostNodeOfType(osg::Node* node, unsigned traversalMask =~0)
+    {
+        if (!node) return 0;
+
+        FindTopMostNodeOfTypeVisitor<T> fnotv;
+        fnotv.setTraversalMode(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN);
+        fnotv.setTraversalMask(traversalMask);
+        node->accept(fnotv);
+
+        return fnotv._foundNode;
+    }    
+
+    /**
+     * Searchs the scene graph upward starting at [node] and returns the first node found
+     * that matches the template parameter type.
+     */
+    template<typename T>
+    T* findFirstParentOfType(osg::Node* node, unsigned traversalMask =~0)
+    {
+        if (!node) return 0;
+
+        FindTopMostNodeOfTypeVisitor<T> fnotv;
+        fnotv.setTraversalMode(osg::NodeVisitor::TRAVERSE_PARENTS);
+        fnotv.setTraversalMask(traversalMask);
+        node->accept(fnotv);
+
+        return fnotv._foundNode;
+    }
+
+    /**
+     * Searchs the scene graph starting at [node] and returns the first node found
+     * that matches the template parameter type. First searched upward, then downward.
+     */
+    template<typename T>
+    T* findRelativeNodeOfType(osg::Node* node, unsigned traversalMask =~0)
+    {
+        if ( !node ) return 0;
+        T* result = findFirstParentOfType<T>( node, traversalMask );
+        if ( !result )
+            result = findTopMostNodeOfType<T>( node, traversalMask );
+        return result;
+    }
+
+    /**
+     * Adjusts a node's update traversal count by a delta.
+     * Only safe to call from the UPDATE thread
+     */
+#define ADJUST_UPDATE_TRAV_COUNT( NODE, DELTA ) \
+    { \
+        int oldCount = NODE ->getNumChildrenRequiringUpdateTraversal(); \
+        if ( oldCount + DELTA >= 0 ) \
+            NODE ->setNumChildrenRequiringUpdateTraversal( (unsigned int)(oldCount + DELTA ) ); \
+    }
+
+    /**
+     * Adjusts a node's event traversal count by a delta.
+     * Only safe to call from the main/event/update threads
+     */
+#define ADJUST_EVENT_TRAV_COUNT( NODE, DELTA ) \
+    { \
+        int oldCount = NODE ->getNumChildrenRequiringEventTraversal(); \
+        if ( oldCount + DELTA >= 0 ) \
+            NODE ->setNumChildrenRequiringEventTraversal( (unsigned int)(oldCount + DELTA ) ); \
+    }
 }
 
 #endif // OSGEARTH_CACHING_H

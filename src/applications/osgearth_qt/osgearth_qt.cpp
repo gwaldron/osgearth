@@ -161,6 +161,7 @@ struct TrackSimUpdate : public osg::Operation
   {
     osg::View* view = dynamic_cast<osg::View*>(obj);
     double t = view->getFrameStamp()->getSimulationTime();
+
     for(TrackSimVector::iterator i = _sims.begin(); i != _sims.end(); ++i)
       i->get()->update(t);
   }
@@ -259,7 +260,7 @@ main(int argc, char** argv)
         views.push_back(view);
       }
 
-      viewerWidget->setGeometry(100, 100, 800, 600);
+      viewerWidget->setGeometry(50, 50, 1024, 768);
       appWin.setViewerWidget(viewerWidget, views);
 
       viewer = viewerWidget;
@@ -267,7 +268,7 @@ main(int argc, char** argv)
     else
     {
       osgEarth::QtGui::ViewerWidget* viewerWidget = new osgEarth::QtGui::ViewerWidget(root);
-      viewerWidget->setGeometry(100, 100, 800, 600);
+      viewerWidget->setGeometry(50, 50, 1024, 768);
       viewerWidget->getCamera()->addCullCallback(new osgEarth::Util::AutoClipPlaneCullCallback(mapNode->getMap()));
       appWin.setViewerWidget(viewerWidget);
       views.push_back(viewerWidget);
@@ -308,11 +309,10 @@ main(int argc, char** argv)
     }
 
 
+    TrackSimVector trackSims;
     if ( trackData )
     {
         // create demo tracks
-        TrackSimVector trackSims;
-
         osg::ref_ptr<osg::Image> srcImage = osgDB::readImageFile(TRACK_ICON_URL);
         osg::ref_ptr<osg::Image> image;
         ImageUtils::resizeImage(srcImage.get(), TRACK_ICON_SIZE, TRACK_ICON_SIZE, image);

@@ -34,6 +34,7 @@
 #include <QListWidget>
 #include <QScrollArea>
 #include <QSizePolicy>
+#include <QString>
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -44,22 +45,28 @@ using namespace osgEarth::QtGui;
 
 namespace
 {
-  class LOSListItem : public QListWidgetItem
+  class LOSListWidgetItem : public QListWidgetItem
   {
   public:
-    LOSListItem(osg::Group* los, const QString& name, osg::Group* editor) : QListWidgetItem(name), _los(los), _editor(editor), _editing(false) { }
+    LOSListWidgetItem(osg::Group* los, const std::string& name) : QListWidgetItem(LOSControlWidget::tr(name.c_str())), _los(los), _name(name) { }
 
     osg::Group* los() { return _los.get(); }
-    osg::Group* editor() { return _editor.get(); }
-    bool getEditing() { return _editing; }
-    void setEditing(bool value) { _editing = value; }
+    const std::string& name() { return _name; }
+
+    void setLOS(osg::Group* los) { _los = los; }
+
+    void setName(const std::string& name)
+    {
+      _name = name;
+      this->setText(QString(name.c_str()));
+    }
 
   private:
     osg::ref_ptr<osg::Group> _los;
-    osg::ref_ptr<osg::Group> _editor;
-    bool                     _editing;
+    std::string _name;
   };
 }
+
 
 LOSControlWidget::LOSControlWidget(osg::Group* root, osgEarth::MapNode* mapNode, DataManager* dm)
   : _root(root), _mapNode(mapNode), _manager(dm), _losCounter(1)
@@ -126,6 +133,13 @@ void LOSControlWidget::initialize()
   connect(_removeAction, SIGNAL(triggered()), this, SLOT(onRemoveSelectedLOS()));
   listBar->addAction(_removeAction);
 
+  _editAction = new QAction(QIcon(":/images/edit.png"), tr("Edit LOS"), this);
+  _editAction->setStatusTip(tr("Edit selected LOS"));
+  _editAction->setEnabled(false);
+  connect(_editAction, SIGNAL(triggered()), this, SLOT(onEditSelectedLOS()));
+  listBar->addAction(_editAction);
+
+
   listBoxLayout->addWidget(listBar);
 
   //create list
@@ -145,9 +159,8 @@ void LOSControlWidget::initialize()
   _detailsBox->setObjectName("oeFrameContainer");
 
   detailsLayout->addWidget(new QLabel(tr("Name:")), 0, 0, Qt::AlignLeft);
-  _nameEdit = new QLineEdit;
-  detailsLayout->addWidget(_nameEdit, 0, 1, Qt::AlignLeft);
-  _nameEdit->setEnabled(false);
+  _nameField = new QLabel(tr("-----"));
+  detailsLayout->addWidget(_nameField, 0, 1, Qt::AlignLeft);
 
   detailsLayout->addWidget(new QLabel(tr("Type:")), 1, 0, Qt::AlignLeft);
   _typeField = new QLabel(tr("-----"));
@@ -156,10 +169,6 @@ void LOSControlWidget::initialize()
   _depthBox = new QCheckBox(tr("Enable depth test"));
   detailsLayout->addWidget(_depthBox, 2, 0, Qt::AlignLeft);
   _depthBox->setEnabled(false);
-
-  _dragBox = new QCheckBox(tr("Allow drag"));
-  detailsLayout->addWidget(_dragBox, 3, 0, Qt::AlignLeft);
-  _dragBox->setEnabled(false);
 
   detailsLayout->addWidget(new QLabel(tr("Radius:")), 4, 0, Qt::AlignLeft);
   _radiusBox = new QDoubleSpinBox;
@@ -172,7 +181,7 @@ void LOSControlWidget::initialize()
 
   detailsLayout->addWidget(new QLabel(tr("Spokes:")), 5, 0, Qt::AlignLeft);
   _spokesBox = new QSpinBox;
-  _spokesBox->setMinimum(2);
+  _spokesBox->setMinimum(3);
   _spokesBox->setMaximum(10000);
   _spokesBox->setSingleStep(1);
   _spokesBox->setValue(100);
@@ -188,32 +197,29 @@ void LOSControlWidget::initialize()
   connect(_losList, SIGNAL(itemSelectionChanged()), this, SLOT(onItemSelectionChanged()));
 
   //connect option signals
-  connect(_nameEdit, SIGNAL(textEdited(const QString&)), this, SLOT(onNameEdited(const QString&)));
   connect(_depthBox, SIGNAL(stateChanged(int)), this, SLOT(onDepthBoxChanged(int)));
-  connect(_dragBox, SIGNAL(stateChanged(int)), this, SLOT(onDragBoxChanged(int)));
   connect(_radiusBox, SIGNAL(valueChanged(double)), this, SLOT(onRadiusValueChanged(double)));
   connect(_spokesBox, SIGNAL(valueChanged(int)), this, SLOT(onSpokesValueChanged(int)));
 }
 
-void LOSControlWidget::addLOSNode(osg::Group* los, const QString& name, osg::Group* editor)
+void LOSControlWidget::addLOSNode(osg::Group* los, const std::string& name)
 {
   if (!los)
     return;
 
   //_losNodes.push_back(los);
 
-
-  LOSListItem* losItem = new LOSListItem(los, name, editor);
+  LOSListWidgetItem* losItem = new LOSListWidgetItem(los, name);
   losItem->setCheckState(Qt::Checked);
   _losList->addItem(losItem);
 
   _root->addChild(los);
 }
 
-void LOSControlWidget::mapClick(const osg::Vec3d& location)
+void LOSControlWidget::mapClick(const osg::Vec3d& point)
 {
   if (!_newDialog.isNull())
-    _newDialog->mapClick(location);
+    _newDialog->mapClick(point);
 }
 
 void LOSControlWidget::onItemDoubleClicked(QListWidgetItem* item)
@@ -221,7 +227,7 @@ void LOSControlWidget::onItemDoubleClicked(QListWidgetItem* item)
   if (!_manager.valid() || !_map.valid() || _views.size() == 0)
     return;
 
-  LOSListItem* losItem = dynamic_cast<LOSListItem*>(item);
+  LOSListWidgetItem* losItem = dynamic_cast<LOSListWidgetItem*>(item);
   if (losItem && losItem->los())
   {
     osg::Vec3d center = losItem->los()->getBound().center();
@@ -240,7 +246,7 @@ void LOSControlWidget::onItemChanged(QListWidgetItem* item)
   if (!_manager.valid())
     return;
 
-  LOSListItem* losItem = dynamic_cast<LOSListItem*>(item);
+  LOSListWidgetItem* losItem = dynamic_cast<LOSListWidgetItem*>(item);
   if (losItem && losItem->los())
     _manager->doAction(this, new ToggleNodeAction(losItem->los(), item->checkState() == Qt::Checked));
 }
@@ -248,28 +254,24 @@ void LOSControlWidget::onItemChanged(QListWidgetItem* item)
 void LOSControlWidget::onItemSelectionChanged()
 {
   _activeRadial = 0L;
-  _nameEdit->setText("");
-  _nameEdit->setEnabled(false);
+  _nameField->setText("-----");
   _typeField->setText("-----");
-  _depthBox->setCheckState(Qt::Unchecked);
   _depthBox->setEnabled(false);
-  _dragBox->setEnabled(false);
   _radiusBox->setEnabled(false);
   _spokesBox->setEnabled(false);
   _removeAction->setEnabled(false);
+  _editAction->setEnabled(false);
 
   QListWidgetItem* item = _losList->currentItem();
   if (item)
   {
-    _nameEdit->setText(item->text());
-    _nameEdit->setEnabled(true);
+    _nameField->setText(item->text());
 
-    LOSListItem* losItem = dynamic_cast<LOSListItem*>(_losList->currentItem());
+    LOSListWidgetItem* losItem = dynamic_cast<LOSListWidgetItem*>(_losList->currentItem());
     if (losItem)
     {
       _removeAction->setEnabled(true);
-      _dragBox->setEnabled(losItem->editor());
-      _dragBox->setCheckState(losItem->getEditing() ? Qt::Checked : Qt::Unchecked);
+      _editAction->setEnabled(true);
 
       osgEarth::Util::LineOfSightNode* p2pNode = dynamic_cast<osgEarth::Util::LineOfSightNode*>(losItem->los());
       if (p2pNode)
@@ -298,44 +300,13 @@ void LOSControlWidget::onItemSelectionChanged()
   }
 }
 
-void LOSControlWidget::onNameEdited(const QString& text)
-{
-  QListWidgetItem* item = _losList->currentItem();
-
-  if (item)
-    item->setText(text);
-}
-
 void LOSControlWidget::onDepthBoxChanged(int state)
 {
   QListWidgetItem* item = _losList->currentItem();
   
-  LOSListItem* losItem = dynamic_cast<LOSListItem*>(item);
+  LOSListWidgetItem* losItem = dynamic_cast<LOSListWidgetItem*>(item);
   if (losItem)
     losItem->los()->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, state == Qt::Checked ? osg::StateAttribute::ON : osg::StateAttribute::OFF);
-}
-
-void LOSControlWidget::onDragBoxChanged(int state)
-{
-  QListWidgetItem* item = _losList->currentItem();
-  
-  LOSListItem* losItem = dynamic_cast<LOSListItem*>(item);
-  if (losItem && losItem->editor())
-  {
-    if (state == Qt::Checked)
-    {
-      if (!losItem->getEditing())
-      {
-        losItem->setEditing(true);
-        _root->addChild(losItem->editor());
-      }
-    }
-    else
-    {
-      losItem->setEditing(false);
-      _root->removeChild(losItem->editor());
-    }
-  }
 }
 
 void LOSControlWidget::onRadiusValueChanged(double value)
@@ -352,7 +323,7 @@ void LOSControlWidget::onSpokesValueChanged(int value)
 
 void LOSControlWidget::onAddLOS()
 {
-  _newDialog = new LOSCreationDialog(_mapNode.get(), _losCounter, _manager.get(), &_views);
+  _newDialog = new LOSCreationDialog(_mapNode.get(), _root.get(), _losCounter, _manager.get(), &_views);
 
   if (!_newDialog.isNull())
   {
@@ -360,7 +331,7 @@ void LOSControlWidget::onAddLOS()
 
     connect(_newDialog, SIGNAL(finished(int)), this, SLOT(onCreateFinished(int)));
 
-    _newDialog->setWindowFlags(Qt::WindowStaysOnTopHint);
+    _newDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
     _newDialog->setAttribute(Qt::WA_DeleteOnClose);
     _newDialog->show();
   }
@@ -373,7 +344,7 @@ void LOSControlWidget::onCreateFinished(int result)
   if (result == QDialog::Accepted)
   {
     _losCounter++;
-    addLOSNode(_newDialog->losNode(), _newDialog->losName(), _newDialog->losEditor());
+    addLOSNode(_newDialog->losNode(), _newDialog->losName());
   }
 }
 
@@ -381,15 +352,56 @@ void LOSControlWidget::onRemoveSelectedLOS()
 {
   QListWidgetItem* item = _losList->currentItem();
   
-  LOSListItem* losItem = dynamic_cast<LOSListItem*>(item);
-  if (losItem)
-  {
-    if (losItem->los())
-      _root->removeChild(losItem->los());
-
-    if (losItem->editor() && losItem->getEditing())
-      _root->removeChild(losItem->editor());
-  }
+  LOSListWidgetItem* losItem = dynamic_cast<LOSListWidgetItem*>(item);
+  if (losItem && losItem->los())
+    _root->removeChild(losItem->los());
 
   delete item;
+}
+
+void LOSControlWidget::onEditSelectedLOS()
+{
+  QListWidgetItem* item = _losList->currentItem();
+  
+  LOSListWidgetItem* losItem = dynamic_cast<LOSListWidgetItem*>(item);
+  if (losItem && losItem->los())
+  {
+    _newDialog = new LOSCreationDialog(_mapNode.get(), _root.get(), losItem->los(), losItem->name(), _manager.get(), &_views);
+
+    if (!_newDialog.isNull())
+    {
+      this->setEnabled(false);
+
+      _root->removeChild(losItem->los());
+
+      connect(_newDialog, SIGNAL(finished(int)), this, SLOT(onEditFinished(int)));
+
+      _newDialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::CustomizeWindowHint| Qt::WindowStaysOnTopHint);
+      _newDialog->setAttribute(Qt::WA_DeleteOnClose);
+      _newDialog->show();
+    }
+  }
+}
+
+void LOSControlWidget::onEditFinished(int result)
+{
+  this->setEnabled(true);
+
+  LOSListWidgetItem* losItem = dynamic_cast<LOSListWidgetItem*>(_losList->currentItem());
+  if (losItem)
+  {
+    if (result == QDialog::Accepted)
+    {
+      losItem->setName(_newDialog->losName());
+      _newDialog->losNode()->setNodeMask(losItem->los()->getNodeMask());
+      losItem->setLOS(_newDialog->losNode());
+      _root->addChild(_newDialog->losNode());
+
+      onItemSelectionChanged();
+    }
+    else
+    {
+      _root->addChild(losItem->los());
+    }
+  }
 }

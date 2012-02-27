@@ -98,10 +98,18 @@ namespace osgEarth
         const optional<unsigned int>& maxDataLevel() const { return _maxDataLevel; }
 
 		/**
-		 * Whether to render this layer with the map.
+		 * Whether to use this layer with the map. Setting this to false means that 
+         * the layer will remain in its map model but will not be used by the 
+         * terrain engine. You cannot change the "enabled" state at runtime.
 		 */        
         optional<bool>& enabled() { return _enabled; }
         const optional<bool>& enabled() const { return _enabled; }
+
+        /**
+         * Whether to render (or otherwise use) the layer.
+         */
+        optional<bool>& visible() { return _visible; }
+        const optional<bool>& visible() const { return _visible; }
 
 		/**
 		 * Whether to use exact cropping if image cropping is necessary
@@ -170,6 +178,7 @@ namespace osgEarth
         optional<float>             _loadingWeight;
         optional<bool>              _exactCropping;
 		optional<bool>              _enabled;
+        optional<bool>              _visible;
 		optional<unsigned>          _reprojectedTileSize;
         optional<double>            _edgeBufferRatio;
         optional<unsigned>          _maxDataLevel;
@@ -184,7 +193,7 @@ namespace osgEarth
      */
     struct TerrainLayerCallback : public osg::Referenced
     {
-        virtual void onEnabledChanged( class TerrainLayer* layer ) { }
+        virtual void onVisibleChanged( class TerrainLayer* layer ) { }
     };
 
     typedef void (TerrainLayerCallback::*TerrainLayerCallbackMethodPtr)(TerrainLayer* layer);
@@ -217,10 +226,16 @@ namespace osgEarth
         const TerrainLayerOptions& getTerrainLayerRuntimeOptions() const { return *_runtimeOptions; }
 
         /**
-         * Whether to draw this layer.
+         * Whether to use this layer. Note, a layer is enabled/disabled once and its
+         * status cannot be changed.
          */
-        void setEnabled( bool value );
         bool getEnabled() const { return *_runtimeOptions->enabled(); }
+
+        /**
+         * Whether to draw (or otherwise use) this layer.
+         */
+        void setVisible( bool value );
+        bool getVisible() const { return getEnabled() && *_runtimeOptions->visible(); }
 
         /**
          * Gets the readable name of the map layer.

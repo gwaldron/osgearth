@@ -46,6 +46,7 @@ ModelLayerOptions::setDefaults()
 {
     _overlay.init( false );
     _enabled.init( true );
+    _visible.init( true );
     _lighting.init( true );
 }
 
@@ -58,6 +59,7 @@ ModelLayerOptions::getConfig() const
     conf.updateIfSet( "name", _name );
     conf.updateIfSet( "overlay", _overlay );
     conf.updateIfSet( "enabled", _enabled );
+    conf.updateIfSet( "visible", _visible );
     conf.updateIfSet( "lighting", _lighting );
 
     // Merge the ModelSource options
@@ -73,6 +75,7 @@ ModelLayerOptions::fromConfig( const Config& conf )
     conf.getIfSet( "name", _name );
     conf.getIfSet( "overlay", _overlay );
     conf.getIfSet( "enabled", _enabled );
+    conf.getIfSet( "visible", _visible );
     conf.getIfSet( "lighting", _lighting );
 
     if ( conf.hasValue("driver") )
@@ -151,8 +154,8 @@ ModelLayer::getOrCreateNode( ProgressCallback* progress )
         {
             _node = _modelSource->createNode( progress );
 
-            if ( _runtimeOptions.enabled().isSet() )
-                setEnabled( *_runtimeOptions.enabled() );
+            if ( _runtimeOptions.visible().isSet() )
+                setVisible( *_runtimeOptions.visible() );
 
             if ( _runtimeOptions.lightingEnabled().isSet() )
                 setLightingEnabled( *_runtimeOptions.lightingEnabled() );
@@ -180,17 +183,23 @@ ModelLayer::getEnabled() const
     return *_runtimeOptions.enabled();
 }
 
-void
-ModelLayer::setEnabled(bool enabled)
+bool
+ModelLayer::getVisible() const
 {
-    if ( _runtimeOptions.enabled() != enabled )
+    return getEnabled() && *_runtimeOptions.visible();
+}
+
+void
+ModelLayer::setVisible(bool value)
+{
+    if ( _runtimeOptions.visible() != value )
     {
-        _runtimeOptions.enabled() = enabled;
+        _runtimeOptions.visible() = value;
 
         if ( _node.valid() )
-            _node->setNodeMask( enabled ? ~0 : 0 );
+            _node->setNodeMask( value ? ~0 : 0 );
 
-        fireCallback( &ModelLayerCallback::onEnabledChanged );
+        fireCallback( &ModelLayerCallback::onVisibleChanged );
     }
 }
 

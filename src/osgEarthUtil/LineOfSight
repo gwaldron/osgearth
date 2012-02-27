@@ -165,13 +165,14 @@ namespace osgEarth { namespace Util
         /**
          * Gets the altitude mode
          */
-        AltitudeModeEnum getAltitudeMode() const;
+        AltitudeModeEnum getStartAltitudeMode() const;
+        AltitudeModeEnum getEndAltitudeMode() const;
 
         /**
          * Sets the altitude mode
          */
-
-        void setAltitudeMode( AltitudeModeEnum mode );
+        void setStartAltitudeMode( AltitudeModeEnum mode );
+        void setEndAltitudeMode( AltitudeModeEnum mode );
 
 
         /**
@@ -224,13 +225,15 @@ namespace osgEarth { namespace Util
         osg::Vec3d _endWorld;
         osg::Vec3d _hitWorld;
 
-        AltitudeModeEnum _altitudeMode;
+        AltitudeModeEnum _startAltitudeMode;
+        AltitudeModeEnum _endAltitudeMode;
 
         ChangedCallbackList _changedCallbacks;
 
         osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
 
         osg::ref_ptr< osg::Node > _pendingNode;
+        bool _clearNeeded;
     };
 
 
@@ -251,6 +254,9 @@ namespace osgEarth { namespace Util
     public:
         LineOfSightTether(osg::Node* startNode, osg::Node* endNode);
         virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
+
+        osg::Node* startNode() { return _startNode.get(); }
+        osg::Node* endNode() { return _endNode.get(); }
 
     private:
         osg::ref_ptr< osg::Node > _startNode;
@@ -427,6 +433,8 @@ namespace osgEarth { namespace Util
     public:
         RadialLineOfSightTether(osg::Node* node);
         virtual void operator()(osg::Node* node, osg::NodeVisitor* nv);  
+
+        osg::Node* node() { return _node.get(); }
 
     private:
         osg::ref_ptr< osg::Node > _node;

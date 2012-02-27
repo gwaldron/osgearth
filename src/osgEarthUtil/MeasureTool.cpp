@@ -23,6 +23,8 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
 
+#define LC "[MeasureTool] "
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
@@ -33,17 +35,22 @@ using namespace osgEarth::Annotation;
 
 
 MeasureToolHandler::MeasureToolHandler( osg::Group* group, osgEarth::MapNode* mapNode ):
-_mouseDown(false),
-_group(group),
-_gotFirstLocation(false),
+_mouseDown         (false),
+_group             (group),
+_gotFirstLocation  (false),
 _lastPointTemporary(false),
-_finished(false),
-_geoInterpolation( GEOINTERP_GREAT_CIRCLE ),
-_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
-_isPath( false ),
-_mapNode( mapNode ),
-_intersectionMask(0xffffffff)
+_finished          (false),
+_geoInterpolation  (GEOINTERP_GREAT_CIRCLE),
+_mouseButton       (osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
+_isPath            (false),
+_mapNode           (mapNode),
+_intersectionMask  (0xffffffff)
 {
+    if ( !mapNode || mapNode->getMapSRS()->isProjected() )
+    {
+        OE_WARN << LC << "Sorry, MeasureTool does not yet support projected maps" << std::endl;
+    }
+
     AltitudeSymbol* alt = new AltitudeSymbol();
     alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 

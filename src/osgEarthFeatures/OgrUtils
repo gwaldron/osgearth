@@ -290,16 +290,16 @@ struct OgrUtils
     {
         long fid = OGR_F_GetFID( handle );
 
-        Feature* feature = new Feature( fid );
-
         OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
+
+        Symbology::Geometry* geom = 0;
+
         if ( geomRef )
         {
-            Symbology::Geometry* geom = OgrUtils::createGeometry( geomRef );
-            feature->setGeometry( geom );
+            geom = OgrUtils::createGeometry( geomRef );
         }
 
-        feature->setSRS( srs );
+        Feature* feature = new Feature( geom, srs, Style(), fid );
 
         int numAttrs = OGR_F_GetFieldCount(handle); 
         for (int i = 0; i < numAttrs; ++i) 

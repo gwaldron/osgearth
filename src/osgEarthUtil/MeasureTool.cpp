@@ -48,9 +48,7 @@ _intersectionMask(0xffffffff)
     alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
 
     // Define the path feature:
-    _feature = new Feature();
-    _feature->setGeometry( new LineString() );
-    _feature->setSRS( mapNode->getMapSRS() );
+    _feature = new Feature(new LineString(), mapNode->getMapSRS());
     _feature->geoInterp() = _geoInterpolation;    
 
     //Define a style for the line

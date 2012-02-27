@@ -21,11 +21,9 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
-#include <osgDB/ReaderWriter>
+#include <osg/Object>
 #include <osg/Version>
-#if OSG_MIN_VERSION_REQUIRED(2,9,5)
 #include <osgDB/Options>
-#endif
 #include <list>
 #include <stack>
 #include <istream>
@@ -68,7 +66,7 @@ namespace osgEarth
         void setReferrer( const std::string& value );
         const std::string& referrer() const { return _referrer; }
 
-        bool loadXML( std::istream& in );
+        bool fromXML( std::istream& in );
 
         std::string toJSON( bool pretty =false ) const;
 
@@ -120,6 +118,9 @@ namespace osgEarth
         Config* mutable_child( const std::string& key );
 
         void merge( const Config& rhs );
+
+        Config* find( const std::string& key, bool checkThis =true );
+        const Config* find( const std::string& key, bool checkThis =true) const;
 
         template<typename T>
         void addIfSet( const std::string& key, const optional<T>& opt ) {
@@ -382,6 +383,7 @@ namespace osgEarth
         else
             return false;
     }
+
 
     /**
      * Base class for all serializable options classes.

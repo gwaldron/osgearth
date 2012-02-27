@@ -73,7 +73,11 @@ public:
 		//Take the override profile if one is given
 		if (overrideProfile)
 		{
-		    OE_INFO << LC << "Using override profile " << overrideProfile->toString() << std::endl;				
+            OE_INFO << LC 
+                << "Using override profile \"" << overrideProfile->toString() 
+                << "\" for URI \"" << tmsURI.base() << "\"" 
+                << std::endl;
+
 			result = overrideProfile;
             _tileMap = TMS::TileMap::create( 
                 _options.url()->full(),
@@ -98,7 +102,7 @@ public:
         //Automatically set the min and max level of the TileMap
         if (_tileMap.valid() && _tileMap->getTileSets().size() > 0)
         {
-          OE_INFO << LC << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
+          OE_DEBUG << LC << "TileMap min/max " << _tileMap->getMinLevel() << ", " << _tileMap->getMaxLevel() << std::endl;
           if (_tileMap->getDataExtents().size() > 0)
           {
               for (DataExtentList::iterator itr = _tileMap->getDataExtents().begin(); itr != _tileMap->getDataExtents().end(); ++itr)
@@ -140,7 +144,7 @@ public:
                     //of the tilemap and create a transparent image.
                     if (key.getLevelOfDetail() <= _tileMap->getMaxLevel())
                     {
-                        OE_INFO << LC << "Returning empty image " << std::endl;
+                        OE_DEBUG << LC << "Returning empty image " << std::endl;
                         return ImageUtils::createEmptyImage();
                     }
                 }

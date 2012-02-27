@@ -69,6 +69,12 @@ namespace
             return readObject( key, maxAge );
         }
 
+        ReadResult readConfig(const std::string& key,
+                              double             maxAge )
+        {
+            return readObject( key, maxAge );
+        }
+
         bool write( const std::string& key, const osg::Object* object, const Config& meta )
         {
             if ( object ) 

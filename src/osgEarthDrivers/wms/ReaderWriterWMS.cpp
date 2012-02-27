@@ -293,7 +293,7 @@ public:
             {
                 // an XML result means there was a WMS service exception:
                 Config se;
-                if ( se.loadXML( out_response.getPartStream(0) ) )
+                if ( se.fromXML( out_response.getPartStream(0) ) )
                 {
                     Config ex = se.child("serviceexceptionreport").child("serviceexception");
                     if ( !ex.empty() ) {

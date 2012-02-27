@@ -73,6 +73,7 @@ namespace osgEarth
         const CachePolicy& defaultCachePolicy() const { return _defaultCachePolicy; }
         void setDefaultCachePolicy( const CachePolicy& policy ) { _defaultCachePolicy = policy; }
 
+#if 0
         /** Registers a mapping of a mime-type to an extension. A process fetching data
           * over HTTP can use this facility to determine the proper ReaderWriter to use
           * when there is no filename extension to rely upon.
@@ -82,6 +83,7 @@ namespace osgEarth
         /** gets a reader/writer that handles the extension mapped to by one of
           * the registered mime-types. */
         osgDB::ReaderWriter* getReaderWriterForMimeType(const std::string& mimeType);
+#endif
 
         /**
          * Whether the given filename is blacklisted

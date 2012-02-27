@@ -420,6 +420,7 @@ namespace osgEarth { namespace Util { namespace TMS
     public:
         static TileMap* read( const std::string &location, const osgDB::ReaderWriter::Options* options );
         static TileMap* read( std::istream &in );
+        static TileMap* read( const Config& conf );
 
         static void write(const TileMap* tileMap, const std::string& location);
         static void write(const TileMap* tileMap, std::ostream& output);

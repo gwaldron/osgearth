@@ -53,6 +53,7 @@ _defaultFont     ( 0L )
     OGRRegisterAll();
     GDALAllRegister();
 
+#if 0
     // add built-in mime-type extension mappings
     for( int i=0; ; i+=2 )
     {
@@ -61,17 +62,27 @@ _defaultFont     ( 0L )
             break;
         addMimeTypeExtensionMapping( mimeType, builtinMimeTypeExtMappings[i+1] );
     }
+#endif
 
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
 
     // activate KMZ support
     osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
-    osgDB::Registry::instance()->addArchiveExtension( "kmz" );    
+    osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
 
 #if OSG_MIN_VERSION_REQUIRED(3,0,0)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
-    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz", "kmz" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
+    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "xml" );
+    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "json" );
+    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "json" );
+    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "json" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/plain",                           "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
 #endif
     
     // pre-load OSG's ZIP plugin so that we can use it in URIs
@@ -260,6 +271,7 @@ Registry::setCache( osgEarth::Cache* cache )
         cache->store( _defaultOptions.get() );
 }
 
+#if 0
 void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)
 {
     _mimeTypeExtMap[fromMimeType] = toExt;
@@ -273,6 +285,7 @@ Registry::getReaderWriterForMimeType(const std::string& mimeType)
         osgDB::Registry::instance()->getReaderWriterForExtension( i->second ) :
         NULL;
 }
+#endif
 
 bool
 Registry::isBlacklisted(const std::string& filename)

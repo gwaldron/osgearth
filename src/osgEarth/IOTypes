@@ -28,6 +28,9 @@
  */
 namespace osgEarth
 {
+
+//--------------------------------------------------------------------
+
     /**
      * String wrapped in an osg::Object (for I/O purposes)
      */
@@ -38,10 +41,13 @@ namespace osgEarth
         StringObject( const StringObject& rhs, const osg::CopyOp& op ) : osg::Object(rhs, op), _str(rhs._str) { }
         StringObject( const std::string& in ) : osg::Object(), _str(in) { }
         META_Object( osgEarth, StringObject );
+
+        void setString( const std::string& value ) { _str = value; }
         const std::string& getString() const { return _str; }
     private:
         std::string _str;
     };
+
 
 //--------------------------------------------------------------------
 
@@ -123,7 +129,7 @@ namespace osgEarth
         T* release() { return dynamic_cast<T*>(_result.get())? static_cast<T*>(_result.release()) : 0L; }
 
         /** The result as a string */
-        const std::string& getString() const { const StringObject* so = dynamic_cast<StringObject*>(_result.get()); return so ? so->getString() : _emptyString; } //return dynamic_cast<StringObject*>(_result.get()) ? *static_cast<StringObject*>(_result.get()) : _emptyString; }
+        const std::string& getString() const { const StringObject* so = dynamic_cast<StringObject*>(_result.get()); return so ? so->getString() : _emptyString; }
         
         /** Gets a string describing the read result */
         static std::string getResultCodeString( unsigned code )
@@ -149,6 +155,7 @@ namespace osgEarth
         osg::ref_ptr<osg::Object> _result;
         Config                    _meta;
         std::string               _emptyString;
+        Config                    _emptyConfig;
     };
 
 //--------------------------------------------------------------------
@@ -169,6 +176,7 @@ namespace osgEarth
             CACHE_NODES       = 1 << 1,
             CACHE_IMAGES      = 1 << 2,
             CACHE_STRINGS     = 1 << 3,
+            CACHE_CONFIGS     = 1 << 4,
             CACHE_ALL         = ~0
         };
 
@@ -195,6 +203,10 @@ namespace osgEarth
 
         /** Override the readString() implementation */
         virtual osgDB::ReaderWriter::ReadResult readString( const std::string& uri, const osgDB::Options* options ) {
+            return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
+
+        /** Override the readConfig() implementation */
+        virtual osgDB::ReaderWriter::ReadResult readConfig( const std::string& uri, const osgDB::Options* options ) {
             return osgDB::ReaderWriter::ReadResult::NOT_IMPLEMENTED; }
 
     protected:

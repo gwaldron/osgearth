@@ -801,7 +801,7 @@ namespace
         std::string mimeType = response.getMimeType();
         if ( !mimeType.empty() )
         {
-            reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
+            reader = osgDB::Registry::instance()->getReaderWriterForMimeType(mimeType);
         }
 
         if ( !reader )

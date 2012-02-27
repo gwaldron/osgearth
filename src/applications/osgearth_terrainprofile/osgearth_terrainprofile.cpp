@@ -39,33 +39,7 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
 
 
-
-osg::Node* createBackground(double width, double height, const osg::Vec4f& backgroundColor)
-{
-    //Add a background quad
-    osg::Geometry* geometry = new osg::Geometry();
-    osg::Vec3Array* verts = new osg::Vec3Array();
-    verts->reserve( 4 );
-    verts->push_back( osg::Vec3(0,0,0));
-    verts->push_back( osg::Vec3(width,0,0));
-    verts->push_back( osg::Vec3(width,height,0));
-    verts->push_back( osg::Vec3(0,height,0));
-    geometry->setVertexArray( verts );
-
-    osg::Vec4Array* colors = new osg::Vec4Array();
-    colors->push_back( backgroundColor );
-    geometry->setColorArray( colors );
-    geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
-
-    geometry->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
-
-    osg::Geode* geode = new osg::Geode;
-    geode->addDrawable( geometry );
-
-    return geode;
-
-}
-
+//Creates a simple HUD camera
 osg::Camera* createHud(double width, double height)
 {
     osg::Camera* hud = new osg::Camera;
@@ -82,90 +56,129 @@ osg::Camera* createHud(double width, double height)
     return hud;
 }
 
+/**
+ * Simple terrain profile display
+ */
 class TerrainProfileGraph : public osg::Group
 {
 public:
-
+    /*
+     * Callback that is fired when the TerrainProfile changes
+     */
     struct GraphChangedCallback : public TerrainProfileCalculator::ChangedCallback
     {
         GraphChangedCallback( TerrainProfileGraph* graph):
-    _graph( graph )
-    {
-    }
+        _graph( graph )
+      {
+      }
 
-    virtual void onChanged(const TerrainProfileCalculator* sender )
-    {
+      virtual void onChanged(const TerrainProfileCalculator* sender )
+      {
         _graph->setTerrainProfile( sender->getProfile() );
-    }
+      }
 
-    TerrainProfileGraph* _graph;
+      TerrainProfileGraph* _graph;
     };
 
     TerrainProfileGraph( TerrainProfileCalculator* profileCalculator, double graphWidth = 200, double graphHeight = 200 ):
-      _profileCalculator( profileCalculator ),
-      _graphWidth( graphWidth ),
-      _graphHeight( graphHeight ),
-      _color( 1.0f, 1.0f, 0.0f, 1.0f)
+    _profileCalculator( profileCalculator ),
+        _graphWidth( graphWidth ),
+        _graphHeight( graphHeight ),
+        _color( 1.0f, 1.0f, 0.0f, 1.0f),
+        _backcolor(0.0f,0.0f,0.0f,0.5f)
     {
         _graphChangedCallback = new GraphChangedCallback( this );
         _profileCalculator->addChangedCallback( _graphChangedCallback.get() );
     }
 
-      ~TerrainProfileGraph()
-      {
-           _profileCalculator->removeChangedCallback( _graphChangedCallback.get() );
-      }
+    ~TerrainProfileGraph()
+    {
+        _profileCalculator->removeChangedCallback( _graphChangedCallback.get() );
+    }
 
-      void setTerrainProfile( const TerrainProfile& profile)
-      {
-          _profile = profile;
-          redraw();
-      }
+    void setTerrainProfile( const TerrainProfile& profile)
+    {
+        _profile = profile;
+        redraw();
+    }
 
-      void redraw()
-      {
-          removeChildren( 0, getNumChildren() );
+    //Redraws the graph
+    void redraw()
+    {
+        removeChildren( 0, getNumChildren() );
 
-          osg::Geometry* geom = new osg::Geometry;
-          osg::Vec3Array* verts = new osg::Vec3Array();
-          verts->reserve( _profile.getNumElevations() );
-          geom->setVertexArray( verts );
+        addChild( createBackground( _graphWidth, _graphHeight, _backcolor));
 
-          osg::Vec4Array* colors = new osg::Vec4Array();
-          colors->push_back( _color );
-          geom->setColorArray( colors );
-          geom->setColorBinding( osg::Geometry::BIND_OVERALL );
+        osg::Geometry* geom = new osg::Geometry;
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        verts->reserve( _profile.getNumElevations() );
+        geom->setVertexArray( verts );
 
-          double minElevation, maxElevation;
-          _profile.getElevationRanges( minElevation, maxElevation );
-          double elevationRange = maxElevation - minElevation;
+        osg::Vec4Array* colors = new osg::Vec4Array();
+        colors->push_back( _color );
+        geom->setColorArray( colors );
+        geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
-          double totalDistance = _profile.getTotalDistance();
+        double minElevation, maxElevation;
+        _profile.getElevationRanges( minElevation, maxElevation );
+        double elevationRange = maxElevation - minElevation;
+
+        double totalDistance = _profile.getTotalDistance();
 
 
-          for (unsigned int i = 0; i < _profile.getNumElevations(); i++)
-          {
-              double distance = _profile.getDistance( i );
-              double elevation = _profile.getElevation( i );
+        for (unsigned int i = 0; i < _profile.getNumElevations(); i++)
+        {
+            double distance = _profile.getDistance( i );
+            double elevation = _profile.getElevation( i );
 
-              double x = (distance / totalDistance) * _graphWidth;
-              double y = ( (elevation - minElevation) / elevationRange) * _graphHeight;
-              verts->push_back( osg::Vec3(x, y, 0 ) );
-          }
+            double x = (distance / totalDistance) * _graphWidth;
+            double y = ( (elevation - minElevation) / elevationRange) * _graphHeight;
+            verts->push_back( osg::Vec3(x, y, 0 ) );
+        }
 
-          geom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_STRIP, 0, verts->size()) );
-          osg::Geode* geode = new osg::Geode;
-          geode->addDrawable( geom );
-          addChild( geode );
-      }
+        geom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_STRIP, 0, verts->size()) );
+        osg::Geode* geode = new osg::Geode;
+        geode->addDrawable( geom );
+        addChild( geode );
+    }
 
-      osg::Vec4f _color;
+    osg::Node* createBackground(double width, double height, const osg::Vec4f& backgroundColor)
+    {
+        //Create a background quad
+        osg::Geometry* geometry = new osg::Geometry();
+        osg::Vec3Array* verts = new osg::Vec3Array();
+        verts->reserve( 4 );
+        verts->push_back( osg::Vec3(0,0,0));
+        verts->push_back( osg::Vec3(width,0,0));
+        verts->push_back( osg::Vec3(width,height,0));
+        verts->push_back( osg::Vec3(0,height,0));
+        geometry->setVertexArray( verts );
+
+        osg::Vec4Array* colors = new osg::Vec4Array();
+        colors->push_back( backgroundColor );
+        geometry->setColorArray( colors );
+        geometry->setColorBinding( osg::Geometry::BIND_OVERALL );
+
+        geometry->addPrimitiveSet( new osg::DrawArrays( GL_QUADS, 0, 4 ) );
+
+        osg::Geode* geode = new osg::Geode;
+        geode->addDrawable( geometry );
+
+        return geode;
+
+    }
+
+    osg::Vec4f _backcolor;
+    osg::Vec4f _color;
     TerrainProfile _profile;
     osg::ref_ptr< TerrainProfileCalculator > _profileCalculator;
     double _graphWidth, _graphHeight;
     osg::ref_ptr< GraphChangedCallback > _graphChangedCallback;
 };
 
+/*
+ * Simple event handler that draws a line when you click two points with the left mouse button
+ */
 class DrawProfileEventHandler : public osgGA::GUIEventHandler
 {
 public:
@@ -182,7 +195,7 @@ public:
 
       bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
       {
-          if (ea.getEventType() == ea.PUSH && ea.getButton() == osgGA::GUIEventAdapter::MIDDLE_MOUSE_BUTTON)
+          if (ea.getEventType() == ea.PUSH && ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
           {
               osg::Vec3d world;
               if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
@@ -301,11 +314,9 @@ main(int argc, char** argv)
     root->addChild( hud );
 
     osg::ref_ptr< TerrainProfileCalculator > calculator = new TerrainProfileCalculator(mapNode, 
-                                                                                       GeoPoint(mapNode->getMapSRS(), -124.0, 40.0, 0),
-                                                                                       GeoPoint(mapNode->getMapSRS(), -75.1, 39.2, 0)
-                                                                                       );
-    
-    hud->addChild( createBackground( graphWidth, graphHeight, osg::Vec4(0,0,0,0.5)) );
+        GeoPoint(mapNode->getMapSRS(), -124.0, 40.0, 0),
+        GeoPoint(mapNode->getMapSRS(), -75.1, 39.2, 0)
+        );
 
     osg::Group* profileNode = new TerrainProfileGraph( calculator.get(), graphWidth, graphHeight );
     hud->addChild( profileNode );

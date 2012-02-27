@@ -107,8 +107,7 @@ namespace osgEarth { namespace Features
      */
     class OSGEARTHFEATURES_EXPORT Feature : public osg::Object
     {
-    public:
-        Feature( FeatureID fid =0L );
+    public:        
 
         Feature( Geometry* geom, const SpatialReference* srs, const Style& style =Style(), FeatureID fid =0L );
 
@@ -185,6 +184,9 @@ namespace osgEarth { namespace Features
         const std::string& eval( StringExpression& expr, FilterContext const* context=0L ) const;
 
     protected:
+
+        Feature( FeatureID fid =0L );
+
         FeatureID                            _fid;
         osg::ref_ptr<Symbology::Geometry>    _geom;
         osg::ref_ptr<const SpatialReference> _srs;

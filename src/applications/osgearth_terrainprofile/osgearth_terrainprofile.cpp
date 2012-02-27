@@ -297,8 +297,7 @@ public:
         LineString* line = new LineString();
         line->push_back( _start );
         line->push_back( _end );
-        Feature* feature = new Feature();
-        feature->setGeometry( line );
+        Feature* feature = new Feature(line, _mapNode->getMapSRS());
         feature->geoInterp() = GEOINTERP_GREAT_CIRCLE;    
 
         //Define a style for the line

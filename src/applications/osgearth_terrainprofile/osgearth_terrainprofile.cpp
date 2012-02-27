@@ -30,6 +30,8 @@
 #include <osgEarth/GeoMath>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
+#include <osgText/Text>
+#include <osgText/Font>
 #include <osg/io_utils>
 
 using namespace osgEarth;
@@ -89,6 +91,35 @@ public:
     {
         _graphChangedCallback = new GraphChangedCallback( this );
         _profileCalculator->addChangedCallback( _graphChangedCallback.get() );
+
+        float textSize = 8;
+        osg::ref_ptr< osgText::Font> font = osgText::readFontFile( "arialbd.ttf" );
+
+        osg::Vec4 textColor = osg::Vec4f(1,0,0,1);
+        
+        _distanceMinLabel = new osgText::Text();
+        _distanceMinLabel->setCharacterSize( textSize );
+        _distanceMinLabel->setFont( font.get() );
+        _distanceMinLabel->setAlignment(osgText::TextBase::LEFT_BOTTOM);
+        _distanceMinLabel->setColor(textColor);
+
+        _distanceMaxLabel = new osgText::Text();
+        _distanceMaxLabel->setCharacterSize( textSize );
+        _distanceMaxLabel->setFont( font.get() );
+        _distanceMaxLabel->setAlignment(osgText::TextBase::RIGHT_BOTTOM);
+        _distanceMaxLabel->setColor(textColor);
+
+        _elevationMinLabel = new osgText::Text();
+        _elevationMinLabel->setCharacterSize( textSize );
+        _elevationMinLabel->setFont( font.get() );
+        _elevationMinLabel->setAlignment(osgText::TextBase::RIGHT_BOTTOM);
+        _elevationMinLabel->setColor(textColor);
+
+        _elevationMaxLabel = new osgText::Text();
+        _elevationMaxLabel->setCharacterSize( textSize );
+        _elevationMaxLabel->setFont( font.get() );
+        _elevationMaxLabel->setAlignment(osgText::TextBase::RIGHT_TOP);
+        _elevationMaxLabel->setColor(textColor);
     }
 
     ~TerrainProfileGraph()
@@ -125,7 +156,6 @@ public:
 
         double totalDistance = _profile.getTotalDistance();
 
-
         for (unsigned int i = 0; i < _profile.getNumElevations(); i++)
         {
             double distance = _profile.getDistance( i );
@@ -137,9 +167,29 @@ public:
         }
 
         geom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_STRIP, 0, verts->size()) );
-        osg::Geode* geode = new osg::Geode;
-        geode->addDrawable( geom );
-        addChild( geode );
+        osg::Geode* graphGeode = new osg::Geode;
+        graphGeode->addDrawable( geom );
+        addChild( graphGeode );
+
+        osg::Geode* labelGeode =new osg::Geode;
+        labelGeode->addDrawable( _distanceMinLabel.get());
+        labelGeode->addDrawable( _distanceMaxLabel.get());
+        labelGeode->addDrawable( _elevationMinLabel.get());
+        labelGeode->addDrawable( _elevationMaxLabel.get());
+
+        _distanceMinLabel->setPosition( osg::Vec3(0,0,0));
+        _distanceMaxLabel->setPosition( osg::Vec3(_graphWidth-15,0,0));
+        _elevationMinLabel->setPosition( osg::Vec3(_graphWidth-5,10,0));
+        _elevationMaxLabel->setPosition( osg::Vec3(_graphWidth-5,_graphHeight,0));
+        
+        _distanceMinLabel->setText("0m");        
+        _distanceMaxLabel->setText(toString<int>((int)totalDistance) + std::string("m"));
+        
+        _elevationMinLabel->setText(toString<int>((int)minElevation) + std::string("m"));
+        _elevationMaxLabel->setText(toString<int>((int)maxElevation) + std::string("m"));
+
+        addChild( labelGeode );
+
     }
 
     osg::Node* createBackground(double width, double height, const osg::Vec4f& backgroundColor)
@@ -167,6 +217,8 @@ public:
         return geode;
 
     }
+
+    osg::ref_ptr<osgText::Text> _distanceMinLabel, _distanceMaxLabel, _elevationMinLabel, _elevationMaxLabel;
 
     osg::Vec4f _backcolor;
     osg::Vec4f _color;
@@ -317,6 +369,7 @@ main(int argc, char** argv)
         GeoPoint(mapNode->getMapSRS(), -124.0, 40.0, 0),
         GeoPoint(mapNode->getMapSRS(), -75.1, 39.2, 0)
         );
+    calculator->setNumSamples(20);
 
     osg::Group* profileNode = new TerrainProfileGraph( calculator.get(), graphWidth, graphHeight );
     hud->addChild( profileNode );

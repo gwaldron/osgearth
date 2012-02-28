@@ -77,8 +77,6 @@ struct osgEarthStringReaderWriter##SUFFIX : public osgDB::ReaderWriter \
     } \
     osgDB::ReaderWriter::ReadResult readObject(std::istream& in, const osgDB::Options* dbOptions ) const { \
         URIContext uriContext( dbOptions ); \
-        if ( uriContext.empty() && dbOptions && dbOptions->getDatabasePathList().size() > 0 ) \
-            uriContext = URIContext( dbOptions->getDatabasePathList().front() ); \
         return new StringObject( Stringify() << in.rdbuf() ); \
     } \
     osgDB::ReaderWriter::WriteResult writeObject( const osg::Object& obj, const std::string& location, const osgDB::Options* dbOptions ) const { \

@@ -18,8 +18,10 @@
  */
 
 #include <osgEarth/FileUtils>
+#include <osgEarth/StringUtils>
 #include <osgDB/FileUtils>
 #include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
 #include <osg/Notify>
 #include <list>
 #include <sstream>
@@ -110,6 +112,18 @@ std::string osgEarth::getFullPath(const std::string& relativeTo, const std::stri
 
     //OE_NOTICE << "FullPath " << path << std::endl;
     return path;
+}
+
+bool
+osgEarth::isArchive(const std::string& path)
+{
+    osgDB::Registry::ArchiveExtensionList list = osgDB::Registry::instance()->getArchiveExtensions();
+    for( osgDB::Registry::ArchiveExtensionList::const_iterator i = list.begin(); i != list.end(); ++i )
+    {
+        if ( osgEarth::endsWith(path, ("."+*i), false) )
+            return true;
+    }
+    return false;
 }
 
 bool osgEarth::isZipPath(const std::string &path)

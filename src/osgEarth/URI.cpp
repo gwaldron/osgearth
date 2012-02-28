@@ -126,6 +126,15 @@ URIContext::URIContext( const osgDB::Options* options )
     if ( options )
     {
         _referrer = options->getPluginStringData( "osgEarth::URIContext::referrer" );
+
+        if ( _referrer.empty() && options->getDatabasePathList().size() > 0 )
+        {
+            const std::string& front = options->getDatabasePathList().front();
+            if ( osgEarth::isArchive(front) )
+            {
+                _referrer = front + "/";
+            }
+        }
     }
 }
 

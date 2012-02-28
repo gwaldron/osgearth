@@ -382,9 +382,23 @@ osgEarth::startsWith( const std::string& ref, const std::string& pattern, bool c
     if ( pattern.length() > ref.length() )
         return false;
 
-    return caseSensitive ?
-        std::search(ref.begin(), ref.begin()+pattern.length(), pattern.begin(), pattern.end()) != ref.end() :
-        std::search(ref.begin(), ref.begin()+pattern.length(), pattern.begin(), pattern.end(), ci_equal<std::string::value_type>(loc) ) != ref.end();
+    if ( caseSensitive )
+    {
+        for( unsigned i=0; i<pattern.length(); ++i )
+        {
+            if ( ref[i] != pattern[i] )
+                return false;
+        }
+    }
+    else
+    {
+        for( unsigned i=0; i<pattern.length(); ++i )
+        {
+            if ( std::toupper(ref[i], loc) != std::toupper(pattern[i],loc) )
+                return false;
+        }
+    }
+    return true;
 }
 
 bool
@@ -393,7 +407,22 @@ osgEarth::endsWith( const std::string& ref, const std::string& pattern, bool cas
     if ( pattern.length() > ref.length() )
         return false;
 
-    return caseSensitive ?
-        std::search(ref.end()-pattern.length(), ref.end(), pattern.begin(), pattern.end()) != ref.end() :
-        std::search(ref.end()-pattern.length(), ref.end(), pattern.begin(), pattern.end(), ci_equal<std::string::value_type>(loc) ) != ref.end();
+    unsigned offset = ref.size()-pattern.length();
+    if ( caseSensitive )
+    {
+        for( unsigned i=0; i < pattern.length(); ++i )
+        {
+            if ( ref[i+offset] != pattern[i] )
+                return false;
+        }
+    }
+    else
+    {
+        for( unsigned i=0; i < pattern.length(); ++i )
+        {
+            if ( std::toupper(ref[i+offset], loc) != std::toupper(pattern[i],loc) )
+                return false;
+        }
+    }
+    return true;
 }

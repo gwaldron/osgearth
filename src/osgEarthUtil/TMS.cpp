@@ -416,7 +416,8 @@ TileMapReaderWriter::read( const std::string& location, const osgDB::ReaderWrite
     
     // Read tile map into a Config:
     Config conf;
-    conf.fromXML( std::stringstream(r.getString()) );
+    std::stringstream buf( r.getString() );
+    conf.fromXML( buf );
 
     // parse that into a tile map:        
     tileMap = TileMapReaderWriter::read( conf );

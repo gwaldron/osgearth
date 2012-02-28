@@ -24,7 +24,7 @@
 #include <osgEarthQt/Common>
 #include <osgEarthQt/DataManager>
 
-#include <osgEarthAnnotation/Draggers>
+#include <osgEarth/Draggers>
 #include <osgEarthUtil/LineOfSight>
 
 #include <osg/AutoTransform>
@@ -33,13 +33,15 @@
 
 namespace osgEarth { namespace QtGui 
 {
-  class LOSIntersectingDragger : public osgEarth::Annotation::IntersectingDragger
+    class LOSIntersectingDragger : public osgEarth::SphereDragger
   {
   public:
-    LOSIntersectingDragger():
-      osgEarth::Annotation::IntersectingDragger()
+      LOSIntersectingDragger(osgEarth::MapNode* mapNode):
+        osgEarth::SphereDragger(mapNode),
+        _heightAboveTerrain(0.0)
     {
       setLineColor(osg::Vec4(1.0f, 1.0f, 0.0f, 0.0f));
+      setupDefaultGeometry();
     }
 
     void setupDefaultGeometry()
@@ -66,21 +68,6 @@ namespace osgEarth { namespace QtGui
       lineGeode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
       lineGeode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
       addChild( lineGeode );
-
-
-      // draw a sphere at location
-      osg::Sphere* shape = new osg::Sphere(osg::Vec3(0,0,0), _size);   
-      osg::Geode* geode = new osg::Geode();
-      _shapeDrawable = new osg::ShapeDrawable( shape );    
-      geode->addDrawable( _shapeDrawable.get() );
-      setDrawableColor( _color );
-
-      geode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
-      geode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-      osg::AutoTransform* at = new osg::AutoTransform;
-      at->setAutoScaleToScreen( true );
-      at->addChild( geode );
-      addChild( at );
     }
 
     void setHeightAboveTerrain( double hat )
@@ -98,6 +85,7 @@ namespace osgEarth { namespace QtGui
     osg::Vec4 _lineColor;
     osg::ref_ptr<osg::Geometry> _lineGeometry;
     osg::ref_ptr<osg::Vec3Array> _lineVerts;
+    double _heightAboveTerrain;
   };
 
   //---------------------------------------------------------------------------
@@ -158,7 +146,7 @@ namespace osgEarth { namespace QtGui
     void updateLOSNodes(bool updateAll=false);
     void cleanupNodes();
     void centerMapOnNode(osg::Node* node);
-    void updateDragger(osgEarth::Annotation::IntersectingDragger* dragger, const osg::Vec3d& point);
+    void updateDragger(Dragger* dragger, const GeoPoint& point);
     void updateDraggerNodes();
     void updatePoint(LOSPoint point);
     int findAnnotationIndex(osg::Node* annotation);

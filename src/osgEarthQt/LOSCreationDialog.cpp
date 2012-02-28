@@ -28,87 +28,32 @@ using namespace osgEarth::QtGui;
 
 namespace
 {
-  class LOSPointDraggerCallback : public osgManipulator::DraggerCallback
+    class LOSPointDraggerCallback : public Dragger::PositionChangedCallback
   {
   public:
     LOSPointDraggerCallback(osgEarth::Map* map, LOSCreationDialog* dialog,  LOSCreationDialog::LOSPoint point):
       _dialog(dialog),
       _point(point)
     {
-        _ellipsoid = map->getProfile()->getSRS()->getEllipsoid();
     }
 
-    osg::Vec3d getLocation(const osg::Matrixd& matrix)
-    {
-        osg::Vec3d trans = matrix.getTrans();
-        double lat, lon, height;
-        _ellipsoid->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
-        return osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), height);
-    }
-
-
-    virtual bool receive(const osgManipulator::MotionCommand& command)
-    {
-        switch (command.getStage())
-        {
-          case osgManipulator::MotionCommand::START:
+      virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
+      {
+          GeoPoint location(position);
+          if (_dialog->isAltitudeRelative(_point))
           {
-            // Save the current matrix
-            osg::Vec3d location;
-            _dialog->getLOSPoint(_point, location);
-
-            double x, y, z;
-            _ellipsoid->convertLatLongHeightToXYZ(osg::DegreesToRadians(location.y()), osg::DegreesToRadians(location.x()), location.z(), x, y, z);
-            _startMotionMatrix = osg::Matrixd::translate(x, y, z);
-
-            // Get the LocalToWorld and WorldToLocal matrix for this node.
-            osg::NodePath nodePathToRoot;
-            _localToWorld = osg::Matrixd::identity();
-            _worldToLocal = osg::Matrixd::identity();
-
-            return true;
-          }
-          case osgManipulator::MotionCommand::MOVE:
-          {                  
-            // Transform the command's motion matrix into local motion matrix.
-            osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
-                * command.getMotionMatrix()
-                * command.getLocalToWorld() * _worldToLocal;
-
-            osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
-
-            osg::Vec3d location = getLocation( newMatrix );
-            if (_dialog->isAltitudeRelative(_point))
-            {
               osg::Vec3d losLoc;
               _dialog->getLOSPoint(_point, losLoc, true);
               double z = losLoc.z();
-              location = osg::Vec3d(location.x(), location.y(), location.z() - z);
-            }
-
-            _dialog->setLOSPoint(_point, location);
-            return true;
+              //location = osg::Vec3d(location.x(), location.y(), location.z() - z);
+              location.z() = z;
           }
-          case osgManipulator::MotionCommand::FINISH:
-          {
-            return true;
-          }
-          case osgManipulator::MotionCommand::NONE:
-          default:
-            return false;
-        }
-    }
+          _dialog->setLOSPoint(_point, location.vec3d());
+      }
 
-
-    osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
     LOSCreationDialog* _dialog;
     LOSCreationDialog::LOSPoint _point;
     bool _start;
-
-    osg::Matrix _startMotionMatrix;
-
-    osg::Matrix _localToWorld;
-    osg::Matrix _worldToLocal;
   };
 }
 
@@ -162,31 +107,22 @@ void LOSCreationDialog::initUi(const std::string& name, osg::Group* los)
 
 
   // create map point draggers
-  _p1Dragger  = new LOSIntersectingDragger;
-  _p1Dragger->setNode( _mapNode );    
-  _p1Dragger->setHandleEvents( true );
-  _p1Dragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, P2P_START));
+  _p1Dragger  = new LOSIntersectingDragger( _mapNode );
+  _p1Dragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map, this, P2P_START));
   _p1Dragger->setColor(osg::Vec4(0,1,1,0));
   _p1Dragger->setPickColor(osg::Vec4(1,0,1,0));
-  _p1Dragger->setupDefaultGeometry();
   _p1BaseAlt = 0.0;
 
-  _p2Dragger  = new LOSIntersectingDragger;
-  _p2Dragger->setNode( _mapNode );    
-  _p2Dragger->setHandleEvents( true );
-  _p2Dragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, P2P_END));    
+  _p2Dragger  = new LOSIntersectingDragger(_mapNode);
+  _p2Dragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map, this, P2P_END));    
   _p2Dragger->setColor(osg::Vec4(0,1,1,0));
   _p2Dragger->setPickColor(osg::Vec4(1,0,1,0));
-  _p2Dragger->setupDefaultGeometry();
   _p2BaseAlt = 0.0;
 
-  _radDragger  = new LOSIntersectingDragger;
-  _radDragger->setNode( _mapNode );    
-  _radDragger->setHandleEvents( true );
-  _radDragger->addDraggerCallback(new LOSPointDraggerCallback(_map, this, RADIAL_CENTER));    
+  _radDragger  = new LOSIntersectingDragger(_mapNode);
+  _radDragger->addPositionChangedCallback(new LOSPointDraggerCallback(_map, this, RADIAL_CENTER));    
   _radDragger->setColor(osg::Vec4(0,1,1,0));
   _radDragger->setPickColor(osg::Vec4(1,0,1,0));
-  _radDragger->setupDefaultGeometry();
   _radBaseAlt = 0.0;
 
 
@@ -478,13 +414,9 @@ void LOSCreationDialog::mapClick(const osg::Vec3d& point)
   }
 }
 
-void LOSCreationDialog::updateDragger(osgEarth::Annotation::IntersectingDragger* dragger, const osg::Vec3d& point)
+void LOSCreationDialog::updateDragger(Dragger* dragger, const GeoPoint& point)
 {
-  const osg::EllipsoidModel* em = _map->getProfile()->getSRS()->getEllipsoid();
-
-  osg::Matrixd matrix;
-  em->computeLocalToWorldTransformFromXYZ(point.x(), point.y(), point.z(), matrix);
-  dragger->setMatrix(matrix);
+    dragger->setPosition( point, false );
 }
 
 void LOSCreationDialog::updateDraggerNodes()
@@ -549,10 +481,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
         {
           _p1Dragger->setHeightAboveTerrain(0.0);
         }
-
-        double x, y, z;
-        _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.p1LatBox->value()), osg::DegreesToRadians(_ui.p1LonBox->value()), alt, x, y, z);
-        updateDragger(_p1Dragger, osg::Vec3d(x, y, z));
+        updateDragger(_p1Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p1LonBox->value(), _ui.p1LatBox->value(), alt));
       }
       break;
     case P2P_END:
@@ -568,9 +497,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
           _p2Dragger->setHeightAboveTerrain(0.0);
         }
 
-        double x, y, z;
-        _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.p2LatBox->value()), osg::DegreesToRadians(_ui.p2LonBox->value()), alt, x, y, z);
-        updateDragger(_p2Dragger, osg::Vec3d(x, y, z));
+        updateDragger(_p2Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p2LonBox->value(), _ui.p2LatBox->value(), alt));
       }
       break;
     case RADIAL_CENTER:
@@ -586,9 +513,7 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
           _radDragger->setHeightAboveTerrain(0.0);
         }
 
-        double x, y, z;
-        _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(_ui.radLatBox->value()), osg::DegreesToRadians(_ui.radLonBox->value()), alt, x, y, z);
-        updateDragger(_radDragger, osg::Vec3d(x, y, z));
+        updateDragger(_radDragger, GeoPoint(_mapNode->getMapSRS(), _ui.radLonBox->value(), _ui.radLatBox->value(), alt));
       }
       break;
   }

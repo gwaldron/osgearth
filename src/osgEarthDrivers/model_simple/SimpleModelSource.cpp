@@ -91,7 +91,8 @@ public:
         osg::ref_ptr<osgDB::Options> localOptions = _dbOptions.get() ? new osgDB::Options(*_dbOptions.get()) : new osgDB::Options();
         localOptions->getDatabasePathList().push_back( osgDB::getFilePath(_options.url()->full()) );
 
-        result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
+        result = _options.url()->getNode( localOptions.get(), CachePolicy::INHERIT, progress );
+        //result = _options.url()->readNode( localOptions.get(), CachePolicy::NO_CACHE, progress ).releaseNode();
 
         if (_options.location().isSet())
         {

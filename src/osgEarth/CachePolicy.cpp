@@ -23,6 +23,7 @@ using namespace osgEarth;
 //------------------------------------------------------------------------
 
 //statics
+CachePolicy CachePolicy::INHERIT;
 CachePolicy CachePolicy::NO_CACHE( CachePolicy::USAGE_NO_CACHE );
 CachePolicy CachePolicy::CACHE_ONLY( CachePolicy::USAGE_CACHE_ONLY );
 

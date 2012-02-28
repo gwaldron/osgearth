@@ -121,6 +121,21 @@ SerialKeyNodeFactory::addTile(Tile* tile, bool tileHasRealData, bool tileHasLodB
 }
 
 osg::Node*
+SerialKeyNodeFactory::createRootNode( const TileKey& key )
+{
+    osg::ref_ptr<Tile> tile;
+    bool               real;
+    bool               lodBlending;
+
+    _builder->createTile(key, false, tile, real, lodBlending);
+
+    osg::Group* root = new osg::Group();
+    addTile( tile, real, lodBlending, root );
+    
+    return root;
+}
+
+osg::Node*
 SerialKeyNodeFactory::createNode( const TileKey& key )
 {
     osg::ref_ptr<Tile> tiles[4];

@@ -36,6 +36,7 @@ public:
         TerrainNode*             terrain,
         UID                      engineUID );
 
+    osg::Node* createRootNode( const TileKey& key );
     osg::Node* createNode( const TileKey& key );
 
 protected:

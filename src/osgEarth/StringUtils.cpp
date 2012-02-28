@@ -379,6 +379,9 @@ namespace
 bool
 osgEarth::startsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
 {
+    if ( pattern.length() > ref.length() )
+        return false;
+
     return caseSensitive ?
         std::search(ref.begin(), ref.begin()+pattern.length(), pattern.begin(), pattern.end()) != ref.end() :
         std::search(ref.begin(), ref.begin()+pattern.length(), pattern.begin(), pattern.end(), ci_equal<std::string::value_type>(loc) ) != ref.end();
@@ -387,6 +390,9 @@ osgEarth::startsWith( const std::string& ref, const std::string& pattern, bool c
 bool
 osgEarth::endsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
 {
+    if ( pattern.length() > ref.length() )
+        return false;
+
     return caseSensitive ?
         std::search(ref.end()-pattern.length(), ref.end(), pattern.begin(), pattern.end()) != ref.end() :
         std::search(ref.end()-pattern.length(), ref.end(), pattern.begin(), pattern.end(), ci_equal<std::string::value_type>(loc) ) != ref.end();

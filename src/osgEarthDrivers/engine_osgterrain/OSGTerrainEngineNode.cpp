@@ -286,7 +286,7 @@ OSGTerrainEngineNode::refresh()
     {
         osg::Node* node;
         if ( _keyNodeFactory.valid() )
-            node = _keyNodeFactory->createNode( keys[i] );
+            node = _keyNodeFactory->createRootNode( keys[i] );
         else
             node = _tileFactory->createSubTiles( *_update_mapf, _terrain, keys[i], true );
 
@@ -406,7 +406,7 @@ OSGTerrainEngineNode::onMapInfoEstablished( const MapInfo& mapInfo )
     {
         osg::Node* node;
         if ( _keyNodeFactory.valid() )
-            node = _keyNodeFactory->createNode( keys[i] );
+            node = _keyNodeFactory->createRootNode( keys[i] );
         else
             node = _tileFactory->createSubTiles( *_update_mapf, _terrain, keys[i], true );
 

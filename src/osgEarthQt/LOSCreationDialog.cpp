@@ -470,51 +470,28 @@ void LOSCreationDialog::updatePoint(LOSPoint point)
   switch(point)
   {
     case P2P_START:
-      {
-        double alt = _ui.p1AltBox->value();
-        if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-        {
-          _p1Dragger->setHeightAboveTerrain(_ui.p1AltBox->value());
-          alt += _p1BaseAlt;
-        }
-        else
-        {
-          _p1Dragger->setHeightAboveTerrain(0.0);
-        }
-        updateDragger(_p1Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p1LonBox->value(), _ui.p1LatBox->value(), alt));
-      }
+      if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
+        _p1Dragger->setHeightAboveTerrain(_ui.p1AltBox->value());
+      else
+        _p1Dragger->setHeightAboveTerrain(0.0);
+
+      updateDragger(_p1Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p1LonBox->value(), _ui.p1LatBox->value(), _p1BaseAlt));
       break;
     case P2P_END:
-      {
-        double alt = _ui.p2AltBox->value();
-        if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
-        {
-          _p2Dragger->setHeightAboveTerrain(_ui.p2AltBox->value());
-          alt += _p2BaseAlt;
-        }
-        else
-        {
-          _p2Dragger->setHeightAboveTerrain(0.0);
-        }
+      if (_ui.p2pRelativeCheckBox->checkState() == Qt::Checked)
+        _p2Dragger->setHeightAboveTerrain(_ui.p2AltBox->value());
+      else
+        _p2Dragger->setHeightAboveTerrain(0.0);
 
-        updateDragger(_p2Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p2LonBox->value(), _ui.p2LatBox->value(), alt));
-      }
+      updateDragger(_p2Dragger, GeoPoint(_mapNode->getMapSRS(), _ui.p2LonBox->value(), _ui.p2LatBox->value(), _p2BaseAlt));
       break;
     case RADIAL_CENTER:
-      {
-        double alt = _ui.radAltBox->value();
-        if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
-        {
-          _radDragger->setHeightAboveTerrain(_ui.radAltBox->value());
-          alt += _radBaseAlt;
-        }
-        else
-        {
-          _radDragger->setHeightAboveTerrain(0.0);
-        }
+      if (_ui.radRelativeCheckBox->checkState() == Qt::Checked)
+        _radDragger->setHeightAboveTerrain(_ui.radAltBox->value());
+      else
+        _radDragger->setHeightAboveTerrain(0.0);
 
-        updateDragger(_radDragger, GeoPoint(_mapNode->getMapSRS(), _ui.radLonBox->value(), _ui.radLatBox->value(), alt));
-      }
+      updateDragger(_radDragger, GeoPoint(_mapNode->getMapSRS(), _ui.radLonBox->value(), _ui.radLatBox->value(), _radBaseAlt));
       break;
   }
 }

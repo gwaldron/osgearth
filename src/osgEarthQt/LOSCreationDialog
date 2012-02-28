@@ -58,7 +58,7 @@ namespace osgEarth { namespace QtGui
       _lineGeometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
 
       _lineVerts->push_back( osg::Vec3d(0.0, 0.0, 0.0) );
-      _lineVerts->push_back( osg::Vec3d(0.0, 0.0, _heightAboveTerrain * -1.0) );
+      _lineVerts->push_back( osg::Vec3d(0.0, 0.0, _heightAboveTerrain) );
       colors->push_back( _lineColor );
       colors->push_back( _lineColor );
 
@@ -73,7 +73,7 @@ namespace osgEarth { namespace QtGui
     void setHeightAboveTerrain( double hat )
     {
       _heightAboveTerrain = hat;
-      (*_lineVerts)[1].set(0.0, 0.0, _heightAboveTerrain * -1.0);
+      (*_lineVerts)[1].set(0.0, 0.0, _heightAboveTerrain);
       if (_lineGeometry.valid())
         _lineGeometry->dirtyDisplayList();
     }

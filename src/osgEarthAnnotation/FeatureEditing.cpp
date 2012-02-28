@@ -18,8 +18,9 @@
 */
 
 #include <osgEarthAnnotation/FeatureEditing>
-#include <osgEarthAnnotation/Draggers>
+#include <osgEarth/Draggers>
 
+using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
@@ -113,78 +114,26 @@ AddPointHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapt
 
 /****************************************************************/
 
-class MoveFeatureDraggerCallback : public osgManipulator::DraggerCallback
+class MoveFeatureDraggerCallback : public Dragger::PositionChangedCallback
 {
 public:
-    MoveFeatureDraggerCallback(Feature* feature, FeatureSource* source, const Map* map, int point):
+    MoveFeatureDraggerCallback(Feature* feature, FeatureSource* source, int point):
       _feature(feature),
       _source(source),
-      _map(map),
       _point(point)
       {}
 
-      osg::Vec2d getLocation(const osg::Matrixd& matrix)
+      virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          osg::Vec3d trans = matrix.getTrans();
-          double lat, lon, height;
-          _map->getProfile()->getSRS()->getEllipsoid()->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
-          return osg::Vec2d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat));
+          (*_feature->getGeometry())[_point] = osg::Vec3d(position.x(), position.y(), 0);
+          _source->dirty();
       }
 
-
-      virtual bool receive(const osgManipulator::MotionCommand& command)
-      {
-          switch (command.getStage())
-          {
-          case osgManipulator::MotionCommand::START:
-              {
-                  // Save the current matrix                  
-                  osg::Vec3d startLocation = (*_feature->getGeometry())[_point];
-                  double x, y, z;
-                  _map->getProfile()->getSRS()->getEllipsoid()->convertLatLongHeightToXYZ(osg::DegreesToRadians(startLocation.y()), osg::DegreesToRadians(startLocation.x()), 0, x, y, z);
-                  _startMotionMatrix = osg::Matrixd::translate(x, y, z);
-
-                  // Get the LocalToWorld and WorldToLocal matrix for this node.
-                  osg::NodePath nodePathToRoot;
-                  _localToWorld = osg::Matrixd::identity();
-                  _worldToLocal = osg::Matrixd::identity();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::MOVE:
-              {
-                  // Transform the command's motion matrix into local motion matrix.
-                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
-                      * command.getMotionMatrix()
-                      * command.getLocalToWorld() * _worldToLocal;
-
-                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
-                  osg::Vec2d location = getLocation( newMatrix );
-                  (*_feature->getGeometry())[_point] = osg::Vec3d(location.x(), location.y(), 0);
-                  _source->dirty();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::FINISH:
-              {
-                  return true;
-              }
-          case osgManipulator::MotionCommand::NONE:
-          default:
-              return false;
-          }
-      }
-
-
-      osg::ref_ptr<const Map>            _map;      
       osg::ref_ptr< Feature > _feature;
       osg::ref_ptr< FeatureSource > _source;
 
-      osg::Matrix _startMotionMatrix;
       int _point;
 
-      osg::Matrix _localToWorld;
-      osg::Matrix _worldToLocal;
 };
 
 /****************************************************************/
@@ -251,7 +200,8 @@ FeatureEditor::setSize( float size )
 void
 FeatureEditor::init()
 {
-    removeChildren( 0, this->getNumChildren() );
+    removeChildren( 0, getNumChildren() );
+
     //Create a dragger for each point
     for (unsigned int i = 0; i < _feature->getGeometry()->size(); i++)
     {
@@ -260,15 +210,11 @@ FeatureEditor::init()
         double lon = (*_feature->getGeometry())[i].x();
         _mapNode->getMap()->getProfile()->getSRS()->getEllipsoid()->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians(lat), osg::DegreesToRadians(lon), 0, matrix);    
 
-        IntersectingDragger* dragger = new IntersectingDragger;
+        SphereDragger* dragger = new SphereDragger( _mapNode );
         dragger->setColor( _color );
         dragger->setPickColor( _pickColor );
         dragger->setSize( _size );
-        dragger->setNode( _mapNode->getTerrainEngine() );
-        dragger->setupDefaultGeometry();
-        dragger->setMatrix(matrix);
-        dragger->setHandleEvents( true );        
-        dragger->addDraggerCallback(new MoveFeatureDraggerCallback(_feature.get(), _source.get(), _mapNode->getMap(), i) );
+        dragger->addPositionChangedCallback(new MoveFeatureDraggerCallback(_feature.get(), _source.get(), i) );
 
         addChild(dragger);        
     }

@@ -16,21 +16,20 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#ifndef OSGEARTHUTIL_PICKING_UTILS_H
-#define OSGEARTHUTIL_PICKING_UTILS_H
+#ifndef OSGEARTH_PICKING_UTILS_H
+#define OSGEARTH_PICKING_UTILS_H
 
-#include <osgEarthUtil/Common>
+#include <osgEarth/Common>
 #include <osgViewer/View>
 #include <osgUtil/PolytopeIntersector>
 
-namespace osgEarth { namespace Util
+namespace osgEarth
 {
-    using namespace osgEarth;
 
     /**
      * Utility for picking objects from the scene.
      */
-    class OSGEARTHUTIL_EXPORT Picker
+    class OSGEARTH_EXPORT Picker
     {
     public:
         typedef osgUtil::PolytopeIntersector::Intersection  Hit;
@@ -90,6 +89,6 @@ namespace osgEarth { namespace Util
         Limit                         _limit;
     };
 
-} } // namespace osgEarth::Util
+}
 
-#endif // OSGEARTHUTIL_PICKING_UTILS_H
+#endif // OSGEARTH_PICKING_UTILS_H

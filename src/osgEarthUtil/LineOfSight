@@ -22,7 +22,7 @@
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
 #include <osgEarth/GeoData>
-#include <osgEarthAnnotation/Draggers>
+#include <osgEarth/Draggers>
 
 namespace osgEarth { namespace Util
 {
@@ -466,8 +466,8 @@ namespace osgEarth { namespace Util
         void updateDraggers();
     private:
         osg::ref_ptr< LineOfSightNode > _los;
-        osgEarth::Annotation::IntersectingDragger* _startDragger;
-        osgEarth::Annotation::IntersectingDragger* _endDragger;
+        Dragger* _startDragger;
+        Dragger* _endDragger;
         osg::ref_ptr< ChangedCallback > _callback;
     };
 
@@ -493,7 +493,7 @@ namespace osgEarth { namespace Util
         void updateDraggers();
     private:
         osg::ref_ptr< RadialLineOfSightNode > _los;
-        osgEarth::Annotation::IntersectingDragger* _dragger;
+        Dragger* _dragger;
         osg::ref_ptr< ChangedCallback > _callback;
     };
 

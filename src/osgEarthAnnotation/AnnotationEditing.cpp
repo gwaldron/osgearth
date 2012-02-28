@@ -25,94 +25,32 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Symbology;
 
 /**********************************************************************/
-class DraggerCallback : public osgManipulator::DraggerCallback
+class DraggerCallback : public Dragger::PositionChangedCallback
 {
 public:
     DraggerCallback(LocalizedNode* node, LocalizedNodeEditor* editor):
       _node(node),
       _editor( editor )
-      {
-          _ellipsoid = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
+      {          
       }
 
-      void getLocation(const osg::Matrixd& matrix, GeoPoint& output)
+      virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          output.fromWorld(
-              _node->getMapNode()->getMapSRS(),
-              matrix.getTrans() );
+          _node->setPosition( position);                     
+          _editor->updateDraggers();
       }
 
-      virtual bool receive(const osgManipulator::MotionCommand& command)
-      {
-          switch (command.getStage())
-          {
-          case osgManipulator::MotionCommand::START:
-              {
-                  // Save the current matrix
-
-                  osg::Vec3d locationWorld;
-                  _node->getPosition().toWorld( locationWorld );
-
-                  _startMotionMatrix = osg::Matrixd::translate(locationWorld);
-
-                  // Get the LocalToWorld and WorldToLocal matrix for this node.
-                  osg::NodePath nodePathToRoot;
-                  _localToWorld = osg::Matrixd::identity();
-                  _worldToLocal = osg::Matrixd::identity();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::MOVE:
-              {
-                  // Transform the command's motion matrix into local motion matrix.
-                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
-                      * command.getMotionMatrix()
-                      * command.getLocalToWorld() * _worldToLocal;
-
-
-                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
-
-                  GeoPoint location;
-                  getLocation(newMatrix, location);
-                  //osg::Vec3d location = getLocation( newMatrix );
-
-                  _node->setPosition( location );                     
-                  _editor->updateDraggers();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::FINISH:
-              {
-                  return true;
-              }
-          case osgManipulator::MotionCommand::NONE:
-          default:
-              return false;
-          }
-      }
-
-
-      osg::ref_ptr<const osg::EllipsoidModel>            _ellipsoid;
       LocalizedNode* _node;
       LocalizedNodeEditor* _editor;
-
-      osg::Matrix _startMotionMatrix;
-
-      osg::Matrix _localToWorld;
-      osg::Matrix _worldToLocal;
 };
 
 /**********************************************************************/
 LocalizedNodeEditor::LocalizedNodeEditor(LocalizedNode* node):
 _node( node )
 {
-    _dragger  = new IntersectingDragger;
-    _dragger->setNode( _node->getMapNode() );    
-    _dragger->setHandleEvents( true );
-    _dragger->addDraggerCallback(new DraggerCallback(_node, this) );        
-    _dragger->setupDefaultGeometry();    
+    _dragger  = new SphereDragger( _node->getMapNode());  
+    _dragger->addPositionChangedCallback(new DraggerCallback(_node, this) );        
     addChild(_dragger);
-
     updateDraggers();
 }
 
@@ -123,99 +61,42 @@ LocalizedNodeEditor::~LocalizedNodeEditor()
 void
 LocalizedNodeEditor::updateDraggers()
 {
-    //const osg::EllipsoidModel* em = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
-
-    osg::Matrixd matrix;
-    _node->getPosition().createLocalToWorld(matrix);
-
-    //osg::Vec3d location = _node->getPosition();    
-    //em->computeLocalToWorldTransformFromLatLongHeight(osg::DegreesToRadians( location.y() ),  osg::DegreesToRadians(location.x()), location.z(), matrix);
-
-    _dragger->setMatrix(matrix);        
+    _dragger->setPosition( _node->getPosition(), false );
 }
 
 
 /**********************************************************************/
 
-class SetRadiusCallback : public osgManipulator::DraggerCallback
+class SetRadiusCallback : public Dragger::PositionChangedCallback
 {
 public:
-    SetRadiusCallback(CircleNode* node, osg::MatrixTransform* dragger, CircleNodeEditor* editor):
+    SetRadiusCallback(CircleNode* node, CircleNodeEditor* editor):
       _node(node),
-      _dragger( dragger ),
       _editor( editor )
       {
-          _ellipsoid = _node->getMapNode()->getMapSRS()->getEllipsoid();
       }
 
-      void getLocation(const osg::Matrixd& matrix, GeoPoint& output )
+      virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          output.fromWorld( 
-              _node->getMapNode()->getMapSRS(), 
-              matrix.getTrans() );
+          const osg::EllipsoidModel* em = _node->getMapNode()->getMapSRS()->getEllipsoid();
+
+          GeoPoint radiusLocation(position);
+          radiusLocation.makeGeographic();
+
+          //Figure out the distance between the center of the circle and this new location
+          GeoPoint center = _node->getPosition();
+          center.makeGeographic();
+
+          double distance = GeoMath::distance(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
+                                              osg::DegreesToRadians( radiusLocation.y() ), osg::DegreesToRadians( radiusLocation.x() ),
+                                              em->getRadiusEquator());
+          _node->setRadius( Linear(distance, Units::METERS ) );
+          //The position of the radius dragger has changed, so recompute the bearing
+          _editor->computeBearing();
       }
 
-      virtual bool receive(const osgManipulator::MotionCommand& command)
-      {
-          switch (command.getStage())
-          {
-          case osgManipulator::MotionCommand::START:
-              {
-                  // Save the current matrix
-                  _startMotionMatrix = _dragger->getMatrix();                  
-                  osg::NodePath nodePathToRoot;
-                  osgManipulator::computeNodePathToRoot(*_dragger,nodePathToRoot);
-                  _localToWorld = osg::computeLocalToWorld(nodePathToRoot);
-                  _worldToLocal = osg::Matrix::inverse(_localToWorld);
-                  return true;
-              }
-          case osgManipulator::MotionCommand::MOVE:
-              {
-                  // Transform the command's motion matrix into local motion matrix.
-                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
-                      * command.getMotionMatrix()
-                      * command.getLocalToWorld() * _worldToLocal;
-
-                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
-                  
-                  GeoPoint radiusLocation;
-                  getLocation( newMatrix, radiusLocation );
-                  radiusLocation.makeGeographic();
-
-                  //osg::Vec3d radiusLocation = getLocation( newMatrix );
-
-                  //Figure out the distance between the center of the circle and this new location
-                  GeoPoint center = _node->getPosition();
-                  center.makeGeographic();
-
-                  double distance = GeoMath::distance(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
-                                                      osg::DegreesToRadians( radiusLocation.y() ), osg::DegreesToRadians( radiusLocation.x() ),
-                                                      _ellipsoid->getRadiusEquator());
-                  _node->setRadius( Linear(distance, Units::METERS ) );
-                  //The position of the radius dragger has changed, so recompute the bearing
-                  _editor->computeBearing();
-                  return true;
-              }
-          case osgManipulator::MotionCommand::FINISH:
-              {
-                  return true;
-              }
-          case osgManipulator::MotionCommand::NONE:
-          default:
-              return false;
-          }
-      }
-
-
-      osg::ref_ptr<const osg::EllipsoidModel>            _ellipsoid;
       CircleNode* _node;
       CircleNodeEditor* _editor;
-
-      osg::MatrixTransform* _dragger;
-      osg::Matrix _startMotionMatrix;
-
-      osg::Matrix _localToWorld;
-      osg::Matrix _worldToLocal;
 };
 
 
@@ -225,12 +106,9 @@ LocalizedNodeEditor( node ),
 _radiusDragger( 0 ),
 _bearing( osg::DegreesToRadians( 90.0 ) )
 {
-    _radiusDragger  = new IntersectingDragger;
-    _radiusDragger->setNode( _node->getMapNode() );    
-    _radiusDragger->setHandleEvents( true );
-    _radiusDragger->addDraggerCallback(new SetRadiusCallback( node, _radiusDragger, this ) );        
-    _radiusDragger->setColor(osg::Vec4(0,0,1,0));
-    _radiusDragger->setupDefaultGeometry();    
+    _radiusDragger  = new SphereDragger(_node->getMapNode());
+    _radiusDragger->addPositionChangedCallback(new SetRadiusCallback( node,this ) );        
+    static_cast<SphereDragger*>(_radiusDragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_radiusDragger);
     updateDraggers();
 }
@@ -289,9 +167,7 @@ CircleNodeEditor::updateDraggers()
             location.z(),
             AltitudeMode::ABSOLUTE );
 
-        osg::Matrixd matrix;
-        draggerLocation.createLocalToWorld(matrix);
-        _radiusDragger->setMatrix(matrix);
+        _radiusDragger->setPosition( draggerLocation, false );
     }
 }
 
@@ -300,97 +176,48 @@ CircleNodeEditor::updateDraggers()
 /***************************************************************************************************/
 
 
-class SetEllipseRadiusCallback : public osgManipulator::DraggerCallback
+class SetEllipseRadiusCallback : public Dragger::PositionChangedCallback
 {
 public:
-    SetEllipseRadiusCallback(EllipseNode* node, osg::MatrixTransform* dragger, EllipseNodeEditor* editor, bool major):
+    SetEllipseRadiusCallback(EllipseNode* node, EllipseNodeEditor* editor, bool major):
       _node(node),
-      _dragger( dragger ),
       _editor( editor ),
       _major( major )
       {
-          _ellipsoid = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
       }
 
-      osg::Vec3d getLocation(const osg::Matrixd& matrix)
+      virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          osg::Vec3d trans = matrix.getTrans();
-          double lat, lon, height;
-          _ellipsoid->convertXYZToLatLongHeight(trans.x(), trans.y(), trans.z(), lat, lon, height);
-          return osg::Vec3d(osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), height);
-      }
+          const osg::EllipsoidModel* em = _node->getMapNode()->getMapSRS()->getEllipsoid();
 
-      virtual bool receive(const osgManipulator::MotionCommand& command)
-      {
-          switch (command.getStage())
-          {
-          case osgManipulator::MotionCommand::START:
-              {
-                  // Save the current matrix
-                  _startMotionMatrix = _dragger->getMatrix();                  
-                  osg::NodePath nodePathToRoot;
-                  osgManipulator::computeNodePathToRoot(*_dragger,nodePathToRoot);
-                  _localToWorld = osg::computeLocalToWorld(nodePathToRoot);
-                  _worldToLocal = osg::Matrix::inverse(_localToWorld);
-                  return true;
-              }
-          case osgManipulator::MotionCommand::MOVE:
-              {
-                  // Transform the command's motion matrix into local motion matrix.
-                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
-                      * command.getMotionMatrix()
-                      * command.getLocalToWorld() * _worldToLocal;
+          //Figure out the distance between the center of the circle and this new location
+          GeoPoint center = _node->getPosition();
+          double distance = GeoMath::distance(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
+                                              osg::DegreesToRadians( position.y() ), osg::DegreesToRadians( position.x() ),
+                                              em->getRadiusEquator());
 
-
-                  //Get the location of the radius
-                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
-                  osg::Vec3d radiusLocation = getLocation( newMatrix );
-
-                  //Figure out the distance between the center of the circle and this new location
-                  GeoPoint center = _node->getPosition();
-                  double distance = GeoMath::distance(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
-                                                      osg::DegreesToRadians( radiusLocation.y() ), osg::DegreesToRadians( radiusLocation.x() ),
-                                                      _ellipsoid->getRadiusEquator());
-
-                  double bearing = GeoMath::bearing(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
-                                                      osg::DegreesToRadians( radiusLocation.y() ), osg::DegreesToRadians( radiusLocation.x() ));
+          double bearing = GeoMath::bearing(osg::DegreesToRadians( center.y() ), osg::DegreesToRadians( center.x() ), 
+                                            osg::DegreesToRadians( position.y() ), osg::DegreesToRadians( position.x() ));
         
 
-                  //Compute the new angular rotation based on how they moved the point
-                  if (_major)
-                  {
-                      _node->setRotationAngle( Angular( -bearing, Units::RADIANS ) );
-                      _node->setRadiusMajor( Linear(distance, Units::METERS ) );
-                  }
-                  else
-                  {
-                      _node->setRotationAngle( Angular( osg::PI_2 - bearing, Units::RADIANS ) );
-                      _node->setRadiusMinor( Linear(distance, Units::METERS ) );
-                  }
-                  _editor->updateDraggers();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::FINISH:
-              {
-                  return true;
-              }
-          case osgManipulator::MotionCommand::NONE:
-          default:
-              return false;
+          //Compute the new angular rotation based on how they moved the point
+          if (_major)
+          {
+              _node->setRotationAngle( Angular( -bearing, Units::RADIANS ) );
+              _node->setRadiusMajor( Linear(distance, Units::METERS ) );
           }
-      }
+          else
+          {
+              _node->setRotationAngle( Angular( osg::PI_2 - bearing, Units::RADIANS ) );
+              _node->setRadiusMinor( Linear(distance, Units::METERS ) );
+          }
+          _editor->updateDraggers();
+     }
 
 
-      osg::ref_ptr<const osg::EllipsoidModel>            _ellipsoid;
+
       EllipseNode* _node;
       EllipseNodeEditor* _editor;
-
-      osg::MatrixTransform* _dragger;
-      osg::Matrix _startMotionMatrix;
-
-      osg::Matrix _localToWorld;
-      osg::Matrix _worldToLocal;
       bool _major;
 };
 
@@ -403,20 +230,14 @@ LocalizedNodeEditor( node ),
 _minorDragger( 0 ),
 _majorDragger( 0 )
 {
-    _minorDragger  = new IntersectingDragger;
-    _minorDragger->setNode( _node->getMapNode() );    
-    _minorDragger->setHandleEvents( true );
-    _minorDragger->addDraggerCallback(new SetEllipseRadiusCallback( node, _minorDragger, this, false ) );        
-    _minorDragger->setColor(osg::Vec4(0,0,1,0));
-    _minorDragger->setupDefaultGeometry();    
+    _minorDragger  = new SphereDragger( _node->getMapNode());
+    _minorDragger->addPositionChangedCallback(new SetEllipseRadiusCallback( node, this, false ) );        
+    static_cast<SphereDragger*>(_minorDragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_minorDragger);
 
-    _majorDragger  = new IntersectingDragger;
-    _majorDragger->setNode( _node->getMapNode() );    
-    _majorDragger->setHandleEvents( true );
-    _majorDragger->addDraggerCallback(new SetEllipseRadiusCallback( node, _majorDragger, this, true ) );        
-    _majorDragger->setColor(osg::Vec4(1,0,0,1));
-    _majorDragger->setupDefaultGeometry();    
+    _majorDragger  = new SphereDragger( _node->getMapNode());
+    _majorDragger->addPositionChangedCallback(new SetEllipseRadiusCallback( node, this, true ) );        
+    static_cast<SphereDragger*>(_majorDragger)->setColor(osg::Vec4(1,0,0,1));
     addChild(_majorDragger);
 
     updateDraggers();
@@ -446,94 +267,34 @@ EllipseNodeEditor::updateDraggers()
 
         double lat, lon;
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), osg::PI_2 - rotation, minorR, lat, lon, em->getRadiusEquator());        
-        osg::Matrixd matrix;
-        em->computeLocalToWorldTransformFromLatLongHeight(lat, lon, 0, matrix);
-        _minorDragger->setMatrix(matrix); 
+
+        _minorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), 0), false);
 
         GeoMath::destination(osg::DegreesToRadians( location.y() ), osg::DegreesToRadians( location.x() ), -rotation, majorR, lat, lon, em->getRadiusEquator());                
-        em->computeLocalToWorldTransformFromLatLongHeight(lat, lon, 0, matrix);
-        _majorDragger->setMatrix(matrix); 
+        _majorDragger->setPosition( GeoPoint(location.getSRS(), osg::RadiansToDegrees( lon ), osg::RadiansToDegrees( lat ), 0), false);
     }
 }
 
 
 /***************************************************************************************************/
-class SetCornerDragger : public osgManipulator::DraggerCallback
+class SetCornerDragger : public Dragger::PositionChangedCallback
 {
 public:
-    SetCornerDragger(RectangleNode* node, osg::MatrixTransform* dragger, RectangleNodeEditor* editor, RectangleNode::Corner corner):
+    SetCornerDragger(RectangleNode* node, RectangleNodeEditor* editor, RectangleNode::Corner corner):
       _node(node),
-      _dragger( dragger ),
       _editor( editor ),
       _corner( corner )
       {
-          _ellipsoid = _node->getMapNode()->getMap()->getProfile()->getSRS()->getEllipsoid();
       }
 
-      void getLocation(const osg::Matrixd& matrix, GeoPoint& output)
+      virtual void onPositionChanged(const Dragger* sender, const osgEarth::GeoPoint& position)
       {
-          output.fromWorld(
-              _node->getMapNode()->getMapSRS(),
-              matrix.getTrans() );
+          _node->setCorner( _corner, position );                     
+          _editor->updateDraggers();
       }
 
-      virtual bool receive(const osgManipulator::MotionCommand& command)
-      {
-          switch (command.getStage())
-          {
-          case osgManipulator::MotionCommand::START:
-              {
-                  // Save the current matrix
-                  osg::Vec3d locationWorld;
-                  _node->getCorner(_corner).toWorld( locationWorld );
-
-                  _startMotionMatrix = osg::Matrixd::translate(locationWorld);
-
-                  // Get the LocalToWorld and WorldToLocal matrix for this node.
-                  osg::NodePath nodePathToRoot;
-                  _localToWorld = osg::Matrixd::identity();
-                  _worldToLocal = osg::Matrixd::identity();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::MOVE:
-              {
-                  // Transform the command's motion matrix into local motion matrix.
-                  osg::Matrix localMotionMatrix = _localToWorld * command.getWorldToLocal()
-                      * command.getMotionMatrix()
-                      * command.getLocalToWorld() * _worldToLocal;
-
-
-                  osg::Matrixd newMatrix = localMotionMatrix * _startMotionMatrix;
-
-                  GeoPoint location;
-                  getLocation(newMatrix, location);                  
-
-                  _node->setCorner( _corner, location );                     
-                  _editor->updateDraggers();
-
-                  return true;
-              }
-          case osgManipulator::MotionCommand::FINISH:
-              {
-                  return true;
-              }
-          case osgManipulator::MotionCommand::NONE:
-          default:
-              return false;
-          }
-      }
-
-
-      osg::ref_ptr<const osg::EllipsoidModel>            _ellipsoid;
       RectangleNode* _node;
       RectangleNodeEditor* _editor;
-
-      osg::MatrixTransform* _dragger;
-      osg::Matrix _startMotionMatrix;
-
-      osg::Matrix _localToWorld;
-      osg::Matrix _worldToLocal;
       RectangleNode::Corner _corner;
 };
 
@@ -549,39 +310,27 @@ _urDragger( 0 ),
 _ulDragger( 0 )
 {
     //Lower left
-    _llDragger  = new IntersectingDragger;
-    _llDragger->setNode( _node->getMapNode() );    
-    _llDragger->setHandleEvents( true );
-    _llDragger->addDraggerCallback(new SetCornerDragger( node, _llDragger, this, RectangleNode::CORNER_LOWER_LEFT ) );        
-    _llDragger->setColor(osg::Vec4(0,0,1,0));
-    _llDragger->setupDefaultGeometry();    
+    _llDragger  = new SphereDragger(_node->getMapNode());
+    _llDragger->addPositionChangedCallback(new SetCornerDragger( node, this, RectangleNode::CORNER_LOWER_LEFT ) );        
+    static_cast<SphereDragger*>(_llDragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_llDragger);    
 
     //Lower right
-    _lrDragger  = new IntersectingDragger;
-    _lrDragger->setNode( _node->getMapNode() );    
-    _lrDragger->setHandleEvents( true );
-    _lrDragger->addDraggerCallback(new SetCornerDragger( node, _llDragger, this, RectangleNode::CORNER_LOWER_RIGHT ) );        
-    _lrDragger->setColor(osg::Vec4(0,0,1,0));
-    _lrDragger->setupDefaultGeometry();    
+    _lrDragger  = new SphereDragger(_node->getMapNode());
+    _lrDragger->addPositionChangedCallback(new SetCornerDragger( node, this, RectangleNode::CORNER_LOWER_RIGHT ) );        
+    static_cast<SphereDragger*>(_lrDragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_lrDragger);    
 
     //Upper right
-    _urDragger  = new IntersectingDragger;
-    _urDragger->setNode( _node->getMapNode() );    
-    _urDragger->setHandleEvents( true );
-    _urDragger->addDraggerCallback(new SetCornerDragger( node, _llDragger, this, RectangleNode::CORNER_UPPER_RIGHT ) );        
-    _urDragger->setColor(osg::Vec4(0,0,1,0));
-    _urDragger->setupDefaultGeometry();    
+    _urDragger  = new SphereDragger(_node->getMapNode());
+    _urDragger->addPositionChangedCallback(new SetCornerDragger( node, this, RectangleNode::CORNER_UPPER_RIGHT ) );        
+    static_cast<SphereDragger*>(_urDragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_urDragger);    
 
     //Upper left
-    _ulDragger  = new IntersectingDragger;
-    _ulDragger->setNode( _node->getMapNode() );    
-    _ulDragger->setHandleEvents( true );
-    _ulDragger->addDraggerCallback(new SetCornerDragger( node, _llDragger, this, RectangleNode::CORNER_UPPER_LEFT ) );        
-    _ulDragger->setColor(osg::Vec4(0,0,1,0));
-    _ulDragger->setupDefaultGeometry();    
+    _ulDragger  = new SphereDragger(_node->getMapNode());
+    _ulDragger->addPositionChangedCallback(new SetCornerDragger( node, this, RectangleNode::CORNER_UPPER_LEFT ) );        
+    static_cast<SphereDragger*>(_ulDragger)->setColor(osg::Vec4(0,0,1,0));
     addChild(_ulDragger);    
 
     updateDraggers();
@@ -600,15 +349,8 @@ RectangleNodeEditor::updateDraggers()
     
     osg::Matrixd matrix;
 
-    rect->getUpperLeft().createLocalToWorld(matrix);
-    _ulDragger->setMatrix(matrix);        
-
-    rect->getLowerLeft().createLocalToWorld(matrix);
-    _llDragger->setMatrix(matrix);        
-
-    rect->getUpperRight().createLocalToWorld(matrix);
-    _urDragger->setMatrix(matrix);        
-
-    rect->getLowerRight().createLocalToWorld(matrix);
-    _lrDragger->setMatrix(matrix);        
+    _ulDragger->setPosition( rect->getUpperLeft(), false);
+    _llDragger->setPosition( rect->getLowerLeft(), false);
+    _urDragger->setPosition( rect->getUpperRight(), false);    
+    _lrDragger->setPosition( rect->getLowerRight(), false);
 }

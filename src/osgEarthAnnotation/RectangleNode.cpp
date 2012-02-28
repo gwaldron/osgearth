@@ -127,28 +127,20 @@ RectangleNode::setUpperLeft( const GeoPoint& upperLeft )
     GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
     GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
 
-    if (osg::DegreesToRadians(upperLeft.x()) < eastLon) {
+    if (osg::DegreesToRadians(upperLeft.x()) < eastLon && osg::DegreesToRadians(upperLeft.y()) > southLat)
+    {
         westLon = osg::DegreesToRadians(upperLeft.x());
-    }
-    else {
-        eastLon = osg::DegreesToRadians(upperLeft.x());
-    }
-
-    if (osg::DegreesToRadians(upperLeft.y()) > southLat) {
         northLat = osg::DegreesToRadians(upperLeft.y());
-    }
-    else {
-        southLat = osg::DegreesToRadians(upperLeft.y());
-    }
 
-    double x = ( eastLon + westLon ) / 2.0;
-    double y = ( southLat + northLat) / 2.0;
-    setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
+        double x = ( eastLon + westLon ) / 2.0;
+        double y = ( southLat + northLat) / 2.0;
+        setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
 
-    double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
-    double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
-    setWidth(  Linear(width,  Units::METERS ));
-    setHeight( Linear(height, Units::METERS ));
+        double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
+        double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
+        setWidth(  Linear(width,  Units::METERS ));
+        setHeight( Linear(height, Units::METERS ));
+    }
 }
 
 GeoPoint
@@ -181,28 +173,20 @@ RectangleNode::setUpperRight( const GeoPoint& upperRight )
     GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
     GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
 
-    if (osg::DegreesToRadians(upperRight.x()) > westLon) {
+    if (osg::DegreesToRadians(upperRight.x()) > westLon && osg::DegreesToRadians(upperRight.y()) > southLat)
+    {
         eastLon = osg::DegreesToRadians(upperRight.x());
-    }
-    else {
-        westLon = osg::DegreesToRadians(upperRight.x());
-    }
-
-    if (osg::DegreesToRadians(upperRight.y()) > southLat) {
         northLat = osg::DegreesToRadians(upperRight.y());
-    }
-    else {
-        southLat = osg::DegreesToRadians(upperRight.y());
-    }
 
-    double x = ( eastLon + westLon ) / 2.0;
-    double y = ( southLat + northLat) / 2.0;
-    setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
+        double x = ( eastLon + westLon ) / 2.0;
+        double y = ( southLat + northLat) / 2.0;
+        setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
 
-    double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
-    double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
-    setWidth(  Linear(width,  Units::METERS ));
-    setHeight( Linear(height, Units::METERS ));
+        double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
+        double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
+        setWidth(  Linear(width,  Units::METERS ));
+        setHeight( Linear(height, Units::METERS ));
+    }
 }
 
 GeoPoint
@@ -235,28 +219,20 @@ RectangleNode::setLowerLeft( const GeoPoint& lowerLeft )
     GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
     GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
 
-    if (osg::DegreesToRadians(lowerLeft.x()) < eastLon) {
-        westLon = osg::DegreesToRadians(lowerLeft.x());
-    }
-    else {
-        eastLon = osg::DegreesToRadians(lowerLeft.x());
-    }
-
-    if (osg::DegreesToRadians(lowerLeft.y()) < northLat) {
+    if (osg::DegreesToRadians(lowerLeft.x()) < eastLon && osg::DegreesToRadians(lowerLeft.y()) < northLat)
+    {
+        westLon = osg::DegreesToRadians(lowerLeft.x());  
         southLat = osg::DegreesToRadians(lowerLeft.y());
-    }
-    else {
-        northLat = osg::DegreesToRadians(lowerLeft.y());
-    }
 
-    double x = ( eastLon + westLon ) / 2.0;
-    double y = ( southLat + northLat) / 2.0;
-    setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
+        double x = ( eastLon + westLon ) / 2.0;
+        double y = ( southLat + northLat) / 2.0;
+        setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
 
-    double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
-    double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
-    setWidth(  Linear(width,  Units::METERS ));
-    setHeight( Linear(height, Units::METERS ));
+        double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
+        double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
+        setWidth(  Linear(width,  Units::METERS ));
+        setHeight( Linear(height, Units::METERS ));
+    }
 }
 
 GeoPoint
@@ -289,28 +265,19 @@ RectangleNode::setLowerRight( const GeoPoint& lowerRight )
     GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
     GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
     
-    if (osg::DegreesToRadians(lowerRight.x()) < westLon) {
-        westLon = osg::DegreesToRadians(lowerRight.x());
-    }
-    else {
+    if (osg::DegreesToRadians(lowerRight.x()) > westLon && osg::DegreesToRadians(lowerRight.y()) < northLat) {
         eastLon = osg::DegreesToRadians(lowerRight.x());
-    }
-
-    if (osg::DegreesToRadians(lowerRight.y()) > northLat) {
-        northLat = osg::DegreesToRadians(lowerRight.y());
-    }
-    else {
         southLat = osg::DegreesToRadians(lowerRight.y());
+
+        double x = ( eastLon + westLon ) / 2.0;
+        double y = ( southLat + northLat) / 2.0;
+        setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
+
+        double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
+        double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
+        setWidth(  Linear(width,  Units::METERS ));
+        setHeight( Linear(height, Units::METERS ));
     }
-
-    double x = ( eastLon + westLon ) / 2.0;
-    double y = ( southLat + northLat) / 2.0;
-    setPosition(GeoPoint( center.getSRS(), osg::RadiansToDegrees(x), osg::RadiansToDegrees(y)));
-
-    double width =  GeoMath::distance( y, westLon, y, eastLon, earthRadius);
-    double height =  GeoMath::distance( southLat, x, northLat, x, earthRadius);
-    setWidth(  Linear(width,  Units::METERS ));
-    setHeight( Linear(height, Units::METERS ));
 }
 
 GeoPoint

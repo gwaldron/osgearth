@@ -21,6 +21,7 @@
 
 #include <osgEarthUtil/Common>
 #include <osgEarth/MapNode>
+#include <osgSim/ElevationSlice>
 
 namespace osgEarth { namespace Util {
 
@@ -72,21 +73,11 @@ namespace osgEarth { namespace Util {
          * Gets the number of elevation measurements in this TerrainProfile
          */
         unsigned int getNumElevations() const;
-
-        /**
-         * Sets the spacing between measurements, in meters, of this TerrainProfile
-         */
-        void setSpacing( double spacing );
-
-        /**
-         * Gets the spacing, in meters, of this TerrainProfile
-         */
-        double getSpacing() const;
-
+        
         /**
          * Add an elevation measurement to this TerrainProfile
          */
-        void addElevation( double elevation );
+        void addElevation( double distance, double elevation );
 
         /**
          * Clears all measurements from this TerrainProfile
@@ -96,8 +87,9 @@ namespace osgEarth { namespace Util {
 
     private:
         double _spacing;
-        typedef std::vector< double > ElevationList;
-        ElevationList _elevations;
+        typedef std::pair<double,double> DistanceHeight;
+        typedef std::vector<DistanceHeight> DistanceHeightList;
+        DistanceHeightList                      _elevations;
     };
 
 
@@ -148,16 +140,6 @@ namespace osgEarth { namespace Util {
         const TerrainProfile& getProfile() const;
 
         /**
-         * Gets the number of samples in the TerrainProfile
-         */
-        unsigned int getNumSamples() const;
-
-        /**
-         * Sets the number of samples to compute in the terrain profile
-         */
-        void setNumSamples( unsigned int numSamples);
-
-        /**
          * Gets the start point of the terrain profile
          */
         const GeoPoint& getStart() const;
@@ -201,7 +183,6 @@ namespace osgEarth { namespace Util {
     private:
         osgEarth::GeoPoint _start;
         osgEarth::GeoPoint _end;
-        unsigned int _numSamples;
         TerrainProfile _profile;
         osg::ref_ptr< osgEarth::MapNode > _mapNode;
         ChangedCallbackList _changedCallbacks;

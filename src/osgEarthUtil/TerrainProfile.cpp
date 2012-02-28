@@ -40,41 +40,30 @@ TerrainProfile::clear()
     _elevations.clear();
 }
 
-double
-TerrainProfile::getSpacing() const
-{
-    return _spacing;
-}
-
 void
-TerrainProfile::setSpacing( double spacing )
+TerrainProfile::addElevation( double distance, double elevation )
 {
-    _spacing = spacing;
-}
-
-void
-TerrainProfile::addElevation( double elevation )
-{
-    _elevations.push_back( elevation );
+    _elevations.push_back( DistanceHeight(distance, elevation));
 }
 
 double
 TerrainProfile::getElevation( int i ) const
 {
-    if (i >= 0 && i < static_cast<int>(_elevations.size())) return _elevations[i];
-    return DBL_MAX;
+    if (i >= 0 && i < static_cast<int>(_elevations.size())) return _elevations[i].second;
+    return DBL_MAX;    
 }
 
 double
 TerrainProfile::getDistance( int i ) const
 {
-    return (double)i * _spacing;
+    if (i >= 0 && i < static_cast<int>(_elevations.size())) return _elevations[i].first;
+    return DBL_MAX;    
 }
 
 double
 TerrainProfile::getTotalDistance() const
 {
-    return getDistance( getNumElevations()-1 );
+    return _elevations[_elevations.size()-1].first;
 }
 
 unsigned int
@@ -91,8 +80,8 @@ TerrainProfile::getElevationRanges(double &min, double &max )
 
     for (unsigned int i = 0; i < _elevations.size(); i++)
     {
-        if (_elevations[i] < min) min = _elevations[i];
-        if (_elevations[i] > max) max = _elevations[i];
+        if (_elevations[i].second < min) min = _elevations[i].second;
+        if (_elevations[i].second > max) max = _elevations[i].second;
     }
 }
 
@@ -100,8 +89,7 @@ TerrainProfile::getElevationRanges(double &min, double &max )
 TerrainProfileCalculator::TerrainProfileCalculator(MapNode* mapNode, const GeoPoint& start, const GeoPoint& end):
 _mapNode( mapNode ),
 _start( start),
-_end( end ),
-_numSamples( 100 )
+_end( end )
 {        
     _mapNode->getTerrain()->addTerrainCallback( this );        
     recompute();
@@ -129,20 +117,6 @@ void TerrainProfileCalculator::removeChangedCallback( ChangedCallback* callback 
 const TerrainProfile& TerrainProfileCalculator::getProfile() const
 {
     return _profile;
-}
-
-unsigned int TerrainProfileCalculator::getNumSamples() const
-{
-    return _numSamples;
-}
-
-void TerrainProfileCalculator::setNumSamples( unsigned int numSamples)
-{
-    if (_numSamples != numSamples)
-    {
-        _numSamples = numSamples;
-        recompute();
-    }
 }
 
 const GeoPoint& TerrainProfileCalculator::getStart() const
@@ -179,7 +153,20 @@ void TerrainProfileCalculator::onTileAdded(const osgEarth::TileKey& tileKey, osg
 
 void TerrainProfileCalculator::recompute()
 {
-    computeTerrainProfile( _mapNode.get(), _start, _end, _numSamples, _profile);
+    //computeTerrainProfile( _mapNode.get(), _start, _end, _numSamples, _profile);
+    osg::Vec3d start, end;
+    _start.toWorld( start );
+    _end.toWorld( end );
+    osgSim::ElevationSlice slice;
+    slice.setStartPoint( start );
+    slice.setEndPoint( end );
+    slice.setDatabaseCacheReadCallback( 0 );
+    slice.computeIntersections( _mapNode->getTerrainEngine());
+    _profile.clear();
+    for (unsigned int i = 0; i < slice.getDistanceHeightIntersections().size(); i++)
+    {
+        _profile.addElevation( slice.getDistanceHeightIntersections()[i].first, slice.getDistanceHeightIntersections()[i].second);
+    }
     for( ChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
     {
         i->get()->onChanged(this);
@@ -202,8 +189,7 @@ void TerrainProfileCalculator::computeTerrainProfile( osgEarth::MapNode* mapNode
     double distance = osgEarth::GeoMath::distance(startYRad, startXRad, endYRad, endXRad );
 
     double spacing = distance / ((double)numSamples - 1.0);
-
-    profile.setSpacing( spacing );
+    
     profile.clear();
 
     for (unsigned int i = 0; i < numSamples; i++)
@@ -213,6 +199,6 @@ void TerrainProfileCalculator::computeTerrainProfile( osgEarth::MapNode* mapNode
         GeoMath::interpolate( startYRad, startXRad, endYRad, endXRad, t, lat, lon );
         double hamsl;
         mapNode->getTerrain()->getHeight( osg::RadiansToDegrees(lon), osg::RadiansToDegrees(lat), &hamsl );
-        profile.addElevation( hamsl );
+        profile.addElevation( spacing * (double)i, hamsl );
     }
 }

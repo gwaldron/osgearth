@@ -26,6 +26,7 @@ http://readymap.org
             <lighting>false</lighting>
             <sample_ratio>0.125</sample_ratio>
         </terrain>
+        <!-- <cache_policy usage="cache_only"/> -->
     </options>
     
     <external>

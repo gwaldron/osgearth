@@ -20,6 +20,7 @@
 #define OSGEARTH_ANNO_ORTHO_NODE_H 1
 
 #include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarthAnnotation/Decluttering>
 #include <osgEarth/SpatialReference>
 #include <osg/AutoTransform>
 #include <osg/MatrixTransform>
@@ -32,7 +33,7 @@ namespace osgEarth { namespace Annotation
      * Base class for an annotation node that it drawn in screen-space
      * (as an orthographic overlay)
      */
-    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode
+    class OSGEARTHANNO_EXPORT OrthoNode : public PositionedAnnotationNode, public SupportsDecluttering
     {
     public:
         META_AnnotationNode( osgEarthAnnotation, OrthoNode );

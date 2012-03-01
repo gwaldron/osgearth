@@ -18,9 +18,16 @@
 */
 
 #include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
+
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/MeshClamper>
+
 #include <osgEarthSymbology/AltitudeSymbol>
+
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
@@ -87,6 +94,13 @@ FeatureNode::init()
         osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         if ( node )
         {
+            if (_style.isSet() && 
+                AnnotationUtils::styleRequiresAlphaBlending(*_style) &&
+                _style->get<ExtrusionSymbol>() )
+            {
+                node = AnnotationUtils::installTwoPassAlpha( node );
+            }
+
             _attachPoint = new osg::Group();
             _attachPoint->addChild( node );
 
@@ -163,4 +177,56 @@ FeatureNode::clampMesh( osg::Node* terrainModel )
     this->accept( clamper );
 
     this->dirtyBound();
+}
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
+
+
+FeatureNode::FeatureNode(MapNode*      mapNode,
+                         const Config& conf) :
+AnnotationNode( mapNode )
+{
+    osg::ref_ptr<const SpatialReference> srs;
+    osg::ref_ptr<Geometry> geom;
+
+    if ( conf.hasChild("geometry") )
+    {
+        Config geomconf = conf.child("geometry");
+        srs = SpatialReference::create( geomconf.value("srs"), geomconf.value("vdatum") );
+        geom = OgrUtils::createGeometryFromWKT( geomconf.value() );
+    }
+
+    conf.getObjIfSet( "style", _style );
+
+    if ( srs.valid() && geom.valid() )
+    {
+        _draped = conf.value<bool>("draped",false);
+        setFeature( new Feature(geom.get(), srs.get(), *_style) );
+    }
+}
+
+Config
+FeatureNode::getConfig() const
+{
+    Config conf("feature");
+
+    if ( _feature.valid() && _feature->getGeometry() )
+    {
+        std::string wkt = geometryToWkt( _feature->getGeometry() );
+        std::string srs = _feature->getSRS() ? _feature->getSRS()->getHorizInitString() : "";
+        std::string vsrs = _feature->getSRS() ? _feature->getSRS()->getVertInitString() : "";
+
+        Config geomConf("geometry");
+        geomConf.value() = wkt;
+        if ( !srs.empty() ) geomConf.set("srs", srs);
+        if ( !vsrs.empty() ) geomConf.set("vdatum", vsrs);
+        conf.add(geomConf);
+
+        conf.addObjIfSet( "style", _style );
+    }
+
+    return conf;
 }

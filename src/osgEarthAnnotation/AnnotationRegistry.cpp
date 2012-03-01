@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/Decluttering>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -52,8 +53,10 @@ AnnotationRegistry::create( MapNode* mapNode, const Config& conf, osg::Group*& r
 {
     bool createdAtLeastOne = false;
 
+    bool declutter = conf.value<bool>("declutter",false) == true;
+
     // first try to parse the top-level config as an annotation:
-    AnnotationNode* top = createOne(mapNode, conf);
+    AnnotationNode* top = createOne(mapNode, conf, declutter);
     if ( top )
     {
         if ( results == 0L )
@@ -67,7 +70,7 @@ AnnotationRegistry::create( MapNode* mapNode, const Config& conf, osg::Group*& r
     {
         for( ConfigSet::const_iterator i = conf.children().begin(); i != conf.children().end(); ++i )
         {
-            AnnotationNode* anno = createOne( mapNode, *i );
+            AnnotationNode* anno = createOne( mapNode, *i, declutter );
             if ( anno )
             {
                 if ( results == 0L )
@@ -84,7 +87,7 @@ AnnotationRegistry::create( MapNode* mapNode, const Config& conf, osg::Group*& r
 
 
 AnnotationNode*
-AnnotationRegistry::createOne( MapNode* mapNode, const Config& conf ) const
+AnnotationRegistry::createOne( MapNode* mapNode, const Config& conf, bool declutterOrthos ) const
 {
     FactoryMap::const_iterator f = _factories.find( conf.key() );
     if ( f != _factories.end() && f->second != 0L )
@@ -92,6 +95,11 @@ AnnotationRegistry::createOne( MapNode* mapNode, const Config& conf ) const
         AnnotationNode* anno = f->second->create(mapNode, conf);
         if ( anno )
         {
+            if ( declutterOrthos && dynamic_cast<SupportsDecluttering*>(anno) )
+            {
+                Decluttering::setEnabled( anno->getOrCreateStateSet(), true );
+            }
+
             return anno;
         }
     }

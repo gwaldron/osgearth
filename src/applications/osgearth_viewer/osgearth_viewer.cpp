@@ -415,7 +415,6 @@ main(int argc, char** argv)
             {
                 root->addChild( annotations );
             }
-            Decluttering::setEnabled( annotations->getOrCreateStateSet(), true );
         }
 
         // Configure the de-cluttering engine for labels and annotations:

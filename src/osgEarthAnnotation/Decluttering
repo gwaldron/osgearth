@@ -35,6 +35,15 @@
 namespace osgEarth { namespace Annotation 
 {
     /**
+     * Marker class hinting that an implementation supports the decluttering
+     * render bin.
+     */
+    class SupportsDecluttering
+    {
+        //nop
+    };
+
+    /**
      * Custom functor that compares two RenderLeaf's and returns TRUE if the left-hand one
      * is higher priority, otherwise FALSE. You can call setDeclutterPriorityFunctor()
      * to set a custom priority-sorting functor.

@@ -120,6 +120,55 @@ namespace
 
 // ---------------------------------------------------------------------------
 
+float
+UVec2f::x( const osg::Vec2f& size ) const
+{
+    if ( _xunits == UNITS_PIXELS )
+        return _v[0];
+    else if ( _xunits == UNITS_FRACTION )
+        return _v[0] * size.x();
+    else // UNITS_INSET_PIXELS
+        return size.x() - _v[0] - 1.0f;
+}
+
+float
+UVec2f::x( const ControlContext& cx ) const
+{
+    return cx._vp ? x( osg::Vec2f(cx._vp->width(), cx._vp->height()) ) : _v[0];
+}
+
+float
+UVec2f::y( const osg::Vec2f& size ) const
+{
+    if ( _yunits == UNITS_PIXELS )
+        return _v[1];
+    else if ( _yunits == UNITS_FRACTION )
+        return _v[1] * size.y();
+    else // UNITS_INSET_PIXELS
+        return size.y() - _v[1] - 1.0f;
+}
+
+float
+UVec2f::y( const ControlContext& cx ) const
+{
+    return cx._vp ? y( osg::Vec2f(cx._vp->width(), cx._vp->height()) ) : _v[1];
+}
+
+UVec2f
+UVec2f::asPixels( const osg::Vec2f& size ) const
+{
+    return UVec2f( x(size), y(size), UNITS_PIXELS, UNITS_PIXELS );
+}
+
+UVec2f
+UVec2f::asPixels( const ControlContext& cx ) const
+{
+    return UVec2f( x(cx), y(cx), UNITS_PIXELS, UNITS_PIXELS );
+}
+
+
+// ---------------------------------------------------------------------------
+
 Control::Control()
 {
     init();

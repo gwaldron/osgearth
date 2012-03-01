@@ -27,6 +27,7 @@
 #include <osg/BlendFunc>
 #include <osg/CullFace>
 #include <osg/MatrixTransform>
+#include <osg/LightModel>
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -636,9 +637,14 @@ AnnotationUtils::installTwoPassAlpha(osg::Node* node)
   g1->getOrCreateStateSet()->setRenderingHint( osg::StateSet::TRANSPARENT_BIN );
   g1->getOrCreateStateSet()->setAttributeAndModes( new osg::BlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA), 1);
 
+  // for semi-transpareny items, we want the lighting to "shine through"
+  osg::LightModel* lm = new osg::LightModel();
+  lm->setTwoSided( true );
+  g1->getOrCreateStateSet()->setAttributeAndModes( lm );
+
   // next start a traversal order bin so we draw in the proper order:
   osg::Group* g2 = new osg::Group();
-  g2->getOrCreateStateSet()->setBinName("TraversalOrderBin");
+  g2->getOrCreateStateSet()->setRenderBinDetails(0, "TraversalOrderBin");
   g1->addChild( g2 );
 
   // next, create a group for the first pass (backfaces only):

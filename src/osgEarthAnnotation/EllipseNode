@@ -60,7 +60,6 @@ namespace osgEarth { namespace Annotation
             bool                    draped      =true,
             unsigned                numSegments =0 );
 
-
         /**
          * Gets the major radius
          */
@@ -117,6 +116,11 @@ namespace osgEarth { namespace Annotation
          * Sets the style
          */
         void setStyle( const Style& style );
+
+    public:
+
+        EllipseNode(MapNode* mapNode, const Config& conf);
+        virtual Config getConfig() const;
 
 
     private:

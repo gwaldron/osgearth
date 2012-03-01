@@ -17,6 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 #include <osgEarthAnnotation/EllipseNode>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarth/DrapeableNode>
@@ -171,4 +172,49 @@ EllipseNode::rebuild()
     }
 
     setDecoration( currentDecoration );
+}
+
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( ellipse, osgEarth::Annotation::EllipseNode );
+
+
+EllipseNode::EllipseNode(MapNode*      mapNode,
+                         const Config& conf ) :
+LocalizedNode( mapNode ),
+_draped      ( false ),
+_numSegments ( 0 )
+{
+    conf.getObjIfSet( "radius_major", _radiusMajor );
+    conf.getObjIfSet( "radius_minor", _radiusMinor );
+    conf.getObjIfSet( "rotation", _rotationAngle );
+    conf.getObjIfSet( "style",  _style );
+    conf.getIfSet   ( "draped", _draped );
+    conf.getIfSet   ( "num_segments", _numSegments );
+
+    if ( conf.hasChild("position") )
+        setPosition( GeoPoint(conf.child("position")) );
+
+    rebuild();
+}
+
+Config
+EllipseNode::getConfig() const
+{
+    Config conf( "ellipse" );
+    conf.addObj( "radius_major", _radiusMajor );
+    conf.addObj( "radius_minor", _radiusMinor );
+    conf.addObj( "rotation", _rotationAngle );
+    conf.addObj( "style", _style );
+
+    if ( _numSegments != 0 )
+        conf.add( "num_segments", _numSegments );
+    if ( _draped != false )
+        conf.add( "draped", _draped );
+
+    conf.addObj( "position", getPosition() );
+
+    return conf;
 }

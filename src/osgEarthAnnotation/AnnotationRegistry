@@ -52,7 +52,7 @@ namespace osgEarth { namespace Annotation
         typedef std::map<std::string, class AnnotationFactory*> FactoryMap;
         FactoryMap _factories;
 
-        AnnotationNode* createOne( MapNode* mapNode, const Config& conf ) const;
+        AnnotationNode* createOne( MapNode* mapNode, const Config& conf, bool declutter =false ) const;
     };
 
     // Macro used to register new annotation types.

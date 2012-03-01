@@ -81,6 +81,7 @@ namespace osgEarth { namespace Symbology
                 "unknown";
         }
 
+        /** Creates a geometry from a vector array */
         static Geometry* create( Type type, const Vec3dVector* toCopy );
 
         // true if osgEarth is compiled for buffering

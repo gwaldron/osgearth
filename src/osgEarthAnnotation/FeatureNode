@@ -54,6 +54,11 @@ namespace osgEarth { namespace Annotation
 
         virtual osg::Group* getAttachPoint();
 
+    public:
+
+        FeatureNode(MapNode* mapNode, const Config& conf );
+        virtual Config getConfig() const;
+
     protected:
         osg::ref_ptr<Feature>       _feature;
         optional<Style>             _style;

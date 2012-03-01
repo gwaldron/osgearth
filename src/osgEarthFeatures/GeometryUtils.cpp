@@ -17,8 +17,8 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/OgrUtils>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;

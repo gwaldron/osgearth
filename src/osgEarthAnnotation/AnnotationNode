@@ -31,10 +31,12 @@
     META_Node(library,type); \
     virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
 
+// forward decs
 namespace osgEarth
 {
     class MapNode;
 }
+
 
 namespace osgEarth { namespace Annotation
 {	
@@ -67,10 +69,14 @@ namespace osgEarth { namespace Annotation
         virtual osg::Group* getAttachPoint();
 
         /**
-         Gets the MapNode that this AnnotationNode is attached to
+         * Gets the MapNode that this AnnotationNode is attached to
          */
         osgEarth::MapNode* getMapNode() const;
 
+        /**
+         * Serialized this annotation node so you can re-create it later
+         */
+        virtual Config getConfig() const { return Config(); }
 
 
     public: // decoration support
@@ -142,11 +148,6 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setDepthAdjustment( bool value );
 
-        /**
-         * Clamps a point to the terrain.
-         */
-        //void clamp( osg::Vec3d& mapPos ) const;
-
         // utility funcion to make a geopoint absolute height
         bool makeAbsolute( GeoPoint& mapPoint, osg::Node* patch =0L ) const;
 
@@ -162,7 +163,6 @@ namespace osgEarth { namespace Annotation
         virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain ) { }
 
         virtual ~AnnotationNode();
-
     };
 
     /**

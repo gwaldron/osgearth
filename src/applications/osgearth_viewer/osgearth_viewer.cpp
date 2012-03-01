@@ -30,6 +30,7 @@
 
 #include <osgEarthSymbology/Color>
 
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/Decluttering>
 
@@ -404,6 +405,19 @@ main(int argc, char** argv)
         }
         viewer.addEventHandler( new ViewpointHandler(viewpoints) );
 
+        // read in annotations, if any
+        Config annoConf = externals.child("annotations");
+        if ( !annoConf.empty() )
+        {
+            osg::Group* annotations = 0L;
+            AnnotationRegistry::instance()->create( mapNode, annoConf, annotations );
+            if ( annotations )
+            {
+                root->addChild( annotations );
+            }
+            Decluttering::setEnabled( annotations->getOrCreateStateSet(), true );
+        }
+
         // Configure the de-cluttering engine for labels and annotations:
         const Config& declutterConf = externals.child("decluttering");
         if ( !declutterConf.empty() )
@@ -423,7 +437,7 @@ main(int argc, char** argv)
         {
             KMLOptions kmlo;
             kmlo.declutter() = true;
-            kmlo.defaultIconImage() = URI("http://www.osgearth.org/chrome/site/pushpin_yellow.png").getImage();
+            kmlo.defaultIconImage() = URI("http://demo.pelicanmapping.com/icons/pushpin_yellow.png").getImage();
 
             osg::Node* kml = KML::load( URI(kmlFile), mapNode, kmlo );
             if ( kml )

@@ -26,6 +26,7 @@
 #include <gdal_priv.h>
 #include <ogr_api.h>
 #include <stdlib.h>
+#include <locale>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -52,17 +53,6 @@ _defaultFont     ( 0L )
     // set up GDAL and OGR.
     OGRRegisterAll();
     GDALAllRegister();
-
-#if 0
-    // add built-in mime-type extension mappings
-    for( int i=0; ; i+=2 )
-    {
-        std::string mimeType = builtinMimeTypeExtMappings[i];
-        if ( mimeType.length() == 0 )
-            break;
-        addMimeTypeExtensionMapping( mimeType, builtinMimeTypeExtMappings[i+1] );
-    }
-#endif
 
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
@@ -391,6 +381,27 @@ Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
     }
 
     return newOptions;
+}
+
+void
+Registry::registerUnits( const Units* units )
+{
+    _unitsVector.push_back(units);
+}
+
+const Units*
+Registry::getUnits(const std::string& name) const
+{
+    std::string lower = toLower(name);
+    for( UnitsVector::const_iterator i = _unitsVector.begin(); i != _unitsVector.end(); ++i )
+    {
+        if (toLower((*i)->getName()) == lower ||
+            toLower((*i)->getAbbr()) == lower)
+        {
+            return *i;
+        }
+    }
+    return 0L;
 }
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin

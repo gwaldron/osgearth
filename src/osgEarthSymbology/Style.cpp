@@ -126,6 +126,12 @@ Style::mergeConfig( const Config& conf )
     if ( conf.value( "type" ) == "text/css" )
     {
         _origData = conf.value();
+        
+        // just take the first block.
+        ConfigSet blocks;
+        CssUtils::readConfig( _origData, conf.referrer(), blocks );
+        if ( blocks.size() > 0 )
+            SLDReader::readStyleFromCSSParams( blocks.front(), *this );
     }
     else
     {
@@ -191,9 +197,9 @@ Style::getConfig( bool keepOrigType ) const
         Config symbolsConf( "symbols" );
         for( SymbolList::const_iterator i = _symbols.begin(); i != _symbols.end(); ++i )
         {
-            symbolsConf.addChild( i->get()->getConfig() );
+            symbolsConf.add( i->get()->getConfig() );
         }
-        conf.addChild( symbolsConf );
+        conf.add( symbolsConf );
     }
 
     return conf;
@@ -348,38 +354,6 @@ StyleSheet::getResourceLibrary( const std::string& name, const osgDB::Options* d
         return 0L;
 }
 
-#if 0
-    {
-        Threading::ScopedReadLock shared( const_cast<StyleSheet*>(this)->_resLibsMutex );
-        ResourceLibraries::const_iterator i = _resLibs.find( name );
-        if ( i != _resLibs.end() )
-            return i->second.get();
-    }
-
-    { 
-        // break the const and take an exclusive lock
-        StyleSheet* nc = const_cast<StyleSheet*>(this);
-        Threading::ScopedWriteLock exclusive( nc->_resLibsMutex );
-
-        // first, double check:
-        ResourceLibraries::iterator i = nc->_resLibs.find( name );
-        if ( i != _resLibs.end() )
-            return i->second.get();
-
-        // still not there, create it
-        _resLibs[name] = new ResourceLibrary( uri );
-        uri.
-        const URI& uri = i->second.first;
-        ResourceLibrary* reslib = ResourceLibrary::create( uri, dbOptions );
-        if ( !reslib )
-            return 0L;
-
-        i->second.second = reslib;
-        return reslib;
-    }
-}
-#endif
-
 Config
 StyleSheet::getConfig() const
 {
@@ -437,27 +411,6 @@ StyleSheet::mergeConfig( const Config& conf )
         _resLibs[resLib->getName()] = resLib;
     }
 
-#if 0
-        std::string name = i->value("name");
-        if ( name.empty() ) {
-            OE_WARN << LC << "Resource library missing required 'name' attribute" << std::endl;
-            continue;
-        }
-
-        URI uri( i->value("url"), i->referrer() );
-        //if ( uri.empty() ) {
-        //    OE_WARN << LC << "Resource library missing required 'url' element" << std::endl;
-        //    continue;
-        //}
-
-        if ( 
-
-        _resLibs[name] = ResourceLibraryEntry(uri,  (osgEarth::Symbology::ResourceLibrary*)0L);
-
-        //addResourceLibrary( name, reslib.get() );
-    }
-#endif
-
     // read in any scripts
     ConfigSet scripts = conf.children( "script" );
     for( ConfigSet::iterator i = scripts.begin(); i != scripts.end(); ++i )
@@ -493,6 +446,9 @@ StyleSheet::mergeConfig( const Config& conf )
 
         if ( styleConf.value("type") == "text/css" )
         {
+            // for CSS data, there may be multiple styles in one CSS block. So
+            // parse them all out and add them to the stylesheet.
+
             // read the inline data:
             std::string cssString = styleConf.value();
 
@@ -503,20 +459,17 @@ StyleSheet::mergeConfig( const Config& conf )
                 cssString = uri.readString().getString();
             }
 
-            // a CSS style definition can actually contain multiple styles. Read them
-            // and create one style for each in the catalog.
-            std::stringstream buf( cssString );
-            Config css = CssUtils::readConfig( buf );
-            css.setReferrer( styleConf.referrer() );
-            
-            const ConfigSet children = css.children();
-            for(ConfigSet::const_iterator j = children.begin(); j != children.end(); ++j )
+            // break up the CSS into multiple CSS blocks and parse each one individually.
+            std::vector<std::string> blocks;
+            CssUtils::split( cssString, blocks );
+
+            for( std::vector<std::string>::iterator i = blocks.begin(); i != blocks.end(); ++i )
             {
-                Style style( styleConf );
-                
-                if ( SLDReader::readStyleFromCSSParams( *j, style ) )
-                    _styles[ j->key() ] = style;
-            }            
+                Config blockConf( styleConf );
+                blockConf.value() = *i;
+                Style style( blockConf );
+                _styles[ style.getName() ] = style;
+            }
         }
         else
         {

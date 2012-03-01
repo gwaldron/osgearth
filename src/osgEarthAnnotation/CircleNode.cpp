@@ -18,6 +18,7 @@
 */
 
 #include <osgEarthAnnotation/CircleNode>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
@@ -39,13 +40,14 @@ CircleNode::CircleNode(MapNode*           mapNode,
                        unsigned           numSegments) :
 
 LocalizedNode( mapNode, position, false ),
-_radius( radius ),
-_style( style),
-_draped( draped ),
-_numSegments( numSegments )
+_radius      ( radius ),
+_style       ( style ),
+_draped      ( draped ),
+_numSegments ( numSegments )
 {
     rebuild();
 }
+
 
 const Linear&
 CircleNode::getRadius() const
@@ -135,4 +137,45 @@ CircleNode::rebuild()
     }
 
     setDecoration( currentDecoration );
+}
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( circle, osgEarth::Annotation::CircleNode );
+
+
+CircleNode::CircleNode(MapNode*      mapNode,
+                       const Config& conf ) :
+LocalizedNode( mapNode ),
+_radius      ( 1.0, Units::KILOMETERS ),
+_draped      ( false ),
+_numSegments ( 0 )
+{
+    conf.getObjIfSet( "radius", _radius );
+    conf.getObjIfSet( "style",  _style );
+    conf.getIfSet   ( "draped", _draped );
+    conf.getIfSet   ( "num_segments", _numSegments );
+
+    if ( conf.hasChild("position") )
+        setPosition( GeoPoint(conf.child("position")) );
+
+    rebuild();
+}
+
+Config
+CircleNode::getConfig() const
+{
+    Config conf( "circle" );
+    conf.addObj( "radius", _radius );
+    conf.addObj( "style",  _style );
+
+    if ( _numSegments != 0 )
+        conf.add( "num_segments", _numSegments );
+    if ( _draped != false )
+        conf.add( "draped", _draped );
+
+    conf.addObj( "position", getPosition() );
+
+    return conf;
 }

@@ -75,7 +75,7 @@ void
 Config::merge( const Config& rhs ) 
 {
     for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
-        addChild( *c );
+        add( *c );
 }
 
 const Config*

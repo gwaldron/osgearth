@@ -57,6 +57,14 @@ namespace osgEarth { namespace Annotation
             unsigned          numSegments =0 );
 
         /**
+         * Constructs a circle node from its serialized form
+         */
+        CircleNode(
+            MapNode*          mapNode,
+            const Config&     conf );
+
+
+        /**
          * Gets the radius
          */
         const Linear& getRadius() const;
@@ -86,15 +94,21 @@ namespace osgEarth { namespace Annotation
          */
         void setStyle( const Style& style );
 
+    public: // AnnotationNode overrides
+
+        virtual Config getConfig() const;
+
+
     private:
         CircleNode() { }
         CircleNode(const CircleNode& rhs, const osg::CopyOp& op) { }
 
         void rebuild();
-        Style _style;
-        bool  _draped;
-        unsigned int _numSegments;
-        Linear _radius;
+
+        Style           _style;
+        bool            _draped;
+        unsigned        _numSegments;
+        Linear          _radius;
     };
 
 } } // namespace osgEarth::Annotation

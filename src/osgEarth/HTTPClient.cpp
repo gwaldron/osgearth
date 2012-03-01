@@ -870,6 +870,10 @@ HTTPClient::doReadImage(const std::string&    location,
         }
     }
 
+    // set the source name
+    if ( result.getImage() )
+        result.getImage()->setName( location );
+
     return result;
 }
 

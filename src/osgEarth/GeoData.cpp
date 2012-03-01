@@ -111,6 +111,74 @@ _altMode( AltitudeMode::ABSOLUTE )
     //nop
 }
 
+GeoPoint::GeoPoint(const Config& conf, const SpatialReference* srs) :
+_srs    ( srs ),
+_altMode( AltitudeMode::ABSOLUTE )
+{
+    conf.getIfSet( "x", _p.x() );
+    conf.getIfSet( "y", _p.y() );
+    conf.getIfSet( "z", _p.z() );
+    conf.getIfSet( "alt", _p.z() );
+
+    if ( !_srs.valid() )
+        _srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
+
+    if ( conf.hasValue("lat") && (!_srs.valid() || _srs->isGeographic()) )
+    {
+        conf.getIfSet( "lat", _p.y() );
+        if ( !_srs.valid() ) 
+            _srs = SpatialReference::create("wgs84");
+    }
+    if ( conf.hasValue("long") && (!_srs.valid() || _srs->isGeographic()) )
+    {
+        conf.getIfSet("long", _p.x());
+        if ( !_srs.valid() ) 
+            _srs = SpatialReference::create("wgs84");
+    }
+
+    if ( conf.hasValue("mode") )
+    {
+        conf.getIfSet( "mode", "relative",            _altMode, AltitudeMode::RELATIVE_TO_TERRAIN );
+        conf.getIfSet( "mode", "relative_to_terrain", _altMode, AltitudeMode::RELATIVE_TO_TERRAIN );
+        conf.getIfSet( "mode", "absolute",            _altMode, AltitudeMode::ABSOLUTE );
+    }
+    else
+    {
+        if ( conf.hasValue("alt") || conf.hasValue("z") )
+            _altMode = AltitudeMode::ABSOLUTE;
+        else
+            _altMode = AltitudeMode::RELATIVE_TO_TERRAIN;
+    }
+}
+
+Config
+GeoPoint::getConfig() const
+{
+    Config conf;
+    if ( _srs.valid() && _srs->isGeographic() )
+    {
+        conf.set( "lat", _p.y() );
+        conf.set( "long", _p.x() );
+        if ( _p.x() != 0.0 )
+            conf.set( "alt", _p.z() );
+    }
+    else
+    {
+        conf.set( "x", _p.x() );
+        conf.set( "y", _p.y() );
+        conf.set( "z", _p.z() );
+    }
+
+    if ( _srs.valid() )
+    {
+        conf.set("srs", _srs->getHorizInitString());
+        if ( _srs->getVerticalDatum() )
+            conf.set("vdatum", _srs->getVertInitString());
+    }
+
+    return conf;
+}
+
 void
 GeoPoint::set(const SpatialReference* srs,
               const osg::Vec3d&       xyz,

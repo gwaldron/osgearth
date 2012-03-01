@@ -92,22 +92,32 @@ namespace osgEarth { namespace Annotation
             const TextSymbol* symbol );
 
         /**
+         * Deserializes a label
+         */
+        LabelNode(
+            MapNode*      mapNode,
+            const Config& conf);
+
+        /**
          * Sets the text content.
          */
         void setText( const std::string& text );
-    
+
 
     public: // OrthoNode override
 
         virtual void setAnnotationData( AnnotationData* data );
 
         virtual void setDynamic( bool value );
+        
+        virtual Config getConfig() const;
 
     protected:
-        void init( const Style& style );
+        void init();
 
         std::string       _text;
         class osg::Geode* _geode;
+        Style             _style;
 
         /** Copy constructor */
         LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }

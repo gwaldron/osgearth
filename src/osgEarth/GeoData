@@ -92,6 +92,11 @@ namespace osgEarth
         GeoPoint();
 
         /**
+         * Constructs a geopoint from serialization
+         */
+        GeoPoint( const Config& conf, const SpatialReference* srs =0L );
+
+        /**
          * Sets the SRS and coords 
          */
         void set(
@@ -188,6 +193,8 @@ namespace osgEarth
         bool operator == (const GeoPoint& rhs) const;
         bool operator != (const GeoPoint& rhs) const { return !operator==(rhs); }
         bool isValid() const { return _srs.valid(); }
+
+        Config getConfig() const;
 
     public:
         static GeoPoint INVALID;

@@ -73,7 +73,7 @@ FeatureLevel::getConfig() const
 
     for( StyleSelectorVector::const_iterator i = _selectors.begin(); i != _selectors.end(); ++i )
     {
-        conf.addChild( (*i).getConfig() );
+        conf.add( (*i).getConfig() );
     }
 
     return conf;

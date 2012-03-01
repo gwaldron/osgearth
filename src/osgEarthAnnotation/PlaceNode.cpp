@@ -19,6 +19,7 @@
 
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
@@ -167,4 +168,42 @@ PlaceNode::setDynamic( bool value )
     {
         i->get()->setDataVariance( value ? osg::Object::DYNAMIC : osg::Object::STATIC );
     }
+}
+
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
+
+
+PlaceNode::PlaceNode(MapNode*      mapNode,
+                     const Config& conf ) :
+OrthoNode( mapNode, GeoPoint::INVALID )
+{
+    conf.getObjIfSet( "style",  _style );
+    conf.getIfSet   ( "text",   _text );
+
+    optional<URI> imageURI;
+    conf.getIfSet( "icon", imageURI );
+    if ( imageURI.isSet() )
+        _image = imageURI->getImage();
+
+    if ( conf.hasChild("position") )
+        setPosition( GeoPoint(conf.child("position")) );
+
+    init();
+}
+
+Config
+PlaceNode::getConfig() const
+{
+    Config conf( "place" );
+    conf.add   ( "text",   _text );
+    conf.addObj( "style",  _style );
+    conf.addObj( "position", getPosition() );
+    if ( _image.valid() && !_image->getName().empty() )
+        conf.add( "icon", _image->getName() );
+
+    return conf;
 }

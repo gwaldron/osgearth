@@ -12,6 +12,7 @@ set(LIB_PUBLIC_HEADERS
     AnnotationSettings
     AnnotationData
     AnnotationNode
+    AnnotationRegistry
     AnnotationUtils
     CircleNode
     Common
@@ -36,6 +37,7 @@ set(LIB_COMMON_FILES
     AnnotationSettings.cpp
     AnnotationData.cpp
     AnnotationNode.cpp
+    AnnotationRegistry.cpp
     AnnotationUtils.cpp
     CircleNode.cpp
     Decluttering.cpp

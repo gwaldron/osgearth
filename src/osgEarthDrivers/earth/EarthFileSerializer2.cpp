@@ -191,7 +191,7 @@ EarthFileSerializer2::serialize( MapNode* input ) const
     if ( !ext.empty() )
     {
         ext.key() = "external";
-        mapConf.addChild( ext );
+        mapConf.add( ext );
     }
 
     return mapConf;

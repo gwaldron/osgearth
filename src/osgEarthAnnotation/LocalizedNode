@@ -52,6 +52,10 @@ namespace osgEarth { namespace Annotation
             const osg::Vec3d& pos,
             bool              is2D    =false );
 
+        LocalizedNode(
+            MapNode*          mapNode,
+            const Config&     conf );
+
 
     public: // PositionedAnnotationNode
 

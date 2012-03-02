@@ -33,6 +33,7 @@ SET(LIB_PUBLIC_HEADERS
     CullingUtils
     DepthOffset
     DPLineSegmentIntersector
+	Draggers
     DrapeableNode
     ECEF
     ElevationLayer
@@ -67,6 +68,7 @@ SET(LIB_PUBLIC_HEADERS
     NodeUtils
 	Notify
 	OverlayDecorator
+	Pickers
     Profile
 	Progress
 	Random
@@ -130,6 +132,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     Cube.cpp
     CullingUtils.cpp
     DepthOffset.cpp
+	Draggers.cpp
     DPLineSegmentIntersector.cpp
     DrapeableNode.cpp
     ECEF.cpp
@@ -164,6 +167,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
 	NodeUtils.cpp
 	Notify.cpp
 	OverlayDecorator.cpp
+	Pickers.cpp
     Profile.cpp
 	Progress.cpp
 	Random.cpp

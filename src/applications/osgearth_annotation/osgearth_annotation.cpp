@@ -45,6 +45,8 @@
 #include <osgGA/StateSetManipulator>
 #include <osgGA/EventVisitor>
 
+#include <osgEarth/Pickers>
+
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
@@ -57,6 +59,7 @@ usage( char** argv )
     OE_WARN << "Usage: " << argv[0] << " <earthfile>" << std::endl;
     return -1;
 }
+
 
 //------------------------------------------------------------------
 
@@ -74,6 +77,11 @@ struct MyAnnoEventHandler : public AnnotationEventHandler
     void onHoverLeave( AnnotationNode* anno, const EventArgs& args )
     {
         anno->clearDecoration();
+    }
+
+    virtual void onClick( AnnotationNode* node, const EventArgs& details )
+    {        
+        OE_NOTICE << "Thanks for clicking this annotation" << std::endl;
     }
 };
 
@@ -332,7 +340,7 @@ main(int argc, char** argv)
             imageOverlay->setBounds( Bounds( -100.0, 35.0, -90.0, 40.0) );
             annoGroup->addChild( imageOverlay );
 
-            editorGroup->addChild( new ImageOverlayEditor( imageOverlay, mapNode->getMap()->getProfile()->getSRS()->getEllipsoid(), mapNode ) );
+            editorGroup->addChild( new ImageOverlayEditor( imageOverlay ) );
         }
     }
     

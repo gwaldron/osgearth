@@ -18,7 +18,7 @@
 */
 
 #include <osgEarthUtil/AnnotationEvents>
-#include <osgEarthUtil/Pickers>
+#include <osgEarth/Pickers>
 #include <osgGA/GUIEventAdapter>
 #include <osgGA/EventVisitor>
 #include <osgViewer/View>

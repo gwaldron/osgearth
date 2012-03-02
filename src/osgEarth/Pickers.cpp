@@ -16,13 +16,13 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-#include <osgEarthUtil/Pickers>
+#include <osgEarth/Pickers>
 #include <osgUtil/PolytopeIntersector>
 #include <osg/Polytope>
 
 #define LC "[Picker] "
 
-using namespace osgEarth::Util;
+using namespace osgEarth;
 
 Picker::Picker( osgViewer::View* view, osg::Node* root, unsigned travMask, float buffer, Limit limit ) :
 _view    ( view ),

@@ -32,7 +32,7 @@
 #include <osgEarthAnnotation/EllipseNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
-#include <osgEarthAnnotation/GeometryNode>
+#include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/Decluttering>
 #include <osgEarthAnnotation/HighlightDecoration>

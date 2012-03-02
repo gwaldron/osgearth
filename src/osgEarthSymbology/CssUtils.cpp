@@ -42,7 +42,8 @@ CssUtils::split( const std::string& input, std::vector<std::string>& output )
         }
         else if ( i+1 < blocks.size() )
         {
-            output.push_back( blocks[i++] + "{ " + blocks[i] + " }" );
+            output.push_back( blocks[i] + "{ " + blocks[i+1] + " }" );
+            ++i;
         }
     }
 }

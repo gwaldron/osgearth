@@ -17,7 +17,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#include <osgEarthAnnotation/GeometryNode>
+#include <osgEarthAnnotation/LocalGeometryNode>
 #include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
@@ -32,10 +32,10 @@ using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
 
 
-GeometryNode::GeometryNode(MapNode*     mapNode,
-                           Geometry*    geom,
-                           const Style& style,
-                           bool         draped ) :
+LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
+                                     Geometry*    geom,
+                                     const Style& style,
+                                     bool         draped ) :
 LocalizedNode( mapNode ),
 _geom        ( geom ),
 _style       ( style ),
@@ -44,10 +44,10 @@ _draped      ( draped )
     init();
 }
 
-GeometryNode::GeometryNode(MapNode*     mapNode,
-                           osg::Node*   content,
-                           const Style& style,
-                           bool         draped ) :
+LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
+                                     osg::Node*   content,
+                                     const Style& style,
+                                     bool         draped ) :
 LocalizedNode( mapNode )
 {
     if ( content )
@@ -71,7 +71,7 @@ LocalizedNode( mapNode )
 
 
 void
-GeometryNode::init()
+LocalGeometryNode::init()
 {
     if ( _geom.valid() )
     {
@@ -105,11 +105,11 @@ GeometryNode::init()
 
 //-------------------------------------------------------------------
 
-OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::GeometryNode );
+OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::LocalGeometryNode );
 
 
-GeometryNode::GeometryNode(MapNode*      mapNode,
-                           const Config& conf) :
+LocalGeometryNode::LocalGeometryNode(MapNode*      mapNode,
+                                     const Config& conf) :
 LocalizedNode( mapNode )
 {
     if ( conf.hasChild("geometry") )
@@ -128,7 +128,7 @@ LocalizedNode( mapNode )
 }
 
 Config
-GeometryNode::getConfig() const
+LocalGeometryNode::getConfig() const
 {
     Config conf("local_geometry");
 

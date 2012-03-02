@@ -16,8 +16,8 @@
 * You should have received a copy of the GNU Lesser General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
-#ifndef OSGEARTH_ANNO_GEOMETRY_NODE_H
-#define OSGEARTH_ANNO_GEOMETRY_NODE_H 1
+#ifndef OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H
+#define OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H 1
 
 #include <osgEarthAnnotation/LocalizedNode>
 #include <osgEarth/MapNode>
@@ -34,13 +34,13 @@ namespace osgEarth { namespace Annotation
      * is in a local tangent plane that may be positioned somewhere on the 
      * Map's surface.
      */
-    class OSGEARTHANNO_EXPORT GeometryNode : public LocalizedNode
+    class OSGEARTHANNO_EXPORT LocalGeometryNode : public LocalizedNode
     {
     public:
         /**
          * Constructs a new localized node that renders a Geometry
          */
-        GeometryNode( 
+        LocalGeometryNode( 
             MapNode*     mapNode,
             Geometry*    geom, 
             const Style& style, 
@@ -50,7 +50,7 @@ namespace osgEarth { namespace Annotation
          * Construcst a new localized node that renders a pre-built
          * node (in a local cartesian space)
          */
-        GeometryNode( 
+        LocalGeometryNode( 
             MapNode*     mapNode,
             osg::Node*   node, 
             const Style& style, 
@@ -58,7 +58,7 @@ namespace osgEarth { namespace Annotation
 
     public:
 
-        GeometryNode(
+        LocalGeometryNode(
             MapNode*      mapNode,
             const Config& conf);
 
@@ -75,4 +75,4 @@ namespace osgEarth { namespace Annotation
 
 } } // namespace osgEarth::Annotation
 
-#endif // OSGEARTH_ANNO_GEOMETRY_NODE_H
+#endif // OSGEARTH_ANNO_LOCAL_GEOMETRY_NODE_H

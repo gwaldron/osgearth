@@ -239,9 +239,20 @@ Profile::create( const ProfileOptions& options )
     // Next try SRS with default extents
     else if ( options.srsString().isSet() )
     {
-        result = Profile::create(
-            options.srsString().value(),
-            options.vsrsString().value() );
+        if ( options.numTilesWideAtLod0().isSet() && options.numTilesHighAtLod0().isSet() )
+        {
+            result = Profile::create(
+                options.srsString().value(),
+                options.vsrsString().value(),
+                options.numTilesWideAtLod0().value(),
+                options.numTilesHighAtLod0().value() );
+        }
+        else
+        {
+            result = Profile::create(
+                options.srsString().value(),
+                options.vsrsString().value() );
+        }
     }
 
     return result;

@@ -118,6 +118,11 @@ namespace osgEarth { namespace Annotation
 
         GeoPoint getCorner( Corner corner ) const;
         void setCorner( Corner corner, const GeoPoint& location);
+
+    public:
+
+        RectangleNode(MapNode* mapNode, const Config& conf);
+        virtual Config getConfig() const;
         
 
     private:

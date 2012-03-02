@@ -21,7 +21,7 @@ set(LIB_PUBLIC_HEADERS
     EllipseNode
     Export
     FeatureNode
-    GeometryNode
+    LocalGeometryNode
     HighlightDecoration
     ImageOverlay
     LabelNode
@@ -44,7 +44,7 @@ set(LIB_COMMON_FILES
     Decoration.cpp
     EllipseNode.cpp
     FeatureNode.cpp
-    GeometryNode.cpp
+    LocalGeometryNode.cpp
     HighlightDecoration.cpp
     ImageOverlay.cpp
     LabelNode.cpp

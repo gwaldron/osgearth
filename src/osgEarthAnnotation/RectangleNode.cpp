@@ -18,6 +18,7 @@
 */
 
 #include <osgEarthAnnotation/RectangleNode>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthSymbology/GeometryFactory>
 #include <osgEarthSymbology/ExtrusionSymbol>
@@ -371,4 +372,42 @@ RectangleNode::rebuild()
     }
 
     setDecoration( currentDecoration );
+}
+
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( rectangle, osgEarth::Annotation::RectangleNode );
+
+
+RectangleNode::RectangleNode(MapNode*      mapNode,
+                             const Config& conf ) :
+LocalizedNode( mapNode ),
+_draped      ( false )
+{
+    conf.getObjIfSet( "width", _width );
+    conf.getObjIfSet( "height", _height );
+    conf.getObjIfSet( "style",  _style );
+    conf.getIfSet   ( "draped", _draped );
+
+    if ( conf.hasChild("position") )
+        setPosition( GeoPoint(conf.child("position")) );
+
+    rebuild();
+}
+
+Config
+RectangleNode::getConfig() const
+{
+    Config conf( "rectangle" );
+    conf.addObj( "width",  _width );
+    conf.addObj( "height", _height );
+    conf.addObj( "style",  _style );
+    if ( _draped != false )
+        conf.add( "draped", _draped );
+
+    conf.addObj( "position", getPosition() );
+
+    return conf;
 }

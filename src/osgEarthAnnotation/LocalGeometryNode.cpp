@@ -38,9 +38,9 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      bool         draped ) :
 LocalizedNode( mapNode ),
 _geom        ( geom ),
-_style       ( style ),
 _draped      ( draped )
 {
+    _style = style;
     init();
 }
 
@@ -48,8 +48,11 @@ LocalGeometryNode::LocalGeometryNode(MapNode*     mapNode,
                                      osg::Node*   content,
                                      const Style& style,
                                      bool         draped ) :
-LocalizedNode( mapNode )
+LocalizedNode( mapNode ),
+_draped      ( draped )
 {
+    _style = style;
+
     if ( content )
     {
         getTransform()->addChild( content );
@@ -76,8 +79,7 @@ LocalGeometryNode::init()
     if ( _geom.valid() )
     {
         osg::ref_ptr<Feature> feature = new Feature( _geom.get(), 0L );
-        if ( _style.isSet() )
-            feature->style() = *_style;
+        feature->style() = *_style;
 
         GeometryCompiler compiler;
         FilterContext cx( _mapNode.valid() ? new Session(_mapNode->getMap()) : 0L );

@@ -136,12 +136,6 @@ namespace osgEarth { namespace Features
         const SpatialReference* getSRS() const { return _srs.get(); }
         void setSRS( const SpatialReference* srs );
 
-        /**
-         * Gets the geospatial extent of this feature. Both the Geometry and the SRS
-         * must be non-NULL for this to work.
-         */
-        //const GeoExtent& getExtent() const;
-
         /** 
          * Gets the geocentric bounding box that contains the data in this 
          * feature's geometry.

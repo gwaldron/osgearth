@@ -18,10 +18,14 @@
 */
 
 #include <osgEarthAnnotation/GeometryNode>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/GeometryUtils>
 #include <osgEarthFeatures/MeshClamper>
 #include <osgEarth/DrapeableNode>
 #include <osgEarth/Utils>
+
+#define LC "[GeometryNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
@@ -32,30 +36,12 @@ GeometryNode::GeometryNode(MapNode*     mapNode,
                            Geometry*    geom,
                            const Style& style,
                            bool         draped ) :
-LocalizedNode( mapNode )
+LocalizedNode( mapNode ),
+_geom        ( geom ),
+_style       ( style ),
+_draped      ( draped )
 {
-    osg::ref_ptr<Feature> feature = new Feature( geom, 0L );
-
-    GeometryCompiler compiler;
-    FilterContext cx( mapNode ? new Session(mapNode->getMap()) : 0L );
-    osg::Node* node = compiler.compile( feature.get(), style, cx );
-    if ( node )
-    {
-        getTransform()->addChild( node );
-        if ( draped && mapNode )
-        {
-            DrapeableNode* dn = new DrapeableNode(mapNode);
-            dn->addChild( getTransform() );
-            this->addChild( dn );
-        }
-        else
-        {
-            this->addChild( getTransform() );
-        }
-
-        // prep for clamping
-        applyStyle( style, draped );
-    }
+    init();
 }
 
 GeometryNode::GeometryNode(MapNode*     mapNode,
@@ -81,4 +67,81 @@ LocalizedNode( mapNode )
         // this will activate the clamping logic
         applyStyle( style, draped );
     }
+}
+
+
+void
+GeometryNode::init()
+{
+    if ( _geom.valid() )
+    {
+        osg::ref_ptr<Feature> feature = new Feature( _geom.get(), 0L );
+        if ( _style.isSet() )
+            feature->style() = *_style;
+
+        GeometryCompiler compiler;
+        FilterContext cx( _mapNode.valid() ? new Session(_mapNode->getMap()) : 0L );
+        osg::Node* node = compiler.compile( feature.get(), cx );
+        if ( node )
+        {
+            getTransform()->addChild( node );
+            if ( _draped && _mapNode.valid() )
+            {
+                DrapeableNode* dn = new DrapeableNode(_mapNode.get());
+                dn->addChild( getTransform() );
+                this->addChild( dn );
+            }
+            else
+            {
+                this->addChild( getTransform() );
+            }
+
+            // prep for clamping
+            applyStyle( *_style, _draped );
+        }
+    }
+}
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( local_geometry, osgEarth::Annotation::GeometryNode );
+
+
+GeometryNode::GeometryNode(MapNode*      mapNode,
+                           const Config& conf) :
+LocalizedNode( mapNode )
+{
+    if ( conf.hasChild("geometry") )
+    {
+        Config geomconf = conf.child("geometry");
+        _geom = GeometryUtils::geometryFromWKT( geomconf.value() );
+        if ( _geom.valid() )
+        {
+            conf.getObjIfSet( "style", _style );
+            _draped = conf.value<bool>("draped",false);
+            init();
+            if ( conf.hasChild("position") )
+                setPosition( GeoPoint(conf.child("position")) );
+        }
+    }
+}
+
+Config
+GeometryNode::getConfig() const
+{
+    Config conf("local_geometry");
+
+    if ( _geom.valid() )
+    {
+        conf.add( Config("geometry", GeometryUtils::geometryToWKT(_geom.get())) );
+        conf.addObjIfSet( "style", _style );
+        conf.addObj( "position", getPosition() );
+    }
+    else
+    {
+        OE_WARN << LC << "Cannot serialize GeometryNode because it contains no geometry" << std::endl;
+    }
+
+    return conf;
 }

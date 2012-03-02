@@ -112,6 +112,13 @@ GeometryCompiler::compile(Geometry*             geometry,
 }
 
 osg::Node*
+GeometryCompiler::compile(Geometry*             geometry,
+                          const FilterContext&  context)
+{
+    return compile( geometry, Style(), context );
+}
+
+osg::Node*
 GeometryCompiler::compile(Feature*              feature,
                           const Style&          style,
                           const FilterContext&  context)
@@ -119,6 +126,13 @@ GeometryCompiler::compile(Feature*              feature,
     FeatureList workingSet;
     workingSet.push_back(feature);
     return compile(workingSet, style, context);
+}
+
+osg::Node*
+GeometryCompiler::compile(Feature*              feature,
+                          const FilterContext&  context)
+{
+    return compile(feature, Style(), context);
 }
 
 osg::Node*

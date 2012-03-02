@@ -251,41 +251,6 @@ struct OgrUtils
         }
     }
 
-    static Symbology::Geometry*
-    createGeometryFromWKT( const std::string& wkt )
-    {       
-        OGRwkbGeometryType type = 
-            startsWith( wkt, "POINT" ) ? wkbPoint :
-            startsWith( wkt, "LINESTRING" ) ? wkbLineString :
-            startsWith( wkt, "POLYGON" ) ? wkbPolygon :
-            startsWith( wkt, "MULTIPOINT" ) ? wkbMultiPoint :
-            startsWith( wkt, "MULTILINESTRING" ) ? wkbMultiLineString :
-            startsWith( wkt, "MULTIPOLYGON" ) ? wkbMultiPolygon :
-            startsWith( wkt, "GEOMETRYCOLLECTION" ) ? wkbGeometryCollection :
-            wkbNone;
-
-        Symbology::Geometry* output = 0L;
-        if ( type != wkbNone )
-        {
-            OGRGeometryH geom = OGR_G_CreateGeometry( type );
-            if ( geom )
-            {
-                char* ptr = (char*)wkt.c_str();
-                if ( OGRERR_NONE == OGR_G_ImportFromWkt( geom, &ptr ) )
-                {
-                    output = createGeometry( geom );
-                    OGR_G_DestroyGeometry( geom );
-                }
-                else
-                {
-                    OE_NOTICE
-                        << "OGR Feature Source: malformed WKT geometry" << std::endl;
-                }
-            }
-        }
-        return output;
-    }
-
     static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs )
     {
         long fid = OGR_F_GetFID( handle );

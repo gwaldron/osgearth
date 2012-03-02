@@ -23,7 +23,6 @@
 
 #include <osgEarthFeatures/GeometryCompiler>
 #include <osgEarthFeatures/GeometryUtils>
-#include <osgEarthFeatures/OgrUtils>
 #include <osgEarthFeatures/MeshClamper>
 
 #include <osgEarthSymbology/AltitudeSymbol>
@@ -196,7 +195,7 @@ AnnotationNode( mapNode )
     {
         Config geomconf = conf.child("geometry");
         srs = SpatialReference::create( geomconf.value("srs"), geomconf.value("vdatum") );
-        geom = OgrUtils::createGeometryFromWKT( geomconf.value() );
+        geom = GeometryUtils::geometryFromWKT( geomconf.value() );
     }
 
     conf.getObjIfSet( "style", _style );
@@ -215,7 +214,7 @@ FeatureNode::getConfig() const
 
     if ( _feature.valid() && _feature->getGeometry() )
     {
-        std::string wkt = geometryToWkt( _feature->getGeometry() );
+        std::string wkt = GeometryUtils::geometryToWKT( _feature->getGeometry() );
         std::string srs = _feature->getSRS() ? _feature->getSRS()->getHorizInitString() : "";
         std::string vsrs = _feature->getSRS() ? _feature->getSRS()->getVertInitString() : "";
 

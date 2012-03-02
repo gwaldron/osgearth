@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
+#include <osgEarthFeatures/GeometryUtils>
 #include "OGRFeatureOptions"
 #include "FeatureCursorOGR"
 #include <osgEarthFeatures/OgrUtils>
@@ -436,7 +437,7 @@ protected:
     // parses an explicit WKT geometry string into a Geometry.
     Symbology::Geometry* parseGeometry( const Config& geomConf )
     {
-        return OgrUtils::createGeometryFromWKT( geomConf.value() );
+        return GeometryUtils::geometryFromWKT( geomConf.value() );
     }
 
     // read the WKT geometry from a URL, then parse into a Geometry.

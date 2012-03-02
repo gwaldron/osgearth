@@ -55,6 +55,22 @@ namespace osgEarth { namespace Annotation
             osg::Node*   node, 
             const Style& style, 
             bool         draped     =false );
+
+    public:
+
+        GeometryNode(
+            MapNode*      mapNode,
+            const Config& conf);
+
+        virtual Config getConfig() const;
+
+    protected:
+
+        optional<Style> _style;
+        bool  _draped;
+        osg::ref_ptr<Geometry> _geom;
+
+        void init();
     };
 
 } } // namespace osgEarth::Annotation

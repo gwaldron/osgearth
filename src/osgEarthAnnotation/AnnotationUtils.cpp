@@ -595,6 +595,12 @@ AnnotationUtils::create2DQuad( const osg::BoundingBox& box, float padding, const
     geom->setColorArray( c );
     geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
+    // add the static "isText=true" uniform; this is a hint for the annotation shaders
+    // if they get installed.
+    static osg::ref_ptr<osg::Uniform> s_isTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
+    s_isTextUniform->set( false );
+    geom->getOrCreateStateSet()->addUniform( s_isTextUniform.get() );
+
     return geom;
 }
 
@@ -622,7 +628,7 @@ AnnotationUtils::create2DOutline( const osg::BoundingBox& box, float padding, co
     geom->setColorBinding( osg::Geometry::BIND_OVERALL );
 
     static osg::ref_ptr<osg::Uniform> s_isNotTextUniform = new osg::Uniform(osg::Uniform::BOOL, UNIFORM_IS_TEXT());
-    s_isNotTextUniform->set( true );
+    s_isNotTextUniform->set( false );
     geom->getOrCreateStateSet()->addUniform( s_isNotTextUniform.get() );
 
     return geom;

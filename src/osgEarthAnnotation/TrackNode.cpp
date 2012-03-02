@@ -57,6 +57,19 @@ void
 TrackNode::init( const TrackNodeFieldSchema& schema )
 {
     _geode = new osg::Geode();
+    
+    if ( _image.valid() )
+    {
+        // apply the image icon.
+        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
+            _image.get(),             // image
+            osg::Vec2s(0,0) );        // offset
+
+        if ( imageGeom )
+        {
+            _geode->addDrawable( imageGeom );
+        }
+    }
 
     if ( !schema.empty() )
     {
@@ -84,19 +97,6 @@ TrackNode::init( const TrackNodeFieldSchema& schema )
                     addDrawable( i->first, drawable );
                 }
             }
-        }
-    }
-    
-    if ( _image.valid() )
-    {
-        // apply the image icon.
-        osg::Geometry* imageGeom = AnnotationUtils::createImageGeometry( 
-            _image.get(),             // image
-            osg::Vec2s(0,0) );        // offset
-
-        if ( imageGeom )
-        {
-            _geode->addDrawable( imageGeom );
         }
     }
 

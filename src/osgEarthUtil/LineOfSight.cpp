@@ -64,7 +64,7 @@ static bool getRelativeWorld(double x, double y, double relativeHeight, MapNode*
     
     osgUtil::IntersectionVisitor iv;    
     iv.setIntersector( i );
-    mapNode->accept( iv );
+    mapNode->getTerrainEngine()->accept( iv );
 
     osgUtil::LineSegmentIntersector::Intersections& results = i->getIntersections();
     if ( !results.empty() )

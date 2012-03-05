@@ -233,7 +233,7 @@ namespace osgEarth
         void updateObj( const std::string& key, const T& value ) {
             remove(key);
             Config conf = value.getConfig();
-            conf.key() = key();
+            conf.key() = key;
             add( conf );
         }
 

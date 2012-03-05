@@ -33,7 +33,7 @@ namespace osgEarth { namespace Annotation
     public:
         typedef std::map< ImageOverlay::ControlPoint, osg::ref_ptr< Dragger > >  ControlPointDraggerMap;
 
-        ImageOverlayEditor::ImageOverlayEditor(ImageOverlay* overlay);
+        ImageOverlayEditor(ImageOverlay* overlay);
 
         ControlPointDraggerMap& getDraggers() { return _draggers; }
 

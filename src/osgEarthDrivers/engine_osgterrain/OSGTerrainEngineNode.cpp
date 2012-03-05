@@ -280,6 +280,11 @@ OSGTerrainEngineNode::refresh()
     std::vector< TileKey > keys;
     _update_mapf->getProfile()->getRootKeys( keys );
 
+    if (_terrainOptions.enableBlending().value())
+    {
+        _terrain->getOrCreateStateSet()->setMode(GL_BLEND , osg::StateAttribute::ON);    
+    }
+
     addChild( _terrain );
 
     for( unsigned i=0; i<keys.size(); ++i )

@@ -70,7 +70,7 @@ namespace
 
 BuildGeometryFilter::BuildGeometryFilter( const Style& style ) :
 _style        ( style ),
-_maxAngle_deg ( 5.0 ),
+_maxAngle_deg ( 1.0 ),
 _geoInterp    ( GEOINTERP_RHUMB_LINE ),
 _mergeGeometry( false )
 {
@@ -121,8 +121,46 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             const PolygonSymbol* polySymbol  = myStyle.get<PolygonSymbol>();
 
             // resolve the geometry type from the component type and the symbology:
-            Geometry::Type renderType;
+            Geometry::Type renderType = Geometry::TYPE_UNKNOWN;
 
+            // First priority is a matching part type and symbol:
+            if ( polySymbol != 0L && part->getType() == Geometry::TYPE_POLYGON )
+            {
+                renderType = Geometry::TYPE_POLYGON;
+            }
+            else if ( lineSymbol != 0L && part->isLinear() )
+            {
+                renderType = part->getType();
+            }
+            else if ( pointSymbol != 0L && part->getType() == Geometry::TYPE_POINTSET )
+            {
+                renderType = Geometry::TYPE_POINTSET;
+            }
+
+            // Second priority is the symbol:
+            else if ( polySymbol != 0L )
+            {
+                renderType = Geometry::TYPE_POLYGON;
+            }
+            else if ( lineSymbol != 0L )
+            {
+                if ( part->getType() == Geometry::TYPE_POLYGON )
+                    renderType = Geometry::TYPE_RING;
+                else
+                    renderType = Geometry::TYPE_LINESTRING;
+            }
+            else if ( pointSymbol != 0L )
+            {
+                renderType = Geometry::TYPE_POINTSET;
+            }
+
+            // No symbol? just use the geometry type.
+            else
+            {
+                renderType = part->getType();
+            }
+
+#if 0
             if ((polySymbol != 0L) ||
                 (polySymbol == 0L && lineSymbol == 0L && part->getType() == Geometry::TYPE_POLYGON))
             {
@@ -145,6 +183,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             {
                 renderType = part->getType();
             }
+#endif
 
             // resolve the color:
             osg::Vec4f primaryColor =
@@ -200,14 +239,21 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             // subdivide the mesh if necessary to conform to an ECEF globe:
             if ( makeECEF && renderType != Geometry::TYPE_POINTSET )
             {
-                double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+                // check for explicit tessellation disable:
+                const LineSymbol* line = _style.get<LineSymbol>();
+                bool disableTess = line && line->tessellation().isSetTo(0);
 
-                MeshSubdivider ms( _world2local, _local2world );
-                //ms.setMaxElementsPerEBO( INT_MAX );
-                if ( input->geoInterp().isSet() )
-                    ms.run( *osgGeom, threshold, *input->geoInterp() );
-                else
-                    ms.run( *osgGeom, threshold, *_geoInterp );
+                if ( makeECEF && !disableTess )
+                {
+                    double threshold = osg::DegreesToRadians( *_maxAngle_deg );
+
+                    MeshSubdivider ms( _world2local, _local2world );
+                    //ms.setMaxElementsPerEBO( INT_MAX );
+                    if ( input->geoInterp().isSet() )
+                        ms.run( *osgGeom, threshold, *input->geoInterp() );
+                    else
+                        ms.run( *osgGeom, threshold, *_geoInterp );
+                }
             }
 
             _geode->addDrawable( osgGeom );
@@ -215,6 +261,9 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             // build secondary geometry, if necessary (polygon outlines)
             if ( renderType == Geometry::TYPE_POLYGON && lineSymbol )
             {
+                // polygon offset on the poly so the outline doesn't z-fight
+                osgGeom->getOrCreateStateSet()->setAttributeAndModes( new osg::PolygonOffset(1,1), 1 );
+
                 osg::Geometry*  outline = new osg::Geometry();
 
                 buildPolygon(part, featureSRS, mapSRS, makeECEF, false, outline);

@@ -50,15 +50,65 @@ namespace osgEarth { namespace Annotation
          */
         CircleNode(
             MapNode*          mapNode,
-            const osg::Vec3d& position,
+            const GeoPoint&   position,
             const Linear&     radius,
             const Style&      style,
             bool              draped      =true,
             unsigned          numSegments =0 );
 
+        /**
+         * Constructs a circle node from its serialized form
+         */
+        CircleNode(
+            MapNode*          mapNode,
+            const Config&     conf );
+
+
+        /**
+         * Gets the radius
+         */
+        const Linear& getRadius() const;
+
+        /*
+         * Sets the radius of the circle
+         */
+        void setRadius(const Linear& radius);
+
+        /**
+         * Gets the number of segments of this circle
+         */
+        unsigned int getNumSegments() const;
+
+        /**
+         * Sets the number of segments of this circle
+         */
+        void setNumSegments(unsigned int numSegments );
+
+        /**
+         * Gets the style of this circle
+         */
+        const Style& getStyle() const;
+
+        /**
+         * Sets the style of this circle
+         */
+        void setStyle( const Style& style );
+
+    public: // AnnotationNode overrides
+
+        virtual Config getConfig() const;
+
+
     private:
         CircleNode() { }
         CircleNode(const CircleNode& rhs, const osg::CopyOp& op) { }
+
+        void rebuild();
+
+        Style           _style;
+        bool            _draped;
+        unsigned        _numSegments;
+        Linear          _radius;
     };
 
 } } // namespace osgEarth::Annotation

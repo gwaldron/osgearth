@@ -33,10 +33,11 @@ namespace osgEarth { namespace QtGui
   //---------------------------------------------------------------------------
   // SetLayerEnabledAction
 
-  class OSGEARTHQT_EXPORT SetLayerEnabledAction : public Action
+  class OSGEARTHQT_EXPORT SetLayerVisibleAction : public Action
   {
   public:
-    SetLayerEnabledAction(osgEarth::Layer* layer, bool enabled): Action(), _layer(layer), _enabled(enabled) { }
+    SetLayerVisibleAction(ViewVector& views, osgEarth::Layer* layer, bool visible) : 
+        Action(views), _layer(layer), _visible(visible) { }
 
     bool doAction( void* sender, DataManager* manager )
     {
@@ -47,9 +48,9 @@ namespace osgEarth { namespace QtGui
       if (terrain)
       {
         terrain->getProfile()->getLatLongExtent().xMin();
-        if (terrain->getEnabled() != _enabled)
+        if (terrain->getVisible() != _visible)
         {
-          terrain->setEnabled(_enabled);
+          terrain->setVisible(_visible);
           return true;
         }
       }
@@ -58,9 +59,9 @@ namespace osgEarth { namespace QtGui
         osgEarth::ModelLayer* model = dynamic_cast<osgEarth::ModelLayer*>(_layer.get());
         if (model)
         {
-          if (model->getEnabled() != _enabled)
+          if (model->getVisible() != _visible)
           {
-            model->setEnabled(_enabled);
+            model->setVisible(_visible);
             return true;
           }
         }
@@ -73,7 +74,7 @@ namespace osgEarth { namespace QtGui
 
 	protected:
     osg::ref_ptr<osgEarth::Layer> _layer;
-    bool _enabled;
+    bool _visible;
   };
 
 
@@ -130,6 +131,7 @@ namespace osgEarth { namespace QtGui
         if (manip)
         {
           manip->setViewpoint(_viewpoint, _duration);
+          (*it)->requestRedraw();
           success = true;
         }
       }
@@ -139,10 +141,10 @@ namespace osgEarth { namespace QtGui
 
     const osgEarth::Viewpoint& viewpoint() { return _viewpoint; }
 
-	protected:
-		osgEarth::Viewpoint _viewpoint;
-    ViewVector _views;
-    double _duration;
+  protected:
+      osgEarth::Viewpoint _viewpoint;
+      ViewVector _views;
+      double _duration;
   };
 
 } }

@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Filter>
 #include <osgEarthFeatures/BufferFilter>
 #include <osgEarthFeatures/ScaleFilter>
+#include <osgEarthFeatures/GeometryUtils>
 #include "OGRFeatureOptions"
 #include "FeatureCursorOGR"
 #include <osgEarthFeatures/OgrUtils>
@@ -51,6 +52,7 @@ public:
     OGRFeatureSource( const OGRFeatureOptions& options ) : FeatureSource( options ),
       _dsHandle( 0L ),
       _layerHandle( 0L ),
+      _layerIndex( 0 ),
       _ogrDriverHandle( 0L ),
       _options( options ),
       _featureCount(-1),
@@ -153,10 +155,15 @@ public:
 	        if ( _dsHandle )
 	        {
                 if (openMode == 1) _writable = true;
+                
+                if ( _options.layer().isSet() )
+                {
+                    _layerIndex = _options.layer().value();
+                }                
 
-		        _layerHandle = OGR_DS_GetLayer( _dsHandle, 0 ); // default to layer 0 for now
+		        _layerHandle = OGR_DS_GetLayer( _dsHandle, _layerIndex );
                 if ( _layerHandle )
-                {                    
+                {                                     
                     GeoExtent extent;
 
                     // if the user provided a profile, user that:
@@ -278,7 +285,7 @@ public:
 	        OGRDataSourceH dsHandle = OGROpenShared( _source.c_str(), 0, &_ogrDriverHandle );
 	        if ( dsHandle )
 	        {
-                OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, 0 );
+                OGRLayerH layerHandle = OGR_DS_GetLayer( dsHandle, _layerIndex );
 
                 return new FeatureCursorOGR( 
                     dsHandle,
@@ -318,7 +325,9 @@ public:
         OGRFeatureH handle = OGR_L_GetFeature( _layerHandle, fid);
         if (handle)
         {
-            result = OgrUtils::createFeature( handle );
+            const FeatureProfile* p = getFeatureProfile();
+            const SpatialReference* srs = p ? p->getSRS() : 0L;
+            result = OgrUtils::createFeature( handle, srs );
             OGR_F_Destroy( handle );
         }
         return result;
@@ -428,7 +437,7 @@ protected:
     // parses an explicit WKT geometry string into a Geometry.
     Symbology::Geometry* parseGeometry( const Config& geomConf )
     {
-        return OgrUtils::createGeometryFromWKT( geomConf.value() );
+        return GeometryUtils::geometryFromWKT( geomConf.value() );
     }
 
     // read the WKT geometry from a URL, then parse into a Geometry.
@@ -464,6 +473,7 @@ private:
     std::string _source;
     OGRDataSourceH _dsHandle;
     OGRLayerH _layerHandle;
+    unsigned int _layerIndex;
     OGRSFDriverH _ogrDriverHandle;
     osg::ref_ptr<Symbology::Geometry> _geometry; // explicit geometry.
     const OGRFeatureOptions _options;

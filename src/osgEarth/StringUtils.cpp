@@ -363,3 +363,66 @@ osgEarth::toLower( const std::string& input )
     std::transform( output.begin(), output.end(), output.begin(), ::tolower );
     return output;
 }
+
+namespace
+{
+    template<typename charT>
+    struct ci_equal {
+        ci_equal( const std::locale& loc ) : _loc(loc) { }
+        bool operator()(charT c1, charT c2) {
+            return std::toupper(c1,_loc) == std::toupper(c2,_loc);
+        }
+        const std::locale& _loc;
+    };
+}
+
+bool
+osgEarth::startsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
+{
+    if ( pattern.length() > ref.length() )
+        return false;
+
+    if ( caseSensitive )
+    {
+        for( unsigned i=0; i<pattern.length(); ++i )
+        {
+            if ( ref[i] != pattern[i] )
+                return false;
+        }
+    }
+    else
+    {
+        for( unsigned i=0; i<pattern.length(); ++i )
+        {
+            if ( std::toupper(ref[i], loc) != std::toupper(pattern[i],loc) )
+                return false;
+        }
+    }
+    return true;
+}
+
+bool
+osgEarth::endsWith( const std::string& ref, const std::string& pattern, bool caseSensitive, const std::locale& loc )
+{
+    if ( pattern.length() > ref.length() )
+        return false;
+
+    unsigned offset = ref.size()-pattern.length();
+    if ( caseSensitive )
+    {
+        for( unsigned i=0; i < pattern.length(); ++i )
+        {
+            if ( ref[i+offset] != pattern[i] )
+                return false;
+        }
+    }
+    else
+    {
+        for( unsigned i=0; i < pattern.length(); ++i )
+        {
+            if ( std::toupper(ref[i+offset], loc) != std::toupper(pattern[i],loc) )
+                return false;
+        }
+    }
+    return true;
+}

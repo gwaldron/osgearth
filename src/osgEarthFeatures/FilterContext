@@ -81,12 +81,6 @@ namespace osgEarth { namespace Features
         const optional<GeoExtent>& extent() const { return _extent; }
 
         /**
-         * Whether to assume a geocentric coordinate system for geographic profiles.
-         */
-        //bool isGeocentric() const { return _isGeocentric; }
-        //bool& isGeocentric() { return _isGeocentric; }
-
-        /**
          * Whether this context has a non-identity reference frame
          */
         bool hasReferenceFrame() const { return !_referenceFrame.isIdentity(); }

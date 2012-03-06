@@ -20,7 +20,7 @@
 #include <osgEarthAnnotation/HighlightDecoration>
 #include <osgEarthAnnotation/AnnotationUtils>
 #include <osgEarthAnnotation/OrthoNode>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osg/Stencil>
 
 #undef  LC

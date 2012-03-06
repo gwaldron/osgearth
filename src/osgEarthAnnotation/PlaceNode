@@ -45,7 +45,7 @@ namespace osgEarth { namespace Annotation
          */
         PlaceNode(
             MapNode*           mapNode,
-            const osg::Vec3d&  position,
+            const GeoPoint&    position,
             osg::Image*        iconImage,
             const std::string& labelText,
             const Style&       style =Style() );
@@ -60,6 +60,13 @@ namespace osgEarth { namespace Annotation
             osg::Image*        iconImage,
             const std::string& labelText,
             const Style&       style =Style() );
+
+        /**
+         * Deserializes a place node
+         */
+        PlaceNode(
+            MapNode*      mapNode,
+            const Config& conf);
 
         /**
          * Image to use for the icon
@@ -78,7 +85,7 @@ namespace osgEarth { namespace Annotation
          */
         void setStyle( const Style& style );
         const Style& getStyle() const { return _style; }
-        
+
 
     public: // OrthoNode override
 
@@ -86,6 +93,8 @@ namespace osgEarth { namespace Annotation
 
         virtual void setDynamic( bool value );
 
+        virtual Config getConfig() const;
+        
     private:
         osg::ref_ptr<osg::Image>   _image;
         std::string                _text;

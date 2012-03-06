@@ -40,6 +40,7 @@ namespace osgEarth
             USAGE_DEFAULT      = USAGE_READ_WRITE
         };
 
+        static CachePolicy INHERIT;
         static CachePolicy NO_CACHE;
         static CachePolicy CACHE_ONLY;
 

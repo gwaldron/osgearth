@@ -187,6 +187,11 @@ namespace osgEarth
             const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const;
 
+        ReadResult readConfig(
+            const osgDB::Options* dbOptions   =0L,
+            const CachePolicy&    cachePolicy =CachePolicy(),
+            ProgressCallback*     progress    =0L ) const;
+
     public: // get methods call the read* methods, then just return the raw data.
 
         osg::Object* getObject(
@@ -208,7 +213,6 @@ namespace osgEarth
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
             ProgressCallback*     progress    =0L ) const { return readString().getString(); }
-
 
     public:
 

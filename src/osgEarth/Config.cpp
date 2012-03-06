@@ -19,7 +19,11 @@
 #include <osgEarth/Config>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/JsonUtils>
+#include <osgDB/ReaderWriter>
+#include <osgDB/FileNameUtils>
+#include <osgDB/Registry>
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 
 using namespace osgEarth;
@@ -35,7 +39,7 @@ Config::setReferrer( const std::string& referrer )
 }
 
 bool
-Config::loadXML( std::istream& in )
+Config::fromXML( std::istream& in )
 {
     osg::ref_ptr<XmlDocument> xml = XmlDocument::load( in );
     if ( xml.valid() )
@@ -71,7 +75,45 @@ void
 Config::merge( const Config& rhs ) 
 {
     for( ConfigSet::const_iterator c = rhs._children.begin(); c != rhs._children.end(); ++c )
-        addChild( *c );
+        add( *c );
+}
+
+const Config*
+Config::find( const std::string& key, bool checkMe ) const
+{
+    if ( checkMe && key == this->key() )
+        return this;
+
+    for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); ++c )
+        if ( key == c->key() )
+            return &(*c);
+
+    for( ConfigSet::const_iterator c = _children.begin(); c != _children.end(); ++c )
+    {
+        const Config* r = c->find(key, false);
+        if ( r ) return r;
+    }
+
+    return 0L;
+}
+
+Config*
+Config::find( const std::string& key, bool checkMe )
+{
+    if ( checkMe && key == this->key() )
+        return this;
+
+    for( ConfigSet::iterator c = _children.begin(); c != _children.end(); ++c )
+        if ( key == c->key() )
+            return &(*c);
+
+    for( ConfigSet::iterator c = _children.begin(); c != _children.end(); ++c )
+    {
+        Config* r = c->find(key, false);
+        if ( r ) return r;
+    }
+
+    return 0L;
 }
 
 namespace

@@ -34,7 +34,15 @@ namespace osgEarth { namespace Annotation
     class OSGEARTHANNO_EXPORT AnnotationData : public osg::Referenced
     {
     public:
+        /**
+         * Construct a new annotation data structure.
+         */
         AnnotationData();
+
+        /**
+         * Deserialize an annotation data structure.
+         */
+        AnnotationData( const Config& conf );
 
     public:
         /**
@@ -67,6 +75,11 @@ namespace osgEarth { namespace Annotation
         const Viewpoint* getViewpoint() const {
             return _viewpoint;
         }
+
+    public: // serialization
+
+        virtual void mergeConfig(const Config& conf);
+        Config getConfig() const;
 
     public:
         virtual ~AnnotationData();

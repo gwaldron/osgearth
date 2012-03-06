@@ -52,6 +52,11 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
             return readNode( file_name, options );
         }
 
+        virtual ReadResult readObject(std::istream& in, const Options* options) const
+        {
+            return readNode( in, options );
+        }
+
         virtual WriteResult writeNode(const osg::Node& node, const std::string& fileName, const Options* options ) const
         {
             if ( !acceptsExtension( osgDB::getFileExtension(fileName) ) )
@@ -132,7 +137,9 @@ class ReaderWriterEarth : public osgDB::ReaderWriter
         {
             // pull the URI context from the options structure (since we're reading
             // from an "anonymous" stream here)
-            URIContext uriContext( options );            
+            URIContext uriContext( options ); 
+            //if ( uriContext.empty() && options && options->getDatabasePathList().size() > 0 )
+            //    uriContext = URIContext( options->getDatabasePathList().front() + "/" );
 
             osg::ref_ptr<XmlDocument> doc = XmlDocument::load( in, uriContext );            
             if ( !doc.valid() )

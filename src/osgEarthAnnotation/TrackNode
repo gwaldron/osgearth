@@ -71,11 +71,29 @@ namespace osgEarth { namespace Annotation
     /** 
      * TrackNode is a movable, single-point entity represented by an icon,
      * optional placeable text labels, and optional localized geometry.
+     *
+     * NOTE. TrackNode does not automatically support terrain clamping. This is
+     * because its intention is for use as a trackable entity marker, and 
+     * presumably the entity itself will be responsible for its own absolute
+     * positioning (and clamping, if applicable).
      */
     class OSGEARTHANNO_EXPORT TrackNode : public OrthoNode
     {
     public:
         META_AnnotationNode(osgEarthAnnotation, TrackNode);
+
+        /**
+         * Constructs a new track node
+         * @param mapNode     Map node under which this track will live
+         * @param position    Initial position
+         * @param image       Icon image to use
+         * @param fieldSchema Schema for track label fields
+         */
+        TrackNode(
+            MapNode*                    mapNode,
+            const GeoPoint&             position,
+            osg::Image*                 image,
+            const TrackNodeFieldSchema& fieldSchema );
 
         /**
          * Constructs a new track node
@@ -86,7 +104,7 @@ namespace osgEarth { namespace Annotation
          */
         TrackNode(
             MapNode*                    mapNode,
-            const osg::Vec3d&           position,
+            const osg::Vec3d&           positionInMapCoords,
             osg::Image*                 image,
             const TrackNodeFieldSchema& fieldSchema );
 

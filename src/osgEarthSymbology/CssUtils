@@ -22,13 +22,44 @@
 
 #include <osgEarthSymbology/Common>
 #include <osgEarth/Config>
+#include <vector>
 
 namespace osgEarth { namespace Symbology
 {
     class OSGEARTHSYMBOLOGY_EXPORT CssUtils
     {
     public:
-        static Config readConfig( std::istream& in );
+        static void readConfig( 
+            const std::string& inputCSS,
+            const std::string& referrer,
+            ConfigSet&         output );
+
+        /**
+         * Takes a string containing CSS text, and splits it up into 
+         * multiple strings, each one containing a single style definition
+         * (still in CSS). A nameless block is named "default".
+         *
+         * Example INPUT:
+         *
+         *   s1 {
+         *      fill: #ffff00;
+         *   }
+         *   s2 {
+         *      stroke: #ffff00;
+         *      altitude-mode: absoulte;
+         *   }
+         *   {
+         *      marker: "something.flt";
+         *   }
+         *
+         * Example OUTPUT:
+         *
+         *   [0] : s1 { fill: #ffff00; }
+         *   [1] : s2 { stroke: #ffff00; altitude-mode: absolute; }
+         *   [2] : default { marker: "something.flt"; }
+         *
+         */
+        static void split( const std::string& css, std::vector<std::string>& output );
     };
 
 } } // namespace osgEarth::Features2

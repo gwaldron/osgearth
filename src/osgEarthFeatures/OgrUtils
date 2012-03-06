@@ -32,7 +32,7 @@ using namespace osgEarth::Symbology;
 struct OgrUtils
 {
     static void
-        populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints )
+    populate( OGRGeometryH geomHandle, Symbology::Geometry* target, int numPoints )
     {
         for( int v = numPoints-1; v >= 0; v-- ) // reverse winding.. we like ccw
         {
@@ -45,7 +45,7 @@ struct OgrUtils
     }
 
     static Symbology::Polygon*
-        createPolygon( OGRGeometryH geomHandle )
+    createPolygon( OGRGeometryH geomHandle )
     {
         Symbology::Polygon* output = 0L;
 
@@ -84,7 +84,7 @@ struct OgrUtils
     }
 
     static Symbology::Geometry*
-        createGeometry( OGRGeometryH geomHandle )
+    createGeometry( OGRGeometryH geomHandle )
     {
         Symbology::Geometry* output = 0L;
 
@@ -149,7 +149,7 @@ struct OgrUtils
     }
 
     static OGRGeometryH
-        encodePart( Geometry* geometry, OGRwkbGeometryType part_type )
+    encodePart( Geometry* geometry, OGRwkbGeometryType part_type )
     {
         OGRGeometryH part_handle = OGR_G_CreateGeometry( part_type );
 
@@ -164,7 +164,7 @@ struct OgrUtils
 
 
     static OGRGeometryH
-        encodeShape( Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type )
+    encodeShape( Geometry* geometry, OGRwkbGeometryType shape_type, OGRwkbGeometryType part_type )
     {
         OGRGeometryH shape_handle = OGR_G_CreateGeometry( shape_type );
         if ( shape_handle )
@@ -251,53 +251,20 @@ struct OgrUtils
         }
     }
 
-    static Symbology::Geometry*
-        createGeometryFromWKT( const std::string& wkt )
-    {       
-        OGRwkbGeometryType type = 
-            startsWith( wkt, "POINT" ) ? wkbPoint :
-            startsWith( wkt, "LINESTRING" ) ? wkbLineString :
-            startsWith( wkt, "POLYGON" ) ? wkbPolygon :
-            startsWith( wkt, "MULTIPOINT" ) ? wkbMultiPoint :
-            startsWith( wkt, "MULTILINESTRING" ) ? wkbMultiLineString :
-            startsWith( wkt, "MULTIPOLYGON" ) ? wkbMultiPolygon :
-            startsWith( wkt, "GEOMETRYCOLLECTION" ) ? wkbGeometryCollection :
-            wkbNone;
-
-        Symbology::Geometry* output = 0L;
-        if ( type != wkbNone )
-        {
-            OGRGeometryH geom = OGR_G_CreateGeometry( type );
-            if ( geom )
-            {
-                char* ptr = (char*)wkt.c_str();
-                if ( OGRERR_NONE == OGR_G_ImportFromWkt( geom, &ptr ) )
-                {
-                    output = createGeometry( geom );
-                    OGR_G_DestroyGeometry( geom );
-                }
-                else
-                {
-                    OE_NOTICE
-                        << "OGR Feature Source: malformed WKT geometry" << std::endl;
-                }
-            }
-        }
-        return output;
-    }
-
-    static Feature* createFeature( OGRFeatureH handle )
+    static Feature* createFeature( OGRFeatureH handle, const SpatialReference* srs )
     {
         long fid = OGR_F_GetFID( handle );
 
-        Feature* feature = new Feature( fid );
-
         OGRGeometryH geomRef = OGR_F_GetGeometryRef( handle );	
+
+        Symbology::Geometry* geom = 0;
+
         if ( geomRef )
         {
-            Symbology::Geometry* geom = OgrUtils::createGeometry( geomRef );
-            feature->setGeometry( geom );
+            geom = OgrUtils::createGeometry( geomRef );
         }
+
+        Feature* feature = new Feature( geom, srs, Style(), fid );
 
         int numAttrs = OGR_F_GetFieldCount(handle); 
         for (int i = 0; i < numAttrs; ++i) 
@@ -331,12 +298,6 @@ struct OgrUtils
                         feature->set( name, std::string(value) );
                     }
             }
-                                 
-            //const char* field_value= OGR_F_GetFieldAsString(handle, i); 
-            //std::string value = std::string( field_value); 
-            ////Make the name lower case 
-            //feature->set(name, value);
-            ////feature->setAttr(name, value); 
         } 
 
         return feature;

@@ -24,25 +24,95 @@
 #include <osgEarthQt/Common>
 #include <osgEarthQt/DataManager>
 
+#include <osgEarth/Draggers>
+#include <osgEarthUtil/LineOfSight>
+
+#include <osg/AutoTransform>
+
 #include <QDialog>
 
 namespace osgEarth { namespace QtGui 
 {
+    class LOSIntersectingDragger : public osgEarth::SphereDragger
+  {
+  public:
+      LOSIntersectingDragger(osgEarth::MapNode* mapNode):
+        osgEarth::SphereDragger(mapNode),
+        _heightAboveTerrain(0.0)
+    {
+      setLineColor(osg::Vec4(1.0f, 1.0f, 0.0f, 0.0f));
+      setupDefaultGeometry();
+    }
+
+    void setupDefaultGeometry()
+    {
+      // draw a line from ground to location
+      _lineGeometry = new osg::Geometry;
+      _lineVerts = new osg::Vec3Array();
+      _lineVerts->reserve(2);
+      _lineGeometry->setVertexArray( _lineVerts );
+
+      osg::Vec4Array* colors = new osg::Vec4Array();
+      colors->reserve( 2 );
+      _lineGeometry->setColorArray( colors );
+      _lineGeometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+
+      _lineVerts->push_back( osg::Vec3d(0.0, 0.0, 0.0) );
+      _lineVerts->push_back( osg::Vec3d(0.0, 0.0, _heightAboveTerrain) );
+      colors->push_back( _lineColor );
+      colors->push_back( _lineColor );
+
+      _lineGeometry->addPrimitiveSet( new osg::DrawArrays( GL_LINES, 0, _lineVerts->size()) );
+      osg::Geode* lineGeode = new osg::Geode();
+      lineGeode->addDrawable( _lineGeometry );
+      lineGeode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
+      lineGeode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+      addChild( lineGeode );
+    }
+
+    void setHeightAboveTerrain( double hat )
+    {
+      _heightAboveTerrain = hat;
+      (*_lineVerts)[1].set(0.0, 0.0, _heightAboveTerrain);
+      if (_lineGeometry.valid())
+        _lineGeometry->dirtyDisplayList();
+    }
+
+    void setLineColor(const osg::Vec4& color) { _lineColor = color; }
+
+  private:
+    double _offset;
+    osg::Vec4 _lineColor;
+    osg::ref_ptr<osg::Geometry> _lineGeometry;
+    osg::ref_ptr<osg::Vec3Array> _lineVerts;
+    double _heightAboveTerrain;
+  };
+
+  //---------------------------------------------------------------------------
+
   class LOSCreationDialog : public QDialog
   {
   Q_OBJECT
 
   public:
-    LOSCreationDialog(osgEarth::MapNode* mapNode, int losCount, DataManager* manager=0L, ViewVector* views=0L);
+    enum LOSPoint { P2P_START, P2P_END, RADIAL_CENTER };
+
+    LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* root, int losCount, DataManager* manager=0L, ViewVector* views=0L);
+    LOSCreationDialog(osgEarth::MapNode* mapNode, osg::Group* root, osg::Group* losNode, const std::string& name, DataManager* manager=0L, ViewVector* views=0L);
 
     osg::Group* losNode() { return _node.get(); }
-    QString losName() { return _ui.nameBox->text(); }
-    osg::Group* losEditor() { return _editor.get(); }
+    std::string losName() { return _ui.nameBox->text().toStdString(); }
 
-    void mapClick(const osg::Vec3d& location);
+    void getLOSPoint(LOSPoint point, osg::Vec3d& out_point, bool relative=false);
+    void setLOSPoint(LOSPoint point, const osg::Vec3d& value, bool updateUi=false);
+
+    bool isAltitudeRelative(LOSPoint point);
+
+    void mapClick(const osg::Vec3d& point);
 
   public slots:
     void accept();
+    void reject();
 		
   private slots:
     void onP1TypeChange(const QString& text);
@@ -57,17 +127,46 @@ namespace osgEarth { namespace QtGui
     void onP2FindNodeButtonClicked(bool checked);
     void onRadFindNodeButtonClicked(bool checked);
 
+    void onLocationValueChanged(double d);
+    void onRelativeCheckChanged(int state);
+
+    void onNodeComboChange(const QString& text);
+
+    void onDepthTestChanged(int state);
+    void onCurrentTabChanged(int index);
+
+    void onSpokesBoxChanged(int value);
+    void onRadiusBoxChanged(double value);
+
+  protected:
+    void closeEvent(QCloseEvent* event);
+
   private:
-    void initUi(int losCount);
-    bool doClose();
+    void initUi(const std::string& name, osg::Group* los=0L);
+    void updateLOSNodes(bool updateAll=false);
+    void cleanupNodes();
     void centerMapOnNode(osg::Node* node);
+    void updateDragger(Dragger* dragger, const GeoPoint& point);
+    void updateDraggerNodes();
+    void updatePoint(LOSPoint point);
+    int findAnnotationIndex(osg::Node* annotation);
 
     Ui::LOSCreationDialog _ui;
     osg::ref_ptr<osg::Group> _node;
-    osg::ref_ptr<osg::Group> _editor;
     osg::ref_ptr<osgEarth::MapNode> _mapNode;
+    osg::ref_ptr<osg::Group> _root;
     osg::ref_ptr<DataManager> _manager;
     osg::ref_ptr<osgEarth::Map> _map;
+    osg::ref_ptr<osgEarth::Util::LineOfSightNode> _p2p;
+    osg::ref_ptr<osgEarth::Util::RadialLineOfSightNode> _radial;
+    osg::ref_ptr<LOSIntersectingDragger> _p1Dragger;
+    osg::ref_ptr<LOSIntersectingDragger> _p2Dragger;
+    osg::ref_ptr<LOSIntersectingDragger> _radDragger;
+    bool _updatingUi;
+    bool _updateAlt;
+    double _p1BaseAlt;
+    double _p2BaseAlt;
+    double _radBaseAlt;
     AnnotationVector _annotations;
     ViewVector* _views;
 

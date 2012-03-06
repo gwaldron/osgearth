@@ -20,12 +20,14 @@
 #include <osgEarthUtil/StarData>
 
 #include <osgEarth/ShaderComposition>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/MapNode>
 #include <osgEarth/Utils>
+#include <osgEarth/Registry>
 
 #include <osg/MatrixTransform>
 #include <osg/ShapeDrawable>
+#include <osg/PointSprite>
 #include <osg/BlendFunc>
 #include <osg/FrontFace>
 #include <osg/CullFace>
@@ -532,29 +534,79 @@ namespace
 
 namespace
 {
-    static const char s_starVertexSource[] = 
-        "void main() \n"
-        "{ \n"
-        "    gl_FrontColor = gl_Color; \n" //vec4(1,1,1,1); \n"
-        "    gl_PointSize = gl_Color.r * 2.0; \n"
-        "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
-        "} \n";
+    static std::string s_createStarVertexSource()
+    {
+        float glslVersion = Registry::instance()->getCapabilities().getGLSLVersion();
 
-    static const char s_starFragmentSource[] = 
-        "void main( void ) \n"
-        "{ \n"
-        "    gl_FragColor = gl_Color; \n"
-        "} \n";
+        return Stringify()
+            << "#version " << (glslVersion < 1.2f ? "110" : "120") << "\n"
+
+            << "float remap( float val, float vmin, float vmax, float r0, float r1 ) \n"
+            << "{ \n"
+            << "    float vr = (clamp(val, vmin, vmax)-vmin)/(vmax-vmin); \n"
+            << "    return r0 + vr * (r1-r0); \n"
+            << "} \n"
+
+            << "uniform vec3 atmos_v3LightPos; \n"
+            << "uniform mat4 osg_ViewMatrixInverse; \n"
+            << "varying float visibility; \n"
+            << "void main() \n"
+            << "{ \n"
+            << "    gl_FrontColor = gl_Color; \n"
+            << "    gl_PointSize = gl_Color.r * " << (glslVersion < 1.2f ? "2.0" : "14.0") << ";\n"
+            << "    gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+
+            << "    vec3 eye = osg_ViewMatrixInverse[3].xyz; \n"
+            << "    float hae = length(eye) - 6378137.0; \n"
+            // "highness": visibility increases with altitude
+            << "    float highness = remap( hae, 25000.0, 150000.0, 0.0, 1.0 ); \n"
+            << "    eye = normalize(eye); \n"
+            // "darkness": visibility increase as the sun goes around the other side of the earth
+            << "    float darkness = 1.0-remap(dot(eye,atmos_v3LightPos), -0.25, 0.0, 0.0, 1.0); \n"
+            << "    visibility = clamp(highness + darkness, 0.0, 1.0); \n"
+            << "} \n";
+    }
+
+    static std::string s_createStarFragmentSource()
+    {
+        float glslVersion = Registry::instance()->getCapabilities().getGLSLVersion();
+
+        if ( glslVersion < 1.2f )
+        {
+            return Stringify()
+                << "#version 110 \n"
+                << "varying float visibility; \n"
+                << "void main( void ) \n"
+                << "{ \n"
+                << "    gl_FragColor = gl_Color * visibility; \n"
+                << "} \n";
+        }
+        else
+        {
+            return Stringify()
+                << "#version 120 \n"
+                << "varying float visibility; \n"
+                << "void main( void ) \n"
+                << "{ \n"
+                << "    float b1 = 1.0-(2.0*abs(gl_PointCoord.s-0.5)); \n"
+                << "    float b2 = 1.0-(2.0*abs(gl_PointCoord.t-0.5)); \n"
+                << "    float i = b1*b1 * b2*b2; \n" //b1*b1*b1 * b2*b2*b2; \n"
+                << "    gl_FragColor = gl_Color * i * visibility; \n"
+                << "} \n";
+        }
+    }
 }
 
 //---------------------------------------------------------------------------
 
-SkyNode::SkyNode( Map* map, const std::string& starFile, float minStarMagnitude ) : _minStarMagnitude(minStarMagnitude)
+SkyNode::SkyNode( Map* map, const std::string& starFile, float minStarMagnitude ) : 
+_minStarMagnitude(minStarMagnitude)
 {
     initialize(map, starFile);
 }
 
-SkyNode::SkyNode( Map *map, float minStarMagnitude) : _minStarMagnitude(minStarMagnitude)
+SkyNode::SkyNode( Map *map, float minStarMagnitude) : 
+_minStarMagnitude(minStarMagnitude)
 {
     initialize(map);
 }
@@ -570,6 +622,10 @@ SkyNode::initialize( Map *map, const std::string& starFile )
     _defaultPerViewData._light->setDiffuse( osg::Vec4(1,1,1,1) );
     _defaultPerViewData._light->setSpecular( osg::Vec4(0,0,0,1) );
     _defaultPerViewData._starsVisible = true;
+    
+    // set up the uniform that conveys the normalized light position in world space
+    _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightPos" );
+    _defaultPerViewData._lightPosUniform->set( _defaultPerViewData._lightPos / _defaultPerViewData._lightPos.length() );
     
     // set up the astronomical parameters:
     _ellipsoidModel = map->getProfile()->getSRS()->getGeographicSRS()->getEllipsoid();
@@ -662,6 +718,7 @@ SkyNode::attach( osg::View* view, int lightNum )
 
     data._cullContainer->addChild( _atmosphere.get() );
     data._lightPosUniform = osg::clone( _defaultPerViewData._lightPosUniform.get() );
+    data._cullContainer->getOrCreateStateSet()->addUniform( data._lightPosUniform.get() );
 
     // node to traverse the child nodes
     data._cullContainer->addChild( new TraverseNode<osg::Group>(this) );
@@ -881,8 +938,11 @@ SkyNode::makeAtmosphere( const osg::EllipsoidModel* em )
     
     float Scale = 1.0f / (_outerRadius - _innerRadius);
 
-    _defaultPerViewData._lightPosUniform = set->getOrCreateUniform( "atmos_v3LightPos", osg::Uniform::FLOAT_VEC3 );
+#if 0
+//    _defaultPerViewData._lightPosUniform = set->getOrCreateUniform( "atmos_v3LightPos", osg::Uniform::FLOAT_VEC3 );
+    _defaultPerViewData._lightPosUniform = new osg::Uniform( osg::Uniform::FLOAT_VEC3, "atmos_v3LightPos" );
     _defaultPerViewData._lightPosUniform->set( _defaultPerViewData._lightPos / _defaultPerViewData._lightPos.length() );
+#endif
 
     set->getOrCreateUniform( "atmos_v3InvWavelength", osg::Uniform::FLOAT_VEC3 )->set( RGB_wl );
     set->getOrCreateUniform( "atmos_fInnerRadius",    osg::Uniform::FLOAT )->set( _innerRadius );
@@ -1015,7 +1075,6 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   osg::Vec4Array* colors = new osg::Vec4Array();
   for( p = stars.begin(); p != stars.end(); p++ )
   {
-      //float c = 0.5f + 0.5f * ( (p->magnitude-minMag) / (maxMag-minMag) );
       float c = ( (p->magnitude-minMag) / (maxMag-minMag) );
       colors->push_back( osg::Vec4(c,c,c,1.0f) );
   }
@@ -1026,17 +1085,19 @@ SkyNode::buildStarGeometry(const std::vector<StarData>& stars)
   geometry->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
   geometry->addPrimitiveSet( new osg::DrawArrays(osg::PrimitiveSet::POINTS, 0, coords->size()));
 
-  osg::StateSet* sset = new osg::StateSet;
+  osg::StateSet* sset = geometry->getOrCreateStateSet();
 
+  sset->setTextureAttributeAndModes( 0, new osg::PointSprite(), osg::StateAttribute::ON );
   sset->setMode( GL_VERTEX_PROGRAM_POINT_SIZE, osg::StateAttribute::ON );
+
   osg::Program* program = new osg::Program;
-  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_starVertexSource) );
-  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_starFragmentSource) );
+  program->addShader( new osg::Shader(osg::Shader::VERTEX, s_createStarVertexSource()) );
+  program->addShader( new osg::Shader(osg::Shader::FRAGMENT, s_createStarFragmentSource()) );
   sset->setAttributeAndModes( program, osg::StateAttribute::ON );
 
   sset->setRenderBinDetails( BIN_STARS, "RenderBin");
   sset->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), osg::StateAttribute::ON );
-  geometry->setStateSet( sset );
+  sset->setMode(GL_BLEND, 1);
 
   osg::Geode* starGeode = new osg::Geode;
   starGeode->addDrawable( geometry );

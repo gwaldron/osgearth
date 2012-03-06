@@ -48,11 +48,13 @@ namespace osgEarth { namespace Symbology
          * @param center Center point (must be in map SRS if a map was provided in ctor)
          * @param radius Circle radius
          * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         * @param geomToUse Use this geometry instead of creating a Polygon.
          */
         Geometry* createCircle( 
             const osg::Vec3d& center,
-            const Linear&     radius,
-            unsigned          numSegments =0);
+            const Distance&   radius,
+            unsigned          numSegments =0,
+            Geometry*         geomToUse   =0L);
 
         /**
          * Creates an arc geometry.
@@ -64,10 +66,11 @@ namespace osgEarth { namespace Symbology
          */
         Geometry* createArc(
             const osg::Vec3d& center,
-            const Linear&     radius,
-            const Angular&    startAngle,
-            const Angular&    endAngle,
-            unsigned          numSegments =0);
+            const Distance&   radius,
+            const Angle&      startAngle,
+            const Angle&      endAngle,
+            unsigned          numSegments =0,
+            Geometry*         geomToUse   =0L);
 
         /**
          * Creates a ellipse geometry.
@@ -76,13 +79,26 @@ namespace osgEarth { namespace Symbology
          * @param radiusMinor Minor radius (Y-axis) length
          * @param rotationAngle with respect to the X-axis
          * @param numSegments Number of circumference segments, or zero to automatically calculate it
+         * @param geomToUse Use this geometry instead of creating a Polygon.
          */
         Geometry* createEllipse(
             const osg::Vec3d& center,
-            const Linear&     radiusMajor,
-            const Linear&     radiusMinor,
-            const Angular&    rotationAngle,
-            unsigned          numSegments =0);
+            const Distance&   radiusMajor,
+            const Distance&   radiusMinor,
+            const Angle&      rotationAngle,
+            unsigned          numSegments =0,
+            Geometry*         geomToUse   =0L);
+
+        /**
+         * Creates a rectangle geometry
+         * @param center Center point (must be in map SRS if the map was provided in ctor)
+         * @param width The width of the rectangle
+         * @param height The height of the rectangle
+         */
+        Geometry* createRectangle(
+            const osg::Vec3d& center,
+            const Distance&   width,
+            const Distance&   height );
 
     protected:
 

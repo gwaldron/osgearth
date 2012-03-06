@@ -19,15 +19,13 @@ This one demonstrates how to read feature data from a WFS server
             <typename>states</typename>
             <outputformat>json</outputformat>
         </features>
-        
-        <geometry_type>line</geometry_type>
                   
         <styles>        
             <style type="text/css">
                 states {
-                   stroke: #ffff00;
-                   stroke-opacity: 1.0;
-                   stroke-width: 3.0;
+                   stroke:          #ffff00;
+                   stroke-opacity:  1.0;
+                   stroke-width:    3.0;
                 }                       
             </style>                   
             

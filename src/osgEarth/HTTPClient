@@ -22,8 +22,6 @@
 #include <osgEarth/Common>
 #include <osgEarth/IOTypes>
 #include <osgEarth/Progress>
-#include <osgEarth/TerrainOptions>
-#include <OpenThreads/Thread>
 #include <osg/ref_ptr>
 #include <osg/Referenced>
 #include <osgDB/ReaderWriter>
@@ -204,8 +202,7 @@ namespace osgEarth
 
     public:
         /**
-         * Reads an image. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an image.
          */
         static ReadResult readImage(
             const std::string&    location,
@@ -213,8 +210,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads an osg::Node. Based on the structure of "location" it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an osg::Node.
          */
         static ReadResult readNode(
             const std::string&    location,
@@ -222,8 +218,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads an object. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads an object.
          */
         static ReadResult readObject(
             const std::string&    location,
@@ -231,8 +226,7 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Reads a string. Based on the structure of "location", it will either try to fetch the
-         * data using HTTP or simply read the file from disk.
+         * Reads a string.
          */
         static ReadResult readString(
             const std::string&    location,
@@ -292,31 +286,6 @@ namespace osgEarth
             const std::string&    location,
             const osgDB::Options* dbOptions,
             ProgressCallback*     progress );
-
-#if 0
-        ResultCode doReadObjectFile(
-            const std::string&                  url,
-            osg::ref_ptr<osg::Object>&          output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback*                   callback = 0);
-
-        ResultCode doReadImageFile(
-            const std::string& filename,
-            osg::ref_ptr<osg::Image>& output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback *callback = 0);
-
-        ResultCode doReadNodeFile(
-            const std::string& filename,
-            osg::ref_ptr<osg::Node>& output,
-            const osgDB::ReaderWriter::Options* options = 0,
-            ProgressCallback *callback = 0);
-
-        ResultCode doReadString(
-            const std::string& filename,
-            std::string& output,
-            ProgressCallback *callback = 0);
-#endif
 
         /**
          * Convenience method for downloading a URL directly to a file

@@ -18,7 +18,7 @@
  */
 #include <osgEarthSymbology/StencilVolumeNode>
 #include <osgEarth/Registry>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osg/Stencil>
 #include <osg/StencilTwoSided>
 #include <osg/Depth>

@@ -1,0 +1,23 @@
+<!-- 
+osgEarth Sample - Simple Model Driver
+Demonstates how to place a model at a location using the simple model driver.  If you do not specify a location the model is loaded as is to the scene graph so
+needs to be absolutely positioned.
+-->
+
+<map version="2">
+    <image driver="gdal" name="world-tiff" cache_enabled="false">
+        <url>../data/world.tif</url>
+        <caching_policy usage="no_cache"/>
+    </image>
+	
+	<model name = "cow" driver="simple">
+	  <url>cow.osg.100,100,100.scale</url>
+	  <location>-74.018 40.717 10</location>	  
+	</model>
+    
+    <options lighting="false"/>
+	
+	<external>
+        <viewpoint name="Zoom to model" heading="0" height="0" lat="40.717" long="-74.018" pitch="-90" range="6000"/>    
+    </external>	
+</map>

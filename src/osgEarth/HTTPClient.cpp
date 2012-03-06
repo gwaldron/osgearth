@@ -16,8 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-
-#include <curl/curl.h>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/Registry>
 #include <osgEarth/Version>
@@ -31,6 +29,7 @@
 #include <iterator>
 #include <iostream>
 #include <algorithm>
+#include <curl/curl.h>
 
 #define LC "[HTTPClient] "
 
@@ -802,7 +801,7 @@ namespace
         std::string mimeType = response.getMimeType();
         if ( !mimeType.empty() )
         {
-            reader = osgEarth::Registry::instance()->getReaderWriterForMimeType(mimeType);
+            reader = osgDB::Registry::instance()->getReaderWriterForMimeType(mimeType);
         }
 
         if ( !reader )
@@ -870,6 +869,10 @@ HTTPClient::doReadImage(const std::string&    location,
             }
         }
     }
+
+    // set the source name
+    if ( result.getImage() )
+        result.getImage()->setName( location );
 
     return result;
 }

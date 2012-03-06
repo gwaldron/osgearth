@@ -32,10 +32,11 @@ _srs( srs )
 
 Geometry*
 GeometryFactory::createCircle(const osg::Vec3d& center,
-                              const Linear&     radius,
-                              unsigned          numSegments)
+                              const Distance&   radius,
+                              unsigned          numSegments,
+                              Geometry*         geomToUse)
 {
-    Polygon* geom = new Polygon();
+    Geometry* geom = geomToUse ? geomToUse : new Polygon();
 
     if ( numSegments == 0 )
     {
@@ -82,12 +83,13 @@ GeometryFactory::createCircle(const osg::Vec3d& center,
 
 Geometry*
 GeometryFactory::createArc(const osg::Vec3d& center,
-                           const Linear&     radius,
-                           const Angular&    start,
-                           const Angular&    end,
-                           unsigned          numSegments)
+                           const Distance&   radius,
+                           const Angle&      start,
+                           const Angle&      end,
+                           unsigned          numSegments,
+                           Geometry*         geomToUse)
 {
-    Geometry* geom = new LineString();
+    Geometry* geom = geomToUse? geomToUse : new LineString();
 
     if ( numSegments == 0 )
     {
@@ -99,6 +101,10 @@ GeometryFactory::createArc(const osg::Vec3d& center,
 
     double startRad = std::min( start.as(Units::RADIANS), end.as(Units::RADIANS) );
     double endRad   = std::max( start.as(Units::RADIANS), end.as(Units::RADIANS) );
+
+    if ( endRad == startRad )
+        endRad += 2*osg::PI;
+
     double span     = endRad - startRad;    
     double step     = span/(double)numSegments;
 
@@ -132,17 +138,20 @@ GeometryFactory::createArc(const osg::Vec3d& center,
         }
     }
 
+    geom->rewind(Geometry::ORIENTATION_CCW);
+
     return geom;
 }
 
 Geometry*
 GeometryFactory::createEllipse(const osg::Vec3d& center,
-                               const Linear&     radiusMajor,
-                               const Linear&     radiusMinor,
-                               const Angular&    rotationAngle,
-                               unsigned          numSegments)
+                               const Distance&   radiusMajor,
+                               const Distance&   radiusMinor,
+                               const Angle&      rotationAngle,
+                               unsigned          numSegments,
+                               Geometry*         geomToUse)
 {
-    Polygon* geom = new Polygon();
+    Geometry* geom = geomToUse ? geomToUse : new Polygon();
 
     if ( numSegments == 0 )
     {
@@ -195,6 +204,53 @@ GeometryFactory::createEllipse(const osg::Vec3d& center,
 
             geom->push_back( osg::Vec3d(x, y, center.z()) );
         }
+    }
+
+    return geom;
+}
+
+Geometry*
+GeometryFactory::createRectangle(const osg::Vec3d& center,
+                                 const Distance&   width,
+                                 const Distance&   height )
+{
+    Geometry* geom = new Polygon();
+    
+    if ( _srs.valid() && _srs->isGeographic() )
+    {
+        double earthRadius = _srs->getEllipsoid()->getRadiusEquator();
+        double lat = osg::DegreesToRadians(center.y());
+        double lon = osg::DegreesToRadians(center.x());
+        double halfWidthMeters  = width.as(Units::METERS) / 2.0;
+        double halfHeightMeters  = height.as(Units::METERS) / 2.0;   
+
+        double eastLon, eastLat;
+        double westLon, westLat;
+        double northLon, northLat;
+        double southLon, southLat;
+        
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 90.0 ), halfWidthMeters, eastLat, eastLon, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( -90.0 ), halfWidthMeters, westLat, westLon, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 0.0 ),  halfHeightMeters, northLat, northLon, earthRadius );
+        GeoMath::destination( lat, lon, osg::DegreesToRadians( 180.0 ), halfHeightMeters, southLat, southLon, earthRadius );
+
+
+        geom->push_back( osg::RadiansToDegrees( westLon ), osg::RadiansToDegrees( southLat ), center.z());
+        geom->push_back( osg::RadiansToDegrees( eastLon ), osg::RadiansToDegrees( southLat ), center.z());
+        geom->push_back( osg::RadiansToDegrees( eastLon ), osg::RadiansToDegrees( northLat ), center.z());
+        geom->push_back( osg::RadiansToDegrees( westLon ), osg::RadiansToDegrees( northLat ), center.z());        
+    }
+
+    else
+    {
+        double halfWidthMeters = width.as(Units::METERS) / 2.0;
+        double halfHeightMeters = height.as(Units::METERS) / 2.0;
+
+        
+        geom->push_back( center.x() - halfWidthMeters, center.y() - halfHeightMeters, center.z());
+        geom->push_back( center.x() + halfWidthMeters, center.y() - halfHeightMeters, center.z());
+        geom->push_back( center.x() + halfWidthMeters, center.y() + halfHeightMeters, center.z());
+        geom->push_back( center.x() - halfWidthMeters, center.y() + halfHeightMeters, center.z());        
     }
 
     return geom;

@@ -68,6 +68,7 @@ namespace osgEarth
         const T& get() const { return _value; }
         const T& value() const { return _value; }
         const T& defaultValue() const { return _defaultValue; }
+        T temp_copy() const { return _value; }
 
         // gets a mutable reference, automatically setting
         T& mutable_value() { _set = true; return _value; }

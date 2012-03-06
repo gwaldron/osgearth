@@ -229,7 +229,8 @@ namespace osgEarth
         DataExtentList& getDataExtents() { return _dataExtents; }
 
 	    /**
-    	 * Creates an image for the given TileKey
+    	 * Creates an image for the given TileKey. The TileKey's profile must match
+         * the profile of the TileSource.
 		 */
         virtual osg::Image* createImage(
             const TileKey&        key,
@@ -237,7 +238,8 @@ namespace osgEarth
             ProgressCallback*     progress  =0L );
 
         /**
-         * Creates a heightfield for the given TileKey
+         * Creates a heightfield for the given TileKey. The TileKey's profile must match
+         * the profile of the TileSource.
          */
         virtual osg::HeightField* createHeightField(
             const TileKey&        key,

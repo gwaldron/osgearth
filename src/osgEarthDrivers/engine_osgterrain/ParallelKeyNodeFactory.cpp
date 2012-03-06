@@ -39,6 +39,13 @@ SerialKeyNodeFactory( builder, options, mapInfo, terrain, engineUID )
 }
 
 osg::Node*
+ParallelKeyNodeFactory::createRootNode( const TileKey& key )
+{
+    // NYI
+    return 0L;
+}
+
+osg::Node*
 ParallelKeyNodeFactory::createNode( const TileKey& key )
 {
     // An event for synchronizing the completion of all requests:

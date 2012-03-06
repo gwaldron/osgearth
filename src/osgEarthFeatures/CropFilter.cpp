@@ -61,7 +61,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
                     if ( extent.contains( centroid.x(), centroid.y() ) )
                     {
                         keepFeature = true;
-                        newExtent.expandToInclude( bounds );
+                        newExtent.expandToInclude( bounds.xMin(), bounds.yMin() );
                     }
                 }
             }
@@ -85,6 +85,7 @@ CropFilter::push( FeatureList& input, FilterContext& context )
             bool keepFeature = false;
 
             Feature* feature = i->get();
+
             Symbology::Geometry* featureGeom = feature->getGeometry();
             if ( featureGeom && featureGeom->isValid() )
             {

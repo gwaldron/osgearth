@@ -1,0 +1,60 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+
+#ifndef OSGEARTHFEATURES_TEXT_SYMBOLIZER_H
+#define OSGEARTHFEATURES_TEXT_SYMBOLIZER_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/Feature>
+#include <osgEarthFeatures/FilterContext>
+#include <osgEarthSymbology/TextSymbol>
+
+#include <osgText/Text>
+
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth::Symbology;
+
+    /**
+     * Utilities that use a TextSymbol to create OSG text objects.
+     */
+    class OSGEARTHFEATURES_EXPORT TextSymbolizer
+    {
+    public:
+        TextSymbolizer( const TextSymbol* symbol );
+
+        /**
+         * Creates a drawable for the specified string.
+         */
+        osgText::Text* create(
+            Feature*             feature =0L,
+            const FilterContext* context =0L,
+            const std::string&   text    ="" ) const;
+
+        osgText::Text* create( const std::string& text ) const {
+            return create(0L, 0L, text);
+        }
+
+    protected:
+        osg::ref_ptr<const TextSymbol> _symbol;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_TEXT_SYMBOLIZER_H

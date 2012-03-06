@@ -46,6 +46,11 @@ namespace osgEarth
         const std::string& relativePath );
 
     /**
+     * whether the given path ends with an Archive.
+     */
+    extern OSGEARTH_EXPORT bool isArchive(const std::string& path);
+
+    /**
      * Gets whether or not the given path contains a zip file within the path
      */
     extern OSGEARTH_EXPORT bool isZipPath(const std::string& path);

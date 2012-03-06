@@ -50,6 +50,46 @@ namespace osgEarth { namespace Util { namespace Controls
 
     typedef std::map< class Control*, osg::Geode* > GeodeTable;
 
+    // internal state class
+    struct ControlContext
+    {
+        ControlContext() : _viewContextID(~0) { }
+        osg::View* _view;
+        osg::ref_ptr<const osg::Viewport> _vp;
+        unsigned int _viewContextID;
+        std::queue< osg::ref_ptr<class Control> > _active;
+        const osg::FrameStamp* _frameStamp;
+    };
+
+    // 2-vec that supports various "units" designations
+    class OSGEARTHUTIL_EXPORT UVec2f : public osg::Vec2f
+    {
+    public:
+        enum Unit {
+            UNITS_FRACTION,
+            UNITS_PIXELS,
+            UNITS_INSET_PIXELS
+        };
+
+        UVec2f(double x, double y, Unit xunits =UNITS_PIXELS, Unit yunits =UNITS_PIXELS)
+            : osg::Vec2f(x,y), _xunits(xunits), _yunits(yunits) { }
+
+        Unit& xUnits() { return _xunits; }
+        const Unit& yUnits() const { return _yunits; }
+
+        float x( const osg::Vec2f& size ) const;
+        float x( const ControlContext& cx ) const;
+
+        float y( const osg::Vec2f& size) const;
+        float y( const ControlContext& cx ) const;
+
+        UVec2f asPixels( const osg::Vec2f& size ) const;
+        UVec2f asPixels( const ControlContext& cx ) const;
+
+    private:
+        Unit _xunits, _yunits;
+    };
+
     // holds 4-sided gutter dimensions (for margins and padding) .. no-export, header-only.
     struct Gutter
     {
@@ -64,10 +104,14 @@ namespace osgEarth { namespace Util { namespace Controls
         bool operator !=( const Gutter& rhs ) const {
             return top() != rhs.top() || right() != rhs.right() || bottom() != rhs.bottom() || left() != rhs.left(); }
 
-        float top()  const { return _top; }
-        float left() const { return _left; }
-        float right() const { return _right; }
-        float bottom() const { return _bottom; }
+        float  top()  const { return _top; }
+        float& top() { return _top; }
+        float  left() const { return _left; }
+        float& left() { return _left; }
+        float  right() const { return _right; }
+        float& right() { return _right; }
+        float  bottom() const { return _bottom; }
+        float& bottom() { return _bottom; }
 
         float x() const { return _left + _right; }
         float y() const { return _top + _bottom; }
@@ -78,17 +122,6 @@ namespace osgEarth { namespace Util { namespace Controls
 
     private:
         float _top, _right, _bottom, _left;
-    };
-
-    // internal state class
-    struct ControlContext
-    {
-        ControlContext() : _viewContextID(~0) { }
-        osg::View* _view;
-        osg::ref_ptr<const osg::Viewport> _vp;
-        unsigned int _viewContextID;
-        std::queue< osg::ref_ptr<class Control> > _active;
-        const osg::FrameStamp* _frameStamp;
     };
 
     // base class for control events
@@ -731,6 +764,7 @@ namespace osgEarth { namespace Util { namespace Controls
         GeodeTable      _geodeTable;
         ControlContext  _context;
         bool            _contextDirty;
+        bool            _updatePending;
 
         osg::ref_ptr<ControlNodeBin> _controlNodeBin;
 

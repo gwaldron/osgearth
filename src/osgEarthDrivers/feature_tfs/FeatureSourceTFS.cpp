@@ -181,7 +181,7 @@ public:
             result->setTiled( true );
             result->setFirstLevel( _layer._firstLevel);
             result->setMaxLevel( _layer._maxLevel);
-            result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), _layer._extent.xMin(), _layer._extent.yMin(), _layer._extent.xMax(), _layer._extent.yMax(), 0, 1, 1) );
+            result->setProfile( osgEarth::Profile::create(osgEarth::SpatialReference::create("epsg:4326"), _layer._extent.xMin(), _layer._extent.yMin(), _layer._extent.xMax(), _layer._extent.yMax(), 1, 1) );
         }
         return result;        
     }
@@ -215,13 +215,15 @@ public:
         OGRLayerH layer = OGR_DS_GetLayer(ds, 0);
         if ( layer )
         {
+            const SpatialReference* srs = SpatialReference::create("epsg:4326");
+
             OGR_L_ResetReading(layer);                                
             OGRFeatureH feat_handle;
             while ((feat_handle = OGR_L_GetNextFeature( layer )) != NULL)
             {
                 if ( feat_handle )
                 {
-                    Feature* f = OgrUtils::createFeature( feat_handle );
+                    Feature* f = OgrUtils::createFeature( feat_handle, srs );
                     if ( f ) 
                     {
                         features.push_back( f );

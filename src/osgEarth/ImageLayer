@@ -83,6 +83,7 @@ namespace osgEarth
         const optional<bool>& lodBlending() const { return _lodBlending; }
 
     public:
+
         virtual Config getConfig( bool isolate =false ) const;
         virtual void mergeConfig( const Config& conf );
         
@@ -175,7 +176,12 @@ namespace osgEarth
 
     public: // runtime properties
 
+        /**
+         * Sets the opacity of this image layer.
+         * @param opacity Opacity [0..1] -> [transparent..opaque]
+         */
         void setOpacity( float opacity );
+
         float getOpacity() const { return *_runtimeOptions.opacity(); }
         
         void disableLODBlending();
@@ -188,16 +194,22 @@ namespace osgEarth
 		 */
 		virtual GeoImage createImage( const TileKey& key, ProgressCallback* progress = 0, bool forceFallback =false);
 
+    public: // TerrainLayer override
+
+        CacheBin* getCacheBin( const Profile* profile );
+
     protected:
 
         // Fetches an image from the underlying TileSource whose data matches that of the
         // key extent.
-        osg::Image* createImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
+        //osg::Image* createImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
+        GeoImage createImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
 
         // Fetches multiple images from the TileSource; mosaics/reprojects/crops as necessary, and
         // returns a single tile. This is called by createImageFromTileSource() if the key profile
         // doesn't match the layer profile.
-        osg::Image* assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
+        //osg::Image* assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
+        GeoImage assembleImageFromTileSource(const TileKey& key, ProgressCallback* progress, bool forceFallback);
 
 
         virtual void initTileSource();

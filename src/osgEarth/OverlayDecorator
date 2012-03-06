@@ -22,6 +22,7 @@
 #include <osgEarth/Common>
 #include <osgEarth/ShaderComposition>
 #include <osgEarth/TerrainEngineNode>
+#include <osgEarth/ThreadingUtils>
 #include <osg/Camera>
 #include <osg/CoordinateSystemNode>
 #include <osg/Texture2D>
@@ -101,20 +102,12 @@ namespace osgEarth
         void traverse( osg::NodeVisitor& nv );
 
     private:
-        void updateRTTCamera( osg::NodeVisitor& nv );
-        void cull( osgUtil::CullVisitor* cv );
-        void reinit();
-        void initSubgraphShaders( osg::StateSet* set );
-        void initRTTShaders( osg::StateSet* set );
-
-    private:
         osg::ref_ptr<osg::Node>       _overlayGraph;
-        osg::ref_ptr<osg::Camera>     _rttCamera;
-        osg::ref_ptr<osg::Texture2D>  _projTexture;
-        osg::ref_ptr<osg::TexGenNode> _texGenNode;
-        osg::ref_ptr<osg::Uniform>    _texGenUniform;
+        //osg::ref_ptr<osg::Camera>     _rttCamera;
+        //osg::ref_ptr<osg::Texture2D>  _projTexture;
+        //osg::ref_ptr<osg::Uniform>    _texGenUniform;
         osg::ref_ptr<osg::Uniform>    _warpUniform;
-        osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
+        //osg::ref_ptr<osg::StateSet>   _subgraphStateSet;
         optional<int>                 _explicitTextureUnit;
         optional<int>                 _textureUnit;
         optional<int>                 _textureSize;
@@ -127,14 +120,39 @@ namespace osgEarth
         double                        _maxProjectedMapExtent;
         bool                          _mipmapping;
         bool                          _rttBlending;
-        osg::Matrixd                  _rttViewMatrix;
-        osg::Matrixd                  _rttProjMatrix;
-        osg::Matrixd                  _projectorViewMatrix;
-        osg::Matrixd                  _projectorProjMatrix;
+        bool                          _updatePending;
+        //osg::Matrixd                  _rttViewMatrix;
+        //osg::Matrixd                  _rttProjMatrix;
+        //osg::Matrixd                  _projectorViewMatrix;
+        //osg::Matrixd                  _projectorProjMatrix;
 
         osg::ref_ptr<const osg::EllipsoidModel> _ellipsoid;
         osg::ref_ptr<osgEarth::VirtualProgram>  _vp;
         osg::ref_ptr<TerrainEngineNode>         _engine;
+        
+        struct PerViewData
+        {
+            osg::ref_ptr<osg::Camera>   _rttCamera;
+            osg::ref_ptr<osg::Uniform>  _texGenUniform;
+            osg::Matrixd                _rttViewMatrix;
+            osg::Matrixd                _rttProjMatrix;
+            osg::ref_ptr<osg::StateSet> _subgraphStateSet;
+        };
+
+        typedef std::map<osg::View*, PerViewData> PerViewDataMap;
+        PerViewDataMap _perViewData;
+        Threading::ReadWriteMutex _perViewDataMutex;
+
+
+    private:
+        void updateRTTCameras(); //( PerViewData& pvd ); //osg::NodeVisitor& nv );
+        void cull( osgUtil::CullVisitor* cv, PerViewData& pvd );
+        void initializeForOverlayGraph();
+        void initializePerViewData( PerViewData& );
+        void initSubgraphShaders( PerViewData& );
+        void initRTTShaders( PerViewData& );
+        bool checkNeedsUpdate( PerViewData& );
+        PerViewData& getPerViewData( osg::View* key );
 
     public:
         // marker class for DrapeableNode support.

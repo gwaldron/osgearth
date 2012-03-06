@@ -38,7 +38,8 @@ SET(LIB_PUBLIC_HEADERS
     GeometryCompiler
 	GeometryUtils
     LabelSource
-	OgrUtils
+    MeshClamper
+    OgrUtils
     OptimizerHints	
     ResampleFilter
     ScaleFilter
@@ -47,6 +48,8 @@ SET(LIB_PUBLIC_HEADERS
     Script
     ScriptEngine
     SubstituteModelFilter
+    TessellateOperator
+    TextSymbolizer
     TransformFilter
     VirtualFeatureSource
 )
@@ -78,6 +81,7 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     GeometryCompiler.cpp
 	GeometryUtils.cpp
     LabelSource.cpp
+    MeshClamper.cpp
     OptimizerHints.cpp
     ResampleFilter.cpp
     ScaleFilter.cpp
@@ -85,6 +89,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     ScatterFilter.cpp
     ScriptEngine.cpp
     SubstituteModelFilter.cpp
+    TessellateOperator.cpp
+    TextSymbolizer.cpp
     TransformFilter.cpp
     VirtualFeatureSource.cpp
 )

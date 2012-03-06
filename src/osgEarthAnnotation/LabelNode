@@ -42,7 +42,7 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             MapNode*                mapNode,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const Style&            style =Style() );
 
@@ -51,7 +51,7 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             MapNode*                mapNode,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const TextSymbol*       symbol );
 
@@ -71,7 +71,7 @@ namespace osgEarth { namespace Annotation
          */
         LabelNode(
             const SpatialReference* mapSRS,
-            const osg::Vec3d&       position,
+            const GeoPoint&         position,
             const std::string&      text,
             const TextSymbol*       symbol );
 
@@ -85,22 +85,39 @@ namespace osgEarth { namespace Annotation
             const Style&       style =Style() );
 
         /**
+         * Constructs an empty label node 
+         */
+        LabelNode(
+            MapNode*          mapNode,
+            const TextSymbol* symbol );
+
+        /**
+         * Deserializes a label
+         */
+        LabelNode(
+            MapNode*      mapNode,
+            const Config& conf);
+
+        /**
          * Sets the text content.
          */
         void setText( const std::string& text );
-    
+
 
     public: // OrthoNode override
 
         virtual void setAnnotationData( AnnotationData* data );
 
         virtual void setDynamic( bool value );
+        
+        virtual Config getConfig() const;
 
     protected:
-        void init( const TextSymbol* symbol );
+        void init();
 
         std::string       _text;
         class osg::Geode* _geode;
+        Style             _style;
 
         /** Copy constructor */
         LabelNode( const LabelNode& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ) { }

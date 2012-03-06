@@ -18,22 +18,37 @@
 */
 
 #include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationUtils>
+
 #include <osgEarthFeatures/GeometryCompiler>
+#include <osgEarthFeatures/GeometryUtils>
+#include <osgEarthFeatures/MeshClamper>
+
+#include <osgEarthSymbology/AltitudeSymbol>
+
 #include <osgEarth/DrapeableNode>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/Utils>
+#include <osgEarth/Registry>
+
+#include <osg/BoundingSphere>
+#include <osg/Polytope>
 #include <osg/Transform>
+
+#define LC "[FeatureNode] "
 
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 using namespace osgEarth::Features;
+using namespace osgEarth::Symbology;
+
 
 FeatureNode::FeatureNode(MapNode* mapNode, 
                          Feature* feature, 
                          bool     draped,
                          const GeometryCompilerOptions& options ) :
-AnnotationNode(),
-_mapNode( mapNode ),
+AnnotationNode( mapNode ),
 _feature( feature ),
 _draped ( draped ),
 _options( options )
@@ -52,21 +67,39 @@ FeatureNode::init()
     this->removeChildren( 0, this->getNumChildren() );
 
     // build the new feature geometry
-    if ( _feature.valid() && _feature->getGeometry() && _mapNode.valid() )
     {
-        GeometryCompiler compiler( _options );
+        GeometryCompilerOptions options = _options;
+        
+        // have to disable compiler clamping if we're doing auto-clamping; especially
+        // in terrain-relative mode because the auto-clamper will think the clamped
+        // coords are the relative coords.
+        bool autoClamping = supportsAutoClamping(*_feature->style());
+        if ( autoClamping )
+        {
+            options.ignoreAltitudeSymbol() = true;
+        }
+
+        // prep the compiler:
+        GeometryCompiler compiler( options );
         Session* session = new Session( _mapNode->getMap() );
-        GeoExtent extent(_mapNode->getMap()->getProfile()->getSRS(), _feature->getGeometry()->getBounds());
+        GeoExtent extent(_feature->getSRS(), _feature->getGeometry()->getBounds());
         osg::ref_ptr<FeatureProfile> profile = new FeatureProfile( extent );
         FilterContext context( session, profile.get(), extent );
 
         // Clone the Feature before rendering as the GeometryCompiler and it's filters can change the coordinates
         // of the geometry when performing localization or converting to geocentric.
-        osg::ref_ptr< Feature > clone = new osgEarth::Features::Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
+        osg::ref_ptr< Feature > clone = new Feature(*_feature.get(), osg::CopyOp::DEEP_COPY_ALL);        
 
         osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         if ( node )
         {
+            if (_style.isSet() && 
+                AnnotationUtils::styleRequiresAlphaBlending(*_style) &&
+                _style->get<ExtrusionSymbol>() )
+            {
+                node = AnnotationUtils::installTwoPassAlpha( node );
+            }
+
             _attachPoint = new osg::Group();
             _attachPoint->addChild( node );
 
@@ -80,6 +113,13 @@ FeatureNode::init()
             {
                 this->addChild( _attachPoint );
             }
+        }
+
+        // workaround until we can auto-clamp extruded/sub'd geometries.
+        if ( autoClamping )
+        {
+            applyStyle( *_feature->style(), _draped );
+            clampMesh( _mapNode->getTerrain()->getGraph() );
         }
     }
 }
@@ -104,4 +144,88 @@ FeatureNode::getAttachPoint()
 
     // failing that, use the artificial attach group we created.
     return _attachPoint;
+}
+
+void
+FeatureNode::reclamp( const TileKey& key, osg::Node* tile, const Terrain* )
+{
+    osg::Polytope p = _feature->getWorldBoundingPolytope();
+    if ( p.contains( tile->getBound() ) )
+    {
+        clampMesh( tile );
+    }
+}
+
+void
+FeatureNode::clampMesh( osg::Node* terrainModel )
+{
+    double scale  = 1.0;
+    double offset = 0.0;
+    bool   relative = false;
+
+    if (_altitude.valid())
+    {
+        NumericExpression scale(_altitude->verticalScale().value());
+        NumericExpression offset(_altitude->verticalOffset().value());
+        scale = _feature->eval(scale);
+        offset = _feature->eval(offset);
+        relative = _altitude->clamping() == AltitudeSymbol::CLAMP_RELATIVE_TO_TERRAIN;
+    }
+
+    MeshClamper clamper( terrainModel, _mapNode->getMapSRS(), _mapNode->isGeocentric(), relative, scale, offset );
+    this->accept( clamper );
+
+    this->dirtyBound();
+}
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( feature, osgEarth::Annotation::FeatureNode );
+
+
+FeatureNode::FeatureNode(MapNode*      mapNode,
+                         const Config& conf) :
+AnnotationNode( mapNode )
+{
+    osg::ref_ptr<const SpatialReference> srs;
+    osg::ref_ptr<Geometry> geom;
+
+    if ( conf.hasChild("geometry") )
+    {
+        Config geomconf = conf.child("geometry");
+        srs = SpatialReference::create( geomconf.value("srs"), geomconf.value("vdatum") );
+        geom = GeometryUtils::geometryFromWKT( geomconf.value() );
+    }
+
+    conf.getObjIfSet( "style", _style );
+
+    if ( srs.valid() && geom.valid() )
+    {
+        _draped = conf.value<bool>("draped",false);
+        setFeature( new Feature(geom.get(), srs.get(), *_style) );
+    }
+}
+
+Config
+FeatureNode::getConfig() const
+{
+    Config conf("feature");
+
+    if ( _feature.valid() && _feature->getGeometry() )
+    {
+        std::string wkt = GeometryUtils::geometryToWKT( _feature->getGeometry() );
+        std::string srs = _feature->getSRS() ? _feature->getSRS()->getHorizInitString() : "";
+        std::string vsrs = _feature->getSRS() ? _feature->getSRS()->getVertInitString() : "";
+
+        Config geomConf("geometry");
+        geomConf.value() = wkt;
+        if ( !srs.empty() ) geomConf.set("srs", srs);
+        if ( !vsrs.empty() ) geomConf.set("vdatum", vsrs);
+        conf.add(geomConf);
+
+        conf.addObjIfSet( "style", _style );
+    }
+
+    return conf;
 }

@@ -1,0 +1,193 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTHUTIL_TERRAINPROFILE
+#define OSGEARTHUTIL_TERRAINPROFILE
+
+#include <osgEarthUtil/Common>
+#include <osgEarth/MapNode>
+#include <osgSim/ElevationSlice>
+
+namespace osgEarth { namespace Util {
+
+    /**
+     * Stores the results of a terrain profile calculation
+     */
+    class OSGEARTHUTIL_EXPORT TerrainProfile
+    {
+    public:
+        /**
+         * Create a new TerrainProfile
+         */
+        TerrainProfile();
+
+        /**
+         * Copy constructor
+         */
+        TerrainProfile(const TerrainProfile& profile);
+
+        /**
+         * Gets the distance at the given index
+         * @param i
+         *        The index of the profile measurement
+         */
+        double getDistance( int i ) const;
+
+        /**
+         * Gets the total distance covered by this TerrainProfile
+         */
+        double getTotalDistance() const;
+
+        /**
+         * Gets the min and max elevations of this TerrainProfile
+         * @param min
+         *        The minimum elevation in meters of this TerrainProfile
+         * @param max
+         *        The maximum elevation in meters of this TerrainProfile
+         */
+        void getElevationRanges(double &min, double &max );
+
+        /**
+         * Gets the elevation at the given index
+         * @param i
+         *        The index of the profile measurement
+         */
+        double getElevation( int i ) const;
+
+        /**
+         * Gets the number of elevation measurements in this TerrainProfile
+         */
+        unsigned int getNumElevations() const;
+        
+        /**
+         * Add an elevation measurement to this TerrainProfile
+         */
+        void addElevation( double distance, double elevation );
+
+        /**
+         * Clears all measurements from this TerrainProfile
+         */
+        void clear();
+
+
+    private:
+        double _spacing;
+        typedef std::pair<double,double> DistanceHeight;
+        typedef std::vector<DistanceHeight> DistanceHeightList;
+        DistanceHeightList                      _elevations;
+    };
+
+
+    /**
+     * Computes a TerrainProfile between two points.  Monitors the scene graph for changes
+     * to elevation and updates the profile.
+     */
+    class OSGEARTHUTIL_EXPORT TerrainProfileCalculator : public TerrainCallback
+    {
+    public:
+
+        /**
+         * Callback that is fired when the profile changes
+         */
+        struct ChangedCallback : public osg::Referenced
+        {
+        public:
+            virtual void onChanged(const TerrainProfileCalculator* sender) {};
+        };
+
+        typedef std::list< osg::ref_ptr<ChangedCallback> > ChangedCallbackList;
+
+
+        /**
+         * Creates a new TerrainProfileCalculator
+         * @param mapNode
+         *        The MapNode to compute the terrain profile against
+         * @param start
+         *        The start point of the profile
+         * @param end
+         *        The end point of the profile
+         */
+        TerrainProfileCalculator(osgEarth::MapNode* mapNode, const osgEarth::GeoPoint& start, const osgEarth::GeoPoint& end);
+    
+        /**
+         * Add a ChangedCallback
+         */
+        void addChangedCallback( ChangedCallback* callback );
+
+        /**
+         * Remove a ChangedCallback
+         */
+        void removeChangedCallback( ChangedCallback* callback );
+
+        /**
+         * Gets the computed TerrainProfile
+         */
+        const TerrainProfile& getProfile() const;
+
+        /**
+         * Gets the start point of the terrain profile
+         */
+        const GeoPoint& getStart() const;
+
+        /**
+         * Gets the end point of the terrain profile
+         */
+        const GeoPoint& getEnd() const;
+
+        /**
+         * Sets the start and end points of the terrain profile
+         */
+        void setStartEnd(const osgEarth::GeoPoint& start, const osgEarth::GeoPoint& end);
+
+        virtual void onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&);
+
+        /**
+         * Recomputes the terrain profile
+         */
+        void recompute();
+
+        /**
+         * Utility to directly compute a terrain profile
+         * @param mapNode
+         *        The MapNode to compute the terrain profile one
+         * @param start
+         *        The start point of the terrain profile
+         * @param end
+         *        The end point of the terrain profile
+         * @param numSamples
+         *        The number of samples to compute
+         * @param profile
+         *        The resulting TerrainProfile
+         */
+        static void computeTerrainProfile( osgEarth::MapNode* mapNode, const osgEarth::GeoPoint& start, const osgEarth::GeoPoint& end, unsigned int numSamples, TerrainProfile& profile);
+
+        protected:
+            ~TerrainProfileCalculator();
+
+
+    private:
+        osgEarth::GeoPoint _start;
+        osgEarth::GeoPoint _end;
+        TerrainProfile _profile;
+        osg::ref_ptr< osgEarth::MapNode > _mapNode;
+        ChangedCallbackList _changedCallbacks;
+    };
+
+} } // namespace osgEarth::Util
+
+#endif // OSGEARTHUTIL_TERRAINPROFILE

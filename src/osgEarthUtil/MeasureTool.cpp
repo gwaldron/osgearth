@@ -23,47 +23,69 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthAnnotation/FeatureNode>
 
+#define LC "[MeasureTool] "
+
 using namespace osgEarth;
 using namespace osgEarth::Util;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
 
+//#define SHOW_EXTENT 1
 
 
 MeasureToolHandler::MeasureToolHandler( osg::Group* group, osgEarth::MapNode* mapNode ):
-_mouseDown(false),
-_group(group),
-_gotFirstLocation(false),
+_mouseDown         (false),
+_group             (group),
+_gotFirstLocation  (false),
 _lastPointTemporary(false),
-_finished(false),
-_geoInterpolation( GEOINTERP_GREAT_CIRCLE ),
-_mouseButton( osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
-_isPath( false ),
-_mapNode( mapNode ),
-_intersectionMask(0xffffffff)
+_finished          (false),
+_geoInterpolation  (GEOINTERP_GREAT_CIRCLE),
+_mouseButton       (osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON),
+_isPath            (false),
+_mapNode           (mapNode),
+_intersectionMask  (0xffffffff)
 {
-    LineString* line = new LineString();
-    _feature = new Feature();
-    _feature->setGeometry( line );
+    if ( !mapNode || mapNode->getMapSRS()->isProjected() )
+    {
+        OE_WARN << LC << "Sorry, MeasureTool does not yet support projected maps" << std::endl;
+    }
+
+    AltitudeSymbol* alt = new AltitudeSymbol();
+    alt->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
+    // Define the path feature:
+    _feature = new Feature(new LineString(), mapNode->getMapSRS());
     _feature->geoInterp() = _geoInterpolation;    
 
     //Define a style for the line
-    Style style;
-    LineSymbol* ls = style.getOrCreateSymbol<LineSymbol>();
-    ls->stroke()->color() = osg::Vec4f( 1,0,0,1 );
-    ls->stroke()->width() = 2.0f;   
+    LineSymbol* ls = _feature->style()->getOrCreate<LineSymbol>();
+    ls->stroke()->color() = Color::Yellow;
+    ls->stroke()->width() = 2.0f;
+    ls->tessellation() = 20;
+    _feature->style()->add( alt );
 
-    _feature->style() = style;
-
-    _featureNode = new FeatureNode( _mapNode.get(), _feature.get(), false);
-    
-
-    //Disable lighting and depth testing for the feature graph
+    _featureNode = new FeatureNode( _mapNode.get(), _feature.get() );
     _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-    _featureNode->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::OFF);
 
     _group->addChild (_featureNode.get() );
+
+#ifdef SHOW_EXTENT
+
+    // Define the extent feature:
+    _extentFeature = new Feature( new Polygon(), mapNode->getMapSRS() );
+    _extentFeature->geoInterp() = GEOINTERP_RHUMB_LINE;
+    _extentFeature->style()->add( alt );
+    LineSymbol* extentLine = _extentFeature->style()->getOrCreate<LineSymbol>();
+    extentLine->stroke()->color() = Color::Cyan;
+    extentLine->stroke()->width() = 2.0f;
+    extentLine->tessellation() = 20;
+
+    _extentFeatureNode = new FeatureNode( _mapNode.get(), _extentFeature.get() );
+    
+    _group->addChild( _extentFeatureNode.get() );
+#endif
+
 }
 
 MeasureToolHandler::~MeasureToolHandler()
@@ -115,7 +137,6 @@ MeasureToolHandler::setLineStyle( const Style& style )
      _featureNode->init();
 }
 
-
 bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {    
     if ( ea.getHandled() )
@@ -159,12 +180,32 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                         _feature->getGeometry()->push_back( osg::Vec3d( lon, lat, 0 ) );
                     }
                     _featureNode->init();
+
                     //_gotFirstLocation = false;
                     //_finished = true;
                     if (_finished || !_isPath) {
                         _gotFirstLocation = false;
                     }
+
+#ifdef SHOW_EXTENT
+                    const GeoExtent& ex = _feature->getExtent();
+                    OE_INFO << "extent = " << ex.toString() << std::endl;
+                    Geometry* eg = _extentFeature->getGeometry();
+                    osg::Vec3d fc = ex.getCentroid();
+                    eg->clear();
+                    eg->push_back( ex.west(), ex.south() );
+                    if ( ex.width() >= 180.0 )
+                        eg->push_back( fc.x(), ex.south() );
+                    eg->push_back( ex.east(), ex.south() );
+                    eg->push_back( ex.east(), ex.north() );
+                    if ( ex.width() >= 180.0 )
+                        eg->push_back( fc.x(), ex.north() );
+                    eg->push_back( ex.west(), ex.north() );
+                    _extentFeatureNode->init();
+#endif
+
                     fireDistanceChanged();
+                    aa.requestRedraw();
                 }
             }
         }
@@ -173,7 +214,8 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
         if (_gotFirstLocation)
         {
             //_gotFirstLocation = false;
-            _finished = true;     
+            _finished = true;    
+            aa.requestRedraw(); 
             return true;
         }
     }
@@ -195,6 +237,7 @@ bool MeasureToolHandler::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIAct
                 }
                 _featureNode->init();
                 fireDistanceChanged();
+                aa.requestRedraw();
             }
         }
     }    
@@ -225,6 +268,12 @@ void MeasureToolHandler::clear()
     _feature->getGeometry()->clear();
     //_features->dirty();
     _featureNode->init();
+
+#ifdef SHOW_EXTENT
+    _extentFeature->getGeometry()->clear();
+    _extentFeatureNode->init();
+#endif
+
     fireDistanceChanged();
 
     _gotFirstLocation = false; 

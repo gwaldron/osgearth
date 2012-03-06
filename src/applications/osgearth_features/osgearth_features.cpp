@@ -35,6 +35,8 @@
 #include <osgEarthDrivers/model_feature_geom/FeatureGeomModelOptions>
 #include <osgEarthDrivers/model_feature_stencil/FeatureStencilModelOptions>
 
+#include <osgDB/WriteFile>
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Drivers;
@@ -169,6 +171,8 @@ int main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+
+    osgDB::writeNodeFile( *mapNode, "out.earth" );
 
     return viewer.run();
 }

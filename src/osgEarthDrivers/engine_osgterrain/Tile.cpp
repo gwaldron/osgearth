@@ -24,7 +24,7 @@
 #include <osgEarth/Registry>
 #include <osgEarth/Locators>
 #include <osgEarth/Map>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 
 #include <osg/NodeCallback>
 #include <osg/NodeVisitor>
@@ -79,9 +79,12 @@ Tile::init()
 void
 Tile::setTerrainTechnique( TerrainTechnique* tech )
 {
-    tech->_tile = this;
-    _tech = tech;
-    _dirty = true;
+    if (tech)
+    {
+        tech->_tile = this;
+        _tech = tech;
+        _dirty = true;
+    }
 }
 
 void

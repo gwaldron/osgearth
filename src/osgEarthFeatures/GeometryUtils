@@ -23,14 +23,21 @@
 #include <osgEarthSymbology/Geometry>
 
 
-namespace osgEarth { namespace Features {
+namespace osgEarth { namespace Features
+{
+    using namespace osgEarth::Symbology;
 
-    extern OSGEARTHFEATURES_EXPORT std::string geometryToWkt( osgEarth::Symbology::Geometry * geometry );
-    extern OSGEARTHFEATURES_EXPORT std::string geometryToJson( osgEarth::Symbology::Geometry * geometry );
-    extern OSGEARTHFEATURES_EXPORT std::string geometryToKml( osgEarth::Symbology::Geometry * geometry );
-    extern OSGEARTHFEATURES_EXPORT std::string geometryToGml( osgEarth::Symbology::Geometry * geometry );
+    namespace GeometryUtils
+    {
+        extern OSGEARTHFEATURES_EXPORT std::string geometryToWKT( Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT Geometry*   geometryFromWKT( const std::string& wkt );
 
-}}
+        extern OSGEARTHFEATURES_EXPORT std::string geometryToGeoJSON( Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT std::string geometryToKML( Geometry* geometry );
+        extern OSGEARTHFEATURES_EXPORT std::string geometryToGML( Geometry* geometry );
+    }
+
+} } // namespace osgEarth::Features
 
 #endif
 

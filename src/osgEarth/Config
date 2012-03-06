@@ -21,11 +21,9 @@
 
 #include <osgEarth/Common>
 #include <osgEarth/StringUtils>
-#include <osgDB/ReaderWriter>
+#include <osg/Object>
 #include <osg/Version>
-#if OSG_MIN_VERSION_REQUIRED(2,9,5)
 #include <osgDB/Options>
-#endif
 #include <list>
 #include <stack>
 #include <istream>
@@ -44,6 +42,7 @@ namespace osgEarth
             return i != end()? i->second : std::string();
         }
     };
+
 
     /**
      * Config is a general-purpose container for serializable data. You store an object's members
@@ -68,7 +67,7 @@ namespace osgEarth
         void setReferrer( const std::string& value );
         const std::string& referrer() const { return _referrer; }
 
-        bool loadXML( std::istream& in );
+        bool fromXML( std::istream& in );
 
         std::string toJSON( bool pretty =false ) const;
 
@@ -121,6 +120,9 @@ namespace osgEarth
 
         void merge( const Config& rhs );
 
+        Config* find( const std::string& key, bool checkThis =true );
+        const Config* find( const std::string& key, bool checkThis =true) const;
+
         template<typename T>
         void addIfSet( const std::string& key, const optional<T>& opt ) {
             if ( opt.isSet() ) {
@@ -152,17 +154,10 @@ namespace osgEarth
                 add( key, val );
         }
 
-        void addChild( const std::string& key, const std::string& value ) {
-            add( key, value );
-        }
-
-        void add( const std::string& key, const std::string& value ) {
-            _children.push_back( Config( key, value ) );
+        template<typename T>
+        void add( const std::string& key, const T& value ) {
+            _children.push_back( Config(key, Stringify() << value) );
             _children.back().setReferrer( _referrer );
-        }
-
-        void addChild( const Config& conf ) {
-            add( conf );
         }
 
         void add( const Config& conf ) {
@@ -179,6 +174,13 @@ namespace osgEarth
         void add( const ConfigSet& set ) {
             for( ConfigSet::const_iterator i = set.begin(); i != set.end(); i++ )
                 add( *i );
+        }
+
+        template<typename T>
+        void addObj( const std::string& key, const T& value ) {
+            Config conf = value.getConfig();
+            conf.key() = key;
+            add( conf );
         }
 
         template<typename T>
@@ -217,34 +219,26 @@ namespace osgEarth
             }
         }
 
-        void updateChild( const std::string& key, const std::string& value ) {
-            update( key, value );
-        }
-
-        void update( const std::string& key, const std::string& value ) {
-            remove(key);
-            add( Config(key, value) );
-            //_children.push_back( Config( key, value ) );
-        }
-
-        void updateChild( const Config& conf ) {
-            update( conf );
+        template<typename T>
+        void update( const std::string& key, const T& value ) {
+            update( Config(key, Stringify() << value) );
         }
 
         void update( const Config& conf ) {
             remove(conf.key());
             add( conf );
-            //_children.push_back( conf );
         }
 
-        void update( const std::string& key, const Config& conf ) {
+        template<typename T>
+        void updateObj( const std::string& key, const T& value ) {
             remove(key);
-            Config temp = conf;
-            temp.key() = key;
-            add( temp );
+            Config conf = value.getConfig();
+            conf.key() = key();
+            add( conf );
         }
 
-        void set( const std::string& key, const std::string& value ) {
+        template<typename T>
+        void set( const std::string& key, const T& value ) {
             update( key, value );
         }
 
@@ -308,6 +302,15 @@ namespace osgEarth
                 return false;
         }
 
+        template<typename T>
+        bool getObjIfSet( const std::string& key, T& output ) const {
+            if ( hasChild(key) ) {
+                output = T( child(key) );
+                return true;
+            }
+            return false;
+        }
+
         template<typename X, typename Y>
         bool getIfSet( const std::string& key, const std::string& val, optional<X>& target, const Y& targetValue ) const {
             if ( hasValue( key ) && value( key ) == val ) {
@@ -316,6 +319,24 @@ namespace osgEarth
             }
             else 
                 return false;
+        }
+
+        template<typename X, typename Y>
+        bool getIfSet( const std::string& key, const std::string& val, X& target, const Y& targetValue ) const {
+            if ( hasValue(key) && value(key) == val ) {
+                target = targetValue;
+                return true;
+            }
+            return false;
+        }
+
+        template<typename T>
+        bool getIfSet( const std::string& key, T& output ) const {
+            if ( hasValue(key) ) {
+                output = value<T>(key, output);
+                return true;
+            }
+            return false;
         }
 
         //std::string toString( int indent =0 ) const;
@@ -353,6 +374,8 @@ namespace osgEarth
         RefMap _refMap;
     };
 
+
+
     // specialization for Config
     template <> inline
     void Config::addIfSet<Config>( const std::string& key, const optional<Config>& opt ) {
@@ -382,6 +405,53 @@ namespace osgEarth
         else
             return false;
     }
+
+    template<> inline
+    void Config::add<std::string>( const std::string& key, const std::string& value ) {
+        _children.push_back( Config( key, value ) );
+        _children.back().setReferrer( _referrer );
+    }
+
+    template<> inline
+    void Config::update<std::string>( const std::string& key, const std::string& value ) {
+        remove(key);
+        add( Config(key, value) );
+    }
+
+    template<> inline
+    void Config::update<Config>( const std::string& key, const Config& conf ) {
+        remove(key);
+        Config temp = conf;
+        temp.key() = key;
+        add( temp );
+    }
+
+    template<> inline
+    void Config::add<float>( const std::string& key, const float& value ) {
+        add( key, Stringify() << std::fixed << std::setprecision(8) << value );
+    }
+
+    template<> inline
+    void Config::add<double>( const std::string& key, const double& value ) {
+        add( key, Stringify() << std::fixed << std::setprecision(16) << value );
+    }
+
+    template<> inline
+    void Config::update<float>( const std::string& key, const float& value ) {
+        update( key, Stringify() << std::fixed << std::setprecision(8) << value );
+    }
+
+    template<> inline
+    void Config::update<double>( const std::string& key, const double& value ) {
+        update( key, Stringify() << std::fixed << std::setprecision(16) << value );
+    }
+
+    //template<> inline
+    //void Config::add<Stringify>( const std::string& key, const Stringify& value ) {
+    //    add( key, (std::string)value );
+    //}
+
+    //--------------------------------------------------------------------
 
     /**
      * Base class for all serializable options classes.

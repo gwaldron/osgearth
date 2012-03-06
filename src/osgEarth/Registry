@@ -26,6 +26,7 @@
 #include <osgEarth/Profile>
 #include <osgEarth/TaskService>
 #include <osgEarth/IOTypes>
+#include <osgEarth/Units>
 #include <OpenThreads/ReentrantMutex>
 #include <OpenThreads/ScopedLock>
 #include <osg/Referenced>
@@ -34,7 +35,7 @@
 
 #define GDAL_SCOPED_LOCK \
     OpenThreads::ScopedLock<OpenThreads::ReentrantMutex> _slock( osgEarth::Registry::instance()->getGDALMutex() )\
-    
+
 
 namespace osgEarth
 {    
@@ -73,16 +74,6 @@ namespace osgEarth
         const CachePolicy& defaultCachePolicy() const { return _defaultCachePolicy; }
         void setDefaultCachePolicy( const CachePolicy& policy ) { _defaultCachePolicy = policy; }
 
-        /** Registers a mapping of a mime-type to an extension. A process fetching data
-          * over HTTP can use this facility to determine the proper ReaderWriter to use
-          * when there is no filename extension to rely upon.
-          */
-        void addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt);
-
-        /** gets a reader/writer that handles the extension mapped to by one of
-          * the registered mime-types. */
-        osgDB::ReaderWriter* getReaderWriterForMimeType(const std::string& mimeType);
-
         /**
          * Whether the given filename is blacklisted
          */
@@ -102,11 +93,6 @@ namespace osgEarth
          * Clears the blacklist
          */
         void clearBlacklist();
-
-        /**
-         * The system wide default vertical spatial reference system.
-         */
-        const VerticalSpatialReference* getDefaultVSRS() const;
 
         /**
          * Sets or gets a default system font to use
@@ -160,6 +146,13 @@ namespace osgEarth
          */
         osgDB::Options* cloneOrCreateOptions( const osgDB::Options* options =0L ) const;
 
+        /**
+         * Registers a Units definition.
+         */
+        void registerUnits( const Units* staticInstance );
+
+        const Units* getUnits(const std::string& name) const;
+
     protected:
         virtual ~Registry();
         Registry();
@@ -188,7 +181,7 @@ namespace osgEarth
         StringSet _blacklistedFilenames;
         Threading::ReadWriteMutex _blacklistMutex;
 
-        osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
+        //osg::ref_ptr<const VerticalSpatialReference> _defaultVSRS;
 
         osg::ref_ptr<ShaderFactory> _shaderLib;
 
@@ -204,7 +197,22 @@ namespace osgEarth
         osg::ref_ptr<URIReadCallback> _uriReadCallback;
 
         osg::ref_ptr<osgText::Font> _defaultFont;
+
+        typedef std::vector<const Units*> UnitsVector;
+        UnitsVector _unitsVector;
     };
 }
+
+
+/** Proxy class for automatic registration of Units with the Registry.*/
+struct osgEarthRegisterUnits {
+    osgEarthRegisterUnits(const osgEarth::Units* units) {
+        osgEarth::Registry::instance()->registerUnits(units);
+    }
+};
+#define OSGEARTH_REGISTER_UNITS(NAME,INSTANCE) \
+    static osgEarthRegisterUnits s_osgEarthRegistryUnitsProxy##NAME (INSTANCE)
+
+
 
 #endif //OSGEARTH_REGISTRY

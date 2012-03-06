@@ -1,0 +1,82 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTH_GEOID_H
+#define OSGEARTH_GEOID_H 1
+
+#include <osgEarth/Common>
+#include <osgEarth/Bounds>
+#include <osgEarth/HeightFieldUtils>
+#include <osgEarth/Units>
+#include <osg/Referenced>
+
+namespace osgEarth
+{
+    /**
+     * An equipotential surface representing a gravitational model of the
+     * planet's surface. Each value in the geoid's height field is an offset
+     * from the reference ellipsoid.
+     */
+    class OSGEARTH_EXPORT Geoid : public osg::Referenced
+    {
+    public:
+        Geoid();
+
+        /** Gets the readable name of this geoid. */
+        void setName( const std::string& value );
+        const std::string& getName() const { return _name; }
+
+        /**
+         * Sets the heightfield representing this geoid. The heightfield must be referenced
+         * as a lat/long grid (with the origin and intervals in degrees).
+         */
+        void setHeightField( osg::HeightField* hf );
+        const osg::HeightField* getHeightField() const { return _hf.get(); }
+
+        /**
+         * Queries the geoid for the height offset at the specified geodetic
+         * coordinates (in degrees).
+         */
+        float getHeight(
+            double lat_deg,
+            double lon_deg, 
+            const ElevationInterpolation& interp =INTERP_BILINEAR) const;
+
+        /** The linear units in which height values are expressed. */
+        const Units& getUnits() const { return _units; }
+        void setUnits( const Units& value );
+
+        /** Whether this is a valid object to use */
+        bool isValid() const { return _valid; }
+
+        /** True if two geoids are mathmatically equivalent. */
+        bool isEquivalentTo( const Geoid& rhs ) const;
+
+    private:
+        std::string    _name;
+        Units          _units;
+        bool           _valid;
+        Bounds         _bounds;
+
+        osg::ref_ptr<osg::HeightField> _hf;
+
+        void validate();
+    };
+}
+
+#endif // OSGEARTH_GEODATA_H

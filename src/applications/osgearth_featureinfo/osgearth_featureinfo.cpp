@@ -75,7 +75,7 @@ void printFeature( Feature* feature )
     Geometry* geom = feature->getGeometry();
     if (geom)
     {
-        std::cout << indent << geometryToWkt( geom ) << std::endl;
+        std::cout << indent << GeometryUtils::geometryToWKT( geom ) << std::endl;
     }
     std::cout << std::endl;
 }

@@ -52,8 +52,12 @@ namespace osgEarth { namespace Symbology
         /** Constructs a style by deserializing it from a Config. */
         Style(const Config& conf);
 
-        /** Copy constructor. */
-        Style(const Style& rhs); 
+        /** Copy constructor. By default, duplicates all the symbols; but if you 
+            specify SHALLOW_COPY, the new one will point to the same symbols. */
+        Style(const Style& rhs, const osg::CopyOp& op =osg::CopyOp::DEEP_COPY_ALL ); 
+
+        /** assignment operator */
+        Style& operator = (const Style& rhs);
 
         /** Gets the name of this style */
         const std::string& getName() const { return _name; }
@@ -70,6 +74,7 @@ namespace osgEarth { namespace Symbology
 
         /** Adds a symbol to the collection. */
         void addSymbol(Symbol* symbol);
+        void add(Symbol* symbol) { addSymbol(symbol); }
 
 		/** Remove a symbol from the collection */
 		bool removeSymbol (Symbol* symbol);
@@ -88,6 +93,9 @@ namespace osgEarth { namespace Symbology
             return 0L;
         }
         template<typename T> T* get() { return getSymbol<T>(); } // alias
+
+        template<typename T> bool has() { return get<T>() != 0L; }
+        template<typename T> const bool has() const { return get<T>() != 0L; }
 
         /** Gets a typed symbol from the style (the first one found) */
         template<typename T>

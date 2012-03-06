@@ -103,6 +103,10 @@ namespace osgEarth
         bool isValid() const { return _uniform.valid() && _uniformAlt.valid(); }
         int getNumElements() const { return isValid() ? _uniform->getNumElements() : -1; }
 
+        bool isDirty() const { return
+            (_uniform.valid() && _uniform->getModifiedCount() > 0) ||
+            (_uniformAlt.valid() && _uniformAlt->getModifiedCount() > 0); }
+
     private:
         osg::ref_ptr<osg::Uniform>       _uniform;
         osg::ref_ptr<osg::Uniform>       _uniformAlt;

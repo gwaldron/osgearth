@@ -1,0 +1,81 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+#ifndef OSGEARTH_ANNO_REGISTRY_H
+#define OSGEARTH_ANNO_REGISTRY_H 1
+
+#include <osgEarthAnnotation/AnnotationNode>
+#include <osgEarth/MapNode>
+
+namespace osgEarth { namespace Annotation
+{
+    /**
+     * Singleton registry for annotation node types.
+     */
+    class OSGEARTHANNO_EXPORT AnnotationRegistry
+    {
+    public:
+        /**
+         * Access the singleton instance of this class.
+         */
+        static AnnotationRegistry* instance();
+
+        /**
+         * Creates one or more AnnotationNodes from a Config. The resulting
+         * AnnotationNode's are placed under the provided group.
+         */
+        bool create( MapNode* mapNode, const Config& conf, osg::Group*& output ) const;
+
+    public:
+        /**
+         * Adds an annotation type to the registry
+         */
+        void add( const std::string& key, class AnnotationFactory* factory );
+
+    private:
+        AnnotationRegistry() { }
+        typedef std::map<std::string, class AnnotationFactory*> FactoryMap;
+        FactoryMap _factories;
+
+        AnnotationNode* createOne( MapNode* mapNode, const Config& conf, bool declutter =false ) const;
+    };
+
+    // Macro used to register new annotation types.
+#define OSGEARTH_REGISTER_ANNOTATION( KEY, CLASSNAME ) \
+    static AnnotationRegistrationProxy< CLASSNAME > s_osgEarthAnnotationRegistrationProxy##KEY( #KEY )
+
+
+    //--------------------------------------------------------------------
+
+    // internal: interface class for an object that creates annotation node from a Config
+    // (used by OSGEARTH_REGISTER_ANNOTATION macro)
+    class AnnotationFactory {
+    public: 
+        virtual AnnotationNode* create(MapNode* mapNode, const Config& conf) const =0;
+    };
+
+    // internal: proxy class used by the registraion macro
+    template<typename T>
+    struct AnnotationRegistrationProxy : public AnnotationFactory {
+        AnnotationRegistrationProxy(const std::string& key) { AnnotationRegistry::instance()->add(key, this); }
+        AnnotationNode* create(MapNode* mapNode, const Config& conf) const { return new T(mapNode, conf); }
+    };
+
+} } // namespace osgEarth::Annotation
+
+#endif // OSGEARTH_ANNO_FEATURE_NODE_H

@@ -147,20 +147,20 @@ Viewpoint::getConfig() const
 
         if ( getSRS() && getSRS()->isGeographic() )
         {
-            conf.set("lat",    CONF_STR << _focal_point.y());
-            conf.set("long",   CONF_STR << _focal_point.x());
-            conf.set("height", CONF_STR << _focal_point.z());
+            conf.set("lat",    _focal_point.y());
+            conf.set("long",   _focal_point.x());
+            conf.set("height", _focal_point.z());
         }
         else
         {
-            conf.set("x", CONF_STR << _focal_point.x());
-            conf.set("y", CONF_STR << _focal_point.y());
-            conf.set("z", CONF_STR << _focal_point.z());
+            conf.set("x", _focal_point.x());
+            conf.set("y", _focal_point.y());
+            conf.set("z", _focal_point.z());
         }
 
-        conf.set("heading", CONF_STR << _heading_deg);
-        conf.set("pitch",   CONF_STR << _pitch_deg);
-        conf.set("range",   CONF_STR << _range);
+        conf.set("heading", _heading_deg);
+        conf.set("pitch",   _pitch_deg);
+        conf.set("range",   _range);
 
         //TODO: SRS
     }
@@ -261,15 +261,11 @@ Viewpoint::getSRS() const {
 std::string
 Viewpoint::toString() const
 {
-    std::stringstream buf;
-    buf << "x=" << _focal_point.x()
+    return Stringify()
+        << "x=" << _focal_point.x()
         << ", y=" << _focal_point.y()
         << ", z=" << _focal_point.z()
         << ", h=" << _heading_deg
         << ", p=" << _pitch_deg
-        << ", d=" << _range
-        ;
-    std::string str;
-    str = buf.str();
-    return str;
+        << ", d=" << _range;
 }

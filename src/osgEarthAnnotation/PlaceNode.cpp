@@ -19,6 +19,7 @@
 
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/AnnotationUtils>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthFeatures/BuildTextFilter>
 #include <osgEarthFeatures/LabelSource>
 #include <osgEarth/Utils>
@@ -33,7 +34,7 @@ using namespace osgEarth::Symbology;
 
 
 PlaceNode::PlaceNode(MapNode*           mapNode,
-                     const osg::Vec3d&  position,
+                     const GeoPoint&    position,
                      osg::Image*        image,
                      const std::string& text,
                      const Style&       style ) :
@@ -54,11 +55,11 @@ PlaceNode::PlaceNode(MapNode*           mapNode,
                      const std::string& text,
                      const Style&       style ) :
 
-OrthoNode( mapNode, osg::Vec3d(x,y,0) ),
-_image  ( image ),
-_text   ( text ),
-_style  ( style ),
-_geode  ( 0L )
+OrthoNode( mapNode, osg::Vec3d(x, y, 0) ),
+_image   ( image ),
+_text    ( text ),
+_style   ( style ),
+_geode   ( 0L )
 {
     init();
 }
@@ -98,6 +99,9 @@ PlaceNode::init()
     stateSet->setAttributeAndModes( new osg::Depth(osg::Depth::ALWAYS, 0, 1, false), 1 );
 
     getAttachPoint()->addChild( _geode );
+
+    // for clamping
+    applyStyle( _style );
 }
 
 void
@@ -164,4 +168,42 @@ PlaceNode::setDynamic( bool value )
     {
         i->get()->setDataVariance( value ? osg::Object::DYNAMIC : osg::Object::STATIC );
     }
+}
+
+
+
+//-------------------------------------------------------------------
+
+OSGEARTH_REGISTER_ANNOTATION( place, osgEarth::Annotation::PlaceNode );
+
+
+PlaceNode::PlaceNode(MapNode*      mapNode,
+                     const Config& conf ) :
+OrthoNode( mapNode, GeoPoint::INVALID )
+{
+    conf.getObjIfSet( "style",  _style );
+    conf.getIfSet   ( "text",   _text );
+
+    optional<URI> imageURI;
+    conf.getIfSet( "icon", imageURI );
+    if ( imageURI.isSet() )
+        _image = imageURI->getImage();
+
+    if ( conf.hasChild("position") )
+        setPosition( GeoPoint(conf.child("position")) );
+
+    init();
+}
+
+Config
+PlaceNode::getConfig() const
+{
+    Config conf( "place" );
+    conf.add   ( "text",   _text );
+    conf.addObj( "style",  _style );
+    conf.addObj( "position", getPosition() );
+    if ( _image.valid() && !_image->getName().empty() )
+        conf.add( "icon", _image->getName() );
+
+    return conf;
 }

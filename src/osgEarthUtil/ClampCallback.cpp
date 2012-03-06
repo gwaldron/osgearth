@@ -21,7 +21,7 @@
 #include <osgEarth/Notify>
 #include <osgUtil/IntersectionVisitor>
 #include <osgUtil/LineSegmentIntersector>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <OpenThreads/ScopedLock>
 #include <osg/MatrixTransform>
 

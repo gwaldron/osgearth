@@ -19,6 +19,14 @@
 #include "KML_LinearRing"
 
 void
+KML_LinearRing::parseStyle( const Config& conf, KMLContext& cs, Style& style )
+{
+    KML_Geometry::parseStyle(conf, cs, style);
+    if ( conf.value("tessellate") == "1" )
+        style.getOrCreate<LineSymbol>()->tessellation() = 20;
+}
+
+void
 KML_LinearRing::parseCoords( const Config& conf, KMLContext& cx )
 {
     _geom = new Ring();

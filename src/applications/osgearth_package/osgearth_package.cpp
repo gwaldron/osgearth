@@ -162,7 +162,11 @@ makeTMS( osg::ArgumentParser& args )
             }
 
             std::string layerRoot = osgDB::concatPaths( rootFolder, layerFolder );
-            packager.package( layer, layerRoot, extension );
+            TMSPackager::Result r = packager.package( layer, layerRoot, extension );
+            if ( !r.ok )
+            {
+                OE_WARN << LC << r.message << std::endl;
+            }
         }
         else if ( verbose )
         {

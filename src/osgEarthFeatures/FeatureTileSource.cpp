@@ -230,7 +230,7 @@ FeatureTileSource::queryAndRenderFeaturesForStyle(const Style&     style,
     // convert them both to WGS84, intersect the extents, and convert back.
     GeoExtent featuresExtentWGS84 = featuresExtent.transform( featuresExtent.getSRS()->getGeographicSRS() );
     GeoExtent imageExtentWGS84 = imageExtent.transform( featuresExtent.getSRS()->getGeographicSRS() );
-    GeoExtent queryExtentWGS84 = featuresExtentWGS84.intersectionSameSRS( imageExtentWGS84.bounds() );
+    GeoExtent queryExtentWGS84 = featuresExtentWGS84.intersectionSameSRS( imageExtentWGS84 );
     if ( queryExtentWGS84.isValid() )
     {
         GeoExtent queryExtent = queryExtentWGS84.transform( featuresExtent.getSRS() );

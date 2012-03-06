@@ -19,10 +19,13 @@
 #include "KML_Placemark"
 #include "KML_Geometry"
 #include "KML_Style"
+
 #include <osgEarthAnnotation/FeatureNode>
 #include <osgEarthAnnotation/PlaceNode>
 #include <osgEarthAnnotation/LabelNode>
 #include <osgEarthAnnotation/Decluttering>
+
+#include <osg/Depth>
 
 using namespace osgEarth::Features;
 using namespace osgEarth::Annotation;
@@ -45,7 +48,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         kmlStyle.scan( conf.child("style"), cx );
         style = cx._activeStyle;
     }
-    
+
+    // KML's default altitude mode is clampToGround.
+    if ( style.get<AltitudeSymbol>() == 0L )
+        style.getOrCreate<AltitudeSymbol>()->clamping() = AltitudeSymbol::CLAMP_TO_TERRAIN;
+
     // parse the geometry. the placemark must have geometry to be valid.
     KML_Geometry geometry;
     geometry.build(conf, cx, style);
@@ -54,7 +61,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
     {
         Geometry* geom = geometry._geom.get();
 
-        osg::Vec3d position = geom->getBounds().center();
+        GeoPoint position(cx._srs.get(), geom->getBounds().center());
+        //osg::Vec3d position = geom->getBounds().center();
         bool isPoly = geom->getComponentType() == Geometry::TYPE_POLYGON;
         bool isPoint = geom->getComponentType() == Geometry::TYPE_POINTSET;
 
@@ -70,6 +78,11 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             ReadResult result = marker->isModel() == true? markerURI.readNode() : markerURI.readImage();
             markerImage = result.getImage();
             markerModel = result.getNode();
+
+            // We can't leave the marker symbol in the style, or the GeometryCompiler will
+            // think we want to do Point-model substitution. So remove it. A bit of a hack
+            if ( marker )
+                style.removeSymbol(marker);
         }
 
         std::string text = 
@@ -83,8 +96,8 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
         // place a 3D model:
         if ( markerModel.valid() )
         {
-            Feature* feature = new Feature(geometry._geom.get(), style);
-            fNode = new FeatureNode( cx._mapNode, feature, false ); //, options );
+            Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
+            fNode = new FeatureNode( cx._mapNode, feature, false );
         }
 
         // Place node (icon + text) or Label node (text only)
@@ -115,24 +128,21 @@ KML_Placemark::build( const Config& conf, KMLContext& cx )
             const ExtrusionSymbol* ex = style.get<ExtrusionSymbol>();
             const AltitudeSymbol* alt = style.get<AltitudeSymbol>();        
 
-            bool draped =            
-                (ex == 0L && alt == 0L && isPoly) || 
-                (ex == 0L && alt != 0L && alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
-                //&& (!marker);
-
-            // this will confuse the GeometryCompiler into thinking we want point-model sub..
-            // probably need a more elegant solution here..
-            if ( marker )
-                style.removeSymbol(marker);
+            bool draped =
+                isPoly   && 
+                ex == 0L && 
+                (alt == 0L || alt->clamping() == AltitudeSymbol::CLAMP_TO_TERRAIN);
 
             // Make a feature node; drape if we're not extruding.
             GeometryCompilerOptions options;
             options.clustering() = false;            
-            Feature* feature = new Feature(geometry._geom.get(), style);
+            Feature* feature = new Feature(geometry._geom.get(), cx._srs.get(), style);
             fNode = new FeatureNode( cx._mapNode, feature, draped, options );
 
-            if ( draped )
+            if ( !ex )
+            {
                 fNode->getOrCreateStateSet()->setMode(GL_LIGHTING, 0);
+            }
         }
         
         if ( pNode && fNode )

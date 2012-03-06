@@ -49,8 +49,10 @@ public:
      */
     osg::Node* createNode(
         const std::string& text,
-        const TextSymbol*  symbol )
+        const Style&       style )
     {
+        const TextSymbol* symbol = style.get<TextSymbol>();
+
         Controls::LabelControl* label = new Controls::LabelControl( text );
         if ( symbol )
         {
@@ -85,9 +87,11 @@ public:
      */
     osg::Node* createNode(
         const FeatureList&   input,
-        const TextSymbol*    text,
+        const Style&         style,
         const FilterContext& context )
     {
+        const TextSymbol* text = style.get<TextSymbol>();
+
         osg::Group* group = 0L;
         std::set<std::string> used; // to prevent dupes
         bool skipDupes = (text->removeDuplicateLabels() == true);

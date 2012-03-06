@@ -56,7 +56,7 @@ namespace
         return str;
     }
 
-    osg::Group* createPagedNode( const osg::BoundingSphered& bs, const std::string& uri, float minRange, float maxRange )
+    osg::Group* createPagedNode( const osg::BoundingSphered& bs, const std::string& uri, float minRange, float maxRange, float priOffset, float priScale )
     {
 #ifdef USE_PROXY_NODE_FOR_TESTING
         osg::ProxyNode* p = new osg::ProxyNode();
@@ -70,6 +70,8 @@ namespace
         p->setRadius(std::max((float)bs.radius(),maxRange));
         p->setFileName( 0, uri );
         p->setRange( 0, minRange, maxRange );
+        p->setPriorityOffset( 0, priOffset );
+        p->setPriorityScale( 0, priScale );
 #endif
         return p;
     }
@@ -154,11 +156,12 @@ FeatureModelGraph::FeatureModelGraph(FeatureSource*                   source,
                                      const FeatureModelSourceOptions& options,
                                      FeatureNodeFactory*              factory,
                                      Session*                         session) :
-_source   ( source ),
-_options  ( options ),
-_factory  ( factory ),
-_session  ( session ),
-_dirty    ( false )
+_source       ( source ),
+_options      ( options ),
+_factory      ( factory ),
+_session      ( session ),
+_dirty        ( false ),
+_pendingUpdate( false )
 {
     _uid = osgEarthFeatureModelPseudoLoader::registerGraph( this );
 
@@ -212,7 +215,7 @@ _dirty    ( false )
         }
     }
 
-    setNumChildrenRequiringUpdateTraversal( 1 );
+    ADJUST_EVENT_TRAV_COUNT( this, 1 );
 
     redraw();
 }
@@ -253,7 +256,7 @@ FeatureModelGraph::getBoundInWorldCoords(const GeoExtent& extent,
         // Use an appropriate resolution for this extents width
         double resolution = workingExtent.width();             
         ElevationQuery query( *mapf );
-        query.getElevation( center, mapf->getProfile()->getSRS(), center.z(), resolution );
+        query.getElevation( GeoPoint(mapf->getProfile()->getSRS(),center), center.z(), resolution );
         centerZ = center.z();
     }    
 
@@ -284,7 +287,14 @@ FeatureModelGraph::setupPaging()
     std::string uri = s_makeURI( _uid, 0, 0, 0 );
 
     // bulid the top level Paged LOD:
-    osg::Group* pagedNode = createPagedNode( bs, uri, 0.0f, maxRange );
+    osg::Group* pagedNode = createPagedNode( 
+        bs, 
+        uri, 
+        0.0f, 
+        maxRange, 
+        *_options.layout()->priorityOffset(), 
+        *_options.layout()->priorityScale() );
+
     this->addChild( pagedNode );
 }
 
@@ -476,7 +486,13 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
                     << "; radius = " << subtile_bs.radius()
                     << std::endl;
 
-                osg::Group* pagedNode = createPagedNode( subtile_bs, uri, 0.0f, maxRange );
+                osg::Group* pagedNode = createPagedNode( 
+                    subtile_bs, 
+                    uri, 
+                    0.0f, maxRange, 
+                    *_options.layout()->priorityOffset(), 
+                    *_options.layout()->priorityScale() );
+
                 parent->addChild( pagedNode );
             }
         }
@@ -741,13 +757,25 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
 void
 FeatureModelGraph::traverse(osg::NodeVisitor& nv)
 {
-    if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR)
+    if ( nv.getVisitorType() == osg::NodeVisitor::EVENT_VISITOR )
     {
-        if (_source->outOfSyncWith(_revision) || _dirty)
+        if ( !_pendingUpdate && (_dirty || _source->outOfSyncWith(_revision)) )
         {
-            redraw();
+            _pendingUpdate = true;
+            ADJUST_UPDATE_TRAV_COUNT( this, 1 );
         }
     }
+
+    else if ( nv.getVisitorType() == osg::NodeVisitor::UPDATE_VISITOR )
+    {
+        if ( _pendingUpdate )
+        {
+            redraw();
+            _pendingUpdate = false;
+            ADJUST_UPDATE_TRAV_COUNT( this, -1 );
+        }
+    }
+
     osg::Group::traverse(nv);
 }
 

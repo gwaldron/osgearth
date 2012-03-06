@@ -1,0 +1,33 @@
+<!-- 
+OpenStreetMap's Mapnik "Slippy Map"
+
+This is an example of using the TMS driver when there is no TMS
+TileMap config available on the server. We have to manually specify:
+
+ * The map's profile
+ * The image source's format, tile_width, and tile_height
+
+In this case, we also specify the "google" tms_type, which will
+invert the Y tile index.
+-->
+
+<map name="MapQuest" type="geocentric" version="2">
+ 
+    <image name="mq" driver="tms">
+        <url>http://otile1.mqcdn.com/tiles/1.0.0/osm/</url>
+        <profile>global-mercator</profile>
+        <format>png</format>
+        <tile_size>256</tile_size>
+        <tms_type>google</tms_type>
+        <lod_blending>true</lod_blending>
+    </image>
+    
+    <options>
+        <lighting>false</lighting>
+        <terrain>
+            <loading_policy mode="parallel"/>
+        </terrain>
+        <cache_policy usage="no_cache"/>
+    </options>
+    
+</map>

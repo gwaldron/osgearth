@@ -22,7 +22,7 @@
 
 #include <osgEarth/Registry>
 #include <osgEarth/Map>
-#include <osgEarth/FindNode>
+#include <osgEarth/NodeUtils>
 #include <osgEarth/ThreadingUtils>
 
 #include <osg/NodeCallback>
@@ -300,6 +300,8 @@ TerrainNode::traverse( osg::NodeVisitor &nv )
             ev->getActionAdapter()->requestRedraw();
             decDelay();
         }
+
+        //OE_INFO << "Tiles = " << _tiles.size() << std::endl;
     }
 
     osg::Group::traverse( nv );

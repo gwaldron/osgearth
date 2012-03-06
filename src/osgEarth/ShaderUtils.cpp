@@ -32,12 +32,14 @@ namespace
     getModeValue(const StateSetStack& statesetStack, osg::StateAttribute::GLMode mode)
     {
         osg::StateAttribute::GLModeValue base_val = osg::StateAttribute::ON;
+
         for(StateSetStack::const_iterator itr = statesetStack.begin();
             itr != statesetStack.end();
             ++itr)
         {
             osg::StateAttribute::GLModeValue val = (*itr)->getMode(mode);
-            if ((val & ~osg::StateAttribute::INHERIT)!=0)
+
+            if ( (val & osg::StateAttribute::INHERIT) == 0 )
             {
                 if ((val & osg::StateAttribute::PROTECTED)!=0 ||
                     (base_val & osg::StateAttribute::OVERRIDE)==0)
@@ -106,7 +108,7 @@ UpdateLightingUniformsHelper::cullTraverse( osg::Node* node, osg::NodeVisitor* n
         }
 
         // Update the overall lighting-enabled value:
-        bool lightingEnabled = 
+        bool lightingEnabled =
             ( getModeValue(stateSetStack, GL_LIGHTING) & osg::StateAttribute::ON ) != 0;
 
         if ( lightingEnabled != _lightingEnabled || !_applied )

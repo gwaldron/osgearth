@@ -47,6 +47,25 @@ namespace
         }
     };
 
+    // Custom sorting functor that sorts drawables front-to-back, and when drawables share the
+    // same parent Geode, sorts them in traversal order.
+    struct SortFrontToBackPreservingGeodeTraversalOrder
+    {
+        bool operator()( const osgUtil::RenderLeaf* lhs, const osgUtil::RenderLeaf* rhs ) const
+        {
+            const osg::Node* lhsParentNode = lhs->getDrawable()->getParent(0);
+            if ( lhsParentNode == rhs->getDrawable()->getParent(0) )
+            {
+                const osg::Geode* geode = static_cast<const osg::Geode*>(lhsParentNode);
+                return geode->getDrawableIndex(lhs->getDrawable()) > geode->getDrawableIndex(rhs->getDrawable());
+            }
+            else
+            {
+                return ( lhs->_depth < rhs->_depth );
+            }
+        }
+    };
+
     // Data structure shared across entire decluttering system.
     struct DeclutterContext : public osg::Referenced
     {
@@ -161,8 +180,10 @@ struct /*internal*/ DeclutterSort : public osgUtil::RenderBin::SortCallback
         }
         else
         {
-            // default behavior is to sort by depth.
-            bin->sortFrontToBack();
+            // default behavior:
+            bin->copyLeavesFromStateGraphListToRenderLeafList();
+            std::sort( leaves.begin(), leaves.end(), SortFrontToBackPreservingGeodeTraversalOrder() );
+            //bin->sortFrontToBack();
         }
 
         // nothing to sort? bail out

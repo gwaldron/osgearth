@@ -22,6 +22,8 @@
 #include <osgEarthAnnotation/Common>
 #include <osgEarthAnnotation/AnnotationData>
 #include <osgEarthAnnotation/Decoration>
+#include <osgEarthSymbology/Style>
+#include <osgEarth/Terrain>
 #include <osgEarth/TileKey>
 #include <osg/Switch>
 
@@ -29,14 +31,17 @@
     META_Node(library,type); \
     virtual bool accept(Decoration* ds, bool enable) { return ds->apply(*this, enable); }
 
+// forward decs
 namespace osgEarth
 {
     class MapNode;
 }
 
+
 namespace osgEarth { namespace Annotation
 {	
     using namespace osgEarth;
+    using namespace osgEarth::Symbology;
 
     /**
      * Base class for all annotation node types.
@@ -58,15 +63,20 @@ namespace osgEarth { namespace Annotation
          */
         virtual void setDynamic( bool value );
 
-        /**
-         * Sets the node to automatically re-clamp to the terrain (if applicable)
-         */
-        virtual void setAutoClamp( bool value );
-
         /** 
          * Gets the attach point for children of this node
          */
         virtual osg::Group* getAttachPoint();
+
+        /**
+         * Gets the MapNode that this AnnotationNode is attached to
+         */
+        osgEarth::MapNode* getMapNode() const;
+
+        /**
+         * Serialized this annotation node so you can re-create it later
+         */
+        virtual Config getConfig() const { return Config(); }
 
 
     public: // decoration support
@@ -80,6 +90,11 @@ namespace osgEarth { namespace Annotation
          * Uninstalls a decoration on this annotation node.
          */
         void uninstallDecoration( const std::string& name );
+
+        /**
+         * Gets the current decoration
+         */
+        const std::string& getDecoration() const;
 
         /**
          * Activates a named decoration that was installed previously
@@ -102,11 +117,39 @@ namespace osgEarth { namespace Annotation
         osg::ref_ptr<AnnotationData> _annoData;
         bool                         _dynamic;
         bool                         _autoclamp;
+        bool                         _depthAdj;
+        osg::ref_ptr<const AltitudeSymbol> _altitude;
 
         typedef std::map<std::string, osg::ref_ptr<Decoration> > DecorationMap;
         DecorationMap _dsMap;
         Decoration*   _activeDs;
         std::string   _activeDsName;
+
+
+        bool supportsAutoClamping( const Style& style ) const;
+        
+        void configureForAltitudeMode( const AltitudeModeEnum& mode );
+
+        // Apply general style information. You can pass "noClamp=true" as a hint
+        // that no clamping logic is necessary
+        virtual void applyStyle( const Style&, bool noClampHint =false );
+        
+        /**
+         * Sets the node to automatically re-clamp to the terrain (if applicable).
+         * Note: you usually don't need to call this directly; it is automatically set
+         * based on the symbology. But you can call it to override the automatic setting.
+         */
+        virtual void setAutoClamp( bool value );
+
+        /**
+         * Whether to activate depth adjustment.
+         * Note: you usually don't need to call this directly; it is automatically set
+         * based on the symbology. But you can call it to override the automatic setting.
+         */
+        virtual void setDepthAdjustment( bool value );
+
+        // utility funcion to make a geopoint absolute height
+        bool makeAbsolute( GeoPoint& mapPoint, osg::Node* patch =0L ) const;
 
         // hidden default ctor
         AnnotationNode( MapNode* mapNode =0L );
@@ -117,10 +160,9 @@ namespace osgEarth { namespace Annotation
 
     public: // internal methods; do not call directly
 
-        virtual void reclamp( const TileKey& key, osg::Node* tile ) { }
+        virtual void reclamp( const TileKey& key, osg::Node* tile, const Terrain* terrain ) { }
 
         virtual ~AnnotationNode();
-
     };
 
     /**
@@ -129,34 +171,27 @@ namespace osgEarth { namespace Annotation
     class PositionedAnnotationNode : public AnnotationNode
     {
     public:
+
         /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * of the current Map. Returns true upon success.
+         * Sets the map position of the node.
+         * Returns true upon success.
+         */
+        virtual bool setPosition( const GeoPoint& p ) =0;
+
+        /**
+         * Sets the map position of the node, in map coordinates.
+         * Returns true upon success.
          */
         virtual bool setPosition( const osg::Vec3d& pos ) =0;
 
         /**
-         * Sets the map position of the node. The coordinates are in the SRS
-         * passed in, and will be reprojected to Map coordinates.
-         * Returns true upon success.
-         */
-        virtual bool setPosition( const osg::Vec3d& pos, const SpatialReference* srs ) =0;
-
-        /**
          * Gets the position (in map coordinates) of the node
          */
-        virtual osg::Vec3d getPosition() const =0;
-
-        /**
-         * Gets the position (in the requested coordinate system)
-         */
-        virtual osg::Vec3d getPosition( const SpatialReference* srs ) const =0;
+        virtual GeoPoint getPosition() const =0;
 
     protected:
-        PositionedAnnotationNode(MapNode* mapNode =0L) : AnnotationNode(mapNode) { }
 
-        //PositionedAnnotationNode( const AnnotationNode& rhs, const osg::CopyOp& op=osg::CopyOp::DEEP_COPY_ALL) 
-        //    : AnnotationNode( rhs, op ) { }
+        PositionedAnnotationNode(MapNode* mapNode =0L) : AnnotationNode(mapNode) { }
         
     };
 

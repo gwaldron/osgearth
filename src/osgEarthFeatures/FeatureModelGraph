@@ -111,6 +111,7 @@ namespace osgEarth { namespace Features
         bool                             _useTiledSource;
         osgEarth::Revision               _revision;
         bool                             _dirty;
+        bool                             _pendingUpdate;
         std::vector<const FeatureLevel*> _lodmap;
     };
 

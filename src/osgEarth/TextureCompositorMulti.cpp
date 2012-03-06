@@ -107,7 +107,7 @@ namespace
 
         buf << "uniform float osgearth_ImageLayerOpacity[" << maxSlots << "]; \n"
             //The enabled array is a fixed size.  Make sure this corresponds EXCATLY to the size definition in TerrainEngineNode.cpp
-            << "uniform bool  osgearth_ImageLayerEnabled[" << MAX_IMAGE_LAYERS << "]; \n"
+            << "uniform bool  osgearth_ImageLayerVisible[" << MAX_IMAGE_LAYERS << "]; \n"
             << "uniform float osgearth_ImageLayerRange[" << 2 * maxSlots << "]; \n"
             << "uniform float osgearth_ImageLayerAttenuation; \n"
             << "uniform float osgearth_CameraElevation; \n"
@@ -138,7 +138,7 @@ namespace
             // if this UID has a secondyar slot, LOD blending ON.
             int secondarySlot = layout.getSlot( slots[slot], 1, maxSlots );
 
-            buf << "    if (osgearth_ImageLayerEnabled["<< i << "]) { \n"
+            buf << "    if (osgearth_ImageLayerVisible["<< i << "]) { \n"
                 << "        dmin = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q << "]; \n"
                 << "        dmax = osgearth_CameraElevation - osgearth_ImageLayerRange["<< q+1 <<"]; \n"
 
@@ -150,7 +150,9 @@ namespace
             {
                 float invFadeInDuration = 1.0f/fadeInDuration;
 
-                buf << "            age = "<< invFadeInDuration << " * min( "<< fadeInDuration << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
+                buf << std::fixed
+                    << std::setprecision(1)
+                    << "            age = "<< invFadeInDuration << " * min( "<< fadeInDuration << ", osg_FrameTime - osgearth_SlotStamp[" << slot << "] ); \n"
                     << "            age = clamp(age, 0.0, 1.0); \n"
                     << "            vec4 texel0 = texture2D(" << makeSamplerName(slot) << ", gl_TexCoord["<< slot << "].st);\n"
                     << "            vec4 texel1 = texture2D(" << makeSamplerName(secondarySlot) << ", gl_TexCoord["<< secondarySlot << "].st);\n"

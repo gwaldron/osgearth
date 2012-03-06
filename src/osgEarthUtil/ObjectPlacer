@@ -28,6 +28,8 @@
 namespace osgEarth { namespace Util
 {
     /**
+     * @deprecated Please use Annotation::GeometryNode instead.
+     *
      * Convenience utilities for placing an object on an osgEarth terrain map
      * using latitude/longitude coordinates.
      */
@@ -35,6 +37,8 @@ namespace osgEarth { namespace Util
     {
     public:
         /**
+         * @deprecated Please use Annotation::GeometryNode instead.
+         *
          * Constructs a new placer.
          *
          * @param terrain
@@ -56,6 +60,8 @@ namespace osgEarth { namespace Util
             int  maxLevel     =20);
 
         /**
+         * @deprecated Please use Annotation::GeometryNode instead.
+         *
          * Creates a double-precision matrix that will transform geometry to the
          * specified map location. In a geocentric map, the matrix will also rotate
          * into the tangent plane.
@@ -77,6 +83,8 @@ namespace osgEarth { namespace Util
             osg::Matrixd& out_result ) const;
 
         /**
+         * @deprecated Please use Annotation::GeometryNode instead.
+         *
          * Creates a new node graph that positions the input node at a specified map
          * location. The resulting node will contain the input node as a child.
          *

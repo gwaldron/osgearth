@@ -22,8 +22,9 @@ using namespace osgEarth;
 using namespace osgEarth::Symbology;
 
 LineSymbol::LineSymbol( const Config& conf ) :
-Symbol ( conf ),
-_stroke( Stroke() )
+Symbol       ( conf ),
+_stroke      ( Stroke() ),
+_tessellation( 0 )
 {
     mergeConfig(conf);
 }
@@ -33,12 +34,14 @@ LineSymbol::getConfig() const
 {
     Config conf = Symbol::getConfig();
     conf.key() = "line";
-    conf.addObjIfSet("stroke", _stroke);
+    conf.addObjIfSet("stroke",       _stroke);
+    conf.addIfSet   ("tessellation", _tessellation);
     return conf;
 }
 
 void 
 LineSymbol::mergeConfig( const Config& conf )
 {
-    conf.getObjIfSet("stroke", _stroke);
+    conf.getObjIfSet("stroke",       _stroke);
+    conf.getIfSet   ("tessellation", _tessellation);
 }

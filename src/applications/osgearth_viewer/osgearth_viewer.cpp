@@ -18,23 +18,32 @@
 */
 
 #include <osg/Notify>
+
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
+
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Viewpoint>
+
+#include <osgEarthSymbology/Color>
+
+#include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthAnnotation/Decluttering>
+
+#include <osgEarthDrivers/kml/KML>
+#include <osgEarthDrivers/ocean_surface/OceanSurface>
+
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/SkyNode>
-#include <osgEarthUtil/Formatters>
-#include <osgEarthSymbology/Color>
-#include <osgEarthAnnotation/AnnotationData>
-#include <osgEarthAnnotation/Decluttering>
-#include <osgEarthDrivers/kml/KML>
-#include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarthUtil/MouseCoordsTool>
+
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -54,7 +63,6 @@ usage( const std::string& msg )
     OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
     OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
     
-        
     return -1;
 }
 
@@ -62,8 +70,6 @@ static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
 static OceanSurfaceNode* s_ocean         =0L;
-static bool              s_dms           =false;
-static bool              s_mgrs          =false;
 
 struct SkySliderHandler : public ControlEventHandler
 {
@@ -124,70 +130,6 @@ struct ClickViewpointHandler : public ControlEventHandler
         s_manip->setViewpoint( _vp, 4.5 );
     }
 };
-
-struct MouseCoordsHandler : public osgGA::GUIEventHandler
-{
-    MouseCoordsHandler( LabelControl* label, osgEarth::MapNode* mapNode )
-        : _label( label ),
-          _mapNode( mapNode )
-    {
-        _mapNodePath.push_back( mapNode->getTerrainEngine() );
-    }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-        osgViewer::View* view = static_cast<osgViewer::View*>(aa.asView());
-        if (ea.getEventType() == ea.MOVE || ea.getEventType() == ea.DRAG)
-        {
-            osgUtil::LineSegmentIntersector::Intersections results;
-            if ( view->computeIntersections( ea.getX(), ea.getY(), _mapNodePath, results ) )
-            {
-                // find the first hit under the mouse:
-                osgUtil::LineSegmentIntersector::Intersection first = *(results.begin());
-                osg::Vec3d point = first.getWorldIntersectPoint();
-                osg::Vec3d lla;
-
-                // transform it to map coordinates:
-                _mapNode->getMap()->worldPointToMapPoint(point, lla);
-
-                std::stringstream ss;
-
-                if ( s_mgrs )
-                {
-                    MGRSFormatter f( MGRSFormatter::PRECISION_1M );
-                    ss << "MGRS: " << f.format(lla.y(), lla.x()) << "   ";
-                }
-                 // lat/long
-                {
-                    LatLongFormatter::AngularFormat fFormat = s_dms?
-                        LatLongFormatter::FORMAT_DEGREES_MINUTES_SECONDS :
-                        LatLongFormatter::FORMAT_DECIMAL_DEGREES;
-                    
-                    LatLongFormatter f( fFormat );
-
-                    ss 
-                        << "Lat: " << f.format( Angular(lla.y(),Units::DEGREES), 4 ) << "  "
-                        << "Lon: " << f.format( Angular(lla.x(),Units::DEGREES), 5 );
-                }
-                std::string str;
-                str = ss.str();
-                _label->setText( str );
-            }
-            else
-            {
-                //Clear the text
-                _label->setText( "" );
-            }
-        }
-        return false;
-    }
-
-    osg::ref_ptr< LabelControl > _label;
-    MapNode*                     _mapNode;
-    osg::NodePath                _mapNodePath;
-};
-
-
 
 void
 createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
@@ -339,23 +281,6 @@ struct KMLUIBuilder : public osg::NodeVisitor
     Grid*          _grid;
 };
 
-/** 
- * Adds a control that display the coordinates under the mouse cursor.
- */
-void addMouseCoords(osgViewer::Viewer* viewer, osgEarth::MapNode* mapNode)
-{
-    ControlCanvas* canvas = ControlCanvas::get( viewer );
-    LabelControl* mouseCoords = new LabelControl();
-    mouseCoords->setHorizAlign(Control::ALIGN_CENTER );
-    mouseCoords->setVertAlign(Control::ALIGN_BOTTOM );
-    mouseCoords->setBackColor(0,0,0,0.5);    
-    mouseCoords->setSize(400,50);
-    mouseCoords->setMargin( 10 );
-    canvas->addControl( mouseCoords );
-
-    viewer->addEventHandler( new MouseCoordsHandler(mouseCoords, mapNode ) );
-}
-
 /**
  * Handler that dumps the current viewpoint out to the console.
  */
@@ -383,6 +308,7 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
             {
                 s_controlPanel->setVisible( !s_controlPanel->visible() );
             }
+            aa.requestRedraw();
         }
         return false;
     }
@@ -399,11 +325,9 @@ main(int argc, char** argv)
     osg::DisplaySettings::instance()->setMinimumNumStencilBits( 8 );
     osgViewer::Viewer viewer(arguments);
 
-    bool useAutoClip  = arguments.read( "--autoclip" );
-    bool useSky       = arguments.read( "--sky" );
-    bool useOcean     = arguments.read( "--ocean" );
-    s_dms             = arguments.read( "--dms" );
-    s_mgrs            = arguments.read( "--mgrs" );
+    bool dontUseAutoClip = arguments.read( "--noautoclip" );
+    bool useSky          = arguments.read( "--sky" );
+    bool useOcean        = arguments.read( "--ocean" );
 
     // reads in a KML file:
     std::string kmlFile;
@@ -421,6 +345,7 @@ main(int argc, char** argv)
 
     osg::Group* root = new osg::Group();
     root->addChild( earthNode );
+
 
     osgEarth::MapNode* mapNode = osgEarth::MapNode::findMapNode( earthNode );
     if ( mapNode )
@@ -459,12 +384,12 @@ main(int argc, char** argv)
             // planes based on your view of the horizon. This prevents near clipping issues
             // when you are very close to the ground. If your app never brings a user very
             // close to the ground, you may not need this.
-            if ( externals.hasChild("autoclip") )
+            if ( externals.hasChild("noautoclip") )
             {
-                useAutoClip = externals.child("autoclip").boolValue( useAutoClip );
+                dontUseAutoClip = externals.child("noautoclip").boolValue( dontUseAutoClip );
             }
 
-            if ( useSky || useAutoClip || useOcean )
+            if ( useSky || useOcean || !dontUseAutoClip )
             {
                 viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
             }
@@ -477,8 +402,20 @@ main(int argc, char** argv)
         {
             for( ConfigSet::const_iterator i = children.begin(); i != children.end(); ++i )
                 viewpoints.push_back( Viewpoint(*i) );
+        }
+        viewer.addEventHandler( new ViewpointHandler(viewpoints) );
 
-            viewer.addEventHandler( new ViewpointHandler(viewpoints) );
+        // read in annotations, if any
+        Config annoConf = externals.child("annotations");
+        if ( !annoConf.empty() )
+        {
+            osg::Group* annotations = 0L;
+            AnnotationRegistry::instance()->create( mapNode, annoConf, annotations );
+            if ( annotations )
+            {
+                annotations->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+                root->addChild( annotations );
+            }
         }
 
         // Configure the de-cluttering engine for labels and annotations:
@@ -495,15 +432,12 @@ main(int argc, char** argv)
             createControlPanel(&viewer, viewpoints);
         }
 
-        // Add a mouse-coordinate display
-        addMouseCoords( &viewer, mapNode );
-
         // Load a KML file if specified
         if ( !kmlFile.empty() )
         {
             KMLOptions kmlo;
             kmlo.declutter() = true;
-            kmlo.defaultIconImage() = URI("http://www.osgearth.org/chrome/site/pushpin_yellow.png").getImage();
+            kmlo.defaultIconImage() = URI("http://demo.pelicanmapping.com/icons/pushpin_yellow.png").getImage();
 
             osg::Node* kml = KML::load( URI(kmlFile), mapNode, kmlo );
             if ( kml )
@@ -515,6 +449,17 @@ main(int argc, char** argv)
             }
         }
     }
+    
+    // readout for coordinates under the mouse   
+    LabelControl* mouseCoords = new LabelControl();
+    mouseCoords->setHorizAlign( Control::ALIGN_RIGHT );
+    mouseCoords->setVertAlign( Control::ALIGN_BOTTOM );
+    ControlCanvas::get(&viewer, false)->addControl(mouseCoords);
+
+    Formatter* formatter = new LatLongFormatter(LatLongFormatter::FORMAT_DECIMAL_DEGREES);
+    MouseCoordsTool* mcTool = new MouseCoordsTool( mapNode );
+    mcTool->addCallback( new MouseCoordsLabelCallback(mouseCoords, formatter) );
+    viewer.addEventHandler( mcTool );
 
     // osgEarth benefits from pre-compilation of GL objects in the pager. In newer versions of
     // OSG, this activates OSG's IncrementalCompileOpeartion in order to avoid frame breaks.

@@ -203,7 +203,12 @@ TMSPackager::package(ImageLayer*        layer,
         return Result( Stringify() << "Unable to determine mime-type for extension " << imageExtension );
 
     // fetch one tile to see what the image size should be
-    GeoImage testImage = layer->createImage( rootKeys[0] );
+    
+    GeoImage testImage;
+    for( std::vector<TileKey>::iterator i = rootKeys.begin(); i != rootKeys.end() && !testImage.valid(); ++i )
+    {
+        testImage = layer->createImage( *i );
+    }
     if ( !testImage.valid() )
         return Result( "Unable to determine appropriate image type" );
 

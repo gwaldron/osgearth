@@ -26,6 +26,7 @@
 #include <gdal_priv.h>
 #include <ogr_api.h>
 #include <stdlib.h>
+#include <locale>
 
 using namespace osgEarth;
 using namespace osgEarth::Drivers;
@@ -53,25 +54,25 @@ _defaultFont     ( 0L )
     OGRRegisterAll();
     GDALAllRegister();
 
-    // add built-in mime-type extension mappings
-    for( int i=0; ; i+=2 )
-    {
-        std::string mimeType = builtinMimeTypeExtMappings[i];
-        if ( mimeType.length() == 0 )
-            break;
-        addMimeTypeExtensionMapping( mimeType, builtinMimeTypeExtMappings[i+1] );
-    }
-
     _shaderLib = new ShaderFactory();
     _taskServiceManager = new TaskServiceManager();
 
     // activate KMZ support
     osgDB::Registry::instance()->addFileExtensionAlias( "kmz", "kml" );
-    osgDB::Registry::instance()->addArchiveExtension( "kmz" );    
+    osgDB::Registry::instance()->addArchiveExtension  ( "kmz" );    
 
 #if OSG_MIN_VERSION_REQUIRED(3,0,0)
     osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kml+xml", "kml" );
-    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz", "kmz" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/vnd.google-earth.kmz",     "kmz" );
+    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "xml" );
+    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "json" );
+    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "json" );
+    //osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "json" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/plain",                           "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/xml",                             "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "application/json",                     "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/json",                            "osgb" );
+    osgDB::Registry::instance()->addMimeTypeExtensionMapping( "text/x-json",                          "osgb" );
 #endif
     
     // pre-load OSG's ZIP plugin so that we can use it in URIs
@@ -204,7 +205,7 @@ Registry::getGlobalMercatorProfile() const
             /*const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
                 srs, -e, -e, e, e, 0L, 1, 1 );*/
             const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-                srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 0L, 1, 1 );
+                srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 1, 1 );
         }
     }
     return _global_mercator_profile.get();
@@ -238,13 +239,13 @@ Registry::getNamedProfile( const std::string& name ) const
         return NULL;
 }
 
-const VerticalSpatialReference*
-Registry::getDefaultVSRS() const
-{
-    if ( !_defaultVSRS.valid() )
-        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
-    return _defaultVSRS.get();
-}
+//const VerticalSpatialReference*
+//Registry::getDefaultVSRS() const
+//{
+//    if ( !_defaultVSRS.valid() )
+//        const_cast<Registry*>(this)->_defaultVSRS = new VerticalSpatialReference( Units::METERS );
+//    return _defaultVSRS.get();
+//}
 
 osgEarth::Cache*
 Registry::getCache() const
@@ -260,6 +261,7 @@ Registry::setCache( osgEarth::Cache* cache )
         cache->store( _defaultOptions.get() );
 }
 
+#if 0
 void Registry::addMimeTypeExtensionMapping(const std::string fromMimeType, const std::string toExt)
 {
     _mimeTypeExtMap[fromMimeType] = toExt;
@@ -273,6 +275,7 @@ Registry::getReaderWriterForMimeType(const std::string& mimeType)
         osgDB::Registry::instance()->getReaderWriterForExtension( i->second ) :
         NULL;
 }
+#endif
 
 bool
 Registry::isBlacklisted(const std::string& filename)
@@ -378,6 +381,27 @@ Registry::cloneOrCreateOptions( const osgDB::Options* input ) const
     }
 
     return newOptions;
+}
+
+void
+Registry::registerUnits( const Units* units )
+{
+    _unitsVector.push_back(units);
+}
+
+const Units*
+Registry::getUnits(const std::string& name) const
+{
+    std::string lower = toLower(name);
+    for( UnitsVector::const_iterator i = _unitsVector.begin(); i != _unitsVector.end(); ++i )
+    {
+        if (toLower((*i)->getName()) == lower ||
+            toLower((*i)->getAbbr()) == lower)
+        {
+            return *i;
+        }
+    }
+    return 0L;
 }
 
 //Simple class used to add a file extension alias for the earth_tile to the earth plugin

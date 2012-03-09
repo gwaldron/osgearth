@@ -32,6 +32,7 @@
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/AnnotationListWidget>
 #include <osgEarthQt/LOSControlWidget>
+#include <osgEarthQt/TerrainProfileWidget>
 #include <osgEarthUtil/AnnotationEvents>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/SkyNode>
@@ -371,6 +372,11 @@ main(int argc, char** argv)
     losControl->setActiveViews(views);
 	  losDock->setWidget(losControl);
 	  appWin.addDockWidget(Qt::RightDockWidgetArea, losDock);
+
+    // create terrain profile widget
+    osgEarth::QtGui::TerrainProfileWidget* terrainProfiler = new osgEarth::QtGui::TerrainProfileWidget(root, mapNode.get());
+    terrainProfiler->setActiveViews(views);
+    appWin.setTerrainProfileWidget(terrainProfiler);
 
 
     // attempt to load .qss stylesheet if one was provided

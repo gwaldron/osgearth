@@ -73,7 +73,7 @@ TerrainProfile::getNumElevations() const
 }
 
 void
-TerrainProfile::getElevationRanges(double &min, double &max )
+TerrainProfile::getElevationRanges(double &min, double &max ) const
 {
     min = DBL_MAX;
     max = -DBL_MAX;
@@ -93,6 +93,12 @@ _end( end )
 {        
     _mapNode->getTerrain()->addTerrainCallback( this );        
     recompute();
+}
+
+TerrainProfileCalculator::TerrainProfileCalculator(MapNode* mapNode):
+_mapNode( mapNode )
+{
+    _mapNode->getTerrain()->addTerrainCallback( this );
 }
 
 TerrainProfileCalculator::~TerrainProfileCalculator()
@@ -141,36 +147,42 @@ void TerrainProfileCalculator::setStartEnd(const GeoPoint& start, const GeoPoint
 
 void TerrainProfileCalculator::onTileAdded(const osgEarth::TileKey& tileKey, osg::Node* terrain, TerrainCallbackContext&)
 {
-    GeoExtent extent( _start.getSRS());
-    extent.expandToInclude(_start.x(), _start.y());
-    extent.expandToInclude(_end.x(), _end.y());
-
-    if (tileKey.getExtent().intersects( extent ))
+    if (_start.isValid() && _end.isValid())
     {
-        recompute();
+        GeoExtent extent( _start.getSRS());
+        extent.expandToInclude(_start.x(), _start.y());
+        extent.expandToInclude(_end.x(), _end.y());
+
+        if (tileKey.getExtent().intersects( extent ))
+        {
+            recompute();
+        }
     }
 }
 
 void TerrainProfileCalculator::recompute()
 {
-    //computeTerrainProfile( _mapNode.get(), _start, _end, _numSamples, _profile);
-    osg::Vec3d start, end;
-    _start.toWorld( start );
-    _end.toWorld( end );
-    osgSim::ElevationSlice slice;
-    slice.setStartPoint( start );
-    slice.setEndPoint( end );
-    slice.setDatabaseCacheReadCallback( 0 );
-    slice.computeIntersections( _mapNode->getTerrainEngine());
-    _profile.clear();
-    for (unsigned int i = 0; i < slice.getDistanceHeightIntersections().size(); i++)
+    if (_start.isValid() && _end.isValid())
     {
-        _profile.addElevation( slice.getDistanceHeightIntersections()[i].first, slice.getDistanceHeightIntersections()[i].second);
+        //computeTerrainProfile( _mapNode.get(), _start, _end, _numSamples, _profile);
+        osg::Vec3d start, end;
+        _start.toWorld( start );
+        _end.toWorld( end );
+        osgSim::ElevationSlice slice;
+        slice.setStartPoint( start );
+        slice.setEndPoint( end );
+        slice.setDatabaseCacheReadCallback( 0 );
+        slice.computeIntersections( _mapNode->getTerrainEngine());
+        _profile.clear();
+        for (unsigned int i = 0; i < slice.getDistanceHeightIntersections().size(); i++)
+        {
+            _profile.addElevation( slice.getDistanceHeightIntersections()[i].first, slice.getDistanceHeightIntersections()[i].second);
+        }
+        for( ChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
+        {
+            i->get()->onChanged(this);
+        }
     }
-    for( ChangedCallbackList::iterator i = _changedCallbacks.begin(); i != _changedCallbacks.end(); i++ )
-    {
-        i->get()->onChanged(this);
-    }	
 }
 
 void TerrainProfileCalculator::computeTerrainProfile( osgEarth::MapNode* mapNode, const GeoPoint& start, const GeoPoint& end, unsigned int numSamples, TerrainProfile& profile)

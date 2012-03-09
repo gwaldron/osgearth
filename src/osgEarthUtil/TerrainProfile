@@ -60,7 +60,7 @@ namespace osgEarth { namespace Util {
          * @param max
          *        The maximum elevation in meters of this TerrainProfile
          */
-        void getElevationRanges(double &min, double &max );
+        void getElevationRanges(double &min, double &max ) const;
 
         /**
          * Gets the elevation at the given index
@@ -123,6 +123,13 @@ namespace osgEarth { namespace Util {
          *        The end point of the profile
          */
         TerrainProfileCalculator(osgEarth::MapNode* mapNode, const osgEarth::GeoPoint& start, const osgEarth::GeoPoint& end);
+
+        /**
+         * Creates a new TerrainProfileCalculator
+         * @param mapNode
+         *        The MapNode to compute the terrain profile against
+         */
+        TerrainProfileCalculator(osgEarth::MapNode* mapNode);
     
         /**
          * Add a ChangedCallback

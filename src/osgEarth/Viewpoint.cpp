@@ -123,6 +123,9 @@ Viewpoint::Viewpoint( const Config& conf )
             conf.value<double>("long", 0.0),
             conf.value<double>("lat", 0.0),
             conf.value<double>("height", 0.0) );
+
+        if ( !conf.hasValue("srs") )
+            _srs = SpatialReference::create("wgs84");
     }
 
     _heading_deg = conf.value<double>("heading", 0.0);
@@ -130,7 +133,13 @@ Viewpoint::Viewpoint( const Config& conf )
     _range       = conf.value<double>("range",   0.0);
     _is_valid    = _range > 0.0;
 
-    //TODO: SRS
+    const std::string horiz = conf.value("srs");
+    const std::string vert  = conf.value("vdatum");
+
+    if ( !horiz.empty() )
+    {
+        _srs = SpatialReference::create(horiz, vert);
+    }
 }
 
 #define CONF_STR Stringify() << std::fixed << std::setprecision(4)
@@ -162,7 +171,12 @@ Viewpoint::getConfig() const
         conf.set("pitch",   _pitch_deg);
         conf.set("range",   _range);
 
-        //TODO: SRS
+        if ( _srs.valid() )
+        {
+            conf.set("srs", _srs->getHorizInitString());
+            if ( _srs->getVerticalDatum() )
+                conf.set("vdatum", _srs->getVertInitString());
+        }
     }
 
     return conf;

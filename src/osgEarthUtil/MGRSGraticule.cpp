@@ -78,7 +78,7 @@ UTMGraticule( 0L )
     if ( !_options->secondaryStyle().isSet() )
     {
         LineSymbol* line = _options->secondaryStyle()->getOrCreate<LineSymbol>();
-        line->stroke()->color() = Color(Color::Black, 0.4f);
+        line->stroke()->color() = Color(Color::White, 0.5f);
         line->stroke()->stipple() = 0x1111;
 
         TextSymbol* text = _options->secondaryStyle()->getOrCreate<TextSymbol>();

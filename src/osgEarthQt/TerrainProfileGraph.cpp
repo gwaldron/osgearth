@@ -220,8 +220,9 @@ void TerrainProfileGraph::redrawGraph()
     _totalDistance = profile.getTotalDistance();
 
     int mag = (int)pow(10.0, (double)((int)log10(maxElevation - minElevation)));
-    _graphMinY = ((int)(minElevation / mag)) * mag;
-    _graphMaxY = ((int)(maxElevation / mag) + 1) * mag;
+    _graphMinY = ((int)(minElevation / mag) - (minElevation < 0 ? 1 : 0)) * mag;
+    _graphMaxY = ((int)(maxElevation / mag) + (maxElevation < 0 ? 0 : 1)) * mag;
+
     int graphRangeY = _graphMaxY - _graphMinY;
     double scale = (double)graphRangeY / 10.0;
 

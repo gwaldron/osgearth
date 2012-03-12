@@ -22,161 +22,18 @@
 #include <osgEarthQt/TerrainProfileGraph>
 
 #include <osgEarth/Map>
-#include <osgEarthAnnotation/FeatureNode>
-#include <osgEarthFeatures/Feature>
 #include <osgEarthUtil/TerrainProfile>
 
-//#include <QCheckBox>
-//#include <QDropEvent>
+#include <QAction>
 #include <QFrame>
-//#include <QGraphicsScene>
-//#include <QGraphicsView>
 #include <QHBoxLayout>
-//#include <QPoint>
 #include <QPushButton>
-//#include <QRect>
-//#include <QScrollArea>
-//#include <QSlider>
+#include <QToolBar>
 #include <QVBoxLayout>
 
 using namespace osgEarth;
 using namespace osgEarth::QtGui;
 
-//---------------------------------------------------------------------------
-namespace
-{
-  struct TerrainProfileMouseHandler : public osgGA::GUIEventHandler
-  {
-    TerrainProfileMouseHandler(osgEarth::MapNode* mapNode, osg::Group* root, osgEarth::Util::TerrainProfileCalculator* profileCalculator)
-      : _mapNode(mapNode), _root(root), _calculator(profileCalculator), _mouseDown(false), _capturing(false), _startValid(false)
-    {
-      //Define a style for the line
-      osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();
-      ls->stroke()->color() = osgEarth::Symbology::Color::Yellow;
-      ls->stroke()->width() = 2.0f;
-      ls->tessellation() = 20;
-      _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
-    }
-
-    void setCapturing(bool capturing)
-    {
-      _capturing = capturing;
-    }
-
-    bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
-    {
-      if (_capturing)
-      {
-        if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
-        {
-          if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
-          {
-            _mouseDown = true;
-            _xDown = ea.getX();
-            _yDown = ea.getY();
-          }
-        }
-        else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
-        {
-          if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
-          {
-            if (_mouseDown && _xDown == ea.getX() && _yDown == ea.getY())
-            {
-              osg::Vec3d world;
-              if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
-              {
-                osgEarth::GeoPoint mapPoint;
-                _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
-
-                if (!_startValid)
-                {
-                  _start = mapPoint.vec3d();
-                  _end = mapPoint.vec3d();
-                  _startValid = true;
-                }
-                else
-                {
-                  _end = mapPoint.vec3d();
-                  _startValid = false;
-
-                  _calculator->setStartEnd(GeoPoint(_mapNode->getMapSRS(), _start.x(), _start.y(), 0),
-                                           GeoPoint(_mapNode->getMapSRS(), _end.x(), _end.y(), 0));
-                }
-
-                updateDisplay();
-              }
-            }
-
-            _mouseDown = false;
-          }
-        }
-        else if (ea.getEventType() == osgGA::GUIEventAdapter::MOVE)
-        {
-          if (_startValid)
-          {
-            osg::Vec3d world;
-            if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
-            {
-              osgEarth::GeoPoint mapPoint;
-              _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
-              _end = mapPoint.vec3d();
-
-              updateDisplay();
-            }
-          }
-        }
-      }
-
-      return false;
-    }
-
-    void updateDisplay()
-    {
-      if (!_startValid)
-      {
-        if (_featureNode.valid())
-        {
-          _root->removeChild( _featureNode.get() );
-          _featureNode = 0L;
-        }
-
-        return;
-      }
-
-      osgEarth::Symbology::LineString* line = new osgEarth::Symbology::LineString();
-      line->push_back( _start );
-      line->push_back( _end );
-
-      osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(line, _mapNode->getMapSRS());
-      feature->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;    
-      feature->style() = _lineStyle;
-
-      if (!_featureNode.valid())
-      {
-        _featureNode = new osgEarth::Annotation::FeatureNode( _mapNode, feature );
-        _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
-        _root->addChild( _featureNode.get() );
-      }
-      else
-      {
-        _featureNode->setFeature(feature);
-      }
-    }
-
-    
-    osg::ref_ptr<osgEarth::MapNode>  _mapNode;
-    osg::Group* _root;
-    osgEarth::Util::TerrainProfileCalculator* _calculator;
-    osg::ref_ptr<osgEarth::Annotation::FeatureNode> _featureNode;
-    osgEarth::Symbology::Style _lineStyle;
-    osg::Vec3d _start;
-    osg::Vec3d _end;
-    bool _capturing;
-    bool _startValid;
-    bool _mouseDown;
-    float _xDown, _yDown;
-  };
-}
 
 //---------------------------------------------------------------------------
 
@@ -184,9 +41,11 @@ TerrainProfileWidget::TerrainProfileWidget(osg::Group* root, osgEarth::MapNode* 
 : _root(root), _mapNode(mapNode)
 {
   _calculator = new osgEarth::Util::TerrainProfileCalculator(mapNode);
-  _guiHandler = new TerrainProfileMouseHandler(_mapNode.get(), _root.get(), _calculator.get());
+  _guiHandler = new TerrainProfileMouseHandler(_mapNode.get(), _root.get(), this);
 
   initialize();
+
+  _calculator->addChangedCallback(this);
 }
 
 TerrainProfileWidget::~TerrainProfileWidget()
@@ -200,23 +59,28 @@ void TerrainProfileWidget::initialize()
   vStack->setContentsMargins(0, 0, 0, 0);
   setLayout(vStack);
 
-  QHBoxLayout* buttonStack = new QHBoxLayout();
-  buttonStack->setSpacing(0);
-  buttonStack->setContentsMargins(0, 0, 0, 0);
+  // create actions
+  _captureAction = new QAction(QIcon(":/images/crosshair.png"), tr(""), this);
+  _captureAction->setStatusTip(tr("Capture map clicks"));
+  _captureAction->setCheckable(true);
+  connect(_captureAction, SIGNAL(toggled(bool)), this, SLOT(onCaptureToggled(bool)));
 
-  buttonStack->addStretch();
+  _undoZoomAction = new QAction(QIcon(":/images/undo.png"), tr(""), this);
+  _undoZoomAction->setStatusTip(tr("Undo zoom"));
+  connect(_undoZoomAction, SIGNAL(triggered()), this, SLOT(onUndoZoom()));
+  _undoZoomAction->setEnabled(false);
 
-  _captureButton = new QPushButton(QIcon(":/images/crosshair.png"), tr(""));
-  _captureButton->setCheckable(true);
-  _captureButton->setMaximumSize(24, 24);
-  buttonStack->addWidget(_captureButton);
+  // create toolbar
+  QToolBar *buttonToolbar = new QToolBar(tr("Action Toolbar"));
+  buttonToolbar->setIconSize(QSize(24, 24));
+  buttonToolbar->addAction(_captureAction);
+  buttonToolbar->addSeparator();
+  buttonToolbar->addAction(_undoZoomAction);
+  vStack->addWidget(buttonToolbar);
 
-  vStack->addLayout(buttonStack);
-
+  // create graph widget
   _graph = new TerrainProfileGraph(_calculator);
   vStack->addWidget(_graph);
-
-  connect(_captureButton, SIGNAL(toggled(bool)), this, SLOT(onCaptureToggled(bool)));
 }
 
 void TerrainProfileWidget::setActiveView(osgViewer::View* view)
@@ -247,7 +111,37 @@ void TerrainProfileWidget::removeViews()
   _views.clear();
 }
 
+void TerrainProfileWidget::hideEvent(QHideEvent* e)
+{
+  ((TerrainProfileMouseHandler*)_guiHandler.get())->setCapturing(false);
+}
+
+void TerrainProfileWidget::showEvent(QShowEvent* e)
+{
+  ((TerrainProfileMouseHandler*)_guiHandler.get())->setCapturing(_captureAction->isChecked());
+}
+
+void TerrainProfileWidget::setStartEnd(const GeoPoint& start, const GeoPoint& end)
+{
+  _profileStack.clear();
+  _calculator->setStartEnd(start, end);
+}
+
+void TerrainProfileWidget::onChanged(const osgEarth::Util::TerrainProfileCalculator* sender)
+{
+  if (_profileStack.size() == 0 || (_profileStack.back().start != _calculator->getStart() || _profileStack.back().end != _calculator->getEnd()))
+    _profileStack.push_back(StartEndPair(_calculator->getStart(), _calculator->getEnd()));
+
+  _undoZoomAction->setEnabled(_profileStack.size() > 1);
+}
+
 void TerrainProfileWidget::onCaptureToggled(bool checked)
 {
   ((TerrainProfileMouseHandler*)_guiHandler.get())->setCapturing(checked);
+}
+
+void TerrainProfileWidget::onUndoZoom()
+{
+  _profileStack.pop_back();
+  _calculator->setStartEnd(_profileStack.back().start, _profileStack.back().end);
 }

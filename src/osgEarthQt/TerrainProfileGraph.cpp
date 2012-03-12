@@ -23,10 +23,13 @@
 #include <osgEarth/Map>
 #include <osgEarthUtil/TerrainProfile>
 
+#include <QGraphicsLineItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsScene>
 #include <QGraphicsSimpleTextItem>
 #include <QGraphicsView>
+#include <QLineF>
+#include <QList>
 #include <QMouseEvent>
 #include <QPointF>
 #include <QPolygonF>
@@ -72,17 +75,21 @@ const int TerrainProfileGraph::OVERLAY_Z = 30;
 
 
 TerrainProfileGraph::TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator)
-  : QGraphicsView(), _calculator(calculator), _graphFont(tr("Helvetica,Verdana,Arial"), 10),
+  : QGraphicsView(), _calculator(calculator), _graphFont(tr("Helvetica,Verdana,Arial"), 8),
     _backgroundColor(128, 128, 128), _fieldColor(204, 204, 204), _axesColor(255, 255, 255), 
     _graphColor(0, 128, 0), _graphFillColor(128, 255, 128, 192), _graphField(0, 0, 0, 0),
-    _totalDistance(0.0), _graphMinY(0), _graphMaxY(0), _graphWidth(500), _graphHeight(309)
+    _totalDistance(0.0), _graphMinY(0), _graphMaxY(0), _graphWidth(500), _graphHeight(309),
+    _selecting(false)
 {
   setMouseTracking(true);
 
   _graphFont.setStyleHint(QFont::SansSerif);
 
-  _linePen.setWidth(3);
+  _linePen.setWidth(2);
   _linePen.setBrush(QBrush(_graphColor));
+
+  _hoverPen.setWidth(1);
+  _hoverPen.setBrush(QBrush(_graphColor));
 
   _axesPen.setWidth(1);
   _axesPen.setBrush(QBrush(_axesColor));
@@ -93,7 +100,7 @@ TerrainProfileGraph::TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculato
   
   redrawGraph();
 
-  _graphChangedCallback = new GraphChangedCallback(/*this*/);
+  _graphChangedCallback = new TerrainGraphChangedCallback();
   connect(_graphChangedCallback, SIGNAL(graphChanged()), this, SLOT(onGraphChanged()), Qt::QueuedConnection);
   if (_calculator.valid())
     _calculator->addChangedCallback(_graphChangedCallback);
@@ -103,6 +110,40 @@ TerrainProfileGraph::~TerrainProfileGraph()
 {
   if (_calculator.valid())
     _calculator->removeChangedCallback(_graphChangedCallback);
+}
+
+void TerrainProfileGraph::setBackgroundColor(const QColor& color)
+{
+  _backgroundColor = color;
+  _scene->setBackgroundBrush(QBrush(_backgroundColor));
+  redrawGraph();
+}
+
+void TerrainProfileGraph::setFieldColor(const QColor& color)
+{
+  _fieldColor = color;
+  redrawGraph();
+}
+
+void TerrainProfileGraph::setAxesColor(const QColor& color)
+{
+  _axesColor = color;
+  _axesPen.setBrush(QBrush(_axesColor));
+  redrawGraph();
+}
+
+void TerrainProfileGraph::setGraphColor(const QColor& color)
+{
+  _graphColor = color;
+  _linePen.setBrush(QBrush(_graphColor));
+  _hoverPen.setBrush(QBrush(_graphColor));
+  redrawGraph();
+}
+
+void TerrainProfileGraph::setGraphFillColor(const QColor& color)
+{
+  _graphFillColor = color;
+  redrawGraph();
 }
 
 void TerrainProfileGraph::resizeEvent(QResizeEvent* e)
@@ -117,48 +158,58 @@ void TerrainProfileGraph::resizeEvent(QResizeEvent* e)
 
 void TerrainProfileGraph::mouseMoveEvent(QMouseEvent* e)
 {
-  if (_scene->items().count() > 0)
+  drawHoverCursor(mapToScene(e->pos()));
+  QGraphicsView::mouseMoveEvent(e);
+}
+
+void TerrainProfileGraph::mousePressEvent(QMouseEvent* e)
+{
+  _selectStart = mapToScene(e->pos()).x();
+  _selecting = true;
+}
+
+void TerrainProfileGraph::mouseReleaseEvent(QMouseEvent* e)
+{
+  if (_selecting)
   {
-    QPointF scenePoint = mapToScene(e->pos());
-    if (_graphField.contains((int)scenePoint.x(), (int)scenePoint.y()))
+    double selectEnd = mapToScene(e->pos()).x();
+
+    double zoomStart = osg::minimum(_selectStart, selectEnd);
+    double zoomEnd = osg::maximum(_selectStart, selectEnd);
+
+    double startDistanceFactor = ((zoomStart - _graphField.x()) / (double)_graphField.width());
+    double endDistanceFactor = ((zoomEnd - _graphField.x()) / (double)_graphField.width());
+
+    GeoPoint newStart(_calculator->getStart().getSRS(),
+                      (_calculator->getEnd().x() - _calculator->getStart().x()) * startDistanceFactor + _calculator->getStart().x(),
+                      (_calculator->getEnd().y() - _calculator->getStart().y()) * startDistanceFactor + _calculator->getStart().y(),
+                      0.0);
+
+    GeoPoint newEnd(_calculator->getStart().getSRS(),
+                    (_calculator->getEnd().x() - _calculator->getStart().x()) * endDistanceFactor + _calculator->getStart().x(),
+                    (_calculator->getEnd().y() - _calculator->getStart().y()) * endDistanceFactor + _calculator->getStart().y(),
+                    0.0);
+
+    if (osg::absolute(newEnd.x() - newStart.x()) > 0.01 || osg::absolute(newEnd.y() - newStart.y()) > 0.01)
     {
-      double x = ((scenePoint.x() - _graphField.x()) / _graphField.width()) * _totalDistance;
-      double y = (1.0 - ((scenePoint.y() - _graphField.y()) / _graphField.height())) * (_graphMaxY - _graphMinY) + _graphMinY;
-
-      QPointF hoverPos(scenePoint.x() + 4.0, scenePoint.y() - 12.0);
-
-      if (!_hoverTextItem)
-      {
-        _hoverTextItem = new BoxedSimpleTextItem(QString::number(x) + tr(", ") + QString::number(y), _backgroundColor);
-        _hoverTextItem->setBrush(QBrush(_axesColor));
-        _hoverTextItem->setFont(_graphFont);
-        _hoverTextItem->setPos(hoverPos);
-        _hoverTextItem->setZValue(OVERLAY_Z);
-        _scene->addItem(_hoverTextItem);
-      }
-      else
-      {
-        _hoverTextItem->setText(QString::number(x) + tr(", ") + QString::number(y));
-        _hoverTextItem->setPos(hoverPos);
-      }
-
-      if (_hoverTextItem->x() + _hoverTextItem->boundingRect().width() > _graphField.x() + _graphField.width())
-        _hoverTextItem->setPos(scenePoint.x() - 4.0 - _hoverTextItem->boundingRect().width(), scenePoint.y() - 12.0);
+      _calculator->setStartEnd(newStart, newEnd);
     }
-    else if (_hoverTextItem)
+    else
     {
-      _scene->removeItem(_hoverTextItem);
-      _hoverTextItem = 0L;
+      _selecting = false;
+      drawHoverCursor(mapToScene(e->pos()));
     }
   }
 
-  QGraphicsView::mouseMoveEvent(e);
+  _selecting = false;
 }
 
 void TerrainProfileGraph::redrawGraph()
 {
   _scene->clear();
-  _hoverTextItem = 0L;
+  _graphLines.clear();
+  _graphField.setCoords(0, 0, 0, 0);
+  _hoverLine = 0L;
 
   const osgEarth::Util::TerrainProfile profile = _calculator->getProfile();
   if (profile.getNumElevations() > 0)
@@ -191,7 +242,12 @@ void TerrainProfileGraph::redrawGraph()
       graphPoly << QPointF(x, y);
 
       if (i > 0)
-        _scene->addLine(lastX, lastY, x, y, _linePen)->setZValue(GRAPH_Z);
+      {
+        QLineF line(lastX, lastY, x, y);
+        _graphLines.push_back(line);
+
+        _scene->addLine(line, _linePen)->setZValue(GRAPH_Z);
+      }
 
       lastX = x;
       lastY = y;
@@ -228,7 +284,7 @@ void TerrainProfileGraph::drawAxes(double yMin, double yMax, double yScale, doub
   // Calculate positioning offsets and set out_field to actual graph bounds
   double fontHalfHeight = yMinText->boundingRect().height() / 2.0;
 
-  int textSpacing = 10;
+  int textSpacing = 8;
   int xOffset = (int)osg::maximum(yMinText->boundingRect().width(), yMaxText->boundingRect().width()) + textSpacing;
   int yOffset = (int)xMaxText->boundingRect().height() + textSpacing;
   int xAxisY = _graphHeight - yOffset;
@@ -277,6 +333,117 @@ void TerrainProfileGraph::drawAxes(double yMin, double yMax, double yScale, doub
     }
 
     graphLineY -= yGraphScale;
+  }
+}
+
+void TerrainProfileGraph::drawHoverCursor(const QPointF& position)
+{
+  if (_hoverLine)
+  {
+    _scene->removeItem(_hoverLine);
+    delete _hoverLine;
+    _hoverLine = 0L;
+  }
+
+  if (_graphField.width() < 2 || _graphField.height() < 2)
+    return;
+
+  double xPos = position.x() < _graphField.x() ? _graphField.x() : (position.x() > _graphField.x() + _graphField.width() ? _graphField.x() + _graphField.width() : position.x());
+
+  QLineF vLine(xPos, _graphField.y(), xPos, _graphField.y() + _graphField.height());
+
+  QPointF* intersect = new QPointF;
+  bool foundIntersect = false;
+  for (int i=0; i < _graphLines.count(); i++)
+  {
+    if (vLine.intersect(_graphLines[i], intersect) == QLineF::BoundedIntersection)
+    {
+      foundIntersect = true;
+      break;
+    }
+  }
+
+  if (foundIntersect)
+  {
+    // Draw the upper line segment.  Also serves as the parent item.
+    _hoverLine = new QGraphicsLineItem(xPos, _graphField.y(), xPos, intersect->y() - 3);
+    _hoverLine->setPen(_hoverPen);
+    _hoverLine->setZValue(OVERLAY_Z);
+    _scene->addItem(_hoverLine);
+
+    // Draw the box around the intersect point
+    QGraphicsRectItem* hoverBox = new QGraphicsRectItem(xPos - 3, intersect->y() - 3, 6, 6);
+    hoverBox->setPen(_hoverPen);
+    hoverBox->setBrush(Qt::NoBrush);
+    hoverBox->setZValue(OVERLAY_Z);
+    hoverBox->setParentItem(_hoverLine);
+
+    // Draw the lower line segment
+    QGraphicsLineItem* lowerLine = new QGraphicsLineItem(xPos, intersect->y() + 3, xPos, _graphField.y() + _graphField.height() + 5);
+    lowerLine->setPen(_hoverPen);
+    lowerLine->setZValue(OVERLAY_Z);
+    lowerLine->setParentItem(_hoverLine);
+
+    // Draw the text and background
+    double y = (1.0 - ((intersect->y() - _graphField.y()) / _graphField.height())) * (_graphMaxY - _graphMinY) + _graphMinY;
+    int textOffset = 10;
+
+    QGraphicsSimpleTextItem* hoverText = new QGraphicsSimpleTextItem(QString::number(y) + tr("m"));
+    hoverText->setBrush(QBrush(_axesColor));
+    hoverText->setFont(_graphFont);
+    hoverText->setZValue(OVERLAY_Z);
+
+    if (intersect->x() + textOffset + hoverText->boundingRect().width() < _graphField.x() + _graphField.width())
+      hoverText->setPos(intersect->x() + textOffset, intersect->y() - hoverText->boundingRect().height());
+    else
+      hoverText->setPos(intersect->x() - textOffset - hoverText->boundingRect().width(), intersect->y() - hoverText->boundingRect().height());
+
+    QGraphicsRectItem* hoverTextBackground = new QGraphicsRectItem(hoverText->x() - 3, hoverText->y() - 1, 
+                                                                   hoverText->boundingRect().width() + 6,
+                                                                   hoverText->boundingRect().height() + 1);
+    hoverTextBackground->setPen(_axesPen);
+    hoverTextBackground->setBrush(QBrush(_graphColor));
+    hoverTextBackground->setZValue(OVERLAY_Z);
+    hoverTextBackground->setParentItem(_hoverLine);
+
+    hoverText->setParentItem(_hoverLine);
+  }
+  else
+  {
+    // No intersect found so just draw the full line at xPos
+    _hoverLine = new QGraphicsLineItem(xPos, _graphField.y(), xPos, _graphField.y() + _graphField.height() + 5);
+    _hoverLine->setPen(_hoverPen);
+    _hoverLine->setZValue(OVERLAY_Z);
+    _scene->addItem(_hoverLine);
+  }
+
+  // Draw distance text
+  double x = ((xPos - _graphField.x()) / _graphField.width()) * _totalDistance;
+
+  BoxedSimpleTextItem* distanceText = new BoxedSimpleTextItem(QString::number(x / 1000.0, 'f', 2) + tr("km"), _backgroundColor);
+  distanceText->setBrush(QBrush(_axesColor));
+  distanceText->setFont(_graphFont);
+  distanceText->setZValue(OVERLAY_Z);
+  distanceText->setPos(xPos - 2 - distanceText->boundingRect().width(), _graphField.y() + _graphField.height() + 2);
+  distanceText->setParentItem(_hoverLine);
+
+  // Draw selection box
+  drawSelectionBox(xPos);
+
+  delete intersect;
+}
+
+void TerrainProfileGraph::drawSelectionBox(double position)
+{
+  if (_selecting && _selectStart != position)
+  {
+    double selectionMin = osg::minimum(_selectStart, position);
+    double selectionMax = osg::maximum(_selectStart, position);
+    QGraphicsRectItem* selectionBox = new QGraphicsRectItem(selectionMin, _graphField.y(), selectionMax - selectionMin, _graphField.height());
+    selectionBox->setPen(QPen(Qt::NoPen));
+    selectionBox->setBrush(QBrush(QColor(0, 0, 0, 64)));
+    selectionBox->setZValue(OVERLAY_Z);
+    selectionBox->setParentItem(_hoverLine);
   }
 }
 

@@ -26,44 +26,34 @@
 #include <osgEarth/Map>
 #include <osgEarthUtil/TerrainProfile>
 
-//#include <QCheckBox>
-//#include <QDropEvent>
-//#include <QFrame>
+#include <QGraphicsLineItem>
 #include <QGraphicsScene>
 #include <QGraphicsView>
-//#include <QHBoxLayout>
+#include <QLineF>
+#include <QList>
 #include <QMouseEvent>
-//#include <QPoint>
 #include <QRect>
 #include <QResizeEvent>
-//#include <QScrollArea>
-//#include <QSlider>
-//#include <QVBoxLayout>
-//#include <QWidget>
+
 
 namespace osgEarth { namespace QtGui
 {
-    class GraphChangedCallback : public QObject, public osgEarth::Util::TerrainProfileCalculator::ChangedCallback
+    class TerrainGraphChangedCallback : public QObject, public osgEarth::Util::TerrainProfileCalculator::ChangedCallback
     {
     Q_OBJECT
 
     public:
-      GraphChangedCallback(/*TerrainProfileGraph* graph*/)
-        //: _graph(graph)
+      TerrainGraphChangedCallback()
       {
       }
 
       void onChanged(const osgEarth::Util::TerrainProfileCalculator* sender)
       {
-        //_graph->redrawGraph();
         emit graphChanged();
       }
 
     signals:
-     void graphChanged();
-
-    protected:
-      //TerrainProfileGraph* _graph;
+      void graphChanged();
     };
 
     class OSGEARTHQT_EXPORT TerrainProfileGraph : public QGraphicsView
@@ -74,6 +64,21 @@ namespace osgEarth { namespace QtGui
       TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator);
       ~TerrainProfileGraph();
 
+      void setBackgroundColor(const QColor& color);
+      const QColor& getBackgroundColor() { return _backgroundColor; }
+
+      void setFieldColor(const QColor& color);
+      const QColor& getFieldColor() { return _fieldColor; }
+
+      void setAxesColor(const QColor& color);
+      const QColor& getAxesColor() { return _axesColor; }
+
+      void setGraphColor(const QColor& color);
+      const QColor& getGraphColor() { return _graphColor; }
+
+      void setGraphFillColor(const QColor& color);
+      const QColor& getGraphFillColor() { return _graphFillColor; }
+
     protected:
       static const int FIELD_Z;
       static const int AXES_Z;
@@ -82,19 +87,25 @@ namespace osgEarth { namespace QtGui
 
       void resizeEvent(QResizeEvent* e);
       void mouseMoveEvent(QMouseEvent* e);
+      void mousePressEvent(QMouseEvent* e);
+      void mouseReleaseEvent(QMouseEvent* e);
 
       void redrawGraph();
       void drawAxes(double yMin, double yMax, double yScale, double xMax, QRect &out_field);
+      void drawHoverCursor(const QPointF& position);
+      void drawSelectionBox(double position);
 
     private slots:
       void onGraphChanged();
 
     private:
       osg::ref_ptr<osgEarth::Util::TerrainProfileCalculator> _calculator;
-      osg::ref_ptr<GraphChangedCallback> _graphChangedCallback;
+      osg::ref_ptr<TerrainGraphChangedCallback> _graphChangedCallback;
       QGraphicsScene* _scene;
-      QGraphicsSimpleTextItem* _hoverTextItem;
+      QList<QLineF> _graphLines;
+      QGraphicsLineItem* _hoverLine;
       QPen _linePen;
+      QPen _hoverPen;
       QPen _axesPen;
       QFont _graphFont;
       QColor _backgroundColor;
@@ -108,6 +119,9 @@ namespace osgEarth { namespace QtGui
       int _graphMaxY;
       int _graphWidth;
       int _graphHeight;
+      bool _selecting;
+      double _selectStart;
+      double _selectEnd;
     };
 } }
 

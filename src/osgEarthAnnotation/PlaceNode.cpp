@@ -186,8 +186,11 @@ OrthoNode( mapNode, GeoPoint::INVALID )
 
     optional<URI> imageURI;
     conf.getIfSet( "icon", imageURI );
-    if ( imageURI.isSet() )
+    if ( imageURI.isSet() ) {
         _image = imageURI->getImage();
+        if ( _image.valid() )
+            _image->setFileName( imageURI->base() );
+    }
 
     if ( conf.hasChild("position") )
         setPosition( GeoPoint(conf.child("position")) );
@@ -202,8 +205,12 @@ PlaceNode::getConfig() const
     conf.add   ( "text",   _text );
     conf.addObj( "style",  _style );
     conf.addObj( "position", getPosition() );
-    if ( _image.valid() && !_image->getName().empty() )
-        conf.add( "icon", _image->getName() );
+    if ( _image.valid() ) {
+        if ( !_image->getFileName().empty() )
+            conf.add( "icon", _image->getFileName() );
+        else if ( !_image->getName().empty() )
+            conf.add( "icon", _image->getName() );
+    }
 
     return conf;
 }

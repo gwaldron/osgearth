@@ -428,22 +428,26 @@ namespace osgEarth
 
     template<> inline
     void Config::add<float>( const std::string& key, const float& value ) {
-        add( key, Stringify() << std::fixed << std::setprecision(8) << value );
+        add( key, Stringify() << std::setprecision(8) << value );
+        //add( key, Stringify() << std::fixed << std::setprecision(8) << value );
     }
 
     template<> inline
     void Config::add<double>( const std::string& key, const double& value ) {
-        add( key, Stringify() << std::fixed << std::setprecision(16) << value );
+        add( key, Stringify() << std::setprecision(16) << value );
+        //add( key, Stringify() << std::fixed << std::setprecision(16) << value );
     }
 
     template<> inline
     void Config::update<float>( const std::string& key, const float& value ) {
-        update( key, Stringify() << std::fixed << std::setprecision(8) << value );
+        update( key, Stringify() << std::setprecision(8) << value );
+        //update( key, Stringify() << std::fixed << std::setprecision(8) << value );
     }
 
     template<> inline
     void Config::update<double>( const std::string& key, const double& value ) {
-        update( key, Stringify() << std::fixed << std::setprecision(16) << value );
+        update( key, Stringify() << std::setprecision(16) << value );
+        //update( key, Stringify() << std::fixed << std::setprecision(16) << value );
     }
 
     //template<> inline

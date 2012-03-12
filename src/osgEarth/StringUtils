@@ -138,7 +138,8 @@ namespace osgEarth
     toString(const T& value)
     {
         std::stringstream out;
-		out << std::setprecision(20) << std::fixed << value;
+		//out << std::setprecision(20) << std::fixed << value;
+		out << std::setprecision(20) <<  value;
         std::string outStr;
         outStr = out.str();
         return outStr;

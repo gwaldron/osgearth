@@ -413,7 +413,7 @@ main(int argc, char** argv)
             AnnotationRegistry::instance()->create( mapNode, annoConf, annotations );
             if ( annotations )
             {
-                annotations->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+                //annotations->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
                 root->addChild( annotations );
             }
         }

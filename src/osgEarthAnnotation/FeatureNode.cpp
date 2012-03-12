@@ -49,9 +49,9 @@ FeatureNode::FeatureNode(MapNode* mapNode,
                          bool     draped,
                          const GeometryCompilerOptions& options ) :
 AnnotationNode( mapNode ),
-_feature( feature ),
-_draped ( draped ),
-_options( options )
+_feature      ( feature ),
+_draped       ( draped ),
+_options      ( options )
 {
     init();
 }
@@ -93,9 +93,9 @@ FeatureNode::init()
         osg::Node* node = compiler.compile( clone.get(), *clone->style(), context );
         if ( node )
         {
-            if (_style.isSet() && 
-                AnnotationUtils::styleRequiresAlphaBlending(*_style) &&
-                _style->get<ExtrusionSymbol>() )
+            if ( _feature->style().isSet() &&
+                AnnotationUtils::styleRequiresAlphaBlending( *_feature->style() ) &&
+                _feature->style()->get<ExtrusionSymbol>() )
             {
                 node = AnnotationUtils::installTwoPassAlpha( node );
             }
@@ -188,22 +188,34 @@ FeatureNode::FeatureNode(MapNode*      mapNode,
                          const Config& conf) :
 AnnotationNode( mapNode )
 {
-    osg::ref_ptr<const SpatialReference> srs;
     osg::ref_ptr<Geometry> geom;
-
     if ( conf.hasChild("geometry") )
     {
         Config geomconf = conf.child("geometry");
-        srs = SpatialReference::create( geomconf.value("srs"), geomconf.value("vdatum") );
         geom = GeometryUtils::geometryFromWKT( geomconf.value() );
+        if ( !geom.valid() )
+            OE_WARN << LC << "Config is missing required 'geometry' element" << std::endl;
     }
+    
+    osg::ref_ptr<const SpatialReference> srs;
+    srs = SpatialReference::create( conf.value("srs"), conf.value("vdatum") );
+    if ( !srs.valid() )
+        OE_WARN << LC << "Config is missing required 'srs' element" << std::endl;
 
-    conf.getObjIfSet( "style", _style );
+    optional<GeoInterpolation> geoInterp;
+
+    Style style;
+    conf.getObjIfSet( "style", style );
 
     if ( srs.valid() && geom.valid() )
     {
         _draped = conf.value<bool>("draped",false);
-        setFeature( new Feature(geom.get(), srs.get(), *_style) );
+        Feature* feature = new Feature(geom.get(), srs.get(), style);
+
+        conf.getIfSet( "geointerp", "greatcircle", feature->geoInterp(), GEOINTERP_GREAT_CIRCLE );
+        conf.getIfSet( "geointerp", "rhumbline",   feature->geoInterp(), GEOINTERP_RHUMB_LINE );
+
+        setFeature( feature );
     }
 }
 
@@ -214,17 +226,22 @@ FeatureNode::getConfig() const
 
     if ( _feature.valid() && _feature->getGeometry() )
     {
-        std::string wkt = GeometryUtils::geometryToWKT( _feature->getGeometry() );
-        std::string srs = _feature->getSRS() ? _feature->getSRS()->getHorizInitString() : "";
-        std::string vsrs = _feature->getSRS() ? _feature->getSRS()->getVertInitString() : "";
+        conf.set("name", getName());
 
         Config geomConf("geometry");
-        geomConf.value() = wkt;
-        if ( !srs.empty() ) geomConf.set("srs", srs);
-        if ( !vsrs.empty() ) geomConf.set("vdatum", vsrs);
+        geomConf.value() = GeometryUtils::geometryToWKT( _feature->getGeometry() );
         conf.add(geomConf);
 
-        conf.addObjIfSet( "style", _style );
+        std::string srs = _feature->getSRS() ? _feature->getSRS()->getHorizInitString() : "";
+        if ( !srs.empty() ) conf.set("srs", srs);
+
+        std::string vsrs = _feature->getSRS() ? _feature->getSRS()->getVertInitString() : "";
+        if ( !vsrs.empty() ) conf.set("vdatum", vsrs);
+
+        if ( _feature->geoInterp().isSet() )
+            conf.set("geointerp", _feature->geoInterp() == GEOINTERP_GREAT_CIRCLE? "greatcircle" : "rhumbline");
+
+        conf.addObjIfSet( "style", _feature->style() );
     }
 
     return conf;

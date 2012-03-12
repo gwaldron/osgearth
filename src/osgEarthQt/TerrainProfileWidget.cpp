@@ -61,12 +61,12 @@ void TerrainProfileWidget::initialize()
 
   // create actions
   _captureAction = new QAction(QIcon(":/images/crosshair.png"), tr(""), this);
-  _captureAction->setStatusTip(tr("Capture map clicks"));
+  _captureAction->setToolTip(tr("Capture map clicks"));
   _captureAction->setCheckable(true);
   connect(_captureAction, SIGNAL(toggled(bool)), this, SLOT(onCaptureToggled(bool)));
 
   _undoZoomAction = new QAction(QIcon(":/images/undo.png"), tr(""), this);
-  _undoZoomAction->setStatusTip(tr("Undo zoom"));
+  _undoZoomAction->setToolTip(tr("Undo zoom"));
   connect(_undoZoomAction, SIGNAL(triggered()), this, SLOT(onUndoZoom()));
   _undoZoomAction->setEnabled(false);
 

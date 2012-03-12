@@ -190,7 +190,7 @@ void TerrainProfileGraph::mouseReleaseEvent(QMouseEvent* e)
                     (_calculator->getEnd().y() - _calculator->getStart().y()) * endDistanceFactor + _calculator->getStart().y(),
                     0.0);
 
-    if (osg::absolute(newEnd.x() - newStart.x()) > 0.01 || osg::absolute(newEnd.y() - newStart.y()) > 0.01)
+    if (osg::absolute(newEnd.x() - newStart.x()) > 0.001 || osg::absolute(newEnd.y() - newStart.y()) > 0.001)
     {
       _calculator->setStartEnd(newStart, newEnd);
     }

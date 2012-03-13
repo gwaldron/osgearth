@@ -8,10 +8,15 @@ geodetic globe.
    
     <image name="mercator-imagery" driver="yahoo">
         <dataset>satellite</dataset>
+        <profile>global-mercator</profile>
     </image>
     
     <image name="geodetic-roads" driver="arcgis">
         <url>http://server.arcgisonline.com/ArcGIS/rest/services/Reference/ESRI_Transportation_World_2D/MapServer</url>
     </image>
+    
+    <options>
+        <cache_policy usage="no_cache"/>
+    </options>
     
 </map>

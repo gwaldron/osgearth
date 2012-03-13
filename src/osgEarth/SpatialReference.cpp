@@ -211,18 +211,20 @@ SpatialReference::create( const Key& key, bool useCache )
     const std::string& vert  = key.second;
 
     // shortcut for spherical-mercator:
-    if (horiz == "spherical-mercator" || horiz == "epsg:900913" || horiz == "epsg:3785" ||
-        horiz == "epsg:41001"         || horiz == "epsg:102113" || horiz == "epsg:102100")
+    if (horiz == "spherical-mercator" || horiz == "epsg:900913" || horiz == "epsg:3785" || horiz == "epsg:102113")
     {
         // note the use of nadgrids=@null (see http://proj.maptools.org/faq.html)
-        // adjusted +a by ONE to work around osg manipulator error until we can figure out why.. GW
         srs = createFromPROJ4(
             "+proj=merc +a=6378137 +b=6378137 +lon_0=0 +k=1 +x_0=0 +y_0=0 +nadgrids=@null +units=m +no_defs",
             "Spherical Mercator" );
     }
 
     // ellipsoidal ("world") mercator:
-    else if (horiz == "epsg:54004" || horiz == "epsg:9804" || horiz == "epsg:3832")
+    else 
+        if (horiz == "world-mercator" ||
+            horiz == "epsg:54004"  || horiz == "epsg:9804"   || horiz == "epsg:3832" ||
+            horiz == "epsg:102100" || horiz == "esri:102100" || horiz == "osgeo:41001" )
+
     {
         srs = createFromPROJ4(
             "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs",

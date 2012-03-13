@@ -32,10 +32,11 @@ using namespace osgEarth;
 using namespace osgEarth::Drivers;
 using namespace OpenThreads;
 
-#define STR_GLOBAL_GEODETIC "global-geodetic"
-#define STR_GLOBAL_MERCATOR "global-mercator"
-#define STR_CUBE            "cube"
-#define STR_LOCAL           "local"
+#define STR_GLOBAL_GEODETIC    "global-geodetic"
+#define STR_GLOBAL_MERCATOR    "global-mercator"
+#define STR_SPHERICAL_MERCATOR "spherical-mercator"
+#define STR_CUBE               "cube"
+#define STR_LOCAL              "local"
 
 #define LC "[Registry] "
 
@@ -199,16 +200,41 @@ Registry::getGlobalMercatorProfile() const
         if ( !_global_mercator_profile.valid() ) // double-check pattern
         {
             // automatically figure out proper mercator extents:
-            const SpatialReference* srs = SpatialReference::create( "spherical-mercator" );
+            const SpatialReference* srs = SpatialReference::create( "world-mercator" );
+
             //double e, dummy;
-            //srs->getGeographicSRS()->transform( 180.0, 0.0, srs, e, dummy );            
-            /*const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
-                srs, -e, -e, e, e, 0L, 1, 1 );*/
+            //srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs, e, dummy );
+            //const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+            //    srs, -e, -e, e, e, 1, 1 );
             const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
                 srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 1, 1 );
         }
     }
     return _global_mercator_profile.get();
+}
+
+
+const Profile*
+Registry::getSphericalMercatorProfile() const
+{
+    if ( !_spherical_mercator_profile.valid() )
+    {
+        GDAL_SCOPED_LOCK;
+
+        if ( !_spherical_mercator_profile.valid() ) // double-check pattern
+        {
+            // automatically figure out proper mercator extents:
+            const SpatialReference* srs = SpatialReference::create( "spherical-mercator" );
+
+            //double e, dummy;
+            //srs->getGeographicSRS()->transform2D( 180.0, 0.0, srs, e, dummy );
+            //const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+            //    srs, -e, -e, e, e, 1, 1 );
+            const_cast<Registry*>(this)->_global_mercator_profile = Profile::create(
+                srs, MERC_MINX, MERC_MINY, MERC_MAXX, MERC_MAXY, 1, 1 );
+        }
+    }
+    return _spherical_mercator_profile.get();
 }
 
 const Profile*

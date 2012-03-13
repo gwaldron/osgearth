@@ -46,7 +46,7 @@ public:
     void initialize(const osgDB::Options* dbOptions,
                     const Profile*        overrideProfile )
     {
-        setProfile( Profile::create( "spherical-mercator", "", 2, 2 ) );
+        setProfile( Profile::create( "world-mercator", "", 2, 2 ) );
     }
 
     osg::Image* createImage(const TileKey&        key,

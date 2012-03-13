@@ -57,8 +57,11 @@ namespace osgEarth
         /** Gets the global-geodetic builtin profile */
         const Profile* getGlobalGeodeticProfile() const;
 
-        /** Gets the global-meractor builtin profile */
+        /** Gets the global-meractor builtin profile (mercator/WGS84 datum) */
         const Profile* getGlobalMercatorProfile() const;
+
+        /** Gets the spherical-mercator builtin profile (mercator/sphere) */
+        const Profile* getSphericalMercatorProfile() const;
 
         /** Gets the unified cube builtin profile */
         const Profile* getCubeProfile() const;
@@ -164,6 +167,7 @@ namespace osgEarth
 
         osg::ref_ptr<const Profile> _global_geodetic_profile;
         osg::ref_ptr<const Profile> _global_mercator_profile;
+        osg::ref_ptr<const Profile> _spherical_mercator_profile;
         osg::ref_ptr<const Profile> _cube_profile;
 
         Threading::ReadWriteMutex _regMutex;

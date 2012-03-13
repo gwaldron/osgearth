@@ -19,6 +19,8 @@ set(LIB_MOC_HDRS
     LOSControlWidget
     LOSCreationDialog
     MapCatalogWidget
+    TerrainProfileGraph
+    TerrainProfileWidget
 )
 
 # Qt resource files
@@ -53,6 +55,8 @@ SET(LIB_PUBLIC_HEADERS
     LOSControlWidget
     LOSCreationDialog
     MapCatalogWidget
+    TerrainProfileGraph
+    TerrainProfileWidget
     ViewerWidget
     ${LIB_UI_HDRS}
     ${LIB_QT_UIS}
@@ -73,6 +77,8 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     LOSControlWidget.cpp
     LOSCreationDialog.cpp
     MapCatalogWidget.cpp
+    TerrainProfileGraph.cpp
+    TerrainProfileWidget.cpp
     ViewerWidget.cpp
 )
 

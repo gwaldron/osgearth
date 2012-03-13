@@ -6,14 +6,23 @@ SET(MOC_HDRS
     DemoMainWindow
 )
 
+# Qt resource files
+set(LIB_QT_RCS
+    images.qrc
+)
+
+QT4_ADD_RESOURCES( LIB_RC_SRCS ${LIB_QT_RCS} )
+
 QT4_WRAP_CPP( MOC_SRCS ${MOC_HDRS} OPTIONS "-f" )
 
 SET(TARGET_H
     DemoMainWindow
+    ${LIB_QT_RCS}
 )
 
 SET(TARGET_SRC
     ${MOC_SRCS}
+    ${LIB_RC_SRCS}
     osgearth_qt.cpp
 )
 

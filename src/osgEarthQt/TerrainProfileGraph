@@ -1,0 +1,128 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_TERRAINPROFILEGRAPH_H
+#define OSGEARTHQT_TERRAINPROFILEGRAPH_H 1
+
+#include <osgEarthQt/Actions>
+#include <osgEarthQt/Common>
+#include <osgEarthQt/DataManager>
+
+#include <osgEarth/Map>
+#include <osgEarthUtil/TerrainProfile>
+
+#include <QGraphicsLineItem>
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QLineF>
+#include <QList>
+#include <QMouseEvent>
+#include <QRect>
+#include <QResizeEvent>
+
+
+namespace osgEarth { namespace QtGui
+{
+    class TerrainGraphChangedCallback : public QObject, public osgEarth::Util::TerrainProfileCalculator::ChangedCallback
+    {
+    Q_OBJECT
+
+    public:
+      TerrainGraphChangedCallback()
+      {
+      }
+
+      void onChanged(const osgEarth::Util::TerrainProfileCalculator* sender)
+      {
+        emit graphChanged();
+      }
+
+    signals:
+      void graphChanged();
+    };
+
+    class OSGEARTHQT_EXPORT TerrainProfileGraph : public QGraphicsView
+    {
+    Q_OBJECT
+
+    public:
+      TerrainProfileGraph(osgEarth::Util::TerrainProfileCalculator* calculator);
+      ~TerrainProfileGraph();
+
+      void setBackgroundColor(const QColor& color);
+      const QColor& getBackgroundColor() { return _backgroundColor; }
+
+      void setFieldColor(const QColor& color);
+      const QColor& getFieldColor() { return _fieldColor; }
+
+      void setAxesColor(const QColor& color);
+      const QColor& getAxesColor() { return _axesColor; }
+
+      void setGraphColor(const QColor& color);
+      const QColor& getGraphColor() { return _graphColor; }
+
+      void setGraphFillColor(const QColor& color);
+      const QColor& getGraphFillColor() { return _graphFillColor; }
+
+    protected:
+      static const int FIELD_Z;
+      static const int AXES_Z;
+      static const int GRAPH_Z;
+      static const int OVERLAY_Z;
+
+      void resizeEvent(QResizeEvent* e);
+      void mouseMoveEvent(QMouseEvent* e);
+      void mousePressEvent(QMouseEvent* e);
+      void mouseReleaseEvent(QMouseEvent* e);
+
+      void redrawGraph();
+      void drawAxes(double yMin, double yMax, double yScale, double xMax, QRect &out_field);
+      void drawHoverCursor(const QPointF& position);
+      void drawSelectionBox(double position);
+
+    private slots:
+      void onGraphChanged();
+
+    private:
+      osg::ref_ptr<osgEarth::Util::TerrainProfileCalculator> _calculator;
+      osg::ref_ptr<TerrainGraphChangedCallback> _graphChangedCallback;
+      QGraphicsScene* _scene;
+      QList<QLineF> _graphLines;
+      QGraphicsLineItem* _hoverLine;
+      QPen _linePen;
+      QPen _hoverPen;
+      QPen _axesPen;
+      QFont _graphFont;
+      QColor _backgroundColor;
+      QColor _fieldColor;
+      QColor _axesColor;
+      QColor _graphColor;
+      QColor _graphFillColor;
+      QRect _graphField;
+      double _totalDistance;
+      int _graphMinY;
+      int _graphMaxY;
+      int _graphWidth;
+      int _graphHeight;
+      bool _selecting;
+      double _selectStart;
+      double _selectEnd;
+    };
+} }
+
+#endif // OSGEARTHQT_TERRAINPROFILEGRAPH_H

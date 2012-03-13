@@ -21,6 +21,7 @@
 #include <osgEarthQt/CompositeViewerWidget>
 #include <osgEarthQt/DataManager>
 #include <osgEarthQt/MapCatalogWidget>
+#include <osgEarthQt/TerrainProfileWidget>
 #include <osgEarthQt/ViewerWidget>
 
 #include <osgEarthAnnotation/AnnotationNode>
@@ -42,7 +43,7 @@ class DemoMainWindow : public QMainWindow
 	public:
 
     DemoMainWindow(osgEarth::QtGui::DataManager* manager, osgEarth::MapNode* mapNode, osg::Group* annotationRoot)
-      : _manager(manager), _mapNode(mapNode), _annoRoot(annotationRoot), _layerAdded(false) { initUi(); }
+      : _manager(manager), _mapNode(mapNode), _annoRoot(annotationRoot), _layerAdded(false), _terrainProfileDock(0L) { initUi(); }
 
     void setViewerWidget(osgEarth::QtGui::ViewerWidget* viewer)
     {
@@ -60,6 +61,20 @@ class DemoMainWindow : public QMainWindow
 
       _views.clear();
       _views.insert(_views.end(), views.begin(), views.end());
+    }
+
+    void setTerrainProfileWidget(osgEarth::QtGui::TerrainProfileWidget* widget)
+    {
+      if (!_terrainProfileDock)
+      {
+        _terrainProfileDock = new QDockWidget;
+        _terrainProfileDock->setAllowedAreas(Qt::BottomDockWidgetArea);
+        _terrainProfileDock->setFeatures(QDockWidget::NoDockWidgetFeatures);
+        addDockWidget(Qt::BottomDockWidgetArea, _terrainProfileDock);
+        _terrainProfileDock->setVisible(_terrainProfileAction->isChecked());
+      }
+
+      _terrainProfileDock->setWidget(widget);
     }
 
   private slots:
@@ -89,7 +104,7 @@ class DemoMainWindow : public QMainWindow
       }
     }
 
-	void addAnnotation()
+	  void addAnnotation()
     {
       osgEarth::Annotation::PlaceNode* annotation = new osgEarth::Annotation::PlaceNode(
         _mapNode.get(), 
@@ -107,6 +122,12 @@ class DemoMainWindow : public QMainWindow
       _manager->addAnnotation(annotation, _annoRoot.get());
 
       _addAnnotationAction->setDisabled(true);
+    }
+
+    void terrainProfileToggled(bool checked)
+    {
+      if (_terrainProfileDock)
+        _terrainProfileDock->setVisible(checked);
     }
 		
 	protected:
@@ -142,14 +163,19 @@ class DemoMainWindow : public QMainWindow
 		void createActions()
     {
       _addRemoveLayerAction = new QAction(tr("&Add Layer"), this);
-	    _addRemoveLayerAction->setStatusTip(tr("Add an image layer"));
+	    _addRemoveLayerAction->setToolTip(tr("Add an image layer"));
 	    connect(_addRemoveLayerAction, SIGNAL(triggered()), this, SLOT(addRemoveLayer()));
       _addRemoveLayerAction->setDisabled(!_manager.valid());
     	
-	    _addAnnotationAction = new QAction(/*QIcon(":/resources/images/open.png"),*/ tr("&Add Annotation"), this);
-      _addAnnotationAction->setStatusTip(tr("Add an annotation"));
+	    _addAnnotationAction = new QAction(/*QIcon(":/images/open.png"),*/ tr("&Add Annotation"), this);
+      _addAnnotationAction->setToolTip(tr("Add an annotation"));
       connect(_addAnnotationAction, SIGNAL(triggered()), this, SLOT(addAnnotation()));
       _addAnnotationAction->setDisabled(!_manager.valid() || !_mapNode.valid() || !_annoRoot.valid());
+
+      _terrainProfileAction = new QAction(QIcon(":/images/terrain_profile.png"), tr(""), this);
+      _terrainProfileAction->setToolTip(tr("Terrain Profile Tool"));
+      _terrainProfileAction->setCheckable(true);
+      connect(_terrainProfileAction, SIGNAL(toggled(bool)), this, SLOT(terrainProfileToggled(bool)));
     }
 
 		void createToolbars()
@@ -159,6 +185,8 @@ class DemoMainWindow : public QMainWindow
 	    _fileToolbar->setIconSize(QSize(24, 24));
 	    _fileToolbar->addAction(_addRemoveLayerAction);
 	    _fileToolbar->addAction(_addAnnotationAction);
+      _fileToolbar->addSeparator();
+      _fileToolbar->addAction(_terrainProfileAction);
     }
 	
     osg::ref_ptr<osgEarth::QtGui::DataManager> _manager;
@@ -171,5 +199,7 @@ class DemoMainWindow : public QMainWindow
     bool _layerAdded;
 		QAction *_addRemoveLayerAction;
 		QAction *_addAnnotationAction;
+    QAction *_terrainProfileAction;
 		QToolBar *_fileToolbar;
+    QDockWidget *_terrainProfileDock;
 };

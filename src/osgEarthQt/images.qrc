@@ -3,5 +3,7 @@
         <file>images/minus.png</file>
         <file>images/plus.png</file>
         <file>images/edit.png</file>
+        <file>images/crosshair.png</file>
+        <file>images/undo.png</file>
     </qresource>
 </RCC>

@@ -25,6 +25,7 @@
 #include <osgEarthUtil/AutoClipPlaneHandler>
 
 #include <osgEarthAnnotation/AnnotationEditing>
+#include <osgEarthAnnotation/AnnotationRegistry>
 #include <osgEarthAnnotation/ImageOverlay>
 #include <osgEarthAnnotation/ImageOverlayEditor>
 #include <osgEarthAnnotation/CircleNode>
@@ -44,6 +45,7 @@
 #include <osgViewer/ViewerEventHandlers>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/EventVisitor>
+#include <osgDB/WriteFile>
 
 #include <osgEarth/Pickers>
 
@@ -281,7 +283,6 @@ main(int argc, char** argv)
             Linear(100, Units::MILES),
             Angular(0, Units::DEGREES),
             ellipseStyle,
-
             true );
         annoGroup->addChild( ellipse );
         editorGroup->addChild( new EllipseNodeEditor( ellipse ) );
@@ -375,6 +376,11 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+
+    // testing:
+    Config annoConfig = AnnotationRegistry::instance()->getConfig( annoGroup );
+    mapNode->externalConfig().add(annoConfig);
+    osgDB::writeNodeFile( *mapNode, "out.earth" );
 
     return viewer.run();
 }

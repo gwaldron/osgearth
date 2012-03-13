@@ -1,0 +1,225 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHQT_TERRAINPROFILEWIDGET_H
+#define OSGEARTHQT_TERRAINPROFILEWIDGET_H 1
+
+#include <osgEarthQt/Actions>
+#include <osgEarthQt/Common>
+#include <osgEarthQt/DataManager>
+#include <osgEarthQt/TerrainProfileGraph>
+
+#include <osgEarth/Map>
+#include <osgEarthAnnotation/FeatureNode>
+#include <osgEarthFeatures/Feature>
+
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QWidget>
+
+namespace osgEarth { namespace QtGui
+{
+    class OSGEARTHQT_EXPORT TerrainProfileWidget : public QFrame, public osgEarth::Util::TerrainProfileCalculator::ChangedCallback  
+    {
+    Q_OBJECT
+
+    public:
+
+      TerrainProfileWidget(osg::Group* root, osgEarth::MapNode* mapNode);
+      ~TerrainProfileWidget();
+
+      void setActiveView(osgViewer::View* view);
+      void setActiveViews(const ViewVector& views);
+
+      void setStartEnd(const GeoPoint& start, const GeoPoint& end);
+
+      void onChanged(const osgEarth::Util::TerrainProfileCalculator* sender);
+
+    private slots:
+      void onCaptureToggled(bool checked);
+      void onUndoZoom();
+
+    protected:  
+      void initialize();
+      void addView(osgViewer::View* view);
+      void removeViews();
+      void hideEvent(QHideEvent* e);
+      void showEvent(QShowEvent* e);
+
+    private:
+
+      struct StartEndPair
+      {
+        GeoPoint start;
+        GeoPoint end;
+
+        StartEndPair(GeoPoint profileStart, GeoPoint profileEnd)
+        {
+          start = profileStart;
+          end = profileEnd;
+        }
+      };
+
+      osg::ref_ptr<osg::Group>                                _root;
+      osg::ref_ptr<osgEarth::MapNode>                         _mapNode;
+      ViewVector                                              _views;
+      osg::ref_ptr<osgEarth::Util::TerrainProfileCalculator>  _calculator;
+      TerrainProfileGraph*                                    _graph;
+      QAction*                                                _captureAction;
+      QAction*                                                _undoZoomAction;
+      osg::ref_ptr<osgGA::GUIEventHandler>                    _guiHandler;
+      std::vector<StartEndPair>                               _profileStack;
+    };
+
+
+    struct TerrainProfileMouseHandler : public osgGA::GUIEventHandler
+    {
+      TerrainProfileMouseHandler(osgEarth::MapNode* mapNode, osg::Group* root, TerrainProfileWidget* profileWidget)
+        : _mapNode(mapNode), _root(root), _profileWidget(profileWidget), _mouseDown(false), _capturing(false), _startValid(false)
+      {
+        //Define a style for the line
+        osgEarth::Symbology::LineSymbol* ls = _lineStyle.getOrCreateSymbol<osgEarth::Symbology::LineSymbol>();
+        ls->stroke()->color() = osgEarth::Symbology::Color::Yellow;
+        ls->stroke()->width() = 2.0f;
+        ls->tessellation() = 20;
+        _lineStyle.getOrCreate<osgEarth::Symbology::AltitudeSymbol>()->clamping() = osgEarth::Symbology::AltitudeSymbol::CLAMP_TO_TERRAIN;
+      }
+
+      void setCapturing(bool capturing)
+      {
+        _capturing = capturing;
+      }
+
+      bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+      {
+        if (_capturing)
+        {
+          if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
+          {
+            if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+            {
+              _mouseDown = true;
+              _xDown = ea.getX();
+              _yDown = ea.getY();
+            }
+          }
+          else if (ea.getEventType() == osgGA::GUIEventAdapter::RELEASE)
+          {
+            if (ea.getButton() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
+            {
+              if (_mouseDown && _xDown == ea.getX() && _yDown == ea.getY())
+              {
+                osg::Vec3d world;
+                if ( _mapNode->getTerrain()->getWorldCoordsUnderMouse( aa.asView(), ea.getX(), ea.getY(), world ))
+                {
+                  osgEarth::GeoPoint mapPoint;
+                  _mapNode->getMap()->worldPointToMapPoint( world, mapPoint );
+
+                  if (!_startValid)
+                  {
+                    _start = mapPoint.vec3d();
+                    _end = mapPoint.vec3d();
+                    _startValid = true;
+                  }
+                  else
+                  {
+                    _end = mapPoint.vec3d();
+                    _startValid = false;
+
+                    _profileWidget->setStartEnd(GeoPoint(_mapNode->getMapSRS(), _start.x(), _start.y(), 0),
+                                                GeoPoint(_mapNode->getMapSRS(), _end.x(), _end.y(), 0));
+                  }
+
+                  updateDisplay();
+                }
+              }
+
+              _mouseDown = false;
+            }
+          }
+          else if (ea.getEventType() == osgGA::GUIEventAdapter::MOVE)
+          {
+            if (_startValid)
+            {
+              osg::Vec3d world;
+              if (_mapNode->getTerrain()->getWorldCoordsUnderMouse(aa.asView(), ea.getX(), ea.getY(), world))
+              {
+                osgEarth::GeoPoint mapPoint;
+                _mapNode->getMap()->worldPointToMapPoint(world, mapPoint);
+                _end = mapPoint.vec3d();
+
+                updateDisplay();
+              }
+            }
+          }
+        }
+
+        return false;
+      }
+
+      void updateDisplay()
+      {
+        if (!_startValid)
+        {
+          if (_featureNode.valid())
+          {
+            _root->removeChild( _featureNode.get() );
+            _featureNode = 0L;
+          }
+
+          return;
+        }
+
+        osgEarth::Symbology::LineString* line = new osgEarth::Symbology::LineString();
+        line->push_back( _start );
+        line->push_back( _end );
+
+        osgEarth::Features::Feature* feature = new osgEarth::Features::Feature(line, _mapNode->getMapSRS());
+        feature->geoInterp() = osgEarth::GEOINTERP_GREAT_CIRCLE;    
+        feature->style() = _lineStyle;
+
+        if (!_featureNode.valid())
+        {
+          _featureNode = new osgEarth::Annotation::FeatureNode( _mapNode, feature );
+          _featureNode->getOrCreateStateSet()->setMode(GL_LIGHTING, osg::StateAttribute::OFF);
+          _root->addChild( _featureNode.get() );
+        }
+        else
+        {
+          _featureNode->setFeature(feature);
+        }
+      }
+
+      
+      osg::ref_ptr<osgEarth::MapNode>  _mapNode;
+      osg::Group* _root;
+      TerrainProfileWidget* _profileWidget;
+      osg::ref_ptr<osgEarth::Annotation::FeatureNode> _featureNode;
+      osgEarth::Symbology::Style _lineStyle;
+      osg::Vec3d _start;
+      osg::Vec3d _end;
+      bool _capturing;
+      bool _startValid;
+      bool _mouseDown;
+      float _xDown, _yDown;
+    };
+} }
+
+#endif // OSGEARTHQT_TERRAINPROFILEWIDGET_H

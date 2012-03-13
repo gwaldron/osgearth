@@ -798,12 +798,19 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
 
     else if ( duration_s > 0.0 )
     {
+        // xform viewpoint into map SRS
+        osg::Vec3d vpFocalPoint = vp.getFocalPoint();
+        if ( _cached_srs.valid() && vp.getSRS() && !_cached_srs->isEquivalentTo( vp.getSRS() ) )
+        {
+            vp.getSRS()->transform( vp.getFocalPoint(), _cached_srs.get(), vpFocalPoint );
+        }
+
         _start_viewpoint = getViewpoint();
         
         _delta_heading = vp.getHeading() - _start_viewpoint.getHeading(); //TODO: adjust for crossing -180
         _delta_pitch   = vp.getPitch() - _start_viewpoint.getPitch();
         _delta_range   = vp.getRange() - _start_viewpoint.getRange();
-        _delta_focal_point = vp.getFocalPoint() - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
+        _delta_focal_point = vpFocalPoint - _start_viewpoint.getFocalPoint(); // TODO: adjust for lon=180 crossing
 
         while( _delta_heading > 180.0 ) _delta_heading -= 360.0;
         while( _delta_heading < -180.0 ) _delta_heading += 360.0;
@@ -829,7 +836,7 @@ EarthManipulator::setViewpoint( const Viewpoint& vp, double duration_s )
             _cached_srs->getEllipsoid()->convertLatLongHeightToXYZ(
                 osg::DegreesToRadians( _start_viewpoint.y() ), osg::DegreesToRadians( _start_viewpoint.x() ), 0.0, x0, y0, z0 );
             _cached_srs->getEllipsoid()->convertLatLongHeightToXYZ(
-                osg::DegreesToRadians( vp.y() ), osg::DegreesToRadians( vp.x() ), 0.0, x1, y1, z1 );
+                osg::DegreesToRadians( vpFocalPoint.y() ), osg::DegreesToRadians( vpFocalPoint.x() ), 0.0, x1, y1, z1 );
             de = (osg::Vec3d(x0,y0,z0) - osg::Vec3d(x1,y1,z1)).length();
         }
         else

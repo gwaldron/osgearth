@@ -61,7 +61,6 @@ namespace osgEarth { namespace Annotation
 
     protected:
         osg::ref_ptr<Feature>       _feature;
-        optional<Style>             _style;
         GeometryCompilerOptions     _options;
         bool                        _draped;
         osg::Group*                 _attachPoint;

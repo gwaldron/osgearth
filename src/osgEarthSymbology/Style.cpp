@@ -68,7 +68,8 @@ Style::operator = ( const Style& rhs )
 
 void Style::addSymbol(Symbol* symbol)
 {
-    _symbols.push_back(symbol);
+    if ( symbol )
+        _symbols.push_back(symbol);
 }
 
 bool Style::removeSymbol(Symbol* symbol)

@@ -44,6 +44,7 @@
 #include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/MouseCoordsTool>
 
+#define LC "[viewer] "
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
@@ -59,7 +60,7 @@ usage( const std::string& msg )
     OE_NOTICE << "USAGE: osgearth_viewer [options] file.earth" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
     OE_NOTICE << "   --ocean         : activates the ocean surface model" << std::endl;
-    OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
+    OE_NOTICE << "   --noautoclip    : deactivates the auto clip-plane handler" << std::endl;
     OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
     OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
     
@@ -392,6 +393,7 @@ main(int argc, char** argv)
             if ( useSky || useOcean || !dontUseAutoClip )
             {
                 viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+                OE_INFO << LC << "Activated auto-clip callback" << std::endl;
             }
         }
 
@@ -413,7 +415,7 @@ main(int argc, char** argv)
             AnnotationRegistry::instance()->create( mapNode, annoConf, annotations );
             if ( annotations )
             {
-                annotations->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
+                //annotations->getOrCreateStateSet()->setMode( GL_LIGHTING, 0 );
                 root->addChild( annotations );
             }
         }

@@ -41,6 +41,13 @@ namespace osgEarth { namespace Annotation
          */
         bool create( MapNode* mapNode, const Config& conf, osg::Group*& output ) const;
 
+        /**
+         * Returns a Config containing all the AnnotationNode's found in the
+         * specified subgraph. You can pass this Config to create(...) to 
+         * rematerialize the nodes.
+         */
+        Config getConfig( osg::Node* graph ) const;
+
     public:
         /**
          * Adds an annotation type to the registry

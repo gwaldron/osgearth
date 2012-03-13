@@ -22,6 +22,44 @@
 using namespace osgEarth;
 using namespace osgEarth::Annotation;
 
+//-------------------------------------------------------------------
+
+namespace
+{
+    struct CollectAnnotationNodes : public osg::NodeVisitor
+    {
+        CollectAnnotationNodes() : osg::NodeVisitor(osg::NodeVisitor::TRAVERSE_ALL_CHILDREN)
+        {
+            _group.key() = "annotations";
+            _declutter   = false;
+        }
+
+        void apply(osg::Node& node)
+        {
+            AnnotationNode* anno = dynamic_cast<AnnotationNode*>( &node );
+            if ( anno )
+            {
+                Config conf = anno->getConfig();
+                _group.add( conf );
+            }
+
+            if (!_declutter &&
+                node.getStateSet() &&
+                node.getStateSet()->getRenderBinMode() != osg::StateSet::INHERIT_RENDERBIN_DETAILS &&
+                node.getStateSet()->getBinName() == OSGEARTH_DECLUTTER_BIN )
+            {
+                _declutter = true;
+            }
+
+            traverse(node);
+        }
+
+        Config _group;
+        bool   _declutter;
+    };
+}
+
+//-------------------------------------------------------------------
 
 AnnotationRegistry*
 AnnotationRegistry::instance()
@@ -85,7 +123,6 @@ AnnotationRegistry::create( MapNode* mapNode, const Config& conf, osg::Group*& r
 }
 
 
-
 AnnotationNode*
 AnnotationRegistry::createOne( MapNode* mapNode, const Config& conf, bool declutterOrthos ) const
 {
@@ -105,3 +142,19 @@ AnnotationRegistry::createOne( MapNode* mapNode, const Config& conf, bool declut
     }
     return 0L;
 }
+
+
+Config
+AnnotationRegistry::getConfig( osg::Node* graph ) const
+{
+    if ( graph )
+    {
+        CollectAnnotationNodes visitor;
+        graph->accept( visitor );
+        if ( visitor._declutter )
+            visitor._group.set( "declutter", "true" );
+        return visitor._group;
+    }
+    return Config();
+}
+

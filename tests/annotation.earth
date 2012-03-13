@@ -68,7 +68,8 @@ http://readymap.org
             </rectangle>
 
             <feature>
-                <geometry srs="wgs84">
+                <srs>wgs84</srs>
+                <geometry>
                     LINESTRING(-120.37 34.039, -120.09 33.96, -119.75 34, -118.43 33.37, -118.48 32.88)
                 </geometry>
                 <style type="text/css">

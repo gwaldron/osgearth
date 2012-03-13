@@ -165,9 +165,10 @@ namespace osgEarth
 
         qualified_double<T>( const T& rhs ) : _value(rhs._value), _units(rhs._units) { }
 
-        qualified_double<T>( const Config& conf ) {
+        qualified_double<T>( const Config& conf, const Units& defaultUnits ) {
             _value = conf.value<double>("value", 0.0);
-            Units::parse( conf.value("units"), _units );
+            if ( !Units::parse( conf.value("units"), _units ) )
+                _units = defaultUnits;
         }
 
         void set( double value, const Units& units ) {
@@ -230,7 +231,7 @@ namespace osgEarth
         Linear() : qualified_double<Linear>(0, Units::METERS) { }
         Linear(double value ) : qualified_double<Linear>(value, Units::METERS) { }
         Linear(double value, const Units& units) : qualified_double<Linear>(value, units) { }
-        Linear(const Config& conf) : qualified_double<Linear>(conf) { }
+        Linear(const Config& conf) : qualified_double<Linear>(conf, Units::METERS) { }
     };
     typedef Linear Distance;
 
@@ -238,7 +239,7 @@ namespace osgEarth
         Angular() : qualified_double<Angular>(0, Units::DEGREES) { }
         Angular(double value) : qualified_double<Angular>(value, Units::DEGREES) { }
         Angular(double value, const Units& units) : qualified_double<Angular>(value, units) { }
-        Angular(const Config& conf) : qualified_double<Angular>(conf) { }
+        Angular(const Config& conf) : qualified_double<Angular>(conf, Units::DEGREES) { }
     };
     typedef Angular Angle;
 
@@ -246,7 +247,7 @@ namespace osgEarth
         Temporal() : qualified_double<Temporal>(0, Units::SECONDS) { }
         Temporal(double value) : qualified_double<Temporal>(value, Units::SECONDS) { }
         Temporal(double value, const Units& units) : qualified_double<Temporal>(value, units) { }
-        Temporal(const Config& conf) : qualified_double<Temporal>(conf) { }
+        Temporal(const Config& conf) : qualified_double<Temporal>(conf, Units::SECONDS) { }
     };
     typedef Temporal Duration;
 
@@ -254,52 +255,8 @@ namespace osgEarth
         Speed() : qualified_double<Speed>(0, Units::METERS_PER_SECOND) { }
         Speed(double value) : qualified_double<Speed>(value, Units::METERS_PER_SECOND) { }
         Speed(double value, const Units& units) : qualified_double<Speed>(value, units) { }
-        Speed(const Config& conf) : qualified_double<Speed>(conf) { }
+        Speed(const Config& conf) : qualified_double<Speed>(conf, Units::METERS_PER_SECOND) { }
     };
-
-#if 0
-    
-    //------------------------------------------------------------------------
-
-    // Config specializations:
-
-    template <> inline
-    void Config::add<Linear>( const std::string& key, const Linear& obj ) {
-        add( key, obj.getConfig() );
-    }
-
-    template <> inline
-    void Config::addIfSet<Linear>( const std::string& key, const optional<Linear>& opt ) {
-        if ( opt.isSet() )
-            add( key, *opt );
-    }
-
-    template <> inline
-    void Config::update<Linear>( const std::string& key, const Linear& obj ) {
-        update( key, obj.getConfig() );
-    }
-
-    template <> inline
-    void Config::updateIfSet<Linear>
-
-    template<> inline
-    void Config::updateIfSet<URI>( const std::string& key, const optional<URI>& opt ) {
-        if ( opt.isSet() ) {
-            remove(key);
-            add( Config(key, opt->base()) );
-        }
-    }
-
-    template<> inline
-    bool Config::getIfSet<URI>( const std::string& key, optional<URI>& output ) const {
-        if ( hasValue( key ) ) {
-            output = URI( value(key), _referrer );
-            return true;
-        }
-        else
-            return false;
-    }
-#endif
 
 }
 

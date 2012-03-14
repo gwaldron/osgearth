@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/FeatureSourceMeshConsolidator>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
-#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -82,6 +82,7 @@ BuildGeometryFilter::reset()
 {
     _result = 0L;
     _geode = new osg::Geode();
+    _featureNode = new FeatureSourceMultiNode;
     _hasLines = false;
     _hasPoints = false;
     _hasPolygons = false;
@@ -236,6 +237,9 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             osgGeom->setColorArray( colors );
             osgGeom->setColorBinding( osg::Geometry::BIND_PER_VERTEX );
 
+            // add the part to the geode.
+            //_featureNode->addDrawable(osgGeom, input->getFID());
+
             // subdivide the mesh if necessary to conform to an ECEF globe:
             if ( makeECEF && renderType != Geometry::TYPE_POINTSET )
             {
@@ -257,6 +261,10 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             }
 
             _geode->addDrawable( osgGeom );
+
+            // record the geometry's primitive set(s) in the index:
+            _featureNode->tagPrimitiveSets( osgGeom, input->getFID() );
+            //_featureNode->addDrawable( osgGeom, input->getFID() );
 
             // build secondary geometry, if necessary (polygon outlines)
             if ( renderType == Geometry::TYPE_POLYGON && lineSymbol )
@@ -292,6 +300,11 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 applyLineAndPointSymbology( outline->getOrCreateStateSet(), lineSymbol, 0L );
 
                 _geode->addDrawable( outline );
+
+                //_featureNode->addDrawable( outline, input->getFID() );
+
+                // Mark each primitive set with its feature ID.
+                _featureNode->tagPrimitiveSets( outline, input->getFID() );
             }
 
         }
@@ -333,6 +346,8 @@ BuildGeometryFilter::buildPolygon(Geometry*               ring,
                 osgGeom->addPrimitiveSet( new osg::DrawArrays( GL_LINE_LOOP, offset, hole->size() ) );
                 offset += hole->size();
             }
+
+            _geode->addDrawable( osgGeom );
         }
     }
     osgGeom->setVertexArray( allPoints );
@@ -359,7 +374,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     // convert all geom to triangles and consolidate into minimal set of Geometries
     if ( !_featureNameExpr.isSet() )
     {
-        MeshConsolidator::run( *_geode.get() );
+        FeatureSourceMeshConsolidator::run( *_geode.get(), _featureNode );
     }
 
     osg::Node* result = 0L;
@@ -383,7 +398,12 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
 
-        result = delocalize( _geode.release() );
+        // build the feature index.
+        _featureNode->reindex( _geode.get() );
+
+        _featureNode->addChild(_geode.release());
+
+        result = delocalize( _featureNode.release() );
     }
     else
     {

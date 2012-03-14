@@ -18,39 +18,36 @@
 */
 
 #include <osg/Notify>
-
+#include <osg/Depth>
 #include <osgGA/StateSetManipulator>
 #include <osgGA/GUIEventHandler>
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
-
 #include <osgEarth/MapNode>
 #include <osgEarth/XmlUtils>
 #include <osgEarth/Viewpoint>
-
-#include <osgEarthSymbology/Color>
-
-#include <osgEarthAnnotation/AnnotationRegistry>
-#include <osgEarthAnnotation/AnnotationData>
-#include <osgEarthAnnotation/Decluttering>
-
-#include <osgEarthDrivers/kml/KML>
-#include <osgEarthDrivers/ocean_surface/OceanSurface>
-
 #include <osgEarthUtil/EarthManipulator>
 #include <osgEarthUtil/AutoClipPlaneHandler>
 #include <osgEarthUtil/Controls>
 #include <osgEarthUtil/SkyNode>
-#include <osgEarthUtil/LatLongFormatter>
 #include <osgEarthUtil/MouseCoordsTool>
-
-#define LC "[viewer] "
+#include <osgEarthUtil/LatLongFormatter>
+#include <osgEarthUtil/FeatureQueryTool>
+#include <osgEarthSymbology/Color>
+#include <osgEarthAnnotation/Decluttering>
+#include <osgEarthAnnotation/AnnotationRegistry>
+#include <osgEarthAnnotation/AnnotationData>
+#include <osgEarthDrivers/kml/KML>
+#include <osgEarthDrivers/ocean_surface/OceanSurface>
+#include <osgEarthFeatures/FeatureSourceNode>
+#include <osgEarthFeatures/FeatureSource>
 
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 using namespace osgEarth::Symbology;
 using namespace osgEarth::Drivers;
 using namespace osgEarth::Annotation;
+using namespace osgEarth::Features;
 
 int
 usage( const std::string& msg )
@@ -60,10 +57,11 @@ usage( const std::string& msg )
     OE_NOTICE << "USAGE: osgearth_viewer [options] file.earth" << std::endl;
     OE_NOTICE << "   --sky           : activates the atmospheric model" << std::endl;
     OE_NOTICE << "   --ocean         : activates the ocean surface model" << std::endl;
-    OE_NOTICE << "   --noautoclip    : deactivates the auto clip-plane handler" << std::endl;
+    OE_NOTICE << "   --autoclip      : activates the auto clip-plane handler" << std::endl;
     OE_NOTICE << "   --dms           : format coordinates as degrees/minutes/seconds" << std::endl;
     OE_NOTICE << "   --mgrs          : format coordinates as MGRS" << std::endl;
     
+        
     return -1;
 }
 
@@ -71,6 +69,8 @@ static EarthManipulator* s_manip         =0L;
 static Control*          s_controlPanel  =0L;
 static SkyNode*          s_sky           =0L;
 static OceanSurfaceNode* s_ocean         =0L;
+static bool              s_dms           =false;
+static bool              s_mgrs          =false;
 
 struct SkySliderHandler : public ControlEventHandler
 {
@@ -132,6 +132,7 @@ struct ClickViewpointHandler : public ControlEventHandler
     }
 };
 
+
 void
 createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
 {
@@ -158,9 +159,7 @@ createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
             const Viewpoint& vp = vps[i];
             std::stringstream buf;
             buf << (i+1);
-            std::string str;
-            str = buf.str();
-            Control* num = new LabelControl(str, 16.0f, osg::Vec4f(1,1,0,1));
+            Control* num = new LabelControl(buf.str(), 16.0f, osg::Vec4f(1,1,0,1));
             num->setPadding( 4 );
             g->setControl( 0, i, num );
 
@@ -177,61 +176,72 @@ createControlPanel( osgViewer::View* view, std::vector<Viewpoint>& vps )
     // sky time slider:
     if ( s_sky )
     {
-        HBox* skyBox = main->addControl(new HBox());
+        HBox* skyBox = new HBox();
         skyBox->setChildVertAlign( Control::ALIGN_CENTER );
         skyBox->setChildSpacing( 10 );
         skyBox->setHorizFill( true );
 
         skyBox->addControl( new LabelControl("Time: ", 16) );
 
-        HSliderControl* skySlider = skyBox->addControl(new HSliderControl( 0.0f, 24.0f, 18.0f ));
+        HSliderControl* skySlider = new HSliderControl( 0.0f, 24.0f, 18.0f );
         skySlider->setBackColor( Color::Gray );
         skySlider->setHeight( 12 );
         skySlider->setHorizFill( true, 200 );
         skySlider->addEventHandler( new SkySliderHandler );
+        skyBox->addControl( skySlider );
+
+        main->addControl( skyBox );
     }
 
     // ocean sliders:
     if ( s_ocean )
     {
-        HBox* oceanBox1 = main->addControl( new HBox() );
+        HBox* oceanBox1 = new HBox();
         oceanBox1->setChildVertAlign( Control::ALIGN_CENTER );
         oceanBox1->setChildSpacing( 10 );
         oceanBox1->setHorizFill( true );
+        main->addControl( oceanBox1 );
 
         oceanBox1->addControl( new LabelControl("Sea Level: ", 16) );
 
-        HSliderControl* mslSlider = oceanBox1->addControl(new HSliderControl( -250.0f, 250.0f, 0.0f ));
+        HSliderControl* mslSlider = new HSliderControl( -250.0f, 250.0f, 0.0f );
         mslSlider->setBackColor( Color::Gray );
         mslSlider->setHeight( 12 );
         mslSlider->setHorizFill( true, 200 );
         mslSlider->addEventHandler( new ChangeSeaLevel() );
+        oceanBox1->addControl( mslSlider );
 
-        HBox* oceanBox2 = main->addControl(new HBox());
+
+        HBox* oceanBox2 = new HBox();
         oceanBox2->setChildVertAlign( Control::ALIGN_CENTER );
         oceanBox2->setChildSpacing( 10 );
         oceanBox2->setHorizFill( true );
+        main->addControl( oceanBox2 );
 
         oceanBox2->addControl( new LabelControl("Low Feather: ", 16) );
 
-        HSliderControl* lfSlider = oceanBox2->addControl(new HSliderControl( -1000.0, 250.0f, -100.0f ));
+        HSliderControl* lfSlider = new HSliderControl( -1000.0, 250.0f, -100.0f );
         lfSlider->setBackColor( Color::Gray );
         lfSlider->setHeight( 12 );
         lfSlider->setHorizFill( true, 200 );
         lfSlider->addEventHandler( new ChangeLowFeather() );
+        oceanBox2->addControl( lfSlider );
 
-        HBox* oceanBox3 = main->addControl(new HBox());
+
+        HBox* oceanBox3 = new HBox();
         oceanBox3->setChildVertAlign( Control::ALIGN_CENTER );
         oceanBox3->setChildSpacing( 10 );
         oceanBox3->setHorizFill( true );
+        main->addControl( oceanBox3 );
 
         oceanBox3->addControl( new LabelControl("High Feather: ", 16) );
 
-        HSliderControl* hfSlider = oceanBox3->addControl(new HSliderControl( -500.0f, 500.0f, -10.0f ));
+        HSliderControl* hfSlider = new HSliderControl( -500.0f, 500.0f, -10.0f );
         hfSlider->setBackColor( Color::Gray );
         hfSlider->setHeight( 12 );
         hfSlider->setHorizFill( true, 200 );
         hfSlider->addEventHandler( new ChangeHighFeather() );
+        oceanBox3->addControl( hfSlider );
     }
     
     canvas->addControl( main );
@@ -282,9 +292,6 @@ struct KMLUIBuilder : public osg::NodeVisitor
     Grid*          _grid;
 };
 
-/**
- * Handler that dumps the current viewpoint out to the console.
- */
 struct ViewpointHandler : public osgGA::GUIEventHandler
 {
     ViewpointHandler( const std::vector<Viewpoint>& viewpoints )
@@ -301,7 +308,8 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
             }
             else if ( ea.getKey() == 'v' )
             {
-                XmlDocument xml( s_manip->getViewpoint().getConfig() );
+                Viewpoint vp = s_manip->getViewpoint();
+                XmlDocument xml( vp.getConfig() );
                 xml.store( std::cout );
                 std::cout << std::endl;
             }
@@ -309,7 +317,6 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
             {
                 s_controlPanel->setVisible( !s_controlPanel->visible() );
             }
-            aa.requestRedraw();
         }
         return false;
     }
@@ -317,7 +324,231 @@ struct ViewpointHandler : public osgGA::GUIEventHandler
     std::vector<Viewpoint> _viewpoints;
 };
 
-//------------------------------------------------------------------------
+bool hitTest(osgViewer::View * view, unsigned traversalMask, float x, float y, osg::Vec3d & posWorld, osg::Vec3d & posLocal, osg::NodePath & nodePath, osg::ref_ptr<osg::Drawable> & drawable, unsigned & primIndex)
+{
+	osg::Vec3d vecLocal;
+	osg::Vec3d vecWorld;
+	bool ret;
+
+	osg::Camera * camera = view->getCamera();
+
+	osg::ref_ptr< osgUtil::LineSegmentIntersector > picker = new osgUtil::LineSegmentIntersector(osgUtil::Intersector::WINDOW, x, y);
+
+	osgUtil::IntersectionVisitor iv(picker.get());
+
+	// get the traversal mask from the given camera if no mask has been specified
+	if(traversalMask == (unsigned)-1)
+		traversalMask = camera->getCullMask();
+	iv.setTraversalMask(traversalMask);
+	camera->accept(iv);
+
+	ret = picker->containsIntersections();
+	if (ret)
+	{
+		const osgUtil::LineSegmentIntersector::Intersection& hitr = picker->getFirstIntersection();
+		posWorld = hitr.getWorldIntersectPoint();
+		posLocal = hitr.getLocalIntersectPoint();
+		nodePath = hitr.nodePath;
+		drawable = hitr.drawable;
+		primIndex = hitr.primitiveIndex;
+	}
+	else
+	{
+		nodePath.clear();
+		posWorld = osg::Vec3d();
+		posLocal = osg::Vec3d();
+		drawable = NULL;
+		primIndex = (unsigned)-1;
+	}
+	return ret;
+}
+
+bool hitTestPolytope(osgViewer::View * view, unsigned traversalMask, float x, float y, osg::Vec3d & posWorld, osg::Vec3d & posLocal, osg::NodePath & nodePath, osg::ref_ptr<osg::Drawable> & drawable, unsigned & primIndex)
+{
+	osg::Vec3d vecLocal;
+	osg::Vec3d vecWorld;
+	bool ret;
+
+	osg::Camera * camera = view->getCamera();
+
+	osg::ref_ptr< osgUtil::PolytopeIntersector > picker = new osgUtil::PolytopeIntersector(osgUtil::Intersector::WINDOW, x, y, x, y);
+
+	osgUtil::IntersectionVisitor iv(picker.get());
+
+	// get the traversal mask from the given camera if no mask has been specified
+	if(traversalMask == (unsigned)-1)
+		traversalMask = camera->getCullMask();
+	iv.setTraversalMask(traversalMask);
+	camera->accept(iv);
+
+	ret = picker->containsIntersections();
+	if (ret)
+	{
+		const osgUtil::PolytopeIntersector::Intersection& hitr = picker->getFirstIntersection();
+		posWorld = hitr.localIntersectionPoint * (const osg::Matrix&)hitr.matrix;
+		posLocal = hitr.localIntersectionPoint;
+		nodePath = hitr.nodePath;
+		drawable = hitr.drawable;
+		primIndex = hitr.primitiveIndex;
+	}
+	else
+	{
+		nodePath.clear();
+		posWorld = osg::Vec3d();
+		posLocal = osg::Vec3d();
+		drawable = NULL;
+		primIndex = (unsigned)-1;
+	}
+	return ret;
+}
+
+std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const osg::Node * node)
+{
+		os << "{this=" << (void*)node 
+			<< ";name=" << (node?node->getName():"<null>")
+			<< ";classname=" << (node?node->className():"<null>")
+			<< ";libname=" << (node?node->libraryName():"<null>")
+			<< ";mask=" << std::hex << (node?node->getNodeMask():0) << std::dec
+			<< "}";
+//	}
+	return os;
+}
+
+std::basic_ostream<char>& operator<<(std::basic_ostream<char>& os, const osg::NodePath & path)
+{
+	os << "{size=" << path.size() << ";elements=[";
+	for(osg::NodePath::const_iterator it = path.begin(); it != path.end();)
+	{
+		const osg::Node * node = *it;
+		os << node;
+		it++;
+		if(it != path.end())
+			os << ",";
+	}
+	return os  << "]}";
+}
+
+
+struct FeatureInfoHandler : public osgGA::GUIEventHandler
+{
+    FeatureInfoHandler( osgEarth::Map* map, osg::Group* selectionGroup )
+		: _map( map ), _selectionGroup(selectionGroup) { }
+
+	bool handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
+	{
+		osg::Vec3d world;
+		osg::Vec3d local;
+		osg::NodePath path;
+		osg::ref_ptr<osg::Drawable> drawable;
+		unsigned primIndex = 0;
+		bool hit = false;
+
+		if ( ea.getEventType() == ea.KEYDOWN)
+		{
+            clearSelection();
+
+			if(ea.getKey() == 'i')
+				hit = hitTest((osgViewer::View*)aa.asView(), (unsigned)-1, ea.getX(), ea.getY(), world, local, path, drawable, primIndex);
+			else if(ea.getKey() == 'u')
+				hit = hitTestPolytope((osgViewer::View*)aa.asView(), (unsigned)-1, ea.getX(), ea.getY(), world, local, path, drawable, primIndex);
+		}
+
+		if( hit )
+		{
+			std::cout << "hit on " << path << std::endl;
+			FeatureSourceNode * featureNode = NULL;
+			for(osg::NodePath::reverse_iterator it = path.rbegin(); !featureNode && it != path.rend(); it++)
+				featureNode = dynamic_cast<FeatureSourceNode *>(*it);
+
+			if(featureNode)
+			{
+				FeatureSource * featureSource = featureNode->getSource();
+				osgEarth::Features::FeatureID fid(~0);
+				FeatureSourceMultiNode * featureMultiNode = dynamic_cast<FeatureSourceMultiNode *>(featureNode);
+				if(featureMultiNode)
+					featureMultiNode->getFID(drawable, primIndex, fid);
+				else
+					fid = featureNode->getFID();
+
+				std::string name;
+
+				if(featureSource)
+				{
+					Feature * feature = featureSource->getFeature(fid);
+					if(feature)
+						name = feature->getString("name");
+				}
+
+                if ( fid != ~0 )
+                {
+				    std::cerr << "hit feature " << fid << ":" << name << std::endl;
+
+                    FeatureSourceMultiNode::FeatureDrawSet* selected = &featureMultiNode->getDrawSet( fid );
+
+                    osg::Geode* geode = new osg::Geode();
+                    for( FeatureSourceMultiNode::FeatureDrawSet::iterator d = selected->begin(); d != selected->end(); ++d )
+                    {
+                        osg::Geometry* geom = new osg::Geometry( *d->first->asGeometry(), osg::CopyOp::SHALLOW_COPY );
+                        osg::Vec4Array* selectedColor = new osg::Vec4Array(1);
+                        (*selectedColor)[0] = osg::Vec4f(1,0,0,0.75);
+                        geom->setColorArray(selectedColor);
+                        geom->setColorBinding(osg::Geometry::BIND_OVERALL);
+                        geom->setPrimitiveSetList( d->second );
+                        geode->addDrawable(geom);
+                    }
+
+                    osg::StateSet* sset = geode->getOrCreateStateSet();
+                    for( unsigned ii = 0; ii < Registry::instance()->getCapabilities().getMaxFFPTextureUnits(); ++ii )
+                    {
+                        sset->setTextureMode( ii, GL_TEXTURE_2D, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+                        sset->setTextureMode( ii, GL_TEXTURE_3D, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+                        //sset->setTextureMode( ii, GL_TEXTURE_RECTANGLE, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+                        //sset->setTextureMode( ii, GL_TEXTURE_CUBE_MAP, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
+                    }
+
+                    sset->setMode( GL_BLEND, 1 );
+                    sset->setMode( GL_LIGHTING, 0 );
+
+                    _selectionGroup->addChild( geode );
+                }
+
+                else
+                {
+                    std::cerr << "no feature" << std::endl;
+                }
+			}
+			else
+			{
+				std::cerr << "hit no feature" << std::endl;
+			}
+		}
+		return false;
+	}
+
+
+    void clearSelection()
+    {
+        _selectionGroup->removeChildren(0, _selectionGroup->getNumChildren());
+        //if ( _selected )
+        //{
+        //    for( FeatureSourceMultiNode::FeatureDrawSet::iterator d = _selected->begin(); d != _selected->end(); ++d )
+        //    {
+        //        osg::Geometry* geom = d->first->asGeometry();
+        //        geom->setColorArray( _originalColorArrays[geom].get() );
+        //    }
+        //}
+
+        //_selected = 0L;
+        //_originalColorArrays.clear();
+    }
+
+
+	osgEarth::Map* _map;
+    //FeatureSourceMultiNode::FeatureDrawSet* _selected;
+    //std::map< osg::Geometry*, osg::ref_ptr<osg::Array> > _originalColorArrays;
+    osg::Group* _selectionGroup;
+};
+
 
 int
 main(int argc, char** argv)
@@ -469,12 +700,20 @@ main(int argc, char** argv)
 
     viewer.setSceneData( root );
 
+    osg::Group* selectionGroup = new osg::Group();
+    root->addChild( selectionGroup );
+    selectionGroup->getOrCreateStateSet()->setRenderBinDetails( 42, "DepthSortedBin" );
+    selectionGroup->getOrCreateStateSet()->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL,0,1,true), osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
+
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());
     viewer.addEventHandler(new osgViewer::WindowSizeHandler());
     viewer.addEventHandler(new osgViewer::ThreadingHandler());
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
+	viewer.addEventHandler(new FeatureInfoHandler(mapNode->getMap(), selectionGroup));
+
+    viewer.addEventHandler(new FeatureQueryTool(mapNode, new FeatureHighlightCallback()));
 
     return viewer.run();
 }

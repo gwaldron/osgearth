@@ -89,9 +89,10 @@ _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
 _startAltitudeMode( AltitudeMode::ABSOLUTE ),
-_endAltitudeMode( AltitudeMode::ABSOLUTE )
+_endAltitudeMode( AltitudeMode::ABSOLUTE ),
+_terrainOnly( false )
 {
-    compute(_mapNode.get());
+    compute(getNode());
     subscribeToTerrain();
     setNumChildrenRequiringUpdateTraversal( 1 );
 }
@@ -108,9 +109,10 @@ _goodColor(0.0f, 1.0f, 0.0f, 1.0f),
 _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
 _startAltitudeMode( AltitudeMode::ABSOLUTE ),
-_endAltitudeMode( AltitudeMode::ABSOLUTE )
+_endAltitudeMode( AltitudeMode::ABSOLUTE ),
+_terrainOnly( false )
 {
-    compute(_mapNode.get());    
+    compute(getNode());    
     subscribeToTerrain();
     setNumChildrenRequiringUpdateTraversal( 1 );
 }
@@ -138,7 +140,7 @@ LineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* te
     //the new terrain isn't yet merged with the new terrain.
     osg::ref_ptr < osg::Group > group = new osg::Group;
     group->addChild( terrain );
-    group->addChild( _mapNode.get() );
+    group->addChild( getNode() );
     compute( group, true );
 }
 
@@ -154,7 +156,7 @@ LineOfSightNode::setStart(const osg::Vec3d& start)
     if (_start != start)
     {
         _start = start;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -170,7 +172,7 @@ LineOfSightNode::setEnd(const osg::Vec3d& end)
     if (_end != end)
     {
         _end = end;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -222,7 +224,7 @@ LineOfSightNode::setStartAltitudeMode( AltitudeModeEnum mode )
     if (_startAltitudeMode != mode)
     {
         _startAltitudeMode = mode;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -232,7 +234,7 @@ LineOfSightNode::setEndAltitudeMode( AltitudeModeEnum mode )
     if (_endAltitudeMode != mode)
     {
         _endAltitudeMode = mode;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -457,6 +459,30 @@ LineOfSightNode::setDisplayMode( LOSDisplayMode displayMode )
     }
 }
 
+bool
+LineOfSightNode::getTerrainOnly() const
+{
+    return _terrainOnly;
+}
+
+void
+LineOfSightNode::setTerrainOnly( bool terrainOnly )
+{
+    if (_terrainOnly != terrainOnly)
+    {
+        _terrainOnly = terrainOnly;
+        compute(getNode());
+    }
+}
+
+osg::Node*
+LineOfSightNode::getNode()
+{
+    if (_terrainOnly) return _mapNode->getTerrainEngine();
+    return _mapNode.get();
+}
+
+
 osg::Vec3d getNodeCenter(osg::Node* node)
 {
     osg::NodePathList nodePaths = node->getParentalNodePaths();
@@ -566,9 +592,10 @@ _badColor(1.0f, 0.0f, 0.0f, 1.0f),
 _outlineColor( 1.0f, 1.0f, 1.0f, 1.0f),
 _displayMode( MODE_SPLIT ),
 _altitudeMode( AltitudeMode::ABSOLUTE ),
-_fill(false)
+_fill(false),
+_terrainOnly( false )
 {
-    compute(_mapNode.get());
+    compute(getNode());
     _terrainChangedCallback = new RadialLineOfSightNodeTerrainChangedCallback( this );
     _mapNode->getTerrain()->addTerrainCallback( _terrainChangedCallback.get() );        
     setNumChildrenRequiringUpdateTraversal( 1 );
@@ -591,7 +618,7 @@ RadialLineOfSightNode::setFill( bool fill)
     if (_fill != fill)
     {
         _fill = fill;
-        compute(_mapNode.get() );
+        compute(getNode() );
     }
 }
 
@@ -607,7 +634,7 @@ RadialLineOfSightNode::setRadius(double radius)
     if (_radius != radius)
     {
         _radius = osg::clampAbove(radius, 1.0);
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -622,7 +649,7 @@ void RadialLineOfSightNode::setNumSpokes(int numSpokes)
     if (numSpokes != _numSpokes)
     {
         _numSpokes = osg::clampAbove(numSpokes, 1);
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -646,7 +673,7 @@ RadialLineOfSightNode::setCenter(const osg::Vec3d& center)
     if (_center != center)
     {
         _center = center;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -662,9 +689,32 @@ RadialLineOfSightNode::setAltitudeMode( AltitudeModeEnum mode )
     if (_altitudeMode != mode)
     {
         _altitudeMode = mode;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
+
+bool
+RadialLineOfSightNode::getTerrainOnly() const
+{
+    return _terrainOnly;
+}
+
+void RadialLineOfSightNode::setTerrainOnly( bool terrainOnly )
+{
+    if (_terrainOnly != terrainOnly)
+    {
+        _terrainOnly = terrainOnly;
+        compute(getNode());
+    }
+}
+
+osg::Node*
+RadialLineOfSightNode::getNode()
+{
+    if (_terrainOnly) return _mapNode->getTerrainEngine();
+    return _mapNode.get();
+}
+
 
 void
 RadialLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::Node* terrain )
@@ -675,7 +725,7 @@ RadialLineOfSightNode::terrainChanged( const osgEarth::TileKey& tileKey, osg::No
     //the new terrain isn't yet merged with the new terrain.
     osg::ref_ptr < osg::Group > group = new osg::Group;
     group->addChild( terrain );
-    group->addChild( _mapNode.get() );
+    group->addChild( getNode() );
     compute( group, true );
 }
 
@@ -1045,7 +1095,7 @@ RadialLineOfSightNode::setGoodColor( const osg::Vec4f &color )
     if (_goodColor != color)
     {
         _goodColor = color;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -1061,7 +1111,7 @@ RadialLineOfSightNode::setBadColor( const osg::Vec4f &color )
     if (_badColor != color)
     {
         _badColor = color;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -1077,7 +1127,7 @@ RadialLineOfSightNode::setOutlineColor( const osg::Vec4f &color )
     if (_outlineColor != color)
     {
         _outlineColor = color;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 
@@ -1099,7 +1149,7 @@ RadialLineOfSightNode::setDisplayMode( LOSDisplayMode displayMode )
     if (_displayMode != displayMode)
     {
         _displayMode = displayMode;
-        compute(_mapNode.get());
+        compute(getNode());
     }
 }
 

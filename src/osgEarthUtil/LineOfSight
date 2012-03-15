@@ -190,6 +190,10 @@ namespace osgEarth { namespace Util
 
         virtual void traverse(osg::NodeVisitor& nv);
 
+        bool getTerrainOnly() const;
+
+        void setTerrainOnly( bool terrainOnly );
+
         /**
          * Utility method to compute LOS with a MapNode
          * @param mapNode
@@ -207,6 +211,7 @@ namespace osgEarth { namespace Util
 
 
     private:
+        osg::Node* getNode();
         void compute(osg::Node* node, bool backgroundThread = false);
         void draw(bool backgroundThread = false);
         void subscribeToTerrain();
@@ -234,6 +239,7 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr< osg::Node > _pendingNode;
         bool _clearNeeded;
+        bool _terrainOnly;
     };
 
 
@@ -396,8 +402,12 @@ namespace osgEarth { namespace Util
 
         virtual void traverse(osg::NodeVisitor& nv);
 
+        bool getTerrainOnly() const;
+        void setTerrainOnly( bool terrainOnly );
+
 
     private:
+        osg::Node* getNode();
         void compute(osg::Node* node, bool backgroundThread = false);
         void compute_line(osg::Node* node, bool backgroundThread = false);
         void compute_fill(osg::Node* node, bool backgroundThread = false);
@@ -416,6 +426,7 @@ namespace osgEarth { namespace Util
         ChangedCallbackList _changedCallbacks;
         osg::ref_ptr< osg::Node > _pendingNode;
         osg::ref_ptr < osgEarth::TerrainCallback > _terrainChangedCallback;
+        bool _terrainOnly;
     };
 
     /**********************************************************************/

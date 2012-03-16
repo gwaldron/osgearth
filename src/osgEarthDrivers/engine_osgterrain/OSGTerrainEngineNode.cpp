@@ -116,7 +116,7 @@ _terrain( terrain )
 }
 
 void
-OSGTerrainEngineNode::ElevationChangedCallback::onEnabledChanged( TerrainLayer* layer )
+OSGTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
 {
     _terrain->refresh();
 }

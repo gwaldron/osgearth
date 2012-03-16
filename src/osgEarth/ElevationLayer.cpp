@@ -222,6 +222,12 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
                     result );
             }
         }
+        
+        // Blacklist the tile if it is the same projection as the source and we can't get it and it wasn't cancelled
+        if ( !result && (!progress || !progress->isCanceled()))
+        {
+            source->getBlacklist()->add( key.getTileId() );
+        }
     }
 
     // Otherwise, profiles don't match so we need to composite:
@@ -251,11 +257,7 @@ ElevationLayer::createHeightFieldFromTileSource(const TileKey&    key,
     }
 #endif
 
-    // Blacklist the tile if we can't get it and it wasn't cancelled
-    if ( !result && (!progress || !progress->isCanceled()))
-    {
-        source->getBlacklist()->add( key.getTileId() );
-    }
+
 
     return result;
 }

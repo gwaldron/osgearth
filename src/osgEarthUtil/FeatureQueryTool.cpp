@@ -20,7 +20,6 @@
 #include <osgEarthUtil/FeatureQueryTool>
 #include <osgEarth/Pickers>
 #include <osgEarth/Registry>
-#include <osgEarthFeatures/FeatureSourceNode>
 #include <osgViewer/View>
 #include <osg/Depth>
 

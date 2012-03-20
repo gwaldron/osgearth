@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
-#include <osgEarthFeatures/FeatureSourceMeshConsolidator>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
 #include <osgEarthSymbology/PolygonSymbol>
 #include <osgEarthSymbology/MeshSubdivider>
+#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
 #include <osg/Geode>
 #include <osg/Geometry>
@@ -377,7 +377,7 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
     // convert all geom to triangles and consolidate into minimal set of Geometries
     if ( !_featureNameExpr.isSet() )
     {
-        FeatureSourceMeshConsolidator::run( *_geode.get(), _indexNode.get() );
+        MeshConsolidator::run( *_geode.get() );
     }
 
     osg::Node* result = 0L;

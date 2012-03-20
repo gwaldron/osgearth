@@ -1,21 +1,22 @@
 /* -*-c++-*- */
 /* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
- * Copyright 2008-2010 Pelican Mapping
- * http://osgearth.org
- *
- * osgEarth is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
- */
+* Copyright 2008-2010 Pelican Mapping
+* http://osgearth.org
+*
+* osgEarth is free software; you can redistribute it and/or modify
+* it under the terms of the GNU Lesser General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>
+*/
+
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osg/TriangleFunctor>
 #include <osg/TriangleIndexFunctor>
@@ -23,10 +24,11 @@
 #include <map>
 #include <iterator>
 
+using namespace osgEarth::Symbology;
+
 #define LC "[MeshConsolidator] "
 
 using namespace osgEarth;
-using namespace osgEarth::Symbology;
 
 //------------------------------------------------------------------------
 
@@ -76,23 +78,6 @@ namespace
             return copy<FROM,osg::DrawElementsUInt>( src, offset );
     }
 
-    osg::PrimitiveSet* convertDAtoDE( osg::DrawArrays* da, unsigned numVerts, unsigned offset )
-    {
-        osg::DrawElements* de = 0L;
-        if ( numVerts < 0x100 )
-            de = new osg::DrawElementsUByte( da->getMode() );
-        else if ( numVerts < 0x10000 )
-            de = new osg::DrawElementsUShort( da->getMode() );
-        else 
-            de = new osg::DrawElementsUInt( da->getMode() );
-
-        de->reserveElements( da->getCount() );
-        for( GLsizei i=0; i<da->getCount(); ++i )
-            de->addElement( offset + da->getFirst() + i );
-
-        return de;
-    }
-
     bool canOptimize( osg::Geometry& geom )
     {
         osg::Array* vertexArray = geom.getVertexArray();
@@ -117,6 +102,23 @@ namespace
             {
                 if ( geom.getVertexAttribBinding( i ) != osg::Geometry::BIND_PER_VERTEX )
                     return false;
+            }
+        }
+
+        // check that all primitive sets share the same user data
+        osg::Geometry::PrimitiveSetList& pslist = geom.getPrimitiveSetList();
+        osg::Referenced* lastUserData = 0L;
+        for( osg::Geometry::PrimitiveSetList::const_iterator i = pslist.begin(); i != pslist.end(); ++i )
+        {
+            osg::Referenced* userData = i->get()->getUserData();
+            if ( i == pslist.begin() || userData == lastUserData )
+            {
+                lastUserData = userData;
+            }
+            else
+            {
+                OE_WARN << LC << "Differing user data in a primset list!" << std::endl;
+                return false;
             }
         }
 
@@ -156,6 +158,10 @@ MeshConsolidator::run( osg::Geometry& geom )
 
     if ( triSets.size() > 0 )
     {
+        // we are assuming at this point that all the primitive sets in a single geometry
+        // share a single user data structure.
+        osg::Referenced* sharedUserData = triSets[0]->getUserData();
+
         osg::Array* vertexArray = geom.getVertexArray();
         unsigned numVerts = vertexArray->getNumElements();
         osg::Geometry::PrimitiveSetList newPrimSets;
@@ -183,7 +189,10 @@ MeshConsolidator::run( osg::Geometry& geom )
         }
 
         for( osg::Geometry::PrimitiveSetList::iterator i = newPrimSets.begin(); i != newPrimSets.end(); ++i )
+        {
+            i->get()->setUserData( sharedUserData );
             nonTriSets.push_back( i->get() );
+        }
     }
 
     geom.setPrimitiveSetList( nonTriSets );
@@ -192,40 +201,40 @@ MeshConsolidator::run( osg::Geometry& geom )
 void
 MeshConsolidator::run( osg::Geode& geode )
 {
-    unsigned numVerts = 0;
-    unsigned numColors = 0;
-    unsigned numNormals = 0;
-    unsigned numTexCoordArrays = 0;
-    unsigned numVertAttribArrays = 0;
+	unsigned numVerts = 0;
+	unsigned numColors = 0;
+	unsigned numNormals = 0;
+	unsigned numTexCoordArrays = 0;
+	unsigned numVertAttribArrays = 0;
     std::vector<unsigned> texCoordArrayUnits;
     texCoordArrayUnits.reserve(32);
 
-    osg::Geometry::AttributeBinding newColorsBinding;
-    osg::Geometry::AttributeBinding newNormalsBinding;
+	osg::Geometry::AttributeBinding newColorsBinding;
+	osg::Geometry::AttributeBinding newNormalsBinding;
 
-    // first, triangulate all the geometries and count all the components:
-    for( unsigned i=0; i<geode.getNumDrawables(); ++i )
-    {
-        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-        if ( geom )
-        {
+	// first, triangulate all the geometries and count all the components:
+	for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+	{
+		osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+		if ( geom )
+		{
             if ( !canOptimize(*geom) )
                 continue;
 
-            // optimize it into triangles first:
-            run( *geom );
+			// optimize it into triangles first:
+			MeshConsolidator::run( *geom );
 
-            osg::Array* verts = geom->getVertexArray();
-            if ( verts )
-                numVerts += verts->getNumElements();
+			osg::Array* verts = geom->getVertexArray();
+			if ( verts )
+				numVerts += verts->getNumElements();
 
-            osg::Array* colors = geom->getColorArray();
-            if ( colors )
-                numColors += colors->getNumElements();
+			osg::Array* colors = geom->getColorArray();
+			if ( colors )
+				numColors += colors->getNumElements();
 
-            osg::Array* normals = geom->getNormalArray();
-            if ( normals )
-                numNormals += normals->getNumElements();
+			osg::Array* normals = geom->getNormalArray();
+			if ( normals )
+				numNormals += normals->getNumElements();
 
             // NOTE!! tex/attrib array counts much already be equal.
             if ( texCoordArrayUnits.size() == 0 )
@@ -236,36 +245,36 @@ MeshConsolidator::run( osg::Geode& geode )
                 }
             }
 
-            numVertAttribArrays += geom->getNumVertexAttribArrays();
-        }
-    }
+			numVertAttribArrays += geom->getNumVertexAttribArrays();
+		}
+	}
 
-    // bail if there are unsupported items in there.
-    if (geode.getNumDrawables() < 2 ||
+	// bail if there are unsupported items in there.
+	if (geode.getNumDrawables() < 2 ||
         //numTexCoordArrays       > 0 ||
-        numVertAttribArrays     > 0 )
-    {
-        return;
-    }
+		numVertAttribArrays     > 0 )
+	{
+		return;
+	}
 
 
-    osg::Vec3Array* newVerts = new osg::Vec3Array();
-    newVerts->reserve( numVerts );
+	osg::Vec3Array* newVerts = new osg::Vec3Array();
+	newVerts->reserve( numVerts );
 
-    osg::Vec4Array* newColors =0L;
-    if ( numColors > 0 )
-    {
-        newColors = new osg::Vec4Array();
+	osg::Vec4Array* newColors =0L;
+	if ( numColors > 0 )
+	{
+		newColors = new osg::Vec4Array();
         newColors->reserve( numVerts );
         newColorsBinding = osg::Geometry::BIND_PER_VERTEX;
         //newColors->reserve( numColors==numVerts? numColors : 1 );
         //newColorsBinding = numColors==numVerts? osg::Geometry::BIND_PER_VERTEX : osg::Geometry::BIND_OVERALL;
-    }
+	}
 
-    osg::Vec3Array* newNormals =0L;
-    if ( numNormals > 0 )
-    {
-        newNormals = new osg::Vec3Array();
+	osg::Vec3Array* newNormals =0L;
+	if ( numNormals > 0 )
+	{
+		newNormals = new osg::Vec3Array();
         newNormals->reserve( numVerts );
         newNormalsBinding = osg::Geometry::BIND_PER_VERTEX;
         //newNormals->reserve( numNormals==numVerts? numNormals : 1 );
@@ -278,69 +287,69 @@ MeshConsolidator::run( osg::Geode& geode )
         osg::Vec2Array* newTexCoords = new osg::Vec2Array();
         newTexCoords->reserve( numVerts );
         newTexCoordsArrays.push_back( newTexCoords );
-    }
+	}
 
-    unsigned offset = 0;
-    osg::Geometry::PrimitiveSetList newPrimSets;
+	unsigned offset = 0;
+	osg::Geometry::PrimitiveSetList newPrimSets;
 
     std::vector<osg::ref_ptr<osg::Geometry> > nonOptimizedGeoms;
 
     osg::StateSet* unifiedStateSet = 0L;
 
-    for( unsigned i=0; i<geode.getNumDrawables(); ++i )
-    {
-        osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
-        if ( geom )
-        {
+	for( unsigned i=0; i<geode.getNumDrawables(); ++i )
+	{
+		osg::Geometry* geom = geode.getDrawable(i)->asGeometry();
+		if ( geom )
+		{
             if ( !canOptimize(*geom) )
-            {
+			{
                 nonOptimizedGeoms.push_back(geom);
                 continue;
-            }
+			}
 
             // merge in the stateset:
             if ( unifiedStateSet == 0L )
                 unifiedStateSet = geom->getStateSet();
             else if ( geom->getStateSet() )
-                unifiedStateSet->merge( *geom->getStateSet() );                
+                unifiedStateSet->merge( *geom->getStateSet() );            
 
-            // copy over the verts:
-            osg::Vec3Array* geomVerts = dynamic_cast<osg::Vec3Array*>( geom->getVertexArray() );
-            if ( geomVerts )
-            {
-                std::copy( geomVerts->begin(), geomVerts->end(), std::back_inserter(*newVerts) );
+			// copy over the verts:
+			osg::Vec3Array* geomVerts = dynamic_cast<osg::Vec3Array*>( geom->getVertexArray() );
+			if ( geomVerts )
+			{
+				std::copy( geomVerts->begin(), geomVerts->end(), std::back_inserter(*newVerts) );
 
-                if ( newColors )
-                {
-                    osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>( geom->getColorArray() );
-                    if ( colors )
-                    {
-                        if ( newColorsBinding == osg::Geometry::BIND_PER_VERTEX )
-                        {
-                            std::copy( colors->begin(), colors->end(), std::back_inserter(*newColors) );
-                        }
-                        else if ( i == 0 ) // overall
-                        {
-                            newColors->push_back( (*colors)[0] );
-                        }
-                    }
-                }
+				if ( newColors )
+				{
+					osg::Vec4Array* colors = dynamic_cast<osg::Vec4Array*>( geom->getColorArray() );
+					if ( colors )
+					{
+						if ( newColorsBinding == osg::Geometry::BIND_PER_VERTEX )
+						{
+							std::copy( colors->begin(), colors->end(), std::back_inserter(*newColors) );
+						}
+						else if ( i == 0 ) // overall
+						{
+							newColors->push_back( (*colors)[0] );
+						}
+					}
+				}
 
-                if ( newNormals )
-                {
-                    osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>( geom->getNormalArray() );
-                    if ( normals )
-                    {
-                        if ( newNormalsBinding == osg::Geometry::BIND_PER_VERTEX )
-                        {
-                            std::copy( normals->begin(), normals->end(), std::back_inserter(*newNormals) );
-                        }
-                        else if ( i == 0 ) // overall
-                        {
-                            newNormals->push_back( (*normals)[0] );
-                        }
-                    }
-                }
+				if ( newNormals )
+				{
+					osg::Vec3Array* normals = dynamic_cast<osg::Vec3Array*>( geom->getNormalArray() );
+					if ( normals )
+					{
+						if ( newNormalsBinding == osg::Geometry::BIND_PER_VERTEX )
+						{
+							std::copy( normals->begin(), normals->end(), std::back_inserter(*newNormals) );
+						}
+						else if ( i == 0 ) // overall
+						{
+							newNormals->push_back( (*normals)[0] );
+						}
+					}
+				}
 
                 if ( newTexCoordsArrays.size() > 0 )
                 {
@@ -356,47 +365,56 @@ MeshConsolidator::run( osg::Geode& geode )
                     }
                 }
 
-                for( unsigned j=0; j < geom->getNumPrimitiveSets(); ++j )
-                {
-                    osg::PrimitiveSet* pset = geom->getPrimitiveSet(j);
-                    osg::PrimitiveSet* newpset = 0L;
-                    
-                    if ( dynamic_cast<osg::DrawElementsUByte*>(pset) )
-                        newpset = remake( static_cast<osg::DrawElementsUByte*>(pset), numVerts, offset );
-                    else if ( dynamic_cast<osg::DrawElementsUShort*>(pset) )
-                        newpset = remake( static_cast<osg::DrawElementsUShort*>(pset), numVerts, offset );
-                    else if ( dynamic_cast<osg::DrawElementsUInt*>(pset) )
-                        newpset = remake( static_cast<osg::DrawElementsUInt*>(pset), numVerts, offset );
-                    else if ( dynamic_cast<osg::DrawArrays*>(pset) )
-                        newpset = convertDAtoDE( static_cast<osg::DrawArrays*>(pset), numVerts, offset );
+                osg::ref_ptr<osg::Referenced> sharedUserData;
 
-                    if ( newpset )
-                    {
-                        newPrimSets.push_back( newpset );
-                    }
-                }
+				for( unsigned j=0; j < geom->getNumPrimitiveSets(); ++j )
+				{
+					osg::PrimitiveSet* pset = geom->getPrimitiveSet(j);
+					osg::PrimitiveSet* newpset = 0L;
 
-                offset += geomVerts->size();
-            }
-        }
-    }
+                    // all primsets have the same user data (or else we would not have made it this far
+                    // since canOptimize would be false)
+                    if ( !sharedUserData.valid() )
+                        sharedUserData = pset->getUserData();
 
-    // assemble the new geometry.
-    osg::Geometry* newGeom = new osg::Geometry();
+					if ( dynamic_cast<osg::DrawElementsUByte*>(pset) )
+						newpset = remake( static_cast<osg::DrawElementsUByte*>(pset), numVerts, offset );
+					else if ( dynamic_cast<osg::DrawElementsUShort*>(pset) )
+						newpset = remake( static_cast<osg::DrawElementsUShort*>(pset), numVerts, offset );
+					else if ( dynamic_cast<osg::DrawElementsUInt*>(pset) )
+						newpset = remake( static_cast<osg::DrawElementsUInt*>(pset), numVerts, offset );
+					else if ( dynamic_cast<osg::DrawArrays*>(pset) )
+						newpset = new osg::DrawArrays( pset->getMode(), offset, geomVerts->size() );
 
-    newGeom->setVertexArray( newVerts );
-    
-    if ( newColors )
-    {
-        newGeom->setColorArray( newColors );
-        newGeom->setColorBinding( newColorsBinding );
-    }
+					if ( newpset )
+					{
+                        newpset->setUserData( sharedUserData.get() );
 
-    if ( newNormals )
-    {
-        newGeom->setNormalArray( newNormals );
-        newGeom->setNormalBinding( newNormalsBinding );
-    }
+						newPrimSets.push_back( newpset );
+					}
+				}
+
+				offset += geomVerts->size();
+			}
+		}
+	}
+
+	// assemble the new geometry.
+	osg::Geometry* newGeom = new osg::Geometry();
+
+	newGeom->setVertexArray( newVerts );
+
+	if ( newColors )
+	{
+		newGeom->setColorArray( newColors );
+		newGeom->setColorBinding( newColorsBinding );
+	}
+
+	if ( newNormals )
+	{
+		newGeom->setNormalArray( newNormals );
+		newGeom->setNormalBinding( newNormalsBinding );
+	}
 
     if ( newTexCoordsArrays.size() > 0 )
     {
@@ -407,12 +425,12 @@ MeshConsolidator::run( osg::Geode& geode )
         }
     }
 
-    newGeom->setPrimitiveSetList( newPrimSets );
+	newGeom->setPrimitiveSetList( newPrimSets );
     newGeom->setStateSet( unifiedStateSet );
 
-    // replace the geode's drawables
-    geode.removeDrawables( 0, geode.getNumDrawables() );
-    geode.addDrawable( newGeom );
+	// replace the geode's drawables
+	geode.removeDrawables( 0, geode.getNumDrawables() );
+	geode.addDrawable( newGeom );
     for( std::vector<osg::ref_ptr<osg::Geometry> >::iterator i = nonOptimizedGeoms.begin(); i != nonOptimizedGeoms.end(); ++i )
         geode.addDrawable( i->get() );
 }

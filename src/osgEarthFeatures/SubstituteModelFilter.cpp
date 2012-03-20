@@ -17,9 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
-//#include <osgEarthFeatures/FeatureSourceNode>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/FeatureSourceMeshConsolidator>
+#include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ECEF>
 #include <osg/AutoTransform>
@@ -314,9 +313,6 @@ struct ClusterVisitor : public osg::NodeVisitor
 
                             if ( _index )
                                 _index->tagPrimitiveSets( newDrawable.get(), feature->getFID() );
-#if 0
-                            _featureNode->addDrawable(newDrawable.get(), feature->getFID());
-#endif
                         }
                     }
 
@@ -326,7 +322,7 @@ struct ClusterVisitor : public osg::NodeVisitor
 
         geode.dirtyBound();
 
-        FeatureSourceMeshConsolidator::run( geode, _index );
+        MeshConsolidator::run( geode );
 
 #if 0
         // merge the geometry. Not sure this is necessary or wise

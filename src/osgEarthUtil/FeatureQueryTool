@@ -26,7 +26,6 @@
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
 #include <osgEarthFeatures/FeatureSourceIndexNode>
-#include <osgEarthFeatures/FeatureSourceNode>
 #include <osgEarthUtil/Controls>
 #include <osgGA/GUIEventHandler>
 #include <osg/View>

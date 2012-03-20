@@ -32,8 +32,6 @@ SET(LIB_PUBLIC_HEADERS
     FeatureModelSource
     FeatureSource
     FeatureSourceIndexNode
-	FeatureSourceNode
-	FeatureSourceMeshConsolidator
     FeatureTileSource
     Filter
     FilterContext
@@ -77,8 +75,6 @@ ADD_LIBRARY(${LIB_NAME} SHARED
     FeatureModelSource.cpp
     FeatureSource.cpp
     FeatureSourceIndexNode.cpp
-	FeatureSourceNode.cpp
-	FeatureSourceMeshConsolidator.cpp
     FeatureTileSource.cpp
     Filter.cpp
     FilterContext.cpp

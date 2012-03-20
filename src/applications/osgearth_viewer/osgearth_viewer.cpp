@@ -392,7 +392,7 @@ main(int argc, char** argv)
 
             if ( useSky || useOcean || !dontUseAutoClip )
             {
-                viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+                viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
                 OE_INFO << LC << "Activated auto-clip callback" << std::endl;
             }
         }

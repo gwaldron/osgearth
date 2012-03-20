@@ -165,7 +165,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     if ( !useStencil )
-        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(map) );
+        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(mapNode) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

@@ -374,7 +374,7 @@ main(int argc, char** argv)
     hud->addChild( profileNode );
 
 
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
     viewer.addEventHandler( new DrawProfileEventHandler( mapNode, root, calculator ) );
 

@@ -18,6 +18,7 @@
  */
 #include <osgEarthFeatures/SubstituteModelFilter>
 #include <osgEarthFeatures/FeatureSourceNode>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FeatureSourceMeshConsolidator>
 #include <osgEarth/HTTPClient>
 #include <osgEarth/ECEF>
@@ -192,7 +193,7 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 struct ClusterVisitor : public osg::NodeVisitor
 {
-        ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FeatureSourceMultiNode * featureNode, FilterContext& cx )
+        ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FeatureSourceIndexNode * featureNode, FilterContext& cx )
             : _features   ( features ),
               _symbol     ( symbol ),
               //_modelMatrix( modelMatrix ),
@@ -320,7 +321,7 @@ struct ClusterVisitor : public osg::NodeVisitor
         const MarkerSymbol*   _symbol;
         //osg::Matrixd          _modelMatrix;
         FeaturesToNodeFilter* _f2n;
-        FeatureSourceMultiNode * _featureNode;
+        FeatureSourceIndexNode * _featureNode;
     };
 
 
@@ -389,14 +390,15 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         {
             osg::Node* clone = osg::clone( prototype, osg::CopyOp::DEEP_COPY_ALL );
 
-            FeatureSourceMultiNode * featureNode = new FeatureSourceMultiNode(source);
+            //TODO: evaluate
+            FeatureSourceIndexNode* indexNode = new FeatureSourceIndexNode(source);
 
             // ..and apply the clustering to the copy.
-            ClusterVisitor cv( i->second, symbol, this, featureNode, context );
+            ClusterVisitor cv( i->second, symbol, this, indexNode, context );
             clone->accept( cv );
 
-            featureNode->addChild(clone);
-            attachPoint->addChild( featureNode );
+            indexNode->addChild(clone);
+            attachPoint->addChild(indexNode);
         }
     }
 

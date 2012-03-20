@@ -29,9 +29,10 @@
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Util;
+using namespace osgEarth::Util::Controls;
 
-#undef OE_DEBUG
-#define OE_DEBUG OE_INFO
+//#undef OE_DEBUG
+//#define OE_DEBUG OE_INFO
 
 //-----------------------------------------------------------------------
 
@@ -39,8 +40,6 @@ FeatureQueryTool::FeatureQueryTool(MapNode*                    mapNode,
                                    FeatureQueryTool::Callback* callback) :
 _mapNode( mapNode )
 {
-    _mapNodePath.push_back( mapNode->getTerrainEngine() );
-
     if ( callback )
         addCallback( callback );
 }
@@ -56,71 +55,94 @@ bool
 FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdapter& aa )
 {
     bool handled = false;
+    bool attempt;
 
-    // on a mouse click. Perhaps later we can parameterize this.
-    if ( ea.getEventType() == osgGA::GUIEventAdapter::PUSH )
+    if ( _inputPredicate.valid() )
+    {
+        attempt = _inputPredicate->test(ea);
+    }
+    else
+    {
+        attempt =
+            ea.getEventType() == osgGA::GUIEventAdapter::RELEASE &&
+            _mouseDown && 
+            fabs(ea.getX()-_mouseDownX) <= 3.0 && 
+            fabs(ea.getY()-_mouseDownY) <= 3.0;
+    }
+
+    if ( attempt )
+    {
+        osg::View* view = aa.asView();
+
+        Picker picker(
+            dynamic_cast<osgViewer::View*>(view),
+            _mapNode->getModelLayerGroup(),
+            5.0f,
+            Picker::NO_LIMIT);
+
+        Picker::Hits hits;
+
+        if ( picker.pick( ea.getX(), ea.getY(), hits ) )
+        {
+            // find the closest indexed feature to the camera. It must be a feature
+            // that is not only closest, but exists in the index as well.
+
+            FeatureSourceIndexNode* closestIndex    = 0L;
+            FeatureID               closestFID;
+            double                  closestDistance = DBL_MAX;
+
+            for(Picker::Hits::iterator hit = hits.begin(); hit != hits.end(); ++hit )
+            {
+                FeatureSourceIndexNode* index = picker.getNode<FeatureSourceIndexNode>( *hit );
+                if ( index && (hit->distance < closestDistance) )
+                {
+                    FeatureID fid;
+                    if ( index->getFID( hit->drawable, hit->primitiveIndex, fid ) )
+                    {
+                        closestIndex    = index;
+                        closestFID      = fid;
+                        closestDistance = hit->distance;
+                    }
+                }
+            }
+
+            if ( closestIndex )
+            {
+                OE_DEBUG << LC << "HIT: feature ID = " << (unsigned)closestFID << std::endl;
+
+                Callback::EventArgs args;
+                args._ea = &ea;
+                args._aa = &aa;
+
+                for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
+                    i->get()->onHit( closestIndex, closestFID, args );
+
+                handled = true;
+            }
+        }
+
+        if ( !handled )
+        {
+            Callback::EventArgs args;
+            args._ea = &ea;
+            args._aa = &aa;
+
+            for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
+                i->get()->onMiss( args );
+        }
+
+        _mouseDown = false;
+    }
+
+    // unmodified left mouse click
+    else if (
+        ea.getEventType()  == osgGA::GUIEventAdapter::PUSH &&
+        ea.getModKeyMask() == 0 &&
+        ea.getButtonMask() == osgGA::GUIEventAdapter::LEFT_MOUSE_BUTTON)
     {
         _mouseDown = true;
         _mouseDownX = ea.getX();
         _mouseDownY = ea.getY();
-    }
-
-    else if ( ea.getEventType() == osgGA::GUIEventAdapter::RELEASE )
-    {
-        if ( _mouseDown && ( fabs(ea.getX()-_mouseDownX) <= 3.0 && fabs(ea.getY()-_mouseDownY) <= 3.0) )
-        {
-            osg::View* view = aa.asView();
-
-            //TODO: optimize so we don't bother searching the terrain
-            Picker picker(
-                dynamic_cast<osgViewer::View*>(view),
-                _mapNode->getModelLayerGroup(),
-                5.0f,
-                Picker::NO_LIMIT);
-
-            Picker::Hits hits;
-            if ( picker.pick( ea.getX(), ea.getY(), hits ) )
-            {
-                // find the closest indexed feature to the camera. It must be a feature
-                // that is not only closest, but exists in the index as well.
-
-                FeatureSourceMultiNode* closestIndex    = 0L;
-                FeatureID               closestFID;
-                double                  closestDistance = DBL_MAX;
-
-                for(Picker::Hits::iterator hit = hits.begin(); hit != hits.end(); ++hit )
-                {
-                    FeatureSourceMultiNode* index = picker.getNode<FeatureSourceMultiNode>( *hit );
-                    if ( index && (hit->distance < closestDistance) )
-                    {
-                        FeatureID fid;
-                        if ( index->getFID( hit->drawable, hit->primitiveIndex, fid ) )
-                        {
-                            closestIndex    = index;
-                            closestFID      = fid;
-                            closestDistance = hit->distance;
-                        }
-                    }
-                }
-
-                if ( closestIndex )
-                {
-                    OE_DEBUG << LC << "HIT: feature ID = " << (unsigned)closestFID << std::endl;
-
-                    for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-                        i->get()->onHit( view, closestIndex, closestFID );
-
-                    handled = true;
-                }
-            }
-
-            if ( !handled )
-            {
-                for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-                    i->get()->onMiss( view );
-            }
-        }
-        _mouseDown = false;
     }
 
     return handled;
@@ -128,20 +150,19 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
 
 //-----------------------------------------------------------------------
 
-
 void
-FeatureHighlightCallback::onHit( osg::View* view, FeatureSourceMultiNode* index, FeatureID fid )
+FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
 {
     clear();
 
-    FeatureSourceMultiNode::FeatureDrawSet& drawSet = index->getDrawSet(fid);
+    FeatureSourceIndexNode::FeatureDrawSet& drawSet = index->getDrawSet(fid);
     if ( !drawSet.empty() )
     {
         osg::Geode* geode = new osg::Geode();
 
         osg::Group* container = 0L;
 
-        for( FeatureSourceMultiNode::FeatureDrawSet::iterator d = drawSet.begin(); d != drawSet.end(); ++d )
+        for( FeatureSourceIndexNode::FeatureDrawSet::iterator d = drawSet.begin(); d != drawSet.end(); ++d )
         {
             osg::Geometry* featureGeom = d->first->asGeometry();
             osg::Geometry* highlightGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
@@ -193,7 +214,7 @@ FeatureHighlightCallback::onHit( osg::View* view, FeatureSourceMultiNode* index,
 }
 
 void
-FeatureHighlightCallback::onMiss( osg::View* view )
+FeatureHighlightCallback::onMiss( const EventArgs& args )
 {
     clear();
 }
@@ -207,4 +228,50 @@ FeatureHighlightCallback::clear()
         selection._geode->getParent(0)->removeChild( selection._geode );
     }
     _selections.clear();
+}
+
+
+//-----------------------------------------------------------------------
+
+FeatureReadoutCallback::FeatureReadoutCallback( Container* container )
+{
+    _grid = new Grid();
+    _grid->setBackColor( Color(Color::Black,0.7f) );
+    container->addControl( _grid );
+}
+
+void
+FeatureReadoutCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args )
+{
+    clear();
+    if ( index && index->getFeatureSource() )
+    {
+        Feature* f = index->getFeatureSource()->getFeature( fid );
+        if ( f )
+        {
+            unsigned r=0;
+            const AttributeTable& attrs = f->getAttrs();
+            for( AttributeTable::const_iterator i = attrs.begin(); i != attrs.end(); ++i, ++r )
+            {
+                _grid->setControl( 0, r, new LabelControl(i->first, 14.0f, Color::Yellow) );
+                _grid->setControl( 1, r, new LabelControl(i->second.getString(), 14.0f, Color::White) );
+            }
+            _grid->setVisible( true );
+        }
+    }
+    args._aa->requestRedraw();
+}
+
+void
+FeatureReadoutCallback::onMiss( const EventArgs& args )
+{
+    clear();
+    args._aa->requestRedraw();
+}
+
+void
+FeatureReadoutCallback::clear()
+{
+    _grid->clearControls();
+    _grid->setVisible( false );
 }

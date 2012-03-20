@@ -131,7 +131,7 @@ namespace
 //------------------------------------------------------------------------
 
 void
-FeatureSourceMeshConsolidator::run( osg::Geometry& geom, FeatureSourceMultiNode * featureNode )
+FeatureSourceMeshConsolidator::run( osg::Geometry& geom, FeatureSourceIndexNode * featureNode )
 {
     if ( !canOptimize(geom) )
         return;
@@ -201,7 +201,7 @@ FeatureSourceMeshConsolidator::run( osg::Geometry& geom, FeatureSourceMultiNode 
 }
 
 void
-FeatureSourceMeshConsolidator::run( osg::Geode& geode, FeatureSourceMultiNode * featureNode )
+FeatureSourceMeshConsolidator::run( osg::Geode& geode, FeatureSourceIndexNode * featureNode )
 {
 	unsigned numVerts = 0;
 	unsigned numColors = 0;

@@ -23,7 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
-#include <osgEarthFeatures/FeatureSourceNode>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/Style>
 #include <osgEarth/GeoMath>
 #include <osg/Geode>
@@ -83,7 +83,7 @@ namespace osgEarth { namespace Features
     protected:
         osg::ref_ptr<osg::Node> _result;
         osg::ref_ptr<osg::Geode> _geode;
-		osg::ref_ptr<FeatureSourceMultiNode> _featureNode;
+		osg::ref_ptr<FeatureSourceIndexNode> _indexNode;
         Style _style;
         optional<double> _maxAngle_deg;
         optional<GeoInterpolation> _geoInterp;

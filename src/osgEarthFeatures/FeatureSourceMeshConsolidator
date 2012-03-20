@@ -25,7 +25,7 @@
 
 namespace osgEarth { namespace Features {
 
-    class FeatureSourceMultiNode;
+    class FeatureSourceIndexNode;
     /**
      * Consolidates all the like-moded primitive sets in a geometry.
      *
@@ -44,9 +44,9 @@ namespace osgEarth { namespace Features {
     class OSGEARTHFEATURES_EXPORT FeatureSourceMeshConsolidator
     {
     public:
-        static void run( osg::Geometry& geom, FeatureSourceMultiNode * featureNode );
+        static void run( osg::Geometry& geom, FeatureSourceIndexNode * featureNode );
 
-        static void run( osg::Geode& geode, FeatureSourceMultiNode * featureNode );
+        static void run( osg::Geode& geode, FeatureSourceIndexNode * featureNode );
     };
 
 }}

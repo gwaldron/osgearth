@@ -477,7 +477,13 @@ main(int argc, char** argv)
     viewer.addEventHandler(new osgViewer::LODScaleHandler());
     viewer.addEventHandler(new osgGA::StateSetManipulator(viewer.getCamera()->getOrCreateStateSet()));
 
-    viewer.addEventHandler( new FeatureQueryTool(mapNode, new FeatureHighlightCallback) );
+    // Feature query tool setup:
+    VBox* featureQueryContainer = ControlCanvas::get(&viewer, false)->addControl( new VBox() );
+    featureQueryContainer->setHorizAlign( Control::ALIGN_RIGHT );
+    FeatureQueryTool* queryTool = new FeatureQueryTool(mapNode);
+    queryTool->addCallback( new FeatureHighlightCallback() );
+    queryTool->addCallback( new FeatureReadoutCallback(featureQueryContainer) );
+    viewer.addEventHandler( queryTool );
 
     return viewer.run();
 }

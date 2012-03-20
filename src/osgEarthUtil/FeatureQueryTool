@@ -25,7 +25,9 @@
 #include <osgEarth/GeoData>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/FeatureSource>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthFeatures/FeatureSourceNode>
+#include <osgEarthUtil/Controls>
 #include <osgGA/GUIEventHandler>
 #include <osg/View>
 
@@ -36,17 +38,37 @@ namespace osgEarth { namespace Util
 
     /**
      * Tool that let you query the map for Features generated from a FeatureSource.
+     *
+     * By default, an unmodified left-click will activate a query. You can replace
+     * this test by calling setInputPredicate().
      */
     class OSGEARTHUTIL_EXPORT FeatureQueryTool : public osgGA::GUIEventHandler
     {
     public:
+
         struct Callback : public osg::Referenced
         {
+            struct EventArgs 
+            {
+                const osgGA::GUIEventAdapter*  _ea;
+                osgGA::GUIActionAdapter*       _aa;
+            };
+
             // called when a valid feature is found under the mouse coords
-            virtual void onHit( osg::View* view, FeatureSourceMultiNode* index, FeatureID fid ) =0;
+            virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args ) =0;
 
             // called when no feature is found under the mouse coords
-            virtual void onMiss( osg::View* view ) =0;
+            virtual void onMiss( const EventArgs& args ) =0;
+        };
+
+        /**
+         * Interface for a custom input test.
+         */
+        class InputPredicate : public osg::Referenced
+        {
+        public:
+            // return true to active a query under the mouse cursor.
+            virtual bool test( const osgGA::GUIEventAdapter& ea ) =0;
         };
 
     public:
@@ -67,6 +89,11 @@ namespace osgEarth { namespace Util
          */
         void addCallback( Callback* callback );
 
+        /**
+         * Sets a custom input test. By default, the action is a left-click.
+         */
+        void setInputPredicate( InputPredicate* predicate );
+
 
     public: // GUIEventHandler
 
@@ -75,28 +102,32 @@ namespace osgEarth { namespace Util
 
     protected:
         MapNode*      _mapNode;
-        osg::NodePath _mapNodePath;
+        bool          _mouseDown;
+        float         _mouseDownX, _mouseDownY;
+
+        osg::ref_ptr<InputPredicate> _inputPredicate;
+
         typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
         Callbacks _callbacks;
-        bool _mouseDown;
-        float _mouseDownX, _mouseDownY;
     };
-
 
     //--------------------------------------------------------------------
 
+    /**
+     * Sample callback that will highlight a feature upon a query hit.
+     */
     class OSGEARTHUTIL_EXPORT FeatureHighlightCallback : public FeatureQueryTool::Callback
     {
     public:
-        virtual void onHit( osg::View* view, FeatureSourceMultiNode* index, FeatureID fid );
+        virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
 
-        virtual void onMiss( osg::View* view );
+        virtual void onMiss( const EventArgs& args );
 
     protected:
         void clear();
 
         struct Selection {
-            FeatureSourceMultiNode* _index;
+            FeatureSourceIndexNode* _index;
             FeatureID               _fid;
             osg::Geode*             _geode;
             bool operator < ( const Selection& rhs ) const { return _fid < rhs._fid; }
@@ -104,6 +135,28 @@ namespace osgEarth { namespace Util
         typedef std::set<Selection> SelectionSet;
         SelectionSet _selections;
     };
+
+
+    //--------------------------------------------------------------------
+
+    /**
+     * Sample callback that will display feature attributes upon a query hit.
+     */
+    class OSGEARTHUTIL_EXPORT FeatureReadoutCallback : public FeatureQueryTool::Callback
+    {
+    public:
+        FeatureReadoutCallback( Controls::Container* container );
+
+    public:
+        virtual void onHit( FeatureSourceIndexNode* index, FeatureID fid, const EventArgs& args );
+
+        virtual void onMiss( const EventArgs& args );
+
+    protected:
+        void clear();
+        Controls::Grid* _grid;
+    };
+
 
 } } // namespace osgEarthUtil
 

@@ -81,8 +81,8 @@ void
 BuildGeometryFilter::reset()
 {
     _result = 0L;
+    _indexNode = 0L;
     _geode = new osg::Geode();
-    _featureNode = new FeatureSourceMultiNode;
     _hasLines = false;
     _hasPoints = false;
     _hasPolygons = false;
@@ -263,7 +263,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             _geode->addDrawable( osgGeom );
 
             // record the geometry's primitive set(s) in the index:
-            _featureNode->tagPrimitiveSets( osgGeom, input->getFID() );
+            _indexNode->tagPrimitiveSets( osgGeom, input->getFID() );
             //_featureNode->addDrawable( osgGeom, input->getFID() );
 
             // build secondary geometry, if necessary (polygon outlines)
@@ -304,7 +304,7 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 //_featureNode->addDrawable( outline, input->getFID() );
 
                 // Mark each primitive set with its feature ID.
-                _featureNode->tagPrimitiveSets( outline, input->getFID() );
+                _indexNode->tagPrimitiveSets( outline, input->getFID() );
             }
 
         }
@@ -369,12 +369,15 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     computeLocalizers( context );
 
+    FeatureSource* fs = context.getSession() ? context.getSession()->getFeatureSource() : 0L;
+    _indexNode = new FeatureSourceIndexNode( fs );
+
     bool ok = process( input, context );
 
     // convert all geom to triangles and consolidate into minimal set of Geometries
     if ( !_featureNameExpr.isSet() )
     {
-        FeatureSourceMeshConsolidator::run( *_geode.get(), _featureNode );
+        FeatureSourceMeshConsolidator::run( *_geode.get(), _indexNode.get() );
     }
 
     osg::Node* result = 0L;
@@ -398,12 +401,12 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
 
+        _indexNode->addChild(_geode.release());
+
         // build the feature index.
-        _featureNode->reindex( _geode.get() );
+        _indexNode->reindex();
 
-        _featureNode->addChild(_geode.release());
-
-        result = delocalize( _featureNode.release() );
+        result = delocalize( _indexNode.release() );
     }
     else
     {

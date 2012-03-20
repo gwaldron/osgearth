@@ -17,6 +17,7 @@ SET(LIB_PUBLIC_HEADERS
     EarthManipulator
     ElevationManager
     Export
+    FeatureQueryTool
     Formatter
     GeodeticGraticule
     LatLongFormatter
@@ -47,6 +48,7 @@ SET(LIB_COMMON_FILES
     Controls.cpp
     EarthManipulator.cpp	
     ElevationManager.cpp
+    FeatureQueryTool.cpp
     GeodeticGraticule.cpp
     LatLongFormatter.cpp
     LineOfSight.cpp

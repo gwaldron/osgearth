@@ -100,7 +100,7 @@ Picker::pick( float x, float y, Hits& results ) const
         picker = new osgUtil::PolytopeIntersector(cf, winPT);
     }
 
-    picker->setIntersectionLimit( (osgUtil::Intersector::IntersectionLimit)_limit );
+    //picker->setIntersectionLimit( (osgUtil::Intersector::IntersectionLimit)_limit );
     osgUtil::IntersectionVisitor iv(picker.get());
 
     // in MODEL mode, we need to window and proj matrixes in order to support some of the 

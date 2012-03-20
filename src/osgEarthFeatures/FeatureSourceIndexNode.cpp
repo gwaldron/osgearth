@@ -39,28 +39,50 @@ _psets          ( 0 )
 }
 
 void
+FeatureSourceIndexNode::Collect::apply( osg::Node& node )
+{
+    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( node.getUserData() );
+    if ( fid )
+    {
+        FeatureDrawSet& drawSet = _index[*fid];
+        drawSet.nodes.push_back( &node );
+    }
+    traverse(node);
+}
+
+void
 FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
 {
-    for( unsigned i = 0; i < geode.getNumDrawables(); ++i )
+    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( geode.getUserData() );
+    if ( fid )
     {
-        osg::Geometry* geom = dynamic_cast<osg::Geometry*>( geode.getDrawable(i) );
-        if ( geom )
+        FeatureDrawSet& drawSet = _index[*fid];
+        drawSet.nodes.push_back( &geode );
+    }
+    else
+    {
+        for( unsigned i = 0; i < geode.getNumDrawables(); ++i )
         {
-            osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
-            for( unsigned p = 0; p < psets.size(); ++p )
+            osg::Geometry* geom = dynamic_cast<osg::Geometry*>( geode.getDrawable(i) );
+            if ( geom )
             {
-                osg::PrimitiveSet* pset = psets[p];
-                RefFeatureID* fid = dynamic_cast<RefFeatureID*>( pset->getUserData() );
-                if ( fid )
+                osg::Geometry::PrimitiveSetList& psets = geom->getPrimitiveSetList();
+                for( unsigned p = 0; p < psets.size(); ++p )
                 {
-                    FeatureDrawSet& drawSet = _index[*fid];
-                    drawSet[geom].push_back( pset );
-                    _psets++;
+                    osg::PrimitiveSet* pset = psets[p];
+                    RefFeatureID* fid = dynamic_cast<RefFeatureID*>( pset->getUserData() );
+                    if ( fid )
+                    {
+                        FeatureDrawSet& drawSet = _index[*fid];
+                        drawSet.primSetGroups[geom].push_back( pset );
+                        _psets++;
+                    }
                 }
             }
         }
     }
-    traverse( geode );
+
+    // NO traverse.
 }
 
 //-----------------------------------------------------------------------------
@@ -82,14 +104,13 @@ FeatureSourceIndexNode::reindex()
     this->accept( c );
 
     OE_DEBUG << LC 
-        << "Reindexed, drawables = " << _drawSets.size()
-        << ", total prim sets = " << c._psets << std::endl;
+        << "Reindexed; draw sets = " << _drawSets.size() << std::endl;
 }
 
 
 // Tags all the primitive sets in a Drawable with the specified FeatureID
 void
-FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, FeatureID fid)
+FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, FeatureID fid) const
 {
     if ( drawable == 0L )
         return;
@@ -111,6 +132,13 @@ FeatureSourceIndexNode::tagPrimitiveSets(osg::Drawable* drawable, FeatureID fid)
 }
 
 
+void
+FeatureSourceIndexNode::tagNode( osg::Node* node, FeatureID fid ) const
+{
+    node->setUserData( new RefFeatureID(fid) );
+}
+
+
 bool
 FeatureSourceIndexNode::getFID(osg::PrimitiveSet* primSet, FeatureID& output) const
 {
@@ -129,14 +157,14 @@ FeatureSourceIndexNode::getFID(osg::PrimitiveSet* primSet, FeatureID& output) co
 bool
 FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID& output) const
 {
-    if ( primIndex < 0 )
+    if ( drawable == 0L || primIndex < 0 )
         return false;
 
     for( FeatureIDDrawSetMap::const_iterator i = _drawSets.begin(); i != _drawSets.end(); ++i )
     {
         const FeatureDrawSet& drawSet = i->second;
-        FeatureDrawSet::const_iterator d = drawSet.find(drawable);
-        if ( d != drawSet.end() )
+        PrimitiveSetGroups::const_iterator d = drawSet.primSetGroups.find(drawable);
+        if ( d != drawSet.primSetGroups.end() )
         {
             const osg::Geometry* geom = drawable->asGeometry();
             if ( geom )
@@ -166,6 +194,17 @@ FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID
                     }
                 }
             }
+        }
+    }
+
+    // see if we have a node in the path
+    for( osg::Node* node = drawable->getParent(0); node != 0L; node = (node->getNumParents()>0?node->getParent(0):0L) )
+    {
+        RefFeatureID* fid = dynamic_cast<RefFeatureID*>( node->getUserData() );
+        if ( fid )
+        {
+            output = *fid;
+            return true;
         }
     }
 

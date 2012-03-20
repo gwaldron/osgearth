@@ -22,7 +22,7 @@
 
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/FeatureSource>
-#include <osg/MatrixTransform>
+#include <osg/Group>
 #include <osg/Drawable>
 
 namespace osgEarth { namespace Features
@@ -31,13 +31,32 @@ namespace osgEarth { namespace Features
      * Maintains an index that maps FeatureID's from a FeatureSource to
      * PrimitiveSets within the subgraph's geometry.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::MatrixTransform
+    class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::Group
 	{
 	public:
         /**
          * Constructs a new index node.
          */
 		FeatureSourceIndexNode(FeatureSource* featureSource);
+
+
+    public:       
+        typedef osg::Geometry::PrimitiveSetList            PrimitiveSetList;
+        typedef std::map<osg::Drawable*, PrimitiveSetList> PrimitiveSetGroups;
+        typedef std::vector<osg::Node*>                    NodeVector;
+
+        /**
+         * Contains a catalog of nodes and/or primitive set groups that comprise
+         * a single Feature in the scene.
+         */
+        struct FeatureDrawSet
+        {
+            NodeVector         nodes;
+            PrimitiveSetGroups primSetGroups;
+
+            bool empty() const { return nodes.empty() && primSetGroups.empty(); }
+        };
+
 
 	public:
         /**
@@ -48,7 +67,12 @@ namespace osgEarth { namespace Features
         /**
          * Tags all the primitive sets in a Drawable with the specified FeatureID.
          */
-        void tagPrimitiveSets( osg::Drawable* drawable, FeatureID fid );
+        void tagPrimitiveSets( osg::Drawable* drawable, FeatureID fid ) const;
+
+        /**
+         * Tags a node with the specified FeatureID.
+         */
+        void tagNode( osg::Node* node, FeatureID fid ) const;
 
         /**
          * Traverses this node's subgraph and rebuilds the feature index based on
@@ -76,10 +100,6 @@ namespace osgEarth { namespace Features
          */
 		bool getFID(osg::Drawable* drawable, int primitiveIndex, FeatureID& output) const;
 
-
-        typedef osg::Geometry::PrimitiveSetList PrimitiveSetList;
-        typedef std::map<osg::Drawable*, PrimitiveSetList> FeatureDrawSet;
-
         /**
          * Given a FeatureID, returns the collection of drawable/primitiveset combinations
          * corresponding to that feature.
@@ -97,6 +117,7 @@ namespace osgEarth { namespace Features
 
         struct Collect : public osg::NodeVisitor {
             Collect(FeatureIDDrawSetMap&);
+            void apply(osg::Node&);
             void apply(osg::Geode&);
             FeatureIDDrawSetMap& _index;
             unsigned _psets;

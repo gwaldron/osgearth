@@ -428,7 +428,7 @@ MapNode::onModelLayerAdded( ModelLayer* layer, unsigned int index )
                 if ( layer->getOverlay() )
                 {
 #if 0
-                    _overlayModels->addChild( node ); // todo: index?
+                    _overlayModels->addChild( node );
                     updateOverlayGraph();
 #else
                     DrapeableNode* draper = new DrapeableNode( this );

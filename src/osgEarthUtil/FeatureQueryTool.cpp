@@ -31,8 +31,8 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
-//#undef OE_DEBUG
-//#define OE_DEBUG OE_INFO
+#undef OE_DEBUG
+#define OE_DEBUG OE_INFO
 
 //-----------------------------------------------------------------------
 
@@ -76,9 +76,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
 
         Picker picker(
             dynamic_cast<osgViewer::View*>(view),
-            _mapNode->getModelLayerGroup(),
-            5.0f,
-            Picker::NO_LIMIT);
+            _mapNode->getModelLayerGroup() );
 
         Picker::Hits hits;
 
@@ -123,6 +121,8 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
 
         if ( !handled )
         {
+            OE_DEBUG << LC << "miss" << std::endl;
+
             Callback::EventArgs args;
             args._ea = &ea;
             args._aa = &aa;
@@ -158,11 +158,11 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
     FeatureSourceIndexNode::FeatureDrawSet& drawSet = index->getDrawSet(fid);
     if ( !drawSet.empty() )
     {
-        osg::Geode* geode = new osg::Geode();
-
         osg::Group* container = 0L;
+        osg::Group* group = new osg::Group();
+        osg::Geode* geode = 0L;
 
-        for( FeatureSourceIndexNode::FeatureDrawSet::iterator d = drawSet.begin(); d != drawSet.end(); ++d )
+        for( FeatureSourceIndexNode::PrimitiveSetGroups::iterator d = drawSet.primSetGroups.begin(); d != drawSet.primSetGroups.end(); ++d )
         {
             osg::Geometry* featureGeom = d->first->asGeometry();
             osg::Geometry* highlightGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
@@ -171,6 +171,13 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
             highlightGeom->setColorArray(highlightColor);
             highlightGeom->setColorBinding(osg::Geometry::BIND_OVERALL);
             highlightGeom->setPrimitiveSetList( d->second );
+
+            if ( !geode )
+            {
+                geode = new osg::Geode();
+                group->addChild( geode );
+            }
+
             geode->addDrawable(highlightGeom);
 
             if ( !container )
@@ -183,7 +190,14 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
             }
         }
 
-        osg::StateSet* sset = geode->getOrCreateStateSet();
+        for( FeatureSourceIndexNode::NodeVector::iterator n = drawSet.nodes.begin(); n != drawSet.nodes.end(); ++n )
+        {
+            group->addChild( *n );
+            if ( !container )
+                container = (*n)->getParent(0);
+        }
+
+        osg::StateSet* sset = group->getOrCreateStateSet();
 
         // set up to overwrite the real geometry:
         sset->setAttributeAndModes( new osg::Depth(osg::Depth::LEQUAL,0,1,false), osg::StateAttribute::ON|osg::StateAttribute::OVERRIDE );
@@ -198,16 +212,15 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
             //sset->setTextureMode( ii, GL_TEXTURE_CUBE_MAP, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
         }
 
-        sset->setMode( GL_BLEND,    1 );
-        sset->setMode( GL_LIGHTING, 0 );
+        sset->setMode( GL_BLEND,    osg::StateAttribute::ON  | osg::StateAttribute::OVERRIDE );
+        sset->setMode( GL_LIGHTING, osg::StateAttribute::OFF | osg::StateAttribute::OVERRIDE );
 
-        container->addChild( geode );
-
+        container->addChild( group );
 
         Selection selection;
         selection._index     = index;
         selection._fid       = fid;
-        selection._geode     = geode;
+        selection._group     = group;
 
         _selections.insert( selection );
     }
@@ -225,7 +238,7 @@ FeatureHighlightCallback::clear()
     for( SelectionSet::iterator i = _selections.begin(); i != _selections.end(); ++i )
     {
         Selection& selection = *i;
-        selection._geode->getParent(0)->removeChild( selection._geode );
+        selection._group->getParent(0)->removeChild( selection._group );
     }
     _selections.clear();
 }

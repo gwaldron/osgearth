@@ -129,7 +129,7 @@ namespace osgEarth { namespace Util
         struct Selection {
             FeatureSourceIndexNode* _index;
             FeatureID               _fid;
-            osg::Geode*             _geode;
+            osg::Group*             _group;
             bool operator < ( const Selection& rhs ) const { return _fid < rhs._fid; }
         };
         typedef std::set<Selection> SelectionSet;

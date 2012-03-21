@@ -217,10 +217,10 @@ public:
             {
                 if ( feat_handle )
                 {
-                    Feature* f = OgrUtils::createFeature( feat_handle, srs );
-                    if ( f ) 
+                    osg::ref_ptr<Feature> f = OgrUtils::createFeature( feat_handle, srs );
+                    if ( f.valid() && !isBlacklisted(f->getFID()) )
                     {
-                        features.push_back( f );
+                        features.push_back( f.release() );
                     }
                     OGR_F_Destroy( feat_handle );
                 }

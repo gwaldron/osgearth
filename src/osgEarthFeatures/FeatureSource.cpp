@@ -179,6 +179,34 @@ FeatureSource::getSchema() const
     return s_emptySchema;
 }
 
+void
+FeatureSource::addToBlacklist( FeatureID fid )
+{
+    Threading::ScopedWriteLock exclusive( _blacklistMutex );
+    _blacklist.insert( fid );
+}
+
+void
+FeatureSource::removeFromBlacklist( FeatureID fid )
+{
+    Threading::ScopedWriteLock exclusive( _blacklistMutex );
+    _blacklist.erase( fid );
+}
+
+void
+FeatureSource::clearBlacklist()
+{
+    Threading::ScopedWriteLock exclusive( _blacklistMutex );
+    _blacklist.clear();
+}
+
+bool
+FeatureSource::isBlacklisted( FeatureID fid ) const
+{
+    Threading::ScopedReadLock shared( const_cast<FeatureSource*>(this)->_blacklistMutex );
+    return _blacklist.find( fid ) != _blacklist.end();
+}
+
 //------------------------------------------------------------------------
 
 #undef  LC

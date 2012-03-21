@@ -178,7 +178,7 @@ FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID
                     unsigned numPrims = pset->getNumPrimitives();
                     encounteredPrims += numPrims;
 
-                    if ( encounteredPrims >= (unsigned)primIndex )
+                    if ( encounteredPrims > (unsigned)primIndex )
                     {
                         const RefFeatureID* fid = dynamic_cast<const RefFeatureID*>( pset->getUserData() );
                         if ( fid )

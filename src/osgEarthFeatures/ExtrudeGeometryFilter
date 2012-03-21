@@ -23,6 +23,7 @@
 #include <osgEarthFeatures/Common>
 #include <osgEarthFeatures/Feature>
 #include <osgEarthFeatures/Filter>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/Expression>
 #include <osgEarthSymbology/Style>
 #include <osg/Geode>
@@ -98,6 +99,8 @@ namespace osgEarth { namespace Features
         Style                          _style;
         bool                           _styleDirty;
 
+        osg::ref_ptr<FeatureSourceIndexNode> _index;
+
         osg::ref_ptr<const ExtrusionSymbol> _extrusionSymbol;
         osg::ref_ptr<const SkinSymbol>      _wallSkinSymbol;
         osg::ref_ptr<const PolygonSymbol>   _wallPolygonSymbol;
@@ -112,7 +115,8 @@ namespace osgEarth { namespace Features
         void addDrawable( 
             osg::Drawable*     drawable, 
             osg::StateSet*     stateSet, 
-            const std::string& name );
+            const std::string& name,
+            FeatureID          fid);
         
         bool process( 
             FeatureList&    input,

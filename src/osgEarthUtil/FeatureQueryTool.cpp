@@ -237,7 +237,13 @@ FeatureHighlightCallback::clear()
     for( SelectionSet::iterator i = _selections.begin(); i != _selections.end(); ++i )
     {
         Selection& selection = *i;
-        selection._group->getParent(0)->removeChild( selection._group );
+        osg::ref_ptr<osg::Group> safeGroup = selection._group.get();
+        if ( safeGroup.valid() && safeGroup->getNumParents() > 0 )
+        {
+            osg::Group* parent = safeGroup->getParent(0);
+            if ( parent ) 
+                parent->removeChild( safeGroup.get() );
+        }
     }
     _selections.clear();
 }

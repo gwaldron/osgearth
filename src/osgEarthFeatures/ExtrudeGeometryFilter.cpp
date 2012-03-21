@@ -34,6 +34,8 @@
 
 #define LC "[ExtrudeGeometryFilter] "
 
+#define USE_VBOS true
+
 using namespace osgEarth;
 using namespace osgEarth::Features;
 using namespace osgEarth::Symbology;
@@ -91,6 +93,12 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
 {
     _cosWallAngleThresh = cos( _wallAngleThresh_deg );
     _geodes.clear();
+    
+    _index = 0L;
+    if ( context.getSession() && context.getSession()->getFeatureSource() )
+    {
+        _index = new FeatureSourceIndexNode(context.getSession()->getFeatureSource());
+    }
 
     if ( _styleDirty )
     {
@@ -609,7 +617,10 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 }
 
 void
-ExtrudeGeometryFilter::addDrawable( osg::Drawable* drawable, osg::StateSet* stateSet, const std::string& name )
+ExtrudeGeometryFilter::addDrawable(osg::Drawable*     drawable,
+                                   osg::StateSet*     stateSet,
+                                   const std::string& name,
+                                   FeatureID          fid)
 {
     // find the geode for the active stateset, creating a new one if necessary. NULL is a 
     // valid key as well.
@@ -626,6 +637,11 @@ ExtrudeGeometryFilter::addDrawable( osg::Drawable* drawable, osg::StateSet* stat
     if ( !name.empty() )
     {
         drawable->setName( name );
+    }
+
+    if ( _index.valid() )
+    {
+        _index->tagPrimitiveSets( drawable, fid );
     }
 }
 
@@ -646,7 +662,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             Geometry* part = iter.next();
 
             osg::ref_ptr<osg::Geometry> walls = new osg::Geometry();
-            //walls->setUseVertexBufferObjects(true);
+            walls->setUseVertexBufferObjects(USE_VBOS);
             
             osg::ref_ptr<osg::Geometry> rooflines = 0L;
             osg::ref_ptr<osg::Geometry> baselines = 0L;
@@ -655,7 +671,7 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( part->getType() == Geometry::TYPE_POLYGON )
             {
                 rooflines = new osg::Geometry();
-                //rooflines->setUseVertexBufferObjects(true);
+                rooflines->setUseVertexBufferObjects(USE_VBOS);
 
                 // prep the shapes by making sure all polys are open:
                 static_cast<Polygon*>(part)->open();
@@ -665,12 +681,14 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
             if ( _outlineSymbol != 0L )
             {
                 outlines = new osg::Geometry();
+                outlines->setUseVertexBufferObjects(USE_VBOS);
             }
 
             // make a base cap if we're doing stencil volumes.
             if ( _makeStencilVolume )
             {
                 baselines = new osg::Geometry();
+                baselines->setUseVertexBufferObjects(USE_VBOS);
             }
 
             // calculate the extrusion height:
@@ -811,23 +829,21 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( !_featureNameExpr.empty() )
                     name = input->eval( _featureNameExpr, &context );
 
-                //MeshConsolidator::run( *walls.get() );
-                addDrawable( walls.get(), wallStateSet, name );
+                addDrawable( walls.get(), wallStateSet, name, input->getFID() );
 
                 if ( rooflines.valid() )
                 {
-                    //MeshConsolidator::run( *rooflines.get() );
-                    addDrawable( rooflines.get(), roofStateSet, name );
+                    addDrawable( rooflines.get(), roofStateSet, name, input->getFID() );
                 }
 
                 if ( baselines.valid() )
                 {
-                    addDrawable( baselines.get(), 0L, name );
+                    addDrawable( baselines.get(), 0L, name, input->getFID() );
                 }
 
                 if ( outlines.valid() )
                 {
-                    addDrawable( outlines.get(), 0L, name );
+                    addDrawable( outlines.get(), 0L, name, input->getFID() );
                 }
             }   
         }
@@ -914,13 +930,23 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     OE_DEBUG << LC << "Sorted geometry into " << group->getNumChildren() << " groups" << std::endl;
 
-    //TODO
-    // running this after the MC reduces the primitive set count by a huge amount, but I
-    // have not figured out why yet.
+#if 0
+    // running this after the MC reduces the primitive set count by a huge amount;
+    // but, it actually increases draw time and overall frame time. So, bad. Also it 
+    // messes up our nice feature source index primitive set tagging.
     if ( _mergeGeometry == true )
     {
         osgUtil::Optimizer o;
         o.optimize( group, osgUtil::Optimizer::MERGE_GEOMETRY );
+    }
+#endif
+
+    // build the feature index.
+    if ( _index.valid() )
+    {
+        _index->addChild( group );
+        _index->reindex();
+        group = _index.release();
     }
 
     return group;

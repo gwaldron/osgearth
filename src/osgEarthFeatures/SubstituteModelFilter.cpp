@@ -69,15 +69,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
     StringExpression  uriEx   = *symbol->url();
     NumericExpression scaleEx = *symbol->scale();
 
-    // set up a feature index.
-    FeatureSourceIndexNode* index = 0L;
-    if ( session && session->getFeatureSource() )
-    {
-        index = new FeatureSourceIndexNode( session->getFeatureSource() );
-        attachPoint->addChild( index );
-        attachPoint = index;
-    }
-
     for( FeatureList::const_iterator f = features.begin(); f != features.end(); ++f )
     {
         Feature* input = f->get();
@@ -180,10 +171,8 @@ SubstituteModelFilter::process(const FeatureList&           features,
                     xform->addChild( model.get() );
                     attachPoint->addChild( xform );
 
-                    if ( index )
-                    {
-                        index->tagNode( xform, input->getFID() );
-                    }
+                    if ( context.featureIndex() )
+                        context.featureIndex()->tagNode( xform, input->getFID() );
 
                     // name the feature if necessary
                     if ( !_featureNameExpr.empty() )
@@ -197,11 +186,6 @@ SubstituteModelFilter::process(const FeatureList&           features,
         }
     }
 
-    if ( index )
-    {
-        index->reindex();
-    }
-
     return true;
 }
 
@@ -210,12 +194,11 @@ SubstituteModelFilter::process(const FeatureList&           features,
 
 struct ClusterVisitor : public osg::NodeVisitor
 {
-    ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FeatureSourceIndexNode* index, FilterContext& cx )
+    ClusterVisitor( const FeatureList& features, const MarkerSymbol* symbol, FeaturesToNodeFilter* f2n, FilterContext& cx )
         : _features   ( features ),
           _symbol     ( symbol ),
           _f2n        ( f2n ),
           _cx         ( cx ),
-          _index      ( index ),
           osg::NodeVisitor( osg::NodeVisitor::TRAVERSE_ALL_CHILDREN )
     {
         //nop
@@ -311,8 +294,8 @@ struct ClusterVisitor : public osg::NodeVisitor
                             // add the new cloned, translated drawable back to the geode.
                             geode.addDrawable( newDrawable.get() );
 
-                            if ( _index )
-                                _index->tagPrimitiveSets( newDrawable.get(), feature->getFID() );
+                            if ( _cx.featureIndex() )
+                                _cx.featureIndex()->tagPrimitiveSets( newDrawable.get(), feature->getFID() );
                         }
                     }
 
@@ -324,22 +307,14 @@ struct ClusterVisitor : public osg::NodeVisitor
 
         MeshConsolidator::run( geode );
 
-#if 0
-        // merge the geometry. Not sure this is necessary or wise
-        osgUtil::Optimizer opt;
-        opt.optimize( &geode, osgUtil::Optimizer::MERGE_GEOMETRY | osgUtil::Optimizer::SHARE_DUPLICATE_STATE );
-#endif
-
         osg::NodeVisitor::apply( geode );
     }
 
 private:
     const FeatureList&      _features;
-    FilterContext           _cx;
+    FilterContext&          _cx;
     const MarkerSymbol*     _symbol;
-    //osg::Matrixd          _modelMatrix;
     FeaturesToNodeFilter*   _f2n;
-    FeatureSourceIndexNode* _index;
 };
 
 
@@ -396,14 +371,6 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
         }
     }
 
-    FeatureSourceIndexNode* index = 0L;
-    if ( session && session->getFeatureSource() )
-    {
-        index = new FeatureSourceIndexNode( session->getFeatureSource() );
-        attachPoint->addChild( index );
-        attachPoint = index;
-    }
-
     // For each model, cluster the features that use that marker
     for (MarkerToFeatures::iterator i = markerToFeatures.begin(); i != markerToFeatures.end(); ++i)
     {
@@ -415,16 +382,12 @@ SubstituteModelFilter::cluster(const FeatureList&           features,
             osg::Node* clone = osg::clone( prototype, osg::CopyOp::DEEP_COPY_ALL );
 
             // ..and apply the clustering to the copy.
-            ClusterVisitor cv( i->second, symbol, this, index, context );
+            ClusterVisitor cv( i->second, symbol, this, context );
             clone->accept( cv );
 
-//            indexNode->addChild(clone);
             attachPoint->addChild( clone );
         }
     }
-
-    if ( index )
-        index->reindex();
 
     return true;
 }

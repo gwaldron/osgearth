@@ -25,8 +25,8 @@ using namespace osgEarth::Features;
 #define LC "[FeatureSourceIndexNode] "
 
 // for testing:
-#undef  OE_DEBUG
-#define OE_DEBUG OE_INFO
+//#undef  OE_DEBUG
+//#define OE_DEBUG OE_INFO
 
 //-----------------------------------------------------------------------------
 
@@ -103,8 +103,7 @@ FeatureSourceIndexNode::reindex()
     Collect c(_drawSets);
     this->accept( c );
 
-    OE_DEBUG << LC 
-        << "Reindexed; draw sets = " << _drawSets.size() << std::endl;
+    OE_DEBUG << LC << "Reindexed; draw sets = " << _drawSets.size() << std::endl;
 }
 
 
@@ -188,7 +187,7 @@ FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID
                         }
                         else
                         {
-                            OE_WARN << LC << "INTERNAL ERROR: found primset, but it's not tagged with a FID" << std::endl;
+                            OE_DEBUG << LC << "INTERNAL: found primset, but it's not tagged with a FID" << std::endl;
                             return false;
                         }
                     }

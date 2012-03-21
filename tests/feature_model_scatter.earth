@@ -29,15 +29,16 @@ is randomized, but it is randomized exactly the same way each time.
              
         <clustering>true</clustering>
         
+        <!-- Disables feature indexing, since the trees are not mapped 1-to-1 to
+             real features anyway. -->
+        <feature_indexing>false</feature_indexing>
+        
         <!-- The stylesheet will describe how to render the feature data. In this case
              we indicate model substitution with density-based scattering. The "density"
              units are instances-per-sqkm. -->
              
         <layout>
             <crop_features>true</crop_features>
-            <level max_range="100000" min_range="0">
-                <selector class="parks-outline"/>
-            </level>
             <level max_range="10000">
                 <selector class="parks-1"/>
             </level>            
@@ -75,13 +76,29 @@ is randomized, but it is randomized exactly the same way each time.
                    marker-random-seed:  2;
                 }           
                 parks-outline {
-                   stroke:              #00ff00ff;
+                   fill:                #00ff007f;
                    altitude-offset:     25;
                    altitide-clamping:   terrain;
                 }
                 
             </style>
         </styles>        
+    </model>
+    
+    
+    <model name="parks" driver="feature_geom" overlay="true">
+        <features name="parks" driver="ogr">
+            <url>../data/parks.shp</url>
+            <build_spatial_index>false</build_spatial_index>
+        </features>
+        <styles>
+            <style type="text/css">      
+                default {
+                   fill:                #00ff007f;
+                   altitide-clamping:   terrain;
+                }                
+            </style>
+        </styles>
     </model>
     
     

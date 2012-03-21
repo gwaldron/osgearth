@@ -30,8 +30,8 @@ using namespace osgEarth::Features;
 using namespace osgEarth::Util;
 using namespace osgEarth::Util::Controls;
 
-#undef OE_DEBUG
-#define OE_DEBUG OE_INFO
+//#undef OE_DEBUG
+//#define OE_DEBUG OE_INFO
 
 //-----------------------------------------------------------------------
 

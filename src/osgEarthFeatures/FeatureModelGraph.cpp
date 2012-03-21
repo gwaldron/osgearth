@@ -19,6 +19,7 @@
 
 #include <osgEarthFeatures/FeatureModelGraph>
 #include <osgEarthFeatures/CropFilter>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarth/ThreadingUtils>
 #include <osgEarth/NodeUtils>
 #include <osgEarth/ElevationQuery>
@@ -502,7 +503,18 @@ FeatureModelGraph::buildSubTilePagedLODs(unsigned        parentLOD,
 osg::Group*
 FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key )
 {
-    osg::ref_ptr<osg::Group> group = new osg::Group();
+    // set up for feature indexing if appropriate:
+    osg::ref_ptr<osg::Group> group;
+    FeatureSourceIndexNode* index = 0L;
+    if ( _source.valid() && (_options.featureIndexing() == true) )
+    {
+        index = new FeatureSourceIndexNode( _source.get() );
+        group = index;
+    }
+    else
+    {
+        group = new osg::Group();
+    }
 
     // form the baseline query, which does a spatial query based on the working extent.
     Query query;
@@ -522,7 +534,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
         // attempt to glean the style from the feature source name:
         const Style style = *_session->styles()->getStyle( *_source->getFeatureSourceOptions().name() );
 
-        osg::Node* node = build( style, query, extent );
+        osg::Node* node = build( style, query, extent, index );
         if ( node )
             group->addChild( node );
     }
@@ -540,7 +552,7 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
             Query selectorQuery = 
                 selector.query().isSet() ? query.combineWith( *selector.query() ) : query;
 
-            osg::Node* node = build( *selectorStyle, selectorQuery, extent );
+            osg::Node* node = build( *selectorStyle, selectorQuery, extent, index );
             if ( node )
                 group->addChild( node );
         }
@@ -580,6 +592,10 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
             }
         }
 
+        // if indexing is enabled, build the index now.
+        if ( index )
+            index->reindex();
+
         return group.release();
     }
 
@@ -590,7 +606,10 @@ FeatureModelGraph::build( const FeatureLevel& level, const GeoExtent& extent, co
 }
 
 osg::Group*
-FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& workingExtent )
+FeatureModelGraph::build(const Style&        baseStyle, 
+                         const Query&        baseQuery, 
+                         const GeoExtent&    workingExtent,
+                         FeatureSourceIndex* index)
 {
     osg::ref_ptr<osg::Group> group = new osg::Group();
 
@@ -609,7 +628,7 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
                 list.push_back( feature );
                 osg::ref_ptr<FeatureCursor> cursor = new FeatureListCursor(list);
 
-                FilterContext context( _session.get(), _source->getFeatureProfile(), workingExtent );
+                FilterContext context( _session.get(), _source->getFeatureProfile(), workingExtent, index );                
 
                 // note: gridding is not supported for embedded styles.
                 osg::ref_ptr<osg::Node> node;
@@ -657,7 +676,8 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
                 Query combinedQuery = baseQuery.combineWith( *sel.query() );
 
                 // then create the node.
-                osg::Group* styleGroup = createNodeForStyle( combinedStyle, combinedQuery );
+                osg::Group* styleGroup = createNodeForStyle( combinedStyle, combinedQuery, index );
+
                 if ( styleGroup && !group->containsNode(styleGroup) )
                     group->addChild( styleGroup );
             }
@@ -672,7 +692,8 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
             if ( baseStyle.empty() )
                 combinedStyle = *styles->getDefaultStyle();
 
-            osg::Group* styleGroup = createNodeForStyle( combinedStyle, baseQuery );
+            osg::Group* styleGroup = createNodeForStyle( combinedStyle, baseQuery, index );
+
             if ( styleGroup && !group->containsNode(styleGroup) )
                 group->addChild( styleGroup );
         }
@@ -682,7 +703,9 @@ FeatureModelGraph::build( const Style& baseStyle, const Query& baseQuery, const 
 }
 
 osg::Group*
-FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
+FeatureModelGraph::createNodeForStyle(const Style&        style, 
+                                      const Query&        query, 
+                                      FeatureSourceIndex* index)
 {
     osg::Group* styleGroup = 0L;
 
@@ -700,7 +723,7 @@ FeatureModelGraph::createNodeForStyle(const Style& style, const Query& query)
         Bounds cellBounds =
             query.bounds().isSet() ? *query.bounds() : extent.bounds();
 
-        FilterContext context( _session.get(), profile, GeoExtent(profile->getSRS(), cellBounds) );
+        FilterContext context( _session.get(), profile, GeoExtent(profile->getSRS(), cellBounds), index );
 
         // start by culling our feature list to the working extent. By default, this is done by
         // checking feature centroids. But the user can override this to crop feature geometry to

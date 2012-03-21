@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/BuildGeometryFilter>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/TextSymbol>
 #include <osgEarthSymbology/PointSymbol>
 #include <osgEarthSymbology/LineSymbol>
@@ -32,7 +33,6 @@
 #include <osg/Depth>
 #include <osg/PolygonOffset>
 #include <osg/MatrixTransform>
-#include <osg/ClusterCullingCallback>
 #include <osgText/Text>
 #include <osgUtil/Tessellator>
 #include <osgUtil/Optimizer>
@@ -81,7 +81,6 @@ void
 BuildGeometryFilter::reset()
 {
     _result = 0L;
-    _indexNode = 0L;
     _geode = new osg::Geode();
     _hasLines = false;
     _hasPoints = false;
@@ -161,31 +160,6 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 renderType = part->getType();
             }
 
-#if 0
-            if ((polySymbol != 0L) ||
-                (polySymbol == 0L && lineSymbol == 0L && part->getType() == Geometry::TYPE_POLYGON))
-            {
-                renderType = Geometry::TYPE_POLYGON;
-            }
-
-            else if (
-                (lineSymbol != 0L && polySymbol == 0L && !part->isLinear()))
-            {
-                renderType = Geometry::TYPE_RING;
-            }
-
-            else if (
-                (lineSymbol != 0L && polySymbol == 0L && part->isLinear()))
-            {
-                renderType = part->getType();
-            }
-
-            else
-            {
-                renderType = part->getType();
-            }
-#endif
-
             // resolve the color:
             osg::Vec4f primaryColor =
                 polySymbol ? polySymbol->fill()->color() :
@@ -263,8 +237,8 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             _geode->addDrawable( osgGeom );
 
             // record the geometry's primitive set(s) in the index:
-            _indexNode->tagPrimitiveSets( osgGeom, input->getFID() );
-            //_featureNode->addDrawable( osgGeom, input->getFID() );
+            if ( context.featureIndex() )
+                context.featureIndex()->tagPrimitiveSets( osgGeom, input->getFID() );
 
             // build secondary geometry, if necessary (polygon outlines)
             if ( renderType == Geometry::TYPE_POLYGON && lineSymbol )
@@ -304,7 +278,8 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
                 //_featureNode->addDrawable( outline, input->getFID() );
 
                 // Mark each primitive set with its feature ID.
-                _indexNode->tagPrimitiveSets( outline, input->getFID() );
+                if ( context.featureIndex() )
+                    context.featureIndex()->tagPrimitiveSets( outline, input->getFID() );
             }
 
         }
@@ -369,9 +344,6 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
 
     computeLocalizers( context );
 
-    FeatureSource* fs = context.getSession() ? context.getSession()->getFeatureSource() : 0L;
-    _indexNode = new FeatureSourceIndexNode( fs );
-
     bool ok = process( input, context );
 
     // convert all geom to triangles and consolidate into minimal set of Geometries
@@ -401,12 +373,8 @@ BuildGeometryFilter::push( FeatureList& input, FilterContext& context )
                     new osg::Point( *pointSymbol->size() ), osg::StateAttribute::ON );
         }
 
-        _indexNode->addChild(_geode.release());
-
-        // build the feature index.
-        _indexNode->reindex();
-
-        result = delocalize( _indexNode.release() );
+        // apply the delocalization matrix for no-jitter
+        result = delocalize( _geode.release() );
     }
     else
     {

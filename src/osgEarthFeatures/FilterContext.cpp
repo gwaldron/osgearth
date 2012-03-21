@@ -24,11 +24,13 @@ using namespace osgEarth::Features;
 
 FilterContext::FilterContext(Session*               session,
                              const FeatureProfile*  profile,
-                             const GeoExtent&       workingExtent ) :
+                             const GeoExtent&       workingExtent,
+                             FeatureSourceIndex*    index ) :
 _session     ( session ),
 _profile     ( profile ),
 _extent      ( workingExtent, workingExtent ),
-_isGeocentric( false )
+_isGeocentric( false ),
+_index       ( index )
 {
     _resourceCache = new ResourceCache( session ? session->getDBOptions() : 0L );
 
@@ -57,7 +59,8 @@ _extent               ( rhs._extent ),
 _referenceFrame       ( rhs._referenceFrame ),
 _inverseReferenceFrame( rhs._inverseReferenceFrame ),
 _optimizerHints       ( rhs._optimizerHints ),
-_resourceCache        ( rhs._resourceCache.get() )
+_resourceCache        ( rhs._resourceCache.get() ),
+_index                ( rhs._index )
 {
     //nop
 }

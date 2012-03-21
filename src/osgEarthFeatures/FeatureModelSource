@@ -69,6 +69,10 @@ namespace osgEarth { namespace Features
         optional<StringExpression>& featureName() { return _featureNameExpr; }
         const optional<StringExpression>& featureName() const { return _featureNameExpr; }
 
+        /** Whether to create feature indexes (default = yes) */
+        optional<bool>& featureIndexing() { return _featureIndexing; }
+        const optional<bool>& featureIndexing() const { return _featureIndexing; }
+
         /** Explicity caching policy for data from the underlying feature source */
         optional<CachePolicy>& cachePolicy() { return _cachePolicy; }
         const optional<CachePolicy>& cachePolicy() const { return _cachePolicy; }
@@ -109,6 +113,7 @@ namespace osgEarth { namespace Features
         optional<double>                _maxGranularity_deg;
         optional<bool>                  _mergeGeometry;
         optional<bool>                  _clusterCulling;
+        optional<bool>                  _featureIndexing;
         optional<CachePolicy>           _cachePolicy;
 
         osg::ref_ptr<StyleSheet>        _styles;

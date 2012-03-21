@@ -82,11 +82,11 @@ namespace osgEarth { namespace Features
 
         osg::Group* build( const FeatureLevel& level, const GeoExtent& extent, const TileKey* key);
 
-        osg::Group* build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& extent );
+        osg::Group* build( const Style& baseStyle, const Query& baseQuery, const GeoExtent& extent, FeatureSourceIndex* index);
 
     private:
         
-        osg::Group* createNodeForStyle(const Style& style, const Query& query);
+        osg::Group* createNodeForStyle(const Style& style, const Query& query, FeatureSourceIndex* index);
        
         osg::BoundingSphered getBoundInWorldCoords( const GeoExtent& extent, const MapFrame* mapf ) const;
 

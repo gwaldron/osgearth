@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/ExtrudeGeometryFilter>
+#include <osgEarthFeatures/FeatureSourceIndexNode>
 #include <osgEarthSymbology/MeshSubdivider>
 #include <osgEarthSymbology/MeshConsolidator>
 #include <osgEarth/ECEF>
@@ -94,12 +95,6 @@ ExtrudeGeometryFilter::reset( const FilterContext& context )
     _cosWallAngleThresh = cos( _wallAngleThresh_deg );
     _geodes.clear();
     
-    _index = 0L;
-    if ( context.getSession() && context.getSession()->getFeatureSource() )
-    {
-        _index = new FeatureSourceIndexNode(context.getSession()->getFeatureSource());
-    }
-
     if ( _styleDirty )
     {
         const StyleSheet* sheet = context.getSession() ? context.getSession()->styles() : 0L;
@@ -617,10 +612,11 @@ ExtrudeGeometryFilter::extrudeGeometry(const Geometry*         input,
 }
 
 void
-ExtrudeGeometryFilter::addDrawable(osg::Drawable*     drawable,
-                                   osg::StateSet*     stateSet,
-                                   const std::string& name,
-                                   FeatureID          fid)
+ExtrudeGeometryFilter::addDrawable(osg::Drawable*      drawable,
+                                   osg::StateSet*      stateSet,
+                                   const std::string&  name,
+                                   FeatureID           fid,
+                                   FeatureSourceIndex* index )
 {
     // find the geode for the active stateset, creating a new one if necessary. NULL is a 
     // valid key as well.
@@ -639,9 +635,9 @@ ExtrudeGeometryFilter::addDrawable(osg::Drawable*     drawable,
         drawable->setName( name );
     }
 
-    if ( _index.valid() )
+    if ( index )
     {
-        _index->tagPrimitiveSets( drawable, fid );
+        index->tagPrimitiveSets( drawable, fid );
     }
 }
 
@@ -829,21 +825,24 @@ ExtrudeGeometryFilter::process( FeatureList& features, FilterContext& context )
                 if ( !_featureNameExpr.empty() )
                     name = input->eval( _featureNameExpr, &context );
 
-                addDrawable( walls.get(), wallStateSet, name, input->getFID() );
+                FeatureSourceIndex* index = context.featureIndex();
+                FeatureID fid = input->getFID();
+
+                addDrawable( walls.get(), wallStateSet, name, fid, index );
 
                 if ( rooflines.valid() )
                 {
-                    addDrawable( rooflines.get(), roofStateSet, name, input->getFID() );
+                    addDrawable( rooflines.get(), roofStateSet, name, fid, index );
                 }
 
                 if ( baselines.valid() )
                 {
-                    addDrawable( baselines.get(), 0L, name, input->getFID() );
+                    addDrawable( baselines.get(), 0L, name, fid, index );
                 }
 
                 if ( outlines.valid() )
                 {
-                    addDrawable( outlines.get(), 0L, name, input->getFID() );
+                    addDrawable( outlines.get(), 0L, name, fid, index );
                 }
             }   
         }
@@ -940,14 +939,6 @@ ExtrudeGeometryFilter::push( FeatureList& input, FilterContext& context )
         o.optimize( group, osgUtil::Optimizer::MERGE_GEOMETRY );
     }
 #endif
-
-    // build the feature index.
-    if ( _index.valid() )
-    {
-        _index->addChild( group );
-        _index->reindex();
-        group = _index.release();
-    }
 
     return group;
 }

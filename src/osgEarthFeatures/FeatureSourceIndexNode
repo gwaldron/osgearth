@@ -28,10 +28,20 @@
 namespace osgEarth { namespace Features
 {
     /**
+     * Interface for feature indexing.
+     */
+    class FeatureSourceIndex
+    {
+    public:
+        virtual void tagPrimitiveSets( osg::Drawable* drawable, FeatureID fid ) const =0;
+        virtual void tagNode( osg::Node* node, FeatureID fid ) const =0;
+    };
+
+    /**
      * Maintains an index that maps FeatureID's from a FeatureSource to
      * PrimitiveSets within the subgraph's geometry.
      */
-    class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::Group
+    class OSGEARTHFEATURES_EXPORT FeatureSourceIndexNode : public osg::Group, public FeatureSourceIndex
 	{
 	public:
         /**

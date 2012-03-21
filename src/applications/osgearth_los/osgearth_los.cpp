@@ -122,7 +122,7 @@ main(int argc, char** argv)
     viewer.setCameraManipulator( manip );
     
     root->addChild( earthNode );    
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode->getMap()) );
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode));
 
     //Create a point to point LineOfSightNode.
     LineOfSightNode* los = new LineOfSightNode( mapNode, osg::Vec3d(-121.665, 46.0878, 1258.00), osg::Vec3d(-121.488, 46.2054, 3620.11));

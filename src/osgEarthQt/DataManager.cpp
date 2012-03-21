@@ -119,14 +119,16 @@ void DataManager::removeAnnotaton(osgEarth::Annotation::AnnotationNode* annotati
     }
   }
 
-  Threading::ScopedWriteLock lock( _dataMutex );
-  for(AnnotationVector::iterator it = _annotations.begin(); it != _annotations.end(); ++it)
   {
-    if (it->get() == annoToRemove.get())
+    Threading::ScopedWriteLock lock( _dataMutex );
+    for(AnnotationVector::iterator it = _annotations.begin(); it != _annotations.end(); ++it)
     {
-      _annotations.erase(it);
-      removed = true;
-      break;
+      if (it->get() == annoToRemove.get())
+      {
+        _annotations.erase(it);
+        removed = true;
+        break;
+      }
     }
   }
 

@@ -298,7 +298,7 @@ int main(int argc, char** argv)
     viewer.setCameraManipulator( new EarthManipulator() );
 
     if ( s_mapNode )
-        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(s_mapNode->getMap()) );
+        viewer.getCamera()->addCullCallback( new osgEarth::Util::AutoClipPlaneCullCallback(s_mapNode) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

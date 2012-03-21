@@ -49,7 +49,7 @@ namespace osgEarth { namespace Util
          * in the specified map.
          * @param map Map to take ellipsoid information from; if NULL, use WGS84 values
          */
-        AutoClipPlaneCullCallback( Map* map =0L );
+        AutoClipPlaneCullCallback( MapNode* mapNode =0L );
 
         /**
          * Sets the minimum near/far ratio to use for this camera. The minimum ratio takes
@@ -88,7 +88,7 @@ namespace osgEarth { namespace Util
         double _haeThreshold;
         double _rp2, _rp;
         bool   _autoFarPlaneClamping;
-        osg::ref_ptr<Map> _map;
+        osg::ref_ptr<MapNode> _mapNode;
         Threading::PerObjectMap< osg::Camera*, osg::ref_ptr<osg::CullSettings::ClampProjectionMatrixCallback> > _clampers;
     };
 

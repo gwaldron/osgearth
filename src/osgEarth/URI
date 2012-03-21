@@ -197,22 +197,22 @@ namespace osgEarth
         osg::Object* getObject(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readObject().releaseObject(); }
+            ProgressCallback*     progress    =0L ) const { return readObject(dbOptions, cachePolicy, progress).releaseObject(); }
 
         osg::Image* getImage(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readImage().releaseImage(); }
+            ProgressCallback*     progress    =0L ) const { return readImage(dbOptions, cachePolicy, progress).releaseImage(); }
 
         osg::Node* getNode(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readNode().releaseNode(); }
+            ProgressCallback*     progress    =0L ) const { return readNode(dbOptions, cachePolicy, progress).releaseNode(); }
 
         std::string getString(
             const osgDB::Options* dbOptions   =0L,
             const CachePolicy&    cachePolicy =CachePolicy(),
-            ProgressCallback*     progress    =0L ) const { return readString().getString(); }
+            ProgressCallback*     progress    =0L ) const { return readString(dbOptions, cachePolicy, progress).getString(); }
 
     public:
 

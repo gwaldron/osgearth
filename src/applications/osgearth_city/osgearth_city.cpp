@@ -134,7 +134,7 @@ main(int argc, char** argv)
 
 
     viewer.getDatabasePager()->setDoPreCompile( true );
-    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(map) );
+    viewer.getCamera()->addCullCallback( new AutoClipPlaneCullCallback(mapNode) );
 
     // add some stock OSG handlers:
     viewer.addEventHandler(new osgViewer::StatsHandler());

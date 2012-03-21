@@ -116,7 +116,7 @@ _terrain( terrain )
 }
 
 void
-OSGTerrainEngineNode::ElevationChangedCallback::onEnabledChanged( TerrainLayer* layer )
+OSGTerrainEngineNode::ElevationChangedCallback::onVisibleChanged( TerrainLayer* layer )
 {
     _terrain->refresh();
 }
@@ -498,6 +498,10 @@ OSGTerrainEngineNode::createTile( const TileKey& key )
 
     // code block required in order to properly manage the ref count of the transform
     SinglePassTerrainTechnique* tech = new SinglePassTerrainTechnique( _texCompositor.get() );
+    // prepare the interpolation technique for generating triangles:
+    if ( getMap()->getMapOptions().elevationInterpolation() == INTERP_TRIANGULATE )
+        tech->setOptimizeTriangleOrientation( false ); 
+
     tile->setTerrainTechnique( tech );
     tile->init();
     

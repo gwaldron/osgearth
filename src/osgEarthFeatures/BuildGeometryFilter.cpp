@@ -110,6 +110,10 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
         {
             Geometry* part = parts.next();
 
+            // skip empty geometry
+            if ( part->size() == 0 )
+                continue;
+
             const Style& myStyle = input->style().isSet() ? *input->style() : _style;
 
             bool  setLinePropsHere   = input->style().isSet(); // otherwise it will be set globally, we assume
@@ -159,6 +163,12 @@ BuildGeometryFilter::process( FeatureList& features, const FilterContext& contex
             {
                 renderType = part->getType();
             }
+
+            // validate the geometry:
+            if ( renderType == Geometry::TYPE_POLYGON && part->size() < 3 )
+                continue;
+            else if ( (renderType == Geometry::TYPE_LINESTRING || renderType == Geometry::TYPE_RING) && part->size() < 2 )
+                continue;
 
             // resolve the color:
             osg::Vec4f primaryColor =

@@ -196,23 +196,23 @@ static short s_actionOptionTypes[] = { 1, 1, 0, 0, 1, 1 }; // 0=bool, 1=double
 //------------------------------------------------------------------------
 
 EarthManipulator::Settings::Settings() :
-_single_axis_rotation( false ),
-_throwing( false ),
+_single_axis_rotation   ( false ),
+_throwing               ( false ),
 _lock_azim_while_panning( true ),
-_mouse_sens( 1.0 ),
-_keyboard_sens( 1.0 ),
-_scroll_sens( 1.0 ),
-_min_pitch( -89.9 ),
-_max_pitch( -10.0 ),
-_max_x_offset( 0.0 ),
-_max_y_offset( 0.0 ),
-_min_distance( 0.001 ),
-_max_distance( DBL_MAX ),
-_tether_mode( TETHER_CENTER ),
-_arc_viewpoints( false ),
-_auto_vp_duration( false ),
-_min_vp_duration_s( 3.0 ),
-_max_vp_duration_s( 8.0 )
+_mouse_sens             ( 1.0 ),
+_keyboard_sens          ( 1.0 ),
+_scroll_sens            ( 1.0 ),
+_min_pitch              ( -89.9 ),
+_max_pitch              ( -10.0 ),
+_max_x_offset           ( 0.0 ),
+_max_y_offset           ( 0.0 ),
+_min_distance           ( 0.001 ),
+_max_distance           ( DBL_MAX ),
+_tether_mode            ( TETHER_CENTER ),
+_arc_viewpoints         ( true ),
+_auto_vp_duration       ( false ),
+_min_vp_duration_s      ( 3.0 ),
+_max_vp_duration_s      ( 8.0 )
 {
     //NOP
 }

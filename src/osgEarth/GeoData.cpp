@@ -871,7 +871,7 @@ GeoExtent::toString() const
     if ( !isValid() )
         buf << "INVALID";
     else
-        buf << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
+        buf << std::fixed << std::setprecision(4) << "SW=" << west() << "," << south() << " NE=" << east() << "," << north();
 
     buf << ", SRS=" << _srs->getName();
 

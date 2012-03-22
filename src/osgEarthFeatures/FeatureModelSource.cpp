@@ -182,13 +182,13 @@ FeatureModelSource::createNode( ProgressCallback* progress )
     Session* session = new Session( 
         _map.get(), 
         _options.styles().get(),
+        _features.get(),
         _dbOptions.get() );
 
     FeatureModelGraph* graph = new FeatureModelGraph( 
-        _features.get(), 
+        session,
         _options, 
-        _factory.get(),
-        session );
+        _factory.get() );
 
     return graph;
 }

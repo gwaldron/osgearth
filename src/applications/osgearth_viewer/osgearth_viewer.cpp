@@ -45,6 +45,9 @@
 #include <osgEarthUtil/MouseCoordsTool>
 #include <osgEarthUtil/FeatureQueryTool>
 
+// testing
+#include <osgEarthUtil/FeatureDraggerTool>
+
 #define LC "[viewer] "
 
 using namespace osgEarth::Util;
@@ -481,9 +484,13 @@ main(int argc, char** argv)
     VBox* featureQueryContainer = ControlCanvas::get(&viewer, false)->addControl( new VBox() );
     featureQueryContainer->setHorizAlign( Control::ALIGN_RIGHT );
     FeatureQueryTool* queryTool = new FeatureQueryTool(mapNode);
-    queryTool->addCallback( new FeatureHighlightCallback() );
-    queryTool->addCallback( new FeatureReadoutCallback(featureQueryContainer) );
+//    queryTool->addCallback( new FeatureHighlightCallback() );
+//    queryTool->addCallback( new FeatureReadoutCallback(featureQueryContainer) );
     viewer.addEventHandler( queryTool );
+
+    // Feature dragger
+    FeatureDraggerTool* draggerTool = new FeatureDraggerTool(mapNode, queryTool);
+    viewer.addEventHandler( draggerTool );
 
     return viewer.run();
 }

@@ -46,8 +46,6 @@ namespace osgEarth { namespace Features
         /**
          * Constructs a new model graph.
          *
-         * @param source
-         *      Source from which to read feature data
          * @param options
          *      Model source options
          * @param factory
@@ -55,11 +53,10 @@ namespace osgEarth { namespace Features
          * @param session
          *      Session under which to create elements in this graph
          */
-        FeatureModelGraph( 
-            FeatureSource*                   source,
+        FeatureModelGraph(
+            Session*                         session,
             const FeatureModelSourceOptions& options,
-            FeatureNodeFactory*              factory,
-            Session*                         session );
+            FeatureNodeFactory*              factory );
 
         /**
          * Loads and returns a subnode. Used internally for paging.
@@ -98,7 +95,7 @@ namespace osgEarth { namespace Features
 
     private:
         FeatureModelSourceOptions        _options;
-        osg::ref_ptr<FeatureSource>      _source;
+        //osg::ref_ptr<FeatureSource>      _source;
         osg::ref_ptr<FeatureNodeFactory> _factory;
         osg::ref_ptr<Session>            _session;
         UID                              _uid;

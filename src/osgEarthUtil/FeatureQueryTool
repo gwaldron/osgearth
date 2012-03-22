@@ -51,6 +51,7 @@ namespace osgEarth { namespace Util
             {
                 const osgGA::GUIEventAdapter*  _ea;
                 osgGA::GUIActionAdapter*       _aa;
+                osg::Vec3d                     _worldPoint;
             };
 
             // called when a valid feature is found under the mouse coords
@@ -67,7 +68,7 @@ namespace osgEarth { namespace Util
         {
         public:
             // return true to active a query under the mouse cursor.
-            virtual bool test( const osgGA::GUIEventAdapter& ea ) =0;
+            virtual bool accept( const osgGA::GUIEventAdapter& ea ) =0;
         };
 
     public:
@@ -95,7 +96,7 @@ namespace osgEarth { namespace Util
         /**
          * Sets a custom input test. By default, the action is a left-click.
          */
-        void setInputPredicate( InputPredicate* predicate );
+        void setInputPredicate( InputPredicate* value ) { _inputPredicate = value; }
 
 
     public: // GUIEventHandler

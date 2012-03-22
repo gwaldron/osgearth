@@ -58,7 +58,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
 
     if ( _inputPredicate.valid() )
     {
-        attempt = _inputPredicate->test(ea);
+        attempt = _inputPredicate->accept(ea);
     }
     else
     {
@@ -87,6 +87,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
             FeatureSourceIndexNode* closestIndex    = 0L;
             FeatureID               closestFID;
             double                  closestDistance = DBL_MAX;
+            osg::Vec3d              closestWorldPt;
 
             for(Picker::Hits::iterator hit = hits.begin(); hit != hits.end(); ++hit )
             {
@@ -99,6 +100,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
                         closestIndex    = index;
                         closestFID      = fid;
                         closestDistance = hit->distance;
+                        closestWorldPt  = hit->matrix.valid() ? hit->localIntersectionPoint * (*hit->matrix.get()) : hit->localIntersectionPoint;
                     }
                 }
             }
@@ -110,6 +112,7 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
                 Callback::EventArgs args;
                 args._ea = &ea;
                 args._aa = &aa;
+                args._worldPoint = closestWorldPt;
 
                 for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); )
                 {

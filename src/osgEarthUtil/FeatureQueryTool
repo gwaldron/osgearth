@@ -89,6 +89,10 @@ namespace osgEarth { namespace Util
         void addCallback( Callback* callback );
 
         /**
+         * Removes a feature query callback.
+         */
+
+        /**
          * Sets a custom input test. By default, the action is a left-click.
          */
         void setInputPredicate( InputPredicate* predicate );
@@ -106,7 +110,7 @@ namespace osgEarth { namespace Util
 
         osg::ref_ptr<InputPredicate> _inputPredicate;
 
-        typedef std::vector< osg::ref_ptr<Callback> > Callbacks;
+        typedef std::vector< osg::observer_ptr<Callback> > Callbacks;
         Callbacks _callbacks;
     };
 

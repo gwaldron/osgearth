@@ -32,8 +32,8 @@
 
 using namespace osgEarth;
 
-#define USE_CUSTOM_MERCATOR_TRANSFORM 1
-//#undef USE_CUSTOM_MERCATOR_TRANSFORM
+//#define USE_CUSTOM_MERCATOR_TRANSFORM 1
+#undef USE_CUSTOM_MERCATOR_TRANSFORM
 
 //------------------------------------------------------------------------
 

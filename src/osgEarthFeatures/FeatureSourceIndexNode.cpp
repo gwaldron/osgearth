@@ -17,6 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 #include <osgEarthFeatures/FeatureSourceIndexNode>
+#include <osg/MatrixTransform>
 #include <algorithm>
 
 using namespace osgEarth;
@@ -27,6 +28,63 @@ using namespace osgEarth::Features;
 // for testing:
 //#undef  OE_DEBUG
 //#define OE_DEBUG OE_INFO
+
+//-----------------------------------------------------------------------------
+
+osg::Node*
+FeatureSourceIndex::FeatureDrawSet::createCopy()
+{
+    osg::Group* group = new osg::Group();
+
+    for( NodeVector::iterator n = _nodes.begin(); n != _nodes.end(); ++n )
+    {
+        osg::Node* node = *n;
+        osg::Node* nodeCopy = osg::clone(node, osg::CopyOp::SHALLOW_COPY);
+        osg::Matrix local2world = osg::computeLocalToWorld( node->getParentalNodePaths()[0] );
+        if ( !local2world.isIdentity() )
+        {
+            osg::MatrixTransform* xform = new osg::MatrixTransform(local2world);
+            xform->addChild( nodeCopy );
+            group->addChild( xform );
+        }
+        else
+        {
+            group->addChild( nodeCopy );
+        }
+    }
+
+    osg::Geode* geode = 0L;
+    for( PrimitiveSetGroups::iterator p = _primSetGroups.begin(); p != _primSetGroups.end(); ++p )
+    {
+        osg::Drawable* d = p->first;
+        const PrimitiveSetList& psets = p->second;
+        if ( psets.size() > 0 )
+        {        
+            osg::Geometry* featureGeom = d->asGeometry();
+
+            if ( !geode )
+            {
+                geode = new osg::Geode();
+            }
+
+            osg::Geometry* copiedGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
+            copiedGeom->setPrimitiveSetList( psets );
+
+            geode->addDrawable( copiedGeom );
+
+            // include a matrix transform if necessary:
+            osg::Matrix local2world = osg::computeLocalToWorld( featureGeom->getParent(0)->getParentalNodePaths()[0] );
+            if ( !local2world.isIdentity() )
+            {
+                osg::MatrixTransform* xform = new osg::MatrixTransform(local2world);
+                xform->addChild( geode );
+                group->addChild( xform );
+            }
+        }
+    }
+
+    return group;
+}
 
 //-----------------------------------------------------------------------------
 
@@ -45,7 +103,7 @@ FeatureSourceIndexNode::Collect::apply( osg::Node& node )
     if ( fid )
     {
         FeatureDrawSet& drawSet = _index[*fid];
-        drawSet.nodes.push_back( &node );
+        drawSet._nodes.push_back( &node );
     }
     traverse(node);
 }
@@ -57,7 +115,7 @@ FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
     if ( fid )
     {
         FeatureDrawSet& drawSet = _index[*fid];
-        drawSet.nodes.push_back( &geode );
+        drawSet._nodes.push_back( &geode );
     }
     else
     {
@@ -74,7 +132,7 @@ FeatureSourceIndexNode::Collect::apply( osg::Geode& geode )
                     if ( fid )
                     {
                         FeatureDrawSet& drawSet = _index[*fid];
-                        drawSet.primSetGroups[geom].push_back( pset );
+                        drawSet._primSetGroups[geom].push_back( pset );
                         _psets++;
                     }
                 }
@@ -162,8 +220,8 @@ FeatureSourceIndexNode::getFID(osg::Drawable* drawable, int primIndex, FeatureID
     for( FeatureIDDrawSetMap::const_iterator i = _drawSets.begin(); i != _drawSets.end(); ++i )
     {
         const FeatureDrawSet& drawSet = i->second;
-        PrimitiveSetGroups::const_iterator d = drawSet.primSetGroups.find(drawable);
-        if ( d != drawSet.primSetGroups.end() )
+        PrimitiveSetGroups::const_iterator d = drawSet._primSetGroups.find(drawable);
+        if ( d != drawSet._primSetGroups.end() )
         {
             const osg::Geometry* geom = drawable->asGeometry();
             if ( geom )

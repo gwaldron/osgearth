@@ -111,8 +111,18 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
                 args._ea = &ea;
                 args._aa = &aa;
 
-                for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-                    i->get()->onHit( closestIndex, closestFID, args );
+                for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); )
+                {
+                    if ( i->valid() )
+                    {
+                        i->get()->onHit( closestIndex, closestFID, args );
+                        ++i;
+                    }
+                    else
+                    {
+                        i = _callbacks.erase( i );
+                    }
+                }
 
                 handled = true;
             }
@@ -126,8 +136,18 @@ FeatureQueryTool::handle( const osgGA::GUIEventAdapter& ea, osgGA::GUIActionAdap
             args._ea = &ea;
             args._aa = &aa;
 
-            for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); ++i )
-                i->get()->onMiss( args );
+            for( Callbacks::iterator i = _callbacks.begin(); i != _callbacks.end(); )
+            {
+                if ( i->valid() )
+                {
+                    i->get()->onMiss( args );
+                    ++i;
+                }
+                else
+                {
+                    i = _callbacks.erase( i );
+                }
+            }
         }
 
         _mouseDown = false;
@@ -161,7 +181,7 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
         osg::Group* group = new osg::Group();
         osg::Geode* geode = 0L;
 
-        for( FeatureSourceIndexNode::PrimitiveSetGroups::iterator d = drawSet.primSetGroups.begin(); d != drawSet.primSetGroups.end(); ++d )
+        for( FeatureSourceIndex::PrimitiveSetGroups::iterator d = drawSet._primSetGroups.begin(); d != drawSet._primSetGroups.end(); ++d )
         {
             osg::Geometry* featureGeom = d->first->asGeometry();
             osg::Geometry* highlightGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
@@ -189,7 +209,7 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
             }
         }
 
-        for( FeatureSourceIndexNode::NodeVector::iterator n = drawSet.nodes.begin(); n != drawSet.nodes.end(); ++n )
+        for( FeatureSourceIndexNode::NodeVector::iterator n = drawSet._nodes.begin(); n != drawSet._nodes.end(); ++n )
         {
             group->addChild( *n );
             if ( !container )

@@ -177,14 +177,14 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
 {
     clear();
 
-    FeatureSourceIndexNode::FeatureDrawSet& drawSet = index->getDrawSet(fid);
+    FeatureDrawSet& drawSet = index->getDrawSet(fid);
     if ( !drawSet.empty() )
     {
         osg::Group* container = 0L;
         osg::Group* group = new osg::Group();
         osg::Geode* geode = 0L;
 
-        for( FeatureSourceIndex::PrimitiveSetGroups::iterator d = drawSet._primSetGroups.begin(); d != drawSet._primSetGroups.end(); ++d )
+        for( FeatureDrawSet::PrimitiveSetGroups::iterator d = drawSet.primSetGroups().begin(); d != drawSet.primSetGroups().end(); ++d )
         {
             osg::Geometry* featureGeom = d->first->asGeometry();
             osg::Geometry* highlightGeom = new osg::Geometry( *featureGeom, osg::CopyOp::SHALLOW_COPY );
@@ -212,7 +212,7 @@ FeatureHighlightCallback::onHit( FeatureSourceIndexNode* index, FeatureID fid, c
             }
         }
 
-        for( FeatureSourceIndexNode::NodeVector::iterator n = drawSet._nodes.begin(); n != drawSet._nodes.end(); ++n )
+        for( FeatureDrawSet::NodeVector::iterator n = drawSet.nodes().begin(); n != drawSet.nodes().end(); ++n )
         {
             group->addChild( *n );
             if ( !container )

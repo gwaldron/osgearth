@@ -50,11 +50,11 @@ namespace
     // Extracts the geometry from a draw set, and re-centers it around the world
     // centroid and puts it in the output node. out_local2world is a matrix that
     // will place it exactly where it was originally in world coordinates.
-    void extractLocalizedCopy(FeatureSourceIndexNode::FeatureDrawSet& ds,
-                              const osg::Vec3d&                       anchorPointWorld,
-                              const SpatialReference*                 mapSRS,
-                              osg::ref_ptr<osg::Node>&                out_node,
-                              osg::Matrixd&                           out_local2world)
+    void extractLocalizedCopy(FeatureDrawSet&          ds,
+                              const osg::Vec3d&        anchorPointWorld,
+                              const SpatialReference*  mapSRS,
+                              osg::ref_ptr<osg::Node>& out_node,
+                              osg::Matrixd&            out_local2world)
     {
         osg::Group* group = 0L;
 
@@ -84,10 +84,10 @@ namespace
         std::vector<osg::Matrixd> local2worlds;
 
         // clone each of the drawables and place the clones under the new geode.
-        for( FeatureSourceIndex::PrimitiveSetGroups::iterator p = ds._primSetGroups.begin(); p != ds._primSetGroups.end(); ++p )
+        for( FeatureDrawSet::PrimitiveSetGroups::iterator p = ds.primSetGroups().begin(); p != ds.primSetGroups().end(); ++p )
         {
             osg::Drawable* d = p->first;
-            const FeatureSourceIndex::PrimitiveSetList& psets = p->second;
+            const FeatureDrawSet::PrimitiveSetList& psets = p->second;
             if ( psets.size() > 0 )
             {
                 osg::Geometry* featureGeom = d->asGeometry();
@@ -197,7 +197,7 @@ FeatureDraggerTool::onHit( FeatureSourceIndexNode* index, FeatureID fid, const E
     }
 
     // extract the "selected" feature model from the scene graph.
-    FeatureSourceIndex::FeatureDrawSet& drawSet = index->getDrawSet( fid );
+    FeatureDrawSet& drawSet = index->getDrawSet( fid );
     if ( !drawSet.empty() )
     {
         // grab the point under the mouse and use this as the anchor.

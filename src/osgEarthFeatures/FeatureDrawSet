@@ -1,0 +1,56 @@
+/* -*-c++-*- */
+/* osgEarth - Dynamic map generation toolkit for OpenSceneGraph
+ * Copyright 2008-2010 Pelican Mapping
+ * http://osgearth.org
+ *
+ * osgEarth is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ */
+#ifndef OSGEARTHFEATURES_FEATURE_DRAW_SET_H
+#define OSGEARTHFEATURES_FEATURE_DRAW_SET_H 1
+
+#include <osgEarthFeatures/Common>
+#include <osg/Geometry>
+
+namespace osgEarth { namespace Features
+{
+    /**
+     * Contains a catalog of nodes and/or primitive set groups that comprise
+     * a single Feature in the scene.
+     */
+    class OSGEARTHFEATURES_EXPORT FeatureDrawSet
+    {     
+    public: // types
+        typedef osg::Geometry::PrimitiveSetList            PrimitiveSetList;
+        typedef std::map<osg::Drawable*, PrimitiveSetList> PrimitiveSetGroups;
+        typedef std::vector<osg::Node*>                    NodeVector;
+
+    public:
+        NodeVector& nodes() { return _nodes; }
+        const NodeVector& nodes() const { return _nodes; }
+
+        PrimitiveSetGroups& primSetGroups() { return _primSetGroups; }
+        const PrimitiveSetGroups& primSetGroups() const { return _primSetGroups; }
+
+        bool empty() const { return _nodes.empty() && _primSetGroups.empty(); }
+        
+        osg::Node* createCopy();
+
+    private:
+        NodeVector         _nodes;
+        PrimitiveSetGroups _primSetGroups;
+    };
+
+} } // namespace osgEarth::Features
+
+#endif // OSGEARTHFEATURES_FEATURE_DRAW_SET_H

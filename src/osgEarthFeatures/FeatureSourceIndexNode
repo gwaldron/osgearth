@@ -21,6 +21,7 @@
 #define OSGEARTHFEATURES_FEATURE_SOURCE_INDEX_NODE_H 1
 
 #include <osgEarthFeatures/Common>
+#include <osgEarthFeatures/FeatureDrawSet>
 #include <osgEarthFeatures/FeatureSource>
 #include <osg/Group>
 #include <osg/Drawable>
@@ -35,23 +36,6 @@ namespace osgEarth { namespace Features
     public: // tagging functions
         virtual void tagPrimitiveSets( osg::Drawable* drawable, FeatureID fid ) const =0;
         virtual void tagNode( osg::Node* node, FeatureID fid ) const =0;
-          
-    public: // types
-        typedef osg::Geometry::PrimitiveSetList            PrimitiveSetList;
-        typedef std::map<osg::Drawable*, PrimitiveSetList> PrimitiveSetGroups;
-        typedef std::vector<osg::Node*>                    NodeVector;
-
-        /**
-         * Contains a catalog of nodes and/or primitive set groups that comprise
-         * a single Feature in the scene.
-         */
-        struct FeatureDrawSet
-        {
-            NodeVector         _nodes;
-            PrimitiveSetGroups _primSetGroups;
-            bool empty() const { return _nodes.empty() && _primSetGroups.empty(); }
-            osg::Node* createCopy();
-        };
     };
 
     /**

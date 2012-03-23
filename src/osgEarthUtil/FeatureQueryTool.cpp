@@ -234,9 +234,9 @@ FeatureHighlightCallback::onMiss( const EventArgs& args )
 void
 FeatureHighlightCallback::clear()
 {
-    for( SelectionSet::iterator i = _selections.begin(); i != _selections.end(); ++i )
+    for( SelectionSet::const_iterator i = _selections.begin(); i != _selections.end(); ++i )
     {
-        Selection& selection = *i;
+        const Selection& selection = *i;
         osg::ref_ptr<osg::Group> safeGroup = selection._group.get();
         if ( safeGroup.valid() && safeGroup->getNumParents() > 0 )
         {

@@ -97,7 +97,7 @@ KML_NetworkLink::build( const Config& conf, KMLContext& cx )
         osgDB::Options* options = new osgDB::Options();
         options->setPluginData( "osgEarth::MapNode", cx._mapNode );
         plod->setDatabaseOptions( options );
-#endif;
+#endif
         //plod->setNodeMask( open ? ~0 : 0 );
 
         OE_DEBUG << LC << 
